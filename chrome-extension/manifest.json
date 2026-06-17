@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Flip 7 Controller Spawner",
   "version": "1.0.0",
-  "description": "Spawn multiple Flip 7 Party controller tabs and tap random visible buttons across them.",
+  "description": "Spawn multiple Flip 7 Party controller windows and tap random visible buttons across them.",
   "action": {
     "default_title": "Flip 7 Spawner",
     "default_popup": "popup.html"

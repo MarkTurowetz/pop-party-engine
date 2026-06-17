@@ -96,7 +96,7 @@ async function loadState() {
   stageCodeInput.value = activeStageCode || stored.stageCode || "";
   controllerCountInput.value = stored.controllerCount || "4";
   playerNamesInput.value = stored.playerNames || DEFAULT_NAMES.join("\n");
-  setStatus(`${(stored.spawnedControllers || []).length} spawned controller tabs tracked.`);
+  setStatus(`${(stored.spawnedControllers || []).length} spawned controller windows tracked.`);
 }
 
 async function persistInputs() {
@@ -115,6 +115,33 @@ function controllerUrl({ origin, stageCode, playerName, index }) {
   params.set("autojoin", "1");
   params.set("player", `spawn-${stageCode.toLowerCase()}-${Date.now()}-${index}`);
   return `${origin}/controller?${params.toString()}`;
+}
+
+async function getControllerWindowLayout(index) {
+  const currentWindow = await chrome.windows.getCurrent();
+  const controllerWidth = 360;
+  const controllerHeight = 600;
+  const gap = 14;
+  const columns = 2;
+  const rows = 2;
+  const slot = index % (columns * rows);
+  const cycle = Math.floor(index / (columns * rows));
+  const column = slot % columns;
+  const row = Math.floor(slot / columns);
+  const clusterWidth = columns * controllerWidth + (columns - 1) * gap;
+  const startLeft = Math.max(
+    0,
+    (currentWindow.left || 0) + (currentWindow.width || 1280) - clusterWidth - 24
+  );
+  const startTop = Math.max(0, (currentWindow.top || 0) + 44);
+  const cycleOffset = Math.min(48, cycle * 18);
+
+  return {
+    width: controllerWidth,
+    height: controllerHeight,
+    left: Math.round(startLeft + column * (controllerWidth + gap) + cycleOffset),
+    top: Math.round(startTop + row * (controllerHeight + gap) + cycleOffset)
+  };
 }
 
 async function spawnControllers() {
@@ -141,12 +168,17 @@ async function spawnControllers() {
   const spawnedControllers = [];
   for (let index = 0; index < count; index += 1) {
     const playerName = names[index % names.length];
-    const tab = await chrome.tabs.create({
-      active: false,
-      url: controllerUrl({ origin: detectedOrigin, stageCode, playerName, index })
+    const layout = await getControllerWindowLayout(index);
+    const controllerWindow = await chrome.windows.create({
+      focused: false,
+      type: "popup",
+      url: controllerUrl({ origin: detectedOrigin, stageCode, playerName, index }),
+      ...layout
     });
+    const tab = controllerWindow.tabs?.[0];
     spawnedControllers.push({
-      tabId: tab.id,
+      windowId: controllerWindow.id,
+      tabId: tab?.id,
       playerName,
       stageCode,
       createdAt: Date.now()
@@ -155,7 +187,7 @@ async function spawnControllers() {
 
   await chrome.storage.local.set({ spawnedControllers });
   spawnButton.disabled = false;
-  setStatus(`Spawned ${spawnedControllers.length} controller${spawnedControllers.length === 1 ? "" : "s"}.`);
+  setStatus(`Spawned ${spawnedControllers.length} controller window${spawnedControllers.length === 1 ? "" : "s"}.`);
 }
 
 function clickRandomVisibleButton() {
@@ -189,7 +221,7 @@ async function tapRandomButtonsInControllers() {
   const stored = await chrome.storage.local.get(["spawnedControllers"]);
   const controllers = stored.spawnedControllers || [];
   if (controllers.length === 0) {
-    setStatus("No spawned controller tabs are tracked.");
+    setStatus("No spawned controller windows are tracked.");
     return;
   }
 
