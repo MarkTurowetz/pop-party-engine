@@ -49,4 +49,4 @@ To install it locally:
 3. Click Load unpacked
 4. Select the `chrome-extension` folder
 
-Use it from an open Flip 7 Party stage or controller page. Enter a stage code, player names, and controller count, then spawn controller windows arranged near the top right of your screen.
+Use it from an open Flip 7 Party stage or controller page. Enter a stage code, player names, and controller count, then spawn foregrounded controller windows arranged near the top right of your screen. The extension can also tap a random visible button on every spawned controller, or close all spawned controller windows.

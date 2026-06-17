@@ -16,6 +16,7 @@ const controllerCountInput = document.querySelector("#controllerCountInput");
 const playerNamesInput = document.querySelector("#playerNamesInput");
 const spawnButton = document.querySelector("#spawnButton");
 const tapRandomButton = document.querySelector("#tapRandomButton");
+const closeControllersButton = document.querySelector("#closeControllersButton");
 const statusText = document.querySelector("#statusText");
 const appOrigin = document.querySelector("#appOrigin");
 
@@ -170,11 +171,14 @@ async function spawnControllers() {
     const playerName = names[index % names.length];
     const layout = await getControllerWindowLayout(index);
     const controllerWindow = await chrome.windows.create({
-      focused: false,
+      focused: true,
       type: "popup",
       url: controllerUrl({ origin: detectedOrigin, stageCode, playerName, index }),
       ...layout
     });
+    if (controllerWindow.id) {
+      await chrome.windows.update(controllerWindow.id, { focused: true });
+    }
     const tab = controllerWindow.tabs?.[0];
     spawnedControllers.push({
       windowId: controllerWindow.id,
@@ -252,6 +256,38 @@ async function tapRandomButtonsInControllers() {
   setStatus(`Tapped ${clicked} of ${checked} open controller${checked === 1 ? "" : "s"}.`);
 }
 
+async function closeAllControllers() {
+  const stored = await chrome.storage.local.get(["spawnedControllers"]);
+  const controllers = stored.spawnedControllers || [];
+  if (controllers.length === 0) {
+    setStatus("No spawned controller windows are tracked.");
+    return;
+  }
+
+  closeControllersButton.disabled = true;
+  let closed = 0;
+
+  for (const controller of controllers) {
+    try {
+      if (controller.windowId) {
+        await chrome.windows.remove(controller.windowId);
+        closed += 1;
+        continue;
+      }
+      if (controller.tabId) {
+        await chrome.tabs.remove(controller.tabId);
+        closed += 1;
+      }
+    } catch (error) {
+      // Already closed or no longer accessible.
+    }
+  }
+
+  await chrome.storage.local.set({ spawnedControllers: [] });
+  closeControllersButton.disabled = false;
+  setStatus(`Closed ${closed} controller window${closed === 1 ? "" : "s"}.`);
+}
+
 stageCodeInput.addEventListener("input", () => {
   stageCodeInput.value = normalizeStageCode(stageCodeInput.value);
   persistInputs();
@@ -260,5 +296,6 @@ controllerCountInput.addEventListener("input", persistInputs);
 playerNamesInput.addEventListener("input", persistInputs);
 spawnButton.addEventListener("click", spawnControllers);
 tapRandomButton.addEventListener("click", tapRandomButtonsInControllers);
+closeControllersButton.addEventListener("click", closeAllControllers);
 
 loadState();

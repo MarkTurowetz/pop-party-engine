@@ -133,6 +133,11 @@ button + button {
   background: var(--yellow);
 }
 
+#closeControllersButton {
+  color: #fff;
+  background: var(--pink);
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
