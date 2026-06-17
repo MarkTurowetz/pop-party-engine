@@ -109,17 +109,62 @@ async function persistInputs() {
   });
 }
 
-function controllerUrl({ origin, stageCode, playerName, index }) {
+function controllerUrl({ origin, stageCode, playerName, index, spawnBatchId }) {
   const params = new URLSearchParams();
   params.set("stage", stageCode);
   params.set("name", playerName);
   params.set("autojoin", "1");
+  params.set("spawnBatch", spawnBatchId);
+  params.set("spawnIndex", String(index));
   params.set("player", `spawn-${stageCode.toLowerCase()}-${Date.now()}-${index}`);
   return `${origin}/controller?${params.toString()}`;
 }
 
-async function getControllerWindowLayout(index) {
+function distanceBetweenPoints(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+async function getActiveDisplayWorkArea() {
   const currentWindow = await chrome.windows.getCurrent();
+  const fallback = {
+    left: currentWindow.left || 0,
+    top: currentWindow.top || 0,
+    width: currentWindow.width || 1280,
+    height: currentWindow.height || 800
+  };
+
+  if (!chrome.system?.display?.getInfo) return fallback;
+
+  try {
+    const displays = await chrome.system.display.getInfo();
+    const windowCenter = {
+      x: fallback.left + fallback.width / 2,
+      y: fallback.top + fallback.height / 2
+    };
+    const containingDisplay = displays.find((display) => {
+      const bounds = display.bounds;
+      return windowCenter.x >= bounds.left &&
+        windowCenter.x <= bounds.left + bounds.width &&
+        windowCenter.y >= bounds.top &&
+        windowCenter.y <= bounds.top + bounds.height;
+    });
+    const nearestDisplay = containingDisplay || displays
+      .map((display) => ({
+        display,
+        distance: distanceBetweenPoints(windowCenter, {
+          x: display.bounds.left + display.bounds.width / 2,
+          y: display.bounds.top + display.bounds.height / 2
+        })
+      }))
+      .sort((a, b) => a.distance - b.distance)[0]?.display;
+    return nearestDisplay?.workArea || nearestDisplay?.bounds || fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+async function getControllerWindowLayout(index) {
+  const workArea = await getActiveDisplayWorkArea();
   const controllerWidth = 360;
   const controllerHeight = 600;
   const gap = 14;
@@ -131,10 +176,10 @@ async function getControllerWindowLayout(index) {
   const row = Math.floor(slot / columns);
   const clusterWidth = columns * controllerWidth + (columns - 1) * gap;
   const startLeft = Math.max(
-    0,
-    (currentWindow.left || 0) + (currentWindow.width || 1280) - clusterWidth - 24
+    workArea.left,
+    workArea.left + workArea.width - clusterWidth - 18
   );
-  const startTop = Math.max(0, (currentWindow.top || 0) + 44);
+  const startTop = Math.max(workArea.top, workArea.top + 18);
   const cycleOffset = Math.min(48, cycle * 18);
 
   return {
@@ -167,13 +212,14 @@ async function spawnControllers() {
   await persistInputs();
 
   const spawnedControllers = [];
+  const spawnBatchId = `batch-${stageCode.toLowerCase()}-${Date.now()}`;
   for (let index = 0; index < count; index += 1) {
     const playerName = names[index % names.length];
     const layout = await getControllerWindowLayout(index);
     const controllerWindow = await chrome.windows.create({
       focused: true,
       type: "popup",
-      url: controllerUrl({ origin: detectedOrigin, stageCode, playerName, index }),
+      url: controllerUrl({ origin: detectedOrigin, stageCode, playerName, index, spawnBatchId }),
       ...layout
     });
     if (controllerWindow.id) {
@@ -185,6 +231,8 @@ async function spawnControllers() {
       tabId: tab?.id,
       playerName,
       stageCode,
+      spawnBatchId,
+      spawnIndex: index,
       createdAt: Date.now()
     });
   }

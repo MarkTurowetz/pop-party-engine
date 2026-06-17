@@ -11,6 +11,7 @@
     "activeTab",
     "scripting",
     "storage",
+    "system.display",
     "tabs"
   ],
   "host_permissions": [

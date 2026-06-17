@@ -22,6 +22,10 @@ function normalizePlayerId(value) {
   return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
 }
 
+function normalizeSpawnBatchId(value) {
+  return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48);
+}
+
 function cleanPlayerName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, 24);
 }
@@ -65,6 +69,7 @@ function getRoom(stageCode) {
       stageCode,
       stageClients: new Set(),
       players: new Map(),
+      spawnBatches: new Map(),
       vipPlayerId: "",
       startNotice: null,
       revision: 0
@@ -196,6 +201,8 @@ async function handleJoin(req, res) {
   const stageCode = normalizeStageCode(payload.stageCode);
   const playerName = cleanPlayerName(payload.playerName);
   let playerId = normalizePlayerId(payload.playerId) || `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const spawnBatchId = normalizeSpawnBatchId(payload.spawnBatchId);
+  const spawnIndex = Number.parseInt(payload.spawnIndex, 10);
   if (!stageCode || !playerName) {
     sendJson(res, 400, { ok: false, error: "Stage code and player name are required" });
     return;
@@ -207,6 +214,28 @@ async function handleJoin(req, res) {
     playerId = `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     player = null;
   }
+  const sameSpawnPlayer = player &&
+    player.spawnBatchId === spawnBatchId &&
+    player.spawnIndex === spawnIndex;
+
+  let spawnBatch = null;
+  if (spawnBatchId && Number.isFinite(spawnIndex) && !sameSpawnPlayer) {
+    spawnBatch = room.spawnBatches.get(spawnBatchId);
+    if (!spawnBatch) {
+      spawnBatch = { nextIndex: 0, createdAt: Date.now() };
+      room.spawnBatches.set(spawnBatchId, spawnBatch);
+    }
+    if (spawnIndex !== spawnBatch.nextIndex) {
+      sendJson(res, 409, {
+        ok: false,
+        error: `Waiting for controller ${spawnBatch.nextIndex + 1} to join first`,
+        errorCode: "WAITING_FOR_TURN",
+        expectedIndex: spawnBatch.nextIndex
+      });
+      return;
+    }
+  }
+
   if (!player) {
     player = {
       id: playerId,
@@ -214,13 +243,19 @@ async function handleJoin(req, res) {
       avatar: makeAvatar(room.players.size),
       active: true,
       joinedAt: Date.now(),
-      lastSeen: Date.now()
+      lastSeen: Date.now(),
+      spawnBatchId,
+      spawnIndex: Number.isFinite(spawnIndex) ? spawnIndex : null
     };
     room.players.set(playerId, player);
   } else {
     player.name = playerName;
     player.active = true;
     player.lastSeen = Date.now();
+  }
+
+  if (spawnBatch) {
+    spawnBatch.nextIndex += 1;
   }
 
   selectVip(room);
