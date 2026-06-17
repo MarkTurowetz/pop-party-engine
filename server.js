@@ -195,7 +195,7 @@ async function handleJoin(req, res) {
 
   const stageCode = normalizeStageCode(payload.stageCode);
   const playerName = cleanPlayerName(payload.playerName);
-  const playerId = normalizePlayerId(payload.playerId) || `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  let playerId = normalizePlayerId(payload.playerId) || `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   if (!stageCode || !playerName) {
     sendJson(res, 400, { ok: false, error: "Stage code and player name are required" });
     return;
@@ -203,6 +203,10 @@ async function handleJoin(req, res) {
 
   const room = getRoom(stageCode);
   let player = room.players.get(playerId);
+  if (player && player.active && player.name !== playerName) {
+    playerId = `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    player = null;
+  }
   if (!player) {
     player = {
       id: playerId,

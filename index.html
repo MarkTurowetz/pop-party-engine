@@ -642,10 +642,10 @@
     function getControllerPlayerId() {
       const explicit = params.get("player");
       if (explicit) return explicit;
-      const existing = localStorage.getItem("flip7PlayerId");
+      const existing = sessionStorage.getItem("flip7PlayerId");
       if (existing) return existing;
       const next = `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      localStorage.setItem("flip7PlayerId", next);
+      sessionStorage.setItem("flip7PlayerId", next);
       return next;
     }
 
@@ -800,8 +800,9 @@
 
     function enterControllerLobby(stageCode, playerId, lobby, player) {
       controllerState = { stageCode, playerId, player };
-      localStorage.setItem("flip7PlayerId", playerId);
-      localStorage.setItem("flip7PlayerName", player.name);
+      sessionStorage.setItem("flip7PlayerId", playerId);
+      sessionStorage.setItem("flip7PlayerName", player.name);
+      sessionStorage.setItem("flip7StageCode", stageCode);
       localStorage.setItem("flip7StageCode", stageCode);
       joinState.classList.add("hidden");
       controllerLobbyState.classList.remove("hidden");
@@ -826,8 +827,8 @@
 
     function setupController() {
       controllerScreen.classList.remove("hidden");
-      stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(localStorage.getItem("flip7StageCode"));
-      playerNameInput.value = localStorage.getItem("flip7PlayerName") || "";
+      stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(sessionStorage.getItem("flip7StageCode") || localStorage.getItem("flip7StageCode"));
+      playerNameInput.value = sessionStorage.getItem("flip7PlayerName") || "";
       updateJoinButton();
 
       stageCodeInput.addEventListener("input", () => {
@@ -836,7 +837,12 @@
         stageCodeInput.setSelectionRange(cursorPosition, cursorPosition);
         updateJoinButton();
       });
-      playerNameInput.addEventListener("input", updateJoinButton);
+      playerNameInput.addEventListener("input", () => {
+        if (!controllerState && playerNameInput.value.trim() !== sessionStorage.getItem("flip7PlayerName")) {
+          sessionStorage.removeItem("flip7PlayerId");
+        }
+        updateJoinButton();
+      });
 
       joinForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -846,7 +852,7 @@
         joinButton.disabled = true;
         try {
           const result = await postJson("/api/join", { stageCode, playerName, playerId });
-          enterControllerLobby(stageCode, playerId, result.lobby, result.player);
+          enterControllerLobby(stageCode, result.player.id, result.lobby, result.player);
         } catch (error) {
           joinButton.disabled = false;
           joinButton.textContent = error.message;
