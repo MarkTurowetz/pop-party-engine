@@ -1003,7 +1003,7 @@
           <button id="createControllers" type="button">Create controller</button>
         </div>
         <button id="testPop" type="button">Test pop</button>
-        <a id="labLinkFromStage" href="?role=lab" target="_blank" rel="noreferrer">Split lab</a>
+        <a id="labLinkFromStage" href="/lab" target="_blank" rel="noreferrer">Split lab</a>
       </div>
     </div>
 
@@ -1063,8 +1063,8 @@
       </div>
 
       <div class="controller-links">
-        <a id="stageLink" href="?role=stage" target="_blank" rel="noreferrer">Open stage</a>
-        <a id="labLinkFromController" href="?role=lab" target="_blank" rel="noreferrer">Open split lab</a>
+        <a id="stageLink" href="/stage" target="_blank" rel="noreferrer">Open stage</a>
+        <a id="labLinkFromController" href="/lab" target="_blank" rel="noreferrer">Open split lab</a>
       </div>
 
       <div class="sent-log" id="sentLog">
@@ -1076,7 +1076,7 @@
   <section class="screen lab hidden" id="labScreen" aria-label="Split screen test lab">
     <div class="lab-header">
       <h1>Split-screen relay lab</h1>
-      <a id="stageLinkFromLab" href="?role=stage" target="_blank" rel="noreferrer">Open real stage</a>
+      <a id="stageLinkFromLab" href="/stage" target="_blank" rel="noreferrer">Open real stage</a>
     </div>
     <div class="lab-grid">
       <iframe class="lab-frame" id="stageFrame" title="Stage view"></iframe>
@@ -1086,8 +1086,17 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
+    const pathRoles = {
+      "/stage": "stage",
+      "/s": "stage",
+      "/controller": "controller",
+      "/c": "controller",
+      "/lab": "lab",
+      "/l": "lab"
+    };
     const requestedRole = params.get("role");
-    const role = requestedRole === "controller" || requestedRole === "lab" ? requestedRole : "stage";
+    const requestedPathRole = pathRoles[window.location.pathname.toLowerCase()];
+    const role = requestedRole === "controller" || requestedRole === "lab" ? requestedRole : requestedPathRole || "stage";
     const stageScreen = document.querySelector("#stageScreen");
     const controllerScreen = document.querySelector("#controllerScreen");
     const labScreen = document.querySelector("#labScreen");
@@ -1100,7 +1109,7 @@
     const dockResizeHandle = document.querySelector("#dockResizeHandle");
     const palette = ["#ffe156", "#22d3ee", "#60d394", "#ff9e2c", "#ffb3d9", "#ffffff"];
     const playerPalette = ["#2458ff", "#7c3aed", "#ff4fa3", "#ff9e2c", "#00a878", "#ef4444"];
-    const demoOrigin = `${window.location.origin}${window.location.pathname}`;
+    const demoOrigin = window.location.origin;
     const apiBase = window.location.origin;
     const canUseServerRelay = window.location.protocol === "http:" || window.location.protocol === "https:";
     const seenMessageIds = new Set();
@@ -1109,10 +1118,10 @@
 
     if (isEmbedded) document.body.classList.add("embedded-mode");
 
-    document.querySelector("#stageLink").href = `${demoOrigin}?role=stage`;
-    document.querySelector("#labLinkFromStage").href = `${demoOrigin}?role=lab`;
-    document.querySelector("#labLinkFromController").href = `${demoOrigin}?role=lab`;
-    document.querySelector("#stageLinkFromLab").href = `${demoOrigin}?role=stage`;
+    document.querySelector("#stageLink").href = `${demoOrigin}/stage`;
+    document.querySelector("#labLinkFromStage").href = `${demoOrigin}/lab`;
+    document.querySelector("#labLinkFromController").href = `${demoOrigin}/lab`;
+    document.querySelector("#stageLinkFromLab").href = `${demoOrigin}/stage`;
 
     function randomBetween(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -1140,7 +1149,6 @@
       if (existing) return existing;
       const next = generateStageCode();
       const nextParams = new URLSearchParams(window.location.search);
-      nextParams.set("role", "stage");
       nextParams.set("stage", next);
       window.history.replaceState({}, "", `${window.location.pathname}?${nextParams.toString()}`);
       return next;
@@ -1172,10 +1180,9 @@
 
     function controllerUrl(stageCode, playerId) {
       const controllerParams = new URLSearchParams();
-      controllerParams.set("role", "controller");
       controllerParams.set("stage", stageCode);
       controllerParams.set("player", playerId);
-      return `${demoOrigin}?${controllerParams.toString()}`;
+      return `${demoOrigin}/controller?${controllerParams.toString()}`;
     }
 
     function controllerCountFrom(input) {
@@ -1393,7 +1400,7 @@
       const createControllersButton = document.querySelector("#createControllers");
       let replaceControllerCountOnNextDigit = false;
       document.querySelector("#stageCodeText").textContent = stageCode;
-      document.querySelector("#labLinkFromStage").href = `${demoOrigin}?role=lab`;
+      document.querySelector("#labLinkFromStage").href = `${demoOrigin}/lab`;
       connectionText.textContent = `Connecting relay for stage ${stageCode}`;
       subscribeToStage(stageCode);
       setupDockResize();
@@ -1457,8 +1464,7 @@
 
       function updateControllerLinks() {
         const target = currentTargetStageCode();
-        const stageSuffix = target ? `&stage=${target}` : "";
-        document.querySelector("#stageLink").href = `${demoOrigin}?role=stage${stageSuffix}`;
+        document.querySelector("#stageLink").href = `${demoOrigin}/stage${target ? `?stage=${target}` : ""}`;
       }
 
       updateControllerLinks();
@@ -1526,9 +1532,9 @@
     function setupLab() {
       labScreen.classList.remove("hidden");
       const stageCode = getStageCodeFromUrl() || generateStageCode();
-      document.querySelector("#stageLinkFromLab").href = `${demoOrigin}?role=stage&stage=${stageCode}`;
-      document.querySelector("#stageFrame").src = `${demoOrigin}?role=stage&stage=${stageCode}&embedded=1`;
-      document.querySelector("#controllerFrame").src = `${demoOrigin}?role=controller&stage=${stageCode}&embedded=1`;
+      document.querySelector("#stageLinkFromLab").href = `${demoOrigin}/stage?stage=${stageCode}`;
+      document.querySelector("#stageFrame").src = `${demoOrigin}/stage?stage=${stageCode}&embedded=1`;
+      document.querySelector("#controllerFrame").src = `${demoOrigin}/controller?stage=${stageCode}&embedded=1`;
     }
 
     if (role === "lab") {

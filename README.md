@@ -11,13 +11,21 @@ node server.js
 Open the stage:
 
 ```text
-http://localhost:3000/?role=stage
+http://localhost:3000/stage
 ```
 
 Open a controller:
 
 ```text
-http://localhost:3000/?role=controller
+http://localhost:3000/controller
+```
+
+Short aliases:
+
+```text
+http://localhost:3000/s
+http://localhost:3000/c
+http://localhost:3000/l
 ```
 
 ## Deploy
