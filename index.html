@@ -552,7 +552,6 @@
         <h1 class="controller-player-name" id="controllerPlayerName">Player</h1>
         <div class="controller-meta" id="controllerMeta">Waiting in lobby</div>
         <button class="primary-button hidden" id="startGameButton" type="button">Start Game</button>
-        <button class="secondary-button" id="leaveLobbyButton" type="button">Leave Lobby</button>
       </div>
     </div>
   </section>
@@ -602,7 +601,6 @@
     const controllerAvatarInitial = document.querySelector("#controllerAvatarInitial");
     const controllerMeta = document.querySelector("#controllerMeta");
     const startGameButton = document.querySelector("#startGameButton");
-    const leaveLobbyButton = document.querySelector("#leaveLobbyButton");
     let controllerState = null;
     let heartbeatTimer = null;
     let lobbyPollTimer = null;
@@ -906,7 +904,6 @@
         }
       });
 
-      leaveLobbyButton.addEventListener("click", leaveLobby);
       window.addEventListener("pagehide", () => {
         if (!controllerState || !navigator.sendBeacon) return;
         const body = JSON.stringify({

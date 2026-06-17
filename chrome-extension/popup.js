@@ -51,9 +51,38 @@ function originFromUrl(url) {
   }
 }
 
+function readActivePageStageCode() {
+  function normalize(value) {
+    return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  }
+
+  const visibleStageCode = normalize(document.querySelector("#stageCodeText")?.textContent);
+  if (visibleStageCode && visibleStageCode !== "----") return visibleStageCode;
+
+  const controllerInputCode = normalize(document.querySelector("#stageCodeInput")?.value);
+  if (controllerInputCode) return controllerInputCode;
+
+  const params = new URLSearchParams(window.location.search);
+  return normalize(params.get("stage") || params.get("code"));
+}
+
+async function getStageCodeFromActiveTab(activeTab) {
+  if (!activeTab?.id || !originFromUrl(activeTab.url)) return "";
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: activeTab.id },
+      func: readActivePageStageCode
+    });
+    return normalizeStageCode(results?.[0]?.result);
+  } catch (error) {
+    return "";
+  }
+}
+
 async function loadState() {
   const activeTab = await getActiveTab();
   detectedOrigin = originFromUrl(activeTab?.url);
+  const activeStageCode = await getStageCodeFromActiveTab(activeTab);
   const stored = await chrome.storage.local.get([
     "appOrigin",
     "stageCode",
@@ -64,7 +93,7 @@ async function loadState() {
 
   detectedOrigin = detectedOrigin || stored.appOrigin || "";
   appOrigin.textContent = detectedOrigin ? `Target: ${detectedOrigin}` : "Open a Flip 7 page first";
-  stageCodeInput.value = stored.stageCode || "";
+  stageCodeInput.value = activeStageCode || stored.stageCode || "";
   controllerCountInput.value = stored.controllerCount || "4";
   playerNamesInput.value = stored.playerNames || DEFAULT_NAMES.join("\n");
   setStatus(`${(stored.spawnedControllers || []).length} spawned controller tabs tracked.`);
@@ -130,12 +159,15 @@ async function spawnControllers() {
 }
 
 function clickRandomVisibleButton() {
+  const blockedLabels = new Set(["leave lobby", "leave", "back", "close", "log out", "logout", "disconnect"]);
   const buttons = Array.from(document.querySelectorAll("button"))
     .filter((button) => {
       const rect = button.getBoundingClientRect();
       const style = window.getComputedStyle(button);
       const disabled = button.disabled || button.getAttribute("aria-disabled") === "true";
+      const label = (button.textContent || button.getAttribute("aria-label") || "").trim().toLowerCase();
       return !disabled &&
+        !blockedLabels.has(label) &&
         rect.width > 0 &&
         rect.height > 0 &&
         style.visibility !== "hidden" &&
