@@ -629,6 +629,14 @@
       return normalizeStageCode(params.get("stage") || params.get("code"));
     }
 
+    function getPlayerNameFromUrl() {
+      return String(params.get("name") || params.get("playerName") || "").trim().slice(0, 24);
+    }
+
+    function shouldAutoJoin() {
+      return params.get("autojoin") === "1" || params.get("join") === "1";
+    }
+
     function getOrCreateStageCode() {
       const existing = getStageCodeFromUrl();
       if (existing) return existing;
@@ -763,6 +771,14 @@
       joinButton.disabled = !(hasStage && hasName);
     }
 
+    async function joinController(stageCode, playerName) {
+      const playerId = getControllerPlayerId();
+      joinButton.disabled = true;
+      const result = await postJson("/api/join", { stageCode, playerName, playerId });
+      enterControllerLobby(stageCode, result.player.id, result.lobby, result.player);
+      return result;
+    }
+
     function setControllerAvatar(player) {
       controllerAvatar.className = `controller-avatar ${avatarClass(player.avatar?.shape)}`;
       controllerAvatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
@@ -828,7 +844,7 @@
     function setupController() {
       controllerScreen.classList.remove("hidden");
       stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(sessionStorage.getItem("flip7StageCode") || localStorage.getItem("flip7StageCode"));
-      playerNameInput.value = sessionStorage.getItem("flip7PlayerName") || "";
+      playerNameInput.value = getPlayerNameFromUrl() || sessionStorage.getItem("flip7PlayerName") || "";
       updateJoinButton();
 
       stageCodeInput.addEventListener("input", () => {
@@ -848,11 +864,8 @@
         event.preventDefault();
         const stageCode = normalizeStageCode(stageCodeInput.value);
         const playerName = playerNameInput.value.trim();
-        const playerId = getControllerPlayerId();
-        joinButton.disabled = true;
         try {
-          const result = await postJson("/api/join", { stageCode, playerName, playerId });
-          enterControllerLobby(stageCode, result.player.id, result.lobby, result.player);
+          await joinController(stageCode, playerName);
         } catch (error) {
           joinButton.disabled = false;
           joinButton.textContent = error.message;
@@ -862,6 +875,18 @@
           }, 1800);
         }
       });
+
+      if (shouldAutoJoin() && normalizeStageCode(stageCodeInput.value) && playerNameInput.value.trim()) {
+        joinButton.textContent = "Joining";
+        joinController(normalizeStageCode(stageCodeInput.value), playerNameInput.value.trim()).catch((error) => {
+          joinButton.disabled = false;
+          joinButton.textContent = error.message;
+          window.setTimeout(() => {
+            joinButton.textContent = "Join";
+            updateJoinButton();
+          }, 1800);
+        });
+      }
 
       startGameButton.addEventListener("click", async () => {
         if (!controllerState) return;

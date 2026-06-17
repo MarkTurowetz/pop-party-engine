@@ -37,3 +37,16 @@ This app is ready for Render as a Node web service.
 - Health check path: `/api/health`
 
 The included `render.yaml` defines the same settings as a Render Blueprint.
+
+## Chrome Controller Spawner
+
+An unpacked Chrome extension lives in `chrome-extension/`.
+
+To install it locally:
+
+1. Open `chrome://extensions`
+2. Turn on Developer mode
+3. Click Load unpacked
+4. Select the `chrome-extension` folder
+
+Use it from an open Flip 7 Party stage or controller page. Enter a stage code, player names, and controller count, then spawn controllers.
