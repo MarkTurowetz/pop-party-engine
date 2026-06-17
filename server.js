@@ -14,6 +14,10 @@ const rooms = new Map();
 const avatarColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff"];
 const avatarShapes = ["circle", "square", "diamond", "pill", "triangle", "hex"];
 
+function randomToken() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 function normalizeStageCode(value) {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
@@ -66,6 +70,7 @@ function getRoom(stageCode) {
       stageClients: new Set(),
       players: new Map(),
       vipPlayerId: "",
+      startToken: "",
       startNotice: null,
       revision: 0
     });
@@ -89,13 +94,18 @@ function activePlayers(room) {
 }
 
 function selectVip(room) {
+  const previousVipPlayerId = room.vipPlayerId;
   const active = activePlayers(room);
   if (active.length === 0) {
     room.vipPlayerId = "";
+    room.startToken = "";
     return;
   }
   if (!active.some((player) => player.id === room.vipPlayerId)) {
     room.vipPlayerId = active[0].id;
+  }
+  if (room.vipPlayerId !== previousVipPlayerId || !room.startToken) {
+    room.startToken = randomToken();
   }
 }
 
@@ -118,6 +128,7 @@ function lobbyPayload(room) {
     revision: room.revision,
     vipPlayerId: room.vipPlayerId,
     startNotice: room.startNotice,
+    startToken: room.startToken,
     players: activePlayers(room).map((player) => publicPlayer(player, room))
   };
 }
@@ -303,6 +314,10 @@ async function handleStart(req, res) {
   }
   if (room.vipPlayerId !== playerId) {
     sendJson(res, 403, { ok: false, error: "Only the VIP can start the game" });
+    return;
+  }
+  if (!payload.startToken || payload.startToken !== room.startToken) {
+    sendJson(res, 403, { ok: false, error: "Start request is stale" });
     return;
   }
 

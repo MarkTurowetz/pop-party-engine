@@ -790,11 +790,13 @@
       if (!controllerState) return;
       const me = (lobby.players || []).find((player) => player.id === controllerState.playerId);
       if (!me) {
+        controllerState.startToken = "";
         controllerMeta.textContent = "Reconnecting to lobby";
         startGameButton.classList.add("hidden");
         return;
       }
       controllerState.player = me;
+      controllerState.startToken = me.isVip ? lobby.startToken : "";
       controllerPlayerName.textContent = me.name;
       setControllerAvatar(me);
       controllerMeta.textContent = me.isVip ? "VIP Player" : "Waiting for the VIP";
@@ -889,13 +891,16 @@
         });
       }
 
-      startGameButton.addEventListener("click", async () => {
+      startGameButton.addEventListener("click", async (event) => {
+        if (!event.isTrusted) return;
         if (!controllerState) return;
+        if (!controllerState.player?.isVip) return;
         startGameButton.disabled = true;
         try {
           await postJson("/api/start", {
             stageCode: controllerState.stageCode,
-            playerId: controllerState.playerId
+            playerId: controllerState.playerId,
+            startToken: controllerState.startToken
           });
           controllerMeta.textContent = "Starting Game";
         } catch (error) {

@@ -305,7 +305,7 @@ async function sortControllers() {
 }
 
 function clickRandomVisibleButton() {
-  const blockedLabels = new Set(["leave lobby", "leave", "back", "close", "log out", "logout", "disconnect"]);
+  const blockedLabels = new Set(["start game", "leave lobby", "leave", "back", "close", "log out", "logout", "disconnect"]);
   const buttons = Array.from(document.querySelectorAll("button"))
     .filter((button) => {
       const rect = button.getBoundingClientRect();
