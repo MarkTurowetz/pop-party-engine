@@ -1,0 +1,10 @@
+{
+  "name": "pop-party",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server-backed Jackbox-style stage and controller demo.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}

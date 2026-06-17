@@ -1,0 +1,1543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pop Party - Multi Browser Demo</title>
+  <style>
+    :root {
+      --ink: #151225;
+      --cream: #fff7dd;
+      --paper: #fffdf4;
+      --pink: #ff4fa3;
+      --orange: #ff9e2c;
+      --yellow: #ffe156;
+      --cyan: #22d3ee;
+      --green: #60d394;
+      --purple: #7c3aed;
+      --blue: #2458ff;
+      --shadow: 0 18px 0 rgba(21, 18, 37, 0.18);
+      --radius: 16px;
+      font-family: ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255, 225, 86, 0.9) 0 9rem, transparent 9.2rem),
+        radial-gradient(circle at 84% 18%, rgba(34, 211, 238, 0.7) 0 8rem, transparent 8.2rem),
+        radial-gradient(circle at 68% 86%, rgba(255, 79, 163, 0.65) 0 11rem, transparent 11.2rem),
+        linear-gradient(135deg, #24115f 0%, #5b1bbd 45%, #ff4fa3 100%);
+      overflow-x: hidden;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .screen {
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      gap: 16px;
+      height: 100vh;
+      min-height: 0;
+      padding: 28px;
+      isolation: isolate;
+    }
+
+    .stage.controllers-active {
+      grid-template-rows: auto minmax(112px, 1fr) auto auto;
+      gap: 8px;
+      padding: 16px;
+      --message-scale: 1;
+    }
+
+    .stage.controllers-active .stage-top {
+      align-items: start;
+      gap: 14px;
+    }
+
+    .stage.controllers-active .logo {
+      padding: 7px 12px 8px;
+      border-width: 3px;
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+
+    .stage.controllers-active .logo strong {
+      font-size: clamp(22px, 3.4vw, 34px);
+    }
+
+    .stage.controllers-active .logo span {
+      font-size: 12px;
+    }
+
+    .stage.controllers-active .room-card {
+      width: min(360px, 48vw);
+      padding: 10px;
+      border-width: 3px;
+      box-shadow: 7px 7px 0 rgba(21, 18, 37, 0.55);
+    }
+
+    .stage.controllers-active .room-card span {
+      font-size: 10px;
+    }
+
+    .stage.controllers-active .room-code {
+      margin: 1px 0 6px;
+      font-size: 30px;
+    }
+
+    .stage.controllers-active .controller-create {
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 7px;
+      margin: 6px 0;
+    }
+
+    .stage.controllers-active .controller-count {
+      height: 36px;
+      border-width: 3px;
+      font-size: 18px;
+    }
+
+    .stage.controllers-active .room-card a,
+    .stage.controllers-active .room-card button,
+    .stage.controllers-active .controller-create button {
+      min-height: 36px;
+      border-width: 3px;
+      padding: 0 12px;
+      font-size: 14px;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .stage.controllers-active .stage-center {
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    .stage.controllers-active .prompt-board {
+      width: min(920px, 100%);
+      height: 100%;
+      max-height: 100%;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      overflow: hidden;
+      padding: 10px 16px;
+      border-width: 4px;
+      border-radius: 20px;
+      box-shadow: 8px 8px 0 rgba(21, 18, 37, 0.55);
+      transform: none;
+    }
+
+    .stage.controllers-active .prompt-board h1 {
+      font-size: clamp(24px, 5vw, 54px);
+      text-shadow: 3px 3px 0 #000;
+    }
+
+    .stage.controllers-active .prompt-board p {
+      max-width: 680px;
+      margin-top: 6px;
+      font-size: clamp(11px, 1.6vw, 15px);
+      line-height: 1.2;
+    }
+
+    .stage.controllers-active .stage-bottom {
+      min-height: 0;
+      font-size: 13px;
+    }
+
+    .stage.controllers-active .ticker {
+      padding: 7px 10px;
+      border-width: 3px;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .stage.controllers-active .pop-message {
+      min-height: 78px;
+      padding: 12px 14px;
+      border-width: 4px;
+      border-radius: 18px;
+      box-shadow: 8px 8px 0 rgba(21, 18, 37, 0.7);
+    }
+
+    .stage.controllers-active .player-pill {
+      min-height: 24px;
+      margin-bottom: 7px;
+      border-width: 2px;
+      font-size: 11px;
+    }
+
+    .stage.controllers-active .pop-text {
+      font-size: clamp(18px, 2.5vw, 27px);
+    }
+
+    .stage::before,
+    .stage::after {
+      content: "";
+      position: absolute;
+      inset: auto;
+      z-index: -1;
+      border-radius: 999px;
+      opacity: 0.28;
+      filter: blur(3px);
+    }
+
+    .stage::before {
+      width: 42vmax;
+      height: 42vmax;
+      left: -17vmax;
+      bottom: -20vmax;
+      background: repeating-conic-gradient(from 9deg, #fff 0 10deg, transparent 10deg 22deg);
+      animation: spin 42s linear infinite;
+    }
+
+    .stage::after {
+      width: 38vmax;
+      height: 38vmax;
+      right: -18vmax;
+      top: -19vmax;
+      background: repeating-conic-gradient(from 0deg, #fff 0 8deg, transparent 8deg 18deg);
+      animation: spin 34s linear reverse infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .stage-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 22px;
+    }
+
+    .logo {
+      display: inline-grid;
+      gap: 4px;
+      padding: 12px 18px 15px;
+      border: 4px solid var(--ink);
+      border-radius: 999px;
+      background: var(--yellow);
+      box-shadow: 8px 8px 0 var(--ink);
+      transform: rotate(-2deg);
+    }
+
+    .logo strong {
+      font-size: clamp(28px, 6vw, 58px);
+      line-height: 0.9;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .logo span {
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+    }
+
+    .room-card {
+      width: min(340px, 100%);
+      padding: 16px;
+      border: 4px solid var(--ink);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      transform: rotate(1.5deg);
+    }
+
+    .room-card span {
+      display: block;
+      color: #5e5475;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .room-code {
+      margin: 4px 0 12px;
+      font-size: 40px;
+      line-height: 1;
+      font-weight: 1000;
+      letter-spacing: 0.04em;
+    }
+
+    .stage-code-input {
+      width: 100%;
+      height: 58px;
+      border: 5px solid var(--ink);
+      border-radius: var(--radius);
+      outline: none;
+      padding: 0 16px;
+      color: var(--ink);
+      background: #fff;
+      box-shadow: inset 5px 5px 0 rgba(21, 18, 37, 0.08);
+      font-size: 28px;
+      font-weight: 1000;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stage-code-input:focus {
+      box-shadow: inset 5px 5px 0 rgba(21, 18, 37, 0.08), 0 0 0 5px rgba(36, 88, 255, 0.2);
+    }
+
+    .room-card a,
+    .room-card button,
+    .controller-create button,
+    .control-card a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      padding: 0 15px;
+      color: var(--ink);
+      background: var(--cyan);
+      box-shadow: 4px 4px 0 var(--ink);
+      text-decoration: none;
+      font-weight: 1000;
+      cursor: pointer;
+    }
+
+    .room-card button {
+      margin-left: 8px;
+      background: var(--green);
+    }
+
+    .controller-create {
+      display: grid;
+      grid-template-columns: minmax(84px, 1fr) minmax(130px, auto);
+      gap: 10px;
+      align-items: end;
+      margin: 12px 0;
+    }
+
+    .controller-create label {
+      display: grid;
+      gap: 6px;
+      color: #5e5475;
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .controller-count {
+      width: 100%;
+      height: 42px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      outline: none;
+      padding: 0 12px;
+      color: var(--ink);
+      background: #fff;
+      box-shadow: inset 3px 3px 0 rgba(21, 18, 37, 0.08);
+      font-size: 18px;
+      font-weight: 1000;
+    }
+
+    .controller-create button {
+      background: var(--cyan);
+    }
+
+    .controller-dock {
+      z-index: 18;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 10px;
+      height: var(--dock-height, 38vh);
+      min-height: 170px;
+      padding: 14px;
+      border: 5px solid var(--ink);
+      border-radius: 24px;
+      background: rgba(255, 253, 244, 0.96);
+      box-shadow: 14px 14px 0 rgba(21, 18, 37, 0.72);
+      backdrop-filter: blur(8px);
+      overflow: hidden;
+      resize: vertical;
+    }
+
+    .controller-dock[hidden] {
+      display: none;
+    }
+
+    .dock-resize-handle {
+      width: min(220px, 60%);
+      height: 18px;
+      justify-self: center;
+      display: grid;
+      place-items: center;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: var(--cyan);
+      box-shadow: 4px 4px 0 var(--ink);
+      cursor: ns-resize;
+      touch-action: none;
+    }
+
+    .dock-resize-handle::before {
+      content: "";
+      width: 80px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--ink);
+      box-shadow: 0 6px 0 rgba(21, 18, 37, 0.5);
+    }
+
+    .controller-dock-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .controller-dock-head strong {
+      font-size: 18px;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
+    .controller-dock-head span {
+      color: #5e5475;
+      font-weight: 900;
+    }
+
+    .controller-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--controller-columns, 1), minmax(0, 1fr));
+      grid-auto-rows: minmax(0, 1fr);
+      gap: 12px;
+      overflow: hidden;
+      min-height: 0;
+      padding: 2px;
+    }
+
+    .embedded-controller {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border: 4px solid var(--ink);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 6px 6px 0 rgba(21, 18, 37, 0.28);
+    }
+
+    .stage-center {
+      display: grid;
+      place-items: center;
+      min-height: 0;
+      padding: 0;
+    }
+
+    .prompt-board {
+      width: min(960px, 90vw);
+      padding: clamp(22px, 4vw, 42px);
+      border: 5px solid var(--ink);
+      border-radius: 28px;
+      color: #fff;
+      background: rgba(21, 18, 37, 0.8);
+      box-shadow: 16px 16px 0 rgba(21, 18, 37, 0.55);
+      text-align: center;
+      backdrop-filter: blur(8px);
+      transform: rotate(-0.5deg);
+    }
+
+    .prompt-board h1 {
+      margin: 0;
+      font-size: clamp(44px, 9vw, 110px);
+      line-height: 0.9;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      text-shadow: 5px 5px 0 #000;
+    }
+
+    .prompt-board p {
+      max-width: 740px;
+      margin: 20px auto 0;
+      color: #f9eefa;
+      font-size: clamp(18px, 2.4vw, 28px);
+      line-height: 1.35;
+      font-weight: 800;
+    }
+
+    .stage-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: #fff;
+      font-weight: 900;
+      text-shadow: 2px 2px 0 rgba(21, 18, 37, 0.7);
+    }
+
+    body.embedded-mode {
+      min-height: 100vh;
+      overflow: hidden;
+      background: linear-gradient(135deg, #22d3ee 0%, #60d394 58%, #ffe156 100%);
+    }
+
+    body.embedded-mode .screen {
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    body.embedded-mode .controller {
+      min-height: 100vh;
+      padding: 6px;
+      overflow: hidden;
+    }
+
+    body.embedded-mode .control-card {
+      width: 100%;
+      height: calc(100vh - 12px);
+      display: grid;
+      grid-template-rows: auto auto auto;
+      gap: 5px;
+      overflow: hidden;
+      padding: 7px;
+      border-width: 3px;
+      border-radius: 16px;
+      box-shadow: none;
+    }
+
+    body.embedded-mode .controller-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-bottom: 0;
+    }
+
+    body.embedded-mode .controller-top h1 {
+      font-size: clamp(18px, 9cqw, 30px);
+      line-height: 0.9;
+    }
+
+    body.embedded-mode .id-card {
+      min-width: 68px;
+      padding: 4px 6px;
+      border-width: 3px;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    body.embedded-mode .id-card span {
+      font-size: 8px;
+    }
+
+    body.embedded-mode .id-card strong {
+      font-size: 16px;
+    }
+
+    body.embedded-mode .message-form {
+      gap: 7px;
+    }
+
+    body.embedded-mode .field-label {
+      margin-bottom: 3px;
+      font-size: 8px;
+    }
+
+    body.embedded-mode .stage-code-input,
+    body.embedded-mode .message-input {
+      min-height: 0;
+      height: 28px;
+      border-width: 3px;
+      padding: 0 8px;
+      font-size: 15px;
+      box-shadow: inset 3px 3px 0 rgba(21, 18, 37, 0.08);
+    }
+
+    body.embedded-mode .message-input {
+      height: 32px;
+    }
+
+    body.embedded-mode .send-row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    body.embedded-mode .character-count {
+      display: none;
+    }
+
+    body.embedded-mode .send-button {
+      min-width: 0;
+      min-height: 30px;
+      border-width: 3px;
+      font-size: 11px;
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    body.embedded-mode .quick-prompts {
+      display: none;
+    }
+
+    body.embedded-mode .sent-log {
+      display: none;
+    }
+
+    .ticker {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--cream);
+      text-shadow: none;
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(96, 211, 148, 0.28);
+    }
+
+    .popup-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .pop-message {
+      position: absolute;
+      width: min(460px, calc(100vw - 44px));
+      min-height: 116px;
+      padding: 18px 20px;
+      border: 5px solid var(--ink);
+      border-radius: 24px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: 12px 12px 0 rgba(21, 18, 37, 0.7);
+      animation: burst 3000ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
+      transform-origin: 50% 80%;
+    }
+
+    .pop-message::after {
+      content: "";
+      position: absolute;
+      left: 34px;
+      bottom: -24px;
+      width: 30px;
+      height: 30px;
+      border-right: 5px solid var(--ink);
+      border-bottom: 5px solid var(--ink);
+      background: inherit;
+      transform: rotate(45deg);
+    }
+
+    @keyframes burst {
+      0% { opacity: 0; transform: scale(0.55) rotate(var(--tilt)); }
+      10% { opacity: 1; transform: scale(1.08) rotate(var(--tilt)); }
+      17% { transform: scale(1) rotate(var(--tilt)); }
+      82% { opacity: 1; transform: scale(1) rotate(var(--tilt)) translateY(0); }
+      100% { opacity: 0; transform: scale(0.92) rotate(var(--tilt)) translateY(-30px); }
+    }
+
+    .player-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      margin-bottom: 10px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      padding: 0 10px;
+      color: #fff;
+      background: var(--purple);
+      font-size: 14px;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
+    .pop-text {
+      overflow-wrap: anywhere;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.05;
+      font-weight: 1000;
+    }
+
+    .controller {
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0 2px, transparent 2px 58px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.12) 0 2px, transparent 2px 58px),
+        linear-gradient(135deg, #22d3ee 0%, #60d394 50%, #ffe156 100%);
+      background-size: 58px 58px, 58px 58px, auto;
+    }
+
+    .lab {
+      min-height: 100vh;
+      padding: 18px;
+      background:
+        linear-gradient(135deg, rgba(21, 18, 37, 0.92), rgba(91, 27, 189, 0.86)),
+        radial-gradient(circle at top left, rgba(255, 225, 86, 0.6), transparent 24rem);
+    }
+
+    .lab-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .lab-header h1 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 54px);
+      line-height: 0.95;
+      text-transform: uppercase;
+      text-shadow: 4px 4px 0 var(--ink);
+    }
+
+    .lab-header a {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      padding: 0 14px;
+      color: var(--ink);
+      background: var(--yellow);
+      box-shadow: 5px 5px 0 var(--ink);
+      text-decoration: none;
+      font-weight: 1000;
+      white-space: nowrap;
+    }
+
+    .lab-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
+      gap: 16px;
+      height: calc(100vh - 96px);
+      min-height: 620px;
+    }
+
+    .lab-frame {
+      width: 100%;
+      height: 100%;
+      border: 5px solid var(--ink);
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 12px 12px 0 rgba(21, 18, 37, 0.65);
+    }
+
+    .control-card {
+      width: min(560px, 100%);
+      border: 5px solid var(--ink);
+      border-radius: 28px;
+      padding: clamp(18px, 5vw, 32px);
+      background: var(--paper);
+      box-shadow: 16px 16px 0 var(--ink);
+    }
+
+    .controller-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .controller-top h1 {
+      margin: 0;
+      font-size: clamp(36px, 9vw, 68px);
+      line-height: 0.86;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .id-card {
+      min-width: 118px;
+      padding: 10px 12px;
+      border: 4px solid var(--ink);
+      border-radius: var(--radius);
+      color: #fff;
+      background: var(--pink);
+      box-shadow: 5px 5px 0 var(--ink);
+      text-align: center;
+      transform: rotate(2deg);
+    }
+
+    .id-card span {
+      display: block;
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .id-card strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 30px;
+      line-height: 1;
+      letter-spacing: 0.03em;
+    }
+
+    .field-label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .message-form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .message-input {
+      width: 100%;
+      min-height: 76px;
+      border: 5px solid var(--ink);
+      border-radius: var(--radius);
+      outline: none;
+      padding: 16px;
+      color: var(--ink);
+      background: #fff;
+      box-shadow: inset 5px 5px 0 rgba(21, 18, 37, 0.08);
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .message-input:focus {
+      box-shadow: inset 5px 5px 0 rgba(21, 18, 37, 0.08), 0 0 0 5px rgba(255, 79, 163, 0.25);
+    }
+
+    .send-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .character-count {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      color: #5e5475;
+      font-weight: 900;
+    }
+
+    .send-button {
+      min-width: 150px;
+      min-height: 56px;
+      border: 5px solid var(--ink);
+      border-radius: 999px;
+      color: #fff;
+      background: var(--blue);
+      box-shadow: 7px 7px 0 var(--ink);
+      font-size: 18px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      transform: rotate(-1deg);
+    }
+
+    .send-button:hover {
+      translate: -2px -2px;
+      box-shadow: 9px 9px 0 var(--ink);
+    }
+
+    .send-button:active {
+      translate: 4px 4px;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .quick-prompts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .quick-prompts button {
+      min-height: 48px;
+      border: 3px solid var(--ink);
+      border-radius: var(--radius);
+      color: var(--ink);
+      background: var(--yellow);
+      box-shadow: 4px 4px 0 var(--ink);
+      font-weight: 1000;
+    }
+
+    .quick-prompts button:nth-child(2) { background: var(--cyan); }
+    .quick-prompts button:nth-child(3) { background: var(--green); }
+    .quick-prompts button:nth-child(4) { background: #ffb3d9; }
+
+    .controller-links {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .control-card a {
+      background: #fff;
+    }
+
+    .sent-log {
+      margin-top: 18px;
+      border-top: 4px dashed rgba(21, 18, 37, 0.22);
+      padding-top: 14px;
+      color: #5e5475;
+      font-weight: 900;
+    }
+
+    .sent-log p {
+      margin: 8px 0 0;
+      overflow-wrap: anywhere;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        overflow-y: auto;
+      }
+
+      .stage {
+        padding: 16px;
+      }
+
+      .stage-top,
+      .stage-bottom,
+      .controller-top,
+      .send-row {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .room-card {
+        width: 100%;
+      }
+
+      .room-card button {
+        margin: 10px 0 0;
+      }
+
+      .prompt-board {
+        width: 100%;
+      }
+
+      .quick-prompts {
+        grid-template-columns: 1fr;
+      }
+
+      .controller-create,
+      .controller-links {
+        grid-template-columns: 1fr;
+      }
+
+      .controller-dock {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        max-height: 62vh;
+      }
+
+      .lab-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .lab-frame {
+        min-height: 620px;
+      }
+
+      .pop-message {
+        left: 16px !important;
+        right: 16px;
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="screen stage hidden" id="stageScreen" aria-label="Main display">
+    <div class="stage-top">
+      <div class="logo">
+        <strong>Pop Party</strong>
+        <span>3-second shoutouts</span>
+      </div>
+      <div class="room-card">
+        <span>Stage code</span>
+        <div class="room-code" id="stageCodeText">----</div>
+        <div class="controller-create">
+          <label>
+            Controllers
+            <input class="controller-count" id="controllerCount" type="number" min="1" max="12" value="1">
+          </label>
+          <button id="createControllers" type="button">Create controller</button>
+        </div>
+        <button id="testPop" type="button">Test pop</button>
+        <a id="labLinkFromStage" href="?role=lab" target="_blank" rel="noreferrer">Split lab</a>
+      </div>
+    </div>
+
+    <div class="stage-center">
+      <div class="prompt-board">
+        <h1>Say it fast.</h1>
+        <p>Players open this app from any computer that can reach the server, type this stage code into their controller, and matching messages explode onto this display.</p>
+      </div>
+    </div>
+
+    <div class="stage-bottom">
+      <div class="ticker"><span class="dot"></span><span id="connectionText">Connecting to relay</span></div>
+      <div>Share this server URL with players, then have them join as controllers.</div>
+    </div>
+
+    <div class="popup-layer" id="popupLayer" aria-live="polite" aria-atomic="false"></div>
+    <section class="controller-dock" id="controllerDock" aria-label="Generated controllers" hidden>
+      <div class="dock-resize-handle" id="dockResizeHandle" role="separator" aria-label="Resize generated controllers" aria-orientation="horizontal"></div>
+      <div class="controller-dock-head">
+        <strong id="controllerDockTitle">Controllers</strong>
+        <span id="controllerDockMeta">Waiting to generate controllers</span>
+      </div>
+      <div class="controller-grid" id="controllerGrid"></div>
+    </section>
+  </section>
+
+  <section class="screen controller hidden" id="controllerScreen" aria-label="Player controller">
+    <div class="control-card">
+      <div class="controller-top">
+        <h1>Send a pop</h1>
+        <div class="id-card">
+          <span>Player ID</span>
+          <strong id="playerId">P000</strong>
+        </div>
+      </div>
+
+      <form class="message-form" id="messageForm">
+        <label>
+          <span class="field-label">Stage code to blast</span>
+          <input class="stage-code-input" id="stageCodeInput" maxlength="6" autocomplete="off" placeholder="ABCD">
+        </label>
+        <label>
+          <span class="field-label">Your ridiculous answer</span>
+          <input class="message-input" id="messageInput" maxlength="80" autocomplete="off" placeholder="Type something punchy...">
+        </label>
+        <div class="send-row">
+          <div class="character-count"><span id="countText">0</span>/80 characters</div>
+          <button class="send-button" type="submit">Blast it</button>
+        </div>
+      </form>
+
+      <div class="quick-prompts" aria-label="Quick messages">
+        <button type="button">Absolutely unhinged.</button>
+        <button type="button">I stand by this.</button>
+        <button type="button">Five stars, no notes.</button>
+        <button type="button">Who let me cook?</button>
+      </div>
+
+      <div class="controller-links">
+        <a id="stageLink" href="?role=stage" target="_blank" rel="noreferrer">Open stage</a>
+        <a id="labLinkFromController" href="?role=lab" target="_blank" rel="noreferrer">Open split lab</a>
+      </div>
+
+      <div class="sent-log" id="sentLog">
+        Waiting for your first blast.
+      </div>
+    </div>
+  </section>
+
+  <section class="screen lab hidden" id="labScreen" aria-label="Split screen test lab">
+    <div class="lab-header">
+      <h1>Split-screen relay lab</h1>
+      <a id="stageLinkFromLab" href="?role=stage" target="_blank" rel="noreferrer">Open real stage</a>
+    </div>
+    <div class="lab-grid">
+      <iframe class="lab-frame" id="stageFrame" title="Stage view"></iframe>
+      <iframe class="lab-frame" id="controllerFrame" title="Controller view"></iframe>
+    </div>
+  </section>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const requestedRole = params.get("role");
+    const role = requestedRole === "controller" || requestedRole === "lab" ? requestedRole : "stage";
+    const stageScreen = document.querySelector("#stageScreen");
+    const controllerScreen = document.querySelector("#controllerScreen");
+    const labScreen = document.querySelector("#labScreen");
+    const popupLayer = document.querySelector("#popupLayer");
+    const connectionText = document.querySelector("#connectionText");
+    const controllerDock = document.querySelector("#controllerDock");
+    const controllerDockTitle = document.querySelector("#controllerDockTitle");
+    const controllerDockMeta = document.querySelector("#controllerDockMeta");
+    const controllerGrid = document.querySelector("#controllerGrid");
+    const dockResizeHandle = document.querySelector("#dockResizeHandle");
+    const palette = ["#ffe156", "#22d3ee", "#60d394", "#ff9e2c", "#ffb3d9", "#ffffff"];
+    const playerPalette = ["#2458ff", "#7c3aed", "#ff4fa3", "#ff9e2c", "#00a878", "#ef4444"];
+    const demoOrigin = `${window.location.origin}${window.location.pathname}`;
+    const apiBase = window.location.origin;
+    const canUseServerRelay = window.location.protocol === "http:" || window.location.protocol === "https:";
+    const seenMessageIds = new Set();
+    const generatedControllerIds = new Set();
+    const isEmbedded = params.get("embedded") === "1";
+
+    if (isEmbedded) document.body.classList.add("embedded-mode");
+
+    document.querySelector("#stageLink").href = `${demoOrigin}?role=stage`;
+    document.querySelector("#labLinkFromStage").href = `${demoOrigin}?role=lab`;
+    document.querySelector("#labLinkFromController").href = `${demoOrigin}?role=lab`;
+    document.querySelector("#stageLinkFromLab").href = `${demoOrigin}?role=stage`;
+
+    function randomBetween(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function normalizeStageCode(value) {
+      return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+    }
+
+    function generateStageCode() {
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
+      for (let index = 0; index < 4; index += 1) {
+        code += alphabet[randomBetween(0, alphabet.length - 1)];
+      }
+      return code;
+    }
+
+    function getStageCodeFromUrl() {
+      return normalizeStageCode(params.get("stage") || params.get("code"));
+    }
+
+    function getOrCreateStageCode() {
+      const existing = getStageCodeFromUrl();
+      if (existing) return existing;
+      const next = generateStageCode();
+      const nextParams = new URLSearchParams(window.location.search);
+      nextParams.set("role", "stage");
+      nextParams.set("stage", next);
+      window.history.replaceState({}, "", `${window.location.pathname}?${nextParams.toString()}`);
+      return next;
+    }
+
+    function getRequestedControllerCount() {
+      const requested = Number.parseInt(params.get("controllers"), 10);
+      return Number.isFinite(requested) ? Math.max(1, Math.min(12, requested)) : 0;
+    }
+
+    function getPlayerId() {
+      const explicit = params.get("player");
+      if (explicit) return explicit.toUpperCase().slice(0, 10);
+      const existing = sessionStorage.getItem("popPartyPlayerId");
+      if (existing) return existing;
+      const next = `P${randomBetween(100, 999)}`;
+      sessionStorage.setItem("popPartyPlayerId", next);
+      return next;
+    }
+
+    function generateControllerPlayerId() {
+      let next = "";
+      do {
+        next = `P${randomBetween(100, 999)}`;
+      } while (generatedControllerIds.has(next));
+      generatedControllerIds.add(next);
+      return next;
+    }
+
+    function controllerUrl(stageCode, playerId) {
+      const controllerParams = new URLSearchParams();
+      controllerParams.set("role", "controller");
+      controllerParams.set("stage", stageCode);
+      controllerParams.set("player", playerId);
+      return `${demoOrigin}?${controllerParams.toString()}`;
+    }
+
+    function controllerCountFrom(input) {
+      const raw = String(input.value || "").trim();
+      const parsed = controllerCountValue(raw);
+      const count = Number.isFinite(parsed) ? Math.max(1, Math.min(12, parsed)) : 1;
+      input.value = String(count);
+      return count;
+    }
+
+    function controllerCountPreview(input) {
+      const parsed = controllerCountValue(String(input.value || "").trim());
+      return Number.isFinite(parsed) ? Math.max(1, Math.min(12, parsed)) : 1;
+    }
+
+    function controllerCountValue(raw) {
+      if (/^\d+$/.test(raw) && Number.parseInt(raw, 10) > 12 && !["10", "11", "12"].includes(raw)) {
+        return Number.parseInt(raw.slice(-1), 10);
+      }
+      return Number.parseInt(raw, 10);
+    }
+
+    function createControllerFrames(stageCode, count) {
+      controllerGrid.replaceChildren();
+      controllerGrid.style.setProperty("--controller-columns", String(count));
+      for (let index = 0; index < count; index += 1) {
+        const playerId = generateControllerPlayerId();
+        const frame = document.createElement("iframe");
+        frame.className = "embedded-controller";
+        frame.title = `${playerId} controller`;
+        frame.src = `${controllerUrl(stageCode, playerId)}&embedded=1`;
+        controllerGrid.appendChild(frame);
+      }
+      controllerDock.hidden = false;
+      stageScreen.classList.add("controllers-active");
+      controllerDockTitle.textContent = `${count} controller${count === 1 ? "" : "s"}`;
+      controllerDockMeta.textContent = `All aimed at stage ${stageCode}`;
+    }
+
+    function setupDockResize() {
+      let startY = 0;
+      let startHeight = 0;
+      let resizing = false;
+
+      function resizeTo(clientY) {
+        const delta = startY - clientY;
+        const viewport = window.innerHeight;
+        const next = Math.max(160, Math.min(Math.round(viewport * 0.68), startHeight + delta));
+        stageScreen.style.setProperty("--dock-height", `${next}px`);
+      }
+
+      function startResize(event) {
+        resizing = true;
+        startY = event.clientY;
+        startHeight = controllerDock.getBoundingClientRect().height;
+        if (event.pointerId !== undefined && dockResizeHandle.setPointerCapture) {
+          dockResizeHandle.setPointerCapture(event.pointerId);
+        }
+        document.body.style.userSelect = "none";
+      }
+
+      function moveResize(event) {
+        if (!resizing) return;
+        resizeTo(event.clientY);
+      }
+
+      function endResize(event) {
+        resizing = false;
+        if (event?.pointerId !== undefined && dockResizeHandle.hasPointerCapture?.(event.pointerId)) {
+          dockResizeHandle.releasePointerCapture(event.pointerId);
+        }
+        document.body.style.userSelect = "";
+      }
+
+      dockResizeHandle.addEventListener("pointerdown", (event) => {
+        startResize(event);
+      });
+
+      dockResizeHandle.addEventListener("pointermove", (event) => {
+        moveResize(event);
+      });
+
+      dockResizeHandle.addEventListener("pointerup", (event) => {
+        endResize(event);
+      });
+
+      dockResizeHandle.addEventListener("mousedown", startResize);
+      document.addEventListener("mousemove", moveResize);
+      document.addEventListener("mouseup", endResize);
+    }
+
+    async function sendPopToServer(payload) {
+      if (!canUseServerRelay) {
+        throw new Error("Open this app through the Node server before sending remote messages.");
+      }
+      const response = await fetch(`${apiBase}/api/pop`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok === false) {
+        throw new Error(result.error || "The server could not send that message.");
+      }
+      return result;
+    }
+
+    function subscribeToStage(stageCode) {
+      if (!canUseServerRelay) {
+        connectionText.textContent = "Open through the Node server to receive remote players";
+        return null;
+      }
+
+      let lastSeq = 0;
+
+      async function pollMessages() {
+        try {
+          const response = await fetch(`${apiBase}/api/stage/${stageCode}/messages?after=${lastSeq}`, {
+            cache: "no-store"
+          });
+          const result = await response.json();
+          if (!response.ok || result.ok === false) {
+            throw new Error(result.error || "Could not check for messages.");
+          }
+          for (const message of result.messages || []) {
+            lastSeq = Math.max(lastSeq, Number(message.seq || 0));
+            showPopup(message, stageCode);
+          }
+          connectionText.textContent = `Polling relay for stage ${stageCode}`;
+        } catch (error) {
+          connectionText.textContent = `Retrying relay for stage ${stageCode}`;
+        }
+      }
+
+      if (!("EventSource" in window)) {
+        pollMessages();
+        return window.setInterval(pollMessages, 1000);
+      }
+
+      const stream = new EventSource(`${apiBase}/api/stage/${stageCode}/events`);
+
+      stream.addEventListener("ready", () => {
+        connectionText.textContent = `Relay connected for stage ${stageCode}`;
+      });
+
+      stream.addEventListener("pop", (event) => {
+        const message = JSON.parse(event.data);
+        lastSeq = Math.max(lastSeq, Number(message.seq || 0));
+        showPopup(message, stageCode);
+      });
+
+      stream.addEventListener("error", () => {
+        connectionText.textContent = `Reconnecting relay for stage ${stageCode}`;
+      });
+
+      return stream;
+    }
+
+    function normalizeMessage(event) {
+      if (!event || event.type !== "pop") return null;
+      const text = String(event.text || "").trim().slice(0, 80);
+      const playerId = String(event.playerId || "P???").trim().slice(0, 10);
+      const stageCode = normalizeStageCode(event.stageCode);
+      if (!text || !stageCode) return null;
+      return {
+        id: event.id || `${Date.now()}-${Math.random()}`,
+        playerId,
+        stageCode,
+        text,
+        color: event.color || playerPalette[randomBetween(0, playerPalette.length - 1)],
+        sentAt: event.sentAt || Date.now()
+      };
+    }
+
+    function showPopup(rawEvent, targetStageCode) {
+      const event = normalizeMessage(rawEvent);
+      if (!event || !popupLayer) return;
+      if (targetStageCode && event.stageCode !== targetStageCode) return;
+      if (seenMessageIds.has(event.id)) return;
+      seenMessageIds.add(event.id);
+      setTimeout(() => seenMessageIds.delete(event.id), 6000);
+
+      const popup = document.createElement("article");
+      popup.className = "pop-message";
+      popup.style.background = palette[randomBetween(0, palette.length - 1)];
+      popup.style.setProperty("--tilt", `${randomBetween(-5, 5)}deg`);
+      popup.innerHTML = `
+        <div class="player-pill" style="background:${event.color}">${event.playerId}</div>
+        <div class="pop-text"></div>
+      `;
+      popup.querySelector(".pop-text").textContent = event.text;
+      popupLayer.appendChild(popup);
+      if (stageScreen.classList.contains("controllers-active")) {
+        const stageBox = stageScreen.getBoundingClientRect();
+        const messageBox = document.querySelector(".stage-center").getBoundingClientRect();
+        const popupBox = popup.getBoundingClientRect();
+        const availableWidth = Math.max(120, messageBox.width - popupBox.width - 24);
+        const availableHeight = Math.max(8, messageBox.height - popupBox.height - 12);
+        popup.style.left = `${messageBox.left - stageBox.left + 12 + randomBetween(0, Math.round(availableWidth))}px`;
+        popup.style.top = `${messageBox.top - stageBox.top + 6 + randomBetween(0, Math.round(availableHeight))}px`;
+      } else {
+        popup.style.left = `${randomBetween(5, 58)}vw`;
+        popup.style.top = `${randomBetween(16, 64)}vh`;
+      }
+      connectionText.textContent = `Last pop from ${event.playerId} to ${event.stageCode}`;
+      setTimeout(() => popup.remove(), 3000);
+    }
+
+    function setupStage() {
+      stageScreen.classList.remove("hidden");
+      const stageCode = getOrCreateStageCode();
+      const controllerCountInput = document.querySelector("#controllerCount");
+      const createControllersButton = document.querySelector("#createControllers");
+      let replaceControllerCountOnNextDigit = false;
+      document.querySelector("#stageCodeText").textContent = stageCode;
+      document.querySelector("#labLinkFromStage").href = `${demoOrigin}?role=lab`;
+      connectionText.textContent = `Connecting relay for stage ${stageCode}`;
+      subscribeToStage(stageCode);
+      setupDockResize();
+      controllerCountInput.addEventListener("focus", () => {
+        replaceControllerCountOnNextDigit = true;
+        controllerCountInput.select();
+      });
+      controllerCountInput.addEventListener("keydown", (event) => {
+        if (!replaceControllerCountOnNextDigit) return;
+        if (!/^[0-9]$/.test(event.key)) return;
+        event.preventDefault();
+        controllerCountInput.value = event.key;
+        replaceControllerCountOnNextDigit = false;
+        controllerCountInput.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      controllerCountInput.addEventListener("input", () => {
+        replaceControllerCountOnNextDigit = false;
+        const count = controllerCountPreview(controllerCountInput);
+        createControllersButton.textContent = count === 1 ? "Create controller" : "Create controllers";
+      });
+      createControllersButton.addEventListener("click", () => {
+        const count = controllerCountFrom(controllerCountInput);
+        createControllerFrames(stageCode, count);
+        connectionText.textContent = `Created ${count} controller${count === 1 ? "" : "s"} for ${stageCode}`;
+      });
+      const requestedCount = getRequestedControllerCount();
+      if (requestedCount > 0) {
+        controllerCountInput.value = String(requestedCount);
+        createControllersButton.textContent = requestedCount === 1 ? "Create controller" : "Create controllers";
+        createControllerFrames(stageCode, requestedCount);
+        connectionText.textContent = `Created ${requestedCount} controller${requestedCount === 1 ? "" : "s"} for ${stageCode}`;
+      }
+      document.querySelector("#testPop").addEventListener("click", () => {
+        showPopup({
+          type: "pop",
+          playerId: "HOST",
+          stageCode,
+          text: "This is what a three-second popup looks like!",
+          color: "#151225",
+          sentAt: Date.now()
+        }, stageCode);
+      });
+    }
+
+    function setupController() {
+      controllerScreen.classList.remove("hidden");
+      const playerId = getPlayerId();
+      const playerColor = playerPalette[randomBetween(0, playerPalette.length - 1)];
+      const playerIdLabel = document.querySelector("#playerId");
+      const form = document.querySelector("#messageForm");
+      const stageCodeInput = document.querySelector("#stageCodeInput");
+      const input = document.querySelector("#messageInput");
+      const countText = document.querySelector("#countText");
+      const sentLog = document.querySelector("#sentLog");
+      playerIdLabel.textContent = playerId;
+      stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(sessionStorage.getItem("popPartyTargetStage"));
+
+      function currentTargetStageCode() {
+        return normalizeStageCode(stageCodeInput.value);
+      }
+
+      function updateControllerLinks() {
+        const target = currentTargetStageCode();
+        const stageSuffix = target ? `&stage=${target}` : "";
+        document.querySelector("#stageLink").href = `${demoOrigin}?role=stage${stageSuffix}`;
+      }
+
+      updateControllerLinks();
+
+      input.addEventListener("input", () => {
+        countText.textContent = input.value.length;
+      });
+
+      stageCodeInput.addEventListener("input", () => {
+        const cursorPosition = stageCodeInput.selectionStart;
+        stageCodeInput.value = normalizeStageCode(stageCodeInput.value);
+        stageCodeInput.setSelectionRange(cursorPosition, cursorPosition);
+        sessionStorage.setItem("popPartyTargetStage", stageCodeInput.value);
+        updateControllerLinks();
+      });
+
+      if (isEmbedded) {
+        document.querySelector(".controller-links").classList.add("hidden");
+      }
+
+      form.addEventListener("submit", async (submitEvent) => {
+        submitEvent.preventDefault();
+        const text = input.value.trim();
+        const stageCode = currentTargetStageCode();
+        if (!stageCode) {
+          stageCodeInput.focus();
+          sentLog.textContent = "Enter a stage code before blasting.";
+          return;
+        }
+        if (!text) {
+          input.focus();
+          return;
+        }
+        const payload = {
+          type: "pop",
+          id: `${playerId}-${Date.now()}`,
+          playerId,
+          stageCode,
+          text,
+          color: playerColor,
+          sentAt: Date.now()
+        };
+        try {
+          const result = await sendPopToServer(payload);
+          sessionStorage.setItem("popPartyTargetStage", stageCode);
+          const deliveredText = result.delivered === 1 ? "1 stage" : `${result.delivered} stages`;
+          sentLog.innerHTML = `Sent to <strong>${stageCode}</strong> as <strong>${playerId}</strong> (${deliveredText} listening):<p>${text}</p>`;
+          input.value = "";
+          countText.textContent = "0";
+          input.focus();
+        } catch (error) {
+          sentLog.textContent = error.message;
+        }
+      });
+
+      document.querySelectorAll(".quick-prompts button").forEach((button) => {
+        button.addEventListener("click", () => {
+          input.value = button.textContent;
+          countText.textContent = input.value.length;
+          input.focus();
+        });
+      });
+    }
+
+    function setupLab() {
+      labScreen.classList.remove("hidden");
+      const stageCode = getStageCodeFromUrl() || generateStageCode();
+      document.querySelector("#stageLinkFromLab").href = `${demoOrigin}?role=stage&stage=${stageCode}`;
+      document.querySelector("#stageFrame").src = `${demoOrigin}?role=stage&stage=${stageCode}&embedded=1`;
+      document.querySelector("#controllerFrame").src = `${demoOrigin}?role=controller&stage=${stageCode}&embedded=1`;
+    }
+
+    if (role === "lab") {
+      setupLab();
+    } else if (role === "controller") {
+      setupController();
+    } else {
+      setupStage();
+    }
+  </script>
+</body>
+</html>

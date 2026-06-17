@@ -1,0 +1,10 @@
+.DS_Store
+Character Reference/
+__pycache__/
+.swift-module-cache/
+outputs/
+tmp/
+scripts/
+tools/
+*.py
+*.sh
