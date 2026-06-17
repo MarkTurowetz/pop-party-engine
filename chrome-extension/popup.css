@@ -133,6 +133,11 @@ button + button {
   background: var(--yellow);
 }
 
+#sortControllersButton {
+  color: var(--ink);
+  background: var(--green);
+}
+
 #closeControllersButton {
   color: #fff;
   background: var(--pink);

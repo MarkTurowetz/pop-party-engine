@@ -15,6 +15,7 @@ const stageCodeInput = document.querySelector("#stageCodeInput");
 const controllerCountInput = document.querySelector("#controllerCountInput");
 const playerNamesInput = document.querySelector("#playerNamesInput");
 const spawnButton = document.querySelector("#spawnButton");
+const sortControllersButton = document.querySelector("#sortControllersButton");
 const tapRandomButton = document.querySelector("#tapRandomButton");
 const closeControllersButton = document.querySelector("#closeControllersButton");
 const statusText = document.querySelector("#statusText");
@@ -109,13 +110,11 @@ async function persistInputs() {
   });
 }
 
-function controllerUrl({ origin, stageCode, playerName, index, spawnBatchId }) {
+function controllerUrl({ origin, stageCode, playerName, index }) {
   const params = new URLSearchParams();
   params.set("stage", stageCode);
   params.set("name", playerName);
   params.set("autojoin", "1");
-  params.set("spawnBatch", spawnBatchId);
-  params.set("spawnIndex", String(index));
   params.set("player", `spawn-${stageCode.toLowerCase()}-${Date.now()}-${index}`);
   return `${origin}/controller?${params.toString()}`;
 }
@@ -165,11 +164,13 @@ async function getActiveDisplayWorkArea() {
 
 async function getControllerWindowLayout(index) {
   const workArea = await getActiveDisplayWorkArea();
-  const controllerWidth = 360;
-  const controllerHeight = 600;
   const gap = 14;
   const columns = 2;
   const rows = 2;
+  const availableWidth = Math.max(720, workArea.width);
+  const availableHeight = Math.max(640, workArea.height);
+  const controllerHeight = Math.max(360, Math.floor((availableHeight - gap - 36) / rows));
+  const controllerWidth = Math.max(300, Math.min(390, Math.floor((availableWidth * 0.38 - gap) / columns)));
   const slot = index % (columns * rows);
   const cycle = Math.floor(index / (columns * rows));
   const column = slot % columns;
@@ -212,14 +213,13 @@ async function spawnControllers() {
   await persistInputs();
 
   const spawnedControllers = [];
-  const spawnBatchId = `batch-${stageCode.toLowerCase()}-${Date.now()}`;
   for (let index = 0; index < count; index += 1) {
     const playerName = names[index % names.length];
     const layout = await getControllerWindowLayout(index);
     const controllerWindow = await chrome.windows.create({
       focused: true,
       type: "popup",
-      url: controllerUrl({ origin: detectedOrigin, stageCode, playerName, index, spawnBatchId }),
+      url: controllerUrl({ origin: detectedOrigin, stageCode, playerName, index }),
       ...layout
     });
     if (controllerWindow.id) {
@@ -231,7 +231,6 @@ async function spawnControllers() {
       tabId: tab?.id,
       playerName,
       stageCode,
-      spawnBatchId,
       spawnIndex: index,
       createdAt: Date.now()
     });
@@ -240,6 +239,69 @@ async function spawnControllers() {
   await chrome.storage.local.set({ spawnedControllers });
   spawnButton.disabled = false;
   setStatus(`Spawned ${spawnedControllers.length} controller window${spawnedControllers.length === 1 ? "" : "s"}.`);
+}
+
+function nameOrderMap(names) {
+  const order = new Map();
+  names.forEach((name, index) => {
+    const key = name.toLowerCase();
+    if (!order.has(key)) order.set(key, index);
+  });
+  return order;
+}
+
+async function sortControllers() {
+  const stored = await chrome.storage.local.get(["spawnedControllers"]);
+  const controllers = stored.spawnedControllers || [];
+  if (controllers.length === 0) {
+    setStatus("No spawned controller windows are tracked.");
+    return;
+  }
+
+  sortControllersButton.disabled = true;
+  const names = parseNames();
+  const order = nameOrderMap(names);
+  const stillOpen = [];
+
+  for (const controller of controllers) {
+    try {
+      if (controller.windowId) {
+        await chrome.windows.get(controller.windowId);
+      } else if (controller.tabId) {
+        await chrome.tabs.get(controller.tabId);
+      } else {
+        continue;
+      }
+      stillOpen.push(controller);
+    } catch (error) {
+      // Window or tab is gone.
+    }
+  }
+
+  stillOpen.sort((a, b) => {
+    const orderA = order.get(String(a.playerName || "").toLowerCase());
+    const orderB = order.get(String(b.playerName || "").toLowerCase());
+    const valueA = orderA ?? a.spawnIndex ?? 9999;
+    const valueB = orderB ?? b.spawnIndex ?? 9999;
+    return valueA - valueB;
+  });
+
+  for (let index = 0; index < stillOpen.length; index += 1) {
+    const controller = stillOpen[index];
+    if (!controller.windowId) continue;
+    try {
+      await chrome.windows.update(controller.windowId, {
+        focused: false,
+        ...(await getControllerWindowLayout(index))
+      });
+    } catch (error) {
+      // Ignore windows that closed mid-sort.
+    }
+  }
+
+  await chrome.storage.local.set({ spawnedControllers: stillOpen });
+  sortControllersButton.disabled = false;
+  setStatus(`Sorted ${stillOpen.length} controller window${stillOpen.length === 1 ? "" : "s"}.`);
 }
 
 function clickRandomVisibleButton() {
@@ -343,6 +405,7 @@ stageCodeInput.addEventListener("input", () => {
 controllerCountInput.addEventListener("input", persistInputs);
 playerNamesInput.addEventListener("input", persistInputs);
 spawnButton.addEventListener("click", spawnControllers);
+sortControllersButton.addEventListener("click", sortControllers);
 tapRandomButton.addEventListener("click", tapRandomButtonsInControllers);
 closeControllersButton.addEventListener("click", closeAllControllers);
 

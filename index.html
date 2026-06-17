@@ -635,15 +635,6 @@
       return params.get("autojoin") === "1" || params.get("join") === "1";
     }
 
-    function getSpawnBatchIdFromUrl() {
-      return String(params.get("spawnBatch") || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48);
-    }
-
-    function getSpawnIndexFromUrl() {
-      const value = Number.parseInt(params.get("spawnIndex"), 10);
-      return Number.isFinite(value) ? value : null;
-    }
-
     function getOrCreateStageCode() {
       const existing = getStageCodeFromUrl();
       if (existing) return existing;
@@ -784,32 +775,9 @@
     async function joinController(stageCode, playerName) {
       const playerId = getControllerPlayerId();
       joinButton.disabled = true;
-      const payload = { stageCode, playerName, playerId };
-      const spawnBatchId = getSpawnBatchIdFromUrl();
-      const spawnIndex = getSpawnIndexFromUrl();
-      if (spawnBatchId && spawnIndex !== null) {
-        payload.spawnBatchId = spawnBatchId;
-        payload.spawnIndex = spawnIndex;
-      }
-      const result = await postJson("/api/join", payload);
+      const result = await postJson("/api/join", { stageCode, playerName, playerId });
       enterControllerLobby(stageCode, result.player.id, result.lobby, result.player);
       return result;
-    }
-
-    async function autoJoinController(stageCode, playerName) {
-      const startedAt = Date.now();
-      let attempts = 0;
-      while (Date.now() - startedAt <= 3000) {
-        attempts += 1;
-        try {
-          return await joinController(stageCode, playerName);
-        } catch (error) {
-          if (error.code !== "WAITING_FOR_TURN") throw error;
-          joinButton.textContent = `Waiting ${attempts}`;
-          await new Promise((resolve) => window.setTimeout(resolve, 20));
-        }
-      }
-      throw new Error("Timed out waiting to join in order.");
     }
 
     function setControllerAvatar(player) {
@@ -911,7 +879,7 @@
 
       if (shouldAutoJoin() && normalizeStageCode(stageCodeInput.value) && playerNameInput.value.trim()) {
         joinButton.textContent = "Joining";
-        autoJoinController(normalizeStageCode(stageCodeInput.value), playerNameInput.value.trim()).catch((error) => {
+        joinController(normalizeStageCode(stageCodeInput.value), playerNameInput.value.trim()).catch((error) => {
           joinButton.disabled = false;
           joinButton.textContent = error.message;
           window.setTimeout(() => {
