@@ -1,6 +1,6 @@
-# Pop Party
+# Flip 7 Party
 
-A tiny Jackbox-style stage/controller app.
+A server-backed Flip 7-style stage/controller party game.
 
 ## Local
 

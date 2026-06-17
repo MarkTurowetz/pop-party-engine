@@ -1,8 +1,8 @@
 {
-  "name": "pop-party",
+  "name": "flip-7-party",
   "version": "1.0.0",
   "private": true,
-  "description": "Server-backed Jackbox-style stage and controller demo.",
+  "description": "Server-backed Flip 7-style stage and controller party game.",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
