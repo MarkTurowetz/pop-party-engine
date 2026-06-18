@@ -848,7 +848,7 @@
 <body>
   <section class="screen stage hidden" id="stageScreen" aria-label="Flip 7 Party stage">
     <div class="start-popup hidden" id="startPopup">Starting Game</div>
-    <div class="stage-code-badge" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
+    <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
     <div class="version-badge">v__APP_VERSION__</div>
     <div class="stage-wipe hidden" id="stageWipe" aria-hidden="true">
       <div class="wipe-line"></div>
@@ -1248,7 +1248,7 @@
       const action = lobby.action || null;
       stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
       stageCodeBadge.textContent = lobby.stageCode || stageCodeBadge.textContent;
-      stageCodeBadgeRoot.classList.remove("hidden");
+      stageCodeBadgeRoot.classList.toggle("hidden", phase !== "intro");
       window.clearInterval(stageCountdownTimer);
       startPopup.classList.add("hidden");
       stageMain.classList.toggle("hidden", phase === "intro");
