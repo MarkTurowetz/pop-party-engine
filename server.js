@@ -9,6 +9,10 @@ const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const PACKAGE_FILE = path.join(ROOT, "package.json");
+const ART_ROOT = path.join(ROOT, "art");
+const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
+const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
+const ART_MANIFEST_FILE = path.join(ART_ROOT, "art-manifest.json");
 const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
 const START_COUNTDOWN_MS = 3000;
@@ -22,6 +26,21 @@ const INTRO_ACTIONS = [
 const rooms = new Map();
 const avatarColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff"];
 const avatarShapes = ["rex", "stego", "trike", "raptor", "bronto", "ankylo"];
+const acceptedArtTypes = {
+  "image/png": ".png",
+  "image/svg+xml": ".svg",
+  "image/jpeg": ".jpg",
+  "image/webp": ".webp"
+};
+const artAssets = [
+  { id: "avatar-rex", name: "Rex Avatar", category: "Player Avatars", defaultFile: "dino-rex.svg", use: "Player dinosaur silhouette for rex slots" },
+  { id: "avatar-stego", name: "Stego Avatar", category: "Player Avatars", defaultFile: "dino-stego.svg", use: "Player dinosaur silhouette for stego slots" },
+  { id: "avatar-trike", name: "Trike Avatar", category: "Player Avatars", defaultFile: "dino-trike.svg", use: "Player dinosaur silhouette for trike slots" },
+  { id: "avatar-raptor", name: "Raptor Avatar", category: "Player Avatars", defaultFile: "dino-raptor.svg", use: "Player dinosaur silhouette for raptor slots" },
+  { id: "avatar-bronto", name: "Bronto Avatar", category: "Player Avatars", defaultFile: "dino-bronto.svg", use: "Player dinosaur silhouette for bronto slots" },
+  { id: "avatar-ankylo", name: "Ankylo Avatar", category: "Player Avatars", defaultFile: "dino-ankylo.svg", use: "Player dinosaur silhouette for ankylo slots" },
+  { id: "presentation-click-cursor", name: "Presentation Click Cursor", category: "Stage Widgets", defaultFile: "cursor-arrow.svg", use: "Cursor art for presented-text click prompt" }
+];
 
 function readAppVersion() {
   try {
@@ -75,12 +94,21 @@ function sendJson(res, status, payload) {
   res.end(body);
 }
 
-function readJson(req) {
+function contentTypeForFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".svg") return "image/svg+xml; charset=utf-8";
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  return "application/octet-stream";
+}
+
+function readJson(req, maxBytes = 8192) {
   return new Promise((resolve, reject) => {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 8192) {
+      if (body.length > maxBytes) {
         reject(new Error("Payload too large"));
         req.destroy();
       }
@@ -93,6 +121,145 @@ function readJson(req) {
       }
     });
     req.on("error", reject);
+  });
+}
+
+function readArtManifest() {
+  try {
+    return JSON.parse(fs.readFileSync(ART_MANIFEST_FILE, "utf8"));
+  } catch (error) {
+    return {};
+  }
+}
+
+function writeArtManifest(manifest) {
+  fs.mkdirSync(ART_ROOT, { recursive: true });
+  fs.mkdirSync(ART_CUSTOM_DIR, { recursive: true });
+  fs.writeFileSync(ART_MANIFEST_FILE, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+function cacheBustFileUrl(filePath, urlPath) {
+  try {
+    const version = Math.round(fs.statSync(filePath).mtimeMs);
+    return `${urlPath}?v=${version}`;
+  } catch (error) {
+    return urlPath;
+  }
+}
+
+function publicArtAsset(asset, manifest) {
+  const custom = manifest[asset.id] || null;
+  const defaultFilePath = path.join(ART_DEFAULT_DIR, asset.defaultFile);
+  const defaultUrl = cacheBustFileUrl(defaultFilePath, `/art/default/${asset.defaultFile}`);
+  const customFile = custom?.fileName ? path.basename(custom.fileName) : "";
+  const customFilePath = customFile ? path.join(ART_CUSTOM_DIR, customFile) : "";
+  const hasCustom = Boolean(customFile && fs.existsSync(customFilePath));
+  const currentUrl = hasCustom ? cacheBustFileUrl(customFilePath, `/art/custom/${customFile}`) : defaultUrl;
+  return {
+    id: asset.id,
+    name: asset.name,
+    category: asset.category,
+    use: asset.use,
+    expectedTypes: Object.keys(acceptedArtTypes),
+    defaultUrl,
+    currentUrl,
+    hasCustom,
+    fileName: hasCustom ? customFile : asset.defaultFile,
+    updatedAt: hasCustom ? custom.updatedAt : null
+  };
+}
+
+function sendArtAssetList(res) {
+  const manifest = readArtManifest();
+  sendJson(res, 200, {
+    ok: true,
+    assets: artAssets.map((asset) => publicArtAsset(asset, manifest))
+  });
+}
+
+async function handleReplaceArtAsset(req, res, assetId) {
+  const asset = artAssets.find((item) => item.id === assetId);
+  if (!asset) {
+    sendJson(res, 404, { ok: false, error: "Art asset not found" });
+    return;
+  }
+
+  let payload;
+  try {
+    payload = await readJson(req, 7 * 1024 * 1024);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const dataUrl = String(payload.dataUrl || "");
+  const fileName = path.basename(String(payload.fileName || "replacement"));
+  const mimeType = String(payload.mimeType || "");
+  const match = dataUrl.match(/^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/);
+  if (!match || match[1] !== mimeType || !acceptedArtTypes[mimeType]) {
+    sendJson(res, 400, { ok: false, error: "Use a PNG, SVG, JPG, or WEBP file." });
+    return;
+  }
+
+  const originalExt = path.extname(fileName).toLowerCase();
+  const expectedExt = acceptedArtTypes[mimeType];
+  const ext = originalExt === ".jpeg" ? ".jpg" : originalExt;
+  if (ext && ext !== expectedExt) {
+    sendJson(res, 400, { ok: false, error: `Selected file does not match ${mimeType}.` });
+    return;
+  }
+
+  const buffer = Buffer.from(match[2], "base64");
+  if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) {
+    sendJson(res, 400, { ok: false, error: "Replacement art must be under 5 MB." });
+    return;
+  }
+
+  fs.mkdirSync(ART_CUSTOM_DIR, { recursive: true });
+  const manifest = readArtManifest();
+  const previousFile = manifest[asset.id]?.fileName;
+  if (previousFile) {
+    const previousPath = path.join(ART_CUSTOM_DIR, path.basename(previousFile));
+    if (fs.existsSync(previousPath)) {
+      try {
+        fs.unlinkSync(previousPath);
+      } catch (error) {
+        // A stale file is harmless; keep saving the new active asset.
+      }
+    }
+  }
+
+  const savedFileName = `${asset.id}${expectedExt}`;
+  fs.writeFileSync(path.join(ART_CUSTOM_DIR, savedFileName), buffer);
+  manifest[asset.id] = {
+    fileName: savedFileName,
+    sourceName: fileName,
+    mimeType,
+    updatedAt: new Date().toISOString()
+  };
+  writeArtManifest(manifest);
+  sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, manifest) });
+}
+
+function serveArtFile(res, kind, fileName) {
+  const safeName = path.basename(fileName || "");
+  const dir = kind === "custom" ? ART_CUSTOM_DIR : ART_DEFAULT_DIR;
+  const filePath = path.join(dir, safeName);
+  if (!safeName || !filePath.startsWith(dir) || !fs.existsSync(filePath)) {
+    sendJson(res, 404, { ok: false, error: "Art file not found" });
+    return;
+  }
+  fs.readFile(filePath, (error, data) => {
+    if (error) {
+      sendJson(res, 500, { ok: false, error: "Could not read art file" });
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": contentTypeForFile(filePath),
+      "Content-Length": data.length,
+      "Cache-Control": "no-cache"
+    });
+    res.end(data);
   });
 }
 
@@ -544,6 +711,23 @@ function router(req, res) {
 
   if (req.method === "GET" && url.pathname === "/api/health") {
     sendJson(res, 200, { ok: true, rooms: rooms.size });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/art-assets") {
+    sendArtAssetList(res);
+    return;
+  }
+
+  const artAssetMatch = url.pathname.match(/^\/api\/art-assets\/([a-z0-9-]+)$/i);
+  if (req.method === "POST" && artAssetMatch) {
+    handleReplaceArtAsset(req, res, artAssetMatch[1]);
+    return;
+  }
+
+  const artFileMatch = url.pathname.match(/^\/art\/(default|custom)\/([^/]+)$/i);
+  if (req.method === "GET" && artFileMatch) {
+    serveArtFile(res, artFileMatch[1], artFileMatch[2]);
     return;
   }
 
