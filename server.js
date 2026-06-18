@@ -9,6 +9,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const PACKAGE_FILE = path.join(ROOT, "package.json");
+const GAME_FLOW_FILE = path.join(ROOT, "game-flow.json");
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
@@ -17,11 +18,56 @@ const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
 const START_COUNTDOWN_MS = 3000;
 const START_GO_HOLD_MS = 700;
-const INTRO_ACTIONS = [
-  { type: "present", text: "This is test number 1" },
-  { type: "present", text: "Now test 2" },
-  { type: "text", text: "this text was not presented so we can't click to continue" }
+const availableFlowTransitions = [
+  { id: "horizontalWipe", name: "Horizontal Wipe" }
 ];
+const availableFlowActionTypes = [
+  { id: "presentText", name: "Present Text" },
+  { id: "transition", name: "Do Transition" },
+  { id: "transitionState", name: "Transition To State" },
+  { id: "text", name: "Show Text" }
+];
+const defaultGameFlow = {
+  states: [
+    {
+      id: "lobby",
+      name: "Lobby Game State",
+      actions: [
+        {
+          id: "lobby-countdown-complete",
+          name: "On Countdown Complete",
+          type: "transitionState",
+          trigger: "onCountdownComplete",
+          targetState: "intro"
+        }
+      ]
+    },
+    {
+      id: "intro",
+      name: "Game Intro Game State",
+      actions: [
+        {
+          id: "intro-present-1",
+          name: "Present Intro Text",
+          type: "presentText",
+          text: "I'm using this tool to dictate game actions"
+        },
+        {
+          id: "intro-present-2",
+          name: "Present Second Text",
+          type: "presentText",
+          text: "This is the second action"
+        },
+        {
+          id: "intro-wipe",
+          name: "Do Horizontal Wipe",
+          type: "transition",
+          transition: "horizontalWipe"
+        }
+      ]
+    }
+  ]
+};
 
 const rooms = new Map();
 const avatarColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff"];
@@ -135,6 +181,119 @@ function readArtManifest() {
   } catch (error) {
     return {};
   }
+}
+
+function normalizeFlowId(value, fallback) {
+  const cleaned = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return cleaned || fallback;
+}
+
+function cleanFlowText(value, fallback = "") {
+  const cleaned = String(value || "").trim().replace(/\s+/g, " ").slice(0, 240);
+  return cleaned || fallback;
+}
+
+function normalizeGameFlow(flow) {
+  const incomingStates = Array.isArray(flow?.states) ? flow.states : defaultGameFlow.states;
+  const states = incomingStates.map((state, stateIndex) => {
+    const fallbackStateId = stateIndex === 0 ? "lobby" : `state-${stateIndex + 1}`;
+    const id = normalizeFlowId(state.id || state.name, fallbackStateId);
+    const actions = Array.isArray(state.actions) ? state.actions : [];
+    return {
+      id,
+      name: cleanFlowText(state.name, id),
+      actions: actions.map((action, actionIndex) => normalizeFlowAction(action, actionIndex, id)).filter(Boolean)
+    };
+  });
+  if (!states.some((state) => state.id === "lobby")) {
+    states.unshift(defaultGameFlow.states[0]);
+  }
+  return { states };
+}
+
+function normalizeFlowAction(action, actionIndex, stateId) {
+  const type = availableFlowActionTypes.some((item) => item.id === action?.type) ? action.type : "presentText";
+  const base = {
+    id: normalizeFlowId(action?.id || action?.name, `${stateId}-action-${actionIndex + 1}`),
+    name: cleanFlowText(action?.name, `Action ${actionIndex + 1}`),
+    type
+  };
+  if (type === "presentText") {
+    return { ...base, text: cleanFlowText(action?.text, "Presented text") };
+  }
+  if (type === "transition") {
+    const transition = availableFlowTransitions.some((item) => item.id === action?.transition) ? action.transition : "horizontalWipe";
+    return { ...base, transition };
+  }
+  if (type === "transitionState") {
+    return {
+      ...base,
+      trigger: action?.trigger === "onCountdownComplete" ? "onCountdownComplete" : "",
+      targetState: normalizeFlowId(action?.targetState, "intro")
+    };
+  }
+  return { ...base, text: cleanFlowText(action?.text, "Text") };
+}
+
+function readGameFlow() {
+  try {
+    return normalizeGameFlow(JSON.parse(fs.readFileSync(GAME_FLOW_FILE, "utf8")));
+  } catch (error) {
+    return normalizeGameFlow(defaultGameFlow);
+  }
+}
+
+function writeGameFlow(flow) {
+  const normalized = normalizeGameFlow(flow);
+  fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(normalized, null, 2)}\n`);
+  return normalized;
+}
+
+function getFlowState(flow, stateId) {
+  return flow.states.find((state) => state.id === stateId) || null;
+}
+
+function getStateActions(stateId) {
+  return getFlowState(readGameFlow(), stateId)?.actions || [];
+}
+
+function publicFlowAction(action, index) {
+  if (!action) return null;
+  if (action.type === "presentText") {
+    return { index, id: action.id, name: action.name, type: "present", actionType: action.type, text: action.text };
+  }
+  if (action.type === "transition") {
+    const transition = availableFlowTransitions.find((item) => item.id === action.transition) || availableFlowTransitions[0];
+    return { index, id: action.id, name: action.name, type: "transition", actionType: action.type, transition: transition.id, transitionName: transition.name };
+  }
+  if (action.type === "transitionState") {
+    return { index, id: action.id, name: action.name, type: "transitionState", actionType: action.type, targetState: action.targetState };
+  }
+  return { index, id: action.id, name: action.name, type: "text", actionType: action.type, text: action.text };
+}
+
+function currentRoomAction(room) {
+  if (room.presentedAction) return room.presentedAction;
+  const actions = getStateActions(room.phase);
+  if (room.actionIndex >= actions.length) return null;
+  return publicFlowAction(actions[room.actionIndex], room.actionIndex);
+}
+
+function advanceRoomAction(room) {
+  const actions = getStateActions(room.phase);
+  if (actions.length === 0) return;
+  room.actionIndex = Math.min(room.actionIndex + 1, actions.length);
+}
+
+function countdownTargetState() {
+  const lobbyState = getFlowState(readGameFlow(), "lobby");
+  const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
+  return action?.targetState || "intro";
 }
 
 function writeArtManifest(manifest) {
@@ -271,6 +430,33 @@ function serveArtFile(res, kind, fileName) {
   });
 }
 
+function sendGameFlow(res) {
+  sendJson(res, 200, {
+    ok: true,
+    flow: readGameFlow(),
+    availableActionTypes: availableFlowActionTypes,
+    availableTransitions: availableFlowTransitions
+  });
+}
+
+async function handleSaveGameFlow(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req, 128 * 1024);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const flow = writeGameFlow(payload.flow || payload);
+  for (const room of rooms.values()) {
+    room.actionIndex = 0;
+    room.presentedAction = null;
+    broadcastLobby(room);
+  }
+  sendJson(res, 200, { ok: true, flow });
+}
+
 function getRoom(stageCode) {
   if (!rooms.has(stageCode)) {
     rooms.set(stageCode, {
@@ -335,10 +521,7 @@ function publicPlayer(player, room) {
 
 function lobbyPayload(room) {
   selectVip(room);
-  if (room.phase === "intro" && room.actionIndex >= INTRO_ACTIONS.length) {
-    room.actionIndex = Math.max(0, INTRO_ACTIONS.length - 1);
-  }
-  const currentAction = room.phase === "intro" ? room.presentedAction || INTRO_ACTIONS[room.actionIndex] || null : null;
+  const currentAction = room.phase !== "lobby" && room.phase !== "starting" ? currentRoomAction(room) : null;
   return {
     type: "lobby",
     stageCode: room.stageCode,
@@ -346,7 +529,7 @@ function lobbyPayload(room) {
     phase: room.phase,
     countdownStartedAt: room.countdownStartedAt,
     countdownEndsAt: room.countdownEndsAt,
-    action: currentAction ? { index: room.actionIndex, ...currentAction } : null,
+    action: currentAction,
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
     startToken: room.startToken,
@@ -383,8 +566,12 @@ function enterLobbyPhase(room) {
 }
 
 function enterIntroPhase(room) {
+  enterGamePhase(room, "intro");
+}
+
+function enterGamePhase(room, phase) {
   clearCountdownTimer(room);
-  room.phase = "intro";
+  room.phase = phase;
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
@@ -399,7 +586,7 @@ function enterStartingPhase(room) {
   room.countdownStartedAt = now;
   room.countdownEndsAt = now + START_COUNTDOWN_MS;
   room.countdownTimerId = setTimeout(() => {
-    enterIntroPhase(room);
+    enterGamePhase(room, countdownTargetState());
   }, START_COUNTDOWN_MS + START_GO_HOLD_MS);
   broadcastLobby(room);
 }
@@ -641,14 +828,38 @@ async function handleAdvancePresentation(req, res) {
     return;
   }
 
-  const currentAction = room.phase === "intro" ? INTRO_ACTIONS[room.actionIndex] : null;
+  const currentAction = room.phase === "intro" ? currentRoomAction(room) : null;
   if (!currentAction || currentAction.type !== "present") {
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
     return;
   }
 
-  room.actionIndex = Math.min(room.actionIndex + 1, INTRO_ACTIONS.length - 1);
+  advanceRoomAction(room);
   broadcastLobby(room);
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+}
+
+async function handleCompleteAction(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const room = getExistingRoom(stageCode);
+  if (!room) {
+    sendJson(res, 404, { ok: false, error: "Room not found" });
+    return;
+  }
+
+  const currentAction = currentRoomAction(room);
+  if (currentAction?.type === "transition") {
+    advanceRoomAction(room);
+    broadcastLobby(room);
+  }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
@@ -727,6 +938,16 @@ function router(req, res) {
     return;
   }
 
+  if (req.method === "GET" && url.pathname === "/api/game-flow") {
+    sendGameFlow(res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/game-flow") {
+    handleSaveGameFlow(req, res);
+    return;
+  }
+
   const artAssetMatch = url.pathname.match(/^\/api\/art-assets\/([a-z0-9-]+)$/i);
   if (req.method === "POST" && artAssetMatch) {
     handleReplaceArtAsset(req, res, artAssetMatch[1]);
@@ -778,6 +999,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/advance-presentation") {
     handleAdvancePresentation(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/complete-action") {
+    handleCompleteAction(req, res);
     return;
   }
 

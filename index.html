@@ -1050,6 +1050,133 @@
       pointer-events: none;
     }
 
+    .flow-shell {
+      display: grid;
+      grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+      gap: clamp(14px, 2vw, 24px);
+      height: calc(100vh - clamp(32px, 6vw, 68px));
+      min-height: 0;
+    }
+
+    .flow-panel {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-height: 0;
+      border: 5px solid var(--ink);
+      border-radius: 18px;
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .flow-list {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      min-height: 0;
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .flow-state {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 4px solid var(--ink);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.22);
+    }
+
+    .flow-state-header,
+    .flow-action-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      border: 0;
+      color: var(--ink);
+      background: transparent;
+      text-align: left;
+    }
+
+    .flow-state-header strong,
+    .flow-action-row strong {
+      display: block;
+      font-size: 16px;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .flow-state-header span,
+    .flow-action-row span {
+      display: block;
+      margin-top: 4px;
+      color: #5e5475;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .flow-state-actions {
+      display: grid;
+      gap: 7px;
+      padding-left: 14px;
+      border-left: 4px solid rgba(23, 19, 31, 0.18);
+    }
+
+    .flow-action-row {
+      padding: 8px;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      background: var(--cream);
+    }
+
+    .flow-action-row.is-selected,
+    .flow-state-header.is-selected {
+      background: var(--cyan);
+    }
+
+    .flow-pill {
+      justify-self: end;
+      padding: 5px 8px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: var(--yellow);
+      font-size: 11px;
+      font-weight: 1000;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .flow-editor {
+      display: grid;
+      align-content: start;
+      gap: 14px;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .flow-form-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .flow-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px;
+      border-top: 4px solid var(--ink);
+      background: var(--paper);
+    }
+
+    .flow-textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
     @media (max-width: 760px) {
       .stage {
         gap: 16px;
@@ -1081,6 +1208,10 @@
       }
 
       .art-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-shell {
         grid-template-columns: 1fr;
       }
     }
@@ -1250,6 +1381,34 @@
     </div>
   </section>
 
+  <section class="screen art-tool hidden" id="flowScreen" aria-label="Game flow editor">
+    <div class="flow-shell">
+      <aside class="flow-panel">
+        <div class="art-header">
+          <h1>Game Flow</h1>
+          <p>Create game states, then sequence game actions inside each state.</p>
+        </div>
+        <div class="flow-list" id="flowList"></div>
+        <div class="flow-actions">
+          <button class="secondary-button" id="addStateButton" type="button">Add State</button>
+          <button class="primary-button" id="saveFlowButton" type="button">Save Flow</button>
+        </div>
+      </aside>
+
+      <main class="flow-panel">
+        <div class="art-header">
+          <h1 id="flowEditorTitle">Select State</h1>
+          <p id="flowEditorHelp">Choose a game state or action to edit it.</p>
+        </div>
+        <div class="flow-editor" id="flowEditor"></div>
+        <div class="flow-actions">
+          <button class="secondary-button" id="addActionButton" type="button" disabled>Add Action</button>
+          <button class="secondary-button" id="deleteFlowItemButton" type="button" disabled>Delete</button>
+        </div>
+      </main>
+    </div>
+  </section>
+
   <script>
     const params = new URLSearchParams(window.location.search);
     const pathRoles = {
@@ -1260,17 +1419,20 @@
       "/lab": "lab",
       "/l": "lab",
       "/art": "art",
-      "/a": "art"
+      "/a": "art",
+      "/flow": "flow",
+      "/f": "flow"
     };
     const requestedRole = params.get("role");
     const requestedPathRole = pathRoles[window.location.pathname.toLowerCase()];
-    const role = ["controller", "lab", "art"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
+    const role = ["controller", "lab", "art", "flow"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
     const origin = window.location.origin;
     const canUseServer = window.location.protocol === "http:" || window.location.protocol === "https:";
     const stageScreen = document.querySelector("#stageScreen");
     const controllerScreen = document.querySelector("#controllerScreen");
     const labScreen = document.querySelector("#labScreen");
     const artScreen = document.querySelector("#artScreen");
+    const flowScreen = document.querySelector("#flowScreen");
     const stageCodeText = document.querySelector("#stageCodeText");
     const stageCodeBadgeRoot = document.querySelector("#stageCodeBadge");
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
@@ -1307,6 +1469,14 @@
     const artReplaceButton = document.querySelector("#artReplaceButton");
     const artCancelButton = document.querySelector("#artCancelButton");
     const artSaveButton = document.querySelector("#artSaveButton");
+    const flowList = document.querySelector("#flowList");
+    const flowEditor = document.querySelector("#flowEditor");
+    const flowEditorTitle = document.querySelector("#flowEditorTitle");
+    const flowEditorHelp = document.querySelector("#flowEditorHelp");
+    const addStateButton = document.querySelector("#addStateButton");
+    const addActionButton = document.querySelector("#addActionButton");
+    const deleteFlowItemButton = document.querySelector("#deleteFlowItemButton");
+    const saveFlowButton = document.querySelector("#saveFlowButton");
     let controllerState = null;
     let heartbeatTimer = null;
     let lobbyPollTimer = null;
@@ -1315,6 +1485,7 @@
     let countdownClockOffset = 0;
     let controllerClockOffset = 0;
     let renderedStagePhase = "";
+    let renderedActionKey = "";
     let stageWipeTimer = null;
     let currentStageState = null;
     let presentationAdvancePending = false;
@@ -1323,6 +1494,11 @@
     let selectedArtAsset = null;
     let selectedArtComposite = null;
     let pendingArtReplacement = null;
+    let gameFlow = { states: [] };
+    let flowActionTypes = [];
+    let flowTransitions = [];
+    let selectedFlowStateId = "";
+    let selectedFlowActionId = "";
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],
       ["avatar-rex", "/art/default/dino-rex.svg"],
@@ -1641,8 +1817,18 @@
 
     function renderStageLobby(lobby) {
       const nextPhase = lobby.phase || "lobby";
+      const actionKey = `${nextPhase}:${lobby.action?.id || lobby.action?.index || ""}:${lobby.action?.type || ""}`;
       const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro";
       renderedStagePhase = nextPhase;
+      if (lobby.action?.type === "transition" && renderedActionKey !== actionKey) {
+        renderedActionKey = actionKey;
+        runStageWipe(() => {
+          applyStageState(lobby);
+          completeFlowAction();
+        });
+        return;
+      }
+      renderedActionKey = actionKey;
       if (shouldWipeToIntro) {
         runStageWipe(() => applyStageState(lobby));
         return;
@@ -1673,6 +1859,19 @@
         // Keep the current presented text on screen if the click cannot be saved.
       } finally {
         presentationAdvancePending = false;
+      }
+    }
+
+    async function completeFlowAction() {
+      if (!currentStageState?.stageCode) return;
+      try {
+        const result = await postJson("/api/complete-action", {
+          stageCode: currentStageState.stageCode
+        });
+        if (result.lobby) renderStageLobby(result.lobby);
+      } catch (error) {
+        waitingStatus.classList.remove("hidden");
+        waitingStatus.textContent = error.message;
       }
     }
 
@@ -2180,10 +2379,285 @@
       }
     }
 
+    function flowState(stateId) {
+      return gameFlow.states.find((state) => state.id === stateId) || null;
+    }
+
+    function flowAction(stateId, actionId) {
+      return flowState(stateId)?.actions.find((action) => action.id === actionId) || null;
+    }
+
+    function makeFlowId(label, fallback) {
+      return String(label || fallback)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 42) || fallback;
+    }
+
+    function actionTypeName(type) {
+      return flowActionTypes.find((item) => item.id === type)?.name || type;
+    }
+
+    function actionSummary(action) {
+      if (action.type === "presentText") return `"${action.text || ""}"`;
+      if (action.type === "transition") return flowTransitions.find((item) => item.id === action.transition)?.name || action.transition;
+      if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"}`;
+      return action.text || "Text";
+    }
+
+    async function loadGameFlow() {
+      const result = await getJson("/api/game-flow");
+      gameFlow = result.flow || { states: [] };
+      flowActionTypes = result.availableActionTypes || [];
+      flowTransitions = result.availableTransitions || [];
+      selectedFlowStateId = selectedFlowStateId || gameFlow.states[0]?.id || "";
+      selectedFlowActionId = "";
+      renderFlowTool();
+    }
+
+    function renderFlowTool() {
+      renderFlowList();
+      renderFlowEditor();
+    }
+
+    function renderFlowList() {
+      flowList.replaceChildren();
+      for (const state of gameFlow.states) {
+        const stateEl = document.createElement("section");
+        stateEl.className = "flow-state";
+        const stateButton = document.createElement("button");
+        stateButton.type = "button";
+        stateButton.className = "flow-state-header";
+        stateButton.classList.toggle("is-selected", selectedFlowStateId === state.id && !selectedFlowActionId);
+        stateButton.innerHTML = `
+          <span><strong></strong><span></span></span>
+          <span class="flow-pill">${state.actions.length} actions</span>
+        `;
+        stateButton.querySelector("strong").textContent = state.name;
+        stateButton.querySelector("span span").textContent = state.id;
+        stateButton.addEventListener("click", () => {
+          selectedFlowStateId = state.id;
+          selectedFlowActionId = "";
+          renderFlowTool();
+        });
+        stateEl.appendChild(stateButton);
+
+        const actionsEl = document.createElement("div");
+        actionsEl.className = "flow-state-actions";
+        for (const action of state.actions) {
+          const actionButton = document.createElement("button");
+          actionButton.type = "button";
+          actionButton.className = "flow-action-row";
+          actionButton.classList.toggle("is-selected", selectedFlowActionId === action.id);
+          actionButton.innerHTML = `
+            <span><strong></strong><span></span></span>
+            <span class="flow-pill"></span>
+          `;
+          actionButton.querySelector("strong").textContent = action.name;
+          actionButton.querySelector("span span").textContent = actionSummary(action);
+          actionButton.querySelector(".flow-pill").textContent = actionTypeName(action.type);
+          actionButton.addEventListener("click", () => {
+            selectedFlowStateId = state.id;
+            selectedFlowActionId = action.id;
+            renderFlowTool();
+          });
+          actionsEl.appendChild(actionButton);
+        }
+        stateEl.appendChild(actionsEl);
+        flowList.appendChild(stateEl);
+      }
+    }
+
+    function renderFlowEditor() {
+      const state = flowState(selectedFlowStateId);
+      const action = state ? flowAction(selectedFlowStateId, selectedFlowActionId) : null;
+      flowEditor.replaceChildren();
+      addActionButton.disabled = !state;
+      deleteFlowItemButton.disabled = !state;
+
+      if (!state) {
+        flowEditorTitle.textContent = "No State Selected";
+        flowEditorHelp.textContent = "Add a game state to start sequencing actions.";
+        return;
+      }
+
+      if (!action) {
+        flowEditorTitle.textContent = state.name;
+        flowEditorHelp.textContent = "Editing game state.";
+        flowEditor.appendChild(flowField("State Name", state.name, (value) => {
+          state.name = value || state.name;
+          state.id = state.id === "lobby" || state.id === "intro" ? state.id : makeFlowId(state.name, state.id);
+          selectedFlowStateId = state.id;
+          renderFlowTool();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Actions inside this state run from top to bottom. Presented text advances when you click the stage."));
+        return;
+      }
+
+      flowEditorTitle.textContent = action.name;
+      flowEditorHelp.textContent = `Editing action in ${state.name}.`;
+      flowEditor.appendChild(flowField("Action Name", action.name, (value) => {
+        action.name = value || action.name;
+        renderFlowTool();
+      }));
+      flowEditor.appendChild(flowSelect("Action Type", action.type, flowActionTypes, (value) => {
+        action.type = value;
+        if (value === "presentText") action.text = action.text || "Presented text";
+        if (value === "transition") action.transition = action.transition || "horizontalWipe";
+        if (value === "transitionState") action.targetState = action.targetState || "intro";
+        renderFlowTool();
+      }));
+      if (action.type === "presentText" || action.type === "text") {
+        flowEditor.appendChild(flowTextarea("Text", action.text || "", (value) => {
+          action.text = value;
+          renderFlowList();
+        }));
+      }
+      if (action.type === "transition") {
+        flowEditor.appendChild(flowSelect("Transition", action.transition || "horizontalWipe", flowTransitions, (value) => {
+          action.transition = value;
+          renderFlowList();
+        }));
+      }
+      if (action.type === "transitionState") {
+        flowEditor.appendChild(flowSelect("Target State", action.targetState || "intro", gameFlow.states.map((item) => ({ id: item.id, name: item.name })), (value) => {
+          action.targetState = value;
+          renderFlowList();
+        }));
+        flowEditor.appendChild(flowSelect("Trigger", action.trigger || "", [
+          { id: "", name: "Immediate / Manual" },
+          { id: "onCountdownComplete", name: "On Countdown Complete" }
+        ], (value) => {
+          action.trigger = value;
+          renderFlowList();
+        }));
+      }
+    }
+
+    function flowField(label, value, onChange) {
+      const field = document.createElement("label");
+      field.className = "field-label flow-form-grid";
+      field.textContent = label;
+      const input = document.createElement("input");
+      input.className = "text-input";
+      input.value = value || "";
+      input.addEventListener("change", () => onChange(input.value.trim()));
+      field.appendChild(input);
+      return field;
+    }
+
+    function flowTextarea(label, value, onChange) {
+      const field = document.createElement("label");
+      field.className = "field-label flow-form-grid";
+      field.textContent = label;
+      const input = document.createElement("textarea");
+      input.className = "text-input flow-textarea";
+      input.value = value || "";
+      input.addEventListener("input", () => onChange(input.value));
+      field.appendChild(input);
+      return field;
+    }
+
+    function flowSelect(label, value, options, onChange) {
+      const field = document.createElement("label");
+      field.className = "field-label flow-form-grid";
+      field.textContent = label;
+      const select = document.createElement("select");
+      select.className = "text-input";
+      for (const option of options) {
+        const optionEl = document.createElement("option");
+        optionEl.value = option.id;
+        optionEl.textContent = option.name;
+        select.appendChild(optionEl);
+      }
+      select.value = value;
+      select.addEventListener("change", () => onChange(select.value));
+      field.appendChild(select);
+      return field;
+    }
+
+    function readOnlyFlowNote(text) {
+      const note = document.createElement("p");
+      note.className = "art-shared-note";
+      note.textContent = text;
+      return note;
+    }
+
+    function addFlowState() {
+      const nextNumber = gameFlow.states.length + 1;
+      const state = { id: `state-${nextNumber}`, name: `New Game State ${nextNumber}`, actions: [] };
+      gameFlow.states.push(state);
+      selectedFlowStateId = state.id;
+      selectedFlowActionId = "";
+      renderFlowTool();
+    }
+
+    function addFlowAction() {
+      const state = flowState(selectedFlowStateId);
+      if (!state) return;
+      const nextNumber = state.actions.length + 1;
+      const action = {
+        id: `${state.id}-action-${Date.now().toString(36)}`,
+        name: `Game Action ${nextNumber}`,
+        type: "presentText",
+        text: "Presented text"
+      };
+      state.actions.push(action);
+      selectedFlowActionId = action.id;
+      renderFlowTool();
+    }
+
+    function deleteFlowItem() {
+      if (!selectedFlowStateId) return;
+      if (selectedFlowActionId) {
+        const state = flowState(selectedFlowStateId);
+        state.actions = state.actions.filter((action) => action.id !== selectedFlowActionId);
+        selectedFlowActionId = "";
+        renderFlowTool();
+        return;
+      }
+      if (selectedFlowStateId === "lobby" || selectedFlowStateId === "intro") return;
+      gameFlow.states = gameFlow.states.filter((state) => state.id !== selectedFlowStateId);
+      selectedFlowStateId = gameFlow.states[0]?.id || "";
+      renderFlowTool();
+    }
+
+    async function saveGameFlow() {
+      saveFlowButton.disabled = true;
+      saveFlowButton.textContent = "Saving";
+      try {
+        const result = await postJson("/api/game-flow", { flow: gameFlow });
+        gameFlow = result.flow;
+        selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
+        selectedFlowActionId = "";
+        renderFlowTool();
+      } finally {
+        saveFlowButton.disabled = false;
+        saveFlowButton.textContent = "Save Flow";
+      }
+    }
+
+    async function setupFlowTool() {
+      flowScreen.classList.remove("hidden");
+      addStateButton.addEventListener("click", addFlowState);
+      addActionButton.addEventListener("click", addFlowAction);
+      deleteFlowItemButton.addEventListener("click", deleteFlowItem);
+      saveFlowButton.addEventListener("click", saveGameFlow);
+      try {
+        await loadGameFlow();
+      } catch (error) {
+        flowEditorTitle.textContent = "Flow Tool Offline";
+        flowEditorHelp.textContent = error.message;
+      }
+    }
+
     if (role === "lab") {
       setupLab();
     } else if (role === "art") {
       setupArtTool();
+    } else if (role === "flow") {
+      setupFlowTool();
     } else if (role === "controller") {
       setupController();
     } else {

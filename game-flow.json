@@ -1,0 +1,41 @@
+{
+  "states": [
+    {
+      "id": "lobby",
+      "name": "Lobby Game State",
+      "actions": [
+        {
+          "id": "lobby-countdown-complete",
+          "name": "On Countdown Complete",
+          "type": "transitionState",
+          "trigger": "onCountdownComplete",
+          "targetState": "intro"
+        }
+      ]
+    },
+    {
+      "id": "intro",
+      "name": "Game Intro Game State",
+      "actions": [
+        {
+          "id": "intro-present-1",
+          "name": "Present Intro Text",
+          "type": "presentText",
+          "text": "I'm using this tool to dictate game actions"
+        },
+        {
+          "id": "intro-present-2",
+          "name": "Present Second Text",
+          "type": "presentText",
+          "text": "This is the second action"
+        },
+        {
+          "id": "intro-wipe",
+          "name": "Do Horizontal Wipe",
+          "type": "transition",
+          "transition": "horizontalWipe"
+        }
+      ]
+    }
+  ]
+}
