@@ -1089,6 +1089,18 @@
       box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.22);
     }
 
+    .flow-state.is-dragging,
+    .flow-action-row.is-dragging {
+      opacity: 0.45;
+      transform: scale(0.98);
+    }
+
+    .flow-state.is-drop-target,
+    .flow-action-row.is-drop-target {
+      outline: 5px dashed var(--blue);
+      outline-offset: 4px;
+    }
+
     .flow-state-header,
     .flow-action-row {
       display: grid;
@@ -1100,6 +1112,12 @@
       color: var(--ink);
       background: transparent;
       text-align: left;
+      cursor: grab;
+    }
+
+    .flow-state-header:active,
+    .flow-action-row:active {
+      cursor: grabbing;
     }
 
     .flow-state-header strong,
@@ -2426,6 +2444,9 @@
       for (const state of gameFlow.states) {
         const stateEl = document.createElement("section");
         stateEl.className = "flow-state";
+        stateEl.draggable = true;
+        stateEl.dataset.stateId = state.id;
+        bindStateDrag(stateEl, state.id);
         const stateButton = document.createElement("button");
         stateButton.type = "button";
         stateButton.className = "flow-state-header";
@@ -2449,6 +2470,9 @@
           const actionButton = document.createElement("button");
           actionButton.type = "button";
           actionButton.className = "flow-action-row";
+          actionButton.draggable = true;
+          actionButton.dataset.stateId = state.id;
+          actionButton.dataset.actionId = action.id;
           actionButton.classList.toggle("is-selected", selectedFlowActionId === action.id);
           actionButton.innerHTML = `
             <span><strong></strong><span></span></span>
@@ -2462,11 +2486,103 @@
             selectedFlowActionId = action.id;
             renderFlowTool();
           });
+          bindActionDrag(actionButton, state.id, action.id);
           actionsEl.appendChild(actionButton);
         }
         stateEl.appendChild(actionsEl);
         flowList.appendChild(stateEl);
       }
+    }
+
+    function bindStateDrag(element, stateId) {
+      element.addEventListener("dragstart", (event) => {
+        element.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("application/x-flow-state", stateId);
+      });
+      element.addEventListener("dragend", () => {
+        element.classList.remove("is-dragging");
+      });
+      element.addEventListener("dragover", (event) => {
+        if (!event.dataTransfer.types.includes("application/x-flow-state")) return;
+        event.preventDefault();
+        element.classList.add("is-drop-target");
+      });
+      element.addEventListener("dragleave", () => {
+        element.classList.remove("is-drop-target");
+      });
+      element.addEventListener("drop", (event) => {
+        const draggedStateId = event.dataTransfer.getData("application/x-flow-state");
+        if (!draggedStateId) return;
+        event.preventDefault();
+        element.classList.remove("is-drop-target");
+        moveFlowState(draggedStateId, stateId, isAfterDrop(element, event));
+      });
+    }
+
+    function bindActionDrag(element, stateId, actionId) {
+      element.addEventListener("dragstart", (event) => {
+        event.stopPropagation();
+        element.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("application/x-flow-action", JSON.stringify({ stateId, actionId }));
+      });
+      element.addEventListener("dragend", () => {
+        element.classList.remove("is-dragging");
+      });
+      element.addEventListener("dragover", (event) => {
+        if (!event.dataTransfer.types.includes("application/x-flow-action")) return;
+        event.preventDefault();
+        event.stopPropagation();
+        element.classList.add("is-drop-target");
+      });
+      element.addEventListener("dragleave", () => {
+        element.classList.remove("is-drop-target");
+      });
+      element.addEventListener("drop", (event) => {
+        const raw = event.dataTransfer.getData("application/x-flow-action");
+        if (!raw) return;
+        event.preventDefault();
+        event.stopPropagation();
+        element.classList.remove("is-drop-target");
+        const dragged = JSON.parse(raw);
+        if (dragged.stateId !== stateId) return;
+        moveFlowAction(stateId, dragged.actionId, actionId, isAfterDrop(element, event));
+      });
+    }
+
+    function isAfterDrop(element, event) {
+      const rect = element.getBoundingClientRect();
+      return event.clientY > rect.top + rect.height / 2;
+    }
+
+    function moveFlowState(draggedStateId, targetStateId, placeAfter = false) {
+      if (draggedStateId === targetStateId) return;
+      const fromIndex = gameFlow.states.findIndex((state) => state.id === draggedStateId);
+      const toIndex = gameFlow.states.findIndex((state) => state.id === targetStateId);
+      if (fromIndex < 0 || toIndex < 0) return;
+      const [state] = gameFlow.states.splice(fromIndex, 1);
+      const targetIndexAfterRemoval = gameFlow.states.findIndex((item) => item.id === targetStateId);
+      const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+      gameFlow.states.splice(adjustedIndex, 0, state);
+      selectedFlowStateId = draggedStateId;
+      selectedFlowActionId = "";
+      renderFlowTool();
+    }
+
+    function moveFlowAction(stateId, draggedActionId, targetActionId, placeAfter = false) {
+      const state = flowState(stateId);
+      if (!state || draggedActionId === targetActionId) return;
+      const fromIndex = state.actions.findIndex((action) => action.id === draggedActionId);
+      const toIndex = state.actions.findIndex((action) => action.id === targetActionId);
+      if (fromIndex < 0 || toIndex < 0) return;
+      const [action] = state.actions.splice(fromIndex, 1);
+      const targetIndexAfterRemoval = state.actions.findIndex((item) => item.id === targetActionId);
+      const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+      state.actions.splice(adjustedIndex, 0, action);
+      selectedFlowStateId = stateId;
+      selectedFlowActionId = draggedActionId;
+      renderFlowTool();
     }
 
     function renderFlowEditor() {
@@ -2603,7 +2719,9 @@
         type: "presentText",
         text: "Presented text"
       };
-      state.actions.push(action);
+      const selectedIndex = state.actions.findIndex((item) => item.id === selectedFlowActionId);
+      const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
+      state.actions.splice(insertIndex, 0, action);
       selectedFlowActionId = action.id;
       renderFlowTool();
     }
