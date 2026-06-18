@@ -3381,6 +3381,22 @@
       };
     }
 
+    function serializeGameFlowForSave(flow) {
+      return {
+        states: (flow.states || []).map((state) => ({
+          ...state,
+          actions: (state.actions || []).map(serializeFlowActionForSave)
+        }))
+      };
+    }
+
+    function serializeFlowActionForSave(action) {
+      return {
+        ...action,
+        subActions: (action.subActions || []).map(serializeFlowActionForSave)
+      };
+    }
+
     function deleteFlowItem() {
       if (!selectedFlowStateId) return;
       if (selectedFlowActionId) {
@@ -3403,7 +3419,7 @@
       saveFlowButton.disabled = true;
       saveFlowButton.textContent = "Saving";
       try {
-        const result = await postJson("/api/game-flow", { flow: gameFlow });
+        const result = await postJson("/api/game-flow", { flow: serializeGameFlowForSave(gameFlow) });
         gameFlow = result.flow;
         selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
         selectedFlowActionId = "";

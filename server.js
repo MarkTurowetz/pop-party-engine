@@ -324,9 +324,60 @@ function readGameFlow() {
 }
 
 function writeGameFlow(flow) {
-  const normalized = normalizeGameFlow(flow);
+  const merged = mergeFlowWithExistingSubActions(flow);
+  const normalized = normalizeGameFlow(merged);
   fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(normalized, null, 2)}\n`);
   return normalized;
+}
+
+function mergeFlowWithExistingSubActions(incomingFlow) {
+  const incomingStates = Array.isArray(incomingFlow?.states) ? incomingFlow.states : [];
+  if (incomingStates.length === 0) return incomingFlow;
+
+  let existingFlow = null;
+  try {
+    existingFlow = JSON.parse(fs.readFileSync(GAME_FLOW_FILE, "utf8"));
+  } catch (error) {
+    return incomingFlow;
+  }
+
+  const existingActionsById = new Map();
+  for (const state of existingFlow?.states || []) {
+    for (const action of state.actions || []) {
+      indexActionTree(action, existingActionsById);
+    }
+  }
+
+  return {
+    ...incomingFlow,
+    states: incomingStates.map((state) => ({
+      ...state,
+      actions: Array.isArray(state.actions)
+        ? state.actions.map((action) => mergeActionSubActions(action, existingActionsById))
+        : state.actions
+    }))
+  };
+}
+
+function indexActionTree(action, actionsById) {
+  if (!action?.id) return;
+  actionsById.set(action.id, action);
+  for (const subAction of action.subActions || []) {
+    indexActionTree(subAction, actionsById);
+  }
+}
+
+function mergeActionSubActions(action, existingActionsById) {
+  if (!action || typeof action !== "object") return action;
+  const existingAction = existingActionsById.get(action.id);
+  const hasIncomingSubActions = Array.isArray(action.subActions);
+  const subActions = hasIncomingSubActions ? action.subActions : existingAction?.subActions;
+  return {
+    ...action,
+    subActions: Array.isArray(subActions)
+      ? subActions.map((subAction) => mergeActionSubActions(subAction, existingActionsById))
+      : subActions
+  };
 }
 
 function readDefaultGameFlow() {
