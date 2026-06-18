@@ -319,8 +319,6 @@ async function handleStart(req, res) {
   }
 
   broadcastStart(room, player);
-  room.startToken = randomToken();
-  broadcastLobby(room);
   sendJson(res, 200, { ok: true });
 }
 

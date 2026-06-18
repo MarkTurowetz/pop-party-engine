@@ -399,18 +399,18 @@
       font-size: clamp(16px, 4.6vmin, 18px);
       font-weight: 1000;
       text-transform: uppercase;
-      transition: transform 70ms ease, box-shadow 70ms ease, filter 70ms ease;
+      transform: translate3d(0, 0, 0);
+      transition: transform 55ms linear, filter 55ms linear;
+      will-change: transform;
     }
 
     .primary-button:not(:disabled):hover {
-      translate: -2px -2px;
-      box-shadow: 9px 9px 0 var(--ink);
+      transform: translate3d(-2px, -2px, 0);
     }
 
     .primary-button.is-pressed:not(:disabled),
     .primary-button:not(:disabled):active {
-      translate: 5px 5px;
-      box-shadow: 2px 2px 0 var(--ink);
+      transform: translate3d(5px, 5px, 0);
       filter: saturate(1.08);
     }
 
@@ -423,13 +423,14 @@
       box-shadow: 5px 5px 0 var(--ink);
       font-weight: 1000;
       text-transform: uppercase;
-      transition: transform 70ms ease, box-shadow 70ms ease, filter 70ms ease;
+      transform: translate3d(0, 0, 0);
+      transition: transform 55ms linear, filter 55ms linear;
+      will-change: transform;
     }
 
     .secondary-button.is-pressed:not(:disabled),
     .secondary-button:not(:disabled):active {
-      translate: 4px 4px;
-      box-shadow: 1px 1px 0 var(--ink);
+      transform: translate3d(4px, 4px, 0);
       filter: saturate(1.08);
     }
 
@@ -854,6 +855,7 @@
     }
 
     function showStartPopup() {
+      if (!startPopup.classList.contains("hidden")) return;
       startPopup.classList.remove("hidden");
       window.clearTimeout(showStartPopup.timeoutId);
       showStartPopup.timeoutId = window.setTimeout(() => {
@@ -1035,7 +1037,6 @@
         if (!event.isTrusted) return;
         if (!controllerState) return;
         if (!controllerState.player?.isVip) return;
-        startGameButton.disabled = true;
         try {
           await postJson("/api/start", {
             stageCode: controllerState.stageCode,
@@ -1045,10 +1046,6 @@
           controllerMeta.textContent = "Starting Game";
         } catch (error) {
           controllerMeta.textContent = error.message;
-        } finally {
-          window.setTimeout(() => {
-            if (controllerState?.player?.isVip) startGameButton.disabled = false;
-          }, 1200);
         }
       });
 
