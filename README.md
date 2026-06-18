@@ -49,6 +49,7 @@ GAME_FLOW_STORAGE=github
 GAME_FLOW_GITHUB_REPO=MarkTurowetz/pop-party
 GAME_FLOW_GITHUB_BRANCH=game-data
 GAME_FLOW_GITHUB_PATH=game-flow.json
+GAME_CONSTANTS_GITHUB_PATH=game-constants.json
 ```
 
 Set `GAME_FLOW_GITHUB_TOKEN` in Render as a secret environment variable. Use a
@@ -60,6 +61,9 @@ When that token is present, the app automatically uses GitHub flow storage unles
 
 Local development still falls back to the ignored `game-flow.json` file unless
 `GAME_FLOW_STORAGE=github` is set.
+
+Game constants use the same durable storage layer. Open `/constants` to edit
+values such as the `playerColors` list used for random unique player colors.
 
 ## Chrome Controller Spawner
 

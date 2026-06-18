@@ -825,12 +825,12 @@
     }
 
     .avatar-picker-panel {
-      width: min(390px, calc(100vw - 28px));
-      max-height: min(580px, calc(var(--app-height, 100vh) - 32px));
+      width: min(360px, calc(100vw - 24px));
+      max-height: min(520px, calc(var(--app-height, 100vh) - 28px));
       display: grid;
       grid-template-rows: minmax(0, 1fr) auto;
       gap: 12px;
-      padding: 16px;
+      padding: 12px;
       border: 5px solid var(--ink);
       border-radius: 24px;
       background: var(--paper);
@@ -841,33 +841,33 @@
       min-height: 0;
       overflow-y: auto;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
       padding: 2px 4px 8px 2px;
       -webkit-overflow-scrolling: touch;
     }
 
     .avatar-choice {
-      min-height: 132px;
+      min-height: 96px;
       display: grid;
       justify-items: center;
       align-content: center;
-      gap: 8px;
-      border: 4px solid var(--ink);
-      border-radius: 20px;
+      gap: 5px;
+      border: 3px solid var(--ink);
+      border-radius: 14px;
       color: var(--avatar-color);
       background: #fff;
-      box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.28);
+      box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.28);
     }
 
     .avatar-choice.is-selected {
       background: var(--yellow);
-      box-shadow: 0 0 0 5px rgba(36, 88, 255, 0.28), 6px 6px 0 var(--ink);
+      box-shadow: 0 0 0 4px rgba(36, 88, 255, 0.28), 4px 4px 0 var(--ink);
     }
 
     .avatar-choice-icon {
-      width: 72px;
-      height: 72px;
+      width: 52px;
+      height: 52px;
       display: grid;
       place-items: center;
       position: relative;
@@ -875,7 +875,7 @@
 
     .avatar-choice-label {
       color: var(--ink);
-      font-size: 14px;
+      font-size: 11px;
       font-weight: 1000;
       text-transform: uppercase;
     }
@@ -1482,6 +1482,52 @@
       resize: vertical;
     }
 
+    .constants-shell {
+      grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+    }
+
+    .constants-editor {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      padding: 18px;
+      overflow: auto;
+      min-height: 0;
+    }
+
+    .color-row {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 4px solid var(--ink);
+      border-radius: 16px;
+      background: var(--paper);
+      box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.2);
+    }
+
+    .color-input {
+      width: 64px;
+      height: 56px;
+      border: 4px solid var(--ink);
+      border-radius: 12px;
+      padding: 0;
+      background: #fff;
+    }
+
+    .color-value {
+      height: 48px;
+      border: 4px solid var(--ink);
+      border-radius: 12px;
+      padding: 0 12px;
+      color: var(--ink);
+      background: #fff;
+      font-size: 20px;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
     @media (max-width: 760px) {
       .stage {
         gap: 16px;
@@ -1729,6 +1775,36 @@
     </div>
   </section>
 
+  <section class="screen art-tool hidden" id="constantsScreen" aria-label="Game constants editor">
+    <div class="flow-shell constants-shell">
+      <aside class="flow-panel">
+        <div class="art-header">
+          <h1>Game Constants</h1>
+          <p>Configure game-wide values used by the stage and controllers.</p>
+          <p id="constantsStorageStatus">Checking constants storage...</p>
+        </div>
+        <div class="flow-list">
+          <button class="flow-state-header is-selected" type="button">
+            <span><strong>Player Colors</strong><span>Random unique colors for joined players</span></span>
+            <span class="flow-pill" id="playerColorCount">0 colors</span>
+          </button>
+        </div>
+        <div class="flow-actions">
+          <button class="secondary-button" id="addPlayerColorButton" type="button">Add Color</button>
+          <button class="primary-button" id="saveConstantsButton" type="button">Save Constants</button>
+        </div>
+      </aside>
+
+      <main class="flow-panel">
+        <div class="art-header">
+          <h1>Player Colors</h1>
+          <p>Each new player gets a random unused color from this list before colors repeat.</p>
+        </div>
+        <div class="constants-editor" id="playerColorList"></div>
+      </main>
+    </div>
+  </section>
+
   <script>
     const params = new URLSearchParams(window.location.search);
     const pathRoles = {
@@ -1741,11 +1817,13 @@
       "/art": "art",
       "/a": "art",
       "/flow": "flow",
-      "/f": "flow"
+      "/f": "flow",
+      "/constants": "constants",
+      "/const": "constants"
     };
     const requestedRole = params.get("role");
     const requestedPathRole = pathRoles[window.location.pathname.toLowerCase()];
-    const role = ["controller", "lab", "art", "flow"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
+    const role = ["controller", "lab", "art", "flow", "constants"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
     const origin = window.location.origin;
     const canUseServer = window.location.protocol === "http:" || window.location.protocol === "https:";
     const stageScreen = document.querySelector("#stageScreen");
@@ -1753,6 +1831,7 @@
     const labScreen = document.querySelector("#labScreen");
     const artScreen = document.querySelector("#artScreen");
     const flowScreen = document.querySelector("#flowScreen");
+    const constantsScreen = document.querySelector("#constantsScreen");
     const stageCodeText = document.querySelector("#stageCodeText");
     const stageCodeBadgeRoot = document.querySelector("#stageCodeBadge");
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
@@ -1805,6 +1884,11 @@
     const addActionButton = document.querySelector("#addActionButton");
     const deleteFlowItemButton = document.querySelector("#deleteFlowItemButton");
     const saveFlowButton = document.querySelector("#saveFlowButton");
+    const constantsStorageStatus = document.querySelector("#constantsStorageStatus");
+    const playerColorList = document.querySelector("#playerColorList");
+    const playerColorCount = document.querySelector("#playerColorCount");
+    const addPlayerColorButton = document.querySelector("#addPlayerColorButton");
+    const saveConstantsButton = document.querySelector("#saveConstantsButton");
     let controllerState = null;
     let pendingAvatarShape = "";
     let avatarPickerOpen = false;
@@ -1833,6 +1917,7 @@
     const collapsedArtSections = new Set();
     const collapsedArtComposites = new Set();
     let gameFlow = { states: [] };
+    let gameConstants = { playerColors: [] };
     let flowActionTypes = [];
     let flowTransitions = [];
     let selectedFlowStateId = "";
@@ -3761,12 +3846,121 @@
       }
     }
 
+    async function loadGameConstants() {
+      const result = await getJson("/api/game-constants");
+      gameConstants = result.constants || { playerColors: [] };
+      updateConstantsStorageStatus(result.storage);
+      renderConstantsTool();
+    }
+
+    function updateConstantsStorageStatus(storage) {
+      if (!constantsStorageStatus) return;
+      if (!storage) {
+        constantsStorageStatus.textContent = "Constants storage: unknown";
+        return;
+      }
+      if (storage.durable) {
+        constantsStorageStatus.textContent = `Constants storage: GitHub ${storage.repo || ""}${storage.branch ? ` / ${storage.branch}` : ""}`;
+        return;
+      }
+      constantsStorageStatus.textContent = storage.error || "Constants storage: local fallback only";
+    }
+
+    function normalizeUiColor(value) {
+      const color = String(value || "").trim();
+      return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
+    }
+
+    function renderConstantsTool() {
+      const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
+      playerColorCount.textContent = `${colors.length} ${colors.length === 1 ? "color" : "colors"}`;
+      playerColorList.replaceChildren();
+      colors.forEach((color, index) => {
+        const row = document.createElement("div");
+        row.className = "color-row";
+
+        const picker = document.createElement("input");
+        picker.className = "color-input";
+        picker.type = "color";
+        picker.value = normalizeUiColor(color) || "#22d3ee";
+        picker.addEventListener("input", () => {
+          gameConstants.playerColors[index] = picker.value;
+          value.value = picker.value.toUpperCase();
+        });
+
+        const value = document.createElement("input");
+        value.className = "color-value";
+        value.value = picker.value.toUpperCase();
+        value.maxLength = 7;
+        value.addEventListener("change", () => {
+          const nextColor = normalizeUiColor(value.value);
+          if (!nextColor) {
+            value.value = picker.value.toUpperCase();
+            return;
+          }
+          gameConstants.playerColors[index] = nextColor;
+          picker.value = nextColor;
+          value.value = nextColor.toUpperCase();
+        });
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "secondary-button";
+        remove.textContent = "Remove";
+        remove.disabled = colors.length <= 1;
+        remove.addEventListener("click", () => {
+          gameConstants.playerColors.splice(index, 1);
+          renderConstantsTool();
+        });
+
+        row.appendChild(picker);
+        row.appendChild(value);
+        row.appendChild(remove);
+        playerColorList.appendChild(row);
+      });
+    }
+
+    function addPlayerColor() {
+      const nextColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"];
+      const used = new Set(gameConstants.playerColors || []);
+      const next = nextColors.find((color) => !used.has(color)) || "#ffffff";
+      gameConstants.playerColors = [...(gameConstants.playerColors || []), next];
+      renderConstantsTool();
+    }
+
+    async function saveGameConstants() {
+      saveConstantsButton.disabled = true;
+      saveConstantsButton.textContent = "Saving";
+      try {
+        const result = await postJson("/api/game-constants", { constants: gameConstants });
+        gameConstants = result.constants || gameConstants;
+        updateConstantsStorageStatus(result.storage);
+        renderConstantsTool();
+      } finally {
+        saveConstantsButton.disabled = false;
+        saveConstantsButton.textContent = "Save Constants";
+      }
+    }
+
+    async function setupConstantsTool() {
+      constantsScreen.classList.remove("hidden");
+      addPlayerColorButton.addEventListener("click", addPlayerColor);
+      saveConstantsButton.addEventListener("click", saveGameConstants);
+      try {
+        await loadGameConstants();
+      } catch (error) {
+        constantsStorageStatus.textContent = error.message;
+      }
+    }
+
     if (role === "lab") {
       setupLab();
     } else if (role === "art") {
       setupArtTool();
     } else if (role === "flow") {
       setupFlowTool();
+    } else if (role === "constants") {
+      setupConstantsTool();
     } else if (role === "controller") {
       setupController();
     } else {

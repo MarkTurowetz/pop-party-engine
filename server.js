@@ -13,12 +13,16 @@ const BUILD_INFO_FILE = path.join(ROOT, "build-info.json");
 const DEFAULT_GAME_FLOW_FILE = path.join(ROOT, "game-flow.default.json");
 const GAME_FLOW_FILE = path.resolve(ROOT, process.env.GAME_FLOW_FILE || "game-flow.json");
 const GAME_FLOW_BACKUP_DIR = path.join(ROOT, "game-flow.backups");
+const DEFAULT_GAME_CONSTANTS_FILE = path.join(ROOT, "game-constants.default.json");
+const GAME_CONSTANTS_FILE = path.resolve(ROOT, process.env.GAME_CONSTANTS_FILE || "game-constants.json");
+const GAME_CONSTANTS_BACKUP_DIR = path.join(ROOT, "game-constants.backups");
 const GAME_FLOW_GITHUB_TOKEN = process.env.GAME_FLOW_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
 const GAME_FLOW_STORAGE = String(process.env.GAME_FLOW_STORAGE || (GAME_FLOW_GITHUB_TOKEN ? "github" : "local")).toLowerCase();
 const GAME_FLOW_GITHUB_REPO = process.env.GAME_FLOW_GITHUB_REPO || process.env.GITHUB_REPOSITORY || "MarkTurowetz/pop-party";
 const GAME_FLOW_GITHUB_BRANCH = process.env.GAME_FLOW_GITHUB_BRANCH || "game-data";
 const GAME_FLOW_GITHUB_BASE_BRANCH = process.env.GAME_FLOW_GITHUB_BASE_BRANCH || "main";
 const GAME_FLOW_GITHUB_PATH = process.env.GAME_FLOW_GITHUB_PATH || "game-flow.json";
+const GAME_CONSTANTS_GITHUB_PATH = process.env.GAME_CONSTANTS_GITHUB_PATH || "game-constants.json";
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
@@ -105,8 +109,11 @@ const defaultGameFlow = {
 };
 
 const rooms = new Map();
-const avatarColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff"];
+const defaultPlayerColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"];
 const avatarShapes = ["rex", "stego", "trike", "raptor", "bronto", "ankylo"];
+const defaultGameConstants = {
+  playerColors: defaultPlayerColors
+};
 const acceptedArtTypes = {
   "image/png": ".png",
   "image/svg+xml": ".svg",
@@ -239,6 +246,19 @@ function cleanFlowText(value, fallback = "") {
   return cleaned || fallback;
 }
 
+function normalizeColor(value) {
+  const color = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
+}
+
+function normalizeGameConstants(constants) {
+  const colors = Array.isArray(constants?.playerColors) ? constants.playerColors : defaultPlayerColors;
+  const playerColors = [...new Set(colors.map(normalizeColor).filter(Boolean))];
+  return {
+    playerColors: playerColors.length ? playerColors : [...defaultPlayerColors]
+  };
+}
+
 function normalizeGameFlow(flow) {
   const incomingStates = Array.isArray(flow?.states) ? flow.states : defaultGameFlow.states;
   const states = incomingStates.map((state, stateIndex) => {
@@ -345,11 +365,27 @@ function readDefaultGameFlowSource() {
   }
 }
 
+function readDefaultGameConstantsSource() {
+  try {
+    return normalizeGameConstants(readJsonFile(DEFAULT_GAME_CONSTANTS_FILE));
+  } catch (error) {
+    return cloneJson(defaultGameConstants);
+  }
+}
+
 function readLocalGameFlowSource() {
   try {
     return readJsonFile(GAME_FLOW_FILE);
   } catch (error) {
     return readDefaultGameFlowSource();
+  }
+}
+
+function readLocalGameConstantsSource() {
+  try {
+    return normalizeGameConstants(readJsonFile(GAME_CONSTANTS_FILE));
+  } catch (error) {
+    return readDefaultGameConstantsSource();
   }
 }
 
@@ -362,12 +398,82 @@ const gameFlowStore = {
   ready: null
 };
 
+const gameConstantsStore = {
+  source: readLocalGameConstantsSource(),
+  remoteSha: "",
+  storageKind: GAME_FLOW_STORAGE === "github" ? "github" : "local",
+  loadedAt: 0,
+  error: ""
+};
+
 function readGameFlowSource() {
   return cloneJson(gameFlowStore.source || readDefaultGameFlowSource());
 }
 
 function readGameFlow() {
   return normalizeGameFlow(readGameFlowSource());
+}
+
+function readGameConstantsSource() {
+  return cloneJson(gameConstantsStore.source || readDefaultGameConstantsSource());
+}
+
+function gameConstants() {
+  return normalizeGameConstants(readGameConstantsSource());
+}
+
+async function loadGameConstantsSource({ refresh = false } = {}) {
+  if (gameConstantsStore.storageKind !== "github") {
+    gameConstantsStore.source = readLocalGameConstantsSource();
+    gameConstantsStore.loadedAt = Date.now();
+    gameConstantsStore.error = "";
+    return readGameConstantsSource();
+  }
+
+  if (!refresh && gameConstantsStore.loadedAt) return readGameConstantsSource();
+  if (!GAME_FLOW_GITHUB_TOKEN) {
+    gameConstantsStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
+    return readGameConstantsSource();
+  }
+
+  try {
+    const remote = await readGithubJsonSource(GAME_CONSTANTS_GITHUB_PATH);
+    if (remote?.data) {
+      gameConstantsStore.source = normalizeGameConstants(remote.data);
+      gameConstantsStore.remoteSha = remote.sha || "";
+    } else {
+      const seeded = await writeGithubJsonSource(readGameConstantsSource(), "", GAME_CONSTANTS_GITHUB_PATH, "Save game constants");
+      gameConstantsStore.source = normalizeGameConstants(seeded.data);
+      gameConstantsStore.remoteSha = seeded.sha || "";
+    }
+    gameConstantsStore.loadedAt = Date.now();
+    gameConstantsStore.error = "";
+  } catch (error) {
+    gameConstantsStore.error = `GitHub constants storage unavailable: ${error.message}`;
+  }
+
+  return readGameConstantsSource();
+}
+
+async function writeGameConstants(constants) {
+  const normalized = normalizeGameConstants(constants);
+  backupGameConstantsSource();
+  if (gameConstantsStore.storageKind === "github") {
+    if (!GAME_FLOW_GITHUB_TOKEN) {
+      throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
+    }
+    const saved = await writeGithubJsonSource(normalized, gameConstantsStore.remoteSha, GAME_CONSTANTS_GITHUB_PATH, "Save game constants");
+    gameConstantsStore.source = normalizeGameConstants(saved.data);
+    gameConstantsStore.remoteSha = saved.sha || "";
+    gameConstantsStore.loadedAt = Date.now();
+    gameConstantsStore.error = "";
+    mirrorGameConstantsSource(gameConstantsStore.source);
+    return readGameConstantsSource();
+  }
+  writeLocalGameConstantsSource(normalized);
+  gameConstantsStore.source = normalized;
+  gameConstantsStore.loadedAt = Date.now();
+  return readGameConstantsSource();
 }
 
 async function loadGameFlowSource({ refresh = false } = {}) {
@@ -433,8 +539,19 @@ function backupGameFlowSource() {
   fs.copyFileSync(GAME_FLOW_FILE, path.join(GAME_FLOW_BACKUP_DIR, `game-flow-${stamp}.json`));
 }
 
+function backupGameConstantsSource() {
+  if (!fs.existsSync(GAME_CONSTANTS_FILE)) return;
+  fs.mkdirSync(GAME_CONSTANTS_BACKUP_DIR, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  fs.copyFileSync(GAME_CONSTANTS_FILE, path.join(GAME_CONSTANTS_BACKUP_DIR, `game-constants-${stamp}.json`));
+}
+
 function writeLocalGameFlowSource(flow) {
   fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(flow, null, 2)}\n`);
+}
+
+function writeLocalGameConstantsSource(constants) {
+  fs.writeFileSync(GAME_CONSTANTS_FILE, `${JSON.stringify(constants, null, 2)}\n`);
 }
 
 function mirrorGameFlowSource(flow) {
@@ -442,6 +559,14 @@ function mirrorGameFlowSource(flow) {
     writeLocalGameFlowSource(flow);
   } catch (error) {
     // The durable provider is authoritative; local mirrors are best-effort.
+  }
+}
+
+function mirrorGameConstantsSource(constants) {
+  try {
+    writeLocalGameConstantsSource(constants);
+  } catch (error) {
+    // Durable storage is authoritative; local mirrors are best-effort.
   }
 }
 
@@ -477,8 +602,8 @@ function githubRepoPath() {
   return `/repos/${GAME_FLOW_GITHUB_REPO}`;
 }
 
-function githubContentPath() {
-  return GAME_FLOW_GITHUB_PATH.split("/").map((part) => encodeURIComponent(part)).join("/");
+function githubContentPath(filePath) {
+  return filePath.split("/").map((part) => encodeURIComponent(part)).join("/");
 }
 
 async function ensureGithubDataBranch() {
@@ -501,38 +626,54 @@ async function ensureGithubDataBranch() {
 }
 
 async function readGithubGameFlowSource() {
+  const result = await readGithubJsonSource(GAME_FLOW_GITHUB_PATH);
+  return result ? { flow: result.data, sha: result.sha } : null;
+}
+
+async function writeGithubGameFlowSource(flow, sha = "") {
+  try {
+    const result = await writeGithubJsonSource(flow, sha, GAME_FLOW_GITHUB_PATH, "Save game flow", false);
+    return { flow: result.data, sha: result.sha };
+  } catch (error) {
+    if (error.status !== 409 || !sha) throw error;
+    const latest = await readGithubGameFlowSource();
+    const merged = mergeFlowWithExistingSubActions(flow, latest?.flow || {});
+    return writeGithubGameFlowSource(merged, latest?.sha || "");
+  }
+}
+
+async function readGithubJsonSource(filePath) {
   await ensureGithubDataBranch();
   try {
-    const file = await githubRequest(`${githubRepoPath()}/contents/${githubContentPath()}?ref=${encodeURIComponent(GAME_FLOW_GITHUB_BRANCH)}`);
+    const file = await githubRequest(`${githubRepoPath()}/contents/${githubContentPath(filePath)}?ref=${encodeURIComponent(GAME_FLOW_GITHUB_BRANCH)}`);
     if (!file?.content) return null;
     const json = Buffer.from(file.content, "base64").toString("utf8");
-    return { flow: JSON.parse(json), sha: file.sha || "" };
+    return { data: JSON.parse(json), sha: file.sha || "" };
   } catch (error) {
     if (error.status === 404) return null;
     throw error;
   }
 }
 
-async function writeGithubGameFlowSource(flow, sha = "") {
+async function writeGithubJsonSource(data, sha = "", filePath = GAME_FLOW_GITHUB_PATH, messagePrefix = "Save JSON", retryConflict = true) {
   await ensureGithubDataBranch();
   const payload = {
-    message: `Save game flow ${new Date().toISOString()}`,
-    content: Buffer.from(`${JSON.stringify(flow, null, 2)}\n`).toString("base64"),
+    message: `${messagePrefix} ${new Date().toISOString()}`,
+    content: Buffer.from(`${JSON.stringify(data, null, 2)}\n`).toString("base64"),
     branch: GAME_FLOW_GITHUB_BRANCH
   };
   if (sha) payload.sha = sha;
   try {
-    const result = await githubRequest(`${githubRepoPath()}/contents/${githubContentPath()}`, {
+    const result = await githubRequest(`${githubRepoPath()}/contents/${githubContentPath(filePath)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    return { flow, sha: result?.content?.sha || "" };
+    return { data, sha: result?.content?.sha || "" };
   } catch (error) {
-    if (error.status !== 409 || !sha) throw error;
-    const latest = await readGithubGameFlowSource();
-    const merged = mergeFlowWithExistingSubActions(flow, latest?.flow || {});
-    return writeGithubGameFlowSource(merged, latest?.sha || "");
+    if (!retryConflict || error.status !== 409 || !sha) throw error;
+    const latest = await readGithubJsonSource(filePath);
+    return writeGithubJsonSource(data, latest?.sha || "", filePath, messagePrefix, retryConflict);
   }
 }
 
@@ -839,6 +980,22 @@ async function sendGameFlow(res) {
   });
 }
 
+async function sendGameConstants(res) {
+  const constants = await loadGameConstantsSource({ refresh: gameConstantsStore.storageKind === "github" });
+  sendJson(res, 200, {
+    ok: true,
+    constants: normalizeGameConstants(constants),
+    storage: {
+      kind: gameConstantsStore.storageKind,
+      durable: gameConstantsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
+      error: gameConstantsStore.error || "",
+      repo: gameConstantsStore.storageKind === "github" ? GAME_FLOW_GITHUB_REPO : "",
+      branch: gameConstantsStore.storageKind === "github" ? GAME_FLOW_GITHUB_BRANCH : "",
+      path: gameConstantsStore.storageKind === "github" ? GAME_CONSTANTS_GITHUB_PATH : ""
+    }
+  });
+}
+
 async function handleSaveGameFlow(req, res) {
   let payload;
   try {
@@ -874,6 +1031,36 @@ async function handleSaveGameFlow(req, res) {
   });
 }
 
+async function handleSaveGameConstants(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req, 32 * 1024);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  let constants;
+  try {
+    constants = await writeGameConstants(payload.constants || payload);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: `Game constants could not be saved: ${error.message}` });
+    return;
+  }
+  for (const room of rooms.values()) {
+    broadcastLobby(room);
+  }
+  sendJson(res, 200, {
+    ok: true,
+    constants,
+    storage: {
+      kind: gameConstantsStore.storageKind,
+      durable: gameConstantsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
+      error: gameConstantsStore.error || ""
+    }
+  });
+}
+
 function getRoom(stageCode) {
   if (!rooms.has(stageCode)) {
     rooms.set(stageCode, {
@@ -903,9 +1090,10 @@ function getExistingRoom(stageCode) {
 }
 
 function makeAvatar(playerIndex) {
+  const colors = gameConstants().playerColors;
   return {
-    color: avatarColors[playerIndex % avatarColors.length],
-    shape: avatarShapes[Math.floor(playerIndex / avatarColors.length) % avatarShapes.length]
+    color: colors[playerIndex % colors.length],
+    shape: avatarShapes[Math.floor(playerIndex / colors.length) % avatarShapes.length]
   };
 }
 
@@ -915,12 +1103,16 @@ function randomArrayItem(items) {
 
 function makeRandomAvatar(room, playerId) {
   const usedShapes = new Set();
+  const usedColors = new Set();
   for (const player of room.players.values()) {
     if (player.id !== playerId && player.avatar?.shape) usedShapes.add(player.avatar.shape);
+    if (player.id !== playerId && player.avatar?.color) usedColors.add(normalizeColor(player.avatar.color));
   }
   const availableShapes = avatarShapes.filter((shape) => !usedShapes.has(shape));
+  const playerColors = gameConstants().playerColors;
+  const availableColors = playerColors.filter((color) => !usedColors.has(color));
   const shape = randomArrayItem(availableShapes.length ? availableShapes : avatarShapes);
-  const color = randomArrayItem(avatarColors);
+  const color = randomArrayItem(availableColors.length ? availableColors : playerColors);
   return { color, shape };
 }
 
@@ -1192,7 +1384,7 @@ async function handleSelectAvatar(req, res) {
   }
 
   player.avatar = {
-    color: player.avatar?.color || randomArrayItem(avatarColors),
+    color: player.avatar?.color || randomArrayItem(gameConstants().playerColors),
     shape
   };
   player.active = true;
@@ -1472,6 +1664,18 @@ function router(req, res) {
     return;
   }
 
+  if (req.method === "GET" && url.pathname === "/api/game-constants") {
+    sendGameConstants(res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message });
+    });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/game-constants") {
+    handleSaveGameConstants(req, res);
+    return;
+  }
+
   const artAssetMatch = url.pathname.match(/^\/api\/art-assets\/([a-z0-9-]+)$/i);
   if (req.method === "POST" && artAssetMatch) {
     handleReplaceArtAsset(req, res, artAssetMatch[1]);
@@ -1606,5 +1810,12 @@ server.listen(PORT, HOST, () => {
     })
     .catch((error) => {
       console.error(`Game flow storage failed: ${error.message}`);
+    });
+  loadGameConstantsSource({ refresh: true })
+    .then(() => {
+      console.log(`Game constants storage: ${gameConstantsStore.storageKind}${gameConstantsStore.error ? ` (${gameConstantsStore.error})` : ""}`);
+    })
+    .catch((error) => {
+      console.error(`Game constants storage failed: ${error.message}`);
     });
 });

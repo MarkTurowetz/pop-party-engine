@@ -8,5 +8,7 @@ scripts/
 tools/
 game-flow.json
 game-flow.backups/
+game-constants.json
+game-constants.backups/
 *.py
 *.sh

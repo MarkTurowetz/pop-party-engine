@@ -19,5 +19,7 @@ services:
         value: main
       - key: GAME_FLOW_GITHUB_PATH
         value: game-flow.json
+      - key: GAME_CONSTANTS_GITHUB_PATH
+        value: game-constants.json
       - key: GAME_FLOW_GITHUB_TOKEN
         sync: false
