@@ -11,6 +11,11 @@ const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
 const START_COUNTDOWN_MS = 3000;
 const START_GO_HOLD_MS = 700;
+const INTRO_ACTIONS = [
+  { type: "present", text: "This is test number 1" },
+  { type: "present", text: "Now test 2" },
+  { type: "text", text: "this text was not presented so we can't click to continue" }
+];
 
 const rooms = new Map();
 const avatarColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff"];
@@ -77,6 +82,7 @@ function getRoom(stageCode) {
       countdownStartedAt: 0,
       countdownEndsAt: 0,
       countdownTimerId: null,
+      actionIndex: 0,
       revision: 0
     });
   }
@@ -127,6 +133,10 @@ function publicPlayer(player, room) {
 
 function lobbyPayload(room) {
   selectVip(room);
+  if (room.phase === "intro" && room.actionIndex >= INTRO_ACTIONS.length) {
+    room.actionIndex = Math.max(0, INTRO_ACTIONS.length - 1);
+  }
+  const currentAction = room.phase === "intro" ? INTRO_ACTIONS[room.actionIndex] || null : null;
   return {
     type: "lobby",
     stageCode: room.stageCode,
@@ -134,6 +144,7 @@ function lobbyPayload(room) {
     phase: room.phase,
     countdownStartedAt: room.countdownStartedAt,
     countdownEndsAt: room.countdownEndsAt,
+    action: currentAction ? { index: room.actionIndex, ...currentAction } : null,
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
     startToken: room.startToken,
@@ -165,6 +176,7 @@ function enterLobbyPhase(room) {
   room.phase = "lobby";
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
+  room.actionIndex = 0;
 }
 
 function enterIntroPhase(room) {
@@ -172,6 +184,7 @@ function enterIntroPhase(room) {
   room.phase = "intro";
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
+  room.actionIndex = 0;
   broadcastLobby(room);
 }
 
@@ -401,6 +414,33 @@ async function handleCancelStart(req, res) {
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
+async function handleAdvancePresentation(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const room = getExistingRoom(stageCode);
+  if (!room) {
+    sendJson(res, 404, { ok: false, error: "Room not found" });
+    return;
+  }
+
+  const currentAction = room.phase === "intro" ? INTRO_ACTIONS[room.actionIndex] : null;
+  if (!currentAction || currentAction.type !== "present") {
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
+
+  room.actionIndex = Math.min(room.actionIndex + 1, INTRO_ACTIONS.length - 1);
+  broadcastLobby(room);
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+}
+
 function handleLobby(req, res, stageCode) {
   const room = getRoom(stageCode);
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -467,6 +507,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/cancel-start") {
     handleCancelStart(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/advance-presentation") {
+    handleAdvancePresentation(req, res);
     return;
   }
 
