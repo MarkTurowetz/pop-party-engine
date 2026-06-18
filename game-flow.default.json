@@ -50,6 +50,26 @@
             "seconds": 0
           },
           "transition": "horizontalWipe"
+        },
+        {
+          "id": "intro-hide-players",
+          "name": "Hide Players",
+          "type": "setPlayersShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "isShown": false
+        },
+        {
+          "id": "intro-show-players",
+          "name": "Show Players",
+          "type": "setPlayersShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "isShown": true
         }
       ]
     }

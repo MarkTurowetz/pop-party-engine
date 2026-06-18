@@ -450,6 +450,18 @@
       justify-items: center;
       gap: 8px;
       color: #fff;
+      transform: scale(1);
+      transform-origin: center bottom;
+      opacity: 1;
+      transition: transform 1000ms cubic-bezier(0.19, 1, 0.22, 1), opacity 1000ms cubic-bezier(0.19, 1, 0.22, 1);
+      transition-delay: calc(var(--player-index, 0) * 45ms);
+      will-change: transform, opacity;
+    }
+
+    .player-lobby.players-hidden .player-tile {
+      transform: scale(0);
+      opacity: 0;
+      pointer-events: none;
     }
 
     .player-avatar {
@@ -1151,6 +1163,13 @@
       background: var(--cream);
     }
 
+    .flow-sub-action-row {
+      margin-left: 18px;
+      border-style: dashed;
+      background: #fff;
+      cursor: pointer;
+    }
+
     .flow-action-row.is-selected,
     .flow-state-header.is-selected {
       background: var(--cyan);
@@ -1506,6 +1525,8 @@
     let renderedActionKey = "";
     let stageWipeTimer = null;
     let actionTimingTimer = null;
+    let playerVisibilityTimer = null;
+    let subActionTimers = [];
     let currentStageState = null;
     let presentationAdvancePending = false;
     let artAssets = [];
@@ -1765,9 +1786,10 @@
 
     function renderStagePlayers(players) {
       playerLobby.replaceChildren();
-      for (const player of players) {
+      players.forEach((player, playerIndex) => {
         const tile = document.createElement("article");
         tile.className = "player-tile";
+        tile.style.setProperty("--player-index", playerIndex);
         tile.innerHTML = `
           <div class="player-avatar ${avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${avatarFrameImage()}${dinoIcon(player.avatar?.shape)}</div>
           <div class="player-name"></div>
@@ -1775,7 +1797,7 @@
         `;
         tile.querySelector(".player-name").textContent = player.name;
         playerLobby.appendChild(tile);
-      }
+      });
     }
 
     function runStageWipe(onCovered) {
@@ -1811,6 +1833,7 @@
       stagePresentationText.classList.toggle("is-extra-long", presentationText.length > 104);
       presentClickWidget.classList.toggle("hidden", !(phase === "intro" && action?.type === "present" && action?.timing?.mode !== "S+"));
       renderStagePlayers(players);
+      playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
 
       const vip = players.find((player) => player.isVip);
       joinPrompt.classList.toggle("hidden", phase === "intro" || players.length > 0);
@@ -1840,9 +1863,10 @@
       const isNewAction = renderedActionKey !== actionKey;
       const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro";
       renderedStagePhase = nextPhase;
-      if (isNewAction) scheduleActionTiming(lobby, actionKey);
+      if (isNewAction) prepareNewStageAction(lobby, actionKey);
       if (lobby.action?.type === "transition" && isNewAction) {
         renderedActionKey = actionKey;
+        scheduleSubActions(lobby.action, actionKey);
         runStageWipe(() => {
           applyStageState(lobby);
           completeFlowAction("callback", lobby.action.id);
@@ -1851,10 +1875,21 @@
       }
       renderedActionKey = actionKey;
       if (shouldWipeToIntro) {
-        runStageWipe(() => applyStageState(lobby));
+        runStageWipe(() => {
+          applyStageState(lobby);
+          if (isNewAction) runStageAction(lobby.action, true, actionKey);
+        });
         return;
       }
       applyStageState(lobby);
+      if (isNewAction) runStageAction(lobby.action, true, actionKey);
+    }
+
+    function prepareNewStageAction(lobby, actionKey) {
+      window.clearTimeout(playerVisibilityTimer);
+      for (const timerId of subActionTimers) window.clearTimeout(timerId);
+      subActionTimers = [];
+      scheduleActionTiming(lobby, actionKey);
     }
 
     function scheduleActionTiming(lobby, actionKey) {
@@ -1867,6 +1902,49 @@
         if (renderedActionKey !== actionKey) return;
         completeFlowAction("startTimer", action.id);
       }, delayMs);
+    }
+
+    function scheduleSubActions(action, actionKey) {
+      for (const subAction of action?.subActions || []) {
+        const delayMs = Math.max(0, Number(subAction.timing?.seconds || 0) * 1000);
+        const timerId = window.setTimeout(() => {
+          if (renderedActionKey !== actionKey) return;
+          runStageAction(subAction, false, actionKey);
+        }, delayMs);
+        subActionTimers.push(timerId);
+      }
+    }
+
+    function runStageAction(action, isPrimary, actionKey) {
+      if (!action) return;
+      if (isPrimary) scheduleSubActions(action, actionKey);
+      if (action.type === "setPlayersShown") {
+        playerLobby.classList.toggle("players-hidden", action.isShown === false);
+        if (isPrimary) {
+          const playerCount = playerLobby.querySelectorAll(".player-tile").length;
+          const delayMs = 1000 + Math.max(0, playerCount - 1) * 45;
+          playerVisibilityTimer = window.setTimeout(() => {
+            if (renderedActionKey !== actionKey) return;
+            completeFlowAction("callback", action.id);
+          }, delayMs);
+        }
+        return;
+      }
+      if (!isPrimary && (action.type === "present" || action.type === "text")) {
+        const text = action.text || "";
+        stagePresentationText.textContent = text;
+        stagePresentationText.classList.toggle("hidden", !text);
+        stagePresentationText.classList.toggle("is-long", text.length > 62);
+        stagePresentationText.classList.toggle("is-extra-long", text.length > 104);
+        return;
+      }
+      if (!isPrimary && action.type === "transition") {
+        runStageWipe(() => {});
+        return;
+      }
+      if (action.type === "text" && isPrimary) {
+        completeFlowAction("callback", action.id);
+      }
     }
 
     async function pollLobby(stageCode) {
@@ -2421,7 +2499,23 @@
     }
 
     function flowAction(stateId, actionId) {
-      return flowState(stateId)?.actions.find((action) => action.id === actionId) || null;
+      return flowActionRef(stateId, actionId)?.action || null;
+    }
+
+    function flowActionRef(stateId, actionId) {
+      const state = flowState(stateId);
+      if (!state || !actionId) return null;
+      for (const action of state.actions) {
+        if (action.id === actionId) {
+          return { state, action, parentAction: null, actions: state.actions, isSubAction: false };
+        }
+        for (const subAction of action.subActions || []) {
+          if (subAction.id === actionId) {
+            return { state, action: subAction, parentAction: action, actions: action.subActions, isSubAction: true };
+          }
+        }
+      }
+      return null;
     }
 
     function makeFlowId(label, fallback) {
@@ -2436,10 +2530,19 @@
       return flowActionTypes.find((item) => item.id === type)?.name || type;
     }
 
-    function actionSummary(action) {
-      const timing = ensureActionTiming(action);
+    function actionTypeMeta(type) {
+      return flowActionTypes.find((item) => item.id === type) || { id: type, name: type, category: "standard" };
+    }
+
+    function actionCategoryName(action) {
+      return actionTypeMeta(action.type).category === "input" ? "Input" : "Standard";
+    }
+
+    function actionSummary(action, isSubAction = false) {
+      const timing = ensureActionTiming(action, isSubAction);
       const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
       if (action.type === "presentText") return `"${action.text || ""}" / ${timingText}`;
+      if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
       if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"} / ${timingText}`;
       return `${action.text || "Text"} / ${timingText}`;
@@ -2488,31 +2591,39 @@
         const actionsEl = document.createElement("div");
         actionsEl.className = "flow-state-actions";
         for (const action of state.actions) {
-          const actionButton = document.createElement("button");
-          actionButton.type = "button";
-          actionButton.className = "flow-action-row";
-          actionButton.draggable = true;
-          actionButton.dataset.stateId = state.id;
-          actionButton.dataset.actionId = action.id;
-          actionButton.classList.toggle("is-selected", selectedFlowActionId === action.id);
-          actionButton.innerHTML = `
-            <span><strong></strong><span></span></span>
-            <span class="flow-pill"></span>
-          `;
-          actionButton.querySelector("strong").textContent = action.name;
-          actionButton.querySelector("span span").textContent = actionSummary(action);
-          actionButton.querySelector(".flow-pill").textContent = actionTypeName(action.type);
-          actionButton.addEventListener("click", () => {
-            selectedFlowStateId = state.id;
-            selectedFlowActionId = action.id;
-            renderFlowTool();
-          });
-          bindActionDrag(actionButton, state.id, action.id);
-          actionsEl.appendChild(actionButton);
+          actionsEl.appendChild(flowActionRow(state, action, false));
+          for (const subAction of action.subActions || []) {
+            actionsEl.appendChild(flowActionRow(state, subAction, true));
+          }
         }
         stateEl.appendChild(actionsEl);
         flowList.appendChild(stateEl);
       }
+    }
+
+    function flowActionRow(state, action, isSubAction) {
+      const actionButton = document.createElement("button");
+      actionButton.type = "button";
+      actionButton.className = "flow-action-row";
+      actionButton.classList.toggle("flow-sub-action-row", isSubAction);
+      actionButton.draggable = !isSubAction;
+      actionButton.dataset.stateId = state.id;
+      actionButton.dataset.actionId = action.id;
+      actionButton.classList.toggle("is-selected", selectedFlowActionId === action.id);
+      actionButton.innerHTML = `
+        <span><strong></strong><span></span></span>
+        <span class="flow-pill"></span>
+      `;
+      actionButton.querySelector("strong").textContent = isSubAction ? `Sub: ${action.name}` : action.name;
+      actionButton.querySelector("span span").textContent = actionSummary(action, isSubAction);
+      actionButton.querySelector(".flow-pill").textContent = `${actionCategoryName(action)} / ${actionTypeName(action.type)}`;
+      actionButton.addEventListener("click", () => {
+        selectedFlowStateId = state.id;
+        selectedFlowActionId = action.id;
+        renderFlowTool();
+      });
+      if (!isSubAction) bindActionDrag(actionButton, state.id, action.id);
+      return actionButton;
     }
 
     function bindStateDrag(element, stateId) {
@@ -2608,7 +2719,8 @@
 
     function renderFlowEditor() {
       const state = flowState(selectedFlowStateId);
-      const action = state ? flowAction(selectedFlowStateId, selectedFlowActionId) : null;
+      const actionRef = state ? flowActionRef(selectedFlowStateId, selectedFlowActionId) : null;
+      const action = actionRef?.action || null;
       flowEditor.replaceChildren();
       addActionButton.disabled = !state;
       deleteFlowItemButton.disabled = !state;
@@ -2628,13 +2740,13 @@
           selectedFlowStateId = state.id;
           renderFlowTool();
         }));
-        flowEditor.appendChild(readOnlyFlowNote("Actions inside this state run from top to bottom. Presented text advances when you click the stage."));
+        flowEditor.appendChild(readOnlyFlowNote("Primary actions run from top to bottom. Input actions wait for input; standard actions can use S+ or E+ timing."));
         return;
       }
 
       flowEditorTitle.textContent = action.name;
-      flowEditorHelp.textContent = `Editing action in ${state.name}.`;
-      const timing = ensureActionTiming(action);
+      flowEditorHelp.textContent = actionRef.isSubAction ? `Editing sub-action under ${actionRef.parentAction.name}.` : `Editing primary action in ${state.name}.`;
+      const timing = ensureActionTiming(action, actionRef.isSubAction);
       flowEditor.appendChild(flowField("Action Name", action.name, (value) => {
         action.name = value || action.name;
         renderFlowTool();
@@ -2642,13 +2754,24 @@
       flowEditor.appendChild(flowSelect("Action Type", action.type, flowActionTypes, (value) => {
         action.type = value;
         if (value === "presentText") action.text = action.text || "Presented text";
+        if (value === "setPlayersShown") action.isShown = action.isShown !== false;
         if (value === "transition") action.transition = action.transition || "horizontalWipe";
         if (value === "transitionState") action.targetState = action.targetState || "intro";
+        ensureActionTiming(action, actionRef.isSubAction);
         renderFlowTool();
       }));
       if (action.type === "presentText" || action.type === "text") {
         flowEditor.appendChild(flowTextarea("Text", action.text || "", (value) => {
           action.text = value;
+          renderFlowList();
+        }));
+      }
+      if (action.type === "setPlayersShown") {
+        flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
           renderFlowList();
         }));
       }
@@ -2671,17 +2794,29 @@
           renderFlowList();
         }));
       }
-      flowEditor.appendChild(flowSelect("Timing Mode", timing.mode, [
-        { id: "E+", name: "E+ Timing" },
-        { id: "S+", name: "S+ Timing" }
-      ], (value) => {
-        ensureActionTiming(action).mode = value === "S+" ? "S+" : "E+";
+      const isInputAction = actionTypeMeta(action.type).category === "input" && !actionRef.isSubAction;
+      const timingOptions = actionRef.isSubAction
+        ? [{ id: "S+", name: "S+ Timing" }]
+        : isInputAction
+          ? [{ id: "E+", name: "E+ Timing" }]
+          : [{ id: "E+", name: "E+ Timing" }, { id: "S+", name: "S+ Timing" }];
+      if (isInputAction) {
+        flowEditor.appendChild(readOnlyFlowNote("Input actions always use E+ timing because they wait for player or stage input."));
+      }
+      if (actionRef.isSubAction) {
+        flowEditor.appendChild(readOnlyFlowNote("Sub-actions use S+ timing as an offset from the primary action start."));
+      }
+      flowEditor.appendChild(flowSelect("Timing Mode", timing.mode, timingOptions, (value) => {
+        ensureActionTiming(action, actionRef.isSubAction).mode = value === "S+" && !isInputAction ? "S+" : "E+";
         renderFlowList();
       }));
       flowEditor.appendChild(flowNumber("Timing Seconds", timing.seconds, (value) => {
-        ensureActionTiming(action).seconds = value;
+        ensureActionTiming(action, actionRef.isSubAction).seconds = value;
         renderFlowList();
       }));
+      if (!actionRef.isSubAction) {
+        flowEditor.appendChild(flowActionButton("Add Sub-Action", () => addFlowSubAction(action)));
+      }
     }
 
     function flowField(label, value, onChange) {
@@ -2744,12 +2879,26 @@
       return field;
     }
 
-    function ensureActionTiming(action) {
+    function ensureActionTiming(action, isSubAction = false) {
       if (!action.timing) action.timing = { mode: "E+", seconds: 0 };
-      action.timing.mode = action.timing.mode === "S+" ? "S+" : "E+";
+      const isInputAction = actionTypeMeta(action.type).category === "input" && !isSubAction;
+      if (isSubAction) {
+        action.timing.mode = "S+";
+      } else {
+        action.timing.mode = action.timing.mode === "S+" && !isInputAction ? "S+" : "E+";
+      }
       const seconds = Number(action.timing.seconds || 0);
       action.timing.seconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
       return action.timing;
+    }
+
+    function flowActionButton(label, onClick) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary-button";
+      button.textContent = label;
+      button.addEventListener("click", onClick);
+      return button;
     }
 
     function readOnlyFlowNote(text) {
@@ -2772,25 +2921,47 @@
       const state = flowState(selectedFlowStateId);
       if (!state) return;
       const nextNumber = state.actions.length + 1;
-      const action = {
-        id: `${state.id}-action-${Date.now().toString(36)}`,
-        name: `Game Action ${nextNumber}`,
-        type: "presentText",
-        timing: { mode: "E+", seconds: 0 },
-        text: "Presented text"
-      };
-      const selectedIndex = state.actions.findIndex((item) => item.id === selectedFlowActionId);
+      const action = createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
+      const selectedRef = flowActionRef(selectedFlowStateId, selectedFlowActionId);
+      const selectedPrimaryId = selectedRef?.parentAction?.id || selectedFlowActionId;
+      const selectedIndex = state.actions.findIndex((item) => item.id === selectedPrimaryId);
       const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
       state.actions.splice(insertIndex, 0, action);
       selectedFlowActionId = action.id;
       renderFlowTool();
     }
 
+    function addFlowSubAction(parentAction) {
+      const state = flowState(selectedFlowStateId);
+      if (!state || !parentAction) return;
+      if (!Array.isArray(parentAction.subActions)) parentAction.subActions = [];
+      const nextNumber = parentAction.subActions.length + 1;
+      const subAction = createDefaultFlowAction(selectedFlowStateId, `Sub-Action ${nextNumber}`, true);
+      parentAction.subActions.push(subAction);
+      selectedFlowActionId = subAction.id;
+      renderFlowTool();
+    }
+
+    function createDefaultFlowAction(stateId, name, isSubAction) {
+      return {
+        id: `${stateId}-${isSubAction ? "sub-action" : "action"}-${Date.now().toString(36)}`,
+        name,
+        type: isSubAction ? "setPlayersShown" : "presentText",
+        timing: { mode: isSubAction ? "S+" : "E+", seconds: 0 },
+        text: "Presented text",
+        isShown: true,
+        subActions: []
+      };
+    }
+
     function deleteFlowItem() {
       if (!selectedFlowStateId) return;
       if (selectedFlowActionId) {
-        const state = flowState(selectedFlowStateId);
-        state.actions = state.actions.filter((action) => action.id !== selectedFlowActionId);
+        const ref = flowActionRef(selectedFlowStateId, selectedFlowActionId);
+        if (ref) {
+          const index = ref.actions.findIndex((action) => action.id === selectedFlowActionId);
+          if (index >= 0) ref.actions.splice(index, 1);
+        }
         selectedFlowActionId = "";
         renderFlowTool();
         return;

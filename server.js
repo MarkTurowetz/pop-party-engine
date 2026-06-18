@@ -23,10 +23,11 @@ const availableFlowTransitions = [
   { id: "horizontalWipe", name: "Horizontal Wipe" }
 ];
 const availableFlowActionTypes = [
-  { id: "presentText", name: "Present Text" },
-  { id: "transition", name: "Do Transition" },
-  { id: "transitionState", name: "Transition To State" },
-  { id: "text", name: "Show Text" }
+  { id: "presentText", name: "Present Text", category: "input" },
+  { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
+  { id: "transition", name: "Do Transition", category: "standard" },
+  { id: "transitionState", name: "Transition To State", category: "standard" },
+  { id: "text", name: "Show Text", category: "standard" }
 ];
 const defaultGameFlow = {
   states: [
@@ -68,6 +69,20 @@ const defaultGameFlow = {
           type: "transition",
           timing: { mode: "E+", seconds: 0 },
           transition: "horizontalWipe"
+        },
+        {
+          id: "intro-hide-players",
+          name: "Hide Players",
+          type: "setPlayersShown",
+          timing: { mode: "E+", seconds: 0 },
+          isShown: false
+        },
+        {
+          id: "intro-show-players",
+          name: "Show Players",
+          type: "setPlayersShown",
+          timing: { mode: "E+", seconds: 0 },
+          isShown: true
         }
       ]
     }
@@ -221,16 +236,27 @@ function normalizeGameFlow(flow) {
   return { states };
 }
 
-function normalizeFlowAction(action, actionIndex, stateId) {
+function flowActionTypeMeta(type) {
+  return availableFlowActionTypes.find((item) => item.id === type) || availableFlowActionTypes[0];
+}
+
+function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) {
   const type = availableFlowActionTypes.some((item) => item.id === action?.type) ? action.type : "presentText";
+  const category = flowActionTypeMeta(type).category;
+  const fallbackId = `${stateId}-${isSubAction ? "sub-action" : "action"}-${actionIndex + 1}`;
   const base = {
-    id: normalizeFlowId(action?.id || action?.name, `${stateId}-action-${actionIndex + 1}`),
+    id: normalizeFlowId(action?.id || action?.name, fallbackId),
     name: cleanFlowText(action?.name, `Action ${actionIndex + 1}`),
     type,
-    timing: normalizeActionTiming(action?.timing)
+    category,
+    timing: normalizeActionTiming(action?.timing, category !== "input", isSubAction),
+    subActions: normalizeSubActions(action?.subActions, stateId)
   };
   if (type === "presentText") {
     return { ...base, text: cleanFlowText(action?.text, "Presented text") };
+  }
+  if (type === "setPlayersShown") {
+    return { ...base, isShown: action?.isShown !== false };
   }
   if (type === "transition") {
     const transition = availableFlowTransitions.some((item) => item.id === action?.transition) ? action.transition : "horizontalWipe";
@@ -246,8 +272,13 @@ function normalizeFlowAction(action, actionIndex, stateId) {
   return { ...base, text: cleanFlowText(action?.text, "Text") };
 }
 
-function normalizeActionTiming(timing) {
-  const mode = timing?.mode === "S+" ? "S+" : "E+";
+function normalizeSubActions(subActions, stateId) {
+  if (!Array.isArray(subActions)) return [];
+  return subActions.map((subAction, subActionIndex) => normalizeFlowAction(subAction, subActionIndex, stateId, true)).filter(Boolean);
+}
+
+function normalizeActionTiming(timing, allowStartTiming = true, preferStartTiming = false) {
+  const mode = preferStartTiming || (allowStartTiming && timing?.mode === "S+") ? "S+" : "E+";
   const rawSeconds = Number(timing?.seconds || 0);
   const seconds = Number(Math.max(0, Math.min(999, Number.isFinite(rawSeconds) ? rawSeconds : 0)).toFixed(2));
   return { mode, seconds };
@@ -286,17 +317,29 @@ function getStateActions(stateId) {
 function publicFlowAction(action, index) {
   if (!action) return null;
   const timing = action.timing || { mode: "E+", seconds: 0 };
+  const base = {
+    index,
+    id: action.id,
+    name: action.name,
+    actionType: action.type,
+    category: action.category || flowActionTypeMeta(action.type).category,
+    timing,
+    subActions: (action.subActions || []).map((subAction, subActionIndex) => publicFlowAction(subAction, subActionIndex)).filter(Boolean)
+  };
   if (action.type === "presentText") {
-    return { index, id: action.id, name: action.name, type: "present", actionType: action.type, timing, text: action.text };
+    return { ...base, type: "present", text: action.text };
+  }
+  if (action.type === "setPlayersShown") {
+    return { ...base, type: "setPlayersShown", isShown: action.isShown !== false };
   }
   if (action.type === "transition") {
     const transition = availableFlowTransitions.find((item) => item.id === action.transition) || availableFlowTransitions[0];
-    return { index, id: action.id, name: action.name, type: "transition", actionType: action.type, timing, transition: transition.id, transitionName: transition.name };
+    return { ...base, type: "transition", transition: transition.id, transitionName: transition.name };
   }
   if (action.type === "transitionState") {
-    return { index, id: action.id, name: action.name, type: "transitionState", actionType: action.type, timing, targetState: action.targetState };
+    return { ...base, type: "transitionState", targetState: action.targetState };
   }
-  return { index, id: action.id, name: action.name, type: "text", actionType: action.type, timing, text: action.text };
+  return { ...base, type: "text", text: action.text };
 }
 
 function currentRoomAction(room) {
@@ -346,6 +389,14 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
   advanceRoomAction(room);
   broadcastLobby(room);
   return true;
+}
+
+function applyRoomActionEffects(room, action) {
+  if (!action || room.appliedActionEffectId === action.id) return;
+  room.appliedActionEffectId = action.id;
+  if (action.type === "setPlayersShown") {
+    room.playersShown = action.isShown !== false;
+  }
 }
 
 function countdownTargetState() {
@@ -511,6 +562,7 @@ async function handleSaveGameFlow(req, res) {
     clearActionTimer(room);
     room.actionIndex = 0;
     room.presentedAction = null;
+    room.appliedActionEffectId = "";
     broadcastLobby(room);
   }
   sendJson(res, 200, { ok: true, flow });
@@ -530,8 +582,10 @@ function getRoom(stageCode) {
       countdownTimerId: null,
       actionTimerId: null,
       actionCompletionPendingId: "",
+      appliedActionEffectId: "",
       actionIndex: 0,
       presentedAction: null,
+      playersShown: true,
       revision: 0
     });
   }
@@ -583,6 +637,7 @@ function publicPlayer(player, room) {
 function lobbyPayload(room) {
   selectVip(room);
   const currentAction = room.phase !== "lobby" && room.phase !== "starting" ? currentRoomAction(room) : null;
+  applyRoomActionEffects(room, currentAction);
   return {
     type: "lobby",
     stageCode: room.stageCode,
@@ -594,6 +649,7 @@ function lobbyPayload(room) {
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
     startToken: room.startToken,
+    playersShown: room.playersShown !== false,
     players: activePlayers(room).map((player) => publicPlayer(player, room))
   };
 }
@@ -625,6 +681,8 @@ function enterLobbyPhase(room) {
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
   room.presentedAction = null;
+  room.appliedActionEffectId = "";
+  room.playersShown = true;
 }
 
 function enterIntroPhase(room) {
@@ -639,6 +697,8 @@ function enterGamePhase(room, phase) {
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
   room.presentedAction = null;
+  room.appliedActionEffectId = "";
+  room.playersShown = true;
   broadcastLobby(room);
 }
 
@@ -918,7 +978,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "text" || currentAction?.type === "present") {
+  if (currentAction?.type === "transition" || currentAction?.type === "text" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
