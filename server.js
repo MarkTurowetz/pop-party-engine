@@ -9,6 +9,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const PACKAGE_FILE = path.join(ROOT, "package.json");
+const BUILD_INFO_FILE = path.join(ROOT, "build-info.json");
 const DEFAULT_GAME_FLOW_FILE = path.join(ROOT, "game-flow.default.json");
 const GAME_FLOW_FILE = path.join(ROOT, "game-flow.json");
 const GAME_FLOW_BACKUP_DIR = path.join(ROOT, "game-flow.backups");
@@ -122,6 +123,12 @@ const artGroups = [
 ];
 
 function readAppVersion() {
+  try {
+    const buildInfo = JSON.parse(fs.readFileSync(BUILD_INFO_FILE, "utf8"));
+    if (buildInfo.version) return buildInfo.version;
+  } catch (error) {
+    // Fall back below for older checkouts or local experiments.
+  }
   try {
     const manifest = JSON.parse(fs.readFileSync(PACKAGE_FILE, "utf8"));
     const buildNumber = readBuildNumber();

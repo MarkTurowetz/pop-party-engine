@@ -4,6 +4,7 @@
   "private": true,
   "description": "Server-backed Flip 7-style stage and controller party game.",
   "scripts": {
+    "build-info": "node build-version.js",
     "start": "node server.js",
     "dev": "node server.js"
   }
