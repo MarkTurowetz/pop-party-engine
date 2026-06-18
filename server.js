@@ -11,6 +11,7 @@ const INDEX_FILE = path.join(ROOT, "index.html");
 const PACKAGE_FILE = path.join(ROOT, "package.json");
 const DEFAULT_GAME_FLOW_FILE = path.join(ROOT, "game-flow.default.json");
 const GAME_FLOW_FILE = path.join(ROOT, "game-flow.json");
+const GAME_FLOW_BACKUP_DIR = path.join(ROOT, "game-flow.backups");
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
@@ -315,19 +316,47 @@ function normalizeActionTiming(timing, allowStartTiming = true, preferStartTimin
   return { mode, seconds };
 }
 
-function readGameFlow() {
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function readDefaultGameFlowSource() {
   try {
-    return normalizeGameFlow(JSON.parse(fs.readFileSync(GAME_FLOW_FILE, "utf8")));
+    return readJsonFile(DEFAULT_GAME_FLOW_FILE);
   } catch (error) {
-    return readDefaultGameFlow();
+    return cloneJson(defaultGameFlow);
   }
+}
+
+function readGameFlowSource() {
+  try {
+    return readJsonFile(GAME_FLOW_FILE);
+  } catch (error) {
+    return readDefaultGameFlowSource();
+  }
+}
+
+function readGameFlow() {
+  return normalizeGameFlow(readGameFlowSource());
 }
 
 function writeGameFlow(flow) {
   const merged = mergeFlowWithExistingSubActions(flow);
-  const normalized = normalizeGameFlow(merged);
-  fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(normalized, null, 2)}\n`);
-  return normalized;
+  normalizeGameFlow(merged);
+  backupGameFlowSource();
+  fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(merged, null, 2)}\n`);
+  return merged;
+}
+
+function backupGameFlowSource() {
+  if (!fs.existsSync(GAME_FLOW_FILE)) return;
+  fs.mkdirSync(GAME_FLOW_BACKUP_DIR, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  fs.copyFileSync(GAME_FLOW_FILE, path.join(GAME_FLOW_BACKUP_DIR, `game-flow-${stamp}.json`));
 }
 
 function mergeFlowWithExistingSubActions(incomingFlow) {
@@ -381,11 +410,7 @@ function mergeActionSubActions(action, existingActionsById) {
 }
 
 function readDefaultGameFlow() {
-  try {
-    return normalizeGameFlow(JSON.parse(fs.readFileSync(DEFAULT_GAME_FLOW_FILE, "utf8")));
-  } catch (error) {
-    return normalizeGameFlow(defaultGameFlow);
-  }
+  return normalizeGameFlow(readDefaultGameFlowSource());
 }
 
 function getFlowState(flow, stateId) {
@@ -625,9 +650,11 @@ function serveArtFile(res, kind, fileName) {
 }
 
 function sendGameFlow(res) {
+  const flow = readGameFlowSource();
   sendJson(res, 200, {
     ok: true,
-    flow: readGameFlow(),
+    flow,
+    runtimeFlow: normalizeGameFlow(flow),
     availableActionTypes: availableFlowActionTypes,
     availableTransitions: availableFlowTransitions
   });
@@ -642,7 +669,13 @@ async function handleSaveGameFlow(req, res) {
     return;
   }
 
-  const flow = writeGameFlow(payload.flow || payload);
+  let flow;
+  try {
+    flow = writeGameFlow(payload.flow || payload);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Game flow could not be saved." });
+    return;
+  }
   for (const room of rooms.values()) {
     clearActionTimer(room);
     room.actionIndex = 0;
@@ -650,7 +683,7 @@ async function handleSaveGameFlow(req, res) {
     room.appliedActionEffectId = "";
     broadcastLobby(room);
   }
-  sendJson(res, 200, { ok: true, flow });
+  sendJson(res, 200, { ok: true, flow, runtimeFlow: normalizeGameFlow(flow) });
 }
 
 function getRoom(stageCode) {

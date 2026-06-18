@@ -7,5 +7,6 @@ tmp/
 scripts/
 tools/
 game-flow.json
+game-flow.backups/
 *.py
 *.sh
