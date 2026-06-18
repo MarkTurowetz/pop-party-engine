@@ -533,6 +533,47 @@
         box-shadow: 5px 5px 0 var(--ink);
       }
     }
+
+    @media (max-height: 380px) {
+      .controller {
+        padding: 8px;
+      }
+
+      .controller-panel {
+        gap: 8px;
+        max-height: calc(100dvh - 16px);
+        padding: 12px;
+        border-radius: 18px;
+        box-shadow: 7px 7px 0 var(--ink);
+      }
+
+      .controller-lobby {
+        gap: 6px;
+      }
+
+      .controller-avatar {
+        width: clamp(52px, 18vmin, 70px);
+        height: clamp(52px, 18vmin, 70px);
+        font-size: clamp(24px, 8vmin, 32px);
+        box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.55);
+      }
+
+      .controller-player-name {
+        font-size: clamp(24px, 9vmin, 36px);
+      }
+
+      .controller-meta {
+        min-height: 18px;
+        font-size: clamp(12px, 4vmin, 14px);
+      }
+
+      .primary-button {
+        min-height: 40px;
+        padding: 0 16px;
+        font-size: 14px;
+        box-shadow: 4px 4px 0 var(--ink);
+      }
+    }
   </style>
 </head>
 <body>

@@ -162,16 +162,22 @@ async function getActiveDisplayWorkArea() {
   }
 }
 
+function controllerGrid(totalControllers) {
+  if (totalControllers > 6) return { columns: 3, rows: 3 };
+  if (totalControllers > 4) return { columns: 2, rows: 3 };
+  return { columns: 2, rows: 2 };
+}
+
 async function getControllerWindowLayout(index, totalControllers = 4) {
   const workArea = await getActiveDisplayWorkArea();
   const gap = 14;
-  const columns = totalControllers > 4 ? 3 : 2;
-  const rows = 2;
+  const { columns, rows } = controllerGrid(totalControllers);
   const availableWidth = Math.max(720, workArea.width);
   const availableHeight = Math.max(640, workArea.height);
-  const clusterMaxWidth = Math.min(availableWidth - 36, availableWidth * (columns === 3 ? 0.64 : 0.42));
-  const controllerHeight = Math.max(320, Math.floor((availableHeight - gap - 36) / rows));
-  const controllerWidth = Math.max(260, Math.min(390, Math.floor((clusterMaxWidth - (columns - 1) * gap) / columns)));
+  const clusterWidthRatio = rows === 3 ? 0.34 : 0.42;
+  const clusterMaxWidth = Math.min(availableWidth - 36, availableWidth * clusterWidthRatio);
+  const controllerHeight = Math.max(250, Math.floor((availableHeight - (rows - 1) * gap - 36) / rows));
+  const controllerWidth = Math.max(230, Math.min(330, Math.floor((clusterMaxWidth - (columns - 1) * gap) / columns)));
   const slot = index % (columns * rows);
   const cycle = Math.floor(index / (columns * rows));
   const column = slot % columns;
