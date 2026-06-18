@@ -411,12 +411,13 @@
 
     .primary-button.is-pressed:not(:disabled),
     .primary-button:not(:disabled):active {
+      background: #183fe8;
       transform: translate3d(2px, 2px, 0) scale(0.94);
-      filter: saturate(1.08);
+      filter: saturate(1.18) brightness(0.95);
     }
 
     .primary-button.is-releasing:not(:disabled) {
-      transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), filter 115ms ease-out;
+      transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), background-color 115ms ease-out, filter 115ms ease-out;
     }
 
     .secondary-button {
@@ -436,12 +437,13 @@
 
     .secondary-button.is-pressed:not(:disabled),
     .secondary-button:not(:disabled):active {
+      background: #efe1b8;
       transform: translate3d(2px, 2px, 0) scale(0.95);
-      filter: saturate(1.08);
+      filter: saturate(1.14) brightness(0.97);
     }
 
     .secondary-button.is-releasing:not(:disabled) {
-      transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), filter 115ms ease-out;
+      transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), background-color 115ms ease-out, filter 115ms ease-out;
     }
 
     .controller-lobby {
@@ -773,11 +775,24 @@
 
     function bindControllerButtonPressStates() {
       const pressableButtons = controllerScreen.querySelectorAll("button");
+      let lastHapticAt = 0;
+      const pulseHaptic = () => {
+        if (!navigator.vibrate) return;
+        const now = Date.now();
+        if (now - lastHapticAt < 80) return;
+        lastHapticAt = now;
+        try {
+          navigator.vibrate(8);
+        } catch (error) {
+          // Haptics are optional and browser/device dependent.
+        }
+      };
       const pressButton = (button) => {
         if (button.disabled) return;
         window.clearTimeout(button.releaseTimerId);
         button.classList.remove("is-releasing");
         button.classList.add("is-pressed");
+        pulseHaptic();
       };
       const releaseButton = (button) => {
         if (!button.classList.contains("is-pressed")) return;
