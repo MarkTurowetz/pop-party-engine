@@ -162,15 +162,16 @@ async function getActiveDisplayWorkArea() {
   }
 }
 
-async function getControllerWindowLayout(index) {
+async function getControllerWindowLayout(index, totalControllers = 4) {
   const workArea = await getActiveDisplayWorkArea();
   const gap = 14;
-  const columns = 2;
+  const columns = totalControllers > 4 ? 3 : 2;
   const rows = 2;
   const availableWidth = Math.max(720, workArea.width);
   const availableHeight = Math.max(640, workArea.height);
-  const controllerHeight = Math.max(360, Math.floor((availableHeight - gap - 36) / rows));
-  const controllerWidth = Math.max(300, Math.min(390, Math.floor((availableWidth * 0.38 - gap) / columns)));
+  const clusterMaxWidth = Math.min(availableWidth - 36, availableWidth * (columns === 3 ? 0.64 : 0.42));
+  const controllerHeight = Math.max(320, Math.floor((availableHeight - gap - 36) / rows));
+  const controllerWidth = Math.max(260, Math.min(390, Math.floor((clusterMaxWidth - (columns - 1) * gap) / columns)));
   const slot = index % (columns * rows);
   const cycle = Math.floor(index / (columns * rows));
   const column = slot % columns;
@@ -215,7 +216,7 @@ async function spawnControllers() {
   const spawnedControllers = [];
   for (let index = 0; index < count; index += 1) {
     const playerName = names[index % names.length];
-    const layout = await getControllerWindowLayout(index);
+    const layout = await getControllerWindowLayout(index, count);
     const controllerWindow = await chrome.windows.create({
       focused: true,
       type: "popup",
@@ -292,7 +293,7 @@ async function sortControllers() {
     try {
       await chrome.windows.update(controller.windowId, {
         focused: false,
-        ...(await getControllerWindowLayout(index))
+        ...(await getControllerWindowLayout(index, stillOpen.length))
       });
     } catch (error) {
       // Ignore windows that closed mid-sort.

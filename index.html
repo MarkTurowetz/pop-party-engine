@@ -293,9 +293,10 @@
 
     .controller {
       min-height: 100vh;
+      min-height: 100dvh;
       display: grid;
       place-items: center;
-      padding: 20px;
+      padding: clamp(10px, 2.2vmin, 20px);
       background:
         linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 58px),
         linear-gradient(0deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 58px),
@@ -306,8 +307,10 @@
     .controller-panel {
       width: min(560px, 100%);
       display: grid;
-      gap: 20px;
-      padding: clamp(20px, 5vw, 34px);
+      gap: clamp(12px, 2.4vmin, 20px);
+      max-height: calc(100dvh - 20px);
+      overflow: hidden;
+      padding: clamp(14px, 4vmin, 34px);
       border: 5px solid var(--ink);
       border-radius: 28px;
       background: var(--paper);
@@ -361,13 +364,13 @@
     }
 
     .primary-button {
-      min-height: 58px;
+      min-height: clamp(48px, 9vh, 58px);
       border: 5px solid var(--ink);
       border-radius: 999px;
       color: #fff;
       background: var(--blue);
       box-shadow: 7px 7px 0 var(--ink);
-      font-size: 18px;
+      font-size: clamp(16px, 4.6vmin, 18px);
       font-weight: 1000;
       text-transform: uppercase;
     }
@@ -390,37 +393,38 @@
 
     .controller-lobby {
       display: grid;
-      gap: 18px;
+      gap: clamp(8px, 2.2vh, 18px);
       justify-items: center;
       text-align: center;
     }
 
     .controller-avatar {
       --avatar-color: var(--cyan);
-      width: 112px;
-      height: 112px;
+      width: clamp(72px, 22vmin, 112px);
+      height: clamp(72px, 22vmin, 112px);
       display: grid;
       place-items: center;
       border: 5px solid var(--ink);
       background: var(--avatar-color);
       box-shadow: 9px 9px 0 rgba(23, 19, 31, 0.55);
       color: #fff;
-      font-size: 48px;
+      font-size: clamp(32px, 10vmin, 48px);
       font-weight: 1000;
       text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
     }
 
     .controller-player-name {
       margin: 0;
-      font-size: clamp(34px, 8vw, 58px);
+      font-size: clamp(30px, 11vmin, 58px);
       line-height: 0.9;
       font-weight: 1000;
       overflow-wrap: anywhere;
     }
 
     .controller-meta {
-      min-height: 36px;
+      min-height: clamp(22px, 5vh, 36px);
       color: #5e5475;
+      font-size: clamp(14px, 4.2vmin, 18px);
       font-weight: 1000;
     }
 
@@ -509,6 +513,24 @@
 
       .lab-frame {
         min-height: 620px;
+      }
+    }
+
+    @media (max-height: 620px) {
+      .controller-panel {
+        border-width: 4px;
+        border-radius: 22px;
+        box-shadow: 10px 10px 0 var(--ink);
+      }
+
+      .controller-avatar {
+        border-width: 4px;
+        box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.55);
+      }
+
+      .primary-button {
+        border-width: 4px;
+        box-shadow: 5px 5px 0 var(--ink);
       }
     }
   </style>
