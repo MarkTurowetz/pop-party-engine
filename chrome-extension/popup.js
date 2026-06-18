@@ -311,16 +311,13 @@ async function sortControllers() {
   setStatus(`Sorted ${stillOpen.length} controller window${stillOpen.length === 1 ? "" : "s"}.`);
 }
 
-function findRandomVisibleButton() {
-  const blockedLabels = new Set(["leave lobby", "leave", "back", "close", "log out", "logout", "disconnect"]);
-  const buttons = Array.from(document.querySelectorAll("button"))
-    .filter((button) => {
-      const rect = button.getBoundingClientRect();
-      const style = window.getComputedStyle(button);
-      const disabled = button.disabled || button.getAttribute("aria-disabled") === "true";
-      const label = (button.textContent || button.getAttribute("aria-label") || "").trim().toLowerCase();
+function findRandomVisibleOption() {
+  const options = Array.from(document.querySelectorAll("[data-controller-option]"))
+    .filter((option) => {
+      const rect = option.getBoundingClientRect();
+      const style = window.getComputedStyle(option);
+      const disabled = option.disabled || option.getAttribute("aria-disabled") === "true";
       return !disabled &&
-        !blockedLabels.has(label) &&
         rect.width > 0 &&
         rect.height > 0 &&
         style.visibility !== "hidden" &&
@@ -328,13 +325,15 @@ function findRandomVisibleButton() {
         style.pointerEvents !== "none";
     });
 
-  if (buttons.length === 0) return { found: false, count: 0 };
-  const button = buttons[Math.floor(Math.random() * buttons.length)];
-  const rect = button.getBoundingClientRect();
+  if (options.length === 0) return { found: false, count: 0 };
+  const option = options[Math.floor(Math.random() * options.length)];
+  const rect = option.getBoundingClientRect();
   return {
     found: true,
-    count: buttons.length,
-    label: button.textContent.trim() || button.getAttribute("aria-label") || "button",
+    count: options.length,
+    label: option.textContent.trim() || option.getAttribute("aria-label") || option.dataset.optionId || "option",
+    optionId: option.dataset.optionId || "",
+    view: option.closest("[data-controller-view]")?.dataset.controllerView || "",
     x: rect.left + rect.width / 2,
     y: rect.top + rect.height / 2
   };
@@ -368,7 +367,7 @@ async function dispatchTrustedClick(tabId, x, y) {
   }
 }
 
-async function tapRandomButtonsInControllers() {
+async function tapRandomOptionsInControllers() {
   const stored = await chrome.storage.local.get(["spawnedControllers"]);
   const controllers = stored.spawnedControllers || [];
   if (controllers.length === 0) {
@@ -388,7 +387,7 @@ async function tapRandomButtonsInControllers() {
       await chrome.tabs.get(controller.tabId);
       const results = await chrome.scripting.executeScript({
         target: { tabId: controller.tabId },
-        func: findRandomVisibleButton
+        func: findRandomVisibleOption
       });
       const result = results?.[0]?.result;
       checked += 1;
@@ -407,7 +406,7 @@ async function tapRandomButtonsInControllers() {
 
   await chrome.storage.local.set({ spawnedControllers: stillOpen });
   tapRandomButton.disabled = false;
-  setStatus(`Tapped ${clicked} of ${checked} open controller${checked === 1 ? "" : "s"} (${eligible} eligible button${eligible === 1 ? "" : "s"} found).`);
+  setStatus(`Tapped ${clicked} of ${checked} open controller${checked === 1 ? "" : "s"} (${eligible} option${eligible === 1 ? "" : "s"} found).`);
 }
 
 async function closeAllControllers() {
@@ -450,7 +449,7 @@ controllerCountInput.addEventListener("input", persistInputs);
 playerNamesInput.addEventListener("input", persistInputs);
 spawnButton.addEventListener("click", spawnControllers);
 sortControllersButton.addEventListener("click", sortControllers);
-tapRandomButton.addEventListener("click", tapRandomButtonsInControllers);
+tapRandomButton.addEventListener("click", tapRandomOptionsInControllers);
 closeControllersButton.addEventListener("click", closeAllControllers);
 
 loadState();

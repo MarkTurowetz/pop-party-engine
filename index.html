@@ -610,11 +610,11 @@
         </form>
       </div>
 
-      <div class="controller-lobby hidden" id="controllerLobbyState">
+      <div class="controller-lobby hidden" id="controllerLobbyState" data-controller-view="lobby">
         <div class="controller-avatar" id="controllerAvatar"><span id="controllerAvatarInitial">?</span></div>
         <h1 class="controller-player-name" id="controllerPlayerName">Player</h1>
         <div class="controller-meta" id="controllerMeta">Waiting in lobby</div>
-        <button class="primary-button hidden" id="startGameButton" type="button">Start Game</button>
+        <button class="primary-button hidden" id="startGameButton" type="button" data-controller-option data-option-id="lobby.startGame">Start Game</button>
       </div>
     </div>
   </section>
