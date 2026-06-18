@@ -98,6 +98,35 @@
       isolation: isolate;
     }
 
+    .stage-code-badge {
+      position: absolute;
+      top: clamp(12px, 2vw, 22px);
+      left: clamp(12px, 2vw, 22px);
+      z-index: 4;
+      display: grid;
+      gap: 2px;
+      padding: 8px 12px;
+      border: 3px solid var(--ink);
+      border-radius: 14px;
+      color: var(--ink);
+      background: var(--yellow);
+      box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.45);
+      font-weight: 1000;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .stage-code-badge span {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+    }
+
+    .stage-code-badge strong {
+      font-size: clamp(18px, 2.8vw, 32px);
+      line-height: 0.9;
+      letter-spacing: 0.06em;
+    }
+
     .stage::before,
     .stage::after {
       content: "";
@@ -188,6 +217,19 @@
       box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.45);
       font-size: clamp(18px, 2.8vw, 30px);
       font-weight: 1000;
+    }
+
+    .stage-intro-title {
+      align-self: center;
+      justify-self: center;
+      margin: 0;
+      color: #fff;
+      font-size: clamp(64px, 12vw, 160px);
+      line-height: 0.86;
+      letter-spacing: 0;
+      text-align: center;
+      text-shadow: 8px 8px 0 #000;
+      text-transform: uppercase;
     }
 
     .start-popup {
@@ -428,6 +470,15 @@
       transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), background-color 115ms ease-out, filter 115ms ease-out;
     }
 
+    .danger-button {
+      background: #ef3148;
+    }
+
+    .danger-button.is-pressed:not(:disabled),
+    .danger-button:not(:disabled):active {
+      background: #c91d33;
+    }
+
     .secondary-button {
       min-height: 48px;
       border: 4px solid var(--ink);
@@ -642,6 +693,7 @@
 <body>
   <section class="screen stage hidden" id="stageScreen" aria-label="Flip 7 Party stage">
     <div class="start-popup hidden" id="startPopup">Starting Game</div>
+    <div class="stage-code-badge" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
     <main class="stage-main">
       <h1 class="stage-title">Flip 7 Party</h1>
       <section class="stage-code-panel" aria-label="Stage code">
@@ -650,6 +702,7 @@
       </section>
       <div class="stage-status hidden" id="waitingStatus"></div>
     </main>
+    <h1 class="stage-intro-title hidden" id="stageIntroTitle">GAME INTRO</h1>
     <footer class="stage-footer">
       <div class="join-prompt" id="joinPrompt">Join the Lobby at bit.ly/popcontroller</div>
       <div class="player-lobby" id="playerLobby" aria-label="Joined players"></div>
@@ -678,6 +731,10 @@
         <h1 class="controller-player-name" id="controllerPlayerName">Player</h1>
         <div class="controller-meta" id="controllerMeta">Waiting in lobby</div>
         <button class="primary-button hidden" id="startGameButton" type="button" data-controller-option data-option-id="lobby.startGame">Start Game</button>
+      </div>
+
+      <div class="controller-lobby hidden" id="controllerIntroState" data-controller-view="intro">
+        <h1 class="controller-player-name">Welcome to the Game</h1>
       </div>
     </div>
   </section>
@@ -712,12 +769,17 @@
     const controllerScreen = document.querySelector("#controllerScreen");
     const labScreen = document.querySelector("#labScreen");
     const stageCodeText = document.querySelector("#stageCodeText");
+    const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
     const playerLobby = document.querySelector("#playerLobby");
     const joinPrompt = document.querySelector("#joinPrompt");
     const waitingStatus = document.querySelector("#waitingStatus");
     const startPopup = document.querySelector("#startPopup");
+    const stageMain = document.querySelector(".stage-main");
+    const stageFooter = document.querySelector(".stage-footer");
+    const stageIntroTitle = document.querySelector("#stageIntroTitle");
     const joinState = document.querySelector("#joinState");
     const controllerLobbyState = document.querySelector("#controllerLobbyState");
+    const controllerIntroState = document.querySelector("#controllerIntroState");
     const joinForm = document.querySelector("#joinForm");
     const stageCodeInput = document.querySelector("#stageCodeInput");
     const playerNameInput = document.querySelector("#playerNameInput");
@@ -730,6 +792,8 @@
     let controllerState = null;
     let heartbeatTimer = null;
     let lobbyPollTimer = null;
+    let stageCountdownTimer = null;
+    let countdownClockOffset = 0;
 
     function randomBetween(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -918,6 +982,20 @@
 
     function renderStageLobby(lobby) {
       const players = lobby.players || [];
+      const phase = lobby.phase || "lobby";
+      stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
+      stageCodeBadge.textContent = lobby.stageCode || stageCodeBadge.textContent;
+      window.clearInterval(stageCountdownTimer);
+      startPopup.classList.add("hidden");
+      stageMain.classList.toggle("hidden", phase === "intro");
+      stageFooter.classList.toggle("hidden", phase === "intro");
+      stageIntroTitle.classList.toggle("hidden", phase !== "intro");
+
+      if (phase === "intro") {
+        playerLobby.replaceChildren();
+        return;
+      }
+
       playerLobby.replaceChildren();
       for (const player of players) {
         const tile = document.createElement("article");
@@ -935,15 +1013,22 @@
       joinPrompt.classList.toggle("hidden", players.length > 0);
       waitingStatus.classList.toggle("hidden", players.length === 0);
       waitingStatus.textContent = vip ? `Waiting for ${vip.name} to start the game` : "";
-    }
 
-    function showStartPopup() {
-      if (!startPopup.classList.contains("hidden")) return;
-      startPopup.classList.remove("hidden");
-      window.clearTimeout(showStartPopup.timeoutId);
-      showStartPopup.timeoutId = window.setTimeout(() => {
-        startPopup.classList.add("hidden");
-      }, 2200);
+      if (phase === "starting") {
+        countdownClockOffset = (lobby.serverNow || Date.now()) - Date.now();
+        waitingStatus.classList.remove("hidden");
+        waitingStatus.textContent = "Tap CANCEL to stop";
+        startPopup.classList.remove("hidden");
+        const updateCountdown = () => {
+          const now = Date.now() + countdownClockOffset;
+          const remainingMs = Math.max(0, (lobby.countdownEndsAt || now) - now);
+          const seconds = Math.ceil(remainingMs / 1000);
+          const unit = seconds === 1 ? "second" : "seconds";
+          startPopup.textContent = seconds > 0 ? `Game Starting in ${seconds} ${unit}` : "Let's Go";
+        };
+        updateCountdown();
+        stageCountdownTimer = window.setInterval(updateCountdown, 100);
+      }
     }
 
     async function pollLobby(stageCode) {
@@ -973,9 +1058,6 @@
       stream.addEventListener("lobby", (event) => {
         renderStageLobby(JSON.parse(event.data));
       });
-      stream.addEventListener("start", () => {
-        showStartPopup();
-      });
       stream.addEventListener("error", () => {
         waitingStatus.classList.remove("hidden");
         waitingStatus.textContent = "Reconnecting to lobby";
@@ -986,6 +1068,7 @@
       stageScreen.classList.remove("hidden");
       const stageCode = getOrCreateStageCode();
       stageCodeText.textContent = stageCode;
+      stageCodeBadge.textContent = stageCode;
       subscribeToStage(stageCode);
     }
 
@@ -1009,22 +1092,38 @@
       controllerAvatarInitial.textContent = avatarInitial(player.name);
     }
 
-    function renderControllerLobby(lobby) {
+    function renderControllerState(lobby) {
       if (!controllerState) return;
       const me = (lobby.players || []).find((player) => player.id === controllerState.playerId);
       if (!me) {
         controllerState.startToken = "";
         controllerMeta.textContent = "Reconnecting to lobby";
+        controllerIntroState.classList.add("hidden");
+        controllerLobbyState.classList.remove("hidden");
         startGameButton.classList.add("hidden");
         return;
       }
       controllerState.player = me;
       controllerState.startToken = me.isVip ? lobby.startToken : "";
+
+      if ((lobby.phase || "lobby") === "intro") {
+        joinState.classList.add("hidden");
+        controllerLobbyState.classList.add("hidden");
+        controllerIntroState.classList.remove("hidden");
+        return;
+      }
+
+      joinState.classList.add("hidden");
+      controllerIntroState.classList.add("hidden");
+      controllerLobbyState.classList.remove("hidden");
       controllerPlayerName.textContent = me.name;
       setControllerAvatar(me);
       controllerMeta.textContent = me.isVip ? "VIP Player" : "Waiting for the VIP";
       startGameButton.classList.toggle("hidden", !me.isVip);
       startGameButton.disabled = !me.isVip;
+      startGameButton.classList.toggle("danger-button", lobby.phase === "starting");
+      startGameButton.textContent = lobby.phase === "starting" ? "Cancel" : "Start Game";
+      startGameButton.dataset.optionId = lobby.phase === "starting" ? "lobby.cancelStart" : "lobby.startGame";
     }
 
     async function heartbeat() {
@@ -1034,7 +1133,7 @@
           stageCode: controllerState.stageCode,
           playerId: controllerState.playerId
         });
-        renderControllerLobby(result.lobby);
+        renderControllerState(result.lobby);
       } catch (error) {
         controllerMeta.textContent = "Reconnecting to lobby";
       }
@@ -1048,9 +1147,9 @@
       localStorage.setItem("flip7StageCode", stageCode);
       joinState.classList.add("hidden");
       controllerLobbyState.classList.remove("hidden");
-      renderControllerLobby(lobby);
+      renderControllerState(lobby);
       window.clearInterval(heartbeatTimer);
-      heartbeatTimer = window.setInterval(heartbeat, 3000);
+      heartbeatTimer = window.setInterval(heartbeat, 1000);
     }
 
     async function leaveLobby() {
@@ -1119,13 +1218,14 @@
       startGameButton.addEventListener("click", async () => {
         if (!controllerState) return;
         if (!controllerState.player?.isVip) return;
+        const isCancel = startGameButton.dataset.optionId === "lobby.cancelStart";
         try {
-          await postJson("/api/start", {
+          const result = await postJson(isCancel ? "/api/cancel-start" : "/api/start", {
             stageCode: controllerState.stageCode,
             playerId: controllerState.playerId,
             startToken: controllerState.startToken
           });
-          controllerMeta.textContent = "Starting Game";
+          if (result.lobby) renderControllerState(result.lobby);
         } catch (error) {
           controllerMeta.textContent = error.message;
         }

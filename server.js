@@ -9,6 +9,8 @@ const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
+const START_COUNTDOWN_MS = 3000;
+const START_GO_HOLD_MS = 700;
 
 const rooms = new Map();
 const avatarColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff"];
@@ -71,6 +73,10 @@ function getRoom(stageCode) {
       players: new Map(),
       vipPlayerId: "",
       startToken: "",
+      phase: "lobby",
+      countdownStartedAt: 0,
+      countdownEndsAt: 0,
+      countdownTimerId: null,
       revision: 0
     });
   }
@@ -125,6 +131,10 @@ function lobbyPayload(room) {
     type: "lobby",
     stageCode: room.stageCode,
     revision: room.revision,
+    phase: room.phase,
+    countdownStartedAt: room.countdownStartedAt,
+    countdownEndsAt: room.countdownEndsAt,
+    serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
     startToken: room.startToken,
     players: activePlayers(room).map((player) => publicPlayer(player, room))
@@ -144,17 +154,37 @@ function broadcastLobby(room) {
   }
 }
 
-function broadcastStart(room, player) {
-  const payload = {
-    type: "start",
-    stageCode: room.stageCode,
-    playerId: player.id,
-    playerName: player.name,
-    sentAt: Date.now()
-  };
-  for (const client of room.stageClients) {
-    sendSse(client, "start", payload);
-  }
+function clearCountdownTimer(room) {
+  if (!room.countdownTimerId) return;
+  clearTimeout(room.countdownTimerId);
+  room.countdownTimerId = null;
+}
+
+function enterLobbyPhase(room) {
+  clearCountdownTimer(room);
+  room.phase = "lobby";
+  room.countdownStartedAt = 0;
+  room.countdownEndsAt = 0;
+}
+
+function enterIntroPhase(room) {
+  clearCountdownTimer(room);
+  room.phase = "intro";
+  room.countdownStartedAt = 0;
+  room.countdownEndsAt = 0;
+  broadcastLobby(room);
+}
+
+function enterStartingPhase(room) {
+  const now = Date.now();
+  clearCountdownTimer(room);
+  room.phase = "starting";
+  room.countdownStartedAt = now;
+  room.countdownEndsAt = now + START_COUNTDOWN_MS;
+  room.countdownTimerId = setTimeout(() => {
+    enterIntroPhase(room);
+  }, START_COUNTDOWN_MS + START_GO_HOLD_MS);
+  broadcastLobby(room);
 }
 
 function removeStageClient(stageCode, client) {
@@ -317,9 +347,54 @@ async function handleStart(req, res) {
     sendJson(res, 403, { ok: false, error: "Start request is stale" });
     return;
   }
+  if (room.phase === "intro") {
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
+  if (room.phase === "starting") {
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
 
-  broadcastStart(room, player);
-  sendJson(res, 200, { ok: true });
+  enterStartingPhase(room);
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+}
+
+async function handleCancelStart(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const playerId = normalizePlayerId(payload.playerId);
+  const room = getExistingRoom(stageCode);
+  const player = room?.players.get(playerId);
+  selectVip(room || { players: new Map(), vipPlayerId: "" });
+
+  if (!room || !player || !player.active) {
+    sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+    return;
+  }
+  if (room.vipPlayerId !== playerId) {
+    sendJson(res, 403, { ok: false, error: "Only the VIP can cancel the start" });
+    return;
+  }
+  if (!payload.startToken || payload.startToken !== room.startToken) {
+    sendJson(res, 403, { ok: false, error: "Cancel request is stale" });
+    return;
+  }
+  if (room.phase !== "starting") {
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
+
+  enterLobbyPhase(room);
+  broadcastLobby(room);
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
 function handleLobby(req, res, stageCode) {
@@ -383,6 +458,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/start") {
     handleStart(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/cancel-start") {
+    handleCancelStart(req, res);
     return;
   }
 
