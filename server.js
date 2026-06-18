@@ -33,13 +33,18 @@ const acceptedArtTypes = {
   "image/webp": ".webp"
 };
 const artAssets = [
-  { id: "avatar-rex", name: "Rex Avatar", category: "Player Avatars", defaultFile: "dino-rex.svg", use: "Player dinosaur silhouette for rex slots" },
-  { id: "avatar-stego", name: "Stego Avatar", category: "Player Avatars", defaultFile: "dino-stego.svg", use: "Player dinosaur silhouette for stego slots" },
-  { id: "avatar-trike", name: "Trike Avatar", category: "Player Avatars", defaultFile: "dino-trike.svg", use: "Player dinosaur silhouette for trike slots" },
-  { id: "avatar-raptor", name: "Raptor Avatar", category: "Player Avatars", defaultFile: "dino-raptor.svg", use: "Player dinosaur silhouette for raptor slots" },
-  { id: "avatar-bronto", name: "Bronto Avatar", category: "Player Avatars", defaultFile: "dino-bronto.svg", use: "Player dinosaur silhouette for bronto slots" },
-  { id: "avatar-ankylo", name: "Ankylo Avatar", category: "Player Avatars", defaultFile: "dino-ankylo.svg", use: "Player dinosaur silhouette for ankylo slots" },
-  { id: "presentation-click-cursor", name: "Presentation Click Cursor", category: "Stage Widgets", defaultFile: "cursor-arrow.svg", use: "Cursor art for presented-text click prompt" }
+  { id: "avatar-frame", name: "Shared Avatar Frame", category: "Player Avatar", parent: "player-avatar", defaultFile: "avatar-frame.svg", use: "Shared frame layer used by every player avatar", sharedBy: ["Rex Avatar", "Stego Avatar", "Trike Avatar", "Raptor Avatar", "Bronto Avatar", "Ankylo Avatar"] },
+  { id: "avatar-rex", name: "Rex Dinosaur", category: "Player Avatar", parent: "player-avatar", defaultFile: "dino-rex.svg", use: "Dinosaur silhouette layer for rex slots" },
+  { id: "avatar-stego", name: "Stego Dinosaur", category: "Player Avatar", parent: "player-avatar", defaultFile: "dino-stego.svg", use: "Dinosaur silhouette layer for stego slots" },
+  { id: "avatar-trike", name: "Trike Dinosaur", category: "Player Avatar", parent: "player-avatar", defaultFile: "dino-trike.svg", use: "Dinosaur silhouette layer for trike slots" },
+  { id: "avatar-raptor", name: "Raptor Dinosaur", category: "Player Avatar", parent: "player-avatar", defaultFile: "dino-raptor.svg", use: "Dinosaur silhouette layer for raptor slots" },
+  { id: "avatar-bronto", name: "Bronto Dinosaur", category: "Player Avatar", parent: "player-avatar", defaultFile: "dino-bronto.svg", use: "Dinosaur silhouette layer for bronto slots" },
+  { id: "avatar-ankylo", name: "Ankylo Dinosaur", category: "Player Avatar", parent: "player-avatar", defaultFile: "dino-ankylo.svg", use: "Dinosaur silhouette layer for ankylo slots" },
+  { id: "presentation-click-cursor", name: "Presentation Click Cursor", category: "Presentation Click Prompt", parent: "presentation-click-prompt", defaultFile: "cursor-arrow.svg", use: "Cursor art for presented-text click prompt" }
+];
+const artGroups = [
+  { id: "player-avatar", name: "Player Avatar", description: "Composed from the shared avatar frame plus one dinosaur silhouette." },
+  { id: "presentation-click-prompt", name: "Presentation Click Prompt", description: "Standalone cursor art; it does not use the avatar frame." }
 ];
 
 function readAppVersion() {
@@ -159,7 +164,9 @@ function publicArtAsset(asset, manifest) {
     id: asset.id,
     name: asset.name,
     category: asset.category,
+    parent: asset.parent,
     use: asset.use,
+    sharedBy: asset.sharedBy || [],
     expectedTypes: Object.keys(acceptedArtTypes),
     defaultUrl,
     currentUrl,
@@ -173,6 +180,7 @@ function sendArtAssetList(res) {
   const manifest = readArtManifest();
   sendJson(res, 200, {
     ok: true,
+    groups: artGroups,
     assets: artAssets.map((asset) => publicArtAsset(asset, manifest))
   });
 }
