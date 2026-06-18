@@ -759,6 +759,7 @@
 
     .art-tool {
       min-height: 100vh;
+      height: 100vh;
       padding: clamp(16px, 3vw, 34px);
       background:
         linear-gradient(135deg, rgba(23, 19, 31, 0.94), rgba(91, 27, 189, 0.88)),
@@ -771,7 +772,8 @@
       display: grid;
       grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
       gap: clamp(14px, 2vw, 24px);
-      min-height: calc(100vh - clamp(32px, 6vw, 68px));
+      height: calc(100vh - clamp(32px, 6vw, 68px));
+      min-height: 0;
     }
 
     .art-list-panel,
@@ -787,6 +789,7 @@
     .art-list-panel {
       display: grid;
       grid-template-rows: auto minmax(0, 1fr);
+      min-height: 0;
     }
 
     .art-header {
@@ -816,6 +819,7 @@
       display: grid;
       align-content: start;
       gap: 10px;
+      min-height: 0;
       padding: 12px;
       overflow: auto;
     }
@@ -844,6 +848,13 @@
       border-left: 4px solid rgba(23, 19, 31, 0.25);
     }
 
+    .art-composite-children {
+      display: grid;
+      gap: 7px;
+      padding-left: 18px;
+      border-left: 4px solid rgba(23, 19, 31, 0.18);
+    }
+
     .art-item {
       display: grid;
       grid-template-columns: 54px minmax(0, 1fr);
@@ -862,6 +873,10 @@
 
     .art-item.is-shared {
       background: var(--cream);
+    }
+
+    .art-item.is-composite {
+      background: var(--yellow);
     }
 
     .art-item.is-selected {
@@ -890,6 +905,32 @@
       height: 82%;
       object-fit: contain;
       filter: drop-shadow(3px 3px 0 rgba(23, 19, 31, 0.28));
+    }
+
+    .art-composite-thumb,
+    .art-preview-art.is-composite-preview {
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+
+    .art-composite-thumb img,
+    .art-preview-art.is-composite-preview img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .art-composite-thumb .art-composite-dino,
+    .art-preview-art.is-composite-preview .art-composite-dino {
+      width: 68%;
+      height: 68%;
+      background: var(--cyan);
+      -webkit-mask: var(--preview-dino-url) center / contain no-repeat;
+      mask: var(--preview-dino-url) center / contain no-repeat;
+      filter: drop-shadow(3px 3px 0 rgba(23, 19, 31, 0.35));
     }
 
     .art-item-title {
@@ -923,11 +964,28 @@
       display: grid;
       place-items: center;
       padding: clamp(18px, 4vw, 42px);
+      position: relative;
       background:
         linear-gradient(90deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
         linear-gradient(0deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
         linear-gradient(135deg, #22d3ee 0%, #60d394 58%, #ffe156 100%);
       background-size: 54px 54px, 54px 54px, auto;
+    }
+
+    .art-preview-stage.is-dragging::after {
+      content: "Drop image to replace";
+      position: absolute;
+      inset: 18px;
+      display: grid;
+      place-items: center;
+      border: 5px dashed var(--ink);
+      border-radius: 24px;
+      color: var(--ink);
+      background: rgba(255, 225, 86, 0.8);
+      font-size: clamp(24px, 4vw, 48px);
+      font-weight: 1000;
+      text-transform: uppercase;
+      pointer-events: none;
     }
 
     .art-preview-art {
@@ -967,7 +1025,6 @@
       font-size: 13px;
       font-weight: 1000;
       line-height: 1.1;
-    }
     }
 
     .art-actions {
@@ -1251,8 +1308,8 @@
     const artAssetList = document.querySelector("#artAssetList");
     const artPreviewTitle = document.querySelector("#artPreviewTitle");
     const artPreviewMeta = document.querySelector("#artPreviewMeta");
+    const artPreviewStage = document.querySelector(".art-preview-stage");
     const artPreviewArt = document.querySelector(".art-preview-art");
-    const artPreviewImage = document.querySelector("#artPreviewImage");
     const artFileInput = document.querySelector("#artFileInput");
     const artFileName = document.querySelector("#artFileName");
     const artReplaceButton = document.querySelector("#artReplaceButton");
@@ -1272,6 +1329,7 @@
     let artAssets = [];
     let artGroups = [];
     let selectedArtAsset = null;
+    let selectedArtComposite = null;
     let pendingArtReplacement = null;
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],
@@ -1291,6 +1349,14 @@
       bronto: "avatar-bronto",
       ankylo: "avatar-ankylo"
     };
+    const avatarComposites = [
+      { id: "avatar-composite-rex", name: "Player Avatar Rex", species: "rex", dinoAssetId: "avatar-rex" },
+      { id: "avatar-composite-stego", name: "Player Avatar Stego", species: "stego", dinoAssetId: "avatar-stego" },
+      { id: "avatar-composite-trike", name: "Player Avatar Trike", species: "trike", dinoAssetId: "avatar-trike" },
+      { id: "avatar-composite-raptor", name: "Player Avatar Raptor", species: "raptor", dinoAssetId: "avatar-raptor" },
+      { id: "avatar-composite-bronto", name: "Player Avatar Bronto", species: "bronto", dinoAssetId: "avatar-bronto" },
+      { id: "avatar-composite-ankylo", name: "Player Avatar Ankylo", species: "ankylo", dinoAssetId: "avatar-ankylo" }
+    ];
 
     function randomBetween(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -1448,7 +1514,7 @@
     }
 
     function cssUrl(url) {
-      return `url("${String(url || "").replaceAll('"', "%22")}")`;
+      return `url('${String(url || "").replaceAll("'", "%27")}')`;
     }
 
     function artAssetUrl(assetId) {
@@ -1875,31 +1941,71 @@
 
     function renderArtList() {
       artAssetList.replaceChildren();
-      const groupedAssets = artGroups.length
-        ? artGroups.map((group) => ({ group, assets: artAssets.filter((asset) => asset.parent === group.id) }))
-        : [{ group: { id: "all", name: "Art Assets", description: "" }, assets: artAssets }];
-
-      for (const { group, assets } of groupedAssets) {
-        if (assets.length === 0) continue;
-        const groupEl = document.createElement("section");
-        groupEl.className = "art-group";
-        const title = document.createElement("div");
-        title.className = "art-group-title";
-        title.textContent = group.name;
-        groupEl.appendChild(title);
-        const children = document.createElement("div");
-        children.className = "art-group-children";
-
-        for (const asset of assets) {
-          children.appendChild(createArtItemButton(asset));
-        }
-
-        groupEl.appendChild(children);
-        artAssetList.appendChild(groupEl);
+      const avatarGroup = document.createElement("section");
+      avatarGroup.className = "art-group";
+      avatarGroup.appendChild(createArtGroupTitle("Player Avatars"));
+      const avatarChildren = document.createElement("div");
+      avatarChildren.className = "art-group-children";
+      for (const composite of avatarComposites) {
+        avatarChildren.appendChild(createCompositeBlock(composite));
       }
+      avatarGroup.appendChild(avatarChildren);
+      artAssetList.appendChild(avatarGroup);
+
+      const promptGroup = document.createElement("section");
+      promptGroup.className = "art-group";
+      promptGroup.appendChild(createArtGroupTitle("Presentation Click Prompt"));
+      const promptChildren = document.createElement("div");
+      promptChildren.className = "art-group-children";
+      const cursorAsset = findArtAsset("presentation-click-cursor");
+      if (cursorAsset) promptChildren.appendChild(createArtItemButton(cursorAsset, "Cursor Art"));
+      promptGroup.appendChild(promptChildren);
+      artAssetList.appendChild(promptGroup);
     }
 
-    function createArtItemButton(asset) {
+    function createArtGroupTitle(label) {
+      const title = document.createElement("div");
+      title.className = "art-group-title";
+      title.textContent = label;
+      return title;
+    }
+
+    function findArtAsset(assetId) {
+      return artAssets.find((asset) => asset.id === assetId) || null;
+    }
+
+    function createCompositeBlock(composite) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "art-group";
+      wrapper.appendChild(createCompositeButton(composite));
+      const children = document.createElement("div");
+      children.className = "art-composite-children";
+      const dinoAsset = findArtAsset(composite.dinoAssetId);
+      const frameAsset = findArtAsset("avatar-frame");
+      if (dinoAsset) children.appendChild(createArtItemButton(dinoAsset, "Dino Art"));
+      if (frameAsset) children.appendChild(createArtItemButton(frameAsset, "Rectangle (shared)"));
+      wrapper.appendChild(children);
+      return wrapper;
+    }
+
+    function createCompositeButton(composite) {
+      const button = document.createElement("button");
+      button.className = "art-item is-composite";
+      button.type = "button";
+      button.classList.toggle("is-selected", selectedArtComposite?.id === composite.id && !selectedArtAsset);
+      button.innerHTML = `
+        <span class="art-thumb art-composite-thumb">${compositePreviewMarkup(composite)}</span>
+        <span>
+          <span class="art-item-title"></span>
+          <span class="art-item-meta">Composite preview</span>
+        </span>
+      `;
+      button.querySelector(".art-item-title").textContent = composite.name;
+      button.addEventListener("click", () => selectArtComposite(composite.id));
+      return button;
+    }
+
+    function createArtItemButton(asset, label = asset.name) {
         const button = document.createElement("button");
         button.className = "art-item";
         button.type = "button";
@@ -1913,20 +2019,28 @@
             <span class="art-item-meta"></span>
           </span>
         `;
-        button.querySelector(".art-item-title").textContent = asset.name;
+        button.querySelector(".art-item-title").textContent = label;
         button.querySelector(".art-item-meta").textContent = `${asset.sharedBy?.length ? "Shared / " : ""}${asset.hasCustom ? "Custom" : "Default"}`;
         button.addEventListener("click", () => selectArtAsset(asset.id));
         return button;
     }
 
+    function compositePreviewMarkup(composite) {
+      return `
+        <img alt="" src="${artAssetUrl("avatar-frame")}">
+        <span class="art-composite-dino" style="--preview-dino-url:${cssUrl(artAssetUrl(composite.dinoAssetId))}"></span>
+      `;
+    }
+
     function selectArtAsset(assetId) {
       selectedArtAsset = artAssets.find((asset) => asset.id === assetId) || artAssets[0] || null;
+      selectedArtComposite = null;
       pendingArtReplacement = null;
       if (!selectedArtAsset) {
         artPreviewTitle.textContent = "No Assets";
         artPreviewMeta.textContent = "No replaceable art assets are registered yet.";
         artPreviewArt.className = "art-preview-art";
-        artPreviewImage.removeAttribute("src");
+        artPreviewArt.replaceChildren();
         artReplaceButton.disabled = true;
         artCancelButton.disabled = true;
         artSaveButton.disabled = true;
@@ -1936,11 +2050,39 @@
 
       artPreviewTitle.textContent = selectedArtAsset.name;
       renderArtPreviewMeta(selectedArtAsset);
-      artPreviewArt.className = `art-preview-art${selectedArtAsset.id === "avatar-frame" ? " is-frame-preview" : ""}`;
-      artPreviewImage.src = selectedArtAsset.currentUrl;
-      artPreviewImage.alt = selectedArtAsset.name;
+      renderSelectedArtPreview(selectedArtAsset.currentUrl);
       artFileName.textContent = selectedArtAsset.hasCustom ? `Current: ${selectedArtAsset.fileName}` : "Using default art";
       artReplaceButton.disabled = false;
+      artCancelButton.disabled = true;
+      artSaveButton.disabled = true;
+      artFileInput.value = "";
+      renderArtList();
+    }
+
+    function renderSelectedArtPreview(sourceUrl) {
+      artPreviewArt.className = `art-preview-art${selectedArtAsset?.id === "avatar-frame" ? " is-frame-preview" : ""}`;
+      artPreviewArt.replaceChildren();
+      const image = document.createElement("img");
+      image.id = "artPreviewImage";
+      image.alt = selectedArtAsset?.name || "";
+      image.src = sourceUrl || "";
+      artPreviewArt.appendChild(image);
+    }
+
+    function selectArtComposite(compositeId) {
+      selectedArtComposite = avatarComposites.find((composite) => composite.id === compositeId) || avatarComposites[0] || null;
+      selectedArtAsset = null;
+      pendingArtReplacement = null;
+      if (!selectedArtComposite) return;
+      artPreviewTitle.textContent = selectedArtComposite.name;
+      artPreviewMeta.replaceChildren();
+      const copy = document.createElement("span");
+      copy.textContent = "Composite preview: this game object is built from Dino Art plus Rectangle (shared). Select a child asset below it to replace one layer.";
+      artPreviewMeta.appendChild(copy);
+      artPreviewArt.className = "art-preview-art is-composite-preview";
+      artPreviewArt.innerHTML = compositePreviewMarkup(selectedArtComposite);
+      artFileName.textContent = "Select a nested asset to replace art";
+      artReplaceButton.disabled = true;
       artCancelButton.disabled = true;
       artSaveButton.disabled = true;
       artFileInput.value = "";
@@ -1962,7 +2104,10 @@
     }
 
     function stageReplacementFile(file) {
-      if (!selectedArtAsset || !file) return;
+      if (!selectedArtAsset || !file) {
+        artFileName.textContent = "Select a nested asset first";
+        return;
+      }
       const allowedTypes = selectedArtAsset.expectedTypes || [];
       if (!allowedTypes.includes(file.type)) {
         artFileName.textContent = "Use PNG, SVG, JPG, or WEBP";
@@ -1975,8 +2120,7 @@
           mimeType: file.type,
           dataUrl: String(reader.result || "")
         };
-        artPreviewImage.src = pendingArtReplacement.dataUrl;
-        artPreviewArt.className = `art-preview-art${selectedArtAsset.id === "avatar-frame" ? " is-frame-preview" : ""}`;
+        renderSelectedArtPreview(pendingArtReplacement.dataUrl);
         artFileName.textContent = `Staged: ${file.name}`;
         artCancelButton.disabled = false;
         artSaveButton.disabled = false;
@@ -2005,8 +2149,7 @@
     function cancelArtReplacement() {
       if (!selectedArtAsset) return;
       pendingArtReplacement = null;
-      artPreviewArt.className = `art-preview-art${selectedArtAsset.id === "avatar-frame" ? " is-frame-preview" : ""}`;
-      artPreviewImage.src = selectedArtAsset.currentUrl;
+      renderSelectedArtPreview(selectedArtAsset.currentUrl);
       artFileName.textContent = selectedArtAsset.hasCustom ? `Current: ${selectedArtAsset.fileName}` : "Using default art";
       artCancelButton.disabled = true;
       artSaveButton.disabled = true;
@@ -2021,9 +2164,23 @@
       artFileInput.addEventListener("change", () => {
         stageReplacementFile(artFileInput.files?.[0]);
       });
+      artPreviewStage.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        artPreviewStage.classList.add("is-dragging");
+      });
+      artPreviewStage.addEventListener("dragleave", (event) => {
+        if (!artPreviewStage.contains(event.relatedTarget)) {
+          artPreviewStage.classList.remove("is-dragging");
+        }
+      });
+      artPreviewStage.addEventListener("drop", (event) => {
+        event.preventDefault();
+        artPreviewStage.classList.remove("is-dragging");
+        stageReplacementFile(event.dataTransfer?.files?.[0]);
+      });
       try {
         await loadArtAssets();
-        selectArtAsset(artAssets[0]?.id);
+        selectArtComposite(avatarComposites[0]?.id);
       } catch (error) {
         artPreviewTitle.textContent = "Art Tool Offline";
         artPreviewMeta.textContent = error.message;
