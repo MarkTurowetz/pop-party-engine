@@ -47,6 +47,12 @@
       touch-action: none;
     }
 
+    html.controller-locked :not(input):not(textarea):not(select) {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
     button,
     input {
       font: inherit;
@@ -54,6 +60,8 @@
 
     button {
       cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
 
     button:disabled {
@@ -391,11 +399,19 @@
       font-size: clamp(16px, 4.6vmin, 18px);
       font-weight: 1000;
       text-transform: uppercase;
+      transition: transform 70ms ease, box-shadow 70ms ease, filter 70ms ease;
     }
 
     .primary-button:not(:disabled):hover {
       translate: -2px -2px;
       box-shadow: 9px 9px 0 var(--ink);
+    }
+
+    .primary-button.is-pressed:not(:disabled),
+    .primary-button:not(:disabled):active {
+      translate: 5px 5px;
+      box-shadow: 2px 2px 0 var(--ink);
+      filter: saturate(1.08);
     }
 
     .secondary-button {
@@ -407,6 +423,14 @@
       box-shadow: 5px 5px 0 var(--ink);
       font-weight: 1000;
       text-transform: uppercase;
+      transition: transform 70ms ease, box-shadow 70ms ease, filter 70ms ease;
+    }
+
+    .secondary-button.is-pressed:not(:disabled),
+    .secondary-button:not(:disabled):active {
+      translate: 4px 4px;
+      box-shadow: 1px 1px 0 var(--ink);
+      filter: saturate(1.08);
     }
 
     .controller-lobby {
@@ -736,6 +760,24 @@
       }, { passive: false });
     }
 
+    function bindControllerButtonPressStates() {
+      const pressableButtons = controllerScreen.querySelectorAll("button");
+      const releaseButtons = () => {
+        for (const button of pressableButtons) button.classList.remove("is-pressed");
+      };
+      for (const button of pressableButtons) {
+        button.addEventListener("pointerdown", () => {
+          if (!button.disabled) button.classList.add("is-pressed");
+        });
+        button.addEventListener("pointerup", () => button.classList.remove("is-pressed"));
+        button.addEventListener("pointercancel", () => button.classList.remove("is-pressed"));
+        button.addEventListener("pointerleave", () => button.classList.remove("is-pressed"));
+        button.addEventListener("blur", () => button.classList.remove("is-pressed"));
+      }
+      window.addEventListener("pointerup", releaseButtons);
+      window.addEventListener("pointercancel", releaseButtons);
+    }
+
     function getOrCreateStageCode() {
       const existing = getStageCodeFromUrl();
       if (existing) return existing;
@@ -942,6 +984,7 @@
 
     function setupController() {
       lockControllerViewport();
+      bindControllerButtonPressStates();
       controllerScreen.classList.remove("hidden");
       stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(sessionStorage.getItem("flip7StageCode") || localStorage.getItem("flip7StageCode"));
       playerNameInput.value = getPlayerNameFromUrl() || sessionStorage.getItem("flip7PlayerName") || "";
