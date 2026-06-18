@@ -391,6 +391,10 @@ async function handleCancelStart(req, res) {
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
     return;
   }
+  if (Date.now() >= room.countdownEndsAt) {
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
 
   enterLobbyPhase(room);
   broadcastLobby(room);
