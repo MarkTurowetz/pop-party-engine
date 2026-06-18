@@ -909,6 +909,26 @@ function makeAvatar(playerIndex) {
   };
 }
 
+function randomArrayItem(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function makeRandomAvatar(room, playerId) {
+  const usedShapes = new Set();
+  for (const player of room.players.values()) {
+    if (player.id !== playerId && player.avatar?.shape) usedShapes.add(player.avatar.shape);
+  }
+  const availableShapes = avatarShapes.filter((shape) => !usedShapes.has(shape));
+  const shape = randomArrayItem(availableShapes.length ? availableShapes : avatarShapes);
+  const color = randomArrayItem(avatarColors);
+  return { color, shape };
+}
+
+function normalizeAvatarShape(value) {
+  const shape = String(value || "").trim().toLowerCase();
+  return avatarShapes.includes(shape) ? shape : "";
+}
+
 function activePlayers(room) {
   return Array.from(room.players.values()).filter((player) => player.active);
 }
@@ -1095,7 +1115,7 @@ async function handleJoin(req, res) {
     player = {
       id: playerId,
       name: playerName,
-      avatar: makeAvatar(room.players.size),
+      avatar: makeRandomAvatar(room, playerId),
       active: true,
       kickedFromGame: false,
       joinedAt: Date.now(),
@@ -1141,6 +1161,43 @@ async function handleHeartbeat(req, res) {
   player.lastSeen = Date.now();
   selectVip(room);
   if (wasInactive) broadcastLobby(room);
+  sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
+}
+
+async function handleSelectAvatar(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const playerId = normalizePlayerId(payload.playerId);
+  const shape = normalizeAvatarShape(payload.shape);
+  const room = getExistingRoom(stageCode);
+  const player = room?.players.get(playerId);
+  if (!room || !player) {
+    sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+    return;
+  }
+  if (!shape) {
+    sendJson(res, 400, { ok: false, error: "Choose a valid avatar" });
+    return;
+  }
+  if (player.kickedFromGame) {
+    sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "Player was returned to the join screen" });
+    return;
+  }
+
+  player.avatar = {
+    color: player.avatar?.color || randomArrayItem(avatarColors),
+    shape
+  };
+  player.active = true;
+  player.lastSeen = Date.now();
+  broadcastLobby(room);
   sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
 }
 
@@ -1446,6 +1503,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/heartbeat") {
     handleHeartbeat(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/avatar") {
+    handleSelectAvatar(req, res);
     return;
   }
 
