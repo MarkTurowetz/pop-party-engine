@@ -311,8 +311,8 @@ async function sortControllers() {
   setStatus(`Sorted ${stillOpen.length} controller window${stillOpen.length === 1 ? "" : "s"}.`);
 }
 
-function clickRandomVisibleButton() {
-  const blockedLabels = new Set(["start game", "leave lobby", "leave", "back", "close", "log out", "logout", "disconnect"]);
+function findRandomVisibleButton() {
+  const blockedLabels = new Set(["leave lobby", "leave", "back", "close", "log out", "logout", "disconnect"]);
   const buttons = Array.from(document.querySelectorAll("button"))
     .filter((button) => {
       const rect = button.getBoundingClientRect();
@@ -328,14 +328,44 @@ function clickRandomVisibleButton() {
         style.pointerEvents !== "none";
     });
 
-  if (buttons.length === 0) return { clicked: false, count: 0 };
+  if (buttons.length === 0) return { found: false, count: 0 };
   const button = buttons[Math.floor(Math.random() * buttons.length)];
-  button.click();
+  const rect = button.getBoundingClientRect();
   return {
-    clicked: true,
+    found: true,
     count: buttons.length,
-    label: button.textContent.trim() || button.getAttribute("aria-label") || "button"
+    label: button.textContent.trim() || button.getAttribute("aria-label") || "button",
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2
   };
+}
+
+async function dispatchTrustedClick(tabId, x, y) {
+  const target = { tabId };
+  await chrome.debugger.attach(target, "1.3");
+  try {
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mouseMoved",
+      x,
+      y
+    });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x,
+      y,
+      button: "left",
+      clickCount: 1
+    });
+    await chrome.debugger.sendCommand(target, "Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x,
+      y,
+      button: "left",
+      clickCount: 1
+    });
+  } finally {
+    await chrome.debugger.detach(target).catch(() => {});
+  }
 }
 
 async function tapRandomButtonsInControllers() {
@@ -349,6 +379,7 @@ async function tapRandomButtonsInControllers() {
   tapRandomButton.disabled = true;
   let clicked = 0;
   let checked = 0;
+  let eligible = 0;
   const stillOpen = [];
 
   for (const controller of controllers) {
@@ -357,11 +388,17 @@ async function tapRandomButtonsInControllers() {
       await chrome.tabs.get(controller.tabId);
       const results = await chrome.scripting.executeScript({
         target: { tabId: controller.tabId },
-        func: clickRandomVisibleButton
+        func: findRandomVisibleButton
       });
       const result = results?.[0]?.result;
       checked += 1;
-      if (result?.clicked) clicked += 1;
+      eligible += result?.count || 0;
+      if (result?.found) {
+        if (controller.windowId) await chrome.windows.update(controller.windowId, { focused: true }).catch(() => {});
+        await chrome.tabs.update(controller.tabId, { active: true }).catch(() => {});
+        await dispatchTrustedClick(controller.tabId, result.x, result.y);
+        clicked += 1;
+      }
       stillOpen.push(controller);
     } catch (error) {
       // The tab was closed or no longer accepts scripts.
@@ -370,7 +407,7 @@ async function tapRandomButtonsInControllers() {
 
   await chrome.storage.local.set({ spawnedControllers: stillOpen });
   tapRandomButton.disabled = false;
-  setStatus(`Tapped ${clicked} of ${checked} open controller${checked === 1 ? "" : "s"}.`);
+  setStatus(`Tapped ${clicked} of ${checked} open controller${checked === 1 ? "" : "s"} (${eligible} eligible button${eligible === 1 ? "" : "s"} found).`);
 }
 
 async function closeAllControllers() {

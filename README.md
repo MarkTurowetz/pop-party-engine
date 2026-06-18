@@ -50,3 +50,5 @@ To install it locally:
 4. Select the `chrome-extension` folder
 
 Use it from an open Flip 7 Party stage or controller page. Enter a stage code, player names, and controller count, then spawn foregrounded controller windows sized to fit your monitor height. Use Sort Controllers to reposition active spawned windows into a top-right grid based on the order of names in the player list. The extension can also tap a random visible button on every spawned controller, or close all spawned controller windows.
+
+If the extension code changes, click Reload on the extension card in `chrome://extensions`. The Tap Random Button action uses Chrome's debugger input permission so it can send real mouse clicks to controller windows.

@@ -9,6 +9,7 @@
   },
   "permissions": [
     "activeTab",
+    "debugger",
     "scripting",
     "storage",
     "system.display",
