@@ -11,8 +11,14 @@ const INDEX_FILE = path.join(ROOT, "index.html");
 const PACKAGE_FILE = path.join(ROOT, "package.json");
 const BUILD_INFO_FILE = path.join(ROOT, "build-info.json");
 const DEFAULT_GAME_FLOW_FILE = path.join(ROOT, "game-flow.default.json");
-const GAME_FLOW_FILE = path.join(ROOT, "game-flow.json");
+const GAME_FLOW_FILE = path.resolve(ROOT, process.env.GAME_FLOW_FILE || "game-flow.json");
 const GAME_FLOW_BACKUP_DIR = path.join(ROOT, "game-flow.backups");
+const GAME_FLOW_STORAGE = String(process.env.GAME_FLOW_STORAGE || "local").toLowerCase();
+const GAME_FLOW_GITHUB_TOKEN = process.env.GAME_FLOW_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
+const GAME_FLOW_GITHUB_REPO = process.env.GAME_FLOW_GITHUB_REPO || process.env.GITHUB_REPOSITORY || "MarkTurowetz/pop-party";
+const GAME_FLOW_GITHUB_BRANCH = process.env.GAME_FLOW_GITHUB_BRANCH || "game-data";
+const GAME_FLOW_GITHUB_BASE_BRANCH = process.env.GAME_FLOW_GITHUB_BASE_BRANCH || "main";
+const GAME_FLOW_GITHUB_PATH = process.env.GAME_FLOW_GITHUB_PATH || "game-flow.json";
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
@@ -339,7 +345,7 @@ function readDefaultGameFlowSource() {
   }
 }
 
-function readGameFlowSource() {
+function readLocalGameFlowSource() {
   try {
     return readJsonFile(GAME_FLOW_FILE);
   } catch (error) {
@@ -347,15 +353,76 @@ function readGameFlowSource() {
   }
 }
 
+const gameFlowStore = {
+  source: readLocalGameFlowSource(),
+  remoteSha: "",
+  storageKind: GAME_FLOW_STORAGE === "github" ? "github" : "local",
+  loadedAt: 0,
+  error: "",
+  ready: null
+};
+
+function readGameFlowSource() {
+  return cloneJson(gameFlowStore.source || readDefaultGameFlowSource());
+}
+
 function readGameFlow() {
   return normalizeGameFlow(readGameFlowSource());
 }
 
-function writeGameFlow(flow) {
-  const merged = mergeFlowWithExistingSubActions(flow);
+async function loadGameFlowSource({ refresh = false } = {}) {
+  if (gameFlowStore.storageKind !== "github") {
+    gameFlowStore.source = readLocalGameFlowSource();
+    gameFlowStore.loadedAt = Date.now();
+    gameFlowStore.error = "";
+    return readGameFlowSource();
+  }
+
+  if (!refresh && gameFlowStore.loadedAt) return readGameFlowSource();
+  if (!GAME_FLOW_GITHUB_TOKEN) {
+    gameFlowStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
+    return readGameFlowSource();
+  }
+
+  try {
+    const remote = await readGithubGameFlowSource();
+    if (remote?.flow) {
+      gameFlowStore.source = remote.flow;
+      gameFlowStore.remoteSha = remote.sha || "";
+    } else {
+      const seeded = await writeGithubGameFlowSource(readGameFlowSource(), "");
+      gameFlowStore.source = seeded.flow;
+      gameFlowStore.remoteSha = seeded.sha || "";
+    }
+    gameFlowStore.loadedAt = Date.now();
+    gameFlowStore.error = "";
+  } catch (error) {
+    gameFlowStore.error = `GitHub flow storage unavailable: ${error.message}`;
+  }
+
+  return readGameFlowSource();
+}
+
+async function writeGameFlow(flow) {
+  const existingFlow = await loadGameFlowSource({ refresh: true });
+  const merged = mergeFlowWithExistingSubActions(flow, existingFlow);
   normalizeGameFlow(merged);
   backupGameFlowSource();
-  fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(merged, null, 2)}\n`);
+  if (gameFlowStore.storageKind === "github") {
+    if (!GAME_FLOW_GITHUB_TOKEN) {
+      throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
+    }
+    const saved = await writeGithubGameFlowSource(merged, gameFlowStore.remoteSha);
+    gameFlowStore.source = saved.flow;
+    gameFlowStore.remoteSha = saved.sha || "";
+    gameFlowStore.loadedAt = Date.now();
+    gameFlowStore.error = "";
+    mirrorGameFlowSource(saved.flow);
+    return saved.flow;
+  }
+  writeLocalGameFlowSource(merged);
+  gameFlowStore.source = merged;
+  gameFlowStore.loadedAt = Date.now();
   return merged;
 }
 
@@ -366,19 +433,116 @@ function backupGameFlowSource() {
   fs.copyFileSync(GAME_FLOW_FILE, path.join(GAME_FLOW_BACKUP_DIR, `game-flow-${stamp}.json`));
 }
 
-function mergeFlowWithExistingSubActions(incomingFlow) {
+function writeLocalGameFlowSource(flow) {
+  fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(flow, null, 2)}\n`);
+}
+
+function mirrorGameFlowSource(flow) {
+  try {
+    writeLocalGameFlowSource(flow);
+  } catch (error) {
+    // The durable provider is authoritative; local mirrors are best-effort.
+  }
+}
+
+function githubFlowHeaders() {
+  return {
+    "Accept": "application/vnd.github+json",
+    "Authorization": `Bearer ${GAME_FLOW_GITHUB_TOKEN}`,
+    "User-Agent": "flip-7-party",
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+}
+
+async function githubRequest(pathname, options = {}) {
+  const response = await fetch(`https://api.github.com${pathname}`, {
+    ...options,
+    headers: {
+      ...githubFlowHeaders(),
+      ...(options.headers || {})
+    }
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    const error = new Error(data?.message || `GitHub request failed with ${response.status}`);
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+  return data;
+}
+
+function githubRepoPath() {
+  return `/repos/${GAME_FLOW_GITHUB_REPO}`;
+}
+
+function githubContentPath() {
+  return GAME_FLOW_GITHUB_PATH.split("/").map((part) => encodeURIComponent(part)).join("/");
+}
+
+async function ensureGithubDataBranch() {
+  if (GAME_FLOW_GITHUB_BRANCH === GAME_FLOW_GITHUB_BASE_BRANCH) return;
+  try {
+    await githubRequest(`${githubRepoPath()}/git/ref/heads/${GAME_FLOW_GITHUB_BRANCH}`);
+    return;
+  } catch (error) {
+    if (error.status !== 404) throw error;
+  }
+  const baseRef = await githubRequest(`${githubRepoPath()}/git/ref/heads/${GAME_FLOW_GITHUB_BASE_BRANCH}`);
+  await githubRequest(`${githubRepoPath()}/git/refs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ref: `refs/heads/${GAME_FLOW_GITHUB_BRANCH}`,
+      sha: baseRef.object.sha
+    })
+  });
+}
+
+async function readGithubGameFlowSource() {
+  await ensureGithubDataBranch();
+  try {
+    const file = await githubRequest(`${githubRepoPath()}/contents/${githubContentPath()}?ref=${encodeURIComponent(GAME_FLOW_GITHUB_BRANCH)}`);
+    if (!file?.content) return null;
+    const json = Buffer.from(file.content, "base64").toString("utf8");
+    return { flow: JSON.parse(json), sha: file.sha || "" };
+  } catch (error) {
+    if (error.status === 404) return null;
+    throw error;
+  }
+}
+
+async function writeGithubGameFlowSource(flow, sha = "") {
+  await ensureGithubDataBranch();
+  const payload = {
+    message: `Save game flow ${new Date().toISOString()}`,
+    content: Buffer.from(`${JSON.stringify(flow, null, 2)}\n`).toString("base64"),
+    branch: GAME_FLOW_GITHUB_BRANCH
+  };
+  if (sha) payload.sha = sha;
+  try {
+    const result = await githubRequest(`${githubRepoPath()}/contents/${githubContentPath()}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    return { flow, sha: result?.content?.sha || "" };
+  } catch (error) {
+    if (error.status !== 409 || !sha) throw error;
+    const latest = await readGithubGameFlowSource();
+    const merged = mergeFlowWithExistingSubActions(flow, latest?.flow || {});
+    return writeGithubGameFlowSource(merged, latest?.sha || "");
+  }
+}
+
+function mergeFlowWithExistingSubActions(incomingFlow, existingFlow = null) {
   const incomingStates = Array.isArray(incomingFlow?.states) ? incomingFlow.states : [];
   if (incomingStates.length === 0) return incomingFlow;
-
-  let existingFlow = null;
-  try {
-    existingFlow = JSON.parse(fs.readFileSync(GAME_FLOW_FILE, "utf8"));
-  } catch (error) {
-    return incomingFlow;
-  }
+  const existing = existingFlow || readGameFlowSource();
 
   const existingActionsById = new Map();
-  for (const state of existingFlow?.states || []) {
+  for (const state of existing?.states || []) {
     for (const action of state.actions || []) {
       indexActionTree(action, existingActionsById);
     }
@@ -656,12 +820,20 @@ function serveArtFile(res, kind, fileName) {
   });
 }
 
-function sendGameFlow(res) {
-  const flow = readGameFlowSource();
+async function sendGameFlow(res) {
+  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
   sendJson(res, 200, {
     ok: true,
     flow,
     runtimeFlow: normalizeGameFlow(flow),
+    storage: {
+      kind: gameFlowStore.storageKind,
+      durable: gameFlowStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
+      error: gameFlowStore.error || "",
+      repo: gameFlowStore.storageKind === "github" ? GAME_FLOW_GITHUB_REPO : "",
+      branch: gameFlowStore.storageKind === "github" ? GAME_FLOW_GITHUB_BRANCH : "",
+      path: gameFlowStore.storageKind === "github" ? GAME_FLOW_GITHUB_PATH : ""
+    },
     availableActionTypes: availableFlowActionTypes,
     availableTransitions: availableFlowTransitions
   });
@@ -678,9 +850,9 @@ async function handleSaveGameFlow(req, res) {
 
   let flow;
   try {
-    flow = writeGameFlow(payload.flow || payload);
+    flow = await writeGameFlow(payload.flow || payload);
   } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Game flow could not be saved." });
+    sendJson(res, 400, { ok: false, error: `Game flow could not be saved: ${error.message}` });
     return;
   }
   for (const room of rooms.values()) {
@@ -690,7 +862,16 @@ async function handleSaveGameFlow(req, res) {
     room.appliedActionEffectId = "";
     broadcastLobby(room);
   }
-  sendJson(res, 200, { ok: true, flow, runtimeFlow: normalizeGameFlow(flow) });
+  sendJson(res, 200, {
+    ok: true,
+    flow,
+    runtimeFlow: normalizeGameFlow(flow),
+    storage: {
+      kind: gameFlowStore.storageKind,
+      durable: gameFlowStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
+      error: gameFlowStore.error || ""
+    }
+  });
 }
 
 function getRoom(stageCode) {
@@ -1223,7 +1404,9 @@ function router(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/game-flow") {
-    sendGameFlow(res);
+    sendGameFlow(res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message });
+    });
     return;
   }
 
@@ -1355,4 +1538,11 @@ server.listen(PORT, HOST, () => {
   for (const url of getLanUrls()) {
     console.log(`LAN URL: ${url}`);
   }
+  loadGameFlowSource({ refresh: true })
+    .then(() => {
+      console.log(`Game flow storage: ${gameFlowStore.storageKind}${gameFlowStore.error ? ` (${gameFlowStore.error})` : ""}`);
+    })
+    .catch((error) => {
+      console.error(`Game flow storage failed: ${error.message}`);
+    });
 });

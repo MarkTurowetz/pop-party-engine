@@ -9,3 +9,15 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22
+      - key: GAME_FLOW_STORAGE
+        value: github
+      - key: GAME_FLOW_GITHUB_REPO
+        value: MarkTurowetz/pop-party
+      - key: GAME_FLOW_GITHUB_BRANCH
+        value: game-data
+      - key: GAME_FLOW_GITHUB_BASE_BRANCH
+        value: main
+      - key: GAME_FLOW_GITHUB_PATH
+        value: game-flow.json
+      - key: GAME_FLOW_GITHUB_TOKEN
+        sync: false

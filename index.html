@@ -1619,6 +1619,7 @@
         <div class="art-header">
           <h1>Game Flow</h1>
           <p>Create game states, then sequence game actions inside each state.</p>
+          <p id="flowStorageStatus">Checking flow storage...</p>
         </div>
         <div class="flow-list" id="flowList"></div>
         <div class="flow-actions">
@@ -1709,6 +1710,7 @@
     const flowEditor = document.querySelector("#flowEditor");
     const flowEditorTitle = document.querySelector("#flowEditorTitle");
     const flowEditorHelp = document.querySelector("#flowEditorHelp");
+    const flowStorageStatus = document.querySelector("#flowStorageStatus");
     const addStateButton = document.querySelector("#addStateButton");
     const addActionButton = document.querySelector("#addActionButton");
     const deleteFlowItemButton = document.querySelector("#deleteFlowItemButton");
@@ -2926,9 +2928,23 @@
       gameFlow = result.flow || { states: [] };
       flowActionTypes = result.availableActionTypes || [];
       flowTransitions = result.availableTransitions || [];
+      updateFlowStorageStatus(result.storage);
       selectedFlowStateId = selectedFlowStateId || gameFlow.states[0]?.id || "";
       selectedFlowActionId = "";
       renderFlowTool();
+    }
+
+    function updateFlowStorageStatus(storage) {
+      if (!flowStorageStatus) return;
+      if (!storage) {
+        flowStorageStatus.textContent = "Flow storage: unknown";
+        return;
+      }
+      if (storage.durable) {
+        flowStorageStatus.textContent = `Flow storage: GitHub ${storage.repo || ""}${storage.branch ? ` / ${storage.branch}` : ""}`;
+        return;
+      }
+      flowStorageStatus.textContent = storage.error || "Flow storage: local fallback only";
     }
 
     function renderFlowTool() {
@@ -3556,6 +3572,7 @@
       try {
         const result = await postJson("/api/game-flow", { flow: serializeGameFlowForSave(gameFlow) });
         gameFlow = result.flow;
+        updateFlowStorageStatus(result.storage);
         selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
         selectedFlowActionId = "";
         renderFlowTool();

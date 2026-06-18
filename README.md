@@ -32,11 +32,32 @@ http://localhost:3000/l
 
 This app is ready for Render as a Node web service.
 
-- Build command: leave blank
+- Build command: `npm run build-info`
 - Start command: `node server.js`
 - Health check path: `/api/health`
 
 The included `render.yaml` defines the same settings as a Render Blueprint.
+
+## Durable Game Flow Storage
+
+The flow editor does not rely on the deployed server filesystem. In production,
+game flow data is stored through a pluggable storage layer. The Render blueprint
+is configured to use GitHub-backed storage:
+
+```text
+GAME_FLOW_STORAGE=github
+GAME_FLOW_GITHUB_REPO=MarkTurowetz/pop-party
+GAME_FLOW_GITHUB_BRANCH=game-data
+GAME_FLOW_GITHUB_PATH=game-flow.json
+```
+
+Set `GAME_FLOW_GITHUB_TOKEN` in Render as a secret environment variable. Use a
+fine-grained GitHub token with Contents read/write access to this repository.
+The app writes flow edits to the `game-data` branch so saving flow data does not
+trigger app redeploys from `main`.
+
+Local development still falls back to the ignored `game-flow.json` file unless
+`GAME_FLOW_STORAGE=github` is set.
 
 ## Chrome Controller Spawner
 
