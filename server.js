@@ -9,6 +9,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const PACKAGE_FILE = path.join(ROOT, "package.json");
+const DEFAULT_GAME_FLOW_FILE = path.join(ROOT, "game-flow.default.json");
 const GAME_FLOW_FILE = path.join(ROOT, "game-flow.json");
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
@@ -256,7 +257,7 @@ function readGameFlow() {
   try {
     return normalizeGameFlow(JSON.parse(fs.readFileSync(GAME_FLOW_FILE, "utf8")));
   } catch (error) {
-    return normalizeGameFlow(defaultGameFlow);
+    return readDefaultGameFlow();
   }
 }
 
@@ -264,6 +265,14 @@ function writeGameFlow(flow) {
   const normalized = normalizeGameFlow(flow);
   fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(normalized, null, 2)}\n`);
   return normalized;
+}
+
+function readDefaultGameFlow() {
+  try {
+    return normalizeGameFlow(JSON.parse(fs.readFileSync(DEFAULT_GAME_FLOW_FILE, "utf8")));
+  } catch (error) {
+    return normalizeGameFlow(defaultGameFlow);
+  }
 }
 
 function getFlowState(flow, stateId) {

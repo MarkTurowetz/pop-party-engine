@@ -6,5 +6,6 @@ outputs/
 tmp/
 scripts/
 tools/
+game-flow.json
 *.py
 *.sh
