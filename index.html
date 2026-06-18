@@ -50,7 +50,15 @@
     html.controller-locked :not(input):not(textarea):not(select) {
       -webkit-touch-callout: none;
       -webkit-user-select: none;
+      -webkit-user-drag: none;
       user-select: none;
+    }
+
+    html.controller-locked button {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
+      touch-action: manipulation;
     }
 
     button,
@@ -771,6 +779,18 @@
       window.addEventListener("touchmove", (event) => {
         if (!shouldAllowControllerTouch(event.target)) event.preventDefault();
       }, { passive: false });
+      window.addEventListener("contextmenu", (event) => {
+        if (!shouldAllowControllerTouch(event.target)) event.preventDefault();
+      });
+      window.addEventListener("selectstart", (event) => {
+        if (!shouldAllowControllerTouch(event.target)) event.preventDefault();
+      });
+      window.addEventListener("dragstart", (event) => event.preventDefault());
+      window.addEventListener("gesturestart", (event) => event.preventDefault());
+      document.addEventListener("selectionchange", () => {
+        if (document.activeElement?.matches?.("input, textarea")) return;
+        window.getSelection()?.removeAllRanges();
+      });
     }
 
     function bindControllerButtonPressStates() {
@@ -807,7 +827,11 @@
         for (const button of pressableButtons) releaseButton(button);
       };
       for (const button of pressableButtons) {
-        button.addEventListener("pointerdown", () => pressButton(button));
+        button.addEventListener("pointerdown", () => {
+          window.getSelection()?.removeAllRanges();
+          pressButton(button);
+        });
+        button.addEventListener("dblclick", (event) => event.preventDefault());
         button.addEventListener("pointerup", () => releaseButton(button));
         button.addEventListener("pointercancel", () => releaseButton(button));
         button.addEventListener("pointerleave", () => releaseButton(button));
