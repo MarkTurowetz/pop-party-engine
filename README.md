@@ -53,8 +53,10 @@ GAME_FLOW_GITHUB_PATH=game-flow.json
 
 Set `GAME_FLOW_GITHUB_TOKEN` in Render as a secret environment variable. Use a
 fine-grained GitHub token with Contents read/write access to this repository.
-The app writes flow edits to the `game-data` branch so saving flow data does not
-trigger app redeploys from `main`.
+When that token is present, the app automatically uses GitHub flow storage unless
+`GAME_FLOW_STORAGE=local` is explicitly set. The app writes flow edits to the
+`game-data` branch so saving flow data does not trigger app redeploys from
+`main`.
 
 Local development still falls back to the ignored `game-flow.json` file unless
 `GAME_FLOW_STORAGE=github` is set.
