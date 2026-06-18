@@ -462,40 +462,20 @@
       height: clamp(58px, 7vw, 86px);
       display: grid;
       place-items: center;
+      border-radius: 20px;
       border: 5px solid var(--ink);
       box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.52);
-      background: var(--avatar-color);
-      color: #fff;
-      font-size: clamp(24px, 4vw, 38px);
-      font-weight: 1000;
-      text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+      background: var(--paper);
+      color: var(--avatar-color);
     }
 
-    .shape-circle { border-radius: 50%; }
-    .shape-square { border-radius: 16px; }
-    .shape-diamond { border-radius: 18px; transform: rotate(45deg); }
-    .shape-diamond span { transform: rotate(-45deg); }
-    .shape-pill { border-radius: 999px; width: clamp(76px, 9vw, 112px); }
-    .shape-triangle {
-      width: 0;
-      height: 0;
-      border-left: clamp(34px, 4vw, 48px) solid transparent;
-      border-right: clamp(34px, 4vw, 48px) solid transparent;
-      border-bottom: clamp(64px, 7vw, 92px) solid var(--avatar-color);
-      background: transparent;
-      box-shadow: none;
-      border-top: 0;
+    .dino-icon {
+      width: 86%;
+      height: 86%;
+      overflow: visible;
+      fill: currentColor;
+      filter: drop-shadow(3px 3px 0 rgba(23, 19, 31, 0.5));
     }
-    .shape-triangle span {
-      position: absolute;
-      margin-top: clamp(24px, 2.8vw, 36px);
-      margin-left: -12px;
-    }
-    .shape-hex {
-      border-radius: 24px 10px;
-      transform: skew(-8deg);
-    }
-    .shape-hex span { transform: skew(8deg); }
 
     .player-name {
       max-width: 100%;
@@ -689,13 +669,17 @@
       height: clamp(72px, 22vmin, 112px);
       display: grid;
       place-items: center;
+      border-radius: 26px;
       border: 5px solid var(--ink);
-      background: var(--avatar-color);
+      background: var(--paper);
       box-shadow: 9px 9px 0 rgba(23, 19, 31, 0.55);
-      color: #fff;
-      font-size: clamp(32px, 10vmin, 48px);
-      font-weight: 1000;
-      text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+      color: var(--avatar-color);
+    }
+
+    .controller-avatar .dino-icon {
+      width: 88%;
+      height: 88%;
+      filter: drop-shadow(4px 4px 0 rgba(23, 19, 31, 0.48));
     }
 
     .controller-player-name {
@@ -865,7 +849,7 @@
   <section class="screen stage hidden" id="stageScreen" aria-label="Flip 7 Party stage">
     <div class="start-popup hidden" id="startPopup">Starting Game</div>
     <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
-    <div class="version-badge">v1.0.0</div>
+    <div class="version-badge">v__APP_VERSION__</div>
     <div class="stage-wipe hidden" id="stageWipe" aria-hidden="true">
       <div class="wipe-line"></div>
       <div class="wipe-line"></div>
@@ -920,7 +904,7 @@
       </div>
 
       <div class="controller-lobby hidden" id="controllerLobbyState" data-controller-view="lobby">
-        <div class="controller-avatar" id="controllerAvatar"><span id="controllerAvatarInitial">?</span></div>
+        <div class="controller-avatar" id="controllerAvatar"></div>
         <h1 class="controller-player-name" id="controllerPlayerName">Player</h1>
         <div class="controller-meta" id="controllerMeta">Waiting in lobby</div>
         <button class="primary-button hidden" id="startGameButton" type="button" data-controller-option data-option-id="lobby.startGame">Start Game</button>
@@ -928,6 +912,7 @@
 
       <div class="controller-lobby hidden" id="controllerIntroState" data-controller-view="intro">
         <h1 class="controller-player-name">Welcome to the Game</h1>
+        <button class="primary-button hidden" id="introPresentButton" type="button" data-controller-option data-option-id="intro.presentHi">Present HI THERE</button>
       </div>
     </div>
   </section>
@@ -983,9 +968,9 @@
     const joinButton = document.querySelector("#joinButton");
     const controllerPlayerName = document.querySelector("#controllerPlayerName");
     const controllerAvatar = document.querySelector("#controllerAvatar");
-    const controllerAvatarInitial = document.querySelector("#controllerAvatarInitial");
     const controllerMeta = document.querySelector("#controllerMeta");
     const startGameButton = document.querySelector("#startGameButton");
+    const introPresentButton = document.querySelector("#introPresentButton");
     let controllerState = null;
     let heartbeatTimer = null;
     let lobbyPollTimer = null;
@@ -1149,12 +1134,57 @@
       return next;
     }
 
-    function avatarInitial(name) {
-      return String(name || "?").trim().charAt(0).toUpperCase() || "?";
-    }
+    const DINO_PATHS = {
+      rex: [
+        "M7 36 L17 30 L27 25 L37 24 L47 28 L56 24 L52 32 L43 33 L38 39 L42 55 L34 55 L31 42 L24 42 L20 55 L12 55 L17 39 Z",
+        "M34 19 L49 14 L58 18 L52 24 L39 25 Z",
+        "M43 33 L51 40 L47 44 L39 36 Z",
+        "M18 31 L4 25 L2 20 L24 27 Z"
+      ],
+      stego: [
+        "M8 38 L16 31 L29 27 L43 29 L55 37 L50 43 L37 43 L35 55 L28 55 L26 43 L18 43 L15 55 L8 55 L11 42 Z",
+        "M14 30 L18 18 L23 29 Z",
+        "M25 27 L30 12 L36 28 Z",
+        "M38 29 L44 17 L49 33 Z",
+        "M50 36 L61 32 L56 39 Z",
+        "M11 36 L2 31 L4 26 L18 33 Z"
+      ],
+      trike: [
+        "M10 37 L18 29 L34 25 L50 29 L58 39 L51 45 L38 43 L35 55 L28 55 L26 43 L18 43 L15 55 L8 55 L11 43 Z",
+        "M42 25 L53 14 L54 30 Z",
+        "M52 29 L63 24 L58 33 Z",
+        "M44 36 L60 38 L46 42 Z",
+        "M17 30 L7 22 L22 27 Z"
+      ],
+      raptor: [
+        "M9 39 L20 30 L34 28 L46 34 L57 31 L54 39 L45 41 L38 37 L33 43 L38 55 L31 55 L27 45 L21 55 L13 55 L18 42 Z",
+        "M33 22 L47 16 L56 20 L50 27 L36 28 Z",
+        "M38 40 L49 50 L43 54 L34 44 Z",
+        "M18 31 L2 24 L4 19 L26 28 Z"
+      ],
+      bronto: [
+        "M8 40 L17 32 L31 29 L45 31 L56 39 L51 45 L38 44 L36 55 L29 55 L27 44 L17 44 L14 55 L7 55 L11 44 Z",
+        "M43 31 L48 18 L57 10 L62 14 L54 22 L51 37 Z",
+        "M17 32 L4 30 L1 25 L20 27 Z"
+      ],
+      ankylo: [
+        "M9 39 L17 31 L30 27 L45 28 L55 35 L53 43 L39 44 L36 55 L29 55 L27 44 L18 44 L15 55 L8 55 L11 43 Z",
+        "M13 30 L17 20 L22 30 Z",
+        "M25 27 L30 17 L35 28 Z",
+        "M38 28 L43 20 L48 31 Z",
+        "M52 36 L62 33 L63 41 L53 41 Z",
+        "M10 38 L2 36 L4 29 L15 33 Z"
+      ]
+    };
 
     function avatarClass(shape) {
-      return `shape-${shape || "circle"}`;
+      return `shape-${shape || "rex"}`;
+    }
+
+    function dinoIcon(shape) {
+      const species = DINO_PATHS[shape] ? shape : "rex";
+      const paths = DINO_PATHS[species].map((path) => `<path d="${path}"></path>`).join("");
+      return `<svg class="dino-icon dino-${species}" viewBox="0 0 64 64" focusable="false" aria-hidden="true">${paths}</svg>`;
     }
 
     async function postJson(path, payload) {
@@ -1189,7 +1219,7 @@
         const tile = document.createElement("article");
         tile.className = "player-tile";
         tile.innerHTML = `
-          <div class="player-avatar ${avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}"><span>${avatarInitial(player.name)}</span></div>
+          <div class="player-avatar ${avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${dinoIcon(player.avatar?.shape)}</div>
           <div class="player-name"></div>
           ${player.isVip ? '<div class="vip-badge">VIP</div>' : ""}
         `;
@@ -1340,7 +1370,7 @@
     function setControllerAvatar(player) {
       controllerAvatar.className = `controller-avatar ${avatarClass(player.avatar?.shape)}`;
       controllerAvatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
-      controllerAvatarInitial.textContent = avatarInitial(player.name);
+      controllerAvatar.innerHTML = dinoIcon(player.avatar?.shape);
     }
 
     function renderControllerState(lobby) {
@@ -1351,6 +1381,7 @@
         controllerState.startToken = "";
         controllerMeta.textContent = "Reconnecting to lobby";
         controllerIntroState.classList.add("hidden");
+        introPresentButton.classList.add("hidden");
         controllerLobbyState.classList.remove("hidden");
         startGameButton.classList.add("hidden");
         return;
@@ -1362,11 +1393,14 @@
         joinState.classList.add("hidden");
         controllerLobbyState.classList.add("hidden");
         controllerIntroState.classList.remove("hidden");
+        introPresentButton.classList.toggle("hidden", !me.isVip);
+        introPresentButton.disabled = !me.isVip;
         return;
       }
 
       joinState.classList.add("hidden");
       controllerIntroState.classList.add("hidden");
+      introPresentButton.classList.add("hidden");
       controllerLobbyState.classList.remove("hidden");
       controllerPlayerName.textContent = me.name;
       setControllerAvatar(me);
@@ -1494,6 +1528,27 @@
           if (result.lobby) renderControllerState(result.lobby);
         } catch (error) {
           controllerMeta.textContent = error.message;
+        }
+      });
+
+      introPresentButton.addEventListener("click", async () => {
+        if (!controllerState) return;
+        if (!controllerState.player?.isVip) return;
+        introPresentButton.disabled = true;
+        try {
+          const result = await postJson("/api/present-hi", {
+            stageCode: controllerState.stageCode,
+            playerId: controllerState.playerId,
+            startToken: controllerState.startToken
+          });
+          if (result.lobby) renderControllerState(result.lobby);
+        } catch (error) {
+          introPresentButton.textContent = error.message;
+          window.setTimeout(() => {
+            introPresentButton.textContent = "Present HI THERE";
+          }, 1800);
+        } finally {
+          introPresentButton.disabled = false;
         }
       });
 

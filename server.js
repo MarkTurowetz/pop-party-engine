@@ -1,4 +1,5 @@
 const http = require("http");
+const childProcess = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -7,6 +8,7 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
+const PACKAGE_FILE = path.join(ROOT, "package.json");
 const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
 const START_COUNTDOWN_MS = 3000;
@@ -19,7 +21,31 @@ const INTRO_ACTIONS = [
 
 const rooms = new Map();
 const avatarColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff"];
-const avatarShapes = ["circle", "square", "diamond", "pill", "triangle", "hex"];
+const avatarShapes = ["rex", "stego", "trike", "raptor", "bronto", "ankylo"];
+
+function readAppVersion() {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(PACKAGE_FILE, "utf8"));
+    const buildNumber = readBuildNumber();
+    return buildNumber ? `${manifest.version}.${buildNumber}` : manifest.version || "0.0.0";
+  } catch (error) {
+    return "0.0.0";
+  }
+}
+
+function readBuildNumber() {
+  try {
+    return childProcess.execSync("git rev-list --count HEAD", {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch (error) {
+    return "";
+  }
+}
+
+const APP_VERSION = readAppVersion();
 
 function randomToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
@@ -83,6 +109,7 @@ function getRoom(stageCode) {
       countdownEndsAt: 0,
       countdownTimerId: null,
       actionIndex: 0,
+      presentedAction: null,
       revision: 0
     });
   }
@@ -136,7 +163,7 @@ function lobbyPayload(room) {
   if (room.phase === "intro" && room.actionIndex >= INTRO_ACTIONS.length) {
     room.actionIndex = Math.max(0, INTRO_ACTIONS.length - 1);
   }
-  const currentAction = room.phase === "intro" ? INTRO_ACTIONS[room.actionIndex] || null : null;
+  const currentAction = room.phase === "intro" ? room.presentedAction || INTRO_ACTIONS[room.actionIndex] || null : null;
   return {
     type: "lobby",
     stageCode: room.stageCode,
@@ -177,6 +204,7 @@ function enterLobbyPhase(room) {
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
+  room.presentedAction = null;
 }
 
 function enterIntroPhase(room) {
@@ -185,6 +213,7 @@ function enterIntroPhase(room) {
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
+  room.presentedAction = null;
   broadcastLobby(room);
 }
 
@@ -430,6 +459,13 @@ async function handleAdvancePresentation(req, res) {
     return;
   }
 
+  if (room.phase === "intro" && room.presentedAction?.type === "present") {
+    room.presentedAction = null;
+    broadcastLobby(room);
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
+
   const currentAction = room.phase === "intro" ? INTRO_ACTIONS[room.actionIndex] : null;
   if (!currentAction || currentAction.type !== "present") {
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -437,6 +473,43 @@ async function handleAdvancePresentation(req, res) {
   }
 
   room.actionIndex = Math.min(room.actionIndex + 1, INTRO_ACTIONS.length - 1);
+  broadcastLobby(room);
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+}
+
+async function handlePresentHi(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const playerId = normalizePlayerId(payload.playerId);
+  const room = getExistingRoom(stageCode);
+  const player = room?.players.get(playerId);
+  selectVip(room || { players: new Map(), vipPlayerId: "" });
+
+  if (!room || !player || !player.active) {
+    sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+    return;
+  }
+  if (room.vipPlayerId !== playerId) {
+    sendJson(res, 403, { ok: false, error: "Only the VIP can present text" });
+    return;
+  }
+  if (!payload.startToken || payload.startToken !== room.startToken) {
+    sendJson(res, 403, { ok: false, error: "Present request is stale" });
+    return;
+  }
+  if (room.phase !== "intro") {
+    sendJson(res, 409, { ok: false, error: "Text can only be presented during the game intro" });
+    return;
+  }
+
+  room.presentedAction = { type: "present", text: "HI THERE" };
   broadcastLobby(room);
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
@@ -452,11 +525,12 @@ function serveIndex(res) {
       sendJson(res, 500, { ok: false, error: "Could not read index.html" });
       return;
     }
+    const html = String(data).replaceAll("__APP_VERSION__", APP_VERSION);
     res.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Length": data.length
+      "Content-Length": Buffer.byteLength(html)
     });
-    res.end(data);
+    res.end(html);
   });
 }
 
@@ -512,6 +586,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/advance-presentation") {
     handleAdvancePresentation(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/present-hi") {
+    handlePresentHi(req, res);
     return;
   }
 
