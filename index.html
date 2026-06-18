@@ -87,6 +87,12 @@
       min-height: 100vh;
     }
 
+    .stage,
+    .stage * {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
     .stage {
       min-height: 100vh;
       display: grid;
@@ -277,6 +283,9 @@
       text-transform: uppercase;
       overflow: hidden;
       overflow-wrap: anywhere;
+      transform: scale(1);
+      transform-origin: center;
+      opacity: 1;
     }
 
     .stage-presentation-text.is-long {
@@ -287,6 +296,66 @@
     .stage-presentation-text.is-extra-long {
       font-size: clamp(17px, 2.6vw, 34px);
       line-height: 1.05;
+    }
+
+    .stage-prompt-text {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(150px, 21vh, 260px);
+      z-index: 4;
+      width: min(840px, calc(100vw - 64px));
+      color: var(--cream);
+      font-size: clamp(22px, 4vw, 54px);
+      line-height: 0.98;
+      font-weight: 1000;
+      text-align: center;
+      text-shadow: 4px 4px 0 #000;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+      transform: translateX(-50%) scale(1);
+      transform-origin: center;
+      opacity: 1;
+      pointer-events: none;
+    }
+
+    .stage-text-object {
+      transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms cubic-bezier(0.19, 1, 0.22, 1);
+      will-change: transform, opacity;
+    }
+
+    .stage-text-object.text-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .stage-presentation-text.text-hidden {
+      transform: scale(0);
+    }
+
+    .stage-prompt-text.text-hidden {
+      transform: translateX(-50%) scale(0);
+    }
+
+    .stage-presentation-text.text-update {
+      animation: textUpdatePop 200ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .stage-prompt-text.text-update {
+      animation: promptTextUpdatePop 200ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .stage-text-object.text-instant {
+      transition-duration: 0ms;
+    }
+
+    @keyframes textUpdatePop {
+      from { transform: scale(1.2); }
+      to { transform: scale(1); }
+    }
+
+    @keyframes promptTextUpdatePop {
+      from { transform: translateX(-50%) scale(1.2); }
+      to { transform: translateX(-50%) scale(1); }
     }
 
     .click-widget {
@@ -422,6 +491,36 @@
       gap: 18px;
     }
 
+    .pause-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(23, 19, 31, 0.72);
+    }
+
+    .pause-panel {
+      width: min(420px, calc(100vw - 40px));
+      display: grid;
+      gap: 14px;
+      padding: 24px;
+      border: 5px solid var(--ink);
+      border-radius: 20px;
+      color: var(--ink);
+      background: var(--cream);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .pause-panel h2 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 0.9;
+      text-transform: uppercase;
+    }
+
     .join-prompt {
       justify-self: center;
       padding: 12px 18px;
@@ -462,6 +561,11 @@
       transform: scale(0);
       opacity: 0;
       pointer-events: none;
+    }
+
+    .player-lobby.players-instant .player-tile {
+      transition-duration: 0ms;
+      transition-delay: 0ms;
     }
 
     .player-avatar {
@@ -1331,8 +1435,9 @@
     </main>
     <main class="stage-intro-content hidden" id="stageIntroContent">
       <h1 class="stage-intro-title" id="stageIntroTitle">GAME INTRO</h1>
-      <div class="stage-presentation-text hidden" id="stagePresentationText"></div>
+      <div class="stage-presentation-text stage-text-object text-hidden hidden" id="stagePresentationText"></div>
     </main>
+    <div class="stage-prompt-text stage-text-object text-hidden hidden" id="stagePromptText"></div>
     <div class="click-widget hidden" id="presentClickWidget" aria-hidden="true">
       <div class="click-symbol">
         <span class="click-pulse"></span>
@@ -1343,6 +1448,13 @@
       <div class="join-prompt" id="joinPrompt">Join the Lobby at bit.ly/popcontroller</div>
       <div class="player-lobby" id="playerLobby" aria-label="Joined players"></div>
     </footer>
+    <div class="pause-menu hidden" id="pauseMenu" aria-label="Pause menu">
+      <div class="pause-panel">
+        <h2>Paused</h2>
+        <button class="primary-button" id="returnToGameButton" type="button">Return to Game</button>
+        <button class="secondary-button" id="quitToLobbyButton" type="button">Quit to Lobby</button>
+      </div>
+    </div>
   </section>
 
   <section class="screen controller hidden" id="controllerScreen" aria-label="Flip 7 Party controller">
@@ -1483,7 +1595,11 @@
     const stageIntroContent = document.querySelector("#stageIntroContent");
     const stageIntroTitle = document.querySelector("#stageIntroTitle");
     const stagePresentationText = document.querySelector("#stagePresentationText");
+    const stagePromptText = document.querySelector("#stagePromptText");
     const presentClickWidget = document.querySelector("#presentClickWidget");
+    const pauseMenu = document.querySelector("#pauseMenu");
+    const returnToGameButton = document.querySelector("#returnToGameButton");
+    const quitToLobbyButton = document.querySelector("#quitToLobbyButton");
     const joinState = document.querySelector("#joinState");
     const controllerLobbyState = document.querySelector("#controllerLobbyState");
     const controllerIntroState = document.querySelector("#controllerIntroState");
@@ -1527,6 +1643,9 @@
     let actionTimingTimer = null;
     let playerVisibilityTimer = null;
     let subActionTimers = [];
+    let textObjectTimers = [];
+    let stageTextObjects = {};
+    let isStagePaused = false;
     let currentStageState = null;
     let presentationAdvancePending = false;
     let artAssets = [];
@@ -1812,6 +1931,85 @@
       }, 1120);
     }
 
+    function initStageTextObjects() {
+      stageTextObjects = {
+        presentation: { element: stagePresentationText, visible: false, text: "" },
+        prompt: { element: stagePromptText, visible: false, text: "" }
+      };
+      for (const target of Object.keys(stageTextObjects)) {
+        setStageTextObject(target, { text: "", isShown: false, instant: true, complete: null });
+      }
+    }
+
+    function clearStageObjectTimers() {
+      window.clearTimeout(playerVisibilityTimer);
+      for (const timerId of subActionTimers) window.clearTimeout(timerId);
+      for (const timerId of textObjectTimers) window.clearTimeout(timerId);
+      subActionTimers = [];
+      textObjectTimers = [];
+    }
+
+    function resetStageObjects() {
+      clearStageObjectTimers();
+      playerLobby.classList.remove("players-hidden", "players-instant");
+      initStageTextObjects();
+      presentClickWidget.classList.add("hidden");
+    }
+
+    function textAnimationDuration(isShown, wasVisible, instant) {
+      if (instant) return 0;
+      if (isShown && wasVisible) return 200;
+      if (!isShown && !wasVisible) return 0;
+      return 500;
+    }
+
+    function setStageTextObject(target, options = {}) {
+      const object = stageTextObjects[target] || stageTextObjects.presentation;
+      if (!object) return 0;
+      const element = object.element;
+      const nextText = options.text ?? object.text ?? "";
+      const isShown = options.isShown !== false;
+      const instant = options.instant === true;
+      const wasVisible = object.visible;
+      const duration = textAnimationDuration(isShown, wasVisible, instant);
+
+      element.classList.remove("text-update", "text-instant");
+      if (instant) element.classList.add("text-instant");
+      if (nextText || isShown) element.textContent = nextText;
+      element.classList.toggle("is-long", nextText.length > 62);
+      element.classList.toggle("is-extra-long", nextText.length > 104);
+      object.text = nextText;
+
+      if (isShown) {
+        element.classList.remove("hidden");
+        if (wasVisible) {
+          void element.offsetWidth;
+          if (!instant) element.classList.add("text-update");
+        }
+        requestAnimationFrame(() => {
+          element.classList.toggle("text-hidden", false);
+        });
+      } else if (wasVisible) {
+        element.classList.add("text-hidden");
+        if (duration === 0) element.classList.add("hidden");
+      }
+
+      if (!isShown && !wasVisible) {
+        element.classList.add("text-hidden", "hidden");
+      }
+
+      object.visible = isShown;
+      if (duration > 0 && !isShown) {
+        const timerId = window.setTimeout(() => element.classList.add("hidden"), duration);
+        textObjectTimers.push(timerId);
+      }
+      if (typeof options.complete === "function") {
+        const timerId = window.setTimeout(options.complete, duration);
+        textObjectTimers.push(timerId);
+      }
+      return duration;
+    }
+
     function applyStageState(lobby) {
       currentStageState = lobby;
       const players = lobby.players || [];
@@ -1826,11 +2024,6 @@
       stageFooter.classList.remove("hidden");
       stageIntroContent.classList.toggle("hidden", phase !== "intro");
       stageIntroTitle.textContent = "GAME INTRO";
-      const presentationText = phase === "intro" ? action?.text || "" : "";
-      stagePresentationText.textContent = presentationText;
-      stagePresentationText.classList.toggle("hidden", !presentationText);
-      stagePresentationText.classList.toggle("is-long", presentationText.length > 62);
-      stagePresentationText.classList.toggle("is-extra-long", presentationText.length > 104);
       presentClickWidget.classList.toggle("hidden", !(phase === "intro" && action?.type === "present" && action?.timing?.mode !== "S+"));
       renderStagePlayers(players);
       playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
@@ -1854,6 +2047,10 @@
         };
         updateCountdown();
         stageCountdownTimer = window.setInterval(updateCountdown, 100);
+      }
+
+      if (phase === "lobby") {
+        resetStageObjects();
       }
     }
 
@@ -1886,9 +2083,7 @@
     }
 
     function prepareNewStageAction(lobby, actionKey) {
-      window.clearTimeout(playerVisibilityTimer);
-      for (const timerId of subActionTimers) window.clearTimeout(timerId);
-      subActionTimers = [];
+      clearStageObjectTimers();
       scheduleActionTiming(lobby, actionKey);
     }
 
@@ -1920,9 +2115,10 @@
       if (isPrimary) scheduleSubActions(action, actionKey);
       if (action.type === "setPlayersShown") {
         playerLobby.classList.toggle("players-hidden", action.isShown === false);
+        playerLobby.classList.toggle("players-instant", action.instant === true);
         if (isPrimary) {
           const playerCount = playerLobby.querySelectorAll(".player-tile").length;
-          const delayMs = 1000 + Math.max(0, playerCount - 1) * 45;
+          const delayMs = action.instant ? 0 : 1000 + Math.max(0, playerCount - 1) * 45;
           playerVisibilityTimer = window.setTimeout(() => {
             if (renderedActionKey !== actionKey) return;
             completeFlowAction("callback", action.id);
@@ -1930,12 +2126,19 @@
         }
         return;
       }
-      if (!isPrimary && (action.type === "present" || action.type === "text")) {
-        const text = action.text || "";
-        stagePresentationText.textContent = text;
-        stagePresentationText.classList.toggle("hidden", !text);
-        stagePresentationText.classList.toggle("is-long", text.length > 62);
-        stagePresentationText.classList.toggle("is-extra-long", text.length > 104);
+      if (action.type === "present" || action.type === "displayText") {
+        const target = action.textTarget || "presentation";
+        setStageTextObject(target, {
+          text: action.text || "",
+          isShown: action.type === "present" ? true : action.isShown !== false,
+          instant: action.instant === true,
+          complete: isPrimary && action.type === "displayText"
+            ? () => {
+                if (renderedActionKey !== actionKey) return;
+                completeFlowAction("callback", action.id);
+              }
+            : null
+        });
         return;
       }
       if (!isPrimary && action.type === "transition") {
@@ -1958,13 +2161,21 @@
     }
 
     async function advancePresentation() {
+      if (isStagePaused) return;
       if (presentationAdvancePending) return;
       if (currentStageState?.phase !== "intro" || currentStageState?.action?.type !== "present") return;
       presentationAdvancePending = true;
+      const action = currentStageState.action;
+      const target = action.textTarget || "presentation";
+      const delayMs = setStageTextObject(target, {
+        isShown: false,
+        instant: action.instant === true
+      });
       try {
+        if (delayMs > 0) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
         const result = await postJson("/api/advance-presentation", {
           stageCode: currentStageState.stageCode,
-          actionId: currentStageState.action.id,
+          actionId: action.id,
           source: "callback"
         });
         if (result.lobby) renderStageLobby(result.lobby);
@@ -1982,6 +2193,26 @@
           stageCode: currentStageState.stageCode,
           actionId,
           source
+        });
+        if (result.lobby) renderStageLobby(result.lobby);
+      } catch (error) {
+        waitingStatus.classList.remove("hidden");
+        waitingStatus.textContent = error.message;
+      }
+    }
+
+    function setStagePaused(isPaused) {
+      isStagePaused = isPaused;
+      pauseMenu.classList.toggle("hidden", !isPaused);
+    }
+
+    async function quitStageToLobby() {
+      if (!currentStageState?.stageCode) return;
+      resetStageObjects();
+      setStagePaused(false);
+      try {
+        const result = await postJson("/api/quit-to-lobby", {
+          stageCode: currentStageState.stageCode
         });
         if (result.lobby) renderStageLobby(result.lobby);
       } catch (error) {
@@ -2015,6 +2246,7 @@
 
     function setupStage() {
       stageScreen.classList.remove("hidden");
+      initStageTextObjects();
       loadArtAssets().then(() => {
         if (currentStageState) renderStageLobby(currentStageState);
       }).catch(() => {});
@@ -2022,6 +2254,14 @@
       stageCodeText.textContent = stageCode;
       stageCodeBadge.textContent = stageCode;
       stageScreen.addEventListener("click", advancePresentation);
+      pauseMenu.addEventListener("click", (event) => event.stopPropagation());
+      returnToGameButton.addEventListener("click", () => setStagePaused(false));
+      quitToLobbyButton.addEventListener("click", quitStageToLobby);
+      window.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        setStagePaused(!isStagePaused);
+      });
       subscribeToStage(stageCode);
     }
 
@@ -2107,6 +2347,15 @@
         });
         renderControllerState(result.lobby);
       } catch (error) {
+        if (error.code === "KICKED_TO_LOBBY") {
+          window.clearInterval(heartbeatTimer);
+          controllerState = null;
+          controllerIntroState.classList.add("hidden");
+          controllerLobbyState.classList.add("hidden");
+          joinState.classList.remove("hidden");
+          joinButton.disabled = false;
+          return;
+        }
         controllerMeta.textContent = "Reconnecting to lobby";
       }
     }
@@ -2541,8 +2790,11 @@
     function actionSummary(action, isSubAction = false) {
       const timing = ensureActionTiming(action, isSubAction);
       const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
-      if (action.type === "presentText") return `"${action.text || ""}" / ${timingText}`;
-      if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}`;
+      const targetText = action.textTarget === "prompt" ? "Prompt" : "Presentation";
+      const instantText = action.instant ? " / Instant" : "";
+      if (action.type === "presentText") return `${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
+      if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
+      if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
       if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"} / ${timingText}`;
       return `${action.text || "Text"} / ${timingText}`;
@@ -2606,7 +2858,7 @@
       actionButton.type = "button";
       actionButton.className = "flow-action-row";
       actionButton.classList.toggle("flow-sub-action-row", isSubAction);
-      actionButton.draggable = !isSubAction;
+      actionButton.draggable = true;
       actionButton.dataset.stateId = state.id;
       actionButton.dataset.actionId = action.id;
       actionButton.classList.toggle("is-selected", selectedFlowActionId === action.id);
@@ -2622,7 +2874,12 @@
         selectedFlowActionId = action.id;
         renderFlowTool();
       });
-      if (!isSubAction) bindActionDrag(actionButton, state.id, action.id);
+      if (isSubAction) {
+        const parentAction = flowActionRef(state.id, action.id)?.parentAction;
+        if (parentAction) bindSubActionDrag(actionButton, state.id, parentAction.id, action.id);
+      } else {
+        bindActionDrag(actionButton, state.id, action.id);
+      }
       return actionButton;
     }
 
@@ -2683,6 +2940,37 @@
       });
     }
 
+    function bindSubActionDrag(element, stateId, parentActionId, actionId) {
+      element.addEventListener("dragstart", (event) => {
+        event.stopPropagation();
+        element.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("application/x-flow-sub-action", JSON.stringify({ stateId, parentActionId, actionId }));
+      });
+      element.addEventListener("dragend", () => {
+        element.classList.remove("is-dragging");
+      });
+      element.addEventListener("dragover", (event) => {
+        if (!event.dataTransfer.types.includes("application/x-flow-sub-action")) return;
+        event.preventDefault();
+        event.stopPropagation();
+        element.classList.add("is-drop-target");
+      });
+      element.addEventListener("dragleave", () => {
+        element.classList.remove("is-drop-target");
+      });
+      element.addEventListener("drop", (event) => {
+        const raw = event.dataTransfer.getData("application/x-flow-sub-action");
+        if (!raw) return;
+        event.preventDefault();
+        event.stopPropagation();
+        element.classList.remove("is-drop-target");
+        const dragged = JSON.parse(raw);
+        if (dragged.stateId !== stateId || dragged.parentActionId !== parentActionId) return;
+        moveFlowSubAction(stateId, parentActionId, dragged.actionId, actionId, isAfterDrop(element, event));
+      });
+    }
+
     function isAfterDrop(element, event) {
       const rect = element.getBoundingClientRect();
       return event.clientY > rect.top + rect.height / 2;
@@ -2712,6 +3000,22 @@
       const targetIndexAfterRemoval = state.actions.findIndex((item) => item.id === targetActionId);
       const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
       state.actions.splice(adjustedIndex, 0, action);
+      selectedFlowStateId = stateId;
+      selectedFlowActionId = draggedActionId;
+      renderFlowTool();
+    }
+
+    function moveFlowSubAction(stateId, parentActionId, draggedActionId, targetActionId, placeAfter = false) {
+      const parentAction = flowAction(stateId, parentActionId);
+      const subActions = parentAction?.subActions || [];
+      if (draggedActionId === targetActionId) return;
+      const fromIndex = subActions.findIndex((action) => action.id === draggedActionId);
+      const toIndex = subActions.findIndex((action) => action.id === targetActionId);
+      if (fromIndex < 0 || toIndex < 0) return;
+      const [action] = subActions.splice(fromIndex, 1);
+      const targetIndexAfterRemoval = subActions.findIndex((item) => item.id === targetActionId);
+      const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+      subActions.splice(adjustedIndex, 0, action);
       selectedFlowStateId = stateId;
       selectedFlowActionId = draggedActionId;
       renderFlowTool();
@@ -2754,15 +3058,40 @@
       flowEditor.appendChild(flowSelect("Action Type", action.type, flowActionTypes, (value) => {
         action.type = value;
         if (value === "presentText") action.text = action.text || "Presented text";
+        if (value === "displayText") action.text = action.text || "Displayed text";
         if (value === "setPlayersShown") action.isShown = action.isShown !== false;
         if (value === "transition") action.transition = action.transition || "horizontalWipe";
         if (value === "transitionState") action.targetState = action.targetState || "intro";
+        if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = action.textTarget || "presentation";
         ensureActionTiming(action, actionRef.isSubAction);
         renderFlowTool();
       }));
-      if (action.type === "presentText" || action.type === "text") {
+      if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
+        flowEditor.appendChild(flowSelect("Text Field", action.textTarget || "presentation", [
+          { id: "presentation", name: "Presentation Text" },
+          { id: "prompt", name: "Prompt Text" }
+        ], (value) => {
+          action.textTarget = value;
+          renderFlowList();
+        }));
         flowEditor.appendChild(flowTextarea("Text", action.text || "", (value) => {
           action.text = value;
+          renderFlowList();
+        }));
+        if (action.type === "displayText" || action.type === "text") {
+          flowEditor.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", [
+            { id: "true", name: "True" },
+            { id: "false", name: "False" }
+          ], (value) => {
+            action.isShown = value !== "false";
+            renderFlowList();
+          }));
+        }
+        flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
           renderFlowList();
         }));
       }
@@ -2772,6 +3101,13 @@
           { id: "false", name: "False" }
         ], (value) => {
           action.isShown = value !== "false";
+          renderFlowList();
+        }));
+        flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
           renderFlowList();
         }));
       }
@@ -2949,6 +3285,8 @@
         type: isSubAction ? "setPlayersShown" : "presentText",
         timing: { mode: isSubAction ? "S+" : "E+", seconds: 0 },
         text: "Presented text",
+        textTarget: "presentation",
+        instant: false,
         isShown: true,
         subActions: []
       };

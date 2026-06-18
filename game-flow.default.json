@@ -29,6 +29,8 @@
             "mode": "E+",
             "seconds": 0
           },
+          "textTarget": "presentation",
+          "instant": false,
           "text": "I'm using this tool to dictate game actions"
         },
         {
@@ -39,6 +41,8 @@
             "mode": "E+",
             "seconds": 0
           },
+          "textTarget": "presentation",
+          "instant": false,
           "text": "This is the second action"
         },
         {
@@ -59,7 +63,8 @@
             "mode": "E+",
             "seconds": 0
           },
-          "isShown": false
+          "isShown": false,
+          "instant": false
         },
         {
           "id": "intro-show-players",
@@ -69,7 +74,8 @@
             "mode": "E+",
             "seconds": 0
           },
-          "isShown": true
+          "isShown": true,
+          "instant": false
         }
       ]
     }

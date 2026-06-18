@@ -24,6 +24,7 @@ const availableFlowTransitions = [
 ];
 const availableFlowActionTypes = [
   { id: "presentText", name: "Present Text", category: "input" },
+  { id: "displayText", name: "Display Text", category: "standard" },
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
   { id: "transition", name: "Do Transition", category: "standard" },
   { id: "transitionState", name: "Transition To State", category: "standard" },
@@ -54,6 +55,8 @@ const defaultGameFlow = {
           name: "Present Intro Text",
           type: "presentText",
           timing: { mode: "E+", seconds: 0 },
+          textTarget: "presentation",
+          instant: false,
           text: "I'm using this tool to dictate game actions"
         },
         {
@@ -61,6 +64,8 @@ const defaultGameFlow = {
           name: "Present Second Text",
           type: "presentText",
           timing: { mode: "E+", seconds: 0 },
+          textTarget: "presentation",
+          instant: false,
           text: "This is the second action"
         },
         {
@@ -75,14 +80,16 @@ const defaultGameFlow = {
           name: "Hide Players",
           type: "setPlayersShown",
           timing: { mode: "E+", seconds: 0 },
-          isShown: false
+          isShown: false,
+          instant: false
         },
         {
           id: "intro-show-players",
           name: "Show Players",
           type: "setPlayersShown",
           timing: { mode: "E+", seconds: 0 },
-          isShown: true
+          isShown: true,
+          instant: false
         }
       ]
     }
@@ -253,10 +260,24 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
     subActions: normalizeSubActions(action?.subActions, stateId)
   };
   if (type === "presentText") {
-    return { ...base, text: cleanFlowText(action?.text, "Presented text") };
+    return {
+      ...base,
+      text: cleanFlowText(action?.text, "Presented text"),
+      textTarget: normalizeTextTarget(action?.textTarget),
+      instant: action?.instant === true
+    };
+  }
+  if (type === "displayText") {
+    return {
+      ...base,
+      text: cleanFlowText(action?.text, "Displayed text"),
+      textTarget: normalizeTextTarget(action?.textTarget),
+      isShown: action?.isShown !== false,
+      instant: action?.instant === true
+    };
   }
   if (type === "setPlayersShown") {
-    return { ...base, isShown: action?.isShown !== false };
+    return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
   }
   if (type === "transition") {
     const transition = availableFlowTransitions.some((item) => item.id === action?.transition) ? action.transition : "horizontalWipe";
@@ -269,7 +290,17 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       targetState: normalizeFlowId(action?.targetState, "intro")
     };
   }
-  return { ...base, text: cleanFlowText(action?.text, "Text") };
+  return {
+    ...base,
+    text: cleanFlowText(action?.text, "Text"),
+    textTarget: normalizeTextTarget(action?.textTarget),
+    isShown: action?.isShown !== false,
+    instant: action?.instant === true
+  };
+}
+
+function normalizeTextTarget(value) {
+  return value === "prompt" ? "prompt" : "presentation";
 }
 
 function normalizeSubActions(subActions, stateId) {
@@ -327,10 +358,13 @@ function publicFlowAction(action, index) {
     subActions: (action.subActions || []).map((subAction, subActionIndex) => publicFlowAction(subAction, subActionIndex)).filter(Boolean)
   };
   if (action.type === "presentText") {
-    return { ...base, type: "present", text: action.text };
+    return { ...base, type: "present", text: action.text, textTarget: action.textTarget || "presentation", instant: action.instant === true };
+  }
+  if (action.type === "displayText" || action.type === "text") {
+    return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
   }
   if (action.type === "setPlayersShown") {
-    return { ...base, type: "setPlayersShown", isShown: action.isShown !== false };
+    return { ...base, type: "setPlayersShown", isShown: action.isShown !== false, instant: action.instant === true };
   }
   if (action.type === "transition") {
     const transition = availableFlowTransitions.find((item) => item.id === action.transition) || availableFlowTransitions[0];
@@ -339,7 +373,7 @@ function publicFlowAction(action, index) {
   if (action.type === "transitionState") {
     return { ...base, type: "transitionState", targetState: action.targetState };
   }
-  return { ...base, type: "text", text: action.text };
+  return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
 }
 
 function currentRoomAction(room) {
@@ -685,6 +719,18 @@ function enterLobbyPhase(room) {
   room.playersShown = true;
 }
 
+function quitRoomToLobby(room) {
+  enterLobbyPhase(room);
+  for (const player of room.players.values()) {
+    player.active = false;
+    player.kickedFromGame = true;
+    player.lastSeen = Date.now();
+  }
+  room.vipPlayerId = "";
+  room.startToken = "";
+  broadcastLobby(room);
+}
+
 function enterIntroPhase(room) {
   enterGamePhase(room, "intro");
 }
@@ -779,6 +825,7 @@ async function handleJoin(req, res) {
       name: playerName,
       avatar: makeAvatar(room.players.size),
       active: true,
+      kickedFromGame: false,
       joinedAt: Date.now(),
       lastSeen: Date.now()
     };
@@ -786,6 +833,7 @@ async function handleJoin(req, res) {
   } else {
     player.name = playerName;
     player.active = true;
+    player.kickedFromGame = false;
     player.lastSeen = Date.now();
   }
 
@@ -809,6 +857,10 @@ async function handleHeartbeat(req, res) {
   const player = room?.players.get(playerId);
   if (!room || !player) {
     sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+    return;
+  }
+  if (player.kickedFromGame) {
+    sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "Player was returned to the join screen" });
     return;
   }
 
@@ -978,9 +1030,29 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "text" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown") {
+  if (currentAction?.type === "transition" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+}
+
+async function handleQuitToLobby(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const room = getExistingRoom(stageCode);
+  if (!room) {
+    sendJson(res, 404, { ok: false, error: "Room not found" });
+    return;
+  }
+
+  quitRoomToLobby(room);
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
@@ -1125,6 +1197,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/complete-action") {
     handleCompleteAction(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/quit-to-lobby") {
+    handleQuitToLobby(req, res);
     return;
   }
 
