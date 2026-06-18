@@ -1339,6 +1339,54 @@
       gap: 12px;
     }
 
+    .flow-search-field {
+      position: relative;
+    }
+
+    .flow-search-options {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 12;
+      display: grid;
+      gap: 6px;
+      max-height: 280px;
+      padding: 8px;
+      border: 4px solid var(--ink);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.25);
+      overflow: auto;
+    }
+
+    .flow-search-option {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      padding: 9px 10px;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      color: var(--ink);
+      background: var(--cream);
+      text-align: left;
+      font-weight: 1000;
+    }
+
+    .flow-search-option:hover,
+    .flow-search-option.is-active {
+      background: var(--cyan);
+    }
+
+    .flow-search-option span {
+      min-width: max-content;
+      color: #5e5475;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
     .flow-actions {
       display: flex;
       flex-wrap: wrap;
@@ -3139,7 +3187,7 @@
         action.name = value || action.name;
         renderFlowTool();
       }));
-      flowEditor.appendChild(flowSelect("Action Type", action.type, flowActionTypes, (value) => {
+      flowEditor.appendChild(flowActionTypeSearch("Action Type", action.type, flowActionTypes, (value) => {
         action.type = value;
         if (value === "presentText") action.text = action.text || "Presented text";
         if (value === "displayText") action.text = action.text || "Displayed text";
@@ -3277,6 +3325,93 @@
       select.addEventListener("change", () => onChange(select.value));
       field.appendChild(select);
       return field;
+    }
+
+    function flowActionTypeSearch(label, value, options, onChange) {
+      const field = document.createElement("label");
+      field.className = "field-label flow-form-grid flow-search-field";
+      field.textContent = label;
+      const input = document.createElement("input");
+      input.className = "text-input";
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      const menu = document.createElement("div");
+      menu.className = "flow-search-options hidden";
+
+      const current = options.find((option) => option.id === value) || options[0];
+      input.value = current?.name || "";
+
+      const hideMenu = () => window.setTimeout(() => menu.classList.add("hidden"), 120);
+      const chooseOption = (option) => {
+        input.value = option.name;
+        menu.classList.add("hidden");
+        if (option.id !== value) onChange(option.id);
+      };
+      const renderOptions = () => {
+        const query = input.value.trim().toLowerCase();
+        const matches = fuzzyActionTypeMatches(options, query).slice(0, 8);
+        menu.replaceChildren();
+        if (matches.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "flow-search-option";
+          empty.textContent = "No matching actions";
+          menu.appendChild(empty);
+        }
+        for (const option of matches) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "flow-search-option";
+          button.classList.toggle("is-active", option.id === value);
+          button.innerHTML = `<strong></strong><span></span>`;
+          button.querySelector("strong").textContent = option.name;
+          button.querySelector("span").textContent = option.category === "input" ? "Input" : "Standard";
+          button.addEventListener("mousedown", (event) => event.preventDefault());
+          button.addEventListener("click", () => chooseOption(option));
+          menu.appendChild(button);
+        }
+        menu.classList.remove("hidden");
+      };
+
+      input.addEventListener("focus", renderOptions);
+      input.addEventListener("input", renderOptions);
+      input.addEventListener("blur", hideMenu);
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          menu.classList.add("hidden");
+          input.value = current?.name || "";
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          const first = fuzzyActionTypeMatches(options, input.value.trim().toLowerCase())[0];
+          if (first) chooseOption(first);
+        }
+      });
+
+      field.appendChild(input);
+      field.appendChild(menu);
+      return field;
+    }
+
+    function fuzzyActionTypeMatches(options, query) {
+      if (!query) return [...options];
+      return options
+        .map((option) => ({ option, score: fuzzyScore(`${option.name} ${option.id} ${option.category || ""}`, query) }))
+        .filter((item) => item.score >= 0)
+        .sort((a, b) => a.score - b.score || a.option.name.localeCompare(b.option.name))
+        .map((item) => item.option);
+    }
+
+    function fuzzyScore(text, query) {
+      let score = 0;
+      let textIndex = 0;
+      const haystack = String(text || "").toLowerCase();
+      for (const character of query) {
+        const foundIndex = haystack.indexOf(character, textIndex);
+        if (foundIndex < 0) return -1;
+        score += foundIndex - textIndex;
+        textIndex = foundIndex + 1;
+      }
+      return score + Math.abs(haystack.length - query.length) * 0.01;
     }
 
     function flowNumber(label, value, onChange) {
