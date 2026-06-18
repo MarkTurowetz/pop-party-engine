@@ -1505,6 +1505,7 @@
     let renderedStagePhase = "";
     let renderedActionKey = "";
     let stageWipeTimer = null;
+    let actionTimingTimer = null;
     let currentStageState = null;
     let presentationAdvancePending = false;
     let artAssets = [];
@@ -1808,7 +1809,7 @@
       stagePresentationText.classList.toggle("hidden", !presentationText);
       stagePresentationText.classList.toggle("is-long", presentationText.length > 62);
       stagePresentationText.classList.toggle("is-extra-long", presentationText.length > 104);
-      presentClickWidget.classList.toggle("hidden", !(phase === "intro" && action?.type === "present"));
+      presentClickWidget.classList.toggle("hidden", !(phase === "intro" && action?.type === "present" && action?.timing?.mode !== "S+"));
       renderStagePlayers(players);
 
       const vip = players.find((player) => player.isVip);
@@ -1836,13 +1837,15 @@
     function renderStageLobby(lobby) {
       const nextPhase = lobby.phase || "lobby";
       const actionKey = `${nextPhase}:${lobby.action?.id || lobby.action?.index || ""}:${lobby.action?.type || ""}`;
+      const isNewAction = renderedActionKey !== actionKey;
       const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro";
       renderedStagePhase = nextPhase;
-      if (lobby.action?.type === "transition" && renderedActionKey !== actionKey) {
+      if (isNewAction) scheduleActionTiming(lobby, actionKey);
+      if (lobby.action?.type === "transition" && isNewAction) {
         renderedActionKey = actionKey;
         runStageWipe(() => {
           applyStageState(lobby);
-          completeFlowAction();
+          completeFlowAction("callback", lobby.action.id);
         });
         return;
       }
@@ -1852,6 +1855,18 @@
         return;
       }
       applyStageState(lobby);
+    }
+
+    function scheduleActionTiming(lobby, actionKey) {
+      window.clearTimeout(actionTimingTimer);
+      actionTimingTimer = null;
+      const action = lobby.action;
+      if (!action || action.timing?.mode !== "S+") return;
+      const delayMs = Math.max(0, Number(action.timing.seconds || 0) * 1000);
+      actionTimingTimer = window.setTimeout(() => {
+        if (renderedActionKey !== actionKey) return;
+        completeFlowAction("startTimer", action.id);
+      }, delayMs);
     }
 
     async function pollLobby(stageCode) {
@@ -1870,7 +1885,9 @@
       presentationAdvancePending = true;
       try {
         const result = await postJson("/api/advance-presentation", {
-          stageCode: currentStageState.stageCode
+          stageCode: currentStageState.stageCode,
+          actionId: currentStageState.action.id,
+          source: "callback"
         });
         if (result.lobby) renderStageLobby(result.lobby);
       } catch (error) {
@@ -1880,11 +1897,13 @@
       }
     }
 
-    async function completeFlowAction() {
+    async function completeFlowAction(source = "callback", actionId = currentStageState?.action?.id || "") {
       if (!currentStageState?.stageCode) return;
       try {
         const result = await postJson("/api/complete-action", {
-          stageCode: currentStageState.stageCode
+          stageCode: currentStageState.stageCode,
+          actionId,
+          source
         });
         if (result.lobby) renderStageLobby(result.lobby);
       } catch (error) {
@@ -2418,10 +2437,12 @@
     }
 
     function actionSummary(action) {
-      if (action.type === "presentText") return `"${action.text || ""}"`;
-      if (action.type === "transition") return flowTransitions.find((item) => item.id === action.transition)?.name || action.transition;
-      if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"}`;
-      return action.text || "Text";
+      const timing = ensureActionTiming(action);
+      const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
+      if (action.type === "presentText") return `"${action.text || ""}" / ${timingText}`;
+      if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
+      if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"} / ${timingText}`;
+      return `${action.text || "Text"} / ${timingText}`;
     }
 
     async function loadGameFlow() {
@@ -2613,6 +2634,7 @@
 
       flowEditorTitle.textContent = action.name;
       flowEditorHelp.textContent = `Editing action in ${state.name}.`;
+      const timing = ensureActionTiming(action);
       flowEditor.appendChild(flowField("Action Name", action.name, (value) => {
         action.name = value || action.name;
         renderFlowTool();
@@ -2649,6 +2671,17 @@
           renderFlowList();
         }));
       }
+      flowEditor.appendChild(flowSelect("Timing Mode", timing.mode, [
+        { id: "E+", name: "E+ Timing" },
+        { id: "S+", name: "S+ Timing" }
+      ], (value) => {
+        ensureActionTiming(action).mode = value === "S+" ? "S+" : "E+";
+        renderFlowList();
+      }));
+      flowEditor.appendChild(flowNumber("Timing Seconds", timing.seconds, (value) => {
+        ensureActionTiming(action).seconds = value;
+        renderFlowList();
+      }));
     }
 
     function flowField(label, value, onChange) {
@@ -2693,6 +2726,32 @@
       return field;
     }
 
+    function flowNumber(label, value, onChange) {
+      const field = document.createElement("label");
+      field.className = "field-label flow-form-grid";
+      field.textContent = label;
+      const input = document.createElement("input");
+      input.className = "text-input";
+      input.type = "number";
+      input.min = "0";
+      input.step = "0.1";
+      input.value = Number(value || 0).toFixed(1);
+      input.addEventListener("change", () => {
+        const nextValue = Number(input.value || 0);
+        onChange(Math.max(0, Number.isFinite(nextValue) ? nextValue : 0));
+      });
+      field.appendChild(input);
+      return field;
+    }
+
+    function ensureActionTiming(action) {
+      if (!action.timing) action.timing = { mode: "E+", seconds: 0 };
+      action.timing.mode = action.timing.mode === "S+" ? "S+" : "E+";
+      const seconds = Number(action.timing.seconds || 0);
+      action.timing.seconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+      return action.timing;
+    }
+
     function readOnlyFlowNote(text) {
       const note = document.createElement("p");
       note.className = "art-shared-note";
@@ -2717,6 +2776,7 @@
         id: `${state.id}-action-${Date.now().toString(36)}`,
         name: `Game Action ${nextNumber}`,
         type: "presentText",
+        timing: { mode: "E+", seconds: 0 },
         text: "Presented text"
       };
       const selectedIndex = state.actions.findIndex((item) => item.id === selectedFlowActionId);

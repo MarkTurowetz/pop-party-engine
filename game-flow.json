@@ -8,6 +8,10 @@
           "id": "lobby-countdown-complete",
           "name": "On Countdown Complete",
           "type": "transitionState",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "trigger": "onCountdownComplete",
           "targetState": "intro"
         }
@@ -21,18 +25,30 @@
           "id": "intro-present-1",
           "name": "Present Intro Text",
           "type": "presentText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "text": "I'm using this tool to dictate game actions"
         },
         {
           "id": "intro-present-2",
           "name": "Present Second Text",
           "type": "presentText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "text": "This is the second action"
         },
         {
           "id": "intro-wipe",
           "name": "Do Horizontal Wipe",
           "type": "transition",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "transition": "horizontalWipe"
         }
       ]

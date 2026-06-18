@@ -37,6 +37,7 @@ const defaultGameFlow = {
           id: "lobby-countdown-complete",
           name: "On Countdown Complete",
           type: "transitionState",
+          timing: { mode: "E+", seconds: 0 },
           trigger: "onCountdownComplete",
           targetState: "intro"
         }
@@ -50,18 +51,21 @@ const defaultGameFlow = {
           id: "intro-present-1",
           name: "Present Intro Text",
           type: "presentText",
+          timing: { mode: "E+", seconds: 0 },
           text: "I'm using this tool to dictate game actions"
         },
         {
           id: "intro-present-2",
           name: "Present Second Text",
           type: "presentText",
+          timing: { mode: "E+", seconds: 0 },
           text: "This is the second action"
         },
         {
           id: "intro-wipe",
           name: "Do Horizontal Wipe",
           type: "transition",
+          timing: { mode: "E+", seconds: 0 },
           transition: "horizontalWipe"
         }
       ]
@@ -221,7 +225,8 @@ function normalizeFlowAction(action, actionIndex, stateId) {
   const base = {
     id: normalizeFlowId(action?.id || action?.name, `${stateId}-action-${actionIndex + 1}`),
     name: cleanFlowText(action?.name, `Action ${actionIndex + 1}`),
-    type
+    type,
+    timing: normalizeActionTiming(action?.timing)
   };
   if (type === "presentText") {
     return { ...base, text: cleanFlowText(action?.text, "Presented text") };
@@ -238,6 +243,13 @@ function normalizeFlowAction(action, actionIndex, stateId) {
     };
   }
   return { ...base, text: cleanFlowText(action?.text, "Text") };
+}
+
+function normalizeActionTiming(timing) {
+  const mode = timing?.mode === "S+" ? "S+" : "E+";
+  const rawSeconds = Number(timing?.seconds || 0);
+  const seconds = Number(Math.max(0, Math.min(999, Number.isFinite(rawSeconds) ? rawSeconds : 0)).toFixed(2));
+  return { mode, seconds };
 }
 
 function readGameFlow() {
@@ -264,17 +276,18 @@ function getStateActions(stateId) {
 
 function publicFlowAction(action, index) {
   if (!action) return null;
+  const timing = action.timing || { mode: "E+", seconds: 0 };
   if (action.type === "presentText") {
-    return { index, id: action.id, name: action.name, type: "present", actionType: action.type, text: action.text };
+    return { index, id: action.id, name: action.name, type: "present", actionType: action.type, timing, text: action.text };
   }
   if (action.type === "transition") {
     const transition = availableFlowTransitions.find((item) => item.id === action.transition) || availableFlowTransitions[0];
-    return { index, id: action.id, name: action.name, type: "transition", actionType: action.type, transition: transition.id, transitionName: transition.name };
+    return { index, id: action.id, name: action.name, type: "transition", actionType: action.type, timing, transition: transition.id, transitionName: transition.name };
   }
   if (action.type === "transitionState") {
-    return { index, id: action.id, name: action.name, type: "transitionState", actionType: action.type, targetState: action.targetState };
+    return { index, id: action.id, name: action.name, type: "transitionState", actionType: action.type, timing, targetState: action.targetState };
   }
-  return { index, id: action.id, name: action.name, type: "text", actionType: action.type, text: action.text };
+  return { index, id: action.id, name: action.name, type: "text", actionType: action.type, timing, text: action.text };
 }
 
 function currentRoomAction(room) {
@@ -288,6 +301,42 @@ function advanceRoomAction(room) {
   const actions = getStateActions(room.phase);
   if (actions.length === 0) return;
   room.actionIndex = Math.min(room.actionIndex + 1, actions.length);
+}
+
+function clearActionTimer(room) {
+  if (room.actionTimerId) {
+    clearTimeout(room.actionTimerId);
+    room.actionTimerId = null;
+  }
+  room.actionCompletionPendingId = "";
+}
+
+function completeCurrentAction(room, expectedActionId = "", source = "callback") {
+  const currentAction = currentRoomAction(room);
+  if (!currentAction) return false;
+  if (expectedActionId && currentAction.id !== expectedActionId) return false;
+  if (room.actionCompletionPendingId === currentAction.id) return false;
+
+  const timing = currentAction.timing || { mode: "E+", seconds: 0 };
+  if (timing.mode === "S+" && source !== "startTimer") return false;
+  if (timing.mode === "E+" && source === "startTimer") return false;
+
+  clearActionTimer(room);
+  const delayMs = timing.mode === "E+" ? Math.max(0, Number(timing.seconds || 0) * 1000) : 0;
+  if (delayMs > 0) {
+    room.actionCompletionPendingId = currentAction.id;
+    room.actionTimerId = setTimeout(() => {
+      room.actionTimerId = null;
+      room.actionCompletionPendingId = "";
+      advanceRoomAction(room);
+      broadcastLobby(room);
+    }, delayMs);
+    return true;
+  }
+
+  advanceRoomAction(room);
+  broadcastLobby(room);
+  return true;
 }
 
 function countdownTargetState() {
@@ -450,6 +499,7 @@ async function handleSaveGameFlow(req, res) {
 
   const flow = writeGameFlow(payload.flow || payload);
   for (const room of rooms.values()) {
+    clearActionTimer(room);
     room.actionIndex = 0;
     room.presentedAction = null;
     broadcastLobby(room);
@@ -469,6 +519,8 @@ function getRoom(stageCode) {
       countdownStartedAt: 0,
       countdownEndsAt: 0,
       countdownTimerId: null,
+      actionTimerId: null,
+      actionCompletionPendingId: "",
       actionIndex: 0,
       presentedAction: null,
       revision: 0
@@ -558,6 +610,7 @@ function clearCountdownTimer(room) {
 
 function enterLobbyPhase(room) {
   clearCountdownTimer(room);
+  clearActionTimer(room);
   room.phase = "lobby";
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
@@ -571,6 +624,7 @@ function enterIntroPhase(room) {
 
 function enterGamePhase(room, phase) {
   clearCountdownTimer(room);
+  clearActionTimer(room);
   room.phase = phase;
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
@@ -834,8 +888,7 @@ async function handleAdvancePresentation(req, res) {
     return;
   }
 
-  advanceRoomAction(room);
-  broadcastLobby(room);
+  completeCurrentAction(room, payload.actionId, payload.source || "callback");
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
@@ -856,9 +909,8 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition") {
-    advanceRoomAction(room);
-    broadcastLobby(room);
+  if (currentAction?.type === "transition" || currentAction?.type === "text" || currentAction?.type === "present") {
+    completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
