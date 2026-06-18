@@ -71,7 +71,6 @@ function getRoom(stageCode) {
       players: new Map(),
       vipPlayerId: "",
       startToken: "",
-      startNotice: null,
       revision: 0
     });
   }
@@ -127,7 +126,6 @@ function lobbyPayload(room) {
     stageCode: room.stageCode,
     revision: room.revision,
     vipPlayerId: room.vipPlayerId,
-    startNotice: room.startNotice,
     startToken: room.startToken,
     players: activePlayers(room).map((player) => publicPlayer(player, room))
   };
@@ -154,7 +152,6 @@ function broadcastStart(room, player) {
     playerName: player.name,
     sentAt: Date.now()
   };
-  room.startNotice = payload;
   for (const client of room.stageClients) {
     sendSse(client, "start", payload);
   }
@@ -322,6 +319,8 @@ async function handleStart(req, res) {
   }
 
   broadcastStart(room, player);
+  room.startToken = randomToken();
+  broadcastLobby(room);
   sendJson(res, 200, { ok: true });
 }
 

@@ -604,7 +604,6 @@
     let controllerState = null;
     let heartbeatTimer = null;
     let lobbyPollTimer = null;
-    let lastStartNoticeAt = 0;
 
     function randomBetween(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -708,11 +707,6 @@
       joinPrompt.classList.toggle("hidden", players.length > 0);
       waitingStatus.classList.toggle("hidden", players.length === 0);
       waitingStatus.textContent = vip ? `Waiting for ${vip.name} to start the game` : "";
-
-      if (lobby.startNotice && lobby.startNotice.sentAt > lastStartNoticeAt) {
-        lastStartNoticeAt = lobby.startNotice.sentAt;
-        showStartPopup();
-      }
     }
 
     function showStartPopup() {
