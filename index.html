@@ -944,6 +944,9 @@
     }
 
     .art-group-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 10px;
       border: 3px solid var(--ink);
       border-radius: 10px;
@@ -983,6 +986,34 @@
       color: var(--ink);
       text-align: left;
       box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.2);
+    }
+
+    .art-item.has-disclosure {
+      grid-template-columns: auto 54px minmax(0, 1fr);
+    }
+
+    .disclosure-button {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 3px solid var(--ink);
+      border-radius: 8px;
+      color: var(--ink);
+      background: var(--cream);
+      box-shadow: 2px 2px 0 rgba(23, 19, 31, 0.28);
+      font-size: 14px;
+      font-weight: 1000;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .disclosure-button::before {
+      content: "▾";
+    }
+
+    .disclosure-button.is-collapsed::before {
+      content: "▸";
     }
 
     .art-item.is-shared {
@@ -1265,6 +1296,10 @@
       border: 3px solid var(--ink);
       border-radius: 10px;
       background: var(--cream);
+    }
+
+    .flow-action-row.has-disclosure {
+      grid-template-columns: auto minmax(0, 1fr) auto;
     }
 
     .flow-sub-action-row {
@@ -1653,11 +1688,14 @@
     let selectedArtAsset = null;
     let selectedArtComposite = null;
     let pendingArtReplacement = null;
+    const collapsedArtSections = new Set();
+    const collapsedArtComposites = new Set();
     let gameFlow = { states: [] };
     let flowActionTypes = [];
     let flowTransitions = [];
     let selectedFlowStateId = "";
     let selectedFlowActionId = "";
+    const collapsedFlowActions = new Set();
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],
       ["avatar-rex", "/art/default/dino-rex.svg"],
@@ -2498,30 +2536,61 @@
       artAssetList.replaceChildren();
       const avatarGroup = document.createElement("section");
       avatarGroup.className = "art-group";
-      avatarGroup.appendChild(createArtGroupTitle("Player Avatars"));
+      avatarGroup.appendChild(createArtGroupTitle("Player Avatars", "player-avatars", collapsedArtSections));
       const avatarChildren = document.createElement("div");
       avatarChildren.className = "art-group-children";
-      for (const composite of avatarComposites) {
-        avatarChildren.appendChild(createCompositeBlock(composite));
+      if (!collapsedArtSections.has("player-avatars")) {
+        for (const composite of avatarComposites) {
+          avatarChildren.appendChild(createCompositeBlock(composite));
+        }
       }
       avatarGroup.appendChild(avatarChildren);
       artAssetList.appendChild(avatarGroup);
 
       const promptGroup = document.createElement("section");
       promptGroup.className = "art-group";
-      promptGroup.appendChild(createArtGroupTitle("Presentation Click Prompt"));
+      promptGroup.appendChild(createArtGroupTitle("Presentation Click Prompt", "presentation-click-prompt", collapsedArtSections));
       const promptChildren = document.createElement("div");
       promptChildren.className = "art-group-children";
-      const cursorAsset = findArtAsset("presentation-click-cursor");
-      if (cursorAsset) promptChildren.appendChild(createArtItemButton(cursorAsset, "Cursor Art"));
+      if (!collapsedArtSections.has("presentation-click-prompt")) {
+        const cursorAsset = findArtAsset("presentation-click-cursor");
+        if (cursorAsset) promptChildren.appendChild(createArtItemButton(cursorAsset, "Cursor Art"));
+      }
       promptGroup.appendChild(promptChildren);
       artAssetList.appendChild(promptGroup);
     }
 
-    function createArtGroupTitle(label) {
+    function createDisclosureButton(id, collapsedSet, onToggle = () => {}) {
+      const button = document.createElement("span");
+      button.setAttribute("role", "button");
+      button.tabIndex = 0;
+      button.className = "disclosure-button";
+      button.classList.toggle("is-collapsed", collapsedSet.has(id));
+      button.setAttribute("aria-label", collapsedSet.has(id) ? "Expand" : "Collapse");
+      const toggle = (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        if (collapsedSet.has(id)) {
+          collapsedSet.delete(id);
+        } else {
+          collapsedSet.add(id);
+        }
+        onToggle();
+      };
+      button.addEventListener("click", toggle);
+      button.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") toggle(event);
+      });
+      return button;
+    }
+
+    function createArtGroupTitle(label, collapseId, collapsedSet) {
       const title = document.createElement("div");
       title.className = "art-group-title";
-      title.textContent = label;
+      title.appendChild(createDisclosureButton(collapseId, collapsedSet, renderArtList));
+      const text = document.createElement("span");
+      text.textContent = label;
+      title.appendChild(text);
       return title;
     }
 
@@ -2535,26 +2604,30 @@
       wrapper.appendChild(createCompositeButton(composite));
       const children = document.createElement("div");
       children.className = "art-composite-children";
-      const dinoAsset = findArtAsset(composite.dinoAssetId);
-      const frameAsset = findArtAsset("avatar-frame");
-      if (dinoAsset) children.appendChild(createArtItemButton(dinoAsset, "Dino Art"));
-      if (frameAsset) children.appendChild(createArtItemButton(frameAsset, "Rectangle (shared)"));
+      if (!collapsedArtComposites.has(composite.id)) {
+        const dinoAsset = findArtAsset(composite.dinoAssetId);
+        const frameAsset = findArtAsset("avatar-frame");
+        if (dinoAsset) children.appendChild(createArtItemButton(dinoAsset, "Dino Art"));
+        if (frameAsset) children.appendChild(createArtItemButton(frameAsset, "Rectangle (shared)"));
+      }
       wrapper.appendChild(children);
       return wrapper;
     }
 
     function createCompositeButton(composite) {
       const button = document.createElement("button");
-      button.className = "art-item is-composite";
+      button.className = "art-item is-composite has-disclosure";
       button.type = "button";
       button.classList.toggle("is-selected", selectedArtComposite?.id === composite.id && !selectedArtAsset);
       button.innerHTML = `
+        <span class="disclosure-slot"></span>
         <span class="art-thumb art-composite-thumb">${compositePreviewMarkup(composite)}</span>
         <span>
           <span class="art-item-title"></span>
           <span class="art-item-meta">Composite preview</span>
         </span>
       `;
+      button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(composite.id, collapsedArtComposites, renderArtList));
       button.querySelector(".art-item-title").textContent = composite.name;
       button.addEventListener("click", () => selectArtComposite(composite.id));
       return button;
@@ -2844,8 +2917,10 @@
         actionsEl.className = "flow-state-actions";
         for (const action of state.actions) {
           actionsEl.appendChild(flowActionRow(state, action, false));
-          for (const subAction of action.subActions || []) {
-            actionsEl.appendChild(flowActionRow(state, subAction, true));
+          if (!collapsedFlowActions.has(action.id)) {
+            for (const subAction of action.subActions || []) {
+              actionsEl.appendChild(flowActionRow(state, subAction, true));
+            }
           }
         }
         stateEl.appendChild(actionsEl);
@@ -2858,16 +2933,25 @@
       actionButton.type = "button";
       actionButton.className = "flow-action-row";
       actionButton.classList.toggle("flow-sub-action-row", isSubAction);
+      actionButton.classList.toggle("has-disclosure", !isSubAction && Boolean(action.subActions?.length));
       actionButton.draggable = true;
       actionButton.dataset.stateId = state.id;
       actionButton.dataset.actionId = action.id;
       actionButton.classList.toggle("is-selected", selectedFlowActionId === action.id);
-      actionButton.innerHTML = `
-        <span><strong></strong><span></span></span>
+      actionButton.innerHTML = !isSubAction && action.subActions?.length ? `
+        <span class="disclosure-slot"></span>
+        <span class="flow-row-copy"><strong></strong><span class="flow-row-summary"></span></span>
+        <span class="flow-pill"></span>
+      ` : `
+        <span class="flow-row-copy"><strong></strong><span class="flow-row-summary"></span></span>
         <span class="flow-pill"></span>
       `;
+      const disclosureSlot = actionButton.querySelector(".disclosure-slot");
+      if (disclosureSlot) {
+        disclosureSlot.appendChild(createDisclosureButton(action.id, collapsedFlowActions, renderFlowList));
+      }
       actionButton.querySelector("strong").textContent = isSubAction ? `Sub: ${action.name}` : action.name;
-      actionButton.querySelector("span span").textContent = actionSummary(action, isSubAction);
+      actionButton.querySelector(".flow-row-summary").textContent = actionSummary(action, isSubAction);
       actionButton.querySelector(".flow-pill").textContent = `${actionCategoryName(action)} / ${actionTypeName(action.type)}`;
       actionButton.addEventListener("click", () => {
         selectedFlowStateId = state.id;
@@ -3150,9 +3234,7 @@
         ensureActionTiming(action, actionRef.isSubAction).seconds = value;
         renderFlowList();
       }));
-      if (!actionRef.isSubAction) {
-        flowEditor.appendChild(flowActionButton("Add Sub-Action", () => addFlowSubAction(action)));
-      }
+      flowEditor.appendChild(flowActionButton("Add Sub-Action", () => addFlowSubAction(actionRef)));
     }
 
     function flowField(label, value, onChange) {
@@ -3267,13 +3349,20 @@
       renderFlowTool();
     }
 
-    function addFlowSubAction(parentAction) {
+    function addFlowSubAction(actionRef) {
       const state = flowState(selectedFlowStateId);
-      if (!state || !parentAction) return;
+      if (!state || !actionRef?.action) return;
+      const parentAction = actionRef.isSubAction ? actionRef.parentAction : actionRef.action;
+      if (!parentAction) return;
       if (!Array.isArray(parentAction.subActions)) parentAction.subActions = [];
       const nextNumber = parentAction.subActions.length + 1;
       const subAction = createDefaultFlowAction(selectedFlowStateId, `Sub-Action ${nextNumber}`, true);
-      parentAction.subActions.push(subAction);
+      const selectedIndex = actionRef.isSubAction
+        ? parentAction.subActions.findIndex((item) => item.id === actionRef.action.id)
+        : -1;
+      const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : parentAction.subActions.length;
+      parentAction.subActions.splice(insertIndex, 0, subAction);
+      collapsedFlowActions.delete(parentAction.id);
       selectedFlowActionId = subAction.id;
       renderFlowTool();
     }
