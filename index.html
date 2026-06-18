@@ -36,6 +36,17 @@
       overflow-x: hidden;
     }
 
+    html.controller-locked,
+    body.controller-locked {
+      width: 100%;
+      height: var(--app-height, 100vh);
+      overflow: hidden;
+      overscroll-behavior: none;
+      position: fixed;
+      inset: 0;
+      touch-action: none;
+    }
+
     button,
     input {
       font: inherit;
@@ -292,11 +303,18 @@
     }
 
     .controller {
-      min-height: 100vh;
-      min-height: 100dvh;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: var(--app-height, 100vh);
+      height: var(--app-height, 100dvh);
+      min-height: var(--app-height, 100vh);
       display: grid;
       place-items: center;
       padding: clamp(10px, 2.2vmin, 20px);
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
       background:
         linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 58px),
         linear-gradient(0deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 58px),
@@ -697,6 +715,27 @@
       return params.get("autojoin") === "1" || params.get("join") === "1";
     }
 
+    function syncAppHeight() {
+      document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`);
+    }
+
+    function shouldAllowControllerTouch(target) {
+      return Boolean(target?.closest?.("input, textarea, select"));
+    }
+
+    function lockControllerViewport() {
+      syncAppHeight();
+      document.documentElement.classList.add("controller-locked");
+      document.body.classList.add("controller-locked");
+      window.scrollTo(0, 0);
+      window.addEventListener("resize", syncAppHeight);
+      window.addEventListener("orientationchange", syncAppHeight);
+      window.addEventListener("wheel", (event) => event.preventDefault(), { passive: false });
+      window.addEventListener("touchmove", (event) => {
+        if (!shouldAllowControllerTouch(event.target)) event.preventDefault();
+      }, { passive: false });
+    }
+
     function getOrCreateStageCode() {
       const existing = getStageCodeFromUrl();
       if (existing) return existing;
@@ -902,6 +941,7 @@
     }
 
     function setupController() {
+      lockControllerViewport();
       controllerScreen.classList.remove("hidden");
       stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(sessionStorage.getItem("flip7StageCode") || localStorage.getItem("flip7StageCode"));
       playerNameInput.value = getPlayerNameFromUrl() || sessionStorage.getItem("flip7PlayerName") || "";
