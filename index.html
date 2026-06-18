@@ -58,7 +58,7 @@
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       -webkit-user-drag: none;
-      touch-action: manipulation;
+      touch-action: none;
     }
 
     button,
@@ -827,10 +827,31 @@
         for (const button of pressableButtons) releaseButton(button);
       };
       for (const button of pressableButtons) {
+        let touchStartedOnButton = false;
         button.addEventListener("pointerdown", () => {
           window.getSelection()?.removeAllRanges();
           pressButton(button);
         });
+        button.addEventListener("touchstart", (event) => {
+          event.preventDefault();
+          touchStartedOnButton = true;
+          window.getSelection()?.removeAllRanges();
+          pressButton(button);
+        }, { passive: false });
+        button.addEventListener("touchend", (event) => {
+          event.preventDefault();
+          const touch = event.changedTouches[0];
+          const endTarget = touch ? document.elementFromPoint(touch.clientX, touch.clientY) : null;
+          const endedOnButton = endTarget === button || button.contains(endTarget);
+          releaseButton(button);
+          if (touchStartedOnButton && endedOnButton && !button.disabled) button.click();
+          touchStartedOnButton = false;
+        }, { passive: false });
+        button.addEventListener("touchcancel", (event) => {
+          event.preventDefault();
+          touchStartedOnButton = false;
+          releaseButton(button);
+        }, { passive: false });
         button.addEventListener("dblclick", (event) => event.preventDefault());
         button.addEventListener("pointerup", () => releaseButton(button));
         button.addEventListener("pointercancel", () => releaseButton(button));
@@ -1095,8 +1116,7 @@
         });
       }
 
-      startGameButton.addEventListener("click", async (event) => {
-        if (!event.isTrusted) return;
+      startGameButton.addEventListener("click", async () => {
         if (!controllerState) return;
         if (!controllerState.player?.isVip) return;
         try {
