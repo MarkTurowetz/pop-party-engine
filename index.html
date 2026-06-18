@@ -848,7 +848,7 @@
 <body>
   <section class="screen stage hidden" id="stageScreen" aria-label="Flip 7 Party stage">
     <div class="start-popup hidden" id="startPopup">Starting Game</div>
-    <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
+    <div class="stage-code-badge" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
     <div class="version-badge">v__APP_VERSION__</div>
     <div class="stage-wipe hidden" id="stageWipe" aria-hidden="true">
       <div class="wipe-line"></div>
@@ -947,6 +947,7 @@
     const controllerScreen = document.querySelector("#controllerScreen");
     const labScreen = document.querySelector("#labScreen");
     const stageCodeText = document.querySelector("#stageCodeText");
+    const stageCodeBadgeRoot = document.querySelector("#stageCodeBadge");
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
     const playerLobby = document.querySelector("#playerLobby");
     const joinPrompt = document.querySelector("#joinPrompt");
@@ -1247,7 +1248,7 @@
       const action = lobby.action || null;
       stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
       stageCodeBadge.textContent = lobby.stageCode || stageCodeBadge.textContent;
-      stageCodeBadge.classList.toggle("hidden", phase === "lobby");
+      stageCodeBadgeRoot.classList.remove("hidden");
       window.clearInterval(stageCountdownTimer);
       startPopup.classList.add("hidden");
       stageMain.classList.toggle("hidden", phase === "intro");
