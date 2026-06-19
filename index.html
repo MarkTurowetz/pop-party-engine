@@ -621,6 +621,7 @@
       font-size: 54px;
       line-height: 0.95;
       font-weight: 1000;
+      container-type: inline-size;
       animation: popIn 240ms cubic-bezier(0.19, 1, 0.22, 1);
     }
 
@@ -640,8 +641,18 @@
 
     .start-popup.is-go {
       gap: 0;
-      font-size: 58px;
-      line-height: 0.85;
+    }
+
+    .countdown-go {
+      max-width: 100%;
+      display: block;
+      font-size: clamp(28px, 16cqw, 64px);
+      line-height: 0.82;
+      letter-spacing: 0;
+      text-align: center;
+      text-transform: uppercase;
+      overflow-wrap: normal;
+      white-space: nowrap;
     }
 
     @keyframes popIn {
@@ -2769,7 +2780,7 @@
           startPopup.classList.toggle("is-go", seconds <= 0);
           startPopup.innerHTML = seconds > 0
             ? `<span class="countdown-kicker">Starting in</span><span class="countdown-number">${seconds}</span>`
-            : `<span class="countdown-number">Let's Go</span>`;
+            : `<span class="countdown-go">Let's Go</span>`;
         };
         updateCountdown();
         stageCountdownTimer = window.setInterval(updateCountdown, 100);
