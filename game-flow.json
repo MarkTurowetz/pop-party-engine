@@ -126,7 +126,7 @@
             "seconds": 0
           },
           "text": "We are in the Crafting State",
-          "textTarget": "presentation",
+          "textTarget": "crafting-game-statemomenttext",
           "instant": false,
           "isShown": true,
           "subActions": []
@@ -176,7 +176,7 @@
             "seconds": 0
           },
           "text": "We are in the Presentation Game State",
-          "textTarget": "presentation",
+          "textTarget": "presentation-game-statemomenttext",
           "instant": false,
           "isShown": true,
           "subActions": []
@@ -227,7 +227,7 @@
             "seconds": 0
           },
           "text": "We are in the Scoreboard State",
-          "textTarget": "presentation",
+          "textTarget": "scoreboard-game-statemomenttext",
           "instant": false,
           "isShown": true,
           "subActions": []
@@ -277,7 +277,7 @@
             "seconds": 0
           },
           "text": "We are in the Post Game State",
-          "textTarget": "presentation",
+          "textTarget": "post-game-statemomenttext",
           "instant": false,
           "isShown": true,
           "subActions": []
