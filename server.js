@@ -44,6 +44,7 @@ const availableFlowTransitions = [
 ];
 const availableFlowActionTypes = [
   { id: "presentText", name: "Present Text", category: "input" },
+  { id: "multipleChoiceInput", name: "Multiple Choice Input", category: "input" },
   { id: "displayText", name: "Display Text", category: "standard" },
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
   { id: "transition", name: "Do Transition", category: "standard" },
@@ -331,6 +332,15 @@ function cleanFlowText(value, fallback = "") {
   return cleaned || fallback;
 }
 
+function cleanChoiceOptions(value) {
+  const incoming = Array.isArray(value) ? value : String(value || "").split(/\r?\n/);
+  const options = incoming
+    .map((item) => String(item || "").trim().replace(/\s+/g, " ").slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 12);
+  return options.length ? options : ["A", "B", "C", "D"];
+}
+
 function normalizeColor(value) {
   const color = String(value || "").trim();
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
@@ -552,6 +562,15 @@ function syncControllerLayoutsWithFlow(layouts, flow) {
     if (existingState) {
       existingState.name = flowState.id === "lobby" ? existingState.name : flowState.name || existingState.name;
       existingState.elements = dedupeLayoutElements(existingState.elements || []);
+      if (isCraftingStateId(flowState.id)) {
+        const seededState = createControllerLayoutStateForFlowState(flowState);
+        for (const element of seededState.elements || []) {
+          if (!existingState.elements.some((item) => item.id === element.id)) {
+            existingState.elements.push(element);
+          }
+        }
+        existingState.elements = dedupeLayoutElements(existingState.elements);
+      }
       continue;
     }
     normalizedLayouts.states.push(normalizeLayoutState(createControllerLayoutStateForFlowState(flowState), -1));
@@ -576,6 +595,40 @@ function dedupeLayoutElements(elements) {
 }
 
 function createControllerLayoutStateForFlowState(flowState) {
+  if (isCraftingStateId(flowState.id)) {
+    return {
+      id: flowState.id,
+      name: flowState.name || "Crafting",
+      elements: [
+        {
+          id: "controllerChoicePrompt",
+          name: "Choice Prompt",
+          selector: "#controllerChoicePrompt",
+          kind: "text",
+          x: 195,
+          y: 180,
+          width: 330,
+          height: 120,
+          scale: 1,
+          defaultText: "Answer this question by tapping an answer",
+          fontSize: 32,
+          autoFitText: true,
+          fontColor: "#17131f"
+        },
+        {
+          id: "controllerChoiceGrid",
+          name: "Choice Buttons",
+          selector: "#controllerChoiceGrid",
+          kind: "art",
+          x: 195,
+          y: 485,
+          width: 330,
+          height: 420,
+          scale: 1
+        }
+      ]
+    };
+  }
   const textElementId = normalizeFlowId(`${flowState.id}-controller-text`, `${flowState.id}-controller-text`);
   return {
     id: flowState.id,
@@ -635,6 +688,10 @@ function isRoundIntroStateId(stateId) {
   return String(stateId || "").includes("round-intro");
 }
 
+function isCraftingStateId(stateId) {
+  return String(stateId || "").includes("crafting");
+}
+
 function normalizeLayoutNumber(value, fallback, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
@@ -690,6 +747,13 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       textTarget: normalizeTextTarget(action?.textTarget),
       isShown: action?.isShown !== false,
       instant: action?.instant === true
+    };
+  }
+  if (type === "multipleChoiceInput") {
+    return {
+      ...base,
+      prompt: cleanFlowText(action?.prompt, "Answer this question by tapping an answer"),
+      options: cleanChoiceOptions(action?.options)
     };
   }
   if (type === "displayText") {
@@ -1354,6 +1418,14 @@ function publicFlowAction(action, index) {
   if (action.type === "presentText") {
     return { ...base, type: "present", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
   }
+  if (action.type === "multipleChoiceInput") {
+    return {
+      ...base,
+      type: "multipleChoiceInput",
+      prompt: action.prompt || "Answer this question by tapping an answer",
+      options: cleanChoiceOptions(action.options)
+    };
+  }
   if (action.type === "displayText" || action.type === "text") {
     return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
   }
@@ -1375,6 +1447,8 @@ function resolveRoomActionText(action, room) {
   return {
     ...action,
     text: typeof action.text === "string" ? action.text.replaceAll("<ROUND_NUMBER>", roundNumberWord(room.currentRound || 1)) : action.text,
+    prompt: typeof action.prompt === "string" ? action.prompt.replaceAll("<ROUND_NUMBER>", roundNumberWord(room.currentRound || 1)) : action.prompt,
+    options: Array.isArray(action.options) ? action.options.map((option) => String(option).replaceAll("<ROUND_NUMBER>", roundNumberWord(room.currentRound || 1))) : action.options,
     subActions: (action.subActions || []).map((subAction) => resolveRoomActionText(subAction, room)).filter(Boolean)
   };
 }
@@ -1440,12 +1514,14 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
     room.actionTimerId = setTimeout(() => {
       room.actionTimerId = null;
       room.actionCompletionPendingId = "";
+      if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
       advanceRoomAction(room);
       broadcastLobby(room);
     }, delayMs);
     return true;
   }
 
+  if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
   advanceRoomAction(room);
   broadcastLobby(room);
   return true;
@@ -1886,6 +1962,10 @@ function getRoom(stageCode) {
       playersShown: true,
       currentRound: 1,
       hasEnteredRoundIntro: false,
+      choiceInputActionId: "",
+      choiceInputPrompt: "",
+      choiceInputOptions: [],
+      choiceInputAnswers: new Map(),
       runtimeFlowOverride: null,
       revision: 0
     });
@@ -1950,13 +2030,49 @@ function selectVip(room) {
 }
 
 function publicPlayer(player, room) {
+  const answer = room.choiceInputAnswers?.get(player.id) || null;
   return {
     id: player.id,
     name: player.name,
     avatar: player.avatar,
     active: player.active,
     joinedAt: player.joinedAt,
-    isVip: player.id === room.vipPlayerId
+    isVip: player.id === room.vipPlayerId,
+    answer: answer ? { optionIndex: answer.optionIndex, text: answer.text } : null
+  };
+}
+
+function clearChoiceInput(room) {
+  room.choiceInputActionId = "";
+  room.choiceInputPrompt = "";
+  room.choiceInputOptions = [];
+  if (room.choiceInputAnswers?.clear) {
+    room.choiceInputAnswers.clear();
+  } else {
+    room.choiceInputAnswers = new Map();
+  }
+}
+
+function applyChoiceInputAction(room, action) {
+  if (!action || action.type !== "multipleChoiceInput") return;
+  if (room.choiceInputActionId === action.id) return;
+  room.choiceInputActionId = action.id;
+  room.choiceInputPrompt = action.prompt || "Answer this question by tapping an answer";
+  room.choiceInputOptions = cleanChoiceOptions(action.options);
+  room.choiceInputAnswers = new Map();
+}
+
+function choiceInputPayload(room, currentAction) {
+  if (!currentAction || currentAction.type !== "multipleChoiceInput") return null;
+  applyChoiceInputAction(room, currentAction);
+  return {
+    actionId: room.choiceInputActionId,
+    prompt: room.choiceInputPrompt,
+    options: room.choiceInputOptions.map((text, index) => ({
+      index,
+      label: `Button ${index + 1}`,
+      text
+    }))
   };
 }
 
@@ -1964,6 +2080,7 @@ function lobbyPayload(room) {
   selectVip(room);
   const currentAction = room.phase !== "lobby" && room.phase !== "starting" ? resolveRoomActionText(currentRoomAction(room), room) : null;
   applyRoomActionEffects(room, currentAction);
+  const input = choiceInputPayload(room, currentAction);
   return {
     type: "lobby",
     stageCode: room.stageCode,
@@ -1972,6 +2089,7 @@ function lobbyPayload(room) {
     countdownStartedAt: room.countdownStartedAt,
     countdownEndsAt: room.countdownEndsAt,
     action: currentAction,
+    input,
     currentRound: room.currentRound || 1,
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
@@ -2012,6 +2130,7 @@ function enterLobbyPhase(room) {
   room.playersShown = true;
   room.currentRound = 1;
   room.hasEnteredRoundIntro = false;
+  clearChoiceInput(room);
 }
 
 function quitRoomToLobby(room) {
@@ -2041,6 +2160,7 @@ function enterGamePhase(room, phase) {
   room.presentedAction = null;
   room.appliedActionEffectId = "";
   room.playersShown = true;
+  clearChoiceInput(room);
   if (isRoundIntroStateId(phase) && previousPhase !== phase) {
     if (room.hasEnteredRoundIntro) {
       room.currentRound += 1;
@@ -2374,9 +2494,54 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "multipleChoiceInput") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+}
+
+async function handleControllerChoice(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const playerId = normalizePlayerId(payload.playerId);
+  const room = getExistingRoom(stageCode);
+  const player = room?.players.get(playerId);
+  if (!room || !player || !player.active) {
+    sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+    return;
+  }
+
+  const currentAction = resolveRoomActionText(currentRoomAction(room), room);
+  if (!currentAction || currentAction.type !== "multipleChoiceInput") {
+    sendJson(res, 409, { ok: false, error: "No active choice input" });
+    return;
+  }
+  applyChoiceInputAction(room, currentAction);
+  if (payload.actionId && payload.actionId !== room.choiceInputActionId) {
+    sendJson(res, 409, { ok: false, error: "Choice input is stale" });
+    return;
+  }
+
+  const optionIndex = Math.floor(Number(payload.optionIndex));
+  if (!Number.isFinite(optionIndex) || optionIndex < 0 || optionIndex >= room.choiceInputOptions.length) {
+    sendJson(res, 400, { ok: false, error: "Choice option is not valid" });
+    return;
+  }
+
+  room.choiceInputAnswers.set(playerId, {
+    optionIndex,
+    text: room.choiceInputOptions[optionIndex],
+    answeredAt: Date.now()
+  });
+
+  broadcastLobby(room);
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
@@ -2631,6 +2796,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/complete-action") {
     handleCompleteAction(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/controller-choice") {
+    handleControllerChoice(req, res);
     return;
   }
 

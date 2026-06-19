@@ -791,12 +791,53 @@
       justify-items: center;
       gap: 8px;
       color: #fff;
+      position: relative;
       transform: scale(1);
       transform-origin: center bottom;
       opacity: 1;
       transition: transform 1000ms cubic-bezier(0.19, 1, 0.22, 1), opacity 1000ms cubic-bezier(0.19, 1, 0.22, 1);
       transition-delay: calc(var(--player-index, 0) * 45ms);
       will-change: transform, opacity;
+    }
+
+    .player-answer-bubble {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 10px);
+      z-index: 3;
+      min-width: 54px;
+      max-width: 180px;
+      padding: 10px 14px;
+      border: 3px solid var(--ink);
+      border-radius: 18px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.42);
+      font-size: 28px;
+      line-height: 0.95;
+      font-weight: 1000;
+      text-align: center;
+      overflow-wrap: anywhere;
+      transform: translateX(-50%);
+      animation: answerBubbleIn 180ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .player-answer-bubble::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -12px;
+      width: 18px;
+      height: 18px;
+      border-right: 3px solid var(--ink);
+      border-bottom: 3px solid var(--ink);
+      background: var(--paper);
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    @keyframes answerBubbleIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.82); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
     }
 
     .player-lobby.players-hidden .player-tile {
@@ -1205,6 +1246,52 @@
       color: #5e5475;
       font-size: clamp(14px, 4.2vmin, 18px);
       font-weight: 1000;
+    }
+
+    .controller-choice-state {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 18px;
+      padding: 28px;
+      color: var(--ink);
+    }
+
+    .controller-choice-prompt {
+      width: min(330px, 100%);
+      font-size: clamp(20px, 7vmin, 34px);
+      line-height: 0.95;
+      font-weight: 1000;
+      text-align: center;
+    }
+
+    .controller-choice-grid {
+      width: min(330px, 100%);
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .choice-option-button {
+      min-height: 82px;
+      padding: 12px;
+      border: 5px solid var(--ink);
+      border-radius: 20px;
+      color: #fff;
+      background: var(--blue);
+      box-shadow: 8px 8px 0 var(--ink);
+      font-size: clamp(20px, 6vmin, 30px);
+      line-height: 0.9;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
+    .choice-option-button.is-selected {
+      background: var(--green);
+      color: var(--ink);
+      box-shadow: 0 0 0 5px rgba(255, 225, 86, 0.62), 8px 8px 0 var(--ink);
     }
 
     .lab {
@@ -2546,6 +2633,11 @@
         <h1 class="controller-player-name controller-layout-text" id="controllerIntroMessage">Welcome to the Game</h1>
         <button class="primary-button hidden" id="introPresentButton" type="button" data-controller-option data-option-id="intro.presentHi">Present HI THERE</button>
       </div>
+
+      <div class="controller-choice-state hidden" id="controllerChoiceState" data-controller-view="choice">
+        <div class="controller-choice-prompt controller-layout-text" id="controllerChoicePrompt">Answer this question by tapping an answer</div>
+        <div class="controller-choice-grid" id="controllerChoiceGrid"></div>
+      </div>
     </div>
   </section>
 
@@ -2755,6 +2847,9 @@
     const controllerLobbyState = document.querySelector("#controllerLobbyState");
     const controllerIntroState = document.querySelector("#controllerIntroState");
     const controllerIntroMessage = document.querySelector("#controllerIntroMessage");
+    const controllerChoiceState = document.querySelector("#controllerChoiceState");
+    const controllerChoicePrompt = document.querySelector("#controllerChoicePrompt");
+    const controllerChoiceGrid = document.querySelector("#controllerChoiceGrid");
     const joinForm = document.querySelector("#joinForm");
     const stageCodeInput = document.querySelector("#stageCodeInput");
     const playerNameInput = document.querySelector("#playerNameInput");
@@ -3459,11 +3554,14 @@
         tile.className = "player-tile";
         tile.style.setProperty("--player-index", playerIndex);
         tile.innerHTML = `
+          ${player.answer?.text ? '<div class="player-answer-bubble"></div>' : ""}
           <div class="player-avatar ${avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${avatarFrameImage()}${dinoIcon(player.avatar?.shape)}</div>
           <div class="player-name"></div>
           ${player.isVip ? '<div class="vip-badge">VIP</div>' : ""}
         `;
         tile.querySelector(".player-name").textContent = player.name;
+        const bubble = tile.querySelector(".player-answer-bubble");
+        if (bubble) bubble.textContent = player.answer.text;
         playerLobby.appendChild(tile);
       });
     }
@@ -3980,6 +4078,52 @@
       }
     }
 
+    function hideControllerViews() {
+      joinState.classList.add("hidden");
+      controllerLobbyState.classList.add("hidden");
+      controllerIntroState.classList.add("hidden");
+      controllerChoiceState.classList.add("hidden");
+      introPresentButton.classList.add("hidden");
+    }
+
+    function renderControllerChoiceState(lobby, me) {
+      const input = lobby.input || null;
+      if (!input) return false;
+      hideControllerViews();
+      controllerChoiceState.classList.remove("hidden");
+      controllerChoicePrompt.textContent = input.prompt || "Answer this question by tapping an answer";
+      controllerChoiceGrid.replaceChildren();
+      const selectedIndex = Number.isFinite(Number(me.answer?.optionIndex)) ? Number(me.answer.optionIndex) : -1;
+      for (const option of input.options || []) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "choice-option-button";
+        button.dataset.controllerOption = "";
+        button.dataset.optionId = `choice.${option.index}`;
+        button.classList.toggle("is-selected", Number(option.index) === selectedIndex);
+        button.textContent = option.label || `Button ${Number(option.index) + 1}`;
+        button.addEventListener("click", () => submitControllerChoice(input.actionId, Number(option.index)));
+        controllerChoiceGrid.appendChild(button);
+      }
+      applyControllerLayoutForPhase(lobby.phase || "lobby");
+      return true;
+    }
+
+    async function submitControllerChoice(actionId, optionIndex) {
+      if (!controllerState) return;
+      try {
+        const result = await postJson("/api/controller-choice", {
+          stageCode: controllerState.stageCode,
+          playerId: controllerState.playerId,
+          actionId,
+          optionIndex
+        });
+        if (result.lobby) renderControllerState(result.lobby);
+      } catch (error) {
+        controllerChoicePrompt.textContent = error.message;
+      }
+    }
+
     function renderControllerState(lobby) {
       if (!controllerState) return;
       window.clearInterval(controllerCountdownTimer);
@@ -3988,7 +4132,7 @@
         closeAvatarPicker({ commit: false });
         controllerState.startToken = "";
         controllerMeta.textContent = "Reconnecting to lobby";
-        controllerIntroState.classList.add("hidden");
+        hideControllerViews();
         introPresentButton.classList.add("hidden");
         controllerLobbyState.classList.remove("hidden");
         startGameButton.classList.add("hidden");
@@ -4001,10 +4145,13 @@
 
       const controllerPhase = lobby.phase || "lobby";
       controllerState.phase = controllerPhase;
+      if (lobby.input?.type || lobby.input?.options?.length) {
+        closeAvatarPicker({ commit: false });
+        if (renderControllerChoiceState(lobby, me)) return;
+      }
       if (controllerPhase !== "lobby" && controllerPhase !== "starting") {
         closeAvatarPicker({ commit: false });
-        joinState.classList.add("hidden");
-        controllerLobbyState.classList.add("hidden");
+        hideControllerViews();
         controllerIntroState.classList.toggle("hidden", controllerPhase !== "intro");
         introPresentButton.classList.toggle("hidden", !(me.isVip && controllerPhase === "intro"));
         introPresentButton.disabled = !(me.isVip && controllerPhase === "intro");
@@ -4012,8 +4159,7 @@
         return;
       }
 
-      joinState.classList.add("hidden");
-      controllerIntroState.classList.add("hidden");
+      hideControllerViews();
       introPresentButton.classList.add("hidden");
       controllerLobbyState.classList.remove("hidden");
       controllerPlayerName.textContent = me.name;
@@ -4054,8 +4200,7 @@
           window.clearInterval(heartbeatTimer);
           controllerState = null;
           closeAvatarPicker({ commit: false });
-          controllerIntroState.classList.add("hidden");
-          controllerLobbyState.classList.add("hidden");
+          hideControllerViews();
           joinState.classList.remove("hidden");
           applyControllerLayoutForPhase("join");
           joinButton.disabled = false;
@@ -4087,7 +4232,7 @@
         stageCode: leaving.stageCode,
         playerId: leaving.playerId
       }).catch(() => {});
-      controllerLobbyState.classList.add("hidden");
+      hideControllerViews();
       joinState.classList.remove("hidden");
       applyControllerLayoutForPhase("join");
       updateJoinButton();
@@ -4584,6 +4729,7 @@
       const targetText = textTargetName(action.textTarget || "presentation");
       const instantText = action.instant ? " / Instant" : "";
       if (action.type === "presentText") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
+      if (action.type === "multipleChoiceInput") return `${action.prompt || "Choice input"} / ${(action.options || []).length || 0} options / ${timingText}`;
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
@@ -5027,6 +5173,10 @@
       flowEditor.appendChild(flowActionTypeSearch("Action Type", action.type, flowActionTypes, (value) => {
         action.type = value;
         if (value === "presentText") action.text = action.text || "Presented text";
+        if (value === "multipleChoiceInput") {
+          action.prompt = action.prompt || "Answer this question by tapping an answer";
+          action.options = Array.isArray(action.options) && action.options.length ? action.options : ["A", "B", "C", "D"];
+        }
         if (value === "displayText") action.text = action.text || "Displayed text";
         if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
         if (value === "transition") action.transition = action.transition || "horizontalWipe";
@@ -5059,6 +5209,18 @@
           action.instant = value === "true";
           renderFlowListAndPublish();
         }));
+      }
+      if (action.type === "multipleChoiceInput") {
+        flowEditor.appendChild(flowTextarea("Prompt Text", action.prompt || "Answer this question by tapping an answer", (value) => {
+          action.prompt = value || "Answer this question by tapping an answer";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowTextarea("Answer Bubble Text Options", (action.options || ["A", "B", "C", "D"]).join("\n"), (value) => {
+          const options = value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 12);
+          action.options = options.length ? options : ["A", "B", "C", "D"];
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Controllers show one option button per line. Buttons are labeled by index; the selected line becomes the speech bubble text."));
       }
       if (action.type === "setPlayersShown") {
         flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
@@ -5730,7 +5892,9 @@
           { id: "startGameButton", name: "Start Game Button", selector: "#startGameButton", kind: "art", width: 260, height: 78 },
           { id: "controllerPlayerBanner", name: "Player Banner", selector: "#controllerPlayerBanner", kind: "art", width: 338, height: 78 },
           { id: "controllerIntroMessage", name: "Intro Message", selector: "#controllerIntroMessage", kind: "text", width: 330, height: 120 },
-          { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", kind: "art", width: 300, height: 78 }
+          { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", kind: "art", width: 300, height: 78 },
+          { id: "controllerChoicePrompt", name: "Choice Prompt", selector: "#controllerChoicePrompt", kind: "text", width: 330, height: 120 },
+          { id: "controllerChoiceGrid", name: "Choice Buttons", selector: "#controllerChoiceGrid", kind: "art", width: 330, height: 420 }
         ];
       }
       return [
