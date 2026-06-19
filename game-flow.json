@@ -23,20 +23,6 @@
       "name": "Game Intro Game State",
       "actions": [
         {
-          "id": "intro-action-mqk4t0b0",
-          "name": "Game Action 6",
-          "type": "setPlayersShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": true,
-          "isShown": false,
-          "subActions": []
-        },
-        {
           "id": "intro-present-1",
           "name": "Present Intro Text",
           "type": "presentText",
@@ -46,35 +32,7 @@
           },
           "textTarget": "presentation",
           "instant": false,
-          "text": "I'm using this tool to dictate game actions",
-          "subActions": [
-            {
-              "id": "intro-sub-action-mqk4tigr",
-              "name": "Sub-Action 1",
-              "type": "setPlayersShown",
-              "timing": {
-                "mode": "S+",
-                "seconds": 1
-              },
-              "text": "Presented text",
-              "textTarget": "presentation",
-              "instant": false,
-              "isShown": true,
-              "subActions": []
-            }
-          ]
-        },
-        {
-          "id": "intro-present-2",
-          "name": "Present Second Text",
-          "type": "presentText",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "textTarget": "presentation",
-          "instant": false,
-          "text": "This is the second action",
+          "text": "It's time to play Flip 7",
           "subActions": []
         },
         {
@@ -86,30 +44,6 @@
             "seconds": 0
           },
           "transition": "horizontalWipe",
-          "subActions": []
-        },
-        {
-          "id": "intro-hide-players",
-          "name": "Hide Players",
-          "type": "setPlayersShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "isShown": false,
-          "instant": false,
-          "subActions": []
-        },
-        {
-          "id": "intro-show-players",
-          "name": "Show Players",
-          "type": "setPlayersShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "isShown": true,
-          "instant": false,
           "subActions": []
         }
       ]
