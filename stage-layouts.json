@@ -68,8 +68,8 @@
           "id": "startpopup",
           "name": "Countdown Popup",
           "selector": "#startPopup",
-          "x": 1400,
-          "y": 500,
+          "x": 960,
+          "y": 650,
           "width": 200,
           "height": 200,
           "scale": 1
@@ -99,7 +99,7 @@
           "name": "Cancel Prompt",
           "selector": "#waitingStatus",
           "x": 960,
-          "y": 670,
+          "y": 950,
           "width": 700,
           "height": 82,
           "scale": 1
@@ -109,7 +109,7 @@
           "name": "Player Avatars",
           "selector": "#playerLobby",
           "x": 960,
-          "y": 920,
+          "y": 820,
           "width": 1320,
           "height": 150,
           "scale": 1
