@@ -47,6 +47,26 @@
           "subActions": []
         }
       ]
+    },
+    {
+      "id": "round-intro",
+      "name": "Round Intro",
+      "actions": [
+        {
+          "id": "round-intro-action-mqkg361r",
+          "name": "Game Action 1",
+          "type": "presentText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Round <ROUND_NUMBER>",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": []
+        }
+      ]
     }
   ]
 }
