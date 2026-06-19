@@ -605,6 +605,10 @@
       top: 52px;
       left: 50%;
       z-index: 5;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 6px;
       transform: translateX(-50%);
       min-width: 520px;
       padding: 20px 26px;
@@ -618,6 +622,26 @@
       line-height: 0.95;
       font-weight: 1000;
       animation: popIn 240ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .countdown-kicker {
+      font-size: 24px;
+      line-height: 0.9;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .countdown-number {
+      font-size: 94px;
+      line-height: 0.78;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .start-popup.is-go {
+      gap: 0;
+      font-size: 58px;
+      line-height: 0.85;
     }
 
     @keyframes popIn {
@@ -663,14 +687,19 @@
 
     .join-prompt {
       justify-self: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 12px 18px;
       border: 4px solid var(--ink);
       border-radius: 999px;
       color: var(--ink);
       background: var(--cream);
       box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.45);
-      font-size: clamp(18px, 2.5vw, 28px);
+      font-size: 28px;
       font-weight: 1000;
+      line-height: 1;
+      text-align: center;
     }
 
     .player-lobby {
@@ -2735,8 +2764,10 @@
           const now = Date.now() + countdownClockOffset;
           const remainingMs = Math.max(0, (lobby.countdownEndsAt || now) - now);
           const seconds = Math.ceil(remainingMs / 1000);
-          const unit = seconds === 1 ? "second" : "seconds";
-          startPopup.textContent = seconds > 0 ? `Game Starting in ${seconds} ${unit}` : "Let's Go";
+          startPopup.classList.toggle("is-go", seconds <= 0);
+          startPopup.innerHTML = seconds > 0
+            ? `<span class="countdown-kicker">Starting in</span><span class="countdown-number">${seconds}</span>`
+            : `<span class="countdown-number">Let's Go</span>`;
         };
         updateCountdown();
         stageCountdownTimer = window.setInterval(updateCountdown, 100);
