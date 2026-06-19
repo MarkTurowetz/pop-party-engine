@@ -3,6 +3,42 @@
     "width": 1920,
     "height": 1080
   },
+  "global": {
+    "id": "global",
+    "name": "Global Layout",
+    "elements": [
+      {
+        "id": "stageCodeBadge",
+        "name": "Small Room Code Widget",
+        "selector": "#stageCodeBadge",
+        "x": 108,
+        "y": 70,
+        "width": 170,
+        "height": 82,
+        "scale": 1
+      },
+      {
+        "id": "presentClickWidget",
+        "name": "Cursor Widget",
+        "selector": "#presentClickWidget",
+        "x": 1780,
+        "y": 930,
+        "width": 90,
+        "height": 90,
+        "scale": 1
+      },
+      {
+        "id": "playerLobby",
+        "name": "Player Avatars",
+        "selector": "#playerLobby",
+        "x": 960,
+        "y": 935,
+        "width": 1320,
+        "height": 150,
+        "scale": 1
+      }
+    ]
+  },
   "states": [
     {
       "id": "lobby",
@@ -57,16 +93,6 @@
           "width": 740,
           "height": 76,
           "scale": 1
-        },
-        {
-          "id": "playerLobby",
-          "name": "Player Avatars",
-          "selector": "#playerLobby",
-          "x": 960,
-          "y": 920,
-          "width": 1320,
-          "height": 150,
-          "scale": 1
         }
       ]
     },
@@ -74,16 +100,6 @@
       "id": "intro",
       "name": "Game Intro",
       "elements": [
-        {
-          "id": "stageCodeBadge",
-          "name": "Stage Code Widget",
-          "selector": "#stageCodeBadge",
-          "x": 108,
-          "y": 70,
-          "width": 170,
-          "height": 82,
-          "scale": 1
-        },
         {
           "id": "stageIntroTitle",
           "name": "Intro Header",
@@ -112,26 +128,6 @@
           "y": 760,
           "width": 860,
           "height": 120,
-          "scale": 1
-        },
-        {
-          "id": "presentClickWidget",
-          "name": "Click Cursor",
-          "selector": "#presentClickWidget",
-          "x": 1780,
-          "y": 930,
-          "width": 90,
-          "height": 90,
-          "scale": 1
-        },
-        {
-          "id": "playerLobby",
-          "name": "Player Avatars",
-          "selector": "#playerLobby",
-          "x": 960,
-          "y": 935,
-          "width": 1320,
-          "height": 150,
           "scale": 1
         }
       ]

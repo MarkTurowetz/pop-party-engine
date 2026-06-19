@@ -120,6 +120,15 @@ const defaultGameConstants = {
 };
 const defaultStageLayouts = {
   canvas: { width: 1920, height: 1080 },
+  global: {
+    id: "global",
+    name: "Global Layout",
+    elements: [
+      { id: "stageCodeBadge", name: "Small Room Code Widget", selector: "#stageCodeBadge", x: 108, y: 70, width: 170, height: 82, scale: 1 },
+      { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", x: 1780, y: 930, width: 90, height: 90, scale: 1 },
+      { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 935, width: 1320, height: 150, scale: 1 }
+    ]
+  },
   states: [
     {
       id: "lobby",
@@ -129,20 +138,16 @@ const defaultStageLayouts = {
         { id: "stageTitle", name: "Header", selector: ".stage-title", x: 960, y: 190, width: 1080, height: 150, scale: 1 },
         { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
         { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", x: 960, y: 575, width: 700, height: 82, scale: 1 },
-        { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", x: 960, y: 650, width: 740, height: 76, scale: 1 },
-        { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 920, width: 1320, height: 150, scale: 1 }
+        { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", x: 960, y: 650, width: 740, height: 76, scale: 1 }
       ]
     },
     {
       id: "intro",
       name: "Game Intro",
       elements: [
-        { id: "stageCodeBadge", name: "Stage Code Widget", selector: "#stageCodeBadge", x: 108, y: 70, width: 170, height: 82, scale: 1 },
         { id: "stageIntroTitle", name: "Intro Header", selector: "#stageIntroTitle", x: 960, y: 235, width: 1060, height: 130, scale: 1 },
         { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", x: 960, y: 460, width: 980, height: 240, scale: 1 },
-        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", x: 960, y: 760, width: 860, height: 120, scale: 1 },
-        { id: "presentClickWidget", name: "Click Cursor", selector: "#presentClickWidget", x: 1780, y: 930, width: 90, height: 90, scale: 1 },
-        { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 935, width: 1320, height: 150, scale: 1 }
+        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", x: 960, y: 760, width: 860, height: 120, scale: 1 }
       ]
     }
   ]
@@ -299,18 +304,32 @@ function normalizeStageLayouts(layouts) {
     height: normalizeLayoutNumber(incomingCanvas.height, defaultStageLayouts.canvas.height, 360, 10000)
   };
   const incomingStates = Array.isArray(layouts?.states) ? layouts.states : defaultStageLayouts.states;
+  const normalizedDefaultGlobal = normalizeLayoutState(defaultStageLayouts.global, -1);
   const normalizedDefaultStates = defaultStageLayouts.states.map((state, index) => normalizeLayoutState(state, index)).filter(Boolean);
   const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
   const normalizedIncomingStates = incomingStates.map((state, stateIndex) => normalizeLayoutState(state, stateIndex)).filter(Boolean);
-  const migratedStates = migrateStageLayoutStates(normalizedIncomingStates);
+  const incomingGlobal = normalizeLayoutState(layouts?.global, -1);
+  const migrated = migrateStageLayoutStates(normalizedIncomingStates, incomingGlobal, normalizedDefaultGlobal, Boolean(incomingGlobal));
+  const migratedStates = migrated.states;
   const normalizedStates = migratedStates.filter((state) => defaultStatesById.has(state.id));
   for (const defaultState of normalizedDefaultStates) {
     if (!normalizedStates.some((state) => state.id === defaultState.id)) {
       normalizedStates.push(cloneJson(defaultState));
     }
   }
+  const globalElements = [...(migrated.global?.elements || [])];
+  for (const element of normalizedDefaultGlobal.elements || []) {
+    if (!globalElements.some((item) => item.id === element.id)) globalElements.push(cloneJson(element));
+  }
   return {
     canvas,
+    global: {
+      ...normalizedDefaultGlobal,
+      ...(migrated.global || {}),
+      id: "global",
+      name: migrated.global?.name || normalizedDefaultGlobal.name,
+      elements: globalElements
+    },
     states: normalizedStates.map((state) => {
       const defaultState = defaultStatesById.get(state.id);
       if (!defaultState) return state;
@@ -323,7 +342,11 @@ function normalizeStageLayouts(layouts) {
   };
 }
 
-function migrateStageLayoutStates(states) {
+function migrateStageLayoutStates(states, global, defaultGlobal, hasExplicitGlobal = false) {
+  const migratedGlobal = global ? cloneJson(global) : cloneJson(defaultGlobal);
+  migratedGlobal.id = "global";
+  migratedGlobal.name = migratedGlobal.name || "Global Layout";
+  migratedGlobal.elements = Array.isArray(migratedGlobal.elements) ? migratedGlobal.elements : [];
   const lobby = states.find((state) => state.id === "lobby");
   const starting = states.find((state) => state.id === "starting");
   const countdown = starting?.elements?.find((element) => element.id === "startpopup");
@@ -335,7 +358,20 @@ function migrateStageLayoutStates(states) {
       selector: countdown.selector || "#startPopup"
     });
   }
-  return states;
+  const globalElementIds = new Set((defaultGlobal.elements || []).map((element) => element.id));
+  for (const state of states) {
+    state.elements = (state.elements || []).filter((element) => {
+      if (!globalElementIds.has(element.id)) return true;
+      const existingIndex = migratedGlobal.elements.findIndex((item) => item.id === element.id);
+      if (existingIndex === -1) {
+        migratedGlobal.elements.push(cloneJson(element));
+      } else if (!hasExplicitGlobal) {
+        migratedGlobal.elements[existingIndex] = cloneJson(element);
+      }
+      return false;
+    });
+  }
+  return { states, global: migratedGlobal };
 }
 
 function normalizeLayoutState(state, stateIndex) {

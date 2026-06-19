@@ -245,6 +245,10 @@
       transform: translate(-50%, -50%) scale(0) !important;
     }
 
+    .stage-global-layout-target {
+      z-index: 7 !important;
+    }
+
     .stage-code-badge {
       position: absolute;
       top: 22px;
@@ -1791,6 +1795,11 @@
       z-index: 10;
     }
 
+    .layout-preview-element.is-global-preview {
+      border-color: rgba(255, 225, 86, 0.68);
+      z-index: 8;
+    }
+
     .layout-preview-content {
       width: 100%;
       height: 100%;
@@ -2471,7 +2480,7 @@
     const collapsedArtComposites = new Set();
     let gameFlow = { states: [] };
     let gameConstants = { playerColors: [] };
-    let stageLayouts = { canvas: { width: 1920, height: 1080 }, states: [] };
+    let stageLayouts = { canvas: { width: 1920, height: 1080 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let flowSavedSnapshot = "";
     let constantsSavedSnapshot = "";
     let layoutSavedSnapshot = "";
@@ -2751,6 +2760,14 @@
       return (stageLayouts.states || []).find((state) => state.id === stateId) || null;
     }
 
+    function globalStageLayout() {
+      return stageLayouts.global || { id: "global", name: "Global Layout", elements: [] };
+    }
+
+    function stageLayoutGroup(groupId) {
+      return groupId === "global" ? globalStageLayout() : stageLayoutState(groupId);
+    }
+
     function stageLayoutStateForPhase(phase) {
       const preferred = phase === "intro" ? "intro" : "lobby";
       return stageLayoutState(preferred) || stageLayoutState("lobby") || (stageLayouts.states || [])[0] || null;
@@ -2758,6 +2775,9 @@
 
     function allStageLayoutSelectors() {
       const selectors = new Set();
+      for (const element of globalStageLayout().elements || []) {
+        if (element.selector) selectors.add(element.selector);
+      }
       for (const state of stageLayouts.states || []) {
         for (const element of state.elements || []) {
           if (element.selector) selectors.add(element.selector);
@@ -2771,6 +2791,7 @@
         const target = stageBoard.querySelector(selector);
         if (!target) continue;
         target.classList.remove("stage-layout-target");
+        target.classList.remove("stage-global-layout-target");
         target.style.removeProperty("--stage-layout-x");
         target.style.removeProperty("--stage-layout-y");
         target.style.removeProperty("--stage-layout-w");
@@ -2794,6 +2815,16 @@
         const target = stageBoard.querySelector(element.selector);
         if (!target) continue;
         target.classList.add("stage-layout-target");
+        target.style.setProperty("--stage-layout-x", `${element.x}px`);
+        target.style.setProperty("--stage-layout-y", `${element.y}px`);
+        target.style.setProperty("--stage-layout-w", `${element.width}px`);
+        target.style.setProperty("--stage-layout-h", `${element.height}px`);
+        target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
+      }
+      for (const element of globalStageLayout().elements || []) {
+        const target = stageBoard.querySelector(element.selector);
+        if (!target) continue;
+        target.classList.add("stage-layout-target", "stage-global-layout-target");
         target.style.setProperty("--stage-layout-x", `${element.x}px`);
         target.style.setProperty("--stage-layout-y", `${element.y}px`);
         target.style.setProperty("--stage-layout-w", `${element.width}px`);
@@ -2915,7 +2946,8 @@
       const phase = lobby.phase || "lobby";
       const action = lobby.action || null;
       stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
-      stageCodeBadge.textContent = lobby.stageCode || stageCodeBadge.textContent;
+      const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
+      if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
       stageCodeBadgeRoot.classList.toggle("hidden", phase !== "intro");
       window.clearInterval(stageCountdownTimer);
       startPopup.classList.add("hidden");
@@ -2928,7 +2960,7 @@
       playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
 
       const vip = players.find((player) => player.isVip);
-      joinPrompt.classList.toggle("hidden", phase === "intro" || players.length > 0);
+      joinPrompt.classList.toggle("hidden", phase === "intro");
       waitingStatus.classList.toggle("hidden", phase === "intro" || players.length === 0);
       waitingStatus.textContent = vip ? `Waiting for ${vip.name} to start the game` : "";
 
@@ -4609,8 +4641,8 @@
       layoutUndoStack = [];
       layoutRedoStack = [];
       updateLayoutStorageStatus(result.storage);
-      selectedLayoutStateId = stageLayouts.states?.find((state) => state.id === selectedLayoutStateId)?.id || stageLayouts.states?.[0]?.id || "";
-      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || stageLayoutState(selectedLayoutStateId)?.elements?.[0]?.id || "";
+      selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
+      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "";
       renderLayoutTool();
     }
 
@@ -4633,25 +4665,38 @@
           width: Number(layouts?.canvas?.width || 1920),
           height: Number(layouts?.canvas?.height || 1080)
         },
-        states: (layouts.states || []).map((state) => ({
-          id: state.id,
-          name: state.name,
-          elements: (state.elements || []).map((element) => ({
-            id: element.id,
-            name: element.name,
-            selector: element.selector,
-            x: Number(Number(element.x || 0).toFixed(3)),
-            y: Number(Number(element.y || 0).toFixed(3)),
-            width: Number(Number(element.width || 0).toFixed(3)),
-            height: Number(Number(element.height || 0).toFixed(3)),
-            scale: Number(Number(element.scale || 1).toFixed(3))
-          }))
+        global: serializeLayoutGroup(layouts?.global || { id: "global", name: "Global Layout", elements: [] }),
+        states: (layouts.states || []).map((state) => serializeLayoutGroup(state))
+      };
+    }
+
+    function serializeLayoutGroup(group) {
+      return {
+        id: group.id,
+        name: group.name,
+        elements: (group.elements || []).map((element) => ({
+          id: element.id,
+          name: element.name,
+          selector: element.selector,
+          x: Number(Number(element.x || 0).toFixed(3)),
+          y: Number(Number(element.y || 0).toFixed(3)),
+          width: Number(Number(element.width || 0).toFixed(3)),
+          height: Number(Number(element.height || 0).toFixed(3)),
+          scale: Number(Number(element.scale || 1).toFixed(3))
         }))
       };
     }
 
+    function layoutGroups() {
+      return [globalStageLayout(), ...(stageLayouts.states || [])];
+    }
+
+    function layoutGroup(groupId) {
+      return layoutGroups().find((group) => group.id === groupId) || null;
+    }
+
     function layoutElement(stateId, elementId) {
-      return stageLayoutState(stateId)?.elements?.find((element) => element.id === elementId) || null;
+      return layoutGroup(stateId)?.elements?.find((element) => element.id === elementId) || null;
     }
 
     function layoutHistorySnapshot() {
@@ -4668,8 +4713,8 @@
 
     function restoreLayoutHistory(snapshot) {
       stageLayouts = JSON.parse(snapshot);
-      selectedLayoutStateId = stageLayouts.states?.find((state) => state.id === selectedLayoutStateId)?.id || stageLayouts.states?.[0]?.id || "";
-      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || stageLayoutState(selectedLayoutStateId)?.elements?.[0]?.id || "";
+      selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
+      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "";
       renderLayoutTool();
     }
 
@@ -4721,7 +4766,7 @@
 
     function renderLayoutStates() {
       layoutStateList.replaceChildren();
-      for (const state of stageLayouts.states || []) {
+      for (const state of layoutGroups()) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "flow-state-header";
@@ -4741,7 +4786,7 @@
 
     function renderLayoutElements() {
       layoutElementList.replaceChildren();
-      const state = stageLayoutState(selectedLayoutStateId);
+      const state = layoutGroup(selectedLayoutStateId);
       for (const element of state?.elements || []) {
         const button = document.createElement("button");
         button.type = "button";
@@ -4766,12 +4811,17 @@
 
     function renderLayoutPreview() {
       layoutStagePreview.replaceChildren();
-      const state = stageLayoutState(selectedLayoutStateId);
+      const state = layoutGroup(selectedLayoutStateId);
       const scale = fitLayoutStagePreview() || 1;
-      for (const element of state?.elements || []) {
+      const previewElements = selectedLayoutStateId === "global"
+        ? (state?.elements || [])
+        : [...(state?.elements || []), ...(globalStageLayout().elements || [])];
+      for (const element of previewElements) {
         const node = document.createElement("div");
         node.className = "layout-preview-element";
-        node.classList.toggle("is-selected", element.id === selectedLayoutElementId);
+        const isEditableElement = selectedLayoutStateId === "global" || !(globalStageLayout().elements || []).some((globalElement) => globalElement.id === element.id);
+        node.classList.toggle("is-selected", isEditableElement && element.id === selectedLayoutElementId);
+        node.classList.toggle("is-global-preview", selectedLayoutStateId !== "global" && !isEditableElement);
         node.dataset.elementId = element.id;
         node.style.left = `${element.x * scale}px`;
         node.style.top = `${element.y * scale}px`;
@@ -4780,7 +4830,7 @@
         node.style.transform = `translate(-50%, -50%) scale(${element.scale || 1})`;
         node.style.setProperty("--layout-fit-scale", scale);
         node.appendChild(layoutPreviewContent(element));
-        if (element.id === selectedLayoutElementId) {
+        if (isEditableElement && element.id === selectedLayoutElementId) {
           const handle = document.createElement("span");
           handle.className = "layout-resize-handle";
           handle.addEventListener("pointerdown", (event) => startLayoutScale(event, element));
@@ -4916,7 +4966,7 @@
 
     function renderLayoutFields() {
       layoutEditorFields.replaceChildren();
-      const state = stageLayoutState(selectedLayoutStateId);
+      const state = layoutGroup(selectedLayoutStateId);
       const element = layoutElement(selectedLayoutStateId, selectedLayoutElementId);
       layoutEditorTitle.textContent = element ? element.name : state ? state.name : "Stage Layouts";
       layoutEditorHelp.textContent = element
