@@ -1073,8 +1073,12 @@ function getFlowState(flow, stateId) {
   return flow.states.find((state) => state.id === stateId) || null;
 }
 
-function getStateActions(stateId) {
-  return getFlowState(readGameFlow(), stateId)?.actions || [];
+function runtimeGameFlow(room) {
+  return room?.runtimeFlowOverride || readGameFlow();
+}
+
+function getStateActions(stateId, room = null) {
+  return getFlowState(runtimeGameFlow(room), stateId)?.actions || [];
 }
 
 function publicFlowAction(action, index) {
@@ -1126,13 +1130,13 @@ function roundNumberWord(value) {
 
 function currentRoomAction(room) {
   if (room.presentedAction) return room.presentedAction;
-  const actions = getStateActions(room.phase);
+  const actions = getStateActions(room.phase, room);
   if (room.actionIndex >= actions.length) return null;
   return publicFlowAction(actions[room.actionIndex], room.actionIndex);
 }
 
 function advanceRoomAction(room) {
-  const actions = getStateActions(room.phase);
+  const actions = getStateActions(room.phase, room);
   if (actions.length === 0) return;
   room.actionIndex = Math.min(room.actionIndex + 1, actions.length);
 }
@@ -1197,8 +1201,8 @@ function applyRoomActionEffects(room, action) {
   }
 }
 
-function countdownTargetState() {
-  const lobbyState = getFlowState(readGameFlow(), "lobby");
+function countdownTargetState(room) {
+  const lobbyState = getFlowState(runtimeGameFlow(room), "lobby");
   const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
   return action?.targetState || "intro";
 }
@@ -1502,6 +1506,7 @@ function getRoom(stageCode) {
       playersShown: true,
       currentRound: 1,
       hasEnteredRoundIntro: false,
+      runtimeFlowOverride: null,
       revision: 0
     });
   }
@@ -1674,7 +1679,7 @@ function enterStartingPhase(room) {
   room.countdownStartedAt = now;
   room.countdownEndsAt = now + START_COUNTDOWN_MS;
   room.countdownTimerId = setTimeout(() => {
-    enterGamePhase(room, countdownTargetState());
+    enterGamePhase(room, countdownTargetState(room));
   }, START_COUNTDOWN_MS + START_GO_HOLD_MS);
   broadcastLobby(room);
 }
@@ -1683,6 +1688,9 @@ function removeStageClient(stageCode, client) {
   const room = getExistingRoom(stageCode);
   if (!room) return;
   room.stageClients.delete(client);
+  if (room.stageClients.size === 0) {
+    room.runtimeFlowOverride = null;
+  }
 }
 
 function handleStageEvents(req, res, stageCode) {
@@ -2012,6 +2020,37 @@ async function handleQuitToLobby(req, res) {
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
+async function handleStageTestConfig(req, res, stageCode) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const room = getRoom(stageCode);
+  if (payload.clearFlow) {
+    room.runtimeFlowOverride = null;
+  } else if (payload.flow) {
+    try {
+      room.runtimeFlowOverride = normalizeGameFlow(payload.flow);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: `Test flow is invalid: ${error.message}` });
+      return;
+    }
+  }
+
+  room.actionCompletionPendingId = "";
+  room.appliedActionEffectId = "";
+  room.presentedAction = null;
+  if (room.actionIndex >= getStateActions(room.phase, room).length) {
+    room.actionIndex = 0;
+  }
+  broadcastLobby(room);
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room), hasTestFlow: Boolean(room.runtimeFlowOverride) });
+}
+
 async function handlePresentHi(req, res) {
   let payload;
   try {
@@ -2144,6 +2183,12 @@ function router(req, res) {
   const lobbyMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/lobby$/i);
   if (req.method === "GET" && lobbyMatch) {
     handleLobby(req, res, normalizeStageCode(lobbyMatch[1]));
+    return;
+  }
+
+  const stageTestConfigMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/test-config$/i);
+  if (req.method === "POST" && stageTestConfigMatch) {
+    handleStageTestConfig(req, res, normalizeStageCode(stageTestConfigMatch[1]));
     return;
   }
 

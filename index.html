@@ -2609,6 +2609,7 @@
     let subActionTimers = [];
     let textObjectTimers = [];
     let stageTextObjects = {};
+    let runtimeTestLayouts = null;
     let isStagePaused = false;
     let currentStageState = null;
     let presentationAdvancePending = false;
@@ -2646,6 +2647,7 @@
     let currentStageLayoutStateId = "";
     let layoutUndoStack = [];
     let layoutRedoStack = [];
+    const runtimeTestChannel = "BroadcastChannel" in window ? new BroadcastChannel("flip7-runtime-test") : null;
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],
       ["avatar-rex", "/art/default/dino-rex.svg"],
@@ -2895,7 +2897,11 @@
       return result;
     }
 
-    async function loadStageLayouts() {
+    async function loadStageLayouts({ forceServer = false } = {}) {
+      if (runtimeTestLayouts && !forceServer) {
+        stageLayouts = runtimeTestLayouts;
+        return stageLayouts;
+      }
       if (!canUseServer) return stageLayouts;
       const result = await getJson("/api/stage-layouts");
       stageLayouts = result.layouts || stageLayouts;
@@ -3298,6 +3304,43 @@
       }
     }
 
+    function currentStageCodeForRuntimeTest() {
+      return currentStageState?.stageCode || normalizeStageCode(stageCodeText.textContent);
+    }
+
+    async function applyRuntimeTestMessage(message) {
+      if (!message || message.type !== "runtime-test-config") return;
+
+      if (message.clearLayouts) {
+        runtimeTestLayouts = null;
+        await loadStageLayouts({ forceServer: true }).catch(() => stageLayouts);
+      } else if (message.layouts) {
+        runtimeTestLayouts = message.layouts;
+        stageLayouts = runtimeTestLayouts;
+      }
+
+      if (currentStageState) applyStageLayoutForPhase(currentStageState.phase);
+
+      const stageCode = currentStageCodeForRuntimeTest();
+      if (!stageCode || (!message.flow && !message.clearFlow)) return;
+      try {
+        const result = await postJson(`/api/stage/${stageCode}/test-config`, {
+          flow: message.flow || null,
+          clearFlow: message.clearFlow === true
+        });
+        if (result.lobby) renderStageLobby(result.lobby);
+      } catch (error) {
+        waitingStatus.classList.remove("hidden");
+        waitingStatus.textContent = error.message;
+      }
+    }
+
+    function clearRuntimeTestConfigForStage(stageCode) {
+      runtimeTestLayouts = null;
+      if (!stageCode || !canUseServer) return;
+      postJson(`/api/stage/${stageCode}/test-config`, { clearFlow: true }).catch(() => {});
+    }
+
     function setStagePaused(isPaused) {
       isStagePaused = isPaused;
       pauseMenu.classList.toggle("hidden", !isPaused);
@@ -3353,6 +3396,10 @@
       const stageCode = getOrCreateStageCode();
       stageCodeText.textContent = stageCode;
       stageCodeBadge.textContent = stageCode;
+      clearRuntimeTestConfigForStage(stageCode);
+      runtimeTestChannel?.addEventListener("message", (event) => {
+        applyRuntimeTestMessage(event.data);
+      });
       stageScreen.addEventListener("click", advancePresentation);
       pauseMenu.addEventListener("click", (event) => event.stopPropagation());
       returnToGameButton.addEventListener("click", () => setStagePaused(false));
@@ -4044,6 +4091,35 @@
       if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"} / ${timingText}`;
       return `${action.text || "Text"} / ${timingText}`;
     }
+
+    function currentRuntimeTestMessage(overrides = {}) {
+      return {
+        type: "runtime-test-config",
+        flow: flowTestSnapshot ? JSON.parse(flowTestSnapshot) : null,
+        layouts: layoutTestSnapshot ? JSON.parse(layoutTestSnapshot) : null,
+        clearFlow: false,
+        clearLayouts: false,
+        ...overrides
+      };
+    }
+
+    function publishRuntimeTestMessage(overrides = {}) {
+      runtimeTestChannel?.postMessage(currentRuntimeTestMessage(overrides));
+    }
+
+    function publishRuntimeTestClear() {
+      runtimeTestChannel?.postMessage({
+        type: "runtime-test-config",
+        flow: null,
+        layouts: null,
+        clearFlow: true,
+        clearLayouts: true
+      });
+    }
+
+    window.addEventListener("beforeunload", () => {
+      if (flowTestSnapshot || layoutTestSnapshot) publishRuntimeTestClear();
+    });
 
     async function loadGameFlow() {
       const result = await getJson("/api/game-flow");
@@ -4825,6 +4901,7 @@
         await loadStageLayouts();
         flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
         flowTestSnapshot = "";
+        publishRuntimeTestMessage({ clearFlow: true });
         updateFlowStorageStatus(result.storage);
         selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
         selectedFlowActionId = "";
@@ -4839,6 +4916,7 @@
       flowTestSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
       flowUndoStack = [];
       flowRedoStack = [];
+      publishRuntimeTestMessage();
       renderFlowTool();
     }
 
@@ -4850,6 +4928,7 @@
       flowRedoStack = [];
       selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
       selectedFlowActionId = "";
+      publishRuntimeTestMessage({ clearFlow: true });
       renderFlowTool();
     }
 
@@ -5509,6 +5588,7 @@
       layoutTestSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
       layoutUndoStack = [];
       layoutRedoStack = [];
+      publishRuntimeTestMessage();
       renderLayoutTool();
     }
 
@@ -5521,6 +5601,7 @@
       selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
       selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "";
       closeLayoutObjectPicker();
+      publishRuntimeTestMessage({ clearLayouts: true });
       renderLayoutTool();
     }
 
@@ -5532,6 +5613,7 @@
         stageLayouts = result.layouts || stageLayouts;
         layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
         layoutTestSnapshot = "";
+        publishRuntimeTestMessage({ clearLayouts: true });
         updateLayoutStorageStatus(result.storage);
         renderLayoutTool();
       } finally {
