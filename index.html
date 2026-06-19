@@ -3229,7 +3229,7 @@
         const target = action.textTarget || "presentation";
         setStageTextObject(target, {
           text: action.text || "",
-          isShown: action.type === "present" ? true : action.isShown !== false,
+          isShown: action.isShown !== false,
           instant: action.instant === true,
           complete: isPrimary && action.type === "displayText"
             ? () => {
@@ -4084,7 +4084,7 @@
       const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
       const targetText = textTargetName(action.textTarget || "presentation");
       const instantText = action.instant ? " / Instant" : "";
-      if (action.type === "presentText") return `${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
+      if (action.type === "presentText") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
@@ -4508,7 +4508,7 @@
         action.type = value;
         if (value === "presentText") action.text = action.text || "Presented text";
         if (value === "displayText") action.text = action.text || "Displayed text";
-        if (value === "setPlayersShown") action.isShown = action.isShown !== false;
+        if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
         if (value === "transition") action.transition = action.transition || "horizontalWipe";
         if (value === "transitionState") action.targetState = action.targetState || "intro";
         if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = action.textTarget || "presentation";
@@ -4525,15 +4525,13 @@
           action.text = value;
           renderFlowList();
         }));
-        if (action.type === "displayText" || action.type === "text") {
-          flowEditor.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", [
-            { id: "true", name: "True" },
-            { id: "false", name: "False" }
-          ], (value) => {
-            action.isShown = value !== "false";
-            renderFlowList();
-          }));
-        }
+        flowEditor.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          renderFlowList();
+        }));
         flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
           { id: "false", name: "False" },
           { id: "true", name: "True" }

@@ -539,6 +539,7 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       ...base,
       text: cleanFlowText(action?.text, "Presented text"),
       textTarget: normalizeTextTarget(action?.textTarget),
+      isShown: action?.isShown !== false,
       instant: action?.instant === true
     };
   }
@@ -1094,7 +1095,7 @@ function publicFlowAction(action, index) {
     subActions: (action.subActions || []).map((subAction, subActionIndex) => publicFlowAction(subAction, subActionIndex)).filter(Boolean)
   };
   if (action.type === "presentText") {
-    return { ...base, type: "present", text: action.text, textTarget: action.textTarget || "presentation", instant: action.instant === true };
+    return { ...base, type: "present", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
   }
   if (action.type === "displayText" || action.type === "text") {
     return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
