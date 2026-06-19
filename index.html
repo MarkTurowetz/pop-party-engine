@@ -4087,30 +4087,46 @@
     }
 
     function currentRuntimeLocalMessage(overrides = {}) {
-      const flowDirty = isFlowDirty();
-      const layoutDirty = isLayoutDirty();
-      return {
-        type: "runtime-test-config",
-        flow: flowDirty ? serializeGameFlowForSave(gameFlow) : null,
-        layouts: layoutDirty ? serializeStageLayoutsForSave(stageLayouts) : null,
-        clearFlow: !flowDirty,
-        clearLayouts: !layoutDirty,
-        ...overrides
-      };
+      const message = { type: "runtime-test-config" };
+      if (flowSavedSnapshot) {
+        const flowDirty = isFlowDirty();
+        message.flow = flowDirty ? serializeGameFlowForSave(gameFlow) : null;
+        message.clearFlow = !flowDirty;
+      }
+      if (layoutSavedSnapshot) {
+        const layoutDirty = isLayoutDirty();
+        message.layouts = layoutDirty ? serializeStageLayoutsForSave(stageLayouts) : null;
+        message.clearLayouts = !layoutDirty;
+      }
+      return { ...message, ...overrides };
     }
 
     function publishRuntimeLocalChanges(overrides = {}) {
-      runtimeTestChannel?.postMessage(currentRuntimeLocalMessage(overrides));
+      const message = currentRuntimeLocalMessage(overrides);
+      runtimeTestChannel?.postMessage(message);
+      if (canUseServer) {
+        postJson("/api/local-draft", message).catch(() => {});
+      }
     }
 
     function publishRuntimeLocalClear() {
-      runtimeTestChannel?.postMessage({
+      const message = {
         type: "runtime-test-config",
         flow: null,
         layouts: null,
         clearFlow: true,
         clearLayouts: true
-      });
+      };
+      runtimeTestChannel?.postMessage(message);
+      if (canUseServer) {
+        postJson("/api/local-draft", message).catch(() => {});
+      }
+    }
+
+    function renderFlowListAndPublish() {
+      renderFlowList();
+      renderFlowActions();
+      publishRuntimeLocalChanges();
     }
 
     window.addEventListener("beforeunload", () => {
@@ -4122,7 +4138,7 @@
       gameFlow = result.flow || { states: [] };
       flowActionTypes = result.availableActionTypes || [];
       flowTransitions = result.availableTransitions || [];
-      flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
+      flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(result.savedFlow || result.flow || gameFlow));
       flowUndoStack = [];
       flowRedoStack = [];
       updateFlowStorageStatus(result.storage);
@@ -4509,25 +4525,25 @@
         const textTargetOptions = textTargetOptionsForFlowState(state.id, action.textTarget || "presentation");
         flowEditor.appendChild(flowSelect("Text Field", normalizeTextTargetId(action.textTarget || textTargetOptions[0]?.id || "presentation"), textTargetOptions, (value) => {
           action.textTarget = value;
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
         flowEditor.appendChild(flowTextarea("Text", action.text || "", (value) => {
           action.text = value;
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
         flowEditor.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", [
           { id: "true", name: "True" },
           { id: "false", name: "False" }
         ], (value) => {
           action.isShown = value !== "false";
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
         flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
           { id: "false", name: "False" },
           { id: "true", name: "True" }
         ], (value) => {
           action.instant = value === "true";
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
       }
       if (action.type === "setPlayersShown") {
@@ -4536,33 +4552,33 @@
           { id: "false", name: "False" }
         ], (value) => {
           action.isShown = value !== "false";
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
         flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
           { id: "false", name: "False" },
           { id: "true", name: "True" }
         ], (value) => {
           action.instant = value === "true";
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
       }
       if (action.type === "transition") {
         flowEditor.appendChild(flowSelect("Transition", action.transition || "horizontalWipe", flowTransitions, (value) => {
           action.transition = value;
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
       }
       if (action.type === "transitionState") {
         flowEditor.appendChild(flowSelect("Target State", action.targetState || "intro", gameFlow.states.map((item) => ({ id: item.id, name: item.name })), (value) => {
           action.targetState = value;
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
         flowEditor.appendChild(flowSelect("Trigger", action.trigger || "", [
           { id: "", name: "Immediate / Manual" },
           { id: "onCountdownComplete", name: "On Countdown Complete" }
         ], (value) => {
           action.trigger = value;
-          renderFlowList();
+          renderFlowListAndPublish();
         }));
       }
       const isInputAction = actionTypeMeta(action.type).category === "input" && !actionRef.isSubAction;
@@ -4579,11 +4595,11 @@
       }
       flowEditor.appendChild(flowSelect("Timing Mode", timing.mode, timingOptions, (value) => {
         ensureActionTiming(action, actionRef.isSubAction).mode = value === "S+" && !isInputAction ? "S+" : "E+";
-        renderFlowList();
+        renderFlowListAndPublish();
       }));
       flowEditor.appendChild(flowNumber("Timing Seconds", timing.seconds, (value) => {
         ensureActionTiming(action, actionRef.isSubAction).seconds = value;
-        renderFlowList();
+        renderFlowListAndPublish();
       }));
       flowEditor.appendChild(flowActionButton("Add Sub-Action", () => addFlowSubAction(actionRef)));
     }
@@ -5042,7 +5058,7 @@
     async function loadLayoutToolData() {
       const result = await getJson("/api/stage-layouts");
       stageLayouts = result.layouts || stageLayouts;
-      layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+      layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(result.savedLayouts || result.layouts || stageLayouts));
       layoutUndoStack = [];
       layoutRedoStack = [];
       updateLayoutStorageStatus(result.storage);

@@ -673,6 +673,11 @@ const stageLayoutsStore = {
   error: ""
 };
 
+const localDraftStore = {
+  flow: null,
+  layouts: null
+};
+
 function readGameFlowSource() {
   return cloneJson(gameFlowStore.source || readDefaultGameFlowSource());
 }
@@ -1075,7 +1080,7 @@ function getFlowState(flow, stateId) {
 }
 
 function runtimeGameFlow(room) {
-  return room?.runtimeFlowOverride || readGameFlow();
+  return room?.runtimeFlowOverride || localDraftStore.flow || readGameFlow();
 }
 
 function getStateActions(stateId, room = null) {
@@ -1344,10 +1349,13 @@ function serveArtFile(res, kind, fileName) {
 
 async function sendGameFlow(res) {
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+  const responseFlow = localDraftStore.flow || flow;
   sendJson(res, 200, {
     ok: true,
-    flow,
-    runtimeFlow: normalizeGameFlow(flow),
+    flow: responseFlow,
+    savedFlow: flow,
+    runtimeFlow: normalizeGameFlow(responseFlow),
+    hasLocalDraft: Boolean(localDraftStore.flow),
     storage: {
       kind: gameFlowStore.storageKind,
       durable: gameFlowStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
@@ -1381,9 +1389,12 @@ async function sendStageLayouts(res) {
   const layouts = await loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" });
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
   const syncedLayouts = syncStageLayoutsWithFlow(layouts, flow);
+  const responseLayouts = localDraftStore.layouts || syncedLayouts;
   sendJson(res, 200, {
     ok: true,
-    layouts: syncedLayouts,
+    layouts: responseLayouts,
+    savedLayouts: syncedLayouts,
+    hasLocalDraft: Boolean(localDraftStore.layouts),
     storage: {
       kind: stageLayoutsStore.storageKind,
       durable: stageLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
@@ -1393,6 +1404,59 @@ async function sendStageLayouts(res) {
       path: stageLayoutsStore.storageKind === "github" ? STAGE_LAYOUTS_GITHUB_PATH : ""
     }
   });
+}
+
+function sendLocalDraft(res) {
+  sendJson(res, 200, {
+    ok: true,
+    flow: localDraftStore.flow,
+    layouts: localDraftStore.layouts,
+    hasFlowDraft: Boolean(localDraftStore.flow),
+    hasLayoutDraft: Boolean(localDraftStore.layouts)
+  });
+}
+
+async function handleLocalDraft(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req, 256 * 1024);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  if (payload.clearFlow) localDraftStore.flow = null;
+  if (payload.clearLayouts) localDraftStore.layouts = null;
+
+  if (payload.flow) {
+    try {
+      localDraftStore.flow = normalizeGameFlow(payload.flow);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: `Local flow draft is invalid: ${error.message}` });
+      return;
+    }
+  }
+
+  if (payload.layouts) {
+    try {
+      localDraftStore.layouts = normalizeStageLayouts(payload.layouts);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: `Local layout draft is invalid: ${error.message}` });
+      return;
+    }
+  }
+
+  for (const room of rooms.values()) {
+    if (payload.flow || payload.clearFlow) {
+      clearActionTimer(room);
+      room.actionIndex = 0;
+      room.presentedAction = null;
+      room.appliedActionEffectId = "";
+    }
+    broadcastLobby(room);
+  }
+
+  sendLocalDraft(res);
 }
 
 async function handleSaveGameFlow(req, res) {
@@ -1407,6 +1471,7 @@ async function handleSaveGameFlow(req, res) {
   let flow;
   try {
     flow = await writeGameFlow(payload.flow || payload);
+    localDraftStore.flow = null;
   } catch (error) {
     sendJson(res, 400, { ok: false, error: `Game flow could not be saved: ${error.message}` });
     return;
@@ -1472,6 +1537,7 @@ async function handleSaveStageLayouts(req, res) {
   let layouts;
   try {
     layouts = await writeStageLayouts(payload.layouts || payload);
+    localDraftStore.layouts = null;
   } catch (error) {
     sendJson(res, 400, { ok: false, error: `Stage layouts could not be saved: ${error.message}` });
     return;
@@ -2124,6 +2190,16 @@ function router(req, res) {
 
   if (req.method === "GET" && url.pathname === "/api/art-assets") {
     sendArtAssetList(res);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/local-draft") {
+    sendLocalDraft(res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/local-draft") {
+    handleLocalDraft(req, res);
     return;
   }
 
