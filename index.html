@@ -2133,6 +2133,16 @@
       font-weight: 1000;
     }
 
+    .layout-number-field.is-disabled {
+      opacity: 0.48;
+    }
+
+    .layout-number-field input:disabled {
+      color: rgba(23, 19, 31, 0.55);
+      background: #e7e2d8;
+      cursor: not-allowed;
+    }
+
     .layout-text-field {
       grid-column: span 2;
     }
@@ -2993,9 +3003,12 @@
     }
 
     function clearStageLayoutTargets() {
+      const targets = new Set(stageBoard.querySelectorAll(".stage-layout-target"));
       for (const selector of allStageLayoutSelectors()) {
         const target = stageBoard.querySelector(selector);
-        if (!target) continue;
+        if (target) targets.add(target);
+      }
+      for (const target of targets) {
         target.classList.remove("stage-layout-target");
         target.classList.remove("stage-global-layout-target");
         target.style.removeProperty("--stage-layout-x");
@@ -3030,7 +3043,7 @@
     }
 
     function applyStageElementLayout(element, isGlobal) {
-      const target = stageBoard.querySelector(element.selector);
+      const target = stageLayoutTargetElement(element);
       if (!target) return;
       target.classList.add("stage-layout-target");
       if (isGlobal) target.classList.add("stage-global-layout-target");
@@ -3041,7 +3054,46 @@
       target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
       if (element.kind === "text") {
         applyStageLayoutTextProperties(target, element);
+        registerStageLayoutTextTarget(element, target);
       }
+    }
+
+    function stageLayoutTargetElement(element) {
+      if (element.kind !== "text") return stageBoard.querySelector(element.selector);
+      const dynamicId = dynamicStageTextElementId(element);
+      const selectorTarget = stageBoard.querySelector(element.selector);
+      const selectorId = normalizeTextTargetId(String(element.selector || "").replace(/^#/, ""));
+      const elementId = normalizeTextTargetId(element.id);
+      const shouldUseDynamicTextTarget = elementId && selectorId && selectorId !== elementId;
+      if (!shouldUseDynamicTextTarget && selectorTarget) return selectorTarget;
+      return getOrCreateDynamicStageTextElement(dynamicId || elementId || selectorId);
+    }
+
+    function dynamicStageTextElementId(element) {
+      return normalizeTextTargetId(element?.id || element?.name || "");
+    }
+
+    function getOrCreateDynamicStageTextElement(id) {
+      if (!id) return null;
+      let element = stageBoard.querySelector(`#${CSS.escape(id)}`);
+      if (element) return element;
+      element = document.createElement("div");
+      element.id = id;
+      element.className = "stage-presentation-text stage-text-object text-hidden hidden";
+      stageBoard.appendChild(element);
+      return element;
+    }
+
+    function registerStageLayoutTextTarget(layoutElement, targetElement) {
+      const targetId = normalizeTextTargetId(layoutElement.id);
+      if (!targetId || !targetElement) return;
+      const existing = stageTextObjects[targetId];
+      stageTextObjects[targetId] = {
+        element: targetElement,
+        layoutElement,
+        visible: existing?.element === targetElement ? existing.visible : !targetElement.classList.contains("hidden") && !targetElement.classList.contains("text-hidden"),
+        text: existing?.element === targetElement ? existing.text : targetElement.textContent || ""
+      };
     }
 
     function stageLayoutTextDefault(element) {
@@ -3182,6 +3234,7 @@
       element.classList.remove("text-update", "text-instant");
       if (instant) element.classList.add("text-instant");
       if (nextText || isShown) element.textContent = nextText;
+      if (object.layoutElement) applyStageLayoutTextProperties(element, object.layoutElement);
       element.classList.toggle("is-long", nextText.length > 62);
       element.classList.toggle("is-extra-long", nextText.length > 104);
       object.text = nextText;
@@ -5743,20 +5796,22 @@
       layoutEditorFields.appendChild(layoutNumberField("Height", element.height, (value) => updateLayoutNumber("height", Math.max(24, value))));
       if (elements.length === 1 && element.kind === "text") {
         layoutEditorFields.appendChild(layoutTextAreaField("Default Text", layoutDefaultText(element), (value) => updateLayoutTextValue(element, "defaultText", value)));
-        layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutTextValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field"));
+        layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutTextValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText === true));
         layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText === true, (value) => updateLayoutTextValue(element, "autoFitText", value)));
         layoutEditorFields.appendChild(layoutColorField("Font Color", normalizeUiColor(element.fontColor) || "#ffffff", (value) => updateLayoutTextValue(element, "fontColor", value)));
       }
     }
 
-    function layoutNumberField(label, value, onChange, step = 1, extraClass = "") {
+    function layoutNumberField(label, value, onChange, step = 1, extraClass = "", disabled = false) {
       const field = document.createElement("label");
       field.className = `layout-number-field ${extraClass}`.trim();
+      field.classList.toggle("is-disabled", disabled);
       field.textContent = label;
       const input = document.createElement("input");
       input.type = "number";
       input.step = String(step);
       input.value = Number(value || 0);
+      input.disabled = disabled;
       input.addEventListener("change", () => {
         const next = Number(input.value);
         onChange(Number.isFinite(next) ? next : Number(value || 0));

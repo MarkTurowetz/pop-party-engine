@@ -472,14 +472,15 @@ function createLayoutStateForFlowState(flowState) {
       ]
     };
   }
+  const textElementId = normalizeFlowId(`${flowState.id}-moment-text`, `${flowState.id}-moment-text`);
   return {
     id: flowState.id,
     name: flowState.name || flowState.id,
     elements: [
       {
-        id: `${flowState.id}MomentText`,
+        id: textElementId,
         name: `${flowState.name || "Moment"} Text Field`,
-        selector: "#stagePresentationText",
+        selector: `#${textElementId}`,
         kind: "text",
         x: 960,
         y: 460,
