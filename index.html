@@ -1464,10 +1464,30 @@
 
     .flow-shell {
       display: grid;
-      grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
-      gap: clamp(14px, 2vw, 24px);
+      grid-template-columns: minmax(300px, var(--flow-list-width, 520px)) 12px minmax(320px, 1fr);
+      gap: clamp(8px, 1vw, 14px);
       height: calc(100vh - clamp(32px, 6vw, 68px));
       min-height: 0;
+    }
+
+    .flow-resizer {
+      align-self: stretch;
+      width: 12px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--ink);
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.32);
+      cursor: col-resize;
+      touch-action: none;
+    }
+
+    .flow-resizer:active {
+      background: var(--blue);
+    }
+
+    body.is-resizing-flow {
+      cursor: col-resize;
+      user-select: none;
     }
 
     .flow-panel {
@@ -1525,6 +1545,10 @@
       background: transparent;
       text-align: left;
       cursor: grab;
+    }
+
+    .flow-state-header.has-disclosure {
+      grid-template-columns: auto minmax(0, 1fr) auto;
     }
 
     .flow-state-header:active,
@@ -2054,6 +2078,10 @@
       .flow-shell {
         grid-template-columns: 1fr;
       }
+
+      .flow-resizer {
+        display: none;
+      }
     }
 
     @media (max-height: 620px) {
@@ -2273,6 +2301,8 @@
         </div>
       </aside>
 
+      <button class="flow-resizer" id="flowResizer" type="button" aria-label="Resize flow columns"></button>
+
       <main class="flow-panel">
         <div class="art-header">
           <h1 id="flowEditorTitle">Select State</h1>
@@ -2429,6 +2459,8 @@
     const artReplaceButton = document.querySelector("#artReplaceButton");
     const artCancelButton = document.querySelector("#artCancelButton");
     const artSaveButton = document.querySelector("#artSaveButton");
+    const flowShell = document.querySelector(".flow-shell");
+    const flowResizer = document.querySelector("#flowResizer");
     const flowList = document.querySelector("#flowList");
     const flowEditor = document.querySelector("#flowEditor");
     const flowEditorTitle = document.querySelector("#flowEditorTitle");
@@ -2488,7 +2520,10 @@
     let flowTransitions = [];
     let selectedFlowStateId = "";
     let selectedFlowActionId = "";
+    const collapsedFlowStates = new Set();
     const collapsedFlowActions = new Set();
+    let flowUndoStack = [];
+    let flowRedoStack = [];
     let artToolInitialized = false;
     let flowToolInitialized = false;
     let constantsToolInitialized = false;
@@ -3852,6 +3887,8 @@
       flowActionTypes = result.availableActionTypes || [];
       flowTransitions = result.availableTransitions || [];
       flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
+      flowUndoStack = [];
+      flowRedoStack = [];
       updateFlowStorageStatus(result.storage);
       selectedFlowStateId = selectedFlowStateId || gameFlow.states[0]?.id || "";
       selectedFlowActionId = "";
@@ -3876,6 +3913,82 @@
       renderFlowEditor();
     }
 
+    function flowHistorySnapshot() {
+      return JSON.stringify(serializeGameFlowForSave(gameFlow));
+    }
+
+    function pushFlowHistory() {
+      const snapshot = flowHistorySnapshot();
+      if (flowUndoStack[flowUndoStack.length - 1] === snapshot) return;
+      flowUndoStack.push(snapshot);
+      if (flowUndoStack.length > 30) flowUndoStack.shift();
+      flowRedoStack = [];
+    }
+
+    function restoreFlowHistory(snapshot) {
+      gameFlow = JSON.parse(snapshot);
+      selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
+      selectedFlowActionId = flowAction(selectedFlowStateId, selectedFlowActionId)?.id || "";
+      renderFlowTool();
+    }
+
+    function undoFlowChange() {
+      if (!flowUndoStack.length) return;
+      flowRedoStack.push(flowHistorySnapshot());
+      restoreFlowHistory(flowUndoStack.pop());
+    }
+
+    function redoFlowChange() {
+      if (!flowRedoStack.length) return;
+      flowUndoStack.push(flowHistorySnapshot());
+      if (flowUndoStack.length > 30) flowUndoStack.shift();
+      restoreFlowHistory(flowRedoStack.pop());
+    }
+
+    function handleFlowHotkeys(event) {
+      if (flowScreen.classList.contains("hidden")) return;
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+      event.preventDefault();
+      if (event.shiftKey) {
+        redoFlowChange();
+      } else {
+        undoFlowChange();
+      }
+    }
+
+    function loadFlowColumnWidth() {
+      const storedWidth = Number(localStorage.getItem("flip7.flowListWidth") || 0);
+      if (Number.isFinite(storedWidth) && storedWidth > 0) {
+        flowShell.style.setProperty("--flow-list-width", `${storedWidth}px`);
+      }
+    }
+
+    function setupFlowResizer() {
+      if (!flowShell || !flowResizer) return;
+      loadFlowColumnWidth();
+      flowResizer.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        flowResizer.setPointerCapture(event.pointerId);
+        document.body.classList.add("is-resizing-flow");
+        const shellRect = flowShell.getBoundingClientRect();
+        const move = (moveEvent) => {
+          const shellWidth = shellRect.width;
+          const nextWidth = Math.max(320, Math.min(shellWidth - 420, moveEvent.clientX - shellRect.left));
+          flowShell.style.setProperty("--flow-list-width", `${nextWidth}px`);
+          localStorage.setItem("flip7.flowListWidth", String(Math.round(nextWidth)));
+        };
+        const stop = () => {
+          document.body.classList.remove("is-resizing-flow");
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", stop);
+          window.removeEventListener("pointercancel", stop);
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", stop, { once: true });
+        window.addEventListener("pointercancel", stop, { once: true });
+      });
+    }
+
     function renderFlowList() {
       flowList.replaceChildren();
       for (const state of gameFlow.states) {
@@ -3887,13 +4000,16 @@
         const stateButton = document.createElement("button");
         stateButton.type = "button";
         stateButton.className = "flow-state-header";
+        stateButton.classList.add("has-disclosure");
         stateButton.classList.toggle("is-selected", selectedFlowStateId === state.id && !selectedFlowActionId);
         stateButton.innerHTML = `
-          <span><strong></strong><span></span></span>
+          <span class="disclosure-slot"></span>
+          <span class="flow-row-copy"><strong></strong><span class="flow-row-summary"></span></span>
           <span class="flow-pill">${state.actions.length} actions</span>
         `;
+        stateButton.querySelector(".disclosure-slot").appendChild(createDisclosureButton(state.id, collapsedFlowStates, renderFlowList));
         stateButton.querySelector("strong").textContent = state.name;
-        stateButton.querySelector("span span").textContent = state.id;
+        stateButton.querySelector(".flow-row-summary").textContent = state.id;
         stateButton.addEventListener("click", () => {
           selectedFlowStateId = state.id;
           selectedFlowActionId = "";
@@ -3903,11 +4019,13 @@
 
         const actionsEl = document.createElement("div");
         actionsEl.className = "flow-state-actions";
-        for (const action of state.actions) {
-          actionsEl.appendChild(flowActionRow(state, action, false));
-          if (!collapsedFlowActions.has(action.id)) {
-            for (const subAction of action.subActions || []) {
-              actionsEl.appendChild(flowActionRow(state, subAction, true));
+        if (!collapsedFlowStates.has(state.id)) {
+          for (const action of state.actions) {
+            actionsEl.appendChild(flowActionRow(state, action, false));
+            if (!collapsedFlowActions.has(action.id)) {
+              for (const subAction of action.subActions || []) {
+                actionsEl.appendChild(flowActionRow(state, subAction, true));
+              }
             }
           }
         }
@@ -4053,6 +4171,7 @@
       const fromIndex = gameFlow.states.findIndex((state) => state.id === draggedStateId);
       const toIndex = gameFlow.states.findIndex((state) => state.id === targetStateId);
       if (fromIndex < 0 || toIndex < 0) return;
+      pushFlowHistory();
       const [state] = gameFlow.states.splice(fromIndex, 1);
       const targetIndexAfterRemoval = gameFlow.states.findIndex((item) => item.id === targetStateId);
       const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
@@ -4068,6 +4187,7 @@
       const fromIndex = state.actions.findIndex((action) => action.id === draggedActionId);
       const toIndex = state.actions.findIndex((action) => action.id === targetActionId);
       if (fromIndex < 0 || toIndex < 0) return;
+      pushFlowHistory();
       const [action] = state.actions.splice(fromIndex, 1);
       const targetIndexAfterRemoval = state.actions.findIndex((item) => item.id === targetActionId);
       const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
@@ -4084,6 +4204,7 @@
       const fromIndex = subActions.findIndex((action) => action.id === draggedActionId);
       const toIndex = subActions.findIndex((action) => action.id === targetActionId);
       if (fromIndex < 0 || toIndex < 0) return;
+      pushFlowHistory();
       const [action] = subActions.splice(fromIndex, 1);
       const targetIndexAfterRemoval = subActions.findIndex((item) => item.id === targetActionId);
       const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
@@ -4232,7 +4353,10 @@
       const input = document.createElement("input");
       input.className = "text-input";
       input.value = value || "";
-      input.addEventListener("change", () => onChange(input.value.trim()));
+      input.addEventListener("change", () => {
+        pushFlowHistory();
+        onChange(input.value.trim());
+      });
       field.appendChild(input);
       return field;
     }
@@ -4244,7 +4368,17 @@
       const input = document.createElement("textarea");
       input.className = "text-input flow-textarea";
       input.value = value || "";
-      input.addEventListener("input", () => onChange(input.value));
+      let historyCaptured = false;
+      input.addEventListener("focus", () => {
+        historyCaptured = false;
+      });
+      input.addEventListener("input", () => {
+        if (!historyCaptured) {
+          pushFlowHistory();
+          historyCaptured = true;
+        }
+        onChange(input.value);
+      });
       field.appendChild(input);
       return field;
     }
@@ -4262,7 +4396,10 @@
         select.appendChild(optionEl);
       }
       select.value = value;
-      select.addEventListener("change", () => onChange(select.value));
+      select.addEventListener("change", () => {
+        pushFlowHistory();
+        onChange(select.value);
+      });
       field.appendChild(select);
       return field;
     }
@@ -4285,7 +4422,10 @@
       const chooseOption = (option) => {
         input.value = option.name;
         menu.classList.add("hidden");
-        if (option.id !== value) onChange(option.id);
+        if (option.id !== value) {
+          pushFlowHistory();
+          onChange(option.id);
+        }
       };
       const renderOptions = () => {
         const query = input.value.trim().toLowerCase();
@@ -4366,6 +4506,7 @@
       input.value = Number(value || 0).toFixed(1);
       input.addEventListener("change", () => {
         const nextValue = Number(input.value || 0);
+        pushFlowHistory();
         onChange(Math.max(0, Number.isFinite(nextValue) ? nextValue : 0));
       });
       field.appendChild(input);
@@ -4404,6 +4545,7 @@
     function addFlowState() {
       const nextNumber = gameFlow.states.length + 1;
       const state = { id: `state-${nextNumber}`, name: `New Game State ${nextNumber}`, actions: [] };
+      pushFlowHistory();
       gameFlow.states.push(state);
       selectedFlowStateId = state.id;
       selectedFlowActionId = "";
@@ -4419,6 +4561,7 @@
       const selectedPrimaryId = selectedRef?.parentAction?.id || selectedFlowActionId;
       const selectedIndex = state.actions.findIndex((item) => item.id === selectedPrimaryId);
       const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
+      pushFlowHistory();
       state.actions.splice(insertIndex, 0, action);
       selectedFlowActionId = action.id;
       renderFlowTool();
@@ -4436,6 +4579,7 @@
         ? parentAction.subActions.findIndex((item) => item.id === actionRef.action.id)
         : -1;
       const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : parentAction.subActions.length;
+      pushFlowHistory();
       parentAction.subActions.splice(insertIndex, 0, subAction);
       collapsedFlowActions.delete(parentAction.id);
       selectedFlowActionId = subAction.id;
@@ -4478,13 +4622,17 @@
         const ref = flowActionRef(selectedFlowStateId, selectedFlowActionId);
         if (ref) {
           const index = ref.actions.findIndex((action) => action.id === selectedFlowActionId);
-          if (index >= 0) ref.actions.splice(index, 1);
+          if (index >= 0) {
+            pushFlowHistory();
+            ref.actions.splice(index, 1);
+          }
         }
         selectedFlowActionId = "";
         renderFlowTool();
         return;
       }
       if (selectedFlowStateId === "lobby" || selectedFlowStateId === "intro") return;
+      pushFlowHistory();
       gameFlow.states = gameFlow.states.filter((state) => state.id !== selectedFlowStateId);
       selectedFlowStateId = gameFlow.states[0]?.id || "";
       renderFlowTool();
@@ -4515,6 +4663,8 @@
       addActionButton.addEventListener("click", addFlowAction);
       deleteFlowItemButton.addEventListener("click", deleteFlowItem);
       saveFlowButton.addEventListener("click", saveGameFlow);
+      setupFlowResizer();
+      window.addEventListener("keydown", handleFlowHotkeys);
       try {
         await loadGameFlow();
       } catch (error) {
