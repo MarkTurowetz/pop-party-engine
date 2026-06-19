@@ -462,6 +462,35 @@
       pointer-events: none;
     }
 
+    .round-intro-text,
+    .round-intro-info-text {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 4;
+      width: 1000px;
+      color: #fff;
+      font-size: 86px;
+      line-height: 0.88;
+      font-weight: 1000;
+      text-align: center;
+      text-shadow: 7px 7px 0 #000;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+      transform: translate(-50%, -50%) scale(1);
+      transform-origin: center;
+      opacity: 1;
+      pointer-events: none;
+    }
+
+    .round-intro-info-text {
+      width: 900px;
+      color: var(--cream);
+      font-size: 42px;
+      line-height: 1;
+      text-shadow: 4px 4px 0 #000;
+    }
+
     .stage-text-object {
       transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms cubic-bezier(0.19, 1, 0.22, 1);
       will-change: transform, opacity;
@@ -480,12 +509,22 @@
       transform: translateX(-50%) scale(0);
     }
 
+    .round-intro-text.text-hidden,
+    .round-intro-info-text.text-hidden {
+      transform: translate(-50%, -50%) scale(0);
+    }
+
     .stage-presentation-text.text-update {
       animation: textUpdatePop 200ms cubic-bezier(0.19, 1, 0.22, 1);
     }
 
     .stage-prompt-text.text-update {
       animation: promptTextUpdatePop 200ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .round-intro-text.text-update,
+    .round-intro-info-text.text-update {
+      animation: roundTextUpdatePop 200ms cubic-bezier(0.19, 1, 0.22, 1);
     }
 
     .stage-text-object.text-instant {
@@ -500,6 +539,11 @@
     @keyframes promptTextUpdatePop {
       from { transform: translateX(-50%) scale(1.2); }
       to { transform: translateX(-50%) scale(1); }
+    }
+
+    @keyframes roundTextUpdatePop {
+      from { transform: translate(-50%, -50%) scale(1.2); }
+      to { transform: translate(-50%, -50%) scale(1); }
     }
 
     .click-widget {
@@ -2187,6 +2231,8 @@
         <div class="stage-presentation-text stage-text-object text-hidden hidden" id="stagePresentationText"></div>
       </main>
       <div class="stage-prompt-text stage-text-object text-hidden hidden" id="stagePromptText"></div>
+      <div class="round-intro-text stage-text-object text-hidden hidden" id="roundIntroText"></div>
+      <div class="round-intro-info-text stage-text-object text-hidden hidden" id="roundIntroInfoText"></div>
       <div class="click-widget hidden" id="presentClickWidget" aria-hidden="true">
         <div class="click-symbol">
           <span class="click-pulse"></span>
@@ -2804,7 +2850,7 @@
     }
 
     function stageLayoutStateForPhase(phase) {
-      const preferred = phase === "intro" ? "intro" : "lobby";
+      const preferred = phase === "starting" ? "lobby" : phase === "intro" ? "intro" : phase || "lobby";
       return stageLayoutState(preferred) || stageLayoutState("lobby") || (stageLayouts.states || [])[0] || null;
     }
 
@@ -2897,13 +2943,25 @@
     }
 
     function initStageTextObjects() {
-      stageTextObjects = {
-        presentation: { element: stagePresentationText, visible: false, text: "" },
-        prompt: { element: stagePromptText, visible: false, text: "" }
-      };
+      stageTextObjects = {};
+      for (const element of stageBoard.querySelectorAll(".stage-text-object[id]")) {
+        const target = normalizeTextTargetId(element.id);
+        stageTextObjects[target] = { element, visible: false, text: "" };
+      }
+      stageTextObjects.presentation = stageTextObjects.stagepresentationtext || { element: stagePresentationText, visible: false, text: "" };
+      stageTextObjects.prompt = stageTextObjects.stageprompttext || { element: stagePromptText, visible: false, text: "" };
       for (const target of Object.keys(stageTextObjects)) {
         setStageTextObject(target, { text: "", isShown: false, instant: true, complete: null });
       }
+    }
+
+    function normalizeTextTargetId(value) {
+      return String(value || "")
+        .trim()
+        .replace(/^#/, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
     }
 
     function clearStageObjectTimers() {
@@ -2929,7 +2987,7 @@
     }
 
     function setStageTextObject(target, options = {}) {
-      const object = stageTextObjects[target] || stageTextObjects.presentation;
+      const object = stageTextObjects[normalizeTextTargetId(target)] || stageTextObjects[target] || stageTextObjects.presentation;
       if (!object) return 0;
       const element = object.element;
       const nextText = options.text ?? object.text ?? "";
@@ -2980,22 +3038,23 @@
       const players = lobby.players || [];
       const phase = lobby.phase || "lobby";
       const action = lobby.action || null;
+      const isLobbyPhase = phase === "lobby" || phase === "starting";
       stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
       const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
       if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
-      stageCodeBadgeRoot.classList.toggle("hidden", phase !== "intro");
+      stageCodeBadgeRoot.classList.toggle("hidden", isLobbyPhase);
       window.clearInterval(stageCountdownTimer);
       startPopup.classList.add("hidden");
-      stageMain.classList.toggle("hidden", phase === "intro");
+      stageMain.classList.toggle("hidden", !isLobbyPhase);
       stageFooter.classList.remove("hidden");
       stageIntroContent.classList.toggle("hidden", phase !== "intro");
       stageIntroTitle.textContent = "GAME INTRO";
-      presentClickWidget.classList.toggle("hidden", !(phase === "intro" && action?.type === "present" && action?.timing?.mode !== "S+"));
+      presentClickWidget.classList.toggle("hidden", !(action?.type === "present" && action?.timing?.mode !== "S+"));
       renderStagePlayers(players);
       playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
 
       const vip = players.find((player) => player.isVip);
-      joinPrompt.classList.toggle("hidden", phase === "intro");
+      joinPrompt.classList.toggle("hidden", !isLobbyPhase);
       waitingStatus.classList.toggle("hidden", phase === "intro" || players.length === 0);
       waitingStatus.textContent = vip ? `Waiting for ${vip.name} to start the game` : "";
 
@@ -3114,6 +3173,10 @@
         runStageWipe(() => {});
         return;
       }
+      if (action.type === "transitionState" && isPrimary) {
+        completeFlowAction("callback", action.id);
+        return;
+      }
       if (action.type === "text" && isPrimary) {
         completeFlowAction("callback", action.id);
       }
@@ -3132,7 +3195,7 @@
     async function advancePresentation() {
       if (isStagePaused) return;
       if (presentationAdvancePending) return;
-      if (currentStageState?.phase !== "intro" || currentStageState?.action?.type !== "present") return;
+      if (currentStageState?.action?.type !== "present") return;
       presentationAdvancePending = true;
       const action = currentStageState.action;
       const target = action.textTarget || "presentation";
@@ -3334,13 +3397,14 @@
       controllerState.startToken = me.isVip ? lobby.startToken : "";
       if (!avatarPickerOpen) pendingAvatarShape = me.avatar?.shape || "";
 
-      if ((lobby.phase || "lobby") === "intro") {
+      const controllerPhase = lobby.phase || "lobby";
+      if (controllerPhase !== "lobby" && controllerPhase !== "starting") {
         closeAvatarPicker({ commit: false });
         joinState.classList.add("hidden");
         controllerLobbyState.classList.add("hidden");
         controllerIntroState.classList.remove("hidden");
-        introPresentButton.classList.toggle("hidden", !me.isVip);
-        introPresentButton.disabled = !me.isVip;
+        introPresentButton.classList.toggle("hidden", !(me.isVip && controllerPhase === "intro"));
+        introPresentButton.disabled = !(me.isVip && controllerPhase === "intro");
         return;
       }
 
@@ -3352,12 +3416,12 @@
       setControllerAvatar(me);
       controllerMeta.textContent = me.isVip ? "VIP Player" : "Waiting for the VIP";
       startGameButton.classList.toggle("hidden", !me.isVip);
-      startGameButton.classList.toggle("danger-button", lobby.phase === "starting");
-      startGameButton.textContent = lobby.phase === "starting" ? "Cancel" : "Start Game";
-      startGameButton.dataset.optionId = lobby.phase === "starting" ? "lobby.cancelStart" : "lobby.startGame";
+      startGameButton.classList.toggle("danger-button", controllerPhase === "starting");
+      startGameButton.textContent = controllerPhase === "starting" ? "Cancel" : "Start Game";
+      startGameButton.dataset.optionId = controllerPhase === "starting" ? "lobby.cancelStart" : "lobby.startGame";
       startGameButton.disabled = !me.isVip;
 
-      if (me.isVip && lobby.phase === "starting") {
+      if (me.isVip && controllerPhase === "starting") {
         controllerClockOffset = (lobby.serverNow || Date.now()) - Date.now();
         const updateCancelButton = () => {
           const now = Date.now() + controllerClockOffset;
@@ -3868,10 +3932,45 @@
       return actionTypeMeta(action.type).category === "input" ? "Input" : "Standard";
     }
 
+    function textTargetOptionsForFlowState(stateId, selectedTarget = "") {
+      const seen = new Set();
+      const options = [];
+      const addElement = (element) => {
+        if (!element || element.kind !== "text") return;
+        const id = normalizeTextTargetId(element.id);
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        options.push({ id, name: element.name || id });
+      };
+      for (const element of globalStageLayout().elements || []) addElement(element);
+      for (const element of stageLayoutState(stateId)?.elements || []) addElement(element);
+      if (!options.length) {
+        options.push({ id: "presentation", name: "Presentation Text" }, { id: "prompt", name: "Prompt Text" });
+      }
+      const normalizedSelected = normalizeTextTargetId(selectedTarget);
+      if (normalizedSelected && !seen.has(normalizedSelected)) {
+        options.push({ id: normalizedSelected, name: formatTextTargetName(normalizedSelected) });
+      }
+      return options;
+    }
+
+    function textTargetName(target) {
+      const normalized = normalizeTextTargetId(target);
+      const option = textTargetOptionsForFlowState(selectedFlowStateId).find((item) => item.id === normalized);
+      if (option) return option.name;
+      if (normalized === "presentation") return "Presentation Text";
+      if (normalized === "prompt") return "Prompt Text";
+      return formatTextTargetName(normalized);
+    }
+
+    function formatTextTargetName(normalized) {
+      return normalized.split("-").map((part) => part ? part[0].toUpperCase() + part.slice(1) : "").join(" ");
+    }
+
     function actionSummary(action, isSubAction = false) {
       const timing = ensureActionTiming(action, isSubAction);
       const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
-      const targetText = action.textTarget === "prompt" ? "Prompt" : "Presentation";
+      const targetText = textTargetName(action.textTarget || "presentation");
       const instantText = action.instant ? " / Instant" : "";
       if (action.type === "presentText") return `${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
@@ -4260,10 +4359,8 @@
         renderFlowTool();
       }));
       if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
-        flowEditor.appendChild(flowSelect("Text Field", action.textTarget || "presentation", [
-          { id: "presentation", name: "Presentation Text" },
-          { id: "prompt", name: "Prompt Text" }
-        ], (value) => {
+        const textTargetOptions = textTargetOptionsForFlowState(state.id, action.textTarget || "presentation");
+        flowEditor.appendChild(flowSelect("Text Field", normalizeTextTargetId(action.textTarget || textTargetOptions[0]?.id || "presentation"), textTargetOptions, (value) => {
           action.textTarget = value;
           renderFlowList();
         }));
@@ -4644,6 +4741,7 @@
       try {
         const result = await postJson("/api/game-flow", { flow: serializeGameFlowForSave(gameFlow) });
         gameFlow = result.flow;
+        await loadStageLayouts();
         flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
         updateFlowStorageStatus(result.storage);
         selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
@@ -4666,6 +4764,7 @@
       setupFlowResizer();
       window.addEventListener("keydown", handleFlowHotkeys);
       try {
+        await loadStageLayouts();
         await loadGameFlow();
       } catch (error) {
         flowEditorTitle.textContent = "Flow Tool Offline";
@@ -4828,6 +4927,7 @@
           id: element.id,
           name: element.name,
           selector: element.selector,
+          kind: element.kind || "art",
           x: Number(Number(element.x || 0).toFixed(3)),
           y: Number(Number(element.y || 0).toFixed(3)),
           width: Number(Number(element.width || 0).toFixed(3)),
@@ -5015,8 +5115,14 @@
         content.innerHTML = `<div class="layout-preview-presentation">This is test number 1</div>`;
       } else if (id === "stageprompttext") {
         content.innerHTML = `<div class="layout-preview-presentation">Prompt Text</div>`;
+      } else if (id === "roundintrotext") {
+        content.innerHTML = `<div class="layout-preview-presentation">Round <span>One</span></div>`;
+      } else if (id === "roundintroinfotext") {
+        content.innerHTML = `<div class="layout-preview-presentation">Additional round info</div>`;
       } else if (id === "presentclickwidget") {
         content.innerHTML = `<div class="click-symbol"><span class="click-pulse"></span><span class="click-cursor"></span></div>`;
+      } else if (element.kind === "text") {
+        content.innerHTML = `<div class="layout-preview-presentation">${element.name}</div>`;
       } else {
         content.textContent = element.name;
       }

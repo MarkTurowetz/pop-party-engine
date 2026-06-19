@@ -146,8 +146,8 @@ const defaultStageLayouts = {
       name: "Game Intro",
       elements: [
         { id: "stageIntroTitle", name: "Intro Header", selector: "#stageIntroTitle", x: 960, y: 235, width: 1060, height: 130, scale: 1 },
-        { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", x: 960, y: 460, width: 980, height: 240, scale: 1 },
-        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", x: 960, y: 760, width: 860, height: 120, scale: 1 }
+        { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", kind: "text", x: 960, y: 460, width: 980, height: 240, scale: 1 },
+        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", kind: "text", x: 960, y: 760, width: 860, height: 120, scale: 1 }
       ]
     }
   ]
@@ -311,7 +311,7 @@ function normalizeStageLayouts(layouts) {
   const incomingGlobal = normalizeLayoutState(layouts?.global, -1);
   const migrated = migrateStageLayoutStates(normalizedIncomingStates, incomingGlobal, normalizedDefaultGlobal, Boolean(incomingGlobal));
   const migratedStates = migrated.states;
-  const normalizedStates = migratedStates.filter((state) => defaultStatesById.has(state.id));
+  const normalizedStates = [...migratedStates];
   for (const defaultState of normalizedDefaultStates) {
     if (!normalizedStates.some((state) => state.id === defaultState.id)) {
       normalizedStates.push(cloneJson(defaultState));
@@ -391,16 +391,83 @@ function normalizeLayoutElement(element, elementIndex) {
   const fallbackId = `layout-element-${elementIndex + 1}`;
   const width = normalizeLayoutNumber(element.width, 240, 24, 4000);
   const height = normalizeLayoutNumber(element.height, 100, 24, 4000);
+  const selector = cleanLayoutSelector(element.selector);
   return {
     id: normalizeFlowId(element.id || element.name, fallbackId),
     name: cleanFlowText(element.name, element.id || fallbackId),
-    selector: cleanLayoutSelector(element.selector),
+    selector,
+    kind: normalizeLayoutElementKind(element.kind, selector),
     x: normalizeLayoutNumber(element.x, defaultStageLayouts.canvas.width / 2, -5000, 15000),
     y: normalizeLayoutNumber(element.y, defaultStageLayouts.canvas.height / 2, -5000, 15000),
     width,
     height,
     scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10)
   };
+}
+
+function normalizeLayoutElementKind(kind, selector) {
+  const cleanKind = String(kind || "").trim().toLowerCase();
+  if (cleanKind === "text") return "text";
+  return /stage(?:presentation|prompt)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
+}
+
+function syncStageLayoutsWithFlow(layouts, flow) {
+  const normalizedLayouts = normalizeStageLayouts(layouts);
+  const normalizedFlow = normalizeGameFlow(flow || readGameFlow());
+  const stateIds = new Set(normalizedFlow.states.map((state) => state.id));
+  normalizedLayouts.states = (normalizedLayouts.states || []).filter((state) => stateIds.has(state.id));
+  for (const flowState of normalizedFlow.states) {
+    if (flowState.id === "lobby") continue;
+    const seededState = createLayoutStateForFlowState(flowState);
+    const existingState = normalizedLayouts.states.find((state) => state.id === flowState.id);
+    if (!existingState) {
+      normalizedLayouts.states.push(seededState);
+      continue;
+    }
+    existingState.name = flowState.name || existingState.name;
+    if (isRoundIntroStateId(flowState.id)) {
+      for (const element of seededState.elements || []) {
+        if (!existingState.elements.some((item) => item.id === element.id)) {
+          existingState.elements.push(element);
+        }
+      }
+    }
+  }
+  return normalizedLayouts;
+}
+
+function createLayoutStateForFlowState(flowState) {
+  if (isRoundIntroStateId(flowState.id)) {
+    return {
+      id: flowState.id,
+      name: flowState.name || "Round Intro",
+      elements: [
+        { id: "roundIntroText", name: "Round Intro Text Field", selector: "#roundIntroText", kind: "text", x: 960, y: 430, width: 1100, height: 180, scale: 1 },
+        { id: "roundIntroInfoText", name: "Round Intro Info Text Field", selector: "#roundIntroInfoText", kind: "text", x: 960, y: 610, width: 980, height: 105, scale: 1 }
+      ]
+    };
+  }
+  return {
+    id: flowState.id,
+    name: flowState.name || flowState.id,
+    elements: [
+      {
+        id: `${flowState.id}MomentText`,
+        name: `${flowState.name || "Moment"} Text Field`,
+        selector: "#stagePresentationText",
+        kind: "text",
+        x: 960,
+        y: 460,
+        width: 980,
+        height: 240,
+        scale: 1
+      }
+    ]
+  };
+}
+
+function isRoundIntroStateId(stateId) {
+  return String(stateId || "").includes("round-intro");
 }
 
 function normalizeLayoutNumber(value, fallback, min, max) {
@@ -488,7 +555,8 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
 }
 
 function normalizeTextTarget(value) {
-  return value === "prompt" ? "prompt" : "presentation";
+  const target = normalizeFlowId(value || "presentation", "presentation");
+  return target || "presentation";
 }
 
 function normalizeSubActions(subActions, stateId) {
@@ -692,7 +760,8 @@ async function loadStageLayoutsSource({ refresh = false } = {}) {
 }
 
 async function writeStageLayouts(layouts) {
-  const normalized = normalizeStageLayouts(layouts);
+  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+  const normalized = syncStageLayoutsWithFlow(layouts, flow);
   backupStageLayoutsSource();
   if (stageLayoutsStore.storageKind === "github") {
     if (!GAME_FLOW_GITHUB_TOKEN) {
@@ -1019,6 +1088,22 @@ function publicFlowAction(action, index) {
   return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
 }
 
+function resolveRoomActionText(action, room) {
+  if (!action) return null;
+  return {
+    ...action,
+    text: typeof action.text === "string" ? action.text.replaceAll("<ROUND_NUMBER>", roundNumberWord(room.currentRound || 1)) : action.text,
+    subActions: (action.subActions || []).map((subAction) => resolveRoomActionText(subAction, room)).filter(Boolean)
+  };
+}
+
+function roundNumberWord(value) {
+  const number = Math.max(1, Math.floor(Number(value) || 1));
+  const words = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
+  if (number < words.length) return words[number];
+  return String(number);
+}
+
 function currentRoomAction(room) {
   if (room.presentedAction) return room.presentedAction;
   const actions = getStateActions(room.phase);
@@ -1049,6 +1134,22 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
   const timing = currentAction.timing || { mode: "E+", seconds: 0 };
   if (timing.mode === "S+" && source !== "startTimer") return false;
   if (timing.mode === "E+" && source === "startTimer") return false;
+
+  if (currentAction.type === "transitionState") {
+    clearActionTimer(room);
+    const delayMs = timing.mode === "E+" ? Math.max(0, Number(timing.seconds || 0) * 1000) : 0;
+    if (delayMs > 0) {
+      room.actionCompletionPendingId = currentAction.id;
+      room.actionTimerId = setTimeout(() => {
+        room.actionTimerId = null;
+        room.actionCompletionPendingId = "";
+        enterGamePhase(room, currentAction.targetState || "intro");
+      }, delayMs);
+      return true;
+    }
+    enterGamePhase(room, currentAction.targetState || "intro");
+    return true;
+  }
 
   clearActionTimer(room);
   const delayMs = timing.mode === "E+" ? Math.max(0, Number(timing.seconds || 0) * 1000) : 0;
@@ -1253,9 +1354,11 @@ async function sendGameConstants(res) {
 
 async function sendStageLayouts(res) {
   const layouts = await loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" });
+  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+  const syncedLayouts = syncStageLayoutsWithFlow(layouts, flow);
   sendJson(res, 200, {
     ok: true,
-    layouts: normalizeStageLayouts(layouts),
+    layouts: syncedLayouts,
     storage: {
       kind: stageLayoutsStore.storageKind,
       durable: stageLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
@@ -1377,6 +1480,8 @@ function getRoom(stageCode) {
       actionIndex: 0,
       presentedAction: null,
       playersShown: true,
+      currentRound: 1,
+      hasEnteredRoundIntro: false,
       revision: 0
     });
   }
@@ -1452,7 +1557,7 @@ function publicPlayer(player, room) {
 
 function lobbyPayload(room) {
   selectVip(room);
-  const currentAction = room.phase !== "lobby" && room.phase !== "starting" ? currentRoomAction(room) : null;
+  const currentAction = room.phase !== "lobby" && room.phase !== "starting" ? resolveRoomActionText(currentRoomAction(room), room) : null;
   applyRoomActionEffects(room, currentAction);
   return {
     type: "lobby",
@@ -1462,6 +1567,7 @@ function lobbyPayload(room) {
     countdownStartedAt: room.countdownStartedAt,
     countdownEndsAt: room.countdownEndsAt,
     action: currentAction,
+    currentRound: room.currentRound || 1,
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
     startToken: room.startToken,
@@ -1499,6 +1605,8 @@ function enterLobbyPhase(room) {
   room.presentedAction = null;
   room.appliedActionEffectId = "";
   room.playersShown = true;
+  room.currentRound = 1;
+  room.hasEnteredRoundIntro = false;
 }
 
 function quitRoomToLobby(room) {
@@ -1520,6 +1628,7 @@ function enterIntroPhase(room) {
 function enterGamePhase(room, phase) {
   clearCountdownTimer(room);
   clearActionTimer(room);
+  const previousPhase = room.phase;
   room.phase = phase;
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
@@ -1527,6 +1636,14 @@ function enterGamePhase(room, phase) {
   room.presentedAction = null;
   room.appliedActionEffectId = "";
   room.playersShown = true;
+  if (isRoundIntroStateId(phase) && previousPhase !== phase) {
+    if (room.hasEnteredRoundIntro) {
+      room.currentRound += 1;
+    } else {
+      room.currentRound = 1;
+      room.hasEnteredRoundIntro = true;
+    }
+  }
   broadcastLobby(room);
 }
 
@@ -1815,14 +1932,14 @@ async function handleAdvancePresentation(req, res) {
     return;
   }
 
-  if (room.phase === "intro" && room.presentedAction?.type === "present") {
+  if (room.presentedAction?.type === "present") {
     room.presentedAction = null;
     broadcastLobby(room);
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
     return;
   }
 
-  const currentAction = room.phase === "intro" ? currentRoomAction(room) : null;
+  const currentAction = currentRoomAction(room);
   if (!currentAction || currentAction.type !== "present") {
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
     return;
@@ -1849,7 +1966,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
