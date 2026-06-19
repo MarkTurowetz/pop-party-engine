@@ -1788,6 +1788,10 @@
       min-height: 0;
     }
 
+    .layout-shell > main.flow-panel {
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+    }
+
     .layout-state-list,
     .layout-element-list {
       display: grid;
@@ -1815,6 +1819,40 @@
         linear-gradient(135deg, #22d3ee 0%, #60d394 58%, #ffe156 100%);
       background-size: 54px 54px, 54px 54px, auto;
       overflow: hidden;
+    }
+
+    .layout-object-toolbar {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px;
+      border-top: 4px solid var(--ink);
+      background: var(--paper);
+    }
+
+    .layout-object-picker {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 14px;
+      z-index: 30;
+      display: grid;
+      gap: 8px;
+      width: min(520px, calc(100vw - 48px));
+      padding: 10px;
+      border: 4px solid var(--ink);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 7px 7px 0 rgba(23, 19, 31, 0.25);
+    }
+
+    .layout-object-options {
+      position: static;
+      max-height: 310px;
+      padding: 0;
+      border: 0;
+      box-shadow: none;
     }
 
     .layout-stage-preview {
@@ -2343,6 +2381,8 @@
         <div class="flow-list" id="flowList"></div>
         <div class="flow-actions">
           <button class="secondary-button" id="addStateButton" type="button">Add State</button>
+          <button class="secondary-button" id="testFlowButton" type="button">Test</button>
+          <button class="secondary-button" id="revertFlowButton" type="button">Revert</button>
           <button class="primary-button" id="saveFlowButton" type="button">Save Flow</button>
         </div>
       </aside>
@@ -2406,6 +2446,10 @@
           <div class="layout-element-list" id="layoutElementList"></div>
         </div>
         <div class="flow-actions">
+          <button class="secondary-button" id="addLayoutObjectButton" type="button">Add Object</button>
+          <button class="secondary-button" id="removeLayoutObjectButton" type="button" disabled>Remove Object</button>
+          <button class="secondary-button" id="testLayoutButton" type="button">Test</button>
+          <button class="secondary-button" id="revertLayoutButton" type="button">Revert</button>
           <button class="primary-button" id="saveLayoutButton" type="button">Save Layout</button>
         </div>
       </aside>
@@ -2414,6 +2458,14 @@
         <div class="art-header">
           <h1 id="layoutEditorTitle">Select Element</h1>
           <p id="layoutEditorHelp">Choose a state, then drag an element in the preview.</p>
+        </div>
+        <div class="layout-object-toolbar">
+          <button class="secondary-button" id="layoutPreviewAddObjectButton" type="button">Add Object</button>
+          <button class="secondary-button" id="layoutPreviewRemoveObjectButton" type="button" disabled>Remove Object</button>
+          <div class="layout-object-picker hidden" id="layoutObjectPicker">
+            <input class="text-input" id="layoutObjectSearch" type="search" placeholder="Search art objects" autocomplete="off" spellcheck="false">
+            <div class="flow-search-options layout-object-options" id="layoutObjectOptions"></div>
+          </div>
         </div>
         <div class="layout-stage-wrap">
           <div class="layout-stage-preview" id="layoutStagePreview" aria-label="Stage layout preview"></div>
@@ -2515,6 +2567,8 @@
     const addStateButton = document.querySelector("#addStateButton");
     const addActionButton = document.querySelector("#addActionButton");
     const deleteFlowItemButton = document.querySelector("#deleteFlowItemButton");
+    const testFlowButton = document.querySelector("#testFlowButton");
+    const revertFlowButton = document.querySelector("#revertFlowButton");
     const saveFlowButton = document.querySelector("#saveFlowButton");
     const constantsStorageStatus = document.querySelector("#constantsStorageStatus");
     const playerColorList = document.querySelector("#playerColorList");
@@ -2528,6 +2582,15 @@
     const layoutEditorHelp = document.querySelector("#layoutEditorHelp");
     const layoutStagePreview = document.querySelector("#layoutStagePreview");
     const layoutEditorFields = document.querySelector("#layoutEditorFields");
+    const addLayoutObjectButton = document.querySelector("#addLayoutObjectButton");
+    const removeLayoutObjectButton = document.querySelector("#removeLayoutObjectButton");
+    const layoutPreviewAddObjectButton = document.querySelector("#layoutPreviewAddObjectButton");
+    const layoutPreviewRemoveObjectButton = document.querySelector("#layoutPreviewRemoveObjectButton");
+    const layoutObjectPicker = document.querySelector("#layoutObjectPicker");
+    const layoutObjectSearch = document.querySelector("#layoutObjectSearch");
+    const layoutObjectOptions = document.querySelector("#layoutObjectOptions");
+    const testLayoutButton = document.querySelector("#testLayoutButton");
+    const revertLayoutButton = document.querySelector("#revertLayoutButton");
     const saveLayoutButton = document.querySelector("#saveLayoutButton");
     let controllerState = null;
     let pendingAvatarShape = "";
@@ -2560,8 +2623,10 @@
     let gameConstants = { playerColors: [] };
     let stageLayouts = { canvas: { width: 1920, height: 1080 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let flowSavedSnapshot = "";
+    let flowTestSnapshot = "";
     let constantsSavedSnapshot = "";
     let layoutSavedSnapshot = "";
+    let layoutTestSnapshot = "";
     let flowActionTypes = [];
     let flowTransitions = [];
     let selectedFlowStateId = "";
@@ -3986,6 +4051,7 @@
       flowActionTypes = result.availableActionTypes || [];
       flowTransitions = result.availableTransitions || [];
       flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
+      flowTestSnapshot = "";
       flowUndoStack = [];
       flowRedoStack = [];
       updateFlowStorageStatus(result.storage);
@@ -4010,6 +4076,21 @@
     function renderFlowTool() {
       renderFlowList();
       renderFlowEditor();
+      renderFlowActions();
+    }
+
+    function flowCleanSnapshot() {
+      return flowTestSnapshot || flowSavedSnapshot;
+    }
+
+    function isFlowDirty() {
+      const cleanSnapshot = flowCleanSnapshot();
+      return cleanSnapshot && JSON.stringify(serializeGameFlowForSave(gameFlow)) !== cleanSnapshot;
+    }
+
+    function renderFlowActions() {
+      if (testFlowButton) testFlowButton.disabled = !flowSavedSnapshot;
+      if (revertFlowButton) revertFlowButton.disabled = !flowSavedSnapshot || (!flowTestSnapshot && !isFlowDirty());
     }
 
     function flowHistorySnapshot() {
@@ -4743,6 +4824,7 @@
         gameFlow = result.flow;
         await loadStageLayouts();
         flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
+        flowTestSnapshot = "";
         updateFlowStorageStatus(result.storage);
         selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
         selectedFlowActionId = "";
@@ -4753,6 +4835,24 @@
       }
     }
 
+    function testGameFlow() {
+      flowTestSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
+      flowUndoStack = [];
+      flowRedoStack = [];
+      renderFlowTool();
+    }
+
+    function revertGameFlow() {
+      if (!flowSavedSnapshot) return;
+      gameFlow = JSON.parse(flowSavedSnapshot);
+      flowTestSnapshot = "";
+      flowUndoStack = [];
+      flowRedoStack = [];
+      selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
+      selectedFlowActionId = "";
+      renderFlowTool();
+    }
+
     async function setupFlowTool() {
       flowScreen.classList.remove("hidden");
       if (flowToolInitialized) return;
@@ -4760,6 +4860,8 @@
       addStateButton.addEventListener("click", addFlowState);
       addActionButton.addEventListener("click", addFlowAction);
       deleteFlowItemButton.addEventListener("click", deleteFlowItem);
+      testFlowButton.addEventListener("click", testGameFlow);
+      revertFlowButton.addEventListener("click", revertGameFlow);
       saveFlowButton.addEventListener("click", saveGameFlow);
       setupFlowResizer();
       window.addEventListener("keydown", handleFlowHotkeys);
@@ -4887,6 +4989,7 @@
       const result = await getJson("/api/stage-layouts");
       stageLayouts = result.layouts || stageLayouts;
       layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+      layoutTestSnapshot = "";
       layoutUndoStack = [];
       layoutRedoStack = [];
       updateLayoutStorageStatus(result.storage);
@@ -4949,6 +5052,67 @@
       return layoutGroup(stateId)?.elements?.find((element) => element.id === elementId) || null;
     }
 
+    function layoutCleanSnapshot() {
+      return layoutTestSnapshot || layoutSavedSnapshot;
+    }
+
+    function isLayoutDirty() {
+      const cleanSnapshot = layoutCleanSnapshot();
+      return cleanSnapshot && JSON.stringify(serializeStageLayoutsForSave(stageLayouts)) !== cleanSnapshot;
+    }
+
+    function baseLayoutObjectCatalog() {
+      return [
+        { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "art", width: 1080, height: 150 },
+        { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", width: 620, height: 220 },
+        { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "text", width: 740, height: 90 },
+        { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", kind: "text", width: 900, height: 86 },
+        { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", kind: "art", width: 260, height: 260 },
+        { id: "stageCodeBadge", name: "Small Room Code Widget", selector: "#stageCodeBadge", kind: "art", width: 210, height: 112 },
+        { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", kind: "art", width: 92, height: 92 },
+        { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", kind: "art", width: 1500, height: 180 },
+        { id: "stageIntroTitle", name: "Game Intro Header", selector: "#stageIntroTitle", kind: "text", width: 840, height: 160 },
+        { id: "stagePresentationText", name: "Presentation Text Field", selector: "#stagePresentationText", kind: "text", width: 1180, height: 260 },
+        { id: "stagePromptText", name: "Prompt Text Field", selector: "#stagePromptText", kind: "text", width: 1180, height: 150 },
+        { id: "roundIntroText", name: "Round Intro Text Field", selector: "#roundIntroText", kind: "text", width: 1080, height: 170 },
+        { id: "roundIntroInfoText", name: "Round Intro Info Text Field", selector: "#roundIntroInfoText", kind: "text", width: 900, height: 110 }
+      ];
+    }
+
+    function layoutObjectCatalog() {
+      const group = layoutGroup(selectedLayoutStateId);
+      const existingIds = new Set((group?.elements || []).map((element) => String(element.id || "").toLowerCase()));
+      const existingSelectors = new Set((group?.elements || []).map((element) => String(element.selector || "").toLowerCase()));
+      return baseLayoutObjectCatalog().filter((item) => {
+        return !existingIds.has(item.id.toLowerCase()) && !existingSelectors.has(item.selector.toLowerCase());
+      });
+    }
+
+    function layoutObjectMatches(query) {
+      const catalog = layoutObjectCatalog();
+      if (!query) return catalog;
+      return catalog
+        .map((item) => ({ item, score: fuzzyScore(`${item.name} ${item.id} ${item.kind} ${item.selector}`, query) }))
+        .filter((entry) => entry.score >= 0)
+        .sort((a, b) => a.score - b.score || a.item.name.localeCompare(b.item.name))
+        .map((entry) => entry.item);
+    }
+
+    function makeLayoutObject(item) {
+      const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
+      return {
+        id: item.id,
+        name: item.name,
+        selector: item.selector,
+        kind: item.kind || "art",
+        x: Math.round(canvas.width / 2),
+        y: Math.round(canvas.height / 2),
+        width: item.width || 240,
+        height: item.height || 120,
+        scale: 1
+      };
+    }
+
     function layoutHistorySnapshot() {
       return JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
     }
@@ -4983,12 +5147,20 @@
 
     function handleLayoutHotkeys(event) {
       if (layoutScreen.classList.contains("hidden")) return;
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
-      event.preventDefault();
-      if (event.shiftKey) {
-        redoLayoutChange();
-      } else {
-        undoLayoutChange();
+      const tagName = event.target?.tagName?.toLowerCase();
+      const isEditingField = tagName === "input" || tagName === "textarea" || tagName === "select";
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redoLayoutChange();
+        } else {
+          undoLayoutChange();
+        }
+        return;
+      }
+      if (!isEditingField && (event.key === "Delete" || event.key === "Backspace")) {
+        event.preventDefault();
+        removeSelectedLayoutObject();
       }
     }
 
@@ -5012,6 +5184,16 @@
       renderLayoutElements();
       renderLayoutPreview();
       renderLayoutFields();
+      renderLayoutActions();
+    }
+
+    function renderLayoutActions() {
+      const hasSelection = Boolean(layoutElement(selectedLayoutStateId, selectedLayoutElementId));
+      for (const button of [removeLayoutObjectButton, layoutPreviewRemoveObjectButton]) {
+        if (button) button.disabled = !hasSelection;
+      }
+      if (testLayoutButton) testLayoutButton.disabled = !layoutSavedSnapshot;
+      if (revertLayoutButton) revertLayoutButton.disabled = !layoutSavedSnapshot || (!layoutTestSnapshot && !isLayoutDirty());
     }
 
     function renderLayoutStates() {
@@ -5045,7 +5227,7 @@
         button.innerHTML = `<span><strong></strong><span></span></span><span class="flow-pill"></span>`;
         button.querySelector("strong").textContent = element.name;
         button.querySelector("span span").textContent = `${Math.round(element.x)}, ${Math.round(element.y)} / ${Number(element.scale || 1).toFixed(2)}x`;
-        button.querySelector(".flow-pill").textContent = "Art";
+        button.querySelector(".flow-pill").textContent = element.kind === "text" ? "Text" : "Art";
         button.addEventListener("click", () => {
           selectedLayoutElementId = element.id;
           renderLayoutTool();
@@ -5258,6 +5440,90 @@
       renderLayoutTool();
     }
 
+    function openLayoutObjectPicker() {
+      if (!layoutGroup(selectedLayoutStateId)) return;
+      layoutObjectPicker.classList.remove("hidden");
+      layoutObjectSearch.value = "";
+      renderLayoutObjectOptions();
+      layoutObjectSearch.focus();
+    }
+
+    function closeLayoutObjectPicker() {
+      layoutObjectPicker.classList.add("hidden");
+    }
+
+    function renderLayoutObjectOptions() {
+      const query = layoutObjectSearch.value.trim().toLowerCase();
+      const matches = layoutObjectMatches(query).slice(0, 12);
+      layoutObjectOptions.replaceChildren();
+      if (!matches.length) {
+        const empty = document.createElement("div");
+        empty.className = "flow-search-option";
+        empty.textContent = "No matching objects";
+        layoutObjectOptions.appendChild(empty);
+        return;
+      }
+      for (const item of matches) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "flow-search-option";
+        button.innerHTML = `<strong></strong><span></span>`;
+        button.querySelector("strong").textContent = item.name;
+        button.querySelector("span").textContent = item.kind === "text" ? "Text Field" : "Game Art";
+        button.addEventListener("mousedown", (event) => event.preventDefault());
+        button.addEventListener("click", () => addLayoutObject(item));
+        layoutObjectOptions.appendChild(button);
+      }
+    }
+
+    function addLayoutObject(item) {
+      const group = layoutGroup(selectedLayoutStateId);
+      if (!group) return;
+      pushLayoutHistory();
+      if (!Array.isArray(group.elements)) group.elements = [];
+      const element = makeLayoutObject(item);
+      group.elements.push(element);
+      selectedLayoutElementId = element.id;
+      closeLayoutObjectPicker();
+      renderLayoutTool();
+    }
+
+    function removeSelectedLayoutObject() {
+      const group = layoutGroup(selectedLayoutStateId);
+      if (!group || !selectedLayoutElementId) return;
+      const index = (group.elements || []).findIndex((element) => element.id === selectedLayoutElementId);
+      if (index < 0) return;
+      pushLayoutHistory();
+      group.elements.splice(index, 1);
+      selectedLayoutElementId = group.elements[index]?.id || group.elements[index - 1]?.id || "";
+      renderLayoutTool();
+    }
+
+    function handleLayoutDocumentClick(event) {
+      if (layoutObjectPicker.classList.contains("hidden")) return;
+      if (event.target.closest("#layoutObjectPicker") || event.target.closest("#addLayoutObjectButton") || event.target.closest("#layoutPreviewAddObjectButton")) return;
+      closeLayoutObjectPicker();
+    }
+
+    function testStageLayouts() {
+      layoutTestSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+      layoutUndoStack = [];
+      layoutRedoStack = [];
+      renderLayoutTool();
+    }
+
+    function revertStageLayouts() {
+      if (!layoutSavedSnapshot) return;
+      stageLayouts = JSON.parse(layoutSavedSnapshot);
+      layoutTestSnapshot = "";
+      layoutUndoStack = [];
+      layoutRedoStack = [];
+      selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
+      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "";
+      closeLayoutObjectPicker();
+      renderLayoutTool();
+    }
+
     async function saveStageLayouts() {
       saveLayoutButton.disabled = true;
       saveLayoutButton.textContent = "Saving";
@@ -5265,6 +5531,7 @@
         const result = await postJson("/api/stage-layouts", { layouts: serializeStageLayoutsForSave(stageLayouts) });
         stageLayouts = result.layouts || stageLayouts;
         layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+        layoutTestSnapshot = "";
         updateLayoutStorageStatus(result.storage);
         renderLayoutTool();
       } finally {
@@ -5280,6 +5547,22 @@
         return;
       }
       layoutToolInitialized = true;
+      addLayoutObjectButton.addEventListener("click", openLayoutObjectPicker);
+      layoutPreviewAddObjectButton.addEventListener("click", openLayoutObjectPicker);
+      removeLayoutObjectButton.addEventListener("click", removeSelectedLayoutObject);
+      layoutPreviewRemoveObjectButton.addEventListener("click", removeSelectedLayoutObject);
+      layoutObjectSearch.addEventListener("input", renderLayoutObjectOptions);
+      layoutObjectSearch.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeLayoutObjectPicker();
+        if (event.key === "Enter") {
+          event.preventDefault();
+          const first = layoutObjectMatches(layoutObjectSearch.value.trim().toLowerCase())[0];
+          if (first) addLayoutObject(first);
+        }
+      });
+      document.addEventListener("click", handleLayoutDocumentClick);
+      testLayoutButton.addEventListener("click", testStageLayouts);
+      revertLayoutButton.addEventListener("click", revertStageLayouts);
       saveLayoutButton.addEventListener("click", saveStageLayouts);
       window.addEventListener("keydown", handleLayoutHotkeys);
       window.addEventListener("resize", () => {
@@ -5302,9 +5585,9 @@
 
     function isToolDirty(toolId) {
       if (toolId === "art") return Boolean(pendingArtReplacement);
-      if (toolId === "flow") return flowSavedSnapshot && JSON.stringify(serializeGameFlowForSave(gameFlow)) !== flowSavedSnapshot;
+      if (toolId === "flow") return isFlowDirty();
       if (toolId === "constants") return constantsSavedSnapshot && JSON.stringify(gameConstants) !== constantsSavedSnapshot;
-      if (toolId === "layout") return layoutSavedSnapshot && JSON.stringify(serializeStageLayoutsForSave(stageLayouts)) !== layoutSavedSnapshot;
+      if (toolId === "layout") return isLayoutDirty();
       return false;
     }
 
