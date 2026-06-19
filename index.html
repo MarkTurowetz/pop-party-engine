@@ -1969,10 +1969,10 @@
       padding: calc(12px * var(--layout-fit-scale, 1)) calc(20px * var(--layout-fit-scale, 1));
       border: calc(4px * var(--layout-fit-scale, 1)) solid var(--ink);
       border-radius: 999px;
-      color: var(--ink);
+      color: var(--layout-text-color, var(--ink));
       background: var(--paper);
       box-shadow: calc(6px * var(--layout-fit-scale, 1)) calc(6px * var(--layout-fit-scale, 1)) 0 rgba(23, 19, 31, 0.45);
-      font-size: calc(30px * var(--layout-fit-scale, 1));
+      font-size: calc(var(--layout-text-font-size, 30px) * var(--layout-fit-scale, 1));
       line-height: 1;
       text-align: center;
       text-transform: none;
@@ -1980,7 +1980,7 @@
 
     .layout-preview-join {
       background: var(--cream);
-      font-size: calc(28px * var(--layout-fit-scale, 1));
+      font-size: calc(var(--layout-text-font-size, 28px) * var(--layout-fit-scale, 1));
     }
 
     .layout-preview-countdown {
@@ -3054,22 +3054,42 @@
       return String(element?.name || "");
     }
 
-    function stageLayoutComputedFontSize(element) {
+    function textFieldPadding(element) {
+      const id = String(element?.id || "").toLowerCase();
+      if (id === "waitingstatus" || id === "joinprompt") return { x: 40, y: 24 };
+      return { x: 0, y: 0 };
+    }
+
+    function fittedLayoutTextSize(element, text, fallbackSize) {
+      const padding = textFieldPadding(element);
+      const availableWidth = Math.max(8, Number(element.width || 1) - padding.x);
+      const availableHeight = Math.max(8, Number(element.height || 1) - padding.y);
+      const rawLines = String(text || "Text").split("\n");
+      const words = rawLines.flatMap((line) => line.split(/\s+/).filter(Boolean));
+      const longestWord = Math.max(1, ...words.map((word) => word.length), ...rawLines.map((line) => line.length || 1));
+      const maxSize = Math.min(260, Math.max(8, availableHeight));
+      const minSize = 8;
+      for (let size = maxSize; size >= minSize; size -= 1) {
+        const averageCharWidth = size * 0.58;
+        const maxCharsPerLine = Math.max(1, Math.floor(availableWidth / averageCharWidth));
+        const wordFits = longestWord * averageCharWidth <= availableWidth * 1.04;
+        const wrappedLines = rawLines.reduce((total, line) => total + Math.max(1, Math.ceil((line.length || 1) / maxCharsPerLine)), 0);
+        if (wordFits && wrappedLines * size * 1.03 <= availableHeight) return size;
+      }
+      return Math.max(minSize, Math.min(maxSize, Number(fallbackSize || 58)));
+    }
+
+    function stageLayoutComputedFontSize(element, textOverride = "") {
       const baseSize = Number(element.fontSize || 58);
       if (!element.autoFitText) return baseSize;
-      const text = stageLayoutTextDefault(element) || String(element.name || "Text");
-      const lines = String(text).split("\n");
-      const longestLine = Math.max(1, ...lines.map((line) => line.length || 1));
-      const byWidth = Number(element.width || 1) / longestLine * 1.55;
-      const byHeight = Number(element.height || 1) / Math.max(1, lines.length) * 0.72;
-      return Math.max(8, Math.min(260, Math.min(byWidth, byHeight)));
+      return fittedLayoutTextSize(element, textOverride || stageLayoutTextDefault(element) || String(element.name || "Text"), baseSize);
     }
 
     function applyStageLayoutTextProperties(target, element) {
       const fontColor = normalizeUiColor(element.fontColor) || "#ffffff";
-      const fontSize = `${stageLayoutComputedFontSize(element)}px`;
-      target.style.color = fontColor;
-      target.style.fontSize = fontSize;
+      const fontSize = `${stageLayoutComputedFontSize(element, target.textContent.trim())}px`;
+      target.style.setProperty("color", fontColor, "important");
+      target.style.setProperty("font-size", fontSize, "important");
       target.style.setProperty("--stage-text-color", fontColor);
       target.style.setProperty("--stage-text-font-size", fontSize);
       if (!target.textContent.trim() && element.defaultText) {
@@ -5468,11 +5488,13 @@
         const pill = document.createElement("div");
         pill.className = "layout-preview-pill";
         pill.textContent = layoutDefaultText(element);
+        applyLayoutPreviewTextStyle(pill, element);
         content.appendChild(pill);
       } else if (id === "joinprompt") {
         const pill = document.createElement("div");
         pill.className = "layout-preview-pill layout-preview-join";
         pill.textContent = layoutDefaultText(element);
+        applyLayoutPreviewTextStyle(pill, element);
         content.appendChild(pill);
       } else if (id === "startpopup") {
         content.innerHTML = `<div class="layout-preview-countdown"><span>Starting in</span><strong>3</strong></div>`;
@@ -5516,19 +5538,18 @@
     function layoutComputedFontSize(element) {
       const baseSize = Number(element.fontSize || 58);
       if (!element.autoFitText) return baseSize;
-      const text = layoutDefaultText(element);
-      const lines = String(text || "Text").split("\n");
-      const longestLine = Math.max(1, ...lines.map((line) => line.length || 1));
-      const byWidth = Number(element.width || 1) / longestLine * 1.55;
-      const byHeight = Number(element.height || 1) / Math.max(1, lines.length) * 0.72;
-      return Math.max(8, Math.min(260, Math.min(byWidth, byHeight)));
+      return fittedLayoutTextSize(element, layoutDefaultText(element), baseSize);
+    }
+
+    function applyLayoutPreviewTextStyle(node, element) {
+      node.style.setProperty("--layout-text-font-size", `${layoutComputedFontSize(element)}px`);
+      node.style.setProperty("--layout-text-color", normalizeUiColor(element.fontColor) || "#ffffff");
     }
 
     function layoutPreviewTextNode(element, fallbackText) {
       const node = document.createElement("div");
       node.className = "layout-preview-presentation";
-      node.style.setProperty("--layout-text-font-size", `${layoutComputedFontSize(element)}px`);
-      node.style.setProperty("--layout-text-color", normalizeUiColor(element.fontColor) || "#ffffff");
+      applyLayoutPreviewTextStyle(node, element);
       node.textContent = element.defaultText !== undefined && String(element.defaultText).length ? String(element.defaultText) : fallbackText;
       return node;
     }
