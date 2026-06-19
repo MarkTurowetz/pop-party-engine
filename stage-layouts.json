@@ -89,7 +89,7 @@
           "name": "Intro Header",
           "selector": "#stageIntroTitle",
           "x": 960,
-          "y": 120,
+          "y": 140,
           "width": 1060,
           "height": 130,
           "scale": 1
@@ -99,7 +99,7 @@
           "name": "Presentation Text",
           "selector": "#stagePresentationText",
           "x": 960,
-          "y": 460,
+          "y": 430,
           "width": 980,
           "height": 240,
           "scale": 1
@@ -109,17 +109,17 @@
           "name": "Prompt Text",
           "selector": "#stagePromptText",
           "x": 960,
-          "y": 760,
-          "width": 860,
-          "height": 120,
-          "scale": 1
+          "y": 970,
+          "width": 700,
+          "height": 82,
+          "scale": 0.7
         },
         {
           "id": "presentclickwidget",
           "name": "Click Cursor",
           "selector": "#presentClickWidget",
-          "x": 1780,
-          "y": 930,
+          "x": 1800,
+          "y": 960,
           "width": 90,
           "height": 90,
           "scale": 1
@@ -129,10 +129,10 @@
           "name": "Player Avatars",
           "selector": "#playerLobby",
           "x": 960,
-          "y": 935,
+          "y": 810,
           "width": 1320,
           "height": 150,
-          "scale": 1
+          "scale": 1.3
         }
       ]
     }
