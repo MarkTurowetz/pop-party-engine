@@ -76,7 +76,7 @@
             "seconds": 0
           },
           "text": "Round <ROUND_NUMBER>",
-          "textTarget": "presentation",
+          "textTarget": "roundintrotext",
           "instant": false,
           "isShown": true,
           "subActions": []
