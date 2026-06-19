@@ -11,6 +11,7 @@
         "id": "stagecodebadge",
         "name": "Stage Code Widget",
         "selector": "#stageCodeBadge",
+        "kind": "art",
         "x": 160,
         "y": 100,
         "width": 170,
@@ -21,6 +22,7 @@
         "id": "presentclickwidget",
         "name": "Click Cursor",
         "selector": "#presentClickWidget",
+        "kind": "art",
         "x": 1800,
         "y": 960,
         "width": 90,
@@ -31,6 +33,7 @@
         "id": "playerlobby",
         "name": "Player Avatars",
         "selector": "#playerLobby",
+        "kind": "art",
         "x": 960,
         "y": 810,
         "width": 1320,
@@ -48,6 +51,7 @@
           "id": "startpopup",
           "name": "Countdown Popup",
           "selector": "#startPopup",
+          "kind": "art",
           "x": 1710,
           "y": 150,
           "width": 200,
@@ -58,6 +62,7 @@
           "id": "stagetitle",
           "name": "Header",
           "selector": ".stage-title",
+          "kind": "art",
           "x": 960,
           "y": 140,
           "width": 1080,
@@ -68,6 +73,7 @@
           "id": "stagecodepanel",
           "name": "Stage Code Panel",
           "selector": ".stage-code-panel",
+          "kind": "art",
           "x": 960,
           "y": 480,
           "width": 560,
@@ -78,6 +84,7 @@
           "id": "waitingstatus",
           "name": "Waiting Status",
           "selector": "#waitingStatus",
+          "kind": "art",
           "x": 960,
           "y": 990,
           "width": 700,
@@ -88,6 +95,7 @@
           "id": "joinprompt",
           "name": "Join Prompt",
           "selector": "#joinPrompt",
+          "kind": "art",
           "x": 960,
           "y": 300,
           "width": 740,
@@ -98,12 +106,13 @@
     },
     {
       "id": "intro",
-      "name": "Game Intro",
+      "name": "Game Intro Game State",
       "elements": [
         {
           "id": "stageintrotitle",
           "name": "Intro Header",
           "selector": "#stageIntroTitle",
+          "kind": "art",
           "x": 960,
           "y": 140,
           "width": 1060,
@@ -114,6 +123,7 @@
           "id": "stagepresentationtext",
           "name": "Presentation Text",
           "selector": "#stagePresentationText",
+          "kind": "text",
           "x": 960,
           "y": 430,
           "width": 980,
@@ -124,11 +134,62 @@
           "id": "stageprompttext",
           "name": "Prompt Text",
           "selector": "#stagePromptText",
+          "kind": "text",
           "x": 960,
           "y": 970,
           "width": 700,
           "height": 82,
           "scale": 0.7
+        }
+      ]
+    },
+    {
+      "id": "round-intro",
+      "name": "Round Intro",
+      "elements": [
+        {
+          "id": "roundintrotext",
+          "name": "Round Intro Text Field",
+          "selector": "#roundIntroText",
+          "kind": "text",
+          "x": 960,
+          "y": 340,
+          "width": 1100,
+          "height": 180,
+          "scale": 1
+        },
+        {
+          "id": "roundintroinfotext",
+          "name": "Round Intro Info Text Field",
+          "selector": "#roundIntroInfoText",
+          "kind": "text",
+          "x": 960,
+          "y": 490,
+          "width": 980,
+          "height": 105,
+          "scale": 1
+        },
+        {
+          "id": "roundIntroText",
+          "name": "Round Intro Text Field",
+          "selector": "#roundIntroText",
+          "kind": "text",
+          "x": 960,
+          "y": 430,
+          "width": 1100,
+          "height": 180,
+          "scale": 1
+        },
+        {
+          "id": "roundIntroInfoText",
+          "name": "Round Intro Info Text Field",
+          "selector": "#roundIntroInfoText",
+          "kind": "text",
+          "x": 960,
+          "y": 610,
+          "width": 980,
+          "height": 105,
+          "scale": 1
         }
       ]
     }
