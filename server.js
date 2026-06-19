@@ -45,6 +45,7 @@ const availableFlowTransitions = [
 const availableFlowActionTypes = [
   { id: "presentText", name: "Present Text", category: "input" },
   { id: "multipleChoiceInput", name: "Multiple Choice Input", category: "input" },
+  { id: "textSubmissionInput", name: "Text Submission Input", category: "input" },
   { id: "displayText", name: "Display Text", category: "standard" },
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
   { id: "transition", name: "Do Transition", category: "standard" },
@@ -346,6 +347,25 @@ function normalizeChoiceInputMode(value) {
   return ["singleSelect", "submitOnce", "continuous"].includes(mode) ? mode : "singleSelect";
 }
 
+function cleanSubmittedText(value, limit = 240) {
+  const maxLength = Math.max(1, Math.min(1000, Math.floor(Number(limit) || 240)));
+  return String(value || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().slice(0, maxLength);
+}
+
+function normalizeCharacterLimit(value) {
+  const limit = Math.floor(Number(value || 0));
+  if (!Number.isFinite(limit) || limit <= 0) return 0;
+  return Math.max(1, Math.min(1000, limit));
+}
+
+function cleanAcceptedSubmissions(value) {
+  const incoming = Array.isArray(value) ? value : String(value || "").split(/\r?\n/);
+  return incoming
+    .map((item) => cleanSubmittedText(item, 240))
+    .filter(Boolean)
+    .slice(0, 60);
+}
+
 function normalizeColor(value) {
   const color = String(value || "").trim();
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
@@ -567,15 +587,13 @@ function syncControllerLayoutsWithFlow(layouts, flow) {
     if (existingState) {
       existingState.name = flowState.id === "lobby" ? existingState.name : flowState.name || existingState.name;
       existingState.elements = dedupeLayoutElements(existingState.elements || []);
-      if (isCraftingStateId(flowState.id)) {
-        const seededState = createControllerLayoutStateForFlowState(flowState);
-        for (const element of seededState.elements || []) {
-          if (!existingState.elements.some((item) => item.id === element.id)) {
-            existingState.elements.push(element);
-          }
+      const seededState = createControllerLayoutStateForFlowState(flowState);
+      for (const element of seededState.elements || []) {
+        if (!existingState.elements.some((item) => item.id === element.id)) {
+          existingState.elements.push(element);
         }
-        existingState.elements = dedupeLayoutElements(existingState.elements);
       }
+      existingState.elements = dedupeLayoutElements(existingState.elements);
       continue;
     }
     normalizedLayouts.states.push(normalizeLayoutState(createControllerLayoutStateForFlowState(flowState), -1));
@@ -600,11 +618,12 @@ function dedupeLayoutElements(elements) {
 }
 
 function createControllerLayoutStateForFlowState(flowState) {
-  if (isCraftingStateId(flowState.id)) {
-    return {
-      id: flowState.id,
-      name: flowState.name || "Crafting",
-      elements: [
+  const shouldSeedChoiceInput = isCraftingStateId(flowState.id) || flowStateHasActionType(flowState, "multipleChoiceInput");
+  const shouldSeedTextInput = isCraftingStateId(flowState.id) || flowStateHasActionType(flowState, "textSubmissionInput");
+  if (shouldSeedChoiceInput || shouldSeedTextInput) {
+    const elements = [];
+    if (shouldSeedChoiceInput) {
+      elements.push(
         {
           id: "controllerChoicePrompt",
           name: "Choice Prompt",
@@ -646,7 +665,79 @@ function createControllerLayoutStateForFlowState(flowState) {
           autoFitText: true,
           fontColor: "#17131f"
         }
-      ]
+      );
+    }
+    if (shouldSeedTextInput) {
+      elements.push(
+        {
+          id: "controllerTextPrompt",
+          name: "Text Input Prompt",
+          selector: "#controllerTextPrompt",
+          kind: "text",
+          x: 195,
+          y: 170,
+          width: 330,
+          height: 92,
+          scale: 1,
+          defaultText: "Write your answer",
+          fontSize: 32,
+          autoFitText: true,
+          fontColor: "#17131f"
+        },
+        {
+          id: "controllerInvalidBanner",
+          name: "Invalid Submission Banner",
+          selector: "#controllerInvalidBanner",
+          kind: "art",
+          x: 195,
+          y: 245,
+          width: 330,
+          height: 64,
+          scale: 1
+        },
+        {
+          id: "controllerTextInput",
+          name: "Text Input Field",
+          selector: "#controllerTextInput",
+          kind: "art",
+          x: 195,
+          y: 360,
+          width: 330,
+          height: 128,
+          scale: 1
+        },
+        {
+          id: "controllerTextSubmitButton",
+          name: "Text Submit Button",
+          selector: "#controllerTextSubmitButton",
+          kind: "art",
+          x: 195,
+          y: 475,
+          width: 300,
+          height: 70,
+          scale: 1
+        },
+        {
+          id: "controllerTextDone",
+          name: "Text Done Message",
+          selector: "#controllerTextDone",
+          kind: "text",
+          x: 195,
+          y: 410,
+          width: 330,
+          height: 150,
+          scale: 1,
+          defaultText: "You wrote:",
+          fontSize: 34,
+          autoFitText: true,
+          fontColor: "#17131f"
+        }
+      );
+    }
+    return {
+      id: flowState.id,
+      name: flowState.name || "Crafting",
+      elements
     };
   }
   const textElementId = normalizeFlowId(`${flowState.id}-controller-text`, `${flowState.id}-controller-text`);
@@ -710,6 +801,16 @@ function isRoundIntroStateId(stateId) {
 
 function isCraftingStateId(stateId) {
   return String(stateId || "").includes("crafting");
+}
+
+function flowStateHasActionType(flowState, type) {
+  const stack = [...(flowState?.actions || [])];
+  while (stack.length) {
+    const action = stack.pop();
+    if (action?.type === type) return true;
+    stack.push(...(action?.subActions || []));
+  }
+  return false;
 }
 
 function normalizeLayoutNumber(value, fallback, min, max) {
@@ -776,6 +877,16 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       options: cleanChoiceOptions(action?.options),
       inputMode: normalizeChoiceInputMode(action?.inputMode),
       locked: action?.locked === true
+    };
+  }
+  if (type === "textSubmissionInput") {
+    const characterLimit = normalizeCharacterLimit(action?.characterLimit);
+    return {
+      ...base,
+      prompt: cleanFlowText(action?.prompt, "Write your answer"),
+      placeholder: cleanFlowText(action?.placeholder, "Answer here"),
+      characterLimit,
+      acceptedSubmissions: cleanAcceptedSubmissions(action?.acceptedSubmissions)
     };
   }
   if (type === "displayText") {
@@ -1450,6 +1561,16 @@ function publicFlowAction(action, index) {
       locked: action.locked === true
     };
   }
+  if (action.type === "textSubmissionInput") {
+    return {
+      ...base,
+      type: "textSubmissionInput",
+      prompt: action.prompt || "Write your answer",
+      placeholder: action.placeholder || "Answer here",
+      characterLimit: normalizeCharacterLimit(action.characterLimit),
+      acceptedSubmissions: cleanAcceptedSubmissions(action.acceptedSubmissions)
+    };
+  }
   if (action.type === "displayText" || action.type === "text") {
     return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
   }
@@ -1539,6 +1660,7 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
       room.actionTimerId = null;
       room.actionCompletionPendingId = "";
       if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
+      if (currentAction.type === "textSubmissionInput") clearTextInput(room);
       advanceRoomAction(room);
       broadcastLobby(room);
     }, delayMs);
@@ -1546,6 +1668,7 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
   }
 
   if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
+  if (currentAction.type === "textSubmissionInput") clearTextInput(room);
   advanceRoomAction(room);
   broadcastLobby(room);
   return true;
@@ -1992,6 +2115,12 @@ function getRoom(stageCode) {
       choiceInputMode: "singleSelect",
       choiceInputLocked: false,
       choiceInputAnswers: new Map(),
+      textInputActionId: "",
+      textInputPrompt: "",
+      textInputPlaceholder: "",
+      textInputCharacterLimit: 0,
+      textInputAcceptedSubmissions: [],
+      textInputAnswers: new Map(),
       runtimeFlowOverride: null,
       revision: 0
     });
@@ -2056,7 +2185,7 @@ function selectVip(room) {
 }
 
 function publicPlayer(player, room) {
-  const answer = room.choiceInputAnswers?.get(player.id) || null;
+  const answer = room.choiceInputAnswers?.get(player.id) || room.textInputAnswers?.get(player.id) || null;
   return {
     id: player.id,
     name: player.name,
@@ -2064,7 +2193,7 @@ function publicPlayer(player, room) {
     active: player.active,
     joinedAt: player.joinedAt,
     isVip: player.id === room.vipPlayerId,
-    answer: answer ? { optionIndex: answer.optionIndex, text: answer.text, done: answer.done === true, nonce: answer.nonce || 0 } : null
+    answer: answer ? { optionIndex: answer.optionIndex, text: answer.text, done: answer.done === true, invalid: answer.invalid === true, nonce: answer.nonce || 0 } : null
   };
 }
 
@@ -2078,6 +2207,19 @@ function clearChoiceInput(room) {
     room.choiceInputAnswers.clear();
   } else {
     room.choiceInputAnswers = new Map();
+  }
+}
+
+function clearTextInput(room) {
+  room.textInputActionId = "";
+  room.textInputPrompt = "";
+  room.textInputPlaceholder = "";
+  room.textInputCharacterLimit = 0;
+  room.textInputAcceptedSubmissions = [];
+  if (room.textInputAnswers?.clear) {
+    room.textInputAnswers.clear();
+  } else {
+    room.textInputAnswers = new Map();
   }
 }
 
@@ -2108,11 +2250,34 @@ function choiceInputPayload(room, currentAction) {
   };
 }
 
+function applyTextInputAction(room, action) {
+  if (!action || action.type !== "textSubmissionInput") return;
+  if (room.textInputActionId === action.id) return;
+  room.textInputActionId = action.id;
+  room.textInputPrompt = action.prompt || "Write your answer";
+  room.textInputPlaceholder = action.placeholder || "Answer here";
+  room.textInputCharacterLimit = normalizeCharacterLimit(action.characterLimit);
+  room.textInputAcceptedSubmissions = cleanAcceptedSubmissions(action.acceptedSubmissions);
+  room.textInputAnswers = new Map();
+}
+
+function textInputPayload(room, currentAction) {
+  if (!currentAction || currentAction.type !== "textSubmissionInput") return null;
+  applyTextInputAction(room, currentAction);
+  return {
+    actionId: room.textInputActionId,
+    prompt: room.textInputPrompt,
+    placeholder: room.textInputPlaceholder,
+    characterLimit: room.textInputCharacterLimit
+  };
+}
+
 function lobbyPayload(room) {
   selectVip(room);
   const currentAction = room.phase !== "lobby" && room.phase !== "starting" ? resolveRoomActionText(currentRoomAction(room), room) : null;
   applyRoomActionEffects(room, currentAction);
   const input = choiceInputPayload(room, currentAction);
+  const textInput = textInputPayload(room, currentAction);
   return {
     type: "lobby",
     stageCode: room.stageCode,
@@ -2122,6 +2287,7 @@ function lobbyPayload(room) {
     countdownEndsAt: room.countdownEndsAt,
     action: currentAction,
     input,
+    textInput,
     currentRound: room.currentRound || 1,
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
@@ -2163,6 +2329,7 @@ function enterLobbyPhase(room) {
   room.currentRound = 1;
   room.hasEnteredRoundIntro = false;
   clearChoiceInput(room);
+  clearTextInput(room);
 }
 
 function quitRoomToLobby(room) {
@@ -2193,6 +2360,7 @@ function enterGamePhase(room, phase) {
   room.appliedActionEffectId = "";
   room.playersShown = true;
   clearChoiceInput(room);
+  clearTextInput(room);
   if (isRoundIntroStateId(phase) && previousPhase !== phase) {
     if (room.hasEnteredRoundIntro) {
       room.currentRound += 1;
@@ -2526,7 +2694,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "multipleChoiceInput") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "textSubmissionInput") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -2593,6 +2761,60 @@ async function handleControllerChoice(req, res) {
 
   broadcastLobby(room);
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+}
+
+async function handleControllerTextSubmit(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const playerId = normalizePlayerId(payload.playerId);
+  const room = getExistingRoom(stageCode);
+  const player = room?.players.get(playerId);
+  if (!room || !player || !player.active) {
+    sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+    return;
+  }
+
+  const currentAction = resolveRoomActionText(currentRoomAction(room), room);
+  if (!currentAction || currentAction.type !== "textSubmissionInput") {
+    sendJson(res, 409, { ok: false, error: "No active text input" });
+    return;
+  }
+  applyTextInputAction(room, currentAction);
+  if (payload.actionId && payload.actionId !== room.textInputActionId) {
+    sendJson(res, 409, { ok: false, error: "Text input is stale" });
+    return;
+  }
+
+  const submittedText = cleanSubmittedText(payload.text, room.textInputCharacterLimit || 240);
+  const accepted = room.textInputAcceptedSubmissions;
+  const isValid = Boolean(submittedText) && (!accepted.length || accepted.some((answer) => answer.toLowerCase() === submittedText.toLowerCase()));
+  if (!isValid) {
+    room.textInputAnswers.set(playerId, {
+      text: "",
+      invalid: true,
+      done: false,
+      nonce: Date.now()
+    });
+    broadcastLobby(room);
+    sendJson(res, 200, { ok: true, valid: false, lobby: lobbyPayload(room) });
+    return;
+  }
+
+  room.textInputAnswers.set(playerId, {
+    text: submittedText,
+    invalid: false,
+    done: true,
+    nonce: Date.now()
+  });
+  broadcastLobby(room);
+  sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
 }
 
 async function handleQuitToLobby(req, res) {
@@ -2851,6 +3073,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/controller-choice") {
     handleControllerChoice(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/controller-text-submit") {
+    handleControllerTextSubmit(req, res);
     return;
   }
 

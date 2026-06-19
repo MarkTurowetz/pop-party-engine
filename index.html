@@ -1311,6 +1311,60 @@
       text-align: center;
     }
 
+    .controller-text-state {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 14px;
+      padding: 28px;
+      color: var(--ink);
+    }
+
+    .controller-text-prompt {
+      width: min(330px, 100%);
+      font-size: clamp(20px, 7vmin, 34px);
+      line-height: 0.95;
+      font-weight: 1000;
+      text-align: center;
+    }
+
+    .controller-invalid-banner {
+      width: min(330px, 100%);
+      padding: 10px 14px;
+      border: 4px solid var(--ink);
+      border-radius: 18px;
+      color: #fff;
+      background: #ef4444;
+      box-shadow: 6px 6px 0 var(--ink);
+      font-size: clamp(16px, 4.6vmin, 22px);
+      line-height: 1;
+      font-weight: 1000;
+      text-align: center;
+    }
+
+    .controller-text-input {
+      width: min(330px, 100%);
+      min-height: 104px;
+      padding: 14px;
+      border: 5px solid var(--ink);
+      border-radius: 20px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: 7px 7px 0 rgba(23, 19, 31, 0.42);
+      font-size: clamp(18px, 5vmin, 26px);
+      line-height: 1.1;
+      font-weight: 800;
+      resize: none;
+    }
+
+    .controller-submit-button {
+      min-height: 56px;
+      width: min(330px, 100%);
+      border-radius: 999px;
+    }
+
     .lab {
       min-height: 100vh;
       padding: 18px;
@@ -2656,6 +2710,14 @@
         <div class="controller-choice-grid" id="controllerChoiceGrid"></div>
         <div class="controller-choice-done hidden" id="controllerChoiceDone">You chose:</div>
       </div>
+
+      <div class="controller-text-state hidden" id="controllerTextState" data-controller-view="text-input">
+        <div class="controller-text-prompt controller-layout-text" id="controllerTextPrompt">Write your answer</div>
+        <div class="controller-invalid-banner hidden" id="controllerInvalidBanner">Your submission was invalid</div>
+        <textarea class="controller-text-input" id="controllerTextInput" autocomplete="off" placeholder="Answer here"></textarea>
+        <button class="primary-button controller-submit-button" id="controllerTextSubmitButton" type="button" disabled data-controller-option data-option-id="text.submit">Submit</button>
+        <div class="controller-choice-done hidden" id="controllerTextDone">You wrote:</div>
+      </div>
     </div>
   </section>
 
@@ -2869,6 +2931,12 @@
     const controllerChoicePrompt = document.querySelector("#controllerChoicePrompt");
     const controllerChoiceGrid = document.querySelector("#controllerChoiceGrid");
     const controllerChoiceDone = document.querySelector("#controllerChoiceDone");
+    const controllerTextState = document.querySelector("#controllerTextState");
+    const controllerTextPrompt = document.querySelector("#controllerTextPrompt");
+    const controllerInvalidBanner = document.querySelector("#controllerInvalidBanner");
+    const controllerTextInput = document.querySelector("#controllerTextInput");
+    const controllerTextSubmitButton = document.querySelector("#controllerTextSubmitButton");
+    const controllerTextDone = document.querySelector("#controllerTextDone");
     const joinForm = document.querySelector("#joinForm");
     const stageCodeInput = document.querySelector("#stageCodeInput");
     const playerNameInput = document.querySelector("#playerNameInput");
@@ -2932,6 +3000,7 @@
     let lobbyPollTimer = null;
     let stageCountdownTimer = null;
     let controllerCountdownTimer = null;
+    let dismissedTextInvalidKey = "";
     let countdownClockOffset = 0;
     let controllerClockOffset = 0;
     let renderedStagePhase = "";
@@ -4136,6 +4205,7 @@
       controllerLobbyState.classList.add("hidden");
       controllerIntroState.classList.add("hidden");
       controllerChoiceState.classList.add("hidden");
+      controllerTextState.classList.add("hidden");
       introPresentButton.classList.add("hidden");
     }
 
@@ -4184,6 +4254,61 @@
       }
     }
 
+    function renderControllerTextState(lobby, me) {
+      const input = lobby.textInput || null;
+      if (!input) return false;
+      hideControllerViews();
+      controllerState.phaseActionId = input.actionId;
+      controllerTextState.classList.remove("hidden");
+      controllerTextPrompt.textContent = input.prompt || "Write your answer";
+      controllerInvalidBanner.textContent = "Your submission was invalid";
+      controllerTextInput.placeholder = input.placeholder || "Answer here";
+      const limit = Number(input.characterLimit || 0);
+      if (limit > 0) {
+        controllerTextInput.maxLength = limit;
+      } else {
+        controllerTextInput.removeAttribute("maxlength");
+      }
+      const isDone = me.answer?.done === true;
+      const isInvalid = me.answer?.invalid === true;
+      const invalidKey = `${input.actionId}:${me.answer?.nonce || 0}`;
+      const showInvalid = isInvalid && dismissedTextInvalidKey !== invalidKey;
+      controllerTextDone.classList.toggle("hidden", !isDone);
+      controllerTextInput.classList.toggle("hidden", isDone);
+      controllerTextSubmitButton.classList.toggle("hidden", isDone);
+      controllerInvalidBanner.classList.toggle("hidden", !showInvalid || isDone);
+      if (isDone) {
+        controllerTextDone.textContent = `You wrote: ${me.answer?.text || ""}`;
+      } else if (showInvalid) {
+        controllerTextInput.value = "";
+      }
+      controllerTextSubmitButton.disabled = controllerTextInput.value.trim().length === 0;
+      controllerTextSubmitButton.onclick = () => submitControllerText(input.actionId);
+      applyControllerLayoutForPhase(lobby.phase || "lobby");
+      return true;
+    }
+
+    async function submitControllerText(actionId) {
+      if (!controllerState) return;
+      const text = controllerTextInput.value;
+      if (!text.trim()) return;
+      controllerTextSubmitButton.disabled = true;
+      try {
+        const result = await postJson("/api/controller-text-submit", {
+          stageCode: controllerState.stageCode,
+          playerId: controllerState.playerId,
+          actionId,
+          text
+        });
+        if (result.lobby) renderControllerState(result.lobby);
+      } catch (error) {
+        controllerInvalidBanner.textContent = error.message;
+        controllerInvalidBanner.classList.remove("hidden");
+        controllerTextInput.value = "";
+        controllerTextSubmitButton.disabled = true;
+      }
+    }
+
     function renderControllerState(lobby) {
       if (!controllerState) return;
       window.clearInterval(controllerCountdownTimer);
@@ -4208,6 +4333,10 @@
       if (lobby.input?.type || lobby.input?.options?.length) {
         closeAvatarPicker({ commit: false });
         if (renderControllerChoiceState(lobby, me)) return;
+      }
+      if (lobby.textInput?.actionId) {
+        closeAvatarPicker({ commit: false });
+        if (renderControllerTextState(lobby, me)) return;
       }
       if (controllerPhase !== "lobby" && controllerPhase !== "starting") {
         closeAvatarPicker({ commit: false });
@@ -4325,6 +4454,18 @@
           removeSessionValue("partyTemplatePlayerId");
         }
         updateJoinButton();
+      });
+      controllerTextInput.addEventListener("input", () => {
+        if (controllerState?.player?.answer?.invalid) {
+          dismissedTextInvalidKey = `${controllerState.phaseActionId || ""}:${controllerState.player.answer.nonce || 0}`;
+        }
+        controllerInvalidBanner.classList.add("hidden");
+        controllerTextSubmitButton.disabled = controllerTextInput.value.trim().length === 0;
+      });
+      controllerTextInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" || event.shiftKey) return;
+        event.preventDefault();
+        if (!controllerTextSubmitButton.disabled) controllerTextSubmitButton.click();
       });
 
       joinForm.addEventListener("submit", async (event) => {
@@ -4794,6 +4935,11 @@
         const lockedText = action.inputMode === "singleSelect" && action.locked ? " / Locked" : "";
         return `${modeName}${lockedText}: ${action.prompt || "Choice input"} / ${(action.options || []).length || 0} options / ${timingText}`;
       }
+      if (action.type === "textSubmissionInput") {
+        const limitText = Number(action.characterLimit || 0) > 0 ? ` / ${Number(action.characterLimit)} chars` : "";
+        const validationText = (action.acceptedSubmissions || []).length ? ` / ${(action.acceptedSubmissions || []).length} accepted` : " / any non-empty";
+        return `Text Submit: ${action.prompt || "Write your answer"}${limitText}${validationText} / ${timingText}`;
+      }
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
@@ -5243,6 +5389,12 @@
           action.inputMode = action.inputMode || "singleSelect";
           action.locked = action.locked === true;
         }
+        if (value === "textSubmissionInput") {
+          action.prompt = action.prompt || "Write your answer";
+          action.placeholder = action.placeholder || "Answer here";
+          action.characterLimit = Number(action.characterLimit || 0);
+          action.acceptedSubmissions = Array.isArray(action.acceptedSubmissions) ? action.acceptedSubmissions : [];
+        }
         if (value === "displayText") action.text = action.text || "Displayed text";
         if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
         if (value === "transition") action.transition = action.transition || "horizontalWipe";
@@ -5305,6 +5457,25 @@
           renderFlowListAndPublish();
         }));
         flowEditor.appendChild(readOnlyFlowNote("Each line becomes one button label. Controllers send the option index; this action currently shows the matching line as the stage speech bubble."));
+      }
+      if (action.type === "textSubmissionInput") {
+        flowEditor.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
+          action.prompt = value || "Write your answer";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowField("Placeholder Text", action.placeholder || "Answer here", (value) => {
+          action.placeholder = value || "Answer here";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowNumber("Character Limit (0 = No Limit)", Number(action.characterLimit || 0), (value) => {
+          action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowTextarea("Accepted Submissions (Optional)", (action.acceptedSubmissions || []).join("\n"), (value) => {
+          action.acceptedSubmissions = value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 60);
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("If accepted submissions is empty, any non-empty text is valid. If it has values, submissions must exactly match one of those lines."));
       }
       if (action.type === "setPlayersShown") {
         flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
@@ -5979,7 +6150,12 @@
           { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", kind: "art", width: 300, height: 78 },
           { id: "controllerChoicePrompt", name: "Choice Prompt", selector: "#controllerChoicePrompt", kind: "text", width: 330, height: 120 },
           { id: "controllerChoiceGrid", name: "Choice Buttons", selector: "#controllerChoiceGrid", kind: "art", width: 330, height: 420 },
-          { id: "controllerChoiceDone", name: "Choice Done Text", selector: "#controllerChoiceDone", kind: "text", width: 330, height: 150 }
+          { id: "controllerChoiceDone", name: "Choice Done Text", selector: "#controllerChoiceDone", kind: "text", width: 330, height: 150 },
+          { id: "controllerTextPrompt", name: "Text Input Prompt", selector: "#controllerTextPrompt", kind: "text", width: 330, height: 92 },
+          { id: "controllerInvalidBanner", name: "Invalid Submission Banner", selector: "#controllerInvalidBanner", kind: "art", width: 330, height: 64 },
+          { id: "controllerTextInput", name: "Text Input Field", selector: "#controllerTextInput", kind: "art", width: 330, height: 128 },
+          { id: "controllerTextSubmitButton", name: "Text Submit Button", selector: "#controllerTextSubmitButton", kind: "art", width: 300, height: 70 },
+          { id: "controllerTextDone", name: "Text Done Message", selector: "#controllerTextDone", kind: "text", width: 330, height: 150 }
         ];
       }
       return [
