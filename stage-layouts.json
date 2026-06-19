@@ -13,7 +13,7 @@
           "name": "Header",
           "selector": ".stage-title",
           "x": 960,
-          "y": 190,
+          "y": 220,
           "width": 1080,
           "height": 150,
           "scale": 1
@@ -23,7 +23,7 @@
           "name": "Stage Code Panel",
           "selector": ".stage-code-panel",
           "x": 960,
-          "y": 390,
+          "y": 500,
           "width": 560,
           "height": 190,
           "scale": 1
@@ -33,7 +33,7 @@
           "name": "Waiting Status",
           "selector": "#waitingStatus",
           "x": 960,
-          "y": 575,
+          "y": 670,
           "width": 700,
           "height": 82,
           "scale": 1
@@ -43,7 +43,7 @@
           "name": "Join Prompt",
           "selector": "#joinPrompt",
           "x": 960,
-          "y": 650,
+          "y": 750,
           "width": 740,
           "height": 76,
           "scale": 1
