@@ -45,6 +45,21 @@
           },
           "transition": "horizontalWipe",
           "subActions": []
+        },
+        {
+          "id": "intro-action-mqkhnnb5",
+          "name": "Game Action 3",
+          "type": "transitionState",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "targetState": "round-intro"
         }
       ]
     },
