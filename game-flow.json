@@ -37,6 +37,20 @@
           "subActions": []
         },
         {
+          "id": "intro-action-mqk5wici",
+          "name": "Game Action 7",
+          "type": "displayText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 2
+          },
+          "text": "HELLLLOOOOOOOO",
+          "textTarget": "prompt",
+          "instant": false,
+          "isShown": true,
+          "subActions": []
+        },
+        {
           "id": "intro-present-1",
           "name": "Present Intro Text",
           "type": "presentText",
