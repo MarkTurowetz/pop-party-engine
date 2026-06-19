@@ -392,23 +392,28 @@ function normalizeLayoutElement(element, elementIndex) {
   const width = normalizeLayoutNumber(element.width, 240, 24, 4000);
   const height = normalizeLayoutNumber(element.height, 100, 24, 4000);
   const selector = cleanLayoutSelector(element.selector);
+  const kind = normalizeLayoutElementKind(element.kind, selector);
   return {
     id: normalizeFlowId(element.id || element.name, fallbackId),
     name: cleanFlowText(element.name, element.id || fallbackId),
     selector,
-    kind: normalizeLayoutElementKind(element.kind, selector),
+    kind,
     x: normalizeLayoutNumber(element.x, defaultStageLayouts.canvas.width / 2, -5000, 15000),
     y: normalizeLayoutNumber(element.y, defaultStageLayouts.canvas.height / 2, -5000, 15000),
     width,
     height,
-    scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10)
+    scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10),
+    defaultText: kind === "text" ? cleanLayoutText(element.defaultText) : "",
+    fontSize: kind === "text" ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
+    autoFitText: kind === "text" ? element.autoFitText === true : false,
+    fontColor: kind === "text" ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
   };
 }
 
 function normalizeLayoutElementKind(kind, selector) {
   const cleanKind = String(kind || "").trim().toLowerCase();
   if (cleanKind === "text") return "text";
-  return /stage(?:presentation|prompt)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
+  return /waitingstatus|joinprompt|stage(?:presentation|prompt)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
 }
 
 function syncStageLayoutsWithFlow(layouts, flow) {
@@ -498,6 +503,10 @@ function normalizeLayoutNumber(value, fallback, min, max) {
 
 function cleanLayoutSelector(value) {
   return String(value || "").trim().replace(/[\n\r]/g, "").slice(0, 120);
+}
+
+function cleanLayoutText(value) {
+  return String(value || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").slice(0, 500);
 }
 
 function normalizeGameFlow(flow) {

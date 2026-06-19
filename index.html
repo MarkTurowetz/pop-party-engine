@@ -242,6 +242,11 @@
       transform-origin: center !important;
     }
 
+    .stage-layout-target.stage-text-object {
+      color: var(--stage-text-color, #fff);
+      font-size: var(--stage-text-font-size, 58px);
+    }
+
     .stage-code-panel.stage-layout-target {
       transform: translate(-50%, -50%) scale(var(--stage-layout-scale, 1)) rotate(-1deg) !important;
     }
@@ -1891,9 +1896,10 @@
       text-align: center;
       font-weight: 1000;
       text-transform: uppercase;
-      pointer-events: none;
+      pointer-events: auto;
       user-select: none;
       overflow: visible;
+      cursor: pointer;
     }
 
     .layout-preview-element.is-selected {
@@ -1901,7 +1907,6 @@
       border-style: solid;
       background: transparent;
       box-shadow: 0 0 0 5px rgba(255, 225, 86, 0.35), 7px 7px 0 var(--ink);
-      pointer-events: auto;
       cursor: move;
       z-index: 10;
     }
@@ -1909,6 +1914,7 @@
     .layout-preview-element.is-global-preview {
       border-color: rgba(255, 225, 86, 0.68);
       z-index: 8;
+      pointer-events: none;
     }
 
     .layout-preview-content {
@@ -2067,11 +2073,22 @@
     }
 
     .layout-preview-presentation {
-      color: #fff;
-      font-size: calc(58px * var(--layout-fit-scale, 1));
+      color: var(--layout-text-color, #fff);
+      font-size: calc(var(--layout-text-font-size, 58px) * var(--layout-fit-scale, 1));
       line-height: 0.98;
       text-shadow: calc(5px * var(--layout-fit-scale, 1)) calc(5px * var(--layout-fit-scale, 1)) 0 #000;
       overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      text-transform: uppercase;
+    }
+
+    .layout-selection-marquee {
+      position: absolute;
+      z-index: 40;
+      border: 3px dashed var(--yellow);
+      border-radius: 8px;
+      background: rgba(255, 225, 86, 0.18);
+      pointer-events: none;
     }
 
     .layout-resize-handle {
@@ -2105,13 +2122,34 @@
       text-transform: uppercase;
     }
 
-    .layout-number-field input {
+    .layout-number-field input,
+    .layout-number-field select,
+    .layout-number-field textarea {
       width: 100%;
-      height: 32px;
+      min-height: 32px;
       border: 3px solid var(--ink);
       border-radius: 10px;
       padding: 0 8px;
       font-weight: 1000;
+    }
+
+    .layout-text-field {
+      grid-column: span 2;
+    }
+
+    .layout-text-field.is-wide {
+      grid-column: span 3;
+    }
+
+    .layout-text-field textarea {
+      min-height: 76px;
+      resize: vertical;
+      padding: 8px;
+      line-height: 1.05;
+    }
+
+    .layout-color-field input {
+      padding: 2px;
     }
 
     .layout-shell .art-header {
@@ -2639,6 +2677,7 @@
     let pendingToolSwitch = null;
     let selectedLayoutStateId = "";
     let selectedLayoutElementId = "";
+    let selectedLayoutElementIds = new Set();
     let currentStageLayoutStateId = "";
     let layoutUndoStack = [];
     let layoutRedoStack = [];
@@ -2944,6 +2983,10 @@
         target.style.removeProperty("--stage-layout-w");
         target.style.removeProperty("--stage-layout-h");
         target.style.removeProperty("--stage-layout-scale");
+        target.style.removeProperty("--stage-text-color");
+        target.style.removeProperty("--stage-text-font-size");
+        target.style.removeProperty("color");
+        target.style.removeProperty("font-size");
       }
     }
 
@@ -2959,24 +3002,58 @@
       stageBoard.style.height = `${canvas.height}px`;
       stageBoard.style.setProperty("--stage-board-scale", `${fitScale}`);
       for (const element of state.elements || []) {
-        const target = stageBoard.querySelector(element.selector);
-        if (!target) continue;
-        target.classList.add("stage-layout-target");
-        target.style.setProperty("--stage-layout-x", `${element.x}px`);
-        target.style.setProperty("--stage-layout-y", `${element.y}px`);
-        target.style.setProperty("--stage-layout-w", `${element.width}px`);
-        target.style.setProperty("--stage-layout-h", `${element.height}px`);
-        target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
+        applyStageElementLayout(element, false);
       }
       for (const element of globalStageLayout().elements || []) {
-        const target = stageBoard.querySelector(element.selector);
-        if (!target) continue;
-        target.classList.add("stage-layout-target", "stage-global-layout-target");
-        target.style.setProperty("--stage-layout-x", `${element.x}px`);
-        target.style.setProperty("--stage-layout-y", `${element.y}px`);
-        target.style.setProperty("--stage-layout-w", `${element.width}px`);
-        target.style.setProperty("--stage-layout-h", `${element.height}px`);
-        target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
+        applyStageElementLayout(element, true);
+      }
+    }
+
+    function applyStageElementLayout(element, isGlobal) {
+      const target = stageBoard.querySelector(element.selector);
+      if (!target) return;
+      target.classList.add("stage-layout-target");
+      if (isGlobal) target.classList.add("stage-global-layout-target");
+      target.style.setProperty("--stage-layout-x", `${element.x}px`);
+      target.style.setProperty("--stage-layout-y", `${element.y}px`);
+      target.style.setProperty("--stage-layout-w", `${element.width}px`);
+      target.style.setProperty("--stage-layout-h", `${element.height}px`);
+      target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
+      if (element.kind === "text") {
+        applyStageLayoutTextProperties(target, element);
+      }
+    }
+
+    function stageLayoutTextDefault(element) {
+      const id = String(element?.id || "").toLowerCase();
+      if (element?.defaultText !== undefined && String(element.defaultText).length) return String(element.defaultText);
+      if (id === "roundintrotext") return "Round One";
+      if (id === "roundintroinfotext") return "Additional round info";
+      if (id === "stageprompttext") return "Prompt Text";
+      if (id === "stagepresentationtext") return "";
+      return String(element?.name || "");
+    }
+
+    function stageLayoutComputedFontSize(element) {
+      const baseSize = Number(element.fontSize || 58);
+      if (!element.autoFitText) return baseSize;
+      const text = stageLayoutTextDefault(element) || String(element.name || "Text");
+      const lines = String(text).split("\n");
+      const longestLine = Math.max(1, ...lines.map((line) => line.length || 1));
+      const byWidth = Number(element.width || 1) / longestLine * 1.55;
+      const byHeight = Number(element.height || 1) / Math.max(1, lines.length) * 0.72;
+      return Math.max(8, Math.min(260, Math.min(byWidth, byHeight)));
+    }
+
+    function applyStageLayoutTextProperties(target, element) {
+      const fontColor = normalizeUiColor(element.fontColor) || "#ffffff";
+      const fontSize = `${stageLayoutComputedFontSize(element)}px`;
+      target.style.color = fontColor;
+      target.style.fontSize = fontSize;
+      target.style.setProperty("--stage-text-color", fontColor);
+      target.style.setProperty("--stage-text-font-size", fontSize);
+      if (!target.textContent.trim() && element.defaultText) {
+        target.textContent = stageLayoutTextDefault(element);
       }
     }
 
@@ -5047,7 +5124,7 @@
       layoutRedoStack = [];
       updateLayoutStorageStatus(result.storage);
       selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
-      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "";
+      setLayoutSelection(layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
       renderLayoutTool();
     }
 
@@ -5088,7 +5165,11 @@
           y: Number(Number(element.y || 0).toFixed(3)),
           width: Number(Number(element.width || 0).toFixed(3)),
           height: Number(Number(element.height || 0).toFixed(3)),
-          scale: Number(Number(element.scale || 1).toFixed(3))
+          scale: Number(Number(element.scale || 1).toFixed(3)),
+          defaultText: element.kind === "text" ? String(element.defaultText ?? layoutDefaultText(element)) : "",
+          fontSize: element.kind === "text" ? Number(Number(element.fontSize || 58).toFixed(3)) : 58,
+          autoFitText: element.kind === "text" ? element.autoFitText === true : false,
+          fontColor: element.kind === "text" ? normalizeUiColor(element.fontColor) || "#ffffff" : "#ffffff"
         }))
       };
     }
@@ -5103,6 +5184,35 @@
 
     function layoutElement(stateId, elementId) {
       return layoutGroup(stateId)?.elements?.find((element) => element.id === elementId) || null;
+    }
+
+    function selectedLayoutElements() {
+      const group = layoutGroup(selectedLayoutStateId);
+      if (!group) return [];
+      return (group.elements || []).filter((element) => selectedLayoutElementIds.has(element.id));
+    }
+
+    function setLayoutSelection(ids) {
+      const group = layoutGroup(selectedLayoutStateId);
+      const validIds = new Set((group?.elements || []).map((element) => element.id));
+      const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
+      selectedLayoutElementIds = new Set(nextIds);
+      selectedLayoutElementId = nextIds[nextIds.length - 1] || "";
+    }
+
+    function selectLayoutElement(elementId, options = {}) {
+      if (options.additive) {
+        const nextIds = new Set(selectedLayoutElementIds);
+        if (nextIds.has(elementId)) {
+          nextIds.delete(elementId);
+        } else {
+          nextIds.add(elementId);
+        }
+        setLayoutSelection([...nextIds]);
+      } else {
+        setLayoutSelection([elementId]);
+      }
+      renderLayoutTool();
     }
 
     function isLayoutDirty() {
@@ -5157,7 +5267,11 @@
         y: Math.round(canvas.height / 2),
         width: item.width || 240,
         height: item.height || 120,
-        scale: 1
+        scale: 1,
+        defaultText: item.kind === "text" ? layoutDefaultText(item) : "",
+        fontSize: item.kind === "text" ? 58 : 58,
+        autoFitText: false,
+        fontColor: item.kind === "text" ? "#ffffff" : "#ffffff"
       };
     }
 
@@ -5176,7 +5290,8 @@
     function restoreLayoutHistory(snapshot) {
       stageLayouts = JSON.parse(snapshot);
       selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
-      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "";
+      setLayoutSelection([...selectedLayoutElementIds].filter((id) => layoutElement(selectedLayoutStateId, id)));
+      if (!selectedLayoutElementId) setLayoutSelection(layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
       renderLayoutTool();
     }
 
@@ -5234,10 +5349,11 @@
       renderLayoutFields();
       renderLayoutActions();
       publishRuntimeLocalChanges();
+      updateGlobalSaveButton();
     }
 
     function renderLayoutActions() {
-      const hasSelection = Boolean(layoutElement(selectedLayoutStateId, selectedLayoutElementId));
+      const hasSelection = selectedLayoutElements().length > 0;
       for (const button of [removeLayoutObjectButton, layoutPreviewRemoveObjectButton]) {
         if (button) button.disabled = !hasSelection;
       }
@@ -5257,7 +5373,7 @@
         button.querySelector(".flow-pill").textContent = `${state.elements?.length || 0} assets`;
         button.addEventListener("click", () => {
           selectedLayoutStateId = state.id;
-          selectedLayoutElementId = state.elements?.[0]?.id || "";
+          setLayoutSelection(state.elements?.[0]?.id || "");
           renderLayoutTool();
         });
         layoutStateList.appendChild(button);
@@ -5271,15 +5387,12 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "flow-action-row";
-        button.classList.toggle("is-selected", element.id === selectedLayoutElementId);
+        button.classList.toggle("is-selected", selectedLayoutElementIds.has(element.id));
         button.innerHTML = `<span><strong></strong><span></span></span><span class="flow-pill"></span>`;
         button.querySelector("strong").textContent = element.name;
         button.querySelector("span span").textContent = `${Math.round(element.x)}, ${Math.round(element.y)} / ${Number(element.scale || 1).toFixed(2)}x`;
         button.querySelector(".flow-pill").textContent = element.kind === "text" ? "Text" : "Art";
-        button.addEventListener("click", () => {
-          selectedLayoutElementId = element.id;
-          renderLayoutTool();
-        });
+        button.addEventListener("click", (event) => selectLayoutElement(element.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey }));
         layoutElementList.appendChild(button);
       }
     }
@@ -5300,7 +5413,7 @@
         const node = document.createElement("div");
         node.className = "layout-preview-element";
         const isEditableElement = selectedLayoutStateId === "global" || !(globalStageLayout().elements || []).some((globalElement) => globalElement.id === element.id);
-        node.classList.toggle("is-selected", isEditableElement && element.id === selectedLayoutElementId);
+        node.classList.toggle("is-selected", isEditableElement && selectedLayoutElementIds.has(element.id));
         node.classList.toggle("is-global-preview", selectedLayoutStateId !== "global" && !isEditableElement);
         node.dataset.elementId = element.id;
         node.style.left = `${element.x * scale}px`;
@@ -5310,12 +5423,14 @@
         node.style.transform = `translate(-50%, -50%) scale(${element.scale || 1})`;
         node.style.setProperty("--layout-fit-scale", scale);
         node.appendChild(layoutPreviewContent(element));
-        if (isEditableElement && element.id === selectedLayoutElementId) {
+        if (isEditableElement) {
+          node.addEventListener("pointerdown", (event) => startLayoutDrag(event, element));
+        }
+        if (isEditableElement && selectedLayoutElementIds.has(element.id)) {
           const handle = document.createElement("span");
           handle.className = "layout-resize-handle";
           handle.addEventListener("pointerdown", (event) => startLayoutScale(event, element));
           node.appendChild(handle);
-          node.addEventListener("pointerdown", (event) => startLayoutDrag(event, element));
         }
         layoutStagePreview.appendChild(node);
       }
@@ -5330,9 +5445,15 @@
       } else if (id === "stagecodepanel") {
         content.innerHTML = `<div class="layout-preview-code-card"><span>Stage Code</span><strong>NUZ7</strong></div>`;
       } else if (id === "waitingstatus") {
-        content.innerHTML = `<div class="layout-preview-pill">Waiting for Ava to start the game</div>`;
+        const pill = document.createElement("div");
+        pill.className = "layout-preview-pill";
+        pill.textContent = layoutDefaultText(element);
+        content.appendChild(pill);
       } else if (id === "joinprompt") {
-        content.innerHTML = `<div class="layout-preview-pill layout-preview-join">Join the Lobby at bit.ly/popcontroller</div>`;
+        const pill = document.createElement("div");
+        pill.className = "layout-preview-pill layout-preview-join";
+        pill.textContent = layoutDefaultText(element);
+        content.appendChild(pill);
       } else if (id === "startpopup") {
         content.innerHTML = `<div class="layout-preview-countdown"><span>Starting in</span><strong>3</strong></div>`;
       } else if (id === "playerlobby") {
@@ -5342,21 +5463,54 @@
       } else if (id === "stageintrotitle") {
         content.innerHTML = `<div class="layout-preview-title">Game Intro</div>`;
       } else if (id === "stagepresentationtext") {
-        content.innerHTML = `<div class="layout-preview-presentation">This is test number 1</div>`;
+        content.appendChild(layoutPreviewTextNode(element, "This is test number 1"));
       } else if (id === "stageprompttext") {
-        content.innerHTML = `<div class="layout-preview-presentation">Prompt Text</div>`;
+        content.appendChild(layoutPreviewTextNode(element, "Prompt Text"));
       } else if (id === "roundintrotext") {
-        content.innerHTML = `<div class="layout-preview-presentation">Round <span>One</span></div>`;
+        content.appendChild(layoutPreviewTextNode(element, "Round One"));
       } else if (id === "roundintroinfotext") {
-        content.innerHTML = `<div class="layout-preview-presentation">Additional round info</div>`;
+        content.appendChild(layoutPreviewTextNode(element, "Additional round info"));
       } else if (id === "presentclickwidget") {
         content.innerHTML = `<div class="click-symbol"><span class="click-pulse"></span><span class="click-cursor"></span></div>`;
       } else if (element.kind === "text") {
-        content.innerHTML = `<div class="layout-preview-presentation">${element.name}</div>`;
+        content.appendChild(layoutPreviewTextNode(element, element.name));
       } else {
         content.textContent = element.name;
       }
       return content;
+    }
+
+    function layoutDefaultText(element) {
+      const id = String(element?.id || "").toLowerCase();
+      const existing = element?.defaultText;
+      if (existing !== undefined && existing !== null && String(existing).length) return String(existing);
+      if (id === "waitingstatus") return "Waiting for Ava to start the game";
+      if (id === "joinprompt") return "Join the Lobby at bit.ly/popcontroller";
+      if (id === "stagepresentationtext") return "This is test number 1";
+      if (id === "stageprompttext") return "Prompt Text";
+      if (id === "roundintrotext") return "Round One";
+      if (id === "roundintroinfotext") return "Additional round info";
+      return String(element?.name || "Text");
+    }
+
+    function layoutComputedFontSize(element) {
+      const baseSize = Number(element.fontSize || 58);
+      if (!element.autoFitText) return baseSize;
+      const text = layoutDefaultText(element);
+      const lines = String(text || "Text").split("\n");
+      const longestLine = Math.max(1, ...lines.map((line) => line.length || 1));
+      const byWidth = Number(element.width || 1) / longestLine * 1.55;
+      const byHeight = Number(element.height || 1) / Math.max(1, lines.length) * 0.72;
+      return Math.max(8, Math.min(260, Math.min(byWidth, byHeight)));
+    }
+
+    function layoutPreviewTextNode(element, fallbackText) {
+      const node = document.createElement("div");
+      node.className = "layout-preview-presentation";
+      node.style.setProperty("--layout-text-font-size", `${layoutComputedFontSize(element)}px`);
+      node.style.setProperty("--layout-text-color", normalizeUiColor(element.fontColor) || "#ffffff");
+      node.textContent = element.defaultText !== undefined && String(element.defaultText).length ? String(element.defaultText) : fallbackText;
+      return node;
     }
 
     function layoutPreviewPlayers() {
@@ -5381,22 +5535,89 @@
       return wrap;
     }
 
+    function startLayoutMarquee(event) {
+      if (event.button !== 0 || event.target !== layoutStagePreview) return;
+      event.preventDefault();
+      const previewRect = layoutStagePreview.getBoundingClientRect();
+      const startX = event.clientX - previewRect.left;
+      const startY = event.clientY - previewRect.top;
+      const marquee = document.createElement("div");
+      marquee.className = "layout-selection-marquee";
+      layoutStagePreview.appendChild(marquee);
+      layoutStagePreview.setPointerCapture(event.pointerId);
+
+      const updateMarquee = (moveEvent) => {
+        const currentX = moveEvent.clientX - previewRect.left;
+        const currentY = moveEvent.clientY - previewRect.top;
+        const left = Math.min(startX, currentX);
+        const top = Math.min(startY, currentY);
+        const width = Math.abs(currentX - startX);
+        const height = Math.abs(currentY - startY);
+        marquee.style.left = `${left}px`;
+        marquee.style.top = `${top}px`;
+        marquee.style.width = `${width}px`;
+        marquee.style.height = `${height}px`;
+
+        const selectionRect = { left, top, right: left + width, bottom: top + height };
+        const selectedIds = [];
+        for (const node of layoutStagePreview.querySelectorAll(".layout-preview-element:not(.is-global-preview)")) {
+          const nodeRect = node.getBoundingClientRect();
+          const localRect = {
+            left: nodeRect.left - previewRect.left,
+            top: nodeRect.top - previewRect.top,
+            right: nodeRect.right - previewRect.left,
+            bottom: nodeRect.bottom - previewRect.top
+          };
+          if (rectsIntersect(selectionRect, localRect)) selectedIds.push(node.dataset.elementId);
+        }
+        setLayoutSelection(selectedIds);
+        renderLayoutElements();
+        renderLayoutFields();
+        renderLayoutActions();
+        for (const node of layoutStagePreview.querySelectorAll(".layout-preview-element")) {
+          node.classList.toggle("is-selected", selectedLayoutElementIds.has(node.dataset.elementId) && !node.classList.contains("is-global-preview"));
+        }
+      };
+
+      const stopMarquee = () => {
+        marquee.remove();
+        window.removeEventListener("pointermove", updateMarquee);
+        window.removeEventListener("pointerup", stopMarquee);
+        window.removeEventListener("pointercancel", stopMarquee);
+        renderLayoutTool();
+      };
+
+      updateMarquee(event);
+      window.addEventListener("pointermove", updateMarquee);
+      window.addEventListener("pointerup", stopMarquee, { once: true });
+      window.addEventListener("pointercancel", stopMarquee, { once: true });
+    }
+
+    function rectsIntersect(a, b) {
+      return a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top;
+    }
+
     function startLayoutDrag(event, element) {
       if (event.target.closest(".layout-resize-handle")) return;
       event.preventDefault();
+      event.stopPropagation();
+      if (!selectedLayoutElementIds.has(element.id)) {
+        setLayoutSelection(event.metaKey || event.ctrlKey ? [...selectedLayoutElementIds, element.id] : [element.id]);
+      }
       pushLayoutHistory();
       const scale = layoutPreviewScale() || 1;
       const startX = event.clientX;
       const startY = event.clientY;
-      const originX = Number(element.x || 0);
-      const originY = Number(element.y || 0);
+      const movingElements = selectedLayoutElements();
+      const origins = new Map(movingElements.map((item) => [item.id, { x: Number(item.x || 0), y: Number(item.y || 0) }]));
       let lockedAxis = null;
+      let moved = false;
       event.currentTarget.setPointerCapture(event.pointerId);
       const move = (moveEvent) => {
-        const deltaX = (moveEvent.clientX - startX) / scale;
-        const deltaY = (moveEvent.clientY - startY) / scale;
-        let nextX = originX + deltaX;
-        let nextY = originY + deltaY;
+        let deltaX = (moveEvent.clientX - startX) / scale;
+        let deltaY = (moveEvent.clientY - startY) / scale;
+        if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) return;
+        moved = true;
         if (moveEvent.shiftKey) {
           if (!lockedAxis) {
             const absX = Math.abs(deltaX);
@@ -5404,21 +5625,25 @@
             if (Math.max(absX, absY) >= 2) lockedAxis = absX >= absY ? "x" : "y";
           }
           if (lockedAxis === "x") {
-            nextY = originY;
-            if (moveEvent.metaKey) nextX = Math.round(nextX / 10) * 10;
+            deltaY = 0;
+            if (moveEvent.metaKey) deltaX = Math.round(deltaX / 10) * 10;
           } else if (lockedAxis === "y") {
-            nextX = originX;
-            if (moveEvent.metaKey) nextY = Math.round(nextY / 10) * 10;
+            deltaX = 0;
+            if (moveEvent.metaKey) deltaY = Math.round(deltaY / 10) * 10;
           }
         }
-        element.x = Number(nextX.toFixed(3));
-        element.y = Number(nextY.toFixed(3));
+        for (const item of movingElements) {
+          const origin = origins.get(item.id);
+          item.x = Number((origin.x + deltaX).toFixed(3));
+          item.y = Number((origin.y + deltaY).toFixed(3));
+        }
         renderLayoutTool();
       };
       const stop = () => {
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", stop);
         window.removeEventListener("pointercancel", stop);
+        if (!moved) renderLayoutTool();
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", stop, { once: true });
@@ -5428,16 +5653,24 @@
     function startLayoutScale(event, element) {
       event.preventDefault();
       event.stopPropagation();
+      if (!selectedLayoutElementIds.has(element.id)) setLayoutSelection([element.id]);
       pushLayoutHistory();
       const previewScale = layoutPreviewScale() || 1;
       const startX = event.clientX;
       const startY = event.clientY;
+      const scalingElements = selectedLayoutElements();
+      const origins = new Map(scalingElements.map((item) => [item.id, Number(item.scale || 1)]));
       const originScale = Number(element.scale || 1);
       const baseSize = Math.max(Number(element.width || 1), Number(element.height || 1));
       event.currentTarget.setPointerCapture(event.pointerId);
       const move = (moveEvent) => {
         const delta = Math.max(moveEvent.clientX - startX, moveEvent.clientY - startY) / previewScale;
-        element.scale = Number(Math.max(0.1, Math.min(6, originScale + delta / baseSize)).toFixed(3));
+        const nextPrimaryScale = Math.max(0.1, Math.min(6, originScale + delta / baseSize));
+        const scaleDelta = nextPrimaryScale - originScale;
+        for (const item of scalingElements) {
+          const nextScale = Math.max(0.1, Math.min(6, origins.get(item.id) + scaleDelta));
+          item.scale = Number(nextScale.toFixed(3));
+        }
         renderLayoutTool();
       };
       const stop = () => {
@@ -5453,22 +5686,31 @@
     function renderLayoutFields() {
       layoutEditorFields.replaceChildren();
       const state = layoutGroup(selectedLayoutStateId);
-      const element = layoutElement(selectedLayoutStateId, selectedLayoutElementId);
-      layoutEditorTitle.textContent = element ? element.name : state ? state.name : "Stage Layouts";
-      layoutEditorHelp.textContent = element
+      const elements = selectedLayoutElements();
+      const element = elements[elements.length - 1] || null;
+      layoutEditorTitle.textContent = elements.length > 1 ? `${elements.length} Objects Selected` : element ? element.name : state ? state.name : "Stage Layouts";
+      layoutEditorHelp.textContent = elements.length > 1
+        ? `Editing ${state.name}. Drag the selected group or change fields to move values relatively.`
+        : element
         ? `Editing ${state.name}. Drag the highlighted box or resize from its corner.`
         : "Choose an element to edit its fixed stage position.";
       if (!element) return;
-      layoutEditorFields.appendChild(layoutNumberField("X", element.x, (value) => updateLayoutNumber(element, "x", value)));
-      layoutEditorFields.appendChild(layoutNumberField("Y", element.y, (value) => updateLayoutNumber(element, "y", value)));
-      layoutEditorFields.appendChild(layoutNumberField("Scale", element.scale, (value) => updateLayoutNumber(element, "scale", Math.max(0.1, value), 0.05)));
-      layoutEditorFields.appendChild(layoutNumberField("Width", element.width, (value) => updateLayoutNumber(element, "width", Math.max(24, value))));
-      layoutEditorFields.appendChild(layoutNumberField("Height", element.height, (value) => updateLayoutNumber(element, "height", Math.max(24, value))));
+      layoutEditorFields.appendChild(layoutNumberField("X", element.x, (value) => updateLayoutNumber("x", value)));
+      layoutEditorFields.appendChild(layoutNumberField("Y", element.y, (value) => updateLayoutNumber("y", value)));
+      layoutEditorFields.appendChild(layoutNumberField("Scale", element.scale, (value) => updateLayoutNumber("scale", Math.max(0.1, value)), 0.05));
+      layoutEditorFields.appendChild(layoutNumberField("Width", element.width, (value) => updateLayoutNumber("width", Math.max(24, value))));
+      layoutEditorFields.appendChild(layoutNumberField("Height", element.height, (value) => updateLayoutNumber("height", Math.max(24, value))));
+      if (elements.length === 1 && element.kind === "text") {
+        layoutEditorFields.appendChild(layoutTextAreaField("Default Text", layoutDefaultText(element), (value) => updateLayoutTextValue(element, "defaultText", value)));
+        layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutTextValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field"));
+        layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText === true, (value) => updateLayoutTextValue(element, "autoFitText", value)));
+        layoutEditorFields.appendChild(layoutColorField("Font Color", normalizeUiColor(element.fontColor) || "#ffffff", (value) => updateLayoutTextValue(element, "fontColor", value)));
+      }
     }
 
-    function layoutNumberField(label, value, onChange, step = 1) {
+    function layoutNumberField(label, value, onChange, step = 1, extraClass = "") {
       const field = document.createElement("label");
-      field.className = "layout-number-field";
+      field.className = `layout-number-field ${extraClass}`.trim();
       field.textContent = label;
       const input = document.createElement("input");
       input.type = "number";
@@ -5482,9 +5724,61 @@
       return field;
     }
 
-    function updateLayoutNumber(element, key, value) {
+    function layoutTextAreaField(label, value, onChange) {
+      const field = document.createElement("label");
+      field.className = "layout-number-field layout-text-field is-wide";
+      field.textContent = label;
+      const input = document.createElement("textarea");
+      input.value = value;
+      input.addEventListener("change", () => onChange(input.value));
+      field.appendChild(input);
+      return field;
+    }
+
+    function layoutToggleField(label, value, onChange) {
+      const field = document.createElement("label");
+      field.className = "layout-number-field layout-text-field";
+      field.textContent = label;
+      const input = document.createElement("select");
+      input.innerHTML = `<option value="false">False</option><option value="true">True</option>`;
+      input.value = value ? "true" : "false";
+      input.addEventListener("change", () => onChange(input.value === "true"));
+      field.appendChild(input);
+      return field;
+    }
+
+    function layoutColorField(label, value, onChange) {
+      const field = document.createElement("label");
+      field.className = "layout-number-field layout-text-field layout-color-field";
+      field.textContent = label;
+      const input = document.createElement("input");
+      input.type = "color";
+      input.value = normalizeUiColor(value) || "#ffffff";
+      input.addEventListener("input", () => onChange(input.value));
+      field.appendChild(input);
+      return field;
+    }
+
+    function updateLayoutNumber(key, value) {
       pushLayoutHistory();
-      element[key] = Number(Number(value).toFixed(3));
+      const elements = selectedLayoutElements();
+      const primary = layoutElement(selectedLayoutStateId, selectedLayoutElementId) || elements[elements.length - 1];
+      if (!primary) return;
+      const delta = Number(value) - Number(primary[key] || 0);
+      for (const element of elements) {
+        const nextValue = Number(element[key] || 0) + delta;
+        element[key] = Number(Number(nextValue).toFixed(3));
+      }
+      renderLayoutTool();
+    }
+
+    function updateLayoutTextValue(element, key, value) {
+      pushLayoutHistory();
+      if (key === "fontSize") {
+        element[key] = Number(Number(value).toFixed(3));
+      } else {
+        element[key] = value;
+      }
       renderLayoutTool();
     }
 
@@ -5531,19 +5825,20 @@
       if (!Array.isArray(group.elements)) group.elements = [];
       const element = makeLayoutObject(item);
       group.elements.push(element);
-      selectedLayoutElementId = element.id;
+      setLayoutSelection(element.id);
       closeLayoutObjectPicker();
       renderLayoutTool();
     }
 
     function removeSelectedLayoutObject() {
       const group = layoutGroup(selectedLayoutStateId);
-      if (!group || !selectedLayoutElementId) return;
-      const index = (group.elements || []).findIndex((element) => element.id === selectedLayoutElementId);
-      if (index < 0) return;
+      const selectedIds = new Set(selectedLayoutElementIds);
+      if (!group || !selectedIds.size) return;
+      const firstIndex = (group.elements || []).findIndex((element) => selectedIds.has(element.id));
+      if (firstIndex < 0) return;
       pushLayoutHistory();
-      group.elements.splice(index, 1);
-      selectedLayoutElementId = group.elements[index]?.id || group.elements[index - 1]?.id || "";
+      group.elements = (group.elements || []).filter((element) => !selectedIds.has(element.id));
+      setLayoutSelection(group.elements[firstIndex]?.id || group.elements[firstIndex - 1]?.id || "");
       renderLayoutTool();
     }
 
@@ -5559,7 +5854,7 @@
       layoutUndoStack = [];
       layoutRedoStack = [];
       selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
-      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "";
+      setLayoutSelection(layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
       closeLayoutObjectPicker();
       renderLayoutTool();
     }
@@ -5592,6 +5887,7 @@
           if (first) addLayoutObject(first);
         }
       });
+      layoutStagePreview.addEventListener("pointerdown", startLayoutMarquee);
       document.addEventListener("click", handleLayoutDocumentClick);
       revertLayoutButton.addEventListener("click", revertStageLayouts);
       window.addEventListener("keydown", handleLayoutHotkeys);
