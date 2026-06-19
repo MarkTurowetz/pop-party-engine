@@ -150,7 +150,9 @@
             "B",
             "C",
             "D"
-          ]
+          ],
+          "locked": true,
+          "inputMode": "submitOnce"
         },
         {
           "id": "crafting-game-state-action-mqlag55r",
