@@ -1,0 +1,186 @@
+{
+  "canvas": {
+    "width": 1920,
+    "height": 1080
+  },
+  "states": [
+    {
+      "id": "lobby",
+      "name": "Lobby",
+      "elements": [
+        {
+          "id": "stageTitle",
+          "name": "Header",
+          "selector": ".stage-title",
+          "x": 960,
+          "y": 190,
+          "width": 1080,
+          "height": 150,
+          "scale": 1
+        },
+        {
+          "id": "stageCodePanel",
+          "name": "Stage Code Panel",
+          "selector": ".stage-code-panel",
+          "x": 960,
+          "y": 390,
+          "width": 560,
+          "height": 190,
+          "scale": 1
+        },
+        {
+          "id": "waitingStatus",
+          "name": "Waiting Status",
+          "selector": "#waitingStatus",
+          "x": 960,
+          "y": 575,
+          "width": 700,
+          "height": 82,
+          "scale": 1
+        },
+        {
+          "id": "joinPrompt",
+          "name": "Join Prompt",
+          "selector": "#joinPrompt",
+          "x": 960,
+          "y": 650,
+          "width": 740,
+          "height": 76,
+          "scale": 1
+        },
+        {
+          "id": "playerLobby",
+          "name": "Player Avatars",
+          "selector": "#playerLobby",
+          "x": 960,
+          "y": 920,
+          "width": 1320,
+          "height": 150,
+          "scale": 1
+        }
+      ]
+    },
+    {
+      "id": "starting",
+      "name": "Starting Countdown",
+      "elements": [
+        {
+          "id": "startPopup",
+          "name": "Countdown Popup",
+          "selector": "#startPopup",
+          "x": 960,
+          "y": 130,
+          "width": 700,
+          "height": 130,
+          "scale": 1
+        },
+        {
+          "id": "stageTitle",
+          "name": "Header",
+          "selector": ".stage-title",
+          "x": 960,
+          "y": 250,
+          "width": 1080,
+          "height": 150,
+          "scale": 1
+        },
+        {
+          "id": "stageCodePanel",
+          "name": "Stage Code Panel",
+          "selector": ".stage-code-panel",
+          "x": 960,
+          "y": 450,
+          "width": 560,
+          "height": 190,
+          "scale": 1
+        },
+        {
+          "id": "waitingStatus",
+          "name": "Cancel Prompt",
+          "selector": "#waitingStatus",
+          "x": 960,
+          "y": 640,
+          "width": 700,
+          "height": 82,
+          "scale": 1
+        },
+        {
+          "id": "playerLobby",
+          "name": "Player Avatars",
+          "selector": "#playerLobby",
+          "x": 960,
+          "y": 920,
+          "width": 1320,
+          "height": 150,
+          "scale": 1
+        }
+      ]
+    },
+    {
+      "id": "intro",
+      "name": "Game Intro",
+      "elements": [
+        {
+          "id": "stageCodeBadge",
+          "name": "Stage Code Widget",
+          "selector": "#stageCodeBadge",
+          "x": 108,
+          "y": 70,
+          "width": 170,
+          "height": 82,
+          "scale": 1
+        },
+        {
+          "id": "stageIntroTitle",
+          "name": "Intro Header",
+          "selector": "#stageIntroTitle",
+          "x": 960,
+          "y": 235,
+          "width": 1060,
+          "height": 130,
+          "scale": 1
+        },
+        {
+          "id": "stagePresentationText",
+          "name": "Presentation Text",
+          "selector": "#stagePresentationText",
+          "x": 960,
+          "y": 460,
+          "width": 980,
+          "height": 240,
+          "scale": 1
+        },
+        {
+          "id": "stagePromptText",
+          "name": "Prompt Text",
+          "selector": "#stagePromptText",
+          "x": 960,
+          "y": 760,
+          "width": 860,
+          "height": 120,
+          "scale": 1
+        },
+        {
+          "id": "presentClickWidget",
+          "name": "Click Cursor",
+          "selector": "#presentClickWidget",
+          "x": 1780,
+          "y": 930,
+          "width": 90,
+          "height": 90,
+          "scale": 1
+        },
+        {
+          "id": "playerLobby",
+          "name": "Player Avatars",
+          "selector": "#playerLobby",
+          "x": 960,
+          "y": 935,
+          "width": 1320,
+          "height": 150,
+          "scale": 1
+        }
+      ]
+    }
+  ]
+}

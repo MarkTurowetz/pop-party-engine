@@ -10,5 +10,7 @@ game-flow.json
 game-flow.backups/
 game-constants.json
 game-constants.backups/
+stage-layouts.json
+stage-layouts.backups/
 *.py
 *.sh

@@ -16,6 +16,9 @@ const GAME_FLOW_BACKUP_DIR = path.join(ROOT, "game-flow.backups");
 const DEFAULT_GAME_CONSTANTS_FILE = path.join(ROOT, "game-constants.default.json");
 const GAME_CONSTANTS_FILE = path.resolve(ROOT, process.env.GAME_CONSTANTS_FILE || "game-constants.json");
 const GAME_CONSTANTS_BACKUP_DIR = path.join(ROOT, "game-constants.backups");
+const DEFAULT_STAGE_LAYOUTS_FILE = path.join(ROOT, "stage-layouts.default.json");
+const STAGE_LAYOUTS_FILE = path.resolve(ROOT, process.env.STAGE_LAYOUTS_FILE || "stage-layouts.json");
+const STAGE_LAYOUTS_BACKUP_DIR = path.join(ROOT, "stage-layouts.backups");
 const GAME_FLOW_GITHUB_TOKEN = process.env.GAME_FLOW_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
 const GAME_FLOW_STORAGE = String(process.env.GAME_FLOW_STORAGE || (GAME_FLOW_GITHUB_TOKEN ? "github" : "local")).toLowerCase();
 const GAME_FLOW_GITHUB_REPO = process.env.GAME_FLOW_GITHUB_REPO || process.env.GITHUB_REPOSITORY || "MarkTurowetz/pop-party";
@@ -23,6 +26,7 @@ const GAME_FLOW_GITHUB_BRANCH = process.env.GAME_FLOW_GITHUB_BRANCH || "game-dat
 const GAME_FLOW_GITHUB_BASE_BRANCH = process.env.GAME_FLOW_GITHUB_BASE_BRANCH || "main";
 const GAME_FLOW_GITHUB_PATH = process.env.GAME_FLOW_GITHUB_PATH || "game-flow.json";
 const GAME_CONSTANTS_GITHUB_PATH = process.env.GAME_CONSTANTS_GITHUB_PATH || "game-constants.json";
+const STAGE_LAYOUTS_GITHUB_PATH = process.env.STAGE_LAYOUTS_GITHUB_PATH || "stage-layouts.json";
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
@@ -113,6 +117,45 @@ const defaultPlayerColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa
 const avatarShapes = ["rex", "stego", "trike", "raptor", "bronto", "ankylo"];
 const defaultGameConstants = {
   playerColors: defaultPlayerColors
+};
+const defaultStageLayouts = {
+  canvas: { width: 1920, height: 1080 },
+  states: [
+    {
+      id: "lobby",
+      name: "Lobby",
+      elements: [
+        { id: "stageTitle", name: "Header", selector: ".stage-title", x: 960, y: 190, width: 1080, height: 150, scale: 1 },
+        { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
+        { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", x: 960, y: 575, width: 700, height: 82, scale: 1 },
+        { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", x: 960, y: 650, width: 740, height: 76, scale: 1 },
+        { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 920, width: 1320, height: 150, scale: 1 }
+      ]
+    },
+    {
+      id: "starting",
+      name: "Starting Countdown",
+      elements: [
+        { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", x: 960, y: 130, width: 700, height: 130, scale: 1 },
+        { id: "stageTitle", name: "Header", selector: ".stage-title", x: 960, y: 250, width: 1080, height: 150, scale: 1 },
+        { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", x: 960, y: 450, width: 560, height: 190, scale: 1 },
+        { id: "waitingStatus", name: "Cancel Prompt", selector: "#waitingStatus", x: 960, y: 640, width: 700, height: 82, scale: 1 },
+        { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 920, width: 1320, height: 150, scale: 1 }
+      ]
+    },
+    {
+      id: "intro",
+      name: "Game Intro",
+      elements: [
+        { id: "stageCodeBadge", name: "Stage Code Widget", selector: "#stageCodeBadge", x: 108, y: 70, width: 170, height: 82, scale: 1 },
+        { id: "stageIntroTitle", name: "Intro Header", selector: "#stageIntroTitle", x: 960, y: 235, width: 1060, height: 130, scale: 1 },
+        { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", x: 960, y: 460, width: 980, height: 240, scale: 1 },
+        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", x: 960, y: 760, width: 860, height: 120, scale: 1 },
+        { id: "presentClickWidget", name: "Click Cursor", selector: "#presentClickWidget", x: 1780, y: 930, width: 90, height: 90, scale: 1 },
+        { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 935, width: 1320, height: 150, scale: 1 }
+      ]
+    }
+  ]
 };
 const acceptedArtTypes = {
   "image/png": ".png",
@@ -259,6 +302,74 @@ function normalizeGameConstants(constants) {
   };
 }
 
+function normalizeStageLayouts(layouts) {
+  const incomingCanvas = layouts?.canvas || defaultStageLayouts.canvas;
+  const canvas = {
+    width: normalizeLayoutNumber(incomingCanvas.width, defaultStageLayouts.canvas.width, 640, 10000),
+    height: normalizeLayoutNumber(incomingCanvas.height, defaultStageLayouts.canvas.height, 360, 10000)
+  };
+  const incomingStates = Array.isArray(layouts?.states) ? layouts.states : defaultStageLayouts.states;
+  const normalizedDefaultStates = defaultStageLayouts.states.map((state, index) => normalizeLayoutState(state, index)).filter(Boolean);
+  const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
+  const normalizedStates = incomingStates.map((state, stateIndex) => normalizeLayoutState(state, stateIndex)).filter(Boolean);
+  for (const defaultState of normalizedDefaultStates) {
+    if (!normalizedStates.some((state) => state.id === defaultState.id)) {
+      normalizedStates.push(cloneJson(defaultState));
+    }
+  }
+  return {
+    canvas,
+    states: normalizedStates.map((state) => {
+      const defaultState = defaultStatesById.get(state.id);
+      if (!defaultState) return state;
+      const elements = [...state.elements];
+      for (const element of defaultState.elements) {
+        if (!elements.some((item) => item.id === element.id)) elements.push(cloneJson(element));
+      }
+      return { ...state, elements };
+    })
+  };
+}
+
+function normalizeLayoutState(state, stateIndex) {
+  if (!state || typeof state !== "object") return null;
+  const fallbackId = stateIndex === 0 ? "lobby" : `layout-state-${stateIndex + 1}`;
+  return {
+    id: normalizeFlowId(state.id || state.name, fallbackId),
+    name: cleanFlowText(state.name, state.id || fallbackId),
+    elements: Array.isArray(state.elements)
+      ? state.elements.map((element, elementIndex) => normalizeLayoutElement(element, elementIndex)).filter(Boolean)
+      : []
+  };
+}
+
+function normalizeLayoutElement(element, elementIndex) {
+  if (!element || typeof element !== "object") return null;
+  const fallbackId = `layout-element-${elementIndex + 1}`;
+  const width = normalizeLayoutNumber(element.width, 240, 24, 4000);
+  const height = normalizeLayoutNumber(element.height, 100, 24, 4000);
+  return {
+    id: normalizeFlowId(element.id || element.name, fallbackId),
+    name: cleanFlowText(element.name, element.id || fallbackId),
+    selector: cleanLayoutSelector(element.selector),
+    x: normalizeLayoutNumber(element.x, defaultStageLayouts.canvas.width / 2, -5000, 15000),
+    y: normalizeLayoutNumber(element.y, defaultStageLayouts.canvas.height / 2, -5000, 15000),
+    width,
+    height,
+    scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10)
+  };
+}
+
+function normalizeLayoutNumber(value, fallback, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Number(Math.max(min, Math.min(max, number)).toFixed(3));
+}
+
+function cleanLayoutSelector(value) {
+  return String(value || "").trim().replace(/[\n\r]/g, "").slice(0, 120);
+}
+
 function normalizeGameFlow(flow) {
   const incomingStates = Array.isArray(flow?.states) ? flow.states : defaultGameFlow.states;
   const states = incomingStates.map((state, stateIndex) => {
@@ -373,6 +484,14 @@ function readDefaultGameConstantsSource() {
   }
 }
 
+function readDefaultStageLayoutsSource() {
+  try {
+    return normalizeStageLayouts(readJsonFile(DEFAULT_STAGE_LAYOUTS_FILE));
+  } catch (error) {
+    return normalizeStageLayouts(defaultStageLayouts);
+  }
+}
+
 function readLocalGameFlowSource() {
   try {
     return readJsonFile(GAME_FLOW_FILE);
@@ -386,6 +505,14 @@ function readLocalGameConstantsSource() {
     return normalizeGameConstants(readJsonFile(GAME_CONSTANTS_FILE));
   } catch (error) {
     return readDefaultGameConstantsSource();
+  }
+}
+
+function readLocalStageLayoutsSource() {
+  try {
+    return normalizeStageLayouts(readJsonFile(STAGE_LAYOUTS_FILE));
+  } catch (error) {
+    return readDefaultStageLayoutsSource();
   }
 }
 
@@ -406,6 +533,14 @@ const gameConstantsStore = {
   error: ""
 };
 
+const stageLayoutsStore = {
+  source: readLocalStageLayoutsSource(),
+  remoteSha: "",
+  storageKind: GAME_FLOW_STORAGE === "github" ? "github" : "local",
+  loadedAt: 0,
+  error: ""
+};
+
 function readGameFlowSource() {
   return cloneJson(gameFlowStore.source || readDefaultGameFlowSource());
 }
@@ -420,6 +555,10 @@ function readGameConstantsSource() {
 
 function gameConstants() {
   return normalizeGameConstants(readGameConstantsSource());
+}
+
+function readStageLayoutsSource() {
+  return cloneJson(stageLayoutsStore.source || readDefaultStageLayoutsSource());
 }
 
 async function loadGameConstantsSource({ refresh = false } = {}) {
@@ -474,6 +613,60 @@ async function writeGameConstants(constants) {
   gameConstantsStore.source = normalized;
   gameConstantsStore.loadedAt = Date.now();
   return readGameConstantsSource();
+}
+
+async function loadStageLayoutsSource({ refresh = false } = {}) {
+  if (stageLayoutsStore.storageKind !== "github") {
+    stageLayoutsStore.source = readLocalStageLayoutsSource();
+    stageLayoutsStore.loadedAt = Date.now();
+    stageLayoutsStore.error = "";
+    return readStageLayoutsSource();
+  }
+
+  if (!refresh && stageLayoutsStore.loadedAt) return readStageLayoutsSource();
+  if (!GAME_FLOW_GITHUB_TOKEN) {
+    stageLayoutsStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
+    return readStageLayoutsSource();
+  }
+
+  try {
+    const remote = await readGithubJsonSource(STAGE_LAYOUTS_GITHUB_PATH);
+    if (remote?.data) {
+      stageLayoutsStore.source = normalizeStageLayouts(remote.data);
+      stageLayoutsStore.remoteSha = remote.sha || "";
+    } else {
+      const seeded = await writeGithubJsonSource(readStageLayoutsSource(), "", STAGE_LAYOUTS_GITHUB_PATH, "Save stage layouts");
+      stageLayoutsStore.source = normalizeStageLayouts(seeded.data);
+      stageLayoutsStore.remoteSha = seeded.sha || "";
+    }
+    stageLayoutsStore.loadedAt = Date.now();
+    stageLayoutsStore.error = "";
+  } catch (error) {
+    stageLayoutsStore.error = `GitHub layout storage unavailable: ${error.message}`;
+  }
+
+  return readStageLayoutsSource();
+}
+
+async function writeStageLayouts(layouts) {
+  const normalized = normalizeStageLayouts(layouts);
+  backupStageLayoutsSource();
+  if (stageLayoutsStore.storageKind === "github") {
+    if (!GAME_FLOW_GITHUB_TOKEN) {
+      throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
+    }
+    const saved = await writeGithubJsonSource(normalized, stageLayoutsStore.remoteSha, STAGE_LAYOUTS_GITHUB_PATH, "Save stage layouts");
+    stageLayoutsStore.source = normalizeStageLayouts(saved.data);
+    stageLayoutsStore.remoteSha = saved.sha || "";
+    stageLayoutsStore.loadedAt = Date.now();
+    stageLayoutsStore.error = "";
+    mirrorStageLayoutsSource(stageLayoutsStore.source);
+    return readStageLayoutsSource();
+  }
+  writeLocalStageLayoutsSource(normalized);
+  stageLayoutsStore.source = normalized;
+  stageLayoutsStore.loadedAt = Date.now();
+  return readStageLayoutsSource();
 }
 
 async function loadGameFlowSource({ refresh = false } = {}) {
@@ -546,12 +739,23 @@ function backupGameConstantsSource() {
   fs.copyFileSync(GAME_CONSTANTS_FILE, path.join(GAME_CONSTANTS_BACKUP_DIR, `game-constants-${stamp}.json`));
 }
 
+function backupStageLayoutsSource() {
+  if (!fs.existsSync(STAGE_LAYOUTS_FILE)) return;
+  fs.mkdirSync(STAGE_LAYOUTS_BACKUP_DIR, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  fs.copyFileSync(STAGE_LAYOUTS_FILE, path.join(STAGE_LAYOUTS_BACKUP_DIR, `stage-layouts-${stamp}.json`));
+}
+
 function writeLocalGameFlowSource(flow) {
   fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(flow, null, 2)}\n`);
 }
 
 function writeLocalGameConstantsSource(constants) {
   fs.writeFileSync(GAME_CONSTANTS_FILE, `${JSON.stringify(constants, null, 2)}\n`);
+}
+
+function writeLocalStageLayoutsSource(layouts) {
+  fs.writeFileSync(STAGE_LAYOUTS_FILE, `${JSON.stringify(layouts, null, 2)}\n`);
 }
 
 function mirrorGameFlowSource(flow) {
@@ -565,6 +769,14 @@ function mirrorGameFlowSource(flow) {
 function mirrorGameConstantsSource(constants) {
   try {
     writeLocalGameConstantsSource(constants);
+  } catch (error) {
+    // Durable storage is authoritative; local mirrors are best-effort.
+  }
+}
+
+function mirrorStageLayoutsSource(layouts) {
+  try {
+    writeLocalStageLayoutsSource(layouts);
   } catch (error) {
     // Durable storage is authoritative; local mirrors are best-effort.
   }
@@ -996,6 +1208,22 @@ async function sendGameConstants(res) {
   });
 }
 
+async function sendStageLayouts(res) {
+  const layouts = await loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" });
+  sendJson(res, 200, {
+    ok: true,
+    layouts: normalizeStageLayouts(layouts),
+    storage: {
+      kind: stageLayoutsStore.storageKind,
+      durable: stageLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
+      error: stageLayoutsStore.error || "",
+      repo: stageLayoutsStore.storageKind === "github" ? GAME_FLOW_GITHUB_REPO : "",
+      branch: stageLayoutsStore.storageKind === "github" ? GAME_FLOW_GITHUB_BRANCH : "",
+      path: stageLayoutsStore.storageKind === "github" ? STAGE_LAYOUTS_GITHUB_PATH : ""
+    }
+  });
+}
+
 async function handleSaveGameFlow(req, res) {
   let payload;
   try {
@@ -1057,6 +1285,33 @@ async function handleSaveGameConstants(req, res) {
       kind: gameConstantsStore.storageKind,
       durable: gameConstantsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
       error: gameConstantsStore.error || ""
+    }
+  });
+}
+
+async function handleSaveStageLayouts(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req, 128 * 1024);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  let layouts;
+  try {
+    layouts = await writeStageLayouts(payload.layouts || payload);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: `Stage layouts could not be saved: ${error.message}` });
+    return;
+  }
+  sendJson(res, 200, {
+    ok: true,
+    layouts,
+    storage: {
+      kind: stageLayoutsStore.storageKind,
+      durable: stageLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
+      error: stageLayoutsStore.error || ""
     }
   });
 }
@@ -1673,6 +1928,18 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/game-constants") {
     handleSaveGameConstants(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/stage-layouts") {
+    sendStageLayouts(res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message });
+    });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/stage-layouts") {
+    handleSaveStageLayouts(req, res);
     return;
   }
 

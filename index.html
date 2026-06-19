@@ -138,7 +138,8 @@
     }
 
     body.tool-dashboard-mode .art-shell,
-    body.tool-dashboard-mode .flow-shell {
+    body.tool-dashboard-mode .flow-shell,
+    body.tool-dashboard-mode .layout-shell {
       height: calc(100vh - clamp(32px, 6vw, 68px) - 82px);
     }
 
@@ -204,6 +205,30 @@
       position: relative;
       overflow: hidden;
       isolation: isolate;
+    }
+
+    .stage-layout-target {
+      position: absolute !important;
+      left: var(--stage-layout-x) !important;
+      top: var(--stage-layout-y) !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: var(--stage-layout-w) !important;
+      height: var(--stage-layout-h) !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      max-height: none !important;
+      margin: 0 !important;
+      transform: translate(-50%, -50%) scale(var(--stage-layout-scale, 1)) !important;
+      transform-origin: center !important;
+    }
+
+    .stage-code-panel.stage-layout-target {
+      transform: translate(-50%, -50%) scale(var(--stage-layout-scale, 1)) rotate(-1deg) !important;
+    }
+
+    .stage-layout-target.text-hidden {
+      transform: translate(-50%, -50%) scale(0) !important;
     }
 
     .stage-code-badge {
@@ -1629,6 +1654,126 @@
       text-transform: uppercase;
     }
 
+    .layout-shell {
+      display: grid;
+      grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+      gap: clamp(14px, 2vw, 24px);
+      height: calc(100vh - clamp(32px, 6vw, 68px));
+      min-height: 0;
+    }
+
+    .layout-state-list,
+    .layout-element-list {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+    }
+
+    .layout-state-list {
+      padding-bottom: 12px;
+      border-bottom: 4px solid rgba(23, 19, 31, 0.18);
+    }
+
+    .layout-element-list {
+      padding-top: 12px;
+    }
+
+    .layout-stage-wrap {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background:
+        linear-gradient(90deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
+        linear-gradient(135deg, #22d3ee 0%, #60d394 58%, #ffe156 100%);
+      background-size: 54px 54px, 54px 54px, auto;
+      overflow: hidden;
+    }
+
+    .layout-stage-preview {
+      position: relative;
+      width: min(100%, calc((100vh - 190px) * 1.777));
+      max-height: 100%;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border: 5px solid var(--ink);
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 15% 18%, rgba(255, 225, 86, 0.95) 0 8%, transparent 8.5%),
+        radial-gradient(circle at 86% 20%, rgba(34, 211, 238, 0.78) 0 8%, transparent 8.5%),
+        radial-gradient(circle at 72% 86%, rgba(255, 79, 163, 0.68) 0 10%, transparent 10.5%),
+        linear-gradient(135deg, #24115f 0%, #5b1bbd 46%, #ff4fa3 100%);
+      box-shadow: var(--shadow);
+      touch-action: none;
+    }
+
+    .layout-preview-element {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      border: 4px solid rgba(255, 255, 255, 0.72);
+      border-radius: 14px;
+      color: #fff;
+      background: rgba(23, 19, 31, 0.25);
+      box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.42);
+      text-align: center;
+      font-weight: 1000;
+      text-shadow: 3px 3px 0 #000;
+      text-transform: uppercase;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .layout-preview-element.is-selected {
+      border-color: var(--yellow);
+      background: rgba(36, 88, 255, 0.42);
+      box-shadow: 0 0 0 5px rgba(255, 225, 86, 0.35), 7px 7px 0 var(--ink);
+      pointer-events: auto;
+      cursor: move;
+      z-index: 10;
+    }
+
+    .layout-resize-handle {
+      position: absolute;
+      right: -12px;
+      bottom: -12px;
+      width: 26px;
+      height: 26px;
+      border: 4px solid var(--ink);
+      border-radius: 9px;
+      background: var(--yellow);
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.4);
+      cursor: nwse-resize;
+    }
+
+    .layout-editor-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 14px;
+      border-top: 4px solid var(--ink);
+      background: var(--paper);
+    }
+
+    .layout-number-field {
+      display: grid;
+      gap: 5px;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
+    .layout-number-field input {
+      width: 100%;
+      height: 38px;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      padding: 0 8px;
+      font-weight: 1000;
+    }
+
     @media (max-width: 760px) {
       .stage {
         gap: 16px;
@@ -1729,6 +1874,7 @@
       <button class="tool-tab" type="button" data-tool-target="flow">Flow Tool</button>
       <button class="tool-tab" type="button" data-tool-target="constants">Game Constants</button>
       <button class="tool-tab" type="button" data-tool-target="art">Art Manager</button>
+      <button class="tool-tab" type="button" data-tool-target="layout">Layout Tool</button>
     </div>
   </nav>
 
@@ -1926,6 +2072,36 @@
     </div>
   </section>
 
+  <section class="screen art-tool hidden" id="layoutScreen" aria-label="Stage layout editor">
+    <div class="layout-shell">
+      <aside class="flow-panel">
+        <div class="art-header">
+          <h1>Stage Layouts</h1>
+          <p>Position and scale fixed stage elements per game state.</p>
+          <p id="layoutStorageStatus">Checking layout storage...</p>
+        </div>
+        <div class="flow-list">
+          <div class="layout-state-list" id="layoutStateList"></div>
+          <div class="layout-element-list" id="layoutElementList"></div>
+        </div>
+        <div class="flow-actions">
+          <button class="primary-button" id="saveLayoutButton" type="button">Save Layout</button>
+        </div>
+      </aside>
+
+      <main class="flow-panel">
+        <div class="art-header">
+          <h1 id="layoutEditorTitle">Select Element</h1>
+          <p id="layoutEditorHelp">Choose a state, then drag an element in the preview.</p>
+        </div>
+        <div class="layout-stage-wrap">
+          <div class="layout-stage-preview" id="layoutStagePreview" aria-label="Stage layout preview"></div>
+        </div>
+        <div class="layout-editor-grid" id="layoutEditorFields"></div>
+      </main>
+    </div>
+  </section>
+
   <script>
     const params = new URLSearchParams(window.location.search);
     const pathRoles = {
@@ -1941,12 +2117,14 @@
       "/f": "flow",
       "/constants": "constants",
       "/const": "constants",
+      "/layout": "layout",
+      "/layouts": "layout",
       "/tools": "tools",
       "/tool": "tools"
     };
     const requestedRole = params.get("role");
     const requestedPathRole = pathRoles[window.location.pathname.toLowerCase()];
-    const role = ["controller", "lab", "art", "flow", "constants", "tools"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
+    const role = ["controller", "lab", "art", "flow", "constants", "layout", "tools"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
     const origin = window.location.origin;
     const canUseServer = window.location.protocol === "http:" || window.location.protocol === "https:";
     const stageScreen = document.querySelector("#stageScreen");
@@ -1955,6 +2133,7 @@
     const artScreen = document.querySelector("#artScreen");
     const flowScreen = document.querySelector("#flowScreen");
     const constantsScreen = document.querySelector("#constantsScreen");
+    const layoutScreen = document.querySelector("#layoutScreen");
     const toolDashboardBar = document.querySelector("#toolDashboardBar");
     const toolTabs = Array.from(document.querySelectorAll(".tool-tab"));
     const unsafeChangesModal = document.querySelector("#unsafeChangesModal");
@@ -2018,6 +2197,14 @@
     const playerColorCount = document.querySelector("#playerColorCount");
     const addPlayerColorButton = document.querySelector("#addPlayerColorButton");
     const saveConstantsButton = document.querySelector("#saveConstantsButton");
+    const layoutStorageStatus = document.querySelector("#layoutStorageStatus");
+    const layoutStateList = document.querySelector("#layoutStateList");
+    const layoutElementList = document.querySelector("#layoutElementList");
+    const layoutEditorTitle = document.querySelector("#layoutEditorTitle");
+    const layoutEditorHelp = document.querySelector("#layoutEditorHelp");
+    const layoutStagePreview = document.querySelector("#layoutStagePreview");
+    const layoutEditorFields = document.querySelector("#layoutEditorFields");
+    const saveLayoutButton = document.querySelector("#saveLayoutButton");
     let controllerState = null;
     let pendingAvatarShape = "";
     let avatarPickerOpen = false;
@@ -2047,8 +2234,10 @@
     const collapsedArtComposites = new Set();
     let gameFlow = { states: [] };
     let gameConstants = { playerColors: [] };
+    let stageLayouts = { canvas: { width: 1920, height: 1080 }, states: [] };
     let flowSavedSnapshot = "";
     let constantsSavedSnapshot = "";
+    let layoutSavedSnapshot = "";
     let flowActionTypes = [];
     let flowTransitions = [];
     let selectedFlowStateId = "";
@@ -2057,8 +2246,12 @@
     let artToolInitialized = false;
     let flowToolInitialized = false;
     let constantsToolInitialized = false;
+    let layoutToolInitialized = false;
     let activeToolId = "";
     let pendingToolSwitch = null;
+    let selectedLayoutStateId = "";
+    let selectedLayoutElementId = "";
+    let currentStageLayoutStateId = "";
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],
       ["avatar-rex", "/art/default/dino-rex.svg"],
@@ -2308,6 +2501,69 @@
       return result;
     }
 
+    async function loadStageLayouts() {
+      if (!canUseServer) return stageLayouts;
+      const result = await getJson("/api/stage-layouts");
+      stageLayouts = result.layouts || stageLayouts;
+      return stageLayouts;
+    }
+
+    function stageLayoutState(stateId) {
+      return (stageLayouts.states || []).find((state) => state.id === stateId) || null;
+    }
+
+    function stageLayoutStateForPhase(phase) {
+      const preferred = phase === "starting" ? "starting" : phase === "intro" ? "intro" : "lobby";
+      return stageLayoutState(preferred) || stageLayoutState("lobby") || (stageLayouts.states || [])[0] || null;
+    }
+
+    function allStageLayoutSelectors() {
+      const selectors = new Set();
+      for (const state of stageLayouts.states || []) {
+        for (const element of state.elements || []) {
+          if (element.selector) selectors.add(element.selector);
+        }
+      }
+      return selectors;
+    }
+
+    function clearStageLayoutTargets() {
+      for (const selector of allStageLayoutSelectors()) {
+        const target = stageScreen.querySelector(selector);
+        if (!target) continue;
+        target.classList.remove("stage-layout-target");
+        target.style.removeProperty("--stage-layout-x");
+        target.style.removeProperty("--stage-layout-y");
+        target.style.removeProperty("--stage-layout-w");
+        target.style.removeProperty("--stage-layout-h");
+        target.style.removeProperty("--stage-layout-scale");
+      }
+    }
+
+    function applyStageLayoutForPhase(phase) {
+      const state = stageLayoutStateForPhase(phase);
+      if (!state || !stageScreen) return;
+      currentStageLayoutStateId = state.id;
+      clearStageLayoutTargets();
+      const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
+      const stageRect = stageScreen.getBoundingClientRect();
+      const fitScale = Math.min(stageRect.width / canvas.width, stageRect.height / canvas.height);
+      const offsetX = (stageRect.width - canvas.width * fitScale) / 2;
+      const offsetY = (stageRect.height - canvas.height * fitScale) / 2;
+      for (const element of state.elements || []) {
+        const target = stageScreen.querySelector(element.selector);
+        if (!target) continue;
+        const x = offsetX + element.x * fitScale;
+        const y = offsetY + element.y * fitScale;
+        target.classList.add("stage-layout-target");
+        target.style.setProperty("--stage-layout-x", `${x}px`);
+        target.style.setProperty("--stage-layout-y", `${y}px`);
+        target.style.setProperty("--stage-layout-w", `${element.width * fitScale}px`);
+        target.style.setProperty("--stage-layout-h", `${element.height * fitScale}px`);
+        target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
+      }
+    }
+
     function renderStagePlayers(players) {
       playerLobby.replaceChildren();
       players.forEach((player, playerIndex) => {
@@ -2457,6 +2713,7 @@
       if (phase === "lobby") {
         resetStageObjects();
       }
+      applyStageLayoutForPhase(phase);
     }
 
     function renderStageLobby(lobby) {
@@ -2655,6 +2912,9 @@
       loadArtAssets().then(() => {
         if (currentStageState) renderStageLobby(currentStageState);
       }).catch(() => {});
+      loadStageLayouts().then(() => {
+        if (currentStageState) applyStageLayoutForPhase(currentStageState.phase);
+      }).catch(() => {});
       const stageCode = getOrCreateStageCode();
       stageCodeText.textContent = stageCode;
       stageCodeBadge.textContent = stageCode;
@@ -2666,6 +2926,9 @@
         if (event.key !== "Escape") return;
         event.preventDefault();
         setStagePaused(!isStagePaused);
+      });
+      window.addEventListener("resize", () => {
+        if (currentStageState) applyStageLayoutForPhase(currentStageState.phase);
       });
       subscribeToStage(stageCode);
     }
@@ -4099,10 +4362,257 @@
       }
     }
 
+    async function loadLayoutToolData() {
+      const result = await getJson("/api/stage-layouts");
+      stageLayouts = result.layouts || stageLayouts;
+      layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+      updateLayoutStorageStatus(result.storage);
+      selectedLayoutStateId = stageLayouts.states?.find((state) => state.id === selectedLayoutStateId)?.id || stageLayouts.states?.[0]?.id || "";
+      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || stageLayoutState(selectedLayoutStateId)?.elements?.[0]?.id || "";
+      renderLayoutTool();
+    }
+
+    function updateLayoutStorageStatus(storage) {
+      if (!layoutStorageStatus) return;
+      if (!storage) {
+        layoutStorageStatus.textContent = "Layout storage: unknown";
+        return;
+      }
+      if (storage.durable) {
+        layoutStorageStatus.textContent = `Layout storage: GitHub ${storage.repo || ""}${storage.branch ? ` / ${storage.branch}` : ""}`;
+        return;
+      }
+      layoutStorageStatus.textContent = storage.error || "Layout storage: local fallback only";
+    }
+
+    function serializeStageLayoutsForSave(layouts) {
+      return {
+        canvas: {
+          width: Number(layouts?.canvas?.width || 1920),
+          height: Number(layouts?.canvas?.height || 1080)
+        },
+        states: (layouts.states || []).map((state) => ({
+          id: state.id,
+          name: state.name,
+          elements: (state.elements || []).map((element) => ({
+            id: element.id,
+            name: element.name,
+            selector: element.selector,
+            x: Number(Number(element.x || 0).toFixed(3)),
+            y: Number(Number(element.y || 0).toFixed(3)),
+            width: Number(Number(element.width || 0).toFixed(3)),
+            height: Number(Number(element.height || 0).toFixed(3)),
+            scale: Number(Number(element.scale || 1).toFixed(3))
+          }))
+        }))
+      };
+    }
+
+    function layoutElement(stateId, elementId) {
+      return stageLayoutState(stateId)?.elements?.find((element) => element.id === elementId) || null;
+    }
+
+    function renderLayoutTool() {
+      renderLayoutStates();
+      renderLayoutElements();
+      renderLayoutPreview();
+      renderLayoutFields();
+    }
+
+    function renderLayoutStates() {
+      layoutStateList.replaceChildren();
+      for (const state of stageLayouts.states || []) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "flow-state-header";
+        button.classList.toggle("is-selected", state.id === selectedLayoutStateId);
+        button.innerHTML = `<span><strong></strong><span></span></span><span class="flow-pill"></span>`;
+        button.querySelector("strong").textContent = state.name;
+        button.querySelector("span span").textContent = state.id;
+        button.querySelector(".flow-pill").textContent = `${state.elements?.length || 0} assets`;
+        button.addEventListener("click", () => {
+          selectedLayoutStateId = state.id;
+          selectedLayoutElementId = state.elements?.[0]?.id || "";
+          renderLayoutTool();
+        });
+        layoutStateList.appendChild(button);
+      }
+    }
+
+    function renderLayoutElements() {
+      layoutElementList.replaceChildren();
+      const state = stageLayoutState(selectedLayoutStateId);
+      for (const element of state?.elements || []) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "flow-action-row";
+        button.classList.toggle("is-selected", element.id === selectedLayoutElementId);
+        button.innerHTML = `<span><strong></strong><span></span></span><span class="flow-pill"></span>`;
+        button.querySelector("strong").textContent = element.name;
+        button.querySelector("span span").textContent = `${Math.round(element.x)}, ${Math.round(element.y)} / ${Number(element.scale || 1).toFixed(2)}x`;
+        button.querySelector(".flow-pill").textContent = "Art";
+        button.addEventListener("click", () => {
+          selectedLayoutElementId = element.id;
+          renderLayoutTool();
+        });
+        layoutElementList.appendChild(button);
+      }
+    }
+
+    function layoutPreviewScale() {
+      const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
+      return layoutStagePreview.clientWidth / canvas.width;
+    }
+
+    function renderLayoutPreview() {
+      layoutStagePreview.replaceChildren();
+      const state = stageLayoutState(selectedLayoutStateId);
+      const scale = layoutPreviewScale() || 1;
+      for (const element of state?.elements || []) {
+        const node = document.createElement("div");
+        node.className = "layout-preview-element";
+        node.classList.toggle("is-selected", element.id === selectedLayoutElementId);
+        node.dataset.elementId = element.id;
+        node.style.left = `${element.x * scale}px`;
+        node.style.top = `${element.y * scale}px`;
+        node.style.width = `${element.width * scale}px`;
+        node.style.height = `${element.height * scale}px`;
+        node.style.transform = `translate(-50%, -50%) scale(${element.scale || 1})`;
+        node.textContent = element.name;
+        if (element.id === selectedLayoutElementId) {
+          const handle = document.createElement("span");
+          handle.className = "layout-resize-handle";
+          handle.addEventListener("pointerdown", (event) => startLayoutScale(event, element));
+          node.appendChild(handle);
+          node.addEventListener("pointerdown", (event) => startLayoutDrag(event, element));
+        }
+        layoutStagePreview.appendChild(node);
+      }
+    }
+
+    function startLayoutDrag(event, element) {
+      if (event.target.closest(".layout-resize-handle")) return;
+      event.preventDefault();
+      const scale = layoutPreviewScale() || 1;
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const originX = Number(element.x || 0);
+      const originY = Number(element.y || 0);
+      event.currentTarget.setPointerCapture(event.pointerId);
+      const move = (moveEvent) => {
+        element.x = Number((originX + (moveEvent.clientX - startX) / scale).toFixed(3));
+        element.y = Number((originY + (moveEvent.clientY - startY) / scale).toFixed(3));
+        renderLayoutTool();
+      };
+      const stop = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", stop);
+        window.removeEventListener("pointercancel", stop);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", stop, { once: true });
+      window.addEventListener("pointercancel", stop, { once: true });
+    }
+
+    function startLayoutScale(event, element) {
+      event.preventDefault();
+      event.stopPropagation();
+      const previewScale = layoutPreviewScale() || 1;
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const originScale = Number(element.scale || 1);
+      const baseSize = Math.max(Number(element.width || 1), Number(element.height || 1));
+      event.currentTarget.setPointerCapture(event.pointerId);
+      const move = (moveEvent) => {
+        const delta = Math.max(moveEvent.clientX - startX, moveEvent.clientY - startY) / previewScale;
+        element.scale = Number(Math.max(0.1, Math.min(6, originScale + delta / baseSize)).toFixed(3));
+        renderLayoutTool();
+      };
+      const stop = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", stop);
+        window.removeEventListener("pointercancel", stop);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", stop, { once: true });
+      window.addEventListener("pointercancel", stop, { once: true });
+    }
+
+    function renderLayoutFields() {
+      layoutEditorFields.replaceChildren();
+      const state = stageLayoutState(selectedLayoutStateId);
+      const element = layoutElement(selectedLayoutStateId, selectedLayoutElementId);
+      layoutEditorTitle.textContent = element ? element.name : state ? state.name : "Stage Layouts";
+      layoutEditorHelp.textContent = element
+        ? `Editing ${state.name}. Drag the highlighted box or resize from its corner.`
+        : "Choose an element to edit its fixed stage position.";
+      if (!element) return;
+      layoutEditorFields.appendChild(layoutNumberField("X", element.x, (value) => updateLayoutNumber(element, "x", value)));
+      layoutEditorFields.appendChild(layoutNumberField("Y", element.y, (value) => updateLayoutNumber(element, "y", value)));
+      layoutEditorFields.appendChild(layoutNumberField("Scale", element.scale, (value) => updateLayoutNumber(element, "scale", Math.max(0.1, value), 0.05)));
+      layoutEditorFields.appendChild(layoutNumberField("Width", element.width, (value) => updateLayoutNumber(element, "width", Math.max(24, value))));
+      layoutEditorFields.appendChild(layoutNumberField("Height", element.height, (value) => updateLayoutNumber(element, "height", Math.max(24, value))));
+    }
+
+    function layoutNumberField(label, value, onChange, step = 1) {
+      const field = document.createElement("label");
+      field.className = "layout-number-field";
+      field.textContent = label;
+      const input = document.createElement("input");
+      input.type = "number";
+      input.step = String(step);
+      input.value = Number(value || 0);
+      input.addEventListener("change", () => {
+        const next = Number(input.value);
+        onChange(Number.isFinite(next) ? next : Number(value || 0));
+      });
+      field.appendChild(input);
+      return field;
+    }
+
+    function updateLayoutNumber(element, key, value) {
+      element[key] = Number(Number(value).toFixed(3));
+      renderLayoutTool();
+    }
+
+    async function saveStageLayouts() {
+      saveLayoutButton.disabled = true;
+      saveLayoutButton.textContent = "Saving";
+      try {
+        const result = await postJson("/api/stage-layouts", { layouts: serializeStageLayoutsForSave(stageLayouts) });
+        stageLayouts = result.layouts || stageLayouts;
+        layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+        updateLayoutStorageStatus(result.storage);
+        renderLayoutTool();
+      } finally {
+        saveLayoutButton.disabled = false;
+        saveLayoutButton.textContent = "Save Layout";
+      }
+    }
+
+    async function setupLayoutTool() {
+      layoutScreen.classList.remove("hidden");
+      if (layoutToolInitialized) {
+        renderLayoutTool();
+        return;
+      }
+      layoutToolInitialized = true;
+      saveLayoutButton.addEventListener("click", saveStageLayouts);
+      window.addEventListener("resize", () => {
+        if (!layoutScreen.classList.contains("hidden")) renderLayoutPreview();
+      });
+      try {
+        await loadLayoutToolData();
+      } catch (error) {
+        layoutStorageStatus.textContent = error.message;
+      }
+    }
+
     function toolLabel(toolId) {
       if (toolId === "flow") return "Flow Tool";
       if (toolId === "constants") return "Game Constants";
       if (toolId === "art") return "Art Manager";
+      if (toolId === "layout") return "Layout Tool";
       return "Tool";
     }
 
@@ -4110,6 +4620,7 @@
       if (toolId === "art") return Boolean(pendingArtReplacement);
       if (toolId === "flow") return flowSavedSnapshot && JSON.stringify(serializeGameFlowForSave(gameFlow)) !== flowSavedSnapshot;
       if (toolId === "constants") return constantsSavedSnapshot && JSON.stringify(gameConstants) !== constantsSavedSnapshot;
+      if (toolId === "layout") return layoutSavedSnapshot && JSON.stringify(serializeStageLayoutsForSave(stageLayouts)) !== layoutSavedSnapshot;
       return false;
     }
 
@@ -4124,6 +4635,10 @@
       }
       if (toolId === "constants") {
         await saveGameConstants();
+        return;
+      }
+      if (toolId === "layout") {
+        await saveStageLayouts();
       }
     }
 
@@ -4165,6 +4680,7 @@
       artScreen.classList.add("hidden");
       flowScreen.classList.add("hidden");
       constantsScreen.classList.add("hidden");
+      layoutScreen.classList.add("hidden");
     }
 
     async function activateTool(toolId, { force = false } = {}) {
@@ -4177,6 +4693,8 @@
         await setupArtTool();
       } else if (toolId === "constants") {
         await setupConstantsTool();
+      } else if (toolId === "layout") {
+        await setupLayoutTool();
       } else {
         await setupFlowTool();
       }
@@ -4193,7 +4711,7 @@
       toolTabs.forEach((tab) => {
         tab.addEventListener("click", () => activateTool(tab.dataset.toolTarget));
       });
-      const initialTool = ["flow", "constants", "art"].includes(params.get("tool")) ? params.get("tool") : "flow";
+      const initialTool = ["flow", "constants", "art", "layout"].includes(params.get("tool")) ? params.get("tool") : "flow";
       activateTool(initialTool, { force: true });
     }
 
@@ -4205,6 +4723,8 @@
       setupFlowTool();
     } else if (role === "constants") {
       setupConstantsTool();
+    } else if (role === "layout") {
+      setupLayoutTool();
     } else if (role === "tools") {
       setupToolDashboard();
     } else if (role === "controller") {

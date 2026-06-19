@@ -21,5 +21,7 @@ services:
         value: game-flow.json
       - key: GAME_CONSTANTS_GITHUB_PATH
         value: game-constants.json
+      - key: STAGE_LAYOUTS_GITHUB_PATH
+        value: stage-layouts.json
       - key: GAME_FLOW_GITHUB_TOKEN
         sync: false
