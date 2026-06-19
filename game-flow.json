@@ -98,7 +98,7 @@
         },
         {
           "id": "round-intro-game-state-action-mqlamoms",
-          "name": "Game Action 3",
+          "name": "Transition",
           "type": "transitionState",
           "timing": {
             "mode": "E+",
