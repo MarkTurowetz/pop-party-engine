@@ -83,6 +83,107 @@
       display: none !important;
     }
 
+    .tool-dashboard-bar {
+      position: fixed;
+      z-index: 80;
+      top: 0;
+      left: 0;
+      right: 0;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 18px;
+      border-bottom: 5px solid var(--ink);
+      color: var(--ink);
+      background: var(--yellow);
+      box-shadow: 0 8px 0 rgba(23, 19, 31, 0.28);
+    }
+
+    .tool-dashboard-title {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 0.9;
+      text-transform: uppercase;
+    }
+
+    .tool-dashboard-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: end;
+      gap: 8px;
+    }
+
+    .tool-tab {
+      min-height: 44px;
+      border: 4px solid var(--ink);
+      border-radius: 999px;
+      padding: 0 14px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.34);
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
+    .tool-tab.is-active {
+      color: #fff;
+      background: var(--blue);
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    body.tool-dashboard-mode .art-tool {
+      padding-top: 98px;
+    }
+
+    body.tool-dashboard-mode .art-shell,
+    body.tool-dashboard-mode .flow-shell {
+      height: calc(100vh - clamp(32px, 6vw, 68px) - 82px);
+    }
+
+    .unsafe-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(23, 19, 31, 0.68);
+    }
+
+    .unsafe-panel {
+      width: min(460px, calc(100vw - 32px));
+      display: grid;
+      gap: 14px;
+      padding: 24px;
+      border: 5px solid var(--ink);
+      border-radius: 22px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .unsafe-panel h2 {
+      margin: 0;
+      font-size: clamp(30px, 6vw, 52px);
+      line-height: 0.9;
+      text-transform: uppercase;
+    }
+
+    .unsafe-panel p {
+      margin: 0;
+      color: #5e5475;
+      font-weight: 1000;
+    }
+
+    .unsafe-actions {
+      display: flex;
+      justify-content: end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
     .screen {
       min-height: 100vh;
     }
@@ -1622,6 +1723,26 @@
   </style>
 </head>
 <body>
+  <nav class="tool-dashboard-bar hidden" id="toolDashboardBar" aria-label="Tool dashboard navigation">
+    <h1 class="tool-dashboard-title">Tools</h1>
+    <div class="tool-dashboard-tabs">
+      <button class="tool-tab" type="button" data-tool-target="flow">Flow Tool</button>
+      <button class="tool-tab" type="button" data-tool-target="constants">Game Constants</button>
+      <button class="tool-tab" type="button" data-tool-target="art">Art Manager</button>
+    </div>
+  </nav>
+
+  <div class="unsafe-modal hidden" id="unsafeChangesModal" role="dialog" aria-modal="true" aria-labelledby="unsafeChangesTitle">
+    <div class="unsafe-panel">
+      <h2 id="unsafeChangesTitle">Unsaved Changes</h2>
+      <p id="unsafeChangesCopy">Save your current tool changes before switching.</p>
+      <div class="unsafe-actions">
+        <button class="secondary-button" id="unsafeCancelButton" type="button">Cancel</button>
+        <button class="primary-button" id="unsafeSaveButton" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
   <section class="screen stage hidden" id="stageScreen" aria-label="Flip 7 Party stage">
     <div class="start-popup hidden" id="startPopup">Starting Game</div>
     <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
@@ -1819,11 +1940,13 @@
       "/flow": "flow",
       "/f": "flow",
       "/constants": "constants",
-      "/const": "constants"
+      "/const": "constants",
+      "/tools": "tools",
+      "/tool": "tools"
     };
     const requestedRole = params.get("role");
     const requestedPathRole = pathRoles[window.location.pathname.toLowerCase()];
-    const role = ["controller", "lab", "art", "flow", "constants"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
+    const role = ["controller", "lab", "art", "flow", "constants", "tools"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
     const origin = window.location.origin;
     const canUseServer = window.location.protocol === "http:" || window.location.protocol === "https:";
     const stageScreen = document.querySelector("#stageScreen");
@@ -1832,6 +1955,12 @@
     const artScreen = document.querySelector("#artScreen");
     const flowScreen = document.querySelector("#flowScreen");
     const constantsScreen = document.querySelector("#constantsScreen");
+    const toolDashboardBar = document.querySelector("#toolDashboardBar");
+    const toolTabs = Array.from(document.querySelectorAll(".tool-tab"));
+    const unsafeChangesModal = document.querySelector("#unsafeChangesModal");
+    const unsafeChangesCopy = document.querySelector("#unsafeChangesCopy");
+    const unsafeCancelButton = document.querySelector("#unsafeCancelButton");
+    const unsafeSaveButton = document.querySelector("#unsafeSaveButton");
     const stageCodeText = document.querySelector("#stageCodeText");
     const stageCodeBadgeRoot = document.querySelector("#stageCodeBadge");
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
@@ -1918,11 +2047,18 @@
     const collapsedArtComposites = new Set();
     let gameFlow = { states: [] };
     let gameConstants = { playerColors: [] };
+    let flowSavedSnapshot = "";
+    let constantsSavedSnapshot = "";
     let flowActionTypes = [];
     let flowTransitions = [];
     let selectedFlowStateId = "";
     let selectedFlowActionId = "";
     const collapsedFlowActions = new Set();
+    let artToolInitialized = false;
+    let flowToolInitialized = false;
+    let constantsToolInitialized = false;
+    let activeToolId = "";
+    let pendingToolSwitch = null;
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],
       ["avatar-rex", "/art/default/dino-rex.svg"],
@@ -3086,6 +3222,8 @@
 
     async function setupArtTool() {
       artScreen.classList.remove("hidden");
+      if (artToolInitialized) return;
+      artToolInitialized = true;
       artReplaceButton.addEventListener("click", () => artFileInput.click());
       artCancelButton.addEventListener("click", cancelArtReplacement);
       artSaveButton.addEventListener("click", saveArtReplacement);
@@ -3178,6 +3316,7 @@
       gameFlow = result.flow || { states: [] };
       flowActionTypes = result.availableActionTypes || [];
       flowTransitions = result.availableTransitions || [];
+      flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
       updateFlowStorageStatus(result.storage);
       selectedFlowStateId = selectedFlowStateId || gameFlow.states[0]?.id || "";
       selectedFlowActionId = "";
@@ -3822,6 +3961,7 @@
       try {
         const result = await postJson("/api/game-flow", { flow: serializeGameFlowForSave(gameFlow) });
         gameFlow = result.flow;
+        flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
         updateFlowStorageStatus(result.storage);
         selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
         selectedFlowActionId = "";
@@ -3834,6 +3974,8 @@
 
     async function setupFlowTool() {
       flowScreen.classList.remove("hidden");
+      if (flowToolInitialized) return;
+      flowToolInitialized = true;
       addStateButton.addEventListener("click", addFlowState);
       addActionButton.addEventListener("click", addFlowAction);
       deleteFlowItemButton.addEventListener("click", deleteFlowItem);
@@ -3849,6 +3991,7 @@
     async function loadGameConstants() {
       const result = await getJson("/api/game-constants");
       gameConstants = result.constants || { playerColors: [] };
+      constantsSavedSnapshot = JSON.stringify(gameConstants);
       updateConstantsStorageStatus(result.storage);
       renderConstantsTool();
     }
@@ -3934,6 +4077,7 @@
       try {
         const result = await postJson("/api/game-constants", { constants: gameConstants });
         gameConstants = result.constants || gameConstants;
+        constantsSavedSnapshot = JSON.stringify(gameConstants);
         updateConstantsStorageStatus(result.storage);
         renderConstantsTool();
       } finally {
@@ -3944,6 +4088,8 @@
 
     async function setupConstantsTool() {
       constantsScreen.classList.remove("hidden");
+      if (constantsToolInitialized) return;
+      constantsToolInitialized = true;
       addPlayerColorButton.addEventListener("click", addPlayerColor);
       saveConstantsButton.addEventListener("click", saveGameConstants);
       try {
@@ -3951,6 +4097,104 @@
       } catch (error) {
         constantsStorageStatus.textContent = error.message;
       }
+    }
+
+    function toolLabel(toolId) {
+      if (toolId === "flow") return "Flow Tool";
+      if (toolId === "constants") return "Game Constants";
+      if (toolId === "art") return "Art Manager";
+      return "Tool";
+    }
+
+    function isToolDirty(toolId) {
+      if (toolId === "art") return Boolean(pendingArtReplacement);
+      if (toolId === "flow") return flowSavedSnapshot && JSON.stringify(serializeGameFlowForSave(gameFlow)) !== flowSavedSnapshot;
+      if (toolId === "constants") return constantsSavedSnapshot && JSON.stringify(gameConstants) !== constantsSavedSnapshot;
+      return false;
+    }
+
+    async function saveTool(toolId) {
+      if (toolId === "art") {
+        if (pendingArtReplacement) await saveArtReplacement();
+        return;
+      }
+      if (toolId === "flow") {
+        await saveGameFlow();
+        return;
+      }
+      if (toolId === "constants") {
+        await saveGameConstants();
+      }
+    }
+
+    function showUnsafeChangesModal(toolId) {
+      unsafeChangesCopy.textContent = `${toolLabel(toolId)} has unsaved changes. Save before switching tools.`;
+      unsafeChangesModal.classList.remove("hidden");
+      return new Promise((resolve) => {
+        pendingToolSwitch = resolve;
+      });
+    }
+
+    function resolveUnsafeChangesModal(result) {
+      unsafeChangesModal.classList.add("hidden");
+      const resolve = pendingToolSwitch;
+      pendingToolSwitch = null;
+      if (resolve) resolve(result);
+    }
+
+    async function confirmToolSwitch() {
+      if (!activeToolId || !isToolDirty(activeToolId)) return true;
+      const result = await showUnsafeChangesModal(activeToolId);
+      if (result !== "save") return false;
+      unsafeSaveButton.disabled = true;
+      unsafeSaveButton.textContent = "Saving";
+      try {
+        await saveTool(activeToolId);
+        return !isToolDirty(activeToolId);
+      } catch (error) {
+        unsafeChangesCopy.textContent = error.message;
+        unsafeChangesModal.classList.remove("hidden");
+        return false;
+      } finally {
+        unsafeSaveButton.disabled = false;
+        unsafeSaveButton.textContent = "Save";
+      }
+    }
+
+    function hideToolScreens() {
+      artScreen.classList.add("hidden");
+      flowScreen.classList.add("hidden");
+      constantsScreen.classList.add("hidden");
+    }
+
+    async function activateTool(toolId, { force = false } = {}) {
+      if (!force && toolId === activeToolId) return;
+      if (!force && !(await confirmToolSwitch())) return;
+      hideToolScreens();
+      activeToolId = toolId;
+      toolTabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.toolTarget === toolId));
+      if (toolId === "art") {
+        await setupArtTool();
+      } else if (toolId === "constants") {
+        await setupConstantsTool();
+      } else {
+        await setupFlowTool();
+      }
+    }
+
+    function setupToolDashboard() {
+      document.body.classList.add("tool-dashboard-mode");
+      toolDashboardBar.classList.remove("hidden");
+      unsafeCancelButton.addEventListener("click", () => resolveUnsafeChangesModal("cancel"));
+      unsafeSaveButton.addEventListener("click", () => resolveUnsafeChangesModal("save"));
+      unsafeChangesModal.addEventListener("click", (event) => {
+        if (event.target === unsafeChangesModal) resolveUnsafeChangesModal("cancel");
+      });
+      toolTabs.forEach((tab) => {
+        tab.addEventListener("click", () => activateTool(tab.dataset.toolTarget));
+      });
+      const initialTool = ["flow", "constants", "art"].includes(params.get("tool")) ? params.get("tool") : "flow";
+      activateTool(initialTool, { force: true });
     }
 
     if (role === "lab") {
@@ -3961,6 +4205,8 @@
       setupFlowTool();
     } else if (role === "constants") {
       setupConstantsTool();
+    } else if (role === "tools") {
+      setupToolDashboard();
     } else if (role === "controller") {
       setupController();
     } else {
