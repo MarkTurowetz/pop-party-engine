@@ -19,6 +19,9 @@ const GAME_CONSTANTS_BACKUP_DIR = path.join(ROOT, "game-constants.backups");
 const DEFAULT_STAGE_LAYOUTS_FILE = path.join(ROOT, "stage-layouts.default.json");
 const STAGE_LAYOUTS_FILE = path.resolve(ROOT, process.env.STAGE_LAYOUTS_FILE || "stage-layouts.json");
 const STAGE_LAYOUTS_BACKUP_DIR = path.join(ROOT, "stage-layouts.backups");
+const DEFAULT_CONTROLLER_LAYOUTS_FILE = path.join(ROOT, "controller-layouts.default.json");
+const CONTROLLER_LAYOUTS_FILE = path.resolve(ROOT, process.env.CONTROLLER_LAYOUTS_FILE || "controller-layouts.json");
+const CONTROLLER_LAYOUTS_BACKUP_DIR = path.join(ROOT, "controller-layouts.backups");
 const GAME_FLOW_GITHUB_TOKEN = process.env.GAME_FLOW_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
 const GAME_FLOW_STORAGE = String(process.env.GAME_FLOW_STORAGE || (GAME_FLOW_GITHUB_TOKEN ? "github" : "local")).toLowerCase();
 const GAME_FLOW_GITHUB_REPO = process.env.GAME_FLOW_GITHUB_REPO || process.env.GITHUB_REPOSITORY || "MarkTurowetz/pop-party";
@@ -27,6 +30,7 @@ const GAME_FLOW_GITHUB_BASE_BRANCH = process.env.GAME_FLOW_GITHUB_BASE_BRANCH ||
 const GAME_FLOW_GITHUB_PATH = process.env.GAME_FLOW_GITHUB_PATH || "game-flow.json";
 const GAME_CONSTANTS_GITHUB_PATH = process.env.GAME_CONSTANTS_GITHUB_PATH || "game-constants.json";
 const STAGE_LAYOUTS_GITHUB_PATH = process.env.STAGE_LAYOUTS_GITHUB_PATH || "stage-layouts.json";
+const CONTROLLER_LAYOUTS_GITHUB_PATH = process.env.CONTROLLER_LAYOUTS_GITHUB_PATH || "controller-layouts.json";
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
@@ -148,6 +152,44 @@ const defaultStageLayouts = {
         { id: "stageIntroTitle", name: "Intro Header", selector: "#stageIntroTitle", x: 960, y: 235, width: 1060, height: 130, scale: 1 },
         { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", kind: "text", x: 960, y: 460, width: 980, height: 240, scale: 1 },
         { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", kind: "text", x: 960, y: 760, width: 860, height: 120, scale: 1 }
+      ]
+    }
+  ]
+};
+const defaultControllerLayouts = {
+  canvas: { width: 390, height: 844 },
+  global: {
+    id: "global",
+    name: "Global Layout",
+    elements: []
+  },
+  states: [
+    {
+      id: "join",
+      name: "Join Controller",
+      elements: [
+        { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", x: 195, y: 112, width: 330, height: 86, scale: 1, defaultText: "Join Lobby", fontSize: 54, autoFitText: true, fontColor: "#17131f" },
+        { id: "stageCodeField", name: "Stage Code Field", selector: "#stageCodeField", x: 195, y: 255, width: 320, height: 96, scale: 1 },
+        { id: "playerNameField", name: "Player Name Field", selector: "#playerNameField", x: 195, y: 375, width: 320, height: 96, scale: 1 },
+        { id: "joinButton", name: "Join Button", selector: "#joinButton", x: 195, y: 505, width: 260, height: 78, scale: 1 }
+      ]
+    },
+    {
+      id: "lobby",
+      name: "Lobby Controller",
+      elements: [
+        { id: "controllerAvatar", name: "Player Avatar", selector: "#controllerAvatar", x: 195, y: 150, width: 104, height: 104, scale: 1 },
+        { id: "controllerPlayerName", name: "Player Name", selector: "#controllerPlayerName", kind: "text", x: 195, y: 290, width: 330, height: 80, scale: 1, defaultText: "Player", fontSize: 66, autoFitText: true, fontColor: "#17131f" },
+        { id: "controllerMeta", name: "Controller Status", selector: "#controllerMeta", kind: "text", x: 195, y: 382, width: 330, height: 48, scale: 1, defaultText: "Waiting in lobby", fontSize: 28, autoFitText: true, fontColor: "#6b5a80" },
+        { id: "startGameButton", name: "Start Game Button", selector: "#startGameButton", x: 195, y: 508, width: 260, height: 78, scale: 1 }
+      ]
+    },
+    {
+      id: "intro",
+      name: "Game Intro Controller",
+      elements: [
+        { id: "controllerIntroMessage", name: "Intro Message", selector: "#controllerIntroMessage", kind: "text", x: 195, y: 250, width: 330, height: 120, scale: 1, defaultText: "Welcome to the Game", fontSize: 44, autoFitText: true, fontColor: "#17131f" },
+        { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", x: 195, y: 450, width: 300, height: 78, scale: 1 }
       ]
     }
   ]
@@ -342,6 +384,48 @@ function normalizeStageLayouts(layouts) {
   };
 }
 
+function normalizeControllerLayouts(layouts) {
+  const incomingCanvas = layouts?.canvas || defaultControllerLayouts.canvas;
+  const canvas = {
+    width: normalizeLayoutNumber(incomingCanvas.width, defaultControllerLayouts.canvas.width, 240, 2000),
+    height: normalizeLayoutNumber(incomingCanvas.height, defaultControllerLayouts.canvas.height, 320, 3000)
+  };
+  const incomingStates = Array.isArray(layouts?.states) ? layouts.states : defaultControllerLayouts.states;
+  const normalizedDefaultGlobal = normalizeLayoutState(defaultControllerLayouts.global, -1);
+  const normalizedDefaultStates = defaultControllerLayouts.states.map((state, index) => normalizeLayoutState(state, index)).filter(Boolean);
+  const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
+  const normalizedStates = incomingStates.map((state, stateIndex) => normalizeLayoutState(state, stateIndex)).filter(Boolean);
+  for (const defaultState of normalizedDefaultStates) {
+    if (!normalizedStates.some((state) => state.id === defaultState.id)) {
+      normalizedStates.push(cloneJson(defaultState));
+    }
+  }
+  const incomingGlobal = normalizeLayoutState(layouts?.global, -1);
+  const globalElements = [...(incomingGlobal?.elements || [])];
+  for (const element of normalizedDefaultGlobal.elements || []) {
+    if (!globalElements.some((item) => item.id === element.id)) globalElements.push(cloneJson(element));
+  }
+  return {
+    canvas,
+    global: {
+      ...normalizedDefaultGlobal,
+      ...(incomingGlobal || {}),
+      id: "global",
+      name: incomingGlobal?.name || normalizedDefaultGlobal.name,
+      elements: globalElements
+    },
+    states: normalizedStates.map((state) => {
+      const defaultState = defaultStatesById.get(state.id);
+      if (!defaultState) return state;
+      const elements = [...state.elements];
+      for (const element of defaultState.elements) {
+        if (!elements.some((item) => item.id === element.id)) elements.push(cloneJson(element));
+      }
+      return { ...state, elements };
+    })
+  };
+}
+
 function migrateStageLayoutStates(states, global, defaultGlobal, hasExplicitGlobal = false) {
   const migratedGlobal = global ? cloneJson(global) : cloneJson(defaultGlobal);
   migratedGlobal.id = "global";
@@ -445,6 +529,26 @@ function syncStageLayoutsWithFlow(layouts, flow) {
   return normalizedLayouts;
 }
 
+function syncControllerLayoutsWithFlow(layouts, flow) {
+  const normalizedLayouts = normalizeControllerLayouts(layouts);
+  const normalizedFlow = normalizeGameFlow(flow || readGameFlow());
+  const stateIds = new Set(["join", ...normalizedFlow.states.map((state) => state.id)]);
+  normalizedLayouts.global.elements = dedupeLayoutElements(normalizedLayouts.global.elements || []);
+  normalizedLayouts.states = (normalizedLayouts.states || [])
+    .filter((state) => stateIds.has(state.id))
+    .map((state) => ({ ...state, elements: dedupeLayoutElements(state.elements || []) }));
+  for (const flowState of normalizedFlow.states) {
+    const existingState = normalizedLayouts.states.find((state) => state.id === flowState.id);
+    if (existingState) {
+      existingState.name = flowState.id === "lobby" ? existingState.name : flowState.name || existingState.name;
+      existingState.elements = dedupeLayoutElements(existingState.elements || []);
+      continue;
+    }
+    normalizedLayouts.states.push(normalizeLayoutState(createControllerLayoutStateForFlowState(flowState), -1));
+  }
+  return normalizedLayouts;
+}
+
 function dedupeLayoutElements(elements) {
   const seen = new Set();
   const deduped = [];
@@ -459,6 +563,31 @@ function dedupeLayoutElements(elements) {
     deduped.push(normalizedElement);
   }
   return deduped;
+}
+
+function createControllerLayoutStateForFlowState(flowState) {
+  const textElementId = normalizeFlowId(`${flowState.id}-controller-text`, `${flowState.id}-controller-text`);
+  return {
+    id: flowState.id,
+    name: flowState.name || flowState.id,
+    elements: [
+      {
+        id: textElementId,
+        name: `${flowState.name || "Controller"} Text Field`,
+        selector: `#${textElementId}`,
+        kind: "text",
+        x: 195,
+        y: 250,
+        width: 330,
+        height: 140,
+        scale: 1,
+        defaultText: flowState.name || "Controller View",
+        fontSize: 42,
+        autoFitText: true,
+        fontColor: "#17131f"
+      }
+    ]
+  };
 }
 
 function createLayoutStateForFlowState(flowState) {
@@ -634,6 +763,14 @@ function readDefaultStageLayoutsSource() {
   }
 }
 
+function readDefaultControllerLayoutsSource() {
+  try {
+    return normalizeControllerLayouts(readJsonFile(DEFAULT_CONTROLLER_LAYOUTS_FILE));
+  } catch (error) {
+    return normalizeControllerLayouts(defaultControllerLayouts);
+  }
+}
+
 function readLocalGameFlowSource() {
   try {
     return readJsonFile(GAME_FLOW_FILE);
@@ -655,6 +792,14 @@ function readLocalStageLayoutsSource() {
     return normalizeStageLayouts(readJsonFile(STAGE_LAYOUTS_FILE));
   } catch (error) {
     return readDefaultStageLayoutsSource();
+  }
+}
+
+function readLocalControllerLayoutsSource() {
+  try {
+    return normalizeControllerLayouts(readJsonFile(CONTROLLER_LAYOUTS_FILE));
+  } catch (error) {
+    return readDefaultControllerLayoutsSource();
   }
 }
 
@@ -683,9 +828,18 @@ const stageLayoutsStore = {
   error: ""
 };
 
+const controllerLayoutsStore = {
+  source: readLocalControllerLayoutsSource(),
+  remoteSha: "",
+  storageKind: GAME_FLOW_STORAGE === "github" ? "github" : "local",
+  loadedAt: 0,
+  error: ""
+};
+
 const localDraftStore = {
   flow: null,
-  layouts: null
+  layouts: null,
+  controllerLayouts: null
 };
 
 function readGameFlowSource() {
@@ -706,6 +860,10 @@ function gameConstants() {
 
 function readStageLayoutsSource() {
   return cloneJson(stageLayoutsStore.source || readDefaultStageLayoutsSource());
+}
+
+function readControllerLayoutsSource() {
+  return cloneJson(controllerLayoutsStore.source || readDefaultControllerLayoutsSource());
 }
 
 async function loadGameConstantsSource({ refresh = false } = {}) {
@@ -817,6 +975,61 @@ async function writeStageLayouts(layouts) {
   return readStageLayoutsSource();
 }
 
+async function loadControllerLayoutsSource({ refresh = false } = {}) {
+  if (controllerLayoutsStore.storageKind !== "github") {
+    controllerLayoutsStore.source = readLocalControllerLayoutsSource();
+    controllerLayoutsStore.loadedAt = Date.now();
+    controllerLayoutsStore.error = "";
+    return readControllerLayoutsSource();
+  }
+
+  if (!refresh && controllerLayoutsStore.loadedAt) return readControllerLayoutsSource();
+  if (!GAME_FLOW_GITHUB_TOKEN) {
+    controllerLayoutsStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
+    return readControllerLayoutsSource();
+  }
+
+  try {
+    const remote = await readGithubJsonSource(CONTROLLER_LAYOUTS_GITHUB_PATH);
+    if (remote?.data) {
+      controllerLayoutsStore.source = normalizeControllerLayouts(remote.data);
+      controllerLayoutsStore.remoteSha = remote.sha || "";
+    } else {
+      const seeded = await writeGithubJsonSource(readControllerLayoutsSource(), "", CONTROLLER_LAYOUTS_GITHUB_PATH, "Save controller layouts");
+      controllerLayoutsStore.source = normalizeControllerLayouts(seeded.data);
+      controllerLayoutsStore.remoteSha = seeded.sha || "";
+    }
+    controllerLayoutsStore.loadedAt = Date.now();
+    controllerLayoutsStore.error = "";
+  } catch (error) {
+    controllerLayoutsStore.error = `GitHub controller layout storage unavailable: ${error.message}`;
+  }
+
+  return readControllerLayoutsSource();
+}
+
+async function writeControllerLayouts(layouts) {
+  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+  const normalized = syncControllerLayoutsWithFlow(layouts, flow);
+  backupControllerLayoutsSource();
+  if (controllerLayoutsStore.storageKind === "github") {
+    if (!GAME_FLOW_GITHUB_TOKEN) {
+      throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
+    }
+    const saved = await writeGithubJsonSource(normalized, controllerLayoutsStore.remoteSha, CONTROLLER_LAYOUTS_GITHUB_PATH, "Save controller layouts");
+    controllerLayoutsStore.source = normalizeControllerLayouts(saved.data);
+    controllerLayoutsStore.remoteSha = saved.sha || "";
+    controllerLayoutsStore.loadedAt = Date.now();
+    controllerLayoutsStore.error = "";
+    mirrorControllerLayoutsSource(controllerLayoutsStore.source);
+    return readControllerLayoutsSource();
+  }
+  writeLocalControllerLayoutsSource(normalized);
+  controllerLayoutsStore.source = normalized;
+  controllerLayoutsStore.loadedAt = Date.now();
+  return readControllerLayoutsSource();
+}
+
 async function loadGameFlowSource({ refresh = false } = {}) {
   if (gameFlowStore.storageKind !== "github") {
     gameFlowStore.source = readLocalGameFlowSource();
@@ -894,6 +1107,13 @@ function backupStageLayoutsSource() {
   fs.copyFileSync(STAGE_LAYOUTS_FILE, path.join(STAGE_LAYOUTS_BACKUP_DIR, `stage-layouts-${stamp}.json`));
 }
 
+function backupControllerLayoutsSource() {
+  if (!fs.existsSync(CONTROLLER_LAYOUTS_FILE)) return;
+  fs.mkdirSync(CONTROLLER_LAYOUTS_BACKUP_DIR, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  fs.copyFileSync(CONTROLLER_LAYOUTS_FILE, path.join(CONTROLLER_LAYOUTS_BACKUP_DIR, `controller-layouts-${stamp}.json`));
+}
+
 function writeLocalGameFlowSource(flow) {
   fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(flow, null, 2)}\n`);
 }
@@ -904,6 +1124,10 @@ function writeLocalGameConstantsSource(constants) {
 
 function writeLocalStageLayoutsSource(layouts) {
   fs.writeFileSync(STAGE_LAYOUTS_FILE, `${JSON.stringify(layouts, null, 2)}\n`);
+}
+
+function writeLocalControllerLayoutsSource(layouts) {
+  fs.writeFileSync(CONTROLLER_LAYOUTS_FILE, `${JSON.stringify(layouts, null, 2)}\n`);
 }
 
 function mirrorGameFlowSource(flow) {
@@ -925,6 +1149,14 @@ function mirrorGameConstantsSource(constants) {
 function mirrorStageLayoutsSource(layouts) {
   try {
     writeLocalStageLayoutsSource(layouts);
+  } catch (error) {
+    // Durable storage is authoritative; local mirrors are best-effort.
+  }
+}
+
+function mirrorControllerLayoutsSource(layouts) {
+  try {
+    writeLocalControllerLayoutsSource(layouts);
   } catch (error) {
     // Durable storage is authoritative; local mirrors are best-effort.
   }
@@ -1398,7 +1630,7 @@ async function sendGameConstants(res) {
 async function sendStageLayouts(res) {
   const layouts = await loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" });
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
-  const syncedLayouts = syncStageLayoutsWithFlow(layouts, flow);
+  const syncedLayouts = syncStageLayoutsWithFlow(layouts, localDraftStore.flow || flow);
   const responseLayouts = localDraftStore.layouts || syncedLayouts;
   sendJson(res, 200, {
     ok: true,
@@ -1416,13 +1648,36 @@ async function sendStageLayouts(res) {
   });
 }
 
+async function sendControllerLayouts(res) {
+  const layouts = await loadControllerLayoutsSource({ refresh: controllerLayoutsStore.storageKind === "github" });
+  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+  const syncedLayouts = syncControllerLayoutsWithFlow(layouts, localDraftStore.flow || flow);
+  const responseLayouts = localDraftStore.controllerLayouts || syncedLayouts;
+  sendJson(res, 200, {
+    ok: true,
+    layouts: responseLayouts,
+    savedLayouts: syncedLayouts,
+    hasLocalDraft: Boolean(localDraftStore.controllerLayouts),
+    storage: {
+      kind: controllerLayoutsStore.storageKind,
+      durable: controllerLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
+      error: controllerLayoutsStore.error || "",
+      repo: controllerLayoutsStore.storageKind === "github" ? GAME_FLOW_GITHUB_REPO : "",
+      branch: controllerLayoutsStore.storageKind === "github" ? GAME_FLOW_GITHUB_BRANCH : "",
+      path: controllerLayoutsStore.storageKind === "github" ? CONTROLLER_LAYOUTS_GITHUB_PATH : ""
+    }
+  });
+}
+
 function sendLocalDraft(res) {
   sendJson(res, 200, {
     ok: true,
     flow: localDraftStore.flow,
     layouts: localDraftStore.layouts,
+    controllerLayouts: localDraftStore.controllerLayouts,
     hasFlowDraft: Boolean(localDraftStore.flow),
-    hasLayoutDraft: Boolean(localDraftStore.layouts)
+    hasLayoutDraft: Boolean(localDraftStore.layouts),
+    hasControllerLayoutDraft: Boolean(localDraftStore.controllerLayouts)
   });
 }
 
@@ -1437,6 +1692,7 @@ async function handleLocalDraft(req, res) {
 
   if (payload.clearFlow) localDraftStore.flow = null;
   if (payload.clearLayouts) localDraftStore.layouts = null;
+  if (payload.clearControllerLayouts) localDraftStore.controllerLayouts = null;
 
   if (payload.flow) {
     try {
@@ -1452,6 +1708,15 @@ async function handleLocalDraft(req, res) {
       localDraftStore.layouts = normalizeStageLayouts(payload.layouts);
     } catch (error) {
       sendJson(res, 400, { ok: false, error: `Local layout draft is invalid: ${error.message}` });
+      return;
+    }
+  }
+
+  if (payload.controllerLayouts) {
+    try {
+      localDraftStore.controllerLayouts = normalizeControllerLayouts(payload.controllerLayouts);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: `Local controller layout draft is invalid: ${error.message}` });
       return;
     }
   }
@@ -1559,6 +1824,34 @@ async function handleSaveStageLayouts(req, res) {
       kind: stageLayoutsStore.storageKind,
       durable: stageLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
       error: stageLayoutsStore.error || ""
+    }
+  });
+}
+
+async function handleSaveControllerLayouts(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req, 128 * 1024);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  let layouts;
+  try {
+    layouts = await writeControllerLayouts(payload.layouts || payload);
+    localDraftStore.controllerLayouts = null;
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: `Controller layouts could not be saved: ${error.message}` });
+    return;
+  }
+  sendJson(res, 200, {
+    ok: true,
+    layouts,
+    storage: {
+      kind: controllerLayoutsStore.storageKind,
+      durable: controllerLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
+      error: controllerLayoutsStore.error || ""
     }
   });
 }
@@ -2246,6 +2539,18 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/stage-layouts") {
     handleSaveStageLayouts(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/controller-layouts") {
+    sendControllerLayouts(res).catch((error) => {
+      sendJson(res, 500, { ok: false, error: error.message });
+    });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/controller-layouts") {
+    handleSaveControllerLayouts(req, res);
     return;
   }
 

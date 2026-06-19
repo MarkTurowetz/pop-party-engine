@@ -883,24 +883,59 @@
     }
 
     .controller-panel {
-      width: min(560px, 100%);
-      display: grid;
-      gap: clamp(12px, 2.4vmin, 20px);
-      max-height: calc(100dvh - 20px);
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 390px;
+      height: 844px;
+      display: block;
+      max-height: none;
       overflow: hidden;
-      padding: clamp(14px, 4vmin, 34px);
+      padding: 0;
       border: 5px solid var(--ink);
       border-radius: 28px;
       background: var(--paper);
       box-shadow: 16px 16px 0 var(--ink);
+      transform: translate(-50%, -50%) scale(var(--controller-board-scale, 1));
+      transform-origin: center;
     }
 
     .controller-panel h1 {
       margin: 0;
-      font-size: clamp(42px, 10vw, 74px);
+      font-size: 54px;
       line-height: 0.86;
       letter-spacing: 0;
       text-transform: uppercase;
+    }
+
+    .controller-layout-target {
+      position: absolute !important;
+      left: var(--controller-layout-x) !important;
+      top: var(--controller-layout-y) !important;
+      width: var(--controller-layout-w) !important;
+      height: var(--controller-layout-h) !important;
+      margin: 0 !important;
+      transform: translate(-50%, -50%) scale(var(--controller-layout-scale, 1)) var(--controller-press-transform, translate3d(0, 0, 0) scale(1)) !important;
+      transform-origin: center !important;
+    }
+
+    .controller-layout-target.primary-button:not(:disabled):hover {
+      --controller-press-transform: translate3d(-2px, -2px, 0) scale(1);
+    }
+
+    .controller-layout-target.primary-button.is-pressed:not(:disabled),
+    .controller-layout-target.primary-button:not(:disabled):active,
+    .controller-layout-target.controller-avatar.is-pressed {
+      --controller-press-transform: translate3d(2px, 2px, 0) scale(0.94);
+    }
+
+    .controller-layout-text {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--controller-text-color, var(--ink));
+      font-size: var(--controller-text-font-size, 42px);
+      text-align: center;
     }
 
     .join-form {
@@ -1884,6 +1919,15 @@
       touch-action: none;
     }
 
+    .layout-stage-preview.is-controller-preview {
+      aspect-ratio: 390 / 844;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 58px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 58px),
+        linear-gradient(135deg, #22d3ee 0%, #60d394 52%, #ffe156 100%);
+      background-size: 58px 58px, 58px 58px, auto;
+    }
+
     .layout-preview-element {
       position: absolute;
       display: grid;
@@ -1923,6 +1967,47 @@
       display: grid;
       place-items: center;
       pointer-events: none;
+    }
+
+    .layout-preview-input-label {
+      width: 100%;
+      display: grid;
+      gap: calc(8px * var(--layout-fit-scale, 1));
+      color: var(--ink);
+      font-size: calc(13px * var(--layout-fit-scale, 1));
+      letter-spacing: 0.08em;
+      text-align: left;
+    }
+
+    .layout-preview-input {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      height: calc(60px * var(--layout-fit-scale, 1));
+      padding: 0 calc(16px * var(--layout-fit-scale, 1));
+      border: calc(5px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: calc(16px * var(--layout-fit-scale, 1));
+      background: #fff;
+      box-shadow: inset calc(5px * var(--layout-fit-scale, 1)) calc(5px * var(--layout-fit-scale, 1)) 0 rgba(23, 19, 31, 0.08);
+      font-size: calc(24px * var(--layout-fit-scale, 1));
+      text-transform: none;
+    }
+
+    .layout-preview-button {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 calc(18px * var(--layout-fit-scale, 1));
+      border: calc(5px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: 999px;
+      color: #fff;
+      background: var(--blue);
+      box-shadow: calc(7px * var(--layout-fit-scale, 1)) calc(7px * var(--layout-fit-scale, 1)) 0 var(--ink);
+      font-size: calc(18px * var(--layout-fit-scale, 1));
+      line-height: 0.95;
+      text-align: center;
     }
 
     .layout-preview-title {
@@ -2238,9 +2323,6 @@
       }
 
       .controller-panel {
-        gap: 8px;
-        max-height: calc(100dvh - 16px);
-        padding: 12px;
         border-radius: 18px;
         box-shadow: 7px 7px 0 var(--ink);
       }
@@ -2281,6 +2363,7 @@
       <button class="tool-tab" type="button" data-tool-target="constants">Game Constants</button>
       <button class="tool-tab" type="button" data-tool-target="art">Art Manager</button>
       <button class="tool-tab" type="button" data-tool-target="layout">Layout Tool</button>
+      <button class="tool-tab" type="button" data-tool-target="controller-layout">Controller Layout Tool</button>
     </div>
     <div class="tool-dashboard-actions">
       <button class="primary-button" id="globalSaveButton" type="button">Save All</button>
@@ -2350,13 +2433,13 @@
   <section class="screen controller hidden" id="controllerScreen" aria-label="Party Game Template controller">
     <div class="controller-panel">
       <div id="joinState">
-        <h1>Join Lobby</h1>
+        <h1 id="joinTitle" class="controller-layout-text">Join Lobby</h1>
         <form class="join-form" id="joinForm">
-          <label class="field-label">
+          <label class="field-label" id="stageCodeField">
             Stage Code
             <input class="text-input stage-code-input" id="stageCodeInput" maxlength="6" autocomplete="off" placeholder="ABCD">
           </label>
-          <label class="field-label">
+          <label class="field-label" id="playerNameField">
             Player Name
             <input class="text-input" id="playerNameInput" maxlength="24" autocomplete="name" placeholder="Your name">
           </label>
@@ -2378,7 +2461,7 @@
       </div>
 
       <div class="controller-lobby hidden" id="controllerIntroState" data-controller-view="intro">
-        <h1 class="controller-player-name">Welcome to the Game</h1>
+        <h1 class="controller-player-name controller-layout-text" id="controllerIntroMessage">Welcome to the Game</h1>
         <button class="primary-button hidden" id="introPresentButton" type="button" data-controller-option data-option-id="intro.presentHi">Present HI THERE</button>
       </div>
     </div>
@@ -2489,8 +2572,8 @@
     <div class="layout-shell">
       <aside class="flow-panel">
         <div class="art-header">
-          <h1>Stage Layouts</h1>
-          <p>Position and scale fixed stage elements per game state.</p>
+          <h1 id="layoutToolTitle">Stage Layouts</h1>
+          <p id="layoutToolDescription">Position and scale fixed stage elements per game state.</p>
           <p id="layoutStorageStatus">Checking layout storage...</p>
         </div>
         <div class="flow-list">
@@ -2542,12 +2625,14 @@
       "/const": "constants",
       "/layout": "layout",
       "/layouts": "layout",
+      "/controller-layout": "controller-layout",
+      "/controller-layouts": "controller-layout",
       "/tools": "tools",
       "/tool": "tools"
     };
     const requestedRole = params.get("role");
     const requestedPathRole = pathRoles[window.location.pathname.toLowerCase()];
-    const role = ["controller", "lab", "art", "flow", "constants", "layout", "tools"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
+    const role = ["controller", "lab", "art", "flow", "constants", "layout", "controller-layout", "tools"].includes(requestedRole) ? requestedRole : requestedPathRole || "stage";
     const origin = window.location.origin;
     const canUseServer = window.location.protocol === "http:" || window.location.protocol === "https:";
     const stageScreen = document.querySelector("#stageScreen");
@@ -2584,8 +2669,10 @@
     const returnToGameButton = document.querySelector("#returnToGameButton");
     const quitToLobbyButton = document.querySelector("#quitToLobbyButton");
     const joinState = document.querySelector("#joinState");
+    const controllerPanel = document.querySelector(".controller-panel");
     const controllerLobbyState = document.querySelector("#controllerLobbyState");
     const controllerIntroState = document.querySelector("#controllerIntroState");
+    const controllerIntroMessage = document.querySelector("#controllerIntroMessage");
     const joinForm = document.querySelector("#joinForm");
     const stageCodeInput = document.querySelector("#stageCodeInput");
     const playerNameInput = document.querySelector("#playerNameInput");
@@ -2623,6 +2710,8 @@
     const playerColorCount = document.querySelector("#playerColorCount");
     const addPlayerColorButton = document.querySelector("#addPlayerColorButton");
     const layoutStorageStatus = document.querySelector("#layoutStorageStatus");
+    const layoutToolTitle = document.querySelector("#layoutToolTitle");
+    const layoutToolDescription = document.querySelector("#layoutToolDescription");
     const layoutStateList = document.querySelector("#layoutStateList");
     const layoutElementList = document.querySelector("#layoutElementList");
     const layoutEditorTitle = document.querySelector("#layoutEditorTitle");
@@ -2655,6 +2744,7 @@
     let textObjectTimers = [];
     let stageTextObjects = {};
     let runtimeTestLayouts = null;
+    let runtimeTestControllerLayouts = null;
     let isStagePaused = false;
     let currentStageState = null;
     let presentationAdvancePending = false;
@@ -2668,9 +2758,11 @@
     let gameFlow = { states: [] };
     let gameConstants = { playerColors: [] };
     let stageLayouts = { canvas: { width: 1920, height: 1080 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
+    let controllerLayouts = { canvas: { width: 390, height: 844 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let flowSavedSnapshot = "";
     let constantsSavedSnapshot = "";
     let layoutSavedSnapshot = "";
+    let controllerLayoutSavedSnapshot = "";
     let flowActionTypes = [];
     let flowTransitions = [];
     let selectedFlowStateId = "";
@@ -2683,6 +2775,7 @@
     let flowToolInitialized = false;
     let constantsToolInitialized = false;
     let layoutToolInitialized = false;
+    let layoutToolMode = "stage";
     let activeToolId = "";
     let pendingToolSwitch = null;
     let selectedLayoutStateId = "";
@@ -2972,6 +3065,17 @@
       return stageLayouts;
     }
 
+    async function loadControllerLayouts({ forceServer = false } = {}) {
+      if (runtimeTestControllerLayouts && !forceServer) {
+        controllerLayouts = runtimeTestControllerLayouts;
+        return controllerLayouts;
+      }
+      if (!canUseServer) return controllerLayouts;
+      const result = await getJson("/api/controller-layouts");
+      controllerLayouts = result.layouts || controllerLayouts;
+      return controllerLayouts;
+    }
+
     function stageLayoutState(stateId) {
       return (stageLayouts.states || []).find((state) => state.id === stateId) || null;
     }
@@ -2982,6 +3086,109 @@
 
     function stageLayoutGroup(groupId) {
       return groupId === "global" ? globalStageLayout() : stageLayoutState(groupId);
+    }
+
+    function controllerLayoutState(stateId) {
+      return (controllerLayouts.states || []).find((state) => state.id === stateId) || null;
+    }
+
+    function globalControllerLayout() {
+      return controllerLayouts.global || { id: "global", name: "Global Layout", elements: [] };
+    }
+
+    function controllerLayoutStateForPhase(phase) {
+      if (!controllerState) return controllerLayoutState("join") || (controllerLayouts.states || [])[0] || null;
+      const preferred = phase === "starting" ? "lobby" : phase || "lobby";
+      return controllerLayoutState(preferred) || controllerLayoutState("lobby") || (controllerLayouts.states || [])[0] || null;
+    }
+
+    function allControllerLayoutSelectors() {
+      const selectors = new Set();
+      for (const element of globalControllerLayout().elements || []) {
+        if (element.selector) selectors.add(element.selector);
+      }
+      for (const state of controllerLayouts.states || []) {
+        for (const element of state.elements || []) {
+          if (element.selector) selectors.add(element.selector);
+        }
+      }
+      return selectors;
+    }
+
+    function clearControllerLayoutTargets() {
+      const targets = new Set(controllerPanel.querySelectorAll(".controller-layout-target"));
+      for (const selector of allControllerLayoutSelectors()) {
+        const target = controllerPanel.querySelector(selector);
+        if (target) targets.add(target);
+      }
+      for (const target of targets) {
+        if (target.classList.contains("controller-dynamic-text")) {
+          target.remove();
+          continue;
+        }
+        target.classList.remove("controller-layout-target");
+        target.style.removeProperty("--controller-layout-x");
+        target.style.removeProperty("--controller-layout-y");
+        target.style.removeProperty("--controller-layout-w");
+        target.style.removeProperty("--controller-layout-h");
+        target.style.removeProperty("--controller-layout-scale");
+        target.style.removeProperty("--controller-text-color");
+        target.style.removeProperty("--controller-text-font-size");
+        target.style.removeProperty("color");
+        target.style.removeProperty("font-size");
+      }
+    }
+
+    function applyControllerLayoutForPhase(phase) {
+      if (!controllerScreen || !controllerPanel) return;
+      const state = controllerLayoutStateForPhase(phase);
+      if (!state) return;
+      clearControllerLayoutTargets();
+      const canvas = controllerLayouts.canvas || { width: 390, height: 844 };
+      const screenRect = controllerScreen.getBoundingClientRect();
+      const fitScale = Math.min(screenRect.width / canvas.width, screenRect.height / canvas.height);
+      controllerPanel.style.width = `${canvas.width}px`;
+      controllerPanel.style.height = `${canvas.height}px`;
+      controllerPanel.style.setProperty("--controller-board-scale", `${fitScale}`);
+      for (const element of state.elements || []) {
+        applyControllerElementLayout(element);
+      }
+      for (const element of globalControllerLayout().elements || []) {
+        applyControllerElementLayout(element);
+      }
+    }
+
+    function applyControllerElementLayout(element) {
+      const target = controllerLayoutTargetElement(element);
+      if (!target) return;
+      target.classList.add("controller-layout-target");
+      target.style.setProperty("--controller-layout-x", `${element.x}px`);
+      target.style.setProperty("--controller-layout-y", `${element.y}px`);
+      target.style.setProperty("--controller-layout-w", `${element.width}px`);
+      target.style.setProperty("--controller-layout-h", `${element.height}px`);
+      target.style.setProperty("--controller-layout-scale", `${element.scale || 1}`);
+      if (element.kind === "text") {
+        target.classList.add("controller-layout-text");
+        target.style.setProperty("--controller-text-color", normalizeUiColor(element.fontColor) || "#17131f");
+        target.style.setProperty("--controller-text-font-size", `${layoutComputedFontSize(element)}px`);
+        target.style.color = normalizeUiColor(element.fontColor) || "#17131f";
+        target.style.fontSize = `${layoutComputedFontSize(element)}px`;
+      }
+    }
+
+    function controllerLayoutTargetElement(element) {
+      const target = controllerPanel.querySelector(element.selector);
+      if (target || element.kind !== "text") return target;
+      const id = String(element.selector || "").replace(/^#/, "") || element.id;
+      let dynamic = controllerPanel.querySelector(`#${CSS.escape(id)}`);
+      if (!dynamic) {
+        dynamic = document.createElement("div");
+        dynamic.id = id;
+        dynamic.className = "controller-dynamic-text controller-layout-text";
+        dynamic.textContent = layoutDefaultText(element);
+        controllerPanel.appendChild(dynamic);
+      }
+      return dynamic;
     }
 
     function stageLayoutStateForPhase(phase) {
@@ -3500,6 +3707,18 @@
       }
     }
 
+    async function applyControllerRuntimeTestMessage(message) {
+      if (!message || message.type !== "runtime-test-config") return;
+      if (message.clearControllerLayouts) {
+        runtimeTestControllerLayouts = null;
+        await loadControllerLayouts({ forceServer: true }).catch(() => controllerLayouts);
+      } else if (message.controllerLayouts) {
+        runtimeTestControllerLayouts = message.controllerLayouts;
+        controllerLayouts = runtimeTestControllerLayouts;
+      }
+      applyControllerLayoutForPhase(controllerState ? controllerState.phase || "lobby" : "join");
+    }
+
     function clearRuntimeTestConfigForStage(stageCode) {
       runtimeTestLayouts = null;
       if (!stageCode || !canUseServer) return;
@@ -3675,6 +3894,7 @@
       if (!avatarPickerOpen) pendingAvatarShape = me.avatar?.shape || "";
 
       const controllerPhase = lobby.phase || "lobby";
+      controllerState.phase = controllerPhase;
       if (controllerPhase !== "lobby" && controllerPhase !== "starting") {
         closeAvatarPicker({ commit: false });
         joinState.classList.add("hidden");
@@ -3682,6 +3902,7 @@
         controllerIntroState.classList.remove("hidden");
         introPresentButton.classList.toggle("hidden", !(me.isVip && controllerPhase === "intro"));
         introPresentButton.disabled = !(me.isVip && controllerPhase === "intro");
+        applyControllerLayoutForPhase(controllerPhase);
         return;
       }
 
@@ -3697,6 +3918,7 @@
       startGameButton.textContent = controllerPhase === "starting" ? "Cancel" : "Start Game";
       startGameButton.dataset.optionId = controllerPhase === "starting" ? "lobby.cancelStart" : "lobby.startGame";
       startGameButton.disabled = !me.isVip;
+      applyControllerLayoutForPhase(controllerPhase);
 
       if (me.isVip && controllerPhase === "starting") {
         controllerClockOffset = (lobby.serverNow || Date.now()) - Date.now();
@@ -3729,6 +3951,7 @@
           controllerIntroState.classList.add("hidden");
           controllerLobbyState.classList.add("hidden");
           joinState.classList.remove("hidden");
+          applyControllerLayoutForPhase("join");
           joinButton.disabled = false;
           return;
         }
@@ -3760,6 +3983,7 @@
       }).catch(() => {});
       controllerLobbyState.classList.add("hidden");
       joinState.classList.remove("hidden");
+      applyControllerLayoutForPhase("join");
       updateJoinButton();
     }
 
@@ -3770,9 +3994,14 @@
       loadArtAssets().then(() => {
         if (controllerState?.player) setControllerAvatar(controllerState.player);
       }).catch(() => {});
+      loadControllerLayouts().then(() => applyControllerLayoutForPhase("join")).catch(() => applyControllerLayoutForPhase("join"));
+      runtimeTestChannel?.addEventListener("message", (event) => {
+        applyControllerRuntimeTestMessage(event.data);
+      });
       stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(getSessionValue("partyTemplateStageCode") || getLocalValue("partyTemplateStageCode"));
       playerNameInput.value = getPlayerNameFromUrl() || getSessionValue("partyTemplatePlayerName") || "";
       updateJoinButton();
+      applyControllerLayoutForPhase("join");
 
       stageCodeInput.addEventListener("input", () => {
         const cursorPosition = stageCodeInput.selectionStart;
@@ -3868,6 +4097,11 @@
           playerId: controllerState.playerId
         });
         navigator.sendBeacon(`${origin}/api/leave`, new Blob([body], { type: "application/json" }));
+      });
+      window.addEventListener("resize", () => {
+        if (!controllerScreen.classList.contains("hidden")) {
+          applyControllerLayoutForPhase(controllerState ? controllerState.phase || "lobby" : "join");
+        }
       });
     }
 
@@ -4263,6 +4497,11 @@
         message.layouts = layoutDirty ? serializeStageLayoutsForSave(stageLayouts) : null;
         message.clearLayouts = !layoutDirty;
       }
+      if (controllerLayoutSavedSnapshot) {
+        const controllerLayoutDirty = isControllerLayoutDirty();
+        message.controllerLayouts = controllerLayoutDirty ? serializeStageLayoutsForSave(controllerLayouts) : null;
+        message.clearControllerLayouts = !controllerLayoutDirty;
+      }
       return { ...message, ...overrides };
     }
 
@@ -4280,8 +4519,10 @@
         type: "runtime-test-config",
         flow: null,
         layouts: null,
+        controllerLayouts: null,
         clearFlow: true,
-        clearLayouts: true
+        clearLayouts: true,
+        clearControllerLayouts: true
       };
       runtimeTestChannel?.postMessage(message);
       if (canUseServer) {
@@ -4297,7 +4538,7 @@
     }
 
     window.addEventListener("beforeunload", () => {
-      if (isFlowDirty() || isLayoutDirty()) publishRuntimeLocalClear();
+      if (isFlowDirty() || isLayoutDirty() || isControllerLayoutDirty()) publishRuntimeLocalClear();
     });
 
     async function loadGameFlow() {
@@ -5209,10 +5450,38 @@
       }
     }
 
+    function activeLayoutData() {
+      return layoutToolMode === "controller" ? controllerLayouts : stageLayouts;
+    }
+
+    function setActiveLayoutData(layouts) {
+      if (layoutToolMode === "controller") {
+        controllerLayouts = layouts;
+      } else {
+        stageLayouts = layouts;
+      }
+    }
+
+    function activeLayoutSavedSnapshot() {
+      return layoutToolMode === "controller" ? controllerLayoutSavedSnapshot : layoutSavedSnapshot;
+    }
+
+    function setActiveLayoutSavedSnapshot(snapshot) {
+      if (layoutToolMode === "controller") {
+        controllerLayoutSavedSnapshot = snapshot;
+      } else {
+        layoutSavedSnapshot = snapshot;
+      }
+    }
+
+    function activeLayoutEndpoint() {
+      return layoutToolMode === "controller" ? "/api/controller-layouts" : "/api/stage-layouts";
+    }
+
     async function loadLayoutToolData() {
-      const result = await getJson("/api/stage-layouts");
-      stageLayouts = result.layouts || stageLayouts;
-      layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(result.savedLayouts || result.layouts || stageLayouts));
+      const result = await getJson(activeLayoutEndpoint());
+      setActiveLayoutData(result.layouts || activeLayoutData());
+      setActiveLayoutSavedSnapshot(JSON.stringify(serializeStageLayoutsForSave(result.savedLayouts || result.layouts || activeLayoutData())));
       layoutUndoStack = [];
       layoutRedoStack = [];
       updateLayoutStorageStatus(result.storage);
@@ -5235,10 +5504,11 @@
     }
 
     function serializeStageLayoutsForSave(layouts) {
+      const fallbackCanvas = layoutToolMode === "controller" ? { width: 390, height: 844 } : { width: 1920, height: 1080 };
       return {
         canvas: {
-          width: Number(layouts?.canvas?.width || 1920),
-          height: Number(layouts?.canvas?.height || 1080)
+          width: Number(layouts?.canvas?.width || fallbackCanvas.width),
+          height: Number(layouts?.canvas?.height || fallbackCanvas.height)
         },
         global: serializeLayoutGroup(layouts?.global || { id: "global", name: "Global Layout", elements: [] }),
         states: (layouts.states || []).map((state) => serializeLayoutGroup(state))
@@ -5268,7 +5538,9 @@
     }
 
     function layoutGroups() {
-      return [globalStageLayout(), ...(stageLayouts.states || [])];
+      const layouts = activeLayoutData();
+      const global = layoutToolMode === "controller" ? globalControllerLayout() : globalStageLayout();
+      return [global, ...(layouts.states || [])];
     }
 
     function layoutGroup(groupId) {
@@ -5312,7 +5584,29 @@
       return layoutSavedSnapshot && JSON.stringify(serializeStageLayoutsForSave(stageLayouts)) !== layoutSavedSnapshot;
     }
 
+    function isControllerLayoutDirty() {
+      return controllerLayoutSavedSnapshot && JSON.stringify(serializeStageLayoutsForSave(controllerLayouts)) !== controllerLayoutSavedSnapshot;
+    }
+
+    function isActiveLayoutDirty() {
+      return layoutToolMode === "controller" ? isControllerLayoutDirty() : isLayoutDirty();
+    }
+
     function baseLayoutObjectCatalog() {
+      if (layoutToolMode === "controller") {
+        return [
+          { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", width: 330, height: 86 },
+          { id: "stageCodeField", name: "Stage Code Field", selector: "#stageCodeField", kind: "art", width: 320, height: 96 },
+          { id: "playerNameField", name: "Player Name Field", selector: "#playerNameField", kind: "art", width: 320, height: 96 },
+          { id: "joinButton", name: "Join Button", selector: "#joinButton", kind: "art", width: 260, height: 78 },
+          { id: "controllerAvatar", name: "Player Avatar", selector: "#controllerAvatar", kind: "art", width: 104, height: 104 },
+          { id: "controllerPlayerName", name: "Player Name", selector: "#controllerPlayerName", kind: "text", width: 330, height: 80 },
+          { id: "controllerMeta", name: "Controller Status", selector: "#controllerMeta", kind: "text", width: 330, height: 48 },
+          { id: "startGameButton", name: "Start Game Button", selector: "#startGameButton", kind: "art", width: 260, height: 78 },
+          { id: "controllerIntroMessage", name: "Intro Message", selector: "#controllerIntroMessage", kind: "text", width: 330, height: 120 },
+          { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", kind: "art", width: 300, height: 78 }
+        ];
+      }
       return [
         { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "art", width: 1080, height: 150 },
         { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", width: 620, height: 220 },
@@ -5350,7 +5644,7 @@
     }
 
     function makeLayoutObject(item) {
-      const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
+      const canvas = activeLayoutData().canvas || (layoutToolMode === "controller" ? { width: 390, height: 844 } : { width: 1920, height: 1080 });
       return {
         id: item.id,
         name: item.name,
@@ -5364,12 +5658,12 @@
         defaultText: item.kind === "text" ? layoutDefaultText(item) : "",
         fontSize: item.kind === "text" ? 58 : 58,
         autoFitText: false,
-        fontColor: item.kind === "text" ? "#ffffff" : "#ffffff"
+        fontColor: item.kind === "text" ? (layoutToolMode === "controller" ? "#17131f" : "#ffffff") : "#ffffff"
       };
     }
 
     function layoutHistorySnapshot() {
-      return JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+      return JSON.stringify(serializeStageLayoutsForSave(activeLayoutData()));
     }
 
     function pushLayoutHistory() {
@@ -5381,7 +5675,7 @@
     }
 
     function restoreLayoutHistory(snapshot) {
-      stageLayouts = JSON.parse(snapshot);
+      setActiveLayoutData(JSON.parse(snapshot));
       selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
       setLayoutSelection([...selectedLayoutElementIds].filter((id) => layoutElement(selectedLayoutStateId, id)));
       if (!selectedLayoutElementId) setLayoutSelection(layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
@@ -5421,7 +5715,7 @@
     }
 
     function fitLayoutStagePreview() {
-      const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
+      const canvas = activeLayoutData().canvas || (layoutToolMode === "controller" ? { width: 390, height: 844 } : { width: 1920, height: 1080 });
       const wrap = layoutStagePreview.parentElement;
       if (!wrap) return 1;
       const wrapRect = wrap.getBoundingClientRect();
@@ -5436,6 +5730,12 @@
     }
 
     function renderLayoutTool() {
+      if (layoutToolTitle) layoutToolTitle.textContent = layoutToolMode === "controller" ? "Controller Layouts" : "Stage Layouts";
+      if (layoutToolDescription) {
+        layoutToolDescription.textContent = layoutToolMode === "controller"
+          ? "Position and scale fixed controller elements per game state."
+          : "Position and scale fixed stage elements per game state.";
+      }
       renderLayoutStates();
       renderLayoutElements();
       renderLayoutPreview();
@@ -5450,7 +5750,7 @@
       for (const button of [removeLayoutObjectButton, layoutPreviewRemoveObjectButton]) {
         if (button) button.disabled = !hasSelection;
       }
-      if (revertLayoutButton) revertLayoutButton.disabled = !layoutSavedSnapshot || !isLayoutDirty();
+      if (revertLayoutButton) revertLayoutButton.disabled = !activeLayoutSavedSnapshot() || !isActiveLayoutDirty();
     }
 
     function renderLayoutStates() {
@@ -5491,21 +5791,23 @@
     }
 
     function layoutPreviewScale() {
-      const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
+      const canvas = activeLayoutData().canvas || (layoutToolMode === "controller" ? { width: 390, height: 844 } : { width: 1920, height: 1080 });
       return fitLayoutStagePreview() || layoutStagePreview.clientWidth / canvas.width;
     }
 
     function renderLayoutPreview() {
       layoutStagePreview.replaceChildren();
+      layoutStagePreview.classList.toggle("is-controller-preview", layoutToolMode === "controller");
       const state = layoutGroup(selectedLayoutStateId);
       const scale = fitLayoutStagePreview() || 1;
       const previewElements = selectedLayoutStateId === "global"
         ? (state?.elements || [])
-        : [...(state?.elements || []), ...(globalStageLayout().elements || [])];
+        : [...(state?.elements || []), ...((layoutToolMode === "controller" ? globalControllerLayout() : globalStageLayout()).elements || [])];
       for (const element of previewElements) {
         const node = document.createElement("div");
         node.className = "layout-preview-element";
-        const isEditableElement = selectedLayoutStateId === "global" || !(globalStageLayout().elements || []).some((globalElement) => globalElement.id === element.id);
+        const globalElements = (layoutToolMode === "controller" ? globalControllerLayout() : globalStageLayout()).elements || [];
+        const isEditableElement = selectedLayoutStateId === "global" || !globalElements.some((globalElement) => globalElement.id === element.id);
         node.classList.toggle("is-selected", isEditableElement && selectedLayoutElementIds.has(element.id));
         node.classList.toggle("is-global-preview", selectedLayoutStateId !== "global" && !isEditableElement);
         node.dataset.elementId = element.id;
@@ -5533,7 +5835,33 @@
       const id = String(element.id || "").toLowerCase();
       const content = document.createElement("div");
       content.className = "layout-preview-content";
-      if (id === "stagetitle") {
+      if (layoutToolMode === "controller") {
+        if (id === "jointitle") {
+          content.appendChild(layoutPreviewTextNode(element, "Join Lobby"));
+        } else if (id === "stagecodefield") {
+          content.innerHTML = `<label class="layout-preview-input-label">Stage Code<div class="layout-preview-input">ABCD</div></label>`;
+        } else if (id === "playernamefield") {
+          content.innerHTML = `<label class="layout-preview-input-label">Player Name<div class="layout-preview-input">Ava</div></label>`;
+        } else if (id === "joinbutton") {
+          content.innerHTML = `<div class="layout-preview-button">Join</div>`;
+        } else if (id === "controlleravatar") {
+          content.innerHTML = `<div class="player-avatar avatar-rex" style="--avatar-color:#7c3aed">${avatarFrameImage()}${dinoIcon("rex")}</div>`;
+        } else if (id === "controllerplayername") {
+          content.appendChild(layoutPreviewTextNode(element, "Ava"));
+        } else if (id === "controllermeta") {
+          content.appendChild(layoutPreviewTextNode(element, "VIP Player"));
+        } else if (id === "startgamebutton") {
+          content.innerHTML = `<div class="layout-preview-button">Start Game</div>`;
+        } else if (id === "controllerintromessage") {
+          content.appendChild(layoutPreviewTextNode(element, "Welcome to the Game"));
+        } else if (id === "intropresentbutton") {
+          content.innerHTML = `<div class="layout-preview-button">Present HI THERE</div>`;
+        } else if (element.kind === "text") {
+          content.appendChild(layoutPreviewTextNode(element, element.name));
+        } else {
+          content.textContent = element.name;
+        }
+      } else if (id === "stagetitle") {
         content.innerHTML = `<div class="layout-preview-title">Party Game Template</div>`;
       } else if (id === "stagecodepanel") {
         content.innerHTML = `<div class="layout-preview-code-card"><span>Stage Code</span><strong>NUZ7</strong></div>`;
@@ -5585,6 +5913,10 @@
       if (id === "stageprompttext") return "Prompt Text";
       if (id === "roundintrotext") return "Round One";
       if (id === "roundintroinfotext") return "Additional round info";
+      if (id === "jointitle") return "Join Lobby";
+      if (id === "controllerplayername") return "Ava";
+      if (id === "controllermeta") return "VIP Player";
+      if (id === "controllerintromessage") return "Welcome to the Game";
       return String(element?.name || "Text");
     }
 
@@ -5787,7 +6119,7 @@
         ? `Editing ${state.name}. Drag the selected group or change fields to move values relatively.`
         : element
         ? `Editing ${state.name}. Drag the highlighted box or resize from its corner.`
-        : "Choose an element to edit its fixed stage position.";
+        : `Choose an element to edit its fixed ${layoutToolMode === "controller" ? "controller" : "stage"} position.`;
       if (!element) return;
       layoutEditorFields.appendChild(layoutNumberField("X", element.x, (value) => updateLayoutNumber("x", value)));
       layoutEditorFields.appendChild(layoutNumberField("Y", element.y, (value) => updateLayoutNumber("y", value)));
@@ -5945,8 +6277,9 @@
     }
 
     function revertStageLayouts() {
-      if (!layoutSavedSnapshot) return;
-      stageLayouts = JSON.parse(layoutSavedSnapshot);
+      const snapshot = activeLayoutSavedSnapshot();
+      if (!snapshot) return;
+      setActiveLayoutData(JSON.parse(snapshot));
       layoutUndoStack = [];
       layoutRedoStack = [];
       selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
@@ -5963,9 +6296,23 @@
       renderLayoutTool();
     }
 
-    async function setupLayoutTool() {
+    async function saveControllerLayouts() {
+      const result = await postJson("/api/controller-layouts", { layouts: serializeStageLayoutsForSave(controllerLayouts) });
+      controllerLayouts = result.layouts || controllerLayouts;
+      controllerLayoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(controllerLayouts));
+      updateLayoutStorageStatus(result.storage);
+      renderLayoutTool();
+    }
+
+    async function setupLayoutTool(mode = "stage") {
+      layoutToolMode = mode === "controller" ? "controller" : "stage";
       layoutScreen.classList.remove("hidden");
       if (layoutToolInitialized) {
+        if (!activeLayoutSavedSnapshot()) {
+          await loadLayoutToolData().catch((error) => {
+            layoutStorageStatus.textContent = error.message;
+          });
+        }
         renderLayoutTool();
         return;
       }
@@ -6002,6 +6349,7 @@
       if (toolId === "constants") return "Game Constants";
       if (toolId === "art") return "Art Manager";
       if (toolId === "layout") return "Layout Tool";
+      if (toolId === "controller-layout") return "Controller Layout Tool";
       return "Tool";
     }
 
@@ -6010,11 +6358,12 @@
       if (toolId === "flow") return isFlowDirty();
       if (toolId === "constants") return constantsSavedSnapshot && JSON.stringify(gameConstants) !== constantsSavedSnapshot;
       if (toolId === "layout") return isLayoutDirty();
+      if (toolId === "controller-layout") return isControllerLayoutDirty();
       return false;
     }
 
     function hasGlobalSaveWork() {
-      return isToolDirty("art") || isToolDirty("flow") || isToolDirty("constants") || isToolDirty("layout");
+      return isToolDirty("art") || isToolDirty("flow") || isToolDirty("constants") || isToolDirty("layout") || isToolDirty("controller-layout");
     }
 
     function updateGlobalSaveButton() {
@@ -6037,6 +6386,10 @@
       }
       if (toolId === "layout") {
         await saveStageLayouts();
+        return;
+      }
+      if (toolId === "controller-layout") {
+        await saveControllerLayouts();
       }
     }
 
@@ -6049,6 +6402,7 @@
         if (isFlowDirty()) await saveGameFlow();
         if (isToolDirty("constants")) await saveGameConstants();
         if (isLayoutDirty()) await saveStageLayouts();
+        if (isControllerLayoutDirty()) await saveControllerLayouts();
       } finally {
         globalSaveButton.textContent = "Save All";
         updateGlobalSaveButton();
@@ -6092,7 +6446,9 @@
       } else if (toolId === "constants") {
         await setupConstantsTool();
       } else if (toolId === "layout") {
-        await setupLayoutTool();
+        await setupLayoutTool("stage");
+      } else if (toolId === "controller-layout") {
+        await setupLayoutTool("controller");
       } else {
         await setupFlowTool();
       }
@@ -6111,7 +6467,7 @@
       toolTabs.forEach((tab) => {
         tab.addEventListener("click", () => activateTool(tab.dataset.toolTarget));
       });
-      const initialTool = ["flow", "constants", "art", "layout"].includes(params.get("tool")) ? params.get("tool") : "flow";
+      const initialTool = ["flow", "constants", "art", "layout", "controller-layout"].includes(params.get("tool")) ? params.get("tool") : "flow";
       activateTool(initialTool, { force: true });
     }
 
@@ -6124,7 +6480,9 @@
     } else if (role === "constants") {
       setupConstantsTool();
     } else if (role === "layout") {
-      setupLayoutTool();
+      setupLayoutTool("stage");
+    } else if (role === "controller-layout") {
+      setupLayoutTool("controller");
     } else if (role === "tools") {
       setupToolDashboard();
     } else if (role === "controller") {
