@@ -78,18 +78,18 @@
           "id": "stagecodebadge",
           "name": "Stage Code Widget",
           "selector": "#stageCodeBadge",
-          "x": 108,
-          "y": 70,
+          "x": 160,
+          "y": 100,
           "width": 170,
           "height": 82,
-          "scale": 1
+          "scale": 1.5
         },
         {
           "id": "stageintrotitle",
           "name": "Intro Header",
           "selector": "#stageIntroTitle",
           "x": 960,
-          "y": 235,
+          "y": 120,
           "width": 1060,
           "height": 130,
           "scale": 1
