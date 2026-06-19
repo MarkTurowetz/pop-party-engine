@@ -115,7 +115,7 @@
           "height": 82,
           "scale": 0.7,
           "defaultText": "",
-          "fontSize": 58,
+          "fontSize": 6,
           "autoFitText": true,
           "fontColor": "#17131f"
         },
