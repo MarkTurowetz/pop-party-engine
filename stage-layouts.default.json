@@ -9,6 +9,16 @@
       "name": "Lobby",
       "elements": [
         {
+          "id": "startPopup",
+          "name": "Countdown Popup",
+          "selector": "#startPopup",
+          "x": 960,
+          "y": 130,
+          "width": 700,
+          "height": 130,
+          "scale": 1
+        },
+        {
           "id": "stageTitle",
           "name": "Header",
           "selector": ".stage-title",
@@ -46,62 +56,6 @@
           "y": 650,
           "width": 740,
           "height": 76,
-          "scale": 1
-        },
-        {
-          "id": "playerLobby",
-          "name": "Player Avatars",
-          "selector": "#playerLobby",
-          "x": 960,
-          "y": 920,
-          "width": 1320,
-          "height": 150,
-          "scale": 1
-        }
-      ]
-    },
-    {
-      "id": "starting",
-      "name": "Starting Countdown",
-      "elements": [
-        {
-          "id": "startPopup",
-          "name": "Countdown Popup",
-          "selector": "#startPopup",
-          "x": 960,
-          "y": 130,
-          "width": 700,
-          "height": 130,
-          "scale": 1
-        },
-        {
-          "id": "stageTitle",
-          "name": "Header",
-          "selector": ".stage-title",
-          "x": 960,
-          "y": 250,
-          "width": 1080,
-          "height": 150,
-          "scale": 1
-        },
-        {
-          "id": "stageCodePanel",
-          "name": "Stage Code Panel",
-          "selector": ".stage-code-panel",
-          "x": 960,
-          "y": 450,
-          "width": 560,
-          "height": 190,
-          "scale": 1
-        },
-        {
-          "id": "waitingStatus",
-          "name": "Cancel Prompt",
-          "selector": "#waitingStatus",
-          "x": 960,
-          "y": 640,
-          "width": 700,
-          "height": 82,
           "scale": 1
         },
         {

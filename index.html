@@ -2314,6 +2314,8 @@
     let selectedLayoutStateId = "";
     let selectedLayoutElementId = "";
     let currentStageLayoutStateId = "";
+    let layoutUndoStack = [];
+    let layoutRedoStack = [];
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],
       ["avatar-rex", "/art/default/dino-rex.svg"],
@@ -2575,7 +2577,7 @@
     }
 
     function stageLayoutStateForPhase(phase) {
-      const preferred = phase === "starting" ? "starting" : phase === "intro" ? "intro" : "lobby";
+      const preferred = phase === "intro" ? "intro" : "lobby";
       return stageLayoutState(preferred) || stageLayoutState("lobby") || (stageLayouts.states || [])[0] || null;
     }
 
@@ -4429,6 +4431,8 @@
       const result = await getJson("/api/stage-layouts");
       stageLayouts = result.layouts || stageLayouts;
       layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+      layoutUndoStack = [];
+      layoutRedoStack = [];
       updateLayoutStorageStatus(result.storage);
       selectedLayoutStateId = stageLayouts.states?.find((state) => state.id === selectedLayoutStateId)?.id || stageLayouts.states?.[0]?.id || "";
       selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || stageLayoutState(selectedLayoutStateId)?.elements?.[0]?.id || "";
@@ -4473,6 +4477,49 @@
 
     function layoutElement(stateId, elementId) {
       return stageLayoutState(stateId)?.elements?.find((element) => element.id === elementId) || null;
+    }
+
+    function layoutHistorySnapshot() {
+      return JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
+    }
+
+    function pushLayoutHistory() {
+      const snapshot = layoutHistorySnapshot();
+      if (layoutUndoStack[layoutUndoStack.length - 1] === snapshot) return;
+      layoutUndoStack.push(snapshot);
+      if (layoutUndoStack.length > 30) layoutUndoStack.shift();
+      layoutRedoStack = [];
+    }
+
+    function restoreLayoutHistory(snapshot) {
+      stageLayouts = JSON.parse(snapshot);
+      selectedLayoutStateId = stageLayouts.states?.find((state) => state.id === selectedLayoutStateId)?.id || stageLayouts.states?.[0]?.id || "";
+      selectedLayoutElementId = layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || stageLayoutState(selectedLayoutStateId)?.elements?.[0]?.id || "";
+      renderLayoutTool();
+    }
+
+    function undoLayoutChange() {
+      if (!layoutUndoStack.length) return;
+      layoutRedoStack.push(layoutHistorySnapshot());
+      restoreLayoutHistory(layoutUndoStack.pop());
+    }
+
+    function redoLayoutChange() {
+      if (!layoutRedoStack.length) return;
+      layoutUndoStack.push(layoutHistorySnapshot());
+      if (layoutUndoStack.length > 30) layoutUndoStack.shift();
+      restoreLayoutHistory(layoutRedoStack.pop());
+    }
+
+    function handleLayoutHotkeys(event) {
+      if (layoutScreen.classList.contains("hidden")) return;
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+      event.preventDefault();
+      if (event.shiftKey) {
+        redoLayoutChange();
+      } else {
+        undoLayoutChange();
+      }
     }
 
     function fitLayoutStagePreview() {
@@ -4571,6 +4618,7 @@
     function startLayoutDrag(event, element) {
       if (event.target.closest(".layout-resize-handle")) return;
       event.preventDefault();
+      pushLayoutHistory();
       const scale = layoutPreviewScale() || 1;
       const startX = event.clientX;
       const startY = event.clientY;
@@ -4595,6 +4643,7 @@
     function startLayoutScale(event, element) {
       event.preventDefault();
       event.stopPropagation();
+      pushLayoutHistory();
       const previewScale = layoutPreviewScale() || 1;
       const startX = event.clientX;
       const startY = event.clientY;
@@ -4649,6 +4698,7 @@
     }
 
     function updateLayoutNumber(element, key, value) {
+      pushLayoutHistory();
       element[key] = Number(Number(value).toFixed(3));
       renderLayoutTool();
     }
@@ -4676,6 +4726,7 @@
       }
       layoutToolInitialized = true;
       saveLayoutButton.addEventListener("click", saveStageLayouts);
+      window.addEventListener("keydown", handleLayoutHotkeys);
       window.addEventListener("resize", () => {
         if (!layoutScreen.classList.contains("hidden")) renderLayoutPreview();
       });

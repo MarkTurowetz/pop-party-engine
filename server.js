@@ -125,21 +125,11 @@ const defaultStageLayouts = {
       id: "lobby",
       name: "Lobby",
       elements: [
+        { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", x: 960, y: 130, width: 700, height: 130, scale: 1 },
         { id: "stageTitle", name: "Header", selector: ".stage-title", x: 960, y: 190, width: 1080, height: 150, scale: 1 },
         { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
         { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", x: 960, y: 575, width: 700, height: 82, scale: 1 },
         { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", x: 960, y: 650, width: 740, height: 76, scale: 1 },
-        { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 920, width: 1320, height: 150, scale: 1 }
-      ]
-    },
-    {
-      id: "starting",
-      name: "Starting Countdown",
-      elements: [
-        { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", x: 960, y: 130, width: 700, height: 130, scale: 1 },
-        { id: "stageTitle", name: "Header", selector: ".stage-title", x: 960, y: 250, width: 1080, height: 150, scale: 1 },
-        { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", x: 960, y: 450, width: 560, height: 190, scale: 1 },
-        { id: "waitingStatus", name: "Cancel Prompt", selector: "#waitingStatus", x: 960, y: 640, width: 700, height: 82, scale: 1 },
         { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 920, width: 1320, height: 150, scale: 1 }
       ]
     },
@@ -311,7 +301,9 @@ function normalizeStageLayouts(layouts) {
   const incomingStates = Array.isArray(layouts?.states) ? layouts.states : defaultStageLayouts.states;
   const normalizedDefaultStates = defaultStageLayouts.states.map((state, index) => normalizeLayoutState(state, index)).filter(Boolean);
   const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
-  const normalizedStates = incomingStates.map((state, stateIndex) => normalizeLayoutState(state, stateIndex)).filter(Boolean);
+  const normalizedIncomingStates = incomingStates.map((state, stateIndex) => normalizeLayoutState(state, stateIndex)).filter(Boolean);
+  const migratedStates = migrateStageLayoutStates(normalizedIncomingStates);
+  const normalizedStates = migratedStates.filter((state) => defaultStatesById.has(state.id));
   for (const defaultState of normalizedDefaultStates) {
     if (!normalizedStates.some((state) => state.id === defaultState.id)) {
       normalizedStates.push(cloneJson(defaultState));
@@ -329,6 +321,21 @@ function normalizeStageLayouts(layouts) {
       return { ...state, elements };
     })
   };
+}
+
+function migrateStageLayoutStates(states) {
+  const lobby = states.find((state) => state.id === "lobby");
+  const starting = states.find((state) => state.id === "starting");
+  const countdown = starting?.elements?.find((element) => element.id === "startpopup");
+  if (lobby && countdown && !lobby.elements.some((element) => element.id === "startpopup")) {
+    lobby.elements.unshift({
+      ...countdown,
+      id: "startpopup",
+      name: countdown.name || "Countdown Popup",
+      selector: countdown.selector || "#startPopup"
+    });
+  }
+  return states;
 }
 
 function normalizeLayoutState(state, stateIndex) {
