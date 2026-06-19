@@ -341,6 +341,11 @@ function cleanChoiceOptions(value) {
   return options.length ? options : ["A", "B", "C", "D"];
 }
 
+function normalizeChoiceInputMode(value) {
+  const mode = String(value || "").trim();
+  return ["singleSelect", "submitOnce", "continuous"].includes(mode) ? mode : "singleSelect";
+}
+
 function normalizeColor(value) {
   const color = String(value || "").trim();
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
@@ -625,6 +630,21 @@ function createControllerLayoutStateForFlowState(flowState) {
           width: 330,
           height: 420,
           scale: 1
+        },
+        {
+          id: "controllerChoiceDone",
+          name: "Choice Done Text",
+          selector: "#controllerChoiceDone",
+          kind: "text",
+          x: 195,
+          y: 420,
+          width: 330,
+          height: 150,
+          scale: 1,
+          defaultText: "You chose:",
+          fontSize: 34,
+          autoFitText: true,
+          fontColor: "#17131f"
         }
       ]
     };
@@ -753,7 +773,9 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
     return {
       ...base,
       prompt: cleanFlowText(action?.prompt, "Answer this question by tapping an answer"),
-      options: cleanChoiceOptions(action?.options)
+      options: cleanChoiceOptions(action?.options),
+      inputMode: normalizeChoiceInputMode(action?.inputMode),
+      locked: action?.locked === true
     };
   }
   if (type === "displayText") {
@@ -1423,7 +1445,9 @@ function publicFlowAction(action, index) {
       ...base,
       type: "multipleChoiceInput",
       prompt: action.prompt || "Answer this question by tapping an answer",
-      options: cleanChoiceOptions(action.options)
+      options: cleanChoiceOptions(action.options),
+      inputMode: normalizeChoiceInputMode(action.inputMode),
+      locked: action.locked === true
     };
   }
   if (action.type === "displayText" || action.type === "text") {
@@ -1965,6 +1989,8 @@ function getRoom(stageCode) {
       choiceInputActionId: "",
       choiceInputPrompt: "",
       choiceInputOptions: [],
+      choiceInputMode: "singleSelect",
+      choiceInputLocked: false,
       choiceInputAnswers: new Map(),
       runtimeFlowOverride: null,
       revision: 0
@@ -2038,7 +2064,7 @@ function publicPlayer(player, room) {
     active: player.active,
     joinedAt: player.joinedAt,
     isVip: player.id === room.vipPlayerId,
-    answer: answer ? { optionIndex: answer.optionIndex, text: answer.text } : null
+    answer: answer ? { optionIndex: answer.optionIndex, text: answer.text, done: answer.done === true, nonce: answer.nonce || 0 } : null
   };
 }
 
@@ -2046,6 +2072,8 @@ function clearChoiceInput(room) {
   room.choiceInputActionId = "";
   room.choiceInputPrompt = "";
   room.choiceInputOptions = [];
+  room.choiceInputMode = "singleSelect";
+  room.choiceInputLocked = false;
   if (room.choiceInputAnswers?.clear) {
     room.choiceInputAnswers.clear();
   } else {
@@ -2059,6 +2087,8 @@ function applyChoiceInputAction(room, action) {
   room.choiceInputActionId = action.id;
   room.choiceInputPrompt = action.prompt || "Answer this question by tapping an answer";
   room.choiceInputOptions = cleanChoiceOptions(action.options);
+  room.choiceInputMode = normalizeChoiceInputMode(action.inputMode);
+  room.choiceInputLocked = action.locked === true;
   room.choiceInputAnswers = new Map();
 }
 
@@ -2068,9 +2098,11 @@ function choiceInputPayload(room, currentAction) {
   return {
     actionId: room.choiceInputActionId,
     prompt: room.choiceInputPrompt,
+    mode: room.choiceInputMode,
+    locked: room.choiceInputLocked,
     options: room.choiceInputOptions.map((text, index) => ({
       index,
-      label: `Button ${index + 1}`,
+      label: text,
       text
     }))
   };
@@ -2535,10 +2567,28 @@ async function handleControllerChoice(req, res) {
     return;
   }
 
+  const existingAnswer = room.choiceInputAnswers.get(playerId) || null;
+  if (room.choiceInputMode === "submitOnce" && existingAnswer?.done) {
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
+  if (room.choiceInputMode === "singleSelect" && existingAnswer?.optionIndex === optionIndex) {
+    if (room.choiceInputLocked) {
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      return;
+    }
+    room.choiceInputAnswers.delete(playerId);
+    broadcastLobby(room);
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
+
   room.choiceInputAnswers.set(playerId, {
     optionIndex,
     text: room.choiceInputOptions[optionIndex],
-    answeredAt: Date.now()
+    answeredAt: Date.now(),
+    done: room.choiceInputMode === "submitOnce",
+    nonce: Date.now()
   });
 
   broadcastLobby(room);
