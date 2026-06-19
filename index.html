@@ -938,6 +938,10 @@
       text-align: center;
     }
 
+    .controller-layout-hidden {
+      display: none !important;
+    }
+
     .join-form {
       display: grid;
       gap: 14px;
@@ -1921,11 +1925,13 @@
 
     .layout-stage-preview.is-controller-preview {
       aspect-ratio: 390 / 844;
-      background:
-        linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 58px),
-        linear-gradient(0deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 58px),
-        linear-gradient(135deg, #22d3ee 0%, #60d394 52%, #ffe156 100%);
-      background-size: 58px 58px, 58px 58px, auto;
+      background: var(--paper);
+    }
+
+    .layout-stage-preview.is-controller-preview .layout-preview-presentation {
+      color: var(--layout-text-color, var(--ink));
+      text-shadow: none;
+      text-transform: none;
     }
 
     .layout-preview-element {
@@ -3127,6 +3133,7 @@
           continue;
         }
         target.classList.remove("controller-layout-target");
+        target.classList.add("controller-layout-hidden");
         target.style.removeProperty("--controller-layout-x");
         target.style.removeProperty("--controller-layout-y");
         target.style.removeProperty("--controller-layout-w");
@@ -3161,6 +3168,7 @@
     function applyControllerElementLayout(element) {
       const target = controllerLayoutTargetElement(element);
       if (!target) return;
+      target.classList.remove("controller-layout-hidden");
       target.classList.add("controller-layout-target");
       target.style.setProperty("--controller-layout-x", `${element.x}px`);
       target.style.setProperty("--controller-layout-y", `${element.y}px`);
@@ -3899,7 +3907,7 @@
         closeAvatarPicker({ commit: false });
         joinState.classList.add("hidden");
         controllerLobbyState.classList.add("hidden");
-        controllerIntroState.classList.remove("hidden");
+        controllerIntroState.classList.toggle("hidden", controllerPhase !== "intro");
         introPresentButton.classList.toggle("hidden", !(me.isVip && controllerPhase === "intro"));
         introPresentButton.disabled = !(me.isVip && controllerPhase === "intro");
         applyControllerLayoutForPhase(controllerPhase);
