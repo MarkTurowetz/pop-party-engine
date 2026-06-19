@@ -33,7 +33,7 @@
           "name": "Stage Code Panel",
           "selector": ".stage-code-panel",
           "x": 960,
-          "y": 430,
+          "y": 480,
           "width": 560,
           "height": 190,
           "scale": 1.35
@@ -53,7 +53,7 @@
           "name": "Join Prompt",
           "selector": "#joinPrompt",
           "x": 960,
-          "y": 620,
+          "y": 300,
           "width": 740,
           "height": 76,
           "scale": 0.7
