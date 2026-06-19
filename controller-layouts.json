@@ -1,0 +1,181 @@
+{
+  "canvas": {
+    "width": 390,
+    "height": 844
+  },
+  "global": {
+    "id": "global",
+    "name": "Global Layout",
+    "elements": []
+  },
+  "states": [
+    {
+      "id": "join",
+      "name": "Join Controller",
+      "elements": [
+        {
+          "id": "jointitle",
+          "name": "Join Title",
+          "selector": "#joinTitle",
+          "kind": "text",
+          "x": 195,
+          "y": 112,
+          "width": 330,
+          "height": 86,
+          "scale": 1,
+          "defaultText": "Join Lobby",
+          "fontSize": 54,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "stagecodefield",
+          "name": "Stage Code Field",
+          "selector": "#stageCodeField",
+          "kind": "art",
+          "x": 195,
+          "y": 255,
+          "width": 320,
+          "height": 96,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "playernamefield",
+          "name": "Player Name Field",
+          "selector": "#playerNameField",
+          "kind": "art",
+          "x": 195,
+          "y": 375,
+          "width": 320,
+          "height": 96,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "joinbutton",
+          "name": "Join Button",
+          "selector": "#joinButton",
+          "kind": "art",
+          "x": 195,
+          "y": 505,
+          "width": 260,
+          "height": 78,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ]
+    },
+    {
+      "id": "lobby",
+      "name": "Lobby Controller",
+      "elements": [
+        {
+          "id": "controlleravatar",
+          "name": "Player Avatar",
+          "selector": "#controllerAvatar",
+          "kind": "art",
+          "x": 195,
+          "y": 150,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "controllerplayername",
+          "name": "Player Name",
+          "selector": "#controllerPlayerName",
+          "kind": "text",
+          "x": 195,
+          "y": 290,
+          "width": 330,
+          "height": 80,
+          "scale": 1,
+          "defaultText": "Player",
+          "fontSize": 66,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "controllermeta",
+          "name": "Controller Status",
+          "selector": "#controllerMeta",
+          "kind": "text",
+          "x": 195,
+          "y": 382,
+          "width": 330,
+          "height": 48,
+          "scale": 1,
+          "defaultText": "Waiting in lobby",
+          "fontSize": 28,
+          "autoFitText": true,
+          "fontColor": "#6b5a80"
+        },
+        {
+          "id": "startgamebutton",
+          "name": "Start Game Button",
+          "selector": "#startGameButton",
+          "kind": "art",
+          "x": 195,
+          "y": 508,
+          "width": 260,
+          "height": 78,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ]
+    },
+    {
+      "id": "intro",
+      "name": "Game Intro Controller",
+      "elements": [
+        {
+          "id": "controllerintromessage",
+          "name": "Intro Message",
+          "selector": "#controllerIntroMessage",
+          "kind": "text",
+          "x": 195,
+          "y": 250,
+          "width": 330,
+          "height": 120,
+          "scale": 1,
+          "defaultText": "Welcome to the Game",
+          "fontSize": 44,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "intropresentbutton",
+          "name": "Present Button",
+          "selector": "#introPresentButton",
+          "kind": "art",
+          "x": 195,
+          "y": 450,
+          "width": 300,
+          "height": 78,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ]
+    }
+  ]
+}
