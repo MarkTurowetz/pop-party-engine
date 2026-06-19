@@ -1768,26 +1768,190 @@
       position: absolute;
       display: grid;
       place-items: center;
-      border: 4px solid rgba(255, 255, 255, 0.72);
+      border: 3px dashed rgba(255, 255, 255, 0.42);
       border-radius: 14px;
       color: #fff;
-      background: rgba(23, 19, 31, 0.25);
-      box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.42);
+      background: transparent;
+      box-shadow: none;
       text-align: center;
       font-weight: 1000;
-      text-shadow: 3px 3px 0 #000;
       text-transform: uppercase;
       pointer-events: none;
       user-select: none;
+      overflow: visible;
     }
 
     .layout-preview-element.is-selected {
       border-color: var(--yellow);
-      background: rgba(36, 88, 255, 0.42);
+      border-style: solid;
+      background: transparent;
       box-shadow: 0 0 0 5px rgba(255, 225, 86, 0.35), 7px 7px 0 var(--ink);
       pointer-events: auto;
       cursor: move;
       z-index: 10;
+    }
+
+    .layout-preview-content {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .layout-preview-title {
+      color: #fff;
+      font-size: calc(132px * var(--layout-fit-scale, 1));
+      line-height: 0.86;
+      text-shadow: calc(7px * var(--layout-fit-scale, 1)) calc(7px * var(--layout-fit-scale, 1)) 0 #000;
+      white-space: nowrap;
+    }
+
+    .layout-preview-code-card {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: calc(8px * var(--layout-fit-scale, 1));
+      padding: calc(18px * var(--layout-fit-scale, 1)) calc(46px * var(--layout-fit-scale, 1));
+      border: calc(5px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: calc(24px * var(--layout-fit-scale, 1));
+      color: var(--ink);
+      background: var(--yellow);
+      box-shadow: calc(10px * var(--layout-fit-scale, 1)) calc(10px * var(--layout-fit-scale, 1)) 0 rgba(23, 19, 31, 0.45);
+      transform: rotate(-1deg);
+    }
+
+    .layout-preview-code-card span {
+      font-size: calc(22px * var(--layout-fit-scale, 1));
+      letter-spacing: 0.12em;
+    }
+
+    .layout-preview-code-card strong {
+      font-size: calc(112px * var(--layout-fit-scale, 1));
+      line-height: 0.9;
+      letter-spacing: 0.06em;
+    }
+
+    .layout-preview-pill {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: calc(12px * var(--layout-fit-scale, 1)) calc(20px * var(--layout-fit-scale, 1));
+      border: calc(4px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: calc(6px * var(--layout-fit-scale, 1)) calc(6px * var(--layout-fit-scale, 1)) 0 rgba(23, 19, 31, 0.45);
+      font-size: calc(30px * var(--layout-fit-scale, 1));
+      line-height: 1;
+      text-align: center;
+      text-transform: none;
+    }
+
+    .layout-preview-join {
+      background: var(--cream);
+      font-size: calc(28px * var(--layout-fit-scale, 1));
+    }
+
+    .layout-preview-countdown {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: calc(6px * var(--layout-fit-scale, 1));
+      padding: calc(20px * var(--layout-fit-scale, 1)) calc(26px * var(--layout-fit-scale, 1));
+      border: calc(5px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: calc(24px * var(--layout-fit-scale, 1));
+      color: var(--ink);
+      background: var(--green);
+      box-shadow: calc(10px * var(--layout-fit-scale, 1)) calc(10px * var(--layout-fit-scale, 1)) 0 rgba(23, 19, 31, 0.45);
+      overflow: hidden;
+    }
+
+    .layout-preview-countdown span:first-child {
+      font-size: calc(24px * var(--layout-fit-scale, 1));
+      line-height: 0.9;
+      letter-spacing: 0.06em;
+    }
+
+    .layout-preview-countdown strong {
+      font-size: calc(94px * var(--layout-fit-scale, 1));
+      line-height: 0.78;
+    }
+
+    .layout-preview-players {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      gap: calc(18px * var(--layout-fit-scale, 1));
+      padding: calc(4px * var(--layout-fit-scale, 1));
+    }
+
+    .layout-preview-player {
+      width: calc(138px * var(--layout-fit-scale, 1));
+      display: grid;
+      justify-items: center;
+      gap: calc(8px * var(--layout-fit-scale, 1));
+      color: #fff;
+    }
+
+    .layout-preview-player .player-avatar {
+      width: calc(86px * var(--layout-fit-scale, 1));
+      height: calc(86px * var(--layout-fit-scale, 1));
+    }
+
+    .layout-preview-player .player-name,
+    .layout-preview-player .vip-badge {
+      font-size: calc(17px * var(--layout-fit-scale, 1));
+      border-width: calc(3px * var(--layout-fit-scale, 1));
+      padding: calc(7px * var(--layout-fit-scale, 1)) calc(10px * var(--layout-fit-scale, 1));
+      box-shadow: calc(4px * var(--layout-fit-scale, 1)) calc(4px * var(--layout-fit-scale, 1)) 0 rgba(23, 19, 31, 0.42);
+    }
+
+    .layout-preview-player .vip-badge {
+      font-size: calc(11px * var(--layout-fit-scale, 1));
+      border-width: calc(2px * var(--layout-fit-scale, 1));
+      padding: calc(4px * var(--layout-fit-scale, 1)) calc(8px * var(--layout-fit-scale, 1));
+    }
+
+    .layout-preview-badge {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      align-content: center;
+      gap: calc(2px * var(--layout-fit-scale, 1));
+      padding: calc(8px * var(--layout-fit-scale, 1)) calc(12px * var(--layout-fit-scale, 1));
+      border: calc(3px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: calc(14px * var(--layout-fit-scale, 1));
+      color: var(--ink);
+      background: var(--yellow);
+      box-shadow: calc(5px * var(--layout-fit-scale, 1)) calc(5px * var(--layout-fit-scale, 1)) 0 rgba(23, 19, 31, 0.45);
+    }
+
+    .layout-preview-badge span {
+      font-size: calc(10px * var(--layout-fit-scale, 1));
+      letter-spacing: 0.1em;
+    }
+
+    .layout-preview-badge strong {
+      font-size: calc(32px * var(--layout-fit-scale, 1));
+      line-height: 0.9;
+      letter-spacing: 0.06em;
+    }
+
+    .layout-preview-presentation {
+      color: #fff;
+      font-size: calc(58px * var(--layout-fit-scale, 1));
+      line-height: 0.98;
+      text-shadow: calc(5px * var(--layout-fit-scale, 1)) calc(5px * var(--layout-fit-scale, 1)) 0 #000;
+      overflow-wrap: anywhere;
     }
 
     .layout-resize-handle {
@@ -4614,7 +4778,8 @@
         node.style.width = `${element.width * scale}px`;
         node.style.height = `${element.height * scale}px`;
         node.style.transform = `translate(-50%, -50%) scale(${element.scale || 1})`;
-        node.textContent = element.name;
+        node.style.setProperty("--layout-fit-scale", scale);
+        node.appendChild(layoutPreviewContent(element));
         if (element.id === selectedLayoutElementId) {
           const handle = document.createElement("span");
           handle.className = "layout-resize-handle";
@@ -4624,6 +4789,60 @@
         }
         layoutStagePreview.appendChild(node);
       }
+    }
+
+    function layoutPreviewContent(element) {
+      const id = String(element.id || "").toLowerCase();
+      const content = document.createElement("div");
+      content.className = "layout-preview-content";
+      if (id === "stagetitle") {
+        content.innerHTML = `<div class="layout-preview-title">Flip 7 Party</div>`;
+      } else if (id === "stagecodepanel") {
+        content.innerHTML = `<div class="layout-preview-code-card"><span>Stage Code</span><strong>NUZ7</strong></div>`;
+      } else if (id === "waitingstatus") {
+        content.innerHTML = `<div class="layout-preview-pill">Waiting for Ava to start the game</div>`;
+      } else if (id === "joinprompt") {
+        content.innerHTML = `<div class="layout-preview-pill layout-preview-join">Join the Lobby at bit.ly/popcontroller</div>`;
+      } else if (id === "startpopup") {
+        content.innerHTML = `<div class="layout-preview-countdown"><span>Starting in</span><strong>3</strong></div>`;
+      } else if (id === "playerlobby") {
+        content.appendChild(layoutPreviewPlayers());
+      } else if (id === "stagecodebadge") {
+        content.innerHTML = `<div class="layout-preview-badge"><span>Stage</span><strong>NUZ7</strong></div>`;
+      } else if (id === "stageintrotitle") {
+        content.innerHTML = `<div class="layout-preview-title">Game Intro</div>`;
+      } else if (id === "stagepresentationtext") {
+        content.innerHTML = `<div class="layout-preview-presentation">This is test number 1</div>`;
+      } else if (id === "stageprompttext") {
+        content.innerHTML = `<div class="layout-preview-presentation">Prompt Text</div>`;
+      } else if (id === "presentclickwidget") {
+        content.innerHTML = `<div class="click-symbol"><span class="click-pulse"></span><span class="click-cursor"></span></div>`;
+      } else {
+        content.textContent = element.name;
+      }
+      return content;
+    }
+
+    function layoutPreviewPlayers() {
+      const wrap = document.createElement("div");
+      wrap.className = "layout-preview-players";
+      const samplePlayers = [
+        { name: "Ava", shape: "rex", color: "#7c3aed", vip: true },
+        { name: "Ben", shape: "trike", color: "#ff9e2c" },
+        { name: "Cal", shape: "bronto", color: "#ff4fa3" },
+        { name: "Dee", shape: "stego", color: "#f97316" }
+      ];
+      for (const player of samplePlayers) {
+        const tile = document.createElement("article");
+        tile.className = "layout-preview-player";
+        tile.innerHTML = `
+          <div class="player-avatar ${avatarClass(player.shape)}" style="--avatar-color:${player.color}">${avatarFrameImage()}${dinoIcon(player.shape)}</div>
+          <div class="player-name">${player.name}</div>
+          ${player.vip ? `<div class="vip-badge">VIP</div>` : ""}
+        `;
+        wrap.appendChild(tile);
+      }
+      return wrap;
     }
 
     function startLayoutDrag(event, element) {
