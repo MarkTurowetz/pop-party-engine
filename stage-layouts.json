@@ -153,7 +153,7 @@
           "selector": "#roundIntroText",
           "kind": "text",
           "x": 960,
-          "y": 430,
+          "y": 340,
           "width": 1100,
           "height": 180,
           "scale": 1
@@ -164,29 +164,7 @@
           "selector": "#roundIntroInfoText",
           "kind": "text",
           "x": 960,
-          "y": 580,
-          "width": 980,
-          "height": 105,
-          "scale": 1
-        },
-        {
-          "id": "roundIntroText",
-          "name": "Round Intro Text Field",
-          "selector": "#roundIntroText",
-          "kind": "text",
-          "x": 960,
-          "y": 430,
-          "width": 1100,
-          "height": 180,
-          "scale": 1
-        },
-        {
-          "id": "roundIntroInfoText",
-          "name": "Round Intro Info Text Field",
-          "selector": "#roundIntroInfoText",
-          "kind": "text",
-          "x": 960,
-          "y": 610,
+          "y": 480,
           "width": 980,
           "height": 105,
           "scale": 1
