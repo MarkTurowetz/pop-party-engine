@@ -68,10 +68,10 @@
           "id": "startpopup",
           "name": "Countdown Popup",
           "selector": "#startPopup",
-          "x": 960,
-          "y": 130,
-          "width": 700,
-          "height": 130,
+          "x": 1400,
+          "y": 500,
+          "width": 200,
+          "height": 200,
           "scale": 1
         },
         {
@@ -79,7 +79,7 @@
           "name": "Header",
           "selector": ".stage-title",
           "x": 960,
-          "y": 250,
+          "y": 220,
           "width": 1080,
           "height": 150,
           "scale": 1
@@ -89,7 +89,7 @@
           "name": "Stage Code Panel",
           "selector": ".stage-code-panel",
           "x": 960,
-          "y": 450,
+          "y": 500,
           "width": 560,
           "height": 190,
           "scale": 1
@@ -99,7 +99,7 @@
           "name": "Cancel Prompt",
           "selector": "#waitingStatus",
           "x": 960,
-          "y": 640,
+          "y": 670,
           "width": 700,
           "height": 82,
           "scale": 1
