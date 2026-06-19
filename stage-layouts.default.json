@@ -43,6 +43,9 @@
     {
       "id": "lobby",
       "name": "Lobby",
+      "hiddenGlobals": [
+        "stagecodebadge"
+      ],
       "elements": [
         {
           "id": "startPopup",

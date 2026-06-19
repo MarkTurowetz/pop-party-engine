@@ -137,6 +137,7 @@ const defaultStageLayouts = {
     {
       id: "lobby",
       name: "Lobby",
+      hiddenGlobals: ["stagecodebadge"],
       elements: [
         { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", x: 960, y: 130, width: 700, height: 130, scale: 1 },
         { id: "stageTitle", name: "Header", selector: ".stage-title", x: 960, y: 190, width: 1080, height: 150, scale: 1 },
@@ -161,12 +162,15 @@ const defaultControllerLayouts = {
   global: {
     id: "global",
     name: "Global Layout",
-    elements: []
+    elements: [
+      { id: "controllerPlayerBanner", name: "Player Banner", selector: "#controllerPlayerBanner", x: 195, y: 58, width: 338, height: 78, scale: 1 }
+    ]
   },
   states: [
     {
       id: "join",
       name: "Join Controller",
+      hiddenGlobals: ["controllerplayerbanner"],
       elements: [
         { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", x: 195, y: 112, width: 330, height: 86, scale: 1, defaultText: "Join Lobby", fontSize: 54, autoFitText: true, fontColor: "#17131f" },
         { id: "stageCodeField", name: "Stage Code Field", selector: "#stageCodeField", x: 195, y: 255, width: 320, height: 96, scale: 1 },
@@ -177,6 +181,7 @@ const defaultControllerLayouts = {
     {
       id: "lobby",
       name: "Lobby Controller",
+      hiddenGlobals: ["controllerplayerbanner"],
       elements: [
         { id: "controllerAvatar", name: "Player Avatar", selector: "#controllerAvatar", x: 195, y: 150, width: 104, height: 104, scale: 1 },
         { id: "controllerPlayerName", name: "Player Name", selector: "#controllerPlayerName", kind: "text", x: 195, y: 290, width: 330, height: 80, scale: 1, defaultText: "Player", fontSize: 66, autoFitText: true, fontColor: "#17131f" },
@@ -379,7 +384,8 @@ function normalizeStageLayouts(layouts) {
       for (const element of defaultState.elements) {
         if (!elements.some((item) => item.id === element.id)) elements.push(cloneJson(element));
       }
-      return { ...state, elements };
+      const hiddenGlobals = Array.isArray(state.hiddenGlobals) ? state.hiddenGlobals : defaultState.hiddenGlobals || [];
+      return { ...state, hiddenGlobals, elements };
     })
   };
 }
@@ -421,7 +427,8 @@ function normalizeControllerLayouts(layouts) {
       for (const element of defaultState.elements) {
         if (!elements.some((item) => item.id === element.id)) elements.push(cloneJson(element));
       }
-      return { ...state, elements };
+      const hiddenGlobals = Array.isArray(state.hiddenGlobals) ? state.hiddenGlobals : defaultState.hiddenGlobals || [];
+      return { ...state, hiddenGlobals, elements };
     })
   };
 }
@@ -464,6 +471,9 @@ function normalizeLayoutState(state, stateIndex) {
   return {
     id: normalizeFlowId(state.id || state.name, fallbackId),
     name: cleanFlowText(state.name, state.id || fallbackId),
+    hiddenGlobals: Array.isArray(state.hiddenGlobals)
+      ? [...new Set(state.hiddenGlobals.map((id) => normalizeFlowId(id, "")).filter(Boolean))]
+      : null,
     elements: Array.isArray(state.elements)
       ? state.elements.map((element, elementIndex) => normalizeLayoutElement(element, elementIndex)).filter(Boolean)
       : []
