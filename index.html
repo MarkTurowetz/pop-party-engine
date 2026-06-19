@@ -4854,10 +4854,29 @@
       const startY = event.clientY;
       const originX = Number(element.x || 0);
       const originY = Number(element.y || 0);
+      let lockedAxis = null;
       event.currentTarget.setPointerCapture(event.pointerId);
       const move = (moveEvent) => {
-        element.x = Number((originX + (moveEvent.clientX - startX) / scale).toFixed(3));
-        element.y = Number((originY + (moveEvent.clientY - startY) / scale).toFixed(3));
+        const deltaX = (moveEvent.clientX - startX) / scale;
+        const deltaY = (moveEvent.clientY - startY) / scale;
+        let nextX = originX + deltaX;
+        let nextY = originY + deltaY;
+        if (moveEvent.shiftKey) {
+          if (!lockedAxis) {
+            const absX = Math.abs(deltaX);
+            const absY = Math.abs(deltaY);
+            if (Math.max(absX, absY) >= 2) lockedAxis = absX >= absY ? "x" : "y";
+          }
+          if (lockedAxis === "x") {
+            nextY = originY;
+            if (moveEvent.metaKey) nextX = Math.round(nextX / 10) * 10;
+          } else if (lockedAxis === "y") {
+            nextX = originX;
+            if (moveEvent.metaKey) nextY = Math.round(nextY / 10) * 10;
+          }
+        }
+        element.x = Number(nextX.toFixed(3));
+        element.y = Number(nextY.toFixed(3));
         renderLayoutTool();
       };
       const stop = () => {
