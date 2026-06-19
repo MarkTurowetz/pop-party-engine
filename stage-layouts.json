@@ -12,8 +12,8 @@
           "id": "startpopup",
           "name": "Countdown Popup",
           "selector": "#startPopup",
-          "x": 1736.845,
-          "y": 923.372,
+          "x": 1710,
+          "y": 150,
           "width": 200,
           "height": 200,
           "scale": 1
@@ -23,7 +23,7 @@
           "name": "Header",
           "selector": ".stage-title",
           "x": 960,
-          "y": 220,
+          "y": 140,
           "width": 1080,
           "height": 150,
           "scale": 1
@@ -33,40 +33,40 @@
           "name": "Stage Code Panel",
           "selector": ".stage-code-panel",
           "x": 960,
-          "y": 500,
+          "y": 430,
           "width": 560,
           "height": 190,
-          "scale": 1
+          "scale": 1.35
         },
         {
           "id": "waitingstatus",
           "name": "Waiting Status",
           "selector": "#waitingStatus",
           "x": 960,
-          "y": 670,
+          "y": 990,
           "width": 700,
           "height": 82,
-          "scale": 1
+          "scale": 0.7
         },
         {
           "id": "joinprompt",
           "name": "Join Prompt",
           "selector": "#joinPrompt",
           "x": 960,
-          "y": 750,
+          "y": 620,
           "width": 740,
           "height": 76,
-          "scale": 1
+          "scale": 0.7
         },
         {
           "id": "playerlobby",
           "name": "Player Avatars",
           "selector": "#playerLobby",
           "x": 960,
-          "y": 920,
+          "y": 810,
           "width": 1320,
           "height": 150,
-          "scale": 1
+          "scale": 1.3
         }
       ]
     },
