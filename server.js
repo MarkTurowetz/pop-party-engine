@@ -933,7 +933,7 @@ function githubFlowHeaders() {
   return {
     "Accept": "application/vnd.github+json",
     "Authorization": `Bearer ${GAME_FLOW_GITHUB_TOKEN}`,
-    "User-Agent": "flip-7-party",
+    "User-Agent": "party-game-template",
     "X-GitHub-Api-Version": "2022-11-28"
   };
 }
@@ -2378,7 +2378,7 @@ server.on("error", (error) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Flip 7 Party server running at http://localhost:${PORT}`);
+  console.log(`Party Game Template server running at http://localhost:${PORT}`);
   for (const url of getLanUrls()) {
     console.log(`LAN URL: ${url}`);
   }

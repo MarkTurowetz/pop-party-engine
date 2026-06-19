@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: pop-party
+    name: party-game-template
     runtime: node
     plan: free
     buildCommand: npm run build-info

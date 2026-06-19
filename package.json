@@ -1,8 +1,8 @@
 {
-  "name": "flip-7-party",
+  "name": "party-game-template",
   "version": "1.0.17",
   "private": true,
-  "description": "Server-backed Flip 7-style stage and controller party game.",
+  "description": "Server-backed toolkit for building stage and controller party games.",
   "scripts": {
     "build-info": "node build-version.js",
     "start": "node server.js",

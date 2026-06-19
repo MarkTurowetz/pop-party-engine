@@ -94,7 +94,7 @@ async function loadState() {
   ]);
 
   detectedOrigin = detectedOrigin || stored.appOrigin || "";
-  appOrigin.textContent = detectedOrigin ? `Target: ${detectedOrigin}` : "Open a Flip 7 page first";
+  appOrigin.textContent = detectedOrigin ? `Target: ${detectedOrigin}` : "Open a Party Game Template page first";
   stageCodeInput.value = activeStageCode || stored.stageCode || "";
   controllerCountInput.value = stored.controllerCount || "4";
   playerNamesInput.value = stored.playerNames || DEFAULT_NAMES.join("\n");
@@ -204,7 +204,7 @@ async function spawnControllers() {
   const names = parseNames();
 
   if (!detectedOrigin) {
-    setStatus("Open your Flip 7 app, then reopen this extension.");
+    setStatus("Open your Party Game Template app, then reopen this extension.");
     return;
   }
   if (!stageCode) {

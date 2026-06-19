@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Flip 7 Party</title>
+  <title>Party Game Template</title>
   <style>
     :root {
       --ink: #17131f;
@@ -349,7 +349,7 @@
     .stage-title {
       margin: 0;
       color: #fff;
-      font-size: 132px;
+      font-size: 92px;
       line-height: 0.86;
       letter-spacing: 0;
       text-transform: uppercase;
@@ -1927,7 +1927,7 @@
 
     .layout-preview-title {
       color: #fff;
-      font-size: calc(132px * var(--layout-fit-scale, 1));
+      font-size: calc(92px * var(--layout-fit-scale, 1));
       line-height: 0.86;
       text-shadow: calc(7px * var(--layout-fit-scale, 1)) calc(7px * var(--layout-fit-scale, 1)) 0 #000;
       white-space: nowrap;
@@ -2288,7 +2288,7 @@
     </div>
   </div>
 
-  <section class="screen stage hidden" id="stageScreen" aria-label="Flip 7 Party stage">
+  <section class="screen stage hidden" id="stageScreen" aria-label="Party Game Template stage">
     <div class="stage-board" id="stageBoard">
       <div class="start-popup hidden" id="startPopup">Starting Game</div>
       <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
@@ -2303,7 +2303,7 @@
         <div class="wipe-line"></div>
       </div>
       <main class="stage-main">
-        <h1 class="stage-title">Flip 7 Party</h1>
+        <h1 class="stage-title">Party Game Template</h1>
         <section class="stage-code-panel" aria-label="Stage code">
           <div class="stage-code-label">Stage Code</div>
           <div class="stage-code" id="stageCodeText">----</div>
@@ -2337,7 +2337,7 @@
     </div>
   </section>
 
-  <section class="screen controller hidden" id="controllerScreen" aria-label="Flip 7 Party controller">
+  <section class="screen controller hidden" id="controllerScreen" aria-label="Party Game Template controller">
     <div class="controller-panel">
       <div id="joinState">
         <h1>Join Lobby</h1>
@@ -2376,7 +2376,7 @@
 
   <section class="screen lab hidden" id="labScreen" aria-label="Split screen test lab">
     <div class="lab-header">
-      <h1>Flip 7 Party Lab</h1>
+      <h1>Party Game Template Lab</h1>
       <a id="stageLinkFromLab" href="/stage" target="_blank" rel="noreferrer">Open real stage</a>
     </div>
     <div class="lab-grid">
@@ -2681,7 +2681,7 @@
     let currentStageLayoutStateId = "";
     let layoutUndoStack = [];
     let layoutRedoStack = [];
-    const runtimeTestChannel = "BroadcastChannel" in window ? new BroadcastChannel("flip7-runtime-test") : null;
+    const runtimeTestChannel = "BroadcastChannel" in window ? new BroadcastChannel("party-game-template-runtime-test") : null;
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],
       ["avatar-rex", "/art/default/dino-rex.svg"],
@@ -2850,13 +2850,33 @@
       return next;
     }
 
+    function getSessionValue(key) {
+      return sessionStorage.getItem(key) || "";
+    }
+
+    function getLocalValue(key) {
+      return localStorage.getItem(key) || "";
+    }
+
+    function setSessionValue(key, value) {
+      sessionStorage.setItem(key, value);
+    }
+
+    function setLocalValue(key, value) {
+      localStorage.setItem(key, value);
+    }
+
+    function removeSessionValue(key) {
+      sessionStorage.removeItem(key);
+    }
+
     function getControllerPlayerId() {
       const explicit = params.get("player");
       if (explicit) return explicit;
-      const existing = sessionStorage.getItem("flip7PlayerId");
+      const existing = getSessionValue("partyTemplatePlayerId");
       if (existing) return existing;
       const next = `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      sessionStorage.setItem("flip7PlayerId", next);
+      setSessionValue("partyTemplatePlayerId", next);
       return next;
     }
 
@@ -3645,10 +3665,10 @@
 
     function enterControllerLobby(stageCode, playerId, lobby, player) {
       controllerState = { stageCode, playerId, player };
-      sessionStorage.setItem("flip7PlayerId", playerId);
-      sessionStorage.setItem("flip7PlayerName", player.name);
-      sessionStorage.setItem("flip7StageCode", stageCode);
-      localStorage.setItem("flip7StageCode", stageCode);
+      setSessionValue("partyTemplatePlayerId", playerId);
+      setSessionValue("partyTemplatePlayerName", player.name);
+      setSessionValue("partyTemplateStageCode", stageCode);
+      setLocalValue("partyTemplateStageCode", stageCode);
       joinState.classList.add("hidden");
       controllerLobbyState.classList.remove("hidden");
       renderControllerState(lobby);
@@ -3677,8 +3697,8 @@
       loadArtAssets().then(() => {
         if (controllerState?.player) setControllerAvatar(controllerState.player);
       }).catch(() => {});
-      stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(sessionStorage.getItem("flip7StageCode") || localStorage.getItem("flip7StageCode"));
-      playerNameInput.value = getPlayerNameFromUrl() || sessionStorage.getItem("flip7PlayerName") || "";
+      stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(getSessionValue("partyTemplateStageCode") || getLocalValue("partyTemplateStageCode"));
+      playerNameInput.value = getPlayerNameFromUrl() || getSessionValue("partyTemplatePlayerName") || "";
       updateJoinButton();
 
       stageCodeInput.addEventListener("input", () => {
@@ -3688,8 +3708,8 @@
         updateJoinButton();
       });
       playerNameInput.addEventListener("input", () => {
-        if (!controllerState && playerNameInput.value.trim() !== sessionStorage.getItem("flip7PlayerName")) {
-          sessionStorage.removeItem("flip7PlayerId");
+        if (!controllerState && playerNameInput.value.trim() !== getSessionValue("partyTemplatePlayerName")) {
+          removeSessionValue("partyTemplatePlayerId");
         }
         updateJoinButton();
       });
@@ -4293,7 +4313,7 @@
     }
 
     function loadFlowColumnWidth() {
-      const storedWidth = Number(localStorage.getItem("flip7.flowListWidth") || 0);
+      const storedWidth = Number(getLocalValue("partyTemplate.flowListWidth") || 0);
       if (Number.isFinite(storedWidth) && storedWidth > 0) {
         flowShell.style.setProperty("--flow-list-width", `${storedWidth}px`);
       }
@@ -4311,7 +4331,7 @@
           const shellWidth = shellRect.width;
           const nextWidth = Math.max(320, Math.min(shellWidth - 420, moveEvent.clientX - shellRect.left));
           flowShell.style.setProperty("--flow-list-width", `${nextWidth}px`);
-          localStorage.setItem("flip7.flowListWidth", String(Math.round(nextWidth)));
+          setLocalValue("partyTemplate.flowListWidth", String(Math.round(nextWidth)));
         };
         const stop = () => {
           document.body.classList.remove("is-resizing-flow");
@@ -5441,7 +5461,7 @@
       const content = document.createElement("div");
       content.className = "layout-preview-content";
       if (id === "stagetitle") {
-        content.innerHTML = `<div class="layout-preview-title">Flip 7 Party</div>`;
+        content.innerHTML = `<div class="layout-preview-title">Party Game Template</div>`;
       } else if (id === "stagecodepanel") {
         content.innerHTML = `<div class="layout-preview-code-card"><span>Stage Code</span><strong>NUZ7</strong></div>`;
       } else if (id === "waitingstatus") {

@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Flip 7 Controller Spawner",
+  "name": "Party Game Controller Spawner",
   "version": "1.0.0",
-  "description": "Spawn multiple Flip 7 Party controller windows and tap random game options across them.",
+  "description": "Spawn multiple Party Game Template controller windows and tap random game options across them.",
   "action": {
-    "default_title": "Flip 7 Spawner",
+    "default_title": "Controller Spawner",
     "default_popup": "popup.html"
   },
   "permissions": [
