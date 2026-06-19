@@ -415,10 +415,13 @@ function syncStageLayoutsWithFlow(layouts, flow) {
   const normalizedLayouts = normalizeStageLayouts(layouts);
   const normalizedFlow = normalizeGameFlow(flow || readGameFlow());
   const stateIds = new Set(normalizedFlow.states.map((state) => state.id));
-  normalizedLayouts.states = (normalizedLayouts.states || []).filter((state) => stateIds.has(state.id));
+  normalizedLayouts.global.elements = dedupeLayoutElements(normalizedLayouts.global.elements || []);
+  normalizedLayouts.states = (normalizedLayouts.states || [])
+    .filter((state) => stateIds.has(state.id))
+    .map((state) => ({ ...state, elements: dedupeLayoutElements(state.elements || []) }));
   for (const flowState of normalizedFlow.states) {
     if (flowState.id === "lobby") continue;
-    const seededState = createLayoutStateForFlowState(flowState);
+    const seededState = normalizeLayoutState(createLayoutStateForFlowState(flowState), -1);
     const existingState = normalizedLayouts.states.find((state) => state.id === flowState.id);
     if (!existingState) {
       normalizedLayouts.states.push(seededState);
@@ -431,9 +434,26 @@ function syncStageLayoutsWithFlow(layouts, flow) {
           existingState.elements.push(element);
         }
       }
+      existingState.elements = dedupeLayoutElements(existingState.elements);
     }
   }
   return normalizedLayouts;
+}
+
+function dedupeLayoutElements(elements) {
+  const seen = new Set();
+  const deduped = [];
+  for (const element of elements || []) {
+    const normalizedElement = normalizeLayoutElement(element, deduped.length);
+    if (!normalizedElement) continue;
+    const key = normalizedElement.id || normalizedElement.selector;
+    const selectorKey = normalizedElement.selector ? `selector:${normalizedElement.selector}` : "";
+    if (seen.has(key) || (selectorKey && seen.has(selectorKey))) continue;
+    seen.add(key);
+    if (selectorKey) seen.add(selectorKey);
+    deduped.push(normalizedElement);
+  }
+  return deduped;
 }
 
 function createLayoutStateForFlowState(flowState) {
