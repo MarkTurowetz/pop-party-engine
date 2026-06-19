@@ -117,7 +117,7 @@
           "defaultText": "",
           "fontSize": 6,
           "autoFitText": true,
-          "fontColor": "#17131f"
+          "fontColor": "#4a0dc5"
         },
         {
           "id": "joinprompt",
@@ -188,8 +188,8 @@
       ]
     },
     {
-      "id": "round-intro",
-      "name": "Round Intro",
+      "id": "round-intro-game-state",
+      "name": "Round Intro Game State",
       "elements": [
         {
           "id": "roundintrotext",
@@ -197,7 +197,7 @@
           "selector": "#roundIntroText",
           "kind": "text",
           "x": 960,
-          "y": 340,
+          "y": 430,
           "width": 1100,
           "height": 180,
           "scale": 1,
@@ -212,9 +212,93 @@
           "selector": "#roundIntroInfoText",
           "kind": "text",
           "x": 960,
-          "y": 480,
+          "y": 610,
           "width": 980,
           "height": 105,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ]
+    },
+    {
+      "id": "crafting-game-state",
+      "name": "Crafting Game State",
+      "elements": [
+        {
+          "id": "crafting-game-statemomenttext",
+          "name": "Crafting Game State Text Field",
+          "selector": "#stagePresentationText",
+          "kind": "text",
+          "x": 960,
+          "y": 460,
+          "width": 980,
+          "height": 240,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ]
+    },
+    {
+      "id": "presentation-game-state",
+      "name": "Presentation Game State",
+      "elements": [
+        {
+          "id": "presentation-game-statemomenttext",
+          "name": "Presentation Game State Text Field",
+          "selector": "#stagePresentationText",
+          "kind": "text",
+          "x": 960,
+          "y": 460,
+          "width": 980,
+          "height": 240,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ]
+    },
+    {
+      "id": "scoreboard-game-state",
+      "name": "Scoreboard Game State",
+      "elements": [
+        {
+          "id": "scoreboard-game-statemomenttext",
+          "name": "Scoreboard Game State Text Field",
+          "selector": "#stagePresentationText",
+          "kind": "text",
+          "x": 960,
+          "y": 460,
+          "width": 980,
+          "height": 240,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ]
+    },
+    {
+      "id": "post-game-state",
+      "name": "Post Game State",
+      "elements": [
+        {
+          "id": "post-game-statemomenttext",
+          "name": "Post Game State Text Field",
+          "selector": "#stagePresentationText",
+          "kind": "text",
+          "x": 960,
+          "y": 460,
+          "width": 980,
+          "height": 240,
           "scale": 1,
           "defaultText": "",
           "fontSize": 58,
