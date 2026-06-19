@@ -197,14 +197,28 @@
 
     .stage {
       min-height: 100vh;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      gap: 24px;
-      padding: clamp(22px, 4vw, 48px);
       color: #fff;
       position: relative;
       overflow: hidden;
       isolation: isolate;
+      background: #24115f;
+    }
+
+    .stage-board {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      transform: translate(-50%, -50%) scale(var(--stage-board-scale, 1));
+      transform-origin: center;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 15% 18%, rgba(255, 225, 86, 0.95) 0 8rem, transparent 8.2rem),
+        radial-gradient(circle at 86% 20%, rgba(34, 211, 238, 0.78) 0 8rem, transparent 8.2rem),
+        radial-gradient(circle at 72% 86%, rgba(255, 79, 163, 0.68) 0 10rem, transparent 10.2rem),
+        linear-gradient(135deg, #24115f 0%, #5b1bbd 46%, #ff4fa3 100%);
     }
 
     .stage-layout-target {
@@ -233,8 +247,8 @@
 
     .stage-code-badge {
       position: absolute;
-      top: clamp(12px, 2vw, 22px);
-      left: clamp(12px, 2vw, 22px);
+      top: 22px;
+      left: 22px;
       z-index: 4;
       display: grid;
       gap: 2px;
@@ -255,15 +269,15 @@
     }
 
     .stage-code-badge strong {
-      font-size: clamp(18px, 2.8vw, 32px);
+      font-size: 32px;
       line-height: 0.9;
       letter-spacing: 0.06em;
     }
 
     .version-badge {
       position: absolute;
-      left: clamp(10px, 1.8vw, 18px);
-      bottom: clamp(10px, 1.8vw, 18px);
+      left: 18px;
+      bottom: 18px;
       z-index: 5;
       padding: 5px 8px;
       border: 3px solid var(--ink);
@@ -277,8 +291,8 @@
       text-transform: uppercase;
     }
 
-    .stage::before,
-    .stage::after {
+    .stage-board::before,
+    .stage-board::after {
       content: "";
       position: absolute;
       z-index: -1;
@@ -287,7 +301,7 @@
       filter: blur(2px);
     }
 
-    .stage::before {
+    .stage-board::before {
       width: 42vmax;
       height: 42vmax;
       left: -18vmax;
@@ -296,7 +310,7 @@
       animation: spin 44s linear infinite;
     }
 
-    .stage::after {
+    .stage-board::after {
       width: 38vmax;
       height: 38vmax;
       right: -18vmax;
@@ -313,15 +327,15 @@
       align-self: start;
       display: grid;
       justify-items: center;
-      gap: clamp(18px, 4vw, 34px);
+      gap: 34px;
       text-align: center;
-      padding-top: clamp(10px, 5vh, 58px);
+      padding-top: 58px;
     }
 
     .stage-title {
       margin: 0;
       color: #fff;
-      font-size: clamp(58px, 10vw, 132px);
+      font-size: 132px;
       line-height: 0.86;
       letter-spacing: 0;
       text-transform: uppercase;
@@ -331,7 +345,7 @@
     .stage-code-panel {
       display: grid;
       gap: 8px;
-      padding: 18px clamp(22px, 5vw, 46px);
+      padding: 18px 46px;
       border: 5px solid var(--ink);
       border-radius: 24px;
       color: var(--ink);
@@ -341,14 +355,14 @@
     }
 
     .stage-code-label {
-      font-size: clamp(14px, 2vw, 22px);
+      font-size: 22px;
       font-weight: 1000;
       letter-spacing: 0.12em;
       text-transform: uppercase;
     }
 
     .stage-code {
-      font-size: clamp(54px, 10vw, 112px);
+      font-size: 112px;
       line-height: 0.9;
       font-weight: 1000;
       letter-spacing: 0.06em;
@@ -365,19 +379,19 @@
       color: var(--ink);
       background: var(--paper);
       box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.45);
-      font-size: clamp(18px, 2.8vw, 30px);
+      font-size: 30px;
       font-weight: 1000;
     }
 
     .stage-intro-content {
       align-self: center;
       justify-self: center;
-      width: min(1120px, calc(100vw - 80px));
-      max-height: min(48vh, 430px);
+      width: 1120px;
+      max-height: 430px;
       display: grid;
       align-content: center;
       justify-items: center;
-      gap: clamp(16px, 2.6vw, 30px);
+      gap: 30px;
       text-align: center;
       overflow: hidden;
     }
@@ -386,7 +400,7 @@
       margin: 0;
       max-width: 100%;
       color: #fff;
-      font-size: clamp(42px, 7vw, 96px);
+      font-size: 96px;
       line-height: 0.86;
       letter-spacing: 0;
       text-align: center;
@@ -396,12 +410,12 @@
     }
 
     .stage-presentation-text {
-      width: min(920px, 100%);
-      max-height: min(28vh, 250px);
+      width: 920px;
+      max-height: 250px;
       display: grid;
       place-items: center;
       color: #fff;
-      font-size: clamp(24px, 4.2vw, 58px);
+      font-size: 58px;
       line-height: 0.98;
       font-weight: 1000;
       text-align: center;
@@ -415,23 +429,23 @@
     }
 
     .stage-presentation-text.is-long {
-      font-size: clamp(20px, 3.2vw, 42px);
+      font-size: 42px;
       line-height: 1.02;
     }
 
     .stage-presentation-text.is-extra-long {
-      font-size: clamp(17px, 2.6vw, 34px);
+      font-size: 34px;
       line-height: 1.05;
     }
 
     .stage-prompt-text {
       position: absolute;
       left: 50%;
-      bottom: clamp(150px, 21vh, 260px);
+      bottom: 260px;
       z-index: 4;
-      width: min(840px, calc(100vw - 64px));
+      width: 840px;
       color: var(--cream);
-      font-size: clamp(22px, 4vw, 54px);
+      font-size: 54px;
       line-height: 0.98;
       font-weight: 1000;
       text-align: center;
@@ -486,10 +500,10 @@
 
     .click-widget {
       position: absolute;
-      right: clamp(18px, 3vw, 40px);
-      bottom: clamp(18px, 3vw, 40px);
+      right: 40px;
+      bottom: 40px;
       z-index: 6;
-      width: clamp(54px, 5.8vw, 78px);
+      width: 78px;
       aspect-ratio: 1;
       display: grid;
       place-items: center;
@@ -588,11 +602,11 @@
 
     .start-popup {
       position: absolute;
-      top: clamp(24px, 5vh, 52px);
+      top: 52px;
       left: 50%;
       z-index: 5;
       transform: translateX(-50%);
-      min-width: min(520px, calc(100vw - 36px));
+      min-width: 520px;
       padding: 20px 26px;
       border: 5px solid var(--ink);
       border-radius: 24px;
@@ -600,7 +614,7 @@
       background: var(--green);
       box-shadow: var(--shadow);
       text-align: center;
-      font-size: clamp(28px, 5vw, 54px);
+      font-size: 54px;
       line-height: 0.95;
       font-weight: 1000;
       animation: popIn 240ms cubic-bezier(0.19, 1, 0.22, 1);
@@ -664,13 +678,13 @@
       display: flex;
       align-items: end;
       justify-content: center;
-      gap: clamp(10px, 2vw, 18px);
+      gap: 18px;
       flex-wrap: wrap;
       padding: 4px;
     }
 
     .player-tile {
-      width: clamp(94px, 11vw, 138px);
+      width: 138px;
       display: grid;
       justify-items: center;
       gap: 8px;
@@ -695,8 +709,8 @@
     }
 
     .player-avatar {
-      width: clamp(58px, 7vw, 86px);
-      height: clamp(58px, 7vw, 86px);
+      width: 86px;
+      height: 86px;
       display: grid;
       place-items: center;
       position: relative;
@@ -731,7 +745,7 @@
       color: var(--ink);
       background: var(--paper);
       box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.42);
-      font-size: clamp(12px, 1.6vw, 17px);
+      font-size: 17px;
       line-height: 1;
       font-weight: 1000;
       overflow-wrap: anywhere;
@@ -1776,8 +1790,8 @@
 
     @media (max-width: 760px) {
       .stage {
-        gap: 16px;
-        padding: 16px;
+        gap: 0;
+        padding: 0;
       }
 
       .stage-main {
@@ -1890,41 +1904,43 @@
   </div>
 
   <section class="screen stage hidden" id="stageScreen" aria-label="Flip 7 Party stage">
-    <div class="start-popup hidden" id="startPopup">Starting Game</div>
-    <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
-    <div class="version-badge">v__APP_VERSION__</div>
-    <div class="stage-wipe hidden" id="stageWipe" aria-hidden="true">
-      <div class="wipe-line"></div>
-      <div class="wipe-line"></div>
-      <div class="wipe-line"></div>
-      <div class="wipe-line"></div>
-      <div class="wipe-line"></div>
-      <div class="wipe-line"></div>
-      <div class="wipe-line"></div>
-    </div>
-    <main class="stage-main">
-      <h1 class="stage-title">Flip 7 Party</h1>
-      <section class="stage-code-panel" aria-label="Stage code">
-        <div class="stage-code-label">Stage Code</div>
-        <div class="stage-code" id="stageCodeText">----</div>
-      </section>
-      <div class="stage-status hidden" id="waitingStatus"></div>
-    </main>
-    <main class="stage-intro-content hidden" id="stageIntroContent">
-      <h1 class="stage-intro-title" id="stageIntroTitle">GAME INTRO</h1>
-      <div class="stage-presentation-text stage-text-object text-hidden hidden" id="stagePresentationText"></div>
-    </main>
-    <div class="stage-prompt-text stage-text-object text-hidden hidden" id="stagePromptText"></div>
-    <div class="click-widget hidden" id="presentClickWidget" aria-hidden="true">
-      <div class="click-symbol">
-        <span class="click-pulse"></span>
-        <span class="click-cursor"></span>
+    <div class="stage-board" id="stageBoard">
+      <div class="start-popup hidden" id="startPopup">Starting Game</div>
+      <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
+      <div class="version-badge">v__APP_VERSION__</div>
+      <div class="stage-wipe hidden" id="stageWipe" aria-hidden="true">
+        <div class="wipe-line"></div>
+        <div class="wipe-line"></div>
+        <div class="wipe-line"></div>
+        <div class="wipe-line"></div>
+        <div class="wipe-line"></div>
+        <div class="wipe-line"></div>
+        <div class="wipe-line"></div>
       </div>
+      <main class="stage-main">
+        <h1 class="stage-title">Flip 7 Party</h1>
+        <section class="stage-code-panel" aria-label="Stage code">
+          <div class="stage-code-label">Stage Code</div>
+          <div class="stage-code" id="stageCodeText">----</div>
+        </section>
+        <div class="stage-status hidden" id="waitingStatus"></div>
+      </main>
+      <main class="stage-intro-content hidden" id="stageIntroContent">
+        <h1 class="stage-intro-title" id="stageIntroTitle">GAME INTRO</h1>
+        <div class="stage-presentation-text stage-text-object text-hidden hidden" id="stagePresentationText"></div>
+      </main>
+      <div class="stage-prompt-text stage-text-object text-hidden hidden" id="stagePromptText"></div>
+      <div class="click-widget hidden" id="presentClickWidget" aria-hidden="true">
+        <div class="click-symbol">
+          <span class="click-pulse"></span>
+          <span class="click-cursor"></span>
+        </div>
+      </div>
+      <footer class="stage-footer">
+        <div class="join-prompt" id="joinPrompt">Join the Lobby at bit.ly/popcontroller</div>
+        <div class="player-lobby" id="playerLobby" aria-label="Joined players"></div>
+      </footer>
     </div>
-    <footer class="stage-footer">
-      <div class="join-prompt" id="joinPrompt">Join the Lobby at bit.ly/popcontroller</div>
-      <div class="player-lobby" id="playerLobby" aria-label="Joined players"></div>
-    </footer>
     <div class="pause-menu hidden" id="pauseMenu" aria-label="Pause menu">
       <div class="pause-panel">
         <h2>Paused</h2>
@@ -2140,6 +2156,7 @@
     const unsafeChangesCopy = document.querySelector("#unsafeChangesCopy");
     const unsafeCancelButton = document.querySelector("#unsafeCancelButton");
     const unsafeSaveButton = document.querySelector("#unsafeSaveButton");
+    const stageBoard = document.querySelector("#stageBoard");
     const stageCodeText = document.querySelector("#stageCodeText");
     const stageCodeBadgeRoot = document.querySelector("#stageCodeBadge");
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
@@ -2529,7 +2546,7 @@
 
     function clearStageLayoutTargets() {
       for (const selector of allStageLayoutSelectors()) {
-        const target = stageScreen.querySelector(selector);
+        const target = stageBoard.querySelector(selector);
         if (!target) continue;
         target.classList.remove("stage-layout-target");
         target.style.removeProperty("--stage-layout-x");
@@ -2542,24 +2559,23 @@
 
     function applyStageLayoutForPhase(phase) {
       const state = stageLayoutStateForPhase(phase);
-      if (!state || !stageScreen) return;
+      if (!state || !stageScreen || !stageBoard) return;
       currentStageLayoutStateId = state.id;
       clearStageLayoutTargets();
       const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
       const stageRect = stageScreen.getBoundingClientRect();
       const fitScale = Math.min(stageRect.width / canvas.width, stageRect.height / canvas.height);
-      const offsetX = (stageRect.width - canvas.width * fitScale) / 2;
-      const offsetY = (stageRect.height - canvas.height * fitScale) / 2;
+      stageBoard.style.width = `${canvas.width}px`;
+      stageBoard.style.height = `${canvas.height}px`;
+      stageBoard.style.setProperty("--stage-board-scale", `${fitScale}`);
       for (const element of state.elements || []) {
-        const target = stageScreen.querySelector(element.selector);
+        const target = stageBoard.querySelector(element.selector);
         if (!target) continue;
-        const x = offsetX + element.x * fitScale;
-        const y = offsetY + element.y * fitScale;
         target.classList.add("stage-layout-target");
-        target.style.setProperty("--stage-layout-x", `${x}px`);
-        target.style.setProperty("--stage-layout-y", `${y}px`);
-        target.style.setProperty("--stage-layout-w", `${element.width * fitScale}px`);
-        target.style.setProperty("--stage-layout-h", `${element.height * fitScale}px`);
+        target.style.setProperty("--stage-layout-x", `${element.x}px`);
+        target.style.setProperty("--stage-layout-y", `${element.y}px`);
+        target.style.setProperty("--stage-layout-w", `${element.width}px`);
+        target.style.setProperty("--stage-layout-h", `${element.height}px`);
         target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
       }
     }
