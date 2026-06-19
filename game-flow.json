@@ -32,7 +32,7 @@
           },
           "textTarget": "presentation",
           "instant": false,
-          "text": "It's time to play Flip 7",
+          "text": "It's time to play Flip 700",
           "subActions": []
         },
         {
@@ -77,6 +77,20 @@
           },
           "text": "Round <ROUND_NUMBER>",
           "textTarget": "roundintrotext",
+          "instant": false,
+          "isShown": true,
+          "subActions": []
+        },
+        {
+          "id": "round-intro-action-mqkl7y4x",
+          "name": "Game Action 2",
+          "type": "presentText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "test",
+          "textTarget": "stageprompttext",
           "instant": false,
           "isShown": true,
           "subActions": []
