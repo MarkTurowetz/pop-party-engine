@@ -3595,7 +3595,8 @@
 
     function renderStagePlayers(players) {
       const existingTiles = new Map(Array.from(playerLobby.querySelectorAll(".player-tile[data-player-id]")).map((tile) => [tile.dataset.playerId, tile]));
-      const fragment = document.createDocumentFragment();
+      const desiredIds = new Set(players.map((player) => player.id));
+      let cursor = playerLobby.firstElementChild;
       players.forEach((player, playerIndex) => {
         const signature = playerTileSignature(player);
         const existing = existingTiles.get(player.id);
@@ -3603,9 +3604,19 @@
           ? existing
           : createPlayerTile(player, playerIndex, signature);
         tile.style.setProperty("--player-index", playerIndex);
-        fragment.appendChild(tile);
+        if (existing && existing !== tile) {
+          if (existing === cursor) cursor = existing.nextElementSibling;
+          existing.remove();
+        }
+        if (tile === cursor) {
+          cursor = cursor.nextElementSibling;
+        } else {
+          playerLobby.insertBefore(tile, cursor);
+        }
       });
-      playerLobby.replaceChildren(fragment);
+      Array.from(playerLobby.querySelectorAll(".player-tile[data-player-id]")).forEach((tile) => {
+        if (!desiredIds.has(tile.dataset.playerId)) tile.remove();
+      });
     }
 
     function runStageWipe(onCovered) {
