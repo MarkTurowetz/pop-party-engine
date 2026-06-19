@@ -16,7 +16,11 @@
         "y": 100,
         "width": 170,
         "height": 82,
-        "scale": 1.5
+        "scale": 1.5,
+        "defaultText": "",
+        "fontSize": 58,
+        "autoFitText": false,
+        "fontColor": "#ffffff"
       },
       {
         "id": "presentclickwidget",
@@ -27,7 +31,11 @@
         "y": 960,
         "width": 90,
         "height": 90,
-        "scale": 1
+        "scale": 1,
+        "defaultText": "",
+        "fontSize": 58,
+        "autoFitText": false,
+        "fontColor": "#ffffff"
       },
       {
         "id": "playerlobby",
@@ -38,7 +46,11 @@
         "y": 810,
         "width": 1320,
         "height": 150,
-        "scale": 1.3
+        "scale": 1.3,
+        "defaultText": "",
+        "fontSize": 58,
+        "autoFitText": false,
+        "fontColor": "#ffffff"
       }
     ]
   },
@@ -56,7 +68,11 @@
           "y": 150,
           "width": 200,
           "height": 200,
-          "scale": 1
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         },
         {
           "id": "stagetitle",
@@ -67,7 +83,11 @@
           "y": 140,
           "width": 1080,
           "height": 150,
-          "scale": 1
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         },
         {
           "id": "stagecodepanel",
@@ -78,29 +98,41 @@
           "y": 480,
           "width": 560,
           "height": 190,
-          "scale": 1.35
+          "scale": 1.35,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         },
         {
           "id": "waitingstatus",
           "name": "Waiting Status",
           "selector": "#waitingStatus",
-          "kind": "art",
+          "kind": "text",
           "x": 960,
           "y": 990,
           "width": 700,
           "height": 82,
-          "scale": 0.7
+          "scale": 0.7,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": true,
+          "fontColor": "#17131f"
         },
         {
           "id": "joinprompt",
           "name": "Join Prompt",
           "selector": "#joinPrompt",
-          "kind": "art",
+          "kind": "text",
           "x": 960,
           "y": 300,
           "width": 740,
           "height": 76,
-          "scale": 0.7
+          "scale": 0.7,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": true,
+          "fontColor": "#000000"
         }
       ]
     },
@@ -117,7 +149,11 @@
           "y": 140,
           "width": 1060,
           "height": 130,
-          "scale": 1
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         },
         {
           "id": "stagepresentationtext",
@@ -128,7 +164,11 @@
           "y": 430,
           "width": 980,
           "height": 240,
-          "scale": 1
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         },
         {
           "id": "stageprompttext",
@@ -139,7 +179,11 @@
           "y": 970,
           "width": 700,
           "height": 82,
-          "scale": 0.7
+          "scale": 0.7,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         }
       ]
     },
@@ -156,7 +200,11 @@
           "y": 340,
           "width": 1100,
           "height": 180,
-          "scale": 1
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         },
         {
           "id": "roundintroinfotext",
@@ -167,7 +215,11 @@
           "y": 480,
           "width": 980,
           "height": 105,
-          "scale": 1
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         }
       ]
     }
