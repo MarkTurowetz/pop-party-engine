@@ -1707,7 +1707,9 @@
 
     .layout-stage-preview {
       position: relative;
-      width: min(100%, calc((100vh - 190px) * 1.777));
+      width: var(--layout-preview-width, 960px);
+      height: var(--layout-preview-height, 540px);
+      max-width: 100%;
       max-height: 100%;
       aspect-ratio: 16 / 9;
       overflow: hidden;
@@ -4428,6 +4430,21 @@
       return stageLayoutState(stateId)?.elements?.find((element) => element.id === elementId) || null;
     }
 
+    function fitLayoutStagePreview() {
+      const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
+      const wrap = layoutStagePreview.parentElement;
+      if (!wrap) return 1;
+      const wrapRect = wrap.getBoundingClientRect();
+      const availableWidth = Math.max(1, wrapRect.width - 36);
+      const availableHeight = Math.max(1, wrapRect.height - 36);
+      const fitScale = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
+      const width = Math.max(1, canvas.width * fitScale);
+      const height = Math.max(1, canvas.height * fitScale);
+      layoutStagePreview.style.setProperty("--layout-preview-width", `${width}px`);
+      layoutStagePreview.style.setProperty("--layout-preview-height", `${height}px`);
+      return fitScale;
+    }
+
     function renderLayoutTool() {
       renderLayoutStates();
       renderLayoutElements();
@@ -4477,13 +4494,13 @@
 
     function layoutPreviewScale() {
       const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
-      return layoutStagePreview.clientWidth / canvas.width;
+      return fitLayoutStagePreview() || layoutStagePreview.clientWidth / canvas.width;
     }
 
     function renderLayoutPreview() {
       layoutStagePreview.replaceChildren();
       const state = stageLayoutState(selectedLayoutStateId);
-      const scale = layoutPreviewScale() || 1;
+      const scale = fitLayoutStagePreview() || 1;
       for (const element of state?.elements || []) {
         const node = document.createElement("div");
         node.className = "layout-preview-element";
