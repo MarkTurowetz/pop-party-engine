@@ -128,7 +128,11 @@ const defaultPlayerColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa
 const avatarShapes = ["rex", "stego", "trike", "raptor", "bronto", "ankylo"];
 const defaultGameConstants = {
   playerColors: defaultPlayerColors,
-  craftingTimerDuration: 30
+  craftingTimerDuration: 30,
+  gameTitle: "Party Game Template",
+  numberOfRounds: 3,
+  randomChanceTest: 0.5,
+  overrideFirstGameOfSession: false
 };
 const defaultStageLayouts = {
   canvas: { width: 1920, height: 1080 },
@@ -375,13 +379,34 @@ function normalizeDurationSeconds(value, fallback = 30) {
   return Number(Math.max(1, Math.min(3600, number)).toFixed(2));
 }
 
+function normalizeConstantString(value, fallback, maxLength = 80) {
+  const cleaned = String(value || "").trim().replace(/\s+/g, " ").slice(0, maxLength);
+  return cleaned || fallback;
+}
+
+function normalizeConstantInteger(value, fallback, min = 0, max = 9999) {
+  const number = Math.floor(Number(value));
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, number));
+}
+
+function normalizeConstantFloat(value, fallback, min = -999999, max = 999999) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, Number(number.toFixed(4))));
+}
+
 function normalizeGameConstants(constants) {
   const colors = Array.isArray(constants?.playerColors) ? constants.playerColors : defaultPlayerColors;
   const playerColors = [...new Set(colors.map(normalizeColor).filter(Boolean))];
   const craftingTimerDuration = normalizeDurationSeconds(constants?.craftingTimerDuration, defaultGameConstants.craftingTimerDuration);
   return {
     playerColors: playerColors.length ? playerColors : [...defaultPlayerColors],
-    craftingTimerDuration
+    craftingTimerDuration,
+    gameTitle: normalizeConstantString(constants?.gameTitle, defaultGameConstants.gameTitle),
+    numberOfRounds: normalizeConstantInteger(constants?.numberOfRounds, defaultGameConstants.numberOfRounds, 1, 99),
+    randomChanceTest: normalizeConstantFloat(constants?.randomChanceTest, defaultGameConstants.randomChanceTest, 0, 1),
+    overrideFirstGameOfSession: constants?.overrideFirstGameOfSession === true
   };
 }
 
@@ -821,6 +846,46 @@ function normalizeDecisionValueType(value) {
   return ["int", "float", "string", "bool"].includes(value) ? value : "int";
 }
 
+function normalizeDecisionBranchType(value) {
+  return ["hit", "code", "noMatch"].includes(value) ? value : "hit";
+}
+
+function normalizeDecisionBranch(branch, index) {
+  const type = normalizeDecisionBranchType(branch?.type);
+  const fallbackId = type === "noMatch" ? "no-match" : `branch-${index + 1}`;
+  return {
+    id: normalizeFlowId(branch?.id, fallbackId),
+    type,
+    value: cleanFlowText(branch?.value, type === "hit" ? "0" : ""),
+    code: cleanFlowText(branch?.code, type === "code" ? "x < 3" : ""),
+    targetActionId: flowActionTarget(branch?.targetActionId)
+  };
+}
+
+function normalizeDecisionBranches(action) {
+  const sourceBranches = Array.isArray(action?.branches) && action.branches.length
+    ? action.branches
+    : [
+        {
+          id: "legacy-hit",
+          type: "code",
+          code: `x ${normalizeDecisionOperator(action?.operator)} ${cleanFlowText(action?.compareValue, "3")}`,
+          value: cleanFlowText(action?.compareValue, "3"),
+          targetActionId: action?.trueTargetActionId
+        },
+        {
+          id: "no-match",
+          type: "noMatch",
+          targetActionId: action?.falseTargetActionId
+        }
+      ];
+  const branches = sourceBranches.map(normalizeDecisionBranch).filter(Boolean);
+  const regularBranches = branches.filter((branch) => branch.type !== "noMatch");
+  const noMatch = branches.find((branch) => branch.type === "noMatch")
+    || normalizeDecisionBranch({ id: "no-match", type: "noMatch", targetActionId: action?.falseTargetActionId }, regularBranches.length);
+  return [...regularBranches, noMatch];
+}
+
 function isNoActionTarget(value) {
   return String(value || "").toLowerCase() === "none";
 }
@@ -953,12 +1018,9 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
   if (type === "decision") {
     return {
       ...base,
-      variable: action?.variable === "activePlayerCount" ? "activePlayerCount" : "activePlayerCount",
+      variable: cleanFlowText(action?.variable, "activePlayerCount"),
       valueType: normalizeDecisionValueType(action?.valueType),
-      operator: normalizeDecisionOperator(action?.operator),
-      compareValue: cleanFlowText(action?.compareValue, "3"),
-      trueTargetActionId: flowActionTarget(action?.trueTargetActionId),
-      falseTargetActionId: flowActionTarget(action?.falseTargetActionId)
+      branches: normalizeDecisionBranches(action)
     };
   }
   if (type === "transition") {
@@ -1663,10 +1725,7 @@ function publicFlowAction(action, index) {
       type: "decision",
       variable: action.variable || "activePlayerCount",
       valueType: normalizeDecisionValueType(action.valueType),
-      operator: normalizeDecisionOperator(action.operator),
-      compareValue: action.compareValue || "3",
-      trueTargetActionId: action.trueTargetActionId || "",
-      falseTargetActionId: action.falseTargetActionId || ""
+      branches: normalizeDecisionBranches(action)
     };
   }
   if (action.type === "transition") {
@@ -1734,35 +1793,106 @@ function compareDecisionValues(leftValue, rightValue, valueType, operator) {
   return left === right;
 }
 
+function propertyPathValue(root, pathParts) {
+  let value = root;
+  for (const part of pathParts) {
+    if (value == null) return undefined;
+    const key = String(part || "");
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === "count" || lowerKey === "length") {
+      if (Array.isArray(value) || typeof value === "string") {
+        value = value.length;
+        continue;
+      }
+      if (value instanceof Map || value instanceof Set) {
+        value = value.size;
+        continue;
+      }
+    }
+    value = value[key];
+  }
+  return value;
+}
+
 function decisionVariableValue(room, variable) {
-  if (variable === "activePlayerCount") return activePlayers(room).length;
-  return 0;
+  const key = String(variable || "activePlayerCount").trim();
+  const constants = gameConstants();
+  const active = activePlayers(room);
+  const activeSessionKey = active.map((player) => player.id).sort().join("|");
+  if (activeSessionKey !== room.playerSessionKey) {
+    room.numSequentialGames = 0;
+  }
+  const lookup = {
+    activePlayerCount: active.length,
+    currentRound: room.currentRound || 1,
+    numSequentialGames: room.numSequentialGames || 0,
+    isFirstGameOfSession: constants.overrideFirstGameOfSession === true || Number(room.numSequentialGames || 0) === 0,
+    gameTitle: constants.gameTitle,
+    numberOfRounds: constants.numberOfRounds,
+    randomChanceTest: constants.randomChanceTest,
+    craftingTimerDuration: constants.craftingTimerDuration,
+    overrideFirstGameOfSession: constants.overrideFirstGameOfSession,
+    players: active,
+    playerColors: constants.playerColors,
+    choiceInputAnswers: room.choiceInputAnswers,
+    textInputAnswers: room.textInputAnswers
+  };
+  const pathParts = key.split(".").filter(Boolean);
+  const first = pathParts.shift();
+  if (!first) return 0;
+  if (first === "constants") return propertyPathValue(constants, pathParts);
+  if (Object.prototype.hasOwnProperty.call(lookup, first)) {
+    return pathParts.length ? propertyPathValue(lookup[first], pathParts) : lookup[first];
+  }
+  if (Object.prototype.hasOwnProperty.call(constants, first)) {
+    return pathParts.length ? propertyPathValue(constants[first], pathParts) : constants[first];
+  }
+  return propertyPathValue({ ...lookup, constants }, [first, ...pathParts]) ?? 0;
+}
+
+function evaluateDecisionCode(code, x) {
+  const expression = String(code || "").trim();
+  if (!expression) return false;
+  const match = expression.match(/^x\s*(===|==|!==|!=|<=|>=|<|>)\s*(.+)$/i);
+  if (!match) return false;
+  const [, operator, rawRight] = match;
+  let valueType = "float";
+  let right = rawRight.trim();
+  if (/^true$/i.test(right) || /^false$/i.test(right)) {
+    valueType = "bool";
+    right = /^true$/i.test(right);
+  } else if ((right.startsWith('"') && right.endsWith('"')) || (right.startsWith("'") && right.endsWith("'"))) {
+    valueType = "string";
+    right = right.slice(1, -1);
+  } else if (!Number.isFinite(Number(right))) {
+    valueType = "string";
+  }
+  const normalizedOperator = operator === "===" ? "==" : operator === "!==" ? "!=" : operator;
+  return compareDecisionValues(x, right, valueType, normalizedOperator);
+}
+
+function evaluateDecisionBranch(branch, leftValue, valueType) {
+  if (branch.type === "noMatch") return true;
+  if (branch.type === "code") return evaluateDecisionCode(branch.code, leftValue);
+  return compareDecisionValues(leftValue, branch.value, valueType, "==");
 }
 
 function evaluateDecisionAction(room, action) {
   const variable = action.variable || "activePlayerCount";
   const valueType = normalizeDecisionValueType(action.valueType);
-  const operator = normalizeDecisionOperator(action.operator);
   const leftValue = decisionVariableValue(room, variable);
-  const rightValue = action.compareValue;
-  const passed = compareDecisionValues(
-    leftValue,
-    rightValue,
-    valueType,
-    operator
-  );
-  const target = passed ? action.trueTargetActionId : action.falseTargetActionId;
+  const branches = normalizeDecisionBranches(action);
+  const selectedBranch = branches.find((branch) => evaluateDecisionBranch(branch, leftValue, valueType)) || branches[branches.length - 1];
+  const target = selectedBranch?.targetActionId || "";
   const targetIndex = isNoActionTarget(target) ? null : flowActionIndexById(room, target);
   return {
     actionId: action.id,
     actionName: action.name,
     variable,
     valueType,
-    operator,
     leftValue,
-    rightValue,
-    passed,
-    selectedBranch: passed ? "true" : "false",
+    selectedBranch: selectedBranch?.id || "",
+    selectedBranchType: selectedBranch?.type || "",
     selectedTarget: isNoActionTarget(target) ? "none" : String(target || ""),
     targetIndex
   };
@@ -2408,6 +2538,8 @@ function getRoom(stageCode) {
       presentedAction: null,
       playersShown: true,
       currentRound: 1,
+      playerSessionKey: "",
+      numSequentialGames: 0,
       hasEnteredRoundIntro: false,
       choiceInputActionId: "",
       choiceInputPrompt: "",
@@ -2730,6 +2862,8 @@ function lobbyPayload(room) {
     craftingTimer: craftingTimerPayload(room),
     lastDecisionTrace: room.lastDecisionTrace,
     currentRound: room.currentRound || 1,
+    gameTitle: gameConstants().gameTitle,
+    numSequentialGames: room.numSequentialGames || 0,
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
     startToken: room.startToken,
@@ -2795,6 +2929,15 @@ function enterGamePhase(room, phase) {
   clearCountdownTimer(room);
   clearActionTimer(room);
   const previousPhase = room.phase;
+  if (previousPhase === "lobby" || previousPhase === "starting") {
+    const nextSessionKey = activePlayers(room).map((player) => player.id).sort().join("|");
+    if (nextSessionKey && nextSessionKey === room.playerSessionKey) {
+      room.numSequentialGames = Number(room.numSequentialGames || 0) + 1;
+    } else {
+      room.playerSessionKey = nextSessionKey;
+      room.numSequentialGames = 0;
+    }
+  }
   room.phase = phase;
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;

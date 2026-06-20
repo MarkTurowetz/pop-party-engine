@@ -10,5 +10,9 @@
     "#ef4444",
     "#f97316"
   ],
-  "craftingTimerDuration": 30
+  "craftingTimerDuration": 30,
+  "gameTitle": "Party Game Template",
+  "numberOfRounds": 3,
+  "randomChanceTest": 0.5,
+  "overrideFirstGameOfSession": false
 }

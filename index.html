@@ -3269,6 +3269,21 @@
           <p id="constantsStorageStatus">Checking constants storage...</p>
         </div>
         <div class="flow-list">
+          <button class="flow-state-header" type="button">
+            <span><strong>Game Title</strong><span>Name shown to players</span></span>
+          </button>
+          <button class="flow-state-header" type="button">
+            <span><strong>Crafting Timer</strong><span>Duration in seconds</span></span>
+          </button>
+          <button class="flow-state-header" type="button">
+            <span><strong>Number of Rounds</strong><span>Rounds before ending</span></span>
+          </button>
+          <button class="flow-state-header" type="button">
+            <span><strong>Random Chance Test</strong><span>Temporary float test value</span></span>
+          </button>
+          <button class="flow-state-header" type="button">
+            <span><strong>First Game Override</strong><span>Force first-game checks</span></span>
+          </button>
           <button class="flow-state-header is-selected" type="button">
             <span><strong>Player Colors</strong><span>Random unique colors for joined players</span></span>
             <span class="flow-pill" id="playerColorCount">0 colors</span>
@@ -3282,11 +3297,30 @@
       <main class="flow-panel">
         <div class="art-header">
           <h1>Game Constants</h1>
-          <p>Each new player gets a random unused color before colors repeat. Timer duration is read by Set Timer Shown.</p>
+          <p>Constants are typed values read by the stage, controllers, and decision branches.</p>
         </div>
+        <label class="field-label flow-form-grid">
+          Game Title
+          <input class="text-input" id="gameTitleInput" type="text" maxlength="80" value="Party Game Template">
+        </label>
         <label class="field-label flow-form-grid">
           Crafting Timer Duration Seconds
           <input class="text-input" id="craftingTimerDurationInput" type="number" min="1" max="3600" step="1" value="30">
+        </label>
+        <label class="field-label flow-form-grid">
+          Number of Rounds
+          <input class="text-input" id="numberOfRoundsInput" type="number" min="1" max="99" step="1" value="3">
+        </label>
+        <label class="field-label flow-form-grid">
+          Random Chance Test
+          <input class="text-input" id="randomChanceTestInput" type="number" min="0" max="1" step="0.01" value="0.5">
+        </label>
+        <label class="field-label flow-form-grid">
+          Override First Game of Session
+          <select class="text-input" id="overrideFirstGameInput">
+            <option value="false">False</option>
+            <option value="true">True</option>
+          </select>
         </label>
         <div class="constants-editor" id="playerColorList"></div>
       </main>
@@ -3456,7 +3490,11 @@
     const deleteFlowItemButton = document.querySelector("#deleteFlowItemButton");
     const revertFlowButton = document.querySelector("#revertFlowButton");
     const constantsStorageStatus = document.querySelector("#constantsStorageStatus");
+    const gameTitleInput = document.querySelector("#gameTitleInput");
     const craftingTimerDurationInput = document.querySelector("#craftingTimerDurationInput");
+    const numberOfRoundsInput = document.querySelector("#numberOfRoundsInput");
+    const randomChanceTestInput = document.querySelector("#randomChanceTestInput");
+    const overrideFirstGameInput = document.querySelector("#overrideFirstGameInput");
     const playerColorList = document.querySelector("#playerColorList");
     const playerColorCount = document.querySelector("#playerColorCount");
     const addPlayerColorButton = document.querySelector("#addPlayerColorButton");
@@ -3511,7 +3549,14 @@
     const collapsedArtSections = new Set();
     const collapsedArtComposites = new Set();
     let gameFlow = { states: [] };
-    let gameConstants = { playerColors: [], craftingTimerDuration: 30 };
+    let gameConstants = {
+      playerColors: [],
+      craftingTimerDuration: 30,
+      gameTitle: "Party Game Template",
+      numberOfRounds: 3,
+      randomChanceTest: 0.5,
+      overrideFirstGameOfSession: false
+    };
     let stageLayouts = { canvas: { width: 1920, height: 1080 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let controllerLayouts = { canvas: { width: 390, height: 844 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let flowSavedSnapshot = "";
@@ -4398,6 +4443,10 @@
       const phase = lobby.phase || "lobby";
       const action = lobby.action || null;
       const isLobbyPhase = phase === "lobby" || phase === "starting";
+      const liveGameTitle = lobby.gameTitle || gameConstants.gameTitle || "Party Game Template";
+      document.title = liveGameTitle;
+      const stageTitleElement = document.querySelector(".stage-title");
+      if (stageTitleElement) stageTitleElement.textContent = liveGameTitle;
       stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
       const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
       if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
@@ -5682,7 +5731,7 @@
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "setTimerShown") return `${action.isShown === false ? "Hide" : "Show"} crafting timer / ${timingText}${instantText}`;
       if (action.type === "startCraftingTimer") return `Start crafting timer / ${timingText}`;
-      if (action.type === "decision") return `If ${decisionVariableName(action.variable)} ${action.operator || "<"} ${action.compareValue || "3"} -> ${flowTargetActionName(action.trueTargetActionId)} else ${flowTargetActionName(action.falseTargetActionId)} / ${timingText}`;
+      if (action.type === "decision") return `${decisionVariableName(action.variable)}: ${decisionSummary(action)} / ${timingText}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
       if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"} / ${timingText}`;
       return `${action.text || "Text"} / ${timingText}`;
@@ -5703,7 +5752,70 @@
 
     function decisionVariableName(variable) {
       if (variable === "activePlayerCount") return "Active Player Count";
+      if (variable === "currentRound") return "Current Round";
+      if (variable === "numSequentialGames") return "Sequential Games";
+      if (variable === "isFirstGameOfSession") return "Is First Game";
+      if (variable === "gameTitle") return "Game Title";
+      if (variable === "numberOfRounds") return "Number of Rounds";
+      if (variable === "randomChanceTest") return "Random Chance Test";
+      if (variable === "overrideFirstGameOfSession") return "Override First Game";
+      if (variable === "craftingTimerDuration") return "Crafting Timer Duration";
       return variable || "Variable";
+    }
+
+    function makeDecisionBranchId(type = "branch") {
+      return `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    function ensureDecisionBranches(action) {
+      if (!action) return [];
+      if (!Array.isArray(action.branches) || !action.branches.length) {
+        action.branches = [
+          {
+            id: "legacy-hit",
+            type: "code",
+            code: `x ${action.operator || "<"} ${action.compareValue || "3"}`,
+            value: action.compareValue || "3",
+            targetActionId: action.trueTargetActionId || ""
+          },
+          {
+            id: "no-match",
+            type: "noMatch",
+            targetActionId: action.falseTargetActionId || ""
+          }
+        ];
+      }
+      action.branches = action.branches.map((branch, index) => ({
+        id: branch.id || (branch.type === "noMatch" ? "no-match" : makeDecisionBranchId(`branch-${index + 1}`)),
+        type: ["hit", "code", "noMatch"].includes(branch.type) ? branch.type : "hit",
+        value: branch.value ?? "",
+        code: branch.code || "x < 3",
+        targetActionId: branch.targetActionId || ""
+      }));
+      const regular = action.branches.filter((branch) => branch.type !== "noMatch");
+      const noMatch = action.branches.find((branch) => branch.type === "noMatch") || { id: "no-match", type: "noMatch", value: "", code: "", targetActionId: "" };
+      action.branches = [...regular, { ...noMatch, type: "noMatch", id: noMatch.id || "no-match" }];
+      return action.branches;
+    }
+
+    function decisionBranchById(action, branchId) {
+      return ensureDecisionBranches(action).find((branch) => branch.id === branchId);
+    }
+
+    function decisionBranchName(branch, index = 0) {
+      if (!branch) return "Branch";
+      if (branch.type === "noMatch") return "No Match";
+      if (branch.type === "code") return `Code ${index + 1}`;
+      return `Hit ${branch.value || "Value"}`;
+    }
+
+    function decisionSummary(action) {
+      return ensureDecisionBranches(action).map((branch, index) => {
+        const target = flowTargetActionName(branch.targetActionId);
+        if (branch.type === "noMatch") return `else -> ${target}`;
+        if (branch.type === "code") return `${branch.code || "x < 3"} -> ${target}`;
+        return `${decisionVariableName(action.variable)} = ${branch.value || ""} -> ${target}`;
+      }).join(" / ");
     }
 
     function flowActionTargetOptions(state, selectedActionId = "") {
@@ -5977,7 +6089,8 @@
         const fromNode = actionNodes.get(action.id);
         for (const exit of flowNodeExitDefinitions(action)) {
           if (exit.targetKind === "state") continue;
-          const targetId = action[exit.field] || "";
+          const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
+          const targetId = branch ? branch.targetActionId : action[exit.field] || "";
           if (isNoFlowTarget(targetId)) {
             drawNodeWire(fromNode, returnNode, true);
             continue;
@@ -6369,10 +6482,11 @@
 
     function flowNodeExitDefinitions(action) {
       if (action.type === "decision") {
-        return [
-          { label: "True", field: "trueTargetActionId" },
-          { label: "False", field: "falseTargetActionId" }
-        ];
+        return ensureDecisionBranches(action).map((branch, index) => ({
+          label: decisionBranchName(branch, index),
+          branchId: branch.id,
+          targetKind: "action"
+        }));
       }
       if (action.type === "multipleChoiceInput" || action.type === "textSubmissionInput") {
         return [
@@ -6416,15 +6530,115 @@
       if (value === "decision") {
         action.variable = action.variable || "activePlayerCount";
         action.valueType = action.valueType || "int";
-        action.operator = action.operator || "<";
-        action.compareValue = action.compareValue || "3";
-        action.trueTargetActionId = action.trueTargetActionId || "";
-        action.falseTargetActionId = action.falseTargetActionId || "";
+        ensureDecisionBranches(action);
       }
       if (value === "transition") action.transition = action.transition || "horizontalWipe";
       if (value === "transitionState") action.targetState = action.targetState || "intro";
       if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = action.textTarget || "presentation";
       ensureActionTiming(action, isSubAction);
+    }
+
+    function decisionVariableOptions(selectedVariable = "") {
+      const options = [
+        { id: "activePlayerCount", name: "Active Player Count" },
+        { id: "currentRound", name: "Current Round" },
+        { id: "numSequentialGames", name: "Sequential Games" },
+        { id: "isFirstGameOfSession", name: "Is First Game of Session" },
+        { id: "gameTitle", name: "Game Title" },
+        { id: "numberOfRounds", name: "Number of Rounds" },
+        { id: "randomChanceTest", name: "Random Chance Test" },
+        { id: "overrideFirstGameOfSession", name: "Override First Game of Session" },
+        { id: "craftingTimerDuration", name: "Crafting Timer Duration" },
+        { id: "players.length", name: "Players.length" },
+        { id: "choiceInputAnswers.count", name: "Choice Answers.count" },
+        { id: "textInputAnswers.count", name: "Text Answers.count" }
+      ];
+      if (selectedVariable && !options.some((option) => option.id === selectedVariable)) {
+        options.push({ id: selectedVariable, name: selectedVariable });
+      }
+      return options;
+    }
+
+    function addDecisionBranch(action, type) {
+      const branches = ensureDecisionBranches(action);
+      const noMatchIndex = Math.max(0, branches.findIndex((branch) => branch.type === "noMatch"));
+      branches.splice(noMatchIndex, 0, {
+        id: makeDecisionBranchId(type),
+        type,
+        value: type === "hit" ? "0" : "",
+        code: type === "code" ? "x < 3" : "",
+        targetActionId: ""
+      });
+    }
+
+    function appendDecisionControls(target, state, action, rerender) {
+      ensureDecisionBranches(action);
+      target.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", decisionVariableOptions(action.variable), (value) => {
+        action.variable = value;
+        rerender();
+      }));
+      target.appendChild(flowField("Custom Variable Path", action.variable || "activePlayerCount", (value) => {
+        action.variable = value || "activePlayerCount";
+        rerender();
+      }));
+      target.appendChild(flowSelect("Value Type", action.valueType || "int", [
+        { id: "int", name: "Int" },
+        { id: "float", name: "Float" },
+        { id: "string", name: "String" },
+        { id: "bool", name: "Bool" }
+      ], (value) => {
+        action.valueType = value;
+        rerender();
+      }));
+      target.appendChild(readOnlyFlowNote("Branches are evaluated in order. The required No Match branch acts like an else statement."));
+      const branches = ensureDecisionBranches(action);
+      branches.forEach((branch, index) => {
+        const panel = document.createElement("div");
+        panel.className = "flow-form-grid";
+        const branchTypeOptions = branch.type === "noMatch"
+          ? [{ id: "noMatch", name: "No Match Branch" }]
+          : [
+              { id: "hit", name: "Hit Branch" },
+              { id: "code", name: "Code Branch" }
+            ];
+        panel.appendChild(flowSelect(`Branch ${index + 1} Type`, branch.type, branchTypeOptions, (value) => {
+          branch.type = value;
+          if (value === "code" && !branch.code) branch.code = "x < 3";
+          rerender();
+        }));
+        if (branch.type === "hit") {
+          panel.appendChild(flowField("Hit Value", branch.value || "", (value) => {
+            branch.value = value;
+            rerender(false);
+          }));
+        }
+        if (branch.type === "code") {
+          panel.appendChild(flowField("Code", branch.code || "x < 3", (value) => {
+            branch.code = value || "x < 3";
+            rerender(false);
+          }));
+        }
+        panel.appendChild(flowSelect("Branch Target", branch.targetActionId || "", flowActionTargetOptions(state, branch.targetActionId || ""), (value) => {
+          branch.targetActionId = value;
+          rerender();
+        }));
+        if (branch.type !== "noMatch") {
+          panel.appendChild(flowActionButton("Remove Branch", () => {
+            action.branches = ensureDecisionBranches(action).filter((item) => item.id !== branch.id);
+            ensureDecisionBranches(action);
+            rerender();
+          }));
+        }
+        target.appendChild(panel);
+      });
+      target.appendChild(flowActionButton("+ Hit Branch", () => {
+        addDecisionBranch(action, "hit");
+        rerender();
+      }));
+      target.appendChild(flowActionButton("+ Code Branch", () => {
+        addDecisionBranch(action, "code");
+        rerender();
+      }));
     }
 
     function appendFlowActionPropertyControls(target, state, actionRef, { includeSubActionButton = false } = {}) {
@@ -6574,45 +6788,7 @@
         }));
       }
       if (action.type === "decision") {
-        target.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", [
-          { id: "activePlayerCount", name: "Active Player Count" }
-        ], (value) => {
-          action.variable = value;
-          rerender();
-        }));
-        target.appendChild(flowSelect("Value Type", action.valueType || "int", [
-          { id: "int", name: "Int" },
-          { id: "float", name: "Float" },
-          { id: "string", name: "String" },
-          { id: "bool", name: "Bool" }
-        ], (value) => {
-          action.valueType = value;
-          rerender();
-        }));
-        target.appendChild(flowSelect("Comparator", action.operator || "<", [
-          { id: "<", name: "<" },
-          { id: "<=", name: "<=" },
-          { id: "==", name: "==" },
-          { id: "!=", name: "!=" },
-          { id: ">=", name: ">=" },
-          { id: ">", name: ">" }
-        ], (value) => {
-          action.operator = value;
-          rerender();
-        }));
-        target.appendChild(flowField("Compare Value", action.compareValue || "3", (value) => {
-          action.compareValue = value || "0";
-          rerender();
-        }));
-        const targetOptions = flowActionTargetOptions(state, action.trueTargetActionId || action.falseTargetActionId || "");
-        target.appendChild(flowSelect("If True", action.trueTargetActionId || "", targetOptions, (value) => {
-          action.trueTargetActionId = value;
-          rerender();
-        }));
-        target.appendChild(flowSelect("If False", action.falseTargetActionId || "", targetOptions, (value) => {
-          action.falseTargetActionId = value;
-          rerender();
-        }));
+        appendDecisionControls(target, state, action, rerender);
       }
       if (action.type === "transition") {
         target.appendChild(flowSelect("Transition", action.transition || "horizontalWipe", flowTransitions, (value) => {
@@ -6675,16 +6851,18 @@
         const port = document.createElement("div");
         port.className = "flow-node-port";
         const label = document.createElement("span");
-        const target = action[exit.field] || "";
+        const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
+        const target = branch ? branch.targetActionId : action[exit.field] || "";
         label.textContent = `${exit.label}${target ? ` -> ${flowTargetActionName(target)}` : ""}`;
         const dot = document.createElement("span");
         dot.className = "flow-node-port-dot";
         dot.dataset.actionId = action.id;
-        dot.dataset.field = exit.field;
+        dot.dataset.field = exit.field || "";
+        dot.dataset.branchId = exit.branchId || "";
         dot.dataset.targetKind = exit.targetKind || "action";
         dot.addEventListener("pointerdown", (event) => {
           event.stopPropagation();
-          pendingNodeConnection = { stateId: selectedFlowStateId, actionId: action.id, field: exit.field, targetKind: exit.targetKind || "action", pointerId: event.pointerId, commandCreate: event.metaKey };
+          pendingNodeConnection = { stateId: selectedFlowStateId, actionId: action.id, field: exit.field || "", branchId: exit.branchId || "", targetKind: exit.targetKind || "action", pointerId: event.pointerId, commandCreate: event.metaKey };
           flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
           dot.classList.add("is-armed");
           flowNodeHint.textContent = event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over a node to connect this exit.";
@@ -6723,7 +6901,12 @@
       };
       pushFlowHistory();
       state.actions.push(action);
-      sourceAction[pendingNodeConnection.field] = action.id;
+      if (pendingNodeConnection.branchId) {
+        const branch = decisionBranchById(sourceAction, pendingNodeConnection.branchId);
+        if (branch) branch.targetActionId = action.id;
+      } else {
+        sourceAction[pendingNodeConnection.field] = action.id;
+      }
       setFlowActionSelection([action.id]);
       renderFlowListAndPublish();
       renderFlowNodeView();
@@ -6766,7 +6949,12 @@
       }
       if (targetId === action.id) return;
       pushFlowHistory();
-      action[pendingNodeConnection.field] = targetId;
+      if (pendingNodeConnection.branchId) {
+        const branch = decisionBranchById(action, pendingNodeConnection.branchId);
+        if (branch) branch.targetActionId = targetId;
+      } else {
+        action[pendingNodeConnection.field] = targetId;
+      }
       pendingNodeConnection = null;
       renderFlowListAndPublish();
       renderFlowNodeView();
@@ -7302,45 +7490,10 @@
         flowEditor.appendChild(readOnlyFlowNote("The timer starts and this action advances normally. Timer Ends and Answers Submitted exits are defined on the input action that follows."));
       }
       if (action.type === "decision") {
-        flowEditor.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", [
-          { id: "activePlayerCount", name: "Active Player Count" }
-        ], (value) => {
-          action.variable = value;
+        appendDecisionControls(flowEditor, state, action, (redraw = true) => {
           renderFlowListAndPublish();
-        }));
-        flowEditor.appendChild(flowSelect("Value Type", action.valueType || "int", [
-          { id: "int", name: "Int" },
-          { id: "float", name: "Float" },
-          { id: "string", name: "String" },
-          { id: "bool", name: "Bool" }
-        ], (value) => {
-          action.valueType = value;
-          renderFlowListAndPublish();
-        }));
-        flowEditor.appendChild(flowSelect("Comparator", action.operator || "<", [
-          { id: "<", name: "<" },
-          { id: "<=", name: "<=" },
-          { id: "==", name: "==" },
-          { id: "!=", name: "!=" },
-          { id: ">=", name: ">=" },
-          { id: ">", name: ">" }
-        ], (value) => {
-          action.operator = value;
-          renderFlowListAndPublish();
-        }));
-        flowEditor.appendChild(flowField("Compare Value", action.compareValue || "3", (value) => {
-          action.compareValue = value || "0";
-          renderFlowListAndPublish();
-        }));
-        const targetOptions = flowActionTargetOptions(state, action.trueTargetActionId || action.falseTargetActionId || "");
-        flowEditor.appendChild(flowSelect("If True", action.trueTargetActionId || "", targetOptions, (value) => {
-          action.trueTargetActionId = value;
-          renderFlowListAndPublish();
-        }));
-        flowEditor.appendChild(flowSelect("If False", action.falseTargetActionId || "", targetOptions, (value) => {
-          action.falseTargetActionId = value;
-          renderFlowListAndPublish();
-        }));
+          if (redraw) renderFlowEditor();
+        });
         flowEditor.appendChild(readOnlyFlowNote("Decision actions are invisible branch points. Runtime evaluates them immediately and jumps to the selected target action."));
       }
       if (action.type === "transition") {
@@ -7767,8 +7920,8 @@
 
     async function loadGameConstants() {
       const result = await getJson("/api/game-constants");
-      gameConstants = result.constants || { playerColors: [], craftingTimerDuration: 30 };
-      constantsSavedSnapshot = JSON.stringify(result.savedConstants || result.constants || gameConstants);
+      gameConstants = normalizeClientGameConstants(result.constants);
+      constantsSavedSnapshot = JSON.stringify(normalizeClientGameConstants(result.savedConstants || result.constants || gameConstants));
       updateConstantsStorageStatus(result.storage);
       renderConstantsTool();
     }
@@ -7791,11 +7944,28 @@
       return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
     }
 
+    function normalizeClientGameConstants(constants = {}) {
+      const colors = Array.isArray(constants.playerColors) ? constants.playerColors.map(normalizeUiColor).filter(Boolean) : [];
+      return {
+        playerColors: colors.length ? colors : ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"],
+        craftingTimerDuration: Math.max(1, Math.min(3600, Number(constants.craftingTimerDuration || 30))),
+        gameTitle: String(constants.gameTitle || "Party Game Template").trim().slice(0, 80) || "Party Game Template",
+        numberOfRounds: Math.max(1, Math.min(99, Math.floor(Number(constants.numberOfRounds || 3)))),
+        randomChanceTest: Math.max(0, Math.min(1, Number(constants.randomChanceTest ?? 0.5))),
+        overrideFirstGameOfSession: constants.overrideFirstGameOfSession === true
+      };
+    }
+
     function renderConstantsTool() {
+      gameConstants = normalizeClientGameConstants(gameConstants);
       const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
+      if (gameTitleInput) gameTitleInput.value = gameConstants.gameTitle;
       if (craftingTimerDurationInput) {
         craftingTimerDurationInput.value = String(Math.max(1, Number(gameConstants.craftingTimerDuration || 30)));
       }
+      if (numberOfRoundsInput) numberOfRoundsInput.value = String(gameConstants.numberOfRounds);
+      if (randomChanceTestInput) randomChanceTestInput.value = String(gameConstants.randomChanceTest);
+      if (overrideFirstGameInput) overrideFirstGameInput.value = gameConstants.overrideFirstGameOfSession ? "true" : "false";
       playerColorCount.textContent = `${colors.length} ${colors.length === 1 ? "color" : "colors"}`;
       playerColorList.replaceChildren();
       colors.forEach((color, index) => {
@@ -7863,7 +8033,7 @@
 
     async function saveGameConstants() {
       const result = await postJson("/api/game-constants", { constants: gameConstants });
-      gameConstants = result.constants || gameConstants;
+      gameConstants = normalizeClientGameConstants(result.constants || gameConstants);
       constantsSavedSnapshot = JSON.stringify(gameConstants);
       updateConstantsStorageStatus(result.storage);
       renderConstantsTool();
@@ -7874,10 +8044,30 @@
       if (constantsToolInitialized) return;
       constantsToolInitialized = true;
       addPlayerColorButton.addEventListener("click", addPlayerColor);
+      gameTitleInput?.addEventListener("input", () => {
+        gameConstants.gameTitle = gameTitleInput.value || "Party Game Template";
+        markConstantsChanged();
+      });
       craftingTimerDurationInput?.addEventListener("change", () => {
         const value = Number(craftingTimerDurationInput.value || 30);
         gameConstants.craftingTimerDuration = Math.max(1, Math.min(3600, Number.isFinite(value) ? value : 30));
         craftingTimerDurationInput.value = String(gameConstants.craftingTimerDuration);
+        markConstantsChanged();
+      });
+      numberOfRoundsInput?.addEventListener("change", () => {
+        const value = Math.floor(Number(numberOfRoundsInput.value || 3));
+        gameConstants.numberOfRounds = Math.max(1, Math.min(99, Number.isFinite(value) ? value : 3));
+        numberOfRoundsInput.value = String(gameConstants.numberOfRounds);
+        markConstantsChanged();
+      });
+      randomChanceTestInput?.addEventListener("change", () => {
+        const value = Number(randomChanceTestInput.value || 0.5);
+        gameConstants.randomChanceTest = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0.5));
+        randomChanceTestInput.value = String(gameConstants.randomChanceTest);
+        markConstantsChanged();
+      });
+      overrideFirstGameInput?.addEventListener("change", () => {
+        gameConstants.overrideFirstGameOfSession = overrideFirstGameInput.value === "true";
         markConstantsChanged();
       });
       try {
