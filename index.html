@@ -5568,6 +5568,28 @@
       return gameFlow.states.filter((state) => state.id === selectedFlowStateId || selectedFlowActionIds.has(state.id));
     }
 
+    function setFlowMomentSelection(ids) {
+      const validIds = new Set((gameFlow.states || []).map((state) => state.id));
+      const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
+      selectedFlowActionIds = new Set(nextIds);
+      selectedFlowStateId = nextIds[nextIds.length - 1] || "";
+      selectedFlowActionId = "";
+    }
+
+    function selectFlowMoment(stateId, options = {}) {
+      if (options.additive) {
+        const currentIds = new Set(selectedFlowMomentStates().map((state) => state.id));
+        if (currentIds.has(stateId)) {
+          currentIds.delete(stateId);
+        } else {
+          currentIds.add(stateId);
+        }
+        setFlowMomentSelection([...currentIds]);
+      } else {
+        setFlowMomentSelection([stateId]);
+      }
+    }
+
     function flowActionRef(stateId, actionId) {
       const state = flowState(stateId);
       if (!state || !actionId) return null;
@@ -5996,20 +6018,7 @@
         node.querySelector(".flow-node-main")?.appendChild(createFlowMomentPorts(state));
         bindFlowNodeDrag(node, state);
         node.addEventListener("click", (event) => {
-          if (event.metaKey || event.ctrlKey || event.shiftKey) {
-            const nextIds = new Set(selectedFlowActionIds);
-            if (selectedFlowStateId && selectedFlowStateId !== state.id) nextIds.add(selectedFlowStateId);
-            if (nextIds.has(state.id)) {
-              nextIds.delete(state.id);
-            } else {
-              nextIds.add(state.id);
-            }
-            selectedFlowActionIds = nextIds;
-          } else {
-            selectedFlowActionIds = new Set();
-          }
-          selectedFlowStateId = state.id;
-          selectedFlowActionId = "";
+          selectFlowMoment(state.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
           renderFlowTool();
         });
         node.addEventListener("dblclick", () => {
@@ -6326,9 +6335,9 @@
         if (subActionList) node.appendChild(subActionList);
         node.querySelector(".flow-node-main")?.appendChild(createFlowNodePorts(action));
         bindFlowNodeDrag(node, action);
-        node.addEventListener("click", () => {
+        node.addEventListener("click", (event) => {
           selectedFlowStateId = state.id;
-          selectFlowAction(action.id);
+          selectFlowAction(action.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
           renderFlowTool();
         });
         flowNodeLayer.appendChild(node);
@@ -6905,9 +6914,13 @@
         stateButton.querySelector(".disclosure-slot").appendChild(createDisclosureButton(state.id, collapsedFlowStates, renderFlowList));
         stateButton.querySelector("strong").textContent = state.name;
         stateButton.querySelector(".flow-row-summary").textContent = state.id;
-        stateButton.addEventListener("click", () => {
-          selectedFlowStateId = state.id;
-          clearFlowActionSelection();
+        stateButton.addEventListener("click", (event) => {
+          if (event.metaKey || event.ctrlKey) {
+            selectFlowMoment(state.id, { additive: true });
+          } else {
+            selectedFlowStateId = state.id;
+            clearFlowActionSelection();
+          }
           if (flowViewMode === "node") flowNodeDepth = "actions";
           renderFlowTool();
         });
@@ -8328,8 +8341,7 @@
           node.addEventListener("pointerdown", (event) => {
             event.preventDefault();
             event.stopPropagation();
-            setLayoutSelection([element.id]);
-            renderLayoutTool();
+            selectLayoutElement(element.id, { additive: event.metaKey || event.ctrlKey });
           });
         }
         if (isEditableElement && selectedLayoutElementIds.has(element.id)) {
@@ -8556,8 +8568,12 @@
       if (event.target.closest(".layout-resize-handle")) return;
       event.preventDefault();
       event.stopPropagation();
+      if (event.metaKey || event.ctrlKey) {
+        selectLayoutElement(element.id, { additive: true });
+        return;
+      }
       if (!selectedLayoutElementIds.has(element.id)) {
-        setLayoutSelection(event.metaKey || event.ctrlKey ? [...selectedLayoutElementIds, element.id] : [element.id]);
+        setLayoutSelection([element.id]);
       }
       pushLayoutHistory();
       const scale = layoutPreviewScale() || 1;
