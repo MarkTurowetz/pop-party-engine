@@ -263,6 +263,21 @@
           "fontSize": 58,
           "autoFitText": false,
           "fontColor": "#ffffff"
+        },
+        {
+          "id": "stageprompttext",
+          "name": "Prompt Text Field",
+          "selector": "#stagePromptText",
+          "kind": "text",
+          "x": 960,
+          "y": 970,
+          "width": 1600,
+          "height": 75,
+          "scale": 1,
+          "defaultText": "Prompt Text",
+          "fontSize": 22,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
         }
       ]
     },
