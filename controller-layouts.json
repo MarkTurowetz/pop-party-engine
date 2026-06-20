@@ -161,21 +161,6 @@
           "fontSize": 58,
           "autoFitText": false,
           "fontColor": "#ffffff"
-        },
-        {
-          "id": "lobby-controller-text",
-          "name": "Lobby Game State Text Field",
-          "selector": "#lobby-controller-text",
-          "kind": "text",
-          "x": 195,
-          "y": 250,
-          "width": 330,
-          "height": 140,
-          "scale": 1,
-          "defaultText": "Lobby Game State",
-          "fontSize": 42,
-          "autoFitText": true,
-          "fontColor": "#17131f"
         }
       ]
     },
@@ -213,21 +198,6 @@
           "fontSize": 58,
           "autoFitText": false,
           "fontColor": "#ffffff"
-        },
-        {
-          "id": "intro-controller-text",
-          "name": "Game Intro Game State Text Field",
-          "selector": "#intro-controller-text",
-          "kind": "text",
-          "x": 195,
-          "y": 250,
-          "width": 330,
-          "height": 140,
-          "scale": 1,
-          "defaultText": "Game Intro Game State",
-          "fontSize": 42,
-          "autoFitText": true,
-          "fontColor": "#17131f"
         }
       ]
     },
