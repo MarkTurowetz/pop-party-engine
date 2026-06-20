@@ -4143,7 +4143,11 @@
         return;
       }
       if (action.type === "setTimerShown" || action.type === "startCraftingTimer") {
-        if (isPrimary) completeFlowAction("callback", action.id);
+        if (isPrimary) {
+          completeFlowAction("callback", action.id);
+        } else {
+          applyFlowActionEffect(action.id);
+        }
         return;
       }
       if (action.type === "present" || action.type === "displayText") {
@@ -4218,6 +4222,18 @@
           actionId,
           source
         });
+        if (result.lobby) renderStageLobby(result.lobby);
+      } catch (error) {
+        waitingStatus.classList.remove("hidden");
+        waitingStatus.textContent = error.message;
+      }
+    }
+
+    async function applyFlowActionEffect(actionId) {
+      const stageCode = currentStageCodeForRuntimeTest();
+      if (!stageCode || !actionId) return;
+      try {
+        const result = await postJson("/api/action-effect", { stageCode, actionId });
         if (result.lobby) renderStageLobby(result.lobby);
       } catch (error) {
         waitingStatus.classList.remove("hidden");
@@ -5187,6 +5203,7 @@
     }
 
     function flowTargetActionName(actionId) {
+      if (actionId === "none") return "None";
       const state = flowState(selectedFlowStateId);
       const action = (state?.actions || []).find((item) => item.id === actionId);
       return action?.name || "Next Action";
@@ -5198,7 +5215,7 @@
     }
 
     function flowActionTargetOptions(state, selectedActionId = "") {
-      const options = [{ id: "", name: "Next Action" }];
+      const options = [{ id: "", name: "Next Action" }, { id: "none", name: "None" }];
       for (const action of state?.actions || []) {
         options.push({ id: action.id, name: action.name || action.id });
       }
@@ -5796,7 +5813,7 @@
           action.answersSubmittedTargetActionId = value;
           renderFlowListAndPublish();
         }));
-        flowEditor.appendChild(readOnlyFlowNote("The timer keeps running after this action advances. If all active players submit text before it ends, On Answers Submitted fires instead."));
+        flowEditor.appendChild(readOnlyFlowNote("The timer keeps running after this action advances. If all active players submit text or choice input before it ends, On Answers Submitted fires instead. Choose None to ignore submissions and wait for the timer."));
       }
       if (action.type === "decision") {
         flowEditor.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", [

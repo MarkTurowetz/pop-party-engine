@@ -806,6 +806,7 @@ function flowStateHasActionType(flowState, type) {
 
 function flowActionTarget(action) {
   const target = normalizeFlowId(action, "");
+  if (isNoActionTarget(target)) return "none";
   return target || "";
 }
 
@@ -815,6 +816,10 @@ function normalizeDecisionOperator(value) {
 
 function normalizeDecisionValueType(value) {
   return ["int", "float", "string", "bool"].includes(value) ? value : "int";
+}
+
+function isNoActionTarget(value) {
+  return String(value || "").toLowerCase() === "none";
 }
 
 function normalizeLayoutNumber(value, fallback, min, max) {
@@ -1707,7 +1712,7 @@ function currentRoomAction(room) {
   if (room.actionIndex >= actions.length) return null;
   let guard = 0;
   while (actions[room.actionIndex]?.type === "decision" && guard < 20) {
-    room.appliedActionEffectId = "";
+    clearAppliedActionEffects(room);
     room.actionIndex = Math.max(0, Math.min(actions.length, resolveDecisionActionIndex(room, actions[room.actionIndex])));
     guard += 1;
     if (room.actionIndex >= actions.length) return null;
@@ -1779,9 +1784,29 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
   return true;
 }
 
+function clearAppliedActionEffects(room) {
+  room.appliedActionEffectId = "";
+  room.appliedActionEffectIds = new Set();
+}
+
+function hasAppliedActionEffect(room, actionId) {
+  if (!room.appliedActionEffectIds) {
+    room.appliedActionEffectIds = new Set(room.appliedActionEffectId ? [room.appliedActionEffectId] : []);
+  }
+  return room.appliedActionEffectIds.has(actionId);
+}
+
+function markAppliedActionEffect(room, actionId) {
+  if (!room.appliedActionEffectIds) {
+    room.appliedActionEffectIds = new Set();
+  }
+  room.appliedActionEffectIds.add(actionId);
+  room.appliedActionEffectId = actionId;
+}
+
 function applyRoomActionEffects(room, action) {
-  if (!action || room.appliedActionEffectId === action.id) return;
-  room.appliedActionEffectId = action.id;
+  if (!action || hasAppliedActionEffect(room, action.id)) return;
+  markAppliedActionEffect(room, action.id);
   if (action.type === "setPlayersShown") {
     room.playersShown = action.isShown !== false;
   }
@@ -2086,7 +2111,7 @@ async function handleLocalDraft(req, res) {
       resetCraftingTimer(room);
       room.actionIndex = 0;
       room.presentedAction = null;
-      room.appliedActionEffectId = "";
+      clearAppliedActionEffects(room);
     }
     broadcastLobby(room);
   }
@@ -2116,7 +2141,7 @@ async function handleSaveGameFlow(req, res) {
     resetCraftingTimer(room);
     room.actionIndex = 0;
     room.presentedAction = null;
-    room.appliedActionEffectId = "";
+    clearAppliedActionEffects(room);
     broadcastLobby(room);
   }
   sendJson(res, 200, {
@@ -2233,6 +2258,7 @@ function getRoom(stageCode) {
       actionTimerId: null,
       actionCompletionPendingId: "",
       appliedActionEffectId: "",
+      appliedActionEffectIds: new Set(),
       actionIndex: 0,
       presentedAction: null,
       playersShown: true,
@@ -2414,7 +2440,7 @@ function setCraftingTimerShown(room, isShown) {
 function jumpToAction(room, actionId, fallbackIndex = room.actionIndex + 1) {
   const targetIndex = flowActionIndexById(room, actionId);
   room.presentedAction = null;
-  room.appliedActionEffectId = "";
+  clearAppliedActionEffects(room);
   room.actionIndex = targetIndex >= 0 ? targetIndex : fallbackIndex;
 }
 
@@ -2459,10 +2485,16 @@ function craftingTimerPayload(room) {
   };
 }
 
-function allActivePlayersHaveTextAnswers(room) {
+function allActivePlayersHaveSubmittedInput(room) {
   const active = activePlayers(room);
   if (!active.length) return false;
-  return active.every((player) => room.textInputAnswers.get(player.id)?.done === true);
+  if (room.textInputActionId) {
+    return active.every((player) => room.textInputAnswers.get(player.id)?.done === true);
+  }
+  if (room.choiceInputActionId) {
+    return active.every((player) => room.choiceInputAnswers.has(player.id));
+  }
+  return false;
 }
 
 function handleCraftingTimerEvent(room, eventType) {
@@ -2471,6 +2503,7 @@ function handleCraftingTimerEvent(room, eventType) {
   const target = eventType === "answersSubmitted"
     ? room.craftingTimerAnswersSubmittedTargetActionId
     : room.craftingTimerTimerEndTargetActionId;
+  if (eventType === "answersSubmitted" && isNoActionTarget(target)) return false;
   pauseCraftingTimer(room);
   if (eventType === "timerEnd") {
     room.craftingTimerRemainingMs = 0;
@@ -2584,7 +2617,7 @@ function enterLobbyPhase(room) {
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
   room.presentedAction = null;
-  room.appliedActionEffectId = "";
+  clearAppliedActionEffects(room);
   room.playersShown = true;
   room.currentRound = 1;
   room.hasEnteredRoundIntro = false;
@@ -2618,7 +2651,7 @@ function enterGamePhase(room, phase) {
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
   room.presentedAction = null;
-  room.appliedActionEffectId = "";
+  clearAppliedActionEffects(room);
   room.playersShown = true;
   resetCraftingTimer(room);
   clearChoiceInput(room);
@@ -2962,6 +2995,35 @@ async function handleCompleteAction(req, res) {
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
+async function handleActionEffect(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+    return;
+  }
+
+  const stageCode = normalizeStageCode(payload.stageCode);
+  const room = getExistingRoom(stageCode);
+  if (!room) {
+    sendJson(res, 404, { ok: false, error: "Room not found" });
+    return;
+  }
+
+  const actionId = String(payload.actionId || "");
+  const currentAction = resolveRoomActionText(currentRoomAction(room), room);
+  const subAction = (currentAction?.subActions || []).find((action) => action.id === actionId);
+  if (!subAction) {
+    sendJson(res, 409, { ok: false, error: "Sub-action is not active" });
+    return;
+  }
+
+  applyRoomActionEffects(room, subAction);
+  broadcastLobby(room);
+  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+}
+
 async function handleControllerChoice(req, res) {
   let payload;
   try {
@@ -3021,6 +3083,12 @@ async function handleControllerChoice(req, res) {
     nonce: Date.now()
   });
 
+  if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
+    handleCraftingTimerEvent(room, "answersSubmitted");
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
+
   broadcastLobby(room);
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
@@ -3074,7 +3142,7 @@ async function handleControllerTextSubmit(req, res) {
     done: true,
     nonce: Date.now()
   });
-  if (room.craftingTimerRunning && allActivePlayersHaveTextAnswers(room)) {
+  if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
     handleCraftingTimerEvent(room, "answersSubmitted");
     sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
     return;
@@ -3125,7 +3193,7 @@ async function handleStageTestConfig(req, res, stageCode) {
   }
 
   room.actionCompletionPendingId = "";
-  room.appliedActionEffectId = "";
+  clearAppliedActionEffects(room);
   room.presentedAction = null;
   if (room.actionIndex >= getStateActions(room.phase, room).length) {
     room.actionIndex = 0;
@@ -3334,6 +3402,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/complete-action") {
     handleCompleteAction(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/action-effect") {
+    handleActionEffect(req, res);
     return;
   }
 
