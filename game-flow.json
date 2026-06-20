@@ -16,78 +16,12 @@
           "targetState": "intro",
           "subActions": []
         }
-      ]
-    },
-    {
-      "id": "presentation-game-state",
-      "name": "Presentation Game State",
-      "actions": [
-        {
-          "id": "presentation-game-state-action-mqlahhim",
-          "name": "Intro Text",
-          "type": "presentText",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "We are in the Presentation Game State",
-          "textTarget": "presentation-game-statemomenttext",
-          "instant": false,
-          "isShown": true,
-          "subActions": []
-        },
-        {
-          "id": "presentation-game-state-action-mqlstve7",
-          "name": "Game Action 4",
-          "type": "decision",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "variable": "activePlayerCount",
-          "valueType": "int",
-          "operator": "<",
-          "compareValue": "3",
-          "trueTargetActionId": "none",
-          "falseTargetActionId": "none"
-        },
-        {
-          "id": "presentation-game-state-action-mqlahz0a",
-          "name": "Wipe",
-          "type": "transition",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "transition": "horizontalWipe"
-        },
-        {
-          "id": "presentation-game-state-action-mqlaigk9",
-          "name": "Transition",
-          "type": "transitionState",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "transition": "horizontalWipe",
-          "targetState": "scoreboard-game-state"
-        }
-      ]
+      ],
+      "nextStateTargetId": "intro",
+      "nodePosition": {
+        "x": 100,
+        "y": 84
+      }
     },
     {
       "id": "intro",
@@ -115,24 +49,15 @@
             "seconds": 0
           },
           "transition": "horizontalWipe",
-          "subActions": []
-        },
-        {
-          "id": "intro-action-mqkhnnb5",
-          "name": "Game Action 3",
-          "type": "transitionState",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
           "subActions": [],
-          "targetState": "round-intro-game-state"
+          "nextTargetActionId": "return"
         }
-      ]
+      ],
+      "nodePosition": {
+        "x": 97,
+        "y": 303
+      },
+      "nextStateTargetId": "round-intro-game-state"
     },
     {
       "id": "round-intro-game-state",
@@ -165,24 +90,15 @@
           "instant": false,
           "isShown": true,
           "subActions": [],
-          "transition": "horizontalWipe"
-        },
-        {
-          "id": "round-intro-game-state-action-mqlamoms",
-          "name": "Transition",
-          "type": "transitionState",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "targetState": "crafting-game-state"
+          "transition": "horizontalWipe",
+          "nextTargetActionId": "return"
         }
-      ]
+      ],
+      "nodePosition": {
+        "x": 102,
+        "y": 520
+      },
+      "nextStateTargetId": "crafting-game-state"
     },
     {
       "id": "crafting-game-state",
@@ -230,7 +146,11 @@
           "isShown": true,
           "subActions": [],
           "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
-          "answersSubmittedTargetActionId": "crafting-game-state-action-mqlagz9c"
+          "answersSubmittedTargetActionId": "crafting-game-state-action-mqlagz9c",
+          "nodePosition": {
+            "x": 1064,
+            "y": 81
+          }
         },
         {
           "id": "crafting-game-state-action-mqlrlkp0",
@@ -270,7 +190,12 @@
             "D"
           ],
           "inputMode": "singleSelect",
-          "locked": false
+          "locked": false,
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 725,
+            "y": 276
+          }
         },
         {
           "id": "crafting-game-state-action-mqlag55r",
@@ -285,12 +210,41 @@
           "instant": false,
           "isShown": true,
           "subActions": [],
-          "transition": "horizontalWipe"
+          "transition": "horizontalWipe",
+          "nodePosition": {
+            "x": 1113,
+            "y": 286
+          }
+        }
+      ],
+      "nextStateTargetId": "presentation-game-state",
+      "nodePosition": {
+        "x": 104,
+        "y": 750
+      }
+    },
+    {
+      "id": "presentation-game-state",
+      "name": "Presentation Game State",
+      "actions": [
+        {
+          "id": "presentation-game-state-action-mqlahhim",
+          "name": "Intro Text",
+          "type": "presentText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "We are in the Presentation Game State",
+          "textTarget": "presentation-game-statemomenttext",
+          "instant": false,
+          "isShown": true,
+          "subActions": []
         },
         {
-          "id": "crafting-game-state-action-mqlagz9c",
-          "name": "Transition",
-          "type": "transitionState",
+          "id": "presentation-game-state-action-mqlstve7",
+          "name": "Game Action 4",
+          "type": "decision",
           "timing": {
             "mode": "E+",
             "seconds": 0
@@ -300,9 +254,39 @@
           "instant": false,
           "isShown": true,
           "subActions": [],
-          "targetState": "presentation-game-state"
+          "variable": "activePlayerCount",
+          "valueType": "int",
+          "operator": "<",
+          "compareValue": "3",
+          "trueTargetActionId": "presentation-game-state-action-mqlahz0a",
+          "falseTargetActionId": "presentation-game-state-action-mqlahz0a"
+        },
+        {
+          "id": "presentation-game-state-action-mqlahz0a",
+          "name": "Wipe",
+          "type": "transition",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "transition": "horizontalWipe",
+          "nodePosition": {
+            "x": 1137,
+            "y": 176
+          },
+          "nextTargetActionId": "return"
         }
-      ]
+      ],
+      "nextStateTargetId": "scoreboard-game-state",
+      "nodePosition": {
+        "x": 526,
+        "y": 772
+      }
     },
     {
       "id": "scoreboard-game-state",
@@ -336,23 +320,13 @@
           "isShown": true,
           "subActions": [],
           "transition": "horizontalWipe"
-        },
-        {
-          "id": "scoreboard-game-state-action-mqlajs3m",
-          "name": "Transition",
-          "type": "transitionState",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "targetState": "post-game-state"
         }
-      ]
+      ],
+      "nextStateTargetId": "post-game-state",
+      "nodePosition": {
+        "x": 927,
+        "y": 759
+      }
     },
     {
       "id": "post-game-state",
@@ -386,23 +360,13 @@
           "isShown": true,
           "subActions": [],
           "transition": "horizontalWipe"
-        },
-        {
-          "id": "post-game-state-action-mqlal2t2",
-          "name": "Transition",
-          "type": "transitionState",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "targetState": "lobby"
         }
-      ]
+      ],
+      "nextStateTargetId": "lobby",
+      "nodePosition": {
+        "x": 955,
+        "y": 340
+      }
     }
   ]
 }
