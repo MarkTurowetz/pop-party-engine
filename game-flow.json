@@ -54,7 +54,7 @@
           "operator": "<",
           "compareValue": "3",
           "trueTargetActionId": "presentation-game-state-action-mqlahz0a",
-          "falseTargetActionId": "presentation-game-state-action-mqlaigk9"
+          "falseTargetActionId": "none"
         },
         {
           "id": "presentation-game-state-action-mqlahz0a",
