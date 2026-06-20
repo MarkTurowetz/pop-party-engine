@@ -132,8 +132,38 @@
           "subActions": []
         },
         {
-          "id": "crafting-game-state-action-mqlinnp0",
-          "name": "Game Action 4",
+          "id": "crafting-game-state-action-mqlrgs0y",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": []
+        },
+        {
+          "id": "crafting-game-state-action-mqlronl5",
+          "name": "Start Timer",
+          "type": "startCraftingTimer",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
+          "answersSubmittedTargetActionId": "crafting-game-state-action-mqlagz9c"
+        },
+        {
+          "id": "crafting-game-state-action-mqlrlkp0",
+          "name": "Gameplay",
           "type": "textSubmissionInput",
           "timing": {
             "mode": "E+",
@@ -143,50 +173,18 @@
           "textTarget": "presentation",
           "instant": false,
           "isShown": true,
-          "subActions": [
-            {
-              "id": "crafting-game-state-sub-action-mqlr146e",
-              "name": "Sub-Action 1",
-              "type": "setTimerShown",
-              "timing": {
-                "mode": "S+",
-                "seconds": 0
-              },
-              "text": "Presented text",
-              "textTarget": "presentation",
-              "instant": false,
-              "isShown": true,
-              "subActions": []
-            },
-            {
-              "id": "crafting-game-state-sub-action-mqlr162y",
-              "name": "Sub-Action 2",
-              "type": "startCraftingTimer",
-              "timing": {
-                "mode": "S+",
-                "seconds": 0
-              },
-              "text": "Presented text",
-              "textTarget": "presentation",
-              "instant": false,
-              "isShown": true,
-              "subActions": [],
-              "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
-              "answersSubmittedTargetActionId": "crafting-game-state-action-mqlagz9c"
-            }
-          ],
-          "prompt": "Submit a string",
+          "subActions": [],
+          "prompt": "Write your answer",
+          "placeholder": "Answer here",
+          "characterLimit": 40,
           "options": [
             "A",
             "B",
             "C",
             "D"
           ],
-          "locked": true,
-          "inputMode": "submitOnce",
-          "placeholder": "Answer here",
-          "characterLimit": 40,
-          "acceptedSubmissions": []
+          "inputMode": "singleSelect",
+          "locked": false
         },
         {
           "id": "crafting-game-state-action-mqlag55r",
