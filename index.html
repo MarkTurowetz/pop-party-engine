@@ -3514,11 +3514,24 @@
       target.style.setProperty("--controller-layout-scale", `${element.scale || 1}`);
       if (element.kind === "text") {
         target.classList.add("controller-layout-text");
-        target.style.setProperty("--controller-text-color", normalizeUiColor(element.fontColor) || "#17131f");
-        target.style.setProperty("--controller-text-font-size", `${layoutComputedFontSize(element)}px`);
-        target.style.color = normalizeUiColor(element.fontColor) || "#17131f";
-        target.style.fontSize = `${layoutComputedFontSize(element)}px`;
+        applyControllerLayoutTextProperties(target, element);
       }
+    }
+
+    function controllerLayoutComputedFontSize(element, textOverride = "") {
+      const baseSize = Number(element.fontSize || 42);
+      if (!element.autoFitText) return baseSize;
+      return fittedLayoutTextSize(element, textOverride || layoutDefaultText(element) || String(element.name || "Text"), baseSize);
+    }
+
+    function applyControllerLayoutTextProperties(target, element) {
+      const fontColor = normalizeUiColor(element.fontColor) || "#17131f";
+      const text = target.textContent.trim() || layoutDefaultText(element);
+      const fontSize = `${controllerLayoutComputedFontSize(element, text)}px`;
+      target.style.setProperty("--controller-text-color", fontColor);
+      target.style.setProperty("--controller-text-font-size", fontSize);
+      target.style.setProperty("color", fontColor, "important");
+      target.style.setProperty("font-size", fontSize, "important");
     }
 
     function controllerLayoutTargetElement(element) {
@@ -6655,7 +6668,8 @@
     }
 
     function startLayoutMarquee(event) {
-      if (event.button !== 0 || event.target !== layoutStagePreview) return;
+      if (event.button !== 0 || event.target.closest(".layout-preview-element")) return;
+      if (!layoutStagePreview.contains(event.target)) return;
       event.preventDefault();
       const previewRect = layoutStagePreview.getBoundingClientRect();
       const startX = event.clientX - previewRect.left;
