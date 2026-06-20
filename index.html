@@ -6132,7 +6132,7 @@
       if (!sourceAction) return false;
       const selectedRef = flowActionRef(selectedFlowStateId, selectedFlowActionId);
       if (branchId) {
-        if (selectedRef?.isBranch) return selectedFlowActionId === branchId;
+        if (selectedRef?.isBranch) return flowActionIsSelected(branchId);
         return flowActionIsSelected(sourceAction.id);
       }
       return flowActionIsSelected(sourceAction.id);
@@ -6149,7 +6149,7 @@
           const toNode = state.nextStateTargetId ? stateNodes.get(state.nextStateTargetId) : null;
           if (toNode) {
             drawNodeWire(fromNode, toNode, {
-              highlighted: selectedFlowStateId === state.id
+              highlighted: selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id)
             });
           }
         }
