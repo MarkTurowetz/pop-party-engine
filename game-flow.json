@@ -14,7 +14,12 @@
           },
           "trigger": "onCountdownComplete",
           "targetState": "intro",
-          "subActions": []
+          "subActions": [],
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 80,
+            "y": 210
+          }
         }
       ],
       "nextStateTargetId": "intro",
@@ -38,7 +43,11 @@
           "textTarget": "presentation",
           "instant": false,
           "text": "This is the Game Intro State",
-          "subActions": []
+          "subActions": [],
+          "nodePosition": {
+            "x": 60,
+            "y": 200
+          }
         },
         {
           "id": "intro-wipe",
@@ -50,7 +59,11 @@
           },
           "transition": "horizontalWipe",
           "subActions": [],
-          "nextTargetActionId": "return"
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 70,
+            "y": 370
+          }
         }
       ],
       "nodePosition": {
@@ -75,7 +88,11 @@
           "textTarget": "roundintrotext",
           "instant": false,
           "isShown": true,
-          "subActions": []
+          "subActions": [],
+          "nodePosition": {
+            "x": 50,
+            "y": 200
+          }
         },
         {
           "id": "round-intro-game-state-action-mqlam2l4",
@@ -91,7 +108,11 @@
           "isShown": true,
           "subActions": [],
           "transition": "horizontalWipe",
-          "nextTargetActionId": "return"
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 60,
+            "y": 360
+          }
         }
       ],
       "nodePosition": {
@@ -116,7 +137,11 @@
           "textTarget": "crafting-game-statemomenttext",
           "instant": false,
           "isShown": true,
-          "subActions": []
+          "subActions": [],
+          "nodePosition": {
+            "x": 60,
+            "y": 200
+          }
         },
         {
           "id": "crafting-game-state-action-mqlrgs0y",
@@ -130,7 +155,11 @@
           "textTarget": "presentation",
           "instant": false,
           "isShown": true,
-          "subActions": []
+          "subActions": [],
+          "nodePosition": {
+            "x": 73,
+            "y": 355
+          }
         },
         {
           "id": "crafting-game-state-action-mqlronl5",
@@ -148,8 +177,8 @@
           "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
           "answersSubmittedTargetActionId": "crafting-game-state-action-mqlagz9c",
           "nodePosition": {
-            "x": 1064,
-            "y": 81
+            "x": 70,
+            "y": 520
           }
         },
         {
@@ -193,9 +222,11 @@
           "locked": false,
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 725,
-            "y": 276
-          }
+            "x": 83,
+            "y": 686
+          },
+          "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
+          "answersSubmittedTargetActionId": "crafting-game-state-action-mqlag55r"
         },
         {
           "id": "crafting-game-state-action-mqlag55r",
@@ -212,9 +243,10 @@
           "subActions": [],
           "transition": "horizontalWipe",
           "nodePosition": {
-            "x": 1113,
-            "y": 286
-          }
+            "x": 500,
+            "y": 680
+          },
+          "nextTargetActionId": "return"
         }
       ],
       "nextStateTargetId": "presentation-game-state",
@@ -239,7 +271,11 @@
           "textTarget": "presentation-game-statemomenttext",
           "instant": false,
           "isShown": true,
-          "subActions": []
+          "subActions": [],
+          "nodePosition": {
+            "x": 64,
+            "y": 207
+          }
         },
         {
           "id": "presentation-game-state-action-mqlstve7",
@@ -259,7 +295,11 @@
           "operator": "<",
           "compareValue": "3",
           "trueTargetActionId": "presentation-game-state-action-mqlahz0a",
-          "falseTargetActionId": "presentation-game-state-action-mqlahz0a"
+          "falseTargetActionId": "presentation-game-state-action-mqlahz0a",
+          "nodePosition": {
+            "x": 80,
+            "y": 390
+          }
         },
         {
           "id": "presentation-game-state-action-mqlahz0a",
@@ -276,8 +316,8 @@
           "subActions": [],
           "transition": "horizontalWipe",
           "nodePosition": {
-            "x": 1137,
-            "y": 176
+            "x": 416,
+            "y": 432
           },
           "nextTargetActionId": "return"
         }
@@ -304,7 +344,11 @@
           "textTarget": "scoreboard-game-statemomenttext",
           "instant": false,
           "isShown": true,
-          "subActions": []
+          "subActions": [],
+          "nodePosition": {
+            "x": 70,
+            "y": 200
+          }
         },
         {
           "id": "scoreboard-game-state-action-mqlajev8",
@@ -319,7 +363,12 @@
           "instant": false,
           "isShown": true,
           "subActions": [],
-          "transition": "horizontalWipe"
+          "transition": "horizontalWipe",
+          "nodePosition": {
+            "x": 70,
+            "y": 380
+          },
+          "nextTargetActionId": "return"
         }
       ],
       "nextStateTargetId": "post-game-state",
@@ -344,7 +393,11 @@
           "textTarget": "post-game-statemomenttext",
           "instant": false,
           "isShown": true,
-          "subActions": []
+          "subActions": [],
+          "nodePosition": {
+            "x": 60,
+            "y": 200
+          }
         },
         {
           "id": "post-game-state-action-mqlakl0m",
@@ -359,7 +412,12 @@
           "instant": false,
           "isShown": true,
           "subActions": [],
-          "transition": "horizontalWipe"
+          "transition": "horizontalWipe",
+          "nodePosition": {
+            "x": 74,
+            "y": 368
+          },
+          "nextTargetActionId": "return"
         }
       ],
       "nextStateTargetId": "lobby",
