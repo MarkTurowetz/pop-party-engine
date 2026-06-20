@@ -382,7 +382,8 @@ function normalizeStageLayouts(layouts) {
   const normalizedDefaultStates = defaultStageLayouts.states.map((state, index) => normalizeLayoutState(state, index)).filter(Boolean);
   const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
   const normalizedIncomingStates = incomingStates.map((state, stateIndex) => normalizeLayoutState(state, stateIndex)).filter(Boolean);
-  const incomingGlobal = normalizeLayoutState(layouts?.global, -1);
+  const hasIncomingGlobal = layouts && Object.prototype.hasOwnProperty.call(layouts, "global");
+  const incomingGlobal = normalizeLayoutState(hasIncomingGlobal ? layouts.global : defaultStageLayouts.global, -1);
   const migrated = migrateStageLayoutStates(normalizedIncomingStates, incomingGlobal, normalizedDefaultGlobal, Boolean(incomingGlobal));
   const migratedStates = migrated.states;
   const normalizedStates = [...migratedStates];
@@ -392,9 +393,6 @@ function normalizeStageLayouts(layouts) {
     }
   }
   const globalElements = [...(migrated.global?.elements || [])];
-  for (const element of normalizedDefaultGlobal.elements || []) {
-    if (!globalElements.some((item) => item.id === element.id)) globalElements.push(cloneJson(element));
-  }
   return {
     canvas,
     global: {
@@ -407,12 +405,8 @@ function normalizeStageLayouts(layouts) {
     states: normalizedStates.map((state) => {
       const defaultState = defaultStatesById.get(state.id);
       if (!defaultState) return state;
-      const elements = [...state.elements];
-      for (const element of defaultState.elements) {
-        if (!elements.some((item) => item.id === element.id)) elements.push(cloneJson(element));
-      }
       const hiddenGlobals = Array.isArray(state.hiddenGlobals) ? state.hiddenGlobals : defaultState.hiddenGlobals || [];
-      return { ...state, hiddenGlobals, elements };
+      return { ...state, hiddenGlobals };
     })
   };
 }
@@ -433,11 +427,9 @@ function normalizeControllerLayouts(layouts) {
       normalizedStates.push(cloneJson(defaultState));
     }
   }
-  const incomingGlobal = normalizeLayoutState(layouts?.global, -1);
+  const hasIncomingGlobal = layouts && Object.prototype.hasOwnProperty.call(layouts, "global");
+  const incomingGlobal = normalizeLayoutState(hasIncomingGlobal ? layouts.global : defaultControllerLayouts.global, -1);
   const globalElements = [...(incomingGlobal?.elements || [])];
-  for (const element of normalizedDefaultGlobal.elements || []) {
-    if (!globalElements.some((item) => item.id === element.id)) globalElements.push(cloneJson(element));
-  }
   return {
     canvas,
     global: {
@@ -450,12 +442,8 @@ function normalizeControllerLayouts(layouts) {
     states: normalizedStates.map((state) => {
       const defaultState = defaultStatesById.get(state.id);
       if (!defaultState) return state;
-      const elements = [...state.elements];
-      for (const element of defaultState.elements) {
-        if (!elements.some((item) => item.id === element.id)) elements.push(cloneJson(element));
-      }
       const hiddenGlobals = Array.isArray(state.hiddenGlobals) ? state.hiddenGlobals : defaultState.hiddenGlobals || [];
-      return { ...state, hiddenGlobals, elements };
+      return { ...state, hiddenGlobals };
     })
   };
 }
@@ -554,14 +542,6 @@ function syncStageLayoutsWithFlow(layouts, flow) {
       continue;
     }
     existingState.name = flowState.name || existingState.name;
-    if (isRoundIntroStateId(flowState.id)) {
-      for (const element of seededState.elements || []) {
-        if (!existingState.elements.some((item) => item.id === element.id)) {
-          existingState.elements.push(element);
-        }
-      }
-      existingState.elements = dedupeLayoutElements(existingState.elements);
-    }
   }
   return normalizedLayouts;
 }
@@ -579,13 +559,6 @@ function syncControllerLayoutsWithFlow(layouts, flow) {
     if (existingState) {
       existingState.name = flowState.id === "lobby" ? existingState.name : flowState.name || existingState.name;
       existingState.elements = dedupeLayoutElements(existingState.elements || []);
-      const seededState = createControllerLayoutStateForFlowState(flowState);
-      for (const element of seededState.elements || []) {
-        if (!existingState.elements.some((item) => item.id === element.id)) {
-          existingState.elements.push(element);
-        }
-      }
-      existingState.elements = dedupeLayoutElements(existingState.elements);
       continue;
     }
     normalizedLayouts.states.push(normalizeLayoutState(createControllerLayoutStateForFlowState(flowState), -1));
