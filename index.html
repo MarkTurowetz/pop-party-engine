@@ -763,6 +763,27 @@
       gap: 18px;
     }
 
+    .stage-debug-alert {
+      position: absolute;
+      left: 50%;
+      top: 48px;
+      z-index: 18;
+      transform: translateX(-50%);
+      max-width: min(920px, 86vw);
+      padding: 18px 26px;
+      border: 5px solid var(--ink);
+      border-radius: 18px;
+      background: var(--pink);
+      color: #ffffff;
+      box-shadow: var(--shadow);
+      font-size: clamp(20px, 3vw, 44px);
+      font-weight: 1000;
+      line-height: 0.95;
+      text-align: center;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
     .pause-menu {
       position: fixed;
       inset: 0;
@@ -2084,6 +2105,12 @@
       outline-offset: 4px;
     }
 
+    .flow-node-wire.is-highlighted {
+      stroke: var(--pink);
+      stroke-width: 10;
+      filter: drop-shadow(0 0 8px rgba(255, 78, 160, 0.85));
+    }
+
     .flow-node.is-moment {
       width: 300px;
       min-height: 150px;
@@ -2100,7 +2127,7 @@
 
     .flow-node.is-decision {
       width: 300px;
-      min-height: 190px;
+      min-height: 120px;
     }
 
     .flow-node.is-decision .flow-node-main {
@@ -2190,6 +2217,19 @@
       font-weight: 1000;
       line-height: 1;
       text-transform: uppercase;
+    }
+
+    .flow-node-branch {
+      grid-template-columns: minmax(0, 1fr) auto 22px;
+      background: var(--cyan);
+    }
+
+    .flow-node-branch.is-no-match {
+      background: #fff7d6;
+    }
+
+    .flow-node-branch .flow-node-port-dot {
+      justify-self: end;
     }
 
     .flow-node-selection-marquee {
@@ -3103,6 +3143,7 @@
           <span class="click-cursor"></span>
         </div>
       </div>
+      <div class="stage-debug-alert hidden" id="stageDebugAlert"></div>
       <footer class="stage-footer">
         <div class="join-prompt" id="joinPrompt">Join the Lobby at bit.ly/popcontroller</div>
         <div class="player-lobby" id="playerLobby" aria-label="Joined players"></div>
@@ -3426,6 +3467,7 @@
     const stagePresentationText = document.querySelector("#stagePresentationText");
     const stagePromptText = document.querySelector("#stagePromptText");
     const presentClickWidget = document.querySelector("#presentClickWidget");
+    const stageDebugAlert = document.querySelector("#stageDebugAlert");
     const pauseMenu = document.querySelector("#pauseMenu");
     const returnToGameButton = document.querySelector("#returnToGameButton");
     const quitToLobbyButton = document.querySelector("#quitToLobbyButton");
@@ -4458,6 +4500,7 @@
       stageIntroContent.classList.toggle("hidden", phase !== "intro");
       stageIntroTitle.textContent = "GAME INTRO";
       presentClickWidget.classList.toggle("hidden", !(action?.type === "present" && action?.timing?.mode !== "S+"));
+      if (stageDebugAlert && lobby.lastDecisionTrace?.selectedTarget !== "none") stageDebugAlert.classList.add("hidden");
       renderStagePlayers(players);
       playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
       renderCraftingTimer(lobby.craftingTimer);
@@ -4501,8 +4544,12 @@
       if (isNewPhase) clearStageAudioPlayers();
       renderedStagePhase = nextPhase;
       if (isNewAction) prepareNewStageAction(lobby, actionKey);
-      if (haltedByDecision && (!lobby.action || lobby.action.type === "transition")) {
+      if (haltedByDecision) {
         cancelStageWipe();
+        if (stageDebugAlert) {
+          stageDebugAlert.textContent = `No Matching Branch: ${lobby.lastDecisionTrace?.actionId || "Unknown Action"}`;
+          stageDebugAlert.classList.remove("hidden");
+        }
         renderedActionKey = actionKey;
         applyStageState({ ...lobby, action: null });
         return;
@@ -5571,6 +5618,9 @@
       for (const action of state?.actions || []) {
         validIds.add(action.id);
         for (const subAction of action.subActions || []) validIds.add(subAction.id);
+        if (action.type === "decision") {
+          for (const branch of ensureDecisionBranches(action)) validIds.add(branch.id);
+        }
       }
       const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
       selectedFlowActionIds = new Set(nextIds);
@@ -5644,11 +5694,18 @@
       if (!state || !actionId) return null;
       for (const action of state.actions) {
         if (action.id === actionId) {
-          return { state, action, parentAction: null, actions: state.actions, isSubAction: false };
+          return { state, action, parentAction: null, actions: state.actions, isSubAction: false, isBranch: false };
         }
         for (const subAction of action.subActions || []) {
           if (subAction.id === actionId) {
-            return { state, action: subAction, parentAction: action, actions: action.subActions, isSubAction: true };
+            return { state, action: subAction, parentAction: action, actions: action.subActions, isSubAction: true, isBranch: false };
+          }
+        }
+        if (action.type === "decision") {
+          for (const branch of ensureDecisionBranches(action)) {
+            if (branch.id === actionId) {
+              return { state, action: branch, parentAction: action, actions: action.branches, isSubAction: false, isBranch: true };
+            }
           }
         }
       }
@@ -5731,7 +5788,7 @@
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "setTimerShown") return `${action.isShown === false ? "Hide" : "Show"} crafting timer / ${timingText}${instantText}`;
       if (action.type === "startCraftingTimer") return `Start crafting timer / ${timingText}`;
-      if (action.type === "decision") return `${decisionVariableName(action.variable)}: ${decisionSummary(action)} / ${timingText}`;
+      if (action.type === "decision") return `${decisionVariableName(action.variable)}: ${decisionSummary(action)}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
       if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"} / ${timingText}`;
       return `${action.text || "Text"} / ${timingText}`;
@@ -5743,6 +5800,7 @@
     }
 
     function flowTargetActionName(actionId) {
+      if (!actionId) return "No Connection";
       if (actionId === "none") return "None";
       if (actionId === "return") return "Return";
       const state = flowState(selectedFlowStateId);
@@ -5819,7 +5877,7 @@
     }
 
     function flowActionTargetOptions(state, selectedActionId = "") {
-      const options = [{ id: "", name: "Next Action" }, { id: "none", name: "None" }, { id: "return", name: "Return To Moments" }];
+      const options = [{ id: "", name: "No Connection" }, { id: "none", name: "None" }, { id: "return", name: "Return To Moments" }];
       for (const action of state?.actions || []) {
         options.push({ id: action.id, name: action.name || action.id });
       }
@@ -6015,6 +6073,14 @@
     }
 
     function nodePoint(node) {
+      if (node?.classList?.contains("flow-node-branch") || node?.classList?.contains("flow-node-subaction")) {
+        const nodeRect = node.getBoundingClientRect();
+        const rootRect = flowNodeLayer.getBoundingClientRect();
+        return {
+          x: nodeRect.right - rootRect.left - 12,
+          y: nodeRect.top - rootRect.top + nodeRect.height / 2
+        };
+      }
       const main = node.querySelector?.(".flow-node-main");
       if (main) {
         return {
@@ -6028,13 +6094,14 @@
       };
     }
 
-    function drawNodeWire(fromNode, toNode, muted = false) {
+    function drawNodeWire(fromNode, toNode, optionsOrMuted = false) {
       if (!fromNode || !toNode) return;
+      const options = typeof optionsOrMuted === "boolean" ? { muted: optionsOrMuted } : (optionsOrMuted || {});
       const from = nodePoint(fromNode);
       const to = nodePoint(toNode);
       const curve = Math.max(80, Math.abs(to.x - from.x) * 0.45);
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("class", `flow-node-wire${muted ? " is-muted" : ""}`);
+      path.setAttribute("class", `flow-node-wire${options.muted ? " is-muted" : ""}${options.highlighted ? " is-highlighted" : ""}`);
       path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x + curve} ${from.y}, ${to.x - curve} ${to.y}, ${to.x} ${to.y}`);
       flowNodeWires.appendChild(path);
     }
@@ -6058,11 +6125,17 @@
     }
 
     function shouldDrawImplicitActionWire(action) {
-      return !action.nextTargetActionId
-        && action.type !== "decision"
-        && action.type !== "multipleChoiceInput"
-        && action.type !== "textSubmissionInput"
-        && action.type !== "transitionState";
+      return false;
+    }
+
+    function selectedNodeWireMatches(sourceAction, targetId = "", branchId = "") {
+      if (!sourceAction) return false;
+      const selectedRef = flowActionRef(selectedFlowStateId, selectedFlowActionId);
+      if (branchId) {
+        if (selectedRef?.isBranch) return selectedFlowActionId === branchId;
+        return flowActionIsSelected(sourceAction.id) || flowActionIsSelected(targetId);
+      }
+      return flowActionIsSelected(sourceAction.id) || flowActionIsSelected(targetId);
     }
 
     function redrawFlowNodeWires() {
@@ -6074,7 +6147,11 @@
         for (const state of gameFlow.states || []) {
           const fromNode = stateNodes.get(state.id);
           const toNode = state.nextStateTargetId ? stateNodes.get(state.nextStateTargetId) : null;
-          if (toNode) drawNodeWire(fromNode, toNode);
+          if (toNode) {
+            drawNodeWire(fromNode, toNode, {
+              highlighted: selectedFlowStateId === state.id || selectedFlowStateId === state.nextStateTargetId
+            });
+          }
         }
         return;
       }
@@ -6091,16 +6168,19 @@
           if (exit.targetKind === "state") continue;
           const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
           const targetId = branch ? branch.targetActionId : action[exit.field] || "";
-          if (isNoFlowTarget(targetId)) {
-            drawNodeWire(fromNode, returnNode, true);
+          if (!targetId || isNoFlowTarget(targetId)) {
             continue;
           }
+          const sourceNode = branch
+            ? flowNodeLayer.querySelector(`.flow-node-branch[data-branch-id="${cssEscape(branch.id)}"]`) || fromNode
+            : fromNode;
+          const highlighted = selectedNodeWireMatches(action, targetId, branch?.id || "");
           if (targetId === "return") {
-            drawNodeWire(fromNode, returnNode);
+            drawNodeWire(sourceNode, returnNode, { highlighted });
             continue;
           }
           const toNode = actionNodes.get(targetId);
-          if (toNode) drawNodeWire(fromNode, toNode);
+          if (toNode) drawNodeWire(sourceNode, toNode, { highlighted });
         }
         if (shouldDrawImplicitActionWire(action)) {
           const nextAction = state.actions[index + 1];
@@ -6210,7 +6290,54 @@
     }
 
     function actionNodeIsSelected(action) {
-      return flowActionIsSelected(action.id) || (action.subActions || []).some((subAction) => flowActionIsSelected(subAction.id));
+      return flowActionIsSelected(action.id)
+        || (action.subActions || []).some((subAction) => flowActionIsSelected(subAction.id))
+        || (action.type === "decision" && ensureDecisionBranches(action).some((branch) => flowActionIsSelected(branch.id)));
+    }
+
+    function reorderFlowNodeChild(parentAction, collectionName, draggedId, targetId) {
+      const items = parentAction?.[collectionName] || [];
+      const fromIndex = items.findIndex((item) => item.id === draggedId);
+      const toIndex = items.findIndex((item) => item.id === targetId);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+      if (collectionName === "branches" && items[fromIndex]?.type === "noMatch") return;
+      pushFlowHistory();
+      const [moved] = items.splice(fromIndex, 1);
+      const adjustedIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+      items.splice(adjustedIndex, 0, moved);
+      if (collectionName === "branches") ensureDecisionBranches(parentAction);
+      renderFlowListAndPublish();
+      renderFlowNodeView();
+    }
+
+    function bindFlowNodeChildSort(item, parentAction, collectionName, childId) {
+      item.draggable = collectionName !== "branches" || decisionBranchById(parentAction, childId)?.type !== "noMatch";
+      item.addEventListener("dragstart", (event) => {
+        event.stopPropagation();
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("application/x-flow-node-child", JSON.stringify({
+          parentActionId: parentAction.id,
+          collectionName,
+          childId
+        }));
+      });
+      item.addEventListener("dragover", (event) => {
+        if ([...event.dataTransfer.types].includes("application/x-flow-node-child")) {
+          event.preventDefault();
+        }
+      });
+      item.addEventListener("drop", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          const payload = JSON.parse(event.dataTransfer.getData("application/x-flow-node-child"));
+          if (payload.parentActionId === parentAction.id && payload.collectionName === collectionName) {
+            reorderFlowNodeChild(parentAction, collectionName, payload.childId, childId);
+          }
+        } catch (error) {
+          // Ignore malformed drag payloads from outside the tool.
+        }
+      });
     }
 
     function createFlowNodeSubActions(state, parentAction) {
@@ -6228,6 +6355,7 @@
         const timing = document.createElement("span");
         timing.textContent = actionTimingLabel(subAction, true);
         item.append(title, timing);
+        bindFlowNodeChildSort(item, parentAction, "subActions", subAction.id);
         item.addEventListener("pointerdown", (event) => event.stopPropagation());
         item.addEventListener("click", (event) => {
           event.stopPropagation();
@@ -6237,6 +6365,50 @@
         });
         list.appendChild(item);
       }
+      return list;
+    }
+
+    function createFlowNodeBranches(state, action) {
+      const branches = ensureDecisionBranches(action);
+      if (!branches.length) return null;
+      const list = document.createElement("div");
+      list.className = "flow-node-subactions";
+      branches.forEach((branch, index) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "flow-node-subaction flow-node-branch";
+        item.dataset.branchId = branch.id;
+        item.classList.toggle("is-no-match", branch.type === "noMatch");
+        item.classList.toggle("is-selected", flowActionIsSelected(branch.id));
+        const title = document.createElement("strong");
+        title.textContent = decisionBranchName(branch, index);
+        const target = document.createElement("span");
+        target.textContent = branch.targetActionId ? `-> ${flowTargetActionName(branch.targetActionId)}` : "No Connection";
+        const dot = document.createElement("span");
+        dot.className = "flow-node-port-dot";
+        dot.dataset.actionId = action.id;
+        dot.dataset.branchId = branch.id;
+        dot.dataset.targetKind = "action";
+        dot.addEventListener("pointerdown", (event) => {
+          event.stopPropagation();
+          pendingNodeConnection = { stateId: state.id, actionId: action.id, field: "", branchId: branch.id, targetKind: "action", pointerId: event.pointerId, commandCreate: event.metaKey };
+          flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((port) => port.classList.remove("is-armed"));
+          dot.classList.add("is-armed");
+          flowNodeHint.textContent = event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over a node to connect this branch.";
+        });
+        item.append(title, target, dot);
+        bindFlowNodeChildSort(item, action, "branches", branch.id);
+        item.addEventListener("pointerdown", (event) => {
+          if (!event.target.closest(".flow-node-port-dot")) event.stopPropagation();
+        });
+        item.addEventListener("click", (event) => {
+          event.stopPropagation();
+          selectedFlowStateId = state.id;
+          selectFlowAction(branch.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
+          renderFlowTool();
+        });
+        list.appendChild(item);
+      });
       return list;
     }
 
@@ -6435,18 +6607,20 @@
           id: action.id,
           title: action.name || `Action ${index + 1}`,
           subtitle: `${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`,
-          timing: actionTimingLabel(action, false),
+          timing: action.type === "decision" ? "" : actionTimingLabel(action, false),
           x,
           y,
-          width: action.type === "decision" ? 300 : 260,
-          height: action.type === "decision" ? 210 : 134,
+          width: action.type === "decision" ? 320 : 260,
+          height: 134,
           className: flowNodeClassForAction(action),
           selected: actionNodeIsSelected(action)
         });
         node.dataset.actionId = action.id;
-        const subActionList = createFlowNodeSubActions(state, action);
-        if (subActionList) node.appendChild(subActionList);
-        node.querySelector(".flow-node-main")?.appendChild(createFlowNodePorts(action));
+        const childList = action.type === "decision"
+          ? createFlowNodeBranches(state, action)
+          : createFlowNodeSubActions(state, action);
+        if (childList) node.appendChild(childList);
+        if (action.type !== "decision") node.querySelector(".flow-node-main")?.appendChild(createFlowNodePorts(action));
         bindFlowNodeDrag(node, action);
         node.addEventListener("click", (event) => {
           selectedFlowStateId = state.id;
@@ -6571,6 +6745,46 @@
       });
     }
 
+    function appendDecisionBranchControls(target, state, action, branch, index, rerender) {
+      const panel = document.createElement("div");
+      panel.className = "flow-form-grid";
+      const branchTypeOptions = branch.type === "noMatch"
+        ? [{ id: "noMatch", name: "No Match Branch" }]
+        : [
+            { id: "hit", name: "Hit Branch" },
+            { id: "code", name: "Code Branch" }
+          ];
+      panel.appendChild(flowSelect(`Branch ${index + 1} Type`, branch.type, branchTypeOptions, (value) => {
+        branch.type = value;
+        if (value === "code" && !branch.code) branch.code = "x < 3";
+        rerender();
+      }));
+      if (branch.type === "hit") {
+        panel.appendChild(flowField("Hit Value", branch.value || "", (value) => {
+          branch.value = value;
+          rerender(false);
+        }));
+      }
+      if (branch.type === "code") {
+        panel.appendChild(flowField("Code", branch.code || "x < 3", (value) => {
+          branch.code = value || "x < 3";
+          rerender(false);
+        }));
+      }
+      panel.appendChild(flowSelect("Branch Target", branch.targetActionId || "", flowActionTargetOptions(state, branch.targetActionId || ""), (value) => {
+        branch.targetActionId = value;
+        rerender();
+      }));
+      if (branch.type !== "noMatch") {
+        panel.appendChild(flowActionButton("Remove Branch", () => {
+          action.branches = ensureDecisionBranches(action).filter((item) => item.id !== branch.id);
+          ensureDecisionBranches(action);
+          rerender();
+        }));
+      }
+      target.appendChild(panel);
+    }
+
     function appendDecisionControls(target, state, action, rerender) {
       ensureDecisionBranches(action);
       target.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", decisionVariableOptions(action.variable), (value) => {
@@ -6593,43 +6807,7 @@
       target.appendChild(readOnlyFlowNote("Branches are evaluated in order. The required No Match branch acts like an else statement."));
       const branches = ensureDecisionBranches(action);
       branches.forEach((branch, index) => {
-        const panel = document.createElement("div");
-        panel.className = "flow-form-grid";
-        const branchTypeOptions = branch.type === "noMatch"
-          ? [{ id: "noMatch", name: "No Match Branch" }]
-          : [
-              { id: "hit", name: "Hit Branch" },
-              { id: "code", name: "Code Branch" }
-            ];
-        panel.appendChild(flowSelect(`Branch ${index + 1} Type`, branch.type, branchTypeOptions, (value) => {
-          branch.type = value;
-          if (value === "code" && !branch.code) branch.code = "x < 3";
-          rerender();
-        }));
-        if (branch.type === "hit") {
-          panel.appendChild(flowField("Hit Value", branch.value || "", (value) => {
-            branch.value = value;
-            rerender(false);
-          }));
-        }
-        if (branch.type === "code") {
-          panel.appendChild(flowField("Code", branch.code || "x < 3", (value) => {
-            branch.code = value || "x < 3";
-            rerender(false);
-          }));
-        }
-        panel.appendChild(flowSelect("Branch Target", branch.targetActionId || "", flowActionTargetOptions(state, branch.targetActionId || ""), (value) => {
-          branch.targetActionId = value;
-          rerender();
-        }));
-        if (branch.type !== "noMatch") {
-          panel.appendChild(flowActionButton("Remove Branch", () => {
-            action.branches = ensureDecisionBranches(action).filter((item) => item.id !== branch.id);
-            ensureDecisionBranches(action);
-            rerender();
-          }));
-        }
-        target.appendChild(panel);
+        appendDecisionBranchControls(target, state, action, branch, index, rerender);
       });
       target.appendChild(flowActionButton("+ Hit Branch", () => {
         addDecisionBranch(action, "hit");
@@ -6789,6 +6967,8 @@
       }
       if (action.type === "decision") {
         appendDecisionControls(target, state, action, rerender);
+        target.appendChild(readOnlyFlowNote("Decision actions do not use timing. They evaluate branches in order and wait forever if the selected branch has no connection."));
+        return;
       }
       if (action.type === "transition") {
         target.appendChild(flowSelect("Transition", action.transition || "horizontalWipe", flowTransitions, (value) => {
@@ -6877,6 +7057,9 @@
       if (!pendingNodeConnection || !flowNodeLayer) return null;
       if (pendingNodeConnection.sourceKind === "moment") {
         return flowNodeLayer.querySelector(`.flow-node[data-node-id="${cssEscape(pendingNodeConnection.stateId)}"]`);
+      }
+      if (pendingNodeConnection.branchId) {
+        return flowNodeLayer.querySelector(`.flow-node-branch[data-branch-id="${cssEscape(pendingNodeConnection.branchId)}"]`);
       }
       return flowNodeLayer.querySelector(`.flow-node[data-action-id="${cssEscape(pendingNodeConnection.actionId)}"]`);
     }
@@ -6991,10 +7174,29 @@
       }
       title.textContent = action.name;
       const summary = document.createElement("p");
+      if (actionRef.isBranch) {
+        const branchIndex = ensureDecisionBranches(actionRef.parentAction).findIndex((branch) => branch.id === action.id);
+        title.textContent = decisionBranchName(action, branchIndex);
+        summary.textContent = `Branch under ${actionRef.parentAction?.name || "Decision"}.`;
+        flowNodeInspector.append(title, summary);
+        flowNodeInspector.appendChild(readOnlyFlowNote("Branches are checked in order. A branch with no connection will halt the game when it is selected."));
+        appendDecisionBranchControls(flowNodeInspector, state, actionRef.parentAction, action, branchIndex, (redrawNodeView = true) => {
+          if (redrawNodeView) {
+            refreshFlowNodeInspectorChange();
+            return;
+          }
+          renderFlowListAndPublish();
+          redrawFlowNodeWires();
+        });
+        flowNodeInspector.appendChild(flowActionButton("Edit In List View", () => {
+          setFlowViewMode("list");
+        }));
+        return;
+      }
       summary.textContent = `${actionRef.isSubAction ? `Sub-action under ${actionRef.parentAction?.name || "Action"}. ` : ""}${actionSummary(action, actionRef.isSubAction)}`;
       flowNodeInspector.append(title, summary);
       flowNodeInspector.appendChild(readOnlyFlowNote(`${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`));
-      appendFlowActionPropertyControls(flowNodeInspector, state, actionRef, { includeSubActionButton: !actionRef.isSubAction });
+      appendFlowActionPropertyControls(flowNodeInspector, state, actionRef, { includeSubActionButton: !actionRef.isSubAction && action.type !== "decision" });
       flowNodeInspector.appendChild(flowActionButton("Edit In List View", () => {
         setFlowViewMode("list");
       }));

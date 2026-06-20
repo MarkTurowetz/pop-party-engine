@@ -1885,7 +1885,7 @@ function evaluateDecisionCode(code, x) {
 }
 
 function evaluateDecisionBranch(branch, leftValue, valueType) {
-  if (branch.type === "noMatch") return true;
+  if (branch.type === "noMatch") return false;
   if (branch.type === "code") return evaluateDecisionCode(branch.code, leftValue);
   return compareDecisionValues(leftValue, branch.value, valueType, "==");
 }
@@ -1895,7 +1895,7 @@ function evaluateDecisionAction(room, action) {
   const valueType = normalizeDecisionValueType(action.valueType);
   const leftValue = decisionVariableValue(room, variable);
   const branches = normalizeDecisionBranches(action);
-  const branchResults = branches.map((branch) => ({
+  const regularBranchResults = branches.filter((branch) => branch.type !== "noMatch").map((branch) => ({
     id: branch.id,
     type: branch.type,
     value: branch.value || "",
@@ -1903,10 +1903,22 @@ function evaluateDecisionAction(room, action) {
     targetActionId: branch.targetActionId || "",
     passed: evaluateDecisionBranch(branch, leftValue, valueType)
   }));
-  const selectedBranchResult = branchResults.find((branch) => branch.passed) || branchResults[branchResults.length - 1];
-  const selectedBranch = branches.find((branch) => branch.id === selectedBranchResult?.id) || branches[branches.length - 1];
+  const firstPassingRegular = regularBranchResults.find((branch) => branch.passed);
+  const noMatchBranch = branches.find((branch) => branch.type === "noMatch") || null;
+  const noMatchResult = noMatchBranch ? {
+    id: noMatchBranch.id,
+    type: noMatchBranch.type,
+    value: noMatchBranch.value || "",
+    code: noMatchBranch.code || "",
+    targetActionId: noMatchBranch.targetActionId || "",
+    passed: !firstPassingRegular
+  } : null;
+  const branchResults = noMatchResult ? [...regularBranchResults, noMatchResult] : regularBranchResults;
+  const selectedBranchResult = firstPassingRegular || noMatchResult;
+  const selectedBranch = branches.find((branch) => branch.id === selectedBranchResult?.id) || null;
   const target = selectedBranch?.targetActionId || "";
-  const targetIndex = isNoActionTarget(target) ? null : flowActionIndexById(room, target);
+  const selectedTarget = target && !isNoActionTarget(target) ? String(target) : "none";
+  const targetIndex = selectedTarget === "none" ? null : flowActionIndexById(room, selectedTarget);
   return {
     actionId: action.id,
     actionName: action.name,
@@ -1916,7 +1928,8 @@ function evaluateDecisionAction(room, action) {
     selectedBranch: selectedBranch?.id || "",
     selectedBranchType: selectedBranch?.type || "",
     branchResults,
-    selectedTarget: isNoActionTarget(target) ? "none" : String(target || ""),
+    selectedTarget,
+    haltReason: selectedTarget === "none" ? "No Matching Branch" : "",
     targetIndex
   };
 }
@@ -1931,8 +1944,7 @@ function resolveDecisionActionIndex(room, action) {
   const target = decision.selectedTarget;
   if (isNoActionTarget(target)) return null;
   if (decision.targetIndex >= 0) return decision.targetIndex;
-  if (target) return null;
-  return room.actionIndex + 1;
+  return null;
 }
 
 function currentRoomAction(room) {
@@ -1970,7 +1982,14 @@ function advanceRoomAfterAction(room, action) {
     return;
   }
   if (target) return;
-  advanceRoomAction(room);
+  room.lastDecisionTrace = {
+    actionId: action?.id || "",
+    actionName: action?.name || "",
+    selectedTarget: "none",
+    haltReason: "No Matching Branch",
+    activePlayerCount: activePlayers(room).length,
+    evaluatedAt: Date.now()
+  };
 }
 
 function advanceRoomFromMomentReturn(room) {
