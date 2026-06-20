@@ -6787,7 +6787,7 @@
 
     function appendDecisionControls(target, state, action, rerender) {
       ensureDecisionBranches(action);
-      target.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", decisionVariableOptions(action.variable), (value) => {
+      target.appendChild(flowVariableSearch("Variable", action.variable || "activePlayerCount", decisionVariableOptions(action.variable), (value) => {
         action.variable = value;
         rerender();
       }));
@@ -7808,6 +7808,74 @@
       return field;
     }
 
+    function flowVariableSearch(label, value, options, onChange) {
+      const field = document.createElement("label");
+      field.className = "field-label flow-form-grid flow-search-field";
+      field.textContent = label;
+      const input = document.createElement("input");
+      input.className = "text-input";
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      const menu = document.createElement("div");
+      menu.className = "flow-search-options hidden";
+
+      const current = options.find((option) => option.id === value) || { id: value, name: value };
+      input.value = current?.name || "";
+
+      const hideMenu = () => window.setTimeout(() => menu.classList.add("hidden"), 120);
+      const chooseOption = (option) => {
+        input.value = option.name;
+        menu.classList.add("hidden");
+        if (option.id !== value) {
+          pushFlowHistory();
+          onChange(option.id);
+        }
+      };
+      const renderOptions = () => {
+        const query = input.value.trim().toLowerCase();
+        const matches = fuzzyDecisionVariableMatches(options, query).slice(0, 8);
+        menu.replaceChildren();
+        if (matches.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "flow-search-option";
+          empty.textContent = "No matching variables";
+          menu.appendChild(empty);
+        }
+        for (const option of matches) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "flow-search-option";
+          button.classList.toggle("is-active", option.id === value);
+          button.innerHTML = `<strong></strong><span></span>`;
+          button.querySelector("strong").textContent = option.name;
+          button.querySelector("span").textContent = option.id;
+          button.addEventListener("mousedown", (event) => event.preventDefault());
+          button.addEventListener("click", () => chooseOption(option));
+          menu.appendChild(button);
+        }
+        menu.classList.remove("hidden");
+      };
+
+      input.addEventListener("focus", renderOptions);
+      input.addEventListener("input", renderOptions);
+      input.addEventListener("blur", hideMenu);
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          menu.classList.add("hidden");
+          input.value = current?.name || "";
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          const first = fuzzyDecisionVariableMatches(options, input.value.trim().toLowerCase())[0];
+          if (first) chooseOption(first);
+        }
+      });
+
+      field.appendChild(input);
+      field.appendChild(menu);
+      return field;
+    }
+
     function flowActionTypeSearch(label, value, options, onChange) {
       const field = document.createElement("label");
       field.className = "field-label flow-form-grid flow-search-field";
@@ -7880,6 +7948,15 @@
       if (!query) return [...options];
       return options
         .map((option) => ({ option, score: fuzzyScore(`${option.name} ${option.id} ${option.category || ""}`, query) }))
+        .filter((item) => item.score >= 0)
+        .sort((a, b) => a.score - b.score || a.option.name.localeCompare(b.option.name))
+        .map((item) => item.option);
+    }
+
+    function fuzzyDecisionVariableMatches(options, query) {
+      if (!query) return [...options];
+      return options
+        .map((option) => ({ option, score: fuzzyScore(`${option.name} ${option.id}`, query) }))
         .filter((item) => item.score >= 0)
         .sort((a, b) => a.score - b.score || a.option.name.localeCompare(b.option.name))
         .map((item) => item.option);
