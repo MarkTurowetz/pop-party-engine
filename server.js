@@ -1701,6 +1701,7 @@ function resolveDecisionActionIndex(room, action) {
     normalizeDecisionOperator(action.operator)
   );
   const target = passed ? action.trueTargetActionId : action.falseTargetActionId;
+  if (isNoActionTarget(target)) return null;
   const targetIndex = flowActionIndexById(room, target);
   if (targetIndex >= 0) return targetIndex;
   return room.actionIndex + 1;
@@ -1713,7 +1714,9 @@ function currentRoomAction(room) {
   let guard = 0;
   while (actions[room.actionIndex]?.type === "decision" && guard < 20) {
     clearAppliedActionEffects(room);
-    room.actionIndex = Math.max(0, Math.min(actions.length, resolveDecisionActionIndex(room, actions[room.actionIndex])));
+    const nextActionIndex = resolveDecisionActionIndex(room, actions[room.actionIndex]);
+    if (nextActionIndex === null) return null;
+    room.actionIndex = Math.max(0, Math.min(actions.length, nextActionIndex));
     guard += 1;
     if (room.actionIndex >= actions.length) return null;
   }
