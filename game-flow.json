@@ -164,7 +164,7 @@
         {
           "id": "crafting-game-state-action-mqlrlkp0",
           "name": "Gameplay",
-          "type": "textSubmissionInput",
+          "type": "multipleChoiceInput",
           "timing": {
             "mode": "E+",
             "seconds": 0
@@ -175,21 +175,21 @@
           "isShown": true,
           "subActions": [
             {
-              "id": "crafting-game-state-sub-action-mqlsnzfj",
+              "id": "crafting-game-state-sub-action-mqlsquow",
               "name": "Sub-Action 1",
               "type": "displayText",
               "timing": {
                 "mode": "S+",
-                "seconds": 0
+                "seconds": 1
               },
-              "text": "Presented text",
-              "textTarget": "crafting-game-statemomenttext",
+              "text": "Answer the prompt on your device now!",
+              "textTarget": "stageprompttext",
               "instant": false,
               "isShown": true,
               "subActions": []
             }
           ],
-          "prompt": "Write your answer",
+          "prompt": "Choose Now",
           "placeholder": "Answer here",
           "characterLimit": 40,
           "options": [
