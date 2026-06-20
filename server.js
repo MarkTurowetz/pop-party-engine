@@ -905,7 +905,9 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       prompt: cleanFlowText(action?.prompt, "Answer this question by tapping an answer"),
       options: cleanChoiceOptions(action?.options),
       inputMode: normalizeChoiceInputMode(action?.inputMode),
-      locked: action?.locked === true
+      locked: action?.locked === true,
+      timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
     };
   }
   if (type === "textSubmissionInput") {
@@ -914,7 +916,9 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       ...base,
       prompt: cleanFlowText(action?.prompt, "Write your answer"),
       placeholder: cleanFlowText(action?.placeholder, "Answer here"),
-      characterLimit
+      characterLimit,
+      timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
     };
   }
   if (type === "displayText") {
@@ -933,11 +937,7 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
     return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
   }
   if (type === "startCraftingTimer") {
-    return {
-      ...base,
-      timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
-      answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
-    };
+    return { ...base };
   }
   if (type === "decision") {
     return {
@@ -1609,7 +1609,9 @@ function publicFlowAction(action, index) {
       prompt: action.prompt || "Answer this question by tapping an answer",
       options: cleanChoiceOptions(action.options),
       inputMode: normalizeChoiceInputMode(action.inputMode),
-      locked: action.locked === true
+      locked: action.locked === true,
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
     };
   }
   if (action.type === "textSubmissionInput") {
@@ -1618,7 +1620,9 @@ function publicFlowAction(action, index) {
       type: "textSubmissionInput",
       prompt: action.prompt || "Write your answer",
       placeholder: action.placeholder || "Answer here",
-      characterLimit: normalizeCharacterLimit(action.characterLimit)
+      characterLimit: normalizeCharacterLimit(action.characterLimit),
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
     };
   }
   if (action.type === "displayText" || action.type === "text") {
@@ -1633,9 +1637,7 @@ function publicFlowAction(action, index) {
   if (action.type === "startCraftingTimer") {
     return {
       ...base,
-      type: "startCraftingTimer",
-      timerEndTargetActionId: action.timerEndTargetActionId || "",
-      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+      type: "startCraftingTimer"
     };
   }
   if (action.type === "decision") {
@@ -1655,7 +1657,7 @@ function publicFlowAction(action, index) {
     return { ...base, type: "transition", transition: transition.id, transitionName: transition.name };
   }
   if (action.type === "transitionState") {
-    return { ...base, type: "transitionState", targetState: action.targetState };
+    return { ...base, type: "transitionState", targetState: action.targetState, trigger: action.trigger || "" };
   }
   return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
 }
@@ -1831,16 +1833,26 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
   if (currentAction.type === "transitionState") {
     clearActionTimer(room);
     const delayMs = timing.mode === "E+" ? Math.max(0, Number(timing.seconds || 0) * 1000) : 0;
+    const useNodeExit = Boolean(currentAction.nextTargetActionId);
+    const completeTransitionState = () => {
+      if (useNodeExit) {
+        advanceRoomAfterAction(room, currentAction);
+        currentRoomAction(room);
+        broadcastLobby(room);
+        return;
+      }
+      enterGamePhase(room, currentAction.targetState || "intro");
+    };
     if (delayMs > 0) {
       room.actionCompletionPendingId = currentAction.id;
       room.actionTimerId = setTimeout(() => {
         room.actionTimerId = null;
         room.actionCompletionPendingId = "";
-        enterGamePhase(room, currentAction.targetState || "intro");
+        completeTransitionState();
       }, delayMs);
       return true;
     }
-    enterGamePhase(room, currentAction.targetState || "intro");
+    completeTransitionState();
     return true;
   }
 
@@ -1906,6 +1918,27 @@ function countdownTargetState(room) {
   const lobbyState = getFlowState(runtimeGameFlow(room), "lobby");
   const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
   return action?.targetState || "intro";
+}
+
+function completeCountdownTrigger(room) {
+  const lobbyState = getFlowState(runtimeGameFlow(room), "lobby");
+  const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
+  if (!action) {
+    enterGamePhase(room, "intro");
+    return;
+  }
+  if (action.nextTargetActionId) {
+    room.phase = lobbyState.id;
+    room.actionIndex = Math.max(0, lobbyState.actions.findIndex((item) => item.id === action.id));
+    room.currentPresentationActionId = "";
+    room.currentDisplayTextActionId = "";
+    clearActionTimer(room);
+    advanceRoomAfterAction(room, action);
+    currentRoomAction(room);
+    broadcastLobby(room);
+    return;
+  }
+  enterGamePhase(room, action.targetState || "intro");
 }
 
 function writeArtManifest(manifest) {
@@ -2551,8 +2584,8 @@ function startCraftingTimer(room, action) {
   room.craftingTimerStartedAt = now;
   room.craftingTimerEndsAt = now + Math.max(0, room.craftingTimerRemainingMs || room.craftingTimerDurationMs);
   room.craftingTimerActionId = action.id;
-  room.craftingTimerTimerEndTargetActionId = action.timerEndTargetActionId || "";
-  room.craftingTimerAnswersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
+  room.craftingTimerTimerEndTargetActionId = "";
+  room.craftingTimerAnswersSubmittedTargetActionId = "";
   room.craftingTimerEndHandled = false;
   scheduleCraftingTimerEnd(room);
 }
@@ -2587,9 +2620,10 @@ function allActivePlayersHaveSubmittedInput(room) {
 function handleCraftingTimerEvent(room, eventType) {
   if (!room.craftingTimerRunning || room.craftingTimerEndHandled) return false;
   const fallbackIndex = room.actionIndex + 1;
+  const currentAction = currentRoomAction(room);
   const target = eventType === "answersSubmitted"
-    ? room.craftingTimerAnswersSubmittedTargetActionId
-    : room.craftingTimerTimerEndTargetActionId;
+    ? currentAction?.answersSubmittedTargetActionId || room.craftingTimerAnswersSubmittedTargetActionId
+    : currentAction?.timerEndTargetActionId || room.craftingTimerTimerEndTargetActionId;
   if (eventType === "answersSubmitted" && isNoActionTarget(target)) return false;
   pauseCraftingTimer(room);
   if (eventType === "timerEnd") {
@@ -2764,7 +2798,7 @@ function enterStartingPhase(room) {
   room.countdownStartedAt = now;
   room.countdownEndsAt = now + START_COUNTDOWN_MS;
   room.countdownTimerId = setTimeout(() => {
-    enterGamePhase(room, countdownTargetState(room));
+    completeCountdownTrigger(room);
   }, START_COUNTDOWN_MS + START_GO_HOLD_MS);
   broadcastLobby(room);
 }

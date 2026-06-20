@@ -5456,16 +5456,18 @@
       if (action.type === "multipleChoiceInput") {
         const modeName = action.inputMode === "submitOnce" ? "Submit Once" : action.inputMode === "continuous" ? "Continuous" : "Single Select";
         const lockedText = action.inputMode === "singleSelect" && action.locked ? " / Locked" : "";
-        return `${modeName}${lockedText}: ${action.prompt || "Choice input"} / ${(action.options || []).length || 0} options / ${timingText}`;
+        const eventText = ` / timer: ${flowTargetActionName(action.timerEndTargetActionId)} / answers: ${flowTargetActionName(action.answersSubmittedTargetActionId)}`;
+        return `${modeName}${lockedText}: ${action.prompt || "Choice input"} / ${(action.options || []).length || 0} options${eventText} / ${timingText}`;
       }
       if (action.type === "textSubmissionInput") {
         const limitText = Number(action.characterLimit || 0) > 0 ? ` / ${Number(action.characterLimit)} chars` : "";
-        return `Text Submit: ${action.prompt || "Write your answer"}${limitText} / Stage validates / ${timingText}`;
+        const eventText = ` / timer: ${flowTargetActionName(action.timerEndTargetActionId)} / answers: ${flowTargetActionName(action.answersSubmittedTargetActionId)}`;
+        return `Text Submit: ${action.prompt || "Write your answer"}${limitText} / Stage validates${eventText} / ${timingText}`;
       }
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "setTimerShown") return `${action.isShown === false ? "Hide" : "Show"} crafting timer / ${timingText}${instantText}`;
-      if (action.type === "startCraftingTimer") return `Start crafting timer / ends: ${flowTargetActionName(action.timerEndTargetActionId)} / answers: ${flowTargetActionName(action.answersSubmittedTargetActionId)} / ${timingText}`;
+      if (action.type === "startCraftingTimer") return `Start crafting timer / ${timingText}`;
       if (action.type === "decision") return `If ${decisionVariableName(action.variable)} ${action.operator || "<"} ${action.compareValue || "3"} -> ${flowTargetActionName(action.trueTargetActionId)} else ${flowTargetActionName(action.falseTargetActionId)} / ${timingText}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
       if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"} / ${timingText}`;
@@ -5699,6 +5701,57 @@
       flowNodeWires.appendChild(path);
     }
 
+    function shouldDrawImplicitActionWire(action) {
+      return !action.nextTargetActionId
+        && action.type !== "decision"
+        && action.type !== "multipleChoiceInput"
+        && action.type !== "textSubmissionInput"
+        && action.type !== "transitionState";
+    }
+
+    function redrawFlowNodeWires() {
+      if (!flowNodeWires || !flowNodeLayer) return;
+      flowNodeWires.replaceChildren();
+      if (flowNodeDepth === "moments") {
+        const stateNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node"))
+          .map((node) => [node.dataset.nodeId, node]));
+        for (const state of gameFlow.states || []) {
+          const fromNode = stateNodes.get(state.id);
+          const toNode = state.nextStateTargetId ? stateNodes.get(state.nextStateTargetId) : null;
+          if (toNode) drawNodeWire(fromNode, toNode);
+        }
+        return;
+      }
+      const state = flowState(selectedFlowStateId);
+      if (!state) return;
+      const actionNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node[data-action-id]"))
+        .map((node) => [node.dataset.actionId, node]));
+      const startNode = flowNodeLayer.querySelector('.flow-node[data-node-id="start"]');
+      const returnNode = actionNodes.get("return");
+      if (state.actions?.[0]) drawNodeWire(startNode, actionNodes.get(state.actions[0].id), true);
+      for (const [index, action] of (state.actions || []).entries()) {
+        const fromNode = actionNodes.get(action.id);
+        for (const exit of flowNodeExitDefinitions(action)) {
+          if (exit.targetKind === "state") continue;
+          const targetId = action[exit.field] || "";
+          if (isNoFlowTarget(targetId)) {
+            drawNodeWire(fromNode, returnNode, true);
+            continue;
+          }
+          if (targetId === "return") {
+            drawNodeWire(fromNode, returnNode);
+            continue;
+          }
+          const toNode = actionNodes.get(targetId);
+          if (toNode) drawNodeWire(fromNode, toNode);
+        }
+        if (shouldDrawImplicitActionWire(action)) {
+          const nextAction = state.actions[index + 1];
+          if (nextAction) drawNodeWire(fromNode, actionNodes.get(nextAction.id), true);
+        }
+      }
+    }
+
     function renderFlowMomentNodes() {
       flowNodeWires.setAttribute("width", "1600");
       flowNodeWires.setAttribute("height", "920");
@@ -5739,6 +5792,7 @@
         const toNode = state.nextStateTargetId ? stateNodes.get(state.nextStateTargetId) : null;
         if (toNode) drawNodeWire(fromNode, toNode);
       }
+      redrawFlowNodeWires();
     }
 
     function createFlowMomentPorts(state) {
@@ -5799,21 +5853,36 @@
           startY: event.clientY,
           nodeX: Number(node.dataset.x || 0),
           nodeY: Number(node.dataset.y || 0),
-          moved: false
+          moved: false,
+          lockAxis: ""
         };
         node.setPointerCapture?.(event.pointerId);
       });
       node.addEventListener("pointermove", (event) => {
         if (!drag || drag.pointerId !== event.pointerId) return;
-        const dx = event.clientX - drag.startX;
-        const dy = event.clientY - drag.startY;
+        let dx = event.clientX - drag.startX;
+        let dy = event.clientY - drag.startY;
         if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
-        const x = drag.nodeX + dx;
-        const y = drag.nodeY + dy;
+        if (event.shiftKey) {
+          if (!drag.lockAxis && Math.abs(dx) + Math.abs(dy) > 4) {
+            drag.lockAxis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+          }
+          if (drag.lockAxis === "x") dy = 0;
+          if (drag.lockAxis === "y") dx = 0;
+        } else {
+          drag.lockAxis = "";
+        }
+        let x = drag.nodeX + dx;
+        let y = drag.nodeY + dy;
+        if (event.shiftKey && event.metaKey) {
+          x = Math.round(x / 10) * 10;
+          y = Math.round(y / 10) * 10;
+        }
         node.dataset.x = String(x);
         node.dataset.y = String(y);
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
+        redrawFlowNodeWires();
       });
       const finish = (event) => {
         if (!drag || drag.pointerId !== event.pointerId) return;
@@ -5894,28 +5963,7 @@
         renderFlowTool();
       });
       flowNodeLayer.appendChild(returnNode);
-      if (state.actions?.[0]) drawNodeWire(startNode, actionNodes.get(state.actions[0].id), true);
-      for (const [index, action] of (state.actions || []).entries()) {
-        const fromNode = actionNodes.get(action.id);
-        for (const exit of flowNodeExitDefinitions(action)) {
-          if (exit.targetKind === "state") continue;
-          const targetId = action[exit.field] || "";
-          if (isNoFlowTarget(targetId)) {
-            drawNodeWire(fromNode, returnNode, true);
-            continue;
-          }
-          if (targetId === "return") {
-            drawNodeWire(fromNode, returnNode);
-            continue;
-          }
-          const toNode = actionNodes.get(targetId);
-          if (toNode) drawNodeWire(fromNode, toNode);
-        }
-        if (!action.nextTargetActionId && action.type !== "decision" && action.type !== "startCraftingTimer" && action.type !== "transitionState") {
-          const nextAction = state.actions[index + 1];
-          if (nextAction) drawNodeWire(fromNode, actionNodes.get(nextAction.id), true);
-        }
-      }
+      redrawFlowNodeWires();
     }
 
     function isNoFlowTarget(value) {
@@ -5929,14 +5977,14 @@
           { label: "False", field: "falseTargetActionId" }
         ];
       }
-      if (action.type === "startCraftingTimer") {
+      if (action.type === "multipleChoiceInput" || action.type === "textSubmissionInput") {
         return [
           { label: "Timer Ends", field: "timerEndTargetActionId" },
           { label: "Answers", field: "answersSubmittedTargetActionId" }
         ];
       }
       if (action.type === "transitionState") {
-        return [{ label: "To Moment", field: "targetState", targetKind: "state" }];
+        return [{ label: action.trigger === "onCountdownComplete" ? "Countdown Complete" : "Event Complete", field: "nextTargetActionId" }];
       }
       return [{ label: "Next", field: "nextTargetActionId" }];
     }
@@ -6393,19 +6441,19 @@
           action.options = Array.isArray(action.options) && action.options.length ? action.options : ["A", "B", "C", "D"];
           action.inputMode = action.inputMode || "singleSelect";
           action.locked = action.locked === true;
+          action.timerEndTargetActionId = action.timerEndTargetActionId || "";
+          action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
         }
         if (value === "textSubmissionInput") {
           action.prompt = action.prompt || "Write your answer";
           action.placeholder = action.placeholder || "Answer here";
           action.characterLimit = Number(action.characterLimit || 0);
+          action.timerEndTargetActionId = action.timerEndTargetActionId || "";
+          action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
         }
         if (value === "displayText") action.text = action.text || "Displayed text";
         if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
         if (value === "setTimerShown") action.isShown = action.isShown !== false;
-        if (value === "startCraftingTimer") {
-          action.timerEndTargetActionId = action.timerEndTargetActionId || "";
-          action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
-        }
         if (value === "decision") {
           action.variable = action.variable || "activePlayerCount";
           action.valueType = action.valueType || "int";
@@ -6473,7 +6521,16 @@
           action.options = options.length ? options : ["A", "B", "C", "D"];
           renderFlowListAndPublish();
         }));
-        flowEditor.appendChild(readOnlyFlowNote("Each line becomes one button label. Controllers send the option index; this action currently shows the matching line as the stage speech bubble."));
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Each line becomes one button label. Controllers send the option index; this action currently shows the matching line as the stage speech bubble. Choose None for On Answers Submitted when continuous input should wait for the timer."));
       }
       if (action.type === "textSubmissionInput") {
         flowEditor.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
@@ -6488,7 +6545,16 @@
           action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
           renderFlowListAndPublish();
         }));
-        flowEditor.appendChild(readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers."));
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
       }
       if (action.type === "setPlayersShown") {
         flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
@@ -6524,16 +6590,7 @@
         flowEditor.appendChild(readOnlyFlowNote("Showing the timer resets it to the Crafting Timer Duration game constant. Hiding pauses it and keeps the current remaining value."));
       }
       if (action.type === "startCraftingTimer") {
-        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-        flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-          action.timerEndTargetActionId = value;
-          renderFlowListAndPublish();
-        }));
-        flowEditor.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-          action.answersSubmittedTargetActionId = value;
-          renderFlowListAndPublish();
-        }));
-        flowEditor.appendChild(readOnlyFlowNote("The timer keeps running after this action advances. If all active players submit text or choice input before it ends, On Answers Submitted fires instead. Choose None to ignore submissions and wait for the timer."));
+        flowEditor.appendChild(readOnlyFlowNote("The timer starts and this action advances normally. Timer Ends and Answers Submitted exits are defined on the input action that follows."));
       }
       if (action.type === "decision") {
         flowEditor.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", [
@@ -6595,8 +6652,12 @@
           action.trigger = value;
           renderFlowListAndPublish();
         }));
+        flowEditor.appendChild(flowSelect(action.trigger === "onCountdownComplete" ? "On Countdown Complete Exit" : "Event Exit", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
+          action.nextTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
       }
-      if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "startCraftingTimer" && action.type !== "transitionState") {
+      if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "textSubmissionInput") {
         flowEditor.appendChild(flowSelect("Next Action", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
           action.nextTargetActionId = value;
           renderFlowListAndPublish();
