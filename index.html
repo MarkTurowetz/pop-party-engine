@@ -2048,6 +2048,12 @@
       stroke-dasharray: 12 12;
     }
 
+    .flow-node-wire.is-preview {
+      stroke: var(--cyan);
+      stroke-dasharray: 10 10;
+      filter: drop-shadow(3px 3px 0 rgba(23, 19, 31, 0.5));
+    }
+
     .flow-node {
       position: absolute;
       z-index: 2;
@@ -5557,6 +5563,11 @@
       return state.actions.filter((action) => primaryIds.has(action.id));
     }
 
+    function selectedFlowMomentStates() {
+      if (flowNodeDepth !== "moments" || selectedFlowActionId) return [];
+      return gameFlow.states.filter((state) => state.id === selectedFlowStateId || selectedFlowActionIds.has(state.id));
+    }
+
     function flowActionRef(stateId, actionId) {
       const state = flowState(stateId);
       if (!state || !actionId) return null;
@@ -5894,6 +5905,24 @@
       flowNodeWires.appendChild(path);
     }
 
+    function drawPreviewNodeWire(fromNode, to) {
+      if (!fromNode || !to || !flowNodeWires) return;
+      const from = nodePoint(fromNode);
+      const curve = Math.max(80, Math.abs(to.x - from.x) * 0.45);
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("class", "flow-node-wire is-preview");
+      path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x + curve} ${from.y}, ${to.x - curve} ${to.y}, ${to.x} ${to.y}`);
+      flowNodeWires.appendChild(path);
+    }
+
+    function flowNodeLocalPoint(event) {
+      const rootRect = flowNodeLayer.getBoundingClientRect();
+      return {
+        x: event.clientX - rootRect.left,
+        y: event.clientY - rootRect.top
+      };
+    }
+
     function shouldDrawImplicitActionWire(action) {
       return !action.nextTargetActionId
         && action.type !== "decision"
@@ -5962,13 +5991,25 @@
           width: 300,
           height: 150,
           className: "is-moment",
-          selected: selectedFlowStateId === state.id && !selectedFlowActionId
+          selected: !selectedFlowActionId && (selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id))
         });
         node.querySelector(".flow-node-main")?.appendChild(createFlowMomentPorts(state));
         bindFlowNodeDrag(node, state);
-        node.addEventListener("click", () => {
+        node.addEventListener("click", (event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey) {
+            const nextIds = new Set(selectedFlowActionIds);
+            if (selectedFlowStateId && selectedFlowStateId !== state.id) nextIds.add(selectedFlowStateId);
+            if (nextIds.has(state.id)) {
+              nextIds.delete(state.id);
+            } else {
+              nextIds.add(state.id);
+            }
+            selectedFlowActionIds = nextIds;
+          } else {
+            selectedFlowActionIds = new Set();
+          }
           selectedFlowStateId = state.id;
-          clearFlowActionSelection();
+          selectedFlowActionId = "";
           renderFlowTool();
         });
         node.addEventListener("dblclick", () => {
@@ -6002,7 +6043,7 @@
       dot.dataset.targetKind = "state";
       dot.addEventListener("pointerdown", (event) => {
         event.stopPropagation();
-        pendingNodeConnection = { sourceKind: "moment", stateId: state.id, field: "nextStateTargetId", targetKind: "state" };
+        pendingNodeConnection = { sourceKind: "moment", stateId: state.id, field: "nextStateTargetId", targetKind: "state", pointerId: event.pointerId, commandCreate: event.metaKey };
         flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
         dot.classList.add("is-armed");
         flowNodeHint.textContent = "Release over another moment to connect this exit.";
@@ -6089,7 +6130,9 @@
         if (event.target.closest(".flow-node-port-dot") || event.target.closest(".flow-node-subaction")) return;
         const movingItems = flowNodeDepth === "actions" && item?.type
           ? (selectedPrimaryFlowActions().some((action) => action.id === item.id) ? selectedPrimaryFlowActions() : [item])
-          : [item];
+          : flowNodeDepth === "moments" && !item?.type
+            ? (selectedFlowMomentStates().some((state) => state.id === item.id) ? selectedFlowMomentStates() : [item])
+            : [item];
         drag = {
           pointerId: event.pointerId,
           startX: event.clientX,
@@ -6169,7 +6212,7 @@
     }
 
     function startFlowNodeMarquee(event) {
-      if (event.button !== 0 || flowViewMode !== "node" || flowNodeDepth !== "actions") return;
+      if (event.button !== 0 || flowViewMode !== "node") return;
       if (pendingNodeConnection) return;
       if (event.target.closest?.(".flow-node, .flow-node-port-dot")) return;
       if (!flowNodeStage?.contains(event.target) || !flowNodeLayer) return;
@@ -6196,9 +6239,10 @@
 
         const selectionRect = { left, top, right: left + width, bottom: top + height };
         const selectedIds = [];
-        for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-action-id]")) {
-          const actionId = node.dataset.actionId;
-          if (!actionId || actionId === "return") continue;
+        const selector = flowNodeDepth === "moments" ? ".flow-node[data-node-id]" : ".flow-node[data-action-id]";
+        for (const node of flowNodeLayer.querySelectorAll(selector)) {
+          const nodeId = flowNodeDepth === "moments" ? node.dataset.nodeId : node.dataset.actionId;
+          if (!nodeId || nodeId === "start" || nodeId === "return") continue;
           const nodeRect = node.getBoundingClientRect();
           const localRect = {
             left: nodeRect.left - rootRect.left,
@@ -6206,11 +6250,20 @@
             right: nodeRect.right - rootRect.left,
             bottom: nodeRect.bottom - rootRect.top
           };
-          if (rectsIntersect(selectionRect, localRect)) selectedIds.push(actionId);
+          if (rectsIntersect(selectionRect, localRect)) selectedIds.push(nodeId);
         }
-        setFlowActionSelection(selectedIds);
-        for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-action-id]")) {
-          node.classList.toggle("is-selected", flowActionIsSelected(node.dataset.actionId));
+        if (flowNodeDepth === "moments") {
+          selectedFlowActionIds = new Set(selectedIds);
+          selectedFlowStateId = selectedIds[selectedIds.length - 1] || selectedFlowStateId || gameFlow.states[0]?.id || "";
+          selectedFlowActionId = "";
+          for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-node-id]")) {
+            node.classList.toggle("is-selected", selectedFlowActionIds.has(node.dataset.nodeId) || selectedFlowStateId === node.dataset.nodeId);
+          }
+        } else {
+          setFlowActionSelection(selectedIds);
+          for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-action-id]")) {
+            node.classList.toggle("is-selected", flowActionIsSelected(node.dataset.actionId));
+          }
         }
         renderFlowList();
         renderFlowNodeInspector();
@@ -6622,15 +6675,65 @@
         dot.dataset.targetKind = exit.targetKind || "action";
         dot.addEventListener("pointerdown", (event) => {
           event.stopPropagation();
-          pendingNodeConnection = { stateId: selectedFlowStateId, actionId: action.id, field: exit.field, targetKind: exit.targetKind || "action" };
+          pendingNodeConnection = { stateId: selectedFlowStateId, actionId: action.id, field: exit.field, targetKind: exit.targetKind || "action", pointerId: event.pointerId, commandCreate: event.metaKey };
           flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
           dot.classList.add("is-armed");
-          flowNodeHint.textContent = "Release over a node to connect this exit.";
+          flowNodeHint.textContent = event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over a node to connect this exit.";
         });
         port.append(label, dot);
         ports.appendChild(port);
       }
       return ports;
+    }
+
+    function sourceNodeForPendingConnection() {
+      if (!pendingNodeConnection || !flowNodeLayer) return null;
+      if (pendingNodeConnection.sourceKind === "moment") {
+        return flowNodeLayer.querySelector(`.flow-node[data-node-id="${cssEscape(pendingNodeConnection.stateId)}"]`);
+      }
+      return flowNodeLayer.querySelector(`.flow-node[data-action-id="${cssEscape(pendingNodeConnection.actionId)}"]`);
+    }
+
+    function redrawPendingNodeConnection(event) {
+      if (!pendingNodeConnection || !event?.metaKey) return;
+      redrawFlowNodeWires();
+      drawPreviewNodeWire(sourceNodeForPendingConnection(), flowNodeLocalPoint(event));
+    }
+
+    function createActionFromPendingConnection(event) {
+      if (!pendingNodeConnection || pendingNodeConnection.targetKind !== "action" || flowNodeDepth !== "actions") return false;
+      const state = flowState(pendingNodeConnection.stateId);
+      const sourceAction = flowAction(state?.id, pendingNodeConnection.actionId);
+      if (!state || !sourceAction) return false;
+      const point = flowNodeLocalPoint(event);
+      const nextNumber = state.actions.length + 1;
+      const action = createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
+      action.nodePosition = {
+        x: Math.max(0, Math.round(point.x - 130)),
+        y: Math.max(0, Math.round(point.y - 67))
+      };
+      pushFlowHistory();
+      state.actions.push(action);
+      sourceAction[pendingNodeConnection.field] = action.id;
+      setFlowActionSelection([action.id]);
+      renderFlowListAndPublish();
+      renderFlowNodeView();
+      return true;
+    }
+
+    function handleFlowNodePointerMove(event) {
+      if (!pendingNodeConnection || pendingNodeConnection.pointerId !== event.pointerId) return;
+      if (event.metaKey) {
+        pendingNodeConnection.commandCreate = true;
+        redrawPendingNodeConnection(event);
+      }
+    }
+
+    function clearPendingFlowNodeConnection() {
+      flowNodeLayer?.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
+      pendingNodeConnection = null;
+      redrawFlowNodeWires();
+      if (flowNodeHint) flowNodeHint.textContent = "Drag from an exit dot to another node to create a connection.";
     }
 
     function completeNodeConnection(targetNode) {
@@ -7628,12 +7731,15 @@
         renderFlowTool();
       });
       flowNodeStage?.addEventListener("pointerdown", startFlowNodeMarquee);
+      flowNodeStage?.addEventListener("pointermove", handleFlowNodePointerMove);
       flowNodeStage?.addEventListener("pointerup", (event) => {
         const targetNode = event.target.closest?.(".flow-node");
-        completeNodeConnection(targetNode);
-        flowNodeLayer?.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
-        pendingNodeConnection = null;
-        if (flowNodeHint) flowNodeHint.textContent = "Drag from an exit dot to another node to create a connection.";
+        if (targetNode) {
+          completeNodeConnection(targetNode);
+        } else if (pendingNodeConnection?.commandCreate || event.metaKey) {
+          createActionFromPendingConnection(event);
+        }
+        clearPendingFlowNodeConnection();
       });
       setupFlowResizer();
       window.addEventListener("keydown", handleFlowHotkeys);
