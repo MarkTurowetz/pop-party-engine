@@ -262,8 +262,26 @@
             "x": 80,
             "y": 730
           },
-          "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
-          "answersSubmittedTargetActionId": "crafting-game-state-action-mqlag55r"
+          "timerEndTargetActionId": "crafting-game-state-action-mqm4b5um",
+          "answersSubmittedTargetActionId": "crafting-game-state-action-mqm4b5um"
+        },
+        {
+          "id": "crafting-game-state-action-mqm4b5um",
+          "name": "Game Action 8",
+          "type": "displayText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "stageprompttext",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 426,
+            "y": 743
+          }
         },
         {
           "id": "crafting-game-state-action-mqlag55r",
@@ -280,8 +298,8 @@
           "subActions": [],
           "transition": "horizontalWipe",
           "nodePosition": {
-            "x": 500,
-            "y": 720
+            "x": 790,
+            "y": 740
           },
           "nextTargetActionId": "return"
         }
