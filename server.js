@@ -1809,9 +1809,20 @@ function propertyPathValue(root, pathParts) {
         continue;
       }
     }
-    value = value[key];
+    if (Object.prototype.hasOwnProperty.call(Object(value), key)) {
+      value = value[key];
+      continue;
+    }
+    const matchingKey = Object.keys(Object(value)).find((item) => item.toLowerCase() === lowerKey);
+    value = matchingKey ? value[matchingKey] : undefined;
   }
   return value;
+}
+
+function lookupDecisionRootValue(lookup, key) {
+  if (Object.prototype.hasOwnProperty.call(lookup, key)) return lookup[key];
+  const matchingKey = Object.keys(lookup).find((item) => item.toLowerCase() === String(key || "").toLowerCase());
+  return matchingKey ? lookup[matchingKey] : undefined;
 }
 
 function decisionVariableValue(room, variable) {
@@ -1840,12 +1851,14 @@ function decisionVariableValue(room, variable) {
   const pathParts = key.split(".").filter(Boolean);
   const first = pathParts.shift();
   if (!first) return 0;
-  if (first === "constants") return propertyPathValue(constants, pathParts);
-  if (Object.prototype.hasOwnProperty.call(lookup, first)) {
-    return pathParts.length ? propertyPathValue(lookup[first], pathParts) : lookup[first];
+  if (first.toLowerCase() === "constants") return propertyPathValue(constants, pathParts);
+  const lookupValue = lookupDecisionRootValue(lookup, first);
+  if (lookupValue !== undefined) {
+    return pathParts.length ? propertyPathValue(lookupValue, pathParts) : lookupValue;
   }
-  if (Object.prototype.hasOwnProperty.call(constants, first)) {
-    return pathParts.length ? propertyPathValue(constants[first], pathParts) : constants[first];
+  const constantValue = lookupDecisionRootValue(constants, first);
+  if (constantValue !== undefined) {
+    return pathParts.length ? propertyPathValue(constantValue, pathParts) : constantValue;
   }
   return propertyPathValue({ ...lookup, constants }, [first, ...pathParts]) ?? 0;
 }
@@ -1882,7 +1895,16 @@ function evaluateDecisionAction(room, action) {
   const valueType = normalizeDecisionValueType(action.valueType);
   const leftValue = decisionVariableValue(room, variable);
   const branches = normalizeDecisionBranches(action);
-  const selectedBranch = branches.find((branch) => evaluateDecisionBranch(branch, leftValue, valueType)) || branches[branches.length - 1];
+  const branchResults = branches.map((branch) => ({
+    id: branch.id,
+    type: branch.type,
+    value: branch.value || "",
+    code: branch.code || "",
+    targetActionId: branch.targetActionId || "",
+    passed: evaluateDecisionBranch(branch, leftValue, valueType)
+  }));
+  const selectedBranchResult = branchResults.find((branch) => branch.passed) || branchResults[branchResults.length - 1];
+  const selectedBranch = branches.find((branch) => branch.id === selectedBranchResult?.id) || branches[branches.length - 1];
   const target = selectedBranch?.targetActionId || "";
   const targetIndex = isNoActionTarget(target) ? null : flowActionIndexById(room, target);
   return {
@@ -1893,6 +1915,7 @@ function evaluateDecisionAction(room, action) {
     leftValue,
     selectedBranch: selectedBranch?.id || "",
     selectedBranchType: selectedBranch?.type || "",
+    branchResults,
     selectedTarget: isNoActionTarget(target) ? "none" : String(target || ""),
     targetIndex
   };
