@@ -807,6 +807,7 @@ function flowStateHasActionType(flowState, type) {
 function flowActionTarget(action) {
   const target = normalizeFlowId(action, "");
   if (isNoActionTarget(target)) return "none";
+  if (isReturnActionTarget(target)) return "return";
   return target || "";
 }
 
@@ -820,6 +821,10 @@ function normalizeDecisionValueType(value) {
 
 function isNoActionTarget(value) {
   return String(value || "").toLowerCase() === "none";
+}
+
+function isReturnActionTarget(value) {
+  return String(value || "").toLowerCase() === "return";
 }
 
 function normalizeLayoutNumber(value, fallback, min, max) {
@@ -845,6 +850,8 @@ function normalizeGameFlow(flow) {
     return {
       id,
       name: cleanFlowText(state.name, id),
+      nodePosition: normalizeNodePosition(state.nodePosition, stateIndex),
+      nextStateTargetId: normalizeFlowId(state.nextStateTargetId, ""),
       actions: actions.map((action, actionIndex) => normalizeFlowAction(action, actionIndex, id)).filter(Boolean)
     };
   });
@@ -852,6 +859,17 @@ function normalizeGameFlow(flow) {
     states.unshift(defaultGameFlow.states[0]);
   }
   return { states };
+}
+
+function normalizeNodePosition(position, index = 0) {
+  if (!position || typeof position !== "object") return null;
+  const x = Number(position.x);
+  const y = Number(position.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return {
+    x: Math.round(Math.max(-5000, Math.min(15000, x))),
+    y: Math.round(Math.max(-5000, Math.min(15000, y)))
+  };
 }
 
 function flowActionTypeMeta(type) {
@@ -869,6 +887,7 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
     category,
     timing: normalizeActionTiming(action?.timing, category !== "input", isSubAction),
     nextTargetActionId: flowActionTarget(action?.nextTargetActionId),
+    nodePosition: normalizeNodePosition(action?.nodePosition, actionIndex),
     subActions: normalizeSubActions(action?.subActions, stateId)
   };
   if (type === "presentText") {
@@ -1769,6 +1788,10 @@ function advanceRoomAction(room) {
 function advanceRoomAfterAction(room, action) {
   const target = action?.nextTargetActionId || "";
   if (isNoActionTarget(target)) return;
+  if (isReturnActionTarget(target)) {
+    advanceRoomFromMomentReturn(room);
+    return;
+  }
   const targetIndex = flowActionIndexById(room, target);
   if (targetIndex >= 0) {
     room.actionIndex = targetIndex;
@@ -1776,6 +1799,15 @@ function advanceRoomAfterAction(room, action) {
   }
   if (target) return;
   advanceRoomAction(room);
+}
+
+function advanceRoomFromMomentReturn(room) {
+  const state = runtimeGameFlow(room).states.find((item) => item.id === room.phase);
+  const targetStateId = normalizeFlowId(state?.nextStateTargetId, "");
+  if (!targetStateId || isNoActionTarget(targetStateId)) return;
+  if (runtimeGameFlow(room).states.some((item) => item.id === targetStateId)) {
+    enterGamePhase(room, targetStateId);
+  }
 }
 
 function clearActionTimer(room) {

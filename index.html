@@ -2084,15 +2084,12 @@
     }
 
     .flow-node.is-decision {
-      width: 210px;
-      min-height: 210px;
-      border-radius: 28px;
+      width: 300px;
+      min-height: 190px;
+      border-radius: 34px;
       background: var(--cyan);
-      transform: rotate(45deg);
-    }
-
-    .flow-node.is-decision > * {
-      transform: rotate(-45deg);
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+      padding: 34px 44px;
     }
 
     .flow-node.is-transition {
@@ -2113,6 +2110,7 @@
       font-weight: 1000;
       line-height: 0.95;
       text-transform: uppercase;
+      overflow-wrap: anywhere;
     }
 
     .flow-node-subtitle {
@@ -5476,6 +5474,7 @@
 
     function flowTargetActionName(actionId) {
       if (actionId === "none") return "None";
+      if (actionId === "return") return "Return";
       const state = flowState(selectedFlowStateId);
       const action = (state?.actions || []).find((item) => item.id === actionId);
       return action?.name || "Next Action";
@@ -5487,12 +5486,24 @@
     }
 
     function flowActionTargetOptions(state, selectedActionId = "") {
-      const options = [{ id: "", name: "Next Action" }, { id: "none", name: "None" }];
+      const options = [{ id: "", name: "Next Action" }, { id: "none", name: "None" }, { id: "return", name: "Return To Moments" }];
       for (const action of state?.actions || []) {
         options.push({ id: action.id, name: action.name || action.id });
       }
       if (selectedActionId && !options.some((option) => option.id === selectedActionId)) {
         options.push({ id: selectedActionId, name: selectedActionId });
+      }
+      return options;
+    }
+
+    function flowStateTargetOptions(selectedStateId = "", currentStateId = "") {
+      const options = [{ id: "", name: "No Next Moment" }, { id: "none", name: "None / Halt" }];
+      for (const state of gameFlow.states || []) {
+        if (state.id === currentStateId) continue;
+        options.push({ id: state.id, name: state.name || state.id });
+      }
+      if (selectedStateId && !options.some((option) => option.id === selectedStateId)) {
+        options.push({ id: selectedStateId, name: selectedStateId });
       }
       return options;
     }
@@ -5652,6 +5663,24 @@
       return "is-standard";
     }
 
+    function defaultNodePosition(index, columns = 3, startX = 80, startY = 80, gapX = 380, gapY = 230) {
+      return {
+        x: startX + (index % columns) * gapX,
+        y: startY + Math.floor(index / columns) * gapY
+      };
+    }
+
+    function savedNodePosition(item, fallback) {
+      const x = Number(item?.nodePosition?.x);
+      const y = Number(item?.nodePosition?.y);
+      return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : fallback;
+    }
+
+    function saveNodePosition(item, x, y) {
+      item.nodePosition = { x: Math.round(x), y: Math.round(y) };
+      renderFlowListAndPublish();
+    }
+
     function nodePoint(node) {
       return {
         x: Number(node.dataset.x || 0) + Number(node.dataset.width || node.offsetWidth || 0) / 2,
@@ -5677,12 +5706,11 @@
       nodeViewHelp.textContent = "Double-click a game moment to edit its action graph.";
       const stateNodes = new Map();
       for (const [index, state] of (gameFlow.states || []).entries()) {
-        const x = 80 + (index % 3) * 420;
-        const y = 80 + Math.floor(index / 3) * 240;
+        const { x, y } = savedNodePosition(state, defaultNodePosition(index, 3, 80, 80, 420, 240));
         const node = createFlowNode({
           id: state.id,
           title: state.name,
-          subtitle: `${(state.actions || []).length} actions`,
+          subtitle: `${(state.actions || []).length} actions${state.nextStateTargetId ? ` / Next: ${flowState(state.nextStateTargetId)?.name || state.nextStateTargetId}` : ""}`,
           x,
           y,
           width: 300,
@@ -5690,6 +5718,8 @@
           className: "is-moment",
           selected: selectedFlowStateId === state.id && !selectedFlowActionId
         });
+        node.appendChild(createFlowMomentPorts(state));
+        bindFlowNodeDrag(node, state);
         node.addEventListener("click", () => {
           selectedFlowStateId = state.id;
           selectedFlowActionId = "";
@@ -5706,12 +5736,33 @@
       }
       for (const state of gameFlow.states || []) {
         const fromNode = stateNodes.get(state.id);
-        for (const action of state.actions || []) {
-          if (action.type !== "transitionState" || !action.targetState) continue;
-          const toNode = stateNodes.get(action.targetState);
-          if (toNode) drawNodeWire(fromNode, toNode);
-        }
+        const toNode = state.nextStateTargetId ? stateNodes.get(state.nextStateTargetId) : null;
+        if (toNode) drawNodeWire(fromNode, toNode);
       }
+    }
+
+    function createFlowMomentPorts(state) {
+      const ports = document.createElement("div");
+      ports.className = "flow-node-ports";
+      const port = document.createElement("div");
+      port.className = "flow-node-port";
+      const label = document.createElement("span");
+      label.textContent = `Next Moment${state.nextStateTargetId ? ` -> ${flowState(state.nextStateTargetId)?.name || state.nextStateTargetId}` : ""}`;
+      const dot = document.createElement("span");
+      dot.className = "flow-node-port-dot";
+      dot.dataset.stateId = state.id;
+      dot.dataset.field = "nextStateTargetId";
+      dot.dataset.targetKind = "state";
+      dot.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        pendingNodeConnection = { sourceKind: "moment", stateId: state.id, field: "nextStateTargetId", targetKind: "state" };
+        flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
+        dot.classList.add("is-armed");
+        flowNodeHint.textContent = "Release over another moment to connect this exit.";
+      });
+      port.append(label, dot);
+      ports.appendChild(port);
+      return ports;
     }
 
     function createFlowNode({ id, title, subtitle, x, y, width, height, className = "", selected = false }) {
@@ -5738,6 +5789,47 @@
       return node;
     }
 
+    function bindFlowNodeDrag(node, item, { afterDrag = null } = {}) {
+      let drag = null;
+      node.addEventListener("pointerdown", (event) => {
+        if (event.target.closest(".flow-node-port-dot")) return;
+        drag = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          nodeX: Number(node.dataset.x || 0),
+          nodeY: Number(node.dataset.y || 0),
+          moved: false
+        };
+        node.setPointerCapture?.(event.pointerId);
+      });
+      node.addEventListener("pointermove", (event) => {
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        const dx = event.clientX - drag.startX;
+        const dy = event.clientY - drag.startY;
+        if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+        const x = drag.nodeX + dx;
+        const y = drag.nodeY + dy;
+        node.dataset.x = String(x);
+        node.dataset.y = String(y);
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+      });
+      const finish = (event) => {
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        node.releasePointerCapture?.(event.pointerId);
+        if (drag.moved) {
+          pushFlowHistory();
+          saveNodePosition(item, Number(node.dataset.x || 0), Number(node.dataset.y || 0));
+          afterDrag?.();
+          renderFlowNodeView();
+        }
+        drag = null;
+      };
+      node.addEventListener("pointerup", finish);
+      node.addEventListener("pointercancel", finish);
+    }
+
     function renderFlowActionNodes() {
       const state = flowState(selectedFlowStateId);
       if (!state) return;
@@ -5754,10 +5846,15 @@
         height: 86,
         className: "is-return"
       });
+      startNode.addEventListener("dblclick", () => {
+        flowNodeDepth = "moments";
+        selectedFlowActionId = "";
+        renderFlowTool();
+      });
       flowNodeLayer.appendChild(startNode);
       for (const [index, action] of (state.actions || []).entries()) {
-        const x = 340 + (index % 3) * 360;
-        const y = 70 + Math.floor(index / 3) * 230;
+        const fallback = defaultNodePosition(index, 3, 340, 70, 360, 230);
+        const { x, y } = savedNodePosition(action, fallback);
         const node = createFlowNode({
           id: action.id,
           title: action.name || `Action ${index + 1}`,
@@ -5771,6 +5868,7 @@
         });
         node.dataset.actionId = action.id;
         node.appendChild(createFlowNodePorts(action));
+        bindFlowNodeDrag(node, action);
         node.addEventListener("click", () => {
           selectedFlowStateId = state.id;
           selectedFlowActionId = action.id;
@@ -5789,6 +5887,12 @@
         height: 92,
         className: "is-return"
       });
+      returnNode.dataset.actionId = "return";
+      returnNode.addEventListener("dblclick", () => {
+        flowNodeDepth = "moments";
+        selectedFlowActionId = "";
+        renderFlowTool();
+      });
       flowNodeLayer.appendChild(returnNode);
       if (state.actions?.[0]) drawNodeWire(startNode, actionNodes.get(state.actions[0].id), true);
       for (const [index, action] of (state.actions || []).entries()) {
@@ -5800,12 +5904,16 @@
             drawNodeWire(fromNode, returnNode, true);
             continue;
           }
+          if (targetId === "return") {
+            drawNodeWire(fromNode, returnNode);
+            continue;
+          }
           const toNode = actionNodes.get(targetId);
           if (toNode) drawNodeWire(fromNode, toNode);
         }
         if (!action.nextTargetActionId && action.type !== "decision" && action.type !== "startCraftingTimer" && action.type !== "transitionState") {
           const nextAction = state.actions[index + 1];
-          drawNodeWire(fromNode, nextAction ? actionNodes.get(nextAction.id) : returnNode, true);
+          if (nextAction) drawNodeWire(fromNode, actionNodes.get(nextAction.id), true);
         }
       }
     }
@@ -5863,12 +5971,23 @@
     function completeNodeConnection(targetNode) {
       if (!pendingNodeConnection) return;
       const state = flowState(pendingNodeConnection.stateId);
-      const action = flowAction(state?.id, pendingNodeConnection.actionId);
-      if (!state || !action) return;
+      if (!state) return;
+      const action = pendingNodeConnection.sourceKind === "moment" ? null : flowAction(state.id, pendingNodeConnection.actionId);
+      if (pendingNodeConnection.sourceKind !== "moment" && !action) return;
       const targetId = pendingNodeConnection.targetKind === "state"
         ? targetNode?.dataset.nodeId
         : targetNode?.dataset.actionId;
-      if (!targetId || targetId === action.id) return;
+      if (!targetId) return;
+      if (pendingNodeConnection.sourceKind === "moment") {
+        if (targetId === state.id) return;
+        pushFlowHistory();
+        state[pendingNodeConnection.field] = targetId;
+        pendingNodeConnection = null;
+        renderFlowListAndPublish();
+        renderFlowNodeView();
+        return;
+      }
+      if (targetId === action.id) return;
       pushFlowHistory();
       action[pendingNodeConnection.field] = targetId;
       pendingNodeConnection = null;
@@ -5885,8 +6004,16 @@
       if (flowNodeDepth === "moments" || !state) {
         title.textContent = selectedFlowStateId ? flowState(selectedFlowStateId)?.name || "Game Moment" : "Node View";
         const copy = document.createElement("p");
-        copy.textContent = "Double-click a moment node to inspect and connect the actions inside it. Moment wires are inferred from Transition To State actions.";
+        copy.textContent = "Double-click a moment node to inspect and connect the actions inside it. Moment wires use the same Next Moment data shown in List View.";
         flowNodeInspector.append(title, copy);
+        if (state) {
+          flowNodeInspector.appendChild(flowSelect("Next Moment", state.nextStateTargetId || "", flowStateTargetOptions(state.nextStateTargetId || "", state.id), (value) => {
+            pushFlowHistory();
+            state.nextStateTargetId = value;
+            renderFlowListAndPublish();
+            renderFlowNodeView();
+          }));
+        }
         return;
       }
       if (!action) {
@@ -6242,6 +6369,10 @@
           state.id = state.id === "lobby" || state.id === "intro" ? state.id : makeFlowId(state.name, state.id);
           selectedFlowStateId = state.id;
           renderFlowTool();
+        }));
+        flowEditor.appendChild(flowSelect("Next Moment", state.nextStateTargetId || "", flowStateTargetOptions(state.nextStateTargetId || "", state.id), (value) => {
+          state.nextStateTargetId = value;
+          renderFlowListAndPublish();
         }));
         flowEditor.appendChild(readOnlyFlowNote("Primary actions run from top to bottom. Input actions wait for input; standard actions can use S+ or E+ timing."));
         return;
