@@ -2152,10 +2152,12 @@
 
     .flow-node-subaction {
       display: grid;
-      gap: 4px;
-      padding: 8px 10px;
-      border: 5px solid var(--ink);
-      border-radius: 16px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 6px 10px;
+      border: 4px solid var(--ink);
+      border-radius: 14px;
       background: #ffffff;
       color: var(--ink);
       text-align: left;
@@ -2176,11 +2178,21 @@
     }
 
     .flow-node-subaction span {
+      justify-self: end;
       color: #5e5475;
       font-size: 10px;
       font-weight: 1000;
       line-height: 1;
       text-transform: uppercase;
+    }
+
+    .flow-node-selection-marquee {
+      position: absolute;
+      z-index: 4;
+      border: 3px dashed var(--cyan);
+      border-radius: 6px;
+      background: rgba(34, 211, 238, 0.16);
+      pointer-events: none;
     }
 
     .flow-node-ports {
@@ -3503,6 +3515,7 @@
     let flowTransitions = [];
     let selectedFlowStateId = "";
     let selectedFlowActionId = "";
+    let selectedFlowActionIds = new Set();
     let flowViewMode = getLocalValue("partyTemplate.flowViewMode") === "node" ? "node" : "list";
     let flowNodeDepth = "moments";
     let pendingNodeConnection = null;
@@ -5435,8 +5448,59 @@
       return gameFlow.states.find((state) => state.id === stateId) || null;
     }
 
+    function cssEscape(value) {
+      return window.CSS?.escape ? window.CSS.escape(String(value)) : String(value).replace(/["\\]/g, "\\$&");
+    }
+
     function flowAction(stateId, actionId) {
       return flowActionRef(stateId, actionId)?.action || null;
+    }
+
+    function setFlowActionSelection(ids) {
+      const state = flowState(selectedFlowStateId);
+      const validIds = new Set();
+      for (const action of state?.actions || []) {
+        validIds.add(action.id);
+        for (const subAction of action.subActions || []) validIds.add(subAction.id);
+      }
+      const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
+      selectedFlowActionIds = new Set(nextIds);
+      selectedFlowActionId = nextIds[nextIds.length - 1] || "";
+    }
+
+    function clearFlowActionSelection() {
+      selectedFlowActionIds = new Set();
+      selectedFlowActionId = "";
+    }
+
+    function selectFlowAction(actionId, options = {}) {
+      if (options.additive) {
+        const nextIds = new Set(selectedFlowActionIds);
+        if (nextIds.has(actionId)) {
+          nextIds.delete(actionId);
+        } else {
+          nextIds.add(actionId);
+        }
+        setFlowActionSelection([...nextIds]);
+      } else {
+        setFlowActionSelection([actionId]);
+      }
+    }
+
+    function flowActionIsSelected(actionId) {
+      return selectedFlowActionIds.has(actionId) || selectedFlowActionId === actionId;
+    }
+
+    function primaryFlowActionIdForSelection(actionId) {
+      const ref = flowActionRef(selectedFlowStateId, actionId);
+      return ref?.parentAction?.id || ref?.action?.id || "";
+    }
+
+    function selectedPrimaryFlowActions() {
+      const state = flowState(selectedFlowStateId);
+      if (!state) return [];
+      const primaryIds = new Set([...selectedFlowActionIds].map(primaryFlowActionIdForSelection).filter(Boolean));
+      return state.actions.filter((action) => primaryIds.has(action.id));
     }
 
     function flowActionRef(stateId, actionId) {
@@ -5651,7 +5715,7 @@
       flowRedoStack = [];
       updateFlowStorageStatus(result.storage);
       selectedFlowStateId = selectedFlowStateId || gameFlow.states[0]?.id || "";
-      selectedFlowActionId = "";
+      clearFlowActionSelection();
       renderFlowTool();
     }
 
@@ -5850,12 +5914,12 @@
         bindFlowNodeDrag(node, state);
         node.addEventListener("click", () => {
           selectedFlowStateId = state.id;
-          selectedFlowActionId = "";
+          clearFlowActionSelection();
           renderFlowTool();
         });
         node.addEventListener("dblclick", () => {
           selectedFlowStateId = state.id;
-          selectedFlowActionId = "";
+          clearFlowActionSelection();
           flowNodeDepth = "actions";
           renderFlowTool();
         });
@@ -5929,7 +5993,7 @@
     }
 
     function actionNodeIsSelected(action) {
-      return selectedFlowActionId === action.id || (action.subActions || []).some((subAction) => subAction.id === selectedFlowActionId);
+      return flowActionIsSelected(action.id) || (action.subActions || []).some((subAction) => flowActionIsSelected(subAction.id));
     }
 
     function createFlowNodeSubActions(state, parentAction) {
@@ -5941,16 +6005,17 @@
         const item = document.createElement("button");
         item.type = "button";
         item.className = "flow-node-subaction";
-        item.classList.toggle("is-selected", selectedFlowActionId === subAction.id);
+        item.classList.toggle("is-selected", flowActionIsSelected(subAction.id));
         const title = document.createElement("strong");
         title.textContent = subAction.name || "Sub-Action";
         const timing = document.createElement("span");
         timing.textContent = actionTimingLabel(subAction, true);
         item.append(title, timing);
+        item.addEventListener("pointerdown", (event) => event.stopPropagation());
         item.addEventListener("click", (event) => {
           event.stopPropagation();
           selectedFlowStateId = state.id;
-          selectedFlowActionId = subAction.id;
+          selectFlowAction(subAction.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
           renderFlowTool();
         });
         list.appendChild(item);
@@ -5960,14 +6025,31 @@
 
     function bindFlowNodeDrag(node, item, { afterDrag = null } = {}) {
       let drag = null;
+      node.addEventListener("click", (event) => {
+        if (node.dataset.skipClick !== "true") return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        delete node.dataset.skipClick;
+      }, true);
       node.addEventListener("pointerdown", (event) => {
-        if (event.target.closest(".flow-node-port-dot")) return;
+        if (event.target.closest(".flow-node-port-dot") || event.target.closest(".flow-node-subaction")) return;
+        const movingItems = flowNodeDepth === "actions" && item?.type
+          ? (selectedPrimaryFlowActions().some((action) => action.id === item.id) ? selectedPrimaryFlowActions() : [item])
+          : [item];
         drag = {
           pointerId: event.pointerId,
           startX: event.clientX,
           startY: event.clientY,
           nodeX: Number(node.dataset.x || 0),
           nodeY: Number(node.dataset.y || 0),
+          movingItems,
+          origins: new Map(movingItems.map((movingItem) => {
+            const movingNode = flowNodeLayer.querySelector(`.flow-node[data-action-id="${cssEscape(movingItem.id)}"], .flow-node[data-node-id="${cssEscape(movingItem.id)}"]`);
+            const fallback = movingNode
+              ? { x: Number(movingNode.dataset.x || 0), y: Number(movingNode.dataset.y || 0) }
+              : { x: Number(node.dataset.x || 0), y: Number(node.dataset.y || 0) };
+            return [movingItem.id, savedNodePosition(movingItem, fallback)];
+          })),
           moved: false,
           lockAxis: ""
         };
@@ -5993,10 +6075,22 @@
           x = Math.round(x / 10) * 10;
           y = Math.round(y / 10) * 10;
         }
-        node.dataset.x = String(x);
-        node.dataset.y = String(y);
-        node.style.left = `${x}px`;
-        node.style.top = `${y}px`;
+        for (const movingItem of drag.movingItems) {
+          const origin = drag.origins.get(movingItem.id) || { x: drag.nodeX, y: drag.nodeY };
+          let itemX = origin.x + (x - drag.nodeX);
+          let itemY = origin.y + (y - drag.nodeY);
+          if (event.shiftKey && event.metaKey) {
+            itemX = Math.round(itemX / 10) * 10;
+            itemY = Math.round(itemY / 10) * 10;
+          }
+          const movingNode = flowNodeLayer.querySelector(`.flow-node[data-action-id="${cssEscape(movingItem.id)}"], .flow-node[data-node-id="${cssEscape(movingItem.id)}"]`);
+          if (movingNode) {
+            movingNode.dataset.x = String(itemX);
+            movingNode.dataset.y = String(itemY);
+            movingNode.style.left = `${itemX}px`;
+            movingNode.style.top = `${itemY}px`;
+          }
+        }
         redrawFlowNodeWires();
       });
       const finish = (event) => {
@@ -6004,7 +6098,13 @@
         node.releasePointerCapture?.(event.pointerId);
         if (drag.moved) {
           pushFlowHistory();
-          saveNodePosition(item, Number(node.dataset.x || 0), Number(node.dataset.y || 0));
+          node.dataset.skipClick = "true";
+          window.setTimeout(() => delete node.dataset.skipClick, 0);
+          for (const movingItem of drag.movingItems) {
+            const movingNode = flowNodeLayer.querySelector(`.flow-node[data-action-id="${cssEscape(movingItem.id)}"], .flow-node[data-node-id="${cssEscape(movingItem.id)}"]`);
+            if (movingNode) movingItem.nodePosition = { x: Math.round(Number(movingNode.dataset.x || 0)), y: Math.round(Number(movingNode.dataset.y || 0)) };
+          }
+          renderFlowListAndPublish();
           afterDrag?.();
           renderFlowNodeView();
         }
@@ -6012,6 +6112,69 @@
       };
       node.addEventListener("pointerup", finish);
       node.addEventListener("pointercancel", finish);
+    }
+
+    function startFlowNodeMarquee(event) {
+      if (event.button !== 0 || flowViewMode !== "node" || flowNodeDepth !== "actions") return;
+      if (pendingNodeConnection) return;
+      if (event.target.closest?.(".flow-node, .flow-node-port-dot")) return;
+      if (!flowNodeStage?.contains(event.target) || !flowNodeLayer) return;
+      event.preventDefault();
+      const rootRect = flowNodeLayer.getBoundingClientRect();
+      const startX = event.clientX - rootRect.left;
+      const startY = event.clientY - rootRect.top;
+      const marquee = document.createElement("div");
+      marquee.className = "flow-node-selection-marquee";
+      flowNodeLayer.appendChild(marquee);
+      flowNodeStage.setPointerCapture?.(event.pointerId);
+
+      const updateMarquee = (moveEvent) => {
+        const currentX = moveEvent.clientX - rootRect.left;
+        const currentY = moveEvent.clientY - rootRect.top;
+        const left = Math.min(startX, currentX);
+        const top = Math.min(startY, currentY);
+        const width = Math.abs(currentX - startX);
+        const height = Math.abs(currentY - startY);
+        marquee.style.left = `${left}px`;
+        marquee.style.top = `${top}px`;
+        marquee.style.width = `${width}px`;
+        marquee.style.height = `${height}px`;
+
+        const selectionRect = { left, top, right: left + width, bottom: top + height };
+        const selectedIds = [];
+        for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-action-id]")) {
+          const actionId = node.dataset.actionId;
+          if (!actionId || actionId === "return") continue;
+          const nodeRect = node.getBoundingClientRect();
+          const localRect = {
+            left: nodeRect.left - rootRect.left,
+            top: nodeRect.top - rootRect.top,
+            right: nodeRect.right - rootRect.left,
+            bottom: nodeRect.bottom - rootRect.top
+          };
+          if (rectsIntersect(selectionRect, localRect)) selectedIds.push(actionId);
+        }
+        setFlowActionSelection(selectedIds);
+        for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-action-id]")) {
+          node.classList.toggle("is-selected", flowActionIsSelected(node.dataset.actionId));
+        }
+        renderFlowList();
+        renderFlowNodeInspector();
+      };
+
+      const stopMarquee = (stopEvent) => {
+        flowNodeStage.releasePointerCapture?.(stopEvent.pointerId);
+        marquee.remove();
+        window.removeEventListener("pointermove", updateMarquee);
+        window.removeEventListener("pointerup", stopMarquee);
+        window.removeEventListener("pointercancel", stopMarquee);
+        renderFlowTool();
+      };
+
+      updateMarquee(event);
+      window.addEventListener("pointermove", updateMarquee);
+      window.addEventListener("pointerup", stopMarquee, { once: true });
+      window.addEventListener("pointercancel", stopMarquee, { once: true });
     }
 
     function renderFlowActionNodes() {
@@ -6032,7 +6195,7 @@
       });
       startNode.addEventListener("dblclick", () => {
         flowNodeDepth = "moments";
-        selectedFlowActionId = "";
+        clearFlowActionSelection();
         renderFlowTool();
       });
       flowNodeLayer.appendChild(startNode);
@@ -6058,7 +6221,7 @@
         bindFlowNodeDrag(node, action);
         node.addEventListener("click", () => {
           selectedFlowStateId = state.id;
-          selectedFlowActionId = action.id;
+          selectFlowAction(action.id);
           renderFlowTool();
         });
         flowNodeLayer.appendChild(node);
@@ -6077,7 +6240,7 @@
       returnNode.dataset.actionId = "return";
       returnNode.addEventListener("dblclick", () => {
         flowNodeDepth = "moments";
-        selectedFlowActionId = "";
+        clearFlowActionSelection();
         renderFlowTool();
       });
       flowNodeLayer.appendChild(returnNode);
@@ -6487,7 +6650,11 @@
     function restoreFlowHistory(snapshot) {
       gameFlow = JSON.parse(snapshot);
       selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
-      selectedFlowActionId = flowAction(selectedFlowStateId, selectedFlowActionId)?.id || "";
+      if (flowAction(selectedFlowStateId, selectedFlowActionId)) {
+        setFlowActionSelection([...selectedFlowActionIds, selectedFlowActionId]);
+      } else {
+        clearFlowActionSelection();
+      }
       renderFlowTool();
     }
 
@@ -6549,6 +6716,7 @@
     }
 
     function renderFlowList() {
+      const scrollTop = flowList.scrollTop;
       flowList.replaceChildren();
       for (const state of gameFlow.states) {
         const stateEl = document.createElement("section");
@@ -6571,7 +6739,7 @@
         stateButton.querySelector(".flow-row-summary").textContent = state.id;
         stateButton.addEventListener("click", () => {
           selectedFlowStateId = state.id;
-          selectedFlowActionId = "";
+          clearFlowActionSelection();
           if (flowViewMode === "node") flowNodeDepth = "actions";
           renderFlowTool();
         });
@@ -6592,6 +6760,7 @@
         stateEl.appendChild(actionsEl);
         flowList.appendChild(stateEl);
       }
+      flowList.scrollTop = scrollTop;
     }
 
     function flowActionRow(state, action, isSubAction) {
@@ -6603,7 +6772,7 @@
       actionButton.draggable = true;
       actionButton.dataset.stateId = state.id;
       actionButton.dataset.actionId = action.id;
-      actionButton.classList.toggle("is-selected", selectedFlowActionId === action.id);
+      actionButton.classList.toggle("is-selected", flowActionIsSelected(action.id));
       actionButton.innerHTML = !isSubAction && action.subActions?.length ? `
         <span class="disclosure-slot"></span>
         <span class="flow-row-copy"><strong></strong><span class="flow-row-summary"></span></span>
@@ -6619,9 +6788,9 @@
       actionButton.querySelector("strong").textContent = isSubAction ? `Sub: ${action.name}` : action.name;
       actionButton.querySelector(".flow-row-summary").textContent = actionSummary(action, isSubAction);
       actionButton.querySelector(".flow-pill").textContent = `${actionCategoryName(action)} / ${actionTypeName(action.type)}`;
-      actionButton.addEventListener("click", () => {
+      actionButton.addEventListener("click", (event) => {
         selectedFlowStateId = state.id;
-        selectedFlowActionId = action.id;
+        selectFlowAction(action.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
         if (flowViewMode === "node") flowNodeDepth = "actions";
         renderFlowTool();
       });
@@ -6738,7 +6907,7 @@
       const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
       gameFlow.states.splice(adjustedIndex, 0, state);
       selectedFlowStateId = draggedStateId;
-      selectedFlowActionId = "";
+      clearFlowActionSelection();
       renderFlowTool();
     }
 
@@ -6754,7 +6923,7 @@
       const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
       state.actions.splice(adjustedIndex, 0, action);
       selectedFlowStateId = stateId;
-      selectedFlowActionId = draggedActionId;
+      setFlowActionSelection([draggedActionId]);
       renderFlowTool();
     }
 
@@ -6771,7 +6940,7 @@
       const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
       subActions.splice(adjustedIndex, 0, action);
       selectedFlowStateId = stateId;
-      selectedFlowActionId = draggedActionId;
+      setFlowActionSelection([draggedActionId]);
       renderFlowTool();
     }
 
@@ -7237,7 +7406,7 @@
       pushFlowHistory();
       gameFlow.states.push(state);
       selectedFlowStateId = state.id;
-      selectedFlowActionId = "";
+      clearFlowActionSelection();
       renderFlowTool();
     }
 
@@ -7252,7 +7421,7 @@
       const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
       pushFlowHistory();
       state.actions.splice(insertIndex, 0, action);
-      selectedFlowActionId = action.id;
+      setFlowActionSelection([action.id]);
       renderFlowTool();
     }
 
@@ -7271,7 +7440,7 @@
       pushFlowHistory();
       parentAction.subActions.splice(insertIndex, 0, subAction);
       collapsedFlowActions.delete(parentAction.id);
-      selectedFlowActionId = subAction.id;
+      setFlowActionSelection([subAction.id]);
       renderFlowTool();
     }
 
@@ -7316,7 +7485,7 @@
             ref.actions.splice(index, 1);
           }
         }
-        selectedFlowActionId = "";
+        clearFlowActionSelection();
         renderFlowTool();
         return;
       }
@@ -7324,6 +7493,7 @@
       pushFlowHistory();
       gameFlow.states = gameFlow.states.filter((state) => state.id !== selectedFlowStateId);
       selectedFlowStateId = gameFlow.states[0]?.id || "";
+      clearFlowActionSelection();
       renderFlowTool();
     }
 
@@ -7334,7 +7504,7 @@
       flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
       updateFlowStorageStatus(result.storage);
       selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
-      selectedFlowActionId = "";
+      clearFlowActionSelection();
       renderFlowTool();
     }
 
@@ -7344,7 +7514,7 @@
       flowUndoStack = [];
       flowRedoStack = [];
       selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
-      selectedFlowActionId = "";
+      clearFlowActionSelection();
       renderFlowTool();
     }
 
@@ -7360,9 +7530,10 @@
       flowNodeViewButton?.addEventListener("click", () => setFlowViewMode("node"));
       nodeBackButton?.addEventListener("click", () => {
         flowNodeDepth = "moments";
-        selectedFlowActionId = "";
+        clearFlowActionSelection();
         renderFlowTool();
       });
+      flowNodeStage?.addEventListener("pointerdown", startFlowNodeMarquee);
       flowNodeStage?.addEventListener("pointerup", (event) => {
         const targetNode = event.target.closest?.(".flow-node");
         completeNodeConnection(targetNode);
@@ -7836,6 +8007,7 @@
     }
 
     function renderLayoutStates() {
+      const scrollTop = layoutStateList.scrollTop;
       layoutStateList.replaceChildren();
       for (const state of layoutGroups()) {
         const button = document.createElement("button");
@@ -7853,6 +8025,7 @@
         });
         layoutStateList.appendChild(button);
       }
+      layoutStateList.scrollTop = scrollTop;
     }
 
     function layoutPreviewHiddenKey(elementId, stateId = selectedLayoutStateId) {
@@ -7891,6 +8064,7 @@
     }
 
     function renderLayoutElements() {
+      const scrollTop = layoutElementList.scrollTop;
       layoutElementList.replaceChildren();
       const state = layoutGroup(selectedLayoutStateId);
       for (const element of state?.elements || []) {
@@ -7912,6 +8086,7 @@
         button.addEventListener("click", (event) => selectLayoutElement(element.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey }));
         layoutElementList.appendChild(button);
       }
+      layoutElementList.scrollTop = scrollTop;
     }
 
     function layoutPreviewScale() {
