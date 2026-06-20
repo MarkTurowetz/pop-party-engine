@@ -239,7 +239,8 @@
       max-height: none !important;
       margin: 0 !important;
       --stage-object-visible-scale: 1;
-      transform: translate(-50%, -50%) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1))) !important;
+      --visual-scale: 1;
+      transform: translate(-50%, -50%) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1) * var(--visual-scale, 1))) !important;
       transform-origin: center !important;
     }
 
@@ -581,7 +582,8 @@
     }
 
     .stage-text-object.text-instant {
-      transition-duration: 0ms;
+      transition-duration: 0ms !important;
+      animation: none !important;
     }
 
     @keyframes textUpdatePop {
@@ -885,23 +887,32 @@
       overflow-wrap: break-word;
       word-break: normal;
       white-space: normal;
-      transform: translateX(-50%);
+      --visual-scale: 1;
+      --visual-opacity: 1;
+      opacity: var(--visual-opacity);
+      transform: translateX(-50%) scale(var(--visual-scale));
       transform-origin: center bottom;
       transition: opacity 500ms ease, transform 500ms cubic-bezier(0.19, 1, 0.22, 1);
-      animation: answerBubbleIn 180ms cubic-bezier(0.19, 1, 0.22, 1);
     }
 
     .player-lobby.answers-hidden .player-answer-bubble {
-      opacity: 0;
-      transform: translateX(-50%) scale(0);
       pointer-events: none;
     }
 
     .player-answer-bubble.is-hidden,
     .player-answer-bubble.is-exiting {
-      opacity: 0;
-      transform: translateX(-50%) scale(0);
+      --visual-opacity: 0;
+      --visual-scale: 0;
       pointer-events: none;
+    }
+
+    .player-answer-bubble.is-updating {
+      animation: answerBubbleUpdate 200ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .player-answer-bubble.is-instant {
+      transition-duration: 0ms !important;
+      animation: none !important;
     }
 
     .player-answer-bubble.is-long {
@@ -921,9 +932,9 @@
       transform: translateX(-50%) rotate(45deg);
     }
 
-    @keyframes answerBubbleIn {
-      from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.82); }
-      to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    @keyframes answerBubbleUpdate {
+      from { transform: translateX(-50%) scale(1.2); }
+      to { transform: translateX(-50%) scale(1); }
     }
 
     .player-lobby.players-hidden .player-tile {
@@ -3622,6 +3633,12 @@
     let subActionTimers = [];
     let textObjectTimers = [];
     let stageTextAnimationToken = 0;
+    const visualAnimationDurations = {
+      park: 0,
+      appear: 500,
+      disappear: 500,
+      update: 200
+    };
     let renderedPlayerAnswersShown = true;
     let playerAnswerBubbleAnimationEndsAt = 0;
     let stageAudioPlayers = new Set();
@@ -4334,6 +4351,117 @@
       bubble.classList.toggle("is-long", length > 14);
     }
 
+    function isElementParked(element, hiddenClass = "hidden", parkedClass = "text-hidden") {
+      return element.classList.contains(hiddenClass) || element.classList.contains(parkedClass);
+    }
+
+    function stageTextAnimationFor(isShown, wasVisible) {
+      if (!isShown) return wasVisible ? "disappear" : "park";
+      return wasVisible ? "update" : "appear";
+    }
+
+    function playStageTextVisual(object, animation, options = {}) {
+      const element = object.element;
+      const instant = options.instant === true;
+      const duration = instant ? 0 : visualAnimationDurations[animation] || 0;
+      const animationToken = stageTextAnimationToken += 1;
+      object.animationToken = animationToken;
+      element.classList.remove("text-update", "text-instant");
+      if (instant) element.classList.add("text-instant");
+
+      if (animation === "park") {
+        element.classList.add("text-hidden", "hidden");
+        object.visible = false;
+      } else if (animation === "appear") {
+        element.classList.remove("hidden");
+        element.classList.add("text-hidden");
+        void element.offsetWidth;
+        requestAnimationFrame(() => {
+          if (object.animationToken === animationToken) element.classList.remove("text-hidden");
+        });
+        object.visible = true;
+      } else if (animation === "disappear") {
+        element.classList.remove("hidden");
+        void element.offsetWidth;
+        element.classList.add("text-hidden");
+        object.visible = false;
+        if (duration > 0) {
+          const timerId = window.setTimeout(() => {
+            if (object.animationToken === animationToken) element.classList.add("hidden");
+          }, duration);
+          textObjectTimers.push(timerId);
+        } else {
+          element.classList.add("hidden");
+        }
+      } else if (animation === "update") {
+        element.classList.remove("hidden", "text-hidden");
+        void element.offsetWidth;
+        if (!instant) element.classList.add("text-update");
+        object.visible = true;
+      }
+
+      if (typeof options.complete === "function") {
+        const timerId = window.setTimeout(options.complete, duration);
+        textObjectTimers.push(timerId);
+      }
+      return duration;
+    }
+
+    function isBubbleVisible(bubble) {
+      return !bubble.classList.contains("is-hidden") && !bubble.classList.contains("is-exiting");
+    }
+
+    function playAnswerBubbleVisual(bubble, animation, options = {}) {
+      const instant = options.instant === true;
+      const duration = instant ? 0 : visualAnimationDurations[animation] || 0;
+      const token = `${Date.now()}-${Math.random()}`;
+      bubble.dataset.visualAnimationToken = token;
+      bubble.classList.remove("is-updating", "is-instant");
+      if (instant) bubble.classList.add("is-instant");
+
+      if (animation === "park") {
+        bubble.classList.add("is-hidden");
+        bubble.classList.remove("is-exiting");
+        return 0;
+      }
+
+      if (animation === "appear") {
+        bubble.classList.add("is-hidden");
+        bubble.classList.remove("is-exiting");
+        void bubble.offsetWidth;
+        requestAnimationFrame(() => {
+          if (bubble.dataset.visualAnimationToken === token) bubble.classList.remove("is-hidden");
+        });
+        return duration;
+      }
+
+      if (animation === "disappear") {
+        bubble.classList.remove("is-hidden");
+        void bubble.offsetWidth;
+        bubble.classList.add("is-exiting");
+        if (duration > 0) {
+          window.setTimeout(() => {
+            if (bubble.dataset.visualAnimationToken !== token) return;
+            bubble.classList.add("is-hidden");
+            bubble.classList.remove("is-exiting");
+          }, duration);
+        } else {
+          bubble.classList.add("is-hidden");
+          bubble.classList.remove("is-exiting");
+        }
+        return duration;
+      }
+
+      if (animation === "update") {
+        bubble.classList.remove("is-hidden", "is-exiting");
+        void bubble.offsetWidth;
+        if (!instant) bubble.classList.add("is-updating");
+        return duration;
+      }
+
+      return 0;
+    }
+
     function createPlayerTile(player, playerIndex, signature) {
       const tile = document.createElement("article");
       tile.className = "player-tile";
@@ -4352,15 +4480,15 @@
       if (bubble) {
         bubble.textContent = player.answer.text;
         applyAnswerBubbleTextFit(bubble, player.answer.text);
-        bubble.classList.toggle("is-hidden", renderedPlayerAnswersShown === false);
+        bubble.classList.add("is-hidden");
       }
       return tile;
     }
 
     function setPlayerAnswerBubblesShown(isShown, options = {}) {
       const instant = options.instant === true;
-      const wasShown = renderedPlayerAnswersShown !== false;
       const remainingDuration = playerAnswerBubbleAnimationRemaining();
+      const wasShown = renderedPlayerAnswersShown !== false;
       renderedPlayerAnswersShown = isShown;
       playerLobby.classList.toggle("answers-hidden", !isShown);
       const bubbles = Array.from(playerLobby.querySelectorAll(".player-answer-bubble"));
@@ -4371,29 +4499,18 @@
       if (!instant && wasShown === isShown && remainingDuration > 0) {
         return remainingDuration;
       }
-      if (instant) {
-        for (const bubble of bubbles) {
-          bubble.classList.toggle("is-hidden", !isShown);
-          bubble.classList.remove("is-exiting");
-        }
-        playerAnswerBubbleAnimationEndsAt = 0;
-        return 0;
-      }
       let duration = 0;
       if (isShown) {
         for (const bubble of bubbles) {
-          bubble.classList.remove("is-hidden", "is-exiting");
+          const animation = isBubbleVisible(bubble) ? "update" : "appear";
+          duration = Math.max(duration, playAnswerBubbleVisual(bubble, animation, { instant }));
         }
-        duration = wasShown ? 0 : 500;
-        playerAnswerBubbleAnimationEndsAt = duration > 0 ? Date.now() + duration : 0;
-        return duration;
+      } else {
+        for (const bubble of bubbles) {
+          const animation = isBubbleVisible(bubble) ? "disappear" : "park";
+          duration = Math.max(duration, playAnswerBubbleVisual(bubble, animation, { instant }));
+        }
       }
-      for (const bubble of bubbles) {
-        bubble.classList.remove("is-hidden");
-        void bubble.offsetWidth;
-        bubble.classList.add("is-exiting");
-      }
-      duration = wasShown ? 500 : 0;
       playerAnswerBubbleAnimationEndsAt = duration > 0 ? Date.now() + duration : 0;
       return duration;
     }
@@ -4418,6 +4535,7 @@
           if (existing === cursor) cursor = existing.nextElementSibling;
           existing.remove();
         }
+        const isNewTile = tile !== existing;
         if (tile === cursor) {
           cursor = cursor.nextElementSibling;
         } else {
@@ -4507,13 +4625,6 @@
       presentClickWidget.classList.add("hidden");
     }
 
-    function textAnimationDuration(isShown, wasVisible, instant) {
-      if (instant) return 0;
-      if (isShown && wasVisible) return 200;
-      if (!isShown && !wasVisible) return 0;
-      return 500;
-    }
-
     function setStageTextObject(target, options = {}) {
       const object = stageTextObjects[normalizeTextTargetId(target)] || stageTextObjects[target] || stageTextObjects.presentation;
       if (!object) return 0;
@@ -4521,49 +4632,14 @@
       const nextText = options.text ?? object.text ?? "";
       const isShown = options.isShown !== false;
       const instant = options.instant === true;
-      const wasVisible = object.visible || (!element.classList.contains("hidden") && !element.classList.contains("text-hidden"));
-      const duration = textAnimationDuration(isShown, wasVisible, instant);
-      const animationToken = stageTextAnimationToken += 1;
-      object.animationToken = animationToken;
-
-      element.classList.remove("text-update", "text-instant");
-      if (instant) element.classList.add("text-instant");
+      const wasVisible = object.visible || !isElementParked(element);
+      const animation = stageTextAnimationFor(isShown, wasVisible);
       if (nextText || isShown) element.textContent = nextText;
       if (object.layoutElement) applyStageLayoutTextProperties(element, object.layoutElement);
       element.classList.toggle("is-long", nextText.length > 62);
       element.classList.toggle("is-extra-long", nextText.length > 104);
       object.text = nextText;
-
-      if (isShown) {
-        element.classList.remove("hidden");
-        if (wasVisible) {
-          void element.offsetWidth;
-          if (!instant) element.classList.add("text-update");
-        }
-        requestAnimationFrame(() => {
-          element.classList.toggle("text-hidden", false);
-        });
-      } else if (wasVisible) {
-        element.classList.add("text-hidden");
-        if (duration === 0) element.classList.add("hidden");
-      }
-
-      if (!isShown && !wasVisible) {
-        element.classList.add("text-hidden", "hidden");
-      }
-
-      object.visible = isShown;
-      if (duration > 0 && !isShown) {
-        const timerId = window.setTimeout(() => {
-          if (object.animationToken === animationToken) element.classList.add("hidden");
-        }, duration);
-        textObjectTimers.push(timerId);
-      }
-      if (typeof options.complete === "function") {
-        const timerId = window.setTimeout(options.complete, duration);
-        textObjectTimers.push(timerId);
-      }
-      return duration;
+      return playStageTextVisual(object, animation, { instant, complete: options.complete });
     }
 
     function renderCraftingTimer(timer) {
@@ -4617,7 +4693,8 @@
       playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
       const nextAnswersShown = lobby.playerAnswersShown !== false;
       const answersAreStillAnimating = playerAnswerBubbleAnimationRemaining() > 0;
-      setPlayerAnswerBubblesShown(nextAnswersShown, { instant: renderedPlayerAnswersShown === nextAnswersShown && !answersAreStillAnimating });
+      const hasParkedShownBubbles = nextAnswersShown && Boolean(playerLobby.querySelector(".player-answer-bubble.is-hidden, .player-answer-bubble.is-exiting"));
+      setPlayerAnswerBubblesShown(nextAnswersShown, { instant: renderedPlayerAnswersShown === nextAnswersShown && !answersAreStillAnimating && !hasParkedShownBubbles });
       renderCraftingTimer(lobby.craftingTimer);
 
       const vip = players.find((player) => player.isVip);
