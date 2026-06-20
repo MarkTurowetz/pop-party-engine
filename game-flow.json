@@ -278,20 +278,6 @@
               "instant": false,
               "isShown": true,
               "subActions": []
-            },
-            {
-              "id": "crafting-game-state-sub-action-mqmxjriq",
-              "name": "Sub-Action 2",
-              "type": "displayText",
-              "timing": {
-                "mode": "S+",
-                "seconds": 0
-              },
-              "text": "Presented text",
-              "textTarget": "stageprompttext",
-              "instant": false,
-              "isShown": false,
-              "subActions": []
             }
           ],
           "nodePosition": {
