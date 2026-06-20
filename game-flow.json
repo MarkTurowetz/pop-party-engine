@@ -173,7 +173,22 @@
           "textTarget": "presentation",
           "instant": false,
           "isShown": true,
-          "subActions": [],
+          "subActions": [
+            {
+              "id": "crafting-game-state-sub-action-mqlsnzfj",
+              "name": "Sub-Action 1",
+              "type": "displayText",
+              "timing": {
+                "mode": "S+",
+                "seconds": 0
+              },
+              "text": "Presented text",
+              "textTarget": "crafting-game-statemomenttext",
+              "instant": false,
+              "isShown": true,
+              "subActions": []
+            }
+          ],
           "prompt": "Write your answer",
           "placeholder": "Answer here",
           "characterLimit": 40,
