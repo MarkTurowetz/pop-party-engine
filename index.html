@@ -3730,8 +3730,10 @@
       const longestWord = Math.max(1, ...words.map((word) => word.length));
       const maxSize = Math.min(260, Math.max(8, availableHeight));
       const minSize = 8;
+      const averageGlyphWidth = 0.68;
+      const lineHeight = 1.08;
       const linesForSize = (size) => {
-        const averageCharWidth = size * 0.58;
+        const averageCharWidth = size * averageGlyphWidth;
         const maxCharsPerLine = Math.max(1, Math.floor(availableWidth / averageCharWidth));
         return rawLines.reduce((total, rawLine) => {
           const lineWords = rawLine.split(/\s+/).filter(Boolean);
@@ -3753,10 +3755,10 @@
         }, 0);
       };
       for (let size = maxSize; size >= minSize; size -= 1) {
-        const averageCharWidth = size * 0.58;
-        const wordFits = longestWord * averageCharWidth <= availableWidth * 1.04;
+        const averageCharWidth = size * averageGlyphWidth;
+        const wordFits = longestWord * averageCharWidth <= availableWidth * 0.98;
         const wrappedLines = linesForSize(size);
-        if (wordFits && wrappedLines * size * 1.02 <= availableHeight) return size;
+        if (wordFits && wrappedLines * size * lineHeight <= availableHeight) return size;
       }
       return Math.max(minSize, Math.min(maxSize, Number(fallbackSize || 58)));
     }
