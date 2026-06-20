@@ -3159,6 +3159,7 @@
     let renderedStagePhase = "";
     let renderedActionKey = "";
     let stageWipeTimer = null;
+    let stageWipeHideTimer = null;
     let actionTimingTimer = null;
     let playerVisibilityTimer = null;
     let subActionTimers = [];
@@ -3890,14 +3891,22 @@
 
     function runStageWipe(onCovered) {
       window.clearTimeout(stageWipeTimer);
+      window.clearTimeout(stageWipeHideTimer);
       stageWipe.classList.remove("hidden", "is-running");
       void stageWipe.offsetWidth;
       stageWipe.classList.add("is-running");
       stageWipeTimer = window.setTimeout(onCovered, 420);
-      window.setTimeout(() => {
+      stageWipeHideTimer = window.setTimeout(() => {
         stageWipe.classList.add("hidden");
         stageWipe.classList.remove("is-running");
       }, 1120);
+    }
+
+    function cancelStageWipe() {
+      window.clearTimeout(stageWipeTimer);
+      window.clearTimeout(stageWipeHideTimer);
+      stageWipe.classList.add("hidden");
+      stageWipe.classList.remove("is-running");
     }
 
     function initStageTextObjects() {
@@ -4074,9 +4083,16 @@
       const nextPhase = lobby.phase || "lobby";
       const actionKey = `${nextPhase}:${lobby.action?.id || lobby.action?.index || ""}:${lobby.action?.type || ""}`;
       const isNewAction = renderedActionKey !== actionKey;
+      const haltedByDecision = lobby.lastDecisionTrace?.selectedTarget === "none";
       const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro";
       renderedStagePhase = nextPhase;
       if (isNewAction) prepareNewStageAction(lobby, actionKey);
+      if (haltedByDecision && (!lobby.action || lobby.action.type === "transition")) {
+        cancelStageWipe();
+        renderedActionKey = actionKey;
+        applyStageState({ ...lobby, action: null });
+        return;
+      }
       if (lobby.action?.type === "transition" && isNewAction) {
         renderedActionKey = actionKey;
         scheduleSubActions(lobby.action, actionKey);
