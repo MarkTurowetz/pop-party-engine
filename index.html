@@ -3614,6 +3614,7 @@
     let playerVisibilityTimer = null;
     let subActionTimers = [];
     let textObjectTimers = [];
+    let stageTextAnimationToken = 0;
     let stageAudioPlayers = new Set();
     let stageTextObjects = {};
     let runtimeTestLayouts = null;
@@ -4423,6 +4424,12 @@
       textObjectTimers = [];
     }
 
+    function clearStageActionTimers() {
+      window.clearTimeout(playerVisibilityTimer);
+      for (const timerId of subActionTimers) window.clearTimeout(timerId);
+      subActionTimers = [];
+    }
+
     function clearStageAudioPlayers() {
       for (const audio of stageAudioPlayers) {
         audio.pause();
@@ -4457,8 +4464,10 @@
       const nextText = options.text ?? object.text ?? "";
       const isShown = options.isShown !== false;
       const instant = options.instant === true;
-      const wasVisible = object.visible;
+      const wasVisible = object.visible || (!element.classList.contains("hidden") && !element.classList.contains("text-hidden"));
       const duration = textAnimationDuration(isShown, wasVisible, instant);
+      const animationToken = stageTextAnimationToken += 1;
+      object.animationToken = animationToken;
 
       element.classList.remove("text-update", "text-instant");
       if (instant) element.classList.add("text-instant");
@@ -4488,7 +4497,9 @@
 
       object.visible = isShown;
       if (duration > 0 && !isShown) {
-        const timerId = window.setTimeout(() => element.classList.add("hidden"), duration);
+        const timerId = window.setTimeout(() => {
+          if (object.animationToken === animationToken) element.classList.add("hidden");
+        }, duration);
         textObjectTimers.push(timerId);
       }
       if (typeof options.complete === "function") {
@@ -4621,7 +4632,7 @@
     }
 
     function prepareNewStageAction(lobby, actionKey) {
-      clearStageObjectTimers();
+      clearStageActionTimers();
       scheduleActionTiming(lobby, actionKey);
     }
 
@@ -4640,6 +4651,10 @@
     function scheduleSubActions(action, actionKey) {
       for (const subAction of action?.subActions || []) {
         const delayMs = Math.max(0, Number(subAction.timing?.seconds || 0) * 1000);
+        if (delayMs === 0) {
+          if (renderedActionKey === actionKey) runStageAction(subAction, false, actionKey);
+          continue;
+        }
         const timerId = window.setTimeout(() => {
           if (renderedActionKey !== actionKey) return;
           runStageAction(subAction, false, actionKey);
@@ -4679,6 +4694,7 @@
       if (action.type === "setPlayersShown") {
         playerLobby.classList.toggle("players-hidden", action.isShown === false);
         playerLobby.classList.toggle("players-instant", action.instant === true);
+        if (!isPrimary) applyFlowActionEffect(action.id);
         if (isPrimary) {
           const playerCount = playerLobby.querySelectorAll(".player-tile").length;
           const delayMs = action.instant ? 0 : 1000 + Math.max(0, playerCount - 1) * 45;
@@ -4691,6 +4707,7 @@
       }
       if (action.type === "setPlayerAnswersShown") {
         playerLobby.classList.toggle("answers-hidden", action.isShown === false);
+        if (!isPrimary) applyFlowActionEffect(action.id);
         if (isPrimary) {
           window.setTimeout(() => {
             if (renderedActionKey !== actionKey) return;
@@ -6100,6 +6117,7 @@
           renderFlowActionNodes();
         }
       }
+      scheduleFlowNodeWireRedraw();
       renderFlowNodeInspector();
     }
 
@@ -6170,6 +6188,16 @@
       path.setAttribute("class", "flow-node-wire is-preview");
       path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x + curve} ${from.y}, ${to.x - curve} ${to.y}, ${to.x} ${to.y}`);
       flowNodeWires.appendChild(path);
+    }
+
+    function scheduleFlowNodeWireRedraw() {
+      window.requestAnimationFrame(() => {
+        if (!flowNodeLayer || !flowNodeWires || flowViewMode !== "node") return;
+        window.requestAnimationFrame(() => {
+          if (!flowNodeLayer || !flowNodeWires || flowViewMode !== "node") return;
+          redrawFlowNodeWires();
+        });
+      });
     }
 
     function flowNodeLocalPoint(event) {
@@ -6250,7 +6278,6 @@
       flowNodeWires.setAttribute("height", "920");
       nodeBackButton.disabled = true;
       nodeViewHelp.textContent = "Double-click a game moment to edit its action graph.";
-      const stateNodes = new Map();
       for (const [index, state] of (gameFlow.states || []).entries()) {
         const { x, y } = savedNodePosition(state, defaultNodePosition(index, 3, 80, 80, 420, 240));
         const node = createFlowNode({
@@ -6277,14 +6304,8 @@
           renderFlowTool();
         });
         flowNodeLayer.appendChild(node);
-        stateNodes.set(state.id, node);
       }
-      for (const state of gameFlow.states || []) {
-        const fromNode = stateNodes.get(state.id);
-        const toNode = state.nextStateTargetId ? stateNodes.get(state.nextStateTargetId) : null;
-        if (toNode) drawNodeWire(fromNode, toNode);
-      }
-      redrawFlowNodeWires();
+      scheduleFlowNodeWireRedraw();
     }
 
     function createFlowMomentPorts(state) {
@@ -6703,7 +6724,7 @@
         renderFlowTool();
       });
       flowNodeLayer.appendChild(returnNode);
-      redrawFlowNodeWires();
+      scheduleFlowNodeWireRedraw();
     }
 
     function isNoFlowTarget(value) {
