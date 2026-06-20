@@ -1660,8 +1660,14 @@ function roundNumberWord(value) {
 function flowActionIndexById(room, actionId) {
   const target = String(actionId || "");
   if (!target) return -1;
+  const normalizedTarget = normalizeFlowId(target, "");
   const actions = getStateActions(room.phase, room);
-  return actions.findIndex((action) => action.id === target);
+  return actions.findIndex((action) => {
+    if (action.id === target) return true;
+    if (normalizeFlowId(action.id, "") === normalizedTarget) return true;
+    if (normalizeFlowId(action.name, "") === normalizedTarget) return true;
+    return false;
+  });
 }
 
 function compareDecisionValues(leftValue, rightValue, valueType, operator) {
@@ -1693,17 +1699,46 @@ function decisionVariableValue(room, variable) {
   return 0;
 }
 
-function resolveDecisionActionIndex(room, action) {
+function evaluateDecisionAction(room, action) {
+  const variable = action.variable || "activePlayerCount";
+  const valueType = normalizeDecisionValueType(action.valueType);
+  const operator = normalizeDecisionOperator(action.operator);
+  const leftValue = decisionVariableValue(room, variable);
+  const rightValue = action.compareValue;
   const passed = compareDecisionValues(
-    decisionVariableValue(room, action.variable || "activePlayerCount"),
-    action.compareValue,
-    normalizeDecisionValueType(action.valueType),
-    normalizeDecisionOperator(action.operator)
+    leftValue,
+    rightValue,
+    valueType,
+    operator
   );
   const target = passed ? action.trueTargetActionId : action.falseTargetActionId;
+  const targetIndex = isNoActionTarget(target) ? null : flowActionIndexById(room, target);
+  return {
+    actionId: action.id,
+    actionName: action.name,
+    variable,
+    valueType,
+    operator,
+    leftValue,
+    rightValue,
+    passed,
+    selectedBranch: passed ? "true" : "false",
+    selectedTarget: isNoActionTarget(target) ? "none" : String(target || ""),
+    targetIndex
+  };
+}
+
+function resolveDecisionActionIndex(room, action) {
+  const decision = evaluateDecisionAction(room, action);
+  room.lastDecisionTrace = {
+    ...decision,
+    activePlayerCount: activePlayers(room).length,
+    evaluatedAt: Date.now()
+  };
+  const target = decision.selectedTarget;
   if (isNoActionTarget(target)) return null;
-  const targetIndex = flowActionIndexById(room, target);
-  if (targetIndex >= 0) return targetIndex;
+  if (decision.targetIndex >= 0) return decision.targetIndex;
+  if (target) return null;
   return room.actionIndex + 1;
 }
 
@@ -2114,6 +2149,7 @@ async function handleLocalDraft(req, res) {
       resetCraftingTimer(room);
       room.actionIndex = 0;
       room.presentedAction = null;
+      room.lastDecisionTrace = null;
       clearAppliedActionEffects(room);
     }
     broadcastLobby(room);
@@ -2144,6 +2180,7 @@ async function handleSaveGameFlow(req, res) {
     resetCraftingTimer(room);
     room.actionIndex = 0;
     room.presentedAction = null;
+    room.lastDecisionTrace = null;
     clearAppliedActionEffects(room);
     broadcastLobby(room);
   }
@@ -2289,6 +2326,7 @@ function getRoom(stageCode) {
       craftingTimerAnswersSubmittedTargetActionId: "",
       craftingTimerTimeoutId: null,
       craftingTimerEndHandled: false,
+      lastDecisionTrace: null,
       runtimeFlowOverride: null,
       revision: 0
     });
@@ -2584,6 +2622,7 @@ function lobbyPayload(room) {
     input,
     textInput,
     craftingTimer: craftingTimerPayload(room),
+    lastDecisionTrace: room.lastDecisionTrace,
     currentRound: room.currentRound || 1,
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
@@ -2620,6 +2659,7 @@ function enterLobbyPhase(room) {
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
   room.presentedAction = null;
+  room.lastDecisionTrace = null;
   clearAppliedActionEffects(room);
   room.playersShown = true;
   room.currentRound = 1;
@@ -2654,6 +2694,7 @@ function enterGamePhase(room, phase) {
   room.countdownEndsAt = 0;
   room.actionIndex = 0;
   room.presentedAction = null;
+  room.lastDecisionTrace = null;
   clearAppliedActionEffects(room);
   room.playersShown = true;
   resetCraftingTimer(room);
