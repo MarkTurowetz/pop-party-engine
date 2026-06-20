@@ -48,6 +48,9 @@ const availableFlowActionTypes = [
   { id: "textSubmissionInput", name: "Text Submission Input", category: "input" },
   { id: "displayText", name: "Display Text", category: "standard" },
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
+  { id: "setTimerShown", name: "Set Timer Shown", category: "standard" },
+  { id: "startCraftingTimer", name: "Start Crafting Timer", category: "standard" },
+  { id: "decision", name: "Decision", category: "standard" },
   { id: "transition", name: "Do Transition", category: "standard" },
   { id: "transitionState", name: "Transition To State", category: "standard" },
   { id: "text", name: "Show Text", category: "standard" }
@@ -122,7 +125,8 @@ const rooms = new Map();
 const defaultPlayerColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"];
 const avatarShapes = ["rex", "stego", "trike", "raptor", "bronto", "ankylo"];
 const defaultGameConstants = {
-  playerColors: defaultPlayerColors
+  playerColors: defaultPlayerColors,
+  craftingTimerDuration: 30
 };
 const defaultStageLayouts = {
   canvas: { width: 1920, height: 1080 },
@@ -363,11 +367,19 @@ function normalizeColor(value) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
 }
 
+function normalizeDurationSeconds(value, fallback = 30) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Number(Math.max(1, Math.min(3600, number)).toFixed(2));
+}
+
 function normalizeGameConstants(constants) {
   const colors = Array.isArray(constants?.playerColors) ? constants.playerColors : defaultPlayerColors;
   const playerColors = [...new Set(colors.map(normalizeColor).filter(Boolean))];
+  const craftingTimerDuration = normalizeDurationSeconds(constants?.craftingTimerDuration, defaultGameConstants.craftingTimerDuration);
   return {
-    playerColors: playerColors.length ? playerColors : [...defaultPlayerColors]
+    playerColors: playerColors.length ? playerColors : [...defaultPlayerColors],
+    craftingTimerDuration
   };
 }
 
@@ -741,22 +753,36 @@ function createLayoutStateForFlowState(flowState) {
     };
   }
   const textElementId = normalizeFlowId(`${flowState.id}-moment-text`, `${flowState.id}-moment-text`);
+  const elements = [
+    {
+      id: textElementId,
+      name: `${flowState.name || "Moment"} Text Field`,
+      selector: `#${textElementId}`,
+      kind: "text",
+      x: 960,
+      y: 460,
+      width: 980,
+      height: 240,
+      scale: 1
+    }
+  ];
+  if (isCraftingStateId(flowState.id) || flowStateHasActionType(flowState, "setTimerShown") || flowStateHasActionType(flowState, "startCraftingTimer")) {
+    elements.push({
+      id: "craftingTimer",
+      name: "Crafting Timer",
+      selector: "#craftingTimer",
+      kind: "art",
+      x: 1660,
+      y: 185,
+      width: 190,
+      height: 190,
+      scale: 1
+    });
+  }
   return {
     id: flowState.id,
     name: flowState.name || flowState.id,
-    elements: [
-      {
-        id: textElementId,
-        name: `${flowState.name || "Moment"} Text Field`,
-        selector: `#${textElementId}`,
-        kind: "text",
-        x: 960,
-        y: 460,
-        width: 980,
-        height: 240,
-        scale: 1
-      }
-    ]
+    elements
   };
 }
 
@@ -776,6 +802,19 @@ function flowStateHasActionType(flowState, type) {
     stack.push(...(action?.subActions || []));
   }
   return false;
+}
+
+function flowActionTarget(action) {
+  const target = normalizeFlowId(action, "");
+  return target || "";
+}
+
+function normalizeDecisionOperator(value) {
+  return ["<", "<=", "==", "!=", ">=", ">"].includes(value) ? value : "<";
+}
+
+function normalizeDecisionValueType(value) {
+  return ["int", "float", "string", "bool"].includes(value) ? value : "int";
 }
 
 function normalizeLayoutNumber(value, fallback, min, max) {
@@ -864,6 +903,27 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
   }
   if (type === "setPlayersShown") {
     return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
+  }
+  if (type === "setTimerShown") {
+    return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
+  }
+  if (type === "startCraftingTimer") {
+    return {
+      ...base,
+      timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
+    };
+  }
+  if (type === "decision") {
+    return {
+      ...base,
+      variable: action?.variable === "activePlayerCount" ? "activePlayerCount" : "activePlayerCount",
+      valueType: normalizeDecisionValueType(action?.valueType),
+      operator: normalizeDecisionOperator(action?.operator),
+      compareValue: cleanFlowText(action?.compareValue, "3"),
+      trueTargetActionId: flowActionTarget(action?.trueTargetActionId),
+      falseTargetActionId: flowActionTarget(action?.falseTargetActionId)
+    };
   }
   if (type === "transition") {
     const transition = availableFlowTransitions.some((item) => item.id === action?.transition) ? action.transition : "horizontalWipe";
@@ -1009,6 +1069,7 @@ const controllerLayoutsStore = {
 
 const localDraftStore = {
   flow: null,
+  constants: null,
   layouts: null,
   controllerLayouts: null
 };
@@ -1026,7 +1087,7 @@ function readGameConstantsSource() {
 }
 
 function gameConstants() {
-  return normalizeGameConstants(readGameConstantsSource());
+  return normalizeGameConstants(localDraftStore.constants || readGameConstantsSource());
 }
 
 function readStageLayoutsSource() {
@@ -1540,6 +1601,29 @@ function publicFlowAction(action, index) {
   if (action.type === "setPlayersShown") {
     return { ...base, type: "setPlayersShown", isShown: action.isShown !== false, instant: action.instant === true };
   }
+  if (action.type === "setTimerShown") {
+    return { ...base, type: "setTimerShown", isShown: action.isShown !== false, instant: action.instant === true };
+  }
+  if (action.type === "startCraftingTimer") {
+    return {
+      ...base,
+      type: "startCraftingTimer",
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+    };
+  }
+  if (action.type === "decision") {
+    return {
+      ...base,
+      type: "decision",
+      variable: action.variable || "activePlayerCount",
+      valueType: normalizeDecisionValueType(action.valueType),
+      operator: normalizeDecisionOperator(action.operator),
+      compareValue: action.compareValue || "3",
+      trueTargetActionId: action.trueTargetActionId || "",
+      falseTargetActionId: action.falseTargetActionId || ""
+    };
+  }
   if (action.type === "transition") {
     const transition = availableFlowTransitions.find((item) => item.id === action.transition) || availableFlowTransitions[0];
     return { ...base, type: "transition", transition: transition.id, transitionName: transition.name };
@@ -1568,10 +1652,66 @@ function roundNumberWord(value) {
   return String(number);
 }
 
+function flowActionIndexById(room, actionId) {
+  const target = String(actionId || "");
+  if (!target) return -1;
+  const actions = getStateActions(room.phase, room);
+  return actions.findIndex((action) => action.id === target);
+}
+
+function compareDecisionValues(leftValue, rightValue, valueType, operator) {
+  let left = leftValue;
+  let right = rightValue;
+  if (valueType === "int") {
+    left = Math.floor(Number(leftValue) || 0);
+    right = Math.floor(Number(rightValue) || 0);
+  } else if (valueType === "float") {
+    left = Number(leftValue) || 0;
+    right = Number(rightValue) || 0;
+  } else if (valueType === "bool") {
+    left = leftValue === true || String(leftValue).toLowerCase() === "true";
+    right = rightValue === true || String(rightValue).toLowerCase() === "true";
+  } else {
+    left = String(leftValue || "");
+    right = String(rightValue || "");
+  }
+  if (operator === "<") return left < right;
+  if (operator === "<=") return left <= right;
+  if (operator === "!=") return left !== right;
+  if (operator === ">=") return left >= right;
+  if (operator === ">") return left > right;
+  return left === right;
+}
+
+function decisionVariableValue(room, variable) {
+  if (variable === "activePlayerCount") return activePlayers(room).length;
+  return 0;
+}
+
+function resolveDecisionActionIndex(room, action) {
+  const passed = compareDecisionValues(
+    decisionVariableValue(room, action.variable || "activePlayerCount"),
+    action.compareValue,
+    normalizeDecisionValueType(action.valueType),
+    normalizeDecisionOperator(action.operator)
+  );
+  const target = passed ? action.trueTargetActionId : action.falseTargetActionId;
+  const targetIndex = flowActionIndexById(room, target);
+  if (targetIndex >= 0) return targetIndex;
+  return room.actionIndex + 1;
+}
+
 function currentRoomAction(room) {
   if (room.presentedAction) return room.presentedAction;
   const actions = getStateActions(room.phase, room);
   if (room.actionIndex >= actions.length) return null;
+  let guard = 0;
+  while (actions[room.actionIndex]?.type === "decision" && guard < 20) {
+    room.appliedActionEffectId = "";
+    room.actionIndex = Math.max(0, Math.min(actions.length, resolveDecisionActionIndex(room, actions[room.actionIndex])));
+    guard += 1;
+    if (room.actionIndex >= actions.length) return null;
+  }
   return publicFlowAction(actions[room.actionIndex], room.actionIndex);
 }
 
@@ -1625,6 +1765,7 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
       if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
       if (currentAction.type === "textSubmissionInput") clearTextInput(room);
       advanceRoomAction(room);
+      currentRoomAction(room);
       broadcastLobby(room);
     }, delayMs);
     return true;
@@ -1633,6 +1774,7 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
   if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
   if (currentAction.type === "textSubmissionInput") clearTextInput(room);
   advanceRoomAction(room);
+  currentRoomAction(room);
   broadcastLobby(room);
   return true;
 }
@@ -1642,6 +1784,12 @@ function applyRoomActionEffects(room, action) {
   room.appliedActionEffectId = action.id;
   if (action.type === "setPlayersShown") {
     room.playersShown = action.isShown !== false;
+  }
+  if (action.type === "setTimerShown") {
+    setCraftingTimerShown(room, action.isShown !== false);
+  }
+  if (action.type === "startCraftingTimer") {
+    startCraftingTimer(room, action);
   }
 }
 
@@ -1809,9 +1957,12 @@ async function sendGameFlow(res) {
 
 async function sendGameConstants(res) {
   const constants = await loadGameConstantsSource({ refresh: gameConstantsStore.storageKind === "github" });
+  const responseConstants = localDraftStore.constants || constants;
   sendJson(res, 200, {
     ok: true,
-    constants: normalizeGameConstants(constants),
+    constants: normalizeGameConstants(responseConstants),
+    savedConstants: normalizeGameConstants(constants),
+    hasLocalDraft: Boolean(localDraftStore.constants),
     storage: {
       kind: gameConstantsStore.storageKind,
       durable: gameConstantsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
@@ -1869,9 +2020,11 @@ function sendLocalDraft(res) {
   sendJson(res, 200, {
     ok: true,
     flow: localDraftStore.flow,
+    constants: localDraftStore.constants,
     layouts: localDraftStore.layouts,
     controllerLayouts: localDraftStore.controllerLayouts,
     hasFlowDraft: Boolean(localDraftStore.flow),
+    hasConstantsDraft: Boolean(localDraftStore.constants),
     hasLayoutDraft: Boolean(localDraftStore.layouts),
     hasControllerLayoutDraft: Boolean(localDraftStore.controllerLayouts)
   });
@@ -1887,6 +2040,7 @@ async function handleLocalDraft(req, res) {
   }
 
   if (payload.clearFlow) localDraftStore.flow = null;
+  if (payload.clearConstants) localDraftStore.constants = null;
   if (payload.clearLayouts) localDraftStore.layouts = null;
   if (payload.clearControllerLayouts) localDraftStore.controllerLayouts = null;
 
@@ -1895,6 +2049,15 @@ async function handleLocalDraft(req, res) {
       localDraftStore.flow = normalizeGameFlow(payload.flow);
     } catch (error) {
       sendJson(res, 400, { ok: false, error: `Local flow draft is invalid: ${error.message}` });
+      return;
+    }
+  }
+
+  if (payload.constants) {
+    try {
+      localDraftStore.constants = normalizeGameConstants(payload.constants);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: `Local constants draft is invalid: ${error.message}` });
       return;
     }
   }
@@ -1920,6 +2083,7 @@ async function handleLocalDraft(req, res) {
   for (const room of rooms.values()) {
     if (payload.flow || payload.clearFlow) {
       clearActionTimer(room);
+      resetCraftingTimer(room);
       room.actionIndex = 0;
       room.presentedAction = null;
       room.appliedActionEffectId = "";
@@ -1949,6 +2113,7 @@ async function handleSaveGameFlow(req, res) {
   }
   for (const room of rooms.values()) {
     clearActionTimer(room);
+    resetCraftingTimer(room);
     room.actionIndex = 0;
     room.presentedAction = null;
     room.appliedActionEffectId = "";
@@ -1978,6 +2143,7 @@ async function handleSaveGameConstants(req, res) {
   let constants;
   try {
     constants = await writeGameConstants(payload.constants || payload);
+    localDraftStore.constants = null;
   } catch (error) {
     sendJson(res, 400, { ok: false, error: `Game constants could not be saved: ${error.message}` });
     return;
@@ -2083,6 +2249,17 @@ function getRoom(stageCode) {
       textInputPlaceholder: "",
       textInputCharacterLimit: 0,
       textInputAnswers: new Map(),
+      craftingTimerShown: false,
+      craftingTimerRunning: false,
+      craftingTimerDurationMs: 0,
+      craftingTimerRemainingMs: 0,
+      craftingTimerStartedAt: 0,
+      craftingTimerEndsAt: 0,
+      craftingTimerActionId: "",
+      craftingTimerTimerEndTargetActionId: "",
+      craftingTimerAnswersSubmittedTargetActionId: "",
+      craftingTimerTimeoutId: null,
+      craftingTimerEndHandled: false,
       runtimeFlowOverride: null,
       revision: 0
     });
@@ -2184,6 +2361,128 @@ function clearTextInput(room) {
   }
 }
 
+function craftingTimerDurationMs() {
+  return Math.round(normalizeDurationSeconds(gameConstants().craftingTimerDuration, 30) * 1000);
+}
+
+function clearCraftingTimerTimeout(room) {
+  if (!room.craftingTimerTimeoutId) return;
+  clearTimeout(room.craftingTimerTimeoutId);
+  room.craftingTimerTimeoutId = null;
+}
+
+function pauseCraftingTimer(room) {
+  if (!room.craftingTimerRunning) return;
+  room.craftingTimerRemainingMs = Math.max(0, (room.craftingTimerEndsAt || Date.now()) - Date.now());
+  room.craftingTimerRunning = false;
+  room.craftingTimerStartedAt = 0;
+  room.craftingTimerEndsAt = 0;
+  clearCraftingTimerTimeout(room);
+}
+
+function resetCraftingTimer(room) {
+  clearCraftingTimerTimeout(room);
+  room.craftingTimerShown = false;
+  room.craftingTimerRunning = false;
+  room.craftingTimerDurationMs = 0;
+  room.craftingTimerRemainingMs = 0;
+  room.craftingTimerStartedAt = 0;
+  room.craftingTimerEndsAt = 0;
+  room.craftingTimerActionId = "";
+  room.craftingTimerTimerEndTargetActionId = "";
+  room.craftingTimerAnswersSubmittedTargetActionId = "";
+  room.craftingTimerEndHandled = false;
+}
+
+function setCraftingTimerShown(room, isShown) {
+  if (isShown) {
+    const durationMs = craftingTimerDurationMs();
+    room.craftingTimerShown = true;
+    room.craftingTimerRunning = false;
+    room.craftingTimerDurationMs = durationMs;
+    room.craftingTimerRemainingMs = durationMs;
+    room.craftingTimerStartedAt = 0;
+    room.craftingTimerEndsAt = 0;
+    room.craftingTimerEndHandled = false;
+    clearCraftingTimerTimeout(room);
+    return;
+  }
+  pauseCraftingTimer(room);
+  room.craftingTimerShown = false;
+}
+
+function jumpToAction(room, actionId, fallbackIndex = room.actionIndex + 1) {
+  const targetIndex = flowActionIndexById(room, actionId);
+  room.presentedAction = null;
+  room.appliedActionEffectId = "";
+  room.actionIndex = targetIndex >= 0 ? targetIndex : fallbackIndex;
+}
+
+function scheduleCraftingTimerEnd(room) {
+  clearCraftingTimerTimeout(room);
+  const delayMs = Math.max(0, (room.craftingTimerEndsAt || Date.now()) - Date.now());
+  room.craftingTimerTimeoutId = setTimeout(() => {
+    room.craftingTimerTimeoutId = null;
+    if (!room.craftingTimerRunning || room.craftingTimerEndHandled) return;
+    handleCraftingTimerEvent(room, "timerEnd");
+  }, delayMs + 20);
+}
+
+function startCraftingTimer(room, action) {
+  if (!room.craftingTimerShown || room.craftingTimerDurationMs <= 0 || room.craftingTimerRemainingMs <= 0) {
+    setCraftingTimerShown(room, true);
+  }
+  const now = Date.now();
+  room.craftingTimerShown = true;
+  room.craftingTimerRunning = true;
+  room.craftingTimerStartedAt = now;
+  room.craftingTimerEndsAt = now + Math.max(0, room.craftingTimerRemainingMs || room.craftingTimerDurationMs);
+  room.craftingTimerActionId = action.id;
+  room.craftingTimerTimerEndTargetActionId = action.timerEndTargetActionId || "";
+  room.craftingTimerAnswersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
+  room.craftingTimerEndHandled = false;
+  scheduleCraftingTimerEnd(room);
+}
+
+function craftingTimerPayload(room) {
+  const remainingMs = room.craftingTimerRunning
+    ? Math.max(0, (room.craftingTimerEndsAt || Date.now()) - Date.now())
+    : Math.max(0, room.craftingTimerRemainingMs || 0);
+  return {
+    shown: room.craftingTimerShown === true,
+    running: room.craftingTimerRunning === true,
+    durationMs: Math.max(0, room.craftingTimerDurationMs || 0),
+    remainingMs,
+    startedAt: room.craftingTimerStartedAt || 0,
+    endsAt: room.craftingTimerEndsAt || 0,
+    actionId: room.craftingTimerActionId || ""
+  };
+}
+
+function allActivePlayersHaveTextAnswers(room) {
+  const active = activePlayers(room);
+  if (!active.length) return false;
+  return active.every((player) => room.textInputAnswers.get(player.id)?.done === true);
+}
+
+function handleCraftingTimerEvent(room, eventType) {
+  if (!room.craftingTimerRunning || room.craftingTimerEndHandled) return false;
+  const fallbackIndex = room.actionIndex + 1;
+  const target = eventType === "answersSubmitted"
+    ? room.craftingTimerAnswersSubmittedTargetActionId
+    : room.craftingTimerTimerEndTargetActionId;
+  pauseCraftingTimer(room);
+  if (eventType === "timerEnd") {
+    room.craftingTimerRemainingMs = 0;
+  }
+  room.craftingTimerEndHandled = true;
+  clearChoiceInput(room);
+  clearTextInput(room);
+  jumpToAction(room, target, fallbackIndex);
+  broadcastLobby(room);
+  return true;
+}
+
 function applyChoiceInputAction(room, action) {
   if (!action || action.type !== "multipleChoiceInput") return;
   if (room.choiceInputActionId === action.id) return;
@@ -2248,6 +2547,7 @@ function lobbyPayload(room) {
     action: currentAction,
     input,
     textInput,
+    craftingTimer: craftingTimerPayload(room),
     currentRound: room.currentRound || 1,
     serverNow: Date.now(),
     vipPlayerId: room.vipPlayerId,
@@ -2288,6 +2588,7 @@ function enterLobbyPhase(room) {
   room.playersShown = true;
   room.currentRound = 1;
   room.hasEnteredRoundIntro = false;
+  resetCraftingTimer(room);
   clearChoiceInput(room);
   clearTextInput(room);
 }
@@ -2319,6 +2620,7 @@ function enterGamePhase(room, phase) {
   room.presentedAction = null;
   room.appliedActionEffectId = "";
   room.playersShown = true;
+  resetCraftingTimer(room);
   clearChoiceInput(room);
   clearTextInput(room);
   if (isRoundIntroStateId(phase) && previousPhase !== phase) {
@@ -2654,7 +2956,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "textSubmissionInput") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "textSubmissionInput") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -2772,6 +3074,11 @@ async function handleControllerTextSubmit(req, res) {
     done: true,
     nonce: Date.now()
   });
+  if (room.craftingTimerRunning && allActivePlayersHaveTextAnswers(room)) {
+    handleCraftingTimerEvent(room, "answersSubmitted");
+    sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
+    return;
+  }
   broadcastLobby(room);
   sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
 }

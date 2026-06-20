@@ -292,6 +292,41 @@
       letter-spacing: 0.06em;
     }
 
+    .crafting-timer {
+      position: absolute;
+      right: 92px;
+      top: 92px;
+      z-index: 5;
+      width: 180px;
+      height: 180px;
+      display: grid;
+      place-items: center;
+      border: 5px solid var(--ink);
+      border-radius: 36px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at center, var(--paper) 0 54%, transparent 55%),
+        conic-gradient(var(--blue) calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0);
+      box-shadow: var(--shadow);
+      font-size: 74px;
+      font-weight: 1000;
+      line-height: 0.9;
+      text-align: center;
+      transition: transform 260ms cubic-bezier(0.19, 1, 0.22, 1), opacity 260ms cubic-bezier(0.19, 1, 0.22, 1);
+      transform-origin: center;
+    }
+
+    .crafting-timer.hidden {
+      display: grid !important;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0);
+    }
+
+    .crafting-timer.stage-layout-target.hidden {
+      transform: translate(-50%, -50%) scale(0) !important;
+    }
+
     .version-badge {
       position: absolute;
       left: 18px;
@@ -2730,6 +2765,7 @@
     <div class="stage-board" id="stageBoard">
       <div class="start-popup hidden" id="startPopup">Starting Game</div>
       <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
+      <div class="crafting-timer hidden" id="craftingTimer" aria-label="Crafting timer"><span id="craftingTimerLabel">30</span></div>
       <div class="version-badge">v__APP_VERSION__</div>
       <div class="stage-wipe hidden" id="stageWipe" aria-hidden="true">
         <div class="wipe-line"></div>
@@ -2923,9 +2959,13 @@
 
       <main class="flow-panel">
         <div class="art-header">
-          <h1>Player Colors</h1>
-          <p>Each new player gets a random unused color from this list before colors repeat.</p>
+          <h1>Game Constants</h1>
+          <p>Each new player gets a random unused color before colors repeat. Timer duration is read by Set Timer Shown.</p>
         </div>
+        <label class="field-label flow-form-grid">
+          Crafting Timer Duration Seconds
+          <input class="text-input" id="craftingTimerDurationInput" type="number" min="1" max="3600" step="1" value="30">
+        </label>
         <div class="constants-editor" id="playerColorList"></div>
       </main>
     </div>
@@ -3016,6 +3056,8 @@
     const stageCodeText = document.querySelector("#stageCodeText");
     const stageCodeBadgeRoot = document.querySelector("#stageCodeBadge");
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
+    const craftingTimer = document.querySelector("#craftingTimer");
+    const craftingTimerLabel = document.querySelector("#craftingTimerLabel");
     const playerLobby = document.querySelector("#playerLobby");
     const joinPrompt = document.querySelector("#joinPrompt");
     const waitingStatus = document.querySelector("#waitingStatus");
@@ -3082,6 +3124,7 @@
     const deleteFlowItemButton = document.querySelector("#deleteFlowItemButton");
     const revertFlowButton = document.querySelector("#revertFlowButton");
     const constantsStorageStatus = document.querySelector("#constantsStorageStatus");
+    const craftingTimerDurationInput = document.querySelector("#craftingTimerDurationInput");
     const playerColorList = document.querySelector("#playerColorList");
     const playerColorCount = document.querySelector("#playerColorCount");
     const addPlayerColorButton = document.querySelector("#addPlayerColorButton");
@@ -3108,6 +3151,7 @@
     let heartbeatTimer = null;
     let lobbyPollTimer = null;
     let stageCountdownTimer = null;
+    let craftingTimerInterval = null;
     let controllerCountdownTimer = null;
     let dismissedTextInvalidKey = "";
     let countdownClockOffset = 0;
@@ -3133,7 +3177,7 @@
     const collapsedArtSections = new Set();
     const collapsedArtComposites = new Set();
     let gameFlow = { states: [] };
-    let gameConstants = { playerColors: [] };
+    let gameConstants = { playerColors: [], craftingTimerDuration: 30 };
     let stageLayouts = { canvas: { width: 1920, height: 1080 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let controllerLayouts = { canvas: { width: 390, height: 844 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let flowSavedSnapshot = "";
@@ -3888,6 +3932,9 @@
 
     function resetStageObjects() {
       clearStageObjectTimers();
+      window.clearInterval(craftingTimerInterval);
+      craftingTimerInterval = null;
+      craftingTimer?.classList.add("hidden");
       playerLobby.classList.remove("players-hidden", "players-instant");
       initStageTextObjects();
       presentClickWidget.classList.add("hidden");
@@ -3948,6 +3995,31 @@
       return duration;
     }
 
+    function renderCraftingTimer(timer) {
+      window.clearInterval(craftingTimerInterval);
+      craftingTimerInterval = null;
+      if (!craftingTimer || !craftingTimerLabel || !timer?.shown) {
+        craftingTimer?.classList.add("hidden");
+        return;
+      }
+      const durationMs = Math.max(1, Number(timer.durationMs || 1));
+      const clockOffset = (timer.serverNow || currentStageState?.serverNow || Date.now()) - Date.now();
+      const update = () => {
+        const now = Date.now() + clockOffset;
+        const remainingMs = timer.running
+          ? Math.max(0, Number(timer.endsAt || now) - now)
+          : Math.max(0, Number(timer.remainingMs || 0));
+        const progress = Math.max(0, Math.min(1, remainingMs / durationMs));
+        craftingTimer.style.setProperty("--timer-progress", progress.toFixed(4));
+        craftingTimerLabel.textContent = String(Math.ceil(remainingMs / 1000));
+      };
+      craftingTimer.classList.remove("hidden");
+      update();
+      if (timer.running) {
+        craftingTimerInterval = window.setInterval(update, 100);
+      }
+    }
+
     function applyStageState(lobby) {
       currentStageState = lobby;
       const players = lobby.players || [];
@@ -3967,6 +4039,7 @@
       presentClickWidget.classList.toggle("hidden", !(action?.type === "present" && action?.timing?.mode !== "S+"));
       renderStagePlayers(players);
       playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
+      renderCraftingTimer(lobby.craftingTimer);
 
       const vip = players.find((player) => player.isVip);
       joinPrompt.classList.toggle("hidden", !isLobbyPhase);
@@ -4067,6 +4140,10 @@
             completeFlowAction("callback", action.id);
           }, delayMs);
         }
+        return;
+      }
+      if (action.type === "setTimerShown" || action.type === "startCraftingTimer") {
+        if (isPrimary) completeFlowAction("callback", action.id);
         return;
       }
       if (action.type === "present" || action.type === "displayText") {
@@ -5101,9 +5178,34 @@
       }
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
+      if (action.type === "setTimerShown") return `${action.isShown === false ? "Hide" : "Show"} crafting timer / ${timingText}${instantText}`;
+      if (action.type === "startCraftingTimer") return `Start crafting timer / ends: ${flowTargetActionName(action.timerEndTargetActionId)} / answers: ${flowTargetActionName(action.answersSubmittedTargetActionId)} / ${timingText}`;
+      if (action.type === "decision") return `If ${decisionVariableName(action.variable)} ${action.operator || "<"} ${action.compareValue || "3"} -> ${flowTargetActionName(action.trueTargetActionId)} else ${flowTargetActionName(action.falseTargetActionId)} / ${timingText}`;
       if (action.type === "transition") return `${flowTransitions.find((item) => item.id === action.transition)?.name || action.transition} / ${timingText}`;
       if (action.type === "transitionState") return `To ${flowState(action.targetState)?.name || action.targetState || "State"} / ${timingText}`;
       return `${action.text || "Text"} / ${timingText}`;
+    }
+
+    function flowTargetActionName(actionId) {
+      const state = flowState(selectedFlowStateId);
+      const action = (state?.actions || []).find((item) => item.id === actionId);
+      return action?.name || "Next Action";
+    }
+
+    function decisionVariableName(variable) {
+      if (variable === "activePlayerCount") return "Active Player Count";
+      return variable || "Variable";
+    }
+
+    function flowActionTargetOptions(state, selectedActionId = "") {
+      const options = [{ id: "", name: "Next Action" }];
+      for (const action of state?.actions || []) {
+        options.push({ id: action.id, name: action.name || action.id });
+      }
+      if (selectedActionId && !options.some((option) => option.id === selectedActionId)) {
+        options.push({ id: selectedActionId, name: selectedActionId });
+      }
+      return options;
     }
 
     function currentRuntimeLocalMessage(overrides = {}) {
@@ -5123,6 +5225,11 @@
         message.controllerLayouts = controllerLayoutDirty ? serializeStageLayoutsForSave(controllerLayouts) : null;
         message.clearControllerLayouts = !controllerLayoutDirty;
       }
+      if (constantsSavedSnapshot) {
+        const constantsDirty = isToolDirty("constants");
+        message.constants = constantsDirty ? gameConstants : null;
+        message.clearConstants = !constantsDirty;
+      }
       return { ...message, ...overrides };
     }
 
@@ -5141,9 +5248,11 @@
         flow: null,
         layouts: null,
         controllerLayouts: null,
+        constants: null,
         clearFlow: true,
         clearLayouts: true,
-        clearControllerLayouts: true
+        clearControllerLayouts: true,
+        clearConstants: true
       };
       runtimeTestChannel?.postMessage(message);
       if (canUseServer) {
@@ -5555,6 +5664,19 @@
         }
         if (value === "displayText") action.text = action.text || "Displayed text";
         if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
+        if (value === "setTimerShown") action.isShown = action.isShown !== false;
+        if (value === "startCraftingTimer") {
+          action.timerEndTargetActionId = action.timerEndTargetActionId || "";
+          action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
+        }
+        if (value === "decision") {
+          action.variable = action.variable || "activePlayerCount";
+          action.valueType = action.valueType || "int";
+          action.operator = action.operator || "<";
+          action.compareValue = action.compareValue || "3";
+          action.trueTargetActionId = action.trueTargetActionId || "";
+          action.falseTargetActionId = action.falseTargetActionId || "";
+        }
         if (value === "transition") action.transition = action.transition || "horizontalWipe";
         if (value === "transitionState") action.targetState = action.targetState || "intro";
         if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = action.textTarget || "presentation";
@@ -5646,6 +5768,77 @@
           action.instant = value === "true";
           renderFlowListAndPublish();
         }));
+      }
+      if (action.type === "setTimerShown") {
+        flowEditor.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Showing the timer resets it to the Crafting Timer Duration game constant. Hiding pauses it and keeps the current remaining value."));
+      }
+      if (action.type === "startCraftingTimer") {
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("The timer keeps running after this action advances. If all active players submit text before it ends, On Answers Submitted fires instead."));
+      }
+      if (action.type === "decision") {
+        flowEditor.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", [
+          { id: "activePlayerCount", name: "Active Player Count" }
+        ], (value) => {
+          action.variable = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("Value Type", action.valueType || "int", [
+          { id: "int", name: "Int" },
+          { id: "float", name: "Float" },
+          { id: "string", name: "String" },
+          { id: "bool", name: "Bool" }
+        ], (value) => {
+          action.valueType = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("Comparator", action.operator || "<", [
+          { id: "<", name: "<" },
+          { id: "<=", name: "<=" },
+          { id: "==", name: "==" },
+          { id: "!=", name: "!=" },
+          { id: ">=", name: ">=" },
+          { id: ">", name: ">" }
+        ], (value) => {
+          action.operator = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowField("Compare Value", action.compareValue || "3", (value) => {
+          action.compareValue = value || "0";
+          renderFlowListAndPublish();
+        }));
+        const targetOptions = flowActionTargetOptions(state, action.trueTargetActionId || action.falseTargetActionId || "");
+        flowEditor.appendChild(flowSelect("If True", action.trueTargetActionId || "", targetOptions, (value) => {
+          action.trueTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("If False", action.falseTargetActionId || "", targetOptions, (value) => {
+          action.falseTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Decision actions are invisible branch points. Runtime evaluates them immediately and jumps to the selected target action."));
       }
       if (action.type === "transition") {
         flowEditor.appendChild(flowSelect("Transition", action.transition || "horizontalWipe", flowTransitions, (value) => {
@@ -6023,8 +6216,8 @@
 
     async function loadGameConstants() {
       const result = await getJson("/api/game-constants");
-      gameConstants = result.constants || { playerColors: [] };
-      constantsSavedSnapshot = JSON.stringify(gameConstants);
+      gameConstants = result.constants || { playerColors: [], craftingTimerDuration: 30 };
+      constantsSavedSnapshot = JSON.stringify(result.savedConstants || result.constants || gameConstants);
       updateConstantsStorageStatus(result.storage);
       renderConstantsTool();
     }
@@ -6049,6 +6242,9 @@
 
     function renderConstantsTool() {
       const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
+      if (craftingTimerDurationInput) {
+        craftingTimerDurationInput.value = String(Math.max(1, Number(gameConstants.craftingTimerDuration || 30)));
+      }
       playerColorCount.textContent = `${colors.length} ${colors.length === 1 ? "color" : "colors"}`;
       playerColorList.replaceChildren();
       colors.forEach((color, index) => {
@@ -6062,7 +6258,7 @@
         picker.addEventListener("input", () => {
           gameConstants.playerColors[index] = picker.value;
           value.value = picker.value.toUpperCase();
-          updateGlobalSaveButton();
+          markConstantsChanged();
         });
 
         const value = document.createElement("input");
@@ -6078,7 +6274,7 @@
           gameConstants.playerColors[index] = nextColor;
           picker.value = nextColor;
           value.value = nextColor.toUpperCase();
-          updateGlobalSaveButton();
+          markConstantsChanged();
         });
 
         const remove = document.createElement("button");
@@ -6089,6 +6285,7 @@
         remove.addEventListener("click", () => {
           gameConstants.playerColors.splice(index, 1);
           renderConstantsTool();
+          markConstantsChanged();
         });
 
         row.appendChild(picker);
@@ -6099,12 +6296,18 @@
       updateGlobalSaveButton();
     }
 
+    function markConstantsChanged() {
+      publishRuntimeLocalChanges();
+      updateGlobalSaveButton();
+    }
+
     function addPlayerColor() {
       const nextColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"];
       const used = new Set(gameConstants.playerColors || []);
       const next = nextColors.find((color) => !used.has(color)) || "#ffffff";
       gameConstants.playerColors = [...(gameConstants.playerColors || []), next];
       renderConstantsTool();
+      markConstantsChanged();
     }
 
     async function saveGameConstants() {
@@ -6120,6 +6323,12 @@
       if (constantsToolInitialized) return;
       constantsToolInitialized = true;
       addPlayerColorButton.addEventListener("click", addPlayerColor);
+      craftingTimerDurationInput?.addEventListener("change", () => {
+        const value = Number(craftingTimerDurationInput.value || 30);
+        gameConstants.craftingTimerDuration = Math.max(1, Math.min(3600, Number.isFinite(value) ? value : 30));
+        craftingTimerDurationInput.value = String(gameConstants.craftingTimerDuration);
+        markConstantsChanged();
+      });
       try {
         await loadGameConstants();
       } catch (error) {
@@ -6318,6 +6527,7 @@
         { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "text", width: 740, height: 90 },
         { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", kind: "text", width: 900, height: 86 },
         { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", kind: "art", width: 260, height: 260 },
+        { id: "craftingTimer", name: "Crafting Timer", selector: "#craftingTimer", kind: "art", width: 190, height: 190 },
         { id: "stageCodeBadge", name: "Small Room Code Widget", selector: "#stageCodeBadge", kind: "art", width: 210, height: 112 },
         { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", kind: "art", width: 92, height: 92 },
         { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", kind: "art", width: 1500, height: 180 },
@@ -6652,6 +6862,8 @@
         content.appendChild(pill);
       } else if (id === "startpopup") {
         content.innerHTML = `<div class="layout-preview-countdown"><span>Starting in</span><strong>3</strong></div>`;
+      } else if (id === "craftingtimer") {
+        content.innerHTML = `<div class="layout-preview-countdown"><span>Timer</span><strong>30</strong></div>`;
       } else if (id === "playerlobby") {
         content.appendChild(layoutPreviewPlayers());
       } else if (id === "stagecodebadge") {
