@@ -7595,7 +7595,6 @@
     async function saveGameFlow() {
       const result = await postJson("/api/game-flow", { flow: serializeGameFlowForSave(gameFlow) });
       gameFlow = result.flow;
-      await loadStageLayouts();
       flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
       updateFlowStorageStatus(result.storage);
       selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
