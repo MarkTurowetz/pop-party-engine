@@ -144,6 +144,43 @@
           }
         },
         {
+          "id": "crafting-game-state-action-mqm46jjo",
+          "name": "Game Action 6",
+          "type": "doNothing",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1.5
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 484,
+            "y": 202
+          }
+        },
+        {
+          "id": "crafting-game-state-action-mqm47bs4",
+          "name": "Game Action 7",
+          "type": "playAudio",
+          "timing": {
+            "mode": "S+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 490,
+            "y": 370
+          },
+          "audioUrl": ""
+        },
+        {
           "id": "crafting-game-state-action-mqlrgs0y",
           "name": "Set Timer Shown",
           "type": "setTimerShown",
@@ -218,7 +255,7 @@
             "C",
             "D"
           ],
-          "inputMode": "singleSelect",
+          "inputMode": "submitOnce",
           "locked": false,
           "nextTargetActionId": "return",
           "nodePosition": {
