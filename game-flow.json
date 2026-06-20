@@ -345,7 +345,7 @@
           "instant": false,
           "isShown": true,
           "subActions": [],
-          "variable": "activePlayerCount",
+          "variable": "players.length",
           "valueType": "int",
           "operator": "<",
           "compareValue": "3",
@@ -354,7 +354,30 @@
           "nodePosition": {
             "x": 80,
             "y": 390
-          }
+          },
+          "branches": [
+            {
+              "id": "legacy-hit",
+              "type": "hit",
+              "value": "3",
+              "code": "x < 3",
+              "targetActionId": "presentation-game-state-action-mqmt6c5d"
+            },
+            {
+              "id": "code-mqmt62zz-g9t5x",
+              "type": "code",
+              "value": "",
+              "code": "x > 3",
+              "targetActionId": "presentation-game-state-action-mqmt6p8z"
+            },
+            {
+              "id": "no-match",
+              "type": "noMatch",
+              "value": "",
+              "code": "x < 3",
+              "targetActionId": "presentation-game-state-action-mqlahz0a"
+            }
+          ]
         },
         {
           "id": "presentation-game-state-action-mqlahz0a",
@@ -373,6 +396,44 @@
           "nodePosition": {
             "x": 416,
             "y": 432
+          },
+          "nextTargetActionId": "return"
+        },
+        {
+          "id": "presentation-game-state-action-mqmt6c5d",
+          "name": "Game Action 4",
+          "type": "presentText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "there are 3 players",
+          "textTarget": "presentation-game-statemomenttext",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 387,
+            "y": 202
+          },
+          "nextTargetActionId": "return"
+        },
+        {
+          "id": "presentation-game-state-action-mqmt6p8z",
+          "name": "Game Action 5",
+          "type": "presentText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "there are more than 3 players",
+          "textTarget": "presentation-game-statemomenttext",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 414,
+            "y": 693
           },
           "nextTargetActionId": "return"
         }
