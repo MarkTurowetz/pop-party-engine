@@ -2064,6 +2064,7 @@
       text-align: left;
       cursor: pointer;
       user-select: none;
+      touch-action: none;
     }
 
     .flow-node.is-selected {
@@ -2088,8 +2089,7 @@
       min-height: 190px;
       border-radius: 34px;
       background: var(--cyan);
-      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-      padding: 34px 44px;
+      padding: 22px 26px;
     }
 
     .flow-node.is-transition {
@@ -2118,6 +2118,58 @@
       font-size: 12px;
       font-weight: 1000;
       line-height: 1.15;
+    }
+
+    .flow-node-timing {
+      justify-self: start;
+      padding: 4px 9px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: var(--yellow);
+      color: #5e5475;
+      font-size: 11px;
+      font-weight: 1000;
+      line-height: 1;
+      text-transform: uppercase;
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.24);
+    }
+
+    .flow-node-subactions {
+      display: grid;
+      gap: 7px;
+    }
+
+    .flow-node-subaction {
+      display: grid;
+      gap: 4px;
+      padding: 8px 10px;
+      border: 4px dashed var(--ink);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.66);
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .flow-node-subaction.is-selected {
+      background: var(--cyan);
+      border-style: solid;
+    }
+
+    .flow-node-subaction strong {
+      font-size: 12px;
+      font-weight: 1000;
+      line-height: 0.95;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .flow-node-subaction span {
+      color: #5e5475;
+      font-size: 10px;
+      font-weight: 1000;
+      line-height: 1;
+      text-transform: uppercase;
     }
 
     .flow-node-ports {
@@ -5474,6 +5526,11 @@
       return `${action.text || "Text"} / ${timingText}`;
     }
 
+    function actionTimingLabel(action, isSubAction = false) {
+      const timing = ensureActionTiming(action, isSubAction);
+      return `${timing.mode} ${Number(timing.seconds || 0).toFixed(2)}s`;
+    }
+
     function flowTargetActionName(actionId) {
       if (actionId === "none") return "None";
       if (actionId === "return") return "Return";
@@ -5685,8 +5742,8 @@
 
     function nodePoint(node) {
       return {
-        x: Number(node.dataset.x || 0) + Number(node.dataset.width || node.offsetWidth || 0) / 2,
-        y: Number(node.dataset.y || 0) + Number(node.dataset.height || node.offsetHeight || 0) / 2
+        x: Number(node.dataset.x || 0) + Number(node.offsetWidth || node.dataset.width || 0) / 2,
+        y: Number(node.dataset.y || 0) + Number(node.offsetHeight || node.dataset.height || 0) / 2
       };
     }
 
@@ -5819,9 +5876,10 @@
       return ports;
     }
 
-    function createFlowNode({ id, title, subtitle, x, y, width, height, className = "", selected = false }) {
-      const node = document.createElement("button");
-      node.type = "button";
+    function createFlowNode({ id, title, subtitle, timing = "", x, y, width, height, className = "", selected = false }) {
+      const node = document.createElement("div");
+      node.role = "button";
+      node.tabIndex = 0;
       node.className = `flow-node ${className}`;
       node.dataset.nodeId = id;
       node.dataset.x = String(x);
@@ -5840,7 +5898,43 @@
       subtitleEl.className = "flow-node-subtitle";
       subtitleEl.textContent = subtitle;
       node.append(titleEl, subtitleEl);
+      if (timing) {
+        const timingEl = document.createElement("div");
+        timingEl.className = "flow-node-timing";
+        timingEl.textContent = timing;
+        node.appendChild(timingEl);
+      }
       return node;
+    }
+
+    function actionNodeIsSelected(action) {
+      return selectedFlowActionId === action.id || (action.subActions || []).some((subAction) => subAction.id === selectedFlowActionId);
+    }
+
+    function createFlowNodeSubActions(state, parentAction) {
+      const subActions = parentAction.subActions || [];
+      if (!subActions.length) return null;
+      const list = document.createElement("div");
+      list.className = "flow-node-subactions";
+      for (const subAction of subActions) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "flow-node-subaction";
+        item.classList.toggle("is-selected", selectedFlowActionId === subAction.id);
+        const title = document.createElement("strong");
+        title.textContent = subAction.name || "Sub-Action";
+        const timing = document.createElement("span");
+        timing.textContent = actionTimingLabel(subAction, true);
+        item.append(title, timing);
+        item.addEventListener("click", (event) => {
+          event.stopPropagation();
+          selectedFlowStateId = state.id;
+          selectedFlowActionId = subAction.id;
+          renderFlowTool();
+        });
+        list.appendChild(item);
+      }
+      return list;
     }
 
     function bindFlowNodeDrag(node, item, { afterDrag = null } = {}) {
@@ -5928,14 +6022,17 @@
           id: action.id,
           title: action.name || `Action ${index + 1}`,
           subtitle: `${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`,
+          timing: actionTimingLabel(action, false),
           x,
           y,
-          width: action.type === "decision" ? 210 : 250,
-          height: action.type === "decision" ? 210 : 122,
+          width: action.type === "decision" ? 300 : 260,
+          height: action.type === "decision" ? 210 : 134,
           className: flowNodeClassForAction(action),
-          selected: selectedFlowActionId === action.id
+          selected: actionNodeIsSelected(action)
         });
         node.dataset.actionId = action.id;
+        const subActionList = createFlowNodeSubActions(state, action);
+        if (subActionList) node.appendChild(subActionList);
         node.appendChild(createFlowNodePorts(action));
         bindFlowNodeDrag(node, action);
         node.addEventListener("click", () => {
@@ -5987,6 +6084,277 @@
         return [{ label: action.trigger === "onCountdownComplete" ? "Countdown Complete" : "Event Complete", field: "nextTargetActionId" }];
       }
       return [{ label: "Next", field: "nextTargetActionId" }];
+    }
+
+    function refreshFlowNodeInspectorChange() {
+      renderFlowListAndPublish();
+      renderFlowNodeView();
+    }
+
+    function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
+      action.type = value;
+      if (value === "presentText") action.text = action.text || "Presented text";
+      if (value === "multipleChoiceInput") {
+        action.prompt = action.prompt || "Answer this question by tapping an answer";
+        action.options = Array.isArray(action.options) && action.options.length ? action.options : ["A", "B", "C", "D"];
+        action.inputMode = action.inputMode || "singleSelect";
+        action.locked = action.locked === true;
+        action.timerEndTargetActionId = action.timerEndTargetActionId || "";
+        action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
+      }
+      if (value === "textSubmissionInput") {
+        action.prompt = action.prompt || "Write your answer";
+        action.placeholder = action.placeholder || "Answer here";
+        action.characterLimit = Number(action.characterLimit || 0);
+        action.timerEndTargetActionId = action.timerEndTargetActionId || "";
+        action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
+      }
+      if (value === "displayText") action.text = action.text || "Displayed text";
+      if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
+      if (value === "setTimerShown") action.isShown = action.isShown !== false;
+      if (value === "decision") {
+        action.variable = action.variable || "activePlayerCount";
+        action.valueType = action.valueType || "int";
+        action.operator = action.operator || "<";
+        action.compareValue = action.compareValue || "3";
+        action.trueTargetActionId = action.trueTargetActionId || "";
+        action.falseTargetActionId = action.falseTargetActionId || "";
+      }
+      if (value === "transition") action.transition = action.transition || "horizontalWipe";
+      if (value === "transitionState") action.targetState = action.targetState || "intro";
+      if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = action.textTarget || "presentation";
+      ensureActionTiming(action, isSubAction);
+    }
+
+    function appendFlowActionPropertyControls(target, state, actionRef, { includeSubActionButton = false } = {}) {
+      const action = actionRef?.action;
+      if (!state || !action) return;
+      const rerender = (redrawNodeView = true) => {
+        if (redrawNodeView) {
+          refreshFlowNodeInspectorChange();
+          return;
+        }
+        renderFlowListAndPublish();
+        redrawFlowNodeWires();
+      };
+      target.appendChild(flowField("Action Name", action.name, (value) => {
+        action.name = value || action.name;
+        rerender();
+      }));
+      target.appendChild(flowActionTypeSearch("Action Type", action.type, flowActionTypes, (value) => {
+        applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
+        rerender();
+      }));
+      if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
+        const textTargetOptions = textTargetOptionsForFlowState(state.id, action.textTarget || "presentation");
+        target.appendChild(flowSelect("Text Field", normalizeTextTargetId(action.textTarget || textTargetOptions[0]?.id || "presentation"), textTargetOptions, (value) => {
+          action.textTarget = value;
+          rerender();
+        }));
+        target.appendChild(flowTextarea("Text", action.text || "", (value) => {
+          action.text = value;
+          rerender(false);
+        }));
+        target.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          rerender();
+        }));
+        target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
+          rerender();
+        }));
+      }
+      if (action.type === "multipleChoiceInput") {
+        target.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", [
+          { id: "singleSelect", name: "Multi-Select Single" },
+          { id: "submitOnce", name: "Single Input Done State" },
+          { id: "continuous", name: "Continuous Input" }
+        ], (value) => {
+          action.inputMode = value;
+          rerender();
+        }));
+        if ((action.inputMode || "singleSelect") === "singleSelect") {
+          target.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", [
+            { id: "false", name: "False" },
+            { id: "true", name: "True" }
+          ], (value) => {
+            action.locked = value === "true";
+            rerender();
+          }));
+        }
+        target.appendChild(flowTextarea("Prompt Text", action.prompt || "Answer this question by tapping an answer", (value) => {
+          action.prompt = value || "Answer this question by tapping an answer";
+          rerender(false);
+        }));
+        target.appendChild(flowTextarea("Answer Bubble Text Options", (action.options || ["A", "B", "C", "D"]).join("\n"), (value) => {
+          const options = value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 12);
+          action.options = options.length ? options : ["A", "B", "C", "D"];
+          rerender(false);
+        }));
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        target.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          rerender();
+        }));
+      }
+      if (action.type === "textSubmissionInput") {
+        target.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
+          action.prompt = value || "Write your answer";
+          rerender(false);
+        }));
+        target.appendChild(flowField("Placeholder Text", action.placeholder || "Answer here", (value) => {
+          action.placeholder = value || "Answer here";
+          rerender();
+        }));
+        target.appendChild(flowNumber("Character Limit (0 = No Limit)", Number(action.characterLimit || 0), (value) => {
+          action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
+          rerender();
+        }));
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        target.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          rerender();
+        }));
+      }
+      if (action.type === "setPlayersShown") {
+        target.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          rerender();
+        }));
+        target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
+          rerender();
+        }));
+      }
+      if (action.type === "setTimerShown") {
+        target.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          rerender();
+        }));
+        target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
+          rerender();
+        }));
+      }
+      if (action.type === "decision") {
+        target.appendChild(flowSelect("Variable", action.variable || "activePlayerCount", [
+          { id: "activePlayerCount", name: "Active Player Count" }
+        ], (value) => {
+          action.variable = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("Value Type", action.valueType || "int", [
+          { id: "int", name: "Int" },
+          { id: "float", name: "Float" },
+          { id: "string", name: "String" },
+          { id: "bool", name: "Bool" }
+        ], (value) => {
+          action.valueType = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("Comparator", action.operator || "<", [
+          { id: "<", name: "<" },
+          { id: "<=", name: "<=" },
+          { id: "==", name: "==" },
+          { id: "!=", name: "!=" },
+          { id: ">=", name: ">=" },
+          { id: ">", name: ">" }
+        ], (value) => {
+          action.operator = value;
+          rerender();
+        }));
+        target.appendChild(flowField("Compare Value", action.compareValue || "3", (value) => {
+          action.compareValue = value || "0";
+          rerender();
+        }));
+        const targetOptions = flowActionTargetOptions(state, action.trueTargetActionId || action.falseTargetActionId || "");
+        target.appendChild(flowSelect("If True", action.trueTargetActionId || "", targetOptions, (value) => {
+          action.trueTargetActionId = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("If False", action.falseTargetActionId || "", targetOptions, (value) => {
+          action.falseTargetActionId = value;
+          rerender();
+        }));
+      }
+      if (action.type === "transition") {
+        target.appendChild(flowSelect("Transition", action.transition || "horizontalWipe", flowTransitions, (value) => {
+          action.transition = value;
+          rerender();
+        }));
+      }
+      if (action.type === "transitionState") {
+        target.appendChild(flowSelect("Target State", action.targetState || "intro", gameFlow.states.map((item) => ({ id: item.id, name: item.name })), (value) => {
+          action.targetState = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("Trigger", action.trigger || "", [
+          { id: "", name: "Immediate / Manual" },
+          { id: "onCountdownComplete", name: "On Countdown Complete" }
+        ], (value) => {
+          action.trigger = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect(action.trigger === "onCountdownComplete" ? "On Countdown Complete Exit" : "Event Exit", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
+          action.nextTargetActionId = value;
+          rerender();
+        }));
+      }
+      if (action.type === "startCraftingTimer") {
+        target.appendChild(readOnlyFlowNote("The timer starts and this action advances normally. Timer Ends and Answers Submitted exits are defined on the input action that follows."));
+      }
+      if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "textSubmissionInput") {
+        target.appendChild(flowSelect("Next Action", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
+          action.nextTargetActionId = value;
+          rerender();
+        }));
+      }
+      const isInputAction = actionTypeMeta(action.type).category === "input" && !actionRef.isSubAction;
+      const timingOptions = actionRef.isSubAction
+        ? [{ id: "S+", name: "S+ Timing" }]
+        : isInputAction
+          ? [{ id: "E+", name: "E+ Timing" }]
+          : [{ id: "E+", name: "E+ Timing" }, { id: "S+", name: "S+ Timing" }];
+      if (isInputAction) target.appendChild(readOnlyFlowNote("Input actions always use E+ timing because they wait for player or stage input."));
+      if (actionRef.isSubAction) target.appendChild(readOnlyFlowNote("Sub-actions use S+ timing as an offset from the primary action start."));
+      const timing = ensureActionTiming(action, actionRef.isSubAction);
+      target.appendChild(flowSelect("Timing Mode", timing.mode, timingOptions, (value) => {
+        ensureActionTiming(action, actionRef.isSubAction).mode = value === "S+" && !isInputAction ? "S+" : "E+";
+        rerender();
+      }));
+      target.appendChild(flowNumber("Timing Seconds", timing.seconds, (value) => {
+        ensureActionTiming(action, actionRef.isSubAction).seconds = value;
+        rerender();
+      }));
+      if (includeSubActionButton) {
+        target.appendChild(flowActionButton("Add Sub-Action", () => addFlowSubAction(actionRef)));
+      }
     }
 
     function createFlowNodePorts(action) {
@@ -6073,20 +6441,10 @@
       }
       title.textContent = action.name;
       const summary = document.createElement("p");
-      summary.textContent = actionSummary(action);
+      summary.textContent = `${actionRef.isSubAction ? `Sub-action under ${actionRef.parentAction?.name || "Action"}. ` : ""}${actionSummary(action, actionRef.isSubAction)}`;
       flowNodeInspector.append(title, summary);
       flowNodeInspector.appendChild(readOnlyFlowNote(`${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`));
-      for (const exit of flowNodeExitDefinitions(action)) {
-        const options = exit.targetKind === "state"
-          ? gameFlow.states.map((item) => ({ id: item.id, name: item.name }))
-          : flowActionTargetOptions(state, action[exit.field] || "");
-        flowNodeInspector.appendChild(flowSelect(exit.label, action[exit.field] || "", options, (value) => {
-          pushFlowHistory();
-          action[exit.field] = value;
-          renderFlowListAndPublish();
-          renderFlowNodeView();
-        }));
-      }
+      appendFlowActionPropertyControls(flowNodeInspector, state, actionRef, { includeSubActionButton: !actionRef.isSubAction });
       flowNodeInspector.appendChild(flowActionButton("Edit In List View", () => {
         setFlowViewMode("list");
       }));
@@ -6434,38 +6792,7 @@
         renderFlowTool();
       }));
       flowEditor.appendChild(flowActionTypeSearch("Action Type", action.type, flowActionTypes, (value) => {
-        action.type = value;
-        if (value === "presentText") action.text = action.text || "Presented text";
-        if (value === "multipleChoiceInput") {
-          action.prompt = action.prompt || "Answer this question by tapping an answer";
-          action.options = Array.isArray(action.options) && action.options.length ? action.options : ["A", "B", "C", "D"];
-          action.inputMode = action.inputMode || "singleSelect";
-          action.locked = action.locked === true;
-          action.timerEndTargetActionId = action.timerEndTargetActionId || "";
-          action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
-        }
-        if (value === "textSubmissionInput") {
-          action.prompt = action.prompt || "Write your answer";
-          action.placeholder = action.placeholder || "Answer here";
-          action.characterLimit = Number(action.characterLimit || 0);
-          action.timerEndTargetActionId = action.timerEndTargetActionId || "";
-          action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
-        }
-        if (value === "displayText") action.text = action.text || "Displayed text";
-        if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
-        if (value === "setTimerShown") action.isShown = action.isShown !== false;
-        if (value === "decision") {
-          action.variable = action.variable || "activePlayerCount";
-          action.valueType = action.valueType || "int";
-          action.operator = action.operator || "<";
-          action.compareValue = action.compareValue || "3";
-          action.trueTargetActionId = action.trueTargetActionId || "";
-          action.falseTargetActionId = action.falseTargetActionId || "";
-        }
-        if (value === "transition") action.transition = action.transition || "horizontalWipe";
-        if (value === "transitionState") action.targetState = action.targetState || "intro";
-        if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = action.textTarget || "presentation";
-        ensureActionTiming(action, actionRef.isSubAction);
+        applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
         renderFlowTool();
       }));
       if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
