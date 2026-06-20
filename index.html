@@ -856,6 +856,10 @@
       will-change: transform, opacity;
     }
 
+    .player-tile.needs-input .player-avatar {
+      transform: scale(0.8);
+    }
+
     .player-answer-bubble {
       position: absolute;
       left: 50%;
@@ -879,6 +883,13 @@
       white-space: normal;
       transform: translateX(-50%);
       animation: answerBubbleIn 180ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .player-lobby.answers-hidden .player-answer-bubble {
+      opacity: 0;
+      transform: translateX(-50%) translateY(10px) scale(0.72);
+      transition: opacity 220ms ease, transform 220ms cubic-bezier(0.19, 1, 0.22, 1);
+      pointer-events: none;
     }
 
     .player-answer-bubble.is-long {
@@ -921,6 +932,9 @@
       place-items: center;
       position: relative;
       color: var(--avatar-color);
+      transform: scale(1);
+      transition: transform 260ms cubic-bezier(0.19, 1, 0.22, 1);
+      transform-origin: center;
     }
 
     .dino-icon {
@@ -3310,22 +3324,22 @@
           <p id="constantsStorageStatus">Checking constants storage...</p>
         </div>
         <div class="flow-list">
-          <button class="flow-state-header" type="button">
+          <button class="flow-state-header" type="button" data-constant-target="gameTitle">
             <span><strong>Game Title</strong><span>Name shown to players</span></span>
           </button>
-          <button class="flow-state-header" type="button">
+          <button class="flow-state-header" type="button" data-constant-target="craftingTimerDuration">
             <span><strong>Crafting Timer</strong><span>Duration in seconds</span></span>
           </button>
-          <button class="flow-state-header" type="button">
+          <button class="flow-state-header" type="button" data-constant-target="numberOfRounds">
             <span><strong>Number of Rounds</strong><span>Rounds before ending</span></span>
           </button>
-          <button class="flow-state-header" type="button">
+          <button class="flow-state-header" type="button" data-constant-target="randomChanceTest">
             <span><strong>Random Chance Test</strong><span>Temporary float test value</span></span>
           </button>
-          <button class="flow-state-header" type="button">
+          <button class="flow-state-header" type="button" data-constant-target="overrideFirstGameOfSession">
             <span><strong>First Game Override</strong><span>Force first-game checks</span></span>
           </button>
-          <button class="flow-state-header is-selected" type="button">
+          <button class="flow-state-header is-selected" type="button" data-constant-target="playerColors">
             <span><strong>Player Colors</strong><span>Random unique colors for joined players</span></span>
             <span class="flow-pill" id="playerColorCount">0 colors</span>
           </button>
@@ -3340,30 +3354,30 @@
           <h1>Game Constants</h1>
           <p>Constants are typed values read by the stage, controllers, and decision branches.</p>
         </div>
-        <label class="field-label flow-form-grid">
+        <label class="field-label flow-form-grid" data-constant-detail="gameTitle">
           Game Title
           <input class="text-input" id="gameTitleInput" type="text" maxlength="80" value="Party Game Template">
         </label>
-        <label class="field-label flow-form-grid">
+        <label class="field-label flow-form-grid" data-constant-detail="craftingTimerDuration">
           Crafting Timer Duration Seconds
           <input class="text-input" id="craftingTimerDurationInput" type="number" min="1" max="3600" step="1" value="30">
         </label>
-        <label class="field-label flow-form-grid">
+        <label class="field-label flow-form-grid" data-constant-detail="numberOfRounds">
           Number of Rounds
           <input class="text-input" id="numberOfRoundsInput" type="number" min="1" max="99" step="1" value="3">
         </label>
-        <label class="field-label flow-form-grid">
+        <label class="field-label flow-form-grid" data-constant-detail="randomChanceTest">
           Random Chance Test
           <input class="text-input" id="randomChanceTestInput" type="number" min="0" max="1" step="0.01" value="0.5">
         </label>
-        <label class="field-label flow-form-grid">
+        <label class="field-label flow-form-grid" data-constant-detail="overrideFirstGameOfSession">
           Override First Game of Session
           <select class="text-input" id="overrideFirstGameInput">
             <option value="false">False</option>
             <option value="true">True</option>
           </select>
         </label>
-        <div class="constants-editor" id="playerColorList"></div>
+        <div class="constants-editor" id="playerColorList" data-constant-detail="playerColors"></div>
       </main>
     </div>
   </section>
@@ -3599,6 +3613,7 @@
       randomChanceTest: 0.5,
       overrideFirstGameOfSession: false
     };
+    let selectedGameConstantId = "gameTitle";
     let stageLayouts = { canvas: { width: 1920, height: 1080 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let controllerLayouts = { canvas: { width: 390, height: 844 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let flowSavedSnapshot = "";
@@ -4271,6 +4286,7 @@
         name: player.name,
         avatar: player.avatar || {},
         isVip: player.isVip === true,
+        needsInput: player.needsInput === true,
         answer: player.answer ? { optionIndex: player.answer.optionIndex, text: player.answer.text, done: player.answer.done === true, nonce: player.answer.nonce || 0 } : null
       });
     }
@@ -4285,6 +4301,7 @@
     function createPlayerTile(player, playerIndex, signature) {
       const tile = document.createElement("article");
       tile.className = "player-tile";
+      tile.classList.toggle("needs-input", player.needsInput === true);
       tile.dataset.playerId = player.id;
       tile.dataset.signature = signature;
       tile.style.setProperty("--player-index", playerIndex);
@@ -4313,6 +4330,7 @@
         const tile = existing?.dataset.signature === signature
           ? existing
           : createPlayerTile(player, playerIndex, signature);
+        tile.classList.toggle("needs-input", player.needsInput === true);
         tile.style.setProperty("--player-index", playerIndex);
         if (existing && existing !== tile) {
           if (existing === cursor) cursor = existing.nextElementSibling;
@@ -4503,6 +4521,7 @@
       if (stageDebugAlert && lobby.lastDecisionTrace?.selectedTarget !== "none") stageDebugAlert.classList.add("hidden");
       renderStagePlayers(players);
       playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
+      playerLobby.classList.toggle("answers-hidden", lobby.playerAnswersShown === false);
       renderCraftingTimer(lobby.craftingTimer);
 
       const vip = players.find((player) => player.isVip);
@@ -4641,6 +4660,16 @@
             if (renderedActionKey !== actionKey) return;
             completeFlowAction("callback", action.id);
           }, delayMs);
+        }
+        return;
+      }
+      if (action.type === "setPlayerAnswersShown") {
+        playerLobby.classList.toggle("answers-hidden", action.isShown === false);
+        if (isPrimary) {
+          window.setTimeout(() => {
+            if (renderedActionKey !== actionKey) return;
+            completeFlowAction("callback", action.id);
+          }, action.instant ? 0 : 240);
         }
         return;
       }
@@ -5786,6 +5815,7 @@
       }
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
+      if (action.type === "setPlayerAnswersShown") return `${action.isShown === false ? "Hide" : "Show"} player answers / ${timingText}${instantText}`;
       if (action.type === "setTimerShown") return `${action.isShown === false ? "Hide" : "Show"} crafting timer / ${timingText}${instantText}`;
       if (action.type === "startCraftingTimer") return `Start crafting timer / ${timingText}`;
       if (action.type === "decision") return `${decisionVariableName(action.variable)}: ${decisionSummary(action)}`;
@@ -6699,7 +6729,7 @@
       }
       if (value === "displayText") action.text = action.text || "Displayed text";
       if (value === "playAudio") action.audioUrl = action.audioUrl || "";
-      if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
+      if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown") action.isShown = action.isShown !== false;
       if (value === "setTimerShown") action.isShown = action.isShown !== false;
       if (value === "decision") {
         action.variable = action.variable || "activePlayerCount";
@@ -6954,6 +6984,22 @@
       }
       if (action.type === "setPlayersShown") {
         target.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          rerender();
+        }));
+        target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
+          rerender();
+        }));
+      }
+      if (action.type === "setPlayerAnswersShown") {
+        target.appendChild(flowSelect("Player Answers Visible", action.isShown === false ? "false" : "true", [
           { id: "true", name: "True" },
           { id: "false", name: "False" }
         ], (value) => {
@@ -7690,6 +7736,22 @@
           renderFlowListAndPublish();
         }));
       }
+      if (action.type === "setPlayerAnswersShown") {
+        flowEditor.appendChild(flowSelect("Player Answers Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
+          renderFlowListAndPublish();
+        }));
+      }
       if (action.type === "setTimerShown") {
         flowEditor.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", [
           { id: "true", name: "True" },
@@ -8257,6 +8319,13 @@
     function renderConstantsTool() {
       gameConstants = normalizeClientGameConstants(gameConstants);
       const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
+      document.querySelectorAll("[data-constant-target]").forEach((button) => {
+        button.classList.toggle("is-selected", button.dataset.constantTarget === selectedGameConstantId);
+      });
+      document.querySelectorAll("[data-constant-detail]").forEach((detail) => {
+        detail.classList.toggle("hidden", detail.dataset.constantDetail !== selectedGameConstantId);
+      });
+      addPlayerColorButton?.classList.toggle("hidden", selectedGameConstantId !== "playerColors");
       if (gameTitleInput) gameTitleInput.value = gameConstants.gameTitle;
       if (craftingTimerDurationInput) {
         craftingTimerDurationInput.value = String(Math.max(1, Number(gameConstants.craftingTimerDuration || 30)));
@@ -8341,6 +8410,12 @@
       constantsScreen.classList.remove("hidden");
       if (constantsToolInitialized) return;
       constantsToolInitialized = true;
+      document.querySelectorAll("[data-constant-target]").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedGameConstantId = button.dataset.constantTarget || "gameTitle";
+          renderConstantsTool();
+        });
+      });
       addPlayerColorButton.addEventListener("click", addPlayerColor);
       gameTitleInput?.addEventListener("input", () => {
         gameConstants.gameTitle = gameTitleInput.value || "Party Game Template";

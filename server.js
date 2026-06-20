@@ -50,12 +50,12 @@ const availableFlowActionTypes = [
   { id: "playAudio", name: "Play Audio", category: "standard" },
   { id: "displayText", name: "Display Text", category: "standard" },
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
+  { id: "setPlayerAnswersShown", name: "Set Player Answers Shown", category: "standard" },
   { id: "setTimerShown", name: "Set Timer Shown", category: "standard" },
   { id: "startCraftingTimer", name: "Start Crafting Timer", category: "standard" },
   { id: "decision", name: "Decision", category: "standard" },
   { id: "transition", name: "Do Transition", category: "standard" },
-  { id: "transitionState", name: "Transition To State", category: "standard" },
-  { id: "text", name: "Show Text", category: "standard" }
+  { id: "transitionState", name: "Transition To State", category: "standard" }
 ];
 const defaultGameFlow = {
   states: [
@@ -944,7 +944,8 @@ function flowActionTypeMeta(type) {
 }
 
 function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) {
-  const type = availableFlowActionTypes.some((item) => item.id === action?.type) ? action.type : "presentText";
+  const requestedType = action?.type === "text" ? "displayText" : action?.type;
+  const type = availableFlowActionTypes.some((item) => item.id === requestedType) ? requestedType : "presentText";
   const category = flowActionTypeMeta(type).category;
   const fallbackId = `${stateId}-${isSubAction ? "sub-action" : "action"}-${actionIndex + 1}`;
   const base = {
@@ -1007,6 +1008,9 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
     };
   }
   if (type === "setPlayersShown") {
+    return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
+  }
+  if (type === "setPlayerAnswersShown") {
     return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
   }
   if (type === "setTimerShown") {
@@ -1710,6 +1714,9 @@ function publicFlowAction(action, index) {
   if (action.type === "setPlayersShown") {
     return { ...base, type: "setPlayersShown", isShown: action.isShown !== false, instant: action.instant === true };
   }
+  if (action.type === "setPlayerAnswersShown") {
+    return { ...base, type: "setPlayerAnswersShown", isShown: action.isShown !== false, instant: action.instant === true };
+  }
   if (action.type === "setTimerShown") {
     return { ...base, type: "setTimerShown", isShown: action.isShown !== false, instant: action.instant === true };
   }
@@ -2094,6 +2101,9 @@ function applyRoomActionEffects(room, action) {
   markAppliedActionEffect(room, action.id);
   if (action.type === "setPlayersShown") {
     room.playersShown = action.isShown !== false;
+  }
+  if (action.type === "setPlayerAnswersShown") {
+    room.playerAnswersShown = action.isShown !== false;
   }
   if (action.type === "setTimerShown") {
     setCraftingTimerShown(room, action.isShown !== false);
@@ -2579,6 +2589,7 @@ function getRoom(stageCode) {
       actionIndex: 0,
       presentedAction: null,
       playersShown: true,
+      playerAnswersShown: true,
       currentRound: 1,
       playerSessionKey: "",
       numSequentialGames: 0,
@@ -2605,6 +2616,7 @@ function getRoom(stageCode) {
       craftingTimerAnswersSubmittedTargetActionId: "",
       craftingTimerTimeoutId: null,
       craftingTimerEndHandled: false,
+      answersSubmittedAdvanceTimerId: null,
       lastDecisionTrace: null,
       runtimeFlowOverride: null,
       revision: 0
@@ -2670,7 +2682,13 @@ function selectVip(room) {
 }
 
 function publicPlayer(player, room) {
-  const answer = room.choiceInputAnswers?.get(player.id) || room.textInputAnswers?.get(player.id) || null;
+  const choiceAnswer = room.choiceInputAnswers?.get(player.id) || null;
+  const textAnswer = room.textInputAnswers?.get(player.id) || null;
+  const answer = choiceAnswer || textAnswer || null;
+  const needsChoiceInput = Boolean(room.choiceInputActionId) && (
+    room.choiceInputMode === "continuous" || !choiceAnswer
+  );
+  const needsTextInput = Boolean(room.textInputActionId) && textAnswer?.done !== true;
   return {
     id: player.id,
     name: player.name,
@@ -2678,11 +2696,19 @@ function publicPlayer(player, room) {
     active: player.active,
     joinedAt: player.joinedAt,
     isVip: player.id === room.vipPlayerId,
+    needsInput: player.active === true && (needsChoiceInput || needsTextInput),
     answer: answer ? { optionIndex: answer.optionIndex, text: answer.text, done: answer.done === true, invalid: answer.invalid === true, nonce: answer.nonce || 0 } : null
   };
 }
 
+function clearAnswersSubmittedAdvanceTimer(room) {
+  if (!room.answersSubmittedAdvanceTimerId) return;
+  clearTimeout(room.answersSubmittedAdvanceTimerId);
+  room.answersSubmittedAdvanceTimerId = null;
+}
+
 function clearChoiceInput(room) {
+  clearAnswersSubmittedAdvanceTimer(room);
   room.choiceInputActionId = "";
   room.choiceInputPrompt = "";
   room.choiceInputOptions = [];
@@ -2696,6 +2722,7 @@ function clearChoiceInput(room) {
 }
 
 function clearTextInput(room) {
+  clearAnswersSubmittedAdvanceTimer(room);
   room.textInputActionId = "";
   room.textInputPrompt = "";
   room.textInputPlaceholder = "";
@@ -2727,6 +2754,7 @@ function pauseCraftingTimer(room) {
 }
 
 function resetCraftingTimer(room) {
+  clearAnswersSubmittedAdvanceTimer(room);
   clearCraftingTimerTimeout(room);
   room.craftingTimerShown = false;
   room.craftingTimerRunning = false;
@@ -2818,6 +2846,7 @@ function allActivePlayersHaveSubmittedInput(room) {
 }
 
 function handleCraftingTimerEvent(room, eventType) {
+  clearAnswersSubmittedAdvanceTimer(room);
   if (!room.craftingTimerRunning || room.craftingTimerEndHandled) return false;
   const fallbackIndex = room.actionIndex + 1;
   const currentAction = currentRoomAction(room);
@@ -2835,6 +2864,17 @@ function handleCraftingTimerEvent(room, eventType) {
   jumpToAction(room, target, fallbackIndex);
   broadcastLobby(room);
   return true;
+}
+
+function scheduleAnswersSubmittedAdvance(room) {
+  if (!room.craftingTimerRunning || room.craftingTimerEndHandled || room.answersSubmittedAdvanceTimerId) return;
+  const currentAction = currentRoomAction(room);
+  const target = currentAction?.answersSubmittedTargetActionId || room.craftingTimerAnswersSubmittedTargetActionId;
+  if (isNoActionTarget(target)) return;
+  room.answersSubmittedAdvanceTimerId = setTimeout(() => {
+    room.answersSubmittedAdvanceTimerId = null;
+    handleCraftingTimerEvent(room, "answersSubmitted");
+  }, 500);
 }
 
 function applyChoiceInputAction(room, action) {
@@ -2910,6 +2950,7 @@ function lobbyPayload(room) {
     vipPlayerId: room.vipPlayerId,
     startToken: room.startToken,
     playersShown: room.playersShown !== false,
+    playerAnswersShown: room.playerAnswersShown !== false,
     players: activePlayers(room).map((player) => publicPlayer(player, room))
   };
 }
@@ -2944,6 +2985,7 @@ function enterLobbyPhase(room) {
   room.lastDecisionTrace = null;
   clearAppliedActionEffects(room);
   room.playersShown = true;
+  room.playerAnswersShown = true;
   room.currentRound = 1;
   room.hasEnteredRoundIntro = false;
   resetCraftingTimer(room);
@@ -2988,6 +3030,7 @@ function enterGamePhase(room, phase) {
   room.lastDecisionTrace = null;
   clearAppliedActionEffects(room);
   room.playersShown = true;
+  room.playerAnswersShown = true;
   resetCraftingTimer(room);
   clearChoiceInput(room);
   clearTextInput(room);
@@ -3324,7 +3367,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setPlayerAnswersShown" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -3418,13 +3461,10 @@ async function handleControllerChoice(req, res) {
     nonce: Date.now()
   });
 
-  if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
-    handleCraftingTimerEvent(room, "answersSubmitted");
-    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
-    return;
-  }
-
   broadcastLobby(room);
+  if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
+    scheduleAnswersSubmittedAdvance(room);
+  }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
@@ -3477,12 +3517,10 @@ async function handleControllerTextSubmit(req, res) {
     done: true,
     nonce: Date.now()
   });
-  if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
-    handleCraftingTimerEvent(room, "answersSubmitted");
-    sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
-    return;
-  }
   broadcastLobby(room);
+  if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
+    scheduleAnswersSubmittedAdvance(room);
+  }
   sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
 }
 
