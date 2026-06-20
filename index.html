@@ -3490,6 +3490,7 @@
     let playerVisibilityTimer = null;
     let subActionTimers = [];
     let textObjectTimers = [];
+    let stageAudioPlayers = new Set();
     let stageTextObjects = {};
     let runtimeTestLayouts = null;
     let runtimeTestControllerLayouts = null;
@@ -4005,6 +4006,7 @@
       const state = stageLayoutStateForPhase(phase);
       if (!state || !stageScreen || !stageBoard) return;
       currentStageLayoutStateId = state.id;
+      hideStageMomentTextOutsideLayout(state);
       clearStageLayoutTargets();
       const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
       const stageRect = stageScreen.getBoundingClientRect();
@@ -4038,7 +4040,7 @@
       target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
       if (element.kind === "text") {
         applyStageLayoutTextProperties(target, element);
-        registerStageLayoutTextTarget(element, target);
+        registerStageLayoutTextTarget(element, target, isGlobal);
       }
     }
 
@@ -4068,16 +4070,31 @@
       return element;
     }
 
-    function registerStageLayoutTextTarget(layoutElement, targetElement) {
+    function registerStageLayoutTextTarget(layoutElement, targetElement, isGlobal = false) {
       const targetId = normalizeTextTargetId(layoutElement.id);
       if (!targetId || !targetElement) return;
       const existing = stageTextObjects[targetId];
       stageTextObjects[targetId] = {
         element: targetElement,
         layoutElement,
+        isGlobal,
         visible: existing?.element === targetElement ? existing.visible : !targetElement.classList.contains("hidden") && !targetElement.classList.contains("text-hidden"),
         text: existing?.element === targetElement ? existing.text : targetElement.textContent || ""
       };
+    }
+
+    function hideStageMomentTextOutsideLayout(state) {
+      if (!state) return;
+      const activeMomentTextIds = new Set((state.elements || [])
+        .filter((element) => element.kind === "text")
+        .map((element) => normalizeTextTargetId(element.id))
+        .filter(Boolean));
+      for (const [targetId, object] of Object.entries(stageTextObjects)) {
+        if (!object?.layoutElement || object.isGlobal) continue;
+        if (!activeMomentTextIds.has(targetId)) {
+          setStageTextObject(targetId, { isShown: false, instant: true });
+        }
+      }
     }
 
     function stageLayoutTextDefault(element) {
@@ -4269,8 +4286,18 @@
       textObjectTimers = [];
     }
 
+    function clearStageAudioPlayers() {
+      for (const audio of stageAudioPlayers) {
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+      }
+      stageAudioPlayers.clear();
+    }
+
     function resetStageObjects() {
       clearStageObjectTimers();
+      clearStageAudioPlayers();
       window.clearInterval(craftingTimerInterval);
       craftingTimerInterval = null;
       craftingTimer?.classList.add("hidden");
@@ -4415,6 +4442,8 @@
       const isNewAction = renderedActionKey !== actionKey;
       const haltedByDecision = lobby.lastDecisionTrace?.selectedTarget === "none";
       const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro";
+      const isNewPhase = renderedStagePhase && renderedStagePhase !== nextPhase;
+      if (isNewPhase) clearStageAudioPlayers();
       renderedStagePhase = nextPhase;
       if (isNewAction) prepareNewStageAction(lobby, actionKey);
       if (haltedByDecision && (!lobby.action || lobby.action.type === "transition")) {
@@ -4475,6 +4504,31 @@
     function runStageAction(action, isPrimary, actionKey) {
       if (!action) return;
       if (isPrimary) scheduleSubActions(action, actionKey);
+      if (action.type === "doNothing") {
+        if (isPrimary) completeFlowAction("callback", action.id);
+        return;
+      }
+      if (action.type === "playAudio") {
+        const audioUrl = String(action.audioUrl || "").trim();
+        if (!audioUrl) {
+          if (isPrimary) completeFlowAction("callback", action.id);
+          return;
+        }
+        const audio = new Audio(audioUrl);
+        stageAudioPlayers.add(audio);
+        const finish = () => {
+          stageAudioPlayers.delete(audio);
+          audio.removeEventListener("ended", finish);
+          audio.removeEventListener("error", finish);
+          if (isPrimary && renderedActionKey === actionKey && action.timing?.mode !== "S+") {
+            completeFlowAction("callback", action.id);
+          }
+        };
+        audio.addEventListener("ended", finish);
+        audio.addEventListener("error", finish);
+        audio.play().catch(finish);
+        return;
+      }
       if (action.type === "setPlayersShown") {
         playerLobby.classList.toggle("players-hidden", action.isShown === false);
         playerLobby.classList.toggle("players-instant", action.instant === true);
@@ -6294,6 +6348,7 @@
         action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
       }
       if (value === "displayText") action.text = action.text || "Displayed text";
+      if (value === "playAudio") action.audioUrl = action.audioUrl || "";
       if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
       if (value === "setTimerShown") action.isShown = action.isShown !== false;
       if (value === "decision") {
@@ -6413,6 +6468,16 @@
           action.answersSubmittedTargetActionId = value;
           rerender();
         }));
+      }
+      if (action.type === "doNothing") {
+        target.appendChild(readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
+      }
+      if (action.type === "playAudio") {
+        target.appendChild(flowField("Audio URL", action.audioUrl || "", (value) => {
+          action.audioUrl = value;
+          rerender();
+        }));
+        target.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
       }
       if (action.type === "setPlayersShown") {
         target.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
@@ -7073,6 +7138,16 @@
           renderFlowListAndPublish();
         }));
         flowEditor.appendChild(readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
+      }
+      if (action.type === "doNothing") {
+        flowEditor.appendChild(readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
+      }
+      if (action.type === "playAudio") {
+        flowEditor.appendChild(flowField("Audio URL", action.audioUrl || "", (value) => {
+          action.audioUrl = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
       }
       if (action.type === "setPlayersShown") {
         flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [

@@ -46,6 +46,8 @@ const availableFlowActionTypes = [
   { id: "presentText", name: "Present Text", category: "input" },
   { id: "multipleChoiceInput", name: "Multiple Choice Input", category: "input" },
   { id: "textSubmissionInput", name: "Text Submission Input", category: "input" },
+  { id: "doNothing", name: "Do Nothing", category: "standard" },
+  { id: "playAudio", name: "Play Audio", category: "standard" },
   { id: "displayText", name: "Display Text", category: "standard" },
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
   { id: "setTimerShown", name: "Set Timer Shown", category: "standard" },
@@ -921,6 +923,15 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
     };
   }
+  if (type === "doNothing") {
+    return { ...base };
+  }
+  if (type === "playAudio") {
+    return {
+      ...base,
+      audioUrl: cleanFlowText(action?.audioUrl, "")
+    };
+  }
   if (type === "displayText") {
     return {
       ...base,
@@ -1624,6 +1635,12 @@ function publicFlowAction(action, index) {
       timerEndTargetActionId: action.timerEndTargetActionId || "",
       answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
     };
+  }
+  if (action.type === "doNothing") {
+    return { ...base, type: "doNothing" };
+  }
+  if (action.type === "playAudio") {
+    return { ...base, type: "playAudio", audioUrl: action.audioUrl || "" };
   }
   if (action.type === "displayText" || action.type === "text") {
     return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
@@ -3113,7 +3130,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "textSubmissionInput") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
