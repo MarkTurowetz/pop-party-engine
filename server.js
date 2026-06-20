@@ -2136,8 +2136,9 @@ async function sendGameConstants(res) {
 async function sendStageLayouts(res) {
   const layouts = await loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" });
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
-  const syncedLayouts = syncStageLayoutsWithFlow(layouts, localDraftStore.flow || flow);
-  const responseLayouts = localDraftStore.layouts || syncedLayouts;
+  const activeFlow = localDraftStore.flow || flow;
+  const syncedLayouts = syncStageLayoutsWithFlow(layouts, activeFlow);
+  const responseLayouts = localDraftStore.layouts ? syncStageLayoutsWithFlow(localDraftStore.layouts, activeFlow) : syncedLayouts;
   sendJson(res, 200, {
     ok: true,
     layouts: responseLayouts,
@@ -2157,8 +2158,9 @@ async function sendStageLayouts(res) {
 async function sendControllerLayouts(res) {
   const layouts = await loadControllerLayoutsSource({ refresh: controllerLayoutsStore.storageKind === "github" });
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
-  const syncedLayouts = syncControllerLayoutsWithFlow(layouts, localDraftStore.flow || flow);
-  const responseLayouts = localDraftStore.controllerLayouts || syncedLayouts;
+  const activeFlow = localDraftStore.flow || flow;
+  const syncedLayouts = syncControllerLayoutsWithFlow(layouts, activeFlow);
+  const responseLayouts = localDraftStore.controllerLayouts ? syncControllerLayoutsWithFlow(localDraftStore.controllerLayouts, activeFlow) : syncedLayouts;
   sendJson(res, 200, {
     ok: true,
     layouts: responseLayouts,
@@ -2237,6 +2239,13 @@ async function handleLocalDraft(req, res) {
       sendJson(res, 400, { ok: false, error: `Local controller layout draft is invalid: ${error.message}` });
       return;
     }
+  }
+
+  if (localDraftStore.layouts) {
+    localDraftStore.layouts = syncStageLayoutsWithFlow(localDraftStore.layouts, localDraftStore.flow || readGameFlow());
+  }
+  if (localDraftStore.controllerLayouts) {
+    localDraftStore.controllerLayouts = syncControllerLayoutsWithFlow(localDraftStore.controllerLayouts, localDraftStore.flow || readGameFlow());
   }
 
   for (const room of rooms.values()) {
@@ -3418,12 +3427,12 @@ function router(req, res) {
     return;
   }
 
-  if (req.method === "GET" && url.pathname === "/api/local-draft") {
+  if (req.method === "GET" && (url.pathname === "/api/local-draft" || url.pathname === "/api/tool-drafts")) {
     sendLocalDraft(res);
     return;
   }
 
-  if (req.method === "POST" && url.pathname === "/api/local-draft") {
+  if (req.method === "POST" && (url.pathname === "/api/local-draft" || url.pathname === "/api/tool-drafts")) {
     handleLocalDraft(req, res);
     return;
   }

@@ -5725,7 +5725,7 @@
       const message = currentRuntimeLocalMessage(overrides);
       runtimeTestChannel?.postMessage(message);
       if (canUseServer) {
-        postJson("/api/local-draft", message).catch(() => {});
+        postJson("/api/tool-drafts", message).catch(() => {});
       }
       updateGlobalSaveButton();
     }
@@ -5744,7 +5744,7 @@
       };
       runtimeTestChannel?.postMessage(message);
       if (canUseServer) {
-        postJson("/api/local-draft", message).catch(() => {});
+        postJson("/api/tool-drafts", message).catch(() => {});
       }
       updateGlobalSaveButton();
     }
@@ -7549,6 +7549,23 @@
       };
     }
 
+    function removeLayoutState(layouts, stateId) {
+      if (!layouts?.states?.length) return false;
+      const beforeCount = layouts.states.length;
+      layouts.states = layouts.states.filter((state) => state.id !== stateId);
+      return layouts.states.length !== beforeCount;
+    }
+
+    function removeDeletedFlowStateFromLayouts(stateId) {
+      const removedStageLayout = removeLayoutState(stageLayouts, stateId);
+      const removedControllerLayout = removeLayoutState(controllerLayouts, stateId);
+      if (selectedLayoutStateId === stateId) {
+        selectedLayoutStateId = "global";
+        setLayoutSelection(activeLayoutData().global?.elements?.[0]?.id || "");
+      }
+      return removedStageLayout || removedControllerLayout;
+    }
+
     function deleteFlowItem() {
       if (!selectedFlowStateId) return;
       if (selectedFlowActionId) {
@@ -7565,11 +7582,14 @@
         return;
       }
       if (selectedFlowStateId === "lobby" || selectedFlowStateId === "intro") return;
+      const deletedStateId = selectedFlowStateId;
       pushFlowHistory();
       gameFlow.states = gameFlow.states.filter((state) => state.id !== selectedFlowStateId);
+      removeDeletedFlowStateFromLayouts(deletedStateId);
       selectedFlowStateId = gameFlow.states[0]?.id || "";
       clearFlowActionSelection();
       renderFlowTool();
+      if (!layoutScreen.classList.contains("hidden")) renderLayoutTool();
     }
 
     async function saveGameFlow() {
