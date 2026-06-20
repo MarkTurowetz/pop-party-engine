@@ -805,21 +805,28 @@
       left: 50%;
       bottom: calc(100% + 10px);
       z-index: 3;
-      min-width: 54px;
-      max-width: 180px;
-      padding: 10px 14px;
+      width: max-content;
+      min-width: 72px;
+      max-width: 270px;
+      padding: 10px 18px;
       border: 3px solid var(--ink);
       border-radius: 18px;
       color: var(--ink);
       background: var(--paper);
       box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.42);
       font-size: 28px;
-      line-height: 0.95;
+      line-height: 1.02;
       font-weight: 1000;
       text-align: center;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
+      word-break: normal;
+      white-space: normal;
       transform: translateX(-50%);
       animation: answerBubbleIn 180ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .player-answer-bubble.is-long {
+      width: 270px;
     }
 
     .player-answer-bubble::after {
@@ -1899,6 +1906,71 @@
       font-weight: 1000;
       line-height: 1;
       text-transform: uppercase;
+    }
+
+    .layout-visibility-toggle {
+      justify-self: end;
+      width: 34px;
+      height: 28px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: var(--cream);
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.22);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .layout-row-actions {
+      display: flex !important;
+      align-items: center;
+      justify-content: end;
+      gap: 6px;
+      margin-top: 0 !important;
+    }
+
+    .layout-row-actions .flow-pill {
+      margin-top: 0 !important;
+    }
+
+    .layout-visibility-toggle:hover {
+      background: var(--yellow);
+    }
+
+    .layout-eye-icon {
+      position: relative;
+      width: 18px;
+      height: 12px;
+      border: 3px solid var(--ink);
+      border-radius: 999px / 700px;
+      display: block;
+      background: #fff;
+      margin-top: 0 !important;
+    }
+
+    .layout-eye-icon::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--ink);
+      transform: translate(-50%, -50%);
+    }
+
+    .layout-visibility-toggle.is-hidden .layout-eye-icon::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -6px;
+      width: 4px;
+      height: 22px;
+      border-radius: 999px;
+      background: #ef3148;
+      transform: translateX(-50%) rotate(-42deg);
+      box-shadow: 0 0 0 2px var(--cream);
     }
 
     .flow-editor {
@@ -3049,6 +3121,7 @@
     let selectedLayoutStateId = "";
     let selectedLayoutElementId = "";
     let selectedLayoutElementIds = new Set();
+    const layoutPreviewHiddenElements = new Set();
     let currentStageLayoutStateId = "";
     let layoutUndoStack = [];
     let layoutRedoStack = [];
@@ -3644,6 +3717,13 @@
       });
     }
 
+    function applyAnswerBubbleTextFit(bubble, text) {
+      const length = String(text || "").length;
+      const fontSize = length > 72 ? 14 : length > 52 ? 16 : length > 34 ? 19 : length > 22 ? 23 : 28;
+      bubble.style.fontSize = `${fontSize}px`;
+      bubble.classList.toggle("is-long", length > 14);
+    }
+
     function createPlayerTile(player, playerIndex, signature) {
       const tile = document.createElement("article");
       tile.className = "player-tile";
@@ -3658,7 +3738,10 @@
       `;
       tile.querySelector(".player-name").textContent = player.name;
       const bubble = tile.querySelector(".player-answer-bubble");
-      if (bubble) bubble.textContent = player.answer.text;
+      if (bubble) {
+        bubble.textContent = player.answer.text;
+        applyAnswerBubbleTextFit(bubble, player.answer.text);
+      }
       return tile;
     }
 
@@ -4285,6 +4368,10 @@
       controllerTextSubmitButton.disabled = controllerTextInput.value.trim().length === 0;
       controllerTextSubmitButton.onclick = () => submitControllerText(input.actionId);
       applyControllerLayoutForPhase(lobby.phase || "lobby");
+      controllerTextDone.classList.toggle("hidden", !isDone);
+      controllerTextInput.classList.toggle("hidden", isDone);
+      controllerTextSubmitButton.classList.toggle("hidden", isDone);
+      controllerInvalidBanner.classList.toggle("hidden", !showInvalid || isDone);
       return true;
     }
 
@@ -4937,8 +5024,7 @@
       }
       if (action.type === "textSubmissionInput") {
         const limitText = Number(action.characterLimit || 0) > 0 ? ` / ${Number(action.characterLimit)} chars` : "";
-        const validationText = (action.acceptedSubmissions || []).length ? ` / ${(action.acceptedSubmissions || []).length} accepted` : " / any non-empty";
-        return `Text Submit: ${action.prompt || "Write your answer"}${limitText}${validationText} / ${timingText}`;
+        return `Text Submit: ${action.prompt || "Write your answer"}${limitText} / Stage validates / ${timingText}`;
       }
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
@@ -5393,7 +5479,6 @@
           action.prompt = action.prompt || "Write your answer";
           action.placeholder = action.placeholder || "Answer here";
           action.characterLimit = Number(action.characterLimit || 0);
-          action.acceptedSubmissions = Array.isArray(action.acceptedSubmissions) ? action.acceptedSubmissions : [];
         }
         if (value === "displayText") action.text = action.text || "Displayed text";
         if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown") action.isShown = action.isShown !== false;
@@ -5471,11 +5556,7 @@
           action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
           renderFlowListAndPublish();
         }));
-        flowEditor.appendChild(flowTextarea("Accepted Submissions (Optional)", (action.acceptedSubmissions || []).join("\n"), (value) => {
-          action.acceptedSubmissions = value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 60);
-          renderFlowListAndPublish();
-        }));
-        flowEditor.appendChild(readOnlyFlowNote("If accepted submissions is empty, any non-empty text is valid. If it has values, submissions must exactly match one of those lines."));
+        flowEditor.appendChild(readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers."));
       }
       if (action.type === "setPlayersShown") {
         flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
@@ -6324,6 +6405,41 @@
       }
     }
 
+    function layoutPreviewHiddenKey(elementId, stateId = selectedLayoutStateId) {
+      return `${layoutToolMode}:${stateId}:${elementId}`;
+    }
+
+    function isLayoutPreviewElementHidden(elementId, stateId = selectedLayoutStateId) {
+      return layoutPreviewHiddenElements.has(layoutPreviewHiddenKey(elementId, stateId));
+    }
+
+    function toggleLayoutPreviewElement(elementId, stateId = selectedLayoutStateId) {
+      const key = layoutPreviewHiddenKey(elementId, stateId);
+      if (layoutPreviewHiddenElements.has(key)) {
+        layoutPreviewHiddenElements.delete(key);
+      } else {
+        layoutPreviewHiddenElements.add(key);
+      }
+      renderLayoutElements();
+      renderLayoutPreview();
+    }
+
+    function layoutVisibilityToggle(elementId, stateId) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "layout-visibility-toggle";
+      const isHidden = isLayoutPreviewElementHidden(elementId, stateId);
+      button.classList.toggle("is-hidden", isHidden);
+      button.title = isHidden ? "Show in preview" : "Hide in preview";
+      button.innerHTML = `<span class="layout-eye-icon" aria-hidden="true"></span>`;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleLayoutPreviewElement(elementId, stateId);
+      });
+      return button;
+    }
+
     function renderLayoutElements() {
       layoutElementList.replaceChildren();
       const state = layoutGroup(selectedLayoutStateId);
@@ -6332,10 +6448,17 @@
         button.type = "button";
         button.className = "flow-action-row";
         button.classList.toggle("is-selected", selectedLayoutElementIds.has(element.id));
-        button.innerHTML = `<span><strong></strong><span></span></span><span class="flow-pill"></span>`;
+        button.innerHTML = `<span><strong></strong><span></span></span>`;
         button.querySelector("strong").textContent = element.name;
         button.querySelector("span span").textContent = `${Math.round(element.x)}, ${Math.round(element.y)} / ${Number(element.scale || 1).toFixed(2)}x`;
-        button.querySelector(".flow-pill").textContent = element.kind === "text" ? "Text" : "Art";
+        const actions = document.createElement("span");
+        actions.className = "layout-row-actions";
+        const pill = document.createElement("span");
+        pill.className = "flow-pill";
+        pill.textContent = element.kind === "text" ? "Text" : "Art";
+        actions.appendChild(pill);
+        actions.appendChild(layoutVisibilityToggle(element.id, selectedLayoutStateId));
+        button.appendChild(actions);
         button.addEventListener("click", (event) => selectLayoutElement(element.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey }));
         layoutElementList.appendChild(button);
       }
@@ -6356,6 +6479,7 @@
         : [...(state?.elements || []), ...(activeGlobalLayout().elements || [])];
       const hiddenGlobals = new Set(state?.hiddenGlobals || []);
       for (const element of previewElements) {
+        if (isLayoutPreviewElementHidden(element.id, selectedLayoutStateId)) continue;
         const node = document.createElement("div");
         node.className = "layout-preview-element";
         const globalElements = activeGlobalLayout().elements || [];

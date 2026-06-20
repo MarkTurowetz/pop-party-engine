@@ -358,14 +358,6 @@ function normalizeCharacterLimit(value) {
   return Math.max(1, Math.min(1000, limit));
 }
 
-function cleanAcceptedSubmissions(value) {
-  const incoming = Array.isArray(value) ? value : String(value || "").split(/\r?\n/);
-  return incoming
-    .map((item) => cleanSubmittedText(item, 240))
-    .filter(Boolean)
-    .slice(0, 60);
-}
-
 function normalizeColor(value) {
   const color = String(value || "").trim();
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
@@ -885,8 +877,7 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       ...base,
       prompt: cleanFlowText(action?.prompt, "Write your answer"),
       placeholder: cleanFlowText(action?.placeholder, "Answer here"),
-      characterLimit,
-      acceptedSubmissions: cleanAcceptedSubmissions(action?.acceptedSubmissions)
+      characterLimit
     };
   }
   if (type === "displayText") {
@@ -1567,8 +1558,7 @@ function publicFlowAction(action, index) {
       type: "textSubmissionInput",
       prompt: action.prompt || "Write your answer",
       placeholder: action.placeholder || "Answer here",
-      characterLimit: normalizeCharacterLimit(action.characterLimit),
-      acceptedSubmissions: cleanAcceptedSubmissions(action.acceptedSubmissions)
+      characterLimit: normalizeCharacterLimit(action.characterLimit)
     };
   }
   if (action.type === "displayText" || action.type === "text") {
@@ -2119,7 +2109,6 @@ function getRoom(stageCode) {
       textInputPrompt: "",
       textInputPlaceholder: "",
       textInputCharacterLimit: 0,
-      textInputAcceptedSubmissions: [],
       textInputAnswers: new Map(),
       runtimeFlowOverride: null,
       revision: 0
@@ -2215,7 +2204,6 @@ function clearTextInput(room) {
   room.textInputPrompt = "";
   room.textInputPlaceholder = "";
   room.textInputCharacterLimit = 0;
-  room.textInputAcceptedSubmissions = [];
   if (room.textInputAnswers?.clear) {
     room.textInputAnswers.clear();
   } else {
@@ -2257,7 +2245,6 @@ function applyTextInputAction(room, action) {
   room.textInputPrompt = action.prompt || "Write your answer";
   room.textInputPlaceholder = action.placeholder || "Answer here";
   room.textInputCharacterLimit = normalizeCharacterLimit(action.characterLimit);
-  room.textInputAcceptedSubmissions = cleanAcceptedSubmissions(action.acceptedSubmissions);
   room.textInputAnswers = new Map();
 }
 
@@ -2793,8 +2780,7 @@ async function handleControllerTextSubmit(req, res) {
   }
 
   const submittedText = cleanSubmittedText(payload.text, room.textInputCharacterLimit || 240);
-  const accepted = room.textInputAcceptedSubmissions;
-  const isValid = Boolean(submittedText) && (!accepted.length || accepted.some((answer) => answer.toLowerCase() === submittedText.toLowerCase()));
+  const isValid = Boolean(submittedText) && !/\d/.test(submittedText);
   if (!isValid) {
     room.textInputAnswers.set(playerId, {
       text: "",
