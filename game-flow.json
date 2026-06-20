@@ -134,7 +134,7 @@
         {
           "id": "crafting-game-state-action-mqlinnp0",
           "name": "Game Action 4",
-          "type": "multipleChoiceInput",
+          "type": "textSubmissionInput",
           "timing": {
             "mode": "E+",
             "seconds": 0
@@ -144,7 +144,7 @@
           "instant": false,
           "isShown": true,
           "subActions": [],
-          "prompt": "Pick a button",
+          "prompt": "Submit a string",
           "options": [
             "A",
             "B",
@@ -152,7 +152,10 @@
             "D"
           ],
           "locked": true,
-          "inputMode": "submitOnce"
+          "inputMode": "submitOnce",
+          "placeholder": "Answer here",
+          "characterLimit": 40,
+          "acceptedSubmissions": []
         },
         {
           "id": "crafting-game-state-action-mqlag55r",
