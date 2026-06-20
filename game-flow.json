@@ -178,7 +178,7 @@
           "answersSubmittedTargetActionId": "crafting-game-state-action-mqlagz9c",
           "nodePosition": {
             "x": 70,
-            "y": 520
+            "y": 536
           }
         },
         {
@@ -222,8 +222,8 @@
           "locked": false,
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 83,
-            "y": 686
+            "x": 80,
+            "y": 730
           },
           "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
           "answersSubmittedTargetActionId": "crafting-game-state-action-mqlag55r"
@@ -244,7 +244,7 @@
           "transition": "horizontalWipe",
           "nodePosition": {
             "x": 500,
-            "y": 680
+            "y": 720
           },
           "nextTargetActionId": "return"
         }
