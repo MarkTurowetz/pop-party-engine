@@ -37,7 +37,6 @@ const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
 const ART_MANIFEST_FILE = path.join(ART_ROOT, "art-manifest.json");
 const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
-const START_COUNTDOWN_MS = 3000;
 const START_GO_HOLD_MS = 700;
 const availableFlowTransitions = [
   { id: "horizontalWipe", name: "Horizontal Wipe" }
@@ -129,6 +128,7 @@ const avatarShapes = ["rex", "stego", "trike", "raptor", "bronto", "ankylo"];
 const defaultGameConstants = {
   playerColors: defaultPlayerColors,
   craftingTimerDuration: 30,
+  startGameCountdownDuration: 1,
   gameTitle: "Party Game Template",
   numberOfRounds: 3,
   randomChanceTest: 0.5,
@@ -400,9 +400,11 @@ function normalizeGameConstants(constants) {
   const colors = Array.isArray(constants?.playerColors) ? constants.playerColors : defaultPlayerColors;
   const playerColors = [...new Set(colors.map(normalizeColor).filter(Boolean))];
   const craftingTimerDuration = normalizeDurationSeconds(constants?.craftingTimerDuration, defaultGameConstants.craftingTimerDuration);
+  const startGameCountdownDuration = normalizeDurationSeconds(constants?.startGameCountdownDuration, defaultGameConstants.startGameCountdownDuration);
   return {
     playerColors: playerColors.length ? playerColors : [...defaultPlayerColors],
     craftingTimerDuration,
+    startGameCountdownDuration,
     gameTitle: normalizeConstantString(constants?.gameTitle, defaultGameConstants.gameTitle),
     numberOfRounds: normalizeConstantInteger(constants?.numberOfRounds, defaultGameConstants.numberOfRounds, 1, 99),
     randomChanceTest: normalizeConstantFloat(constants?.randomChanceTest, defaultGameConstants.randomChanceTest, 0, 1),
@@ -1849,6 +1851,7 @@ function decisionVariableValue(room, variable) {
     numberOfRounds: constants.numberOfRounds,
     randomChanceTest: constants.randomChanceTest,
     craftingTimerDuration: constants.craftingTimerDuration,
+    startGameCountdownDuration: constants.startGameCountdownDuration,
     overrideFirstGameOfSession: constants.overrideFirstGameOfSession,
     players: active,
     playerColors: constants.playerColors,
@@ -3047,13 +3050,14 @@ function enterGamePhase(room, phase) {
 
 function enterStartingPhase(room) {
   const now = Date.now();
+  const startCountdownMs = Math.round(normalizeDurationSeconds(gameConstants().startGameCountdownDuration, 1) * 1000);
   clearCountdownTimer(room);
   room.phase = "starting";
   room.countdownStartedAt = now;
-  room.countdownEndsAt = now + START_COUNTDOWN_MS;
+  room.countdownEndsAt = now + startCountdownMs;
   room.countdownTimerId = setTimeout(() => {
     completeCountdownTrigger(room);
-  }, START_COUNTDOWN_MS + START_GO_HOLD_MS);
+  }, startCountdownMs + START_GO_HOLD_MS);
   broadcastLobby(room);
 }
 

@@ -218,6 +218,7 @@ async function spawnControllers() {
 
   spawnButton.disabled = true;
   await persistInputs();
+  await closeAllControllers({ silent: true });
 
   const spawnedControllers = [];
   for (let index = 0; index < count; index += 1) {
@@ -409,11 +410,12 @@ async function tapRandomOptionsInControllers() {
   setStatus(`Tapped ${clicked} of ${checked} open controller${checked === 1 ? "" : "s"} (${eligible} option${eligible === 1 ? "" : "s"} found).`);
 }
 
-async function closeAllControllers() {
+async function closeAllControllers(options = {}) {
+  const silent = options.silent === true;
   const stored = await chrome.storage.local.get(["spawnedControllers"]);
   const controllers = stored.spawnedControllers || [];
   if (controllers.length === 0) {
-    setStatus("No spawned controller windows are tracked.");
+    if (!silent) setStatus("No spawned controller windows are tracked.");
     return;
   }
 
@@ -438,7 +440,7 @@ async function closeAllControllers() {
 
   await chrome.storage.local.set({ spawnedControllers: [] });
   closeControllersButton.disabled = false;
-  setStatus(`Closed ${closed} controller window${closed === 1 ? "" : "s"}.`);
+  if (!silent) setStatus(`Closed ${closed} controller window${closed === 1 ? "" : "s"}.`);
 }
 
 stageCodeInput.addEventListener("input", () => {

@@ -11,6 +11,7 @@
     "#f97316"
   ],
   "craftingTimerDuration": 30,
+  "startGameCountdownDuration": 1,
   "gameTitle": "Party Game Template",
   "numberOfRounds": 3,
   "randomChanceTest": 0.5,
