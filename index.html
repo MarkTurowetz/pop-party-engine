@@ -2125,6 +2125,7 @@
     }
 
     .layout-stage-wrap {
+      position: relative;
       min-height: 0;
       display: grid;
       place-items: center;
@@ -2307,6 +2308,40 @@
       font-size: calc(18px * var(--layout-fit-scale, 1));
       line-height: 0.95;
       text-align: center;
+    }
+
+    .layout-preview-art-label {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: calc(8px * var(--layout-fit-scale, 1));
+      color: var(--ink);
+      font-size: calc(24px * var(--layout-fit-scale, 1));
+      font-weight: 1000;
+      line-height: 0.95;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      text-transform: uppercase;
+    }
+
+    .layout-preview-invalid-banner {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: calc(8px * var(--layout-fit-scale, 1));
+      border: calc(4px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: calc(18px * var(--layout-fit-scale, 1));
+      color: #fff;
+      background: #ef4444;
+      box-shadow: calc(6px * var(--layout-fit-scale, 1)) calc(6px * var(--layout-fit-scale, 1)) 0 var(--ink);
+      font-size: calc(20px * var(--layout-fit-scale, 1));
+      font-weight: 1000;
+      line-height: 0.95;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      text-transform: uppercase;
     }
 
     .layout-preview-content > .controller-player-banner {
@@ -6585,10 +6620,17 @@
           content.appendChild(layoutPreviewTextNode(element, "Welcome to the Game"));
         } else if (id === "intropresentbutton") {
           content.innerHTML = `<div class="layout-preview-button">Present HI THERE</div>`;
+        } else if (id === "controllerinvalidbanner") {
+          content.innerHTML = `<div class="layout-preview-invalid-banner">Your submission was invalid</div>`;
+        } else if (id === "controllertextinput") {
+          content.innerHTML = `<div class="layout-preview-input">Answer here</div>`;
+        } else if (id === "controllertextsubmitbutton") {
+          content.innerHTML = `<div class="layout-preview-button">Submit</div>`;
         } else if (element.kind === "text") {
           content.appendChild(layoutPreviewTextNode(element, element.name));
         } else {
-          content.textContent = element.name;
+          content.innerHTML = `<div class="layout-preview-art-label"></div>`;
+          content.querySelector(".layout-preview-art-label").textContent = element.name;
         }
       } else if (id === "stagetitle") {
         content.innerHTML = `<div class="layout-preview-title">Party Game Template</div>`;
@@ -6692,19 +6734,20 @@
 
     function startLayoutMarquee(event) {
       if (event.button !== 0 || event.target.closest(".layout-preview-element")) return;
-      if (!layoutStagePreview.contains(event.target)) return;
+      const marqueeRoot = layoutStagePreview.parentElement || layoutStagePreview;
+      if (!marqueeRoot.contains(event.target)) return;
       event.preventDefault();
-      const previewRect = layoutStagePreview.getBoundingClientRect();
-      const startX = event.clientX - previewRect.left;
-      const startY = event.clientY - previewRect.top;
+      const rootRect = marqueeRoot.getBoundingClientRect();
+      const startX = event.clientX - rootRect.left;
+      const startY = event.clientY - rootRect.top;
       const marquee = document.createElement("div");
       marquee.className = "layout-selection-marquee";
-      layoutStagePreview.appendChild(marquee);
-      layoutStagePreview.setPointerCapture(event.pointerId);
+      marqueeRoot.appendChild(marquee);
+      marqueeRoot.setPointerCapture(event.pointerId);
 
       const updateMarquee = (moveEvent) => {
-        const currentX = moveEvent.clientX - previewRect.left;
-        const currentY = moveEvent.clientY - previewRect.top;
+        const currentX = moveEvent.clientX - rootRect.left;
+        const currentY = moveEvent.clientY - rootRect.top;
         const left = Math.min(startX, currentX);
         const top = Math.min(startY, currentY);
         const width = Math.abs(currentX - startX);
@@ -6719,10 +6762,10 @@
         for (const node of layoutStagePreview.querySelectorAll(".layout-preview-element:not(.is-global-preview)")) {
           const nodeRect = node.getBoundingClientRect();
           const localRect = {
-            left: nodeRect.left - previewRect.left,
-            top: nodeRect.top - previewRect.top,
-            right: nodeRect.right - previewRect.left,
-            bottom: nodeRect.bottom - previewRect.top
+            left: nodeRect.left - rootRect.left,
+            top: nodeRect.top - rootRect.top,
+            right: nodeRect.right - rootRect.left,
+            bottom: nodeRect.bottom - rootRect.top
           };
           if (rectsIntersect(selectionRect, localRect)) selectedIds.push(node.dataset.elementId);
         }
@@ -7087,7 +7130,7 @@
           if (first) addLayoutObject(first);
         }
       });
-      layoutStagePreview.addEventListener("pointerdown", startLayoutMarquee);
+      (layoutStagePreview.parentElement || layoutStagePreview).addEventListener("pointerdown", startLayoutMarquee);
       document.addEventListener("click", handleLayoutDocumentClick);
       revertLayoutButton.addEventListener("click", revertStageLayouts);
       window.addEventListener("keydown", handleLayoutHotkeys);
