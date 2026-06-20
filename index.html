@@ -897,6 +897,13 @@
       pointer-events: none;
     }
 
+    .player-answer-bubble.is-hidden,
+    .player-answer-bubble.is-exiting {
+      opacity: 0;
+      transform: translateX(-50%) scale(0);
+      pointer-events: none;
+    }
+
     .player-answer-bubble.is-long {
       width: 270px;
     }
@@ -3615,6 +3622,8 @@
     let subActionTimers = [];
     let textObjectTimers = [];
     let stageTextAnimationToken = 0;
+    let renderedPlayerAnswersShown = true;
+    let playerAnswerBubbleAnimationEndsAt = 0;
     let stageAudioPlayers = new Set();
     let stageTextObjects = {};
     let runtimeTestLayouts = null;
@@ -4343,8 +4352,54 @@
       if (bubble) {
         bubble.textContent = player.answer.text;
         applyAnswerBubbleTextFit(bubble, player.answer.text);
+        bubble.classList.toggle("is-hidden", renderedPlayerAnswersShown === false);
       }
       return tile;
+    }
+
+    function setPlayerAnswerBubblesShown(isShown, options = {}) {
+      const instant = options.instant === true;
+      const wasShown = renderedPlayerAnswersShown !== false;
+      const remainingDuration = playerAnswerBubbleAnimationRemaining();
+      renderedPlayerAnswersShown = isShown;
+      playerLobby.classList.toggle("answers-hidden", !isShown);
+      const bubbles = Array.from(playerLobby.querySelectorAll(".player-answer-bubble"));
+      if (!bubbles.length) {
+        playerAnswerBubbleAnimationEndsAt = 0;
+        return 0;
+      }
+      if (!instant && wasShown === isShown && remainingDuration > 0) {
+        return remainingDuration;
+      }
+      if (instant) {
+        for (const bubble of bubbles) {
+          bubble.classList.toggle("is-hidden", !isShown);
+          bubble.classList.remove("is-exiting");
+        }
+        playerAnswerBubbleAnimationEndsAt = 0;
+        return 0;
+      }
+      let duration = 0;
+      if (isShown) {
+        for (const bubble of bubbles) {
+          bubble.classList.remove("is-hidden", "is-exiting");
+        }
+        duration = wasShown ? 0 : 500;
+        playerAnswerBubbleAnimationEndsAt = duration > 0 ? Date.now() + duration : 0;
+        return duration;
+      }
+      for (const bubble of bubbles) {
+        bubble.classList.remove("is-hidden");
+        void bubble.offsetWidth;
+        bubble.classList.add("is-exiting");
+      }
+      duration = wasShown ? 500 : 0;
+      playerAnswerBubbleAnimationEndsAt = duration > 0 ? Date.now() + duration : 0;
+      return duration;
+    }
+
+    function playerAnswerBubbleAnimationRemaining() {
+      return Math.max(0, playerAnswerBubbleAnimationEndsAt - Date.now());
     }
 
     function renderStagePlayers(players) {
@@ -4446,6 +4501,8 @@
       craftingTimerInterval = null;
       craftingTimer?.classList.add("hidden");
       playerLobby.classList.remove("players-hidden", "players-instant");
+      renderedPlayerAnswersShown = true;
+      playerLobby.classList.remove("answers-hidden");
       initStageTextObjects();
       presentClickWidget.classList.add("hidden");
     }
@@ -4558,7 +4615,9 @@
       if (stageDebugAlert && lobby.lastDecisionTrace?.selectedTarget !== "none") stageDebugAlert.classList.add("hidden");
       renderStagePlayers(players);
       playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
-      playerLobby.classList.toggle("answers-hidden", lobby.playerAnswersShown === false);
+      const nextAnswersShown = lobby.playerAnswersShown !== false;
+      const answersAreStillAnimating = playerAnswerBubbleAnimationRemaining() > 0;
+      setPlayerAnswerBubblesShown(nextAnswersShown, { instant: renderedPlayerAnswersShown === nextAnswersShown && !answersAreStillAnimating });
       renderCraftingTimer(lobby.craftingTimer);
 
       const vip = players.find((player) => player.isVip);
@@ -4706,13 +4765,17 @@
         return;
       }
       if (action.type === "setPlayerAnswersShown") {
-        playerLobby.classList.toggle("answers-hidden", action.isShown === false);
+        const existingDuration = playerAnswerBubbleAnimationRemaining();
+        const duration = Math.max(
+          setPlayerAnswerBubblesShown(action.isShown !== false, { instant: action.instant === true }),
+          existingDuration
+        );
         if (!isPrimary) applyFlowActionEffect(action.id);
         if (isPrimary) {
           window.setTimeout(() => {
             if (renderedActionKey !== actionKey) return;
             completeFlowAction("callback", action.id);
-          }, action.instant ? 0 : 500);
+          }, duration);
         }
         return;
       }
@@ -7353,12 +7416,20 @@
 
     function handleFlowHotkeys(event) {
       if (flowScreen.classList.contains("hidden")) return;
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
-      event.preventDefault();
-      if (event.shiftKey) {
-        redoFlowChange();
-      } else {
-        undoFlowChange();
+      const tagName = event.target?.tagName?.toLowerCase();
+      const isEditingField = tagName === "input" || tagName === "textarea" || tagName === "select";
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redoFlowChange();
+        } else {
+          undoFlowChange();
+        }
+        return;
+      }
+      if (!isEditingField && (event.key === "Delete" || event.key === "Backspace")) {
+        event.preventDefault();
+        deleteFlowItem();
       }
     }
 
