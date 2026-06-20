@@ -2055,19 +2055,25 @@
       min-height: 112px;
       display: grid;
       gap: 10px;
-      padding: 14px;
-      border: 5px solid var(--ink);
-      border-radius: 18px;
       color: var(--ink);
-      background: var(--paper);
-      box-shadow: 8px 8px 0 rgba(23, 19, 31, 0.62);
       text-align: left;
       cursor: pointer;
       user-select: none;
       touch-action: none;
     }
 
-    .flow-node.is-selected {
+    .flow-node-main {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border: 5px solid var(--ink);
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: 8px 8px 0 rgba(23, 19, 31, 0.62);
+    }
+
+    .flow-node.is-selected .flow-node-main,
+    .flow-node.is-selected .flow-node-subaction.is-selected {
       outline: 6px solid var(--cyan);
       outline-offset: 4px;
     }
@@ -2075,32 +2081,37 @@
     .flow-node.is-moment {
       width: 300px;
       min-height: 150px;
-      background: var(--yellow);
-      border-radius: 26px;
     }
 
-    .flow-node.is-input {
-      border-radius: 999px;
+    .flow-node.is-moment .flow-node-main {
+      background: var(--yellow);
+      border-radius: 18px;
+    }
+
+    .flow-node.is-input .flow-node-main {
       background: #fff7d6;
     }
 
     .flow-node.is-decision {
       width: 300px;
       min-height: 190px;
-      border-radius: 34px;
-      background: var(--cyan);
-      padding: 22px 26px;
     }
 
-    .flow-node.is-transition {
+    .flow-node.is-decision .flow-node-main {
+      background: var(--cyan);
+    }
+
+    .flow-node.is-transition .flow-node-main {
       background: #c6f75d;
-      border-radius: 12px 30px 12px 30px;
     }
 
     .flow-node.is-return {
       width: 180px;
       min-height: 88px;
-      border-radius: 999px;
+    }
+
+    .flow-node.is-return .flow-node-main {
+      border-radius: 18px;
       background: #ffffff;
       border-style: dashed;
     }
@@ -2143,17 +2154,17 @@
       display: grid;
       gap: 4px;
       padding: 8px 10px;
-      border: 4px dashed var(--ink);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.66);
+      border: 5px solid var(--ink);
+      border-radius: 16px;
+      background: #ffffff;
       color: var(--ink);
       text-align: left;
       cursor: pointer;
+      box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.46);
     }
 
     .flow-node-subaction.is-selected {
       background: var(--cyan);
-      border-style: solid;
     }
 
     .flow-node-subaction strong {
@@ -5741,6 +5752,13 @@
     }
 
     function nodePoint(node) {
+      const main = node.querySelector?.(".flow-node-main");
+      if (main) {
+        return {
+          x: Number(node.dataset.x || 0) + main.offsetLeft + main.offsetWidth / 2,
+          y: Number(node.dataset.y || 0) + main.offsetTop + main.offsetHeight / 2
+        };
+      }
       return {
         x: Number(node.dataset.x || 0) + Number(node.offsetWidth || node.dataset.width || 0) / 2,
         y: Number(node.dataset.y || 0) + Number(node.offsetHeight || node.dataset.height || 0) / 2
@@ -5828,7 +5846,7 @@
           className: "is-moment",
           selected: selectedFlowStateId === state.id && !selectedFlowActionId
         });
-        node.appendChild(createFlowMomentPorts(state));
+        node.querySelector(".flow-node-main")?.appendChild(createFlowMomentPorts(state));
         bindFlowNodeDrag(node, state);
         node.addEventListener("click", () => {
           selectedFlowStateId = state.id;
@@ -5891,19 +5909,22 @@
       node.style.width = `${width}px`;
       if (height) node.style.minHeight = `${height}px`;
       node.classList.toggle("is-selected", selected);
+      const main = document.createElement("div");
+      main.className = "flow-node-main";
       const titleEl = document.createElement("div");
       titleEl.className = "flow-node-title";
       titleEl.textContent = title;
       const subtitleEl = document.createElement("div");
       subtitleEl.className = "flow-node-subtitle";
       subtitleEl.textContent = subtitle;
-      node.append(titleEl, subtitleEl);
+      main.append(titleEl, subtitleEl);
       if (timing) {
         const timingEl = document.createElement("div");
         timingEl.className = "flow-node-timing";
         timingEl.textContent = timing;
-        node.appendChild(timingEl);
+        main.appendChild(timingEl);
       }
+      node.appendChild(main);
       return node;
     }
 
@@ -6033,7 +6054,7 @@
         node.dataset.actionId = action.id;
         const subActionList = createFlowNodeSubActions(state, action);
         if (subActionList) node.appendChild(subActionList);
-        node.appendChild(createFlowNodePorts(action));
+        node.querySelector(".flow-node-main")?.appendChild(createFlowNodePorts(action));
         bindFlowNodeDrag(node, action);
         node.addEventListener("click", () => {
           selectedFlowStateId = state.id;
@@ -6415,7 +6436,8 @@
       if (!flowNodeInspector) return;
       flowNodeInspector.replaceChildren();
       const state = flowState(selectedFlowStateId);
-      const action = state ? flowAction(selectedFlowStateId, selectedFlowActionId) : null;
+      const actionRef = state ? flowActionRef(selectedFlowStateId, selectedFlowActionId) : null;
+      const action = actionRef?.action || null;
       const title = document.createElement("h3");
       if (flowNodeDepth === "moments" || !state) {
         title.textContent = selectedFlowStateId ? flowState(selectedFlowStateId)?.name || "Game Moment" : "Node View";
