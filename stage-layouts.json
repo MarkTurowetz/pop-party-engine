@@ -346,6 +346,88 @@
           "fontColor": "#ffffff"
         }
       ]
+    },
+    {
+      "id": "test-moment",
+      "name": "Test moment",
+      "hiddenGlobals": null,
+      "elements": [
+        {
+          "id": "test-moment-moment-text",
+          "name": "Test moment Text Field",
+          "selector": "#test-moment-moment-text",
+          "kind": "text",
+          "x": 960,
+          "y": 460,
+          "width": 980,
+          "height": 240,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "craftingtimer",
+          "name": "Crafting Timer",
+          "selector": "#craftingTimer",
+          "kind": "art",
+          "x": 1660,
+          "y": 185,
+          "width": 190,
+          "height": 190,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "testmomentfirsttext",
+          "name": "Test Moment First Text",
+          "selector": "#testMomentFirstText",
+          "kind": "text",
+          "x": 960,
+          "y": 390,
+          "width": 980,
+          "height": 180,
+          "scale": 1,
+          "defaultText": "This is a test",
+          "fontSize": 74,
+          "autoFitText": true,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "testmomentclicktext",
+          "name": "Test Moment Click Prompt",
+          "selector": "#testMomentClickText",
+          "kind": "text",
+          "x": 960,
+          "y": 520,
+          "width": 980,
+          "height": 180,
+          "scale": 1,
+          "defaultText": "Click to advance",
+          "fontSize": 72,
+          "autoFitText": true,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "testmomentresulttext",
+          "name": "Test Moment Result Text",
+          "selector": "#testMomentResultText",
+          "kind": "text",
+          "x": 960,
+          "y": 520,
+          "width": 980,
+          "height": 180,
+          "scale": 1,
+          "defaultText": "good job",
+          "fontSize": 72,
+          "autoFitText": true,
+          "fontColor": "#ffffff"
+        }
+      ]
     }
   ]
 }
