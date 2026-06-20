@@ -276,7 +276,7 @@
               "text": "Presented text",
               "textTarget": "presentation",
               "instant": false,
-              "isShown": true,
+              "isShown": false,
               "subActions": []
             }
           ],
