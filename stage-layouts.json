@@ -350,7 +350,7 @@
     {
       "id": "test-moment",
       "name": "Test moment",
-      "hiddenGlobals": null,
+      "hiddenGlobals": [],
       "elements": [
         {
           "id": "test-moment-moment-text",
