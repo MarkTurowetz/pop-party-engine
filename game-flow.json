@@ -53,7 +53,7 @@
           "valueType": "int",
           "operator": "<",
           "compareValue": "3",
-          "trueTargetActionId": "presentation-game-state-action-mqlaigk9",
+          "trueTargetActionId": "none",
           "falseTargetActionId": "none"
         },
         {
