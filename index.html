@@ -1841,6 +1841,21 @@
       overflow: auto;
     }
 
+    .flow-view-toggle {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .flow-view-toggle .tool-tab {
+      min-height: 34px;
+      padding: 0 10px;
+      border-width: 3px;
+      font-size: 12px;
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.24);
+    }
+
     .flow-state {
       display: grid;
       gap: 8px;
@@ -1931,6 +1946,218 @@
     .flow-action-row.is-selected,
     .flow-state-header.is-selected {
       background: var(--cyan);
+    }
+
+    .flow-panel.is-node-view {
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .flow-node-workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-height: 0;
+      background: #19131f;
+    }
+
+    .flow-node-toolbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border-bottom: 4px solid var(--ink);
+      background: var(--paper);
+    }
+
+    .flow-node-toolbar p,
+    .flow-node-hint {
+      margin: 0;
+      color: #5e5475;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .flow-node-stage {
+      position: relative;
+      min-height: 0;
+      overflow: auto;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.08) 2px, transparent 2px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 2px, transparent 2px),
+        radial-gradient(circle at 20% 10%, rgba(34, 211, 238, 0.24), transparent 26rem),
+        radial-gradient(circle at 88% 80%, rgba(255, 225, 86, 0.18), transparent 22rem),
+        #2b145f;
+      background-size: 64px 64px, 64px 64px, auto, auto, auto;
+    }
+
+    .flow-node-inspector {
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      min-height: 0;
+      padding: 14px;
+      border-left: 4px solid var(--ink);
+      background: var(--paper);
+      color: var(--ink);
+      overflow: auto;
+    }
+
+    .flow-node-inspector h3 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 0.95;
+      text-transform: uppercase;
+    }
+
+    .flow-node-inspector p {
+      margin: 0;
+      color: #5e5475;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .flow-node-layer {
+      position: relative;
+      width: 1600px;
+      min-height: 920px;
+    }
+
+    .flow-node-wires {
+      position: absolute;
+      inset: 0;
+      width: 1600px;
+      height: 920px;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 1;
+    }
+
+    .flow-node-wire {
+      fill: none;
+      stroke: var(--yellow);
+      stroke-width: 7;
+      stroke-linecap: round;
+      filter: drop-shadow(4px 4px 0 rgba(23, 19, 31, 0.72));
+    }
+
+    .flow-node-wire.is-muted {
+      stroke: rgba(255, 255, 255, 0.36);
+      stroke-dasharray: 12 12;
+    }
+
+    .flow-node {
+      position: absolute;
+      z-index: 2;
+      width: 230px;
+      min-height: 112px;
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border: 5px solid var(--ink);
+      border-radius: 18px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: 8px 8px 0 rgba(23, 19, 31, 0.62);
+      text-align: left;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .flow-node.is-selected {
+      outline: 6px solid var(--cyan);
+      outline-offset: 4px;
+    }
+
+    .flow-node.is-moment {
+      width: 300px;
+      min-height: 150px;
+      background: var(--yellow);
+      border-radius: 26px;
+    }
+
+    .flow-node.is-input {
+      border-radius: 999px;
+      background: #fff7d6;
+    }
+
+    .flow-node.is-decision {
+      width: 210px;
+      min-height: 210px;
+      border-radius: 28px;
+      background: var(--cyan);
+      transform: rotate(45deg);
+    }
+
+    .flow-node.is-decision > * {
+      transform: rotate(-45deg);
+    }
+
+    .flow-node.is-transition {
+      background: #c6f75d;
+      border-radius: 12px 30px 12px 30px;
+    }
+
+    .flow-node.is-return {
+      width: 180px;
+      min-height: 88px;
+      border-radius: 999px;
+      background: #ffffff;
+      border-style: dashed;
+    }
+
+    .flow-node-title {
+      font-size: 18px;
+      font-weight: 1000;
+      line-height: 0.95;
+      text-transform: uppercase;
+    }
+
+    .flow-node-subtitle {
+      color: #5e5475;
+      font-size: 12px;
+      font-weight: 1000;
+      line-height: 1.15;
+    }
+
+    .flow-node-ports {
+      display: grid;
+      gap: 7px;
+    }
+
+    .flow-node-port {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 20px;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
+    .flow-node-port-dot {
+      width: 20px;
+      height: 20px;
+      border: 4px solid var(--ink);
+      border-radius: 999px;
+      background: var(--yellow);
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.38);
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .flow-node-port-dot.is-armed {
+      background: var(--blue);
+    }
+
+    .flow-node-hint {
+      grid-column: 1 / -1;
+      padding: 8px 12px;
+      border-top: 4px solid var(--ink);
+      background: var(--paper);
     }
 
     .flow-pill {
@@ -2914,6 +3141,10 @@
           <h1>Game Flow</h1>
           <p>Create game states, then sequence game actions inside each state.</p>
           <p id="flowStorageStatus">Checking flow storage...</p>
+          <div class="flow-view-toggle" role="group" aria-label="Flow view mode">
+            <button class="tool-tab is-active" id="flowListViewButton" type="button">List View</button>
+            <button class="tool-tab" id="flowNodeViewButton" type="button">Node View</button>
+          </div>
         </div>
         <div class="flow-list" id="flowList"></div>
         <div class="flow-actions">
@@ -2930,6 +3161,18 @@
           <p id="flowEditorHelp">Choose a game state or action to edit it.</p>
         </div>
         <div class="flow-editor" id="flowEditor"></div>
+        <div class="flow-node-workspace hidden" id="flowNodeWorkspace">
+          <div class="flow-node-toolbar">
+            <button class="secondary-button" id="nodeBackButton" type="button">Moments</button>
+            <p id="nodeViewHelp">Double-click a game moment to edit its actions.</p>
+          </div>
+          <div class="flow-node-stage" id="flowNodeStage">
+            <svg class="flow-node-wires" id="flowNodeWires" aria-hidden="true"></svg>
+            <div class="flow-node-layer" id="flowNodeLayer"></div>
+          </div>
+          <div class="flow-node-inspector" id="flowNodeInspector"></div>
+          <div class="flow-node-hint" id="flowNodeHint">Drag from an exit dot to another node to create a connection.</div>
+        </div>
         <div class="flow-actions">
           <button class="secondary-button" id="addActionButton" type="button" disabled>Add Action</button>
           <button class="secondary-button" id="deleteFlowItemButton" type="button" disabled>Delete</button>
@@ -3115,7 +3358,17 @@
     const flowShell = document.querySelector(".flow-shell");
     const flowResizer = document.querySelector("#flowResizer");
     const flowList = document.querySelector("#flowList");
+    const flowListViewButton = document.querySelector("#flowListViewButton");
+    const flowNodeViewButton = document.querySelector("#flowNodeViewButton");
     const flowEditor = document.querySelector("#flowEditor");
+    const flowNodeWorkspace = document.querySelector("#flowNodeWorkspace");
+    const flowNodeStage = document.querySelector("#flowNodeStage");
+    const flowNodeWires = document.querySelector("#flowNodeWires");
+    const flowNodeLayer = document.querySelector("#flowNodeLayer");
+    const flowNodeInspector = document.querySelector("#flowNodeInspector");
+    const nodeBackButton = document.querySelector("#nodeBackButton");
+    const nodeViewHelp = document.querySelector("#nodeViewHelp");
+    const flowNodeHint = document.querySelector("#flowNodeHint");
     const flowEditorTitle = document.querySelector("#flowEditorTitle");
     const flowEditorHelp = document.querySelector("#flowEditorHelp");
     const flowStorageStatus = document.querySelector("#flowStorageStatus");
@@ -3189,6 +3442,9 @@
     let flowTransitions = [];
     let selectedFlowStateId = "";
     let selectedFlowActionId = "";
+    let flowViewMode = getLocalValue("partyTemplate.flowViewMode") === "node" ? "node" : "list";
+    let flowNodeDepth = "moments";
+    let pendingNodeConnection = null;
     const collapsedFlowStates = new Set();
     const collapsedFlowActions = new Set();
     let flowUndoStack = [];
@@ -5334,6 +5590,8 @@
     function renderFlowTool() {
       renderFlowList();
       renderFlowEditor();
+      renderFlowNodeView();
+      updateFlowViewMode();
       renderFlowActions();
       publishRuntimeLocalChanges();
     }
@@ -5344,6 +5602,319 @@
 
     function renderFlowActions() {
       if (revertFlowButton) revertFlowButton.disabled = !flowSavedSnapshot || !isFlowDirty();
+    }
+
+    function setFlowViewMode(mode) {
+      flowViewMode = mode === "node" ? "node" : "list";
+      setLocalValue("partyTemplate.flowViewMode", flowViewMode);
+      if (flowViewMode === "node" && selectedFlowStateId) flowNodeDepth = "actions";
+      updateFlowViewMode();
+      renderFlowNodeView();
+    }
+
+    function updateFlowViewMode() {
+      const nodeMode = flowViewMode === "node";
+      flowListViewButton?.classList.toggle("is-active", !nodeMode);
+      flowNodeViewButton?.classList.toggle("is-active", nodeMode);
+      flowEditor?.classList.toggle("hidden", nodeMode);
+      flowNodeWorkspace?.classList.toggle("hidden", !nodeMode);
+      flowEditor?.parentElement?.classList.toggle("is-node-view", nodeMode);
+      if (nodeMode) {
+        flowEditorTitle.textContent = flowNodeDepth === "moments" ? "Node View" : flowState(selectedFlowStateId)?.name || "Node View";
+        flowEditorHelp.textContent = flowNodeDepth === "moments"
+          ? "Double-click a game moment to edit the actions inside it."
+          : "Drag exit dots onto another action node to create explicit flow connections.";
+      }
+    }
+
+    function renderFlowNodeView() {
+      if (!flowNodeLayer || !flowNodeWires || flowViewMode !== "node") return;
+      flowNodeLayer.replaceChildren();
+      flowNodeWires.replaceChildren();
+      pendingNodeConnection = null;
+      if (flowNodeDepth === "moments") {
+        renderFlowMomentNodes();
+      } else {
+        if (!flowState(selectedFlowStateId)) {
+          flowNodeDepth = "moments";
+          renderFlowMomentNodes();
+        } else {
+          renderFlowActionNodes();
+        }
+      }
+      renderFlowNodeInspector();
+    }
+
+    function flowNodeClassForAction(action) {
+      if (action.type === "decision") return "is-decision";
+      if (actionTypeMeta(action.type).category === "input") return "is-input";
+      if (action.type === "transition" || action.type === "transitionState") return "is-transition";
+      return "is-standard";
+    }
+
+    function nodePoint(node) {
+      return {
+        x: Number(node.dataset.x || 0) + Number(node.dataset.width || node.offsetWidth || 0) / 2,
+        y: Number(node.dataset.y || 0) + Number(node.dataset.height || node.offsetHeight || 0) / 2
+      };
+    }
+
+    function drawNodeWire(fromNode, toNode, muted = false) {
+      if (!fromNode || !toNode) return;
+      const from = nodePoint(fromNode);
+      const to = nodePoint(toNode);
+      const curve = Math.max(80, Math.abs(to.x - from.x) * 0.45);
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("class", `flow-node-wire${muted ? " is-muted" : ""}`);
+      path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x + curve} ${from.y}, ${to.x - curve} ${to.y}, ${to.x} ${to.y}`);
+      flowNodeWires.appendChild(path);
+    }
+
+    function renderFlowMomentNodes() {
+      flowNodeWires.setAttribute("width", "1600");
+      flowNodeWires.setAttribute("height", "920");
+      nodeBackButton.disabled = true;
+      nodeViewHelp.textContent = "Double-click a game moment to edit its action graph.";
+      const stateNodes = new Map();
+      for (const [index, state] of (gameFlow.states || []).entries()) {
+        const x = 80 + (index % 3) * 420;
+        const y = 80 + Math.floor(index / 3) * 240;
+        const node = createFlowNode({
+          id: state.id,
+          title: state.name,
+          subtitle: `${(state.actions || []).length} actions`,
+          x,
+          y,
+          width: 300,
+          height: 150,
+          className: "is-moment",
+          selected: selectedFlowStateId === state.id && !selectedFlowActionId
+        });
+        node.addEventListener("click", () => {
+          selectedFlowStateId = state.id;
+          selectedFlowActionId = "";
+          renderFlowTool();
+        });
+        node.addEventListener("dblclick", () => {
+          selectedFlowStateId = state.id;
+          selectedFlowActionId = "";
+          flowNodeDepth = "actions";
+          renderFlowTool();
+        });
+        flowNodeLayer.appendChild(node);
+        stateNodes.set(state.id, node);
+      }
+      for (const state of gameFlow.states || []) {
+        const fromNode = stateNodes.get(state.id);
+        for (const action of state.actions || []) {
+          if (action.type !== "transitionState" || !action.targetState) continue;
+          const toNode = stateNodes.get(action.targetState);
+          if (toNode) drawNodeWire(fromNode, toNode);
+        }
+      }
+    }
+
+    function createFlowNode({ id, title, subtitle, x, y, width, height, className = "", selected = false }) {
+      const node = document.createElement("button");
+      node.type = "button";
+      node.className = `flow-node ${className}`;
+      node.dataset.nodeId = id;
+      node.dataset.x = String(x);
+      node.dataset.y = String(y);
+      node.dataset.width = String(width);
+      node.dataset.height = String(height);
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
+      node.style.width = `${width}px`;
+      if (height) node.style.minHeight = `${height}px`;
+      node.classList.toggle("is-selected", selected);
+      const titleEl = document.createElement("div");
+      titleEl.className = "flow-node-title";
+      titleEl.textContent = title;
+      const subtitleEl = document.createElement("div");
+      subtitleEl.className = "flow-node-subtitle";
+      subtitleEl.textContent = subtitle;
+      node.append(titleEl, subtitleEl);
+      return node;
+    }
+
+    function renderFlowActionNodes() {
+      const state = flowState(selectedFlowStateId);
+      if (!state) return;
+      nodeBackButton.disabled = false;
+      nodeViewHelp.textContent = `Inside ${state.name}. Click nodes for properties; drag exit dots to connect actions.`;
+      const actionNodes = new Map();
+      const startNode = createFlowNode({
+        id: "start",
+        title: "Start",
+        subtitle: "Moment entry",
+        x: 70,
+        y: 70,
+        width: 170,
+        height: 86,
+        className: "is-return"
+      });
+      flowNodeLayer.appendChild(startNode);
+      for (const [index, action] of (state.actions || []).entries()) {
+        const x = 340 + (index % 3) * 360;
+        const y = 70 + Math.floor(index / 3) * 230;
+        const node = createFlowNode({
+          id: action.id,
+          title: action.name || `Action ${index + 1}`,
+          subtitle: `${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`,
+          x,
+          y,
+          width: action.type === "decision" ? 210 : 250,
+          height: action.type === "decision" ? 210 : 122,
+          className: flowNodeClassForAction(action),
+          selected: selectedFlowActionId === action.id
+        });
+        node.dataset.actionId = action.id;
+        node.appendChild(createFlowNodePorts(action));
+        node.addEventListener("click", () => {
+          selectedFlowStateId = state.id;
+          selectedFlowActionId = action.id;
+          renderFlowTool();
+        });
+        flowNodeLayer.appendChild(node);
+        actionNodes.set(action.id, node);
+      }
+      const returnNode = createFlowNode({
+        id: "return",
+        title: "Return",
+        subtitle: "Back to moments",
+        x: 1240,
+        y: 720,
+        width: 190,
+        height: 92,
+        className: "is-return"
+      });
+      flowNodeLayer.appendChild(returnNode);
+      if (state.actions?.[0]) drawNodeWire(startNode, actionNodes.get(state.actions[0].id), true);
+      for (const [index, action] of (state.actions || []).entries()) {
+        const fromNode = actionNodes.get(action.id);
+        for (const exit of flowNodeExitDefinitions(action)) {
+          if (exit.targetKind === "state") continue;
+          const targetId = action[exit.field] || "";
+          if (isNoFlowTarget(targetId)) {
+            drawNodeWire(fromNode, returnNode, true);
+            continue;
+          }
+          const toNode = actionNodes.get(targetId);
+          if (toNode) drawNodeWire(fromNode, toNode);
+        }
+        if (!action.nextTargetActionId && action.type !== "decision" && action.type !== "startCraftingTimer" && action.type !== "transitionState") {
+          const nextAction = state.actions[index + 1];
+          drawNodeWire(fromNode, nextAction ? actionNodes.get(nextAction.id) : returnNode, true);
+        }
+      }
+    }
+
+    function isNoFlowTarget(value) {
+      return String(value || "").toLowerCase() === "none";
+    }
+
+    function flowNodeExitDefinitions(action) {
+      if (action.type === "decision") {
+        return [
+          { label: "True", field: "trueTargetActionId" },
+          { label: "False", field: "falseTargetActionId" }
+        ];
+      }
+      if (action.type === "startCraftingTimer") {
+        return [
+          { label: "Timer Ends", field: "timerEndTargetActionId" },
+          { label: "Answers", field: "answersSubmittedTargetActionId" }
+        ];
+      }
+      if (action.type === "transitionState") {
+        return [{ label: "To Moment", field: "targetState", targetKind: "state" }];
+      }
+      return [{ label: "Next", field: "nextTargetActionId" }];
+    }
+
+    function createFlowNodePorts(action) {
+      const ports = document.createElement("div");
+      ports.className = "flow-node-ports";
+      for (const exit of flowNodeExitDefinitions(action)) {
+        const port = document.createElement("div");
+        port.className = "flow-node-port";
+        const label = document.createElement("span");
+        const target = action[exit.field] || "";
+        label.textContent = `${exit.label}${target ? ` -> ${flowTargetActionName(target)}` : ""}`;
+        const dot = document.createElement("span");
+        dot.className = "flow-node-port-dot";
+        dot.dataset.actionId = action.id;
+        dot.dataset.field = exit.field;
+        dot.dataset.targetKind = exit.targetKind || "action";
+        dot.addEventListener("pointerdown", (event) => {
+          event.stopPropagation();
+          pendingNodeConnection = { stateId: selectedFlowStateId, actionId: action.id, field: exit.field, targetKind: exit.targetKind || "action" };
+          flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
+          dot.classList.add("is-armed");
+          flowNodeHint.textContent = "Release over a node to connect this exit.";
+        });
+        port.append(label, dot);
+        ports.appendChild(port);
+      }
+      return ports;
+    }
+
+    function completeNodeConnection(targetNode) {
+      if (!pendingNodeConnection) return;
+      const state = flowState(pendingNodeConnection.stateId);
+      const action = flowAction(state?.id, pendingNodeConnection.actionId);
+      if (!state || !action) return;
+      const targetId = pendingNodeConnection.targetKind === "state"
+        ? targetNode?.dataset.nodeId
+        : targetNode?.dataset.actionId;
+      if (!targetId || targetId === action.id) return;
+      pushFlowHistory();
+      action[pendingNodeConnection.field] = targetId;
+      pendingNodeConnection = null;
+      renderFlowListAndPublish();
+      renderFlowNodeView();
+    }
+
+    function renderFlowNodeInspector() {
+      if (!flowNodeInspector) return;
+      flowNodeInspector.replaceChildren();
+      const state = flowState(selectedFlowStateId);
+      const action = state ? flowAction(selectedFlowStateId, selectedFlowActionId) : null;
+      const title = document.createElement("h3");
+      if (flowNodeDepth === "moments" || !state) {
+        title.textContent = selectedFlowStateId ? flowState(selectedFlowStateId)?.name || "Game Moment" : "Node View";
+        const copy = document.createElement("p");
+        copy.textContent = "Double-click a moment node to inspect and connect the actions inside it. Moment wires are inferred from Transition To State actions.";
+        flowNodeInspector.append(title, copy);
+        return;
+      }
+      if (!action) {
+        title.textContent = state.name;
+        const copy = document.createElement("p");
+        copy.textContent = "Select an action node to inspect its properties and exit connections.";
+        flowNodeInspector.append(title, copy);
+        return;
+      }
+      title.textContent = action.name;
+      const summary = document.createElement("p");
+      summary.textContent = actionSummary(action);
+      flowNodeInspector.append(title, summary);
+      flowNodeInspector.appendChild(readOnlyFlowNote(`${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`));
+      for (const exit of flowNodeExitDefinitions(action)) {
+        const options = exit.targetKind === "state"
+          ? gameFlow.states.map((item) => ({ id: item.id, name: item.name }))
+          : flowActionTargetOptions(state, action[exit.field] || "");
+        flowNodeInspector.appendChild(flowSelect(exit.label, action[exit.field] || "", options, (value) => {
+          pushFlowHistory();
+          action[exit.field] = value;
+          renderFlowListAndPublish();
+          renderFlowNodeView();
+        }));
+      }
+      flowNodeInspector.appendChild(flowActionButton("Edit In List View", () => {
+        setFlowViewMode("list");
+      }));
     }
 
     function flowHistorySnapshot() {
@@ -5446,6 +6017,7 @@
         stateButton.addEventListener("click", () => {
           selectedFlowStateId = state.id;
           selectedFlowActionId = "";
+          if (flowViewMode === "node") flowNodeDepth = "actions";
           renderFlowTool();
         });
         stateEl.appendChild(stateButton);
@@ -5495,6 +6067,7 @@
       actionButton.addEventListener("click", () => {
         selectedFlowStateId = state.id;
         selectedFlowActionId = action.id;
+        if (flowViewMode === "node") flowNodeDepth = "actions";
         renderFlowTool();
       });
       if (isSubAction) {
@@ -5892,6 +6465,12 @@
           renderFlowListAndPublish();
         }));
       }
+      if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "startCraftingTimer" && action.type !== "transitionState") {
+        flowEditor.appendChild(flowSelect("Next Action", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
+          action.nextTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+      }
       const isInputAction = actionTypeMeta(action.type).category === "input" && !actionRef.isSubAction;
       const timingOptions = actionRef.isSubAction
         ? [{ id: "S+", name: "S+ Timing" }]
@@ -6236,6 +6815,20 @@
       addActionButton.addEventListener("click", addFlowAction);
       deleteFlowItemButton.addEventListener("click", deleteFlowItem);
       revertFlowButton.addEventListener("click", revertGameFlow);
+      flowListViewButton?.addEventListener("click", () => setFlowViewMode("list"));
+      flowNodeViewButton?.addEventListener("click", () => setFlowViewMode("node"));
+      nodeBackButton?.addEventListener("click", () => {
+        flowNodeDepth = "moments";
+        selectedFlowActionId = "";
+        renderFlowTool();
+      });
+      flowNodeStage?.addEventListener("pointerup", (event) => {
+        const targetNode = event.target.closest?.(".flow-node");
+        completeNodeConnection(targetNode);
+        flowNodeLayer?.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
+        pendingNodeConnection = null;
+        if (flowNodeHint) flowNodeHint.textContent = "Drag from an exit dot to another node to create a connection.";
+      });
       setupFlowResizer();
       window.addEventListener("keydown", handleFlowHotkeys);
       try {

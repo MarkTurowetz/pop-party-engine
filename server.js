@@ -868,6 +868,7 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
     type,
     category,
     timing: normalizeActionTiming(action?.timing, category !== "input", isSubAction),
+    nextTargetActionId: flowActionTarget(action?.nextTargetActionId),
     subActions: normalizeSubActions(action?.subActions, stateId)
   };
   if (type === "presentText") {
@@ -1576,6 +1577,7 @@ function publicFlowAction(action, index) {
     actionType: action.type,
     category: action.category || flowActionTypeMeta(action.type).category,
     timing,
+    nextTargetActionId: action.nextTargetActionId || "",
     subActions: (action.subActions || []).map((subAction, subActionIndex) => publicFlowAction(subAction, subActionIndex)).filter(Boolean)
   };
   if (action.type === "presentText") {
@@ -1764,6 +1766,18 @@ function advanceRoomAction(room) {
   room.actionIndex = Math.min(room.actionIndex + 1, actions.length);
 }
 
+function advanceRoomAfterAction(room, action) {
+  const target = action?.nextTargetActionId || "";
+  if (isNoActionTarget(target)) return;
+  const targetIndex = flowActionIndexById(room, target);
+  if (targetIndex >= 0) {
+    room.actionIndex = targetIndex;
+    return;
+  }
+  if (target) return;
+  advanceRoomAction(room);
+}
+
 function clearActionTimer(room) {
   if (room.actionTimerId) {
     clearTimeout(room.actionTimerId);
@@ -1807,7 +1821,7 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
       room.actionCompletionPendingId = "";
       if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
       if (currentAction.type === "textSubmissionInput") clearTextInput(room);
-      advanceRoomAction(room);
+      advanceRoomAfterAction(room, currentAction);
       currentRoomAction(room);
       broadcastLobby(room);
     }, delayMs);
@@ -1816,7 +1830,7 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
 
   if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
   if (currentAction.type === "textSubmissionInput") clearTextInput(room);
-  advanceRoomAction(room);
+  advanceRoomAfterAction(room, currentAction);
   currentRoomAction(room);
   broadcastLobby(room);
   return true;
