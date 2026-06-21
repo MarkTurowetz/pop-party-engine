@@ -15,6 +15,7 @@ concepts into focused modules.
   - `action-effect-state-runtime.js` owns room action-effect id tracking.
   - `app-version.js` owns build/version lookup.
   - `countdown-runtime.js` owns countdown timer clearing and starting-phase countdown scheduling.
+  - `controller-layout-normalization-runtime.js` owns controller layout collection normalization.
   - `controller-layout-state-runtime.js` owns default controller layout state creation for flow states.
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
     and art file responses.
