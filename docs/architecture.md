@@ -20,6 +20,7 @@ concepts into focused modules.
   - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
   - `save-handlers-runtime.js` owns common tool save endpoint handling and response shaping.
   - `static-files-runtime.js` owns app shell rendering and browser module file responses.
+  - `tool-data-read-runtime.js` owns read-side tool data endpoint responses.
 - `shared/`
   - Data and schema-like constants shared by server runtime and tools.
   - `game-data.js` owns action type metadata, default layouts, default constants, prompts,

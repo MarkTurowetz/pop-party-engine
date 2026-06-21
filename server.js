@@ -12,6 +12,7 @@ const { backupJsonFile, mirrorJsonFile, readJsonFile, writeJsonFile } = require(
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
+const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
 const { createVotingRuntime } = require("./server/voting-runtime");
 const {
   acceptedArtTypes,
@@ -1142,6 +1143,37 @@ const {
   writeStageLayouts
 });
 
+const {
+  sendControllerLayouts,
+  sendGameConstants,
+  sendGameFlow,
+  sendStageLayouts
+} = createToolDataReadRuntime({
+  availableFlowActionTypes,
+  availableFlowTransitions,
+  controllerLayoutsPath: CONTROLLER_LAYOUTS_GITHUB_PATH,
+  controllerLayoutsStore,
+  gameConstantsPath: GAME_CONSTANTS_GITHUB_PATH,
+  gameConstantsStore,
+  gameFlowPath: GAME_FLOW_GITHUB_PATH,
+  gameFlowStore,
+  githubBranch: GAME_FLOW_GITHUB_BRANCH,
+  githubRepo: GAME_FLOW_GITHUB_REPO,
+  hasGithubToken: () => Boolean(GAME_FLOW_GITHUB_TOKEN),
+  loadControllerLayoutsSource,
+  loadGameConstantsSource,
+  loadGameFlowSource,
+  loadStageLayoutsSource,
+  localDraftStore,
+  normalizeGameConstants,
+  normalizeGameFlow,
+  sendJson,
+  stageLayoutsPath: STAGE_LAYOUTS_GITHUB_PATH,
+  stageLayoutsStore,
+  syncControllerLayoutsWithFlow,
+  syncStageLayoutsWithFlow
+});
+
 function readGameFlowSource() {
   return cloneJson(gameFlowStore.source || readDefaultGameFlowSource());
 }
@@ -1886,91 +1918,6 @@ function completeCountdownTrigger(room) {
     return;
   }
   enterGamePhase(room, action.targetState || "intro");
-}
-
-async function sendGameFlow(res) {
-  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
-  const responseFlow = localDraftStore.flow || flow;
-  sendJson(res, 200, {
-    ok: true,
-    flow: responseFlow,
-    savedFlow: flow,
-    runtimeFlow: normalizeGameFlow(responseFlow),
-    hasLocalDraft: Boolean(localDraftStore.flow),
-    storage: {
-      kind: gameFlowStore.storageKind,
-      durable: gameFlowStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
-      error: gameFlowStore.error || "",
-      repo: gameFlowStore.storageKind === "github" ? GAME_FLOW_GITHUB_REPO : "",
-      branch: gameFlowStore.storageKind === "github" ? GAME_FLOW_GITHUB_BRANCH : "",
-      path: gameFlowStore.storageKind === "github" ? GAME_FLOW_GITHUB_PATH : ""
-    },
-    availableActionTypes: availableFlowActionTypes,
-    availableTransitions: availableFlowTransitions
-  });
-}
-
-async function sendGameConstants(res) {
-  const constants = await loadGameConstantsSource({ refresh: gameConstantsStore.storageKind === "github" });
-  const responseConstants = localDraftStore.constants || constants;
-  sendJson(res, 200, {
-    ok: true,
-    constants: normalizeGameConstants(responseConstants),
-    savedConstants: normalizeGameConstants(constants),
-    hasLocalDraft: Boolean(localDraftStore.constants),
-    storage: {
-      kind: gameConstantsStore.storageKind,
-      durable: gameConstantsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
-      error: gameConstantsStore.error || "",
-      repo: gameConstantsStore.storageKind === "github" ? GAME_FLOW_GITHUB_REPO : "",
-      branch: gameConstantsStore.storageKind === "github" ? GAME_FLOW_GITHUB_BRANCH : "",
-      path: gameConstantsStore.storageKind === "github" ? GAME_CONSTANTS_GITHUB_PATH : ""
-    }
-  });
-}
-
-async function sendStageLayouts(res) {
-  const layouts = await loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" });
-  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
-  const activeFlow = localDraftStore.flow || flow;
-  const syncedLayouts = syncStageLayoutsWithFlow(layouts, activeFlow);
-  const responseLayouts = localDraftStore.layouts ? syncStageLayoutsWithFlow(localDraftStore.layouts, activeFlow) : syncedLayouts;
-  sendJson(res, 200, {
-    ok: true,
-    layouts: responseLayouts,
-    savedLayouts: syncedLayouts,
-    hasLocalDraft: Boolean(localDraftStore.layouts),
-    storage: {
-      kind: stageLayoutsStore.storageKind,
-      durable: stageLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
-      error: stageLayoutsStore.error || "",
-      repo: stageLayoutsStore.storageKind === "github" ? GAME_FLOW_GITHUB_REPO : "",
-      branch: stageLayoutsStore.storageKind === "github" ? GAME_FLOW_GITHUB_BRANCH : "",
-      path: stageLayoutsStore.storageKind === "github" ? STAGE_LAYOUTS_GITHUB_PATH : ""
-    }
-  });
-}
-
-async function sendControllerLayouts(res) {
-  const layouts = await loadControllerLayoutsSource({ refresh: controllerLayoutsStore.storageKind === "github" });
-  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
-  const activeFlow = localDraftStore.flow || flow;
-  const syncedLayouts = syncControllerLayoutsWithFlow(layouts, activeFlow);
-  const responseLayouts = localDraftStore.controllerLayouts ? syncControllerLayoutsWithFlow(localDraftStore.controllerLayouts, activeFlow) : syncedLayouts;
-  sendJson(res, 200, {
-    ok: true,
-    layouts: responseLayouts,
-    savedLayouts: syncedLayouts,
-    hasLocalDraft: Boolean(localDraftStore.controllerLayouts),
-    storage: {
-      kind: controllerLayoutsStore.storageKind,
-      durable: controllerLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
-      error: controllerLayoutsStore.error || "",
-      repo: controllerLayoutsStore.storageKind === "github" ? GAME_FLOW_GITHUB_REPO : "",
-      branch: controllerLayoutsStore.storageKind === "github" ? GAME_FLOW_GITHUB_BRANCH : "",
-      path: controllerLayoutsStore.storageKind === "github" ? CONTROLLER_LAYOUTS_GITHUB_PATH : ""
-    }
-  });
 }
 
 function getRoom(stageCode) {
