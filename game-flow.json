@@ -459,7 +459,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 305
+            "y": 260
           },
           "nextTargetActionId": "presentation-game-state-action-mqlstve7"
         },
@@ -484,7 +484,7 @@
           "falseTargetActionId": "presentation-game-state-action-mqlahz0a",
           "nodePosition": {
             "x": 640,
-            "y": 540
+            "y": 514
           },
           "branches": [
             {
@@ -526,7 +526,7 @@
           "transition": "horizontalWipe",
           "nodePosition": {
             "x": 1030,
-            "y": 940
+            "y": 912
           },
           "nextTargetActionId": "return"
         },
@@ -545,7 +545,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 310,
-            "y": 940
+            "y": 912
           },
           "nextTargetActionId": "return"
         },
@@ -564,7 +564,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 940
+            "y": 912
           },
           "nextTargetActionId": "return"
         }
@@ -579,8 +579,8 @@
         "y": 70
       },
       "returnNodePosition": {
-        "x": 710,
-        "y": 1340
+        "x": 705,
+        "y": 1166
       }
     },
     {
