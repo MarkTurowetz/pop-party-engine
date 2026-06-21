@@ -129,7 +129,7 @@
       "actions": [
         {
           "id": "crafting-game-state-action-mqlafl8m",
-          "name": "Intro Text",
+          "name": "Present Text",
           "type": "presentText",
           "timing": {
             "mode": "E+",
@@ -148,7 +148,7 @@
         },
         {
           "id": "crafting-game-state-action-mqn4qzpm",
-          "name": "Game Action 8",
+          "name": "Get Random Multiple Choice Content",
           "type": "getRandomMultipleChoiceContent",
           "timing": {
             "mode": "E+",
@@ -187,7 +187,7 @@
         },
         {
           "id": "crafting-game-state-action-mqlronl5",
-          "name": "Start Timer",
+          "name": "Start Crafting Timer",
           "type": "startCraftingTimer",
           "timing": {
             "mode": "E+",
@@ -208,7 +208,7 @@
         },
         {
           "id": "crafting-game-state-action-mqlrlkp0",
-          "name": "Gameplay",
+          "name": "Trivia Input",
           "type": "triviaInput",
           "timing": {
             "mode": "E+",
@@ -257,7 +257,7 @@
         },
         {
           "id": "crafting-game-state-action-mqmxj25v",
-          "name": "Wait",
+          "name": "Display Text",
           "type": "displayText",
           "timing": {
             "mode": "E+",
@@ -311,7 +311,7 @@
         },
         {
           "id": "crafting-game-state-action-mqn4u54c",
-          "name": "Game Action 9",
+          "name": "Set Player Answers Shown",
           "type": "setPlayerAnswersShown",
           "timing": {
             "mode": "E+",
