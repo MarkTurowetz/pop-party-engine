@@ -1011,6 +1011,9 @@ function normalizeGameFlow(flow) {
       id,
       name: cleanFlowText(state.name, id),
       nodePosition: normalizeNodePosition(state.nodePosition, stateIndex),
+      startNodePosition: normalizeNodePosition(state.startNodePosition, 0),
+      returnNodePosition: normalizeNodePosition(state.returnNodePosition, 0),
+      entryTargetActionId: flowActionTarget(state.entryTargetActionId),
       nextStateTargetId: normalizeFlowId(state.nextStateTargetId, ""),
       actions: actions.map((action, actionIndex) => normalizeFlowAction(action, actionIndex, id)).filter(Boolean)
     };
@@ -1911,6 +1914,22 @@ function flowActionIndexById(room, actionId) {
     if (normalizeFlowId(action.name, "") === normalizedTarget) return true;
     return false;
   });
+}
+
+function entryActionIndexForPhase(room, phase) {
+  const state = runtimeGameFlow(room).states.find((item) => item.id === phase);
+  const actions = getStateActions(phase, room);
+  const target = flowActionTarget(state?.entryTargetActionId);
+  if (isReturnActionTarget(target)) return -2;
+  if (isNoActionTarget(target)) return -1;
+  if (target) {
+    const previousPhase = room.phase;
+    room.phase = phase;
+    const targetIndex = flowActionIndexById(room, target);
+    room.phase = previousPhase;
+    if (targetIndex >= 0) return targetIndex;
+  }
+  return actions.length ? 0 : -1;
 }
 
 function compareDecisionValues(leftValue, rightValue, valueType, operator) {
@@ -3381,7 +3400,10 @@ function enterGamePhase(room, phase) {
   room.phase = phase;
   room.countdownStartedAt = 0;
   room.countdownEndsAt = 0;
-  room.actionIndex = 0;
+  const entryActionIndex = entryActionIndexForPhase(room, phase);
+  room.actionIndex = entryActionIndex === -1
+    ? getStateActions(phase, room).length
+    : Math.max(0, entryActionIndex);
   room.presentedAction = null;
   room.lastDecisionTrace = null;
   clearAppliedActionEffects(room);
@@ -3400,6 +3422,10 @@ function enterGamePhase(room, phase) {
       room.currentRound = 1;
       room.hasEnteredRoundIntro = true;
     }
+  }
+  if (entryActionIndex === -2) {
+    advanceRoomFromMomentReturn(room);
+    return;
   }
   broadcastLobby(room);
 }
