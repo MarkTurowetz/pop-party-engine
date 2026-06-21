@@ -37,6 +37,7 @@ const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
+const { createToolGithubSourcesRuntime } = require("./server/tool-github-sources-runtime");
 const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
 const { createToolSourceStoresRuntime } = require("./server/tool-source-stores-runtime");
 const { createTriviaContentRuntime } = require("./server/trivia-content-runtime");
@@ -338,6 +339,17 @@ const githubStorage = createGithubStorageRuntime({
   branch: GAME_FLOW_GITHUB_BRANCH,
   repo: GAME_FLOW_GITHUB_REPO,
   token: GAME_FLOW_GITHUB_TOKEN
+});
+
+const {
+  readGithubGameFlowSource,
+  readGithubJsonSource,
+  writeGithubGameFlowSource,
+  writeGithubJsonSource
+} = createToolGithubSourcesRuntime({
+  gameFlowPath: GAME_FLOW_GITHUB_PATH,
+  githubStorage,
+  mergeFlowWithExistingSubActions
 });
 
 const {
@@ -804,31 +816,6 @@ async function writeGameFlow(flow) {
   gameFlowStore.source = merged;
   gameFlowStore.loadedAt = Date.now();
   return merged;
-}
-
-async function readGithubGameFlowSource() {
-  const result = await readGithubJsonSource(GAME_FLOW_GITHUB_PATH);
-  return result ? { flow: result.data, sha: result.sha } : null;
-}
-
-async function writeGithubGameFlowSource(flow, sha = "") {
-  try {
-    const result = await writeGithubJsonSource(flow, sha, GAME_FLOW_GITHUB_PATH, "Save game flow", false);
-    return { flow: result.data, sha: result.sha };
-  } catch (error) {
-    if (error.status !== 409 || !sha) throw error;
-    const latest = await readGithubGameFlowSource();
-    const merged = mergeFlowWithExistingSubActions(flow, latest?.flow || {});
-    return writeGithubGameFlowSource(merged, latest?.sha || "");
-  }
-}
-
-async function readGithubJsonSource(filePath) {
-  return githubStorage.readJson(filePath);
-}
-
-async function writeGithubJsonSource(data, sha = "", filePath = GAME_FLOW_GITHUB_PATH, messagePrefix = "Save JSON", retryConflict = true) {
-  return githubStorage.writeJson(data, { filePath, messagePrefix, retryConflict, sha });
 }
 
 function readDefaultGameFlow() {
