@@ -261,13 +261,28 @@
           "type": "displayText",
           "timing": {
             "mode": "E+",
-            "seconds": 1
+            "seconds": 0.5
           },
           "text": "Presented text",
           "textTarget": "stageprompttext",
           "instant": false,
           "isShown": false,
-          "subActions": [],
+          "subActions": [
+            {
+              "id": "crafting-game-state-sub-action-mqnagmsc",
+              "name": "Sub-Action 1",
+              "type": "setTimerShown",
+              "timing": {
+                "mode": "S+",
+                "seconds": 0
+              },
+              "text": "Presented text",
+              "textTarget": "presentation",
+              "instant": false,
+              "isShown": false,
+              "subActions": []
+            }
+          ],
           "nodePosition": {
             "x": 426,
             "y": 778
@@ -300,7 +315,7 @@
           "type": "setPlayerAnswersShown",
           "timing": {
             "mode": "E+",
-            "seconds": 2
+            "seconds": 1.5
           },
           "text": "Presented text",
           "textTarget": "presentation",
@@ -320,7 +335,7 @@
           "type": "revealPlayerAnswerCorrectness",
           "timing": {
             "mode": "E+",
-            "seconds": 2
+            "seconds": 1
           },
           "text": "Presented text",
           "textTarget": "presentation",
@@ -339,7 +354,7 @@
           "type": "setPlayerAnswersShown",
           "timing": {
             "mode": "E+",
-            "seconds": 1
+            "seconds": 0.5
           },
           "text": "Presented text",
           "textTarget": "presentation",
@@ -359,7 +374,7 @@
           "type": "showPoints",
           "timing": {
             "mode": "E+",
-            "seconds": 2
+            "seconds": 1
           },
           "text": "Presented text",
           "textTarget": "presentation",
@@ -380,7 +395,7 @@
           "type": "setPlayerAnswersShown",
           "timing": {
             "mode": "E+",
-            "seconds": 1
+            "seconds": 0
           },
           "text": "Presented text",
           "textTarget": "presentation",
