@@ -18,6 +18,7 @@ concepts into focused modules.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
   - `local-json-store.js` owns local JSON file read/write, backups, and mirror writes.
   - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
+  - `room-state-runtime.js` owns default room construction and room lookup helpers.
   - `save-handlers-runtime.js` owns common tool save endpoint handling and response shaping.
   - `static-files-runtime.js` owns app shell rendering and browser module file responses.
   - `tool-data-read-runtime.js` owns read-side tool data endpoint responses.

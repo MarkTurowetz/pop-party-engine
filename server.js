@@ -10,6 +10,7 @@ const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils"
 const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
 const { backupJsonFile, mirrorJsonFile, readJsonFile, writeJsonFile } = require("./server/local-json-store");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
+const { createRoomStateRuntime } = require("./server/room-state-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
@@ -65,6 +66,11 @@ const START_GO_HOLD_MS = 700;
 const rooms = new Map();
 
 const APP_VERSION = readAppVersion(ROOT);
+
+const {
+  getExistingRoom,
+  getRoom
+} = createRoomStateRuntime({ rooms });
 
 const githubStorage = createGithubStorageRuntime({
   baseBranch: GAME_FLOW_GITHUB_BASE_BRANCH,
@@ -1918,85 +1924,6 @@ function completeCountdownTrigger(room) {
     return;
   }
   enterGamePhase(room, action.targetState || "intro");
-}
-
-function getRoom(stageCode) {
-  if (!rooms.has(stageCode)) {
-    rooms.set(stageCode, {
-      stageCode,
-      stageClients: new Set(),
-      players: new Map(),
-      vipPlayerId: "",
-      startToken: "",
-      phase: "lobby",
-      countdownStartedAt: 0,
-      countdownEndsAt: 0,
-      countdownTimerId: null,
-      actionTimerId: null,
-      actionCompletionPendingId: "",
-      appliedActionEffectId: "",
-      appliedActionEffectIds: new Set(),
-      actionIndex: 0,
-      presentedAction: null,
-      playersShown: true,
-      playerAnswersShown: true,
-      hiddenPlayerAnswerIds: new Set(),
-      currentRound: 1,
-      flowVariables: {},
-      playerAnswerRecords: {},
-      playerAnswerGroups: { correct: [], wrong: [], all: [] },
-      pendingPointPopups: [],
-      pendingPointPopupNonce: 0,
-      playerSessionKey: "",
-      numSequentialGames: 0,
-      hasEnteredRoundIntro: false,
-      choiceInputActionId: "",
-      choiceInputPrompt: "",
-      choiceInputOptions: [],
-      choiceInputOriginalIndexes: [],
-      choiceInputCorrectAnswerIndex: null,
-      choiceInputKind: "multipleChoice",
-      choiceInputContentId: "",
-      choiceInputMode: "singleSelect",
-      choiceInputLocked: false,
-      choiceInputAnswers: new Map(),
-      displayedPlayerAnswers: new Map(),
-      displayedAnswerCorrectness: new Map(),
-      textInputActionId: "",
-      textInputPrompt: "",
-      textInputPlaceholder: "",
-      textInputCharacterLimit: 0,
-      textInputAnswers: new Map(),
-      votingCards: [],
-      votingCardsShown: false,
-      votingResultsShown: false,
-      votingInputActionId: "",
-      votingInputPrompt: "",
-      votingAnswers: new Map(),
-      votingWinners: [],
-      craftingTimerShown: false,
-      craftingTimerRunning: false,
-      craftingTimerDurationMs: 0,
-      craftingTimerRemainingMs: 0,
-      craftingTimerStartedAt: 0,
-      craftingTimerEndsAt: 0,
-      craftingTimerActionId: "",
-      craftingTimerTimerEndTargetActionId: "",
-      craftingTimerAnswersSubmittedTargetActionId: "",
-      craftingTimerTimeoutId: null,
-      craftingTimerEndHandled: false,
-      activeInputFlowEventKey: "",
-      answersSubmittedAdvanceTimerId: null,
-      lastDecisionTrace: null,
-      runtimeFlowOverride: null,
-      revision: 0
-    });
-  }
-  return rooms.get(stageCode);
-}
-
-function getExistingRoom(stageCode) {
-  return rooms.get(stageCode) || null;
 }
 
 function makeAvatar(playerIndex) {
