@@ -10,6 +10,7 @@ const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime"
 const { createDecisionRuntime } = require("./server/decision-runtime");
 const { createFlowActionPublicRuntime } = require("./server/flow-action-public-runtime");
 const { createFlowNavigationRuntime } = require("./server/flow-navigation-runtime");
+const { createFlowTargetRuntime } = require("./server/flow-target-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
 const { createInputStateRuntime } = require("./server/input-state-runtime");
@@ -116,6 +117,12 @@ const {
   clearTextInput,
   flowEventTargetForAction
 } = createInputStateRuntime({ activePlayers });
+
+const {
+  flowActionTarget,
+  isNoActionTarget,
+  isReturnActionTarget
+} = createFlowTargetRuntime({ normalizeFlowId });
 
 const {
   publicFlowAction,
@@ -820,13 +827,6 @@ function flowStateHasActionType(flowState, type) {
   return false;
 }
 
-function flowActionTarget(action) {
-  const target = normalizeFlowId(action, "");
-  if (isNoActionTarget(target)) return "none";
-  if (isReturnActionTarget(target)) return "return";
-  return target || "";
-}
-
 function normalizeDecisionOperator(value) {
   return ["<", "<=", "==", "!=", ">=", ">"].includes(value) ? value : "<";
 }
@@ -873,14 +873,6 @@ function normalizeDecisionBranches(action) {
   const noMatch = branches.find((branch) => branch.type === "noMatch")
     || normalizeDecisionBranch({ id: "no-match", type: "noMatch", targetActionId: action?.falseTargetActionId }, regularBranches.length);
   return [...regularBranches, noMatch];
-}
-
-function isNoActionTarget(value) {
-  return String(value || "").toLowerCase() === "none";
-}
-
-function isReturnActionTarget(value) {
-  return String(value || "").toLowerCase() === "return";
 }
 
 function normalizeLayoutNumber(value, fallback, min, max) {
