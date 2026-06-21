@@ -1195,6 +1195,23 @@
       box-shadow: inset 5px 5px 0 rgba(23, 19, 31, 0.08), 0 0 0 5px rgba(36, 88, 255, 0.22);
     }
 
+    .action-name-field {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+    }
+
+    .action-name-field > span {
+      grid-column: 1 / -1;
+    }
+
+    .action-name-refresh {
+      width: 58px;
+      min-height: 58px;
+      padding: 0;
+      font-size: 24px;
+      line-height: 1;
+    }
+
     .stage-code-input {
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -6235,6 +6252,31 @@
       return actionTypeMeta(action.type).category === "input" ? "Input" : "Standard";
     }
 
+    function stateActionNameSet(state, excludeActionId = "") {
+      const names = new Set();
+      for (const action of state?.actions || []) {
+        if (action.id !== excludeActionId && action.name) names.add(String(action.name).trim().toLowerCase());
+        for (const subAction of action.subActions || []) {
+          if (subAction.id !== excludeActionId && subAction.name) names.add(String(subAction.name).trim().toLowerCase());
+        }
+      }
+      return names;
+    }
+
+    function uniqueActionNameForType(state, action) {
+      const base = actionTypeName(action?.type || "") || "Action";
+      const existing = stateActionNameSet(state, action?.id || "");
+      if (!existing.has(base.toLowerCase())) return base;
+      let index = 1;
+      while (existing.has(`${base} ${index}`.toLowerCase())) index += 1;
+      return `${base} ${index}`;
+    }
+
+    function refreshActionNameFromType(state, action) {
+      if (!state || !action) return;
+      action.name = uniqueActionNameForType(state, action);
+    }
+
     function textTargetOptionsForFlowState(stateId, selectedTarget = "") {
       const seen = new Set();
       const options = [];
@@ -7536,12 +7578,13 @@
         renderFlowListAndPublish();
         redrawFlowNodeWires();
       };
-      target.appendChild(flowField("Action Name", action.name, (value) => {
+      target.appendChild(flowActionNameField(state, action, (value) => {
         action.name = value || action.name;
         rerender();
-      }));
+      }, () => rerender()));
       target.appendChild(flowActionTypeSearch("Action Type", action.type, flowActionTypes, (value) => {
         applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
+        refreshActionNameFromType(state, action);
         rerender();
       }));
       if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
@@ -8439,12 +8482,13 @@
       flowEditorTitle.textContent = action.name;
       flowEditorHelp.textContent = actionRef.isSubAction ? `Editing sub-action under ${actionRef.parentAction.name}.` : `Editing primary action in ${state.name}.`;
       const timing = ensureActionTiming(action, actionRef.isSubAction);
-      flowEditor.appendChild(flowField("Action Name", action.name, (value) => {
+      flowEditor.appendChild(flowActionNameField(state, action, (value) => {
         action.name = value || action.name;
         renderFlowTool();
-      }));
+      }, () => renderFlowTool()));
       flowEditor.appendChild(flowActionTypeSearch("Action Type", action.type, flowActionTypes, (value) => {
         applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
+        refreshActionNameFromType(state, action);
         renderFlowTool();
       }));
       if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
@@ -8744,6 +8788,34 @@
         onChange(input.value.trim());
       });
       field.appendChild(input);
+      return field;
+    }
+
+    function flowActionNameField(state, action, onChange, onRefresh) {
+      const field = document.createElement("label");
+      field.className = "field-label flow-form-grid action-name-field";
+      const labelText = document.createElement("span");
+      labelText.textContent = "Action Name";
+      const input = document.createElement("input");
+      input.className = "text-input";
+      input.value = action?.name || "";
+      input.addEventListener("change", () => {
+        pushFlowHistory();
+        onChange(input.value.trim());
+      });
+      const refreshButton = document.createElement("button");
+      refreshButton.type = "button";
+      refreshButton.className = "secondary-button action-name-refresh";
+      refreshButton.textContent = "↻";
+      refreshButton.title = "Rename to action type";
+      refreshButton.setAttribute("aria-label", "Rename action to action type");
+      refreshButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        pushFlowHistory();
+        refreshActionNameFromType(state, action);
+        onRefresh?.();
+      });
+      field.append(labelText, input, refreshButton);
       return field;
     }
 
