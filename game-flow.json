@@ -336,7 +336,7 @@
         {
           "id": "crafting-game-state-action-mqn4v75w",
           "name": "Game Action 11",
-          "type": "givePendingPoints",
+          "type": "showPoints",
           "timing": {
             "mode": "E+",
             "seconds": 2
