@@ -26,6 +26,7 @@ const { createGameFlowMergeRuntime } = require("./server/game-flow-merge-runtime
 const { createGameFlowNormalizationRuntime } = require("./server/game-flow-normalization-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
+const { createInactivePlayerSweepRuntime } = require("./server/inactive-player-sweep-runtime");
 const { createInputStateRuntime } = require("./server/input-state-runtime");
 const { createLayoutNormalizationRuntime } = require("./server/layout-normalization-runtime");
 const { createLayoutSyncRuntime } = require("./server/layout-sync-runtime");
@@ -1430,22 +1431,14 @@ function router(req, res) {
   sendJson(res, 405, { ok: false, error: "Method not allowed" });
 }
 
-function sweepInactivePlayers() {
-  const now = Date.now();
-  for (const room of rooms.values()) {
-    let changed = false;
-    for (const player of room.players.values()) {
-      if (player.active && now - player.lastSeen > CONTROLLER_TIMEOUT_MS) {
-        player.active = false;
-        changed = true;
-      }
-    }
-    if (changed) {
-      selectVip(room);
-      broadcastLobby(room);
-    }
-  }
-}
+const {
+  sweepInactivePlayers
+} = createInactivePlayerSweepRuntime({
+  broadcastLobby,
+  controllerTimeoutMs: CONTROLLER_TIMEOUT_MS,
+  rooms,
+  selectVip
+});
 
 function getLanUrls() {
   const urls = [];

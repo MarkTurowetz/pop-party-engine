@@ -31,6 +31,7 @@ concepts into focused modules.
   - `game-flow-merge-runtime.js` owns save-time flow merging that preserves existing sub-actions.
   - `github-storage-runtime.js` owns generic GitHub JSON content reads/writes.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
+  - `inactive-player-sweep-runtime.js` owns controller heartbeat timeout sweeps.
   - `input-state-runtime.js` owns shared choice/text input reset state and submission-completion checks.
   - `layout-normalization-runtime.js` owns shared layout state/element normalization and element deduping.
   - `layout-sync-runtime.js` owns syncing saved stage/controller layout states to the active flow.
