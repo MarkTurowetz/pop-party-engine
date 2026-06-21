@@ -933,6 +933,46 @@
       transform: translateX(-50%) rotate(45deg);
     }
 
+    .player-answer-bubble.is-correct {
+      background: #60d394;
+    }
+
+    .player-answer-bubble.is-wrong {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .player-answer-bubble.is-wrong::after {
+      background: #ef4444;
+    }
+
+    .player-answer-bubble.is-correct::after {
+      background: #60d394;
+    }
+
+    .point-popup {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 86px);
+      z-index: 4;
+      color: var(--yellow);
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 1000;
+      text-shadow: 4px 4px 0 var(--ink);
+      transform: translate(-50%, 16px) scale(0);
+      opacity: 0;
+      pointer-events: none;
+      animation: pointPopupFloat 1500ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    }
+
+    @keyframes pointPopupFloat {
+      0% { transform: translate(-50%, 16px) scale(0); opacity: 0; }
+      18% { transform: translate(-50%, 0) scale(1.2); opacity: 1; }
+      72% { transform: translate(-50%, -8px) scale(1); opacity: 1; }
+      100% { transform: translate(-50%, -26px) scale(0); opacity: 0; }
+    }
+
     @keyframes answerBubbleUpdate {
       from { transform: translateX(-50%) scale(1.2); }
       to { transform: translateX(-50%) scale(1); }
@@ -3369,6 +3409,9 @@
           <button class="flow-state-header" type="button" data-constant-target="startGameCountdownDuration">
             <span><strong>Start Countdown</strong><span>Lobby start duration</span></span>
           </button>
+          <button class="flow-state-header" type="button" data-constant-target="pointsForCorrectAnswer">
+            <span><strong>Correct Points</strong><span>Pending points per correct answer</span></span>
+          </button>
           <button class="flow-state-header" type="button" data-constant-target="numberOfRounds">
             <span><strong>Number of Rounds</strong><span>Rounds before ending</span></span>
           </button>
@@ -3404,6 +3447,10 @@
         <label class="field-label flow-form-grid" data-constant-detail="startGameCountdownDuration">
           Start Game Countdown Duration Seconds
           <input class="text-input" id="startGameCountdownDurationInput" type="number" min="1" max="60" step="1" value="1">
+        </label>
+        <label class="field-label flow-form-grid" data-constant-detail="pointsForCorrectAnswer">
+          Num Points For Correct Answer
+          <input class="text-input" id="pointsForCorrectAnswerInput" type="number" min="0" max="999999" step="1" value="200">
         </label>
         <label class="field-label flow-form-grid" data-constant-detail="numberOfRounds">
           Number of Rounds
@@ -3592,6 +3639,7 @@
     const gameTitleInput = document.querySelector("#gameTitleInput");
     const craftingTimerDurationInput = document.querySelector("#craftingTimerDurationInput");
     const startGameCountdownDurationInput = document.querySelector("#startGameCountdownDurationInput");
+    const pointsForCorrectAnswerInput = document.querySelector("#pointsForCorrectAnswerInput");
     const numberOfRoundsInput = document.querySelector("#numberOfRoundsInput");
     const randomChanceTestInput = document.querySelector("#randomChanceTestInput");
     const overrideFirstGameInput = document.querySelector("#overrideFirstGameInput");
@@ -3645,6 +3693,7 @@
     };
     let renderedPlayerAnswersShown = true;
     let playerAnswerBubbleAnimationEndsAt = 0;
+    let renderedPointPopupIds = new Set();
     let stageAudioPlayers = new Set();
     let stageTextObjects = {};
     let runtimeTestLayouts = null;
@@ -3664,6 +3713,7 @@
       playerColors: [],
       craftingTimerDuration: 30,
       startGameCountdownDuration: 1,
+      pointsForCorrectAnswer: 200,
       gameTitle: "Party Game Template",
       numberOfRounds: 3,
       randomChanceTest: 0.5,
@@ -4552,10 +4602,12 @@
     function syncPlayerAnswerBubble(tile, player, options = {}) {
       const answerText = player.answer?.text || "";
       const answerNonce = String(player.answer?.nonce || "");
+      const answerHidden = player.answer?.hidden === true;
       let bubble = tile.querySelector(".player-answer-bubble");
-      if (!answerText) {
+      if (!answerText || answerHidden) {
         if (bubble) {
           const bubbleToRemove = bubble;
+          bubble.dataset.answerHidden = "true";
           const duration = playAnswerBubbleVisual(bubble, isBubbleVisible(bubble) ? "disappear" : "park", options);
           const removalToken = bubble.dataset.visualAnimationToken || "";
           const removeBubble = () => {
@@ -4579,6 +4631,9 @@
       bubble.textContent = answerText;
       bubble.dataset.answerNonce = answerNonce;
       bubble.dataset.answerText = answerText;
+      bubble.dataset.answerHidden = "false";
+      bubble.classList.toggle("is-correct", player.answer?.correct === true);
+      bubble.classList.toggle("is-wrong", player.answer?.correct === false);
       applyAnswerBubbleTextFit(bubble, answerText);
 
       if (renderedPlayerAnswersShown === false) {
@@ -4611,6 +4666,7 @@
       let duration = 0;
       if (isShown) {
         for (const bubble of bubbles) {
+          if (bubble.dataset.answerHidden === "true") continue;
           if (!isBubbleVisible(bubble)) {
             duration = Math.max(duration, playAnswerBubbleVisual(bubble, "appear", { instant }));
           }
@@ -4656,6 +4712,20 @@
       Array.from(playerLobby.querySelectorAll(".player-tile[data-player-id]")).forEach((tile) => {
         if (!desiredIds.has(tile.dataset.playerId)) tile.remove();
       });
+    }
+
+    function renderPointPopups(popups = []) {
+      for (const popup of popups || []) {
+        if (!popup?.id || renderedPointPopupIds.has(popup.id)) continue;
+        const tile = playerLobby.querySelector(`.player-tile[data-player-id="${CSS.escape(popup.playerId)}"]`);
+        if (!tile) continue;
+        renderedPointPopupIds.add(popup.id);
+        const node = document.createElement("div");
+        node.className = "point-popup";
+        node.textContent = `+${Math.max(0, Math.floor(Number(popup.points || 0)))}`;
+        tile.appendChild(node);
+        window.setTimeout(() => node.remove(), 1600);
+      }
     }
 
     function runStageWipe(onCovered) {
@@ -4732,6 +4802,7 @@
       playerLobby.classList.remove("players-hidden", "players-instant");
       renderedPlayerAnswersShown = true;
       playerLobby.classList.remove("answers-hidden");
+      renderedPointPopupIds.clear();
       initStageTextObjects();
       presentClickWidget.classList.add("hidden");
     }
@@ -4806,6 +4877,7 @@
       const answersAreStillAnimating = playerAnswerBubbleAnimationRemaining() > 0;
       const hasParkedShownBubbles = nextAnswersShown && Boolean(playerLobby.querySelector(".player-answer-bubble.is-hidden, .player-answer-bubble.is-exiting"));
       setPlayerAnswerBubblesShown(nextAnswersShown, { instant: renderedPlayerAnswersShown === nextAnswersShown && !answersAreStillAnimating && !hasParkedShownBubbles });
+      renderPointPopups(lobby.pendingPointPopups || []);
       renderCraftingTimer(lobby.craftingTimer);
 
       const vip = players.find((player) => player.isVip);
@@ -4844,7 +4916,11 @@
       const haltedByDecision = lobby.lastDecisionTrace?.selectedTarget === "none";
       const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro";
       const isNewPhase = renderedStagePhase && renderedStagePhase !== nextPhase;
-      if (isNewPhase) clearStageAudioPlayers();
+      if (isNewPhase) {
+        clearStageAudioPlayers();
+        renderedPointPopupIds.clear();
+        playerLobby.querySelectorAll(".point-popup").forEach((node) => node.remove());
+      }
       renderedStagePhase = nextPhase;
       if (isNewAction) prepareNewStageAction(lobby, actionKey);
       if (haltedByDecision) {
@@ -4938,6 +5014,36 @@
         audio.play().catch(finish);
         return;
       }
+      if (action.type === "getRandomMultipleChoiceContent") {
+        if (isPrimary) {
+          completeFlowAction("callback", action.id);
+        } else {
+          applyFlowActionEffect(action.id);
+        }
+        return;
+      }
+      if (action.type === "revealPlayerAnswerCorrectness") {
+        if (!isPrimary) {
+          applyFlowActionEffect(action.id);
+          return;
+        }
+        window.setTimeout(() => {
+          if (renderedActionKey !== actionKey) return;
+          completeFlowAction("callback", action.id);
+        }, 250);
+        return;
+      }
+      if (action.type === "givePendingPoints") {
+        if (!isPrimary) {
+          applyFlowActionEffect(action.id);
+          return;
+        }
+        window.setTimeout(() => {
+          if (renderedActionKey !== actionKey) return;
+          completeFlowAction("callback", action.id);
+        }, 1500);
+        return;
+      }
       if (action.type === "setPlayersShown") {
         playerLobby.classList.toggle("players-hidden", action.isShown === false);
         playerLobby.classList.toggle("players-instant", action.instant === true);
@@ -4954,10 +5060,12 @@
       }
       if (action.type === "setPlayerAnswersShown") {
         const existingDuration = playerAnswerBubbleAnimationRemaining();
-        const duration = Math.max(
-          setPlayerAnswerBubblesShown(action.isShown !== false, { instant: action.instant === true }),
-          existingDuration
-        );
+        const duration = action.playerFilter && action.playerFilter !== "all"
+          ? (action.instant ? 0 : 500)
+          : Math.max(
+              setPlayerAnswerBubblesShown(action.isShown !== false, { instant: action.instant === true }),
+              existingDuration
+            );
         if (!isPrimary) applyFlowActionEffect(action.id);
         if (isPrimary) {
           window.setTimeout(() => {
@@ -6102,6 +6210,13 @@
         const eventText = ` / timer: ${flowTargetActionName(action.timerEndTargetActionId)} / answers: ${flowTargetActionName(action.answersSubmittedTargetActionId)}`;
         return `${modeName}${lockedText}: ${action.prompt || "Choice input"} / ${(action.options || []).length || 0} options${eventText} / ${timingText}`;
       }
+      if (action.type === "getRandomMultipleChoiceContent") return `Get random prompt -> ${action.variableName || "multipleChoicePrompt"} / ${timingText}`;
+      if (action.type === "triviaInput") {
+        const modeName = action.inputMode === "singleSelect" ? "Single Select" : action.inputMode === "continuous" ? "Continuous" : "Submit Once";
+        const randomText = action.randomizeOptions ? " / Randomized" : "";
+        const eventText = ` / timer: ${flowTargetActionName(action.timerEndTargetActionId)} / answers: ${flowTargetActionName(action.answersSubmittedTargetActionId)}`;
+        return `Trivia from ${action.contentVariable || "multipleChoicePrompt"} / ${modeName}${randomText}${eventText} / ${timingText}`;
+      }
       if (action.type === "textSubmissionInput") {
         const limitText = Number(action.characterLimit || 0) > 0 ? ` / ${Number(action.characterLimit)} chars` : "";
         const eventText = ` / timer: ${flowTargetActionName(action.timerEndTargetActionId)} / answers: ${flowTargetActionName(action.answersSubmittedTargetActionId)}`;
@@ -6109,7 +6224,9 @@
       }
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
-      if (action.type === "setPlayerAnswersShown") return `${action.isShown === false ? "Hide" : "Show"} player answers / ${timingText}${instantText}`;
+      if (action.type === "setPlayerAnswersShown") return `${action.isShown === false ? "Hide" : "Show"} ${action.playerFilter || "all"} player answers / ${timingText}${instantText}`;
+      if (action.type === "revealPlayerAnswerCorrectness") return `Reveal answer correctness / ${timingText}`;
+      if (action.type === "givePendingPoints") return `Give pending points to ${action.playerFilter || "correct"} players / ${timingText}`;
       if (action.type === "setTimerShown") return `${action.isShown === false ? "Hide" : "Show"} crafting timer / ${timingText}${instantText}`;
       if (action.type === "startCraftingTimer") return `Start crafting timer / ${timingText}`;
       if (action.type === "decision") return `${decisionVariableName(action.variable)}: ${decisionSummary(action)}`;
@@ -6990,7 +7107,7 @@
           targetKind: "action"
         }));
       }
-      if (action.type === "multipleChoiceInput" || action.type === "textSubmissionInput") {
+      if (action.type === "multipleChoiceInput" || action.type === "triviaInput" || action.type === "textSubmissionInput") {
         return [
           { label: "Timer Ends", field: "timerEndTargetActionId" },
           { label: "Answers", field: "answersSubmittedTargetActionId" }
@@ -7018,6 +7135,17 @@
         action.timerEndTargetActionId = action.timerEndTargetActionId || "";
         action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
       }
+      if (value === "getRandomMultipleChoiceContent") {
+        action.variableName = action.variableName || "multipleChoicePrompt";
+      }
+      if (value === "triviaInput") {
+        action.contentVariable = action.contentVariable || "multipleChoicePrompt";
+        action.inputMode = action.inputMode || "submitOnce";
+        action.locked = action.locked === true;
+        action.randomizeOptions = action.randomizeOptions === true;
+        action.timerEndTargetActionId = action.timerEndTargetActionId || "";
+        action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
+      }
       if (value === "textSubmissionInput") {
         action.prompt = action.prompt || "Write your answer";
         action.placeholder = action.placeholder || "Answer here";
@@ -7028,6 +7156,8 @@
       if (value === "displayText") action.text = action.text || "Displayed text";
       if (value === "playAudio") action.audioUrl = action.audioUrl || "";
       if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown") action.isShown = action.isShown !== false;
+      if (value === "setPlayerAnswersShown" || value === "givePendingPoints") action.playerFilter = action.playerFilter || (value === "givePendingPoints" ? "correct" : "all");
+      if (value === "givePendingPoints") action.points = Math.max(0, Math.floor(Number(action.points || 0)));
       if (value === "setTimerShown") action.isShown = action.isShown !== false;
       if (value === "decision") {
         action.variable = action.variable || "activePlayerCount";
@@ -7248,6 +7378,52 @@
           rerender();
         }));
       }
+      if (action.type === "getRandomMultipleChoiceContent") {
+        target.appendChild(flowField("Store In Variable", action.variableName || "multipleChoicePrompt", (value) => {
+          action.variableName = (value || "multipleChoicePrompt").trim() || "multipleChoicePrompt";
+          rerender();
+        }));
+        target.appendChild(readOnlyFlowNote("Gets a random prompt from the server prompt pool and stores it in this flow variable for later actions."));
+      }
+      if (action.type === "triviaInput") {
+        target.appendChild(flowField("Multiple Choice Content Variable", action.contentVariable || "multipleChoicePrompt", (value) => {
+          action.contentVariable = (value || "multipleChoicePrompt").trim() || "multipleChoicePrompt";
+          rerender();
+        }));
+        target.appendChild(flowSelect("Button Style", action.inputMode || "submitOnce", [
+          { id: "singleSelect", name: "Multi-Select Single" },
+          { id: "submitOnce", name: "Single Input Done State" },
+          { id: "continuous", name: "Continuous Input" }
+        ], (value) => {
+          action.inputMode = value;
+          rerender();
+        }));
+        if ((action.inputMode || "submitOnce") === "singleSelect") {
+          target.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", [
+            { id: "false", name: "False" },
+            { id: "true", name: "True" }
+          ], (value) => {
+            action.locked = value === "true";
+            rerender();
+          }));
+        }
+        target.appendChild(flowSelect("Randomize Options", action.randomizeOptions === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.randomizeOptions = value === "true";
+          rerender();
+        }));
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        target.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          rerender();
+        }));
+      }
       if (action.type === "textSubmissionInput") {
         target.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
           action.prompt = value || "Write your answer";
@@ -7312,6 +7488,32 @@
           action.instant = value === "true";
           rerender();
         }));
+        target.appendChild(flowSelect("Players", action.playerFilter || "all", [
+          { id: "all", name: "All Players" },
+          { id: "correct", name: "Correct Players" },
+          { id: "wrong", name: "Wrong Players" }
+        ], (value) => {
+          action.playerFilter = value;
+          rerender();
+        }));
+      }
+      if (action.type === "revealPlayerAnswerCorrectness") {
+        target.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
+      }
+      if (action.type === "givePendingPoints") {
+        target.appendChild(flowSelect("Players", action.playerFilter || "correct", [
+          { id: "all", name: "All Players" },
+          { id: "correct", name: "Correct Players" },
+          { id: "wrong", name: "Wrong Players" }
+        ], (value) => {
+          action.playerFilter = value;
+          rerender();
+        }));
+        target.appendChild(flowNumber("Points (0 = Correct Answer Constant)", Number(action.points || 0), (value) => {
+          action.points = Math.max(0, Math.floor(Number(value) || 0));
+          rerender();
+        }));
+        target.appendChild(readOnlyFlowNote("Adds pending points immediately, then shows a temporary points popup above each targeted player's answer bubble."));
       }
       if (action.type === "setTimerShown") {
         target.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", [
@@ -7360,7 +7562,7 @@
       if (action.type === "startCraftingTimer") {
         target.appendChild(readOnlyFlowNote("The timer starts and this action advances normally. Timer Ends and Answers Submitted exits are defined on the input action that follows."));
       }
-      if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "textSubmissionInput") {
+      if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "textSubmissionInput") {
         target.appendChild(flowSelect("Next Action", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
           action.nextTargetActionId = value;
           rerender();
@@ -7993,6 +8195,53 @@
         }));
         flowEditor.appendChild(readOnlyFlowNote("Each line becomes one button label. Controllers send the option index; this action currently shows the matching line as the stage speech bubble. Choose None for On Answers Submitted when continuous input should wait for the timer."));
       }
+      if (action.type === "getRandomMultipleChoiceContent") {
+        flowEditor.appendChild(flowField("Store In Variable", action.variableName || "multipleChoicePrompt", (value) => {
+          action.variableName = (value || "multipleChoicePrompt").trim() || "multipleChoicePrompt";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Gets a random prompt from the server prompt pool and stores it in this flow variable for later actions."));
+      }
+      if (action.type === "triviaInput") {
+        flowEditor.appendChild(flowField("Multiple Choice Content Variable", action.contentVariable || "multipleChoicePrompt", (value) => {
+          action.contentVariable = (value || "multipleChoicePrompt").trim() || "multipleChoicePrompt";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("Button Style", action.inputMode || "submitOnce", [
+          { id: "singleSelect", name: "Multi-Select Single" },
+          { id: "submitOnce", name: "Single Input Done State" },
+          { id: "continuous", name: "Continuous Input" }
+        ], (value) => {
+          action.inputMode = value;
+          renderFlowListAndPublish();
+          renderFlowEditor();
+        }));
+        if ((action.inputMode || "submitOnce") === "singleSelect") {
+          flowEditor.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", [
+            { id: "false", name: "False" },
+            { id: "true", name: "True" }
+          ], (value) => {
+            action.locked = value === "true";
+            renderFlowListAndPublish();
+          }));
+        }
+        flowEditor.appendChild(flowSelect("Randomize Options", action.randomizeOptions === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.randomizeOptions = value === "true";
+          renderFlowListAndPublish();
+        }));
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+      }
       if (action.type === "textSubmissionInput") {
         flowEditor.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
           action.prompt = value || "Write your answer";
@@ -8058,6 +8307,32 @@
           action.instant = value === "true";
           renderFlowListAndPublish();
         }));
+        flowEditor.appendChild(flowSelect("Players", action.playerFilter || "all", [
+          { id: "all", name: "All Players" },
+          { id: "correct", name: "Correct Players" },
+          { id: "wrong", name: "Wrong Players" }
+        ], (value) => {
+          action.playerFilter = value;
+          renderFlowListAndPublish();
+        }));
+      }
+      if (action.type === "revealPlayerAnswerCorrectness") {
+        flowEditor.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
+      }
+      if (action.type === "givePendingPoints") {
+        flowEditor.appendChild(flowSelect("Players", action.playerFilter || "correct", [
+          { id: "all", name: "All Players" },
+          { id: "correct", name: "Correct Players" },
+          { id: "wrong", name: "Wrong Players" }
+        ], (value) => {
+          action.playerFilter = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowNumber("Points (0 = Correct Answer Constant)", Number(action.points || 0), (value) => {
+          action.points = Math.max(0, Math.floor(Number(value) || 0));
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Adds pending points immediately, then shows a temporary points popup above each targeted player's answer bubble."));
       }
       if (action.type === "setTimerShown") {
         flowEditor.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", [
@@ -8109,7 +8384,7 @@
           renderFlowListAndPublish();
         }));
       }
-      if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "textSubmissionInput") {
+      if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "textSubmissionInput") {
         flowEditor.appendChild(flowSelect("Next Action", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
           action.nextTargetActionId = value;
           renderFlowListAndPublish();
@@ -8617,6 +8892,7 @@
         playerColors: colors.length ? colors : ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"],
         craftingTimerDuration: Math.max(1, Math.min(3600, Number(constants.craftingTimerDuration || 30))),
         startGameCountdownDuration: Math.max(1, Math.min(60, Number(constants.startGameCountdownDuration || 1))),
+        pointsForCorrectAnswer: Math.max(0, Math.min(999999, Math.floor(Number(constants.pointsForCorrectAnswer ?? 200)))),
         gameTitle: String(constants.gameTitle || "Party Game Template").trim().slice(0, 80) || "Party Game Template",
         numberOfRounds: Math.max(1, Math.min(99, Math.floor(Number(constants.numberOfRounds || 3)))),
         randomChanceTest: Math.max(0, Math.min(1, Number(constants.randomChanceTest ?? 0.5))),
@@ -8640,6 +8916,9 @@
       }
       if (startGameCountdownDurationInput) {
         startGameCountdownDurationInput.value = String(Math.max(1, Number(gameConstants.startGameCountdownDuration || 1)));
+      }
+      if (pointsForCorrectAnswerInput) {
+        pointsForCorrectAnswerInput.value = String(Math.max(0, Number(gameConstants.pointsForCorrectAnswer || 0)));
       }
       if (numberOfRoundsInput) numberOfRoundsInput.value = String(gameConstants.numberOfRounds);
       if (randomChanceTestInput) randomChanceTestInput.value = String(gameConstants.randomChanceTest);
@@ -8742,6 +9021,12 @@
         const value = Number(startGameCountdownDurationInput.value || 1);
         gameConstants.startGameCountdownDuration = Math.max(1, Math.min(60, Number.isFinite(value) ? value : 1));
         startGameCountdownDurationInput.value = String(gameConstants.startGameCountdownDuration);
+        markConstantsChanged();
+      });
+      pointsForCorrectAnswerInput?.addEventListener("change", () => {
+        const value = Math.floor(Number(pointsForCorrectAnswerInput.value || 0));
+        gameConstants.pointsForCorrectAnswer = Math.max(0, Math.min(999999, Number.isFinite(value) ? value : 200));
+        pointsForCorrectAnswerInput.value = String(gameConstants.pointsForCorrectAnswer);
         markConstantsChanged();
       });
       numberOfRoundsInput?.addEventListener("change", () => {

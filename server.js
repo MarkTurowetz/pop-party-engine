@@ -44,18 +44,94 @@ const availableFlowTransitions = [
 const availableFlowActionTypes = [
   { id: "presentText", name: "Present Text", category: "input" },
   { id: "multipleChoiceInput", name: "Multiple Choice Input", category: "input" },
+  { id: "triviaInput", name: "Trivia Input", category: "input" },
   { id: "textSubmissionInput", name: "Text Submission Input", category: "input" },
   { id: "doNothing", name: "Do Nothing", category: "standard" },
   { id: "playAudio", name: "Play Audio", category: "standard" },
+  { id: "getRandomMultipleChoiceContent", name: "Get Random Multiple Choice Content", category: "standard" },
   { id: "displayText", name: "Display Text", category: "standard" },
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
   { id: "setPlayerAnswersShown", name: "Set Player Answers Shown", category: "standard" },
+  { id: "revealPlayerAnswerCorrectness", name: "Reveal Player Answer Correctness", category: "standard" },
+  { id: "givePendingPoints", name: "Give Pending Points", category: "standard" },
   { id: "setTimerShown", name: "Set Timer Shown", category: "standard" },
   { id: "startCraftingTimer", name: "Start Crafting Timer", category: "standard" },
   { id: "decision", name: "Decision", category: "standard" },
   { id: "transition", name: "Do Transition", category: "standard" },
   { id: "transitionState", name: "Transition To State", category: "standard" }
 ];
+
+const multipleChoicePrompts = [
+  {
+    id: "four-letter-word",
+    prompt: "Which of these is a 4-letter word?",
+    options: ["Hi", "Cat", "Fish", "House"],
+    correctAnswerIndex: 3
+  },
+  {
+    id: "animal-that-flies",
+    prompt: "Which of these animals can fly?",
+    options: ["Dog", "Penguin", "Falcon", "Horse"],
+    correctAnswerIndex: 3
+  },
+  {
+    id: "planet-red",
+    prompt: "Which planet is known as the Red Planet?",
+    options: ["Venus", "Mars", "Jupiter", "Neptune"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "water-freezes",
+    prompt: "At what temperature does water freeze in Celsius?",
+    options: ["0", "10", "50", "100"],
+    correctAnswerIndex: 1
+  },
+  {
+    id: "largest-ocean",
+    prompt: "Which ocean is the largest?",
+    options: ["Atlantic", "Pacific", "Indian", "Arctic"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "primary-color",
+    prompt: "Which of these is a primary color?",
+    options: ["Green", "Purple", "Red", "Orange"],
+    correctAnswerIndex: 3
+  },
+  {
+    id: "weekday-after-monday",
+    prompt: "Which day comes after Monday?",
+    options: ["Sunday", "Tuesday", "Friday", "Saturday"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "shape-three-sides",
+    prompt: "Which shape has three sides?",
+    options: ["Square", "Circle", "Triangle", "Hexagon"],
+    correctAnswerIndex: 3
+  },
+  {
+    id: "five-plus-two",
+    prompt: "What is 5 + 2?",
+    options: ["6", "7", "8", "9"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "instrument-keys",
+    prompt: "Which instrument usually has keys?",
+    options: ["Drum", "Piano", "Trumpet", "Violin"],
+    correctAnswerIndex: 2
+  },
+  {
+    id: "opposite-hot",
+    prompt: "Which word is the opposite of hot?",
+    options: ["Warm", "Cold", "Bright", "Fast"],
+    correctAnswerIndex: 2
+  }
+].map((item) => ({
+  ...item,
+  correctAnswerIndex: Math.max(0, Math.floor(Number(item.correctAnswerIndex || 1)) - 1)
+}));
 const defaultGameFlow = {
   states: [
     {
@@ -352,6 +428,19 @@ function cleanChoiceOptions(value) {
   return options.length ? options : ["A", "B", "C", "D"];
 }
 
+function normalizeFlowVariableName(value, fallback = "multipleChoicePrompt") {
+  const cleaned = String(value || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_.$-]+/g, "")
+    .slice(0, 80);
+  return cleaned || fallback;
+}
+
+function normalizePlayerFilter(value) {
+  const cleaned = String(value || "").trim();
+  return ["all", "correct", "wrong"].includes(cleaned) ? cleaned : "all";
+}
+
 function normalizeChoiceInputMode(value) {
   const mode = String(value || "").trim();
   return ["singleSelect", "submitOnce", "continuous"].includes(mode) ? mode : "singleSelect";
@@ -401,10 +490,12 @@ function normalizeGameConstants(constants) {
   const playerColors = [...new Set(colors.map(normalizeColor).filter(Boolean))];
   const craftingTimerDuration = normalizeDurationSeconds(constants?.craftingTimerDuration, defaultGameConstants.craftingTimerDuration);
   const startGameCountdownDuration = normalizeDurationSeconds(constants?.startGameCountdownDuration, defaultGameConstants.startGameCountdownDuration);
+  const pointsForCorrectAnswer = normalizeConstantInteger(constants?.pointsForCorrectAnswer, defaultGameConstants.pointsForCorrectAnswer || 200, 0, 999999);
   return {
     playerColors: playerColors.length ? playerColors : [...defaultPlayerColors],
     craftingTimerDuration,
     startGameCountdownDuration,
+    pointsForCorrectAnswer,
     gameTitle: normalizeConstantString(constants?.gameTitle, defaultGameConstants.gameTitle),
     numberOfRounds: normalizeConstantInteger(constants?.numberOfRounds, defaultGameConstants.numberOfRounds, 1, 99),
     randomChanceTest: normalizeConstantFloat(constants?.randomChanceTest, defaultGameConstants.randomChanceTest, 0, 1),
@@ -980,6 +1071,17 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
     };
   }
+  if (type === "triviaInput") {
+    return {
+      ...base,
+      contentVariable: normalizeFlowVariableName(action?.contentVariable),
+      inputMode: normalizeChoiceInputMode(action?.inputMode),
+      locked: action?.locked === true,
+      randomizeOptions: action?.randomizeOptions === true,
+      timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
+    };
+  }
   if (type === "textSubmissionInput") {
     const characterLimit = normalizeCharacterLimit(action?.characterLimit);
     return {
@@ -1000,6 +1102,12 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       audioUrl: cleanFlowText(action?.audioUrl, "")
     };
   }
+  if (type === "getRandomMultipleChoiceContent") {
+    return {
+      ...base,
+      variableName: normalizeFlowVariableName(action?.variableName)
+    };
+  }
   if (type === "displayText") {
     return {
       ...base,
@@ -1013,7 +1121,13 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
     return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
   }
   if (type === "setPlayerAnswersShown") {
-    return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
+    return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true, playerFilter: normalizePlayerFilter(action?.playerFilter) };
+  }
+  if (type === "revealPlayerAnswerCorrectness") {
+    return { ...base };
+  }
+  if (type === "givePendingPoints") {
+    return { ...base, playerFilter: normalizePlayerFilter(action?.playerFilter || "correct"), points: normalizeConstantInteger(action?.points, 0, 0, 999999) };
   }
   if (type === "setTimerShown") {
     return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
@@ -1693,6 +1807,18 @@ function publicFlowAction(action, index) {
       answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
     };
   }
+  if (action.type === "triviaInput") {
+    return {
+      ...base,
+      type: "triviaInput",
+      contentVariable: normalizeFlowVariableName(action.contentVariable),
+      inputMode: normalizeChoiceInputMode(action.inputMode),
+      locked: action.locked === true,
+      randomizeOptions: action.randomizeOptions === true,
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+    };
+  }
   if (action.type === "textSubmissionInput") {
     return {
       ...base,
@@ -1710,6 +1836,9 @@ function publicFlowAction(action, index) {
   if (action.type === "playAudio") {
     return { ...base, type: "playAudio", audioUrl: action.audioUrl || "" };
   }
+  if (action.type === "getRandomMultipleChoiceContent") {
+    return { ...base, type: "getRandomMultipleChoiceContent", variableName: normalizeFlowVariableName(action.variableName) };
+  }
   if (action.type === "displayText" || action.type === "text") {
     return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
   }
@@ -1717,7 +1846,13 @@ function publicFlowAction(action, index) {
     return { ...base, type: "setPlayersShown", isShown: action.isShown !== false, instant: action.instant === true };
   }
   if (action.type === "setPlayerAnswersShown") {
-    return { ...base, type: "setPlayerAnswersShown", isShown: action.isShown !== false, instant: action.instant === true };
+    return { ...base, type: "setPlayerAnswersShown", isShown: action.isShown !== false, instant: action.instant === true, playerFilter: normalizePlayerFilter(action.playerFilter) };
+  }
+  if (action.type === "revealPlayerAnswerCorrectness") {
+    return { ...base, type: "revealPlayerAnswerCorrectness" };
+  }
+  if (action.type === "givePendingPoints") {
+    return { ...base, type: "givePendingPoints", playerFilter: normalizePlayerFilter(action.playerFilter || "correct"), points: normalizeConstantInteger(action.points, 0, 0, 999999) };
   }
   if (action.type === "setTimerShown") {
     return { ...base, type: "setTimerShown", isShown: action.isShown !== false, instant: action.instant === true };
@@ -1852,12 +1987,16 @@ function decisionVariableValue(room, variable) {
     randomChanceTest: constants.randomChanceTest,
     craftingTimerDuration: constants.craftingTimerDuration,
     startGameCountdownDuration: constants.startGameCountdownDuration,
+    pointsForCorrectAnswer: constants.pointsForCorrectAnswer,
     overrideFirstGameOfSession: constants.overrideFirstGameOfSession,
     players: active,
     playerColors: constants.playerColors,
     choiceInputAnswers: room.choiceInputAnswers,
     textInputAnswers: room.textInputAnswers,
-    displayedPlayerAnswers: room.displayedPlayerAnswers
+    displayedPlayerAnswers: room.displayedPlayerAnswers,
+    playerAnswerRecords: room.playerAnswerRecords,
+    playerAnswerGroups: room.playerAnswerGroups,
+    flowVariables: room.flowVariables
   };
   const pathParts = key.split(".").filter(Boolean);
   const first = pathParts.shift();
@@ -2063,7 +2202,7 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
     room.actionTimerId = setTimeout(() => {
       room.actionTimerId = null;
       room.actionCompletionPendingId = "";
-      if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
+      if (currentAction.type === "multipleChoiceInput" || currentAction.type === "triviaInput") clearChoiceInput(room);
       if (currentAction.type === "textSubmissionInput") clearTextInput(room);
       advanceRoomAfterAction(room, currentAction);
       currentRoomAction(room);
@@ -2072,7 +2211,7 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
     return true;
   }
 
-  if (currentAction.type === "multipleChoiceInput") clearChoiceInput(room);
+  if (currentAction.type === "multipleChoiceInput" || currentAction.type === "triviaInput") clearChoiceInput(room);
   if (currentAction.type === "textSubmissionInput") clearTextInput(room);
   advanceRoomAfterAction(room, currentAction);
   currentRoomAction(room);
@@ -2103,11 +2242,49 @@ function markAppliedActionEffect(room, actionId) {
 function applyRoomActionEffects(room, action) {
   if (!action || hasAppliedActionEffect(room, action.id)) return;
   markAppliedActionEffect(room, action.id);
+  if (action.type === "getRandomMultipleChoiceContent") {
+    const prompt = randomArrayItem(multipleChoicePrompts) || multipleChoicePrompts[0];
+    room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
+    room.flowVariables[normalizeFlowVariableName(action.variableName)] = clonePrompt(prompt);
+  }
   if (action.type === "setPlayersShown") {
     room.playersShown = action.isShown !== false;
   }
   if (action.type === "setPlayerAnswersShown") {
-    room.playerAnswersShown = action.isShown !== false;
+    const shouldShow = action.isShown !== false;
+    const filter = normalizePlayerFilter(action.playerFilter);
+    const targetPlayerIds = filteredPlayerIds(room, filter);
+    room.playerAnswersVisibleFilter = filter;
+    room.hiddenPlayerAnswerIds = room.hiddenPlayerAnswerIds instanceof Set ? room.hiddenPlayerAnswerIds : new Set();
+    if (filter === "all") {
+      room.playerAnswersShown = shouldShow;
+      if (shouldShow) room.hiddenPlayerAnswerIds.clear();
+      else {
+        clearDisplayedCorrectnessForPlayers(room, targetPlayerIds);
+        for (const playerId of targetPlayerIds) room.hiddenPlayerAnswerIds.add(playerId);
+      }
+    } else {
+      room.playerAnswersShown = true;
+      if (!shouldShow) clearDisplayedCorrectnessForPlayers(room, targetPlayerIds);
+      for (const playerId of targetPlayerIds) {
+        if (shouldShow) room.hiddenPlayerAnswerIds.delete(playerId);
+        else room.hiddenPlayerAnswerIds.add(playerId);
+      }
+    }
+  }
+  if (action.type === "revealPlayerAnswerCorrectness") {
+    markDisplayedAnswersCorrectness(room);
+  }
+  if (action.type === "givePendingPoints") {
+    const playerIds = filteredPlayerIds(room, action.playerFilter);
+    const points = Number(action.points || 0) > 0 ? Number(action.points) : gameConstants().pointsForCorrectAnswer;
+    room.pendingPointPopupNonce = Number(room.pendingPointPopupNonce || 0) + 1;
+    const nonce = room.pendingPointPopupNonce;
+    room.pendingPointPopups = playerIds.map((playerId, index) => {
+      const player = room.players.get(playerId);
+      if (player) player.pendingPoints = Number(player.pendingPoints || 0) + points;
+      return { id: `${nonce}-${playerId}`, nonce, playerId, points, index, createdAt: Date.now() };
+    });
   }
   if (action.type === "setTimerShown") {
     setCraftingTimerShown(room, action.isShown !== false);
@@ -2594,17 +2771,28 @@ function getRoom(stageCode) {
       presentedAction: null,
       playersShown: true,
       playerAnswersShown: true,
+      hiddenPlayerAnswerIds: new Set(),
       currentRound: 1,
+      flowVariables: {},
+      playerAnswerRecords: {},
+      playerAnswerGroups: { correct: [], wrong: [], all: [] },
+      pendingPointPopups: [],
+      pendingPointPopupNonce: 0,
       playerSessionKey: "",
       numSequentialGames: 0,
       hasEnteredRoundIntro: false,
       choiceInputActionId: "",
       choiceInputPrompt: "",
       choiceInputOptions: [],
+      choiceInputOriginalIndexes: [],
+      choiceInputCorrectAnswerIndex: null,
+      choiceInputKind: "multipleChoice",
+      choiceInputContentId: "",
       choiceInputMode: "singleSelect",
       choiceInputLocked: false,
       choiceInputAnswers: new Map(),
       displayedPlayerAnswers: new Map(),
+      displayedAnswerCorrectness: new Map(),
       textInputActionId: "",
       textInputPrompt: "",
       textInputPlaceholder: "",
@@ -2690,7 +2878,7 @@ function publicPlayer(player, room) {
   const choiceAnswer = room.choiceInputAnswers?.get(player.id) || null;
   const textAnswer = room.textInputAnswers?.get(player.id) || null;
   const displayedAnswer = room.displayedPlayerAnswers?.get(player.id) || null;
-  const answer = choiceAnswer || textAnswer || displayedAnswer || null;
+  const answer = displayedAnswer || choiceAnswer || textAnswer || null;
   const needsChoiceInput = Boolean(room.choiceInputActionId) && (
     room.choiceInputMode === "continuous" || !choiceAnswer
   );
@@ -2701,9 +2889,19 @@ function publicPlayer(player, room) {
     avatar: player.avatar,
     active: player.active,
     joinedAt: player.joinedAt,
+    pendingPoints: Number(player.pendingPoints || 0),
     isVip: player.id === room.vipPlayerId,
     needsInput: player.active === true && (needsChoiceInput || needsTextInput),
-    answer: answer ? { optionIndex: answer.optionIndex, text: answer.text, done: answer.done === true, invalid: answer.invalid === true, nonce: answer.nonce || 0 } : null
+    answer: answer ? {
+      optionIndex: answer.optionIndex,
+      originalOptionIndex: answer.originalOptionIndex,
+      text: answer.text,
+      done: answer.done === true,
+      invalid: answer.invalid === true,
+      correct: answer.correct === true ? true : answer.correct === false ? false : null,
+      hidden: room.hiddenPlayerAnswerIds?.has(player.id) === true,
+      nonce: answer.nonce || 0
+    } : null
   };
 }
 
@@ -2720,24 +2918,117 @@ function displayedPlayerAnswers(room) {
   return room.displayedPlayerAnswers;
 }
 
+function displayedAnswerCorrectness(room) {
+  if (!room.displayedAnswerCorrectness || typeof room.displayedAnswerCorrectness.get !== "function") {
+    room.displayedAnswerCorrectness = new Map();
+  }
+  return room.displayedAnswerCorrectness;
+}
+
 function rememberDisplayedPlayerAnswer(room, playerId, answer) {
   if (!playerId || !answer || !answer.text) return;
+  const correctness = displayedAnswerCorrectness(room).get(playerId);
   displayedPlayerAnswers(room).set(playerId, {
     optionIndex: answer.optionIndex,
+    originalOptionIndex: answer.originalOptionIndex,
     text: answer.text,
     done: answer.done === true,
     invalid: answer.invalid === true,
+    correct: correctness === true ? true : correctness === false ? false : null,
     nonce: answer.nonce || Date.now()
   });
+  if (correctness === true || correctness === false) displayedAnswerCorrectness(room).set(playerId, correctness);
 }
 
 function forgetDisplayedPlayerAnswer(room, playerId) {
   if (!playerId) return;
   displayedPlayerAnswers(room).delete(playerId);
+  displayedAnswerCorrectness(room).delete(playerId);
 }
 
 function clearDisplayedPlayerAnswers(room) {
   displayedPlayerAnswers(room).clear();
+  displayedAnswerCorrectness(room).clear();
+  if (room.hiddenPlayerAnswerIds?.clear) room.hiddenPlayerAnswerIds.clear();
+  else room.hiddenPlayerAnswerIds = new Set();
+  room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
+}
+
+function triviaPromptById(id) {
+  return multipleChoicePrompts.find((prompt) => prompt.id === id) || null;
+}
+
+function clonePrompt(prompt) {
+  return {
+    id: prompt.id,
+    prompt: prompt.prompt,
+    options: [...prompt.options],
+    correctAnswerIndex: prompt.correctAnswerIndex
+  };
+}
+
+function shuffledTriviaPrompt(prompt) {
+  const pairs = prompt.options.map((text, originalIndex) => ({ text, originalIndex }));
+  for (let i = pairs.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+  }
+  return {
+    id: prompt.id,
+    prompt: prompt.prompt,
+    options: pairs.map((item) => item.text),
+    optionOriginalIndexes: pairs.map((item) => item.originalIndex),
+    correctAnswerIndex: prompt.correctAnswerIndex
+  };
+}
+
+function clearPlayerAnswerData(room) {
+  room.playerAnswerRecords = {};
+  room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
+  displayedAnswerCorrectness(room).clear();
+}
+
+function clearDisplayedCorrectnessForPlayers(room, playerIds) {
+  const correctness = displayedAnswerCorrectness(room);
+  const displayedAnswers = displayedPlayerAnswers(room);
+  for (const playerId of playerIds || []) {
+    correctness.delete(playerId);
+    const displayed = displayedAnswers.get(playerId);
+    if (displayed) {
+      displayed.correct = null;
+      displayed.nonce = Date.now();
+    }
+  }
+}
+
+function updatePlayerAnswerGroups(room) {
+  const records = room.playerAnswerRecords || {};
+  const all = [...new Set([...Object.keys(records), ...displayedPlayerAnswers(room).keys()])];
+  room.playerAnswerGroups = {
+    all,
+    correct: all.filter((playerId) => records[playerId]?.correct === true),
+    wrong: all.filter((playerId) => records[playerId]?.correct === false)
+  };
+}
+
+function filteredPlayerIds(room, filter = "all") {
+  updatePlayerAnswerGroups(room);
+  const normalized = normalizePlayerFilter(filter);
+  return [...(room.playerAnswerGroups?.[normalized] || room.playerAnswerGroups?.all || [])];
+}
+
+function markDisplayedAnswersCorrectness(room) {
+  const records = room.playerAnswerRecords || {};
+  for (const [playerId, record] of Object.entries(records)) {
+    if (record.correct === true || record.correct === false) {
+      displayedAnswerCorrectness(room).set(playerId, record.correct);
+      const displayed = displayedPlayerAnswers(room).get(playerId);
+      if (displayed) {
+        displayed.correct = record.correct;
+        displayed.nonce = Date.now();
+      }
+    }
+  }
 }
 
 function clearChoiceInput(room) {
@@ -2745,6 +3036,10 @@ function clearChoiceInput(room) {
   room.choiceInputActionId = "";
   room.choiceInputPrompt = "";
   room.choiceInputOptions = [];
+  room.choiceInputOriginalIndexes = [];
+  room.choiceInputCorrectAnswerIndex = null;
+  room.choiceInputKind = "multipleChoice";
+  room.choiceInputContentId = "";
   room.choiceInputMode = "singleSelect";
   room.choiceInputLocked = false;
   if (room.choiceInputAnswers?.clear) {
@@ -2910,23 +3205,41 @@ function scheduleAnswersSubmittedAdvance(room) {
   }, 500);
 }
 
+function triviaContentForAction(room, action) {
+  const variableName = normalizeFlowVariableName(action?.contentVariable);
+  const stored = room.flowVariables?.[variableName];
+  const prompt = stored?.id ? triviaPromptById(stored.id) || stored : multipleChoicePrompts[0];
+  const content = action?.randomizeOptions ? shuffledTriviaPrompt(prompt) : {
+    ...clonePrompt(prompt),
+    optionOriginalIndexes: prompt.options.map((_, index) => index)
+  };
+  return content;
+}
+
 function applyChoiceInputAction(room, action) {
-  if (!action || action.type !== "multipleChoiceInput") return;
+  if (!action || (action.type !== "multipleChoiceInput" && action.type !== "triviaInput")) return;
   if (room.choiceInputActionId === action.id) return;
   clearDisplayedPlayerAnswers(room);
+  clearPlayerAnswerData(room);
+  const triviaContent = action.type === "triviaInput" ? triviaContentForAction(room, action) : null;
   room.choiceInputActionId = action.id;
-  room.choiceInputPrompt = action.prompt || "Answer this question by tapping an answer";
-  room.choiceInputOptions = cleanChoiceOptions(action.options);
+  room.choiceInputPrompt = triviaContent?.prompt || action.prompt || "Answer this question by tapping an answer";
+  room.choiceInputOptions = triviaContent?.options || cleanChoiceOptions(action.options);
+  room.choiceInputOriginalIndexes = triviaContent?.optionOriginalIndexes || room.choiceInputOptions.map((_, index) => index);
+  room.choiceInputCorrectAnswerIndex = Number.isFinite(Number(triviaContent?.correctAnswerIndex)) ? Number(triviaContent.correctAnswerIndex) : null;
+  room.choiceInputKind = action.type === "triviaInput" ? "trivia" : "multipleChoice";
+  room.choiceInputContentId = triviaContent?.id || "";
   room.choiceInputMode = normalizeChoiceInputMode(action.inputMode);
   room.choiceInputLocked = action.locked === true;
   room.choiceInputAnswers = new Map();
 }
 
 function choiceInputPayload(room, currentAction) {
-  if (!currentAction || currentAction.type !== "multipleChoiceInput") return null;
+  if (!currentAction || (currentAction.type !== "multipleChoiceInput" && currentAction.type !== "triviaInput")) return null;
   applyChoiceInputAction(room, currentAction);
   return {
     actionId: room.choiceInputActionId,
+    type: room.choiceInputKind,
     prompt: room.choiceInputPrompt,
     mode: room.choiceInputMode,
     locked: room.choiceInputLocked,
@@ -2986,6 +3299,9 @@ function lobbyPayload(room) {
     startToken: room.startToken,
     playersShown: room.playersShown !== false,
     playerAnswersShown: room.playerAnswersShown !== false,
+    playerAnswersVisibleFilter: normalizePlayerFilter(room.playerAnswersVisibleFilter),
+    playerAnswerGroups: room.playerAnswerGroups || { correct: [], wrong: [], all: [] },
+    pendingPointPopups: Array.isArray(room.pendingPointPopups) ? room.pendingPointPopups : [],
     players: activePlayers(room).map((player) => publicPlayer(player, room))
   };
 }
@@ -3021,6 +3337,10 @@ function enterLobbyPhase(room) {
   clearAppliedActionEffects(room);
   room.playersShown = true;
   room.playerAnswersShown = true;
+  room.playerAnswersVisibleFilter = "all";
+  room.flowVariables = {};
+  clearPlayerAnswerData(room);
+  room.pendingPointPopups = [];
   room.currentRound = 1;
   room.hasEnteredRoundIntro = false;
   resetCraftingTimer(room);
@@ -3067,6 +3387,8 @@ function enterGamePhase(room, phase) {
   clearAppliedActionEffects(room);
   room.playersShown = true;
   room.playerAnswersShown = true;
+  room.playerAnswersVisibleFilter = "all";
+  room.pendingPointPopups = [];
   resetCraftingTimer(room);
   clearChoiceInput(room);
   clearTextInput(room);
@@ -3164,6 +3486,7 @@ async function handleJoin(req, res) {
       avatar: makeRandomAvatar(room, playerId),
       active: true,
       kickedFromGame: false,
+      pendingPoints: 0,
       joinedAt: Date.now(),
       lastSeen: Date.now()
     };
@@ -3405,7 +3728,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setPlayerAnswersShown" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setPlayerAnswersShown" || currentAction?.type === "revealPlayerAnswerCorrectness" || currentAction?.type === "givePendingPoints" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "getRandomMultipleChoiceContent" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "triviaInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -3459,7 +3782,7 @@ async function handleControllerChoice(req, res) {
   }
 
   const currentAction = resolveRoomActionText(currentRoomAction(room), room);
-  if (!currentAction || currentAction.type !== "multipleChoiceInput") {
+  if (!currentAction || (currentAction.type !== "multipleChoiceInput" && currentAction.type !== "triviaInput")) {
     sendJson(res, 409, { ok: false, error: "No active choice input" });
     return;
   }
@@ -3492,15 +3815,37 @@ async function handleControllerChoice(req, res) {
     return;
   }
 
+  const originalOptionIndex = Number(room.choiceInputOriginalIndexes?.[optionIndex] ?? optionIndex);
+  const isTrivia = room.choiceInputKind === "trivia";
+  const correct = isTrivia && Number.isFinite(Number(room.choiceInputCorrectAnswerIndex))
+    ? originalOptionIndex === Number(room.choiceInputCorrectAnswerIndex)
+    : null;
   const answer = {
     optionIndex,
+    originalOptionIndex,
     text: room.choiceInputOptions[optionIndex],
     answeredAt: Date.now(),
     done: room.choiceInputMode === "submitOnce",
+    correct,
     nonce: Date.now()
   };
   room.choiceInputAnswers.set(playerId, answer);
+  displayedAnswerCorrectness(room).delete(playerId);
   rememberDisplayedPlayerAnswer(room, playerId, answer);
+  if (isTrivia) {
+    room.playerAnswerRecords = room.playerAnswerRecords || {};
+    room.playerAnswerRecords[playerId] = {
+      playerId,
+      actionId: room.choiceInputActionId,
+      contentId: room.choiceInputContentId,
+      optionIndex,
+      originalOptionIndex,
+      text: answer.text,
+      correct,
+      answeredAt: answer.answeredAt
+    };
+    updatePlayerAnswerGroups(room);
+  }
 
   broadcastLobby(room);
   if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
@@ -3725,6 +4070,11 @@ function router(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/game-constants") {
     handleSaveGameConstants(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/multiple-choice-prompts") {
+    sendJson(res, 200, { ok: true, prompts: multipleChoicePrompts.map(clonePrompt) });
     return;
   }
 
