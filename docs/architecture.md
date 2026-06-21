@@ -14,6 +14,7 @@ concepts into focused modules.
   - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules.
   - `action-effect-state-runtime.js` owns room action-effect id tracking.
   - `app-version.js` owns build/version lookup.
+  - `countdown-runtime.js` owns countdown timer clearing and starting-phase countdown scheduling.
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
     and art file responses.
   - `flow-action-public-runtime.js` owns public flow action serialization and room text interpolation.

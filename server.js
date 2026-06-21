@@ -4,6 +4,7 @@ const path = require("path");
 const { createActionCompletionRuntime } = require("./server/action-completion-runtime");
 const { createActionEffectStateRuntime } = require("./server/action-effect-state-runtime");
 const { readAppVersion } = require("./server/app-version");
+const { createCountdownRuntime } = require("./server/countdown-runtime");
 const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
 const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime");
 const { createDecisionRuntime } = require("./server/decision-runtime");
@@ -165,6 +166,16 @@ const {
   clearTextInput,
   currentRoomAction,
   enterGamePhase
+});
+
+const {
+  clearCountdownTimer,
+  enterStartingPhase
+} = createCountdownRuntime({
+  broadcastLobby,
+  completeCountdownTrigger,
+  countdownDurationMs: () => Math.round(normalizeDurationSeconds(gameConstants().startGameCountdownDuration, 1) * 1000),
+  startGoHoldMs: START_GO_HOLD_MS
 });
 
 const githubStorage = createGithubStorageRuntime({
@@ -1989,12 +2000,6 @@ function broadcastLobby(room) {
   }
 }
 
-function clearCountdownTimer(room) {
-  if (!room.countdownTimerId) return;
-  clearTimeout(room.countdownTimerId);
-  room.countdownTimerId = null;
-}
-
 function enterLobbyPhase(room) {
   clearCountdownTimer(room);
   clearActionTimer(room);
@@ -2080,19 +2085,6 @@ function enterGamePhase(room, phase) {
     advanceRoomFromMomentReturn(room);
     return;
   }
-  broadcastLobby(room);
-}
-
-function enterStartingPhase(room) {
-  const now = Date.now();
-  const startCountdownMs = Math.round(normalizeDurationSeconds(gameConstants().startGameCountdownDuration, 1) * 1000);
-  clearCountdownTimer(room);
-  room.phase = "starting";
-  room.countdownStartedAt = now;
-  room.countdownEndsAt = now + startCountdownMs;
-  room.countdownTimerId = setTimeout(() => {
-    completeCountdownTrigger(room);
-  }, startCountdownMs + START_GO_HOLD_MS);
   broadcastLobby(room);
 }
 
