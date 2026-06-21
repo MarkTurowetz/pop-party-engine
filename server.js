@@ -53,6 +53,7 @@ const availableFlowActionTypes = [
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
   { id: "setPlayerAnswersShown", name: "Set Player Answers Shown", category: "standard" },
   { id: "revealPlayerAnswerCorrectness", name: "Reveal Player Answer Correctness", category: "standard" },
+  { id: "showPoints", name: "Show Points", category: "standard" },
   { id: "givePendingPoints", name: "Give Pending Points", category: "standard" },
   { id: "setTimerShown", name: "Set Timer Shown", category: "standard" },
   { id: "startCraftingTimer", name: "Start Crafting Timer", category: "standard" },
@@ -1129,8 +1130,11 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
   if (type === "revealPlayerAnswerCorrectness") {
     return { ...base };
   }
-  if (type === "givePendingPoints") {
+  if (type === "showPoints") {
     return { ...base, playerFilter: normalizePlayerFilter(action?.playerFilter || "correct"), points: normalizeConstantInteger(action?.points, 0, 0, 999999) };
+  }
+  if (type === "givePendingPoints") {
+    return { ...base };
   }
   if (type === "setTimerShown") {
     return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
@@ -1854,8 +1858,11 @@ function publicFlowAction(action, index) {
   if (action.type === "revealPlayerAnswerCorrectness") {
     return { ...base, type: "revealPlayerAnswerCorrectness" };
   }
+  if (action.type === "showPoints") {
+    return { ...base, type: "showPoints", playerFilter: normalizePlayerFilter(action.playerFilter || "correct"), points: normalizeConstantInteger(action.points, 0, 0, 999999) };
+  }
   if (action.type === "givePendingPoints") {
-    return { ...base, type: "givePendingPoints", playerFilter: normalizePlayerFilter(action.playerFilter || "correct"), points: normalizeConstantInteger(action.points, 0, 0, 999999) };
+    return { ...base, type: "givePendingPoints" };
   }
   if (action.type === "setTimerShown") {
     return { ...base, type: "setTimerShown", isShown: action.isShown !== false, instant: action.instant === true };
@@ -2272,7 +2279,10 @@ function applyRoomActionEffects(room, action) {
   if (action.type === "setPlayerAnswersShown") {
     const shouldShow = action.isShown !== false;
     const filter = normalizePlayerFilter(action.playerFilter);
-    const targetPlayerIds = filteredPlayerIds(room, filter);
+    const targetPlayerIds = shouldShow && filter === "all"
+      ? activePlayers(room).map((player) => player.id)
+      : filteredPlayerIds(room, filter);
+    if (shouldShow) seedDisplayedPlayerAnswers(room, targetPlayerIds);
     room.playerAnswersVisibleFilter = filter;
     room.hiddenPlayerAnswerIds = room.hiddenPlayerAnswerIds instanceof Set ? room.hiddenPlayerAnswerIds : new Set();
     if (filter === "all") {
@@ -2294,7 +2304,7 @@ function applyRoomActionEffects(room, action) {
   if (action.type === "revealPlayerAnswerCorrectness") {
     markDisplayedAnswersCorrectness(room);
   }
-  if (action.type === "givePendingPoints") {
+  if (action.type === "showPoints") {
     const playerIds = filteredPlayerIds(room, action.playerFilter);
     const points = Number(action.points || 0) > 0 ? Number(action.points) : gameConstants().pointsForCorrectAnswer;
     room.pendingPointPopupNonce = Number(room.pendingPointPopupNonce || 0) + 1;
@@ -2304,6 +2314,15 @@ function applyRoomActionEffects(room, action) {
       if (player) player.pendingPoints = Number(player.pendingPoints || 0) + points;
       return { id: `${nonce}-${playerId}`, nonce, playerId, points, index, createdAt: Date.now() };
     });
+  }
+  if (action.type === "givePendingPoints") {
+    for (const player of room.players.values()) {
+      const pending = Number(player.pendingPoints || 0);
+      if (pending > 0) {
+        player.points = Number(player.points || 0) + pending;
+        player.pendingPoints = 0;
+      }
+    }
   }
   if (action.type === "setTimerShown") {
     setCraftingTimerShown(room, action.isShown !== false);
@@ -2897,30 +2916,33 @@ function publicPlayer(player, room) {
   const choiceAnswer = room.choiceInputAnswers?.get(player.id) || null;
   const textAnswer = room.textInputAnswers?.get(player.id) || null;
   const displayedAnswer = room.displayedPlayerAnswers?.get(player.id) || null;
-  const answer = displayedAnswer || choiceAnswer || textAnswer || null;
+  const answer = choiceAnswer || textAnswer || null;
   const needsChoiceInput = Boolean(room.choiceInputActionId) && (
     room.choiceInputMode === "continuous" || !choiceAnswer
   );
   const needsTextInput = Boolean(room.textInputActionId) && textAnswer?.done !== true;
+  const serializeAnswer = (value) => value ? {
+    optionIndex: value.optionIndex,
+    originalOptionIndex: value.originalOptionIndex,
+    text: value.text,
+    done: value.done === true,
+    invalid: value.invalid === true,
+    correct: value.correct === true ? true : value.correct === false ? false : null,
+    hidden: room.hiddenPlayerAnswerIds?.has(player.id) === true,
+    nonce: value.nonce || 0
+  } : null;
   return {
     id: player.id,
     name: player.name,
     avatar: player.avatar,
     active: player.active,
     joinedAt: player.joinedAt,
+    points: Number(player.points || 0),
     pendingPoints: Number(player.pendingPoints || 0),
     isVip: player.id === room.vipPlayerId,
     needsInput: player.active === true && (needsChoiceInput || needsTextInput),
-    answer: answer ? {
-      optionIndex: answer.optionIndex,
-      originalOptionIndex: answer.originalOptionIndex,
-      text: answer.text,
-      done: answer.done === true,
-      invalid: answer.invalid === true,
-      correct: answer.correct === true ? true : answer.correct === false ? false : null,
-      hidden: room.hiddenPlayerAnswerIds?.has(player.id) === true,
-      nonce: answer.nonce || 0
-    } : null
+    answer: serializeAnswer(answer),
+    displayedAnswer: serializeAnswer(displayedAnswer)
   };
 }
 
@@ -2957,6 +2979,19 @@ function rememberDisplayedPlayerAnswer(room, playerId, answer) {
     nonce: answer.nonce || Date.now()
   });
   if (correctness === true || correctness === false) displayedAnswerCorrectness(room).set(playerId, correctness);
+}
+
+function storedPlayerAnswer(room, playerId) {
+  return room.choiceInputAnswers?.get(playerId) || room.textInputAnswers?.get(playerId) || null;
+}
+
+function seedDisplayedPlayerAnswers(room, playerIds = []) {
+  const ids = Array.isArray(playerIds) && playerIds.length ? playerIds : activePlayers(room).map((player) => player.id);
+  for (const playerId of ids) {
+    const answer = storedPlayerAnswer(room, playerId);
+    if (answer?.text) rememberDisplayedPlayerAnswer(room, playerId, answer);
+  }
+  updatePlayerAnswerGroups(room);
 }
 
 function forgetDisplayedPlayerAnswer(room, playerId) {
@@ -3512,6 +3547,7 @@ async function handleJoin(req, res) {
       avatar: makeRandomAvatar(room, playerId),
       active: true,
       kickedFromGame: false,
+      points: 0,
       pendingPoints: 0,
       joinedAt: Date.now(),
       lastSeen: Date.now()
@@ -3754,7 +3790,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setPlayerAnswersShown" || currentAction?.type === "revealPlayerAnswerCorrectness" || currentAction?.type === "givePendingPoints" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "getRandomMultipleChoiceContent" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "triviaInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setPlayerAnswersShown" || currentAction?.type === "revealPlayerAnswerCorrectness" || currentAction?.type === "showPoints" || currentAction?.type === "givePendingPoints" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "getRandomMultipleChoiceContent" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "triviaInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -3857,7 +3893,6 @@ async function handleControllerChoice(req, res) {
   };
   room.choiceInputAnswers.set(playerId, answer);
   displayedAnswerCorrectness(room).delete(playerId);
-  rememberDisplayedPlayerAnswer(room, playerId, answer);
   if (isTrivia) {
     room.playerAnswerRecords = room.playerAnswerRecords || {};
     room.playerAnswerRecords[playerId] = {
@@ -3931,7 +3966,6 @@ async function handleControllerTextSubmit(req, res) {
     nonce: Date.now()
   };
   room.textInputAnswers.set(playerId, answer);
-  rememberDisplayedPlayerAnswer(room, playerId, answer);
   broadcastLobby(room);
   if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
     scheduleAnswersSubmittedAdvance(room);
