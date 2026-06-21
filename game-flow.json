@@ -297,7 +297,7 @@
         {
           "id": "crafting-game-state-action-mqn4u54c",
           "name": "Game Action 9",
-          "type": "revealPlayerAnswerCorrectness",
+          "type": "setPlayerAnswersShown",
           "timing": {
             "mode": "E+",
             "seconds": 2
@@ -311,7 +311,8 @@
             "x": 454,
             "y": 484
           },
-          "nextTargetActionId": "crafting-game-state-action-mqn9u17o"
+          "nextTargetActionId": "crafting-game-state-action-mqn9u17o",
+          "playerFilter": "all"
         },
         {
           "id": "crafting-game-state-action-mqn9u17o",
