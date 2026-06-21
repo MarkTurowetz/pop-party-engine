@@ -2982,7 +2982,17 @@ function rememberDisplayedPlayerAnswer(room, playerId, answer) {
 }
 
 function storedPlayerAnswer(room, playerId) {
-  return room.choiceInputAnswers?.get(playerId) || room.textInputAnswers?.get(playerId) || null;
+  const liveAnswer = room.choiceInputAnswers?.get(playerId) || room.textInputAnswers?.get(playerId) || null;
+  if (liveAnswer) return liveAnswer;
+  const record = room.playerAnswerRecords?.[playerId] || null;
+  return record?.text ? {
+    optionIndex: record.optionIndex,
+    originalOptionIndex: record.originalOptionIndex,
+    text: record.text,
+    done: true,
+    correct: record.correct === true ? true : record.correct === false ? false : null,
+    nonce: record.answeredAt || Date.now()
+  } : null;
 }
 
 function seedDisplayedPlayerAnswers(room, playerIds = []) {
@@ -3893,20 +3903,18 @@ async function handleControllerChoice(req, res) {
   };
   room.choiceInputAnswers.set(playerId, answer);
   displayedAnswerCorrectness(room).delete(playerId);
-  if (isTrivia) {
-    room.playerAnswerRecords = room.playerAnswerRecords || {};
-    room.playerAnswerRecords[playerId] = {
-      playerId,
-      actionId: room.choiceInputActionId,
-      contentId: room.choiceInputContentId,
-      optionIndex,
-      originalOptionIndex,
-      text: answer.text,
-      correct,
-      answeredAt: answer.answeredAt
-    };
-    updatePlayerAnswerGroups(room);
-  }
+  room.playerAnswerRecords = room.playerAnswerRecords || {};
+  room.playerAnswerRecords[playerId] = {
+    playerId,
+    actionId: room.choiceInputActionId,
+    contentId: room.choiceInputContentId,
+    optionIndex,
+    originalOptionIndex,
+    text: answer.text,
+    correct,
+    answeredAt: answer.answeredAt
+  };
+  updatePlayerAnswerGroups(room);
 
   broadcastLobby(room);
   if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
@@ -3966,6 +3974,18 @@ async function handleControllerTextSubmit(req, res) {
     nonce: Date.now()
   };
   room.textInputAnswers.set(playerId, answer);
+  room.playerAnswerRecords = room.playerAnswerRecords || {};
+  room.playerAnswerRecords[playerId] = {
+    playerId,
+    actionId: room.textInputActionId,
+    contentId: "",
+    optionIndex: null,
+    originalOptionIndex: null,
+    text: answer.text,
+    correct: null,
+    answeredAt: answer.nonce
+  };
+  updatePlayerAnswerGroups(room);
   broadcastLobby(room);
   if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
     scheduleAnswersSubmittedAdvance(room);
