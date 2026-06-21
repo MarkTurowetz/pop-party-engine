@@ -14,6 +14,7 @@ concepts into focused modules.
   - `app-version.js` owns build/version lookup.
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
     and art file responses.
+  - `flow-action-public-runtime.js` owns public flow action serialization and room text interpolation.
   - `github-storage-runtime.js` owns generic GitHub JSON content reads/writes.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
   - `input-state-runtime.js` owns shared choice/text input reset state and submission-completion checks.
