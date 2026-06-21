@@ -32,6 +32,7 @@ concepts into focused modules.
   - `static-files-runtime.js` owns app shell rendering and browser module file responses.
   - `tool-data-read-runtime.js` owns read-side tool data endpoint responses.
   - `trivia-content-runtime.js` owns trivia prompt cloning, random selection, and action content preparation.
+  - `value-normalizers.js` owns reusable primitive value cleanup for ids, labels, colors, numbers, and text.
 - `shared/`
   - Data and schema-like constants shared by server runtime and tools.
   - `game-data.js` owns action type metadata, default layouts, default constants, prompts,
