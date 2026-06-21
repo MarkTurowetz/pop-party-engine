@@ -34,6 +34,7 @@ concepts into focused modules.
   - `player-state-runtime.js` owns player avatar helpers, active-player filtering, and VIP selection.
   - `room-state-runtime.js` owns default room construction and room lookup helpers.
   - `save-handlers-runtime.js` owns common tool save endpoint handling and response shaping.
+  - `stage-layout-normalization-runtime.js` owns stage layout collection normalization and migration.
   - `stage-layout-state-runtime.js` owns default stage layout state creation for flow states.
   - `static-files-runtime.js` owns app shell rendering and browser module file responses.
   - `tool-data-read-runtime.js` owns read-side tool data endpoint responses.
