@@ -16,7 +16,7 @@
         "y": 514
       },
       "entryTargetActionId": "",
-      "nextStateTargetId": "writing-moment",
+      "nextStateTargetId": "intro",
       "actions": [
         {
           "id": "lobby-countdown-complete",
