@@ -311,6 +311,25 @@
             "x": 454,
             "y": 484
           },
+          "nextTargetActionId": "crafting-game-state-action-mqn9u17o"
+        },
+        {
+          "id": "crafting-game-state-action-mqn9u17o",
+          "name": "Game Action 12",
+          "type": "revealPlayerAnswerCorrectness",
+          "timing": {
+            "mode": "E+",
+            "seconds": 2
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 769,
+            "y": 492
+          },
           "nextTargetActionId": "crafting-game-state-action-mqn4uouf"
         },
         {
@@ -319,7 +338,7 @@
           "type": "setPlayerAnswersShown",
           "timing": {
             "mode": "E+",
-            "seconds": 2
+            "seconds": 1
           },
           "text": "Presented text",
           "textTarget": "presentation",
