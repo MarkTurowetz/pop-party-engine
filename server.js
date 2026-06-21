@@ -3,6 +3,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { readAppVersion } = require("./server/app-version");
+const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
 const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime");
 const { createDecisionRuntime } = require("./server/decision-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
@@ -59,6 +60,23 @@ const START_GO_HOLD_MS = 700;
 const rooms = new Map();
 
 const APP_VERSION = readAppVersion(ROOT);
+
+const {
+  handleReplaceArtAsset,
+  sendArtAssetList,
+  serveArtFile
+} = createArtAssetsRuntime({
+  acceptedArtTypes,
+  artAssets,
+  artGroups,
+  artRoot: ART_ROOT,
+  contentTypeForFile,
+  customDir: ART_CUSTOM_DIR,
+  defaultDir: ART_DEFAULT_DIR,
+  manifestFile: ART_MANIFEST_FILE,
+  readJson,
+  sendJson
+});
 
 const {
   compareDecisionValues,
@@ -140,14 +158,6 @@ function normalizePlayerId(value) {
 
 function cleanPlayerName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, 24);
-}
-
-function readArtManifest() {
-  try {
-    return JSON.parse(fs.readFileSync(ART_MANIFEST_FILE, "utf8"));
-  } catch (error) {
-    return {};
-  }
 }
 
 function normalizeFlowId(value, fallback) {
@@ -1969,140 +1979,6 @@ function completeCountdownTrigger(room) {
     return;
   }
   enterGamePhase(room, action.targetState || "intro");
-}
-
-function writeArtManifest(manifest) {
-  fs.mkdirSync(ART_ROOT, { recursive: true });
-  fs.mkdirSync(ART_CUSTOM_DIR, { recursive: true });
-  fs.writeFileSync(ART_MANIFEST_FILE, `${JSON.stringify(manifest, null, 2)}\n`);
-}
-
-function cacheBustFileUrl(filePath, urlPath) {
-  try {
-    const version = Math.round(fs.statSync(filePath).mtimeMs);
-    return `${urlPath}?v=${version}`;
-  } catch (error) {
-    return urlPath;
-  }
-}
-
-function publicArtAsset(asset, manifest) {
-  const custom = manifest[asset.id] || null;
-  const defaultFilePath = path.join(ART_DEFAULT_DIR, asset.defaultFile);
-  const defaultUrl = cacheBustFileUrl(defaultFilePath, `/art/default/${asset.defaultFile}`);
-  const customFile = custom?.fileName ? path.basename(custom.fileName) : "";
-  const customFilePath = customFile ? path.join(ART_CUSTOM_DIR, customFile) : "";
-  const hasCustom = Boolean(customFile && fs.existsSync(customFilePath));
-  const currentUrl = hasCustom ? cacheBustFileUrl(customFilePath, `/art/custom/${customFile}`) : defaultUrl;
-  return {
-    id: asset.id,
-    name: asset.name,
-    category: asset.category,
-    parent: asset.parent,
-    use: asset.use,
-    sharedBy: asset.sharedBy || [],
-    expectedTypes: Object.keys(acceptedArtTypes),
-    defaultUrl,
-    currentUrl,
-    hasCustom,
-    fileName: hasCustom ? customFile : asset.defaultFile,
-    updatedAt: hasCustom ? custom.updatedAt : null
-  };
-}
-
-function sendArtAssetList(res) {
-  const manifest = readArtManifest();
-  sendJson(res, 200, {
-    ok: true,
-    groups: artGroups,
-    assets: artAssets.map((asset) => publicArtAsset(asset, manifest))
-  });
-}
-
-async function handleReplaceArtAsset(req, res, assetId) {
-  const asset = artAssets.find((item) => item.id === assetId);
-  if (!asset) {
-    sendJson(res, 404, { ok: false, error: "Art asset not found" });
-    return;
-  }
-
-  let payload;
-  try {
-    payload = await readJson(req, 7 * 1024 * 1024);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  const dataUrl = String(payload.dataUrl || "");
-  const fileName = path.basename(String(payload.fileName || "replacement"));
-  const mimeType = String(payload.mimeType || "");
-  const match = dataUrl.match(/^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/);
-  if (!match || match[1] !== mimeType || !acceptedArtTypes[mimeType]) {
-    sendJson(res, 400, { ok: false, error: "Use a PNG, SVG, JPG, or WEBP file." });
-    return;
-  }
-
-  const originalExt = path.extname(fileName).toLowerCase();
-  const expectedExt = acceptedArtTypes[mimeType];
-  const ext = originalExt === ".jpeg" ? ".jpg" : originalExt;
-  if (ext && ext !== expectedExt) {
-    sendJson(res, 400, { ok: false, error: `Selected file does not match ${mimeType}.` });
-    return;
-  }
-
-  const buffer = Buffer.from(match[2], "base64");
-  if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) {
-    sendJson(res, 400, { ok: false, error: "Replacement art must be under 5 MB." });
-    return;
-  }
-
-  fs.mkdirSync(ART_CUSTOM_DIR, { recursive: true });
-  const manifest = readArtManifest();
-  const previousFile = manifest[asset.id]?.fileName;
-  if (previousFile) {
-    const previousPath = path.join(ART_CUSTOM_DIR, path.basename(previousFile));
-    if (fs.existsSync(previousPath)) {
-      try {
-        fs.unlinkSync(previousPath);
-      } catch (error) {
-        // A stale file is harmless; keep saving the new active asset.
-      }
-    }
-  }
-
-  const savedFileName = `${asset.id}${expectedExt}`;
-  fs.writeFileSync(path.join(ART_CUSTOM_DIR, savedFileName), buffer);
-  manifest[asset.id] = {
-    fileName: savedFileName,
-    sourceName: fileName,
-    mimeType,
-    updatedAt: new Date().toISOString()
-  };
-  writeArtManifest(manifest);
-  sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, manifest) });
-}
-
-function serveArtFile(res, kind, fileName) {
-  const safeName = path.basename(fileName || "");
-  const dir = kind === "custom" ? ART_CUSTOM_DIR : ART_DEFAULT_DIR;
-  const filePath = path.join(dir, safeName);
-  if (!safeName || !filePath.startsWith(dir) || !fs.existsSync(filePath)) {
-    sendJson(res, 404, { ok: false, error: "Art file not found" });
-    return;
-  }
-  fs.readFile(filePath, (error, data) => {
-    if (error) {
-      sendJson(res, 500, { ok: false, error: "Could not read art file" });
-      return;
-    }
-    res.writeHead(200, {
-      "Content-Type": contentTypeForFile(filePath),
-      "Content-Length": data.length,
-      "Cache-Control": "no-cache"
-    });
-    res.end(data);
-  });
 }
 
 function serveClientFile(res, requestPath) {

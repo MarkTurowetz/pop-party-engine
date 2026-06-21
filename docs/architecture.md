@@ -12,6 +12,8 @@ concepts into focused modules.
 - `server/`
   - Server-only helpers that do not need browser access.
   - `app-version.js` owns build/version lookup.
+  - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
+    and art file responses.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
 - `shared/`
   - Data and schema-like constants shared by server runtime and tools.
