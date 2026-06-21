@@ -20,6 +20,7 @@ concepts into focused modules.
   - `flow-action-public-runtime.js` owns public flow action serialization and room text interpolation.
   - `flow-navigation-runtime.js` owns runtime flow lookup, action index lookup, and entry action selection.
   - `flow-target-runtime.js` owns flow action target normalization for none/return/action-id targets.
+  - `game-flow-merge-runtime.js` owns save-time flow merging that preserves existing sub-actions.
   - `github-storage-runtime.js` owns generic GitHub JSON content reads/writes.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
   - `input-state-runtime.js` owns shared choice/text input reset state and submission-completion checks.

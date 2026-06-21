@@ -11,6 +11,7 @@ const { createDecisionRuntime } = require("./server/decision-runtime");
 const { createFlowActionPublicRuntime } = require("./server/flow-action-public-runtime");
 const { createFlowNavigationRuntime } = require("./server/flow-navigation-runtime");
 const { createFlowTargetRuntime } = require("./server/flow-target-runtime");
+const { createGameFlowMergeRuntime } = require("./server/game-flow-merge-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
 const { createInputStateRuntime } = require("./server/input-state-runtime");
@@ -184,6 +185,10 @@ const {
   countdownDurationMs: () => Math.round(normalizeDurationSeconds(gameConstants().startGameCountdownDuration, 1) * 1000),
   startGoHoldMs: START_GO_HOLD_MS
 });
+
+const {
+  mergeFlowWithExistingSubActions
+} = createGameFlowMergeRuntime({ readGameFlowSource });
 
 const githubStorage = createGithubStorageRuntime({
   baseBranch: GAME_FLOW_GITHUB_BASE_BRANCH,
@@ -1538,50 +1543,6 @@ async function readGithubJsonSource(filePath) {
 
 async function writeGithubJsonSource(data, sha = "", filePath = GAME_FLOW_GITHUB_PATH, messagePrefix = "Save JSON", retryConflict = true) {
   return githubStorage.writeJson(data, { filePath, messagePrefix, retryConflict, sha });
-}
-
-function mergeFlowWithExistingSubActions(incomingFlow, existingFlow = null) {
-  const incomingStates = Array.isArray(incomingFlow?.states) ? incomingFlow.states : [];
-  if (incomingStates.length === 0) return incomingFlow;
-  const existing = existingFlow || readGameFlowSource();
-
-  const existingActionsById = new Map();
-  for (const state of existing?.states || []) {
-    for (const action of state.actions || []) {
-      indexActionTree(action, existingActionsById);
-    }
-  }
-
-  return {
-    ...incomingFlow,
-    states: incomingStates.map((state) => ({
-      ...state,
-      actions: Array.isArray(state.actions)
-        ? state.actions.map((action) => mergeActionSubActions(action, existingActionsById))
-        : state.actions
-    }))
-  };
-}
-
-function indexActionTree(action, actionsById) {
-  if (!action?.id) return;
-  actionsById.set(action.id, action);
-  for (const subAction of action.subActions || []) {
-    indexActionTree(subAction, actionsById);
-  }
-}
-
-function mergeActionSubActions(action, existingActionsById) {
-  if (!action || typeof action !== "object") return action;
-  const existingAction = existingActionsById.get(action.id);
-  const hasIncomingSubActions = Array.isArray(action.subActions);
-  const subActions = hasIncomingSubActions ? action.subActions : existingAction?.subActions;
-  return {
-    ...action,
-    subActions: Array.isArray(subActions)
-      ? subActions.map((subAction) => mergeActionSubActions(subAction, existingActionsById))
-      : subActions
-  };
 }
 
 function readDefaultGameFlow() {
