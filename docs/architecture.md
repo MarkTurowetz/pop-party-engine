@@ -15,6 +15,7 @@ concepts into focused modules.
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
     and art file responses.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
+  - `static-files-runtime.js` owns app shell rendering and browser module file responses.
 - `shared/`
   - Data and schema-like constants shared by server runtime and tools.
   - `game-data.js` owns action type metadata, default layouts, default constants, prompts,

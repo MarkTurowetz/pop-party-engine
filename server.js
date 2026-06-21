@@ -8,6 +8,7 @@ const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime"
 const { createDecisionRuntime } = require("./server/decision-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
+const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createVotingRuntime } = require("./server/voting-runtime");
 const {
   acceptedArtTypes,
@@ -75,6 +76,17 @@ const {
   defaultDir: ART_DEFAULT_DIR,
   manifestFile: ART_MANIFEST_FILE,
   readJson,
+  sendJson
+});
+
+const {
+  serveClientFile,
+  serveIndex
+} = createStaticFilesRuntime({
+  appVersion: APP_VERSION,
+  clientRoot: CLIENT_ROOT,
+  contentTypeForFile,
+  indexFile: INDEX_FILE,
   sendJson
 });
 
@@ -1981,34 +1993,6 @@ function completeCountdownTrigger(room) {
   enterGamePhase(room, action.targetState || "intro");
 }
 
-function serveClientFile(res, requestPath) {
-  let decodedPath = "";
-  try {
-    decodedPath = decodeURIComponent(requestPath || "");
-  } catch (error) {
-    sendJson(res, 404, { ok: false, error: "Client file not found" });
-    return;
-  }
-  const normalizedPath = path.normalize(decodedPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const filePath = path.resolve(CLIENT_ROOT, normalizedPath);
-  if (!filePath.startsWith(`${CLIENT_ROOT}${path.sep}`) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    sendJson(res, 404, { ok: false, error: "Client file not found" });
-    return;
-  }
-  fs.readFile(filePath, (error, data) => {
-    if (error) {
-      sendJson(res, 500, { ok: false, error: "Could not read client file" });
-      return;
-    }
-    res.writeHead(200, {
-      "Content-Type": contentTypeForFile(filePath),
-      "Content-Length": data.length,
-      "Cache-Control": "no-cache"
-    });
-    res.end(data);
-  });
-}
-
 async function sendGameFlow(res) {
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
   const responseFlow = localDraftStore.flow || flow;
@@ -3533,21 +3517,6 @@ async function handlePresentHi(req, res) {
 function handleLobby(req, res, stageCode) {
   const room = getRoom(stageCode);
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
-}
-
-function serveIndex(res) {
-  fs.readFile(INDEX_FILE, (error, data) => {
-    if (error) {
-      sendJson(res, 500, { ok: false, error: "Could not read index.html" });
-      return;
-    }
-    const html = String(data).replaceAll("__APP_VERSION__", APP_VERSION);
-    res.writeHead(200, {
-      "Content-Type": "text/html; charset=utf-8",
-      "Content-Length": Buffer.byteLength(html)
-    });
-    res.end(html);
-  });
 }
 
 function router(req, res) {
