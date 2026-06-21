@@ -38,6 +38,7 @@ const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
 const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
+const { createToolSourceStoresRuntime } = require("./server/tool-source-stores-runtime");
 const { createTriviaContentRuntime } = require("./server/trivia-content-runtime");
 const {
   cleanChoiceOptions,
@@ -470,38 +471,18 @@ const {
   stageLayoutsFile: STAGE_LAYOUTS_FILE
 });
 
-const gameFlowStore = {
-  source: readLocalGameFlowSource(),
-  remoteSha: "",
-  storageKind: GAME_FLOW_STORAGE === "github" ? "github" : "local",
-  loadedAt: 0,
-  error: "",
-  ready: null
-};
-
-const gameConstantsStore = {
-  source: readLocalGameConstantsSource(),
-  remoteSha: "",
-  storageKind: GAME_FLOW_STORAGE === "github" ? "github" : "local",
-  loadedAt: 0,
-  error: ""
-};
-
-const stageLayoutsStore = {
-  source: readLocalStageLayoutsSource(),
-  remoteSha: "",
-  storageKind: GAME_FLOW_STORAGE === "github" ? "github" : "local",
-  loadedAt: 0,
-  error: ""
-};
-
-const controllerLayoutsStore = {
-  source: readLocalControllerLayoutsSource(),
-  remoteSha: "",
-  storageKind: GAME_FLOW_STORAGE === "github" ? "github" : "local",
-  loadedAt: 0,
-  error: ""
-};
+const {
+  controllerLayoutsStore,
+  gameConstantsStore,
+  gameFlowStore,
+  stageLayoutsStore
+} = createToolSourceStoresRuntime({
+  readLocalControllerLayoutsSource,
+  readLocalGameConstantsSource,
+  readLocalGameFlowSource,
+  readLocalStageLayoutsSource,
+  storageKind: GAME_FLOW_STORAGE
+});
 
 const {
   handleLocalDraft,

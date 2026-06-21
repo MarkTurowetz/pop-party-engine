@@ -42,6 +42,7 @@ concepts into focused modules.
   - `static-files-runtime.js` owns app shell rendering and browser module file responses.
   - `tool-data-read-runtime.js` owns read-side tool data endpoint responses.
   - `tool-source-readers-runtime.js` owns default/local JSON source loading for tool data.
+  - `tool-source-stores-runtime.js` owns source-of-truth store object creation for tool data.
   - `trivia-content-runtime.js` owns trivia prompt cloning, random selection, and action content preparation.
   - `value-normalizers.js` owns reusable primitive value cleanup for ids, labels, colors, numbers, and text.
 - `shared/`
