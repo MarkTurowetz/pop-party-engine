@@ -15,6 +15,7 @@ concepts into focused modules.
   - `action-effect-state-runtime.js` owns room action-effect id tracking.
   - `app-version.js` owns build/version lookup.
   - `controller-input-payload-runtime.js` owns controller choice/vote/text input payload setup.
+  - `controller-submit-handlers-runtime.js` owns controller choice/vote/text answer submission endpoints.
   - `countdown-runtime.js` owns countdown timer clearing and starting-phase countdown scheduling.
   - `controller-layout-normalization-runtime.js` owns controller layout collection normalization.
   - `controller-layout-state-runtime.js` owns default controller layout state creation for flow states.
