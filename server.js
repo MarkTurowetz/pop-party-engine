@@ -17,6 +17,7 @@ const {
   isRoundIntroStateId
 } = require("./server/flow-state-kind-runtime");
 const { createFlowTargetRuntime } = require("./server/flow-target-runtime");
+const { createGameConstantsRuntime } = require("./server/game-constants-runtime");
 const { createGameFlowMergeRuntime } = require("./server/game-flow-merge-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
@@ -114,6 +115,18 @@ const localDraftStore = {
 };
 
 const APP_VERSION = readAppVersion(ROOT);
+
+const {
+  normalizeGameConstants
+} = createGameConstantsRuntime({
+  defaultGameConstants,
+  defaultPlayerColors,
+  normalizeColor,
+  normalizeConstantFloat,
+  normalizeConstantInteger,
+  normalizeConstantString,
+  normalizeDurationSeconds
+});
 
 const {
   getExistingRoom,
@@ -370,24 +383,6 @@ const {
 
 function randomToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
-}
-
-function normalizeGameConstants(constants) {
-  const colors = Array.isArray(constants?.playerColors) ? constants.playerColors : defaultPlayerColors;
-  const playerColors = [...new Set(colors.map(normalizeColor).filter(Boolean))];
-  const craftingTimerDuration = normalizeDurationSeconds(constants?.craftingTimerDuration, defaultGameConstants.craftingTimerDuration);
-  const startGameCountdownDuration = normalizeDurationSeconds(constants?.startGameCountdownDuration, defaultGameConstants.startGameCountdownDuration);
-  const pointsForCorrectAnswer = normalizeConstantInteger(constants?.pointsForCorrectAnswer, defaultGameConstants.pointsForCorrectAnswer || 200, 0, 999999);
-  return {
-    playerColors: playerColors.length ? playerColors : [...defaultPlayerColors],
-    craftingTimerDuration,
-    startGameCountdownDuration,
-    pointsForCorrectAnswer,
-    gameTitle: normalizeConstantString(constants?.gameTitle, defaultGameConstants.gameTitle),
-    numberOfRounds: normalizeConstantInteger(constants?.numberOfRounds, defaultGameConstants.numberOfRounds, 1, 99),
-    randomChanceTest: normalizeConstantFloat(constants?.randomChanceTest, defaultGameConstants.randomChanceTest, 0, 1),
-    overrideFirstGameOfSession: constants?.overrideFirstGameOfSession === true
-  };
 }
 
 function normalizeStageLayouts(layouts) {

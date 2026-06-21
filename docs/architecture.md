@@ -22,6 +22,7 @@ concepts into focused modules.
   - `flow-navigation-runtime.js` owns runtime flow lookup, action index lookup, and entry action selection.
   - `flow-state-kind-runtime.js` owns flow-state kind predicates and action-type scanning.
   - `flow-target-runtime.js` owns flow action target normalization for none/return/action-id targets.
+  - `game-constants-runtime.js` owns game constants normalization.
   - `game-flow-merge-runtime.js` owns save-time flow merging that preserves existing sub-actions.
   - `github-storage-runtime.js` owns generic GitHub JSON content reads/writes.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
