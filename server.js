@@ -10,6 +10,11 @@ const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime"
 const { createDecisionRuntime } = require("./server/decision-runtime");
 const { createFlowActionPublicRuntime } = require("./server/flow-action-public-runtime");
 const { createFlowNavigationRuntime } = require("./server/flow-navigation-runtime");
+const {
+  flowStateHasActionType,
+  isCraftingStateId,
+  isRoundIntroStateId
+} = require("./server/flow-state-kind-runtime");
 const { createFlowTargetRuntime } = require("./server/flow-target-runtime");
 const { createGameFlowMergeRuntime } = require("./server/game-flow-merge-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
@@ -736,24 +741,6 @@ function createLayoutStateForFlowState(flowState) {
     name: flowState.name || flowState.id,
     elements
   };
-}
-
-function isRoundIntroStateId(stateId) {
-  return String(stateId || "").includes("round-intro");
-}
-
-function isCraftingStateId(stateId) {
-  return String(stateId || "").includes("crafting");
-}
-
-function flowStateHasActionType(flowState, type) {
-  const stack = [...(flowState?.actions || [])];
-  while (stack.length) {
-    const action = stack.pop();
-    if (action?.type === type) return true;
-    stack.push(...(action?.subActions || []));
-  }
-  return false;
 }
 
 function normalizeDecisionOperator(value) {
