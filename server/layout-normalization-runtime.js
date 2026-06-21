@@ -1,0 +1,61 @@
+function createLayoutNormalizationRuntime({
+  cleanFlowText,
+  cleanLayoutSelector,
+  cleanLayoutText,
+  defaultCanvas,
+  normalizeColor,
+  normalizeFlowId,
+  normalizeLayoutNumber
+}) {
+  function normalizeLayoutState(state, stateIndex) {
+    if (!state || typeof state !== "object") return null;
+    const fallbackId = stateIndex === 0 ? "lobby" : `layout-state-${stateIndex + 1}`;
+    return {
+      id: normalizeFlowId(state.id || state.name, fallbackId),
+      name: cleanFlowText(state.name, state.id || fallbackId),
+      hiddenGlobals: Array.isArray(state.hiddenGlobals)
+        ? [...new Set(state.hiddenGlobals.map((id) => normalizeFlowId(id, "")).filter(Boolean))]
+        : null,
+      elements: Array.isArray(state.elements)
+        ? state.elements.map((element, elementIndex) => normalizeLayoutElement(element, elementIndex)).filter(Boolean)
+        : []
+    };
+  }
+
+  function normalizeLayoutElement(element, elementIndex) {
+    if (!element || typeof element !== "object") return null;
+    const fallbackId = `layout-element-${elementIndex + 1}`;
+    const width = normalizeLayoutNumber(element.width, 240, 24, 4000);
+    const height = normalizeLayoutNumber(element.height, 100, 24, 4000);
+    const selector = cleanLayoutSelector(element.selector);
+    const kind = normalizeLayoutElementKind(element.kind, selector);
+    return {
+      id: normalizeFlowId(element.id || element.name, fallbackId),
+      name: cleanFlowText(element.name, element.id || fallbackId),
+      selector,
+      kind,
+      x: normalizeLayoutNumber(element.x, defaultCanvas.width / 2, -5000, 15000),
+      y: normalizeLayoutNumber(element.y, defaultCanvas.height / 2, -5000, 15000),
+      width,
+      height,
+      scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10),
+      defaultText: kind === "text" ? cleanLayoutText(element.defaultText) : "",
+      fontSize: kind === "text" ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
+      autoFitText: kind === "text" ? element.autoFitText === true : false,
+      fontColor: kind === "text" ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
+    };
+  }
+
+  function normalizeLayoutElementKind(kind, selector) {
+    const cleanKind = String(kind || "").trim().toLowerCase();
+    if (cleanKind === "text") return "text";
+    return /waitingstatus|joinprompt|stage(?:presentation|prompt)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
+  }
+
+  return {
+    normalizeLayoutElement,
+    normalizeLayoutState
+  };
+}
+
+module.exports = { createLayoutNormalizationRuntime };
