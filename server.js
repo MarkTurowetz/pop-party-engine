@@ -4,6 +4,8 @@ const os = require("os");
 const path = require("path");
 const { readAppVersion } = require("./server/app-version");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
+const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
+const { createVotingRuntime } = require("./server/voting-runtime");
 const {
   acceptedArtTypes,
   artAssets,
@@ -54,6 +56,40 @@ const START_GO_HOLD_MS = 700;
 const rooms = new Map();
 
 const APP_VERSION = readAppVersion(ROOT);
+
+const {
+  clearDisplayedCorrectnessForPlayers,
+  clearDisplayedPlayerAnswers,
+  clearPlayerAnswerData,
+  displayedAnswerCorrectness,
+  displayedPlayerAnswers,
+  filteredPlayerIds,
+  forgetDisplayedPlayerAnswer,
+  markDisplayedAnswersCorrectness,
+  rememberDisplayedPlayerAnswer,
+  seedDisplayedPlayerAnswers,
+  storedPlayerAnswer,
+  updatePlayerAnswerGroups
+} = createPlayerAnswersRuntime({
+  activePlayers,
+  normalizePlayerFilter
+});
+
+const {
+  answerRecordEntries,
+  answerTextFromRecord,
+  clearVotingData,
+  clearVotingInput,
+  prepareVotingCards,
+  revealVotingResults,
+  serializeVotingCards,
+  setVotingCardsShown,
+  votingCardByOptionIndex
+} = createVotingRuntime({
+  activePlayers,
+  clearAnswersSubmittedAdvanceTimer,
+  normalizeVotingCardFilter
+});
 
 function randomToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
@@ -2686,72 +2722,6 @@ function clearAnswersSubmittedAdvanceTimer(room) {
   room.answersSubmittedAdvanceTimerId = null;
 }
 
-function displayedPlayerAnswers(room) {
-  if (!room.displayedPlayerAnswers || typeof room.displayedPlayerAnswers.get !== "function") {
-    room.displayedPlayerAnswers = new Map();
-  }
-  return room.displayedPlayerAnswers;
-}
-
-function displayedAnswerCorrectness(room) {
-  if (!room.displayedAnswerCorrectness || typeof room.displayedAnswerCorrectness.get !== "function") {
-    room.displayedAnswerCorrectness = new Map();
-  }
-  return room.displayedAnswerCorrectness;
-}
-
-function rememberDisplayedPlayerAnswer(room, playerId, answer) {
-  if (!playerId || !answer || !answer.text) return;
-  const correctness = displayedAnswerCorrectness(room).get(playerId);
-  displayedPlayerAnswers(room).set(playerId, {
-    optionIndex: answer.optionIndex,
-    originalOptionIndex: answer.originalOptionIndex,
-    text: answer.text,
-    done: answer.done === true,
-    invalid: answer.invalid === true,
-    correct: correctness === true ? true : correctness === false ? false : null,
-    nonce: answer.nonce || Date.now()
-  });
-  if (correctness === true || correctness === false) displayedAnswerCorrectness(room).set(playerId, correctness);
-}
-
-function storedPlayerAnswer(room, playerId) {
-  const liveAnswer = room.choiceInputAnswers?.get(playerId) || room.textInputAnswers?.get(playerId) || null;
-  if (liveAnswer) return liveAnswer;
-  const record = room.playerAnswerRecords?.[playerId] || null;
-  return record?.text ? {
-    optionIndex: record.optionIndex,
-    originalOptionIndex: record.originalOptionIndex,
-    text: record.text,
-    done: true,
-    correct: record.correct === true ? true : record.correct === false ? false : null,
-    nonce: record.answeredAt || Date.now()
-  } : null;
-}
-
-function seedDisplayedPlayerAnswers(room, playerIds = []) {
-  const ids = Array.isArray(playerIds) && playerIds.length ? playerIds : activePlayers(room).map((player) => player.id);
-  for (const playerId of ids) {
-    const answer = storedPlayerAnswer(room, playerId);
-    if (answer?.text) rememberDisplayedPlayerAnswer(room, playerId, answer);
-  }
-  updatePlayerAnswerGroups(room);
-}
-
-function forgetDisplayedPlayerAnswer(room, playerId) {
-  if (!playerId) return;
-  displayedPlayerAnswers(room).delete(playerId);
-  displayedAnswerCorrectness(room).delete(playerId);
-}
-
-function clearDisplayedPlayerAnswers(room) {
-  displayedPlayerAnswers(room).clear();
-  displayedAnswerCorrectness(room).clear();
-  if (room.hiddenPlayerAnswerIds?.clear) room.hiddenPlayerAnswerIds.clear();
-  else room.hiddenPlayerAnswerIds = new Set();
-  room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
-}
-
 function triviaPromptById(id) {
   return multipleChoicePrompts.find((prompt) => prompt.id === id) || null;
 }
@@ -2778,60 +2748,6 @@ function shuffledTriviaPrompt(prompt) {
     optionOriginalIndexes: pairs.map((item) => item.originalIndex),
     correctAnswerIndex: prompt.correctAnswerIndex
   };
-}
-
-function clearPlayerAnswerData(room) {
-  room.playerAnswerRecords = {};
-  room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
-  displayedAnswerCorrectness(room).clear();
-}
-
-function clearDisplayedCorrectnessForPlayers(room, playerIds) {
-  const correctness = displayedAnswerCorrectness(room);
-  const displayedAnswers = displayedPlayerAnswers(room);
-  for (const playerId of playerIds || []) {
-    correctness.delete(playerId);
-    const displayed = displayedAnswers.get(playerId);
-    if (displayed) {
-      displayed.correct = null;
-      displayed.nonce = Date.now();
-    }
-  }
-}
-
-function updatePlayerAnswerGroups(room) {
-  const records = room.playerAnswerRecords || {};
-  const all = [...new Set([...Object.keys(records), ...displayedPlayerAnswers(room).keys()])];
-  room.playerAnswerGroups = {
-    all,
-    correct: all.filter((playerId) => records[playerId]?.correct === true),
-    wrong: all.filter((playerId) => records[playerId]?.correct === false)
-  };
-}
-
-function filteredPlayerIds(room, filter = "all") {
-  updatePlayerAnswerGroups(room);
-  const normalized = normalizePlayerFilter(filter);
-  if (normalized === "votingWinner") return [...(room.votingWinners || [])];
-  if (normalized === "votingLosers") {
-    const winners = new Set(room.votingWinners || []);
-    return activePlayers(room).map((player) => player.id).filter((playerId) => !winners.has(playerId));
-  }
-  return [...(room.playerAnswerGroups?.[normalized] || room.playerAnswerGroups?.all || [])];
-}
-
-function markDisplayedAnswersCorrectness(room) {
-  const records = room.playerAnswerRecords || {};
-  for (const [playerId, record] of Object.entries(records)) {
-    if (record.correct === true || record.correct === false) {
-      displayedAnswerCorrectness(room).set(playerId, record.correct);
-      const displayed = displayedPlayerAnswers(room).get(playerId);
-      if (displayed) {
-        displayed.correct = record.correct;
-        displayed.nonce = Date.now();
-      }
-    }
-  }
 }
 
 function clearChoiceInput(room) {
@@ -2863,154 +2779,6 @@ function clearTextInput(room) {
   } else {
     room.textInputAnswers = new Map();
   }
-}
-
-function clearVotingInput(room) {
-  clearAnswersSubmittedAdvanceTimer(room);
-  room.votingInputActionId = "";
-  room.votingInputPrompt = "";
-  if (room.votingAnswers?.clear) {
-    room.votingAnswers.clear();
-  } else {
-    room.votingAnswers = new Map();
-  }
-}
-
-function clearVotingData(room) {
-  clearVotingInput(room);
-  room.votingCards = [];
-  room.votingCardsShown = false;
-  room.votingResultsShown = false;
-  room.votingWinners = [];
-}
-
-function answerRecordEntries(records) {
-  if (!records) return [];
-  if (records instanceof Map) return [...records.entries()];
-  if (typeof records === "object") return Object.entries(records);
-  return [];
-}
-
-function answerTextFromRecord(record) {
-  if (record == null) return "";
-  if (typeof record === "string" || typeof record === "number") return String(record).trim();
-  if (typeof record !== "object") return "";
-  const candidates = [
-    record.text,
-    record.answer,
-    record.value,
-    record.submission,
-    record.response,
-    record.choiceText,
-    record.label
-  ];
-  for (const candidate of candidates) {
-    const text = String(candidate ?? "").trim();
-    if (text) return text;
-  }
-  return "";
-}
-
-function prepareVotingCards(room) {
-  const records = room.playerAnswerRecords || {};
-  const answersByPlayerId = new Map();
-  for (const [key, record] of answerRecordEntries(records)) {
-    answersByPlayerId.set(String(key), record);
-    if (record && typeof record === "object" && record.playerId) {
-      answersByPlayerId.set(String(record.playerId), record);
-    }
-  }
-  const skipped = [];
-  const cards = activePlayers(room).reduce((items, player) => {
-    const answer = answersByPlayerId.get(player.id);
-    const text = answerTextFromRecord(answer);
-    if (!text) {
-      skipped.push({ playerId: player.id, reason: answer ? "blank-answer-text" : "missing-answer-record" });
-      return items;
-    }
-    items.push({
-      id: `vote-card-${player.id}`,
-      authorPlayerId: player.id,
-      text,
-      voterIds: [],
-      voteCount: 0,
-      isWinner: false,
-      hidden: false
-    });
-    return items;
-  }, []);
-  for (let i = cards.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cards[i], cards[j]] = [cards[j], cards[i]];
-  }
-  room.votingCards = cards;
-  room.votingCardsShown = false;
-  room.votingResultsShown = false;
-  room.votingWinners = [];
-  room.lastVotingPrepare = {
-    activePlayerCount: activePlayers(room).length,
-    answerRecordCount: answerRecordEntries(records).length,
-    cardCount: cards.length,
-    skipped,
-    preparedAt: Date.now()
-  };
-  clearVotingInput(room);
-}
-
-function votingCardByOptionIndex(room, optionIndex) {
-  const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
-  return cards.filter((card) => card && card.hidden !== true)[optionIndex] || null;
-}
-
-function revealVotingResults(room) {
-  const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
-  let highestVotes = -1;
-  for (const card of cards) {
-    const voters = Array.isArray(card.voterIds) ? card.voterIds : [];
-    card.voteCount = voters.length;
-    highestVotes = Math.max(highestVotes, card.voteCount);
-  }
-  for (const card of cards) {
-    card.isWinner = highestVotes >= 0 && card.voteCount === highestVotes;
-  }
-  room.votingWinners = cards.filter((card) => card.isWinner).map((card) => card.authorPlayerId);
-  room.votingResultsShown = true;
-}
-
-function setVotingCardsShown(room, action) {
-  const shouldShow = action?.isShown !== false;
-  const filter = normalizeVotingCardFilter(action?.cardFilter);
-  const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
-  if (shouldShow && filter === "all") room.votingCardsShown = true;
-  if (!shouldShow && filter === "all") room.votingCardsShown = false;
-  for (const card of cards) {
-    if (filter === "winners" && card.isWinner !== true) continue;
-    if (filter === "losers" && card.isWinner === true) continue;
-    card.hidden = !shouldShow;
-  }
-}
-
-function serializeVotingCards(room) {
-  if (room.votingCardsShown === false) return [];
-  return (room.votingCards || [])
-    .filter((card) => card && card.hidden !== true)
-    .map((card, index) => {
-      const voters = room.votingResultsShown === true
-        ? (card.voterIds || []).map((playerId) => {
-            const player = room.players.get(playerId);
-            return player ? { id: player.id, name: player.name, avatar: player.avatar } : null;
-          }).filter(Boolean)
-        : [];
-      return {
-        id: card.id,
-        index,
-        text: card.text,
-        voteCount: Number(card.voteCount || 0),
-        isWinner: card.isWinner === true,
-        resultsShown: room.votingResultsShown === true,
-        voters
-      };
-    });
 }
 
 function craftingTimerDurationMs() {
