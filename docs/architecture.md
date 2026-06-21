@@ -33,6 +33,7 @@ concepts into focused modules.
   - `input-state-runtime.js` owns shared choice/text input reset state and submission-completion checks.
   - `layout-normalization-runtime.js` owns shared layout state/element normalization and element deduping.
   - `layout-sync-runtime.js` owns syncing saved stage/controller layout states to the active flow.
+  - `lobby-payload-runtime.js` owns lobby/stage snapshot payloads and debug action summaries.
   - `local-json-store.js` owns local JSON file read/write, backups, and mirror writes.
   - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
   - `player-public-runtime.js` owns player serialization for lobby/controller payloads.

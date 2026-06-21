@@ -28,6 +28,7 @@ const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils"
 const { createInputStateRuntime } = require("./server/input-state-runtime");
 const { createLayoutNormalizationRuntime } = require("./server/layout-normalization-runtime");
 const { createLayoutSyncRuntime } = require("./server/layout-sync-runtime");
+const { createLobbyPayloadRuntime } = require("./server/lobby-payload-runtime");
 const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
 const { backupJsonFile, mirrorJsonFile, readJsonFile, writeJsonFile } = require("./server/local-json-store");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
@@ -991,69 +992,24 @@ const {
   publicPlayer
 } = createPlayerPublicRuntime({ choiceInputPayload });
 
-function lobbyPayload(room) {
-  selectVip(room);
-  const currentAction = room.phase !== "lobby" && room.phase !== "starting" ? resolveRoomActionText(currentRoomAction(room), room) : null;
-  applyRoomActionEffects(room, currentAction);
-  const input = choiceInputPayload(room, currentAction);
-  const textInput = textInputPayload(room, currentAction);
-  return {
-    type: "lobby",
-    stageCode: room.stageCode,
-    revision: room.revision,
-    phase: room.phase,
-    countdownStartedAt: room.countdownStartedAt,
-    countdownEndsAt: room.countdownEndsAt,
-    action: currentAction,
-    debugAction: debugActionPayload(room, currentAction),
-    input,
-    textInput,
-    craftingTimer: craftingTimerPayload(room),
-    lastDecisionTrace: room.lastDecisionTrace,
-    currentRound: room.currentRound || 1,
-    gameTitle: gameConstants().gameTitle,
-    numSequentialGames: room.numSequentialGames || 0,
-    serverNow: Date.now(),
-    vipPlayerId: room.vipPlayerId,
-    startToken: room.startToken,
-    playersShown: room.playersShown !== false,
-    playerAnswersShown: room.playerAnswersShown !== false,
-    playerAnswersVisibleFilter: normalizePlayerFilter(room.playerAnswersVisibleFilter),
-    playerAnswerGroups: room.playerAnswerGroups || { correct: [], wrong: [], all: [] },
-    pendingPointPopups: Array.isArray(room.pendingPointPopups) ? room.pendingPointPopups : [],
-    votingCards: serializeVotingCards(room),
-    votingResultsShown: room.votingResultsShown === true,
-    players: activePlayers(room).map((player) => publicPlayer(player, room, currentAction))
-  };
-}
-
-function debugActionPayload(room, currentAction) {
-  const state = runtimeGameFlow(room).states.find((item) => item.id === room.phase) || null;
-  const players = activePlayers(room);
-  let submittedInputCount = 0;
-  if (room.votingInputActionId) {
-    submittedInputCount = players.filter((player) => room.votingAnswers?.has(player.id)).length;
-  } else if (room.textInputActionId) {
-    submittedInputCount = players.filter((player) => room.textInputAnswers?.get(player.id)?.done === true).length;
-  } else if (room.choiceInputActionId) {
-    submittedInputCount = players.filter((player) => room.choiceInputAnswers?.has(player.id)).length;
-  }
-  return {
-    phaseId: room.phase || "",
-    phaseName: state?.name || String(room.phase || "lobby").replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
-    actionId: currentAction?.id || "",
-    actionName: currentAction?.name || "",
-    actionType: currentAction?.type || "",
-    actionIndex: Number.isFinite(Number(currentAction?.index)) ? Number(currentAction.index) : room.actionIndex,
-    requiredInputCount: players.length,
-    submittedInputCount,
-    playerAnswerRecordCount: Object.keys(room.playerAnswerRecords || {}).length,
-    votingCardCount: Array.isArray(room.votingCards) ? room.votingCards.length : 0,
-    visibleVotingCardCount: serializeVotingCards(room).length,
-    lastPreparedVotingCardCount: Number(room.lastVotingPrepare?.cardCount || 0),
-    lastVotingPrepareSkippedCount: Array.isArray(room.lastVotingPrepare?.skipped) ? room.lastVotingPrepare.skipped.length : 0
-  };
-}
+const {
+  debugActionPayload,
+  lobbyPayload
+} = createLobbyPayloadRuntime({
+  activePlayers,
+  applyRoomActionEffects,
+  choiceInputPayload,
+  craftingTimerPayload,
+  currentRoomAction,
+  gameConstants,
+  normalizePlayerFilter,
+  publicPlayer,
+  resolveRoomActionText,
+  runtimeGameFlow,
+  selectVip,
+  serializeVotingCards,
+  textInputPayload
+});
 
 function sendSse(client, event, data) {
   client.write(`event: ${event}\n`);
