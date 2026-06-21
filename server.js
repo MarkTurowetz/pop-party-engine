@@ -49,6 +49,10 @@ const availableFlowActionTypes = [
   { id: "doNothing", name: "Do Nothing", category: "standard" },
   { id: "playAudio", name: "Play Audio", category: "standard" },
   { id: "getRandomMultipleChoiceContent", name: "Get Random Multiple Choice Content", category: "standard" },
+  { id: "prepareVotingCards", name: "Prepare Voting Cards", category: "standard" },
+  { id: "setVotingCardsShown", name: "Set Voting Cards Shown", category: "standard" },
+  { id: "voteOnAnswersInput", name: "Vote On Answers Input", category: "input" },
+  { id: "revealVotingResults", name: "Reveal Voting Results", category: "standard" },
   { id: "displayText", name: "Display Text", category: "standard" },
   { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
   { id: "setPlayerAnswersShown", name: "Set Player Answers Shown", category: "standard" },
@@ -439,7 +443,12 @@ function normalizeFlowVariableName(value, fallback = "multipleChoicePrompt") {
 
 function normalizePlayerFilter(value) {
   const cleaned = String(value || "").trim();
-  return ["all", "correct", "wrong"].includes(cleaned) ? cleaned : "all";
+  return ["all", "correct", "wrong", "votingWinner", "votingLosers"].includes(cleaned) ? cleaned : "all";
+}
+
+function normalizeVotingCardFilter(value) {
+  const cleaned = String(value || "").trim();
+  return ["all", "winners", "losers"].includes(cleaned) ? cleaned : "all";
 }
 
 function normalizeChoiceInputMode(value) {
@@ -1111,6 +1120,24 @@ function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) 
       ...base,
       variableName: normalizeFlowVariableName(action?.variableName)
     };
+  }
+  if (type === "prepareVotingCards") {
+    return { ...base };
+  }
+  if (type === "setVotingCardsShown") {
+    return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true, cardFilter: normalizeVotingCardFilter(action?.cardFilter) };
+  }
+  if (type === "voteOnAnswersInput") {
+    return {
+      ...base,
+      prompt: cleanFlowText(action?.prompt, "Vote for your favorite answer"),
+      inputMode: "submitOnce",
+      timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
+    };
+  }
+  if (type === "revealVotingResults") {
+    return { ...base };
   }
   if (type === "displayText") {
     return {
@@ -1846,6 +1873,25 @@ function publicFlowAction(action, index) {
   if (action.type === "getRandomMultipleChoiceContent") {
     return { ...base, type: "getRandomMultipleChoiceContent", variableName: normalizeFlowVariableName(action.variableName) };
   }
+  if (action.type === "prepareVotingCards") {
+    return { ...base, type: "prepareVotingCards" };
+  }
+  if (action.type === "setVotingCardsShown") {
+    return { ...base, type: "setVotingCardsShown", isShown: action.isShown !== false, instant: action.instant === true, cardFilter: normalizeVotingCardFilter(action.cardFilter) };
+  }
+  if (action.type === "voteOnAnswersInput") {
+    return {
+      ...base,
+      type: "voteOnAnswersInput",
+      prompt: action.prompt || "Vote for your favorite answer",
+      inputMode: "submitOnce",
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+    };
+  }
+  if (action.type === "revealVotingResults") {
+    return { ...base, type: "revealVotingResults" };
+  }
   if (action.type === "displayText" || action.type === "text") {
     return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
   }
@@ -2272,6 +2318,15 @@ function applyRoomActionEffects(room, action) {
     const prompt = randomArrayItem(multipleChoicePrompts) || multipleChoicePrompts[0];
     room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
     room.flowVariables[normalizeFlowVariableName(action.variableName)] = clonePrompt(prompt);
+  }
+  if (action.type === "prepareVotingCards") {
+    prepareVotingCards(room);
+  }
+  if (action.type === "setVotingCardsShown") {
+    setVotingCardsShown(room, action);
+  }
+  if (action.type === "revealVotingResults") {
+    revealVotingResults(room);
   }
   if (action.type === "setPlayersShown") {
     room.playersShown = action.isShown !== false;
@@ -2836,6 +2891,13 @@ function getRoom(stageCode) {
       textInputPlaceholder: "",
       textInputCharacterLimit: 0,
       textInputAnswers: new Map(),
+      votingCards: [],
+      votingCardsShown: false,
+      votingResultsShown: false,
+      votingInputActionId: "",
+      votingInputPrompt: "",
+      votingAnswers: new Map(),
+      votingWinners: [],
       craftingTimerShown: false,
       craftingTimerRunning: false,
       craftingTimerDurationMs: 0,
@@ -3078,6 +3140,11 @@ function updatePlayerAnswerGroups(room) {
 function filteredPlayerIds(room, filter = "all") {
   updatePlayerAnswerGroups(room);
   const normalized = normalizePlayerFilter(filter);
+  if (normalized === "votingWinner") return [...(room.votingWinners || [])];
+  if (normalized === "votingLosers") {
+    const winners = new Set(room.votingWinners || []);
+    return activePlayers(room).map((player) => player.id).filter((playerId) => !winners.has(playerId));
+  }
   return [...(room.playerAnswerGroups?.[normalized] || room.playerAnswerGroups?.all || [])];
 }
 
@@ -3124,6 +3191,110 @@ function clearTextInput(room) {
   } else {
     room.textInputAnswers = new Map();
   }
+}
+
+function clearVotingInput(room) {
+  clearAnswersSubmittedAdvanceTimer(room);
+  room.votingInputActionId = "";
+  room.votingInputPrompt = "";
+  if (room.votingAnswers?.clear) {
+    room.votingAnswers.clear();
+  } else {
+    room.votingAnswers = new Map();
+  }
+}
+
+function clearVotingData(room) {
+  clearVotingInput(room);
+  room.votingCards = [];
+  room.votingCardsShown = false;
+  room.votingResultsShown = false;
+  room.votingWinners = [];
+}
+
+function prepareVotingCards(room) {
+  const records = room.playerAnswerRecords || {};
+  const cards = activePlayers(room)
+    .map((player) => {
+      const answer = records[player.id];
+      const text = String(answer?.text || "").trim();
+      if (!text) return null;
+      return {
+        id: `vote-card-${player.id}`,
+        authorPlayerId: player.id,
+        text,
+        voterIds: [],
+        voteCount: 0,
+        isWinner: false,
+        hidden: false
+      };
+    })
+    .filter(Boolean);
+  for (let i = cards.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+  }
+  room.votingCards = cards;
+  room.votingCardsShown = false;
+  room.votingResultsShown = false;
+  room.votingWinners = [];
+  clearVotingInput(room);
+}
+
+function votingCardByOptionIndex(room, optionIndex) {
+  const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
+  return cards.filter((card) => card && card.hidden !== true)[optionIndex] || null;
+}
+
+function revealVotingResults(room) {
+  const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
+  let highestVotes = -1;
+  for (const card of cards) {
+    const voters = Array.isArray(card.voterIds) ? card.voterIds : [];
+    card.voteCount = voters.length;
+    highestVotes = Math.max(highestVotes, card.voteCount);
+  }
+  for (const card of cards) {
+    card.isWinner = highestVotes >= 0 && card.voteCount === highestVotes;
+  }
+  room.votingWinners = cards.filter((card) => card.isWinner).map((card) => card.authorPlayerId);
+  room.votingResultsShown = true;
+}
+
+function setVotingCardsShown(room, action) {
+  const shouldShow = action?.isShown !== false;
+  const filter = normalizeVotingCardFilter(action?.cardFilter);
+  const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
+  if (shouldShow && filter === "all") room.votingCardsShown = true;
+  if (!shouldShow && filter === "all") room.votingCardsShown = false;
+  for (const card of cards) {
+    if (filter === "winners" && card.isWinner !== true) continue;
+    if (filter === "losers" && card.isWinner === true) continue;
+    card.hidden = !shouldShow;
+  }
+}
+
+function serializeVotingCards(room) {
+  if (room.votingCardsShown === false) return [];
+  return (room.votingCards || [])
+    .filter((card) => card && card.hidden !== true)
+    .map((card, index) => {
+      const voters = room.votingResultsShown === true
+        ? (card.voterIds || []).map((playerId) => {
+            const player = room.players.get(playerId);
+            return player ? { id: player.id, name: player.name, avatar: player.avatar } : null;
+          }).filter(Boolean)
+        : [];
+      return {
+        id: card.id,
+        index,
+        text: card.text,
+        voteCount: Number(card.voteCount || 0),
+        isWinner: card.isWinner === true,
+        resultsShown: room.votingResultsShown === true,
+        voters
+      };
+    });
 }
 
 function craftingTimerDurationMs() {
@@ -3228,6 +3399,12 @@ function craftingTimerPayload(room) {
 function allActivePlayersHaveSubmittedInput(room) {
   const active = activePlayers(room);
   if (!active.length) return false;
+  if (room.votingInputActionId) {
+    return active.every((player) => {
+      const eligibleCards = (room.votingCards || []).filter((card) => card.hidden !== true && card.authorPlayerId !== player.id);
+      return !eligibleCards.length || room.votingAnswers.has(player.id);
+    });
+  }
   if (room.textInputActionId) {
     return active.every((player) => room.textInputAnswers.get(player.id)?.done === true);
   }
@@ -3253,6 +3430,7 @@ function handleCraftingTimerEvent(room, eventType) {
   room.craftingTimerEndHandled = true;
   clearChoiceInput(room);
   clearTextInput(room);
+  clearVotingInput(room);
   jumpToAction(room, target, fallbackIndex);
   broadcastLobby(room);
   return true;
@@ -3281,8 +3459,24 @@ function triviaContentForAction(room, action) {
 }
 
 function applyChoiceInputAction(room, action) {
-  if (!action || (action.type !== "multipleChoiceInput" && action.type !== "triviaInput")) return;
+  if (!action || (action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "voteOnAnswersInput")) return;
   if (room.choiceInputActionId === action.id) return;
+  if (action.type === "voteOnAnswersInput") {
+    room.choiceInputActionId = action.id;
+    room.choiceInputPrompt = action.prompt || "Vote for your favorite answer";
+    room.choiceInputOptions = [];
+    room.choiceInputOriginalIndexes = [];
+    room.choiceInputCorrectAnswerIndex = null;
+    room.choiceInputKind = "vote";
+    room.choiceInputContentId = "";
+    room.choiceInputMode = "submitOnce";
+    room.choiceInputLocked = true;
+    room.choiceInputAnswers = new Map();
+    room.votingInputActionId = action.id;
+    room.votingInputPrompt = room.choiceInputPrompt;
+    room.votingAnswers = new Map();
+    return;
+  }
   clearDisplayedPlayerAnswers(room);
   clearPlayerAnswerData(room);
   const triviaContent = action.type === "triviaInput" ? triviaContentForAction(room, action) : null;
@@ -3298,9 +3492,26 @@ function applyChoiceInputAction(room, action) {
   room.choiceInputAnswers = new Map();
 }
 
-function choiceInputPayload(room, currentAction) {
-  if (!currentAction || (currentAction.type !== "multipleChoiceInput" && currentAction.type !== "triviaInput")) return null;
+function choiceInputPayload(room, currentAction, player = null) {
+  if (!currentAction || (currentAction.type !== "multipleChoiceInput" && currentAction.type !== "triviaInput" && currentAction.type !== "voteOnAnswersInput")) return null;
   applyChoiceInputAction(room, currentAction);
+  if (currentAction.type === "voteOnAnswersInput") {
+    const visibleCards = (room.votingCards || []).filter((card) => card && card.hidden !== true && card.authorPlayerId !== player?.id);
+    return {
+      actionId: room.choiceInputActionId,
+      type: "vote",
+      prompt: room.choiceInputPrompt,
+      mode: room.choiceInputMode,
+      locked: true,
+      options: visibleCards.map((card, index) => ({
+        index,
+        cardId: card.id,
+        authorPlayerId: card.authorPlayerId,
+        label: card.text,
+        text: card.text
+      }))
+    };
+  }
   return {
     actionId: room.choiceInputActionId,
     type: room.choiceInputKind,
@@ -3366,6 +3577,8 @@ function lobbyPayload(room) {
     playerAnswersVisibleFilter: normalizePlayerFilter(room.playerAnswersVisibleFilter),
     playerAnswerGroups: room.playerAnswerGroups || { correct: [], wrong: [], all: [] },
     pendingPointPopups: Array.isArray(room.pendingPointPopups) ? room.pendingPointPopups : [],
+    votingCards: serializeVotingCards(room),
+    votingResultsShown: room.votingResultsShown === true,
     players: activePlayers(room).map((player) => publicPlayer(player, room))
   };
 }
@@ -3410,6 +3623,7 @@ function enterLobbyPhase(room) {
   resetCraftingTimer(room);
   clearChoiceInput(room);
   clearTextInput(room);
+  clearVotingData(room);
   clearDisplayedPlayerAnswers(room);
 }
 
@@ -3459,6 +3673,7 @@ function enterGamePhase(room, phase) {
   resetCraftingTimer(room);
   clearChoiceInput(room);
   clearTextInput(room);
+  clearVotingData(room);
   clearDisplayedPlayerAnswers(room);
   if (isRoundIntroStateId(phase) && previousPhase !== phase) {
     if (room.hasEnteredRoundIntro) {
@@ -3800,7 +4015,7 @@ async function handleCompleteAction(req, res) {
   }
 
   const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setPlayerAnswersShown" || currentAction?.type === "revealPlayerAnswerCorrectness" || currentAction?.type === "showPoints" || currentAction?.type === "givePendingPoints" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "getRandomMultipleChoiceContent" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "triviaInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
+  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setPlayerAnswersShown" || currentAction?.type === "revealPlayerAnswerCorrectness" || currentAction?.type === "showPoints" || currentAction?.type === "givePendingPoints" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "getRandomMultipleChoiceContent" || currentAction?.type === "prepareVotingCards" || currentAction?.type === "setVotingCardsShown" || currentAction?.type === "voteOnAnswersInput" || currentAction?.type === "revealVotingResults" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "triviaInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -3854,7 +4069,7 @@ async function handleControllerChoice(req, res) {
   }
 
   const currentAction = resolveRoomActionText(currentRoomAction(room), room);
-  if (!currentAction || (currentAction.type !== "multipleChoiceInput" && currentAction.type !== "triviaInput")) {
+  if (!currentAction || (currentAction.type !== "multipleChoiceInput" && currentAction.type !== "triviaInput" && currentAction.type !== "voteOnAnswersInput")) {
     sendJson(res, 409, { ok: false, error: "No active choice input" });
     return;
   }
@@ -3866,11 +4081,45 @@ async function handleControllerChoice(req, res) {
 
   const optionIndex = Math.floor(Number(payload.optionIndex));
   if (!Number.isFinite(optionIndex) || optionIndex < 0 || optionIndex >= room.choiceInputOptions.length) {
-    sendJson(res, 400, { ok: false, error: "Choice option is not valid" });
-    return;
+    if (room.choiceInputKind !== "vote") {
+      sendJson(res, 400, { ok: false, error: "Choice option is not valid" });
+      return;
+    }
   }
 
   const existingAnswer = room.choiceInputAnswers.get(playerId) || null;
+  if (room.choiceInputKind === "vote") {
+    const eligibleCards = (room.votingCards || []).filter((card) => card && card.hidden !== true && card.authorPlayerId !== playerId);
+    const requestedCardId = String(payload.cardId || "");
+    const card = eligibleCards.find((item) => item.id === requestedCardId) || eligibleCards[optionIndex] || null;
+    if (!card) {
+      sendJson(res, 400, { ok: false, error: "Vote option is not valid" });
+      return;
+    }
+    if (existingAnswer?.done) {
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      return;
+    }
+    const answer = {
+      optionIndex,
+      cardId: card.id,
+      text: card.text,
+      answeredAt: Date.now(),
+      done: true,
+      nonce: Date.now()
+    };
+    room.choiceInputAnswers.set(playerId, answer);
+    room.votingAnswers.set(playerId, answer);
+    card.voterIds = Array.isArray(card.voterIds) ? card.voterIds.filter((id) => id !== playerId) : [];
+    card.voterIds.push(playerId);
+    card.voteCount = card.voterIds.length;
+    broadcastLobby(room);
+    if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
+      scheduleAnswersSubmittedAdvance(room);
+    }
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    return;
+  }
   if (room.choiceInputMode === "submitOnce" && existingAnswer?.done) {
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
     return;

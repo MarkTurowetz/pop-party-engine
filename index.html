@@ -790,6 +790,68 @@
       pointer-events: none;
     }
 
+    .voting-card-layer {
+      position: absolute;
+      left: 50%;
+      top: 52%;
+      z-index: 9;
+      width: min(1420px, 86vw);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .voting-card {
+      min-height: 210px;
+      display: grid;
+      align-content: center;
+      gap: 12px;
+      padding: 22px;
+      border: 5px solid var(--ink);
+      border-radius: 20px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      text-align: center;
+      transform: scale(1);
+      opacity: 1;
+      transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease;
+    }
+
+    .voting-card.is-winner {
+      background: #60d394;
+      outline: 7px solid var(--yellow);
+    }
+
+    .voting-card-answer {
+      font-size: clamp(28px, 3vw, 54px);
+      font-weight: 1000;
+      line-height: 0.95;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .voting-card-voters {
+      min-height: 28px;
+      color: var(--purple-muted);
+      font-size: clamp(16px, 1.2vw, 24px);
+      font-weight: 1000;
+      line-height: 1;
+    }
+
+    .voting-card-votes {
+      justify-self: center;
+      padding: 6px 14px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: var(--yellow);
+      font-size: clamp(16px, 1.1vw, 22px);
+      font-weight: 1000;
+      line-height: 1;
+    }
+
     .pause-menu {
       position: fixed;
       inset: 0;
@@ -3362,6 +3424,7 @@
         </section>
         <div class="stage-status hidden" id="waitingStatus"></div>
       </main>
+      <section class="voting-card-layer hidden" id="votingCardLayer" aria-label="Anonymous answer cards"></section>
       <main class="stage-intro-content hidden" id="stageIntroContent">
         <h1 class="stage-intro-title" id="stageIntroTitle">GAME INTRO</h1>
         <div class="stage-presentation-text stage-text-object text-hidden hidden" id="stagePresentationText"></div>
@@ -3719,6 +3782,7 @@
     const stageFooter = document.querySelector(".stage-footer");
     const stageIntroContent = document.querySelector("#stageIntroContent");
     const stageIntroTitle = document.querySelector("#stageIntroTitle");
+    const votingCardLayer = document.querySelector("#votingCardLayer");
     const stagePresentationText = document.querySelector("#stagePresentationText");
     const stagePromptText = document.querySelector("#stagePromptText");
     const presentClickWidget = document.querySelector("#presentClickWidget");
@@ -4896,6 +4960,38 @@
       }
     }
 
+    function renderVotingCards(cards = []) {
+      if (!votingCardLayer) return;
+      votingCardLayer.classList.toggle("hidden", !cards.length);
+      const desired = new Set((cards || []).map((card) => card.id));
+      const existing = new Map(Array.from(votingCardLayer.querySelectorAll(".voting-card[data-card-id]")).map((card) => [card.dataset.cardId, card]));
+      for (const cardData of cards || []) {
+        let card = existing.get(cardData.id);
+        if (!card) {
+          card = document.createElement("article");
+          card.className = "voting-card";
+          card.dataset.cardId = cardData.id;
+          card.innerHTML = `
+            <div class="voting-card-answer"></div>
+            <div class="voting-card-voters"></div>
+            <div class="voting-card-votes hidden"></div>
+          `;
+          votingCardLayer.appendChild(card);
+        }
+        card.classList.toggle("is-winner", cardData.isWinner === true);
+        card.querySelector(".voting-card-answer").textContent = cardData.text || "";
+        const voterNames = cardData.resultsShown ? (cardData.voters || []).map((voter) => voter.name).join(", ") : "";
+        card.querySelector(".voting-card-voters").textContent = voterNames ? `Votes: ${voterNames}` : "";
+        const voteBadge = card.querySelector(".voting-card-votes");
+        voteBadge.classList.toggle("hidden", cardData.resultsShown !== true);
+        const voteCount = Number(cardData.voteCount || 0);
+        voteBadge.textContent = `${voteCount} vote${voteCount === 1 ? "" : "s"}`;
+      }
+      for (const card of Array.from(votingCardLayer.querySelectorAll(".voting-card[data-card-id]"))) {
+        if (!desired.has(card.dataset.cardId)) card.remove();
+      }
+    }
+
     function runStageWipe(onCovered) {
       window.clearTimeout(stageWipeTimer);
       window.clearTimeout(stageWipeHideTimer);
@@ -5046,6 +5142,7 @@
       const hasParkedShownBubbles = nextAnswersShown && Boolean(playerLobby.querySelector(".player-answer-bubble.is-hidden, .player-answer-bubble.is-exiting"));
       setPlayerAnswerBubblesShown(nextAnswersShown, { instant: renderedPlayerAnswersShown === nextAnswersShown && !answersAreStillAnimating && !hasParkedShownBubbles });
       renderPointPopups(lobby.pendingPointPopups || []);
+      renderVotingCards(lobby.votingCards || []);
       renderCraftingTimer(lobby.craftingTimer);
 
       const vip = players.find((player) => player.isVip);
@@ -5088,6 +5185,7 @@
         clearStageAudioPlayers();
         renderedPointPopupIds.clear();
         playerLobby.querySelectorAll(".point-popup").forEach((node) => node.remove());
+        renderVotingCards([]);
       }
       renderedStagePhase = nextPhase;
       if (isNewAction) prepareNewStageAction(lobby, actionKey);
@@ -5578,7 +5676,8 @@
       if (isDone) {
         controllerChoiceDone.textContent = `You chose: ${me.answer?.text || ""}`;
       }
-      for (const option of input.options || []) {
+      const visibleOptions = (input.options || []).filter((option) => input.type !== "vote" || option.authorPlayerId !== me.id);
+      for (const option of visibleOptions) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "choice-option-button";
@@ -5587,21 +5686,22 @@
         button.classList.toggle("is-selected", Number(option.index) === selectedIndex);
         button.textContent = option.label || option.text || `Option ${Number(option.index) + 1}`;
         button.disabled = isDone;
-        button.addEventListener("click", () => submitControllerChoice(input.actionId, Number(option.index)));
+        button.addEventListener("click", () => submitControllerChoice(input.actionId, Number(option.index), option.cardId || ""));
         controllerChoiceGrid.appendChild(button);
       }
       applyControllerLayoutForPhase(lobby.phase || "lobby");
       return true;
     }
 
-    async function submitControllerChoice(actionId, optionIndex) {
+    async function submitControllerChoice(actionId, optionIndex, cardId = "") {
       if (!controllerState) return;
       try {
         const result = await postJson("/api/controller-choice", {
           stageCode: controllerState.stageCode,
           playerId: controllerState.playerId,
           actionId,
-          optionIndex
+          optionIndex,
+          cardId
         });
         if (result.lobby) renderControllerState(result.lobby);
       } catch (error) {
@@ -6432,6 +6532,13 @@
         const eventText = ` / timer: ${flowTargetActionName(action.timerEndTargetActionId)} / answers: ${flowTargetActionName(action.answersSubmittedTargetActionId)}`;
         return `Text Submit: ${action.prompt || "Write your answer"}${limitText} / Stage validates${eventText} / ${timingText}`;
       }
+      if (action.type === "prepareVotingCards") return `Prepare anonymous voting cards / ${timingText}`;
+      if (action.type === "setVotingCardsShown") return `${action.isShown === false ? "Hide" : "Show"} ${action.cardFilter || "all"} voting cards / ${timingText}${instantText}`;
+      if (action.type === "voteOnAnswersInput") {
+        const eventText = ` / timer: ${flowTargetActionName(action.timerEndTargetActionId)} / votes: ${flowTargetActionName(action.answersSubmittedTargetActionId)}`;
+        return `Vote on answers: ${action.prompt || "Vote for your favorite answer"}${eventText} / ${timingText}`;
+      }
+      if (action.type === "revealVotingResults") return `Reveal voting results / ${timingText}`;
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "setPlayerAnswersShown") return `${action.isShown === false ? "Hide" : "Show"} ${action.playerFilter || "all"} player answers / ${timingText}${instantText}`;
@@ -6458,7 +6565,8 @@
         "presentText",
         "setPlayersShown",
         "setPlayerAnswersShown",
-        "setTimerShown"
+        "setTimerShown",
+        "setVotingCardsShown"
       ]);
       if (!visibilityActionTypes.has(action.type)) return null;
       const isShown = action.isShown !== false;
@@ -7718,6 +7826,16 @@
         action.timerEndTargetActionId = action.timerEndTargetActionId || "";
         action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
       }
+      if (value === "setVotingCardsShown") {
+        action.isShown = action.isShown !== false;
+        action.instant = action.instant === true;
+        action.cardFilter = action.cardFilter || "all";
+      }
+      if (value === "voteOnAnswersInput") {
+        action.prompt = action.prompt || "Vote for your favorite answer";
+        action.timerEndTargetActionId = action.timerEndTargetActionId || "";
+        action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
+      }
       if (value === "displayText") action.text = action.text || "Displayed text";
       if (value === "playAudio") action.audioUrl = action.audioUrl || "";
       if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown") action.isShown = action.isShown !== false;
@@ -8013,6 +8131,52 @@
           rerender();
         }));
       }
+      if (action.type === "prepareVotingCards") {
+        target.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
+      }
+      if (action.type === "setVotingCardsShown") {
+        target.appendChild(flowSelect("Voting Cards Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          rerender();
+        }));
+        target.appendChild(flowSelect("Cards", action.cardFilter || "all", [
+          { id: "all", name: "All Cards" },
+          { id: "winners", name: "Winning Cards" },
+          { id: "losers", name: "Losing Cards" }
+        ], (value) => {
+          action.cardFilter = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
+          rerender();
+        }));
+      }
+      if (action.type === "voteOnAnswersInput") {
+        target.appendChild(flowTextarea("Prompt Text", action.prompt || "Vote for your favorite answer", (value) => {
+          action.prompt = value || "Vote for your favorite answer";
+          rerender(false);
+        }));
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        target.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          rerender();
+        }));
+        target.appendChild(flowSelect("On Votes Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          rerender();
+        }));
+        target.appendChild(readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
+      }
+      if (action.type === "revealVotingResults") {
+        target.appendChild(readOnlyFlowNote("Counts stored votes, marks winning voting cards, and reveals which players voted for each answer."));
+      }
       if (action.type === "doNothing") {
         target.appendChild(readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
       }
@@ -8057,7 +8221,9 @@
         target.appendChild(flowSelect("Players", action.playerFilter || "all", [
           { id: "all", name: "All Players" },
           { id: "correct", name: "Correct Players" },
-          { id: "wrong", name: "Wrong Players" }
+          { id: "wrong", name: "Wrong Players" },
+          { id: "votingWinner", name: "Voting Winner Authors" },
+          { id: "votingLosers", name: "Voting Losing Authors" }
         ], (value) => {
           action.playerFilter = value;
           rerender();
@@ -8070,7 +8236,9 @@
         target.appendChild(flowSelect("Players", action.playerFilter || "correct", [
           { id: "all", name: "All Players" },
           { id: "correct", name: "Correct Players" },
-          { id: "wrong", name: "Wrong Players" }
+          { id: "wrong", name: "Wrong Players" },
+          { id: "votingWinner", name: "Voting Winner Authors" },
+          { id: "votingLosers", name: "Voting Losing Authors" }
         ], (value) => {
           action.playerFilter = value;
           rerender();
@@ -8927,6 +9095,52 @@
         }));
         flowEditor.appendChild(readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
       }
+      if (action.type === "prepareVotingCards") {
+        flowEditor.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
+      }
+      if (action.type === "setVotingCardsShown") {
+        flowEditor.appendChild(flowSelect("Voting Cards Visible", action.isShown === false ? "false" : "true", [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          action.isShown = value !== "false";
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("Cards", action.cardFilter || "all", [
+          { id: "all", name: "All Cards" },
+          { id: "winners", name: "Winning Cards" },
+          { id: "losers", name: "Losing Cards" }
+        ], (value) => {
+          action.cardFilter = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          action.instant = value === "true";
+          renderFlowListAndPublish();
+        }));
+      }
+      if (action.type === "voteOnAnswersInput") {
+        flowEditor.appendChild(flowTextarea("Prompt Text", action.prompt || "Vote for your favorite answer", (value) => {
+          action.prompt = value || "Vote for your favorite answer";
+          renderFlowListAndPublish();
+        }));
+        const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+        flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+          action.timerEndTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(flowSelect("On Votes Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+          action.answersSubmittedTargetActionId = value;
+          renderFlowListAndPublish();
+        }));
+        flowEditor.appendChild(readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
+      }
+      if (action.type === "revealVotingResults") {
+        flowEditor.appendChild(readOnlyFlowNote("Counts stored votes, marks winning voting cards, and reveals which players voted for each answer."));
+      }
       if (action.type === "doNothing") {
         flowEditor.appendChild(readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
       }
@@ -8971,7 +9185,9 @@
         flowEditor.appendChild(flowSelect("Players", action.playerFilter || "all", [
           { id: "all", name: "All Players" },
           { id: "correct", name: "Correct Players" },
-          { id: "wrong", name: "Wrong Players" }
+          { id: "wrong", name: "Wrong Players" },
+          { id: "votingWinner", name: "Voting Winner Authors" },
+          { id: "votingLosers", name: "Voting Losing Authors" }
         ], (value) => {
           action.playerFilter = value;
           renderFlowListAndPublish();
@@ -8984,7 +9200,9 @@
         flowEditor.appendChild(flowSelect("Players", action.playerFilter || "correct", [
           { id: "all", name: "All Players" },
           { id: "correct", name: "Correct Players" },
-          { id: "wrong", name: "Wrong Players" }
+          { id: "wrong", name: "Wrong Players" },
+          { id: "votingWinner", name: "Voting Winner Authors" },
+          { id: "votingLosers", name: "Voting Losing Authors" }
         ], (value) => {
           action.playerFilter = value;
           renderFlowListAndPublish();
