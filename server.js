@@ -1856,7 +1856,8 @@ function decisionVariableValue(room, variable) {
     players: active,
     playerColors: constants.playerColors,
     choiceInputAnswers: room.choiceInputAnswers,
-    textInputAnswers: room.textInputAnswers
+    textInputAnswers: room.textInputAnswers,
+    displayedPlayerAnswers: room.displayedPlayerAnswers
   };
   const pathParts = key.split(".").filter(Boolean);
   const first = pathParts.shift();
@@ -2603,6 +2604,7 @@ function getRoom(stageCode) {
       choiceInputMode: "singleSelect",
       choiceInputLocked: false,
       choiceInputAnswers: new Map(),
+      displayedPlayerAnswers: new Map(),
       textInputActionId: "",
       textInputPrompt: "",
       textInputPlaceholder: "",
@@ -2687,7 +2689,8 @@ function selectVip(room) {
 function publicPlayer(player, room) {
   const choiceAnswer = room.choiceInputAnswers?.get(player.id) || null;
   const textAnswer = room.textInputAnswers?.get(player.id) || null;
-  const answer = choiceAnswer || textAnswer || null;
+  const displayedAnswer = room.displayedPlayerAnswers?.get(player.id) || null;
+  const answer = choiceAnswer || textAnswer || displayedAnswer || null;
   const needsChoiceInput = Boolean(room.choiceInputActionId) && (
     room.choiceInputMode === "continuous" || !choiceAnswer
   );
@@ -2708,6 +2711,33 @@ function clearAnswersSubmittedAdvanceTimer(room) {
   if (!room.answersSubmittedAdvanceTimerId) return;
   clearTimeout(room.answersSubmittedAdvanceTimerId);
   room.answersSubmittedAdvanceTimerId = null;
+}
+
+function displayedPlayerAnswers(room) {
+  if (!room.displayedPlayerAnswers || typeof room.displayedPlayerAnswers.get !== "function") {
+    room.displayedPlayerAnswers = new Map();
+  }
+  return room.displayedPlayerAnswers;
+}
+
+function rememberDisplayedPlayerAnswer(room, playerId, answer) {
+  if (!playerId || !answer || !answer.text) return;
+  displayedPlayerAnswers(room).set(playerId, {
+    optionIndex: answer.optionIndex,
+    text: answer.text,
+    done: answer.done === true,
+    invalid: answer.invalid === true,
+    nonce: answer.nonce || Date.now()
+  });
+}
+
+function forgetDisplayedPlayerAnswer(room, playerId) {
+  if (!playerId) return;
+  displayedPlayerAnswers(room).delete(playerId);
+}
+
+function clearDisplayedPlayerAnswers(room) {
+  displayedPlayerAnswers(room).clear();
 }
 
 function clearChoiceInput(room) {
@@ -2883,6 +2913,7 @@ function scheduleAnswersSubmittedAdvance(room) {
 function applyChoiceInputAction(room, action) {
   if (!action || action.type !== "multipleChoiceInput") return;
   if (room.choiceInputActionId === action.id) return;
+  clearDisplayedPlayerAnswers(room);
   room.choiceInputActionId = action.id;
   room.choiceInputPrompt = action.prompt || "Answer this question by tapping an answer";
   room.choiceInputOptions = cleanChoiceOptions(action.options);
@@ -2910,6 +2941,7 @@ function choiceInputPayload(room, currentAction) {
 function applyTextInputAction(room, action) {
   if (!action || action.type !== "textSubmissionInput") return;
   if (room.textInputActionId === action.id) return;
+  clearDisplayedPlayerAnswers(room);
   room.textInputActionId = action.id;
   room.textInputPrompt = action.prompt || "Write your answer";
   room.textInputPlaceholder = action.placeholder || "Answer here";
@@ -2994,6 +3026,7 @@ function enterLobbyPhase(room) {
   resetCraftingTimer(room);
   clearChoiceInput(room);
   clearTextInput(room);
+  clearDisplayedPlayerAnswers(room);
 }
 
 function quitRoomToLobby(room) {
@@ -3037,6 +3070,7 @@ function enterGamePhase(room, phase) {
   resetCraftingTimer(room);
   clearChoiceInput(room);
   clearTextInput(room);
+  clearDisplayedPlayerAnswers(room);
   if (isRoundIntroStateId(phase) && previousPhase !== phase) {
     if (room.hasEnteredRoundIntro) {
       room.currentRound += 1;
@@ -3452,18 +3486,21 @@ async function handleControllerChoice(req, res) {
       return;
     }
     room.choiceInputAnswers.delete(playerId);
+    forgetDisplayedPlayerAnswer(room, playerId);
     broadcastLobby(room);
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
     return;
   }
 
-  room.choiceInputAnswers.set(playerId, {
+  const answer = {
     optionIndex,
     text: room.choiceInputOptions[optionIndex],
     answeredAt: Date.now(),
     done: room.choiceInputMode === "submitOnce",
     nonce: Date.now()
-  });
+  };
+  room.choiceInputAnswers.set(playerId, answer);
+  rememberDisplayedPlayerAnswer(room, playerId, answer);
 
   broadcastLobby(room);
   if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
@@ -3504,6 +3541,7 @@ async function handleControllerTextSubmit(req, res) {
   const submittedText = cleanSubmittedText(payload.text, room.textInputCharacterLimit || 240);
   const isValid = Boolean(submittedText) && !/\d/.test(submittedText);
   if (!isValid) {
+    forgetDisplayedPlayerAnswer(room, playerId);
     room.textInputAnswers.set(playerId, {
       text: "",
       invalid: true,
@@ -3515,12 +3553,14 @@ async function handleControllerTextSubmit(req, res) {
     return;
   }
 
-  room.textInputAnswers.set(playerId, {
+  const answer = {
     text: submittedText,
     invalid: false,
     done: true,
     nonce: Date.now()
-  });
+  };
+  room.textInputAnswers.set(playerId, answer);
+  rememberDisplayedPlayerAnswer(room, playerId, answer);
   broadcastLobby(room);
   if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
     scheduleAnswersSubmittedAdvance(room);
