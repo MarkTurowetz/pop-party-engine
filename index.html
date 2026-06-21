@@ -3490,6 +3490,7 @@
         <div class="flow-node-workspace hidden" id="flowNodeWorkspace">
           <div class="flow-node-toolbar">
             <button class="secondary-button" id="nodeBackButton" type="button">Moments</button>
+            <button class="secondary-button" id="nodeOptimizeButton" type="button">Optimize</button>
             <p id="nodeViewHelp">Double-click a game moment to edit its actions.</p>
           </div>
           <div class="flow-node-stage" id="flowNodeStage">
@@ -3753,6 +3754,7 @@
     const flowNodeMinimapViewport = document.querySelector("#flowNodeMinimapViewport");
     const flowNodeInspector = document.querySelector("#flowNodeInspector");
     const nodeBackButton = document.querySelector("#nodeBackButton");
+    const nodeOptimizeButton = document.querySelector("#nodeOptimizeButton");
     const nodeViewHelp = document.querySelector("#nodeViewHelp");
     const flowNodeHint = document.querySelector("#flowNodeHint");
     const flowEditorTitle = document.querySelector("#flowEditorTitle");
@@ -6622,6 +6624,7 @@
 
     function renderFlowActions() {
       if (revertFlowButton) revertFlowButton.disabled = !flowSavedSnapshot || !isFlowDirty();
+      if (nodeOptimizeButton) nodeOptimizeButton.disabled = flowViewMode !== "node" || flowNodeDepth !== "actions" || !flowState(selectedFlowStateId);
     }
 
     function setFlowViewMode(mode) {
@@ -6630,6 +6633,7 @@
       if (flowViewMode === "node" && selectedFlowStateId) flowNodeDepth = "actions";
       updateFlowViewMode();
       renderFlowNodeView();
+      renderFlowActions();
     }
 
     function updateFlowViewMode() {
@@ -6665,6 +6669,7 @@
       applyFlowNodeZoom();
       scheduleFlowNodeWireRedraw();
       renderFlowNodeInspector();
+      renderFlowActions();
     }
 
     function flowNodeClassForAction(action) {
@@ -7469,6 +7474,103 @@
         return [{ label: action.trigger === "onCountdownComplete" ? "Countdown Complete" : "Event Complete", field: "nextTargetActionId" }];
       }
       return [{ label: "Next", field: "nextTargetActionId" }];
+    }
+
+    function flowActionTargets(action) {
+      if (!action) return [];
+      return flowNodeExitDefinitions(action)
+        .map((exit) => {
+          const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
+          return branch ? branch.targetActionId : action[exit.field] || "";
+        })
+        .filter((targetId) => targetId && !isNoFlowTarget(targetId));
+    }
+
+    function optimizeCurrentFlowMoment() {
+      const state = flowState(selectedFlowStateId);
+      if (!state || flowViewMode !== "node" || flowNodeDepth !== "actions") return;
+      const actions = state.actions || [];
+      const actionById = new Map(actions.map((action) => [action.id, action]));
+      const rowById = new Map();
+      const orderById = new Map();
+      let nextOrder = 0;
+      const markOrder = (id) => {
+        if (!orderById.has(id)) orderById.set(id, nextOrder += 1);
+      };
+      const visit = (id, row, path = new Set()) => {
+        if (!id || isNoFlowTarget(id)) return;
+        if (id === "return") {
+          rowById.set("return", Math.max(rowById.get("return") || 0, row));
+          markOrder("return");
+          return;
+        }
+        const action = actionById.get(id);
+        if (!action) return;
+        markOrder(id);
+        rowById.set(id, Math.max(rowById.get(id) || 0, row));
+        if (path.has(id)) return;
+        const nextPath = new Set(path);
+        nextPath.add(id);
+        for (const targetId of flowActionTargets(action)) {
+          visit(targetId, row + 1, nextPath);
+        }
+      };
+
+      const entryTargetId = state.entryTargetActionId || actions[0]?.id || "";
+      visit(entryTargetId, 1);
+      for (const action of actions) {
+        if (!rowById.has(action.id)) {
+          markOrder(action.id);
+          const lastRow = Math.max(1, 0, ...Array.from(rowById.values()).filter((row) => Number.isFinite(row)));
+          rowById.set(action.id, lastRow + 1);
+          for (const targetId of flowActionTargets(action)) visit(targetId, lastRow + 2);
+        }
+      }
+      const deepestActionRow = Math.max(1, ...actions.map((action) => rowById.get(action.id) || 1));
+      const returnRow = Math.max(deepestActionRow + 1, rowById.get("return") || 0);
+      rowById.set("return", returnRow);
+
+      const rows = new Map();
+      for (const action of actions) {
+        const row = rowById.get(action.id) || 1;
+        if (!rows.has(row)) rows.set(row, []);
+        rows.get(row).push(action);
+      }
+      for (const rowActions of rows.values()) {
+        rowActions.sort((a, b) => (orderById.get(a.id) || 0) - (orderById.get(b.id) || 0));
+      }
+
+      const centerX = 800;
+      const startY = 70;
+      const rowGap = 235;
+      const columnGap = 360;
+      const nodeWidthFor = (action) => action.type === "decision" ? 320 : 260;
+      pushFlowHistory();
+      state.startNodePosition = { x: Math.round(centerX - 85), y: startY };
+      for (const [row, rowActions] of rows.entries()) {
+        const rowWidth = (rowActions.length - 1) * columnGap;
+        rowActions.forEach((action, index) => {
+          const width = nodeWidthFor(action);
+          action.nodePosition = {
+            x: Math.round(centerX - rowWidth / 2 + index * columnGap - width / 2),
+            y: Math.round(startY + row * rowGap)
+          };
+        });
+      }
+      state.returnNodePosition = {
+        x: Math.round(centerX - 95),
+        y: Math.round(startY + returnRow * rowGap)
+      };
+      flowNodeZoom = 1;
+      setLocalValue("partyTemplate.flowNodeZoom", String(flowNodeZoom));
+      renderFlowListAndPublish();
+      renderFlowNodeView();
+      window.requestAnimationFrame(() => {
+        if (!flowNodeStage) return;
+        flowNodeStage.scrollLeft = 0;
+        flowNodeStage.scrollTop = 0;
+        renderFlowNodeMinimap();
+      });
     }
 
     function refreshFlowNodeInspectorChange() {
@@ -9306,6 +9408,7 @@
       revertFlowButton.addEventListener("click", revertGameFlow);
       flowListViewButton?.addEventListener("click", () => setFlowViewMode("list"));
       flowNodeViewButton?.addEventListener("click", () => setFlowViewMode("node"));
+      nodeOptimizeButton?.addEventListener("click", optimizeCurrentFlowMoment);
       nodeBackButton?.addEventListener("click", () => {
         flowNodeDepth = "moments";
         clearFlowActionSelection();
