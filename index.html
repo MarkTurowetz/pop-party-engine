@@ -5155,6 +5155,8 @@
       if (cards > 0 || preparedCards > 0 || debug.actionType === "prepareVotingCards" || debug.actionType === "setVotingCardsShown" || debug.actionType === "voteOnAnswersInput") {
         parts.push(`cards ${visibleCards}/${cards} prepared ${preparedCards}`);
       }
+      const skippedCards = Number(debug.lastVotingPrepareSkippedCount || 0);
+      if (skippedCards > 0) parts.push(`skipped ${skippedCards}`);
       stageDebugAction.textContent = parts.join(" · ");
       stageDebugAction.classList.remove("hidden");
     }
