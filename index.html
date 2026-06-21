@@ -2123,10 +2123,17 @@
       position: relative;
       width: 1600px;
       min-height: 920px;
-      transform-origin: 0 0;
     }
 
     .flow-node-layer {
+      position: absolute;
+      inset: 0;
+      width: 1600px;
+      min-height: 920px;
+      transform-origin: 0 0;
+    }
+
+    .flow-node-world {
       position: relative;
       width: 1600px;
       min-height: 920px;
@@ -3425,8 +3432,10 @@
           </div>
           <div class="flow-node-stage" id="flowNodeStage">
             <div class="flow-node-graph" id="flowNodeGraph">
-              <svg class="flow-node-wires" id="flowNodeWires" aria-hidden="true"></svg>
-              <div class="flow-node-layer" id="flowNodeLayer"></div>
+              <div class="flow-node-world" id="flowNodeWorld">
+                <svg class="flow-node-wires" id="flowNodeWires" aria-hidden="true"></svg>
+                <div class="flow-node-layer" id="flowNodeLayer"></div>
+              </div>
             </div>
             <div class="flow-node-minimap" id="flowNodeMinimap" aria-label="Graph minimap">
               <div class="flow-node-minimap-viewport" id="flowNodeMinimapViewport"></div>
@@ -3675,6 +3684,7 @@
     const flowNodeWorkspace = document.querySelector("#flowNodeWorkspace");
     const flowNodeStage = document.querySelector("#flowNodeStage");
     const flowNodeGraph = document.querySelector("#flowNodeGraph");
+    const flowNodeWorld = document.querySelector("#flowNodeWorld");
     const flowNodeWires = document.querySelector("#flowNodeWires");
     const flowNodeLayer = document.querySelector("#flowNodeLayer");
     const flowNodeMinimap = document.querySelector("#flowNodeMinimap");
@@ -6604,19 +6614,19 @@
     }
 
     function applyFlowNodeZoom() {
-      if (!flowNodeGraph || !flowNodeLayer || !flowNodeWires) return;
+      if (!flowNodeGraph || !flowNodeWorld || !flowNodeLayer || !flowNodeWires) return;
       const bounds = flowGraphNodeBounds();
       const width = Math.max(1600, bounds.maxX);
       const height = Math.max(920, bounds.maxY);
       flowNodeGraph.style.width = `${width * flowNodeZoom}px`;
       flowNodeGraph.style.minHeight = `${height * flowNodeZoom}px`;
-      flowNodeGraph.style.transform = "";
+      flowNodeWorld.style.width = `${width}px`;
+      flowNodeWorld.style.minHeight = `${height}px`;
+      flowNodeWorld.style.transform = `scale(${flowNodeZoom})`;
       flowNodeLayer.style.width = `${width}px`;
       flowNodeLayer.style.minHeight = `${height}px`;
-      flowNodeLayer.style.transform = `scale(${flowNodeZoom})`;
       flowNodeWires.style.width = `${width}px`;
       flowNodeWires.style.height = `${height}px`;
-      flowNodeWires.style.transform = `scale(${flowNodeZoom})`;
       flowNodeWires.setAttribute("width", String(width));
       flowNodeWires.setAttribute("height", String(height));
       renderFlowNodeMinimap();
