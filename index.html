@@ -2119,6 +2119,13 @@
       line-height: 1.25;
     }
 
+    .flow-node-graph {
+      position: relative;
+      width: 1600px;
+      min-height: 920px;
+      transform-origin: 0 0;
+    }
+
     .flow-node-layer {
       position: relative;
       width: 1600px;
@@ -2134,7 +2141,6 @@
       pointer-events: none;
       overflow: visible;
       z-index: 1;
-      transform-origin: 0 0;
     }
 
     .flow-node-minimap {
@@ -3417,8 +3423,10 @@
             <p id="nodeViewHelp">Double-click a game moment to edit its actions.</p>
           </div>
           <div class="flow-node-stage" id="flowNodeStage">
-            <svg class="flow-node-wires" id="flowNodeWires" aria-hidden="true"></svg>
-            <div class="flow-node-layer" id="flowNodeLayer"></div>
+            <div class="flow-node-graph" id="flowNodeGraph">
+              <svg class="flow-node-wires" id="flowNodeWires" aria-hidden="true"></svg>
+              <div class="flow-node-layer" id="flowNodeLayer"></div>
+            </div>
             <div class="flow-node-minimap" id="flowNodeMinimap" aria-label="Graph minimap">
               <div class="flow-node-minimap-viewport" id="flowNodeMinimapViewport"></div>
             </div>
@@ -3665,6 +3673,7 @@
     const flowEditor = document.querySelector("#flowEditor");
     const flowNodeWorkspace = document.querySelector("#flowNodeWorkspace");
     const flowNodeStage = document.querySelector("#flowNodeStage");
+    const flowNodeGraph = document.querySelector("#flowNodeGraph");
     const flowNodeWires = document.querySelector("#flowNodeWires");
     const flowNodeLayer = document.querySelector("#flowNodeLayer");
     const flowNodeMinimap = document.querySelector("#flowNodeMinimap");
@@ -6594,16 +6603,17 @@
     }
 
     function applyFlowNodeZoom() {
-      if (!flowNodeLayer || !flowNodeWires) return;
+      if (!flowNodeGraph || !flowNodeLayer || !flowNodeWires) return;
       const bounds = flowGraphNodeBounds();
       const width = Math.max(1600, bounds.maxX);
       const height = Math.max(920, bounds.maxY);
+      flowNodeGraph.style.width = `${width}px`;
+      flowNodeGraph.style.minHeight = `${height}px`;
+      flowNodeGraph.style.transform = `scale(${flowNodeZoom})`;
       flowNodeLayer.style.width = `${width}px`;
       flowNodeLayer.style.minHeight = `${height}px`;
-      flowNodeLayer.style.transform = `scale(${flowNodeZoom})`;
       flowNodeWires.style.width = `${width}px`;
       flowNodeWires.style.height = `${height}px`;
-      flowNodeWires.style.transform = `scale(${flowNodeZoom})`;
       flowNodeWires.setAttribute("width", String(width));
       flowNodeWires.setAttribute("height", String(height));
       renderFlowNodeMinimap();
@@ -6661,6 +6671,23 @@
       positionFlowNodeMinimap();
     }
 
+    function centerFlowNodeViewportOnGraphPoint(graphX, graphY) {
+      if (!flowNodeStage) return;
+      flowNodeStage.scrollLeft = Math.max(0, graphX * flowNodeZoom - flowNodeStage.clientWidth / 2);
+      flowNodeStage.scrollTop = Math.max(0, graphY * flowNodeZoom - flowNodeStage.clientHeight / 2);
+      renderFlowNodeMinimap();
+    }
+
+    function minimapGraphPoint(event) {
+      const rect = flowNodeMinimap.getBoundingClientRect();
+      const bounds = flowGraphNodeBounds();
+      const scale = Math.min(rect.width / Math.max(1, bounds.width), rect.height / Math.max(1, bounds.height));
+      return {
+        x: bounds.minX + (event.clientX - rect.left) / scale,
+        y: bounds.minY + (event.clientY - rect.top) / scale
+      };
+    }
+
     function systemNodeModel(state, nodeId) {
       const positionKey = nodeId === "start" ? "startNodePosition" : "returnNodePosition";
       return {
@@ -6677,7 +6704,7 @@
     function nodePoint(node) {
       if (node?.classList?.contains("flow-node-branch") || node?.classList?.contains("flow-node-subaction")) {
         const nodeRect = node.getBoundingClientRect();
-        const rootRect = flowNodeLayer.getBoundingClientRect();
+        const rootRect = flowNodeGraph.getBoundingClientRect();
         return {
           x: (nodeRect.right - rootRect.left) / flowNodeZoom - 12,
           y: (nodeRect.top - rootRect.top + nodeRect.height / 2) / flowNodeZoom
@@ -6729,7 +6756,7 @@
     }
 
     function flowNodeLocalPoint(event) {
-      const rootRect = flowNodeLayer.getBoundingClientRect();
+      const rootRect = flowNodeGraph.getBoundingClientRect();
       return {
         x: (event.clientX - rootRect.left) / flowNodeZoom,
         y: (event.clientY - rootRect.top) / flowNodeZoom
@@ -7125,7 +7152,7 @@
       if (event.target.closest?.(".flow-node, .flow-node-port-dot")) return;
       if (!flowNodeStage?.contains(event.target) || !flowNodeLayer) return;
       event.preventDefault();
-      const rootRect = flowNodeLayer.getBoundingClientRect();
+      const rootRect = flowNodeGraph.getBoundingClientRect();
       const startX = (event.clientX - rootRect.left) / flowNodeZoom;
       const startY = (event.clientY - rootRect.top) / flowNodeZoom;
       const marquee = document.createElement("div");
@@ -7896,14 +7923,31 @@
       if (!flowNodeStage || !flowNodeMinimap) return;
       event.preventDefault();
       event.stopPropagation();
-      const rect = flowNodeMinimap.getBoundingClientRect();
-      const bounds = flowGraphNodeBounds();
-      const scale = Math.min(rect.width / Math.max(1, bounds.width), rect.height / Math.max(1, bounds.height));
-      const graphX = bounds.minX + (event.clientX - rect.left) / scale;
-      const graphY = bounds.minY + (event.clientY - rect.top) / scale;
-      flowNodeStage.scrollLeft = Math.max(0, graphX * flowNodeZoom - flowNodeStage.clientWidth / 2);
-      flowNodeStage.scrollTop = Math.max(0, graphY * flowNodeZoom - flowNodeStage.clientHeight / 2);
-      renderFlowNodeMinimap();
+      const point = minimapGraphPoint(event);
+      centerFlowNodeViewportOnGraphPoint(point.x, point.y);
+    }
+
+    function startFlowNodeMinimapDrag(event) {
+      if (!flowNodeMinimap || event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      flowNodeMinimap.setPointerCapture?.(event.pointerId);
+      const move = (moveEvent) => {
+        if (moveEvent.pointerId !== event.pointerId) return;
+        const point = minimapGraphPoint(moveEvent);
+        centerFlowNodeViewportOnGraphPoint(point.x, point.y);
+      };
+      const stop = (stopEvent) => {
+        if (stopEvent.pointerId !== event.pointerId) return;
+        flowNodeMinimap.releasePointerCapture?.(stopEvent.pointerId);
+        flowNodeMinimap.removeEventListener("pointermove", move);
+        flowNodeMinimap.removeEventListener("pointerup", stop);
+        flowNodeMinimap.removeEventListener("pointercancel", stop);
+      };
+      move(event);
+      flowNodeMinimap.addEventListener("pointermove", move);
+      flowNodeMinimap.addEventListener("pointerup", stop);
+      flowNodeMinimap.addEventListener("pointercancel", stop);
     }
 
     function completeNodeConnection(targetNode) {
@@ -9092,9 +9136,7 @@
       flowNodeStage?.addEventListener("pointermove", handleFlowNodePointerMove);
       flowNodeStage?.addEventListener("wheel", handleFlowNodeWheel, { passive: false });
       flowNodeStage?.addEventListener("scroll", renderFlowNodeMinimap);
-      flowNodeMinimap?.addEventListener("pointerdown", (event) => {
-        event.stopPropagation();
-      });
+      flowNodeMinimap?.addEventListener("pointerdown", startFlowNodeMinimapDrag);
       flowNodeMinimap?.addEventListener("click", jumpFlowNodeMinimap);
       flowNodeStage?.addEventListener("pointerup", (event) => {
         const targetNode = event.target.closest?.(".flow-node");
