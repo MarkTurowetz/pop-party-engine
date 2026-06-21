@@ -2328,6 +2328,37 @@
       box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.24);
     }
 
+    .flow-node-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .flow-node-value-badge {
+      padding: 4px 9px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: var(--cyan);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 1000;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.24);
+    }
+
+    .flow-node-value-badge.is-hide {
+      background: #ef476f;
+      color: #ffffff;
+    }
+
+    .flow-node-value-badge.is-show {
+      background: #60d394;
+      color: var(--ink);
+    }
+
     .flow-node-subactions {
       display: grid;
       gap: 7px;
@@ -2367,6 +2398,20 @@
       font-weight: 1000;
       line-height: 1;
       text-transform: uppercase;
+    }
+
+    .flow-node-subaction-meta {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .flow-node-subaction-meta .flow-node-value-badge {
+      padding: 3px 7px;
+      font-size: 10px;
+      box-shadow: 2px 2px 0 rgba(23, 19, 31, 0.2);
     }
 
     .flow-node-branch {
@@ -6355,6 +6400,23 @@
       return `${timing.mode} ${Number(timing.seconds || 0).toFixed(2)}s`;
     }
 
+    function actionValueBadge(action) {
+      if (!action) return null;
+      const visibilityActionTypes = new Set([
+        "displayText",
+        "presentText",
+        "setPlayersShown",
+        "setPlayerAnswersShown",
+        "setTimerShown"
+      ]);
+      if (!visibilityActionTypes.has(action.type)) return null;
+      const isShown = action.isShown !== false;
+      return {
+        text: isShown ? "Show" : "Hide",
+        className: isShown ? "is-show" : "is-hide"
+      };
+    }
+
     function flowTargetActionName(actionId) {
       if (!actionId) return "No Connection";
       if (actionId === "none") return "None";
@@ -6962,7 +7024,7 @@
       return ports;
     }
 
-    function createFlowNode({ id, title, subtitle, timing = "", x, y, width, height, className = "", selected = false }) {
+    function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x, y, width, height, className = "", selected = false }) {
       const node = document.createElement("div");
       node.role = "button";
       node.tabIndex = 0;
@@ -6986,11 +7048,20 @@
       subtitleEl.className = "flow-node-subtitle";
       subtitleEl.textContent = subtitle;
       main.append(titleEl, subtitleEl);
-      if (timing) {
+      if (timing || valueBadge?.text) {
+        const metaRow = document.createElement("div");
+        metaRow.className = "flow-node-meta-row";
         const timingEl = document.createElement("div");
         timingEl.className = "flow-node-timing";
         timingEl.textContent = timing;
-        main.appendChild(timingEl);
+        if (timing) metaRow.appendChild(timingEl);
+        if (valueBadge?.text) {
+          const badgeEl = document.createElement("div");
+          badgeEl.className = `flow-node-value-badge ${valueBadge.className || ""}`.trim();
+          badgeEl.textContent = valueBadge.text;
+          metaRow.appendChild(badgeEl);
+        }
+        main.appendChild(metaRow);
       }
       node.appendChild(main);
       return node;
@@ -7059,9 +7130,19 @@
         item.classList.toggle("is-selected", flowActionIsSelected(subAction.id));
         const title = document.createElement("strong");
         title.textContent = subAction.name || "Sub-Action";
+        const meta = document.createElement("div");
+        meta.className = "flow-node-subaction-meta";
         const timing = document.createElement("span");
         timing.textContent = actionTimingLabel(subAction, true);
-        item.append(title, timing);
+        meta.appendChild(timing);
+        const valueBadge = actionValueBadge(subAction);
+        if (valueBadge?.text) {
+          const badge = document.createElement("span");
+          badge.className = `flow-node-value-badge ${valueBadge.className || ""}`.trim();
+          badge.textContent = valueBadge.text;
+          meta.appendChild(badge);
+        }
+        item.append(title, meta);
         bindFlowNodeChildSort(item, parentAction, "subActions", subAction.id);
         item.addEventListener("pointerdown", (event) => event.stopPropagation());
         item.addEventListener("click", (event) => {
@@ -7320,6 +7401,7 @@
           title: action.name || `Action ${index + 1}`,
           subtitle: `${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`,
           timing: action.type === "decision" ? "" : actionTimingLabel(action, false),
+          valueBadge: actionValueBadge(action),
           x,
           y,
           width: action.type === "decision" ? 320 : 260,
