@@ -3,75 +3,105 @@
     {
       "id": "lobby",
       "name": "Lobby Game State",
+      "nodePosition": {
+        "x": 100,
+        "y": 84
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 514
+      },
+      "entryTargetActionId": "",
+      "nextStateTargetId": "intro",
       "actions": [
         {
           "id": "lobby-countdown-complete",
           "name": "On Countdown Complete",
           "type": "transitionState",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "trigger": "onCountdownComplete",
-          "targetState": "intro",
-          "subActions": [],
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 80,
-            "y": 210
-          }
+            "x": 670,
+            "y": 260
+          },
+          "subActions": [],
+          "trigger": "onCountdownComplete",
+          "targetState": "intro"
         }
-      ],
-      "nextStateTargetId": "intro",
-      "nodePosition": {
-        "x": 100,
-        "y": 84
-      }
+      ]
     },
     {
       "id": "intro",
       "name": "Game Intro Game State",
+      "nodePosition": {
+        "x": 97,
+        "y": 303
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 775
+      },
+      "entryTargetActionId": "",
+      "nextStateTargetId": "round-intro-game-state",
       "actions": [
         {
           "id": "intro-present-1",
           "name": "Present Intro Text",
           "type": "presentText",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "textTarget": "presentation",
-          "instant": false,
-          "text": "This is the Game Intro State",
-          "subActions": [],
+          "nextTargetActionId": "intro-wipe",
           "nodePosition": {
             "x": 670,
             "y": 305
           },
-          "nextTargetActionId": "intro-wipe"
+          "subActions": [],
+          "text": "This is the Game Intro State",
+          "textTarget": "presentation",
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "intro-wipe",
           "name": "Do Horizontal Wipe",
           "type": "transition",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "transition": "horizontalWipe",
-          "subActions": [],
           "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 540
-          }
+          },
+          "subActions": [],
+          "transition": "horizontalWipe"
         }
-      ],
+      ]
+    },
+    {
+      "id": "round-intro-game-state",
+      "name": "Round Intro Game State",
       "nodePosition": {
-        "x": 97,
-        "y": 303
+        "x": 102,
+        "y": 520
       },
-      "nextStateTargetId": "round-intro-game-state",
       "startNodePosition": {
         "x": 715,
         "y": 70
@@ -79,354 +109,52 @@
       "returnNodePosition": {
         "x": 705,
         "y": 775
-      }
-    },
-    {
-      "id": "round-intro-game-state",
-      "name": "Round Intro Game State",
+      },
+      "entryTargetActionId": "",
+      "nextStateTargetId": "crafting-game-state",
       "actions": [
         {
           "id": "round-intro-action-mqkg361r",
           "name": "Intro Text",
           "type": "presentText",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Round <ROUND_NUMBER>",
-          "textTarget": "roundintrotext",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "round-intro-game-state-action-mqlam2l4",
           "nodePosition": {
             "x": 670,
             "y": 305
           },
-          "nextTargetActionId": "round-intro-game-state-action-mqlam2l4"
+          "subActions": [],
+          "text": "Round <ROUND_NUMBER>",
+          "textTarget": "roundintrotext",
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "round-intro-game-state-action-mqlam2l4",
           "name": "Wipe",
           "type": "transition",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "transition": "horizontalWipe",
           "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 540
-          }
+          },
+          "subActions": [],
+          "transition": "horizontalWipe"
         }
-      ],
-      "nodePosition": {
-        "x": 102,
-        "y": 520
-      },
-      "nextStateTargetId": "crafting-game-state",
-      "startNodePosition": {
-        "x": 715,
-        "y": 70
-      },
-      "returnNodePosition": {
-        "x": 705,
-        "y": 775
-      }
+      ]
     },
     {
       "id": "crafting-game-state",
       "name": "Crafting Game State",
-      "actions": [
-        {
-          "id": "crafting-game-state-action-mqlafl8m",
-          "name": "Present Text",
-          "type": "presentText",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "We are in the Crafting State",
-          "textTarget": "crafting-game-statemomenttext",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 305
-          },
-          "nextTargetActionId": "crafting-game-state-action-mqn4qzpm"
-        },
-        {
-          "id": "crafting-game-state-action-mqn4qzpm",
-          "name": "Get Random Multiple Choice Content",
-          "type": "getRandomMultipleChoiceContent",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "variableName": "multipleChoicePrompt",
-          "nodePosition": {
-            "x": 670,
-            "y": 540
-          },
-          "nextTargetActionId": "crafting-game-state-action-mqlrgs0y"
-        },
-        {
-          "id": "crafting-game-state-action-mqlrgs0y",
-          "name": "Set Timer Shown",
-          "type": "setTimerShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 775
-          },
-          "nextTargetActionId": "crafting-game-state-action-mqlronl5"
-        },
-        {
-          "id": "crafting-game-state-action-mqlronl5",
-          "name": "Start Crafting Timer",
-          "type": "startCraftingTimer",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
-          "answersSubmittedTargetActionId": "crafting-game-state-action-mqlagz9c",
-          "nodePosition": {
-            "x": 670,
-            "y": 1010
-          },
-          "nextTargetActionId": "crafting-game-state-action-mqlrlkp0"
-        },
-        {
-          "id": "crafting-game-state-action-mqlrlkp0",
-          "name": "Trivia Input",
-          "type": "triviaInput",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [
-            {
-              "id": "crafting-game-state-sub-action-mqlsquow",
-              "name": "Sub-Action 1",
-              "type": "displayText",
-              "timing": {
-                "mode": "S+",
-                "seconds": 1
-              },
-              "text": "Answer the prompt on your device now!",
-              "textTarget": "stageprompttext",
-              "instant": false,
-              "isShown": true,
-              "subActions": []
-            }
-          ],
-          "prompt": "Choose Now",
-          "placeholder": "Answer here",
-          "characterLimit": 40,
-          "options": [
-            "A",
-            "B",
-            "C",
-            "D"
-          ],
-          "inputMode": "submitOnce",
-          "locked": false,
-          "nextTargetActionId": "return",
-          "nodePosition": {
-            "x": 670,
-            "y": 1245
-          },
-          "timerEndTargetActionId": "crafting-game-state-action-mqmxj25v",
-          "answersSubmittedTargetActionId": "crafting-game-state-action-mqmxj25v",
-          "contentVariable": "multipleChoicePrompt",
-          "randomizeOptions": true
-        },
-        {
-          "id": "crafting-game-state-action-mqmxj25v",
-          "name": "Display Text",
-          "type": "displayText",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0.5
-          },
-          "text": "Presented text",
-          "textTarget": "stageprompttext",
-          "instant": false,
-          "isShown": false,
-          "subActions": [
-            {
-              "id": "crafting-game-state-sub-action-mqnagmsc",
-              "name": "Sub-Action 1",
-              "type": "setTimerShown",
-              "timing": {
-                "mode": "S+",
-                "seconds": 0
-              },
-              "text": "Presented text",
-              "textTarget": "presentation",
-              "instant": false,
-              "isShown": false,
-              "subActions": []
-            }
-          ],
-          "nodePosition": {
-            "x": 670,
-            "y": 1480
-          },
-          "nextTargetActionId": "crafting-game-state-action-mqn4u54c"
-        },
-        {
-          "id": "crafting-game-state-action-mqlag55r",
-          "name": "Wipe",
-          "type": "transition",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "transition": "horizontalWipe",
-          "nodePosition": {
-            "x": 670,
-            "y": 2890
-          },
-          "nextTargetActionId": "return"
-        },
-        {
-          "id": "crafting-game-state-action-mqn4u54c",
-          "name": "Set Player Answers Shown",
-          "type": "setPlayerAnswersShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1.5
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1715
-          },
-          "nextTargetActionId": "crafting-game-state-action-mqn9u17o",
-          "playerFilter": "all"
-        },
-        {
-          "id": "crafting-game-state-action-mqn9u17o",
-          "name": "Game Action 12",
-          "type": "revealPlayerAnswerCorrectness",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1950
-          },
-          "nextTargetActionId": "crafting-game-state-action-mqn4uouf"
-        },
-        {
-          "id": "crafting-game-state-action-mqn4uouf",
-          "name": "Game Action 10",
-          "type": "setPlayerAnswersShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0.5
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 2185
-          },
-          "playerFilter": "wrong",
-          "nextTargetActionId": "crafting-game-state-action-mqn4v75w"
-        },
-        {
-          "id": "crafting-game-state-action-mqn4v75w",
-          "name": "Game Action 11",
-          "type": "showPoints",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 2420
-          },
-          "playerFilter": "correct",
-          "points": 0,
-          "nextTargetActionId": "crafting-game-state-action-mqn4xkyp"
-        },
-        {
-          "id": "crafting-game-state-action-mqn4xkyp",
-          "name": "Game Action 12",
-          "type": "setPlayerAnswersShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 2655
-          },
-          "playerFilter": "all",
-          "nextTargetActionId": "crafting-game-state-action-mqlag55r"
-        }
-      ],
-      "nextStateTargetId": "presentation-game-state",
       "nodePosition": {
         "x": 104,
         "y": 750
@@ -438,54 +166,322 @@
       "returnNodePosition": {
         "x": 705,
         "y": 3125
-      }
+      },
+      "entryTargetActionId": "",
+      "nextStateTargetId": "presentation-game-state",
+      "actions": [
+        {
+          "id": "crafting-game-state-action-mqlafl8m",
+          "name": "Present Text",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4qzpm",
+          "nodePosition": {
+            "x": 670,
+            "y": 305
+          },
+          "subActions": [],
+          "text": "We are in the Crafting State",
+          "textTarget": "crafting-game-statemomenttext",
+          "isShown": true,
+          "instant": false
+        },
+        {
+          "id": "crafting-game-state-action-mqn4qzpm",
+          "name": "Get Random Multiple Choice Content",
+          "type": "getRandomMultipleChoiceContent",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlrgs0y",
+          "nodePosition": {
+            "x": 670,
+            "y": 540
+          },
+          "subActions": [],
+          "variableName": "multipleChoicePrompt"
+        },
+        {
+          "id": "crafting-game-state-action-mqlrgs0y",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlronl5",
+          "nodePosition": {
+            "x": 670,
+            "y": 775
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false
+        },
+        {
+          "id": "crafting-game-state-action-mqlronl5",
+          "name": "Start Crafting Timer",
+          "type": "startCraftingTimer",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlrlkp0",
+          "nodePosition": {
+            "x": 670,
+            "y": 1010
+          },
+          "subActions": []
+        },
+        {
+          "id": "crafting-game-state-action-mqlrlkp0",
+          "name": "Trivia Input",
+          "type": "triviaInput",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 670,
+            "y": 1245
+          },
+          "subActions": [
+            {
+              "id": "crafting-game-state-sub-action-mqlsquow",
+              "name": "Sub-Action 1",
+              "type": "displayText",
+              "category": "standard",
+              "timing": {
+                "mode": "S+",
+                "seconds": 1
+              },
+              "nextTargetActionId": "",
+              "nodePosition": null,
+              "subActions": [],
+              "text": "Answer the prompt on your device now!",
+              "textTarget": "stageprompttext",
+              "isShown": true,
+              "instant": false
+            }
+          ],
+          "contentVariable": "multipleChoicePrompt",
+          "inputMode": "submitOnce",
+          "locked": false,
+          "randomizeOptions": true,
+          "timerEndTargetActionId": "crafting-game-state-action-mqmxj25v",
+          "answersSubmittedTargetActionId": "crafting-game-state-action-mqmxj25v"
+        },
+        {
+          "id": "crafting-game-state-action-mqmxj25v",
+          "name": "Display Text",
+          "type": "displayText",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0.5
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4u54c",
+          "nodePosition": {
+            "x": 670,
+            "y": 1480
+          },
+          "subActions": [
+            {
+              "id": "crafting-game-state-sub-action-mqnagmsc",
+              "name": "Sub-Action 1",
+              "type": "setTimerShown",
+              "category": "standard",
+              "timing": {
+                "mode": "S+",
+                "seconds": 0
+              },
+              "nextTargetActionId": "",
+              "nodePosition": null,
+              "subActions": [],
+              "isShown": false,
+              "instant": false
+            }
+          ],
+          "text": "Presented text",
+          "textTarget": "stageprompttext",
+          "isShown": false,
+          "instant": false
+        },
+        {
+          "id": "crafting-game-state-action-mqlag55r",
+          "name": "Wipe",
+          "type": "transition",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 670,
+            "y": 2890
+          },
+          "subActions": [],
+          "transition": "horizontalWipe"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4u54c",
+          "name": "Set Player Answers Shown",
+          "type": "setPlayerAnswersShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1.5
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn9u17o",
+          "nodePosition": {
+            "x": 670,
+            "y": 1715
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false,
+          "playerFilter": "all"
+        },
+        {
+          "id": "crafting-game-state-action-mqn9u17o",
+          "name": "Game Action 12",
+          "type": "revealPlayerAnswerCorrectness",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4uouf",
+          "nodePosition": {
+            "x": 670,
+            "y": 1950
+          },
+          "subActions": []
+        },
+        {
+          "id": "crafting-game-state-action-mqn4uouf",
+          "name": "Game Action 10",
+          "type": "setPlayerAnswersShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0.5
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4v75w",
+          "nodePosition": {
+            "x": 670,
+            "y": 2185
+          },
+          "subActions": [],
+          "isShown": false,
+          "instant": false,
+          "playerFilter": "wrong"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4v75w",
+          "name": "Game Action 11",
+          "type": "showPoints",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4xkyp",
+          "nodePosition": {
+            "x": 670,
+            "y": 2420
+          },
+          "subActions": [],
+          "playerFilter": "correct",
+          "points": 0
+        },
+        {
+          "id": "crafting-game-state-action-mqn4xkyp",
+          "name": "Game Action 12",
+          "type": "setPlayerAnswersShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlag55r",
+          "nodePosition": {
+            "x": 670,
+            "y": 2655
+          },
+          "subActions": [],
+          "isShown": false,
+          "instant": false,
+          "playerFilter": "all"
+        }
+      ]
     },
     {
       "id": "presentation-game-state",
       "name": "Presentation Game State",
+      "nodePosition": {
+        "x": 526,
+        "y": 772
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1166
+      },
+      "entryTargetActionId": "",
+      "nextStateTargetId": "scoreboard-game-state",
       "actions": [
         {
           "id": "presentation-game-state-action-mqlahhim",
           "name": "Intro Text",
           "type": "presentText",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "We are in the Presentation Game State",
-          "textTarget": "presentation-game-statemomenttext",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "presentation-game-state-action-mqlstve7",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "presentation-game-state-action-mqlstve7"
+          "subActions": [],
+          "text": "We are in the Presentation Game State",
+          "textTarget": "presentation-game-statemomenttext",
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "presentation-game-state-action-mqlstve7",
-          "name": "Game Action 4",
+          "name": "Decision",
           "type": "decision",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "variable": "players.length",
-          "valueType": "int",
-          "operator": "<",
-          "compareValue": "3",
-          "trueTargetActionId": "presentation-game-state-action-mqlahz0a",
-          "falseTargetActionId": "presentation-game-state-action-mqlahz0a",
+          "nextTargetActionId": "",
           "nodePosition": {
             "x": 640,
             "y": 514
           },
+          "subActions": [],
+          "variable": "players.length",
+          "valueType": "int",
           "branches": [
             {
               "id": "legacy-hit",
@@ -514,120 +510,64 @@
           "id": "presentation-game-state-action-mqlahz0a",
           "name": "Wipe",
           "type": "transition",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "transition": "horizontalWipe",
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 1030,
             "y": 912
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "transition": "horizontalWipe"
         },
         {
           "id": "presentation-game-state-action-mqmt6c5d",
           "name": "Game Action 4",
           "type": "presentText",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "there are 3 players",
-          "textTarget": "presentation-game-statemomenttext",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 310,
             "y": 912
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "text": "there are 3 players",
+          "textTarget": "presentation-game-statemomenttext",
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "presentation-game-state-action-mqmt6p8z",
           "name": "Game Action 5",
           "type": "presentText",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "there are more than 3 players",
-          "textTarget": "presentation-game-statemomenttext",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 912
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "text": "there are more than 3 players",
+          "textTarget": "presentation-game-statemomenttext",
+          "isShown": true,
+          "instant": false
         }
-      ],
-      "nextStateTargetId": "scoreboard-game-state",
-      "nodePosition": {
-        "x": 526,
-        "y": 772
-      },
-      "startNodePosition": {
-        "x": 715,
-        "y": 70
-      },
-      "returnNodePosition": {
-        "x": 705,
-        "y": 1166
-      }
+      ]
     },
     {
       "id": "scoreboard-game-state",
       "name": "Scoreboard Game State",
-      "actions": [
-        {
-          "id": "scoreboard-game-state-action-mqlaj01s",
-          "name": "Game Action 1",
-          "type": "presentText",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "We are in the Scoreboard State",
-          "textTarget": "scoreboard-game-statemomenttext",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 305
-          },
-          "nextTargetActionId": "scoreboard-game-state-action-mqlajev8"
-        },
-        {
-          "id": "scoreboard-game-state-action-mqlajev8",
-          "name": "Wipe",
-          "type": "transition",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "transition": "horizontalWipe",
-          "nodePosition": {
-            "x": 670,
-            "y": 540
-          },
-          "nextTargetActionId": "return"
-        }
-      ],
-      "nextStateTargetId": "post-game-state",
       "nodePosition": {
         "x": 927,
         "y": 759
@@ -639,53 +579,52 @@
       "returnNodePosition": {
         "x": 705,
         "y": 775
-      }
-    },
-    {
-      "id": "post-game-state",
-      "name": "Post Game State",
+      },
+      "entryTargetActionId": "",
+      "nextStateTargetId": "post-game-state",
       "actions": [
         {
-          "id": "post-game-state-action-mqlak7zw",
-          "name": "Intro Text",
+          "id": "scoreboard-game-state-action-mqlaj01s",
+          "name": "Game Action 1",
           "type": "presentText",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "We are in the Post Game State",
-          "textTarget": "post-game-statemomenttext",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "scoreboard-game-state-action-mqlajev8",
           "nodePosition": {
             "x": 670,
             "y": 305
           },
-          "nextTargetActionId": "post-game-state-action-mqlakl0m"
+          "subActions": [],
+          "text": "We are in the Scoreboard State",
+          "textTarget": "scoreboard-game-statemomenttext",
+          "isShown": true,
+          "instant": false
         },
         {
-          "id": "post-game-state-action-mqlakl0m",
+          "id": "scoreboard-game-state-action-mqlajev8",
           "name": "Wipe",
           "type": "transition",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "transition": "horizontalWipe",
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 540
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "transition": "horizontalWipe"
         }
-      ],
-      "nextStateTargetId": "lobby",
+      ]
+    },
+    {
+      "id": "post-game-state",
+      "name": "Post Game State",
       "nodePosition": {
         "x": 955,
         "y": 340
@@ -697,7 +636,48 @@
       "returnNodePosition": {
         "x": 705,
         "y": 775
-      }
+      },
+      "entryTargetActionId": "",
+      "nextStateTargetId": "lobby",
+      "actions": [
+        {
+          "id": "post-game-state-action-mqlak7zw",
+          "name": "Intro Text",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "post-game-state-action-mqlakl0m",
+          "nodePosition": {
+            "x": 670,
+            "y": 305
+          },
+          "subActions": [],
+          "text": "We are in the Post Game State",
+          "textTarget": "post-game-statemomenttext",
+          "isShown": true,
+          "instant": false
+        },
+        {
+          "id": "post-game-state-action-mqlakl0m",
+          "name": "Wipe",
+          "type": "transition",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 670,
+            "y": 540
+          },
+          "subActions": [],
+          "transition": "horizontalWipe"
+        }
+      ]
     }
   ]
 }
