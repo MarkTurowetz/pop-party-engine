@@ -3588,6 +3588,7 @@ function lobbyPayload(room) {
     countdownStartedAt: room.countdownStartedAt,
     countdownEndsAt: room.countdownEndsAt,
     action: currentAction,
+    debugAction: debugActionPayload(room, currentAction),
     input,
     textInput,
     craftingTimer: craftingTimerPayload(room),
@@ -3606,6 +3607,31 @@ function lobbyPayload(room) {
     votingCards: serializeVotingCards(room),
     votingResultsShown: room.votingResultsShown === true,
     players: activePlayers(room).map((player) => publicPlayer(player, room))
+  };
+}
+
+function debugActionPayload(room, currentAction) {
+  const state = runtimeGameFlow(room).states.find((item) => item.id === room.phase) || null;
+  const players = activePlayers(room);
+  let submittedInputCount = 0;
+  if (room.votingInputActionId) {
+    submittedInputCount = players.filter((player) => room.votingAnswers?.has(player.id)).length;
+  } else if (room.textInputActionId) {
+    submittedInputCount = players.filter((player) => room.textInputAnswers?.get(player.id)?.done === true).length;
+  } else if (room.choiceInputActionId) {
+    submittedInputCount = players.filter((player) => room.choiceInputAnswers?.has(player.id)).length;
+  }
+  return {
+    phaseId: room.phase || "",
+    phaseName: state?.name || String(room.phase || "lobby").replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    actionId: currentAction?.id || "",
+    actionName: currentAction?.name || "",
+    actionType: currentAction?.type || "",
+    actionIndex: Number.isFinite(Number(currentAction?.index)) ? Number(currentAction.index) : room.actionIndex,
+    requiredInputCount: players.length,
+    submittedInputCount,
+    playerAnswerRecordCount: Object.keys(room.playerAnswerRecords || {}).length,
+    votingCardCount: Array.isArray(room.votingCards) ? room.votingCards.length : 0
   };
 }
 

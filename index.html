@@ -349,6 +349,27 @@
       text-transform: uppercase;
     }
 
+    .stage-debug-action {
+      position: absolute;
+      left: 106px;
+      bottom: 18px;
+      z-index: 5;
+      max-width: min(720px, calc(100% - 150px));
+      padding: 5px 9px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(255, 248, 237, 0.9);
+      box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.35);
+      font-size: 12px;
+      font-weight: 1000;
+      line-height: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
     .stage-board::before,
     .stage-board::after {
       content: "";
@@ -3407,6 +3428,7 @@
       <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
       <div class="crafting-timer hidden" id="craftingTimer" aria-label="Crafting timer"><span id="craftingTimerLabel">30</span></div>
       <div class="version-badge">v__APP_VERSION__</div>
+      <div class="stage-debug-action hidden" id="stageDebugAction"></div>
       <div class="stage-wipe hidden" id="stageWipe" aria-hidden="true">
         <div class="wipe-line"></div>
         <div class="wipe-line"></div>
@@ -3773,6 +3795,7 @@
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
     const craftingTimer = document.querySelector("#craftingTimer");
     const craftingTimerLabel = document.querySelector("#craftingTimerLabel");
+    const stageDebugAction = document.querySelector("#stageDebugAction");
     const playerLobby = document.querySelector("#playerLobby");
     const joinPrompt = document.querySelector("#joinPrompt");
     const waitingStatus = document.querySelector("#waitingStatus");
@@ -5113,6 +5136,32 @@
       }
     }
 
+    function renderStageActionDebug(lobby) {
+      if (!stageDebugAction) return;
+      const phase = lobby.phase || "lobby";
+      const debug = lobby.debugAction || null;
+      if (phase === "lobby" || phase === "starting" || !debug) {
+        stageDebugAction.classList.add("hidden");
+        stageDebugAction.textContent = "";
+        return;
+      }
+      const phaseName = debug.phaseName || phase;
+      const actionName = debug.actionName || debug.actionId || "No Action";
+      const actionType = debug.actionType ? ` / ${debug.actionType}` : "";
+      const parts = [`${phaseName}: ${actionName}${actionType}`];
+      const required = Number(debug.requiredInputCount || 0);
+      const submitted = Number(debug.submittedInputCount || 0);
+      if (required > 0 && (debug.actionType || "").includes("Input")) {
+        parts.push(`input ${submitted}/${required}`);
+      }
+      const records = Number(debug.playerAnswerRecordCount || 0);
+      if (records > 0) parts.push(`answers ${records}`);
+      const cards = Number(debug.votingCardCount || 0);
+      if (cards > 0 || debug.actionType === "prepareVotingCards") parts.push(`cards ${cards}`);
+      stageDebugAction.textContent = parts.join(" · ");
+      stageDebugAction.classList.remove("hidden");
+    }
+
     function applyStageState(lobby) {
       currentStageState = lobby;
       const players = lobby.players || [];
@@ -5121,6 +5170,7 @@
       const isLobbyPhase = phase === "lobby" || phase === "starting";
       const liveGameTitle = lobby.gameTitle || gameConstants.gameTitle || "Party Game Template";
       document.title = liveGameTitle;
+      renderStageActionDebug(lobby);
       const stageTitleElement = document.querySelector(".stage-title");
       if (stageTitleElement) stageTitleElement.textContent = liveGameTitle;
       stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
@@ -5281,6 +5331,14 @@
         return;
       }
       if (action.type === "getRandomMultipleChoiceContent") {
+        if (isPrimary) {
+          completeFlowAction("callback", action.id);
+        } else {
+          applyFlowActionEffect(action.id);
+        }
+        return;
+      }
+      if (action.type === "prepareVotingCards") {
         if (isPrimary) {
           completeFlowAction("callback", action.id);
         } else {
