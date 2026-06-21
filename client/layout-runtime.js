@@ -1,0 +1,368 @@
+async function loadStageLayouts({ forceServer = false } = {}) {
+  if (runtimeTestLayouts && !forceServer) {
+    stageLayouts = runtimeTestLayouts;
+    return stageLayouts;
+  }
+  if (!canUseServer) return stageLayouts;
+  const result = await getJson("/api/stage-layouts");
+  stageLayouts = result.layouts || stageLayouts;
+  return stageLayouts;
+}
+
+async function loadControllerLayouts({ forceServer = false } = {}) {
+  if (runtimeTestControllerLayouts && !forceServer) {
+    controllerLayouts = runtimeTestControllerLayouts;
+    return controllerLayouts;
+  }
+  if (!canUseServer) return controllerLayouts;
+  const result = await getJson("/api/controller-layouts");
+  controllerLayouts = result.layouts || controllerLayouts;
+  return controllerLayouts;
+}
+
+function stageLayoutState(stateId) {
+  return (stageLayouts.states || []).find((state) => state.id === stateId) || null;
+}
+
+function globalStageLayout() {
+  return stageLayouts.global || { id: "global", name: "Global Layout", elements: [] };
+}
+
+function stageLayoutGroup(groupId) {
+  return groupId === "global" ? globalStageLayout() : stageLayoutState(groupId);
+}
+
+function controllerLayoutState(stateId) {
+  return (controllerLayouts.states || []).find((state) => state.id === stateId) || null;
+}
+
+function globalControllerLayout() {
+  return controllerLayouts.global || { id: "global", name: "Global Layout", elements: [] };
+}
+
+function controllerLayoutStateForPhase(phase) {
+  if (!controllerState) return controllerLayoutState("join") || (controllerLayouts.states || [])[0] || null;
+  const preferred = phase === "starting" ? "lobby" : phase || "lobby";
+  return controllerLayoutState(preferred) || controllerLayoutState("lobby") || (controllerLayouts.states || [])[0] || null;
+}
+
+function allControllerLayoutSelectors() {
+  const selectors = new Set();
+  for (const element of globalControllerLayout().elements || []) {
+    if (element.selector) selectors.add(element.selector);
+  }
+  for (const state of controllerLayouts.states || []) {
+    for (const element of state.elements || []) {
+      if (element.selector) selectors.add(element.selector);
+    }
+  }
+  return selectors;
+}
+
+function clearControllerLayoutTargets() {
+  const targets = new Set(controllerPanel.querySelectorAll(".controller-layout-target"));
+  for (const selector of allControllerLayoutSelectors()) {
+    const target = controllerPanel.querySelector(selector);
+    if (target) targets.add(target);
+  }
+  for (const target of targets) {
+    if (target.classList.contains("controller-dynamic-text")) {
+      target.remove();
+      continue;
+    }
+    target.classList.remove("controller-layout-target");
+    target.classList.add("controller-layout-hidden");
+    target.style.removeProperty("--controller-layout-x");
+    target.style.removeProperty("--controller-layout-y");
+    target.style.removeProperty("--controller-layout-w");
+    target.style.removeProperty("--controller-layout-h");
+    target.style.removeProperty("--controller-layout-scale");
+    target.style.removeProperty("--controller-text-color");
+    target.style.removeProperty("--controller-text-font-size");
+    target.style.removeProperty("color");
+    target.style.removeProperty("font-size");
+  }
+}
+
+function applyControllerLayoutForPhase(phase) {
+  if (!controllerScreen || !controllerPanel) return;
+  const state = controllerLayoutStateForPhase(phase);
+  if (!state) return;
+  clearControllerLayoutTargets();
+  const canvas = controllerLayouts.canvas || { width: 390, height: 844 };
+  const screenRect = controllerScreen.getBoundingClientRect();
+  const fitScale = Math.min(screenRect.width / canvas.width, screenRect.height / canvas.height);
+  controllerPanel.style.width = `${canvas.width}px`;
+  controllerPanel.style.height = `${canvas.height}px`;
+  controllerPanel.style.setProperty("--controller-board-scale", `${fitScale}`);
+  for (const element of state.elements || []) {
+    applyControllerElementLayout(element);
+  }
+  const hiddenGlobals = new Set(state.hiddenGlobals || []);
+  for (const element of globalControllerLayout().elements || []) {
+    if (hiddenGlobals.has(element.id)) continue;
+    applyControllerElementLayout(element);
+  }
+}
+
+function applyControllerElementLayout(element) {
+  const target = controllerLayoutTargetElement(element);
+  if (!target) return;
+  target.classList.remove("controller-layout-hidden");
+  target.classList.add("controller-layout-target");
+  target.style.setProperty("--controller-layout-x", `${element.x}px`);
+  target.style.setProperty("--controller-layout-y", `${element.y}px`);
+  target.style.setProperty("--controller-layout-w", `${element.width}px`);
+  target.style.setProperty("--controller-layout-h", `${element.height}px`);
+  target.style.setProperty("--controller-layout-scale", `${element.scale || 1}`);
+  if (element.kind === "text") {
+    target.classList.add("controller-layout-text");
+    applyControllerLayoutTextProperties(target, element);
+  }
+}
+
+function controllerLayoutComputedFontSize(element, textOverride = "") {
+  const baseSize = Number(element.fontSize || 42);
+  if (!element.autoFitText) return baseSize;
+  return fittedLayoutTextSize(element, textOverride || layoutDefaultText(element) || String(element.name || "Text"), baseSize);
+}
+
+function applyControllerLayoutTextProperties(target, element) {
+  const fontColor = normalizeUiColor(element.fontColor) || "#17131f";
+  const text = target.textContent.trim() || layoutDefaultText(element);
+  const fontSize = `${controllerLayoutComputedFontSize(element, text)}px`;
+  target.style.setProperty("--controller-text-color", fontColor);
+  target.style.setProperty("--controller-text-font-size", fontSize);
+  target.style.setProperty("color", fontColor, "important");
+  target.style.setProperty("font-size", fontSize, "important");
+}
+
+function controllerLayoutTargetElement(element) {
+  const target = controllerPanel.querySelector(element.selector);
+  if (target || element.kind !== "text") return target;
+  const id = String(element.selector || "").replace(/^#/, "") || element.id;
+  let dynamic = controllerPanel.querySelector(`#${CSS.escape(id)}`);
+  if (!dynamic) {
+    dynamic = document.createElement("div");
+    dynamic.id = id;
+    dynamic.className = "controller-dynamic-text controller-layout-text";
+    dynamic.textContent = layoutDefaultText(element);
+    controllerPanel.appendChild(dynamic);
+  }
+  return dynamic;
+}
+
+function stageLayoutStateForPhase(phase) {
+  const preferred = phase === "starting" ? "lobby" : phase === "intro" ? "intro" : phase || "lobby";
+  return stageLayoutState(preferred) || stageLayoutState("lobby") || (stageLayouts.states || [])[0] || null;
+}
+
+function allStageLayoutSelectors() {
+  const selectors = new Set();
+  for (const element of globalStageLayout().elements || []) {
+    if (element.selector) selectors.add(element.selector);
+  }
+  for (const state of stageLayouts.states || []) {
+    for (const element of state.elements || []) {
+      if (element.selector) selectors.add(element.selector);
+    }
+  }
+  return selectors;
+}
+
+function clearStageLayoutTargets() {
+  const targets = new Set(stageBoard.querySelectorAll(".stage-layout-target"));
+  for (const selector of allStageLayoutSelectors()) {
+    const target = stageBoard.querySelector(selector);
+    if (target) targets.add(target);
+  }
+  for (const target of targets) {
+    target.classList.remove("stage-layout-target");
+    target.classList.remove("stage-global-layout-target");
+    target.classList.remove("stage-layout-hidden");
+    target.style.removeProperty("--stage-layout-x");
+    target.style.removeProperty("--stage-layout-y");
+    target.style.removeProperty("--stage-layout-w");
+    target.style.removeProperty("--stage-layout-h");
+    target.style.removeProperty("--stage-layout-scale");
+    target.style.removeProperty("--stage-object-visible-scale");
+    target.style.removeProperty("--stage-text-color");
+    target.style.removeProperty("--stage-text-font-size");
+    target.style.removeProperty("color");
+    target.style.removeProperty("font-size");
+  }
+}
+
+function applyStageLayoutForPhase(phase) {
+  const state = stageLayoutStateForPhase(phase);
+  if (!state || !stageScreen || !stageBoard) return;
+  currentStageLayoutStateId = state.id;
+  hideStageMomentTextOutsideLayout(state);
+  clearStageLayoutTargets();
+  const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
+  const stageRect = stageScreen.getBoundingClientRect();
+  const fitScale = Math.min(stageRect.width / canvas.width, stageRect.height / canvas.height);
+  stageBoard.style.width = `${canvas.width}px`;
+  stageBoard.style.height = `${canvas.height}px`;
+  stageBoard.style.setProperty("--stage-board-scale", `${fitScale}`);
+  for (const element of state.elements || []) {
+    applyStageElementLayout(element, false);
+  }
+  const hiddenGlobals = new Set(state.hiddenGlobals || []);
+  for (const element of globalStageLayout().elements || []) {
+    if (hiddenGlobals.has(element.id)) {
+      const target = stageLayoutTargetElement(element);
+      if (target) target.classList.add("stage-layout-hidden");
+      continue;
+    }
+    applyStageElementLayout(element, true);
+  }
+}
+
+function applyStageElementLayout(element, isGlobal) {
+  const target = stageLayoutTargetElement(element);
+  if (!target) return;
+  target.classList.add("stage-layout-target");
+  if (isGlobal) target.classList.add("stage-global-layout-target");
+  target.style.setProperty("--stage-layout-x", `${element.x}px`);
+  target.style.setProperty("--stage-layout-y", `${element.y}px`);
+  target.style.setProperty("--stage-layout-w", `${element.width}px`);
+  target.style.setProperty("--stage-layout-h", `${element.height}px`);
+  target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
+  if (element.kind === "text") {
+    applyStageLayoutTextProperties(target, element);
+    registerStageLayoutTextTarget(element, target, isGlobal);
+  }
+}
+
+function stageLayoutTargetElement(element) {
+  if (element.kind !== "text") return stageBoard.querySelector(element.selector);
+  const dynamicId = dynamicStageTextElementId(element);
+  const selectorTarget = stageBoard.querySelector(element.selector);
+  const selectorId = normalizeTextTargetId(String(element.selector || "").replace(/^#/, ""));
+  const elementId = normalizeTextTargetId(element.id);
+  const shouldUseDynamicTextTarget = elementId && selectorId && selectorId !== elementId;
+  if (!shouldUseDynamicTextTarget && selectorTarget) return selectorTarget;
+  return getOrCreateDynamicStageTextElement(dynamicId || elementId || selectorId);
+}
+
+function dynamicStageTextElementId(element) {
+  return normalizeTextTargetId(element?.id || element?.name || "");
+}
+
+function getOrCreateDynamicStageTextElement(id) {
+  if (!id) return null;
+  let element = stageBoard.querySelector(`#${CSS.escape(id)}`);
+  if (element) return element;
+  element = document.createElement("div");
+  element.id = id;
+  element.className = "stage-presentation-text stage-text-object text-hidden hidden";
+  stageBoard.appendChild(element);
+  return element;
+}
+
+function registerStageLayoutTextTarget(layoutElement, targetElement, isGlobal = false) {
+  const targetId = normalizeTextTargetId(layoutElement.id);
+  if (!targetId || !targetElement) return;
+  const existing = stageTextObjects[targetId];
+  const isExistingTarget = existing?.element === targetElement;
+  stageTextObjects[targetId] = {
+    element: targetElement,
+    layoutElement,
+    isGlobal,
+    visible: isExistingTarget
+      ? existing.visible
+      : targetElement.dataset.visualVisible === "true",
+    text: isExistingTarget ? existing.text : targetElement.textContent || ""
+  };
+}
+
+function hideStageMomentTextOutsideLayout(state) {
+  if (!state) return;
+  const activeMomentTextIds = new Set((state.elements || [])
+    .filter((element) => element.kind === "text")
+    .map((element) => normalizeTextTargetId(element.id))
+    .filter(Boolean));
+  for (const [targetId, object] of Object.entries(stageTextObjects)) {
+    if (!object?.layoutElement || object.isGlobal) continue;
+    if (!activeMomentTextIds.has(targetId)) {
+      setStageTextObject(targetId, { isShown: false, instant: true });
+    }
+  }
+}
+
+function stageLayoutTextDefault(element) {
+  const id = String(element?.id || "").toLowerCase();
+  if (element?.defaultText !== undefined && String(element.defaultText).length) return String(element.defaultText);
+  if (id === "roundintrotext") return "Round One";
+  if (id === "roundintroinfotext") return "Additional round info";
+  if (id === "stageprompttext") return "Prompt Text";
+  if (id === "stagepresentationtext") return "";
+  return String(element?.name || "");
+}
+
+function textFieldPadding(element) {
+  const id = String(element?.id || "").toLowerCase();
+  if (id === "waitingstatus" || id === "joinprompt") return { x: 40, y: 24 };
+  return { x: 0, y: 0 };
+}
+
+function fittedLayoutTextSize(element, text, fallbackSize) {
+  const padding = textFieldPadding(element);
+  const availableWidth = Math.max(8, Number(element.width || 1) - padding.x);
+  const availableHeight = Math.max(8, Number(element.height || 1) - padding.y);
+  const rawLines = String(text || "Text").split("\n");
+  const words = rawLines.flatMap((line) => line.split(/\s+/).filter(Boolean));
+  const longestWord = Math.max(1, ...words.map((word) => word.length));
+  const maxSize = Math.min(260, Math.max(8, availableHeight));
+  const minSize = 8;
+  const averageGlyphWidth = 0.68;
+  const lineHeight = 1.08;
+  const linesForSize = (size) => {
+    const averageCharWidth = size * averageGlyphWidth;
+    const maxCharsPerLine = Math.max(1, Math.floor(availableWidth / averageCharWidth));
+    return rawLines.reduce((total, rawLine) => {
+      const lineWords = rawLine.split(/\s+/).filter(Boolean);
+      if (!lineWords.length) return total + 1;
+      let lineCount = 1;
+      let currentLength = 0;
+      for (const word of lineWords) {
+        const wordLength = word.length;
+        if (currentLength === 0) {
+          currentLength = wordLength;
+        } else if (currentLength + 1 + wordLength <= maxCharsPerLine) {
+          currentLength += 1 + wordLength;
+        } else {
+          lineCount += 1;
+          currentLength = wordLength;
+        }
+      }
+      return total + lineCount;
+    }, 0);
+  };
+  for (let size = maxSize; size >= minSize; size -= 1) {
+    const averageCharWidth = size * averageGlyphWidth;
+    const wordFits = longestWord * averageCharWidth <= availableWidth * 0.98;
+    const wrappedLines = linesForSize(size);
+    if (wordFits && wrappedLines * size * lineHeight <= availableHeight) return size;
+  }
+  return Math.max(minSize, Math.min(maxSize, Number(fallbackSize || 58)));
+}
+
+function stageLayoutComputedFontSize(element, textOverride = "") {
+  const baseSize = Number(element.fontSize || 58);
+  if (!element.autoFitText) return baseSize;
+  return fittedLayoutTextSize(element, textOverride || stageLayoutTextDefault(element) || String(element.name || "Text"), baseSize);
+}
+
+function applyStageLayoutTextProperties(target, element) {
+  const fontColor = normalizeUiColor(element.fontColor) || "#ffffff";
+  const fontSize = `${stageLayoutComputedFontSize(element, target.textContent.trim())}px`;
+  target.style.setProperty("color", fontColor, "important");
+  target.style.setProperty("font-size", fontSize, "important");
+  target.style.setProperty("--stage-text-color", fontColor);
+  target.style.setProperty("--stage-text-font-size", fontSize);
+  if (!target.textContent.trim() && element.defaultText) {
+    target.textContent = stageLayoutTextDefault(element);
+  }
+}
