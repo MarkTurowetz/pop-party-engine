@@ -4239,12 +4239,15 @@
       const targetId = normalizeTextTargetId(layoutElement.id);
       if (!targetId || !targetElement) return;
       const existing = stageTextObjects[targetId];
+      const isExistingTarget = existing?.element === targetElement;
       stageTextObjects[targetId] = {
         element: targetElement,
         layoutElement,
         isGlobal,
-        visible: existing?.element === targetElement ? existing.visible : !targetElement.classList.contains("hidden") && !targetElement.classList.contains("text-hidden"),
-        text: existing?.element === targetElement ? existing.text : targetElement.textContent || ""
+        visible: isExistingTarget
+          ? existing.visible
+          : targetElement.dataset.visualVisible === "true",
+        text: isExistingTarget ? existing.text : targetElement.textContent || ""
       };
     }
 
@@ -4357,6 +4360,10 @@
       return element.classList.contains(hiddenClass) || element.classList.contains(parkedClass);
     }
 
+    function isStageTextVisible(object) {
+      return object?.visible === true || object?.element?.dataset.visualVisible === "true";
+    }
+
     function stageTextAnimationFor(isShown, wasVisible) {
       if (!isShown) return wasVisible ? "disappear" : "park";
       return wasVisible ? "update" : "appear";
@@ -4382,11 +4389,13 @@
       };
       if ((effectiveAnimation === "appear" || effectiveAnimation === "on") && wasVisible) {
         object.visible = true;
+        element.dataset.visualVisible = "true";
         completeAfter(0);
         return 0;
       }
       if ((effectiveAnimation === "disappear" || effectiveAnimation === "off") && !wasVisible) {
         object.visible = false;
+        element.dataset.visualVisible = "false";
         element.classList.add("text-hidden", "hidden");
         completeAfter(0);
         return 0;
@@ -4399,15 +4408,20 @@
       if (effectiveAnimation === "park" || effectiveAnimation === "off") {
         element.classList.add("text-hidden", "hidden");
         object.visible = false;
+        element.dataset.visualVisible = "false";
       } else if (effectiveAnimation === "on") {
         element.classList.remove("hidden", "text-hidden");
         object.visible = true;
+        element.dataset.visualVisible = "true";
       } else if (effectiveAnimation === "appear") {
         element.classList.remove("hidden");
         element.classList.add("text-hidden");
         void element.offsetWidth;
         requestAnimationFrame(() => {
-          if (object.animationToken === animationToken) element.classList.remove("text-hidden");
+          if (object.animationToken === animationToken) {
+            element.classList.remove("text-hidden");
+            element.dataset.visualVisible = "true";
+          }
         });
         object.visible = true;
       } else if (effectiveAnimation === "disappear") {
@@ -4415,6 +4429,7 @@
         void element.offsetWidth;
         element.classList.add("text-hidden");
         object.visible = false;
+        element.dataset.visualVisible = "false";
         if (duration > 0) {
           const timerId = window.setTimeout(() => {
             if (object.animationToken === animationToken) element.classList.add("hidden");
@@ -4425,6 +4440,7 @@
         }
       } else if (effectiveAnimation === "update") {
         element.classList.remove("hidden", "text-hidden");
+        element.dataset.visualVisible = "true";
         void element.offsetWidth;
         if (!instant) element.classList.add("text-update");
         object.visible = true;
@@ -4727,7 +4743,7 @@
       const nextText = options.text ?? object.text ?? "";
       const isShown = options.isShown !== false;
       const instant = options.instant === true;
-      const wasVisible = object.visible || !isElementParked(element);
+      const wasVisible = isStageTextVisible(object);
       const animation = stageTextAnimationFor(isShown, wasVisible);
       if (nextText || isShown) element.textContent = nextText;
       if (object.layoutElement) applyStageLayoutTextProperties(element, object.layoutElement);
