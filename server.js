@@ -1,6 +1,7 @@
 const http = require("http");
 const os = require("os");
 const path = require("path");
+const { createActionEffectStateRuntime } = require("./server/action-effect-state-runtime");
 const { readAppVersion } = require("./server/app-version");
 const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
 const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime");
@@ -123,6 +124,12 @@ const {
   normalizePlayerFilter,
   normalizeVotingCardFilter
 });
+
+const {
+  clearAppliedActionEffects,
+  hasAppliedActionEffect,
+  markAppliedActionEffect
+} = createActionEffectStateRuntime();
 
 const githubStorage = createGithubStorageRuntime({
   baseBranch: GAME_FLOW_GITHUB_BASE_BRANCH,
@@ -1710,26 +1717,6 @@ function completeCurrentAction(room, expectedActionId = "", source = "callback")
   currentRoomAction(room);
   broadcastLobby(room);
   return true;
-}
-
-function clearAppliedActionEffects(room) {
-  room.appliedActionEffectId = "";
-  room.appliedActionEffectIds = new Set();
-}
-
-function hasAppliedActionEffect(room, actionId) {
-  if (!room.appliedActionEffectIds) {
-    room.appliedActionEffectIds = new Set(room.appliedActionEffectId ? [room.appliedActionEffectId] : []);
-  }
-  return room.appliedActionEffectIds.has(actionId);
-}
-
-function markAppliedActionEffect(room, actionId) {
-  if (!room.appliedActionEffectIds) {
-    room.appliedActionEffectIds = new Set();
-  }
-  room.appliedActionEffectIds.add(actionId);
-  room.appliedActionEffectId = actionId;
 }
 
 function applyRoomActionEffects(room, action) {
