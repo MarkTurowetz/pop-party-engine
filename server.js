@@ -238,6 +238,7 @@ const {
 });
 
 const {
+  dedupeLayoutElements,
   normalizeLayoutElement,
   normalizeLayoutState
 } = createLayoutNormalizationRuntime({
@@ -521,22 +522,6 @@ function syncControllerLayoutsWithFlow(layouts, flow) {
     normalizedLayouts.states.push(normalizeLayoutState(createControllerLayoutStateForFlowState(flowState), -1));
   }
   return normalizedLayouts;
-}
-
-function dedupeLayoutElements(elements) {
-  const seen = new Set();
-  const deduped = [];
-  for (const element of elements || []) {
-    const normalizedElement = normalizeLayoutElement(element, deduped.length);
-    if (!normalizedElement) continue;
-    const key = normalizedElement.id || normalizedElement.selector;
-    const selectorKey = normalizedElement.selector ? `selector:${normalizedElement.selector}` : "";
-    if (seen.has(key) || (selectorKey && seen.has(selectorKey))) continue;
-    seen.add(key);
-    if (selectorKey) seen.add(selectorKey);
-    deduped.push(normalizedElement);
-  }
-  return deduped;
 }
 
 function normalizeDecisionOperator(value) {

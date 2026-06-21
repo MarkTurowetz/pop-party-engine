@@ -52,7 +52,24 @@ function createLayoutNormalizationRuntime({
     return /waitingstatus|joinprompt|stage(?:presentation|prompt)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
   }
 
+  function dedupeLayoutElements(elements) {
+    const seen = new Set();
+    const deduped = [];
+    for (const element of elements || []) {
+      const normalizedElement = normalizeLayoutElement(element, deduped.length);
+      if (!normalizedElement) continue;
+      const key = normalizedElement.id || normalizedElement.selector;
+      const selectorKey = normalizedElement.selector ? `selector:${normalizedElement.selector}` : "";
+      if (seen.has(key) || (selectorKey && seen.has(selectorKey))) continue;
+      seen.add(key);
+      if (selectorKey) seen.add(selectorKey);
+      deduped.push(normalizedElement);
+    }
+    return deduped;
+  }
+
   return {
+    dedupeLayoutElements,
     normalizeLayoutElement,
     normalizeLayoutState
   };
