@@ -40,6 +40,9 @@ const { createPlayerPublicRuntime } = require("./server/player-public-runtime");
 const { createPlayerSessionHandlersRuntime } = require("./server/player-session-handlers-runtime");
 const { createPlayerStateRuntime } = require("./server/player-state-runtime");
 const { createRoomActionEffectsRuntime } = require("./server/room-action-effects-runtime");
+const { createRoomBroadcastRuntime } = require("./server/room-broadcast-runtime");
+const { createRoomFlowHelpersRuntime } = require("./server/room-flow-helpers-runtime");
+const { createRoomPhaseRuntime } = require("./server/room-phase-runtime");
 const { createRoomStateRuntime } = require("./server/room-state-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStageActionHandlersRuntime } = require("./server/stage-action-handlers-runtime");
@@ -51,6 +54,7 @@ const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
 const { createToolGithubSourcesRuntime } = require("./server/tool-github-sources-runtime");
+const { createToolPersistenceRuntime } = require("./server/tool-persistence-runtime");
 const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
 const { createToolSourceStoresRuntime } = require("./server/tool-source-stores-runtime");
 const { createRouterRuntime } = require("./server/router-runtime");
@@ -259,16 +263,35 @@ const {
   readGameFlow
 });
 
+// broadcastLobby is used by early modules; lobbyPayload is wired up later via lazy getter.
+const {
+  broadcastLobby,
+  sendSse
+} = createRoomBroadcastRuntime({ getLobbyPayload: () => lobbyPayload });
+
+// Proxies for functions that live in later-constructed runtimes but are needed as deps by earlier ones.
+// All are safe: they're only called at request time, after the server is fully initialized.
+let _enterGamePhaseFn;
+const enterGamePhaseProxy = (room, phase) => _enterGamePhaseFn(room, phase);
+let _currentRoomActionFn;
+const currentRoomActionProxy = (room) => _currentRoomActionFn(room);
+let _advanceRoomAfterActionFn;
+const advanceRoomAfterActionProxy = (room, action) => _advanceRoomAfterActionFn(room, action);
+let _completeCountdownTriggerFn;
+const completeCountdownTriggerProxy = (room) => _completeCountdownTriggerFn(room);
+let _emitInputFlowEventFn;
+const emitInputFlowEventProxy = (room, eventType) => _emitInputFlowEventFn(room, eventType);
+
 const {
   clearActionTimer,
   completeCurrentAction
 } = createActionCompletionRuntime({
-  advanceRoomAfterAction,
+  advanceRoomAfterAction: advanceRoomAfterActionProxy,
   broadcastLobby,
   clearChoiceInput,
   clearTextInput,
-  currentRoomAction,
-  enterGamePhase
+  currentRoomAction: currentRoomActionProxy,
+  enterGamePhase: enterGamePhaseProxy
 });
 
 const {
@@ -276,7 +299,7 @@ const {
   enterStartingPhase
 } = createCountdownRuntime({
   broadcastLobby,
-  completeCountdownTrigger,
+  completeCountdownTrigger: completeCountdownTriggerProxy,
   countdownDurationMs: () => Math.round(normalizeDurationSeconds(gameConstants().startGameCountdownDuration, 1) * 1000),
   startGoHoldMs: START_GO_HOLD_MS
 });
@@ -457,8 +480,74 @@ const {
   clearActiveInputFlowEvent,
   clearAnswersSubmittedAdvanceTimer,
   durationMs: () => Math.round(normalizeDurationSeconds(gameConstants().craftingTimerDuration, 30) * 1000),
-  emitInputFlowEvent
+  emitInputFlowEvent: emitInputFlowEventProxy
 });
+
+// roomPhaseRuntime created here so clearActionTimer + clearCountdownTimer + resetCraftingTimer are available.
+// Wire the enterGamePhase proxy after construction.
+const {
+  advanceRoomFromMomentReturn,
+  enterGamePhase,
+  enterIntroPhase,
+  enterLobbyPhase,
+  quitRoomToLobby,
+} = createRoomPhaseRuntime({
+  activePlayers,
+  broadcastLobby,
+  clearActionTimer,
+  clearAppliedActionEffects,
+  clearChoiceInput,
+  clearCountdownTimer,
+  clearDisplayedPlayerAnswers,
+  clearPlayerAnswerData,
+  clearTextInput,
+  clearVotingData,
+  clearVotingInput,
+  entryActionIndexForPhase,
+  getStateActions,
+  isRoundIntroStateId,
+  normalizeFlowId,
+  resetCraftingTimer,
+  runtimeGameFlow,
+});
+_enterGamePhaseFn = enterGamePhase;
+
+const {
+  advanceRoomAfterAction,
+  completeCountdownTrigger,
+  countdownTargetState,
+  currentRoomAction,
+  emitInputFlowEvent,
+  jumpToAction,
+  scheduleAnswersSubmittedAdvance,
+} = createRoomFlowHelpersRuntime({
+  activePlayers,
+  advanceRoomFromMomentReturn,
+  broadcastLobby,
+  clearActionTimer,
+  clearActiveInputFlowEvent,
+  clearAnswersSubmittedAdvanceTimer,
+  clearAppliedActionEffects,
+  clearChoiceInput,
+  clearCraftingTimerTimeout,
+  clearTextInput,
+  clearVotingInput,
+  enterGamePhase,
+  flowActionIndexById,
+  flowEventTargetForAction,
+  getFlowState,
+  getStateActions,
+  isNoActionTarget,
+  isReturnActionTarget,
+  pauseCraftingTimer,
+  publicFlowAction,
+  resolveDecisionActionIndex,
+  runtimeGameFlow,
+});
+_currentRoomActionFn = currentRoomAction;
+_advanceRoomAfterActionFn = advanceRoomAfterAction;
+_completeCountdownTriggerFn = completeCountdownTrigger;
+_emitInputFlowEventFn = emitInputFlowEvent;
 
 function randomToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
@@ -508,6 +597,56 @@ const {
   readLocalGameFlowSource,
   readLocalStageLayoutsSource,
   storageKind: GAME_FLOW_STORAGE
+});
+
+const {
+  loadControllerLayoutsSource,
+  loadGameConstantsSource,
+  loadGameFlowSource,
+  loadStageLayoutsSource,
+  writeControllerLayouts,
+  writeGameConstants,
+  writeGameFlow,
+  writeStageLayouts,
+} = createToolPersistenceRuntime({
+  backupJsonFile,
+  controllerLayoutsBackupDir: CONTROLLER_LAYOUTS_BACKUP_DIR,
+  controllerLayoutsFile: CONTROLLER_LAYOUTS_FILE,
+  controllerLayoutsGithubPath: CONTROLLER_LAYOUTS_GITHUB_PATH,
+  controllerLayoutsStore,
+  gameConstantsBackupDir: GAME_CONSTANTS_BACKUP_DIR,
+  gameConstantsFile: GAME_CONSTANTS_FILE,
+  gameConstantsGithubPath: GAME_CONSTANTS_GITHUB_PATH,
+  gameConstantsStore,
+  gameFlowBackupDir: GAME_FLOW_BACKUP_DIR,
+  gameFlowFile: GAME_FLOW_FILE,
+  gameFlowStore,
+  githubToken: GAME_FLOW_GITHUB_TOKEN,
+  mergeFlowWithExistingSubActions,
+  mirrorJsonFile,
+  normalizeControllerLayouts,
+  normalizeGameConstants,
+  normalizeGameFlow,
+  normalizeStageLayouts,
+  readControllerLayoutsSource,
+  readGameConstantsSource,
+  readGameFlowSource,
+  readGithubGameFlowSource,
+  readGithubJsonSource,
+  readLocalControllerLayoutsSource,
+  readLocalGameConstantsSource,
+  readLocalGameFlowSource,
+  readLocalStageLayoutsSource,
+  readStageLayoutsSource,
+  stageLayoutsBackupDir: STAGE_LAYOUTS_BACKUP_DIR,
+  stageLayoutsFile: STAGE_LAYOUTS_FILE,
+  stageLayoutsGithubPath: STAGE_LAYOUTS_GITHUB_PATH,
+  stageLayoutsStore,
+  syncControllerLayoutsWithFlow,
+  syncStageLayoutsWithFlow,
+  writeGithubGameFlowSource,
+  writeGithubJsonSource,
+  writeJsonFile,
 });
 
 const {
@@ -612,274 +751,6 @@ function readControllerLayoutsSource() {
   return cloneJson(controllerLayoutsStore.source || readDefaultControllerLayoutsSource());
 }
 
-async function loadGameConstantsSource({ refresh = false } = {}) {
-  if (gameConstantsStore.storageKind !== "github") {
-    gameConstantsStore.source = readLocalGameConstantsSource();
-    gameConstantsStore.loadedAt = Date.now();
-    gameConstantsStore.error = "";
-    return readGameConstantsSource();
-  }
-
-  if (!refresh && gameConstantsStore.loadedAt) return readGameConstantsSource();
-  if (!GAME_FLOW_GITHUB_TOKEN) {
-    gameConstantsStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
-    return readGameConstantsSource();
-  }
-
-  try {
-    const remote = await readGithubJsonSource(GAME_CONSTANTS_GITHUB_PATH);
-    if (remote?.data) {
-      gameConstantsStore.source = normalizeGameConstants(remote.data);
-      gameConstantsStore.remoteSha = remote.sha || "";
-    } else {
-      const seeded = await writeGithubJsonSource(readGameConstantsSource(), "", GAME_CONSTANTS_GITHUB_PATH, "Save game constants");
-      gameConstantsStore.source = normalizeGameConstants(seeded.data);
-      gameConstantsStore.remoteSha = seeded.sha || "";
-    }
-    gameConstantsStore.loadedAt = Date.now();
-    gameConstantsStore.error = "";
-  } catch (error) {
-    gameConstantsStore.error = `GitHub constants storage unavailable: ${error.message}`;
-  }
-
-  return readGameConstantsSource();
-}
-
-async function writeGameConstants(constants) {
-  const normalized = normalizeGameConstants(constants);
-  backupJsonFile(GAME_CONSTANTS_FILE, GAME_CONSTANTS_BACKUP_DIR, "game-constants");
-  if (gameConstantsStore.storageKind === "github") {
-    if (!GAME_FLOW_GITHUB_TOKEN) {
-      throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
-    }
-    const saved = await writeGithubJsonSource(normalized, gameConstantsStore.remoteSha, GAME_CONSTANTS_GITHUB_PATH, "Save game constants");
-    gameConstantsStore.source = normalizeGameConstants(saved.data);
-    gameConstantsStore.remoteSha = saved.sha || "";
-    gameConstantsStore.loadedAt = Date.now();
-    gameConstantsStore.error = "";
-    mirrorJsonFile(GAME_CONSTANTS_FILE, gameConstantsStore.source);
-    return readGameConstantsSource();
-  }
-  writeJsonFile(GAME_CONSTANTS_FILE, normalized);
-  gameConstantsStore.source = normalized;
-  gameConstantsStore.loadedAt = Date.now();
-  return readGameConstantsSource();
-}
-
-async function loadStageLayoutsSource({ refresh = false } = {}) {
-  if (stageLayoutsStore.storageKind !== "github") {
-    stageLayoutsStore.source = readLocalStageLayoutsSource();
-    stageLayoutsStore.loadedAt = Date.now();
-    stageLayoutsStore.error = "";
-    return readStageLayoutsSource();
-  }
-
-  if (!refresh && stageLayoutsStore.loadedAt) return readStageLayoutsSource();
-  if (!GAME_FLOW_GITHUB_TOKEN) {
-    stageLayoutsStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
-    return readStageLayoutsSource();
-  }
-
-  try {
-    const remote = await readGithubJsonSource(STAGE_LAYOUTS_GITHUB_PATH);
-    if (remote?.data) {
-      stageLayoutsStore.source = normalizeStageLayouts(remote.data);
-      stageLayoutsStore.remoteSha = remote.sha || "";
-    } else {
-      const seeded = await writeGithubJsonSource(readStageLayoutsSource(), "", STAGE_LAYOUTS_GITHUB_PATH, "Save stage layouts");
-      stageLayoutsStore.source = normalizeStageLayouts(seeded.data);
-      stageLayoutsStore.remoteSha = seeded.sha || "";
-    }
-    stageLayoutsStore.loadedAt = Date.now();
-    stageLayoutsStore.error = "";
-  } catch (error) {
-    stageLayoutsStore.error = `GitHub layout storage unavailable: ${error.message}`;
-  }
-
-  return readStageLayoutsSource();
-}
-
-async function writeStageLayouts(layouts) {
-  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
-  const normalized = syncStageLayoutsWithFlow(layouts, flow);
-  backupJsonFile(STAGE_LAYOUTS_FILE, STAGE_LAYOUTS_BACKUP_DIR, "stage-layouts");
-  if (stageLayoutsStore.storageKind === "github") {
-    if (!GAME_FLOW_GITHUB_TOKEN) {
-      throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
-    }
-    const saved = await writeGithubJsonSource(normalized, stageLayoutsStore.remoteSha, STAGE_LAYOUTS_GITHUB_PATH, "Save stage layouts");
-    stageLayoutsStore.source = normalizeStageLayouts(saved.data);
-    stageLayoutsStore.remoteSha = saved.sha || "";
-    stageLayoutsStore.loadedAt = Date.now();
-    stageLayoutsStore.error = "";
-    mirrorJsonFile(STAGE_LAYOUTS_FILE, stageLayoutsStore.source);
-    return readStageLayoutsSource();
-  }
-  writeJsonFile(STAGE_LAYOUTS_FILE, normalized);
-  stageLayoutsStore.source = normalized;
-  stageLayoutsStore.loadedAt = Date.now();
-  return readStageLayoutsSource();
-}
-
-async function loadControllerLayoutsSource({ refresh = false } = {}) {
-  if (controllerLayoutsStore.storageKind !== "github") {
-    controllerLayoutsStore.source = readLocalControllerLayoutsSource();
-    controllerLayoutsStore.loadedAt = Date.now();
-    controllerLayoutsStore.error = "";
-    return readControllerLayoutsSource();
-  }
-
-  if (!refresh && controllerLayoutsStore.loadedAt) return readControllerLayoutsSource();
-  if (!GAME_FLOW_GITHUB_TOKEN) {
-    controllerLayoutsStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
-    return readControllerLayoutsSource();
-  }
-
-  try {
-    const remote = await readGithubJsonSource(CONTROLLER_LAYOUTS_GITHUB_PATH);
-    if (remote?.data) {
-      controllerLayoutsStore.source = normalizeControllerLayouts(remote.data);
-      controllerLayoutsStore.remoteSha = remote.sha || "";
-    } else {
-      const seeded = await writeGithubJsonSource(readControllerLayoutsSource(), "", CONTROLLER_LAYOUTS_GITHUB_PATH, "Save controller layouts");
-      controllerLayoutsStore.source = normalizeControllerLayouts(seeded.data);
-      controllerLayoutsStore.remoteSha = seeded.sha || "";
-    }
-    controllerLayoutsStore.loadedAt = Date.now();
-    controllerLayoutsStore.error = "";
-  } catch (error) {
-    controllerLayoutsStore.error = `GitHub controller layout storage unavailable: ${error.message}`;
-  }
-
-  return readControllerLayoutsSource();
-}
-
-async function writeControllerLayouts(layouts) {
-  const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
-  const normalized = syncControllerLayoutsWithFlow(layouts, flow);
-  backupJsonFile(CONTROLLER_LAYOUTS_FILE, CONTROLLER_LAYOUTS_BACKUP_DIR, "controller-layouts");
-  if (controllerLayoutsStore.storageKind === "github") {
-    if (!GAME_FLOW_GITHUB_TOKEN) {
-      throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
-    }
-    const saved = await writeGithubJsonSource(normalized, controllerLayoutsStore.remoteSha, CONTROLLER_LAYOUTS_GITHUB_PATH, "Save controller layouts");
-    controllerLayoutsStore.source = normalizeControllerLayouts(saved.data);
-    controllerLayoutsStore.remoteSha = saved.sha || "";
-    controllerLayoutsStore.loadedAt = Date.now();
-    controllerLayoutsStore.error = "";
-    mirrorJsonFile(CONTROLLER_LAYOUTS_FILE, controllerLayoutsStore.source);
-    return readControllerLayoutsSource();
-  }
-  writeJsonFile(CONTROLLER_LAYOUTS_FILE, normalized);
-  controllerLayoutsStore.source = normalized;
-  controllerLayoutsStore.loadedAt = Date.now();
-  return readControllerLayoutsSource();
-}
-
-async function loadGameFlowSource({ refresh = false } = {}) {
-  if (gameFlowStore.storageKind !== "github") {
-    gameFlowStore.source = readLocalGameFlowSource();
-    gameFlowStore.loadedAt = Date.now();
-    gameFlowStore.error = "";
-    return readGameFlowSource();
-  }
-
-  if (!refresh && gameFlowStore.loadedAt) return readGameFlowSource();
-  if (!GAME_FLOW_GITHUB_TOKEN) {
-    gameFlowStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
-    return readGameFlowSource();
-  }
-
-  try {
-    const remote = await readGithubGameFlowSource();
-    if (remote?.flow) {
-      gameFlowStore.source = remote.flow;
-      gameFlowStore.remoteSha = remote.sha || "";
-    } else {
-      const seeded = await writeGithubGameFlowSource(readGameFlowSource(), "");
-      gameFlowStore.source = seeded.flow;
-      gameFlowStore.remoteSha = seeded.sha || "";
-    }
-    gameFlowStore.loadedAt = Date.now();
-    gameFlowStore.error = "";
-  } catch (error) {
-    gameFlowStore.error = `GitHub flow storage unavailable: ${error.message}`;
-  }
-
-  return readGameFlowSource();
-}
-
-async function writeGameFlow(flow) {
-  const existingFlow = await loadGameFlowSource({ refresh: true });
-  const merged = mergeFlowWithExistingSubActions(flow, existingFlow);
-  normalizeGameFlow(merged);
-  backupJsonFile(GAME_FLOW_FILE, GAME_FLOW_BACKUP_DIR, "game-flow");
-  if (gameFlowStore.storageKind === "github") {
-    if (!GAME_FLOW_GITHUB_TOKEN) {
-      throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
-    }
-    const saved = await writeGithubGameFlowSource(merged, gameFlowStore.remoteSha);
-    gameFlowStore.source = saved.flow;
-    gameFlowStore.remoteSha = saved.sha || "";
-    gameFlowStore.loadedAt = Date.now();
-    gameFlowStore.error = "";
-    mirrorJsonFile(GAME_FLOW_FILE, saved.flow);
-    return saved.flow;
-  }
-  writeJsonFile(GAME_FLOW_FILE, merged);
-  gameFlowStore.source = merged;
-  gameFlowStore.loadedAt = Date.now();
-  return merged;
-}
-
-function currentRoomAction(room) {
-  if (room.presentedAction) return room.presentedAction;
-  const actions = getStateActions(room.phase, room);
-  if (room.actionIndex >= actions.length) return null;
-  let guard = 0;
-  while (actions[room.actionIndex]?.type === "decision" && guard < 20) {
-    clearAppliedActionEffects(room);
-    const nextActionIndex = resolveDecisionActionIndex(room, actions[room.actionIndex]);
-    if (nextActionIndex === null) return null;
-    room.actionIndex = Math.max(0, Math.min(actions.length, nextActionIndex));
-    guard += 1;
-    if (room.actionIndex >= actions.length) return null;
-  }
-  return publicFlowAction(actions[room.actionIndex], room.actionIndex);
-}
-
-function advanceRoomAfterAction(room, action) {
-  const target = action?.nextTargetActionId || "";
-  if (isNoActionTarget(target)) return;
-  if (isReturnActionTarget(target)) {
-    advanceRoomFromMomentReturn(room);
-    return;
-  }
-  const targetIndex = flowActionIndexById(room, target);
-  if (targetIndex >= 0) {
-    room.actionIndex = targetIndex;
-    return;
-  }
-  if (target) return;
-  room.lastDecisionTrace = {
-    actionId: action?.id || "",
-    actionName: action?.name || "",
-    selectedTarget: "none",
-    haltReason: "No Matching Branch",
-    activePlayerCount: activePlayers(room).length,
-    evaluatedAt: Date.now()
-  };
-}
-
-function advanceRoomFromMomentReturn(room) {
-  const state = runtimeGameFlow(room).states.find((item) => item.id === room.phase);
-  const targetStateId = normalizeFlowId(state?.nextStateTargetId, "");
-  if (!targetStateId || isNoActionTarget(targetStateId)) return;
-  if (runtimeGameFlow(room).states.some((item) => item.id === targetStateId)) {
-    enterGamePhase(room, targetStateId);
-  }
-}
-
 const {
   applyRoomActionEffects
 } = createRoomActionEffectsRuntime({
@@ -899,86 +770,6 @@ const {
   startCraftingTimer,
   storeRandomTriviaPrompt
 });
-
-function countdownTargetState(room) {
-  const lobbyState = getFlowState(runtimeGameFlow(room), "lobby");
-  const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
-  return action?.targetState || "intro";
-}
-
-function completeCountdownTrigger(room) {
-  const lobbyState = getFlowState(runtimeGameFlow(room), "lobby");
-  const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
-  if (!action) {
-    enterGamePhase(room, "intro");
-    return;
-  }
-  if (action.nextTargetActionId) {
-    room.phase = lobbyState.id;
-    room.actionIndex = Math.max(0, lobbyState.actions.findIndex((item) => item.id === action.id));
-    room.currentPresentationActionId = "";
-    room.currentDisplayTextActionId = "";
-    clearActionTimer(room);
-    advanceRoomAfterAction(room, action);
-    currentRoomAction(room);
-    broadcastLobby(room);
-    return;
-  }
-  enterGamePhase(room, action.targetState || "intro");
-}
-
-function jumpToAction(room, actionId, fallbackIndex = room.actionIndex + 1) {
-  if (isReturnActionTarget(actionId)) {
-    room.presentedAction = null;
-    clearActiveInputFlowEvent(room);
-    clearAppliedActionEffects(room);
-    advanceRoomFromMomentReturn(room);
-    return;
-  }
-  const targetIndex = flowActionIndexById(room, actionId);
-  room.presentedAction = null;
-  clearActiveInputFlowEvent(room);
-  clearAppliedActionEffects(room);
-  room.actionIndex = targetIndex >= 0 ? targetIndex : fallbackIndex;
-}
-
-function emitInputFlowEvent(room, eventType) {
-  clearAnswersSubmittedAdvanceTimer(room);
-  const fallbackIndex = room.actionIndex + 1;
-  const currentAction = currentRoomAction(room);
-  const target = flowEventTargetForAction(currentAction, eventType);
-  const eventKey = `${currentAction?.id || "none"}:${eventType}`;
-  if (!currentAction || room.activeInputFlowEventKey === eventKey || isNoActionTarget(target)) {
-    return false;
-  }
-  room.activeInputFlowEventKey = eventKey;
-  if (room.craftingTimerRunning) {
-    pauseCraftingTimer(room);
-  } else {
-    clearCraftingTimerTimeout(room);
-  }
-  if (eventType === "timerEnd") {
-    room.craftingTimerRemainingMs = 0;
-    room.craftingTimerEndHandled = true;
-  }
-  clearChoiceInput(room);
-  clearTextInput(room);
-  clearVotingInput(room);
-  jumpToAction(room, target, fallbackIndex);
-  broadcastLobby(room);
-  return true;
-}
-
-function scheduleAnswersSubmittedAdvance(room) {
-  if (room.answersSubmittedAdvanceTimerId) return;
-  const currentAction = currentRoomAction(room);
-  const target = flowEventTargetForAction(currentAction, "allPlayersSubmitted");
-  if (isNoActionTarget(target)) return;
-  room.answersSubmittedAdvanceTimerId = setTimeout(() => {
-    room.answersSubmittedAdvanceTimerId = null;
-    emitInputFlowEvent(room, "allPlayersSubmitted");
-  }, 500);
-}
 
 const {
   applyChoiceInputAction,
@@ -1016,107 +807,6 @@ const {
   serializeVotingCards,
   textInputPayload
 });
-
-function sendSse(client, event, data) {
-  client.write(`event: ${event}\n`);
-  client.write(`data: ${JSON.stringify(data)}\n\n`);
-}
-
-function broadcastLobby(room) {
-  room.revision += 1;
-  const payload = lobbyPayload(room);
-  for (const client of room.stageClients) {
-    sendSse(client, "lobby", payload);
-  }
-}
-
-function enterLobbyPhase(room) {
-  clearCountdownTimer(room);
-  clearActionTimer(room);
-  room.phase = "lobby";
-  room.countdownStartedAt = 0;
-  room.countdownEndsAt = 0;
-  room.actionIndex = 0;
-  room.presentedAction = null;
-  room.lastDecisionTrace = null;
-  clearAppliedActionEffects(room);
-  room.playersShown = true;
-  room.playerAnswersShown = true;
-  room.playerAnswersVisibleFilter = "all";
-  room.flowVariables = {};
-  clearPlayerAnswerData(room);
-  room.pendingPointPopups = [];
-  room.currentRound = 1;
-  room.hasEnteredRoundIntro = false;
-  resetCraftingTimer(room);
-  clearChoiceInput(room);
-  clearTextInput(room);
-  clearVotingData(room);
-  clearDisplayedPlayerAnswers(room);
-}
-
-function quitRoomToLobby(room) {
-  enterLobbyPhase(room);
-  for (const player of room.players.values()) {
-    player.active = false;
-    player.kickedFromGame = true;
-    player.lastSeen = Date.now();
-  }
-  room.vipPlayerId = "";
-  room.startToken = "";
-  broadcastLobby(room);
-}
-
-function enterIntroPhase(room) {
-  enterGamePhase(room, "intro");
-}
-
-function enterGamePhase(room, phase) {
-  clearCountdownTimer(room);
-  clearActionTimer(room);
-  const previousPhase = room.phase;
-  if (previousPhase === "lobby" || previousPhase === "starting") {
-    const nextSessionKey = activePlayers(room).map((player) => player.id).sort().join("|");
-    if (nextSessionKey && nextSessionKey === room.playerSessionKey) {
-      room.numSequentialGames = Number(room.numSequentialGames || 0) + 1;
-    } else {
-      room.playerSessionKey = nextSessionKey;
-      room.numSequentialGames = 0;
-    }
-  }
-  room.phase = phase;
-  room.countdownStartedAt = 0;
-  room.countdownEndsAt = 0;
-  const entryActionIndex = entryActionIndexForPhase(room, phase);
-  room.actionIndex = entryActionIndex === -1
-    ? getStateActions(phase, room).length
-    : Math.max(0, entryActionIndex);
-  room.presentedAction = null;
-  room.lastDecisionTrace = null;
-  clearAppliedActionEffects(room);
-  room.playersShown = true;
-  room.playerAnswersShown = true;
-  room.playerAnswersVisibleFilter = "all";
-  room.pendingPointPopups = [];
-  resetCraftingTimer(room);
-  clearChoiceInput(room);
-  clearTextInput(room);
-  clearVotingInput(room);
-  clearDisplayedPlayerAnswers(room);
-  if (isRoundIntroStateId(phase) && previousPhase !== phase) {
-    if (room.hasEnteredRoundIntro) {
-      room.currentRound += 1;
-    } else {
-      room.currentRound = 1;
-      room.hasEnteredRoundIntro = true;
-    }
-  }
-  if (entryActionIndex === -2) {
-    advanceRoomFromMomentReturn(room);
-    return;
-  }
-  broadcastLobby(room);
-}
 
 const {
   handleStageEvents,
