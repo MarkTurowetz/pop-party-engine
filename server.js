@@ -32,6 +32,7 @@ const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
+const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
 const { createTriviaContentRuntime } = require("./server/trivia-content-runtime");
 const {
   cleanChoiceOptions,
@@ -753,69 +754,34 @@ function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function readDefaultGameFlowSource() {
-  try {
-    return readJsonFile(DEFAULT_GAME_FLOW_FILE);
-  } catch (error) {
-    return cloneJson(defaultGameFlow);
-  }
-}
-
-function readDefaultGameConstantsSource() {
-  try {
-    return normalizeGameConstants(readJsonFile(DEFAULT_GAME_CONSTANTS_FILE));
-  } catch (error) {
-    return cloneJson(defaultGameConstants);
-  }
-}
-
-function readDefaultStageLayoutsSource() {
-  try {
-    return normalizeStageLayouts(readJsonFile(DEFAULT_STAGE_LAYOUTS_FILE));
-  } catch (error) {
-    return normalizeStageLayouts(defaultStageLayouts);
-  }
-}
-
-function readDefaultControllerLayoutsSource() {
-  try {
-    return normalizeControllerLayouts(readJsonFile(DEFAULT_CONTROLLER_LAYOUTS_FILE));
-  } catch (error) {
-    return normalizeControllerLayouts(defaultControllerLayouts);
-  }
-}
-
-function readLocalGameFlowSource() {
-  try {
-    return readJsonFile(GAME_FLOW_FILE);
-  } catch (error) {
-    return readDefaultGameFlowSource();
-  }
-}
-
-function readLocalGameConstantsSource() {
-  try {
-    return normalizeGameConstants(readJsonFile(GAME_CONSTANTS_FILE));
-  } catch (error) {
-    return readDefaultGameConstantsSource();
-  }
-}
-
-function readLocalStageLayoutsSource() {
-  try {
-    return normalizeStageLayouts(readJsonFile(STAGE_LAYOUTS_FILE));
-  } catch (error) {
-    return readDefaultStageLayoutsSource();
-  }
-}
-
-function readLocalControllerLayoutsSource() {
-  try {
-    return normalizeControllerLayouts(readJsonFile(CONTROLLER_LAYOUTS_FILE));
-  } catch (error) {
-    return readDefaultControllerLayoutsSource();
-  }
-}
+const {
+  readDefaultControllerLayoutsSource,
+  readDefaultGameConstantsSource,
+  readDefaultGameFlowSource,
+  readDefaultStageLayoutsSource,
+  readLocalControllerLayoutsSource,
+  readLocalGameConstantsSource,
+  readLocalGameFlowSource,
+  readLocalStageLayoutsSource
+} = createToolSourceReadersRuntime({
+  cloneJson,
+  controllerLayoutsFile: CONTROLLER_LAYOUTS_FILE,
+  defaultControllerLayouts,
+  defaultControllerLayoutsFile: DEFAULT_CONTROLLER_LAYOUTS_FILE,
+  defaultGameConstants,
+  defaultGameConstantsFile: DEFAULT_GAME_CONSTANTS_FILE,
+  defaultGameFlow,
+  defaultGameFlowFile: DEFAULT_GAME_FLOW_FILE,
+  defaultStageLayouts,
+  defaultStageLayoutsFile: DEFAULT_STAGE_LAYOUTS_FILE,
+  gameConstantsFile: GAME_CONSTANTS_FILE,
+  gameFlowFile: GAME_FLOW_FILE,
+  normalizeControllerLayouts,
+  normalizeGameConstants,
+  normalizeStageLayouts,
+  readJsonFile,
+  stageLayoutsFile: STAGE_LAYOUTS_FILE
+});
 
 const gameFlowStore = {
   source: readLocalGameFlowSource(),
