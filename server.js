@@ -7,6 +7,7 @@ const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime"
 const { createDecisionRuntime } = require("./server/decision-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
+const { createInputStateRuntime } = require("./server/input-state-runtime");
 const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
 const { backupJsonFile, mirrorJsonFile, readJsonFile, writeJsonFile } = require("./server/local-json-store");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
@@ -95,6 +96,15 @@ const {
   multipleChoicePrompts,
   normalizeFlowVariableName
 });
+
+const {
+  allActivePlayersHaveSubmittedInput,
+  clearActiveInputFlowEvent,
+  clearAnswersSubmittedAdvanceTimer,
+  clearChoiceInput,
+  clearTextInput,
+  flowEventTargetForAction
+} = createInputStateRuntime({ activePlayers });
 
 const githubStorage = createGithubStorageRuntime({
   baseBranch: GAME_FLOW_GITHUB_BASE_BRANCH,
@@ -1983,43 +1993,6 @@ function publicPlayer(player, room, currentAction = null) {
   };
 }
 
-function clearAnswersSubmittedAdvanceTimer(room) {
-  if (!room.answersSubmittedAdvanceTimerId) return;
-  clearTimeout(room.answersSubmittedAdvanceTimerId);
-  room.answersSubmittedAdvanceTimerId = null;
-}
-
-function clearChoiceInput(room) {
-  clearAnswersSubmittedAdvanceTimer(room);
-  room.choiceInputActionId = "";
-  room.choiceInputPrompt = "";
-  room.choiceInputOptions = [];
-  room.choiceInputOriginalIndexes = [];
-  room.choiceInputCorrectAnswerIndex = null;
-  room.choiceInputKind = "multipleChoice";
-  room.choiceInputContentId = "";
-  room.choiceInputMode = "singleSelect";
-  room.choiceInputLocked = false;
-  if (room.choiceInputAnswers?.clear) {
-    room.choiceInputAnswers.clear();
-  } else {
-    room.choiceInputAnswers = new Map();
-  }
-}
-
-function clearTextInput(room) {
-  clearAnswersSubmittedAdvanceTimer(room);
-  room.textInputActionId = "";
-  room.textInputPrompt = "";
-  room.textInputPlaceholder = "";
-  room.textInputCharacterLimit = 0;
-  if (room.textInputAnswers?.clear) {
-    room.textInputAnswers.clear();
-  } else {
-    room.textInputAnswers = new Map();
-  }
-}
-
 function jumpToAction(room, actionId, fallbackIndex = room.actionIndex + 1) {
   if (isReturnActionTarget(actionId)) {
     room.presentedAction = null;
@@ -2033,35 +2006,6 @@ function jumpToAction(room, actionId, fallbackIndex = room.actionIndex + 1) {
   clearActiveInputFlowEvent(room);
   clearAppliedActionEffects(room);
   room.actionIndex = targetIndex >= 0 ? targetIndex : fallbackIndex;
-}
-
-function allActivePlayersHaveSubmittedInput(room) {
-  const active = activePlayers(room);
-  if (!active.length) return false;
-  if (room.votingInputActionId) {
-    return active.every((player) => {
-      const eligibleCards = (room.votingCards || []).filter((card) => card && card.authorPlayerId !== player.id);
-      return !eligibleCards.length || room.votingAnswers.has(player.id);
-    });
-  }
-  if (room.textInputActionId) {
-    return active.every((player) => room.textInputAnswers.get(player.id)?.done === true);
-  }
-  if (room.choiceInputActionId) {
-    return active.every((player) => room.choiceInputAnswers.has(player.id));
-  }
-  return false;
-}
-
-function flowEventTargetForAction(action, eventType) {
-  if (!action) return "";
-  if (eventType === "timerEnd") return action.timerEndTargetActionId || "";
-  if (eventType === "allPlayersSubmitted") return action.answersSubmittedTargetActionId || "";
-  return "";
-}
-
-function clearActiveInputFlowEvent(room) {
-  room.activeInputFlowEventKey = "";
 }
 
 function emitInputFlowEvent(room, eventType) {
