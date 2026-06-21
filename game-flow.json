@@ -16,7 +16,7 @@
         "y": 514
       },
       "entryTargetActionId": "",
-      "nextStateTargetId": "intro",
+      "nextStateTargetId": "writing-moment",
       "actions": [
         {
           "id": "lobby-countdown-complete",
@@ -731,7 +731,12 @@
           "text": "What is your favorite movie?",
           "isShown": true,
           "instant": false,
-          "nextTargetActionId": "writing-show-timer"
+          "nextTargetActionId": "writing-show-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          }
         },
         {
           "id": "writing-show-timer",
@@ -743,7 +748,12 @@
           },
           "isShown": true,
           "instant": false,
-          "nextTargetActionId": "writing-start-timer"
+          "nextTargetActionId": "writing-start-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          }
         },
         {
           "id": "writing-start-timer",
@@ -753,7 +763,12 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "writing-text-input"
+          "nextTargetActionId": "writing-text-input",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          }
         },
         {
           "id": "writing-text-input",
@@ -767,7 +782,12 @@
           "placeholder": "Write a movie title",
           "characterLimit": 80,
           "timerEndTargetActionId": "writing-prepare-cards",
-          "answersSubmittedTargetActionId": "writing-prepare-cards"
+          "answersSubmittedTargetActionId": "writing-prepare-cards",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          }
         },
         {
           "id": "writing-prepare-cards",
@@ -777,7 +797,12 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "writing-to-voting"
+          "nextTargetActionId": "return",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          }
         },
         {
           "id": "writing-to-voting",
@@ -787,9 +812,22 @@
             "mode": "E+",
             "seconds": 0
           },
-          "targetState": "voting-moment"
+          "targetState": "voting-moment",
+          "subActions": [],
+          "nodePosition": {
+            "x": 1177,
+            "y": 1377
+          }
         }
-      ]
+      ],
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1784
+      }
     },
     {
       "id": "voting-moment",
@@ -849,7 +887,12 @@
           "isShown": true,
           "cardFilter": "all",
           "instant": false,
-          "nextTargetActionId": "voting-show-timer"
+          "nextTargetActionId": "voting-show-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          }
         },
         {
           "id": "voting-show-timer",
@@ -861,7 +904,12 @@
           },
           "isShown": true,
           "instant": false,
-          "nextTargetActionId": "voting-start-timer"
+          "nextTargetActionId": "voting-start-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          }
         },
         {
           "id": "voting-start-timer",
@@ -871,7 +919,12 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "voting-input"
+          "nextTargetActionId": "voting-input",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          }
         },
         {
           "id": "voting-input",
@@ -883,7 +936,13 @@
           },
           "prompt": "Vote for your favorite movie answer",
           "timerEndTargetActionId": "voting-reveal-results",
-          "answersSubmittedTargetActionId": "voting-reveal-results"
+          "answersSubmittedTargetActionId": "voting-reveal-results",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          },
+          "nextTargetActionId": "voting-reveal-results"
         },
         {
           "id": "voting-reveal-results",
@@ -893,7 +952,12 @@
             "mode": "E+",
             "seconds": 1
           },
-          "nextTargetActionId": "voting-hide-losing-cards"
+          "nextTargetActionId": "voting-hide-losing-cards",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          }
         },
         {
           "id": "voting-hide-losing-cards",
@@ -906,7 +970,12 @@
           "isShown": false,
           "cardFilter": "losers",
           "instant": false,
-          "nextTargetActionId": "voting-show-winner-points"
+          "nextTargetActionId": "voting-show-winner-points",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1530
+          }
         },
         {
           "id": "voting-show-winner-points",
@@ -918,7 +987,12 @@
           },
           "playerFilter": "votingWinner",
           "points": 500,
-          "nextTargetActionId": "voting-bank-points"
+          "nextTargetActionId": "voting-bank-points",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1784
+          }
         },
         {
           "id": "voting-bank-points",
@@ -928,9 +1002,23 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "return"
+          "nextTargetActionId": "return",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 2038
+          }
         }
-      ]
+      ],
+      "nextStateTargetId": "scoreboard-game-state",
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 2292
+      }
     }
   ]
 }
