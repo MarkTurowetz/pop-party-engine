@@ -21,6 +21,7 @@ concepts into focused modules.
     and art file responses.
   - `decision-action-normalization-runtime.js` owns decision branch/operator/value normalization.
   - `flow-action-public-runtime.js` owns public flow action serialization and room text interpolation.
+  - `game-flow-normalization-runtime.js` owns flow, action, timing, and node-position normalization.
   - `flow-navigation-runtime.js` owns runtime flow lookup, action index lookup, and entry action selection.
   - `flow-state-kind-runtime.js` owns flow-state kind predicates and action-type scanning.
   - `flow-target-runtime.js` owns flow action target normalization for none/return/action-id targets.
