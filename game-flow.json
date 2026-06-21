@@ -803,21 +803,6 @@
             "x": 670,
             "y": 1276
           }
-        },
-        {
-          "id": "writing-to-voting",
-          "name": "Go To Voting Moment",
-          "type": "transitionState",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "targetState": "voting-moment",
-          "subActions": [],
-          "nodePosition": {
-            "x": 1177,
-            "y": 1377
-          }
         }
       ],
       "startNodePosition": {
