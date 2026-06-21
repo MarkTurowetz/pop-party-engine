@@ -45,8 +45,8 @@
           "text": "This is the Game Intro State",
           "subActions": [],
           "nodePosition": {
-            "x": 60,
-            "y": 200
+            "x": 670,
+            "y": 305
           },
           "nextTargetActionId": "intro-wipe"
         },
@@ -62,8 +62,8 @@
           "subActions": [],
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 70,
-            "y": 370
+            "x": 670,
+            "y": 540
           }
         }
       ],
@@ -71,7 +71,15 @@
         "x": 97,
         "y": 303
       },
-      "nextStateTargetId": "round-intro-game-state"
+      "nextStateTargetId": "round-intro-game-state",
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 775
+      }
     },
     {
       "id": "round-intro-game-state",
@@ -91,8 +99,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 50,
-            "y": 200
+            "x": 670,
+            "y": 305
           },
           "nextTargetActionId": "round-intro-game-state-action-mqlam2l4"
         },
@@ -112,8 +120,8 @@
           "transition": "horizontalWipe",
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 60,
-            "y": 360
+            "x": 670,
+            "y": 540
           }
         }
       ],
@@ -121,7 +129,15 @@
         "x": 102,
         "y": 520
       },
-      "nextStateTargetId": "crafting-game-state"
+      "nextStateTargetId": "crafting-game-state",
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 775
+      }
     },
     {
       "id": "crafting-game-state",
@@ -141,8 +157,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 60,
-            "y": 200
+            "x": 670,
+            "y": 305
           },
           "nextTargetActionId": "crafting-game-state-action-mqn4qzpm"
         },
@@ -161,8 +177,8 @@
           "subActions": [],
           "variableName": "multipleChoicePrompt",
           "nodePosition": {
-            "x": 459,
-            "y": 202
+            "x": 670,
+            "y": 540
           },
           "nextTargetActionId": "crafting-game-state-action-mqlrgs0y"
         },
@@ -180,8 +196,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 73,
-            "y": 355
+            "x": 670,
+            "y": 775
           },
           "nextTargetActionId": "crafting-game-state-action-mqlronl5"
         },
@@ -201,8 +217,8 @@
           "timerEndTargetActionId": "crafting-game-state-action-mqlag55r",
           "answersSubmittedTargetActionId": "crafting-game-state-action-mqlagz9c",
           "nodePosition": {
-            "x": 70,
-            "y": 536
+            "x": 670,
+            "y": 1010
           },
           "nextTargetActionId": "crafting-game-state-action-mqlrlkp0"
         },
@@ -247,8 +263,8 @@
           "locked": false,
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 80,
-            "y": 730
+            "x": 670,
+            "y": 1245
           },
           "timerEndTargetActionId": "crafting-game-state-action-mqmxj25v",
           "answersSubmittedTargetActionId": "crafting-game-state-action-mqmxj25v",
@@ -284,8 +300,8 @@
             }
           ],
           "nodePosition": {
-            "x": 426,
-            "y": 778
+            "x": 670,
+            "y": 1480
           },
           "nextTargetActionId": "crafting-game-state-action-mqn4u54c"
         },
@@ -304,8 +320,8 @@
           "subActions": [],
           "transition": "horizontalWipe",
           "nodePosition": {
-            "x": 790,
-            "y": 740
+            "x": 670,
+            "y": 2890
           },
           "nextTargetActionId": "return"
         },
@@ -323,8 +339,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 454,
-            "y": 484
+            "x": 670,
+            "y": 1715
           },
           "nextTargetActionId": "crafting-game-state-action-mqn9u17o",
           "playerFilter": "all"
@@ -343,8 +359,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 769,
-            "y": 492
+            "x": 670,
+            "y": 1950
           },
           "nextTargetActionId": "crafting-game-state-action-mqn4uouf"
         },
@@ -362,8 +378,8 @@
           "isShown": false,
           "subActions": [],
           "nodePosition": {
-            "x": 819,
-            "y": 265
+            "x": 670,
+            "y": 2185
           },
           "playerFilter": "wrong",
           "nextTargetActionId": "crafting-game-state-action-mqn4v75w"
@@ -382,8 +398,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 1154,
-            "y": 270
+            "x": 670,
+            "y": 2420
           },
           "playerFilter": "correct",
           "points": 0,
@@ -403,8 +419,8 @@
           "isShown": false,
           "subActions": [],
           "nodePosition": {
-            "x": 1180,
-            "y": 445
+            "x": 670,
+            "y": 2655
           },
           "playerFilter": "all",
           "nextTargetActionId": "crafting-game-state-action-mqlag55r"
@@ -414,6 +430,14 @@
       "nodePosition": {
         "x": 104,
         "y": 750
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 3125
       }
     },
     {
@@ -434,8 +458,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 64,
-            "y": 207
+            "x": 670,
+            "y": 305
           },
           "nextTargetActionId": "presentation-game-state-action-mqlstve7"
         },
@@ -459,8 +483,8 @@
           "trueTargetActionId": "presentation-game-state-action-mqlahz0a",
           "falseTargetActionId": "presentation-game-state-action-mqlahz0a",
           "nodePosition": {
-            "x": 80,
-            "y": 390
+            "x": 640,
+            "y": 540
           },
           "branches": [
             {
@@ -501,8 +525,8 @@
           "subActions": [],
           "transition": "horizontalWipe",
           "nodePosition": {
-            "x": 561,
-            "y": 455
+            "x": 1030,
+            "y": 940
           },
           "nextTargetActionId": "return"
         },
@@ -520,8 +544,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 560,
-            "y": 200
+            "x": 310,
+            "y": 940
           },
           "nextTargetActionId": "return"
         },
@@ -539,8 +563,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 550,
-            "y": 690
+            "x": 670,
+            "y": 940
           },
           "nextTargetActionId": "return"
         }
@@ -549,6 +573,14 @@
       "nodePosition": {
         "x": 526,
         "y": 772
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 710,
+        "y": 1430
       }
     },
     {
@@ -569,8 +601,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 70,
-            "y": 200
+            "x": 670,
+            "y": 305
           },
           "nextTargetActionId": "scoreboard-game-state-action-mqlajev8"
         },
@@ -589,8 +621,8 @@
           "subActions": [],
           "transition": "horizontalWipe",
           "nodePosition": {
-            "x": 70,
-            "y": 380
+            "x": 670,
+            "y": 540
           },
           "nextTargetActionId": "return"
         }
@@ -599,6 +631,14 @@
       "nodePosition": {
         "x": 927,
         "y": 759
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 775
       }
     },
     {
@@ -619,8 +659,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 60,
-            "y": 200
+            "x": 670,
+            "y": 305
           },
           "nextTargetActionId": "post-game-state-action-mqlakl0m"
         },
@@ -639,8 +679,8 @@
           "subActions": [],
           "transition": "horizontalWipe",
           "nodePosition": {
-            "x": 74,
-            "y": 368
+            "x": 670,
+            "y": 540
           },
           "nextTargetActionId": "return"
         }
@@ -649,6 +689,14 @@
       "nodePosition": {
         "x": 955,
         "y": 340
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 775
       }
     }
   ]
