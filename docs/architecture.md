@@ -37,6 +37,7 @@ concepts into focused modules.
   - `local-json-store.js` owns local JSON file read/write, backups, and mirror writes.
   - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
   - `player-public-runtime.js` owns player serialization for lobby/controller payloads.
+  - `player-session-handlers-runtime.js` owns join, heartbeat, avatar selection, and leave endpoints.
   - `player-state-runtime.js` owns player avatar helpers, active-player filtering, and VIP selection.
   - `room-action-effects-runtime.js` owns one-time room mutations caused by active flow actions.
   - `room-state-runtime.js` owns default room construction and room lookup helpers.
