@@ -47,6 +47,7 @@ concepts into focused modules.
   - `stage-events-runtime.js` owns stage SSE connection setup, heartbeat, and cleanup.
   - `stage-layout-normalization-runtime.js` owns stage layout collection normalization and migration.
   - `stage-layout-state-runtime.js` owns default stage layout state creation for flow states.
+  - `stage-test-config-handler-runtime.js` owns stage test-flow override endpoint handling.
   - `start-handlers-runtime.js` owns VIP start/cancel-start endpoint handling.
   - `static-files-runtime.js` owns app shell rendering and browser module file responses.
   - `tool-data-read-runtime.js` owns read-side tool data endpoint responses.

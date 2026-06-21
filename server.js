@@ -43,6 +43,7 @@ const { createStageActionHandlersRuntime } = require("./server/stage-action-hand
 const { createStageEventsRuntime } = require("./server/stage-events-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createStartHandlersRuntime } = require("./server/start-handlers-runtime");
+const { createStageTestConfigHandlerRuntime } = require("./server/stage-test-config-handler-runtime");
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
@@ -1228,36 +1229,18 @@ async function handleQuitToLobby(req, res) {
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
 }
 
-async function handleStageTestConfig(req, res, stageCode) {
-  let payload;
-  try {
-    payload = await readJson(req);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  const room = getRoom(stageCode);
-  if (payload.clearFlow) {
-    room.runtimeFlowOverride = null;
-  } else if (payload.flow) {
-    try {
-      room.runtimeFlowOverride = normalizeGameFlow(payload.flow);
-    } catch (error) {
-      sendJson(res, 400, { ok: false, error: `Test flow is invalid: ${error.message}` });
-      return;
-    }
-  }
-
-  room.actionCompletionPendingId = "";
-  clearAppliedActionEffects(room);
-  room.presentedAction = null;
-  if (room.actionIndex >= getStateActions(room.phase, room).length) {
-    room.actionIndex = 0;
-  }
-  broadcastLobby(room);
-  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room), hasTestFlow: Boolean(room.runtimeFlowOverride) });
-}
+const {
+  handleStageTestConfig
+} = createStageTestConfigHandlerRuntime({
+  broadcastLobby,
+  clearAppliedActionEffects,
+  getRoom,
+  getStateActions,
+  lobbyPayload,
+  normalizeGameFlow,
+  readJson,
+  sendJson
+});
 
 async function handlePresentHi(req, res) {
   let payload;
