@@ -14,6 +14,7 @@ concepts into focused modules.
   - `app-version.js` owns build/version lookup.
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
     and art file responses.
+  - `github-storage-runtime.js` owns generic GitHub JSON content reads/writes.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
   - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
   - `save-handlers-runtime.js` owns common tool save endpoint handling and response shaping.

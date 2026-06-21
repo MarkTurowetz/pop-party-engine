@@ -6,6 +6,7 @@ const { readAppVersion } = require("./server/app-version");
 const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
 const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime");
 const { createDecisionRuntime } = require("./server/decision-runtime");
+const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
 const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
@@ -63,6 +64,13 @@ const START_GO_HOLD_MS = 700;
 const rooms = new Map();
 
 const APP_VERSION = readAppVersion(ROOT);
+
+const githubStorage = createGithubStorageRuntime({
+  baseBranch: GAME_FLOW_GITHUB_BASE_BRANCH,
+  branch: GAME_FLOW_GITHUB_BRANCH,
+  repo: GAME_FLOW_GITHUB_REPO,
+  token: GAME_FLOW_GITHUB_TOKEN
+});
 
 const {
   handleReplaceArtAsset,
@@ -1458,61 +1466,6 @@ function mirrorControllerLayoutsSource(layouts) {
   }
 }
 
-function githubFlowHeaders() {
-  return {
-    "Accept": "application/vnd.github+json",
-    "Authorization": `Bearer ${GAME_FLOW_GITHUB_TOKEN}`,
-    "User-Agent": "party-game-template",
-    "X-GitHub-Api-Version": "2022-11-28"
-  };
-}
-
-async function githubRequest(pathname, options = {}) {
-  const response = await fetch(`https://api.github.com${pathname}`, {
-    ...options,
-    headers: {
-      ...githubFlowHeaders(),
-      ...(options.headers || {})
-    }
-  });
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!response.ok) {
-    const error = new Error(data?.message || `GitHub request failed with ${response.status}`);
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-  return data;
-}
-
-function githubRepoPath() {
-  return `/repos/${GAME_FLOW_GITHUB_REPO}`;
-}
-
-function githubContentPath(filePath) {
-  return filePath.split("/").map((part) => encodeURIComponent(part)).join("/");
-}
-
-async function ensureGithubDataBranch() {
-  if (GAME_FLOW_GITHUB_BRANCH === GAME_FLOW_GITHUB_BASE_BRANCH) return;
-  try {
-    await githubRequest(`${githubRepoPath()}/git/ref/heads/${GAME_FLOW_GITHUB_BRANCH}`);
-    return;
-  } catch (error) {
-    if (error.status !== 404) throw error;
-  }
-  const baseRef = await githubRequest(`${githubRepoPath()}/git/ref/heads/${GAME_FLOW_GITHUB_BASE_BRANCH}`);
-  await githubRequest(`${githubRepoPath()}/git/refs`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ref: `refs/heads/${GAME_FLOW_GITHUB_BRANCH}`,
-      sha: baseRef.object.sha
-    })
-  });
-}
-
 async function readGithubGameFlowSource() {
   const result = await readGithubJsonSource(GAME_FLOW_GITHUB_PATH);
   return result ? { flow: result.data, sha: result.sha } : null;
@@ -1531,38 +1484,11 @@ async function writeGithubGameFlowSource(flow, sha = "") {
 }
 
 async function readGithubJsonSource(filePath) {
-  await ensureGithubDataBranch();
-  try {
-    const file = await githubRequest(`${githubRepoPath()}/contents/${githubContentPath(filePath)}?ref=${encodeURIComponent(GAME_FLOW_GITHUB_BRANCH)}`);
-    if (!file?.content) return null;
-    const json = Buffer.from(file.content, "base64").toString("utf8");
-    return { data: JSON.parse(json), sha: file.sha || "" };
-  } catch (error) {
-    if (error.status === 404) return null;
-    throw error;
-  }
+  return githubStorage.readJson(filePath);
 }
 
 async function writeGithubJsonSource(data, sha = "", filePath = GAME_FLOW_GITHUB_PATH, messagePrefix = "Save JSON", retryConflict = true) {
-  await ensureGithubDataBranch();
-  const payload = {
-    message: `${messagePrefix} ${new Date().toISOString()}`,
-    content: Buffer.from(`${JSON.stringify(data, null, 2)}\n`).toString("base64"),
-    branch: GAME_FLOW_GITHUB_BRANCH
-  };
-  if (sha) payload.sha = sha;
-  try {
-    const result = await githubRequest(`${githubRepoPath()}/contents/${githubContentPath(filePath)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    return { data, sha: result?.content?.sha || "" };
-  } catch (error) {
-    if (!retryConflict || error.status !== 409 || !sha) throw error;
-    const latest = await readGithubJsonSource(filePath);
-    return writeGithubJsonSource(data, latest?.sha || "", filePath, messagePrefix, retryConflict);
-  }
+  return githubStorage.writeJson(data, { filePath, messagePrefix, retryConflict, sha });
 }
 
 function mergeFlowWithExistingSubActions(incomingFlow, existingFlow = null) {
