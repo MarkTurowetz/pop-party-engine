@@ -27,6 +27,7 @@ concepts into focused modules.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
   - `input-state-runtime.js` owns shared choice/text input reset state and submission-completion checks.
   - `layout-normalization-runtime.js` owns shared layout state/element normalization and element deduping.
+  - `layout-sync-runtime.js` owns syncing saved stage/controller layout states to the active flow.
   - `local-json-store.js` owns local JSON file read/write, backups, and mirror writes.
   - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
   - `player-state-runtime.js` owns player avatar helpers, active-player filtering, and VIP selection.
