@@ -34,6 +34,7 @@ const { createLobbyControlHandlersRuntime } = require("./server/lobby-control-ha
 const { createLobbyPayloadRuntime } = require("./server/lobby-payload-runtime");
 const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
 const { backupJsonFile, mirrorJsonFile, readJsonFile, writeJsonFile } = require("./server/local-json-store");
+const { createNetworkUrlsRuntime } = require("./server/network-urls-runtime");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
 const { createPlayerPublicRuntime } = require("./server/player-public-runtime");
 const { createPlayerSessionHandlersRuntime } = require("./server/player-session-handlers-runtime");
@@ -1440,17 +1441,12 @@ const {
   selectVip
 });
 
-function getLanUrls() {
-  const urls = [];
-  for (const network of Object.values(os.networkInterfaces())) {
-    for (const details of network || []) {
-      if (details.family === "IPv4" && !details.internal) {
-        urls.push(`http://${details.address}:${PORT}`);
-      }
-    }
-  }
-  return urls;
-}
+const {
+  getLanUrls
+} = createNetworkUrlsRuntime({
+  networkInterfaces: os.networkInterfaces,
+  port: PORT
+});
 
 setInterval(sweepInactivePlayers, 2000);
 
