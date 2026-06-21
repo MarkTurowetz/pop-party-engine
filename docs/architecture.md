@@ -14,6 +14,7 @@ concepts into focused modules.
   - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules.
   - `action-effect-state-runtime.js` owns room action-effect id tracking.
   - `app-version.js` owns build/version lookup.
+  - `controller-input-payload-runtime.js` owns controller choice/vote/text input payload setup.
   - `countdown-runtime.js` owns countdown timer clearing and starting-phase countdown scheduling.
   - `controller-layout-normalization-runtime.js` owns controller layout collection normalization.
   - `controller-layout-state-runtime.js` owns default controller layout state creation for flow states.
