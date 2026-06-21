@@ -20,6 +20,10 @@ concepts into focused modules.
 - `index.html`
   - Browser runtime for stage, controller, and tools.
   - This still needs a future split into stage/controller/tools modules.
+- `client/`
+  - Browser-side modules served directly by the Node server without a build step.
+  - `client/stage/visual-object.js` owns the generic CSS visual object animation contract
+    used by stage text and player answer bubbles.
 
 ## Refactor Order
 

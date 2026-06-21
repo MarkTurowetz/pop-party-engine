@@ -27,6 +27,7 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
+const CLIENT_ROOT = path.join(ROOT, "client");
 const DEFAULT_GAME_FLOW_FILE = path.join(ROOT, "game-flow.default.json");
 const GAME_FLOW_FILE = path.resolve(ROOT, process.env.GAME_FLOW_FILE || "game-flow.json");
 const GAME_FLOW_BACKUP_DIR = path.join(ROOT, "game-flow.backups");
@@ -2104,6 +2105,34 @@ function serveArtFile(res, kind, fileName) {
   });
 }
 
+function serveClientFile(res, requestPath) {
+  let decodedPath = "";
+  try {
+    decodedPath = decodeURIComponent(requestPath || "");
+  } catch (error) {
+    sendJson(res, 404, { ok: false, error: "Client file not found" });
+    return;
+  }
+  const normalizedPath = path.normalize(decodedPath).replace(/^(\.\.(\/|\\|$))+/, "");
+  const filePath = path.resolve(CLIENT_ROOT, normalizedPath);
+  if (!filePath.startsWith(`${CLIENT_ROOT}${path.sep}`) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+    sendJson(res, 404, { ok: false, error: "Client file not found" });
+    return;
+  }
+  fs.readFile(filePath, (error, data) => {
+    if (error) {
+      sendJson(res, 500, { ok: false, error: "Could not read client file" });
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": contentTypeForFile(filePath),
+      "Content-Length": data.length,
+      "Cache-Control": "no-cache"
+    });
+    res.end(data);
+  });
+}
+
 async function sendGameFlow(res) {
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
   const responseFlow = localDraftStore.flow || flow;
@@ -3735,6 +3764,12 @@ function router(req, res) {
   const artFileMatch = url.pathname.match(/^\/art\/(default|custom)\/([^/]+)$/i);
   if (req.method === "GET" && artFileMatch) {
     serveArtFile(res, artFileMatch[1], artFileMatch[2]);
+    return;
+  }
+
+  const clientFileMatch = url.pathname.match(/^\/client\/(.+)$/i);
+  if (req.method === "GET" && clientFileMatch) {
+    serveClientFile(res, clientFileMatch[1]);
     return;
   }
 

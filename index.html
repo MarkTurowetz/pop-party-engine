@@ -3741,6 +3741,7 @@
     </div>
   </section>
 
+  <script src="/client/stage/visual-object.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const pathRoles = {
@@ -3919,15 +3920,7 @@
     let playerVisibilityTimer = null;
     let subActionTimers = [];
     let textObjectTimers = [];
-    let stageTextAnimationToken = 0;
-    const visualAnimationDurations = {
-      park: 0,
-      on: 0,
-      off: 0,
-      appear: 500,
-      disappear: 500,
-      update: 200
-    };
+    const visualAnimation = window.PartyGameVisualObject;
     let renderedPlayerAnswersShown = true;
     let playerAnswerBubbleAnimationEndsAt = 0;
     let renderedPointPopupIds = new Set();
@@ -4657,176 +4650,60 @@
       return element.classList.contains(hiddenClass) || element.classList.contains(parkedClass);
     }
 
+    function stageTextVisualFor(object) {
+      if (!object?.element) return null;
+      if (!object.visual || object.visual.element !== object.element) {
+        object.visual = visualAnimation.createCssVisualObject({
+          element: object.element,
+          hiddenClasses: ["text-hidden", "hidden"],
+          motionHiddenClasses: ["text-hidden"],
+          displayHiddenClasses: ["hidden"],
+          updateClass: "text-update",
+          instantClass: "text-instant",
+          getVisible: () => object.visible === true || !isElementParked(object.element),
+          setVisible: (isVisible) => {
+            object.visible = isVisible;
+            object.element.dataset.visualVisible = isVisible ? "true" : "false";
+          },
+          timerSink: (timerId) => textObjectTimers.push(timerId)
+        });
+      }
+      return object.visual;
+    }
+
     function isStageTextVisible(object) {
-      return object?.visible === true || object?.element?.dataset.visualVisible === "true";
+      return stageTextVisualFor(object)?.isVisible() === true;
     }
 
     function stageTextAnimationFor(isShown, wasVisible) {
-      if (!isShown) return wasVisible ? "disappear" : "park";
-      return wasVisible ? "update" : "appear";
-    }
-
-    function instantVisualAnimation(animation, instant) {
-      if (!instant) return animation;
-      if (animation === "appear" || animation === "update") return "on";
-      if (animation === "disappear" || animation === "park") return "off";
-      return animation;
+      return visualAnimation.animationForVisibility(isShown, wasVisible);
     }
 
     function playStageTextVisual(object, animation, options = {}) {
-      const element = object.element;
-      const instant = options.instant === true;
-      const effectiveAnimation = instantVisualAnimation(animation, instant);
-      const duration = visualAnimationDurations[effectiveAnimation] || 0;
-      const wasVisible = object.visible || !isElementParked(element);
-      const completeAfter = (delay) => {
-        if (typeof options.complete !== "function") return;
-        const timerId = window.setTimeout(options.complete, delay);
-        textObjectTimers.push(timerId);
-      };
-      if ((effectiveAnimation === "appear" || effectiveAnimation === "on") && wasVisible) {
-        object.visible = true;
-        element.dataset.visualVisible = "true";
-        completeAfter(0);
-        return 0;
-      }
-      if ((effectiveAnimation === "disappear" || effectiveAnimation === "off") && !wasVisible) {
-        object.visible = false;
-        element.dataset.visualVisible = "false";
-        element.classList.add("text-hidden", "hidden");
-        completeAfter(0);
-        return 0;
-      }
-      const animationToken = stageTextAnimationToken += 1;
-      object.animationToken = animationToken;
-      element.classList.remove("text-update", "text-instant");
-      if (instant || effectiveAnimation === "on" || effectiveAnimation === "off") element.classList.add("text-instant");
+      return stageTextVisualFor(object)?.play(animation, options) || 0;
+    }
 
-      if (effectiveAnimation === "park" || effectiveAnimation === "off") {
-        element.classList.add("text-hidden", "hidden");
-        object.visible = false;
-        element.dataset.visualVisible = "false";
-      } else if (effectiveAnimation === "on") {
-        element.classList.remove("hidden", "text-hidden");
-        object.visible = true;
-        element.dataset.visualVisible = "true";
-      } else if (effectiveAnimation === "appear") {
-        element.classList.remove("hidden");
-        element.classList.add("text-hidden");
-        void element.offsetWidth;
-        requestAnimationFrame(() => {
-          if (object.animationToken === animationToken) {
-            element.classList.remove("text-hidden");
-            element.dataset.visualVisible = "true";
-          }
-        });
-        object.visible = true;
-      } else if (effectiveAnimation === "disappear") {
-        element.classList.remove("hidden");
-        void element.offsetWidth;
-        element.classList.add("text-hidden");
-        object.visible = false;
-        element.dataset.visualVisible = "false";
-        if (duration > 0) {
-          const timerId = window.setTimeout(() => {
-            if (object.animationToken === animationToken) element.classList.add("hidden");
-          }, duration);
-          textObjectTimers.push(timerId);
-        } else {
-          element.classList.add("hidden");
+    function answerBubbleVisualFor(bubble) {
+      return visualAnimation.createCssVisualObject({
+        element: bubble,
+        hiddenClasses: ["is-hidden"],
+        motionHiddenClasses: ["is-hidden"],
+        exitingClass: "is-exiting",
+        updateClass: "is-updating",
+        instantClass: "is-instant",
+        getVisible: () => !bubble.classList.contains("is-hidden") && !bubble.classList.contains("is-exiting"),
+        setVisible: (isVisible) => {
+          bubble.dataset.visualVisible = isVisible ? "true" : "false";
         }
-      } else if (effectiveAnimation === "update") {
-        element.classList.remove("hidden", "text-hidden");
-        element.dataset.visualVisible = "true";
-        void element.offsetWidth;
-        if (!instant) element.classList.add("text-update");
-        object.visible = true;
-      }
-
-      if (typeof options.complete === "function") {
-        completeAfter(duration);
-      }
-      return duration;
+      });
     }
 
     function isBubbleVisible(bubble) {
-      return !bubble.classList.contains("is-hidden") && !bubble.classList.contains("is-exiting");
+      return answerBubbleVisualFor(bubble).isVisible();
     }
 
     function playAnswerBubbleVisual(bubble, animation, options = {}) {
-      const instant = options.instant === true;
-      const effectiveAnimation = instantVisualAnimation(animation, instant);
-      const duration = visualAnimationDurations[effectiveAnimation] || 0;
-      const wasVisible = isBubbleVisible(bubble);
-      if ((effectiveAnimation === "appear" || effectiveAnimation === "on") && wasVisible) {
-        bubble.dataset.visualVisible = "true";
-        return 0;
-      }
-      if ((effectiveAnimation === "disappear" || effectiveAnimation === "off") && !wasVisible) {
-        bubble.dataset.visualVisible = "false";
-        bubble.classList.add("is-hidden");
-        bubble.classList.remove("is-exiting");
-        return 0;
-      }
-      const token = `${Date.now()}-${Math.random()}`;
-      bubble.dataset.visualAnimationToken = token;
-      bubble.classList.remove("is-updating", "is-instant");
-      if (instant || effectiveAnimation === "on" || effectiveAnimation === "off") bubble.classList.add("is-instant");
-
-      if (effectiveAnimation === "park" || effectiveAnimation === "off") {
-        bubble.dataset.visualVisible = "false";
-        bubble.classList.add("is-hidden");
-        bubble.classList.remove("is-exiting");
-        return 0;
-      }
-
-      if (effectiveAnimation === "on") {
-        bubble.dataset.visualVisible = "true";
-        bubble.classList.remove("is-hidden", "is-exiting");
-        return 0;
-      }
-
-      if (effectiveAnimation === "appear") {
-        bubble.classList.add("is-hidden");
-        bubble.classList.remove("is-exiting");
-        void bubble.offsetWidth;
-        requestAnimationFrame(() => {
-          if (bubble.dataset.visualAnimationToken === token) {
-            bubble.classList.remove("is-hidden");
-            bubble.dataset.visualVisible = "true";
-          }
-        });
-        return duration;
-      }
-
-      if (effectiveAnimation === "disappear") {
-        bubble.classList.remove("is-hidden");
-        void bubble.offsetWidth;
-        bubble.classList.add("is-exiting");
-        if (duration > 0) {
-          window.setTimeout(() => {
-            if (bubble.dataset.visualAnimationToken !== token) return;
-            bubble.classList.add("is-hidden");
-            bubble.classList.remove("is-exiting");
-            bubble.dataset.visualVisible = "false";
-          }, duration);
-        } else {
-          bubble.classList.add("is-hidden");
-          bubble.classList.remove("is-exiting");
-          bubble.dataset.visualVisible = "false";
-        }
-        return duration;
-      }
-
-      if (effectiveAnimation === "update") {
-        bubble.dataset.visualVisible = "true";
-        bubble.classList.remove("is-hidden", "is-exiting");
-        void bubble.offsetWidth;
-        if (!instant) bubble.classList.add("is-updating");
-        return duration;
-      }
-
-      return 0;
+      return answerBubbleVisualFor(bubble).play(animation, options);
     }
 
     function createPlayerTile(player, playerIndex, signature) {
