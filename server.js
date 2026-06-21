@@ -37,6 +37,7 @@ const { createPlayerStateRuntime } = require("./server/player-state-runtime");
 const { createRoomActionEffectsRuntime } = require("./server/room-action-effects-runtime");
 const { createRoomStateRuntime } = require("./server/room-state-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
+const { createStageEventsRuntime } = require("./server/stage-events-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
@@ -1112,43 +1113,17 @@ function enterGamePhase(room, phase) {
   broadcastLobby(room);
 }
 
-function removeStageClient(stageCode, client) {
-  const room = getExistingRoom(stageCode);
-  if (!room) return;
-  room.stageClients.delete(client);
-  if (room.stageClients.size === 0) {
-    room.runtimeFlowOverride = null;
-  }
-}
-
-function handleStageEvents(req, res, stageCode) {
-  if (!stageCode) {
-    sendJson(res, 400, { ok: false, error: "Missing stage code" });
-    return;
-  }
-
-  const room = getRoom(stageCode);
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream; charset=utf-8",
-    "Cache-Control": "no-cache, no-transform",
-    Connection: "keep-alive",
-    "Access-Control-Allow-Origin": "*"
-  });
-  res.write(": connected\n\n");
-
-  room.stageClients.add(res);
-  sendSse(res, "ready", { stageCode });
-  sendSse(res, "lobby", lobbyPayload(room));
-
-  const heartbeat = setInterval(() => {
-    sendSse(res, "ping", { sentAt: Date.now() });
-  }, HEARTBEAT_INTERVAL_MS);
-
-  req.on("close", () => {
-    clearInterval(heartbeat);
-    removeStageClient(stageCode, res);
-  });
-}
+const {
+  handleStageEvents,
+  removeStageClient
+} = createStageEventsRuntime({
+  getExistingRoom,
+  getRoom,
+  heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
+  lobbyPayload,
+  sendJson,
+  sendSse
+});
 
 async function handleJoin(req, res) {
   let payload;
