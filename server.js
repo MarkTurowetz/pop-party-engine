@@ -7,6 +7,7 @@ const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
 const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime");
 const { createDecisionRuntime } = require("./server/decision-runtime");
 const { createFlowActionPublicRuntime } = require("./server/flow-action-public-runtime");
+const { createFlowNavigationRuntime } = require("./server/flow-navigation-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
 const { createInputStateRuntime } = require("./server/input-state-runtime");
@@ -69,6 +70,12 @@ const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
 const START_GO_HOLD_MS = 700;
 const rooms = new Map();
+const localDraftStore = {
+  flow: null,
+  constants: null,
+  layouts: null,
+  controllerLayouts: null
+};
 
 const APP_VERSION = readAppVersion(ROOT);
 
@@ -130,6 +137,22 @@ const {
   hasAppliedActionEffect,
   markAppliedActionEffect
 } = createActionEffectStateRuntime();
+
+const {
+  advanceRoomAction,
+  entryActionIndexForPhase,
+  flowActionIndexById,
+  getFlowState,
+  getStateActions,
+  runtimeGameFlow
+} = createFlowNavigationRuntime({
+  flowActionTarget,
+  isNoActionTarget,
+  isReturnActionTarget,
+  localDraftStore,
+  normalizeFlowId,
+  readGameFlow
+});
 
 const githubStorage = createGithubStorageRuntime({
   baseBranch: GAME_FLOW_GITHUB_BASE_BRANCH,
@@ -1154,13 +1177,6 @@ const controllerLayoutsStore = {
   error: ""
 };
 
-const localDraftStore = {
-  flow: null,
-  constants: null,
-  layouts: null,
-  controllerLayouts: null
-};
-
 const {
   handleLocalDraft,
   sendLocalDraft
@@ -1556,47 +1572,6 @@ function readDefaultGameFlow() {
   return normalizeGameFlow(readDefaultGameFlowSource());
 }
 
-function getFlowState(flow, stateId) {
-  return flow.states.find((state) => state.id === stateId) || null;
-}
-
-function runtimeGameFlow(room) {
-  return room?.runtimeFlowOverride || localDraftStore.flow || readGameFlow();
-}
-
-function getStateActions(stateId, room = null) {
-  return getFlowState(runtimeGameFlow(room), stateId)?.actions || [];
-}
-
-function flowActionIndexById(room, actionId) {
-  const target = String(actionId || "");
-  if (!target) return -1;
-  const normalizedTarget = normalizeFlowId(target, "");
-  const actions = getStateActions(room.phase, room);
-  return actions.findIndex((action) => {
-    if (action.id === target) return true;
-    if (normalizeFlowId(action.id, "") === normalizedTarget) return true;
-    if (normalizeFlowId(action.name, "") === normalizedTarget) return true;
-    return false;
-  });
-}
-
-function entryActionIndexForPhase(room, phase) {
-  const state = runtimeGameFlow(room).states.find((item) => item.id === phase);
-  const actions = getStateActions(phase, room);
-  const target = flowActionTarget(state?.entryTargetActionId);
-  if (isReturnActionTarget(target)) return -2;
-  if (isNoActionTarget(target)) return -1;
-  if (target) {
-    const previousPhase = room.phase;
-    room.phase = phase;
-    const targetIndex = flowActionIndexById(room, target);
-    room.phase = previousPhase;
-    if (targetIndex >= 0) return targetIndex;
-  }
-  return actions.length ? 0 : -1;
-}
-
 function currentRoomAction(room) {
   if (room.presentedAction) return room.presentedAction;
   const actions = getStateActions(room.phase, room);
@@ -1611,12 +1586,6 @@ function currentRoomAction(room) {
     if (room.actionIndex >= actions.length) return null;
   }
   return publicFlowAction(actions[room.actionIndex], room.actionIndex);
-}
-
-function advanceRoomAction(room) {
-  const actions = getStateActions(room.phase, room);
-  if (actions.length === 0) return;
-  room.actionIndex = Math.min(room.actionIndex + 1, actions.length);
 }
 
 function advanceRoomAfterAction(room, action) {
