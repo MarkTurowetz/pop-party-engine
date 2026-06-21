@@ -415,6 +415,125 @@
           "fontColor": "#17131f"
         }
       ]
+    },
+    {
+      "id": "writing-moment",
+      "name": "Writing Moment",
+      "hiddenGlobals": [],
+      "elements": [
+        {
+          "id": "controllertextprompt",
+          "name": "Text Input Prompt",
+          "selector": "#controllerTextPrompt",
+          "kind": "text",
+          "x": 195,
+          "y": 170,
+          "width": 330,
+          "height": 92,
+          "scale": 1,
+          "defaultText": "Write your answer",
+          "fontSize": 32,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "controllerinvalidbanner",
+          "name": "Invalid Submission Banner",
+          "selector": "#controllerInvalidBanner",
+          "kind": "art",
+          "x": 195,
+          "y": 245,
+          "width": 330,
+          "height": 64,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "controllertextinput",
+          "name": "Text Input Field",
+          "selector": "#controllerTextInput",
+          "kind": "art",
+          "x": 195,
+          "y": 360,
+          "width": 330,
+          "height": 128,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "controllertextsubmitbutton",
+          "name": "Text Submit Button",
+          "selector": "#controllerTextSubmitButton",
+          "kind": "art",
+          "x": 195,
+          "y": 475,
+          "width": 300,
+          "height": 70,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        },
+        {
+          "id": "controllertextdone",
+          "name": "Text Done Message",
+          "selector": "#controllerTextDone",
+          "kind": "text",
+          "x": 195,
+          "y": 410,
+          "width": 330,
+          "height": 150,
+          "scale": 1,
+          "defaultText": "You wrote:",
+          "fontSize": 34,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        }
+      ]
+    },
+    {
+      "id": "voting-moment",
+      "name": "Voting Moment",
+      "hiddenGlobals": [],
+      "elements": [
+        {
+          "id": "voting-moment-controller-text",
+          "name": "Voting Moment Text Field",
+          "selector": "#voting-moment-controller-text",
+          "kind": "text",
+          "x": 195,
+          "y": 250,
+          "width": 330,
+          "height": 140,
+          "scale": 1,
+          "defaultText": "Voting Moment",
+          "fontSize": 42,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "controllerchoicegrid",
+          "name": "Choice Buttons",
+          "selector": "#controllerChoiceGrid",
+          "kind": "art",
+          "x": 185,
+          "y": 420.141,
+          "width": 330,
+          "height": 420,
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ]
     }
   ]
 }
