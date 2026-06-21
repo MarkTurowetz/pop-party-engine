@@ -6935,10 +6935,10 @@
       const options = typeof optionsOrMuted === "boolean" ? { muted: optionsOrMuted } : (optionsOrMuted || {});
       const from = nodePoint(fromNode);
       const to = nodePoint(toNode);
-      const curve = Math.max(80, Math.abs(to.x - from.x) * 0.45);
+      const curve = Math.max(50, Math.abs(to.y - from.y) * 0.35);
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("class", `flow-node-wire${options.muted ? " is-muted" : ""}${options.highlighted ? " is-highlighted" : ""}`);
-      path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x + curve} ${from.y}, ${to.x - curve} ${to.y}, ${to.x} ${to.y}`);
+      path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x} ${from.y + curve}, ${to.x} ${to.y - curve}, ${to.x} ${to.y}`);
       flowNodeWires.appendChild(path);
       addFlowNodeWireLabel(options.label || "", from, to);
     }
@@ -6946,10 +6946,10 @@
     function drawPreviewNodeWire(fromNode, to) {
       if (!fromNode || !to || !flowNodeWires) return;
       const from = nodePoint(fromNode);
-      const curve = Math.max(80, Math.abs(to.x - from.x) * 0.45);
+      const curve = Math.max(50, Math.abs(to.y - from.y) * 0.35);
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("class", "flow-node-wire is-preview");
-      path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x + curve} ${from.y}, ${to.x - curve} ${to.y}, ${to.x} ${to.y}`);
+      path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x} ${from.y + curve}, ${to.x} ${to.y - curve}, ${to.x} ${to.y}`);
       flowNodeWires.appendChild(path);
     }
 
