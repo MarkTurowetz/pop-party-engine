@@ -6896,28 +6896,38 @@
       };
     }
 
-    function nodePoint(node) {
+    function nodeRectPoint(node, anchor = "center") {
+      if (!node || !flowNodeGraph) return { x: 0, y: 0 };
+      const nodeRect = node.getBoundingClientRect();
+      const rootRect = flowNodeGraph.getBoundingClientRect();
+      const x = nodeRect.left - rootRect.left + nodeRect.width / 2;
+      const anchorY = anchor === "top"
+        ? nodeRect.top - rootRect.top
+        : anchor === "bottom"
+          ? nodeRect.bottom - rootRect.top
+          : nodeRect.top - rootRect.top + nodeRect.height / 2;
+      return {
+        x: x / flowNodeZoom,
+        y: anchorY / flowNodeZoom
+      };
+    }
+
+    function nodePoint(node, anchor = "center") {
       if (node?.classList?.contains("flow-node-branch") || node?.classList?.contains("flow-node-subaction")) {
-        const nodeRect = node.getBoundingClientRect();
-        const rootRect = flowNodeGraph.getBoundingClientRect();
-        return {
-          x: (nodeRect.left - rootRect.left + nodeRect.width / 2) / flowNodeZoom,
-          y: (nodeRect.top - rootRect.top + nodeRect.height / 2) / flowNodeZoom
-        };
+        if (anchor === "source") {
+          return nodeRectPoint(node.closest(".flow-node") || node, "bottom");
+        }
+        return nodeRectPoint(node, anchor === "target" ? "top" : "center");
+      }
+      if (anchor === "source") {
+        return nodeRectPoint(node, "bottom");
+      }
+      if (anchor === "target") {
+        const main = node.querySelector?.(".flow-node-main");
+        return nodeRectPoint(main || node, "top");
       }
       const main = node.querySelector?.(".flow-node-main");
-      if (main) {
-        const mainRect = main.getBoundingClientRect();
-        const rootRect = flowNodeGraph.getBoundingClientRect();
-        return {
-          x: (mainRect.left - rootRect.left + mainRect.width / 2) / flowNodeZoom,
-          y: (mainRect.top - rootRect.top + mainRect.height / 2) / flowNodeZoom
-        };
-      }
-      return {
-        x: Number(node.dataset.x || 0) + Number(node.offsetWidth || node.dataset.width || 0) / 2,
-        y: Number(node.dataset.y || 0) + Number(node.offsetHeight || node.dataset.height || 0) / 2
-      };
+      return nodeRectPoint(main || node, "center");
     }
 
     function addFlowNodeWireLabel(text, from, to) {
@@ -6933,8 +6943,8 @@
     function drawNodeWire(fromNode, toNode, optionsOrMuted = false) {
       if (!fromNode || !toNode) return;
       const options = typeof optionsOrMuted === "boolean" ? { muted: optionsOrMuted } : (optionsOrMuted || {});
-      const from = nodePoint(fromNode);
-      const to = nodePoint(toNode);
+      const from = nodePoint(fromNode, options.fromAnchor || "source");
+      const to = nodePoint(toNode, options.toAnchor || "target");
       const curve = Math.max(50, Math.abs(to.y - from.y) * 0.35);
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("class", `flow-node-wire${options.muted ? " is-muted" : ""}${options.highlighted ? " is-highlighted" : ""}`);
@@ -6945,7 +6955,7 @@
 
     function drawPreviewNodeWire(fromNode, to) {
       if (!fromNode || !to || !flowNodeWires) return;
-      const from = nodePoint(fromNode);
+      const from = nodePoint(fromNode, "source");
       const curve = Math.max(50, Math.abs(to.y - from.y) * 0.35);
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("class", "flow-node-wire is-preview");
