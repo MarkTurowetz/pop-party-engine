@@ -5353,6 +5353,14 @@
         }
         return;
       }
+      if (action.type === "revealVotingResults") {
+        if (isPrimary) {
+          completeFlowAction("callback", action.id);
+        } else {
+          applyFlowActionEffect(action.id);
+        }
+        return;
+      }
       if (action.type === "revealPlayerAnswerCorrectness") {
         if (!isPrimary) {
           applyFlowActionEffect(action.id);
