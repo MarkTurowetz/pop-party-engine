@@ -144,6 +144,26 @@
             "x": 60,
             "y": 200
           },
+          "nextTargetActionId": "crafting-game-state-action-mqn4qzpm"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4qzpm",
+          "name": "Game Action 8",
+          "type": "getRandomMultipleChoiceContent",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "variableName": "multipleChoicePrompt",
+          "nodePosition": {
+            "x": 459,
+            "y": 202
+          },
           "nextTargetActionId": "crafting-game-state-action-mqlrgs0y"
         },
         {
@@ -189,7 +209,7 @@
         {
           "id": "crafting-game-state-action-mqlrlkp0",
           "name": "Gameplay",
-          "type": "multipleChoiceInput",
+          "type": "triviaInput",
           "timing": {
             "mode": "E+",
             "seconds": 0
@@ -231,30 +251,13 @@
             "y": 730
           },
           "timerEndTargetActionId": "crafting-game-state-action-mqmxj25v",
-          "answersSubmittedTargetActionId": "crafting-game-state-action-mqmxj25v"
+          "answersSubmittedTargetActionId": "crafting-game-state-action-mqmxj25v",
+          "contentVariable": "multipleChoicePrompt",
+          "randomizeOptions": true
         },
         {
           "id": "crafting-game-state-action-mqmxj25v",
           "name": "Wait",
-          "type": "doNothing",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "text": "Presented text",
-          "textTarget": "presentation",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 414,
-            "y": 824
-          },
-          "nextTargetActionId": "crafting-game-state-action-mqm4b5um"
-        },
-        {
-          "id": "crafting-game-state-action-mqm4b5um",
-          "name": "Game Action 8",
           "type": "displayText",
           "timing": {
             "mode": "E+",
@@ -264,27 +267,12 @@
           "textTarget": "stageprompttext",
           "instant": false,
           "isShown": false,
-          "subActions": [
-            {
-              "id": "crafting-game-state-sub-action-mqmxik2n",
-              "name": "Sub-Action 1",
-              "type": "setPlayerAnswersShown",
-              "timing": {
-                "mode": "S+",
-                "seconds": 0
-              },
-              "text": "Presented text",
-              "textTarget": "presentation",
-              "instant": false,
-              "isShown": false,
-              "subActions": []
-            }
-          ],
+          "subActions": [],
           "nodePosition": {
-            "x": 474,
-            "y": 520
+            "x": 426,
+            "y": 778
           },
-          "nextTargetActionId": "crafting-game-state-action-mqlag55r"
+          "nextTargetActionId": "crafting-game-state-action-mqn4u54c"
         },
         {
           "id": "crafting-game-state-action-mqlag55r",
@@ -305,6 +293,86 @@
             "y": 740
           },
           "nextTargetActionId": "return"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4u54c",
+          "name": "Game Action 9",
+          "type": "revealPlayerAnswerCorrectness",
+          "timing": {
+            "mode": "E+",
+            "seconds": 2
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 454,
+            "y": 484
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4uouf"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4uouf",
+          "name": "Game Action 10",
+          "type": "setPlayerAnswersShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 2
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 819,
+            "y": 265
+          },
+          "playerFilter": "wrong",
+          "nextTargetActionId": "crafting-game-state-action-mqn4v75w"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4v75w",
+          "name": "Game Action 11",
+          "type": "givePendingPoints",
+          "timing": {
+            "mode": "E+",
+            "seconds": 2
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 1154,
+            "y": 270
+          },
+          "playerFilter": "correct",
+          "points": 0,
+          "nextTargetActionId": "crafting-game-state-action-mqn4xkyp"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4xkyp",
+          "name": "Game Action 12",
+          "type": "setPlayerAnswersShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "presentation",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 1180,
+            "y": 445
+          },
+          "playerFilter": "all",
+          "nextTargetActionId": "crafting-game-state-action-mqlag55r"
         }
       ],
       "nextStateTargetId": "presentation-game-state",
