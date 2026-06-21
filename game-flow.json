@@ -16,7 +16,7 @@
         "y": 514
       },
       "entryTargetActionId": "",
-      "nextStateTargetId": "intro",
+      "nextStateTargetId": "writing-moment",
       "actions": [
         {
           "id": "lobby-countdown-complete",
@@ -721,13 +721,13 @@
       "actions": [
         {
           "id": "writing-show-prompt",
-          "name": "Show Movie Prompt",
+          "name": "Display Text",
           "type": "displayText",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "textTarget": "prompt",
+          "textTarget": "writing-moment-moment-text",
           "text": "What is your favorite movie?",
           "isShown": true,
           "instant": false,
