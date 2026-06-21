@@ -15,6 +15,7 @@ const { createRoomStateRuntime } = require("./server/room-state-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
+const { createTriviaContentRuntime } = require("./server/trivia-content-runtime");
 const { createVotingRuntime } = require("./server/voting-runtime");
 const {
   acceptedArtTypes,
@@ -84,6 +85,15 @@ const {
   gameConstants,
   normalizeColor,
   randomToken
+});
+
+const {
+  clonePrompt,
+  storeRandomTriviaPrompt,
+  triviaContentForAction
+} = createTriviaContentRuntime({
+  multipleChoicePrompts,
+  normalizeFlowVariableName
 });
 
 const githubStorage = createGithubStorageRuntime({
@@ -1841,9 +1851,7 @@ function applyRoomActionEffects(room, action) {
   if (!action || hasAppliedActionEffect(room, action.id)) return;
   markAppliedActionEffect(room, action.id);
   if (action.type === "getRandomMultipleChoiceContent") {
-    const prompt = randomArrayItem(multipleChoicePrompts) || multipleChoicePrompts[0];
-    room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
-    room.flowVariables[normalizeFlowVariableName(action.variableName)] = clonePrompt(prompt);
+    storeRandomTriviaPrompt(room, action.variableName);
   }
   if (action.type === "prepareVotingCards") {
     prepareVotingCards(room);
@@ -1981,34 +1989,6 @@ function clearAnswersSubmittedAdvanceTimer(room) {
   room.answersSubmittedAdvanceTimerId = null;
 }
 
-function triviaPromptById(id) {
-  return multipleChoicePrompts.find((prompt) => prompt.id === id) || null;
-}
-
-function clonePrompt(prompt) {
-  return {
-    id: prompt.id,
-    prompt: prompt.prompt,
-    options: [...prompt.options],
-    correctAnswerIndex: prompt.correctAnswerIndex
-  };
-}
-
-function shuffledTriviaPrompt(prompt) {
-  const pairs = prompt.options.map((text, originalIndex) => ({ text, originalIndex }));
-  for (let i = pairs.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
-  }
-  return {
-    id: prompt.id,
-    prompt: prompt.prompt,
-    options: pairs.map((item) => item.text),
-    optionOriginalIndexes: pairs.map((item) => item.originalIndex),
-    correctAnswerIndex: prompt.correctAnswerIndex
-  };
-}
-
 function clearChoiceInput(room) {
   clearAnswersSubmittedAdvanceTimer(room);
   room.choiceInputActionId = "";
@@ -2120,17 +2100,6 @@ function scheduleAnswersSubmittedAdvance(room) {
     room.answersSubmittedAdvanceTimerId = null;
     emitInputFlowEvent(room, "allPlayersSubmitted");
   }, 500);
-}
-
-function triviaContentForAction(room, action) {
-  const variableName = normalizeFlowVariableName(action?.contentVariable);
-  const stored = room.flowVariables?.[variableName];
-  const prompt = stored?.id ? triviaPromptById(stored.id) || stored : multipleChoicePrompts[0];
-  const content = action?.randomizeOptions ? shuffledTriviaPrompt(prompt) : {
-    ...clonePrompt(prompt),
-    optionOriginalIndexes: prompt.options.map((_, index) => index)
-  };
-  return content;
 }
 
 function applyChoiceInputAction(room, action) {
