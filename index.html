@@ -5150,7 +5150,11 @@
       const records = Number(debug.playerAnswerRecordCount || 0);
       if (records > 0) parts.push(`answers ${records}`);
       const cards = Number(debug.votingCardCount || 0);
-      if (cards > 0 || debug.actionType === "prepareVotingCards") parts.push(`cards ${cards}`);
+      const visibleCards = Number(debug.visibleVotingCardCount || 0);
+      const preparedCards = Number(debug.lastPreparedVotingCardCount || 0);
+      if (cards > 0 || preparedCards > 0 || debug.actionType === "prepareVotingCards" || debug.actionType === "setVotingCardsShown" || debug.actionType === "voteOnAnswersInput") {
+        parts.push(`cards ${visibleCards}/${cards} prepared ${preparedCards}`);
+      }
       stageDebugAction.textContent = parts.join(" · ");
       stageDebugAction.classList.remove("hidden");
     }
@@ -5722,7 +5726,7 @@
     }
 
     function renderControllerChoiceState(lobby, me) {
-      const input = lobby.input || null;
+      const input = me.input || lobby.input || null;
       if (!input) return false;
       hideControllerViews();
       controllerChoiceState.classList.remove("hidden");
@@ -5848,7 +5852,8 @@
 
       const controllerPhase = lobby.phase || "lobby";
       controllerState.phase = controllerPhase;
-      if (lobby.input?.type || lobby.input?.options?.length) {
+      const controllerInput = me.input || lobby.input || null;
+      if (controllerInput?.type || controllerInput?.options?.length) {
         closeAvatarPicker({ commit: false });
         if (renderControllerChoiceState(lobby, me)) return;
       }

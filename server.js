@@ -2975,7 +2975,7 @@ function selectVip(room) {
   }
 }
 
-function publicPlayer(player, room) {
+function publicPlayer(player, room, currentAction = null) {
   const choiceAnswer = room.choiceInputAnswers?.get(player.id) || null;
   const textAnswer = room.textInputAnswers?.get(player.id) || null;
   const displayedAnswer = room.displayedPlayerAnswers?.get(player.id) || null;
@@ -3004,6 +3004,7 @@ function publicPlayer(player, room) {
     pendingPoints: Number(player.pendingPoints || 0),
     isVip: player.id === room.vipPlayerId,
     needsInput: player.active === true && (needsChoiceInput || needsTextInput),
+    input: choiceInputPayload(room, currentAction, player),
     answer: serializeAnswer(answer),
     displayedAnswer: serializeAnswer(displayedAnswer)
   };
@@ -3239,6 +3240,12 @@ function prepareVotingCards(room) {
   room.votingCardsShown = false;
   room.votingResultsShown = false;
   room.votingWinners = [];
+  room.lastVotingPrepare = {
+    activePlayerCount: activePlayers(room).length,
+    answerRecordCount: Object.keys(records).length,
+    cardCount: cards.length,
+    preparedAt: Date.now()
+  };
   clearVotingInput(room);
 }
 
@@ -3606,7 +3613,7 @@ function lobbyPayload(room) {
     pendingPointPopups: Array.isArray(room.pendingPointPopups) ? room.pendingPointPopups : [],
     votingCards: serializeVotingCards(room),
     votingResultsShown: room.votingResultsShown === true,
-    players: activePlayers(room).map((player) => publicPlayer(player, room))
+    players: activePlayers(room).map((player) => publicPlayer(player, room, currentAction))
   };
 }
 
@@ -3631,7 +3638,9 @@ function debugActionPayload(room, currentAction) {
     requiredInputCount: players.length,
     submittedInputCount,
     playerAnswerRecordCount: Object.keys(room.playerAnswerRecords || {}).length,
-    votingCardCount: Array.isArray(room.votingCards) ? room.votingCards.length : 0
+    votingCardCount: Array.isArray(room.votingCards) ? room.votingCards.length : 0,
+    visibleVotingCardCount: serializeVotingCards(room).length,
+    lastPreparedVotingCardCount: Number(room.lastVotingPrepare?.cardCount || 0)
   };
 }
 
