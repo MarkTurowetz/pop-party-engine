@@ -332,9 +332,9 @@
       transform: translate(-50%, -50%) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1))) !important;
     }
 
-    .version-badge {
+    .version-badge,
+    .stage-debug-action {
       position: absolute;
-      left: 18px;
       bottom: 18px;
       z-index: 5;
       padding: 5px 8px;
@@ -349,24 +349,17 @@
       text-transform: uppercase;
     }
 
+    .version-badge {
+      left: 18px;
+    }
+
     .stage-debug-action {
-      position: absolute;
-      left: 106px;
+      left: 148px;
       bottom: 18px;
-      z-index: 5;
       max-width: min(720px, calc(100% - 150px));
       padding: 5px 9px;
-      border: 3px solid var(--ink);
-      border-radius: 999px;
-      color: var(--ink);
-      background: rgba(255, 248, 237, 0.9);
-      box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.35);
-      font-size: 12px;
-      font-weight: 1000;
-      line-height: 1;
       overflow: hidden;
       text-overflow: ellipsis;
-      text-transform: uppercase;
       white-space: nowrap;
     }
 
@@ -5346,6 +5339,14 @@
         }
         return;
       }
+      if (action.type === "setVotingCardsShown") {
+        if (isPrimary) {
+          completeFlowAction("callback", action.id);
+        } else {
+          applyFlowActionEffect(action.id);
+        }
+        return;
+      }
       if (action.type === "revealPlayerAnswerCorrectness") {
         if (!isPrimary) {
           applyFlowActionEffect(action.id);
@@ -10220,6 +10221,7 @@
         { id: "stageCodeBadge", name: "Small Room Code Widget", selector: "#stageCodeBadge", kind: "art", width: 210, height: 112 },
         { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", kind: "art", width: 92, height: 92 },
         { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", kind: "art", width: 1500, height: 180 },
+        { id: "votingCardLayer", name: "Voting Cards", selector: "#votingCardLayer", kind: "art", width: 1420, height: 520 },
         { id: "stageIntroTitle", name: "Game Intro Header", selector: "#stageIntroTitle", kind: "text", width: 840, height: 160 },
         { id: "stagePresentationText", name: "Presentation Text Field", selector: "#stagePresentationText", kind: "text", width: 1180, height: 260 },
         { id: "stagePromptText", name: "Prompt Text Field", selector: "#stagePromptText", kind: "text", width: 1180, height: 150 },
