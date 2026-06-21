@@ -15,6 +15,7 @@ concepts into focused modules.
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
     and art file responses.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
+  - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
   - `save-handlers-runtime.js` owns common tool save endpoint handling and response shaping.
   - `static-files-runtime.js` owns app shell rendering and browser module file responses.
 - `shared/`

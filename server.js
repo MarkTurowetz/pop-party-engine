@@ -7,6 +7,7 @@ const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
 const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime");
 const { createDecisionRuntime } = require("./server/decision-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
+const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
@@ -1091,6 +1092,27 @@ const localDraftStore = {
 };
 
 const {
+  handleLocalDraft,
+  sendLocalDraft
+} = createLocalDraftRuntime({
+  broadcastLobby,
+  clearActionTimer,
+  clearAppliedActionEffects,
+  localDraftStore,
+  normalizeControllerLayouts,
+  normalizeGameConstants,
+  normalizeGameFlow,
+  normalizeStageLayouts,
+  readGameFlow,
+  readJson,
+  resetCraftingTimer,
+  rooms,
+  sendJson,
+  syncControllerLayoutsWithFlow,
+  syncStageLayoutsWithFlow
+});
+
+const {
   handleSaveControllerLayouts,
   handleSaveGameConstants,
   handleSaveGameFlow,
@@ -2103,92 +2125,6 @@ async function sendControllerLayouts(res) {
       path: controllerLayoutsStore.storageKind === "github" ? CONTROLLER_LAYOUTS_GITHUB_PATH : ""
     }
   });
-}
-
-function sendLocalDraft(res) {
-  sendJson(res, 200, {
-    ok: true,
-    flow: localDraftStore.flow,
-    constants: localDraftStore.constants,
-    layouts: localDraftStore.layouts,
-    controllerLayouts: localDraftStore.controllerLayouts,
-    hasFlowDraft: Boolean(localDraftStore.flow),
-    hasConstantsDraft: Boolean(localDraftStore.constants),
-    hasLayoutDraft: Boolean(localDraftStore.layouts),
-    hasControllerLayoutDraft: Boolean(localDraftStore.controllerLayouts)
-  });
-}
-
-async function handleLocalDraft(req, res) {
-  let payload;
-  try {
-    payload = await readJson(req, 256 * 1024);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  if (payload.clearFlow) localDraftStore.flow = null;
-  if (payload.clearConstants) localDraftStore.constants = null;
-  if (payload.clearLayouts) localDraftStore.layouts = null;
-  if (payload.clearControllerLayouts) localDraftStore.controllerLayouts = null;
-
-  if (payload.flow) {
-    try {
-      localDraftStore.flow = normalizeGameFlow(payload.flow);
-    } catch (error) {
-      sendJson(res, 400, { ok: false, error: `Local flow draft is invalid: ${error.message}` });
-      return;
-    }
-  }
-
-  if (payload.constants) {
-    try {
-      localDraftStore.constants = normalizeGameConstants(payload.constants);
-    } catch (error) {
-      sendJson(res, 400, { ok: false, error: `Local constants draft is invalid: ${error.message}` });
-      return;
-    }
-  }
-
-  if (payload.layouts) {
-    try {
-      localDraftStore.layouts = normalizeStageLayouts(payload.layouts);
-    } catch (error) {
-      sendJson(res, 400, { ok: false, error: `Local layout draft is invalid: ${error.message}` });
-      return;
-    }
-  }
-
-  if (payload.controllerLayouts) {
-    try {
-      localDraftStore.controllerLayouts = normalizeControllerLayouts(payload.controllerLayouts);
-    } catch (error) {
-      sendJson(res, 400, { ok: false, error: `Local controller layout draft is invalid: ${error.message}` });
-      return;
-    }
-  }
-
-  if (localDraftStore.layouts) {
-    localDraftStore.layouts = syncStageLayoutsWithFlow(localDraftStore.layouts, localDraftStore.flow || readGameFlow());
-  }
-  if (localDraftStore.controllerLayouts) {
-    localDraftStore.controllerLayouts = syncControllerLayoutsWithFlow(localDraftStore.controllerLayouts, localDraftStore.flow || readGameFlow());
-  }
-
-  for (const room of rooms.values()) {
-    if (payload.flow || payload.clearFlow) {
-      clearActionTimer(room);
-      resetCraftingTimer(room);
-      room.actionIndex = 0;
-      room.presentedAction = null;
-      room.lastDecisionTrace = null;
-      clearAppliedActionEffects(room);
-    }
-    broadcastLobby(room);
-  }
-
-  sendLocalDraft(res);
 }
 
 function getRoom(stageCode) {
