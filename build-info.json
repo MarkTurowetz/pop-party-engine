@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.135",
+  "version": "1.0.17.136",
   "baseVersion": "1.0.17",
-  "buildNumber": 135,
-  "commit": "71ef5b5",
+  "buildNumber": 136,
+  "commit": "a4528db",
   "branch": "main",
-  "generatedAt": "2026-06-21T07:23:59.487Z"
+  "generatedAt": "2026-06-21T08:03:03.940Z"
 }

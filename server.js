@@ -2909,6 +2909,7 @@ function getRoom(stageCode) {
       craftingTimerAnswersSubmittedTargetActionId: "",
       craftingTimerTimeoutId: null,
       craftingTimerEndHandled: false,
+      activeInputFlowEventKey: "",
       answersSubmittedAdvanceTimerId: null,
       lastDecisionTrace: null,
       runtimeFlowOverride: null,
@@ -3329,6 +3330,7 @@ function resetCraftingTimer(room) {
   room.craftingTimerTimerEndTargetActionId = "";
   room.craftingTimerAnswersSubmittedTargetActionId = "";
   room.craftingTimerEndHandled = false;
+  clearActiveInputFlowEvent(room);
 }
 
 function setCraftingTimerShown(room, isShown) {
@@ -3349,8 +3351,16 @@ function setCraftingTimerShown(room, isShown) {
 }
 
 function jumpToAction(room, actionId, fallbackIndex = room.actionIndex + 1) {
+  if (isReturnActionTarget(actionId)) {
+    room.presentedAction = null;
+    clearActiveInputFlowEvent(room);
+    clearAppliedActionEffects(room);
+    advanceRoomFromMomentReturn(room);
+    return;
+  }
   const targetIndex = flowActionIndexById(room, actionId);
   room.presentedAction = null;
+  clearActiveInputFlowEvent(room);
   clearAppliedActionEffects(room);
   room.actionIndex = targetIndex >= 0 ? targetIndex : fallbackIndex;
 }
@@ -3361,7 +3371,7 @@ function scheduleCraftingTimerEnd(room) {
   room.craftingTimerTimeoutId = setTimeout(() => {
     room.craftingTimerTimeoutId = null;
     if (!room.craftingTimerRunning || room.craftingTimerEndHandled) return;
-    handleCraftingTimerEvent(room, "timerEnd");
+    emitInputFlowEvent(room, "timerEnd");
   }, delayMs + 20);
 }
 
@@ -3414,20 +3424,36 @@ function allActivePlayersHaveSubmittedInput(room) {
   return false;
 }
 
-function handleCraftingTimerEvent(room, eventType) {
+function flowEventTargetForAction(action, eventType) {
+  if (!action) return "";
+  if (eventType === "timerEnd") return action.timerEndTargetActionId || "";
+  if (eventType === "allPlayersSubmitted") return action.answersSubmittedTargetActionId || "";
+  return "";
+}
+
+function clearActiveInputFlowEvent(room) {
+  room.activeInputFlowEventKey = "";
+}
+
+function emitInputFlowEvent(room, eventType) {
   clearAnswersSubmittedAdvanceTimer(room);
-  if (!room.craftingTimerRunning || room.craftingTimerEndHandled) return false;
   const fallbackIndex = room.actionIndex + 1;
   const currentAction = currentRoomAction(room);
-  const target = eventType === "answersSubmitted"
-    ? currentAction?.answersSubmittedTargetActionId || room.craftingTimerAnswersSubmittedTargetActionId
-    : currentAction?.timerEndTargetActionId || room.craftingTimerTimerEndTargetActionId;
-  if (eventType === "answersSubmitted" && isNoActionTarget(target)) return false;
-  pauseCraftingTimer(room);
+  const target = flowEventTargetForAction(currentAction, eventType);
+  const eventKey = `${currentAction?.id || "none"}:${eventType}`;
+  if (!currentAction || room.activeInputFlowEventKey === eventKey || isNoActionTarget(target)) {
+    return false;
+  }
+  room.activeInputFlowEventKey = eventKey;
+  if (room.craftingTimerRunning) {
+    pauseCraftingTimer(room);
+  } else {
+    clearCraftingTimerTimeout(room);
+  }
   if (eventType === "timerEnd") {
     room.craftingTimerRemainingMs = 0;
+    room.craftingTimerEndHandled = true;
   }
-  room.craftingTimerEndHandled = true;
   clearChoiceInput(room);
   clearTextInput(room);
   clearVotingInput(room);
@@ -3437,13 +3463,13 @@ function handleCraftingTimerEvent(room, eventType) {
 }
 
 function scheduleAnswersSubmittedAdvance(room) {
-  if (!room.craftingTimerRunning || room.craftingTimerEndHandled || room.answersSubmittedAdvanceTimerId) return;
+  if (room.answersSubmittedAdvanceTimerId) return;
   const currentAction = currentRoomAction(room);
-  const target = currentAction?.answersSubmittedTargetActionId || room.craftingTimerAnswersSubmittedTargetActionId;
+  const target = flowEventTargetForAction(currentAction, "allPlayersSubmitted");
   if (isNoActionTarget(target)) return;
   room.answersSubmittedAdvanceTimerId = setTimeout(() => {
     room.answersSubmittedAdvanceTimerId = null;
-    handleCraftingTimerEvent(room, "answersSubmitted");
+    emitInputFlowEvent(room, "allPlayersSubmitted");
   }, 500);
 }
 
@@ -4114,7 +4140,7 @@ async function handleControllerChoice(req, res) {
     card.voterIds.push(playerId);
     card.voteCount = card.voterIds.length;
     broadcastLobby(room);
-    if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
+    if (allActivePlayersHaveSubmittedInput(room)) {
       scheduleAnswersSubmittedAdvance(room);
     }
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -4166,7 +4192,7 @@ async function handleControllerChoice(req, res) {
   updatePlayerAnswerGroups(room);
 
   broadcastLobby(room);
-  if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
+  if (allActivePlayersHaveSubmittedInput(room)) {
     scheduleAnswersSubmittedAdvance(room);
   }
   sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -4236,7 +4262,7 @@ async function handleControllerTextSubmit(req, res) {
   };
   updatePlayerAnswerGroups(room);
   broadcastLobby(room);
-  if (room.craftingTimerRunning && allActivePlayersHaveSubmittedInput(room)) {
+  if (allActivePlayersHaveSubmittedInput(room)) {
     scheduleAnswersSubmittedAdvance(room);
   }
   sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
