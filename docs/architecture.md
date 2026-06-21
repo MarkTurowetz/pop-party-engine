@@ -19,6 +19,7 @@ concepts into focused modules.
   - `controller-layout-state-runtime.js` owns default controller layout state creation for flow states.
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
     and art file responses.
+  - `decision-action-normalization-runtime.js` owns decision branch/operator/value normalization.
   - `flow-action-public-runtime.js` owns public flow action serialization and room text interpolation.
   - `flow-navigation-runtime.js` owns runtime flow lookup, action index lookup, and entry action selection.
   - `flow-state-kind-runtime.js` owns flow-state kind predicates and action-type scanning.
