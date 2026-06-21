@@ -374,7 +374,7 @@
           "type": "showPoints",
           "timing": {
             "mode": "E+",
-            "seconds": 1
+            "seconds": 0
           },
           "text": "Presented text",
           "textTarget": "presentation",
@@ -395,7 +395,7 @@
           "type": "setPlayerAnswersShown",
           "timing": {
             "mode": "E+",
-            "seconds": 0
+            "seconds": 1
           },
           "text": "Presented text",
           "textTarget": "presentation",
