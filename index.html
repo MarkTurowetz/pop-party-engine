@@ -2141,6 +2141,7 @@
       pointer-events: none;
       overflow: visible;
       z-index: 1;
+      transform-origin: 0 0;
     }
 
     .flow-node-minimap {
@@ -6607,13 +6608,15 @@
       const bounds = flowGraphNodeBounds();
       const width = Math.max(1600, bounds.maxX);
       const height = Math.max(920, bounds.maxY);
-      flowNodeGraph.style.width = `${width}px`;
-      flowNodeGraph.style.minHeight = `${height}px`;
-      flowNodeGraph.style.transform = `scale(${flowNodeZoom})`;
+      flowNodeGraph.style.width = `${width * flowNodeZoom}px`;
+      flowNodeGraph.style.minHeight = `${height * flowNodeZoom}px`;
+      flowNodeGraph.style.transform = "";
       flowNodeLayer.style.width = `${width}px`;
       flowNodeLayer.style.minHeight = `${height}px`;
+      flowNodeLayer.style.transform = `scale(${flowNodeZoom})`;
       flowNodeWires.style.width = `${width}px`;
       flowNodeWires.style.height = `${height}px`;
+      flowNodeWires.style.transform = `scale(${flowNodeZoom})`;
       flowNodeWires.setAttribute("width", String(width));
       flowNodeWires.setAttribute("height", String(height));
       renderFlowNodeMinimap();
@@ -6633,8 +6636,10 @@
       flowNodeZoom = next;
       setLocalValue("partyTemplate.flowNodeZoom", String(flowNodeZoom));
       applyFlowNodeZoom();
-      flowNodeStage.scrollLeft = Math.max(0, worldX * flowNodeZoom - anchorX);
-      flowNodeStage.scrollTop = Math.max(0, worldY * flowNodeZoom - anchorY);
+      const maxLeft = flowNodeGraph ? Math.max(0, flowNodeGraph.offsetWidth - flowNodeStage.clientWidth) : 0;
+      const maxTop = flowNodeGraph ? Math.max(0, flowNodeGraph.offsetHeight - flowNodeStage.clientHeight) : 0;
+      flowNodeStage.scrollLeft = Math.max(0, Math.min(maxLeft, worldX * flowNodeZoom - anchorX));
+      flowNodeStage.scrollTop = Math.max(0, Math.min(maxTop, worldY * flowNodeZoom - anchorY));
       scheduleFlowNodeWireRedraw();
     }
 
@@ -6664,17 +6669,25 @@
       }
       const viewLeft = flowNodeStage.scrollLeft / flowNodeZoom;
       const viewTop = flowNodeStage.scrollTop / flowNodeZoom;
-      flowNodeMinimapViewport.style.left = `${(viewLeft - bounds.minX) * scale}px`;
-      flowNodeMinimapViewport.style.top = `${(viewTop - bounds.minY) * scale}px`;
-      flowNodeMinimapViewport.style.width = `${Math.max(8, (flowNodeStage.clientWidth / flowNodeZoom) * scale)}px`;
-      flowNodeMinimapViewport.style.height = `${Math.max(8, (flowNodeStage.clientHeight / flowNodeZoom) * scale)}px`;
+      const rawViewWidth = (flowNodeStage.clientWidth / flowNodeZoom) * scale;
+      const rawViewHeight = (flowNodeStage.clientHeight / flowNodeZoom) * scale;
+      const viewportWidth = Math.min(width, Math.max(8, rawViewWidth));
+      const viewportHeight = Math.min(height, Math.max(8, rawViewHeight));
+      const viewportLeft = Math.max(0, Math.min(width - viewportWidth, (viewLeft - bounds.minX) * scale));
+      const viewportTop = Math.max(0, Math.min(height - viewportHeight, (viewTop - bounds.minY) * scale));
+      flowNodeMinimapViewport.style.left = `${viewportLeft}px`;
+      flowNodeMinimapViewport.style.top = `${viewportTop}px`;
+      flowNodeMinimapViewport.style.width = `${viewportWidth}px`;
+      flowNodeMinimapViewport.style.height = `${viewportHeight}px`;
       positionFlowNodeMinimap();
     }
 
     function centerFlowNodeViewportOnGraphPoint(graphX, graphY) {
-      if (!flowNodeStage) return;
-      flowNodeStage.scrollLeft = Math.max(0, graphX * flowNodeZoom - flowNodeStage.clientWidth / 2);
-      flowNodeStage.scrollTop = Math.max(0, graphY * flowNodeZoom - flowNodeStage.clientHeight / 2);
+      if (!flowNodeStage || !flowNodeGraph) return;
+      const maxLeft = Math.max(0, flowNodeGraph.offsetWidth - flowNodeStage.clientWidth);
+      const maxTop = Math.max(0, flowNodeGraph.offsetHeight - flowNodeStage.clientHeight);
+      flowNodeStage.scrollLeft = Math.max(0, Math.min(maxLeft, graphX * flowNodeZoom - flowNodeStage.clientWidth / 2));
+      flowNodeStage.scrollTop = Math.max(0, Math.min(maxTop, graphY * flowNodeZoom - flowNodeStage.clientHeight / 2));
       renderFlowNodeMinimap();
     }
 
@@ -6682,9 +6695,11 @@
       const rect = flowNodeMinimap.getBoundingClientRect();
       const bounds = flowGraphNodeBounds();
       const scale = Math.min(rect.width / Math.max(1, bounds.width), rect.height / Math.max(1, bounds.height));
+      const localX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+      const localY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
       return {
-        x: bounds.minX + (event.clientX - rect.left) / scale,
-        y: bounds.minY + (event.clientY - rect.top) / scale
+        x: bounds.minX + localX / scale,
+        y: bounds.minY + localY / scale
       };
     }
 
