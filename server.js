@@ -1,5 +1,4 @@
 const http = require("http");
-const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { readAppVersion } = require("./server/app-version");
@@ -9,6 +8,7 @@ const { createDecisionRuntime } = require("./server/decision-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
 const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
+const { backupJsonFile, mirrorJsonFile, readJsonFile, writeJsonFile } = require("./server/local-json-store");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
@@ -991,10 +991,6 @@ function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function readJsonFile(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
-}
-
 function readDefaultGameFlowSource() {
   try {
     return readJsonFile(DEFAULT_GAME_FLOW_FILE);
@@ -1205,7 +1201,7 @@ async function loadGameConstantsSource({ refresh = false } = {}) {
 
 async function writeGameConstants(constants) {
   const normalized = normalizeGameConstants(constants);
-  backupGameConstantsSource();
+  backupJsonFile(GAME_CONSTANTS_FILE, GAME_CONSTANTS_BACKUP_DIR, "game-constants");
   if (gameConstantsStore.storageKind === "github") {
     if (!GAME_FLOW_GITHUB_TOKEN) {
       throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -1215,10 +1211,10 @@ async function writeGameConstants(constants) {
     gameConstantsStore.remoteSha = saved.sha || "";
     gameConstantsStore.loadedAt = Date.now();
     gameConstantsStore.error = "";
-    mirrorGameConstantsSource(gameConstantsStore.source);
+    mirrorJsonFile(GAME_CONSTANTS_FILE, gameConstantsStore.source);
     return readGameConstantsSource();
   }
-  writeLocalGameConstantsSource(normalized);
+  writeJsonFile(GAME_CONSTANTS_FILE, normalized);
   gameConstantsStore.source = normalized;
   gameConstantsStore.loadedAt = Date.now();
   return readGameConstantsSource();
@@ -1260,7 +1256,7 @@ async function loadStageLayoutsSource({ refresh = false } = {}) {
 async function writeStageLayouts(layouts) {
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
   const normalized = syncStageLayoutsWithFlow(layouts, flow);
-  backupStageLayoutsSource();
+  backupJsonFile(STAGE_LAYOUTS_FILE, STAGE_LAYOUTS_BACKUP_DIR, "stage-layouts");
   if (stageLayoutsStore.storageKind === "github") {
     if (!GAME_FLOW_GITHUB_TOKEN) {
       throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -1270,10 +1266,10 @@ async function writeStageLayouts(layouts) {
     stageLayoutsStore.remoteSha = saved.sha || "";
     stageLayoutsStore.loadedAt = Date.now();
     stageLayoutsStore.error = "";
-    mirrorStageLayoutsSource(stageLayoutsStore.source);
+    mirrorJsonFile(STAGE_LAYOUTS_FILE, stageLayoutsStore.source);
     return readStageLayoutsSource();
   }
-  writeLocalStageLayoutsSource(normalized);
+  writeJsonFile(STAGE_LAYOUTS_FILE, normalized);
   stageLayoutsStore.source = normalized;
   stageLayoutsStore.loadedAt = Date.now();
   return readStageLayoutsSource();
@@ -1315,7 +1311,7 @@ async function loadControllerLayoutsSource({ refresh = false } = {}) {
 async function writeControllerLayouts(layouts) {
   const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
   const normalized = syncControllerLayoutsWithFlow(layouts, flow);
-  backupControllerLayoutsSource();
+  backupJsonFile(CONTROLLER_LAYOUTS_FILE, CONTROLLER_LAYOUTS_BACKUP_DIR, "controller-layouts");
   if (controllerLayoutsStore.storageKind === "github") {
     if (!GAME_FLOW_GITHUB_TOKEN) {
       throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -1325,10 +1321,10 @@ async function writeControllerLayouts(layouts) {
     controllerLayoutsStore.remoteSha = saved.sha || "";
     controllerLayoutsStore.loadedAt = Date.now();
     controllerLayoutsStore.error = "";
-    mirrorControllerLayoutsSource(controllerLayoutsStore.source);
+    mirrorJsonFile(CONTROLLER_LAYOUTS_FILE, controllerLayoutsStore.source);
     return readControllerLayoutsSource();
   }
-  writeLocalControllerLayoutsSource(normalized);
+  writeJsonFile(CONTROLLER_LAYOUTS_FILE, normalized);
   controllerLayoutsStore.source = normalized;
   controllerLayoutsStore.loadedAt = Date.now();
   return readControllerLayoutsSource();
@@ -1371,7 +1367,7 @@ async function writeGameFlow(flow) {
   const existingFlow = await loadGameFlowSource({ refresh: true });
   const merged = mergeFlowWithExistingSubActions(flow, existingFlow);
   normalizeGameFlow(merged);
-  backupGameFlowSource();
+  backupJsonFile(GAME_FLOW_FILE, GAME_FLOW_BACKUP_DIR, "game-flow");
   if (gameFlowStore.storageKind === "github") {
     if (!GAME_FLOW_GITHUB_TOKEN) {
       throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -1381,89 +1377,13 @@ async function writeGameFlow(flow) {
     gameFlowStore.remoteSha = saved.sha || "";
     gameFlowStore.loadedAt = Date.now();
     gameFlowStore.error = "";
-    mirrorGameFlowSource(saved.flow);
+    mirrorJsonFile(GAME_FLOW_FILE, saved.flow);
     return saved.flow;
   }
-  writeLocalGameFlowSource(merged);
+  writeJsonFile(GAME_FLOW_FILE, merged);
   gameFlowStore.source = merged;
   gameFlowStore.loadedAt = Date.now();
   return merged;
-}
-
-function backupGameFlowSource() {
-  if (!fs.existsSync(GAME_FLOW_FILE)) return;
-  fs.mkdirSync(GAME_FLOW_BACKUP_DIR, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  fs.copyFileSync(GAME_FLOW_FILE, path.join(GAME_FLOW_BACKUP_DIR, `game-flow-${stamp}.json`));
-}
-
-function backupGameConstantsSource() {
-  if (!fs.existsSync(GAME_CONSTANTS_FILE)) return;
-  fs.mkdirSync(GAME_CONSTANTS_BACKUP_DIR, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  fs.copyFileSync(GAME_CONSTANTS_FILE, path.join(GAME_CONSTANTS_BACKUP_DIR, `game-constants-${stamp}.json`));
-}
-
-function backupStageLayoutsSource() {
-  if (!fs.existsSync(STAGE_LAYOUTS_FILE)) return;
-  fs.mkdirSync(STAGE_LAYOUTS_BACKUP_DIR, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  fs.copyFileSync(STAGE_LAYOUTS_FILE, path.join(STAGE_LAYOUTS_BACKUP_DIR, `stage-layouts-${stamp}.json`));
-}
-
-function backupControllerLayoutsSource() {
-  if (!fs.existsSync(CONTROLLER_LAYOUTS_FILE)) return;
-  fs.mkdirSync(CONTROLLER_LAYOUTS_BACKUP_DIR, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  fs.copyFileSync(CONTROLLER_LAYOUTS_FILE, path.join(CONTROLLER_LAYOUTS_BACKUP_DIR, `controller-layouts-${stamp}.json`));
-}
-
-function writeLocalGameFlowSource(flow) {
-  fs.writeFileSync(GAME_FLOW_FILE, `${JSON.stringify(flow, null, 2)}\n`);
-}
-
-function writeLocalGameConstantsSource(constants) {
-  fs.writeFileSync(GAME_CONSTANTS_FILE, `${JSON.stringify(constants, null, 2)}\n`);
-}
-
-function writeLocalStageLayoutsSource(layouts) {
-  fs.writeFileSync(STAGE_LAYOUTS_FILE, `${JSON.stringify(layouts, null, 2)}\n`);
-}
-
-function writeLocalControllerLayoutsSource(layouts) {
-  fs.writeFileSync(CONTROLLER_LAYOUTS_FILE, `${JSON.stringify(layouts, null, 2)}\n`);
-}
-
-function mirrorGameFlowSource(flow) {
-  try {
-    writeLocalGameFlowSource(flow);
-  } catch (error) {
-    // The durable provider is authoritative; local mirrors are best-effort.
-  }
-}
-
-function mirrorGameConstantsSource(constants) {
-  try {
-    writeLocalGameConstantsSource(constants);
-  } catch (error) {
-    // Durable storage is authoritative; local mirrors are best-effort.
-  }
-}
-
-function mirrorStageLayoutsSource(layouts) {
-  try {
-    writeLocalStageLayoutsSource(layouts);
-  } catch (error) {
-    // Durable storage is authoritative; local mirrors are best-effort.
-  }
-}
-
-function mirrorControllerLayoutsSource(layouts) {
-  try {
-    writeLocalControllerLayoutsSource(layouts);
-  } catch (error) {
-    // Durable storage is authoritative; local mirrors are best-effort.
-  }
 }
 
 async function readGithubGameFlowSource() {
