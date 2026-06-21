@@ -42,6 +42,7 @@ concepts into focused modules.
   - `room-action-effects-runtime.js` owns one-time room mutations caused by active flow actions.
   - `room-state-runtime.js` owns default room construction and room lookup helpers.
   - `save-handlers-runtime.js` owns common tool save endpoint handling and response shaping.
+  - `stage-action-handlers-runtime.js` owns stage action completion/effect callback endpoints.
   - `stage-events-runtime.js` owns stage SSE connection setup, heartbeat, and cleanup.
   - `stage-layout-normalization-runtime.js` owns stage layout collection normalization and migration.
   - `stage-layout-state-runtime.js` owns default stage layout state creation for flow states.

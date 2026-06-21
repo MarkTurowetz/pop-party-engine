@@ -38,6 +38,7 @@ const { createPlayerStateRuntime } = require("./server/player-state-runtime");
 const { createRoomActionEffectsRuntime } = require("./server/room-action-effects-runtime");
 const { createRoomStateRuntime } = require("./server/room-state-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
+const { createStageActionHandlersRuntime } = require("./server/stage-action-handlers-runtime");
 const { createStageEventsRuntime } = require("./server/stage-events-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createStartHandlersRuntime } = require("./server/start-handlers-runtime");
@@ -1166,90 +1167,22 @@ const {
   sendJson
 });
 
-async function handleAdvancePresentation(req, res) {
-  let payload;
-  try {
-    payload = await readJson(req);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  const stageCode = normalizeStageCode(payload.stageCode);
-  const room = getExistingRoom(stageCode);
-  if (!room) {
-    sendJson(res, 404, { ok: false, error: "Room not found" });
-    return;
-  }
-
-  if (room.presentedAction?.type === "present") {
-    room.presentedAction = null;
-    broadcastLobby(room);
-    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
-    return;
-  }
-
-  const currentAction = currentRoomAction(room);
-  if (!currentAction || currentAction.type !== "present") {
-    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
-    return;
-  }
-
-  completeCurrentAction(room, payload.actionId, payload.source || "callback");
-  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
-}
-
-async function handleCompleteAction(req, res) {
-  let payload;
-  try {
-    payload = await readJson(req);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  const stageCode = normalizeStageCode(payload.stageCode);
-  const room = getExistingRoom(stageCode);
-  if (!room) {
-    sendJson(res, 404, { ok: false, error: "Room not found" });
-    return;
-  }
-
-  const currentAction = currentRoomAction(room);
-  if (currentAction?.type === "transition" || currentAction?.type === "transitionState" || currentAction?.type === "displayText" || currentAction?.type === "present" || currentAction?.type === "setPlayersShown" || currentAction?.type === "setPlayerAnswersShown" || currentAction?.type === "revealPlayerAnswerCorrectness" || currentAction?.type === "showPoints" || currentAction?.type === "givePendingPoints" || currentAction?.type === "setTimerShown" || currentAction?.type === "startCraftingTimer" || currentAction?.type === "getRandomMultipleChoiceContent" || currentAction?.type === "prepareVotingCards" || currentAction?.type === "setVotingCardsShown" || currentAction?.type === "voteOnAnswersInput" || currentAction?.type === "revealVotingResults" || currentAction?.type === "multipleChoiceInput" || currentAction?.type === "triviaInput" || currentAction?.type === "textSubmissionInput" || currentAction?.type === "doNothing" || currentAction?.type === "playAudio") {
-    completeCurrentAction(room, payload.actionId, payload.source || "callback");
-  }
-  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
-}
-
-async function handleActionEffect(req, res) {
-  let payload;
-  try {
-    payload = await readJson(req);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  const stageCode = normalizeStageCode(payload.stageCode);
-  const room = getExistingRoom(stageCode);
-  if (!room) {
-    sendJson(res, 404, { ok: false, error: "Room not found" });
-    return;
-  }
-
-  const actionId = String(payload.actionId || "");
-  const currentAction = resolveRoomActionText(currentRoomAction(room), room);
-  const subAction = (currentAction?.subActions || []).find((action) => action.id === actionId);
-  if (!subAction) {
-    sendJson(res, 409, { ok: false, error: "Sub-action is not active" });
-    return;
-  }
-
-  applyRoomActionEffects(room, subAction);
-  broadcastLobby(room);
-  sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
-}
+const {
+  handleActionEffect,
+  handleAdvancePresentation,
+  handleCompleteAction
+} = createStageActionHandlersRuntime({
+  applyRoomActionEffects,
+  broadcastLobby,
+  completeCurrentAction,
+  currentRoomAction,
+  getExistingRoom,
+  lobbyPayload,
+  normalizeStageCode,
+  readJson,
+  resolveRoomActionText,
+  sendJson
+});
 
 async function handleControllerChoice(req, res) {
   let payload;
