@@ -11,6 +11,7 @@ concepts into focused modules.
   - This is still the largest file and should keep shrinking over time.
 - `server/`
   - Server-only helpers that do not need browser access.
+  - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules.
   - `action-effect-state-runtime.js` owns room action-effect id tracking.
   - `app-version.js` owns build/version lookup.
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
