@@ -3892,8 +3892,8 @@
     let flowNodeDepth = "moments";
     let flowNodeZoom = Math.min(1, Math.max(0.1, Number(getLocalValue("partyTemplate.flowNodeZoom") || 1) || 1));
     let pendingNodeConnection = null;
-    const collapsedFlowStates = new Set();
-    const collapsedFlowActions = new Set();
+    const collapsedFlowStates = new Set(getLocalJsonArray("partyTemplate.collapsedFlowStates"));
+    const collapsedFlowActions = new Set(getLocalJsonArray("partyTemplate.collapsedFlowActions"));
     let flowUndoStack = [];
     let flowRedoStack = [];
     let artToolInitialized = false;
@@ -4093,6 +4093,15 @@
 
     function setLocalValue(key, value) {
       localStorage.setItem(key, value);
+    }
+
+    function getLocalJsonArray(key) {
+      try {
+        const value = JSON.parse(getLocalValue(key) || "[]");
+        return Array.isArray(value) ? value : [];
+      } catch (error) {
+        return [];
+      }
     }
 
     function removeSessionValue(key) {
@@ -5967,6 +5976,11 @@
       return button;
     }
 
+    function persistFlowCollapseState() {
+      setLocalValue("partyTemplate.collapsedFlowStates", JSON.stringify([...collapsedFlowStates]));
+      setLocalValue("partyTemplate.collapsedFlowActions", JSON.stringify([...collapsedFlowActions]));
+    }
+
     function createArtGroupTitle(label, collapseId, collapsedSet) {
       const title = document.createElement("div");
       title.className = "art-group-title";
@@ -6522,6 +6536,13 @@
       return `Hit ${branch.value || "Value"}`;
     }
 
+    function decisionBranchWireLabel(branch, index = 0) {
+      if (!branch) return "";
+      if (branch.type === "code") return branch.code || decisionBranchName(branch, index);
+      if (branch.type === "hit") return String(branch.value || decisionBranchName(branch, index));
+      return decisionBranchName(branch, index);
+    }
+
     function decisionSummary(action) {
       return ensureDecisionBranches(action).map((branch, index) => {
         const target = flowTargetActionName(branch.targetActionId);
@@ -6886,9 +6907,11 @@
       }
       const main = node.querySelector?.(".flow-node-main");
       if (main) {
+        const mainRect = main.getBoundingClientRect();
+        const rootRect = flowNodeGraph.getBoundingClientRect();
         return {
-          x: Number(node.dataset.x || 0) + main.offsetLeft + main.offsetWidth / 2,
-          y: Number(node.dataset.y || 0) + main.offsetTop + main.offsetHeight / 2
+          x: (mainRect.left - rootRect.left + mainRect.width / 2) / flowNodeZoom,
+          y: (mainRect.top - rootRect.top + mainRect.height / 2) / flowNodeZoom
         };
       }
       return {
@@ -7007,7 +7030,7 @@
             ? flowNodeLayer.querySelector(`.flow-node-branch[data-branch-id="${cssEscape(branch.id)}"]`) || fromNode
             : fromNode;
           const highlighted = selectedNodeWireMatches(action, targetId, branch?.id || "");
-          const label = branch ? decisionBranchName(branch, ensureDecisionBranches(action).findIndex((item) => item.id === branch.id)) : "";
+          const label = branch ? decisionBranchWireLabel(branch, ensureDecisionBranches(action).findIndex((item) => item.id === branch.id)) : "";
           if (targetId === "return") {
             drawNodeWire(sourceNode, returnNode, { highlighted, label });
             continue;
@@ -8492,7 +8515,10 @@
           <span class="flow-row-copy"><strong></strong><span class="flow-row-summary"></span></span>
           <span class="flow-pill">${state.actions.length} actions</span>
         `;
-        stateButton.querySelector(".disclosure-slot").appendChild(createDisclosureButton(state.id, collapsedFlowStates, renderFlowList));
+        stateButton.querySelector(".disclosure-slot").appendChild(createDisclosureButton(state.id, collapsedFlowStates, () => {
+          persistFlowCollapseState();
+          renderFlowList();
+        }));
         stateButton.querySelector("strong").textContent = state.name;
         stateButton.querySelector(".flow-row-summary").textContent = state.id;
         stateButton.addEventListener("click", (event) => {
@@ -8545,7 +8571,10 @@
       `;
       const disclosureSlot = actionButton.querySelector(".disclosure-slot");
       if (disclosureSlot) {
-        disclosureSlot.appendChild(createDisclosureButton(action.id, collapsedFlowActions, renderFlowList));
+        disclosureSlot.appendChild(createDisclosureButton(action.id, collapsedFlowActions, () => {
+          persistFlowCollapseState();
+          renderFlowList();
+        }));
       }
       actionButton.querySelector("strong").textContent = isSubAction ? `Sub: ${action.name}` : action.name;
       actionButton.querySelector(".flow-row-summary").textContent = actionSummary(action, isSubAction);
