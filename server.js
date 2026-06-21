@@ -8,6 +8,7 @@ const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime"
 const { createDecisionRuntime } = require("./server/decision-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
+const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStaticFilesRuntime } = require("./server/static-files-runtime");
 const { createVotingRuntime } = require("./server/voting-runtime");
 const {
@@ -1089,6 +1090,32 @@ const localDraftStore = {
   controllerLayouts: null
 };
 
+const {
+  handleSaveControllerLayouts,
+  handleSaveGameConstants,
+  handleSaveGameFlow,
+  handleSaveStageLayouts
+} = createSaveHandlersRuntime({
+  broadcastLobby,
+  clearActionTimer,
+  clearAppliedActionEffects,
+  controllerLayoutsStore,
+  gameConstantsStore,
+  gameFlowStore,
+  hasGithubToken: () => Boolean(GAME_FLOW_GITHUB_TOKEN),
+  localDraftStore,
+  normalizeGameFlow,
+  readJson,
+  resetCraftingTimer,
+  rooms,
+  sendJson,
+  stageLayoutsStore,
+  writeControllerLayouts,
+  writeGameConstants,
+  writeGameFlow,
+  writeStageLayouts
+});
+
 function readGameFlowSource() {
   return cloneJson(gameFlowStore.source || readDefaultGameFlowSource());
 }
@@ -2162,131 +2189,6 @@ async function handleLocalDraft(req, res) {
   }
 
   sendLocalDraft(res);
-}
-
-async function handleSaveGameFlow(req, res) {
-  let payload;
-  try {
-    payload = await readJson(req, 128 * 1024);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  let flow;
-  try {
-    flow = await writeGameFlow(payload.flow || payload);
-    localDraftStore.flow = null;
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: `Game flow could not be saved: ${error.message}` });
-    return;
-  }
-  for (const room of rooms.values()) {
-    clearActionTimer(room);
-    resetCraftingTimer(room);
-    room.actionIndex = 0;
-    room.presentedAction = null;
-    room.lastDecisionTrace = null;
-    clearAppliedActionEffects(room);
-    broadcastLobby(room);
-  }
-  sendJson(res, 200, {
-    ok: true,
-    flow,
-    runtimeFlow: normalizeGameFlow(flow),
-    storage: {
-      kind: gameFlowStore.storageKind,
-      durable: gameFlowStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
-      error: gameFlowStore.error || ""
-    }
-  });
-}
-
-async function handleSaveGameConstants(req, res) {
-  let payload;
-  try {
-    payload = await readJson(req, 32 * 1024);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  let constants;
-  try {
-    constants = await writeGameConstants(payload.constants || payload);
-    localDraftStore.constants = null;
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: `Game constants could not be saved: ${error.message}` });
-    return;
-  }
-  for (const room of rooms.values()) {
-    broadcastLobby(room);
-  }
-  sendJson(res, 200, {
-    ok: true,
-    constants,
-    storage: {
-      kind: gameConstantsStore.storageKind,
-      durable: gameConstantsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
-      error: gameConstantsStore.error || ""
-    }
-  });
-}
-
-async function handleSaveStageLayouts(req, res) {
-  let payload;
-  try {
-    payload = await readJson(req, 128 * 1024);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  let layouts;
-  try {
-    layouts = await writeStageLayouts(payload.layouts || payload);
-    localDraftStore.layouts = null;
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: `Stage layouts could not be saved: ${error.message}` });
-    return;
-  }
-  sendJson(res, 200, {
-    ok: true,
-    layouts,
-    storage: {
-      kind: stageLayoutsStore.storageKind,
-      durable: stageLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
-      error: stageLayoutsStore.error || ""
-    }
-  });
-}
-
-async function handleSaveControllerLayouts(req, res) {
-  let payload;
-  try {
-    payload = await readJson(req, 128 * 1024);
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-    return;
-  }
-
-  let layouts;
-  try {
-    layouts = await writeControllerLayouts(payload.layouts || payload);
-    localDraftStore.controllerLayouts = null;
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: `Controller layouts could not be saved: ${error.message}` });
-    return;
-  }
-  sendJson(res, 200, {
-    ok: true,
-    layouts,
-    storage: {
-      kind: controllerLayoutsStore.storageKind,
-      durable: controllerLayoutsStore.storageKind === "github" && Boolean(GAME_FLOW_GITHUB_TOKEN),
-      error: controllerLayoutsStore.error || ""
-    }
-  });
 }
 
 function getRoom(stageCode) {
