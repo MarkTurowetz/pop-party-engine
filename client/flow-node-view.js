@@ -1026,6 +1026,11 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
     action.text = action.text || "Displayed text";
     if (!("textTarget" in action)) action.textTarget = "";
   }
+  if (value === "storePlayerAnswers" || value === "getPlayerAnswers" || value === "setupVotingMoment") {
+    action.inputId = action.inputId || "input";
+    action.round = action.round || "current";
+    if (value === "getPlayerAnswers") action.variableName = action.variableName || "playerAnswers";
+  }
   if (value === "playAudio") action.audioUrl = action.audioUrl || "";
   if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown") action.isShown = action.isShown !== false;
   if (value === "setPlayerAnswersShown" || value === "showPoints") action.playerFilter = action.playerFilter || (value === "showPoints" ? "correct" : "all");
@@ -1487,6 +1492,29 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
   }
   if (action.type === "startCraftingTimer") {
     target.appendChild(readOnlyFlowNote("The timer starts and this action advances normally. Timer Ends and Answers Submitted exits are defined on the input action that follows."));
+  }
+  if (action.type === "storePlayerAnswers" || action.type === "getPlayerAnswers" || action.type === "setupVotingMoment") {
+    target.appendChild(flowTextarea("Input ID", action.inputId || "input", (value) => {
+      action.inputId = value.trim() || "input";
+      rerender();
+    }));
+    target.appendChild(flowSelect("Round", action.round || "current", [
+      { id: "current", name: "Current Round" },
+      { id: "1", name: "Round 1" },
+      { id: "2", name: "Round 2" },
+      { id: "3", name: "Round 3" },
+      { id: "4", name: "Round 4" },
+      { id: "5", name: "Round 5" }
+    ], (value) => {
+      action.round = value;
+      rerender();
+    }));
+    if (action.type === "getPlayerAnswers") {
+      target.appendChild(flowTextarea("Variable Name", action.variableName || "playerAnswers", (value) => {
+        action.variableName = value.trim() || "playerAnswers";
+        rerender();
+      }));
+    }
   }
   if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "textSubmissionInput") {
     target.appendChild(flowSelect("Next Action", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {

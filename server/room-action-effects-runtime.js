@@ -1,3 +1,15 @@
+function resolveStoredAnswerRound(room, roundSpec) {
+  if (!roundSpec || roundSpec === "current") return room.currentRound || 1;
+  const n = Number(roundSpec);
+  if (Number.isFinite(n) && n > 0) return n;
+  const fromVar = room.flowVariables?.[String(roundSpec)];
+  if (fromVar != null) {
+    const v = Number(fromVar);
+    return v > 0 ? v : room.currentRound || 1;
+  }
+  return room.currentRound || 1;
+}
+
 function createRoomActionEffectsRuntime({
   activePlayers,
   clearDisplayedCorrectnessForPlayers,
@@ -53,6 +65,7 @@ function createRoomActionEffectsRuntime({
       room.pendingPointPopupNonce = 0;
       room.playerAnswerRecords = {};
       room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
+      room.storedPlayerAnswers = {};
       room.votingCards = [];
       room.votingCardsShown = false;
       room.votingResultsShown = false;
@@ -65,6 +78,31 @@ function createRoomActionEffectsRuntime({
       room.hiddenPlayerAnswerIds = new Set();
       room.displayedPlayerAnswers = new Map();
       room.displayedAnswerCorrectness = new Map();
+    }
+    if (action.type === "storePlayerAnswers") {
+      const inputId = String(action.inputId || "input").trim() || "input";
+      const round = resolveStoredAnswerRound(room, action.round);
+      room.storedPlayerAnswers = room.storedPlayerAnswers || {};
+      room.storedPlayerAnswers[round] = room.storedPlayerAnswers[round] || {};
+      room.storedPlayerAnswers[round][inputId] = { ...(room.playerAnswerRecords || {}) };
+    }
+    if (action.type === "getPlayerAnswers") {
+      const inputId = String(action.inputId || "input").trim() || "input";
+      const round = resolveStoredAnswerRound(room, action.round);
+      const varName = String(action.variableName || "playerAnswers").trim() || "playerAnswers";
+      const records = room.storedPlayerAnswers?.[round]?.[inputId] || {};
+      room.flowVariables = room.flowVariables || {};
+      room.flowVariables[varName] = Object.entries(records).map(([playerId, rec]) => ({
+        playerId,
+        ...(rec && typeof rec === "object" ? rec : { text: String(rec || "") })
+      }));
+    }
+    if (action.type === "setupVotingMoment") {
+      const inputId = String(action.inputId || "input").trim() || "input";
+      const round = resolveStoredAnswerRound(room, action.round);
+      const stored = room.storedPlayerAnswers?.[round]?.[inputId] || {};
+      room.playerAnswerRecords = { ...stored };
+      prepareVotingCards(room);
     }
     if (action.type === "setPlayersShown") {
       room.playersShown = action.isShown !== false;

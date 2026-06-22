@@ -22,6 +22,7 @@ function createDefaultRoom(stageCode) {
     flowVariables: {},
     playerAnswerRecords: {},
     playerAnswerGroups: { correct: [], wrong: [], all: [] },
+    storedPlayerAnswers: {},
     pendingPointPopups: [],
     pendingPointPopupNonce: 0,
     playerSessionKey: "",

@@ -220,6 +220,9 @@ function actionSummary(action, isSubAction = false) {
     return `Vote on answers: ${action.prompt || "Vote for your favorite answer"}${eventText} / ${timingText}`;
   }
   if (action.type === "revealVotingResults") return `Reveal voting results / ${timingText}`;
+  if (action.type === "storePlayerAnswers") return `Store answers → round ${action.round || "current"} / "${action.inputId || "input"}" / ${timingText}`;
+  if (action.type === "getPlayerAnswers") return `Get answers ← round ${action.round || "current"} / "${action.inputId || "input"}" → ${action.variableName || "playerAnswers"} / ${timingText}`;
+  if (action.type === "setupVotingMoment") return `Setup voting ← round ${action.round || "current"} / "${action.inputId || "input"}" / ${timingText}`;
   if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
   if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
   if (action.type === "setPlayerAnswersShown") return `${action.isShown === false ? "Hide" : "Show"} ${action.playerFilter || "all"} player answers / ${timingText}${instantText}`;
@@ -1105,6 +1108,36 @@ function renderFlowEditor() {
   }
   if (action.type === "startCraftingTimer") {
     flowEditor.appendChild(readOnlyFlowNote("The timer starts and this action advances normally. Timer Ends and Answers Submitted exits are defined on the input action that follows."));
+  }
+  if (action.type === "storePlayerAnswers" || action.type === "getPlayerAnswers" || action.type === "setupVotingMoment") {
+    flowEditor.appendChild(flowTextarea("Input ID", action.inputId || "input", (value) => {
+      action.inputId = value.trim() || "input";
+      renderFlowListAndPublish();
+    }));
+    flowEditor.appendChild(flowSelect("Round", action.round || "current", [
+      { id: "current", name: "Current Round" },
+      { id: "1", name: "Round 1" },
+      { id: "2", name: "Round 2" },
+      { id: "3", name: "Round 3" },
+      { id: "4", name: "Round 4" },
+      { id: "5", name: "Round 5" }
+    ], (value) => {
+      action.round = value;
+      renderFlowListAndPublish();
+    }));
+    if (action.type === "getPlayerAnswers") {
+      flowEditor.appendChild(flowTextarea("Variable Name", action.variableName || "playerAnswers", (value) => {
+        action.variableName = value.trim() || "playerAnswers";
+        renderFlowListAndPublish();
+      }));
+      flowEditor.appendChild(readOnlyFlowNote("Stores an array of { playerId, text, optionIndex, ... } objects into a flow variable for use in decisions and moment-specific actions."));
+    }
+    if (action.type === "storePlayerAnswers") {
+      flowEditor.appendChild(readOnlyFlowNote("Saves the current playerAnswerRecords (from a text submission or choice input) into the persistent store for the given round and Input ID. Run this at the end of an input moment before transitioning."));
+    }
+    if (action.type === "setupVotingMoment") {
+      flowEditor.appendChild(readOnlyFlowNote("Loads stored answers for the given round and Input ID, restores them as playerAnswerRecords, then creates anonymous shuffled voting cards (hidden until shown). Run this at the start of a voting moment."));
+    }
   }
   if (action.type === "decision") {
     appendDecisionControls(flowEditor, state, action, (redraw = true) => {
