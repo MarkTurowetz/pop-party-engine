@@ -27,6 +27,7 @@ function setFlowActionSelection(ids) {
   const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
   selectedFlowActionIds = new Set(nextIds);
   selectedFlowActionId = nextIds[nextIds.length - 1] || "";
+  if (selectedFlowActionId) expandFlowStateInList(selectedFlowStateId);
 }
 
 function clearFlowActionSelection() {
@@ -78,6 +79,7 @@ function setFlowMomentSelection(ids) {
   selectedFlowActionIds = new Set(nextIds);
   selectedFlowStateId = nextIds[nextIds.length - 1] || "";
   selectedFlowActionId = "";
+  expandFlowStateInList(selectedFlowStateId);
 }
 
 function selectFlowMoment(stateId, options = {}) {
@@ -92,6 +94,12 @@ function selectFlowMoment(stateId, options = {}) {
   } else {
     setFlowMomentSelection([stateId]);
   }
+}
+
+function expandFlowStateInList(stateId, { persist = true } = {}) {
+  if (!stateId || !collapsedFlowStates.has(stateId)) return;
+  collapsedFlowStates.delete(stateId);
+  if (persist) persistFlowCollapseState();
 }
 
 function flowActionRef(stateId, actionId) {
@@ -433,6 +441,7 @@ function setFlowNodeMarqueeMomentSelection(selectedIds) {
   selectedFlowActionIds = new Set(selectedIds);
   selectedFlowStateId = selectedIds[selectedIds.length - 1] || selectedFlowStateId || gameFlow.states[0]?.id || "";
   selectedFlowActionId = "";
+  expandFlowStateInList(selectedFlowStateId);
 }
 
 function getFlowNodeMarqueeController() {
@@ -644,6 +653,7 @@ async function loadGameFlow() {
   updateFlowStorageStatus(result.storage);
   selectedFlowStateId = selectedFlowStateId || gameFlow.states[0]?.id || "";
   clearFlowActionSelection();
+  expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();
 }
 
@@ -790,6 +800,7 @@ function renderFlowList() {
       } else {
         selectedFlowStateId = state.id;
         clearFlowActionSelection();
+        expandFlowStateInList(state.id);
       }
       if (flowViewMode === "node") flowNodeDepth = "actions";
       renderFlowTool();
@@ -964,6 +975,7 @@ function moveFlowState(draggedStateId, targetStateId, placeAfter = false) {
   gameFlow.states.splice(adjustedIndex, 0, state);
   selectedFlowStateId = draggedStateId;
   clearFlowActionSelection();
+  expandFlowStateInList(draggedStateId);
   renderFlowTool();
 }
 
@@ -1021,6 +1033,7 @@ function renderFlowEditor() {
       state.name = value || state.name;
       state.id = state.id === "lobby" || state.id === "intro" ? state.id : makeFlowId(state.name, state.id);
       selectedFlowStateId = state.id;
+      expandFlowStateInList(state.id);
       renderFlowTool();
     }));
     flowEditor.appendChild(flowSelect("Next Moment", state.nextStateTargetId || "", flowStateTargetOptions(state.nextStateTargetId || "", state.id), (value) => {
@@ -1472,6 +1485,7 @@ function addFlowState() {
   gameFlow.states.push(state);
   selectedFlowStateId = state.id;
   clearFlowActionSelection();
+  expandFlowStateInList(state.id);
   renderFlowTool();
 }
 
@@ -1578,6 +1592,7 @@ function deleteFlowItem() {
   removeDeletedFlowStateFromLayouts(deletedStateId);
   selectedFlowStateId = gameFlow.states[0]?.id || "";
   clearFlowActionSelection();
+  expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();
   if (!layoutScreen.classList.contains("hidden")) renderLayoutTool();
 }
@@ -1589,6 +1604,7 @@ async function saveGameFlow() {
   updateFlowStorageStatus(result.storage);
   selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
   clearFlowActionSelection();
+  expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();
 }
 
@@ -1598,6 +1614,7 @@ function revertGameFlow() {
   getFlowHistoryManager().clear();
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
   clearFlowActionSelection();
+  expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();
 }
 

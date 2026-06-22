@@ -269,6 +269,7 @@ function renderFlowMomentNodes() {
     node.addEventListener("dblclick", () => {
       selectedFlowStateId = state.id;
       clearFlowActionSelection();
+      expandFlowStateInList(state.id);
       flowNodeDepth = "actions";
       renderFlowTool();
     });
@@ -370,6 +371,7 @@ function createFlowNodeSubActions(state, parentAction) {
     item.addEventListener("click", (event) => {
       event.stopPropagation();
       selectedFlowStateId = state.id;
+      expandFlowStateInList(state.id);
       selectFlowAction(subAction.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
       renderFlowTool();
     });
@@ -415,6 +417,7 @@ function createFlowNodeBranches(state, action) {
     item.addEventListener("click", (event) => {
       event.stopPropagation();
       selectedFlowStateId = state.id;
+      expandFlowStateInList(state.id);
       selectFlowAction(branch.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
       renderFlowTool();
     });
@@ -454,6 +457,7 @@ function renderFlowActionNodes() {
   bindFlowNodeDrag(startNode, startModel);
   startNode.addEventListener("click", (event) => {
     selectedFlowStateId = state.id;
+    expandFlowStateInList(state.id);
     selectFlowAction("start", { additive: event.metaKey || event.ctrlKey || event.shiftKey });
     renderFlowTool();
   });
@@ -488,6 +492,7 @@ function renderFlowActionNodes() {
     bindFlowNodeDrag(node, action);
     node.addEventListener("click", (event) => {
       selectedFlowStateId = state.id;
+      expandFlowStateInList(state.id);
       selectFlowAction(action.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
       renderFlowTool();
     });
@@ -511,6 +516,7 @@ function renderFlowActionNodes() {
   bindFlowNodeDrag(returnNode, returnModel);
   returnNode.addEventListener("click", (event) => {
     selectedFlowStateId = state.id;
+    expandFlowStateInList(state.id);
     selectFlowAction("return", { additive: event.metaKey || event.ctrlKey || event.shiftKey });
     renderFlowTool();
   });
@@ -1040,6 +1046,7 @@ function pushFlowHistory() {
 function restoreFlowHistory(snapshot) {
   gameFlow = JSON.parse(snapshot);
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
+  expandFlowStateInList(selectedFlowStateId);
   if (flowAction(selectedFlowStateId, selectedFlowActionId)) {
     setFlowActionSelection([...selectedFlowActionIds, selectedFlowActionId]);
   } else {
