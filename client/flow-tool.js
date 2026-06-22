@@ -275,6 +275,7 @@ let flowActionInspectorRegistry = null;
 let flowNodeChildSortController = null;
 let flowNodeConnectionController = null;
 let flowNodeDragController = null;
+let flowNodeMarqueeController = null;
 let flowNodeMinimapController = null;
 let flowNodePortsFactory = null;
 let flowNodeWireRenderer = null;
@@ -426,6 +427,34 @@ function getFlowNodeDragController() {
     });
   }
   return flowNodeDragController;
+}
+
+function setFlowNodeMarqueeMomentSelection(selectedIds) {
+  selectedFlowActionIds = new Set(selectedIds);
+  selectedFlowStateId = selectedIds[selectedIds.length - 1] || selectedFlowStateId || gameFlow.states[0]?.id || "";
+  selectedFlowActionId = "";
+}
+
+function getFlowNodeMarqueeController() {
+  if (!flowNodeMarqueeController && window.PartyGameFlowNodeMarquee) {
+    flowNodeMarqueeController = window.PartyGameFlowNodeMarquee.createFlowNodeMarqueeController({
+      flowActionIsSelected,
+      flowMomentNodeIsSelected: (stateId) => selectedFlowActionIds.has(stateId) || selectedFlowStateId === stateId,
+      flowNodeDepth: () => flowNodeDepth,
+      flowNodeGraph: () => flowNodeGraph,
+      flowNodeLayer: () => flowNodeLayer,
+      flowNodeZoom: () => flowNodeZoom,
+      flowViewMode: () => flowViewMode,
+      hasPendingConnection: hasPendingFlowNodeConnection,
+      renderFlowList,
+      renderFlowNodeInspector,
+      renderFlowTool,
+      setFlowActionSelection,
+      setMomentMarqueeSelection: setFlowNodeMarqueeMomentSelection,
+      startSelectionMarquee: window.PartyGameToolAffordances?.startSelectionMarquee
+    });
+  }
+  return flowNodeMarqueeController;
 }
 
 function flowTargetActionName(actionId) {

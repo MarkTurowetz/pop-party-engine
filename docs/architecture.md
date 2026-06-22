@@ -101,6 +101,8 @@ concepts into focused modules.
     state, preview redraw, command-create action creation, completion, and cleanup.
   - `client/flow/node-view-drag.js` owns Flow Node View node dragging, selected-group
     movement, axis locking, grid snapping, and drag-position persistence.
+  - `client/flow/node-view-marquee.js` owns Flow Node View rectangle selection
+    setup and selection-class synchronization.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order

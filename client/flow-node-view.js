@@ -428,38 +428,7 @@ function bindFlowNodeDrag(node, item, { afterDrag = null } = {}) {
 }
 
 function startFlowNodeMarquee(event) {
-  if (event.button !== 0 || flowViewMode !== "node") return;
-  if (hasPendingFlowNodeConnection()) return;
-  if (!flowNodeGraph || !flowNodeLayer) return;
-  const selector = flowNodeDepth === "moments" ? ".flow-node[data-node-id]" : ".flow-node[data-action-id]";
-  return window.PartyGameToolAffordances?.startSelectionMarquee(event, {
-    root: flowNodeGraph,
-    itemRoot: flowNodeLayer,
-    marqueeRoot: flowNodeLayer,
-    className: "flow-node-selection-marquee",
-    itemSelector: selector,
-    coordinateScale: flowNodeZoom,
-    getItemId: (node) => (flowNodeDepth === "moments" ? node.dataset.nodeId : node.dataset.actionId),
-    shouldIgnoreTarget: (target) => Boolean(target.closest?.(".flow-node, .flow-node-port-dot")),
-    onSelectionChange: (selectedIds) => {
-      if (flowNodeDepth === "moments") {
-        selectedFlowActionIds = new Set(selectedIds);
-        selectedFlowStateId = selectedIds[selectedIds.length - 1] || selectedFlowStateId || gameFlow.states[0]?.id || "";
-        selectedFlowActionId = "";
-        for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-node-id]")) {
-          node.classList.toggle("is-selected", selectedFlowActionIds.has(node.dataset.nodeId) || selectedFlowStateId === node.dataset.nodeId);
-        }
-      } else {
-        setFlowActionSelection(selectedIds);
-        for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-action-id]")) {
-          node.classList.toggle("is-selected", flowActionIsSelected(node.dataset.actionId));
-        }
-      }
-      renderFlowList();
-      renderFlowNodeInspector();
-    },
-    onComplete: () => renderFlowTool()
-  });
+  return getFlowNodeMarqueeController()?.start(event);
 }
 
 function renderFlowActionNodes() {
