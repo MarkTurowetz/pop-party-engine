@@ -13,9 +13,9 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 514
+        "y": 768
       },
-      "entryTargetActionId": "",
+      "entryTargetActionId": "lobby-action-mqojohry",
       "nextStateTargetId": "writing-moment",
       "actions": [
         {
@@ -30,11 +30,30 @@
           "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           },
           "subActions": [],
           "trigger": "onCountdownComplete",
           "targetState": "intro"
+        },
+        {
+          "id": "lobby-action-mqojohry",
+          "name": "Setup Game",
+          "type": "setupGame",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "lobby-countdown-complete"
         }
       ]
     },
@@ -781,8 +800,8 @@
           "prompt": "What is your favorite movie?",
           "placeholder": "Write a movie title",
           "characterLimit": 80,
-          "timerEndTargetActionId": "writing-prepare-cards",
-          "answersSubmittedTargetActionId": "writing-prepare-cards",
+          "timerEndTargetActionId": "writing-moment-action-mqojhzba",
+          "answersSubmittedTargetActionId": "writing-moment-action-mqojhzba",
           "subActions": [],
           "nodePosition": {
             "x": 670,
@@ -790,19 +809,25 @@
           }
         },
         {
-          "id": "writing-prepare-cards",
-          "name": "Prepare Voting Cards",
-          "type": "prepareVotingCards",
+          "id": "writing-moment-action-mqojhzba",
+          "name": "Store Player Answers",
+          "type": "storePlayerAnswers",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "return",
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 670,
-            "y": 1276
-          }
+            "x": 669,
+            "y": 1479
+          },
+          "inputId": "writing-input",
+          "round": "current",
+          "nextTargetActionId": "return"
         }
       ],
       "startNodePosition": {
@@ -817,7 +842,7 @@
     {
       "id": "voting-moment",
       "name": "Voting Moment",
-      "entryTargetActionId": "voting-show-cards",
+      "entryTargetActionId": "voting-moment-action-mqojfq4a",
       "nodePositions": {
         "start": {
           "x": 420,
@@ -876,7 +901,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           }
         },
         {
@@ -893,7 +918,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 768
           }
         },
         {
@@ -908,7 +933,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 768
+            "y": 1022
           }
         },
         {
@@ -925,7 +950,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1022
+            "y": 1276
           },
           "nextTargetActionId": "voting-moment-action-mqoipyj9"
         },
@@ -943,7 +968,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 2292
+            "y": 2546
           }
         },
         {
@@ -958,7 +983,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 2546
+            "y": 2800
           }
         },
         {
@@ -976,7 +1001,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1276
+            "y": 1530
           },
           "nextTargetActionId": "voting-moment-action-mqoir6xh"
         },
@@ -995,7 +1020,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1530
+            "y": 1784
           },
           "nextTargetActionId": "voting-moment-action-mqoirmjb"
         },
@@ -1014,7 +1039,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1784
+            "y": 2038
           },
           "nextTargetActionId": "voting-moment-action-mqoirt4e"
         },
@@ -1033,7 +1058,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 2038
+            "y": 2292
           },
           "nextTargetActionId": "voting-show-winner-points"
         },
@@ -1052,10 +1077,31 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 2800
+            "y": 3054
           },
           "cardFilter": "all",
           "nextTargetActionId": "return"
+        },
+        {
+          "id": "voting-moment-action-mqojfq4a",
+          "name": "Setup Voting Moment",
+          "type": "setupVotingMoment",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "inputId": "writing-input",
+          "round": "current",
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "voting-show-cards"
         }
       ],
       "nextStateTargetId": "scoreboard-game-state",
@@ -1065,7 +1111,7 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 3054
+        "y": 3308
       }
     }
   ]
