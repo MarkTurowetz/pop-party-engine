@@ -97,6 +97,8 @@ concepts into focused modules.
     dot metadata, and pending-connection arming callbacks.
   - `client/flow/node-view-connections.js` owns Flow Node View pending connection
     state, preview redraw, command-create action creation, completion, and cleanup.
+  - `client/flow/node-view-drag.js` owns Flow Node View node dragging, selected-group
+    movement, axis locking, grid snapping, and drag-position persistence.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
