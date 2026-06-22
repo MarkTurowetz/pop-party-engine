@@ -275,6 +275,7 @@ let flowActionControlGroups = null;
 function getFlowActionControlGroups() {
   if (!flowActionControlGroups && window.PartyGameFlowActionControlGroups) {
     flowActionControlGroups = window.PartyGameFlowActionControlGroups.createActionControlGroups({
+      flowActionTargetOptions,
       flowSelect,
       flowTextarea,
       flowTrueFalseOptions,
@@ -889,15 +890,7 @@ function renderFlowEditor() {
       action.options = options.length ? options : ["A", "B", "C", "D"];
       renderFlowListAndPublish();
     }));
-    const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-    flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-      action.timerEndTargetActionId = value;
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-      action.answersSubmittedTargetActionId = value;
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
     flowEditor.appendChild(readOnlyFlowNote("Each line becomes one button label. Controllers send the option index; this action currently shows the matching line as the stage speech bubble. Choose None for On Answers Submitted when continuous input should wait for the timer."));
   }
   if (action.type === "getRandomMultipleChoiceContent") {
@@ -927,15 +920,7 @@ function renderFlowEditor() {
       action.randomizeOptions = value === "true";
       renderFlowListAndPublish();
     }));
-    const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-    flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-      action.timerEndTargetActionId = value;
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-      action.answersSubmittedTargetActionId = value;
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
   }
   if (action.type === "textSubmissionInput") {
     flowEditor.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
@@ -950,15 +935,7 @@ function renderFlowEditor() {
       action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
       renderFlowListAndPublish();
     }));
-    const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-    flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-      action.timerEndTargetActionId = value;
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-      action.answersSubmittedTargetActionId = value;
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
     flowEditor.appendChild(readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
   }
   if (action.type === "prepareVotingCards") {
@@ -978,15 +955,7 @@ function renderFlowEditor() {
       action.prompt = value || "Vote for your favorite answer";
       renderFlowListAndPublish();
     }));
-    const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-    flowEditor.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-      action.timerEndTargetActionId = value;
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("On Votes Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-      action.answersSubmittedTargetActionId = value;
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish(), { submittedLabel: "On Votes Submitted" });
     flowEditor.appendChild(readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
   }
   if (action.type === "revealVotingResults") {

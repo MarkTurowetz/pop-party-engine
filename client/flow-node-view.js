@@ -1231,15 +1231,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.options = options.length ? options : ["A", "B", "C", "D"];
       rerender(false);
     }));
-    const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-    target.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-      action.timerEndTargetActionId = value;
-      rerender();
-    }));
-    target.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-      action.answersSubmittedTargetActionId = value;
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendInputExitControls(target, state, action, rerender);
   }
   if (action.type === "getRandomMultipleChoiceContent") {
     target.appendChild(flowField("Store In Variable", action.variableName || "multipleChoicePrompt", (value) => {
@@ -1267,15 +1259,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.randomizeOptions = value === "true";
       rerender();
     }));
-    const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-    target.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-      action.timerEndTargetActionId = value;
-      rerender();
-    }));
-    target.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-      action.answersSubmittedTargetActionId = value;
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendInputExitControls(target, state, action, rerender);
   }
   if (action.type === "textSubmissionInput") {
     target.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
@@ -1290,15 +1274,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
       rerender();
     }));
-    const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-    target.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-      action.timerEndTargetActionId = value;
-      rerender();
-    }));
-    target.appendChild(flowSelect("On Answers Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-      action.answersSubmittedTargetActionId = value;
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendInputExitControls(target, state, action, rerender);
   }
   if (action.type === "prepareVotingCards") {
     target.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
@@ -1317,15 +1293,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.prompt = value || "Vote for your favorite answer";
       rerender(false);
     }));
-    const targetOptions = flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-    target.appendChild(flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
-      action.timerEndTargetActionId = value;
-      rerender();
-    }));
-    target.appendChild(flowSelect("On Votes Submitted", action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
-      action.answersSubmittedTargetActionId = value;
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendInputExitControls(target, state, action, rerender, { submittedLabel: "On Votes Submitted" });
     target.appendChild(readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
   }
   if (action.type === "revealVotingResults") {

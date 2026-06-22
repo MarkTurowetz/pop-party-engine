@@ -31,12 +31,26 @@
       if (options.includeInstant !== false) appendInstantControl(target, action, rerender);
     }
 
+    function appendInputExitControls(target, state, action, rerender, options = {}) {
+      const submittedLabel = options.submittedLabel || "On Answers Submitted";
+      const targetOptions = context.flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
+      target.appendChild(context.flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+        action.timerEndTargetActionId = value;
+        rerender();
+      }));
+      target.appendChild(context.flowSelect(submittedLabel, action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+        action.answersSubmittedTargetActionId = value;
+        rerender();
+      }));
+    }
+
     function appendBooleanSelect(target, label, value, trueFirst, onChange) {
       target.appendChild(context.flowSelect(label, value, context.flowTrueFalseOptions(trueFirst), onChange));
     }
 
     return {
       appendBooleanSelect,
+      appendInputExitControls,
       appendInstantControl,
       appendVisibilityControls,
       appendTextActionControls

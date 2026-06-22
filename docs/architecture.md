@@ -83,7 +83,8 @@ concepts into focused modules.
   - `client/tool-dashboard.js` owns the dashboard tool registry for labels, dirty checks,
     save behavior, screen hiding, and setup behavior.
   - `client/flow/action-control-groups.js` owns reusable Flow action inspector
-    controls shared by List View and Node View, such as text and visibility controls.
+    controls shared by List View and Node View, such as text, visibility, and input-exit
+    controls.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
