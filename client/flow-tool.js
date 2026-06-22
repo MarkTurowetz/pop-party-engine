@@ -556,6 +556,16 @@ function renderFlowList() {
     stateButton.querySelector(".disclosure-slot").appendChild(createDisclosureButton(state.id, collapsedFlowStates, () => {
       persistFlowCollapseState();
       renderFlowList();
+    }, () => {
+      const allIds = gameFlow.states.map((s) => s.id);
+      const allCollapsed = allIds.every((sid) => collapsedFlowStates.has(sid));
+      if (allCollapsed) {
+        for (const sid of allIds) collapsedFlowStates.delete(sid);
+      } else {
+        for (const sid of allIds) collapsedFlowStates.add(sid);
+      }
+      persistFlowCollapseState();
+      renderFlowList();
     }));
     stateButton.querySelector("strong").textContent = state.name;
     stateButton.querySelector(".flow-row-summary").textContent = state.id;

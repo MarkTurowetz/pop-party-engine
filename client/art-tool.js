@@ -34,7 +34,7 @@ function renderArtList() {
   artAssetList.appendChild(promptGroup);
 }
 
-function createDisclosureButton(id, collapsedSet, onToggle = () => {}) {
+function createDisclosureButton(id, collapsedSet, onToggle = () => {}, onMetaToggle = null) {
   const button = document.createElement("span");
   button.setAttribute("role", "button");
   button.tabIndex = 0;
@@ -44,6 +44,10 @@ function createDisclosureButton(id, collapsedSet, onToggle = () => {}) {
   const toggle = (event) => {
     event.stopPropagation();
     event.preventDefault();
+    if (onMetaToggle && (event.metaKey || event.ctrlKey)) {
+      onMetaToggle();
+      return;
+    }
     if (collapsedSet.has(id)) {
       collapsedSet.delete(id);
     } else {
