@@ -279,6 +279,7 @@ function transitionTriggerOptions() {
 }
 
 let flowActionControlGroups = null;
+let flowFormControls = null;
 let flowActionInspectorRegistry = null;
 let flowNodeChildSortController = null;
 let flowNodeConnectionController = null;
@@ -288,15 +289,22 @@ let flowNodeMinimapController = null;
 let flowNodePortsFactory = null;
 let flowNodeWireRenderer = null;
 
+function getFlowFormControls() {
+  if (!flowFormControls && window.PartyGameFlowFormControls) {
+    flowFormControls = window.PartyGameFlowFormControls.createFormControls({
+      hostAudioFlowOptions,
+      pushFlowHistory,
+      refreshActionNameFromType
+    });
+  }
+  return flowFormControls;
+}
+
 function getFlowActionControlGroups() {
   if (!flowActionControlGroups && window.PartyGameFlowActionControlGroups) {
     flowActionControlGroups = window.PartyGameFlowActionControlGroups.createActionControlGroups({
+      ...(getFlowFormControls() || {}),
       flowActionTargetOptions,
-      flowHostAudioSearch,
-      flowInteger,
-      flowNumber,
-      flowSelect,
-      flowTextarea,
       flowTrueFalseOptions,
       hostAudioPlayModeOptions,
       normalizeTextTargetId,
@@ -310,21 +318,15 @@ function getFlowActionControlGroups() {
 function getFlowActionInspectorRegistry() {
   if (!flowActionInspectorRegistry && window.PartyGameFlowActionInspectorRegistry) {
     flowActionInspectorRegistry = window.PartyGameFlowActionInspectorRegistry.createActionInspectorRegistry({
+      ...(getFlowFormControls() || {}),
       actionTypeMeta,
       addFlowSubAction,
       appendDecisionControls,
       applyFlowActionTypeDefaults,
       choiceInputModeOptions,
       ensureActionTiming,
-      flowActionNameField,
       flowActionTargetOptions,
-      flowActionTypeSearch,
       flowActionTypes: () => flowActionTypes,
-      flowActionButton,
-      flowField,
-      flowNumber,
-      flowSelect,
-      flowTextarea,
       flowTransitions: () => flowTransitions,
       flowTrueFalseOptions,
       gameStates: () => gameFlow.states || [],
@@ -1077,157 +1079,23 @@ function renderFlowEditor() {
 }
 
 function flowField(label, value, onChange) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.className = "text-input";
-  input.value = value || "";
-  input.addEventListener("change", () => {
-    pushFlowHistory();
-    onChange(input.value.trim());
-  });
-  field.appendChild(input);
-  return field;
+  return getFlowFormControls()?.flowField(label, value, onChange);
 }
 
 function flowActionNameField(state, action, onChange, onRefresh) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid action-name-field";
-  const labelText = document.createElement("span");
-  labelText.textContent = "Action Name";
-  const input = document.createElement("input");
-  input.className = "text-input";
-  input.value = action?.name || "";
-  input.addEventListener("change", () => {
-    pushFlowHistory();
-    onChange(input.value.trim());
-  });
-  const refreshButton = document.createElement("button");
-  refreshButton.type = "button";
-  refreshButton.className = "secondary-button action-name-refresh";
-  refreshButton.textContent = "↻";
-  refreshButton.title = "Rename to action type";
-  refreshButton.setAttribute("aria-label", "Rename action to action type");
-  refreshButton.addEventListener("click", (event) => {
-    event.preventDefault();
-    pushFlowHistory();
-    refreshActionNameFromType(state, action);
-    onRefresh?.();
-  });
-  field.append(labelText, input, refreshButton);
-  return field;
+  return getFlowFormControls()?.flowActionNameField(state, action, onChange, onRefresh);
 }
 
 function flowTextarea(label, value, onChange) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid";
-  field.textContent = label;
-  const input = document.createElement("textarea");
-  input.className = "text-input flow-textarea";
-  input.value = value || "";
-  let historyCaptured = false;
-  input.addEventListener("focus", () => {
-    historyCaptured = false;
-  });
-  input.addEventListener("input", () => {
-    if (!historyCaptured) {
-      pushFlowHistory();
-      historyCaptured = true;
-    }
-    onChange(input.value);
-  });
-  field.appendChild(input);
-  return field;
+  return getFlowFormControls()?.flowTextarea(label, value, onChange);
 }
 
 function flowSelect(label, value, options, onChange) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid";
-  field.textContent = label;
-  const select = document.createElement("select");
-  select.className = "text-input";
-  for (const option of options) {
-    const optionEl = document.createElement("option");
-    optionEl.value = option.id;
-    optionEl.textContent = option.name;
-    select.appendChild(optionEl);
-  }
-  select.value = value;
-  select.addEventListener("change", () => {
-    pushFlowHistory();
-    onChange(select.value);
-  });
-  field.appendChild(select);
-  return field;
+  return getFlowFormControls()?.flowSelect(label, value, options, onChange);
 }
 
 function flowVariableSearch(label, value, options, onChange) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid flow-search-field";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.className = "text-input";
-  input.autocomplete = "off";
-  input.spellcheck = false;
-  const menu = document.createElement("div");
-  menu.className = "flow-search-options hidden";
-
-  const current = options.find((option) => option.id === value) || { id: value, name: value };
-  input.value = current?.name || "";
-
-  const hideMenu = () => window.setTimeout(() => menu.classList.add("hidden"), 120);
-  const chooseOption = (option) => {
-    input.value = option.name;
-    menu.classList.add("hidden");
-    if (option.id !== value) {
-      pushFlowHistory();
-      onChange(option.id);
-    }
-  };
-  const renderOptions = () => {
-    const query = input.value.trim().toLowerCase();
-    const matches = fuzzyDecisionVariableMatches(options, query).slice(0, 8);
-    menu.replaceChildren();
-    if (matches.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "flow-search-option";
-      empty.textContent = "No matching variables";
-      menu.appendChild(empty);
-    }
-    for (const option of matches) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "flow-search-option";
-      button.classList.toggle("is-active", option.id === value);
-      button.innerHTML = `<strong></strong><span></span>`;
-      button.querySelector("strong").textContent = option.name;
-      button.querySelector("span").textContent = option.id;
-      button.addEventListener("mousedown", (event) => event.preventDefault());
-      button.addEventListener("click", () => chooseOption(option));
-      menu.appendChild(button);
-    }
-    menu.classList.remove("hidden");
-  };
-
-  input.addEventListener("focus", renderOptions);
-  input.addEventListener("input", renderOptions);
-  input.addEventListener("blur", hideMenu);
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      menu.classList.add("hidden");
-      input.value = current?.name || "";
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const first = fuzzyDecisionVariableMatches(options, input.value.trim().toLowerCase())[0];
-      if (first) chooseOption(first);
-    }
-  });
-
-  field.appendChild(input);
-  field.appendChild(menu);
-  return field;
+  return getFlowFormControls()?.flowVariableSearch(label, value, options, onChange);
 }
 
 function hostAudioPlayModeOptions() {
@@ -1239,218 +1107,19 @@ function hostAudioPlayModeOptions() {
 }
 
 function flowHostAudioSearch(label, value, onChange) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid flow-search-field";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.className = "text-input";
-  input.autocomplete = "off";
-  input.spellcheck = false;
-  const menu = document.createElement("div");
-  menu.className = "flow-search-options hidden";
-
-  const current = hostAudioFlowOptions().find((option) => option.id === value) || null;
-  input.value = current?.name || "";
-
-  const hideMenu = () => window.setTimeout(() => menu.classList.add("hidden"), 120);
-  const chooseOption = (option) => {
-    input.value = option.name;
-    menu.classList.add("hidden");
-    if (option.id !== value) {
-      pushFlowHistory();
-      onChange(option.id);
-    }
-  };
-  const renderOptions = () => {
-    const options = hostAudioFlowOptions();
-    const query = input.value.trim().toLowerCase();
-    const matches = fuzzyHostAudioMatches(options, query).slice(0, 8);
-    menu.replaceChildren();
-    if (matches.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "flow-search-option";
-      empty.textContent = "No matching host audios";
-      menu.appendChild(empty);
-    }
-    for (const option of matches) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "flow-search-option";
-      button.classList.toggle("is-active", option.id === value);
-      button.innerHTML = `<strong></strong><span></span>`;
-      button.querySelector("strong").textContent = option.name;
-      button.querySelector("span").textContent = option.detail || option.id;
-      button.addEventListener("mousedown", (event) => event.preventDefault());
-      button.addEventListener("click", () => chooseOption(option));
-      menu.appendChild(button);
-    }
-    menu.classList.remove("hidden");
-  };
-
-  input.addEventListener("focus", renderOptions);
-  input.addEventListener("input", renderOptions);
-  input.addEventListener("blur", hideMenu);
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      menu.classList.add("hidden");
-      input.value = current?.name || "";
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const first = fuzzyHostAudioMatches(hostAudioFlowOptions(), input.value.trim().toLowerCase())[0];
-      if (first) chooseOption(first);
-    }
-  });
-
-  field.appendChild(input);
-  field.appendChild(menu);
-  return field;
+  return getFlowFormControls()?.flowHostAudioSearch(label, value, onChange);
 }
 
 function flowActionTypeSearch(label, value, options, onChange) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid flow-search-field";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.className = "text-input";
-  input.autocomplete = "off";
-  input.spellcheck = false;
-  const menu = document.createElement("div");
-  menu.className = "flow-search-options hidden";
-
-  const current = options.find((option) => option.id === value) || options[0];
-  input.value = current?.name || "";
-
-  const hideMenu = () => window.setTimeout(() => menu.classList.add("hidden"), 120);
-  const chooseOption = (option) => {
-    input.value = option.name;
-    menu.classList.add("hidden");
-    if (option.id !== value) {
-      pushFlowHistory();
-      onChange(option.id);
-    }
-  };
-  const renderOptions = () => {
-    const query = input.value.trim().toLowerCase();
-    const matches = fuzzyActionTypeMatches(options, query).slice(0, 8);
-    menu.replaceChildren();
-    if (matches.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "flow-search-option";
-      empty.textContent = "No matching actions";
-      menu.appendChild(empty);
-    }
-    for (const option of matches) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "flow-search-option";
-      button.classList.toggle("is-active", option.id === value);
-      button.innerHTML = `<strong></strong><span></span>`;
-      button.querySelector("strong").textContent = option.name;
-      button.querySelector("span").textContent = option.category === "input" ? "Input" : "Standard";
-      button.addEventListener("mousedown", (event) => event.preventDefault());
-      button.addEventListener("click", () => chooseOption(option));
-      menu.appendChild(button);
-    }
-    menu.classList.remove("hidden");
-  };
-
-  input.addEventListener("focus", renderOptions);
-  input.addEventListener("input", renderOptions);
-  input.addEventListener("blur", hideMenu);
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      menu.classList.add("hidden");
-      input.value = current?.name || "";
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const first = fuzzyActionTypeMatches(options, input.value.trim().toLowerCase())[0];
-      if (first) chooseOption(first);
-    }
-  });
-
-  field.appendChild(input);
-  field.appendChild(menu);
-  return field;
-}
-
-function fuzzyActionTypeMatches(options, query) {
-  if (!query) return [...options];
-  return options
-    .map((option) => ({ option, score: fuzzyScore(`${option.name} ${option.id} ${option.category || ""}`, query) }))
-    .filter((item) => item.score >= 0)
-    .sort((a, b) => a.score - b.score || a.option.name.localeCompare(b.option.name))
-    .map((item) => item.option);
-}
-
-function fuzzyDecisionVariableMatches(options, query) {
-  if (!query) return [...options];
-  return options
-    .map((option) => ({ option, score: fuzzyScore(`${option.name} ${option.id}`, query) }))
-    .filter((item) => item.score >= 0)
-    .sort((a, b) => a.score - b.score || a.option.name.localeCompare(b.option.name))
-    .map((item) => item.option);
-}
-
-function fuzzyHostAudioMatches(options, query) {
-  if (!query) return [...options];
-  return options
-    .map((option) => ({ option, score: fuzzyScore(`${option.name} ${option.id}`, query) }))
-    .filter((item) => item.score >= 0)
-    .sort((a, b) => a.score - b.score || a.option.name.localeCompare(b.option.name))
-    .map((item) => item.option);
-}
-
-function fuzzyScore(text, query) {
-  let score = 0;
-  let textIndex = 0;
-  const haystack = String(text || "").toLowerCase();
-  for (const character of query) {
-    const foundIndex = haystack.indexOf(character, textIndex);
-    if (foundIndex < 0) return -1;
-    score += foundIndex - textIndex;
-    textIndex = foundIndex + 1;
-  }
-  return score + Math.abs(haystack.length - query.length) * 0.01;
+  return getFlowFormControls()?.flowActionTypeSearch(label, value, options, onChange);
 }
 
 function flowNumber(label, value, onChange) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.className = "text-input";
-  input.type = "number";
-  input.min = "0";
-  input.step = "0.1";
-  input.value = Number(value || 0).toFixed(1);
-  input.addEventListener("change", () => {
-    const nextValue = Number(input.value || 0);
-    pushFlowHistory();
-    onChange(Math.max(0, Number.isFinite(nextValue) ? nextValue : 0));
-  });
-  field.appendChild(input);
-  return field;
+  return getFlowFormControls()?.flowNumber(label, value, onChange);
 }
 
 function flowInteger(label, value, onChange) {
-  const field = document.createElement("label");
-  field.className = "field-label flow-form-grid";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.className = "text-input";
-  input.type = "number";
-  input.min = "0";
-  input.step = "1";
-  input.value = String(Math.max(0, Math.floor(Number(value || 0))));
-  input.addEventListener("change", () => {
-    const nextValue = Number(input.value || 0);
-    pushFlowHistory();
-    onChange(Math.max(0, Number.isFinite(nextValue) ? Math.floor(nextValue) : 0));
-  });
-  field.appendChild(input);
-  return field;
+  return getFlowFormControls()?.flowInteger(label, value, onChange);
 }
 
 function ensureActionTiming(action, isSubAction = false) {
@@ -1467,19 +1136,11 @@ function ensureActionTiming(action, isSubAction = false) {
 }
 
 function flowActionButton(label, onClick) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "secondary-button";
-  button.textContent = label;
-  button.addEventListener("click", onClick);
-  return button;
+  return getFlowFormControls()?.flowActionButton(label, onClick);
 }
 
 function readOnlyFlowNote(text) {
-  const note = document.createElement("p");
-  note.className = "art-shared-note";
-  note.textContent = text;
-  return note;
+  return getFlowFormControls()?.readOnlyFlowNote(text);
 }
 
 function addFlowState() {
