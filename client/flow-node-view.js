@@ -1344,8 +1344,8 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     }));
     target.appendChild(flowSelect("Cards", action.cardFilter || "all", [
       { id: "all", name: "All Cards" },
-      { id: "winners", name: "Winning Cards" },
-      { id: "losers", name: "Losing Cards" }
+      { id: "winners", name: "Correct Cards" },
+      { id: "losers", name: "Wrong Cards" }
     ], (value) => {
       action.cardFilter = value;
       rerender();

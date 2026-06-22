@@ -49,6 +49,8 @@ function normalizePlayerFilter(value) {
 
 function normalizeVotingCardFilter(value) {
   const cleaned = String(value || "").trim();
+  if (cleaned === "correct") return "winners";
+  if (cleaned === "wrong") return "losers";
   return ["all", "winners", "losers"].includes(cleaned) ? cleaned : "all";
 }
 

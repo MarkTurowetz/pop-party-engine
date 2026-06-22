@@ -103,7 +103,7 @@ function createVotingRuntime({
     return cards.filter((card) => card && card.hidden !== true)[optionIndex] || null;
   }
 
-  function revealVotingResults(room) {
+  function scoreVotingCards(room) {
     const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
     let highestVotes = -1;
     for (const card of cards) {
@@ -115,6 +115,18 @@ function createVotingRuntime({
       card.isWinner = highestVotes >= 0 && card.voteCount === highestVotes;
     }
     room.votingWinners = cards.filter((card) => card.isWinner).map((card) => card.authorPlayerId);
+    const answerPlayerIds = cards.map((card) => card.authorPlayerId).filter(Boolean);
+    const winnerIds = new Set(room.votingWinners);
+    room.playerAnswerGroups = {
+      all: answerPlayerIds,
+      correct: answerPlayerIds.filter((playerId) => winnerIds.has(playerId)),
+      wrong: answerPlayerIds.filter((playerId) => !winnerIds.has(playerId))
+    };
+    return cards;
+  }
+
+  function revealVotingResults(room) {
+    scoreVotingCards(room);
     room.votingCardsShown = true;
     room.votingResultsShown = true;
   }
@@ -125,27 +137,13 @@ function createVotingRuntime({
   }
 
   function revealVotes(room) {
-    const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
-    let highestVotes = -1;
-    for (const card of cards) {
-      card.voteCount = (Array.isArray(card.voterIds) ? card.voterIds : []).length;
-      highestVotes = Math.max(highestVotes, card.voteCount);
-    }
+    scoreVotingCards(room);
     room.votingCardsShown = true;
     room.votingVotesRevealed = true;
   }
 
   function revealWinningAnswer(room) {
-    const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
-    let highestVotes = -1;
-    for (const card of cards) {
-      card.voteCount = (Array.isArray(card.voterIds) ? card.voterIds : []).length;
-      highestVotes = Math.max(highestVotes, card.voteCount);
-    }
-    for (const card of cards) {
-      card.isWinner = highestVotes >= 0 && card.voteCount === highestVotes;
-    }
-    room.votingWinners = cards.filter((card) => card.isWinner).map((card) => card.authorPlayerId);
+    scoreVotingCards(room);
     room.votingCardsShown = true;
     room.votingWinnerRevealed = true;
     room.votingResultsShown = true;
@@ -154,8 +152,8 @@ function createVotingRuntime({
   function setVotingCardsShown(room, action) {
     const shouldShow = action?.isShown !== false;
     const filter = normalizeVotingCardFilter(action?.cardFilter);
-    const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
-    if (shouldShow && filter === "all") room.votingCardsShown = true;
+    const cards = filter === "all" ? (Array.isArray(room.votingCards) ? room.votingCards : []) : scoreVotingCards(room);
+    if (shouldShow) room.votingCardsShown = true;
     if (!shouldShow && filter === "all") room.votingCardsShown = false;
     for (const card of cards) {
       if (filter === "winners" && card.isWinner !== true) continue;

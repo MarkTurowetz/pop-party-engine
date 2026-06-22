@@ -214,7 +214,14 @@ function actionSummary(action, isSubAction = false) {
     return `Text Submit: ${action.prompt || "Write your answer"}${limitText} / Stage validates${eventText} / ${timingText}`;
   }
   if (action.type === "prepareVotingCards") return `Prepare anonymous voting cards / ${timingText}`;
-  if (action.type === "setVotingCardsShown") return `${action.isShown === false ? "Hide" : "Show"} ${action.cardFilter || "all"} voting cards / ${timingText}${instantText}`;
+  if (action.type === "setVotingCardsShown") {
+    const cardFilterName = action.cardFilter === "winners" || action.cardFilter === "correct"
+      ? "correct"
+      : action.cardFilter === "losers" || action.cardFilter === "wrong"
+        ? "wrong"
+        : "all";
+    return `${action.isShown === false ? "Hide" : "Show"} ${cardFilterName} voting cards / ${timingText}${instantText}`;
+  }
   if (action.type === "voteOnAnswersInput") {
     const eventText = ` / timer: ${flowTargetActionName(action.timerEndTargetActionId)} / votes: ${flowTargetActionName(action.answersSubmittedTargetActionId)}`;
     return `Vote on answers: ${action.prompt || "Vote for your favorite answer"}${eventText} / ${timingText}`;
@@ -984,8 +991,8 @@ function renderFlowEditor() {
     }));
     flowEditor.appendChild(flowSelect("Cards", action.cardFilter || "all", [
       { id: "all", name: "All Cards" },
-      { id: "winners", name: "Winning Cards" },
-      { id: "losers", name: "Losing Cards" }
+      { id: "winners", name: "Correct Cards" },
+      { id: "losers", name: "Wrong Cards" }
     ], (value) => {
       action.cardFilter = value;
       renderFlowListAndPublish();
