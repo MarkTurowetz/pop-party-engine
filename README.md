@@ -66,6 +66,21 @@ When that token is present, the app automatically uses GitHub flow storage unles
 Local development still falls back to the ignored `game-flow.json` file unless
 `GAME_FLOW_STORAGE=github` is set.
 
+If a local clone shows an older or empty Flow Tool, sync the ignored local data
+file from the durable `game-data` branch:
+
+```bash
+npm run sync-game-data
+```
+
+That command restores `game-flow.json` from `origin/game-data` and backs up the
+previous local file under `game-flow.backups/`. To sync every supported ignored
+tool data file from that branch, run:
+
+```bash
+npm run sync-game-data -- --all
+```
+
 Game constants, stage layouts, controller layouts, host audio sets, and Art
 Manager composition data use the same durable storage layer. Open `/constants`
 to edit values such as the `playerColors` list used for random unique player

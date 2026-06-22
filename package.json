@@ -6,6 +6,7 @@
   "scripts": {
     "build-info": "node build-version.js",
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "sync-game-data": "node sync-game-data.js"
   }
 }
