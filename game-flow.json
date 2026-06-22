@@ -13,10 +13,10 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 1022
+        "y": 1276
       },
       "entryTargetActionId": "lobby-action-mqojohry",
-      "nextStateTargetId": "writing-moment",
+      "nextStateTargetId": "intro",
       "actions": [
         {
           "id": "lobby-countdown-complete",
@@ -30,7 +30,7 @@
           "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 768
           },
           "subActions": [],
           "trigger": "onCountdownComplete",
@@ -53,7 +53,7 @@
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "lobby-countdown-complete"
+          "nextTargetActionId": "lobby-action-mqpt9z90"
         },
         {
           "id": "lobby-action-mqprlx3p",
@@ -70,9 +70,28 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 768
+            "y": 1022
           },
           "nextTargetActionId": "return"
+        },
+        {
+          "id": "lobby-action-mqpt9z90",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "nextTargetActionId": "lobby-countdown-complete"
         }
       ]
     },
@@ -191,7 +210,8 @@
           "text": "Round <ROUND_NUMBER>",
           "textTarget": "roundintrotext",
           "isShown": true,
-          "instant": false
+          "instant": false,
+          "stageClickTargetActionId": "round-intro-game-state-action-mqprjpxb"
         },
         {
           "id": "round-intro-game-state-action-mqprj88i",
@@ -269,7 +289,8 @@
           "text": "We are in the Crafting State",
           "textTarget": "crafting-game-statemomenttext",
           "isShown": true,
-          "instant": false
+          "instant": false,
+          "stageClickTargetActionId": "crafting-game-state-action-mqn4qzpm"
         },
         {
           "id": "crafting-game-state-action-mqn4qzpm",
@@ -519,7 +540,7 @@
           "text": "Presented text",
           "textTarget": "",
           "instant": false,
-          "isShown": false,
+          "isShown": true,
           "subActions": [],
           "nodePosition": {
             "x": 670,
@@ -542,9 +563,9 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 1166
+        "y": 1674
       },
-      "entryTargetActionId": "",
+      "entryTargetActionId": "presentation-game-state-action-mqpt8zt1",
       "nextStateTargetId": "scoreboard-game-state",
       "actions": [
         {
@@ -559,13 +580,14 @@
           "nextTargetActionId": "presentation-game-state-action-mqlstve7",
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           },
           "subActions": [],
           "text": "We are in the Presentation Game State",
           "textTarget": "presentation-game-statemomenttext",
           "isShown": true,
-          "instant": false
+          "instant": false,
+          "stageClickTargetActionId": "presentation-game-state-action-mqlstve7"
         },
         {
           "id": "presentation-game-state-action-mqlstve7",
@@ -579,7 +601,7 @@
           "nextTargetActionId": "",
           "nodePosition": {
             "x": 640,
-            "y": 514
+            "y": 768
           },
           "subActions": [],
           "variable": "players.length",
@@ -604,26 +626,9 @@
               "type": "noMatch",
               "value": "",
               "code": "x < 3",
-              "targetActionId": "presentation-game-state-action-mqlahz0a"
+              "targetActionId": "presentation-game-state-action-mqpt4iz8"
             }
           ]
-        },
-        {
-          "id": "presentation-game-state-action-mqlahz0a",
-          "name": "Do Transition",
-          "type": "transition",
-          "category": "standard",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "nextTargetActionId": "return",
-          "nodePosition": {
-            "x": 1030,
-            "y": 912
-          },
-          "subActions": [],
-          "transition": "horizontalWipe"
         },
         {
           "id": "presentation-game-state-action-mqmt6c5d",
@@ -636,14 +641,15 @@
           },
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 310,
-            "y": 912
+            "x": 490,
+            "y": 1166
           },
           "subActions": [],
           "text": "there are 3 players",
           "textTarget": "presentation-game-statemomenttext",
           "isShown": true,
-          "instant": false
+          "instant": false,
+          "stageClickTargetActionId": "presentation-game-state-action-mqpt4iz8"
         },
         {
           "id": "presentation-game-state-action-mqmt6p8z",
@@ -656,14 +662,53 @@
           },
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 670,
-            "y": 912
+            "x": 850,
+            "y": 1166
           },
           "subActions": [],
           "text": "there are more than 3 players",
           "textTarget": "presentation-game-statemomenttext",
           "isShown": true,
-          "instant": false
+          "instant": false,
+          "stageClickTargetActionId": "presentation-game-state-action-mqpt4iz8"
+        },
+        {
+          "id": "presentation-game-state-action-mqpt4iz8",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1420
+          },
+          "nextTargetActionId": "return"
+        },
+        {
+          "id": "presentation-game-state-action-mqpt8zt1",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "presentation-game-state-action-mqlahhim"
         }
       ]
     },
@@ -680,9 +725,9 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 768
+        "y": 1022
       },
-      "entryTargetActionId": "",
+      "entryTargetActionId": "scoreboard-game-state-action-mqpt5dmx",
       "nextStateTargetId": "post-game-state",
       "actions": [
         {
@@ -697,30 +742,52 @@
           "nextTargetActionId": "scoreboard-game-state-action-mqlajev8",
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           },
           "subActions": [],
           "text": "We are in the Scoreboard State",
           "textTarget": "scoreboard-game-statemomenttext",
           "isShown": true,
-          "instant": false
+          "instant": false,
+          "stageClickTargetActionId": "scoreboard-game-state-action-mqpt5mx5"
         },
         {
-          "id": "scoreboard-game-state-action-mqlajev8",
-          "name": "Do Transition",
-          "type": "transition",
-          "category": "standard",
+          "id": "scoreboard-game-state-action-mqpt5dmx",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "return",
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 260
           },
+          "nextTargetActionId": "scoreboard-game-state-action-mqlaj01s"
+        },
+        {
+          "id": "scoreboard-game-state-action-mqpt5mx5",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
           "subActions": [],
-          "transition": "horizontalWipe"
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "return"
         }
       ]
     },
@@ -737,9 +804,9 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 768
+        "y": 1022
       },
-      "entryTargetActionId": "",
+      "entryTargetActionId": "post-game-state-action-mqpt63ca",
       "nextStateTargetId": "lobby",
       "actions": [
         {
@@ -754,30 +821,52 @@
           "nextTargetActionId": "post-game-state-action-mqlakl0m",
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           },
           "subActions": [],
           "text": "We are in the Post Game State",
           "textTarget": "post-game-statemomenttext",
           "isShown": true,
-          "instant": false
+          "instant": false,
+          "stageClickTargetActionId": "post-game-state-action-mqpt6apm"
         },
         {
-          "id": "post-game-state-action-mqlakl0m",
-          "name": "Do Transition",
-          "type": "transition",
-          "category": "standard",
+          "id": "post-game-state-action-mqpt63ca",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "return",
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 260
           },
+          "nextTargetActionId": "post-game-state-action-mqlak7zw"
+        },
+        {
+          "id": "post-game-state-action-mqpt6apm",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
           "subActions": [],
-          "transition": "horizontalWipe"
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "return"
         }
       ]
     },
@@ -908,7 +997,7 @@
             "x": 670,
             "y": 1530
           },
-          "nextTargetActionId": "return"
+          "nextTargetActionId": "writing-moment-action-mqpt6uvj"
         },
         {
           "id": "writing-moment-action-mqpsey1p",
@@ -928,6 +1017,25 @@
             "y": 260
           },
           "nextTargetActionId": "writing-show-prompt"
+        },
+        {
+          "id": "writing-moment-action-mqpt6uvj",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1784
+          },
+          "nextTargetActionId": "return"
         }
       ],
       "startNodePosition": {
@@ -936,13 +1044,13 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 1784
+        "y": 2038
       }
     },
     {
       "id": "voting-moment",
       "name": "Voting Moment",
-      "entryTargetActionId": "voting-show-cards",
+      "entryTargetActionId": "voting-moment-action-mqpt7alu",
       "nodePositions": {
         "start": {
           "x": 420,
@@ -1001,7 +1109,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           }
         },
         {
@@ -1018,7 +1126,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 768
           }
         },
         {
@@ -1033,7 +1141,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 768
+            "y": 1022
           }
         },
         {
@@ -1050,7 +1158,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1022
+            "y": 1276
           },
           "nextTargetActionId": "voting-moment-action-mqoipyj9"
         },
@@ -1068,7 +1176,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 2292
+            "y": 2546
           }
         },
         {
@@ -1083,7 +1191,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 2546
+            "y": 2800
           }
         },
         {
@@ -1101,7 +1209,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1276
+            "y": 1530
           },
           "nextTargetActionId": "voting-moment-action-mqoir6xh"
         },
@@ -1120,7 +1228,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1530
+            "y": 1784
           },
           "nextTargetActionId": "voting-moment-action-mqoirmjb"
         },
@@ -1139,7 +1247,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1784
+            "y": 2038
           },
           "nextTargetActionId": "voting-moment-action-mqoirt4e"
         },
@@ -1158,7 +1266,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 2038
+            "y": 2292
           },
           "nextTargetActionId": "voting-show-winner-points"
         },
@@ -1177,9 +1285,47 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 2800
+            "y": 3054
           },
           "cardFilter": "all",
+          "nextTargetActionId": "voting-moment-action-mqpt7iwq"
+        },
+        {
+          "id": "voting-moment-action-mqpt7alu",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "voting-show-cards"
+        },
+        {
+          "id": "voting-moment-action-mqpt7iwq",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 3308
+          },
           "nextTargetActionId": "return"
         }
       ],
@@ -1190,7 +1336,7 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 3054
+        "y": 3562
       }
     }
   ]
