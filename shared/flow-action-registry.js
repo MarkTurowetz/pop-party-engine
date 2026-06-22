@@ -162,13 +162,19 @@ const flowActionDefinitions = [
       ...base,
       type: "getRandomMultipleChoiceContent",
       variableName: context.normalizeFlowVariableName(action.variableName)
-    })
+    }),
+    applyRoomEffect: (room, action, context) => {
+      context.storeRandomTriviaPrompt(room, action.variableName);
+    }
   },
   {
     id: "prepareVotingCards",
     name: "Prepare Voting Cards",
     category: "standard",
-    ...identityAction("prepareVotingCards")
+    ...identityAction("prepareVotingCards"),
+    applyRoomEffect: (room, action, context) => {
+      context.prepareVotingCards(room);
+    }
   },
   {
     id: "setVotingCardsShown",
@@ -186,7 +192,10 @@ const flowActionDefinitions = [
       isShown: action.isShown !== false,
       instant: action.instant === true,
       cardFilter: context.normalizeVotingCardFilter(action.cardFilter)
-    })
+    }),
+    applyRoomEffect: (room, action, context) => {
+      context.setVotingCardsShown(room, action);
+    }
   },
   {
     id: "voteOnAnswersInput",
@@ -212,13 +221,19 @@ const flowActionDefinitions = [
     id: "revealVotingResults",
     name: "Reveal Voting Results",
     category: "standard",
-    ...identityAction("revealVotingResults")
+    ...identityAction("revealVotingResults"),
+    applyRoomEffect: (room, action, context) => {
+      context.revealVotingResults(room);
+    }
   },
   {
     id: "revealAuthors",
     name: "Reveal Authors",
     category: "standard",
-    ...identityAction("revealAuthors")
+    ...identityAction("revealAuthors"),
+    applyRoomEffect: (room, action, context) => {
+      context.revealAuthors(room);
+    }
   },
   {
     id: "revealVotes",
@@ -232,23 +247,65 @@ const flowActionDefinitions = [
       ...base,
       type: "revealVotes",
       voteRevealStaggerSeconds: normalizeVoteRevealStaggerSeconds(action.voteRevealStaggerSeconds)
-    })
+    }),
+    applyRoomEffect: (room, action, context) => {
+      context.revealVotes(room);
+    }
   },
   {
     id: "revealWinningAnswer",
     name: "Reveal Winning Answer",
     category: "standard",
-    ...identityAction("revealWinningAnswer")
+    ...identityAction("revealWinningAnswer"),
+    applyRoomEffect: (room, action, context) => {
+      context.revealWinningAnswer(room);
+    }
   },
   {
     id: "setupGame",
     name: "Setup Game",
-    category: "standard"
+    category: "standard",
+    applyRoomEffect: (room) => {
+      for (const player of room.players.values()) {
+        player.points = 0;
+        player.pendingPoints = 0;
+      }
+      room.currentRound = 0;
+      room.flowVariables = {};
+      room.pendingPointPopups = [];
+      room.pendingPointPopupNonce = 0;
+      room.playerAnswerRecords = {};
+      room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
+      room.storedPlayerAnswers = {};
+      room.votingCards = [];
+      room.votingCardsShown = false;
+      room.votingResultsShown = false;
+      room.votingAuthorsRevealed = false;
+      room.votingVotesRevealed = false;
+      room.votingWinnerRevealed = false;
+      room.votingWinners = [];
+      room.playersShown = false;
+      room.playerAnswersShown = false;
+      room.hiddenPlayerAnswerIds = new Set();
+      room.displayedPlayerAnswers = new Map();
+      room.displayedAnswerCorrectness = new Map();
+    }
   },
   {
     id: "getPlayerAnswers",
     name: "Get Player Answers",
-    category: "standard"
+    category: "standard",
+    applyRoomEffect: (room, action, context) => {
+      const inputId = String(action.inputId || "input").trim() || "input";
+      const round = context.resolveStoredAnswerRound(room, action.round);
+      const varName = String(action.variableName || "playerAnswers").trim() || "playerAnswers";
+      const records = room.storedPlayerAnswers?.[round]?.[inputId] || {};
+      room.flowVariables = room.flowVariables || {};
+      room.flowVariables[varName] = Object.entries(records).map(([playerId, rec]) => ({
+        playerId,
+        ...(rec && typeof rec === "object" ? rec : { text: String(rec || "") })
+      }));
+    }
   },
   {
     id: "displayText",
@@ -271,7 +328,10 @@ const flowActionDefinitions = [
       type: "setPlayersShown",
       isShown: action.isShown !== false,
       instant: action.instant === true
-    })
+    }),
+    applyRoomEffect: (room, action) => {
+      room.playersShown = action.isShown !== false;
+    }
   },
   {
     id: "setPlayerAnswersShown",
@@ -289,13 +349,41 @@ const flowActionDefinitions = [
       isShown: action.isShown !== false,
       instant: action.instant === true,
       playerFilter: context.normalizePlayerFilter(action.playerFilter)
-    })
+    }),
+    applyRoomEffect: (room, action, context) => {
+      const shouldShow = action.isShown !== false;
+      const filter = context.normalizePlayerFilter(action.playerFilter);
+      const targetPlayerIds = shouldShow && filter === "all"
+        ? context.activePlayers(room).map((player) => player.id)
+        : context.filteredPlayerIds(room, filter);
+      if (shouldShow) context.seedDisplayedPlayerAnswers(room, targetPlayerIds);
+      room.playerAnswersVisibleFilter = filter;
+      room.hiddenPlayerAnswerIds = room.hiddenPlayerAnswerIds instanceof Set ? room.hiddenPlayerAnswerIds : new Set();
+      if (filter === "all") {
+        room.playerAnswersShown = shouldShow;
+        if (shouldShow) room.hiddenPlayerAnswerIds.clear();
+        else {
+          context.clearDisplayedCorrectnessForPlayers(room, targetPlayerIds);
+          for (const playerId of targetPlayerIds) room.hiddenPlayerAnswerIds.add(playerId);
+        }
+      } else {
+        room.playerAnswersShown = true;
+        if (!shouldShow) context.clearDisplayedCorrectnessForPlayers(room, targetPlayerIds);
+        for (const playerId of targetPlayerIds) {
+          if (shouldShow) room.hiddenPlayerAnswerIds.delete(playerId);
+          else room.hiddenPlayerAnswerIds.add(playerId);
+        }
+      }
+    }
   },
   {
     id: "revealPlayerAnswerCorrectness",
     name: "Reveal Player Answer Correctness",
     category: "standard",
-    ...identityAction("revealPlayerAnswerCorrectness")
+    ...identityAction("revealPlayerAnswerCorrectness"),
+    applyRoomEffect: (room, action, context) => {
+      context.markDisplayedAnswersCorrectness(room);
+    }
   },
   {
     id: "showPoints",
@@ -311,13 +399,33 @@ const flowActionDefinitions = [
       type: "showPoints",
       playerFilter: context.normalizePlayerFilter(action.playerFilter || "correct"),
       points: context.normalizeConstantInteger(action.points, 0, 0, 999999)
-    })
+    }),
+    applyRoomEffect: (room, action, context) => {
+      const playerIds = context.filteredPlayerIds(room, action.playerFilter);
+      const points = Number(action.points || 0) > 0 ? Number(action.points) : context.gameConstants().pointsForCorrectAnswer;
+      room.pendingPointPopupNonce = Number(room.pendingPointPopupNonce || 0) + 1;
+      const nonce = room.pendingPointPopupNonce;
+      room.pendingPointPopups = playerIds.map((playerId, index) => {
+        const player = room.players.get(playerId);
+        if (player) player.pendingPoints = Number(player.pendingPoints || 0) + points;
+        return { id: `${nonce}-${playerId}`, nonce, playerId, points, index, createdAt: Date.now() };
+      });
+    }
   },
   {
     id: "givePendingPoints",
     name: "Give Pending Points",
     category: "standard",
-    ...identityAction("givePendingPoints")
+    ...identityAction("givePendingPoints"),
+    applyRoomEffect: (room) => {
+      for (const player of room.players.values()) {
+        const pending = Number(player.pendingPoints || 0);
+        if (pending > 0) {
+          player.points = Number(player.points || 0) + pending;
+          player.pendingPoints = 0;
+        }
+      }
+    }
   },
   {
     id: "setTimerShown",
@@ -333,13 +441,19 @@ const flowActionDefinitions = [
       type: "setTimerShown",
       isShown: action.isShown !== false,
       instant: action.instant === true
-    })
+    }),
+    applyRoomEffect: (room, action, context) => {
+      context.setCraftingTimerShown(room, action.isShown !== false);
+    }
   },
   {
     id: "startCraftingTimer",
     name: "Start Crafting Timer",
     category: "standard",
-    ...identityAction("startCraftingTimer")
+    ...identityAction("startCraftingTimer"),
+    applyRoomEffect: (room, action, context) => {
+      context.startCraftingTimer(room, action);
+    }
   },
   {
     id: "decision",
@@ -425,7 +539,15 @@ function createFlowActionRegistry(context) {
     return toPublic(action, base, context);
   }
 
+  function applyRoomEffect(room, action) {
+    const definition = definitionById.get(action?.type);
+    if (!definition?.applyRoomEffect) return false;
+    definition.applyRoomEffect(room, action, context);
+    return true;
+  }
+
   return {
+    applyRoomEffect,
     actionTypeMeta,
     hasActionType,
     normalizeAction,
