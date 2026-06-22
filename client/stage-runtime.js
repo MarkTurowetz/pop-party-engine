@@ -2,6 +2,7 @@ let stageTextControllerInstance = null;
 let craftingTimerControllerInstance = null;
 let playerAnswerBubbleControllerInstance = null;
 let playerRosterRendererInstance = null;
+let stageDebugPanelInstance = null;
 
 function stageVisualControllers() {
   return window.PartyGameStageVisualControllers || null;
@@ -66,6 +67,16 @@ function playerRosterRenderer() {
     });
   }
   return playerRosterRendererInstance;
+}
+
+function stageDebugPanel() {
+  if (!stageDebugPanelInstance && window.PartyGameStageDebug) {
+    stageDebugPanelInstance = window.PartyGameStageDebug.createPanel({
+      actionElement: stageDebugAction,
+      alertElement: stageDebugAlert
+    });
+  }
+  return stageDebugPanelInstance;
 }
 
 let votingCardVisualRenderer = null;
@@ -237,38 +248,15 @@ function renderCraftingTimer(timer, options = {}) {
 }
 
 function renderStageActionDebug(lobby) {
-  if (!stageDebugAction) return;
-  const phase = lobby.phase || "lobby";
-  const debug = lobby.debugAction || null;
-  if (phase === "lobby" || phase === "starting" || !debug) {
-    stageDebugAction.classList.add("hidden");
-    stageDebugAction.textContent = "";
-    return;
-  }
-  const phaseName = debug.phaseName || phase;
-  const actionName = debug.actionName || debug.actionId || "No Action";
-  const actionType = debug.actionType ? ` / ${debug.actionType}` : "";
-  const parts = [`${phaseName}: ${actionName}${actionType}`];
-  const required = Number(debug.requiredInputCount || 0);
-  const submitted = Number(debug.submittedInputCount || 0);
-  if (required > 0 && (debug.actionType || "").includes("Input")) {
-    parts.push(`input ${submitted}/${required}`);
-  }
-  const records = Number(debug.playerAnswerRecordCount || 0);
-  if (records > 0) parts.push(`answers ${records}`);
-  const storedRounds = Number(debug.storedAnswerRoundCount || 0);
-  const storedCurrent = Number(debug.storedAnswerCurrentRoundCount || 0);
-  if (storedRounds > 0 || storedCurrent > 0) parts.push(`stored r${storedRounds} cur${storedCurrent}`);
-  const cards = Number(debug.votingCardCount || 0);
-  const visibleCards = Number(debug.visibleVotingCardCount || 0);
-  const preparedCards = Number(debug.lastPreparedVotingCardCount || 0);
-  if (cards > 0 || preparedCards > 0 || debug.actionType === "prepareVotingCards" || debug.actionType === "setVotingCardsShown" || debug.actionType === "voteOnAnswersInput") {
-    parts.push(`cards ${visibleCards}/${cards} prepared ${preparedCards}`);
-  }
-  const skippedCards = Number(debug.lastVotingPrepareSkippedCount || 0);
-  if (skippedCards > 0) parts.push(`skipped ${skippedCards}`);
-  stageDebugAction.textContent = parts.join(" · ");
-  stageDebugAction.classList.remove("hidden");
+  stageDebugPanel()?.renderAction(lobby);
+}
+
+function clearStageDecisionDebug(lobby) {
+  stageDebugPanel()?.clearDecisionAlert(lobby);
+}
+
+function showStageDecisionHalt(lobby) {
+  stageDebugPanel()?.showDecisionHalt(lobby);
 }
 
 function applyStageState(lobby) {
@@ -293,7 +281,7 @@ function applyStageState(lobby) {
   stageIntroContent.classList.toggle("hidden", phase !== "intro");
   stageIntroTitle.textContent = "GAME INTRO";
   presentClickWidget.classList.toggle("hidden", !(action?.type === "present" && action?.timing?.mode !== "S+"));
-  if (stageDebugAlert && lobby.lastDecisionTrace?.selectedTarget !== "none") stageDebugAlert.classList.add("hidden");
+  clearStageDecisionDebug(lobby);
   renderStagePlayers(players);
   setPlayersShown(lobby.playersShown !== false);
   const nextAnswersShown = lobby.playerAnswersShown !== false;
@@ -350,10 +338,7 @@ function renderStageLobby(lobby) {
   if (isNewAction) prepareNewStageAction(lobby, actionKey);
   if (haltedByDecision) {
     cancelStageWipe();
-    if (stageDebugAlert) {
-      stageDebugAlert.textContent = `No Matching Branch: ${lobby.lastDecisionTrace?.actionId || "Unknown Action"}`;
-      stageDebugAlert.classList.remove("hidden");
-    }
+    showStageDecisionHalt(lobby);
     renderedActionKey = actionKey;
     applyStageState({ ...lobby, action: null });
     return;
