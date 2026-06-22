@@ -49,6 +49,10 @@
       this.answerElement = this.element.querySelector(".voting-card-answer");
       this.voteBadgeElement = this.element.querySelector(".voting-card-votes");
       this.votersElement = this.element.querySelector(".voting-card-voters");
+      this.voteRevealKey = "";
+      this.voteRevealBadgeCount = 0;
+      this.voteRevealTimers = [];
+      this.visibleVoteCount = 0;
       this.groupVisual = this.createVisual(this.element, {
         hiddenClasses: ["voting-card-group-hidden"],
         motionHiddenClasses: ["voting-card-group-hidden"],
@@ -75,15 +79,14 @@
       });
     }
 
-    sync(cardData) {
+    sync(cardData, options = {}) {
       this.element.dataset.cardIndex = String(cardData.index ?? "");
       this.answerElement.textContent = cardData.text || "";
       this.applyComposition();
       this.cardElement.classList.toggle("is-winner", cardData.isWinner === true);
       this.cardElement.classList.toggle("is-loser", cardData.isLoser === true);
       this.syncAuthor(cardData);
-      this.syncVoteCount(cardData);
-      this.syncVoters(cardData);
+      this.syncVoters(cardData, options);
       this.groupVisual.play("on");
     }
 
@@ -136,16 +139,32 @@
       }
     }
 
-    syncVoteCount(cardData) {
-      const voteCount = Number(cardData.voteCount || 0);
-      this.voteBadgeElement.classList.toggle("hidden", cardData.votesRevealed !== true);
-      this.voteBadgeElement.textContent = `${voteCount} vote${voteCount === 1 ? "" : "s"}`;
+    clearVoteRevealTimers() {
+      for (const timerId of this.voteRevealTimers) global.clearTimeout(timerId);
+      this.voteRevealTimers = [];
     }
 
-    syncVoters(cardData) {
+    syncVoteCount(visibleVoteCount) {
+      const count = Math.max(0, Math.floor(Number(visibleVoteCount || 0)));
+      this.visibleVoteCount = count;
+      this.voteBadgeElement.classList.toggle("hidden", count <= 0);
+      this.voteBadgeElement.textContent = count > 0 ? String(count) : "";
+    }
+
+    revealVoterBadge(badge, visibleVoteCount) {
+      this.createVisual(badge, {
+        hiddenClasses: ["voting-card-vote-hidden"],
+        motionHiddenClasses: ["voting-card-vote-hidden"],
+        instantClass: "voting-card-vote-instant"
+      }).play("appear");
+      this.syncVoteCount(visibleVoteCount);
+    }
+
+    syncVoters(cardData, options = {}) {
       const voters = cardData.votesRevealed === true ? (cardData.voters || []) : [];
       const desiredIds = new Set(voters.map((voter, index) => voter.id || `voter-${index}`));
       const existing = new Map(Array.from(this.votersElement.querySelectorAll(".voting-card-voter-badge")).map((badge) => [badge.dataset.voterId, badge]));
+      const badges = [];
       let cursor = this.votersElement.firstElementChild;
       voters.forEach((voter, index) => {
         const voterId = voter.id || `voter-${index}`;
@@ -160,24 +179,56 @@
         } else {
           this.votersElement.insertBefore(badge, cursor);
         }
-        this.createVisual(badge, {
-          hiddenClasses: ["voting-card-vote-hidden"],
-          motionHiddenClasses: ["voting-card-vote-hidden"],
-          instantClass: "voting-card-vote-instant"
-        }).play("on");
+        badges.push(badge);
       });
       for (const badge of Array.from(this.votersElement.querySelectorAll(".voting-card-voter-badge"))) {
         if (!desiredIds.has(badge.dataset.voterId || "")) badge.remove();
       }
       if (cardData.votesRevealed === true) {
         this.votersVisual.play("on");
+        this.scheduleVoteReveal(badges, options);
       } else {
+        this.clearVoteRevealTimers();
+        this.voteRevealKey = "";
+        this.voteRevealBadgeCount = 0;
+        this.syncVoteCount(0);
         this.votersVisual.play("park", { instant: true });
       }
     }
 
+    scheduleVoteReveal(badges, options = {}) {
+      const revealKey = options.voteRevealKey || "instant";
+      const staggerMs = Math.max(0, Number(options.voteRevealStaggerMs || 0));
+      if (revealKey === this.voteRevealKey && badges.length === this.voteRevealBadgeCount) return;
+      this.clearVoteRevealTimers();
+      this.voteRevealKey = revealKey;
+      this.voteRevealBadgeCount = badges.length;
+      this.syncVoteCount(0);
+      badges.forEach((badge) => {
+        this.createVisual(badge, {
+          hiddenClasses: ["voting-card-vote-hidden"],
+          motionHiddenClasses: ["voting-card-vote-hidden"],
+          instantClass: "voting-card-vote-instant"
+        }).play("park", { instant: true });
+      });
+      if (!badges.length) return;
+      badges.forEach((badge, index) => {
+        const visibleVoteCount = index + 1;
+        const delayMs = staggerMs > 0 ? visibleVoteCount * staggerMs : 0;
+        if (delayMs === 0) {
+          this.revealVoterBadge(badge, visibleVoteCount);
+          return;
+        }
+        const timerId = global.setTimeout(() => {
+          if (this.voteRevealKey !== revealKey) return;
+          this.revealVoterBadge(badge, visibleVoteCount);
+        }, delayMs);
+        this.voteRevealTimers.push(timerId);
+      });
+    }
+
     updateVoterBadge(badge, voter, index) {
-      badge.style.transitionDelay = `${index * 80}ms`;
+      badge.style.transitionDelay = "0ms";
       this.applyVoteWidgetStyle(badge);
       const avatarElement = badge.querySelector(".voting-card-voter-avatar");
       avatarElement.className = `voting-card-voter-avatar ${this.avatarClass(voter.avatar?.shape)}`;
@@ -201,6 +252,7 @@
     }
 
     remove(options = {}) {
+      this.clearVoteRevealTimers();
       const duration = this.groupVisual.play(options.instant ? "park" : "disappear", { instant: options.instant === true });
       const element = this.element;
       const token = element.dataset.visualAnimationToken || "";
@@ -226,7 +278,7 @@
       this.hideLayerTimer = null;
     }
 
-    render(cards = []) {
+    render(cards = [], options = {}) {
       if (!this.layer) return;
       const list = Array.isArray(cards) ? cards : [];
       if (list.length) this.showLayer();
@@ -246,7 +298,7 @@
           this.cards.set(cardData.id, view);
           this.layer.appendChild(view.element);
         }
-        view.sync(cardData);
+        view.sync(cardData, options);
       }
       let removalDuration = 0;
       for (const [cardId, view] of Array.from(this.cards.entries())) {

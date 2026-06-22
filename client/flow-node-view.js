@@ -1028,6 +1028,9 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
     action.timerEndTargetActionId = action.timerEndTargetActionId || "";
     action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
   }
+  if (value === "revealVotes") {
+    action.voteRevealStaggerSeconds = Number(action.voteRevealStaggerSeconds ?? 1);
+  }
   if (value === "displayText") {
     action.text = action.text || "Displayed text";
     if (!("textTarget" in action)) action.textTarget = "";
@@ -1386,6 +1389,10 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Reveals the author heading on each prepared voting card."));
   }
   if (action.type === "revealVotes") {
+    target.appendChild(flowNumber("Vote Stagger Seconds", Number(action.voteRevealStaggerSeconds ?? 1), (value) => {
+      action.voteRevealStaggerSeconds = Math.max(0, Math.min(60, Number(value) || 0));
+      rerender();
+    }));
     target.appendChild(readOnlyFlowNote("Reveals the player vote widgets under the cards they voted for."));
   }
   if (action.type === "revealWinningAnswer") {

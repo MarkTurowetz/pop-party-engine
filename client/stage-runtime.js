@@ -240,8 +240,31 @@ function renderPointPopups(popups = []) {
   }
 }
 
-function renderVotingCards(cards = []) {
-  votingCardRenderer()?.render(cards);
+function revealVoteStaggerMs(action) {
+  const seconds = Number(action?.voteRevealStaggerSeconds ?? 1);
+  return Math.max(0, Math.min(60, Number.isFinite(seconds) ? seconds : 1)) * 1000;
+}
+
+function voteRevealDurationMs(action, cards = currentStageState?.votingCards || []) {
+  if (action?.type !== "revealVotes") return 0;
+  const maxVotes = Math.max(0, ...(Array.isArray(cards) ? cards.map((card) => (card.voters || []).length) : [0]));
+  if (maxVotes <= 0) return 0;
+  return Math.round(maxVotes * revealVoteStaggerMs(action) + 220);
+}
+
+function votingCardRenderOptions(lobby) {
+  const action = lobby?.action || null;
+  if (action?.type !== "revealVotes") {
+    return { voteRevealKey: "instant", voteRevealStaggerMs: 0 };
+  }
+  return {
+    voteRevealKey: `${action.id || action.index || "reveal-votes"}:${action.voteRevealStaggerSeconds ?? 1}`,
+    voteRevealStaggerMs: revealVoteStaggerMs(action)
+  };
+}
+
+function renderVotingCards(cards = [], options = {}) {
+  votingCardRenderer()?.render(cards, options);
 }
 
 function reloadStageArtAssets() {
@@ -316,12 +339,38 @@ function clearStageAudioPlayers() {
   stageAudioPlayers.clear();
 }
 
+let craftingTimerVisual = null;
+
+function craftingTimerVisualObject() {
+  if (!craftingTimer || !visualAnimation) return null;
+  if (!craftingTimerVisual) {
+    craftingTimerVisual = visualAnimation.createCssVisualObject({
+      element: craftingTimer,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      instantClass: "is-instant",
+      timerSink: (timerId) => textObjectTimers.push(timerId)
+    });
+  }
+  return craftingTimerVisual;
+}
+
+function setCraftingTimerVisible(isShown, options = {}) {
+  const visual = craftingTimerVisualObject();
+  if (!visual) {
+    craftingTimer?.classList.toggle("hidden", !isShown);
+    return 0;
+  }
+  const animation = visualAnimation.animationForVisibility(isShown, visual.isVisible());
+  return visual.play(animation, { instant: options.instant === true });
+}
+
 function resetStageObjects() {
   clearStageObjectTimers();
   clearStageAudioPlayers();
   window.clearInterval(craftingTimerInterval);
   craftingTimerInterval = null;
-  craftingTimer?.classList.add("hidden");
+  setCraftingTimerVisible(false, { instant: true });
   playerLobby.classList.remove("players-hidden", "players-instant");
   renderedPlayerAnswersShown = true;
   playerLobby.classList.remove("answers-hidden");
@@ -348,11 +397,11 @@ function setStageTextObject(target, options = {}) {
   return playStageTextVisual(object, animation, { instant, complete: options.complete });
 }
 
-function renderCraftingTimer(timer) {
+function renderCraftingTimer(timer, options = {}) {
   window.clearInterval(craftingTimerInterval);
   craftingTimerInterval = null;
   if (!craftingTimer || !craftingTimerLabel || !timer?.shown) {
-    craftingTimer?.classList.add("hidden");
+    setCraftingTimerVisible(false, { instant: options.instant === true });
     return;
   }
   const durationMs = Math.max(1, Number(timer.durationMs || 1));
@@ -366,7 +415,7 @@ function renderCraftingTimer(timer) {
     craftingTimer.style.setProperty("--timer-progress", progress.toFixed(4));
     craftingTimerLabel.textContent = String(Math.ceil(remainingMs / 1000));
   };
-  craftingTimer.classList.remove("hidden");
+  setCraftingTimerVisible(true, { instant: options.instant === true });
   update();
   if (timer.running) {
     craftingTimerInterval = window.setInterval(update, 100);
@@ -438,8 +487,8 @@ function applyStageState(lobby) {
   const hasParkedShownBubbles = nextAnswersShown && Boolean(playerLobby.querySelector(".player-answer-bubble.is-hidden, .player-answer-bubble.is-exiting"));
   setPlayerAnswerBubblesShown(nextAnswersShown, { instant: renderedPlayerAnswersShown === nextAnswersShown && !answersAreStillAnimating && !hasParkedShownBubbles });
   renderPointPopups(lobby.pendingPointPopups || []);
-  renderVotingCards(lobby.votingCards || []);
-  renderCraftingTimer(lobby.craftingTimer);
+  renderVotingCards(lobby.votingCards || [], votingCardRenderOptions(lobby));
+  renderCraftingTimer(lobby.craftingTimer, { instant: action?.type === "setTimerShown" && action.instant === true });
 
   const vip = players.find((player) => player.isVip);
   joinPrompt.classList.toggle("hidden", !isLobbyPhase);
@@ -609,7 +658,11 @@ function runStageAction(action, isPrimary, actionKey) {
   }
   if (action.type === "revealVotingResults" || action.type === "revealAuthors" || action.type === "revealVotes" || action.type === "revealWinningAnswer") {
     if (isPrimary) {
-      completeFlowAction("callback", action.id);
+      const duration = voteRevealDurationMs(action);
+      window.setTimeout(() => {
+        if (renderedActionKey !== actionKey) return;
+        completeFlowAction("callback", action.id);
+      }, duration);
     } else {
       applyFlowActionEffect(action.id);
     }
@@ -673,7 +726,19 @@ function runStageAction(action, isPrimary, actionKey) {
     }
     return;
   }
-  if (action.type === "setTimerShown" || action.type === "startCraftingTimer") {
+  if (action.type === "setTimerShown") {
+    const duration = action.isShown === false && action.instant !== true ? 500 : 0;
+    if (isPrimary) {
+      window.setTimeout(() => {
+        if (renderedActionKey !== actionKey) return;
+        completeFlowAction("callback", action.id);
+      }, duration);
+    } else {
+      applyFlowActionEffect(action.id);
+    }
+    return;
+  }
+  if (action.type === "startCraftingTimer") {
     if (isPrimary) {
       completeFlowAction("callback", action.id);
     } else {

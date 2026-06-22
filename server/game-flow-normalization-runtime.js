@@ -150,7 +150,10 @@ function createGameFlowNormalizationRuntime({
         answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
       };
     }
-    if (type === "revealVotingResults" || type === "revealAuthors" || type === "revealVotes" || type === "revealWinningAnswer") {
+    if (type === "revealVotes") {
+      return { ...base, voteRevealStaggerSeconds: normalizeVoteRevealStaggerSeconds(action?.voteRevealStaggerSeconds) };
+    }
+    if (type === "revealVotingResults" || type === "revealAuthors" || type === "revealWinningAnswer") {
       return { ...base };
     }
     if (type === "displayText") {
@@ -226,6 +229,11 @@ function createGameFlowNormalizationRuntime({
     const rawSeconds = Number(timing?.seconds || 0);
     const seconds = Number(Math.max(0, Math.min(999, Number.isFinite(rawSeconds) ? rawSeconds : 0)).toFixed(2));
     return { mode, seconds };
+  }
+
+  function normalizeVoteRevealStaggerSeconds(value) {
+    const number = Number(value);
+    return Number(Math.max(0, Math.min(60, Number.isFinite(number) ? number : 1)).toFixed(2));
   }
 
   return {

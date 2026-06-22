@@ -327,6 +327,10 @@
       transform: scale(0);
     }
 
+    .crafting-timer.is-instant {
+      transition-duration: 0ms !important;
+    }
+
     .crafting-timer.stage-layout-target.hidden {
       --stage-object-visible-scale: 0;
       transform: translate(-50%, -50%) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1))) !important;

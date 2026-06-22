@@ -228,7 +228,7 @@ function actionSummary(action, isSubAction = false) {
   }
   if (action.type === "revealVotingResults") return `Reveal voting results / ${timingText}`;
   if (action.type === "revealAuthors") return `Reveal voting card authors / ${timingText}`;
-  if (action.type === "revealVotes") return `Reveal voting card voters / ${timingText}`;
+  if (action.type === "revealVotes") return `Reveal voting card voters / ${Number(action.voteRevealStaggerSeconds ?? 1).toFixed(1)}s stagger / ${timingText}`;
   if (action.type === "revealWinningAnswer") return `Reveal winning voting card / ${timingText}`;
   if (action.type === "getPlayerAnswers") return `Get answers ← round ${action.round || "current"} / "${action.inputId || "input"}" → ${action.variableName || "playerAnswers"} / ${timingText}`;
   if (action.type === "playAudio") return `Play audio URL / ${timingText}`;
@@ -1038,6 +1038,19 @@ function renderFlowEditor() {
   }
   if (action.type === "revealVotingResults") {
     flowEditor.appendChild(readOnlyFlowNote("Counts stored votes, marks winning voting cards, and reveals which players voted for each answer."));
+  }
+  if (action.type === "revealAuthors") {
+    flowEditor.appendChild(readOnlyFlowNote("Reveals the author heading on each prepared voting card."));
+  }
+  if (action.type === "revealVotes") {
+    flowEditor.appendChild(flowNumber("Vote Stagger Seconds", Number(action.voteRevealStaggerSeconds ?? 1), (value) => {
+      action.voteRevealStaggerSeconds = Math.max(0, Math.min(60, Number(value) || 0));
+      renderFlowListAndPublish();
+    }));
+    flowEditor.appendChild(readOnlyFlowNote("Reveals one voter per card per stagger interval. E+ timing starts after the final voter appears."));
+  }
+  if (action.type === "revealWinningAnswer") {
+    flowEditor.appendChild(readOnlyFlowNote("Scores stored votes and highlights the winning voting card."));
   }
   if (action.type === "doNothing") {
     flowEditor.appendChild(readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));

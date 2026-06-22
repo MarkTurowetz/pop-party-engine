@@ -108,7 +108,7 @@ function createFlowActionPublicRuntime({
       return { ...base, type: "revealAuthors" };
     }
     if (action.type === "revealVotes") {
-      return { ...base, type: "revealVotes" };
+      return { ...base, type: "revealVotes", voteRevealStaggerSeconds: normalizeVoteRevealStaggerSeconds(action.voteRevealStaggerSeconds) };
     }
     if (action.type === "revealWinningAnswer") {
       return { ...base, type: "revealWinningAnswer" };
@@ -179,6 +179,11 @@ function createFlowActionPublicRuntime({
     const words = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
     if (number < words.length) return words[number];
     return String(number);
+  }
+
+  function normalizeVoteRevealStaggerSeconds(value) {
+    const number = Number(value);
+    return Number(Math.max(0, Math.min(60, Number.isFinite(number) ? number : 1)).toFixed(2));
   }
 
   return {
