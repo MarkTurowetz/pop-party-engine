@@ -219,6 +219,57 @@ function actionValueBadge(action) {
   return getFlowActionSummaryRuntime()?.actionValueBadge(action) || null;
 }
 
+function flowTrueFalseOptions(trueFirst = true) {
+  return window.PartyGameFlowActionOptions?.trueFalseOptions(trueFirst) || [
+    { id: "true", name: "True" },
+    { id: "false", name: "False" }
+  ];
+}
+
+function choiceInputModeOptions() {
+  return window.PartyGameFlowActionOptions?.choiceInputModeOptions() || [
+    { id: "singleSelect", name: "Multi-Select Single" },
+    { id: "submitOnce", name: "Single Input Done State" },
+    { id: "continuous", name: "Continuous Input" }
+  ];
+}
+
+function votingCardFilterOptions() {
+  return window.PartyGameFlowActionOptions?.votingCardFilterOptions() || [
+    { id: "all", name: "All Cards" },
+    { id: "winners", name: "Correct Cards" },
+    { id: "losers", name: "Wrong Cards" }
+  ];
+}
+
+function playerFilterOptions() {
+  return window.PartyGameFlowActionOptions?.playerFilterOptions() || [
+    { id: "all", name: "All Players" },
+    { id: "correct", name: "Correct Players" },
+    { id: "wrong", name: "Wrong Players" },
+    { id: "votingWinner", name: "Voting Winner Authors" },
+    { id: "votingLosers", name: "Voting Losing Authors" }
+  ];
+}
+
+function roundOptions() {
+  return window.PartyGameFlowActionOptions?.roundOptions() || [
+    { id: "current", name: "Current Round" },
+    { id: "1", name: "Round 1" },
+    { id: "2", name: "Round 2" },
+    { id: "3", name: "Round 3" },
+    { id: "4", name: "Round 4" },
+    { id: "5", name: "Round 5" }
+  ];
+}
+
+function transitionTriggerOptions() {
+  return window.PartyGameFlowActionOptions?.transitionTriggerOptions() || [
+    { id: "", name: "Immediate / Manual" },
+    { id: "onCountdownComplete", name: "On Countdown Complete" }
+  ];
+}
+
 function flowTargetActionName(actionId) {
   if (!actionId) return "No Connection";
   if (actionId === "none") return "None";
@@ -810,36 +861,23 @@ function renderFlowEditor() {
       action.text = value;
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       renderFlowListAndPublish();
     }));
   }
   if (action.type === "multipleChoiceInput") {
-    flowEditor.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", [
-      { id: "singleSelect", name: "Multi-Select Single" },
-      { id: "submitOnce", name: "Single Input Done State" },
-      { id: "continuous", name: "Continuous Input" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", choiceInputModeOptions(), (value) => {
       action.inputMode = value;
       renderFlowListAndPublish();
       renderFlowEditor();
     }));
     if ((action.inputMode || "singleSelect") === "singleSelect") {
-      flowEditor.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", [
-        { id: "false", name: "False" },
-        { id: "true", name: "True" }
-      ], (value) => {
+      flowEditor.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
         action.locked = value === "true";
         renderFlowListAndPublish();
       }));
@@ -876,28 +914,18 @@ function renderFlowEditor() {
       action.contentVariable = (value || "multipleChoicePrompt").trim() || "multipleChoicePrompt";
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Button Style", action.inputMode || "submitOnce", [
-      { id: "singleSelect", name: "Multi-Select Single" },
-      { id: "submitOnce", name: "Single Input Done State" },
-      { id: "continuous", name: "Continuous Input" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Button Style", action.inputMode || "submitOnce", choiceInputModeOptions(), (value) => {
       action.inputMode = value;
       renderFlowListAndPublish();
       renderFlowEditor();
     }));
     if ((action.inputMode || "submitOnce") === "singleSelect") {
-      flowEditor.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", [
-        { id: "false", name: "False" },
-        { id: "true", name: "True" }
-      ], (value) => {
+      flowEditor.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
         action.locked = value === "true";
         renderFlowListAndPublish();
       }));
     }
-    flowEditor.appendChild(flowSelect("Randomize Options", action.randomizeOptions === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Randomize Options", action.randomizeOptions === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.randomizeOptions = value === "true";
       renderFlowListAndPublish();
     }));
@@ -939,25 +967,15 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
   }
   if (action.type === "setVotingCardsShown") {
-    flowEditor.appendChild(flowSelect("Voting Cards Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Voting Cards Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Cards", action.cardFilter || "all", [
-      { id: "all", name: "All Cards" },
-      { id: "winners", name: "Correct Cards" },
-      { id: "losers", name: "Wrong Cards" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Cards", action.cardFilter || "all", votingCardFilterOptions(), (value) => {
       action.cardFilter = value;
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       renderFlowListAndPublish();
     }));
@@ -1023,43 +1041,25 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {
-    flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       renderFlowListAndPublish();
     }));
   }
   if (action.type === "setPlayerAnswersShown") {
-    flowEditor.appendChild(flowSelect("Player Answers Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Player Answers Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Players", action.playerFilter || "all", [
-      { id: "all", name: "All Players" },
-      { id: "correct", name: "Correct Players" },
-      { id: "wrong", name: "Wrong Players" },
-      { id: "votingWinner", name: "Voting Winner Authors" },
-      { id: "votingLosers", name: "Voting Losing Authors" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Players", action.playerFilter || "all", playerFilterOptions(), (value) => {
       action.playerFilter = value;
       renderFlowListAndPublish();
     }));
@@ -1068,13 +1068,7 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
   }
   if (action.type === "showPoints") {
-    flowEditor.appendChild(flowSelect("Players", action.playerFilter || "correct", [
-      { id: "all", name: "All Players" },
-      { id: "correct", name: "Correct Players" },
-      { id: "wrong", name: "Wrong Players" },
-      { id: "votingWinner", name: "Voting Winner Authors" },
-      { id: "votingLosers", name: "Voting Losing Authors" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Players", action.playerFilter || "correct", playerFilterOptions(), (value) => {
       action.playerFilter = value;
       renderFlowListAndPublish();
     }));
@@ -1088,17 +1082,11 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Transfers every player's pending points into their score, then resets pending points to 0. No visual popup is shown."));
   }
   if (action.type === "setTimerShown") {
-    flowEditor.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       renderFlowListAndPublish();
     }));
@@ -1112,14 +1100,7 @@ function renderFlowEditor() {
       action.inputId = value.trim() || "input";
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Round", action.round || "current", [
-      { id: "current", name: "Current Round" },
-      { id: "1", name: "Round 1" },
-      { id: "2", name: "Round 2" },
-      { id: "3", name: "Round 3" },
-      { id: "4", name: "Round 4" },
-      { id: "5", name: "Round 5" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Round", action.round || "current", roundOptions(), (value) => {
       action.round = value;
       renderFlowListAndPublish();
     }));
@@ -1147,10 +1128,7 @@ function renderFlowEditor() {
       action.targetState = value;
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Trigger", action.trigger || "", [
-      { id: "", name: "Immediate / Manual" },
-      { id: "onCountdownComplete", name: "On Countdown Complete" }
-    ], (value) => {
+    flowEditor.appendChild(flowSelect("Trigger", action.trigger || "", transitionTriggerOptions(), (value) => {
       action.trigger = value;
       renderFlowListAndPublish();
     }));
@@ -1343,7 +1321,7 @@ function flowVariableSearch(label, value, options, onChange) {
 }
 
 function hostAudioPlayModeOptions() {
-  return [
+  return window.PartyGameFlowActionOptions?.hostAudioPlayModeOptions() || [
     { id: "random", name: "Play Random" },
     { id: "sequence", name: "Play In Sequence" },
     { id: "index", name: "Play At Index" }

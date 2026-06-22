@@ -1218,35 +1218,22 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.text = value;
       rerender(false);
     }));
-    target.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    target.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       rerender();
     }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       rerender();
     }));
   }
   if (action.type === "multipleChoiceInput") {
-    target.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", [
-      { id: "singleSelect", name: "Multi-Select Single" },
-      { id: "submitOnce", name: "Single Input Done State" },
-      { id: "continuous", name: "Continuous Input" }
-    ], (value) => {
+    target.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", choiceInputModeOptions(), (value) => {
       action.inputMode = value;
       rerender();
     }));
     if ((action.inputMode || "singleSelect") === "singleSelect") {
-      target.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", [
-        { id: "false", name: "False" },
-        { id: "true", name: "True" }
-      ], (value) => {
+      target.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
         action.locked = value === "true";
         rerender();
       }));
@@ -1282,27 +1269,17 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.contentVariable = (value || "multipleChoicePrompt").trim() || "multipleChoicePrompt";
       rerender();
     }));
-    target.appendChild(flowSelect("Button Style", action.inputMode || "submitOnce", [
-      { id: "singleSelect", name: "Multi-Select Single" },
-      { id: "submitOnce", name: "Single Input Done State" },
-      { id: "continuous", name: "Continuous Input" }
-    ], (value) => {
+    target.appendChild(flowSelect("Button Style", action.inputMode || "submitOnce", choiceInputModeOptions(), (value) => {
       action.inputMode = value;
       rerender();
     }));
     if ((action.inputMode || "submitOnce") === "singleSelect") {
-      target.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", [
-        { id: "false", name: "False" },
-        { id: "true", name: "True" }
-      ], (value) => {
+      target.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
         action.locked = value === "true";
         rerender();
       }));
     }
-    target.appendChild(flowSelect("Randomize Options", action.randomizeOptions === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    target.appendChild(flowSelect("Randomize Options", action.randomizeOptions === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.randomizeOptions = value === "true";
       rerender();
     }));
@@ -1343,25 +1320,15 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
   }
   if (action.type === "setVotingCardsShown") {
-    target.appendChild(flowSelect("Voting Cards Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    target.appendChild(flowSelect("Voting Cards Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       rerender();
     }));
-    target.appendChild(flowSelect("Cards", action.cardFilter || "all", [
-      { id: "all", name: "All Cards" },
-      { id: "winners", name: "Correct Cards" },
-      { id: "losers", name: "Wrong Cards" }
-    ], (value) => {
+    target.appendChild(flowSelect("Cards", action.cardFilter || "all", votingCardFilterOptions(), (value) => {
       action.cardFilter = value;
       rerender();
     }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       rerender();
     }));
@@ -1426,43 +1393,25 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {
-    target.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    target.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       rerender();
     }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       rerender();
     }));
   }
   if (action.type === "setPlayerAnswersShown") {
-    target.appendChild(flowSelect("Player Answers Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    target.appendChild(flowSelect("Player Answers Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       rerender();
     }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       rerender();
     }));
-    target.appendChild(flowSelect("Players", action.playerFilter || "all", [
-      { id: "all", name: "All Players" },
-      { id: "correct", name: "Correct Players" },
-      { id: "wrong", name: "Wrong Players" },
-      { id: "votingWinner", name: "Voting Winner Authors" },
-      { id: "votingLosers", name: "Voting Losing Authors" }
-    ], (value) => {
+    target.appendChild(flowSelect("Players", action.playerFilter || "all", playerFilterOptions(), (value) => {
       action.playerFilter = value;
       rerender();
     }));
@@ -1471,13 +1420,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
   }
   if (action.type === "showPoints") {
-    target.appendChild(flowSelect("Players", action.playerFilter || "correct", [
-      { id: "all", name: "All Players" },
-      { id: "correct", name: "Correct Players" },
-      { id: "wrong", name: "Wrong Players" },
-      { id: "votingWinner", name: "Voting Winner Authors" },
-      { id: "votingLosers", name: "Voting Losing Authors" }
-    ], (value) => {
+    target.appendChild(flowSelect("Players", action.playerFilter || "correct", playerFilterOptions(), (value) => {
       action.playerFilter = value;
       rerender();
     }));
@@ -1491,17 +1434,11 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Transfers every player's pending points into their score, then resets pending points to 0. No visual popup is shown."));
   }
   if (action.type === "setTimerShown") {
-    target.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", [
-      { id: "true", name: "True" },
-      { id: "false", name: "False" }
-    ], (value) => {
+    target.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
       action.isShown = value !== "false";
       rerender();
     }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", [
-      { id: "false", name: "False" },
-      { id: "true", name: "True" }
-    ], (value) => {
+    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
       action.instant = value === "true";
       rerender();
     }));
@@ -1522,10 +1459,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.targetState = value;
       rerender();
     }));
-    target.appendChild(flowSelect("Trigger", action.trigger || "", [
-      { id: "", name: "Immediate / Manual" },
-      { id: "onCountdownComplete", name: "On Countdown Complete" }
-    ], (value) => {
+    target.appendChild(flowSelect("Trigger", action.trigger || "", transitionTriggerOptions(), (value) => {
       action.trigger = value;
       rerender();
     }));
@@ -1542,14 +1476,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.inputId = value.trim() || "input";
       rerender();
     }));
-    target.appendChild(flowSelect("Round", action.round || "current", [
-      { id: "current", name: "Current Round" },
-      { id: "1", name: "Round 1" },
-      { id: "2", name: "Round 2" },
-      { id: "3", name: "Round 3" },
-      { id: "4", name: "Round 4" },
-      { id: "5", name: "Round 5" }
-    ], (value) => {
+    target.appendChild(flowSelect("Round", action.round || "current", roundOptions(), (value) => {
       action.round = value;
       rerender();
     }));
