@@ -927,40 +927,7 @@
             "x": 670,
             "y": 1022
           },
-          "nextTargetActionId": "voting-reveal-results"
-        },
-        {
-          "id": "voting-reveal-results",
-          "name": "Reveal Voters",
-          "type": "revealVotingResults",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "nextTargetActionId": "voting-hide-losing-cards",
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1276
-          }
-        },
-        {
-          "id": "voting-hide-losing-cards",
-          "name": "Hide Losing Answers",
-          "type": "setVotingCardsShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0.5
-          },
-          "isShown": false,
-          "cardFilter": "losers",
-          "instant": false,
-          "nextTargetActionId": "voting-show-winner-points",
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1530
-          }
+          "nextTargetActionId": "voting-moment-action-mqoipyj9"
         },
         {
           "id": "voting-show-winner-points",
@@ -968,7 +935,7 @@
           "type": "showPoints",
           "timing": {
             "mode": "E+",
-            "seconds": 0
+            "seconds": 1
           },
           "playerFilter": "votingWinner",
           "points": 500,
@@ -976,7 +943,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1784
+            "y": 2292
           }
         },
         {
@@ -987,12 +954,108 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "return",
+          "nextTargetActionId": "voting-moment-action-mqoit5wq",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 2546
+          }
+        },
+        {
+          "id": "voting-moment-action-mqoipyj9",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          },
+          "nextTargetActionId": "voting-moment-action-mqoir6xh"
+        },
+        {
+          "id": "voting-moment-action-mqoir6xh",
+          "name": "Reveal Authors",
+          "type": "revealAuthors",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1530
+          },
+          "nextTargetActionId": "voting-moment-action-mqoirmjb"
+        },
+        {
+          "id": "voting-moment-action-mqoirmjb",
+          "name": "Reveal Votes",
+          "type": "revealVotes",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1784
+          },
+          "nextTargetActionId": "voting-moment-action-mqoirt4e"
+        },
+        {
+          "id": "voting-moment-action-mqoirt4e",
+          "name": "Reveal Winning Answer",
+          "type": "revealWinningAnswer",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
           "subActions": [],
           "nodePosition": {
             "x": 670,
             "y": 2038
-          }
+          },
+          "nextTargetActionId": "voting-show-winner-points"
+        },
+        {
+          "id": "voting-moment-action-mqoit5wq",
+          "name": "Set Voting Cards Shown",
+          "type": "setVotingCardsShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 2800
+          },
+          "cardFilter": "all",
+          "nextTargetActionId": "return"
         }
       ],
       "nextStateTargetId": "scoreboard-game-state",
@@ -1002,7 +1065,7 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 2292
+        "y": 3054
       }
     }
   ]
