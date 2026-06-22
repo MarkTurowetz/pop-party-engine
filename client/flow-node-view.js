@@ -1153,227 +1153,25 @@ function appendDecisionControls(target, state, action, rerender) {
 function appendFlowActionPropertyControls(target, state, actionRef, { includeSubActionButton = false } = {}) {
   const action = actionRef?.action;
   if (!state || !action) return;
-  const rerender = (redrawNodeView = true) => {
-    if (redrawNodeView) {
-      refreshFlowNodeInspectorChange();
-      return;
-    }
+  const softChange = () => {
     renderFlowListAndPublish();
     redrawFlowNodeWires();
   };
-  target.appendChild(flowActionNameField(state, action, (value) => {
-    action.name = value || action.name;
-    rerender();
-  }, () => rerender()));
-  target.appendChild(flowActionTypeSearch("Action Type", action.type, flowActionTypes, (value) => {
-    applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
-    refreshActionNameFromType(state, action);
-    rerender();
-  }));
-  const controls = getFlowActionControlGroups();
-  if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
-    controls?.appendTextActionControls(target, state, action, rerender);
-  }
-  if (action.type === "multipleChoiceInput") {
-    target.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", choiceInputModeOptions(), (value) => {
-      action.inputMode = value;
-      rerender();
-    }));
-    if ((action.inputMode || "singleSelect") === "singleSelect") {
-      target.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-        action.locked = value === "true";
-        rerender();
-      }));
-    }
-    target.appendChild(flowTextarea("Prompt Text", action.prompt || "Answer this question by tapping an answer", (value) => {
-      action.prompt = value || "Answer this question by tapping an answer";
-      rerender(false);
-    }));
-    target.appendChild(flowTextarea("Answer Bubble Text Options", (action.options || ["A", "B", "C", "D"]).join("\n"), (value) => {
-      const options = value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).slice(0, 12);
-      action.options = options.length ? options : ["A", "B", "C", "D"];
-      rerender(false);
-    }));
-    controls?.appendInputExitControls(target, state, action, rerender);
-  }
-  if (action.type === "getRandomMultipleChoiceContent") {
-    target.appendChild(flowField("Store In Variable", action.variableName || "multipleChoicePrompt", (value) => {
-      action.variableName = (value || "multipleChoicePrompt").trim() || "multipleChoicePrompt";
-      rerender();
-    }));
-    target.appendChild(readOnlyFlowNote("Gets a random prompt from the server prompt pool and stores it in this flow variable for later actions."));
-  }
-  if (action.type === "triviaInput") {
-    target.appendChild(flowField("Multiple Choice Content Variable", action.contentVariable || "multipleChoicePrompt", (value) => {
-      action.contentVariable = (value || "multipleChoicePrompt").trim() || "multipleChoicePrompt";
-      rerender();
-    }));
-    target.appendChild(flowSelect("Button Style", action.inputMode || "submitOnce", choiceInputModeOptions(), (value) => {
-      action.inputMode = value;
-      rerender();
-    }));
-    if ((action.inputMode || "submitOnce") === "singleSelect") {
-      target.appendChild(flowSelect("Locked", action.locked === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-        action.locked = value === "true";
-        rerender();
-      }));
-    }
-    target.appendChild(flowSelect("Randomize Options", action.randomizeOptions === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.randomizeOptions = value === "true";
-      rerender();
-    }));
-    controls?.appendInputExitControls(target, state, action, rerender);
-  }
-  if (action.type === "textSubmissionInput") {
-    target.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
-      action.prompt = value || "Write your answer";
-      rerender(false);
-    }));
-    target.appendChild(flowField("Placeholder Text", action.placeholder || "Answer here", (value) => {
-      action.placeholder = value || "Answer here";
-      rerender();
-    }));
-    target.appendChild(flowNumber("Character Limit (0 = No Limit)", Number(action.characterLimit || 0), (value) => {
-      action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
-      rerender();
-    }));
-    controls?.appendInputExitControls(target, state, action, rerender);
-  }
-  if (action.type === "prepareVotingCards") {
-    target.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
-  }
-  if (action.type === "setVotingCardsShown") {
-    controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Voting Cards Visible", includeInstant: false });
-    target.appendChild(flowSelect("Cards", action.cardFilter || "all", votingCardFilterOptions(), (value) => {
-      action.cardFilter = value;
-      rerender();
-    }));
-    controls?.appendInstantControl(target, action, rerender);
-  }
-  if (action.type === "voteOnAnswersInput") {
-    target.appendChild(flowTextarea("Prompt Text", action.prompt || "Vote for your favorite answer", (value) => {
-      action.prompt = value || "Vote for your favorite answer";
-      rerender(false);
-    }));
-    controls?.appendInputExitControls(target, state, action, rerender, { submittedLabel: "On Votes Submitted" });
-    target.appendChild(readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
-  }
-  if (action.type === "revealVotingResults") {
-    target.appendChild(readOnlyFlowNote("Counts stored votes, marks winning voting cards, and reveals which players voted for each answer."));
-  }
-  if (action.type === "revealAuthors") {
-    target.appendChild(readOnlyFlowNote("Reveals the author heading on each prepared voting card."));
-  }
-  if (action.type === "revealVotes") {
-    controls?.appendBoundedNumberControl(target, action, "voteRevealStaggerSeconds", "Vote Stagger Seconds", rerender, { defaultValue: 1, min: 0, max: 60 });
-    target.appendChild(readOnlyFlowNote("Reveals the player vote widgets under the cards they voted for."));
-  }
-  if (action.type === "revealWinningAnswer") {
-    target.appendChild(readOnlyFlowNote("Scores stored votes and highlights the winning voting card."));
-  }
-  if (action.type === "doNothing") {
-    target.appendChild(readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
-  }
-  if (action.type === "playAudio") {
-    target.appendChild(flowField("Audio URL", action.audioUrl || "", (value) => {
-      action.audioUrl = value;
-      rerender();
-    }));
-    target.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
-  }
-  if (action.type === "playHostAudio") {
-    controls?.appendHostAudioPlaybackControls(target, action, rerender);
-    target.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
-  }
-  if (action.type === "setPlayersShown") {
-    controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Players Visible" });
-  }
-  if (action.type === "setPlayerAnswersShown") {
-    controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Player Answers Visible" });
-    controls?.appendPlayerFilterControls(target, action, rerender);
-  }
-  if (action.type === "revealPlayerAnswerCorrectness") {
-    target.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
-  }
-  if (action.type === "showPoints") {
-    controls?.appendPlayerFilterControls(target, action, rerender, { defaultFilter: "correct" });
-    controls?.appendBoundedNumberControl(target, action, "points", "Points (0 = Correct Answer Constant)", rerender, { defaultValue: 0, min: 0, integer: true });
-    target.appendChild(readOnlyFlowNote("Adds pending points immediately, then shows a temporary points popup above each targeted player's answer bubble."));
-  }
-  if (action.type === "givePendingPoints") {
-    target.appendChild(readOnlyFlowNote("Transfers every player's pending points into their score, then resets pending points to 0. No visual popup is shown."));
-  }
-  if (action.type === "setTimerShown") {
-    controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Timer Visible" });
-  }
-  if (action.type === "decision") {
-    appendDecisionControls(target, state, action, rerender);
-    target.appendChild(readOnlyFlowNote("Decision actions do not use timing. They evaluate branches in order and wait forever if the selected branch has no connection."));
-    return;
-  }
-  if (action.type === "transition") {
-    target.appendChild(flowSelect("Transition", action.transition || "horizontalWipe", flowTransitions, (value) => {
-      action.transition = value;
-      rerender();
-    }));
-  }
-  if (action.type === "transitionState") {
-    target.appendChild(flowSelect("Target State", action.targetState || "intro", gameFlow.states.map((item) => ({ id: item.id, name: item.name })), (value) => {
-      action.targetState = value;
-      rerender();
-    }));
-    target.appendChild(flowSelect("Trigger", action.trigger || "", transitionTriggerOptions(), (value) => {
-      action.trigger = value;
-      rerender();
-    }));
-    target.appendChild(flowSelect(action.trigger === "onCountdownComplete" ? "On Countdown Complete Exit" : "Event Exit", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
-      action.nextTargetActionId = value;
-      rerender();
-    }));
-  }
-  if (action.type === "startCraftingTimer") {
-    target.appendChild(readOnlyFlowNote("The timer starts and this action advances normally. Timer Ends and Answers Submitted exits are defined on the input action that follows."));
-  }
-  if (action.type === "getPlayerAnswers") {
-    target.appendChild(flowTextarea("Input ID", action.inputId || "input", (value) => {
-      action.inputId = value.trim() || "input";
-      rerender();
-    }));
-    target.appendChild(flowSelect("Round", action.round || "current", roundOptions(), (value) => {
-      action.round = value;
-      rerender();
-    }));
-    target.appendChild(flowTextarea("Variable Name", action.variableName || "playerAnswers", (value) => {
-      action.variableName = value.trim() || "playerAnswers";
-      rerender();
-    }));
-  }
-  if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "textSubmissionInput" && action.type !== "voteOnAnswersInput") {
-    target.appendChild(flowSelect("Next Action", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
-      action.nextTargetActionId = value;
-      rerender();
-    }));
-  }
-  const isInputAction = actionTypeMeta(action.type).category === "input" && !actionRef.isSubAction;
-  const timingOptions = actionRef.isSubAction
-    ? [{ id: "S+", name: "S+ Timing" }]
-    : isInputAction
-      ? [{ id: "E+", name: "E+ Timing" }]
-      : [{ id: "E+", name: "E+ Timing" }, { id: "S+", name: "S+ Timing" }];
-  if (isInputAction) target.appendChild(readOnlyFlowNote("Input actions always use E+ timing because they wait for player or stage input."));
-  if (actionRef.isSubAction) target.appendChild(readOnlyFlowNote("Sub-actions use S+ timing as an offset from the primary action start."));
-  const timing = ensureActionTiming(action, actionRef.isSubAction);
-  target.appendChild(flowSelect("Timing Mode", timing.mode, timingOptions, (value) => {
-    ensureActionTiming(action, actionRef.isSubAction).mode = value === "S+" && !isInputAction ? "S+" : "E+";
-    rerender();
-  }));
-  target.appendChild(flowNumber("Timing Seconds", timing.seconds, (value) => {
-    ensureActionTiming(action, actionRef.isSubAction).seconds = value;
-    rerender();
-  }));
-  if (includeSubActionButton) {
-    target.appendChild(flowActionButton("Add Sub-Action", () => addFlowSubAction(actionRef)));
-  }
+  getFlowActionInspectorRegistry()?.appendActionPropertyControls(target, state, actionRef, {
+    change: () => refreshFlowNodeInspectorChange(),
+    softChange,
+    refresh: () => refreshFlowNodeInspectorChange(),
+    refreshAll: () => refreshFlowNodeInspectorChange(),
+    decisionChange: (redrawNodeView = true) => {
+      if (redrawNodeView) {
+        refreshFlowNodeInspectorChange();
+        return;
+      }
+      softChange();
+    },
+    includeSubActionButton,
+    excludeNextActionTypes: ["voteOnAnswersInput"]
+  });
 }
 
 function createFlowNodePorts(action) {

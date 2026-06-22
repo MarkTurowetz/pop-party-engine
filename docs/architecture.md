@@ -87,6 +87,8 @@ concepts into focused modules.
   - `client/flow/action-control-groups.js` owns reusable Flow action inspector
     controls shared by List View and Node View, such as text, visibility, player-filter,
     bounded number, host-audio playback, and input-exit controls.
+  - `client/flow/action-inspector-registry.js` owns action-specific Flow inspector
+    composition so List View and Node View render from the same action control registry.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
@@ -99,8 +101,8 @@ concepts into focused modules.
    Render deployment until a bundler becomes worth the complexity.
 5. Move action behavior toward registry descriptors rather than scattered action-name
    conditionals. Server normalization, public serialization, room effects, stage-completion
-   metadata, and completion cleanup now use `shared/flow-action-registry.js`.
-   Tool inspector fields are still the largest remaining action-specific UI branch.
+  metadata, completion cleanup, and Flow Tool inspector fields now move through shared
+  registries instead of separate action-name conditionals per surface.
 6. Only after the boundaries are stable, introduce classes for concepts that carry behavior,
    such as visual game objects, controller views, and layout documents. Flow actions should
    usually stay as data plus registry strategy descriptors rather than large instantiated classes.
