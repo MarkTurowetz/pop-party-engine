@@ -56,8 +56,9 @@ function createInputStateRuntime({ activePlayers }) {
 
   function flowEventTargetForAction(action, eventType) {
     if (!action) return "";
-    if (eventType === "timerEnd") return action.timerEndTargetActionId || "";
-    if (eventType === "allPlayersSubmitted") return action.answersSubmittedTargetActionId || "";
+    // Fall back to nextTargetActionId so flows where only "Next" was wired still work.
+    if (eventType === "timerEnd") return action.timerEndTargetActionId || action.nextTargetActionId || "";
+    if (eventType === "allPlayersSubmitted") return action.answersSubmittedTargetActionId || action.nextTargetActionId || "";
     return "";
   }
 

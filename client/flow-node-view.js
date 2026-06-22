@@ -853,6 +853,12 @@ function flowNodeExitDefinitions(action) {
       targetKind: "action"
     }));
   }
+  if (action.type === "voteOnAnswersInput") {
+    return [
+      { label: "Timer Ends", field: "timerEndTargetActionId" },
+      { label: "Votes Submitted", field: "answersSubmittedTargetActionId" }
+    ];
+  }
   if (action.type === "multipleChoiceInput" || action.type === "triviaInput" || action.type === "textSubmissionInput") {
     return [
       { label: "Timer Ends", field: "timerEndTargetActionId" },
@@ -1514,7 +1520,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       rerender();
     }));
   }
-  if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "textSubmissionInput") {
+  if (!actionRef.isSubAction && action.type !== "decision" && action.type !== "transitionState" && action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "textSubmissionInput" && action.type !== "voteOnAnswersInput") {
     target.appendChild(flowSelect("Next Action", action.nextTargetActionId || "", flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
       action.nextTargetActionId = value;
       rerender();
