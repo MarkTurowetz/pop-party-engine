@@ -93,6 +93,8 @@ concepts into focused modules.
     wire labels, preview wires, and graph-local pointer coordinate conversion.
   - `client/flow/node-view-minimap.js` owns Flow Node View minimap rendering,
     viewport positioning, minimap clicks, and minimap dragging.
+  - `client/flow/node-view-ports.js` owns Flow Node View connection port DOM,
+    dot metadata, and pending-connection arming callbacks.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order

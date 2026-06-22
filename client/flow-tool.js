@@ -273,6 +273,7 @@ function transitionTriggerOptions() {
 let flowActionControlGroups = null;
 let flowActionInspectorRegistry = null;
 let flowNodeMinimapController = null;
+let flowNodePortsFactory = null;
 let flowNodeWireRenderer = null;
 
 function getFlowActionControlGroups() {
@@ -354,6 +355,18 @@ function getFlowNodeMinimap() {
     });
   }
   return flowNodeMinimapController;
+}
+
+function getFlowNodePortsFactory() {
+  if (!flowNodePortsFactory && window.PartyGameFlowNodePorts) {
+    flowNodePortsFactory = window.PartyGameFlowNodePorts.createFlowNodePortsFactory({
+      armConnection: armFlowNodeConnection,
+      flowStateName,
+      flowTargetActionName,
+      selectedFlowStateId: () => selectedFlowStateId
+    });
+  }
+  return flowNodePortsFactory;
 }
 
 function flowTargetActionName(actionId) {

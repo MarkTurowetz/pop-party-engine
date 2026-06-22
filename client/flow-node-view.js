@@ -277,28 +277,14 @@ function renderFlowMomentNodes() {
   scheduleFlowNodeWireRedraw();
 }
 
-function createFlowMomentPorts(state) {
+function emptyFlowNodePorts() {
   const ports = document.createElement("div");
   ports.className = "flow-node-ports";
-  const port = document.createElement("div");
-  port.className = "flow-node-port";
-  const label = document.createElement("span");
-  label.textContent = `Next Moment${state.nextStateTargetId ? ` -> ${flowState(state.nextStateTargetId)?.name || state.nextStateTargetId}` : ""}`;
-  const dot = document.createElement("span");
-  dot.className = "flow-node-port-dot";
-  dot.dataset.stateId = state.id;
-  dot.dataset.field = "nextStateTargetId";
-  dot.dataset.targetKind = "state";
-  dot.addEventListener("pointerdown", (event) => {
-    event.stopPropagation();
-    pendingNodeConnection = { sourceKind: "moment", stateId: state.id, field: "nextStateTargetId", targetKind: "state", pointerId: event.pointerId, commandCreate: event.metaKey };
-    flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
-    dot.classList.add("is-armed");
-    flowNodeHint.textContent = "Release over another moment to connect this exit.";
-  });
-  port.append(label, dot);
-  ports.appendChild(port);
   return ports;
+}
+
+function createFlowMomentPorts(state) {
+  return getFlowNodePortsFactory()?.createMomentPorts(state) || emptyFlowNodePorts();
 }
 
 function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x, y, width, height, className = "", selected = false }) {
@@ -1070,56 +1056,22 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
 }
 
 function createFlowNodePorts(action) {
-  const ports = document.createElement("div");
-  ports.className = "flow-node-ports";
-  for (const exit of flowNodeExitDefinitions(action)) {
-    const port = document.createElement("div");
-    port.className = "flow-node-port";
-    const label = document.createElement("span");
-    const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
-    const target = branch ? branch.targetActionId : action[exit.field] || "";
-    label.textContent = `${exit.label}${target ? ` -> ${flowTargetActionName(target)}` : ""}`;
-    const dot = document.createElement("span");
-    dot.className = "flow-node-port-dot";
-    dot.dataset.actionId = action.id;
-    dot.dataset.field = exit.field || "";
-    dot.dataset.branchId = exit.branchId || "";
-    dot.dataset.targetKind = exit.targetKind || "action";
-    dot.addEventListener("pointerdown", (event) => {
-      event.stopPropagation();
-      pendingNodeConnection = { stateId: selectedFlowStateId, actionId: action.id, field: exit.field || "", branchId: exit.branchId || "", targetKind: exit.targetKind || "action", pointerId: event.pointerId, commandCreate: event.metaKey };
-      flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
-      dot.classList.add("is-armed");
-      flowNodeHint.textContent = event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over a node to connect this exit.";
-    });
-    port.append(label, dot);
-    ports.appendChild(port);
-  }
-  return ports;
+  const exits = flowNodeExitDefinitions(action).map((exit) => ({
+    ...exit,
+    branch: exit.branchId ? decisionBranchById(action, exit.branchId) : null
+  }));
+  return getFlowNodePortsFactory()?.createActionPorts(action, exits) || emptyFlowNodePorts();
 }
 
 function createFlowStartPorts(state) {
-  const ports = document.createElement("div");
-  ports.className = "flow-node-ports";
-  const port = document.createElement("div");
-  port.className = "flow-node-port";
-  const label = document.createElement("span");
-  label.textContent = `Entry${state.entryTargetActionId ? ` -> ${flowTargetActionName(state.entryTargetActionId)}` : ""}`;
-  const dot = document.createElement("span");
-  dot.className = "flow-node-port-dot";
-  dot.dataset.stateId = state.id;
-  dot.dataset.field = "entryTargetActionId";
-  dot.dataset.targetKind = "action";
-  dot.addEventListener("pointerdown", (event) => {
-    event.stopPropagation();
-    pendingNodeConnection = { sourceKind: "start", stateId: state.id, field: "entryTargetActionId", targetKind: "action", pointerId: event.pointerId, commandCreate: event.metaKey };
-    flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
-    dot.classList.add("is-armed");
-    flowNodeHint.textContent = event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over an action to choose this moment's first action.";
-  });
-  port.append(label, dot);
-  ports.appendChild(port);
-  return ports;
+  return getFlowNodePortsFactory()?.createStartPorts(state) || emptyFlowNodePorts();
+}
+
+function armFlowNodeConnection({ connection, dot, hint }) {
+  pendingNodeConnection = connection || null;
+  flowNodeLayer?.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
+  dot?.classList.add("is-armed");
+  if (flowNodeHint) flowNodeHint.textContent = hint || "Release over a node to connect this exit.";
 }
 
 function sourceNodeForPendingConnection() {
