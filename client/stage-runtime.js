@@ -340,6 +340,7 @@ function clearStageAudioPlayers() {
 }
 
 let craftingTimerVisual = null;
+let craftingTimerVisibilityRequest = null;
 
 function craftingTimerVisualObject() {
   if (!craftingTimer || !visualAnimation) return null;
@@ -355,6 +356,38 @@ function craftingTimerVisualObject() {
   return craftingTimerVisual;
 }
 
+function clearCraftingTimerVisibilityRequest(actionKey = "") {
+  if (!craftingTimerVisibilityRequest) return;
+  if (!actionKey || craftingTimerVisibilityRequest.actionKey !== actionKey) {
+    craftingTimerVisibilityRequest = null;
+  }
+}
+
+function fallbackCraftingTimerDurationMs() {
+  return Math.max(1, Number(gameConstants.craftingTimerDuration || 30)) * 1000;
+}
+
+function craftingTimerPayloadWithVisibilityRequest(timer = {}) {
+  if (!craftingTimerVisibilityRequest || craftingTimerVisibilityRequest.actionKey !== renderedActionKey) return timer;
+  if (craftingTimerVisibilityRequest.isShown === false) {
+    return {
+      ...timer,
+      shown: false,
+      running: false
+    };
+  }
+  const durationMs = Math.max(1, Number(timer.durationMs || 0) || fallbackCraftingTimerDurationMs());
+  return {
+    ...timer,
+    shown: true,
+    running: false,
+    durationMs,
+    remainingMs: Math.max(0, Number(timer.remainingMs || 0)) || durationMs,
+    startedAt: 0,
+    endsAt: 0
+  };
+}
+
 function setCraftingTimerVisible(isShown, options = {}) {
   const visual = craftingTimerVisualObject();
   if (!visual) {
@@ -365,11 +398,22 @@ function setCraftingTimerVisible(isShown, options = {}) {
   return visual.play(animation, { instant: options.instant === true });
 }
 
+function setCraftingTimerShownForAction(action, options = {}) {
+  const actionKey = options.actionKey || renderedActionKey;
+  craftingTimerVisibilityRequest = {
+    actionKey,
+    isShown: action?.isShown !== false
+  };
+  const timer = craftingTimerPayloadWithVisibilityRequest(currentStageState?.craftingTimer || {});
+  return renderCraftingTimer(timer, { instant: action?.instant === true });
+}
+
 function resetStageObjects() {
   clearStageObjectTimers();
   clearStageAudioPlayers();
   window.clearInterval(craftingTimerInterval);
   craftingTimerInterval = null;
+  craftingTimerVisibilityRequest = null;
   setCraftingTimerVisible(false, { instant: true });
   playerLobby.classList.remove("players-hidden", "players-instant");
   renderedPlayerAnswersShown = true;
@@ -398,11 +442,11 @@ function setStageTextObject(target, options = {}) {
 }
 
 function renderCraftingTimer(timer, options = {}) {
+  timer = craftingTimerPayloadWithVisibilityRequest(timer || {});
   window.clearInterval(craftingTimerInterval);
   craftingTimerInterval = null;
   if (!craftingTimer || !craftingTimerLabel || !timer?.shown) {
-    setCraftingTimerVisible(false, { instant: options.instant === true });
-    return;
+    return setCraftingTimerVisible(false, { instant: options.instant === true });
   }
   const durationMs = Math.max(1, Number(timer.durationMs || 1));
   const clockOffset = (timer.serverNow || currentStageState?.serverNow || Date.now()) - Date.now();
@@ -415,11 +459,12 @@ function renderCraftingTimer(timer, options = {}) {
     craftingTimer.style.setProperty("--timer-progress", progress.toFixed(4));
     craftingTimerLabel.textContent = String(Math.ceil(remainingMs / 1000));
   };
-  setCraftingTimerVisible(true, { instant: options.instant === true });
+  const visibilityDuration = setCraftingTimerVisible(true, { instant: options.instant === true });
   update();
   if (timer.running) {
     craftingTimerInterval = window.setInterval(update, 100);
   }
+  return visibilityDuration;
 }
 
 function renderStageActionDebug(lobby) {
@@ -567,6 +612,7 @@ function renderStageLobby(lobby) {
 
 function prepareNewStageAction(lobby, actionKey) {
   clearStageActionTimers();
+  clearCraftingTimerVisibilityRequest(actionKey);
   scheduleActionTiming(lobby, actionKey);
 }
 
@@ -633,6 +679,7 @@ function getStageActionRunner() {
       playerAnswerBubbleAnimationRemaining,
       playerLobby,
       runStageWipe,
+      setCraftingTimerShownForAction,
       setPlayerAnswerBubblesShown,
       setPlayerVisibilityTimer: (timerId) => {
         playerVisibilityTimer = timerId;

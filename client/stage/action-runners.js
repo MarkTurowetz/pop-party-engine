@@ -90,9 +90,14 @@
         if (runtime.isPrimary) completeAfter(action, runtime, duration);
       },
       setTimerShown(action, runtime) {
-        const duration = action.isShown === false && action.instant !== true ? 500 : 0;
-        if (runtime.isPrimary) completeAfter(action, runtime, duration);
-        else runtime.applyEffect(action);
+        const duration = context.setCraftingTimerShownForAction
+          ? context.setCraftingTimerShownForAction(action, { actionKey: runtime.actionKey })
+          : (action.isShown === false && action.instant !== true ? 500 : 0);
+        if (!runtime.isPrimary) {
+          runtime.applyEffect(action);
+          return;
+        }
+        completeAfter(action, runtime, duration);
       },
       startCraftingTimer: completeOrApplyEffect,
       present(action, runtime) {
