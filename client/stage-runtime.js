@@ -13,41 +13,47 @@ function applyAnswerBubbleTextFit(bubble, text) {
   bubble.classList.toggle("is-long", length > 14);
 }
 
-function isElementParked(element, hiddenClass = "hidden", parkedClass = "text-hidden") {
-  return element.classList.contains(hiddenClass) || element.classList.contains(parkedClass);
+let stageTextControllerInstance = null;
+let craftingTimerControllerInstance = null;
+
+function stageVisualControllers() {
+  return window.PartyGameStageVisualControllers || null;
 }
 
-function stageTextVisualFor(object) {
-  if (!object?.element) return null;
-  if (!object.visual || object.visual.element !== object.element) {
-    object.visual = visualAnimation.createCssVisualObject({
-      element: object.element,
-      hiddenClasses: ["text-hidden", "hidden"],
-      motionHiddenClasses: ["text-hidden"],
-      displayHiddenClasses: ["hidden"],
-      updateClass: "text-update",
-      instantClass: "text-instant",
-      getVisible: () => object.visible === true || !isElementParked(object.element),
-      setVisible: (isVisible) => {
-        object.visible = isVisible;
-        object.element.dataset.visualVisible = isVisible ? "true" : "false";
+function stageTextController() {
+  if (!stageTextControllerInstance && stageVisualControllers()) {
+    stageTextControllerInstance = stageVisualControllers().createStageTextController({
+      visualAnimation,
+      queryTextElements: () => Array.from(stageBoard.querySelectorAll(".stage-text-object[id]")),
+      defaultElements: {
+        presentation: stagePresentationText,
+        prompt: stagePromptText
       },
-      timerSink: (timerId) => textObjectTimers.push(timerId)
+      normalizeTextTargetId,
+      applyTextProperties: applyStageLayoutTextProperties,
+      timerSink: (timerId) => textObjectTimers.push(timerId),
+      objects: stageTextObjects,
+      setObjects: (objects) => {
+        stageTextObjects = objects;
+      }
     });
   }
-  return object.visual;
+  return stageTextControllerInstance;
 }
 
-function isStageTextVisible(object) {
-  return stageTextVisualFor(object)?.isVisible() === true;
-}
-
-function stageTextAnimationFor(isShown, wasVisible) {
-  return visualAnimation.animationForVisibility(isShown, wasVisible);
-}
-
-function playStageTextVisual(object, animation, options = {}) {
-  return stageTextVisualFor(object)?.play(animation, options) || 0;
+function craftingTimerController() {
+  if (!craftingTimerControllerInstance && stageVisualControllers()) {
+    craftingTimerControllerInstance = stageVisualControllers().createCraftingTimerController({
+      visualAnimation,
+      element: craftingTimer,
+      label: craftingTimerLabel,
+      timerSink: (timerId) => textObjectTimers.push(timerId),
+      getRenderedActionKey: () => renderedActionKey,
+      getCurrentStageState: () => currentStageState,
+      fallbackDurationMs: () => Math.max(1, Number(gameConstants.craftingTimerDuration || 30)) * 1000
+    });
+  }
+  return craftingTimerControllerInstance;
 }
 
 function answerBubbleVisualFor(bubble) {
@@ -294,16 +300,7 @@ function cancelStageWipe() {
 }
 
 function initStageTextObjects() {
-  stageTextObjects = {};
-  for (const element of stageBoard.querySelectorAll(".stage-text-object[id]")) {
-    const target = normalizeTextTargetId(element.id);
-    stageTextObjects[target] = { element, visible: false, text: "" };
-  }
-  stageTextObjects.presentation = stageTextObjects.stagepresentationtext || { element: stagePresentationText, visible: false, text: "" };
-  stageTextObjects.prompt = stageTextObjects.stageprompttext || { element: stagePromptText, visible: false, text: "" };
-  for (const target of Object.keys(stageTextObjects)) {
-    setStageTextObject(target, { text: "", isShown: false, instant: true, complete: null });
-  }
+  stageTextController()?.init();
 }
 
 function normalizeTextTargetId(value) {
@@ -339,82 +336,22 @@ function clearStageAudioPlayers() {
   stageAudioPlayers.clear();
 }
 
-let craftingTimerVisual = null;
-let craftingTimerVisibilityRequest = null;
-
-function craftingTimerVisualObject() {
-  if (!craftingTimer || !visualAnimation) return null;
-  if (!craftingTimerVisual) {
-    craftingTimerVisual = visualAnimation.createCssVisualObject({
-      element: craftingTimer,
-      hiddenClasses: ["hidden"],
-      motionHiddenClasses: ["hidden"],
-      instantClass: "is-instant",
-      timerSink: (timerId) => textObjectTimers.push(timerId)
-    });
-  }
-  return craftingTimerVisual;
-}
-
 function clearCraftingTimerVisibilityRequest(actionKey = "") {
-  if (!craftingTimerVisibilityRequest) return;
-  if (!actionKey || craftingTimerVisibilityRequest.actionKey !== actionKey) {
-    craftingTimerVisibilityRequest = null;
-  }
-}
-
-function fallbackCraftingTimerDurationMs() {
-  return Math.max(1, Number(gameConstants.craftingTimerDuration || 30)) * 1000;
-}
-
-function craftingTimerPayloadWithVisibilityRequest(timer = {}) {
-  if (!craftingTimerVisibilityRequest || craftingTimerVisibilityRequest.actionKey !== renderedActionKey) return timer;
-  if (craftingTimerVisibilityRequest.isShown === false) {
-    return {
-      ...timer,
-      shown: false,
-      running: false
-    };
-  }
-  const durationMs = Math.max(1, Number(timer.durationMs || 0) || fallbackCraftingTimerDurationMs());
-  return {
-    ...timer,
-    shown: true,
-    running: false,
-    durationMs,
-    remainingMs: Math.max(0, Number(timer.remainingMs || 0)) || durationMs,
-    startedAt: 0,
-    endsAt: 0
-  };
+  craftingTimerController()?.clearRequest(actionKey);
 }
 
 function setCraftingTimerVisible(isShown, options = {}) {
-  const visual = craftingTimerVisualObject();
-  if (!visual) {
-    craftingTimer?.classList.toggle("hidden", !isShown);
-    return 0;
-  }
-  const animation = visualAnimation.animationForVisibility(isShown, visual.isVisible());
-  return visual.play(animation, { instant: options.instant === true });
+  return craftingTimerController()?.setVisible(isShown, options) || 0;
 }
 
 function setCraftingTimerShownForAction(action, options = {}) {
-  const actionKey = options.actionKey || renderedActionKey;
-  craftingTimerVisibilityRequest = {
-    actionKey,
-    isShown: action?.isShown !== false
-  };
-  const timer = craftingTimerPayloadWithVisibilityRequest(currentStageState?.craftingTimer || {});
-  return renderCraftingTimer(timer, { instant: action?.instant === true });
+  return craftingTimerController()?.setShownForAction(action, options) || 0;
 }
 
 function resetStageObjects() {
   clearStageObjectTimers();
   clearStageAudioPlayers();
-  window.clearInterval(craftingTimerInterval);
-  craftingTimerInterval = null;
-  craftingTimerVisibilityRequest = null;
-  setCraftingTimerVisible(false, { instant: true });
+  craftingTimerController()?.reset();
   playerLobby.classList.remove("players-hidden", "players-instant");
   renderedPlayerAnswersShown = true;
   playerLobby.classList.remove("answers-hidden");
@@ -425,46 +362,11 @@ function resetStageObjects() {
 }
 
 function setStageTextObject(target, options = {}) {
-  const object = stageTextObjects[normalizeTextTargetId(target)] || stageTextObjects[target] || stageTextObjects.presentation;
-  if (!object) return 0;
-  const element = object.element;
-  const nextText = options.text ?? object.text ?? "";
-  const isShown = options.isShown !== false;
-  const instant = options.instant === true;
-  const wasVisible = isStageTextVisible(object);
-  const animation = stageTextAnimationFor(isShown, wasVisible);
-  if (nextText || isShown) element.textContent = nextText;
-  if (object.layoutElement) applyStageLayoutTextProperties(element, object.layoutElement);
-  element.classList.toggle("is-long", nextText.length > 62);
-  element.classList.toggle("is-extra-long", nextText.length > 104);
-  object.text = nextText;
-  return playStageTextVisual(object, animation, { instant, complete: options.complete });
+  return stageTextController()?.set(target, options) || 0;
 }
 
 function renderCraftingTimer(timer, options = {}) {
-  timer = craftingTimerPayloadWithVisibilityRequest(timer || {});
-  window.clearInterval(craftingTimerInterval);
-  craftingTimerInterval = null;
-  if (!craftingTimer || !craftingTimerLabel || !timer?.shown) {
-    return setCraftingTimerVisible(false, { instant: options.instant === true });
-  }
-  const durationMs = Math.max(1, Number(timer.durationMs || 1));
-  const clockOffset = (timer.serverNow || currentStageState?.serverNow || Date.now()) - Date.now();
-  const update = () => {
-    const now = Date.now() + clockOffset;
-    const remainingMs = timer.running
-      ? Math.max(0, Number(timer.endsAt || now) - now)
-      : Math.max(0, Number(timer.remainingMs || 0));
-    const progress = Math.max(0, Math.min(1, remainingMs / durationMs));
-    craftingTimer.style.setProperty("--timer-progress", progress.toFixed(4));
-    craftingTimerLabel.textContent = String(Math.ceil(remainingMs / 1000));
-  };
-  const visibilityDuration = setCraftingTimerVisible(true, { instant: options.instant === true });
-  update();
-  if (timer.running) {
-    craftingTimerInterval = window.setInterval(update, 100);
-  }
-  return visibilityDuration;
+  return craftingTimerController()?.render(timer, options) || 0;
 }
 
 function renderStageActionDebug(lobby) {
