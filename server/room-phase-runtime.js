@@ -16,7 +16,7 @@ function createRoomPhaseRuntime({
   getStateActions,
   isRoundIntroStateId,
   normalizeFlowId,
-  resetCraftingTimer,
+  prepareVotingCards,
   runtimeGameFlow,
 }) {
   function advanceRoomFromMomentReturn(room) {
@@ -77,6 +77,16 @@ function createRoomPhaseRuntime({
     clearCountdownTimer(room);
     clearActionTimer(room);
     const previousPhase = room.phase;
+
+    // Auto-save player answers from the departing moment into the persistent store.
+    const answersToSave = room.playerAnswerRecords || {};
+    if (previousPhase && previousPhase !== "lobby" && previousPhase !== "starting" && Object.keys(answersToSave).length > 0) {
+      room.storedPlayerAnswers = room.storedPlayerAnswers || {};
+      const saveRound = room.currentRound || 1;
+      room.storedPlayerAnswers[saveRound] = room.storedPlayerAnswers[saveRound] || {};
+      room.storedPlayerAnswers[saveRound][previousPhase] = { ...answersToSave };
+    }
+
     if (previousPhase === "lobby" || previousPhase === "starting") {
       const nextSessionKey = activePlayers(room).map((player) => player.id).sort().join("|");
       if (nextSessionKey && nextSessionKey === room.playerSessionKey) {
@@ -115,6 +125,20 @@ function createRoomPhaseRuntime({
         room.hasEnteredRoundIntro = true;
       }
     }
+
+    // Auto-setup voting cards if the entering state declares a source moment.
+    const enteringState = runtimeGameFlow(room).states.find((s) => s.id === phase);
+    const sourceStateId = enteringState?.votingSourceStateId;
+    if (sourceStateId) {
+      const loadRound = room.currentRound || 1;
+      const sourceRecords = room.storedPlayerAnswers?.[loadRound]?.[sourceStateId] || {};
+      if (Object.keys(sourceRecords).length > 0) {
+        room.playerAnswerRecords = { ...sourceRecords };
+        prepareVotingCards(room);
+        room.playerAnswerRecords = {};
+      }
+    }
+
     if (entryActionIndex === -2) {
       advanceRoomFromMomentReturn(room);
       return;

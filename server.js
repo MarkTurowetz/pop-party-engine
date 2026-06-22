@@ -510,6 +510,7 @@ const {
   getStateActions,
   isRoundIntroStateId,
   normalizeFlowId,
+  prepareVotingCards,
   resetCraftingTimer,
   runtimeGameFlow,
 });

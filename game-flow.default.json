@@ -73,8 +73,7 @@
         "writing-show-timer": { "x": 320, "y": 340 },
         "writing-start-timer": { "x": 320, "y": 490 },
         "writing-text-input": { "x": 320, "y": 640 },
-        "writing-prepare-cards": { "x": 700, "y": 640 },
-        "writing-to-voting": { "x": 700, "y": 790 }
+        "writing-to-voting": { "x": 320, "y": 790 }
       },
       "actions": [
         {
@@ -112,15 +111,8 @@
           "prompt": "What is your favorite movie?",
           "placeholder": "Write a movie title",
           "characterLimit": 80,
-          "timerEndTargetActionId": "writing-prepare-cards",
-          "answersSubmittedTargetActionId": "writing-prepare-cards"
-        },
-        {
-          "id": "writing-prepare-cards",
-          "name": "Prepare Voting Cards",
-          "type": "prepareVotingCards",
-          "timing": { "mode": "E+", "seconds": 0 },
-          "nextTargetActionId": "writing-to-voting"
+          "timerEndTargetActionId": "writing-to-voting",
+          "answersSubmittedTargetActionId": "writing-to-voting"
         },
         {
           "id": "writing-to-voting",
@@ -134,6 +126,7 @@
     {
       "id": "voting-moment",
       "name": "Voting Moment",
+      "votingSourceStateId": "writing-moment",
       "entryTargetActionId": "voting-show-cards",
       "nodePositions": {
         "start": { "x": 420, "y": 60 },

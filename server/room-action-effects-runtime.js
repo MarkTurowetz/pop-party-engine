@@ -79,13 +79,6 @@ function createRoomActionEffectsRuntime({
       room.displayedPlayerAnswers = new Map();
       room.displayedAnswerCorrectness = new Map();
     }
-    if (action.type === "storePlayerAnswers") {
-      const inputId = String(action.inputId || "input").trim() || "input";
-      const round = resolveStoredAnswerRound(room, action.round);
-      room.storedPlayerAnswers = room.storedPlayerAnswers || {};
-      room.storedPlayerAnswers[round] = room.storedPlayerAnswers[round] || {};
-      room.storedPlayerAnswers[round][inputId] = { ...(room.playerAnswerRecords || {}) };
-    }
     if (action.type === "getPlayerAnswers") {
       const inputId = String(action.inputId || "input").trim() || "input";
       const round = resolveStoredAnswerRound(room, action.round);
@@ -96,13 +89,6 @@ function createRoomActionEffectsRuntime({
         playerId,
         ...(rec && typeof rec === "object" ? rec : { text: String(rec || "") })
       }));
-    }
-    if (action.type === "setupVotingMoment") {
-      const inputId = String(action.inputId || "input").trim() || "input";
-      const round = resolveStoredAnswerRound(room, action.round);
-      const stored = room.storedPlayerAnswers?.[round]?.[inputId] || {};
-      room.playerAnswerRecords = { ...stored };
-      prepareVotingCards(room);
     }
     if (action.type === "setPlayersShown") {
       room.playersShown = action.isShown !== false;
