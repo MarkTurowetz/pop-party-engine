@@ -205,7 +205,7 @@ function getFlowActionSummaryRuntime() {
       decisionSummary,
       decisionVariableName,
       ensureActionTiming,
-      flowStateName: (stateId) => flowState(stateId)?.name || stateId || "State",
+      flowStateName,
       flowTargetActionName,
       hostAudioDisplayName,
       textTargetName,
@@ -464,6 +464,10 @@ function getFlowNodeMarqueeController() {
     });
   }
   return flowNodeMarqueeController;
+}
+
+function flowStateName(stateId) {
+  return flowState(stateId)?.name || stateId || "State";
 }
 
 function flowTargetActionName(actionId) {
