@@ -1,4 +1,5 @@
 (function attachPartyGameVotingCardVisuals(global) {
+  const KNOWN_COMPONENT_IDS = new Set(["current-card", "answer-text", "author-heading", "voter-container", "vote-count", "vote-widget"]);
   const FALLBACK_VOTING_CARD_COMPOSITION = {
     canvas: { width: 560, height: 230 },
     components: [
@@ -21,6 +22,7 @@
       <div class="voting-card-votes hidden"></div>
       <div class="voting-card-author voting-card-widget-hidden"></div>
       <div class="voting-card-voters voting-card-widget-hidden"></div>
+      <div class="voting-card-art-objects"></div>
     `;
     return group;
   }
@@ -49,6 +51,10 @@
       this.answerElement = this.element.querySelector(".voting-card-answer");
       this.voteBadgeElement = this.element.querySelector(".voting-card-votes");
       this.votersElement = this.element.querySelector(".voting-card-voters");
+      this.artObjectsElement = this.element.querySelector(".voting-card-art-objects");
+      this.artObjectRuntime = global.PartyGameArtObject || null;
+      this.rootArtRenderer = this.createArtTreeRenderer(this.artObjectsElement);
+      this.componentChildRenderers = new Map();
       this.voteRevealKey = "";
       this.voteRevealBadgeCount = 0;
       this.voteRevealTimers = [];
@@ -79,14 +85,23 @@
       });
     }
 
+    createArtTreeRenderer(host) {
+      if (!this.artObjectRuntime || !host) return null;
+      return new this.artObjectRuntime.ArtObjectTreeRenderer({
+        host,
+        document: this.document,
+        visualAnimation: this.visualAnimation
+      });
+    }
+
     sync(cardData, options = {}) {
       this.element.dataset.cardIndex = String(cardData.index ?? "");
       this.answerElement.textContent = cardData.text || "";
-      this.applyComposition();
       this.cardElement.classList.toggle("is-winner", cardData.isWinner === true);
       this.cardElement.classList.toggle("is-loser", cardData.isLoser === true);
       this.syncAuthor(cardData);
       this.syncVoters(cardData, options);
+      this.applyComposition();
       this.groupVisual.play("on");
     }
 
@@ -97,6 +112,10 @@
     component(componentId, fallbackId = "") {
       const components = this.composition()?.components || [];
       return components.find((item) => item.id === componentId) || (fallbackId ? components.find((item) => item.id === fallbackId) : null) || null;
+    }
+
+    rootArtComponents() {
+      return (this.composition()?.components || []).filter((component) => !KNOWN_COMPONENT_IDS.has(component.id));
     }
 
     applyComponentLayout(element, component, canvas) {
@@ -127,6 +146,49 @@
       this.applyComponentLayout(this.authorElement, this.component("author-heading"), canvas);
       this.applyComponentLayout(this.votersElement, this.component("voter-container"), canvas);
       this.applyComponentLayout(this.voteBadgeElement, this.component("vote-count", "vote-widget"), canvas);
+      this.renderRootArtObjects(canvas);
+      this.renderComponentChildren("current-card", this.cardElement);
+      this.renderComponentChildren("answer-text", this.answerElement);
+      this.renderComponentChildren("author-heading", this.authorElement);
+      this.renderComponentChildren("voter-container", this.votersElement);
+      this.renderComponentChildren("vote-count", this.voteBadgeElement);
+    }
+
+    ensureChildHost(parentElement, componentId) {
+      if (!parentElement || !componentId) return null;
+      let host = parentElement.querySelector(`:scope > .voting-card-component-children[data-component-id="${componentId}"]`);
+      if (!host) {
+        host = this.document.createElement("div");
+        host.className = "voting-card-component-children";
+        host.dataset.componentId = componentId;
+        parentElement.appendChild(host);
+      }
+      return host;
+    }
+
+    renderRootArtObjects(canvas) {
+      this.rootArtRenderer?.render(this.rootArtComponents(), canvas, { defaultAnimation: "on" });
+    }
+
+    renderComponentChildren(componentId, parentElement) {
+      const component = this.component(componentId);
+      if (!component?.children?.length) {
+        const renderer = this.componentChildRenderers.get(componentId);
+        if (renderer) renderer.clear({ instant: true });
+        return;
+      }
+      const host = this.ensureChildHost(parentElement, componentId);
+      if (!host) return;
+      let renderer = this.componentChildRenderers.get(componentId);
+      if (!renderer || renderer.host !== host) {
+        renderer = this.createArtTreeRenderer(host);
+        if (!renderer) return;
+        this.componentChildRenderers.set(componentId, renderer);
+      }
+      renderer.render(component.children || [], {
+        width: Number(component.width || 1),
+        height: Number(component.height || 1)
+      }, { defaultAnimation: "on" });
     }
 
     syncAuthor(cardData) {
@@ -149,6 +211,7 @@
       this.visibleVoteCount = count;
       this.voteBadgeElement.classList.toggle("hidden", count <= 0);
       this.voteBadgeElement.textContent = count > 0 ? String(count) : "";
+      this.renderComponentChildren("vote-count", this.voteBadgeElement);
     }
 
     revealVoterBadge(badge, visibleVoteCount) {
@@ -253,6 +316,11 @@
 
     remove(options = {}) {
       this.clearVoteRevealTimers();
+      this.rootArtRenderer?.clear({ instant: options.instant === true });
+      for (const renderer of this.componentChildRenderers.values()) {
+        renderer.clear({ instant: options.instant === true });
+      }
+      this.componentChildRenderers.clear();
       const duration = this.groupVisual.play(options.instant ? "park" : "disappear", { instant: options.instant === true });
       const element = this.element;
       const token = element.dataset.visualAnimationToken || "";

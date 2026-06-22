@@ -1010,6 +1010,88 @@
       white-space: nowrap;
     }
 
+    .voting-card-component-children,
+    .voting-card-art-objects {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .art-runtime-object {
+      position: absolute;
+      display: block;
+      box-sizing: border-box;
+      color: var(--component-text-color, var(--ink));
+      font-size: var(--component-font-size, 18px);
+      font-weight: 1000;
+      line-height: 1;
+      text-align: center;
+      text-transform: uppercase;
+      transform: translate(-50%, -50%) scale(var(--component-scale, 1));
+      transform-origin: center;
+      opacity: 1;
+      transition: opacity 500ms ease, transform 500ms cubic-bezier(0.19, 1, 0.22, 1);
+      pointer-events: none;
+      overflow: visible;
+      will-change: transform, opacity;
+    }
+
+    .art-runtime-object.is-shape,
+    .art-runtime-object.is-container,
+    .art-runtime-object.is-badge {
+      border-style: solid;
+      border-color: var(--component-border-color, var(--ink));
+      border-width: var(--component-border-width, 2px);
+      border-radius: var(--component-border-radius, 12px);
+      background: var(--component-fill-color, transparent);
+    }
+
+    .art-runtime-object.is-style-circle {
+      border-radius: 999px;
+      aspect-ratio: 1;
+    }
+
+    .art-runtime-object.is-badge {
+      display: grid;
+      place-items: center;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+
+    .art-runtime-object-label {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 4px;
+      overflow-wrap: anywhere;
+      pointer-events: none;
+    }
+
+    .art-runtime-object-hidden,
+    .art-runtime-object-exiting {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0);
+      pointer-events: none;
+    }
+
+    .art-runtime-object-update {
+      animation: artRuntimeObjectUpdate 200ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .art-runtime-object-instant {
+      transition-duration: 0ms !important;
+      animation: none !important;
+    }
+
+    @keyframes artRuntimeObjectUpdate {
+      0% { transform: translate(-50%, -50%) scale(calc(var(--component-scale, 1) * 1)); }
+      40% { transform: translate(-50%, -50%) scale(calc(var(--component-scale, 1) * 1.2)); }
+      100% { transform: translate(-50%, -50%) scale(var(--component-scale, 1)); }
+    }
+
     .pause-menu {
       position: fixed;
       inset: 0;
@@ -4203,6 +4285,7 @@
   <script src="/client/tool-dashboard.js"></script>
   <script src="/client/host-audio-tool.js"></script>
   <script src="/client/stage/visual-object.js"></script>
+  <script src="/client/stage/art-object-visuals.js"></script>
   <script src="/client/stage/voting-card-visuals.js"></script>
   <script src="/client/flow-node-view.js"></script>
   <script src="/client/flow-tool.js"></script>
