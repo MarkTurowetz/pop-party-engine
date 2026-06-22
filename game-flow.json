@@ -110,9 +110,10 @@
           },
           "subActions": [],
           "text": "This is the Game Intro State",
-          "textTarget": "presentation",
+          "textTarget": "stagepresentationtext",
           "isShown": true,
-          "instant": false
+          "instant": false,
+          "stageClickTargetActionId": "intro-action-mqprim01"
         },
         {
           "id": "intro-action-mqprim01",
