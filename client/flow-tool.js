@@ -279,6 +279,7 @@ function transitionTriggerOptions() {
 }
 
 let flowActionControlGroups = null;
+let flowDecisionControls = null;
 let flowFormControls = null;
 let flowActionInspectorRegistry = null;
 let flowNodeChildSortController = null;
@@ -313,6 +314,18 @@ function getFlowActionControlGroups() {
     });
   }
   return flowActionControlGroups;
+}
+
+function getFlowDecisionControls() {
+  if (!flowDecisionControls && window.PartyGameFlowDecisionControls) {
+    flowDecisionControls = window.PartyGameFlowDecisionControls.createDecisionControls({
+      ...(getFlowFormControls() || {}),
+      ensureDecisionBranches,
+      flowActionTargetOptions,
+      makeDecisionBranchId
+    });
+  }
+  return flowDecisionControls;
 }
 
 function getFlowActionInspectorRegistry() {
