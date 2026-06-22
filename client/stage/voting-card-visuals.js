@@ -3,8 +3,8 @@
     canvas: { width: 560, height: 230 },
     components: [
       { id: "current-card", x: 280, y: 96, width: 520, height: 118, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 5, borderRadius: 16 },
-      { id: "answer-text", x: 240, y: 96, width: 420, height: 78, scale: 1, fontSize: 32, fontColor: "#17131f" },
-      { id: "author-heading", x: 190, y: 22, width: 340, height: 28, scale: 1, fontSize: 15, fontColor: "#6b5a80" },
+      { id: "answer-text", x: 280, y: 96, width: 420, height: 78, scale: 1, fontSize: 32, fontColor: "#17131f" },
+      { id: "author-heading", x: 280, y: 22, width: 340, height: 28, scale: 1, fontSize: 15, fontColor: "#6b5a80" },
       { id: "voter-container", x: 278, y: 188, width: 500, height: 48, scale: 1, fillColor: "transparent", borderColor: "transparent", borderWidth: 0, borderRadius: 0 },
       { id: "vote-widget", x: 72, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" }
     ]
@@ -15,10 +15,10 @@
     group.className = "voting-card-group voting-card-group-hidden";
     group.dataset.cardId = cardId;
     group.innerHTML = `
-      <div class="voting-card-author voting-card-widget-hidden"></div>
       <div class="voting-card"></div>
       <div class="voting-card-answer"></div>
       <div class="voting-card-votes hidden"></div>
+      <div class="voting-card-author voting-card-widget-hidden"></div>
       <div class="voting-card-voters voting-card-widget-hidden"></div>
     `;
     return group;
@@ -127,7 +127,8 @@
     syncAuthor(cardData) {
       this.authorElement.textContent = cardData.authorName || "";
       if (cardData.authorsRevealed === true) {
-        this.authorVisual.play("appear");
+        const duration = this.authorVisual.play("appear");
+        if (duration === 0) this.authorElement.classList.remove("voting-card-widget-hidden");
       } else {
         this.authorVisual.play("park", { instant: true });
       }
