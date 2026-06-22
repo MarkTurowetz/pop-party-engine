@@ -175,10 +175,6 @@ function textTargetOptionsForFlowState(stateId, selectedTarget = "") {
   for (const element of globalStageLayout().elements || []) addElement(element);
   for (const element of stageLayoutState(stateId)?.elements || []) addElement(element);
   options.unshift({ id: "", name: "— None —" });
-  const normalizedSelected = normalizeTextTargetId(selectedTarget);
-  if (normalizedSelected && !seen.has(normalizedSelected)) {
-    options.push({ id: normalizedSelected, name: formatTextTargetName(normalizedSelected) });
-  }
   return options;
 }
 
@@ -186,8 +182,6 @@ function textTargetName(target) {
   const normalized = normalizeTextTargetId(target);
   const option = textTargetOptionsForFlowState(selectedFlowStateId).find((item) => item.id === normalized);
   if (option) return option.name;
-  if (normalized === "presentation") return "Presentation Text";
-  if (normalized === "prompt") return "Prompt Text";
   return formatTextTargetName(normalized);
 }
 
