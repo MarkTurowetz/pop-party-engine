@@ -53,12 +53,34 @@
       }));
     }
 
+    function appendHostAudioPlaybackControls(target, action, rerender, options = {}) {
+      target.appendChild(context.flowHostAudioSearch("Host Audio", action.hostAudioId || "", (value) => {
+        action.hostAudioId = value;
+        rerender();
+      }));
+      target.appendChild(context.flowSelect("Playback", action.playMode || "random", context.hostAudioPlayModeOptions(), (value) => {
+        action.playMode = value;
+        if (typeof options.onPlaybackModeChange === "function") {
+          options.onPlaybackModeChange();
+        } else {
+          rerender();
+        }
+      }));
+      if ((action.playMode || "random") === "index") {
+        target.appendChild(context.flowInteger("Line Index (0 = First Line)", Number(action.lineIndex || 0), (value) => {
+          action.lineIndex = Math.max(0, Math.floor(Number(value) || 0));
+          rerender();
+        }));
+      }
+    }
+
     function appendBooleanSelect(target, label, value, trueFirst, onChange) {
       target.appendChild(context.flowSelect(label, value, context.flowTrueFalseOptions(trueFirst), onChange));
     }
 
     return {
       appendBooleanSelect,
+      appendHostAudioPlaybackControls,
       appendInputExitControls,
       appendInstantControl,
       appendPlayerFilterControls,

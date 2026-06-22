@@ -1323,20 +1323,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
   }
   if (action.type === "playHostAudio") {
-    target.appendChild(flowHostAudioSearch("Host Audio", action.hostAudioId || "", (value) => {
-      action.hostAudioId = value;
-      rerender();
-    }));
-    target.appendChild(flowSelect("Playback", action.playMode || "random", hostAudioPlayModeOptions(), (value) => {
-      action.playMode = value;
-      rerender();
-    }));
-    if ((action.playMode || "random") === "index") {
-      target.appendChild(flowInteger("Line Index (0 = First Line)", Number(action.lineIndex || 0), (value) => {
-        action.lineIndex = Math.max(0, Math.floor(Number(value) || 0));
-        rerender();
-      }));
-    }
+    getFlowActionControlGroups()?.appendHostAudioPlaybackControls(target, action, rerender);
     target.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {

@@ -84,7 +84,7 @@ concepts into focused modules.
     save behavior, screen hiding, and setup behavior.
   - `client/flow/action-control-groups.js` owns reusable Flow action inspector
     controls shared by List View and Node View, such as text, visibility, player-filter,
-    and input-exit controls.
+    host-audio playback, and input-exit controls.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order

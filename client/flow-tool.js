@@ -276,9 +276,12 @@ function getFlowActionControlGroups() {
   if (!flowActionControlGroups && window.PartyGameFlowActionControlGroups) {
     flowActionControlGroups = window.PartyGameFlowActionControlGroups.createActionControlGroups({
       flowActionTargetOptions,
+      flowHostAudioSearch,
+      flowInteger,
       flowSelect,
       flowTextarea,
       flowTrueFalseOptions,
+      hostAudioPlayModeOptions,
       normalizeTextTargetId,
       playerFilterOptions,
       textTargetOptionsForFlowState
@@ -986,21 +989,12 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
   }
   if (action.type === "playHostAudio") {
-    flowEditor.appendChild(flowHostAudioSearch("Host Audio", action.hostAudioId || "", (value) => {
-      action.hostAudioId = value;
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("Playback", action.playMode || "random", hostAudioPlayModeOptions(), (value) => {
-      action.playMode = value;
-      renderFlowEditor();
-      renderFlowListAndPublish();
-    }));
-    if ((action.playMode || "random") === "index") {
-      flowEditor.appendChild(flowInteger("Line Index (0 = First Line)", Number(action.lineIndex || 0), (value) => {
-        action.lineIndex = Math.max(0, Math.floor(Number(value) || 0));
+    getFlowActionControlGroups()?.appendHostAudioPlaybackControls(flowEditor, action, () => renderFlowListAndPublish(), {
+      onPlaybackModeChange: () => {
+        renderFlowEditor();
         renderFlowListAndPublish();
-      }));
-    }
+      }
+    });
     flowEditor.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {
