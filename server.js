@@ -85,6 +85,7 @@ const {
 const { createVotingRuntime } = require("./server/voting-runtime");
 const {
   acceptedArtTypes,
+  defaultArtCompositions,
   artAssets,
   artGroups,
   availableFlowActionTypes,
@@ -415,11 +416,13 @@ const {
 });
 
 const {
+  handleSaveArtComposition,
   handleReplaceArtAsset,
   sendArtAssetList,
   serveArtFile
 } = createArtAssetsRuntime({
   acceptedArtTypes,
+  artCompositions: defaultArtCompositions,
   artAssets,
   artGroups,
   artRoot: ART_ROOT,
@@ -1015,6 +1018,7 @@ const {
   handlePresentHi,
   handleQuitToLobby,
   handleReplaceArtAsset,
+  handleSaveArtComposition,
   handleSaveControllerLayouts,
   handleSaveGameConstants,
   handleSaveGameFlow,

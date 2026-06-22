@@ -16,6 +16,7 @@ function createRouterRuntime({
   handlePresentHi,
   handleQuitToLobby,
   handleReplaceArtAsset,
+  handleSaveArtComposition,
   handleSaveControllerLayouts,
   handleSaveGameConstants,
   handleSaveGameFlow,
@@ -136,6 +137,12 @@ function createRouterRuntime({
     const artAssetMatch = url.pathname.match(/^\/api\/art-assets\/([a-z0-9-]+)$/i);
     if (req.method === "POST" && artAssetMatch) {
       handleReplaceArtAsset(req, res, artAssetMatch[1]);
+      return;
+    }
+
+    const artCompositionMatch = url.pathname.match(/^\/api\/art-compositions\/([a-z0-9-]+)$/i);
+    if (req.method === "POST" && artCompositionMatch) {
+      handleSaveArtComposition(req, res, artCompositionMatch[1]);
       return;
     }
 

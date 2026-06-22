@@ -238,9 +238,14 @@ function avatarLabel(shape) {
   return avatarComposites.find((composite) => composite.species === shape)?.name.replace("Player Avatar ", "") || shape;
 }
 
-function applyArtAssets(assets, groups = artGroups) {
+function artComposition(compositionId) {
+  return (artCompositions || []).find((composition) => composition.id === compositionId) || null;
+}
+
+function applyArtAssets(assets, groups = artGroups, compositions = artCompositions) {
   artAssets = assets || [];
   artGroups = groups || [];
+  artCompositions = compositions || [];
   for (const asset of artAssets) {
     artAssetUrls.set(asset.id, asset.currentUrl);
   }
@@ -253,7 +258,7 @@ async function loadArtAssets() {
     return [];
   }
   const result = await getJson("/api/art-assets");
-  applyArtAssets(result.assets || [], result.groups || []);
+  applyArtAssets(result.assets || [], result.groups || [], result.compositions || []);
   return artAssets;
 }
 

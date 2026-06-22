@@ -82,7 +82,8 @@ function votingCardRenderer() {
       visualAnimation,
       avatarClass,
       avatarFrameImage,
-      dinoIcon
+      dinoIcon,
+      getComposition: () => artComposition("voting-card")
     });
   }
   return votingCardVisualRenderer;

@@ -287,11 +287,94 @@ const artAssets = [
 
 const artGroups = [
   { id: "player-avatar", name: "Player Avatar", description: "Composed from the shared avatar frame plus one dinosaur silhouette." },
-  { id: "presentation-click-prompt", name: "Presentation Click Prompt", description: "Standalone cursor art; it does not use the avatar frame." }
+  { id: "presentation-click-prompt", name: "Presentation Click Prompt", description: "Standalone cursor art; it does not use the avatar frame." },
+  { id: "voting-card", name: "Voting Card", description: "Composed answer card art used by voting moments." }
+];
+
+const defaultArtCompositions = [
+  {
+    id: "voting-card",
+    name: "Voting Card",
+    description: "Composed from a current card, answer text, author heading, and voter widgets.",
+    canvas: { width: 560, height: 230 },
+    components: [
+      {
+        id: "current-card",
+        name: "Current Card",
+        kind: "shape",
+        x: 280,
+        y: 96,
+        width: 520,
+        height: 118,
+        scale: 1,
+        fillColor: "#fff8d6",
+        borderColor: "#17131f",
+        borderWidth: 5,
+        borderRadius: 16
+      },
+      {
+        id: "answer-text",
+        name: "Answer Text",
+        kind: "text",
+        x: 240,
+        y: 96,
+        width: 420,
+        height: 78,
+        scale: 1,
+        defaultText: "ANSWER TEXT",
+        fontSize: 32,
+        fontColor: "#17131f"
+      },
+      {
+        id: "author-heading",
+        name: "Author Heading Widget",
+        kind: "text",
+        x: 190,
+        y: 22,
+        width: 340,
+        height: 28,
+        scale: 1,
+        defaultText: "AUTHOR NAME",
+        fontSize: 15,
+        fontColor: "#6b5a80"
+      },
+      {
+        id: "voter-container",
+        name: "Player Vote Widget Container",
+        kind: "container",
+        x: 278,
+        y: 188,
+        width: 500,
+        height: 48,
+        scale: 1,
+        fillColor: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        borderRadius: 0
+      },
+      {
+        id: "vote-widget",
+        name: "Player Vote Widget",
+        kind: "badge",
+        x: 72,
+        y: 188,
+        width: 112,
+        height: 32,
+        scale: 1,
+        fillColor: "#fff8d6",
+        borderColor: "#17131f",
+        borderWidth: 2,
+        borderRadius: 999,
+        fontSize: 15,
+        fontColor: "#17131f"
+      }
+    ]
+  }
 ];
 
 module.exports = {
   acceptedArtTypes,
+  defaultArtCompositions,
   artAssets,
   artGroups,
   availableFlowActionTypes,

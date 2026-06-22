@@ -1,14 +1,24 @@
 (function attachPartyGameVotingCardVisuals(global) {
+  const FALLBACK_VOTING_CARD_COMPOSITION = {
+    canvas: { width: 560, height: 230 },
+    components: [
+      { id: "current-card", x: 280, y: 96, width: 520, height: 118, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 5, borderRadius: 16 },
+      { id: "answer-text", x: 240, y: 96, width: 420, height: 78, scale: 1, fontSize: 32, fontColor: "#17131f" },
+      { id: "author-heading", x: 190, y: 22, width: 340, height: 28, scale: 1, fontSize: 15, fontColor: "#6b5a80" },
+      { id: "voter-container", x: 278, y: 188, width: 500, height: 48, scale: 1, fillColor: "transparent", borderColor: "transparent", borderWidth: 0, borderRadius: 0 },
+      { id: "vote-widget", x: 72, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" }
+    ]
+  };
+
   function createVotingCardElement(documentRef, cardId) {
     const group = documentRef.createElement("article");
     group.className = "voting-card-group voting-card-group-hidden";
     group.dataset.cardId = cardId;
     group.innerHTML = `
       <div class="voting-card-author voting-card-widget-hidden"></div>
-      <div class="voting-card">
-        <div class="voting-card-answer"></div>
-        <div class="voting-card-votes hidden"></div>
-      </div>
+      <div class="voting-card"></div>
+      <div class="voting-card-answer"></div>
+      <div class="voting-card-votes hidden"></div>
       <div class="voting-card-voters voting-card-widget-hidden"></div>
     `;
     return group;
@@ -31,6 +41,7 @@
       this.avatarClass = options.avatarClass;
       this.avatarFrameImage = options.avatarFrameImage;
       this.dinoIcon = options.dinoIcon;
+      this.getComposition = options.getComposition;
       this.element = createVotingCardElement(this.document, options.cardId);
       this.authorElement = this.element.querySelector(".voting-card-author");
       this.cardElement = this.element.querySelector(".voting-card");
@@ -66,12 +77,51 @@
     sync(cardData) {
       this.element.dataset.cardIndex = String(cardData.index ?? "");
       this.answerElement.textContent = cardData.text || "";
+      this.applyComposition();
       this.cardElement.classList.toggle("is-winner", cardData.isWinner === true);
       this.cardElement.classList.toggle("is-loser", cardData.isLoser === true);
       this.syncAuthor(cardData);
       this.syncVoteCount(cardData);
       this.syncVoters(cardData);
       this.groupVisual.play("on");
+    }
+
+    composition() {
+      return (typeof this.getComposition === "function" ? this.getComposition() : null) || FALLBACK_VOTING_CARD_COMPOSITION;
+    }
+
+    component(componentId) {
+      return (this.composition()?.components || []).find((item) => item.id === componentId) || null;
+    }
+
+    applyComponentLayout(element, component, canvas) {
+      if (!element || !component) return;
+      const canvasWidth = Math.max(1, Number(canvas?.width || 1));
+      const canvasHeight = Math.max(1, Number(canvas?.height || 1));
+      element.style.left = `${Number(component.x || 0) / canvasWidth * 100}%`;
+      element.style.top = `${Number(component.y || 0) / canvasHeight * 100}%`;
+      element.style.width = `${Number(component.width || 1) / canvasWidth * 100}%`;
+      element.style.height = `${Number(component.height || 1) / canvasHeight * 100}%`;
+      element.style.setProperty("--component-scale", Number(component.scale || 1));
+      element.style.setProperty("--component-font-size", `${Number(component.fontSize || 16)}px`);
+      element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
+      element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
+      element.style.setProperty("--component-border-color", component.borderColor || "transparent");
+      element.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
+      element.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
+    }
+
+    applyComposition() {
+      const composition = this.composition();
+      if (!composition) return;
+      const canvas = composition.canvas || { width: 560, height: 230 };
+      this.element.style.width = `${Number(canvas.width || 560)}px`;
+      this.element.style.height = `${Number(canvas.height || 230)}px`;
+      this.applyComponentLayout(this.cardElement, this.component("current-card"), canvas);
+      this.applyComponentLayout(this.answerElement, this.component("answer-text"), canvas);
+      this.applyComponentLayout(this.authorElement, this.component("author-heading"), canvas);
+      this.applyComponentLayout(this.votersElement, this.component("voter-container"), canvas);
+      this.applyComponentLayout(this.voteBadgeElement, this.component("vote-widget"), canvas);
     }
 
     syncAuthor(cardData) {
@@ -125,11 +175,26 @@
 
     updateVoterBadge(badge, voter, index) {
       badge.style.transitionDelay = `${index * 80}ms`;
+      this.applyVoteWidgetStyle(badge);
       const avatarElement = badge.querySelector(".voting-card-voter-avatar");
       avatarElement.className = `voting-card-voter-avatar ${this.avatarClass(voter.avatar?.shape)}`;
       avatarElement.style.setProperty("--avatar-color", voter.avatar?.color || "#22d3ee");
       avatarElement.innerHTML = `${this.avatarFrameImage()}${this.dinoIcon(voter.avatar?.shape)}`;
       badge.querySelector(".voting-card-voter-name").textContent = voter.name || "Player";
+    }
+
+    applyVoteWidgetStyle(badge) {
+      const component = this.component("vote-widget");
+      if (!component) return;
+      badge.style.width = `${Number(component.width || 112)}px`;
+      badge.style.minHeight = `${Number(component.height || 32)}px`;
+      badge.style.setProperty("--component-scale", Number(component.scale || 1));
+      badge.style.setProperty("--component-font-size", `${Number(component.fontSize || 15)}px`);
+      badge.style.setProperty("--component-text-color", component.fontColor || "#17131f");
+      badge.style.setProperty("--component-fill-color", component.fillColor || "#fff8d6");
+      badge.style.setProperty("--component-border-color", component.borderColor || "#17131f");
+      badge.style.setProperty("--component-border-width", `${Number(component.borderWidth || 2)}px`);
+      badge.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 999)}px`);
     }
 
     remove(options = {}) {
@@ -153,6 +218,7 @@
       this.avatarClass = options.avatarClass;
       this.avatarFrameImage = options.avatarFrameImage;
       this.dinoIcon = options.dinoIcon;
+      this.getComposition = options.getComposition;
       this.cards = new Map();
       this.hideLayerTimer = null;
     }
@@ -171,6 +237,7 @@
             avatarClass: this.avatarClass,
             avatarFrameImage: this.avatarFrameImage,
             dinoIcon: this.dinoIcon,
+            getComposition: this.getComposition,
             cardId: cardData.id
           });
           this.cards.set(cardData.id, view);

@@ -19,7 +19,7 @@ function toolLabel(toolId) {
 }
 
 function isToolDirty(toolId) {
-  if (toolId === "art") return Boolean(pendingArtReplacement);
+  if (toolId === "art") return Boolean(pendingArtReplacement) || isArtCompositionsDirty();
   if (toolId === "flow") return isFlowDirty();
   if (toolId === "host-audio") return isHostAudiosDirty();
   if (toolId === "constants") return constantsSavedSnapshot && JSON.stringify(gameConstants) !== constantsSavedSnapshot;
@@ -40,6 +40,7 @@ function updateGlobalSaveButton() {
 async function saveTool(toolId) {
   if (toolId === "art") {
     if (pendingArtReplacement) await saveArtReplacement();
+    if (isArtCompositionsDirty()) await saveArtCompositions();
     return;
   }
   if (toolId === "flow") {
@@ -69,6 +70,7 @@ async function saveAllTools() {
   globalSaveButton.textContent = "Saving";
   try {
     if (pendingArtReplacement) await saveArtReplacement();
+    if (isArtCompositionsDirty()) await saveArtCompositions();
     if (isFlowDirty()) await saveGameFlow();
     if (isHostAudiosDirty()) await saveHostAudios();
     if (isToolDirty("constants")) await saveGameConstants();

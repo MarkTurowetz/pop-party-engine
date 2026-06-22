@@ -3,6 +3,7 @@ const path = require("path");
 
 function createArtAssetsRuntime({
   acceptedArtTypes,
+  artCompositions = [],
   artAssets,
   artGroups,
   artRoot,
@@ -25,6 +26,63 @@ function createArtAssetsRuntime({
     fs.mkdirSync(artRoot, { recursive: true });
     fs.mkdirSync(customDir, { recursive: true });
     fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
+
+  function cleanNumber(value, fallback, min = -Infinity, max = Infinity) {
+    const next = Number(value);
+    if (!Number.isFinite(next)) return fallback;
+    return Math.max(min, Math.min(max, Number(next.toFixed(3))));
+  }
+
+  function cleanColor(value, fallback) {
+    const text = String(value ?? "").trim();
+    if (text === "transparent") return text;
+    return /^#[0-9a-f]{6}$/i.test(text) ? text : fallback;
+  }
+
+  function normalizeComponent(component, fallback) {
+    const kind = fallback.kind || "shape";
+    const normalized = {
+      id: fallback.id,
+      name: fallback.name,
+      kind,
+      x: cleanNumber(component?.x, Number(fallback.x || 0)),
+      y: cleanNumber(component?.y, Number(fallback.y || 0)),
+      width: cleanNumber(component?.width, Number(fallback.width || 1), 1),
+      height: cleanNumber(component?.height, Number(fallback.height || 1), 1),
+      scale: cleanNumber(component?.scale, Number(fallback.scale || 1), 0.05, 8)
+    };
+    if (kind === "text" || kind === "badge") {
+      normalized.defaultText = String(component?.defaultText ?? fallback.defaultText ?? "");
+      normalized.fontSize = cleanNumber(component?.fontSize, Number(fallback.fontSize || 16), 6, 240);
+      normalized.fontColor = cleanColor(component?.fontColor, fallback.fontColor || "#17131f");
+    }
+    if (kind === "shape" || kind === "container" || kind === "badge") {
+      normalized.fillColor = cleanColor(component?.fillColor, fallback.fillColor || "transparent");
+      normalized.borderColor = cleanColor(component?.borderColor, fallback.borderColor || "transparent");
+      normalized.borderWidth = cleanNumber(component?.borderWidth, Number(fallback.borderWidth || 0), 0, 80);
+      normalized.borderRadius = cleanNumber(component?.borderRadius, Number(fallback.borderRadius || 0), 0, 999);
+    }
+    return normalized;
+  }
+
+  function normalizeComposition(composition, override = null) {
+    const savedById = new Map((override?.components || []).map((component) => [component.id, component]));
+    return {
+      id: composition.id,
+      name: composition.name,
+      description: composition.description || "",
+      canvas: {
+        width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
+        height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
+      },
+      components: (composition.components || []).map((component) => normalizeComponent(savedById.get(component.id), component)),
+      updatedAt: override?.updatedAt || null
+    };
+  }
+
+  function publicArtComposition(composition, manifest) {
+    return normalizeComposition(composition, manifest.compositions?.[composition.id] || null);
   }
 
   function cacheBustFileUrl(filePath, urlPath) {
@@ -65,8 +123,36 @@ function createArtAssetsRuntime({
     sendJson(res, 200, {
       ok: true,
       groups: artGroups,
-      assets: artAssets.map((asset) => publicArtAsset(asset, manifest))
+      assets: artAssets.map((asset) => publicArtAsset(asset, manifest)),
+      compositions: artCompositions.map((composition) => publicArtComposition(composition, manifest))
     });
+  }
+
+  async function handleSaveArtComposition(req, res, compositionId) {
+    const definition = artCompositions.find((item) => item.id === compositionId);
+    if (!definition) {
+      sendJson(res, 404, { ok: false, error: "Art composition not found" });
+      return;
+    }
+
+    let payload;
+    try {
+      payload = await readJson(req);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+      return;
+    }
+
+    const normalized = normalizeComposition(definition, payload.composition || payload);
+    const manifest = readArtManifest();
+    manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
+    manifest.compositions[definition.id] = {
+      canvas: normalized.canvas,
+      components: normalized.components,
+      updatedAt: new Date().toISOString()
+    };
+    writeArtManifest(manifest);
+    sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, readArtManifest()) });
   }
 
   async function handleReplaceArtAsset(req, res, assetId) {
@@ -156,8 +242,10 @@ function createArtAssetsRuntime({
   }
 
   return {
+    handleSaveArtComposition,
     handleReplaceArtAsset,
     publicArtAsset,
+    publicArtComposition,
     readArtManifest,
     sendArtAssetList,
     serveArtFile
