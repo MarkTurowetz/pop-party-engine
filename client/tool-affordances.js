@@ -44,22 +44,23 @@
     return !allCollapsed;
   }
 
-  function targetIsToolControl(target, ignoreSelector = "input, textarea, button, select, a") {
-    return Boolean(target?.closest?.(ignoreSelector));
+  function targetIsToolControl(target, ignoreSelector = "input, textarea, button, select, a", root = null) {
+    const control = target?.closest?.(ignoreSelector);
+    return Boolean(control && control !== root);
   }
 
   function bindToolRowActivation(row, onActivate, options = {}) {
     if (typeof onActivate !== "function") return row;
     const ignoreSelector = options.ignoreSelector;
     const activate = (event) => {
-      if (targetIsToolControl(event.target, ignoreSelector)) return;
+      if (targetIsToolControl(event.target, ignoreSelector, row)) return;
       onActivate(event);
     };
     row.addEventListener("click", activate);
     if (options.activateOnDoubleClick) row.addEventListener("dblclick", activate);
     row.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
-      if (targetIsToolControl(event.target, ignoreSelector)) return;
+      if (targetIsToolControl(event.target, ignoreSelector, row)) return;
       event.preventDefault();
       onActivate(event);
     });
@@ -75,6 +76,7 @@
   function createToolSidebarRow(options = {}) {
     const row = document.createElement(options.tagName || "div");
     row.className = options.className || "tool-sidebar-row";
+    if (row.tagName === "BUTTON") row.type = options.type || "button";
     row.setAttribute("role", options.role || "button");
     row.tabIndex = options.tabIndex ?? 0;
     row.classList.toggle("is-selected", Boolean(options.selected));

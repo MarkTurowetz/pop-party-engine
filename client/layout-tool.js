@@ -336,20 +336,21 @@ function renderLayoutStates() {
   const scrollTop = layoutStateList.scrollTop;
   layoutStateList.replaceChildren();
   for (const state of layoutGroups()) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "flow-state-header";
-    button.classList.toggle("is-selected", state.id === selectedLayoutStateId);
-    button.innerHTML = `<span><strong></strong><span></span></span><span class="flow-pill"></span>`;
-    button.querySelector("strong").textContent = state.name;
-    button.querySelector("span span").textContent = state.id;
-    button.querySelector(".flow-pill").textContent = `${state.elements?.length || 0} assets`;
-    button.addEventListener("click", () => {
+    const selectState = () => {
       selectedLayoutStateId = state.id;
       setLayoutSelection(state.elements?.[0]?.id || "");
       renderLayoutTool();
+    };
+    const { row } = window.PartyGameToolAffordances.createToolSidebarRow({
+      tagName: "button",
+      className: "flow-state-header",
+      selected: state.id === selectedLayoutStateId,
+      title: state.name,
+      summary: state.id,
+      pill: `${state.elements?.length || 0} assets`,
+      onActivate: selectState
     });
-    layoutStateList.appendChild(button);
+    layoutStateList.appendChild(row);
   }
   layoutStateList.scrollTop = scrollTop;
 }
