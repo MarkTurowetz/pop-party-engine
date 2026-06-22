@@ -801,7 +801,7 @@
           "placeholder": "Write a movie title",
           "characterLimit": 80,
           "timerEndTargetActionId": "writing-moment-action-mqojhzba",
-          "answersSubmittedTargetActionId": "writing-moment-action-mqokbv8c",
+          "answersSubmittedTargetActionId": "writing-moment-action-mqork62r",
           "subActions": [],
           "nodePosition": {
             "x": 670,
@@ -809,23 +809,22 @@
           }
         },
         {
-          "id": "writing-moment-action-mqokbv8c",
-          "name": "Do Transition",
-          "type": "transition",
+          "id": "writing-moment-action-mqork62r",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
           "timing": {
             "mode": "E+",
-            "seconds": 0
+            "seconds": 1
           },
           "text": "Presented text",
           "textTarget": "",
           "instant": false,
-          "isShown": true,
+          "isShown": false,
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1276
+            "y": 1250
           },
-          "transition": "horizontalWipe",
           "nextTargetActionId": "return"
         }
       ],
