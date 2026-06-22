@@ -227,6 +227,9 @@ function actionSummary(action, isSubAction = false) {
     return `Vote on answers: ${action.prompt || "Vote for your favorite answer"}${eventText} / ${timingText}`;
   }
   if (action.type === "revealVotingResults") return `Reveal voting results / ${timingText}`;
+  if (action.type === "revealAuthors") return `Reveal voting card authors / ${timingText}`;
+  if (action.type === "revealVotes") return `Reveal voting card voters / ${timingText}`;
+  if (action.type === "revealWinningAnswer") return `Reveal winning voting card / ${timingText}`;
   if (action.type === "getPlayerAnswers") return `Get answers ← round ${action.round || "current"} / "${action.inputId || "input"}" → ${action.variableName || "playerAnswers"} / ${timingText}`;
   if (action.type === "playAudio") return `Play audio URL / ${timingText}`;
   if (action.type === "playHostAudio") {

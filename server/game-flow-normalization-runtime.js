@@ -150,7 +150,7 @@ function createGameFlowNormalizationRuntime({
         answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
       };
     }
-    if (type === "revealVotingResults") {
+    if (type === "revealVotingResults" || type === "revealAuthors" || type === "revealVotes" || type === "revealWinningAnswer") {
       return { ...base };
     }
     if (type === "displayText") {

@@ -104,6 +104,15 @@ function createFlowActionPublicRuntime({
     if (action.type === "revealVotingResults") {
       return { ...base, type: "revealVotingResults" };
     }
+    if (action.type === "revealAuthors") {
+      return { ...base, type: "revealAuthors" };
+    }
+    if (action.type === "revealVotes") {
+      return { ...base, type: "revealVotes" };
+    }
+    if (action.type === "revealWinningAnswer") {
+      return { ...base, type: "revealWinningAnswer" };
+    }
     if (action.type === "displayText" || action.type === "text") {
       return { ...base, type: "displayText", text: action.text, textTarget: action.textTarget || "presentation", isShown: action.isShown !== false, instant: action.instant === true };
     }

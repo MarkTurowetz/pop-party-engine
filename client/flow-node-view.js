@@ -1382,6 +1382,15 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
   if (action.type === "revealVotingResults") {
     target.appendChild(readOnlyFlowNote("Counts stored votes, marks winning voting cards, and reveals which players voted for each answer."));
   }
+  if (action.type === "revealAuthors") {
+    target.appendChild(readOnlyFlowNote("Reveals the author heading on each prepared voting card."));
+  }
+  if (action.type === "revealVotes") {
+    target.appendChild(readOnlyFlowNote("Reveals the player vote widgets under the cards they voted for."));
+  }
+  if (action.type === "revealWinningAnswer") {
+    target.appendChild(readOnlyFlowNote("Scores stored votes and highlights the winning voting card."));
+  }
   if (action.type === "doNothing") {
     target.appendChild(readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
   }
