@@ -79,3 +79,5 @@ To install it locally:
 Use it from an open Party Game Template stage or controller page. Enter a stage code, player names, and controller count, then spawn foregrounded controller windows sized to fit your monitor height. Use Sort Controllers to reposition active spawned windows into a top-right grid based on the order of names in the player list. The extension can also tap a random visible game option on every spawned controller, or close all spawned controller windows.
 
 If the extension code changes, click Reload on the extension card in `chrome://extensions`. The Tap Random Option action uses Chrome's debugger input permission so it can send real mouse clicks to controller windows. It only taps elements marked with `data-controller-option`, not every visible button.
+
+If this repo folder is renamed or moved, remove the old unpacked extension from `chrome://extensions` and load it again from the new `chrome-extension` folder path. Chrome tracks unpacked extensions by their local folder path.
