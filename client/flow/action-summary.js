@@ -2,7 +2,17 @@
   "use strict";
 
   function createActionSummary(context) {
+    function jumpTargetIsMissing(action) {
+      const target = String(action?.jumpTargetActionId || "").toLowerCase();
+      return !target || target === "none";
+    }
+
     function actionSummary(action, isSubAction = false) {
+      if (action.type === "jumpNode") {
+        return jumpTargetIsMissing(action)
+          ? "⚠ Jump target required"
+          : `Jump -> ${context.flowTargetActionName(action.jumpTargetActionId)}`;
+      }
       const timing = context.ensureActionTiming(action, isSubAction);
       const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
       const targetText = action.textTarget ? context.textTargetName(action.textTarget) : "⚠ No Field";
@@ -62,7 +72,7 @@
       if (action.type === "setWipeShown") return `${action.isShown === false ? "Hide" : "Show"} stage wipe / ${timingText}${instantText}`;
       if (action.type === "startCraftingTimer") return `Start crafting timer / ${timingText}`;
       if (action.type === "decision") return `${context.decisionVariableName(action.variable)}: ${context.decisionSummary(action)}`;
-      if (action.type === "transition") return `${context.transitionName(action.transition)} / ${timingText}`;
+      if (action.type === "transition") return `Deprecated transition: ${context.transitionName(action.transition)} / ${timingText}`;
       if (action.type === "transitionState") {
         if (action.trigger === "onCountdownComplete") {
           const target = action.nextTargetActionId ? context.flowTargetActionName(action.nextTargetActionId) : context.flowStateName(action.targetState);
@@ -74,12 +84,18 @@
     }
 
     function actionTimingLabel(action, isSubAction = false) {
+      if (action?.type === "jumpNode") return "";
       const timing = context.ensureActionTiming(action, isSubAction);
       return `${timing.mode} ${Number(timing.seconds || 0).toFixed(2)}s`;
     }
 
     function actionValueBadge(action) {
       if (!action) return null;
+      if (action.type === "jumpNode") {
+        return jumpTargetIsMissing(action)
+          ? { text: "⚠ Target", className: "is-warning" }
+          : { text: "Jump", className: "is-jump" };
+      }
       const visibilityActionTypes = new Set([
         "displayText",
         "presentText",

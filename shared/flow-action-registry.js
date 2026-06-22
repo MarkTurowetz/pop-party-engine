@@ -137,6 +137,29 @@ const flowActionDefinitions = [
     ...identityAction("doNothing")
   },
   {
+    id: "jumpNode",
+    name: "Jump Node",
+    category: "standard",
+    canCompleteFromStage: true,
+    primaryOnly: true,
+    stageActionType: "jumpNode",
+    normalize: (action, base, context) => ({
+      ...base,
+      timing: { mode: "E+", seconds: 0 },
+      nextTargetActionId: "",
+      jumpTargetActionId: context.flowActionTarget(action?.jumpTargetActionId || "none"),
+      subActions: []
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "jumpNode",
+      timing: { mode: "E+", seconds: 0 },
+      nextTargetActionId: "",
+      jumpTargetActionId: context.flowActionTarget(action.jumpTargetActionId || "none"),
+      subActions: []
+    })
+  },
+  {
     id: "playAudio",
     name: "Play Audio",
     category: "standard",
@@ -537,9 +560,10 @@ const flowActionDefinitions = [
   },
   {
     id: "transition",
-    name: "Do Transition",
+    name: "Do Transition (Deprecated)",
     category: "standard",
     canCompleteFromStage: true,
+    deprecated: true,
     stageActionType: "transition",
     normalize: (action, base, context) => {
       const transition = context.availableFlowTransitions.some((item) => item.id === action?.transition)
@@ -573,7 +597,13 @@ const flowActionDefinitions = [
   }
 ];
 
-const availableFlowActionTypes = flowActionDefinitions.map(({ id, name, category }) => ({ id, name, category }));
+const availableFlowActionTypes = flowActionDefinitions.map(({ id, name, category, deprecated, primaryOnly }) => ({
+  id,
+  name,
+  category,
+  deprecated: deprecated === true,
+  primaryOnly: primaryOnly === true
+}));
 const definitionById = new Map(flowActionDefinitions.map((definition) => [definition.id, definition]));
 const definitionByStageActionType = new Map(
   flowActionDefinitions.map((definition) => [definition.stageActionType || definition.id, definition])

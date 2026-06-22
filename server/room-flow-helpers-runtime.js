@@ -40,8 +40,13 @@ function createRoomFlowHelpersRuntime({
     return publicFlowAction(actions[room.actionIndex], room.actionIndex);
   }
 
-function advanceRoomAfterAction(room, action) {
-    const target = action?.nextTargetActionId || "";
+  function actionAdvanceTarget(action) {
+    if (action?.type === "jumpNode") return action.jumpTargetActionId || "none";
+    return action?.nextTargetActionId || "";
+  }
+
+  function advanceRoomAfterAction(room, action) {
+    const target = actionAdvanceTarget(action);
     if (isNoActionTarget(target)) return;
     if (isReturnActionTarget(target)) {
       advanceRoomFromMomentReturn(room);

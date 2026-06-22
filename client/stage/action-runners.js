@@ -26,6 +26,9 @@
       doNothing(action, runtime) {
         if (runtime.isPrimary) runtime.complete(action);
       },
+      jumpNode(action, runtime) {
+        if (runtime.isPrimary) runtime.complete(action);
+      },
       playAudio(action, runtime) {
         context.playStageAudioAction(action, runtime.isPrimary, runtime.actionKey);
       },

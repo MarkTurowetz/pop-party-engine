@@ -116,10 +116,9 @@ const defaultGameFlow = {
         },
         {
           id: "intro-wipe",
-          name: "Do Horizontal Wipe",
-          type: "transition",
-          timing: { mode: "E+", seconds: 0 },
-          transition: "horizontalWipe"
+          name: "Jump To Hide Players",
+          type: "jumpNode",
+          jumpTargetActionId: "intro-hide-players"
         },
         {
           id: "intro-hide-players",

@@ -17,7 +17,7 @@
         action.name = value || action.name;
         refreshAll();
       }, refreshAll));
-      target.appendChild(context.flowActionTypeSearch("Action Type", action.type, context.flowActionTypes(), (value) => {
+      target.appendChild(context.flowActionTypeSearch("Action Type", action.type, actionTypeOptions(action, actionRef.isSubAction), (value) => {
         context.applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
         context.refreshActionNameFromType(state, action);
         refreshAll();
@@ -40,6 +40,14 @@
       if (options.includeSubActionButton) {
         target.appendChild(context.flowActionButton("Add Sub-Action", () => context.addFlowSubAction(actionRef)));
       }
+    }
+
+    function actionTypeOptions(action, isSubAction = false) {
+      return context.flowActionTypes().filter((option) => {
+        if (isSubAction && option.primaryOnly) return false;
+        if (option.deprecated && option.id !== action.type) return false;
+        return true;
+      });
     }
 
     function appendActionTypeControls(target, state, actionRef, action, controls, handlers) {
@@ -72,6 +80,7 @@
       if (action.type === "doNothing") {
         target.appendChild(context.readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
       }
+      if (action.type === "jumpNode") appendJumpNodeControls(target, state, action, handlers.change);
       if (action.type === "playAudio") appendPlayAudioControls(target, action, handlers.change);
       if (action.type === "playHostAudio") appendPlayHostAudioControls(target, action, controls, handlers);
       if (action.type === "setPlayersShown") {
@@ -210,6 +219,34 @@
       target.appendChild(context.readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
     }
 
+    function jumpTargetOptions(state, action) {
+      const selectedTarget = action.jumpTargetActionId || "none";
+      const options = [{ id: "none", name: "None" }];
+      for (const candidate of state?.actions || []) {
+        if (candidate.id === action.id) continue;
+        options.push({ id: candidate.id, name: candidate.name || candidate.id });
+      }
+      if (selectedTarget && !options.some((option) => option.id === selectedTarget)) {
+        options.push({ id: selectedTarget, name: selectedTarget });
+      }
+      return options;
+    }
+
+    function jumpTargetIsMissing(action) {
+      const target = String(action?.jumpTargetActionId || "").toLowerCase();
+      return !target || target === "none";
+    }
+
+    function appendJumpNodeControls(target, state, action, change) {
+      target.appendChild(context.flowSelect("Jump Target", action.jumpTargetActionId || "none", jumpTargetOptions(state, action), (value) => {
+        action.jumpTargetActionId = value || "none";
+        change();
+      }));
+      target.appendChild(context.readOnlyFlowNote(jumpTargetIsMissing(action)
+        ? "Warning: this Jump Node needs a target. If runtime reaches it while the target is None, the moment will hang here."
+        : "Jump Nodes immediately move to the selected action in this moment. They do not use timing or draggable exit dots."));
+    }
+
     function appendPlayHostAudioControls(target, action, controls, handlers) {
       controls?.appendHostAudioPlaybackControls(target, action, handlers.change, {
         onPlaybackModeChange: handlers.refresh
@@ -251,6 +288,7 @@
         action.transition = value;
         change();
       }));
+      target.appendChild(context.readOnlyFlowNote("Deprecated: use Set Wipe Shown for wipe art and Jump Node for explicit flow jumps."));
     }
 
     function appendTransitionStateControls(target, state, action, change) {
@@ -269,7 +307,7 @@
     }
 
     function appendNextActionControl(target, state, actionRef, action, change, options) {
-      const excludedTypes = new Set(["decision", "transitionState", "presentText", "multipleChoiceInput", "triviaInput", "textSubmissionInput"]);
+      const excludedTypes = new Set(["decision", "jumpNode", "transitionState", "presentText", "multipleChoiceInput", "triviaInput", "textSubmissionInput"]);
       for (const type of options.excludeNextActionTypes || []) excludedTypes.add(type);
       if (actionRef.isSubAction || excludedTypes.has(action.type)) return;
       target.appendChild(context.flowSelect("Next Action", action.nextTargetActionId || "", context.flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
@@ -279,6 +317,7 @@
     }
 
     function appendTimingControls(target, actionRef, action, change) {
+      if (action.type === "jumpNode") return;
       const waitsForFlowEvent = context.actionTypeMeta(action.type).category === "input"
         || (action.type === "transitionState" && action.trigger === "onCountdownComplete");
       const isInputAction = waitsForFlowEvent && !actionRef.isSubAction;

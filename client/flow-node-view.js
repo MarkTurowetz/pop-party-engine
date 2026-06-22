@@ -21,6 +21,7 @@ function renderFlowNodeView() {
 
 function flowNodeClassForAction(action) {
   if (action.type === "decision") return "is-decision";
+  if (action.type === "jumpNode") return "is-jump";
   if (actionTypeMeta(action.type).category === "input") return "is-input";
   if (action.type === "transition" || action.type === "transitionState") return "is-transition";
   return "is-standard";
@@ -215,6 +216,19 @@ function redrawFlowNodeWires() {
   }
   for (const [index, action] of (state.actions || []).entries()) {
     const fromNode = actionNodes.get(action.id);
+    if (action.type === "jumpNode") {
+      const targetId = action.jumpTargetActionId || "";
+      if (targetId && !isNoFlowTarget(targetId)) {
+        const toNode = targetId === "return" ? returnNode : actionNodes.get(targetId);
+        if (toNode) {
+          drawNodeWire(fromNode, toNode, {
+            highlighted: actionNodeIsSelected(action),
+            label: "Jump",
+            fromAnchor: "center"
+          });
+        }
+      }
+    }
     for (const exit of flowNodeExitDefinitions(action)) {
       if (exit.targetKind === "state") continue;
       const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
@@ -288,7 +302,7 @@ function createFlowMomentPorts(state) {
   return getFlowNodePortsFactory()?.createMomentPorts(state) || emptyFlowNodePorts();
 }
 
-function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x, y, width, height, className = "", selected = false }) {
+function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x, y, width, height, className = "", selected = false, jumpTarget = false }) {
   const node = document.createElement("div");
   node.role = "button";
   node.tabIndex = 0;
@@ -303,6 +317,7 @@ function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x
   node.style.width = `${width}px`;
   if (height) node.style.minHeight = `${height}px`;
   node.classList.toggle("is-selected", selected);
+  node.classList.toggle("is-jump-target", jumpTarget);
   const main = document.createElement("div");
   main.className = "flow-node-main";
   const titleEl = document.createElement("div");
@@ -440,6 +455,10 @@ function renderFlowActionNodes() {
   nodeBackButton.disabled = false;
   nodeViewHelp.textContent = `Inside ${state.name}. Click nodes for properties; drag exit dots to connect actions.`;
   const actionNodes = new Map();
+  const jumpTargetIds = new Set((state.actions || [])
+    .filter((action) => action.type === "jumpNode" && actionNodeIsSelected(action))
+    .map((action) => action.jumpTargetActionId || "")
+    .filter((targetId) => targetId && !isNoFlowTarget(targetId)));
   const startModel = systemNodeModel(state, "start");
   const startPosition = savedNodePosition(startModel, { x: 70, y: 70 });
   const startNode = createFlowNode({
@@ -474,21 +493,22 @@ function renderFlowActionNodes() {
       id: action.id,
       title: action.name || `Action ${index + 1}`,
       subtitle: `${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`,
-      timing: action.type === "decision" ? "" : actionTimingLabel(action, false),
+      timing: action.type === "decision" || action.type === "jumpNode" ? "" : actionTimingLabel(action, false),
       valueBadge: actionValueBadge(action),
       x,
       y,
       width: action.type === "decision" ? 320 : 260,
       height: 134,
       className: flowNodeClassForAction(action),
-      selected: actionNodeIsSelected(action)
+      selected: actionNodeIsSelected(action),
+      jumpTarget: jumpTargetIds.has(action.id)
     });
     node.dataset.actionId = action.id;
     const childList = action.type === "decision"
       ? createFlowNodeBranches(state, action)
       : createFlowNodeSubActions(state, action);
     if (childList) node.appendChild(childList);
-    if (action.type !== "decision") node.querySelector(".flow-node-main")?.appendChild(createFlowNodePorts(action));
+    if (action.type !== "decision" && action.type !== "jumpNode") node.querySelector(".flow-node-main")?.appendChild(createFlowNodePorts(action));
     bindFlowNodeDrag(node, action);
     node.addEventListener("click", (event) => {
       selectedFlowStateId = state.id;
@@ -510,7 +530,8 @@ function renderFlowActionNodes() {
     width: 190,
     height: 92,
     className: "is-return",
-    selected: flowActionIsSelected("return")
+    selected: flowActionIsSelected("return"),
+    jumpTarget: jumpTargetIds.has("return")
   });
   returnNode.dataset.actionId = "return";
   bindFlowNodeDrag(returnNode, returnModel);
@@ -559,6 +580,7 @@ function flowNodeExitDefinitions(action) {
   if (action.type === "transitionState") {
     return [{ label: action.trigger === "onCountdownComplete" ? "Countdown Complete" : "Event Complete", field: "nextTargetActionId" }];
   }
+  if (action.type === "jumpNode") return [];
   return [{ label: "Next", field: "nextTargetActionId" }];
 }
 
@@ -572,6 +594,10 @@ function estimatedFlowNodeHeight(action) {
 
 function flowActionTargets(action) {
   if (!action) return [];
+  if (action.type === "jumpNode") {
+    const targetId = action.jumpTargetActionId || "";
+    return targetId && !isNoFlowTarget(targetId) ? [targetId] : [];
+  }
   return flowNodeExitDefinitions(action)
     .map((exit) => {
       const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
@@ -746,6 +772,12 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
     action.isShown = action.isShown !== false;
     action.instant = action.instant === true;
   }
+  if (value === "jumpNode") {
+    action.jumpTargetActionId = action.jumpTargetActionId || "none";
+    action.nextTargetActionId = "";
+    action.timing = { mode: "E+", seconds: 0 };
+    action.subActions = [];
+  }
   if (value === "decision") {
     action.variable = action.variable || "activePlayerCount";
     action.valueType = action.valueType || "int";
@@ -754,7 +786,7 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
   if (value === "transition") action.transition = action.transition || "horizontalWipe";
   if (value === "transitionState") action.targetState = action.targetState || "intro";
   if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = action.textTarget || "presentation";
-  ensureActionTiming(action, isSubAction);
+  if (value !== "jumpNode") ensureActionTiming(action, isSubAction);
 }
 
 const customDecisionVariableId = "__custom_variable_path__";
@@ -1026,7 +1058,7 @@ function renderFlowNodeInspector() {
   summary.textContent = `${actionRef.isSubAction ? `Sub-action under ${actionRef.parentAction?.name || "Action"}. ` : ""}${actionSummary(action, actionRef.isSubAction)}`;
   flowNodeInspector.append(title, summary);
   flowNodeInspector.appendChild(readOnlyFlowNote(`${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`));
-  appendFlowActionPropertyControls(flowNodeInspector, state, actionRef, { includeSubActionButton: !actionRef.isSubAction && action.type !== "decision" });
+  appendFlowActionPropertyControls(flowNodeInspector, state, actionRef, { includeSubActionButton: !actionRef.isSubAction && action.type !== "decision" && action.type !== "jumpNode" });
   flowNodeInspector.appendChild(flowActionButton("Edit In List View", () => {
     setFlowViewMode("list");
   }));

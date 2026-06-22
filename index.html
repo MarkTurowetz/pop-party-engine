@@ -2816,6 +2816,16 @@
       background: #c6f75d;
     }
 
+    .flow-node.is-jump .flow-node-main {
+      background: #d9ccff;
+    }
+
+    .flow-node.is-jump-target .flow-node-main {
+      outline: 7px solid var(--pink);
+      outline-offset: 6px;
+      box-shadow: 8px 8px 0 rgba(23, 19, 31, 0.62), 0 0 0 5px rgba(255, 79, 163, 0.18);
+    }
+
     .flow-node.is-return {
       width: 180px;
       min-height: 88px;
@@ -2884,6 +2894,11 @@
 
     .flow-node-value-badge.is-show {
       background: #60d394;
+      color: var(--ink);
+    }
+
+    .flow-node-value-badge.is-jump {
+      background: #d9ccff;
       color: var(--ink);
     }
 
