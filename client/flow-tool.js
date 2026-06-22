@@ -216,25 +216,7 @@ function actionTimingLabel(action, isSubAction = false) {
 }
 
 function actionValueBadge(action) {
-  if (!action) return null;
-  const visibilityActionTypes = new Set([
-    "displayText",
-    "presentText",
-    "setPlayersShown",
-    "setPlayerAnswersShown",
-    "setTimerShown",
-    "setVotingCardsShown"
-  ]);
-  if (!visibilityActionTypes.has(action.type)) return null;
-  const isTextAction = action.type === "presentText" || action.type === "displayText";
-  if (isTextAction && !action.textTarget) {
-    return { text: "⚠ No Field", className: "is-warning" };
-  }
-  const isShown = action.isShown !== false;
-  return {
-    text: isShown ? "Show" : "Hide",
-    className: isShown ? "is-show" : "is-hide"
-  };
+  return getFlowActionSummaryRuntime()?.actionValueBadge(action) || null;
 }
 
 function flowTargetActionName(actionId) {

@@ -68,7 +68,30 @@
       return `${timing.mode} ${Number(timing.seconds || 0).toFixed(2)}s`;
     }
 
+    function actionValueBadge(action) {
+      if (!action) return null;
+      const visibilityActionTypes = new Set([
+        "displayText",
+        "presentText",
+        "setPlayersShown",
+        "setPlayerAnswersShown",
+        "setTimerShown",
+        "setVotingCardsShown"
+      ]);
+      if (!visibilityActionTypes.has(action.type)) return null;
+      const isTextAction = action.type === "presentText" || action.type === "displayText";
+      if (isTextAction && !action.textTarget) {
+        return { text: "⚠ No Field", className: "is-warning" };
+      }
+      const isShown = action.isShown !== false;
+      return {
+        text: isShown ? "Show" : "Hide",
+        className: isShown ? "is-show" : "is-hide"
+      };
+    }
+
     return {
+      actionValueBadge,
       actionSummary,
       actionTimingLabel
     };
