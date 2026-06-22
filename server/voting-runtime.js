@@ -23,6 +23,8 @@ function createVotingRuntime({
     room.votingVotesRevealed = false;
     room.votingWinnerRevealed = false;
     room.votingWinners = [];
+    room.lastVotingSourceStateId = "";
+    room.lastVotingSourceFallbackUsed = false;
   }
 
   function answerRecordEntries(records) {
@@ -52,6 +54,58 @@ function createVotingRuntime({
     return "";
   }
 
+  function avatarSnapshot(avatar) {
+    if (!avatar || typeof avatar !== "object") return null;
+    return {
+      color: avatar.color || "",
+      shape: avatar.shape || ""
+    };
+  }
+
+  function playerSnapshot(player) {
+    if (!player || typeof player !== "object") return null;
+    const id = String(player.id || "").trim();
+    const name = String(player.name || "").trim();
+    if (!id && !name) return null;
+    return {
+      id,
+      name,
+      avatar: avatarSnapshot(player.avatar)
+    };
+  }
+
+  function answerAuthorSnapshot(record) {
+    if (!record || typeof record !== "object") return null;
+    const id = String(record.playerId || record.authorPlayerId || record.authorId || "").trim();
+    const name = String(record.playerName || record.authorName || record.name || "").trim();
+    const avatar = avatarSnapshot(record.playerAvatar || record.authorAvatar || record.avatar);
+    if (!id && !name && !avatar) return null;
+    return { id, name, avatar };
+  }
+
+  function updateCardAuthorSnapshot(room, card, fallbackRecord = null) {
+    if (!card || typeof card !== "object") return card;
+    const player = room.players?.get?.(card.authorPlayerId) || null;
+    const liveAuthor = playerSnapshot(player);
+    const answerAuthor = answerAuthorSnapshot(fallbackRecord);
+    const storedAuthor = answerAuthorSnapshot(card);
+    const authorId = liveAuthor?.id || storedAuthor?.id || answerAuthor?.id || String(card.authorPlayerId || "").trim();
+    const authorName = liveAuthor?.name || storedAuthor?.name || answerAuthor?.name || "";
+    const authorAvatar = liveAuthor?.avatar || storedAuthor?.avatar || answerAuthor?.avatar || null;
+    card.authorPlayerId = authorId || card.authorPlayerId;
+    card.authorName = authorName;
+    card.authorAvatar = authorAvatar;
+    return card;
+  }
+
+  function revealedCardAuthor(room, card) {
+    updateCardAuthorSnapshot(room, card);
+    return {
+      name: String(card.authorName || "").trim(),
+      avatar: avatarSnapshot(card.authorAvatar)
+    };
+  }
+
   function prepareVotingCards(room) {
     const records = room.playerAnswerRecords || {};
     const answersByPlayerId = new Map();
@@ -69,7 +123,7 @@ function createVotingRuntime({
         skipped.push({ playerId: player.id, reason: answer ? "blank-answer-text" : "missing-answer-record" });
         return items;
       }
-      items.push({
+      const card = {
         id: `vote-card-${player.id}`,
         authorPlayerId: player.id,
         text,
@@ -77,7 +131,8 @@ function createVotingRuntime({
         voteCount: 0,
         isWinner: false,
         hidden: false
-      });
+      };
+      items.push(updateCardAuthorSnapshot(room, card, answer));
       return items;
     }, []);
     for (let i = cards.length - 1; i > 0; i -= 1) {
@@ -132,6 +187,9 @@ function createVotingRuntime({
   }
 
   function revealAuthors(room) {
+    for (const card of Array.isArray(room.votingCards) ? room.votingCards : []) {
+      updateCardAuthorSnapshot(room, card);
+    }
     room.votingCardsShown = true;
     room.votingAuthorsRevealed = true;
   }
@@ -170,7 +228,7 @@ function createVotingRuntime({
     return (room.votingCards || [])
       .filter((card) => card && card.hidden !== true)
       .map((card, index) => {
-        const authorPlayer = authorsRevealed ? room.players.get(card.authorPlayerId) : null;
+        const author = authorsRevealed ? revealedCardAuthor(room, card) : { name: "", avatar: null };
         const voters = votesRevealed
           ? (card.voterIds || [])
               .map((playerId) => {
@@ -194,8 +252,8 @@ function createVotingRuntime({
           votesRevealed,
           winnerRevealed,
           resultsShown: room.votingResultsShown === true,
-          authorName: authorPlayer ? authorPlayer.name : "",
-          authorAvatar: authorPlayer ? authorPlayer.avatar : null,
+          authorName: author.name,
+          authorAvatar: author.avatar,
           voters
         };
       });

@@ -55,6 +55,8 @@ function createDefaultRoom(stageCode) {
     votingInputPrompt: "",
     votingAnswers: new Map(),
     votingWinners: [],
+    lastVotingSourceStateId: "",
+    lastVotingSourceFallbackUsed: false,
     craftingTimerShown: false,
     craftingTimerRunning: false,
     craftingTimerDurationMs: 0,

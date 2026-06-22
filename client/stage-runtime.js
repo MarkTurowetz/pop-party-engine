@@ -245,8 +245,11 @@ function renderVotingCards(cards = []) {
     // Author reveal
     const authorEl = card.querySelector(".voting-card-author");
     authorEl.textContent = cardData.authorName || "";
-    // Use rAF delay so entering cards animate in
-    requestAnimationFrame(() => authorEl.classList.toggle("is-revealed", cardData.authorsRevealed === true));
+    if (cardData.authorsRevealed === true) {
+      requestAnimationFrame(() => authorEl.classList.add("is-revealed"));
+    } else {
+      authorEl.classList.remove("is-revealed");
+    }
 
     // Answer text
     card.querySelector(".voting-card-answer").textContent = cardData.text || "";
