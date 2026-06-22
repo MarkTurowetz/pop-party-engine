@@ -288,55 +288,73 @@ function createArtCompositionBlock(composition) {
   return wrapper;
 }
 
-function createArtCompositionButton(composition) {
-  const button = document.createElement("button");
-  button.className = "art-item is-composite has-disclosure";
-  button.type = "button";
-  button.classList.toggle("is-selected", selectedArtCompositionId === composition.id && !selectedArtComponentId);
-  button.innerHTML = `
-    <span class="disclosure-slot"></span>
-    <span class="art-thumb art-composite-thumb"><span class="art-voting-card-thumb"></span></span>
-    <span>
-      <span class="art-item-title"></span>
-      <span class="art-item-meta">Editable composite art</span>
-    </span>
-  `;
-  button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(
-    composition.id,
+function createArtDisclosureSlot(id) {
+  const slot = document.createElement("span");
+  slot.className = "disclosure-slot";
+  slot.appendChild(createDisclosureButton(
+    id,
     collapsedArtComposites,
     renderAndPersistArtCollapseState,
     () => toggleArtCollapsedIds(collapsedArtComposites, artCompositeCollapseIds())
   ));
-  button.querySelector(".art-item-title").textContent = composition.name;
-  button.addEventListener("click", () => selectArtComposition(composition.id));
-  return button;
+  return slot;
+}
+
+function createArtThumb(className, content = "") {
+  const thumb = document.createElement("span");
+  thumb.className = className;
+  if (typeof content === "string") {
+    thumb.innerHTML = content;
+  } else if (content) {
+    thumb.appendChild(content);
+  }
+  return thumb;
+}
+
+function createArtRow(options = {}) {
+  const { row } = window.PartyGameToolAffordances.createToolSidebarRow({
+    tagName: "button",
+    className: options.className || "art-item",
+    selected: options.selected,
+    dataset: options.dataset,
+    leadingNodes: options.leadingNodes,
+    titleTagName: "span",
+    titleClassName: "art-item-title",
+    summaryClassName: "art-item-meta",
+    title: options.title,
+    summary: options.summary,
+    onActivate: options.onActivate
+  });
+  return row;
+}
+
+function createArtCompositionButton(composition) {
+  return createArtRow({
+    className: "art-item is-composite has-disclosure",
+    selected: selectedArtCompositionId === composition.id && !selectedArtComponentId,
+    leadingNodes: [
+      createArtDisclosureSlot(composition.id),
+      createArtThumb("art-thumb art-composite-thumb", '<span class="art-voting-card-thumb"></span>')
+    ],
+    title: composition.name,
+    summary: "Editable composite art",
+    onActivate: () => selectArtComposition(composition.id)
+  });
 }
 
 function createArtComponentButton(composition, component) {
-  const button = document.createElement("button");
   const hasChildren = Boolean(component.children?.length);
-  button.className = `art-item${hasChildren ? " has-disclosure" : ""}`;
-  button.type = "button";
-  button.classList.toggle("is-selected", selectedArtCompositionId === composition.id && selectedArtComponentIds.has(component.id));
-  button.innerHTML = `${hasChildren ? '<span class="disclosure-slot"></span>' : ""}
-    <span class="art-thumb art-component-thumb"></span>
-    <span>
-      <span class="art-item-title"></span>
-      <span class="art-item-meta"></span>
-    </span>
-  `;
-  if (hasChildren) {
-    button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(
-      `${composition.id}:${component.id}`,
-      collapsedArtComposites,
-      renderAndPersistArtCollapseState,
-      () => toggleArtCollapsedIds(collapsedArtComposites, artCompositeCollapseIds())
-    ));
-  }
-  button.querySelector(".art-item-title").textContent = component.name;
-  button.querySelector(".art-item-meta").textContent = `${artKindLabel(component.kind)} object`;
-  button.addEventListener("click", (event) => selectArtComponent(composition.id, component.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey }));
-  return button;
+  return createArtRow({
+    className: `art-item${hasChildren ? " has-disclosure" : ""}`,
+    selected: selectedArtCompositionId === composition.id && selectedArtComponentIds.has(component.id),
+    leadingNodes: [
+      ...(hasChildren ? [createArtDisclosureSlot(`${composition.id}:${component.id}`)] : []),
+      createArtThumb("art-thumb art-component-thumb")
+    ],
+    title: component.name,
+    summary: `${artKindLabel(component.kind)} object`,
+    onActivate: (event) => selectArtComponent(composition.id, component.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey })
+  });
 }
 
 function createArtComponentBranch(composition, component, depth = 0) {
@@ -356,47 +374,34 @@ function createArtComponentBranch(composition, component, depth = 0) {
 }
 
 function createCompositeButton(composite) {
-  const button = document.createElement("button");
-  button.className = "art-item is-composite has-disclosure";
-  button.type = "button";
-  button.classList.toggle("is-selected", selectedArtComposite?.id === composite.id && !selectedArtAsset);
-  button.innerHTML = `
-    <span class="disclosure-slot"></span>
-    <span class="art-thumb art-composite-thumb">${compositePreviewMarkup(composite)}</span>
-    <span>
-      <span class="art-item-title"></span>
-      <span class="art-item-meta">Composite preview</span>
-    </span>
-  `;
-  button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(
-    composite.id,
-    collapsedArtComposites,
-    renderAndPersistArtCollapseState,
-    () => toggleArtCollapsedIds(collapsedArtComposites, artCompositeCollapseIds())
-  ));
-  button.querySelector(".art-item-title").textContent = composite.name;
-  button.addEventListener("click", () => selectArtComposite(composite.id));
-  return button;
+  return createArtRow({
+    className: "art-item is-composite has-disclosure",
+    selected: selectedArtComposite?.id === composite.id && !selectedArtAsset,
+    leadingNodes: [
+      createArtDisclosureSlot(composite.id),
+      createArtThumb("art-thumb art-composite-thumb", compositePreviewMarkup(composite))
+    ],
+    title: composite.name,
+    summary: "Composite preview",
+    onActivate: () => selectArtComposite(composite.id)
+  });
 }
 
 function createArtItemButton(asset, label = asset.name) {
-    const button = document.createElement("button");
-    button.className = "art-item";
-    button.type = "button";
-    button.dataset.assetId = asset.id;
-    button.classList.toggle("is-selected", selectedArtAsset?.id === asset.id);
-    button.classList.toggle("is-shared", Boolean(asset.sharedBy?.length));
-    button.innerHTML = `
-      <span class="art-thumb"><img alt="" src="${asset.currentUrl}"></span>
-      <span>
-        <span class="art-item-title"></span>
-        <span class="art-item-meta"></span>
-      </span>
-    `;
-    button.querySelector(".art-item-title").textContent = label;
-    button.querySelector(".art-item-meta").textContent = `${asset.sharedBy?.length ? "Shared / " : ""}${asset.hasCustom ? "Custom" : "Default"}`;
-    button.addEventListener("click", () => selectArtAsset(asset.id));
-    return button;
+  const image = document.createElement("img");
+  image.alt = "";
+  image.src = asset.currentUrl;
+  const button = createArtRow({
+    className: "art-item",
+    selected: selectedArtAsset?.id === asset.id,
+    dataset: { assetId: asset.id },
+    leadingNodes: [createArtThumb("art-thumb", image)],
+    title: label,
+    summary: `${asset.sharedBy?.length ? "Shared / " : ""}${asset.hasCustom ? "Custom" : "Default"}`,
+    onActivate: () => selectArtAsset(asset.id)
+  });
+  button.classList.toggle("is-shared", Boolean(asset.sharedBy?.length));
+  return button;
 }
 
 function compositePreviewMarkup(composite) {

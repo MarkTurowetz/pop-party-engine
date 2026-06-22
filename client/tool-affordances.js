@@ -81,10 +81,12 @@
     row.tabIndex = options.tabIndex ?? 0;
     row.classList.toggle("is-selected", Boolean(options.selected));
     applyToolDataset(row, options.dataset);
+    appendToolNodes(row, options.leadingNodes);
 
     const copy = document.createElement(options.copyTagName || "span");
     copy.className = options.copyClassName || "tool-sidebar-row-copy";
     const title = options.titleNode || document.createElement(options.titleTagName || "strong");
+    if (options.titleClassName) title.className = options.titleClassName;
     if (!options.titleNode) title.textContent = options.title || "";
     const summary = document.createElement(options.summaryTagName || "span");
     summary.className = options.summaryClassName || "tool-sidebar-row-summary";
