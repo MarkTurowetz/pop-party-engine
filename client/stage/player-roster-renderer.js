@@ -1,0 +1,107 @@
+(function attachPartyGamePlayerRoster(global) {
+  "use strict";
+
+  class PlayerRosterRenderer {
+    constructor(options = {}) {
+      this.host = options.host;
+      this.document = options.document || global.document;
+      this.avatarClass = typeof options.avatarClass === "function" ? options.avatarClass : () => "";
+      this.avatarFrameImage = typeof options.avatarFrameImage === "function" ? options.avatarFrameImage : () => "";
+      this.dinoIcon = typeof options.dinoIcon === "function" ? options.dinoIcon : () => "";
+      this.syncAnswerBubble = typeof options.syncAnswerBubble === "function" ? options.syncAnswerBubble : () => 0;
+      this.pointPopupIds = new Set();
+    }
+
+    playerSignature(player) {
+      return JSON.stringify({
+        name: player.name,
+        avatar: player.avatar || {},
+        isVip: player.isVip === true
+      });
+    }
+
+    createTile(player, playerIndex, signature) {
+      const tile = this.document.createElement("article");
+      tile.className = "player-tile";
+      tile.classList.toggle("needs-input", player.needsInput === true);
+      tile.dataset.playerId = player.id;
+      tile.dataset.signature = signature;
+      tile.style.setProperty("--player-index", playerIndex);
+      tile.innerHTML = `
+        <div class="player-avatar ${this.avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${this.avatarFrameImage()}${this.dinoIcon(player.avatar?.shape)}</div>
+        <div class="player-name"></div>
+        ${player.isVip ? '<div class="vip-badge">VIP</div>' : ""}
+      `;
+      tile.querySelector(".player-name").textContent = player.name;
+      this.syncAnswerBubble(tile, player, { instant: true });
+      return tile;
+    }
+
+    existingTilesByPlayerId() {
+      return new Map(Array.from(this.host?.querySelectorAll(".player-tile[data-player-id]") || []).map((tile) => [tile.dataset.playerId, tile]));
+    }
+
+    render(players = []) {
+      if (!this.host) return;
+      const existingTiles = this.existingTilesByPlayerId();
+      const desiredIds = new Set(players.map((player) => player.id));
+      let cursor = this.host.firstElementChild;
+      players.forEach((player, playerIndex) => {
+        const signature = this.playerSignature(player);
+        const existing = existingTiles.get(player.id);
+        const tile = existing?.dataset.signature === signature
+          ? existing
+          : this.createTile(player, playerIndex, signature);
+        tile.classList.toggle("needs-input", player.needsInput === true);
+        tile.style.setProperty("--player-index", playerIndex);
+        if (existing && existing !== tile) {
+          if (existing === cursor) cursor = existing.nextElementSibling;
+          existing.remove();
+        }
+        const isNewTile = tile !== existing;
+        if (tile === cursor) {
+          cursor = cursor.nextElementSibling;
+        } else {
+          this.host.insertBefore(tile, cursor);
+        }
+        if (!isNewTile) this.syncAnswerBubble(tile, player);
+      });
+      Array.from(this.host.querySelectorAll(".player-tile[data-player-id]")).forEach((tile) => {
+        if (!desiredIds.has(tile.dataset.playerId)) tile.remove();
+      });
+    }
+
+    tileForPlayerId(playerId) {
+      if (!this.host || !playerId) return null;
+      return this.host.querySelector(`.player-tile[data-player-id="${global.CSS.escape(String(playerId))}"]`);
+    }
+
+    renderPointPopups(popups = []) {
+      for (const popup of popups || []) {
+        if (!popup?.id || this.pointPopupIds.has(popup.id)) continue;
+        const tile = this.tileForPlayerId(popup.playerId);
+        if (!tile) continue;
+        this.pointPopupIds.add(popup.id);
+        const node = this.document.createElement("div");
+        node.className = "point-popup";
+        node.textContent = `+${Math.max(0, Math.floor(Number(popup.points || 0)))}`;
+        tile.appendChild(node);
+        global.setTimeout(() => node.remove(), 1600);
+      }
+    }
+
+    clearPointPopupIds() {
+      this.pointPopupIds.clear();
+    }
+
+    clearPointPopups() {
+      this.clearPointPopupIds();
+      this.host?.querySelectorAll(".point-popup").forEach((node) => node.remove());
+    }
+  }
+
+  global.PartyGamePlayerRoster = {
+    PlayerRosterRenderer,
+    createRenderer: (options) => new PlayerRosterRenderer(options)
+  };
+})(window);

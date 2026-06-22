@@ -1,14 +1,7 @@
-function playerTileSignature(player) {
-  return JSON.stringify({
-    name: player.name,
-    avatar: player.avatar || {},
-    isVip: player.isVip === true
-  });
-}
-
 let stageTextControllerInstance = null;
 let craftingTimerControllerInstance = null;
 let playerAnswerBubbleControllerInstance = null;
+let playerRosterRendererInstance = null;
 
 function stageVisualControllers() {
   return window.PartyGameStageVisualControllers || null;
@@ -61,6 +54,20 @@ function playerAnswerBubbleController() {
   return playerAnswerBubbleControllerInstance;
 }
 
+function playerRosterRenderer() {
+  if (!playerRosterRendererInstance && window.PartyGamePlayerRoster) {
+    playerRosterRendererInstance = window.PartyGamePlayerRoster.createRenderer({
+      host: playerLobby,
+      document,
+      avatarClass,
+      avatarFrameImage,
+      dinoIcon,
+      syncAnswerBubble: syncPlayerAnswerBubble
+    });
+  }
+  return playerRosterRendererInstance;
+}
+
 let votingCardVisualRenderer = null;
 
 function votingCardRenderer() {
@@ -81,23 +88,6 @@ function clearVotingCardVisuals(options = {}) {
   votingCardRenderer()?.clear(options);
 }
 
-function createPlayerTile(player, playerIndex, signature) {
-  const tile = document.createElement("article");
-  tile.className = "player-tile";
-  tile.classList.toggle("needs-input", player.needsInput === true);
-  tile.dataset.playerId = player.id;
-  tile.dataset.signature = signature;
-  tile.style.setProperty("--player-index", playerIndex);
-  tile.innerHTML = `
-    <div class="player-avatar ${avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${avatarFrameImage()}${dinoIcon(player.avatar?.shape)}</div>
-    <div class="player-name"></div>
-    ${player.isVip ? '<div class="vip-badge">VIP</div>' : ""}
-  `;
-  tile.querySelector(".player-name").textContent = player.name;
-  syncPlayerAnswerBubble(tile, player, { instant: true });
-  return tile;
-}
-
 function syncPlayerAnswerBubble(tile, player, options = {}) {
   return playerAnswerBubbleController()?.sync(tile, player, options) || 0;
 }
@@ -111,46 +101,11 @@ function playerAnswerBubbleAnimationRemaining() {
 }
 
 function renderStagePlayers(players) {
-  const existingTiles = new Map(Array.from(playerLobby.querySelectorAll(".player-tile[data-player-id]")).map((tile) => [tile.dataset.playerId, tile]));
-  const desiredIds = new Set(players.map((player) => player.id));
-  let cursor = playerLobby.firstElementChild;
-  players.forEach((player, playerIndex) => {
-    const signature = playerTileSignature(player);
-    const existing = existingTiles.get(player.id);
-    const tile = existing?.dataset.signature === signature
-      ? existing
-      : createPlayerTile(player, playerIndex, signature);
-    tile.classList.toggle("needs-input", player.needsInput === true);
-    tile.style.setProperty("--player-index", playerIndex);
-    if (existing && existing !== tile) {
-      if (existing === cursor) cursor = existing.nextElementSibling;
-      existing.remove();
-    }
-    const isNewTile = tile !== existing;
-    if (tile === cursor) {
-      cursor = cursor.nextElementSibling;
-    } else {
-      playerLobby.insertBefore(tile, cursor);
-    }
-    if (!isNewTile) syncPlayerAnswerBubble(tile, player);
-  });
-  Array.from(playerLobby.querySelectorAll(".player-tile[data-player-id]")).forEach((tile) => {
-    if (!desiredIds.has(tile.dataset.playerId)) tile.remove();
-  });
+  playerRosterRenderer()?.render(players);
 }
 
 function renderPointPopups(popups = []) {
-  for (const popup of popups || []) {
-    if (!popup?.id || renderedPointPopupIds.has(popup.id)) continue;
-    const tile = playerLobby.querySelector(`.player-tile[data-player-id="${CSS.escape(popup.playerId)}"]`);
-    if (!tile) continue;
-    renderedPointPopupIds.add(popup.id);
-    const node = document.createElement("div");
-    node.className = "point-popup";
-    node.textContent = `+${Math.max(0, Math.floor(Number(popup.points || 0)))}`;
-    tile.appendChild(node);
-    window.setTimeout(() => node.remove(), 1600);
-  }
+  playerRosterRenderer()?.renderPointPopups(popups);
 }
 
 function revealVoteStaggerMs(action) {
@@ -261,7 +216,7 @@ function resetStageObjects() {
   craftingTimerController()?.reset();
   playerLobby.classList.remove("players-hidden", "players-instant");
   playerAnswerBubbleController()?.reset();
-  renderedPointPopupIds.clear();
+  playerRosterRenderer()?.clearPointPopupIds();
   clearVotingCardVisuals({ instant: true });
   initStageTextObjects();
   presentClickWidget.classList.add("hidden");
@@ -382,8 +337,7 @@ function renderStageLobby(lobby) {
   const isNewPhase = renderedStagePhase && renderedStagePhase !== nextPhase;
   if (isNewPhase) {
     clearStageAudioPlayers();
-    renderedPointPopupIds.clear();
-    playerLobby.querySelectorAll(".point-popup").forEach((node) => node.remove());
+    playerRosterRenderer()?.clearPointPopups();
     renderVotingCards([]);
   }
   renderedStagePhase = nextPhase;
