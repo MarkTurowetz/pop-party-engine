@@ -17,6 +17,7 @@ function createRoomPhaseRuntime({
   isRoundIntroStateId,
   normalizeFlowId,
   prepareVotingCards,
+  resetCraftingTimer,
   runtimeGameFlow,
 }) {
   function advanceRoomFromMomentReturn(room) {
