@@ -57,6 +57,67 @@ function isArtCompositionsDirty() {
   return artCompositionsSavedSnapshot && JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot;
 }
 
+function artCompositionHistorySnapshot() {
+  return JSON.stringify(serializeArtCompositionsForSave(artCompositions));
+}
+
+function getArtHistoryManager() {
+  if (!artHistoryManager && window.PartyGameToolHistory) {
+    artHistoryManager = window.PartyGameToolHistory.createHistory({
+      snapshot: artCompositionHistorySnapshot,
+      restore: restoreArtCompositionHistory,
+      limit: 30
+    });
+  }
+  return artHistoryManager;
+}
+
+function pushArtHistory() {
+  getArtHistoryManager()?.push();
+}
+
+function restoreArtCompositionHistory(snapshot) {
+  const preferredCompositionId = selectedArtCompositionId;
+  const preferredComponentIds = [...selectedArtComponentIds];
+  artCompositions = JSON.parse(snapshot);
+  selectedArtCompositionId = preferredCompositionId && artComposition(preferredCompositionId)
+    ? preferredCompositionId
+    : artCompositions[0]?.id || "";
+  const composition = selectedArtComposition();
+  const validIds = allArtComponentIds(composition);
+  selectedArtComponentIds = new Set(preferredComponentIds.filter((id) => validIds.has(id)));
+  selectedArtComponentId = [...selectedArtComponentIds].pop() || "";
+  if (composition) {
+    selectedArtAsset = null;
+    selectedArtComposite = null;
+    pendingArtReplacement = null;
+    renderSelectedArtComposition();
+  } else {
+    hideArtComponentEditor();
+  }
+  renderArtList();
+  updateGlobalSaveButton();
+}
+
+function undoArtCompositionChange() {
+  getArtHistoryManager()?.undo();
+}
+
+function redoArtCompositionChange() {
+  getArtHistoryManager()?.redo();
+}
+
+function handleArtHotkeys(event) {
+  if (artScreen.classList.contains("hidden")) return;
+  if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+  event.preventDefault();
+  if (event.shiftKey) {
+    redoArtCompositionChange();
+  } else {
+    undoArtCompositionChange();
+  }
+}
+
 function selectedArtComposition() {
   return artComposition(selectedArtCompositionId);
 }
@@ -530,8 +591,13 @@ function startArtComponentDrag(event, component) {
   const moving = selectedArtComponents();
   const origins = new Map(moving.map((item) => [item.id, { x: Number(item.x || 0), y: Number(item.y || 0) }]));
   let lockedAxis = null;
+  let historyCaptured = false;
   event.currentTarget.setPointerCapture(event.pointerId);
   const move = (moveEvent) => {
+    if (!historyCaptured) {
+      pushArtHistory();
+      historyCaptured = true;
+    }
     let deltaX = (moveEvent.clientX - startX) / scale;
     let deltaY = (moveEvent.clientY - startY) / scale;
     if (moveEvent.shiftKey) {
@@ -582,8 +648,13 @@ function startArtComponentScale(event, component) {
   const origins = new Map(scaling.map((item) => [item.id, Number(item.scale || 1)]));
   const originScale = Number(component.scale || 1);
   const baseSize = Math.max(Number(component.width || 1), Number(component.height || 1));
+  let historyCaptured = false;
   event.currentTarget.setPointerCapture(event.pointerId);
   const move = (moveEvent) => {
+    if (!historyCaptured) {
+      pushArtHistory();
+      historyCaptured = true;
+    }
     const delta = Math.max(moveEvent.clientX - startX, moveEvent.clientY - startY) / previewScale;
     const nextPrimaryScale = Math.max(0.05, Math.min(8, originScale + delta / baseSize));
     const scaleDelta = nextPrimaryScale - originScale;
@@ -636,12 +707,12 @@ function renderArtComponentEditor() {
     if (component.kind === "text" || component.kind === "badge") {
       fields.appendChild(artTextField("Text", component.defaultText || "", (value) => updateArtComponentValue("defaultText", value)));
       fields.appendChild(artNumberField("Font Size", component.fontSize || 16, (value) => updateArtComponentValue("fontSize", Math.max(6, value))));
-      fields.appendChild(artColorField("Font Color", component.fontColor || "#17131f", (value) => updateArtComponentValue("fontColor", value)));
+      fields.appendChild(artColorField("Font Color", component.fontColor || "#17131f", (value, options) => updateArtComponentValue("fontColor", value, options)));
     }
     if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {
       fields.appendChild(artSelectField("Shape", component.shapeStyle || "rounded", artShapeStyles, (value) => updateArtShapeStyle(value)));
-      fields.appendChild(artColorField("Fill", component.fillColor === "transparent" ? "#fff8d6" : component.fillColor || "#fff8d6", (value) => updateArtComponentValue("fillColor", value)));
-      fields.appendChild(artColorField("Border", component.borderColor === "transparent" ? "#17131f" : component.borderColor || "#17131f", (value) => updateArtComponentValue("borderColor", value)));
+      fields.appendChild(artColorField("Fill", component.fillColor === "transparent" ? "#fff8d6" : component.fillColor || "#fff8d6", (value, options) => updateArtComponentValue("fillColor", value, options)));
+      fields.appendChild(artColorField("Border", component.borderColor === "transparent" ? "#17131f" : component.borderColor || "#17131f", (value, options) => updateArtComponentValue("borderColor", value, options)));
       fields.appendChild(artNumberField("Border Width", component.borderWidth || 0, (value) => updateArtComponentValue("borderWidth", Math.max(0, value))));
       fields.appendChild(artNumberField("Radius", component.borderRadius || 0, (value) => updateArtComponentValue("borderRadius", Math.max(0, value))));
     }
@@ -702,16 +773,28 @@ function artColorField(label, value, onChange) {
   const input = document.createElement("input");
   input.type = "color";
   input.value = normalizeUiColor(value) || "#ffffff";
-  input.addEventListener("input", () => onChange(input.value));
+  let historyCaptured = false;
+  input.addEventListener("focus", () => {
+    historyCaptured = false;
+  });
+  input.addEventListener("input", () => {
+    if (!historyCaptured) {
+      pushArtHistory();
+      historyCaptured = true;
+    }
+    onChange(input.value, { captureHistory: false });
+  });
   field.appendChild(input);
   return field;
 }
 
-function updateArtComponentNumber(key, value) {
+function updateArtComponentNumber(key, value, options = {}) {
   const components = selectedArtComponents();
   const primary = selectedEditableArtComponent();
   if (!primary) return;
   const delta = Number(value) - Number(primary[key] || 0);
+  if (!delta) return;
+  if (options.captureHistory !== false) pushArtHistory();
   for (const component of components) {
     component[key] = Number((Number(component[key] || 0) + delta).toFixed(3));
   }
@@ -720,36 +803,46 @@ function updateArtComponentNumber(key, value) {
   updateGlobalSaveButton();
 }
 
-function updateArtComponentValue(key, value) {
+function updateArtComponentValue(key, value, options = {}) {
   const component = selectedEditableArtComponent();
   if (!component) return;
-  component[key] = typeof value === "number" ? Number(value.toFixed(3)) : value;
+  const nextValue = typeof value === "number" ? Number(value.toFixed(3)) : value;
+  if (component[key] === nextValue) return;
+  if (options.captureHistory !== false) pushArtHistory();
+  component[key] = nextValue;
   renderSelectedArtComposition();
   renderArtList();
   updateGlobalSaveButton();
 }
 
-function updateArtCompositionValue(key, value) {
+function updateArtCompositionValue(key, value, options = {}) {
   const composition = selectedArtComposition();
   if (!composition) return;
+  if (composition[key] === value) return;
+  if (options.captureHistory !== false) pushArtHistory();
   composition[key] = value;
   renderSelectedArtComposition();
   renderArtList();
   updateGlobalSaveButton();
 }
 
-function updateArtCompositionCanvas(key, value) {
+function updateArtCompositionCanvas(key, value, options = {}) {
   const composition = selectedArtComposition();
   if (!composition) return;
   composition.canvas = composition.canvas || { width: 560, height: 230 };
-  composition.canvas[key] = Number(Number(value || 1).toFixed(3));
+  const nextValue = Number(Number(value || 1).toFixed(3));
+  if (composition.canvas[key] === nextValue) return;
+  if (options.captureHistory !== false) pushArtHistory();
+  composition.canvas[key] = nextValue;
   renderSelectedArtComposition();
   updateGlobalSaveButton();
 }
 
-function updateArtShapeStyle(shapeStyle) {
+function updateArtShapeStyle(shapeStyle, options = {}) {
   const component = selectedEditableArtComponent();
   if (!component) return;
+  if (component.shapeStyle === shapeStyle) return;
+  if (options.captureHistory !== false) pushArtHistory();
   component.shapeStyle = shapeStyle;
   if (shapeStyle === "rectangle") {
     component.borderRadius = 0;
@@ -817,6 +910,7 @@ function defaultArtObject(kind, bounds = {}) {
 
 function createArtAssetComposition() {
   const kind = normalizeArtCreateKind(artCreateKindSelect?.value);
+  pushArtHistory();
   const composition = {
     id: createSecureArtId("art"),
     name: `${artKindLabel(kind)} Art`,
@@ -843,6 +937,7 @@ function createArtChildObject() {
   const composition = selectedArtComposition();
   if (!composition) return;
   const kind = normalizeArtCreateKind(artCreateKindSelect?.value);
+  pushArtHistory();
   const parent = selectedEditableArtComponent();
   const bounds = parent
     ? { width: Number(parent.width || 1), height: Number(parent.height || 1) }
@@ -958,6 +1053,7 @@ async function setupArtTool() {
   artCancelButton.addEventListener("click", cancelArtReplacement);
   artCreateButton.addEventListener("click", createArtAssetComposition);
   artCreateChildButton.addEventListener("click", createArtChildObject);
+  window.addEventListener("keydown", handleArtHotkeys);
   artSaveCompositionButton.addEventListener("click", () => saveArtCompositions().catch((error) => {
     artFileName.textContent = error.message;
   }));
@@ -981,6 +1077,7 @@ async function setupArtTool() {
   try {
     await loadArtAssets();
     artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
+    getArtHistoryManager()?.clear();
     selectArtComposition("voting-card");
   } catch (error) {
     artPreviewTitle.textContent = "Art Tool Offline";
