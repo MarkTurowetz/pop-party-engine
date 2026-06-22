@@ -70,6 +70,8 @@ function createLobbyPayloadRuntime({
       requiredInputCount: players.length,
       submittedInputCount,
       playerAnswerRecordCount: Object.keys(room.playerAnswerRecords || {}).length,
+      storedAnswerRoundCount: Object.keys(room.storedPlayerAnswers || {}).length,
+      storedAnswerCurrentRoundCount: Object.keys((room.storedPlayerAnswers || {})[room.currentRound || 1] || {}).length,
       votingCardCount: Array.isArray(room.votingCards) ? room.votingCards.length : 0,
       visibleVotingCardCount: serializeVotingCards(room).length,
       lastPreparedVotingCardCount: Number(room.lastVotingPrepare?.cardCount || 0),

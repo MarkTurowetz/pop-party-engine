@@ -127,9 +127,12 @@ function createRoomPhaseRuntime({
       }
     }
 
-    // Auto-setup voting cards if the entering state declares a source moment.
+    // Auto-setup voting cards when entering a phase that contains voting input.
+    // Uses votingSourceStateId if explicitly configured, otherwise falls back to the
+    // phase we just left (the common writing-then-voting pattern needs no configuration).
     const enteringState = runtimeGameFlow(room).states.find((s) => s.id === phase);
-    const sourceStateId = enteringState?.votingSourceStateId;
+    const hasVotingInput = (enteringState?.actions || []).some((a) => a.type === "voteOnAnswersInput");
+    const sourceStateId = enteringState?.votingSourceStateId || (hasVotingInput ? previousPhase : null);
     if (sourceStateId) {
       const loadRound = room.currentRound || 1;
       const sourceRecords = room.storedPlayerAnswers?.[loadRound]?.[sourceStateId] || {};

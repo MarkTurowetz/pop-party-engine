@@ -422,6 +422,9 @@ function renderStageActionDebug(lobby) {
   }
   const records = Number(debug.playerAnswerRecordCount || 0);
   if (records > 0) parts.push(`answers ${records}`);
+  const storedRounds = Number(debug.storedAnswerRoundCount || 0);
+  const storedCurrent = Number(debug.storedAnswerCurrentRoundCount || 0);
+  if (storedRounds > 0 || storedCurrent > 0) parts.push(`stored r${storedRounds} cur${storedCurrent}`);
   const cards = Number(debug.votingCardCount || 0);
   const visibleCards = Number(debug.visibleVotingCardCount || 0);
   const preparedCards = Number(debug.lastPreparedVotingCardCount || 0);
