@@ -4306,6 +4306,7 @@
   <script src="/client/flow/node-view-wires.js"></script>
   <script src="/client/flow/node-view-minimap.js"></script>
   <script src="/client/flow/node-view-ports.js"></script>
+  <script src="/client/flow/node-view-connections.js"></script>
   <script src="/client/flow-node-view.js"></script>
   <script src="/client/flow-tool.js"></script>
   <script src="/client/constants-tool.js"></script>
@@ -4554,7 +4555,6 @@
     let flowViewMode = getLocalValue("partyTemplate.flowViewMode") === "node" ? "node" : "list";
     let flowNodeDepth = "moments";
     let flowNodeZoom = Math.min(1, Math.max(0.1, Number(getLocalValue("partyTemplate.flowNodeZoom") || 1) || 1));
-    let pendingNodeConnection = null;
     const collapsedFlowStates = new Set(getLocalJsonArray("partyTemplate.collapsedFlowStates"));
     const collapsedFlowActions = new Set(getLocalJsonArray("partyTemplate.collapsedFlowActions"));
     let flowHistoryManager = null;

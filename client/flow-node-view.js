@@ -2,7 +2,7 @@ function renderFlowNodeView() {
   if (!flowNodeLayer || !flowNodeWires || flowViewMode !== "node") return;
   flowNodeLayer.replaceChildren();
   clearFlowNodeWires();
-  pendingNodeConnection = null;
+  resetFlowNodeConnection();
   if (flowNodeDepth === "moments") {
     renderFlowMomentNodes();
   } else {
@@ -442,10 +442,11 @@ function createFlowNodeBranches(state, action) {
     dot.dataset.targetKind = "action";
     dot.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
-      pendingNodeConnection = { stateId: state.id, actionId: action.id, field: "", branchId: branch.id, targetKind: "action", pointerId: event.pointerId, commandCreate: event.metaKey };
-      flowNodeLayer.querySelectorAll(".flow-node-port-dot").forEach((port) => port.classList.remove("is-armed"));
-      dot.classList.add("is-armed");
-      flowNodeHint.textContent = event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over a node to connect this branch.";
+      armFlowNodeConnection({
+        connection: { stateId: state.id, actionId: action.id, field: "", branchId: branch.id, targetKind: "action", pointerId: event.pointerId, commandCreate: event.metaKey },
+        dot,
+        hint: event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over a node to connect this branch."
+      });
     });
     item.append(title, target, dot);
     bindFlowNodeChildSort(item, action, "branches", branch.id);
@@ -559,7 +560,7 @@ function bindFlowNodeDrag(node, item, { afterDrag = null } = {}) {
 
 function startFlowNodeMarquee(event) {
   if (event.button !== 0 || flowViewMode !== "node") return;
-  if (pendingNodeConnection) return;
+  if (hasPendingFlowNodeConnection()) return;
   if (!flowNodeGraph || !flowNodeLayer) return;
   const selector = flowNodeDepth === "moments" ? ".flow-node[data-node-id]" : ".flow-node[data-action-id]";
   return window.PartyGameToolAffordances?.startSelectionMarquee(event, {
@@ -1068,73 +1069,31 @@ function createFlowStartPorts(state) {
 }
 
 function armFlowNodeConnection({ connection, dot, hint }) {
-  pendingNodeConnection = connection || null;
-  flowNodeLayer?.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
-  dot?.classList.add("is-armed");
-  if (flowNodeHint) flowNodeHint.textContent = hint || "Release over a node to connect this exit.";
+  getFlowNodeConnectionController()?.arm({ connection, dot, hint });
 }
 
-function sourceNodeForPendingConnection() {
-  if (!pendingNodeConnection || !flowNodeLayer) return null;
-  if (pendingNodeConnection.sourceKind === "moment") {
-    return flowNodeLayer.querySelector(`.flow-node[data-node-id="${cssEscape(pendingNodeConnection.stateId)}"]`);
-  }
-  if (pendingNodeConnection.sourceKind === "start") {
-    return flowNodeLayer.querySelector('.flow-node[data-node-id="start"]');
-  }
-  if (pendingNodeConnection.branchId) {
-    return flowNodeLayer.querySelector(`.flow-node-branch[data-branch-id="${cssEscape(pendingNodeConnection.branchId)}"]`);
-  }
-  return flowNodeLayer.querySelector(`.flow-node[data-action-id="${cssEscape(pendingNodeConnection.actionId)}"]`);
+function resetFlowNodeConnection() {
+  getFlowNodeConnectionController()?.reset();
 }
 
-function redrawPendingNodeConnection(event) {
-  if (!pendingNodeConnection || !event?.metaKey) return;
-  redrawFlowNodeWires();
-  drawPreviewNodeWire(sourceNodeForPendingConnection(), flowNodeLocalPoint(event));
+function hasPendingFlowNodeConnection() {
+  return Boolean(getFlowNodeConnectionController()?.hasPending());
+}
+
+function shouldCreateActionFromPendingConnection(event) {
+  return Boolean(getFlowNodeConnectionController()?.shouldCreateAction(event));
 }
 
 function createActionFromPendingConnection(event) {
-  if (!pendingNodeConnection || pendingNodeConnection.targetKind !== "action" || flowNodeDepth !== "actions") return false;
-  const state = flowState(pendingNodeConnection.stateId);
-  const sourceAction = pendingNodeConnection.sourceKind === "start" ? null : flowAction(state?.id, pendingNodeConnection.actionId);
-  if (!state || (pendingNodeConnection.sourceKind !== "start" && !sourceAction)) return false;
-  const point = flowNodeLocalPoint(event);
-  const nextNumber = state.actions.length + 1;
-  const action = createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
-  action.nodePosition = {
-    x: Math.max(0, Math.round(point.x - 130)),
-    y: Math.max(0, Math.round(point.y - 67))
-  };
-  pushFlowHistory();
-  state.actions.push(action);
-  if (pendingNodeConnection.sourceKind === "start") {
-    state.entryTargetActionId = action.id;
-  } else if (pendingNodeConnection.branchId) {
-    const branch = decisionBranchById(sourceAction, pendingNodeConnection.branchId);
-    if (branch) branch.targetActionId = action.id;
-  } else {
-    sourceAction[pendingNodeConnection.field] = action.id;
-  }
-  setFlowActionSelection([action.id]);
-  renderFlowListAndPublish();
-  renderFlowNodeView();
-  return true;
+  return Boolean(getFlowNodeConnectionController()?.createAction(event));
 }
 
 function handleFlowNodePointerMove(event) {
-  if (!pendingNodeConnection || pendingNodeConnection.pointerId !== event.pointerId) return;
-  if (event.metaKey) {
-    pendingNodeConnection.commandCreate = true;
-    redrawPendingNodeConnection(event);
-  }
+  getFlowNodeConnectionController()?.handlePointerMove(event);
 }
 
 function clearPendingFlowNodeConnection() {
-  flowNodeLayer?.querySelectorAll(".flow-node-port-dot").forEach((item) => item.classList.remove("is-armed"));
-  pendingNodeConnection = null;
-  redrawFlowNodeWires();
-  if (flowNodeHint) flowNodeHint.textContent = "Drag from an exit dot to another node to create a connection.";
+  getFlowNodeConnectionController()?.clear();
 }
 
 function handleFlowNodeWheel(event) {
@@ -1153,43 +1112,7 @@ function startFlowNodeMinimapDrag(event) {
 }
 
 function completeNodeConnection(targetNode) {
-  if (!pendingNodeConnection) return;
-  const state = flowState(pendingNodeConnection.stateId);
-  if (!state) return;
-  const action = pendingNodeConnection.sourceKind === "moment" || pendingNodeConnection.sourceKind === "start" ? null : flowAction(state.id, pendingNodeConnection.actionId);
-  if (pendingNodeConnection.sourceKind !== "moment" && pendingNodeConnection.sourceKind !== "start" && !action) return;
-  const targetId = pendingNodeConnection.targetKind === "state"
-    ? targetNode?.dataset.nodeId
-    : targetNode?.dataset.actionId;
-  if (!targetId) return;
-  if (pendingNodeConnection.sourceKind === "moment") {
-    if (targetId === state.id) return;
-    pushFlowHistory();
-    state[pendingNodeConnection.field] = targetId;
-    pendingNodeConnection = null;
-    renderFlowListAndPublish();
-    renderFlowNodeView();
-    return;
-  }
-  if (pendingNodeConnection.sourceKind === "start") {
-    pushFlowHistory();
-    state.entryTargetActionId = targetId;
-    pendingNodeConnection = null;
-    renderFlowListAndPublish();
-    renderFlowNodeView();
-    return;
-  }
-  if (targetId === action.id) return;
-  pushFlowHistory();
-  if (pendingNodeConnection.branchId) {
-    const branch = decisionBranchById(action, pendingNodeConnection.branchId);
-    if (branch) branch.targetActionId = targetId;
-  } else {
-    action[pendingNodeConnection.field] = targetId;
-  }
-  pendingNodeConnection = null;
-  renderFlowListAndPublish();
-  renderFlowNodeView();
+  getFlowNodeConnectionController()?.complete(targetNode);
 }
 
 function renderFlowNodeInspector() {

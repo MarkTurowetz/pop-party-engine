@@ -272,6 +272,7 @@ function transitionTriggerOptions() {
 
 let flowActionControlGroups = null;
 let flowActionInspectorRegistry = null;
+let flowNodeConnectionController = null;
 let flowNodeMinimapController = null;
 let flowNodePortsFactory = null;
 let flowNodeWireRenderer = null;
@@ -367,6 +368,29 @@ function getFlowNodePortsFactory() {
     });
   }
   return flowNodePortsFactory;
+}
+
+function getFlowNodeConnectionController() {
+  if (!flowNodeConnectionController && window.PartyGameFlowNodeConnections) {
+    flowNodeConnectionController = window.PartyGameFlowNodeConnections.createFlowNodeConnectionController({
+      createDefaultFlowAction,
+      cssEscape,
+      decisionBranchById,
+      drawPreviewNodeWire,
+      flowAction,
+      flowNodeDepth: () => flowNodeDepth,
+      flowNodeHint: () => flowNodeHint,
+      flowNodeLayer: () => flowNodeLayer,
+      flowNodeLocalPoint,
+      flowState,
+      pushFlowHistory,
+      redrawFlowNodeWires,
+      renderFlowListAndPublish,
+      renderFlowNodeView,
+      setFlowActionSelection
+    });
+  }
+  return flowNodeConnectionController;
 }
 
 function flowTargetActionName(actionId) {
@@ -1539,7 +1563,7 @@ async function setupFlowTool() {
     const targetNode = event.target.closest?.(".flow-node");
     if (targetNode) {
       completeNodeConnection(targetNode);
-    } else if (pendingNodeConnection?.commandCreate || event.metaKey) {
+    } else if (shouldCreateActionFromPendingConnection(event)) {
       createActionFromPendingConnection(event);
     }
     clearPendingFlowNodeConnection();

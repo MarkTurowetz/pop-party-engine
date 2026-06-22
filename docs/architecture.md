@@ -95,6 +95,8 @@ concepts into focused modules.
     viewport positioning, minimap clicks, and minimap dragging.
   - `client/flow/node-view-ports.js` owns Flow Node View connection port DOM,
     dot metadata, and pending-connection arming callbacks.
+  - `client/flow/node-view-connections.js` owns Flow Node View pending connection
+    state, preview redraw, command-create action creation, completion, and cleanup.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
