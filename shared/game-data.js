@@ -295,7 +295,7 @@ const defaultArtCompositions = [
   {
     id: "voting-card",
     name: "Voting Card",
-    description: "Composed from a current card, answer text, author heading, and voter widgets.",
+    description: "Composed from a current card, answer text, author heading, voter container, vote count, and voter widgets.",
     canvas: { width: 560, height: 230 },
     components: [
       {
@@ -353,10 +353,26 @@ const defaultArtCompositions = [
         borderRadius: 0
       },
       {
+        id: "vote-count",
+        name: "Vote Count Widget",
+        kind: "badge",
+        x: 72,
+        y: 188,
+        width: 112,
+        height: 32,
+        scale: 1,
+        fillColor: "#fff8d6",
+        borderColor: "#17131f",
+        borderWidth: 2,
+        borderRadius: 999,
+        fontSize: 15,
+        fontColor: "#17131f"
+      },
+      {
         id: "vote-widget",
         name: "Player Vote Widget",
         kind: "badge",
-        x: 72,
+        x: 280,
         y: 188,
         width: 112,
         height: 32,

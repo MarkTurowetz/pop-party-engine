@@ -430,6 +430,13 @@ const {
   customDir: ART_CUSTOM_DIR,
   defaultDir: ART_DEFAULT_DIR,
   manifestFile: ART_MANIFEST_FILE,
+  onArtAssetsChanged: (payload) => {
+    for (const room of rooms.values()) {
+      for (const client of room.stageClients) {
+        sendSse(client, "artAssetsChanged", payload);
+      }
+    }
+  },
   readJson,
   sendJson
 });

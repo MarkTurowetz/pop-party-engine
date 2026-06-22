@@ -189,6 +189,42 @@ function setLocalValue(key, value) {
   localStorage.setItem(key, value);
 }
 
+const artAssetsChangedStorageKey = "partyTemplate.artAssetsChangedAt";
+const artAssetsChangedChannelName = "partyTemplate.artAssetsChanged";
+const artAssetsChangedChannels = [];
+
+function notifyArtAssetsChanged() {
+  const updatedAt = String(Date.now());
+  try {
+    setLocalValue(artAssetsChangedStorageKey, updatedAt);
+  } catch (error) {
+    // Local storage can be unavailable in privacy modes; BroadcastChannel may still work.
+  }
+  if (!("BroadcastChannel" in window)) return;
+  try {
+    const channel = new BroadcastChannel(artAssetsChangedChannelName);
+    channel.postMessage({ updatedAt });
+    channel.close();
+  } catch (error) {
+    // Art changes are still saved server-side even if cross-window notification fails.
+  }
+}
+
+function listenForArtAssetsChanged(callback) {
+  if (typeof callback !== "function") return;
+  window.addEventListener("storage", (event) => {
+    if (event.key === artAssetsChangedStorageKey) callback();
+  });
+  if (!("BroadcastChannel" in window)) return;
+  try {
+    const channel = new BroadcastChannel(artAssetsChangedChannelName);
+    channel.addEventListener("message", callback);
+    artAssetsChangedChannels.push(channel);
+  } catch (error) {
+    // Storage events remain as a fallback.
+  }
+}
+
 function getLocalJsonArray(key) {
   try {
     const value = JSON.parse(getLocalValue(key) || "[]");

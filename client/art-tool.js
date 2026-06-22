@@ -413,6 +413,7 @@ function artComponentPreviewText(component) {
   if (component.id === "answer-text") return "FUNNY ANSWER";
   if (component.id === "author-heading") return "AVA";
   if (component.id === "voter-container") return "";
+  if (component.id === "vote-count") return "0 votes";
   if (component.id === "vote-widget") return "BEN";
   return component.defaultText || component.name;
 }
@@ -614,6 +615,7 @@ async function saveArtCompositions() {
   const result = await postJson(`/api/art-compositions/${composition.id}`, { composition });
   artCompositions = artCompositions.map((item) => item.id === result.composition.id ? result.composition : item);
   artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
+  notifyArtAssetsChanged();
   selectedArtCompositionId = result.composition.id;
   renderSelectedArtComposition();
   renderArtList();
@@ -666,6 +668,7 @@ async function saveArtReplacement() {
     const updated = result.asset;
     artAssets = artAssets.map((asset) => asset.id === updated.id ? updated : asset);
     applyArtAssets(artAssets);
+    notifyArtAssetsChanged();
     selectArtAsset(updated.id);
   } catch (error) {
     artFileName.textContent = error.message;

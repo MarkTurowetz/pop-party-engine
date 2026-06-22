@@ -6,7 +6,8 @@
       { id: "answer-text", x: 280, y: 96, width: 420, height: 78, scale: 1, fontSize: 32, fontColor: "#17131f" },
       { id: "author-heading", x: 280, y: 22, width: 340, height: 28, scale: 1, fontSize: 15, fontColor: "#6b5a80" },
       { id: "voter-container", x: 278, y: 188, width: 500, height: 48, scale: 1, fillColor: "transparent", borderColor: "transparent", borderWidth: 0, borderRadius: 0 },
-      { id: "vote-widget", x: 72, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" }
+      { id: "vote-count", x: 72, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" },
+      { id: "vote-widget", x: 280, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" }
     ]
   };
 
@@ -90,8 +91,9 @@
       return (typeof this.getComposition === "function" ? this.getComposition() : null) || FALLBACK_VOTING_CARD_COMPOSITION;
     }
 
-    component(componentId) {
-      return (this.composition()?.components || []).find((item) => item.id === componentId) || null;
+    component(componentId, fallbackId = "") {
+      const components = this.composition()?.components || [];
+      return components.find((item) => item.id === componentId) || (fallbackId ? components.find((item) => item.id === fallbackId) : null) || null;
     }
 
     applyComponentLayout(element, component, canvas) {
@@ -121,7 +123,7 @@
       this.applyComponentLayout(this.answerElement, this.component("answer-text"), canvas);
       this.applyComponentLayout(this.authorElement, this.component("author-heading"), canvas);
       this.applyComponentLayout(this.votersElement, this.component("voter-container"), canvas);
-      this.applyComponentLayout(this.voteBadgeElement, this.component("vote-widget"), canvas);
+      this.applyComponentLayout(this.voteBadgeElement, this.component("vote-count", "vote-widget"), canvas);
     }
 
     syncAuthor(cardData) {

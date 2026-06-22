@@ -11,6 +11,7 @@ function createArtAssetsRuntime({
   customDir,
   defaultDir,
   manifestFile,
+  onArtAssetsChanged = () => {},
   readJson,
   sendJson
 }) {
@@ -68,6 +69,7 @@ function createArtAssetsRuntime({
 
   function normalizeComposition(composition, override = null) {
     const savedById = new Map((override?.components || []).map((component) => [component.id, component]));
+    const hasSavedVoteCount = savedById.has("vote-count");
     return {
       id: composition.id,
       name: composition.name,
@@ -76,7 +78,13 @@ function createArtAssetsRuntime({
         width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
         height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
       },
-      components: (composition.components || []).map((component) => normalizeComponent(savedById.get(component.id), component)),
+      components: (composition.components || []).map((component) => {
+        let savedComponent = savedById.get(component.id) || (component.id === "vote-count" ? savedById.get("vote-widget") : null);
+        if (component.id === "vote-widget" && savedComponent && !hasSavedVoteCount) {
+          savedComponent = { ...savedComponent, x: component.x, y: component.y };
+        }
+        return normalizeComponent(savedComponent, component);
+      }),
       updatedAt: override?.updatedAt || null
     };
   }
@@ -152,6 +160,7 @@ function createArtAssetsRuntime({
       updatedAt: new Date().toISOString()
     };
     writeArtManifest(manifest);
+    onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: manifest.compositions[definition.id].updatedAt });
     sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, readArtManifest()) });
   }
 
@@ -209,13 +218,15 @@ function createArtAssetsRuntime({
 
     const savedFileName = `${asset.id}${expectedExt}`;
     fs.writeFileSync(path.join(customDir, savedFileName), buffer);
+    const updatedAt = new Date().toISOString();
     manifest[asset.id] = {
       fileName: savedFileName,
       sourceName: fileName,
       mimeType,
-      updatedAt: new Date().toISOString()
+      updatedAt
     };
     writeArtManifest(manifest);
+    onArtAssetsChanged({ type: "asset", id: asset.id, updatedAt });
     sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, manifest) });
   }
 

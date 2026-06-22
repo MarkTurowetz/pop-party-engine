@@ -244,6 +244,12 @@ function renderVotingCards(cards = []) {
   votingCardRenderer()?.render(cards);
 }
 
+function reloadStageArtAssets() {
+  loadArtAssets().then(() => {
+    if (currentStageState) renderStageLobby(currentStageState);
+  }).catch(() => {});
+}
+
 function runStageWipe(onCovered) {
   window.clearTimeout(stageWipeTimer);
   window.clearTimeout(stageWipeHideTimer);
@@ -852,6 +858,9 @@ function subscribeToStage(stageCode) {
   stream.addEventListener("lobby", (event) => {
     renderStageLobby(JSON.parse(event.data));
   });
+  stream.addEventListener("artAssetsChanged", () => {
+    reloadStageArtAssets();
+  });
   stream.addEventListener("error", () => {
     waitingStatus.classList.remove("hidden");
     waitingStatus.textContent = "Reconnecting to lobby";
@@ -861,9 +870,8 @@ function subscribeToStage(stageCode) {
 function setupStage() {
   stageScreen.classList.remove("hidden");
   initStageTextObjects();
-  loadArtAssets().then(() => {
-    if (currentStageState) renderStageLobby(currentStageState);
-  }).catch(() => {});
+  reloadStageArtAssets();
+  listenForArtAssetsChanged(reloadStageArtAssets);
   loadStageLayouts().then(() => {
     if (currentStageState) applyStageLayoutForPhase(currentStageState.phase);
   }).catch(() => {});

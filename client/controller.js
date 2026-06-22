@@ -201,6 +201,7 @@ async function submitControllerText(actionId) {
 
 function renderControllerState(lobby) {
   if (!controllerState) return;
+  controllerState.lobby = lobby;
   window.clearInterval(controllerCountdownTimer);
   const me = (lobby.players || []).find((player) => player.id === controllerState.playerId);
   if (!me) {
@@ -267,6 +268,13 @@ function renderControllerState(lobby) {
   }
 }
 
+function reloadControllerArtAssets() {
+  loadArtAssets().then(() => {
+    if (controllerState?.player) setControllerAvatar(controllerState.player);
+    if (controllerState?.lobby) renderControllerState(controllerState.lobby);
+  }).catch(() => {});
+}
+
 async function heartbeat() {
   if (!controllerState) return;
   try {
@@ -307,9 +315,8 @@ function setupController() {
   lockControllerViewport();
   bindControllerButtonPressStates();
   controllerScreen.classList.remove("hidden");
-  loadArtAssets().then(() => {
-    if (controllerState?.player) setControllerAvatar(controllerState.player);
-  }).catch(() => {});
+  reloadControllerArtAssets();
+  listenForArtAssetsChanged(reloadControllerArtAssets);
   loadControllerLayouts().then(() => applyControllerLayoutForPhase("join")).catch(() => applyControllerLayoutForPhase("join"));
   runtimeTestChannel?.addEventListener("message", (event) => {
     applyControllerRuntimeTestMessage(event.data);
