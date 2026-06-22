@@ -7,17 +7,7 @@
         {
           "id": "host-line-e6bf3f0d33aa4ef69127e8de57f88480",
           "text": "this is the first line",
-          "url": ""
-        },
-        {
-          "id": "host-line-e20b8767af7442a5a0c113a2b39ceb72",
-          "text": "this is the second line",
-          "url": ""
-        },
-        {
-          "id": "host-line-b066b2ccf4b64f1aa799be864eb7b384",
-          "text": "this is the third line",
-          "url": ""
+          "url": "https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg"
         }
       ]
     },
