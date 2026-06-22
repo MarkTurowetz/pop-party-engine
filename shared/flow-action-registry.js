@@ -311,6 +311,7 @@ const flowActionDefinitions = [
       room.votingWinners = [];
       room.playersShown = false;
       room.playerAnswersShown = false;
+      room.wipeShown = false;
       room.hiddenPlayerAnswerIds = new Set();
       room.displayedPlayerAnswers = new Map();
       room.displayedAnswerCorrectness = new Map();
@@ -479,6 +480,27 @@ const flowActionDefinitions = [
     }),
     applyRoomEffect: (room, action, context) => {
       context.setCraftingTimerShown(room, action.isShown !== false);
+    }
+  },
+  {
+    id: "setWipeShown",
+    name: "Set Wipe Shown",
+    category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "setWipeShown",
+    normalize: (action, base) => ({
+      ...base,
+      isShown: action?.isShown !== false,
+      instant: action?.instant === true
+    }),
+    toPublic: (action, base) => ({
+      ...base,
+      type: "setWipeShown",
+      isShown: action.isShown !== false,
+      instant: action.instant === true
+    }),
+    applyRoomEffect: (room, action) => {
+      room.wipeShown = action.isShown !== false;
     }
   },
   {

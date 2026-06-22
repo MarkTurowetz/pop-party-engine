@@ -91,6 +91,10 @@
         controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Timer Visible" });
         target.appendChild(context.readOnlyFlowNote("Showing the timer resets it to the Crafting Timer Duration game constant. Hiding pauses it and keeps the current remaining value."));
       }
+      if (action.type === "setWipeShown") {
+        controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Wipe Visible" });
+        target.appendChild(context.readOnlyFlowNote("Show covers the stage and stays covered. Hide continues the wipe offscreen, revealing whatever was prepared underneath."));
+      }
       if (action.type === "startCraftingTimer") {
         target.appendChild(context.readOnlyFlowNote("The timer starts and this action advances normally. Timer Ends and Answers Submitted exits are defined on the input action that follows."));
       }

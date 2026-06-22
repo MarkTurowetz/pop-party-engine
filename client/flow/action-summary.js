@@ -56,6 +56,7 @@
       if (action.type === "showPoints") return `Show points for ${action.playerFilter || "correct"} players / ${timingText}`;
       if (action.type === "givePendingPoints") return `Bank pending points / ${timingText}`;
       if (action.type === "setTimerShown") return `${action.isShown === false ? "Hide" : "Show"} crafting timer / ${timingText}${instantText}`;
+      if (action.type === "setWipeShown") return `${action.isShown === false ? "Hide" : "Show"} stage wipe / ${timingText}${instantText}`;
       if (action.type === "startCraftingTimer") return `Start crafting timer / ${timingText}`;
       if (action.type === "decision") return `${context.decisionVariableName(action.variable)}: ${context.decisionSummary(action)}`;
       if (action.type === "transition") return `${context.transitionName(action.transition)} / ${timingText}`;
@@ -76,6 +77,7 @@
         "setPlayersShown",
         "setPlayerAnswersShown",
         "setTimerShown",
+        "setWipeShown",
         "setVotingCardsShown"
       ]);
       if (!visibilityActionTypes.has(action.type)) return null;

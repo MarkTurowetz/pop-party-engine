@@ -3,6 +3,7 @@ let craftingTimerControllerInstance = null;
 let playerAnswerBubbleControllerInstance = null;
 let playerRosterRendererInstance = null;
 let stageDebugPanelInstance = null;
+let stageWipeControllerInstance = null;
 
 function stageVisualControllers() {
   return window.PartyGameStageVisualControllers || null;
@@ -77,6 +78,16 @@ function stageDebugPanel() {
     });
   }
   return stageDebugPanelInstance;
+}
+
+function stageWipeController() {
+  if (!stageWipeControllerInstance && window.PartyGameStageWipe) {
+    stageWipeControllerInstance = window.PartyGameStageWipe.createController({
+      element: stageWipe,
+      visualAnimation
+    });
+  }
+  return stageWipeControllerInstance;
 }
 
 let votingCardVisualRenderer = null;
@@ -161,23 +172,11 @@ function reloadStageArtAssets() {
 }
 
 function runStageWipe(onCovered) {
-  window.clearTimeout(stageWipeTimer);
-  window.clearTimeout(stageWipeHideTimer);
-  stageWipe.classList.remove("hidden", "is-running");
-  void stageWipe.offsetWidth;
-  stageWipe.classList.add("is-running");
-  stageWipeTimer = window.setTimeout(onCovered, 420);
-  stageWipeHideTimer = window.setTimeout(() => {
-    stageWipe.classList.add("hidden");
-    stageWipe.classList.remove("is-running");
-  }, 1120);
+  return stageWipeController()?.transition(onCovered) || 0;
 }
 
 function cancelStageWipe() {
-  window.clearTimeout(stageWipeTimer);
-  window.clearTimeout(stageWipeHideTimer);
-  stageWipe.classList.add("hidden");
-  stageWipe.classList.remove("is-running");
+  stageWipeController()?.cancel();
 }
 
 function initStageTextObjects() {
@@ -219,12 +218,28 @@ function clearCraftingTimerVisibilityRequest(actionKey = "") {
   craftingTimerController()?.clearRequest(actionKey);
 }
 
+function clearStageWipeVisibilityRequest(actionKey = "") {
+  stageWipeController()?.clearRequest(actionKey);
+}
+
 function setCraftingTimerVisible(isShown, options = {}) {
   return craftingTimerController()?.setVisible(isShown, options) || 0;
 }
 
 function setCraftingTimerShownForAction(action, options = {}) {
   return craftingTimerController()?.setShownForAction(action, options) || 0;
+}
+
+function setStageWipeShownForAction(action, options = {}) {
+  return stageWipeController()?.setShownForAction(action, options) || 0;
+}
+
+function syncStageWipeShown(lobby) {
+  if (lobby?.action?.type === "setWipeShown") return;
+  stageWipeController()?.syncShown(lobby?.wipeShown === true, {
+    actionKey: renderedActionKey,
+    instant: true
+  });
 }
 
 function resetStageObjects() {
@@ -292,6 +307,7 @@ function applyStageState(lobby) {
   renderPointPopups(lobby.pendingPointPopups || []);
   renderVotingCards(lobby.votingCards || [], votingCardRenderOptions(lobby));
   renderCraftingTimer(lobby.craftingTimer, { instant: action?.type === "setTimerShown" && action.instant === true });
+  syncStageWipeShown(lobby);
 
   const vip = players.find((player) => player.isVip);
   joinPrompt.classList.toggle("hidden", !isLobbyPhase);
@@ -327,7 +343,7 @@ function renderStageLobby(lobby) {
   const actionKey = `${nextPhase}:${lobby.action?.id || lobby.action?.index || ""}:${lobby.action?.type || ""}`;
   const isNewAction = renderedActionKey !== actionKey;
   const haltedByDecision = lobby.lastDecisionTrace?.selectedTarget === "none";
-  const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro";
+  const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro" && lobby.wipeShown !== true;
   const isNewPhase = renderedStagePhase && renderedStagePhase !== nextPhase;
   if (isNewPhase) {
     clearStageAudioPlayers();
@@ -367,6 +383,7 @@ function renderStageLobby(lobby) {
 function prepareNewStageAction(lobby, actionKey) {
   clearStageActionTimers();
   clearCraftingTimerVisibilityRequest(actionKey);
+  clearStageWipeVisibilityRequest(actionKey);
   scheduleActionTiming(lobby, actionKey);
 }
 
@@ -435,6 +452,7 @@ function getStageActionRunner() {
       setCraftingTimerShownForAction,
       setPlayerAnswerBubblesShown,
       setPlayersShownForAction,
+      setStageWipeShownForAction,
       setStageTextObject,
       voteRevealDurationMs
     });

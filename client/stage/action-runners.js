@@ -97,6 +97,16 @@
         }
         completeAfter(action, runtime, duration);
       },
+      setWipeShown(action, runtime) {
+        const duration = context.setStageWipeShownForAction
+          ? context.setStageWipeShownForAction(action, { actionKey: runtime.actionKey })
+          : 0;
+        if (!runtime.isPrimary) {
+          runtime.applyEffect(action);
+          return;
+        }
+        completeAfter(action, runtime, duration);
+      },
       startCraftingTimer: completeOrApplyEffect,
       present(action, runtime) {
         handlers.displayText(action, runtime);

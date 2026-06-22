@@ -38,6 +38,7 @@
       this.exitingClass = options.exitingClass || "";
       this.updateClass = options.updateClass || "";
       this.instantClass = options.instantClass || "";
+      this.animationHandlers = options.animationHandlers || {};
       this.getVisible = typeof options.getVisible === "function" ? options.getVisible : null;
       this.setVisible = typeof options.setVisible === "function" ? options.setVisible : null;
       this.timerSink = typeof options.timerSink === "function" ? options.timerSink : null;
@@ -76,10 +77,41 @@
       this.element.dataset.visualVisible = isVisible ? "true" : "false";
     }
 
-    completeAfter(delay, complete) {
-      if (typeof complete !== "function") return;
-      const timerId = global.setTimeout(complete, delay);
+    schedule(delay, callback) {
+      if (typeof callback !== "function") return null;
+      const timerId = global.setTimeout(callback, Math.max(0, Number(delay || 0)));
       this.rememberTimer(timerId);
+      return timerId;
+    }
+
+    completeAfter(delay, complete) {
+      this.schedule(delay, complete);
+    }
+
+    customAnimationApi(animation, token, duration, instant, wasVisible) {
+      return {
+        addClasses: (classes) => this.addClasses(asArray(classes)),
+        animation,
+        applyParkedState: () => this.applyParkedState(),
+        applyShownState: () => this.applyShownState(),
+        duration,
+        element: this.element,
+        hasAnyClass: (classes) => this.hasAnyClass(asArray(classes)),
+        instant,
+        removeClasses: (classes) => this.removeClasses(asArray(classes)),
+        schedule: (delay, callback) => this.schedule(delay, callback),
+        setVisibleState: (isVisible) => this.setVisibleState(isVisible),
+        token,
+        tokenMatches: () => this.tokenMatches(token),
+        wasVisible
+      };
+    }
+
+    playCustomAnimation(animation, token, duration, instant, wasVisible) {
+      const handler = this.animationHandlers[animation];
+      if (typeof handler !== "function") return null;
+      const nextDuration = Number(handler(this.customAnimationApi(animation, token, duration, instant, wasVisible)));
+      return Number.isFinite(nextDuration) ? Math.max(0, nextDuration) : duration;
     }
 
     markNewAnimation() {
@@ -130,6 +162,12 @@
       this.clearTransientClasses();
       if (instant || effectiveAnimation === "on" || effectiveAnimation === "off") {
         this.addClasses([this.instantClass].filter(Boolean));
+      }
+
+      const customDuration = this.playCustomAnimation(effectiveAnimation, token, duration, instant, wasVisible);
+      if (customDuration !== null) {
+        this.completeAfter(customDuration, options.complete);
+        return customDuration;
       }
 
       if (effectiveAnimation === "park" || effectiveAnimation === "off") {

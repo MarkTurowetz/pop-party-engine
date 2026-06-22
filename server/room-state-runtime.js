@@ -25,6 +25,7 @@ function createDefaultRoom(stageCode) {
     storedPlayerAnswers: {},
     pendingPointPopups: [],
     pendingPointPopupNonce: 0,
+    wipeShown: false,
     playerSessionKey: "",
     numSequentialGames: 0,
     hasEnteredRoundIntro: false,

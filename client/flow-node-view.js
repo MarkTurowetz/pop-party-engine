@@ -738,6 +738,10 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
   if (value === "setPlayerAnswersShown" || value === "showPoints") action.playerFilter = action.playerFilter || (value === "showPoints" ? "correct" : "all");
   if (value === "showPoints") action.points = Math.max(0, Math.floor(Number(action.points || 0)));
   if (value === "setTimerShown") action.isShown = action.isShown !== false;
+  if (value === "setWipeShown") {
+    action.isShown = action.isShown !== false;
+    action.instant = action.instant === true;
+  }
   if (value === "decision") {
     action.variable = action.variable || "activePlayerCount";
     action.valueType = action.valueType || "int";

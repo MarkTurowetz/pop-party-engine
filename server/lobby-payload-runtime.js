@@ -43,6 +43,7 @@ function createLobbyPayloadRuntime({
       playerAnswersVisibleFilter: normalizePlayerFilter(room.playerAnswersVisibleFilter),
       playerAnswerGroups: room.playerAnswerGroups || { correct: [], wrong: [], all: [] },
       pendingPointPopups: Array.isArray(room.pendingPointPopups) ? room.pendingPointPopups : [],
+      wipeShown: room.wipeShown === true,
       votingCards: serializeVotingCards(room),
       votingResultsShown: room.votingResultsShown === true,
       players: activePlayers(room).map((player) => publicPlayer(player, room, currentAction))
