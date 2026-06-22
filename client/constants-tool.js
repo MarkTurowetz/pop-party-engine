@@ -30,6 +30,65 @@ function normalizeClientGameConstants(constants = {}) {
   };
 }
 
+function constantsHistorySnapshot() {
+  return JSON.stringify(normalizeClientGameConstants(gameConstants));
+}
+
+function getConstantsHistoryManager() {
+  if (!constantsHistoryManager && window.PartyGameToolHistory) {
+    constantsHistoryManager = window.PartyGameToolHistory.createHistory({
+      snapshot: constantsHistorySnapshot,
+      restore: restoreConstantsHistory,
+      limit: 30
+    });
+  }
+  return constantsHistoryManager;
+}
+
+function pushConstantsHistory() {
+  getConstantsHistoryManager()?.push();
+}
+
+function restoreConstantsHistory(snapshot) {
+  gameConstants = normalizeClientGameConstants(JSON.parse(snapshot));
+  renderConstantsTool();
+  publishRuntimeLocalChanges();
+  updateGlobalSaveButton();
+}
+
+function undoConstantsChange() {
+  getConstantsHistoryManager()?.undo();
+}
+
+function redoConstantsChange() {
+  getConstantsHistoryManager()?.redo();
+}
+
+function handleConstantsHotkeys(event) {
+  if (constantsScreen.classList.contains("hidden")) return;
+  if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+  event.preventDefault();
+  if (event.shiftKey) {
+    redoConstantsChange();
+  } else {
+    undoConstantsChange();
+  }
+}
+
+function commitGameConstants(nextConstants, { captureHistory = true, render = false } = {}) {
+  const current = normalizeClientGameConstants(gameConstants);
+  const normalized = normalizeClientGameConstants(nextConstants);
+  if (JSON.stringify(current) === JSON.stringify(normalized)) return false;
+  if (captureHistory) pushConstantsHistory();
+  gameConstants = normalized;
+  if (render) {
+    renderConstantsTool();
+  } else {
+    markConstantsChanged();
+  }
+  return true;
+}
+
 function renderConstantsTool() {
   gameConstants = normalizeClientGameConstants(gameConstants);
   const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
@@ -63,10 +122,21 @@ function renderConstantsTool() {
     picker.className = "color-input";
     picker.type = "color";
     picker.value = normalizeUiColor(color) || "#22d3ee";
+    let colorHistoryCaptured = false;
+    picker.addEventListener("focus", () => {
+      colorHistoryCaptured = false;
+    });
     picker.addEventListener("input", () => {
-      gameConstants.playerColors[index] = picker.value;
+      const nextColor = normalizeUiColor(picker.value);
+      if (!nextColor) return;
+      if (!colorHistoryCaptured && nextColor !== gameConstants.playerColors[index]) {
+        pushConstantsHistory();
+        colorHistoryCaptured = true;
+      }
+      const nextColors = [...gameConstants.playerColors];
+      nextColors[index] = nextColor;
+      commitGameConstants({ ...gameConstants, playerColors: nextColors }, { captureHistory: false });
       value.value = picker.value.toUpperCase();
-      markConstantsChanged();
     });
 
     const value = document.createElement("input");
@@ -79,10 +149,11 @@ function renderConstantsTool() {
         value.value = picker.value.toUpperCase();
         return;
       }
-      gameConstants.playerColors[index] = nextColor;
+      const nextColors = [...gameConstants.playerColors];
+      nextColors[index] = nextColor;
+      commitGameConstants({ ...gameConstants, playerColors: nextColors });
       picker.value = nextColor;
       value.value = nextColor.toUpperCase();
-      markConstantsChanged();
     });
 
     const remove = document.createElement("button");
@@ -91,9 +162,10 @@ function renderConstantsTool() {
     remove.textContent = "Remove";
     remove.disabled = colors.length <= 1;
     remove.addEventListener("click", () => {
-      gameConstants.playerColors.splice(index, 1);
-      renderConstantsTool();
-      markConstantsChanged();
+      commitGameConstants({
+        ...gameConstants,
+        playerColors: gameConstants.playerColors.filter((_, colorIndex) => colorIndex !== index)
+      }, { render: true });
     });
 
     row.appendChild(picker);
@@ -113,9 +185,10 @@ function addPlayerColor() {
   const nextColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"];
   const used = new Set(gameConstants.playerColors || []);
   const next = nextColors.find((color) => !used.has(color)) || "#ffffff";
-  gameConstants.playerColors = [...(gameConstants.playerColors || []), next];
-  renderConstantsTool();
-  markConstantsChanged();
+  commitGameConstants({
+    ...gameConstants,
+    playerColors: [...(gameConstants.playerColors || []), next]
+  }, { render: true });
 }
 
 async function saveGameConstants() {
@@ -137,44 +210,65 @@ async function setupConstantsTool() {
     });
   });
   addPlayerColorButton.addEventListener("click", addPlayerColor);
+  let gameTitleHistoryCaptured = false;
+  gameTitleInput?.addEventListener("focus", () => {
+    gameTitleHistoryCaptured = false;
+  });
   gameTitleInput?.addEventListener("input", () => {
-    gameConstants.gameTitle = gameTitleInput.value || "Party Game Template";
-    markConstantsChanged();
+    const nextTitle = gameTitleInput.value || "Party Game Template";
+    if (!gameTitleHistoryCaptured && nextTitle !== gameConstants.gameTitle) {
+      pushConstantsHistory();
+      gameTitleHistoryCaptured = true;
+    }
+    commitGameConstants({ ...gameConstants, gameTitle: nextTitle }, { captureHistory: false });
   });
   craftingTimerDurationInput?.addEventListener("change", () => {
     const value = Number(craftingTimerDurationInput.value || 30);
-    gameConstants.craftingTimerDuration = Math.max(1, Math.min(3600, Number.isFinite(value) ? value : 30));
+    commitGameConstants({
+      ...gameConstants,
+      craftingTimerDuration: Math.max(1, Math.min(3600, Number.isFinite(value) ? value : 30))
+    });
     craftingTimerDurationInput.value = String(gameConstants.craftingTimerDuration);
-    markConstantsChanged();
   });
   startGameCountdownDurationInput?.addEventListener("change", () => {
     const value = Number(startGameCountdownDurationInput.value || 1);
-    gameConstants.startGameCountdownDuration = Math.max(1, Math.min(60, Number.isFinite(value) ? value : 1));
+    commitGameConstants({
+      ...gameConstants,
+      startGameCountdownDuration: Math.max(1, Math.min(60, Number.isFinite(value) ? value : 1))
+    });
     startGameCountdownDurationInput.value = String(gameConstants.startGameCountdownDuration);
-    markConstantsChanged();
   });
   pointsForCorrectAnswerInput?.addEventListener("change", () => {
     const value = Math.floor(Number(pointsForCorrectAnswerInput.value || 0));
-    gameConstants.pointsForCorrectAnswer = Math.max(0, Math.min(999999, Number.isFinite(value) ? value : 200));
+    commitGameConstants({
+      ...gameConstants,
+      pointsForCorrectAnswer: Math.max(0, Math.min(999999, Number.isFinite(value) ? value : 200))
+    });
     pointsForCorrectAnswerInput.value = String(gameConstants.pointsForCorrectAnswer);
-    markConstantsChanged();
   });
   numberOfRoundsInput?.addEventListener("change", () => {
     const value = Math.floor(Number(numberOfRoundsInput.value || 3));
-    gameConstants.numberOfRounds = Math.max(1, Math.min(99, Number.isFinite(value) ? value : 3));
+    commitGameConstants({
+      ...gameConstants,
+      numberOfRounds: Math.max(1, Math.min(99, Number.isFinite(value) ? value : 3))
+    });
     numberOfRoundsInput.value = String(gameConstants.numberOfRounds);
-    markConstantsChanged();
   });
   randomChanceTestInput?.addEventListener("change", () => {
     const value = Number(randomChanceTestInput.value || 0.5);
-    gameConstants.randomChanceTest = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0.5));
+    commitGameConstants({
+      ...gameConstants,
+      randomChanceTest: Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0.5))
+    });
     randomChanceTestInput.value = String(gameConstants.randomChanceTest);
-    markConstantsChanged();
   });
   overrideFirstGameInput?.addEventListener("change", () => {
-    gameConstants.overrideFirstGameOfSession = overrideFirstGameInput.value === "true";
-    markConstantsChanged();
+    commitGameConstants({
+      ...gameConstants,
+      overrideFirstGameOfSession: overrideFirstGameInput.value === "true"
+    });
   });
+  window.addEventListener("keydown", handleConstantsHotkeys);
   try {
     await loadGameConstants();
   } catch (error) {
