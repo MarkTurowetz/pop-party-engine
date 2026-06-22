@@ -71,6 +71,21 @@
       });
     }
 
+    visibilityDuration(options = {}) {
+      if (options.instant === true) return 0;
+      const playerCount = this.host?.querySelectorAll(".player-tile").length || 0;
+      return 1000 + Math.max(0, playerCount - 1) * 45;
+    }
+
+    setShown(isShown, options = {}) {
+      if (!this.host) return 0;
+      this.host.classList.toggle("players-hidden", isShown === false);
+      if (Object.prototype.hasOwnProperty.call(options, "instant")) {
+        this.host.classList.toggle("players-instant", options.instant === true);
+      }
+      return this.visibilityDuration(options);
+    }
+
     tileForPlayerId(playerId) {
       if (!this.host || !playerId) return null;
       return this.host.querySelector(`.player-tile[data-player-id="${global.CSS.escape(String(playerId))}"]`);

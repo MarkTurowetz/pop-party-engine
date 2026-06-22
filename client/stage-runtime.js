@@ -104,6 +104,14 @@ function renderStagePlayers(players) {
   playerRosterRenderer()?.render(players);
 }
 
+function setPlayersShown(isShown, options = {}) {
+  return playerRosterRenderer()?.setShown(isShown, options) || 0;
+}
+
+function setPlayersShownForAction(action) {
+  return setPlayersShown(action?.isShown !== false, { instant: action?.instant === true });
+}
+
 function renderPointPopups(popups = []) {
   playerRosterRenderer()?.renderPointPopups(popups);
 }
@@ -175,7 +183,6 @@ function normalizeTextTargetId(value) {
 }
 
 function clearStageObjectTimers() {
-  window.clearTimeout(playerVisibilityTimer);
   for (const timerId of subActionTimers) window.clearTimeout(timerId);
   for (const timerId of textObjectTimers) window.clearTimeout(timerId);
   subActionTimers = [];
@@ -183,7 +190,6 @@ function clearStageObjectTimers() {
 }
 
 function clearStageActionTimers() {
-  window.clearTimeout(playerVisibilityTimer);
   for (const timerId of subActionTimers) window.clearTimeout(timerId);
   subActionTimers = [];
 }
@@ -214,7 +220,7 @@ function resetStageObjects() {
   clearStageObjectTimers();
   clearStageAudioPlayers();
   craftingTimerController()?.reset();
-  playerLobby.classList.remove("players-hidden", "players-instant");
+  setPlayersShown(true, { instant: false });
   playerAnswerBubbleController()?.reset();
   playerRosterRenderer()?.clearPointPopupIds();
   clearVotingCardVisuals({ instant: true });
@@ -289,7 +295,7 @@ function applyStageState(lobby) {
   presentClickWidget.classList.toggle("hidden", !(action?.type === "present" && action?.timing?.mode !== "S+"));
   if (stageDebugAlert && lobby.lastDecisionTrace?.selectedTarget !== "none") stageDebugAlert.classList.add("hidden");
   renderStagePlayers(players);
-  playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
+  setPlayersShown(lobby.playersShown !== false);
   const nextAnswersShown = lobby.playerAnswersShown !== false;
   const answersAreStillAnimating = playerAnswerBubbleAnimationRemaining() > 0;
   const hasParkedShownBubbles = playerAnswerBubbleController()?.hasParkedShownBubbles() === true;
@@ -440,13 +446,10 @@ function getStageActionRunner() {
       isCurrentActionKey: (actionKey) => renderedActionKey === actionKey,
       playStageAudioAction,
       playerAnswerBubbleAnimationRemaining,
-      playerLobby,
       runStageWipe,
       setCraftingTimerShownForAction,
       setPlayerAnswerBubblesShown,
-      setPlayerVisibilityTimer: (timerId) => {
-        playerVisibilityTimer = timerId;
-      },
+      setPlayersShownForAction,
       setStageTextObject,
       voteRevealDurationMs
     });

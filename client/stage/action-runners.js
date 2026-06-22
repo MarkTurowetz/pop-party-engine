@@ -67,16 +67,14 @@
       },
       givePendingPoints: completeOrApplyEffect,
       setPlayersShown(action, runtime) {
-        context.playerLobby.classList.toggle("players-hidden", action.isShown === false);
-        context.playerLobby.classList.toggle("players-instant", action.instant === true);
-        if (!runtime.isPrimary) runtime.applyEffect(action);
-        if (!runtime.isPrimary) return;
-        const playerCount = context.playerLobby.querySelectorAll(".player-tile").length;
-        const delayMs = action.instant ? 0 : 1000 + Math.max(0, playerCount - 1) * 45;
-        context.setPlayerVisibilityTimer(window.setTimeout(() => {
-          if (!runtime.isCurrent()) return;
-          runtime.complete(action);
-        }, delayMs));
+        const duration = context.setPlayersShownForAction
+          ? context.setPlayersShownForAction(action)
+          : 0;
+        if (!runtime.isPrimary) {
+          runtime.applyEffect(action);
+          return;
+        }
+        completeAfter(action, runtime, duration);
       },
       setPlayerAnswersShown(action, runtime) {
         const existingDuration = context.playerAnswerBubbleAnimationRemaining();
