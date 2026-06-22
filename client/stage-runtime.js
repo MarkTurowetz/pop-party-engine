@@ -621,157 +621,33 @@ function playStageAudioAction(action, isPrimary, actionKey) {
   audio.play().catch(finish);
 }
 
+let stageActionRunner = null;
+
+function getStageActionRunner() {
+  if (!stageActionRunner && window.PartyGameStageActionRunners) {
+    stageActionRunner = window.PartyGameStageActionRunners.createRunner({
+      applyFlowActionEffect,
+      completeFlowAction,
+      isCurrentActionKey: (actionKey) => renderedActionKey === actionKey,
+      playStageAudioAction,
+      playerAnswerBubbleAnimationRemaining,
+      playerLobby,
+      runStageWipe,
+      setPlayerAnswerBubblesShown,
+      setPlayerVisibilityTimer: (timerId) => {
+        playerVisibilityTimer = timerId;
+      },
+      setStageTextObject,
+      voteRevealDurationMs
+    });
+  }
+  return stageActionRunner;
+}
+
 function runStageAction(action, isPrimary, actionKey) {
   if (!action) return;
   if (isPrimary) scheduleSubActions(action, actionKey);
-  if (action.type === "doNothing") {
-    if (isPrimary) completeFlowAction("callback", action.id);
-    return;
-  }
-  if (action.type === "playAudio" || action.type === "playHostAudio") {
-    playStageAudioAction(action, isPrimary, actionKey);
-    return;
-  }
-  if (action.type === "getRandomMultipleChoiceContent") {
-    if (isPrimary) {
-      completeFlowAction("callback", action.id);
-    } else {
-      applyFlowActionEffect(action.id);
-    }
-    return;
-  }
-  if (action.type === "prepareVotingCards") {
-    if (isPrimary) {
-      completeFlowAction("callback", action.id);
-    } else {
-      applyFlowActionEffect(action.id);
-    }
-    return;
-  }
-  if (action.type === "setVotingCardsShown") {
-    if (isPrimary) {
-      completeFlowAction("callback", action.id);
-    } else {
-      applyFlowActionEffect(action.id);
-    }
-    return;
-  }
-  if (action.type === "revealVotingResults" || action.type === "revealAuthors" || action.type === "revealVotes" || action.type === "revealWinningAnswer") {
-    if (isPrimary) {
-      const duration = voteRevealDurationMs(action);
-      window.setTimeout(() => {
-        if (renderedActionKey !== actionKey) return;
-        completeFlowAction("callback", action.id);
-      }, duration);
-    } else {
-      applyFlowActionEffect(action.id);
-    }
-    return;
-  }
-  if (action.type === "revealPlayerAnswerCorrectness") {
-    if (!isPrimary) {
-      applyFlowActionEffect(action.id);
-      return;
-    }
-    window.setTimeout(() => {
-      if (renderedActionKey !== actionKey) return;
-      completeFlowAction("callback", action.id);
-    }, 250);
-    return;
-  }
-  if (action.type === "showPoints") {
-    if (!isPrimary) {
-      applyFlowActionEffect(action.id);
-      return;
-    }
-    window.setTimeout(() => {
-      if (renderedActionKey !== actionKey) return;
-      completeFlowAction("callback", action.id);
-    }, 1500);
-    return;
-  }
-  if (action.type === "givePendingPoints") {
-    if (isPrimary) completeFlowAction("callback", action.id);
-    else applyFlowActionEffect(action.id);
-    return;
-  }
-  if (action.type === "setPlayersShown") {
-    playerLobby.classList.toggle("players-hidden", action.isShown === false);
-    playerLobby.classList.toggle("players-instant", action.instant === true);
-    if (!isPrimary) applyFlowActionEffect(action.id);
-    if (isPrimary) {
-      const playerCount = playerLobby.querySelectorAll(".player-tile").length;
-      const delayMs = action.instant ? 0 : 1000 + Math.max(0, playerCount - 1) * 45;
-      playerVisibilityTimer = window.setTimeout(() => {
-        if (renderedActionKey !== actionKey) return;
-        completeFlowAction("callback", action.id);
-      }, delayMs);
-    }
-    return;
-  }
-  if (action.type === "setPlayerAnswersShown") {
-    const existingDuration = playerAnswerBubbleAnimationRemaining();
-    const duration = action.playerFilter && action.playerFilter !== "all"
-      ? (action.instant ? 0 : 500)
-      : Math.max(
-          setPlayerAnswerBubblesShown(action.isShown !== false, { instant: action.instant === true }),
-          existingDuration
-        );
-    if (!isPrimary) applyFlowActionEffect(action.id);
-    if (isPrimary) {
-      window.setTimeout(() => {
-        if (renderedActionKey !== actionKey) return;
-        completeFlowAction("callback", action.id);
-      }, duration);
-    }
-    return;
-  }
-  if (action.type === "setTimerShown") {
-    const duration = action.isShown === false && action.instant !== true ? 500 : 0;
-    if (isPrimary) {
-      window.setTimeout(() => {
-        if (renderedActionKey !== actionKey) return;
-        completeFlowAction("callback", action.id);
-      }, duration);
-    } else {
-      applyFlowActionEffect(action.id);
-    }
-    return;
-  }
-  if (action.type === "startCraftingTimer") {
-    if (isPrimary) {
-      completeFlowAction("callback", action.id);
-    } else {
-      applyFlowActionEffect(action.id);
-    }
-    return;
-  }
-  if (action.type === "present" || action.type === "displayText") {
-    const target = action.textTarget || "presentation";
-    setStageTextObject(target, {
-      text: action.text || "",
-      isShown: action.isShown !== false,
-      instant: action.instant === true,
-      complete: isPrimary && action.type === "displayText"
-        ? () => {
-            if (renderedActionKey !== actionKey) return;
-            completeFlowAction("callback", action.id);
-          }
-        : null
-    });
-    return;
-  }
-  if (!isPrimary && action.type === "transition") {
-    runStageWipe(() => {});
-    return;
-  }
-  if (action.type === "transitionState" && isPrimary) {
-    completeFlowAction("callback", action.id);
-    return;
-  }
-  if (action.type === "text" && isPrimary) {
-    completeFlowAction("callback", action.id);
-  }
+  getStageActionRunner()?.run(action, { isPrimary, actionKey });
 }
 
 async function pollLobby(stageCode) {
