@@ -823,7 +823,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1276
+            "y": 1530
           },
           "nextTargetActionId": "return"
         },
@@ -841,8 +841,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 1083,
-            "y": 1136
+            "x": 850,
+            "y": 1276
           },
           "nextTargetActionId": "writing-moment-action-mqork62r"
         },
@@ -860,8 +860,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 327,
-            "y": 1135
+            "x": 490,
+            "y": 1276
           },
           "nextTargetActionId": "writing-moment-action-mqork62r"
         }
@@ -872,7 +872,7 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 1530
+        "y": 1784
       }
     },
     {
