@@ -336,49 +336,8 @@ function actionNodeIsSelected(action) {
     || (action.type === "decision" && ensureDecisionBranches(action).some((branch) => flowActionIsSelected(branch.id)));
 }
 
-function reorderFlowNodeChild(parentAction, collectionName, draggedId, targetId) {
-  const items = parentAction?.[collectionName] || [];
-  const fromIndex = items.findIndex((item) => item.id === draggedId);
-  const toIndex = items.findIndex((item) => item.id === targetId);
-  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
-  if (collectionName === "branches" && items[fromIndex]?.type === "noMatch") return;
-  pushFlowHistory();
-  const [moved] = items.splice(fromIndex, 1);
-  const adjustedIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
-  items.splice(adjustedIndex, 0, moved);
-  if (collectionName === "branches") ensureDecisionBranches(parentAction);
-  renderFlowListAndPublish();
-  renderFlowNodeView();
-}
-
 function bindFlowNodeChildSort(item, parentAction, collectionName, childId) {
-  item.draggable = collectionName !== "branches" || decisionBranchById(parentAction, childId)?.type !== "noMatch";
-  item.addEventListener("dragstart", (event) => {
-    event.stopPropagation();
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("application/x-flow-node-child", JSON.stringify({
-      parentActionId: parentAction.id,
-      collectionName,
-      childId
-    }));
-  });
-  item.addEventListener("dragover", (event) => {
-    if ([...event.dataTransfer.types].includes("application/x-flow-node-child")) {
-      event.preventDefault();
-    }
-  });
-  item.addEventListener("drop", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      const payload = JSON.parse(event.dataTransfer.getData("application/x-flow-node-child"));
-      if (payload.parentActionId === parentAction.id && payload.collectionName === collectionName) {
-        reorderFlowNodeChild(parentAction, collectionName, payload.childId, childId);
-      }
-    } catch (error) {
-      // Ignore malformed drag payloads from outside the tool.
-    }
-  });
+  getFlowNodeChildSortController()?.bind(item, parentAction, collectionName, childId);
 }
 
 function createFlowNodeSubActions(state, parentAction) {

@@ -272,6 +272,7 @@ function transitionTriggerOptions() {
 
 let flowActionControlGroups = null;
 let flowActionInspectorRegistry = null;
+let flowNodeChildSortController = null;
 let flowNodeConnectionController = null;
 let flowNodeDragController = null;
 let flowNodeMinimapController = null;
@@ -392,6 +393,19 @@ function getFlowNodeConnectionController() {
     });
   }
   return flowNodeConnectionController;
+}
+
+function getFlowNodeChildSortController() {
+  if (!flowNodeChildSortController && window.PartyGameFlowNodeChildSort) {
+    flowNodeChildSortController = window.PartyGameFlowNodeChildSort.createFlowNodeChildSortController({
+      decisionBranchById,
+      ensureDecisionBranches,
+      pushFlowHistory,
+      renderFlowListAndPublish,
+      renderFlowNodeView
+    });
+  }
+  return flowNodeChildSortController;
 }
 
 function getFlowNodeDragController() {

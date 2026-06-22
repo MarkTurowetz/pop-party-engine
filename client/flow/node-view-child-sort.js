@@ -1,0 +1,64 @@
+(function () {
+  "use strict";
+
+  const CHILD_DRAG_TYPE = "application/x-flow-node-child";
+
+  function hasDragType(event) {
+    return Array.from(event.dataTransfer?.types || []).includes(CHILD_DRAG_TYPE);
+  }
+
+  function createFlowNodeChildSortController(context) {
+    function canDrag(parentAction, collectionName, childId) {
+      return collectionName !== "branches"
+        || context.decisionBranchById?.(parentAction, childId)?.type !== "noMatch";
+    }
+
+    function reorder(parentAction, collectionName, draggedId, targetId) {
+      const items = parentAction?.[collectionName] || [];
+      const fromIndex = items.findIndex((item) => item.id === draggedId);
+      const toIndex = items.findIndex((item) => item.id === targetId);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return false;
+      if (collectionName === "branches" && items[fromIndex]?.type === "noMatch") return false;
+      context.pushFlowHistory?.();
+      const [moved] = items.splice(fromIndex, 1);
+      const adjustedIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+      items.splice(adjustedIndex, 0, moved);
+      if (collectionName === "branches") context.ensureDecisionBranches?.(parentAction);
+      context.renderFlowListAndPublish?.();
+      context.renderFlowNodeView?.();
+      return true;
+    }
+
+    function bind(item, parentAction, collectionName, childId) {
+      item.draggable = canDrag(parentAction, collectionName, childId);
+      item.addEventListener("dragstart", (event) => {
+        event.stopPropagation();
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData(CHILD_DRAG_TYPE, JSON.stringify({
+          parentActionId: parentAction.id,
+          collectionName,
+          childId
+        }));
+      });
+      item.addEventListener("dragover", (event) => {
+        if (hasDragType(event)) event.preventDefault();
+      });
+      item.addEventListener("drop", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          const payload = JSON.parse(event.dataTransfer.getData(CHILD_DRAG_TYPE));
+          if (payload.parentActionId === parentAction.id && payload.collectionName === collectionName) {
+            reorder(parentAction, collectionName, payload.childId, childId);
+          }
+        } catch (error) {
+          // Ignore malformed drag payloads from outside the tool.
+        }
+      });
+    }
+
+    return { bind, reorder };
+  }
+
+  window.PartyGameFlowNodeChildSort = { createFlowNodeChildSortController };
+})();

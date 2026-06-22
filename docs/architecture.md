@@ -95,6 +95,8 @@ concepts into focused modules.
     viewport positioning, minimap clicks, and minimap dragging.
   - `client/flow/node-view-ports.js` owns Flow Node View connection port DOM,
     dot metadata, and pending-connection arming callbacks.
+  - `client/flow/node-view-child-sort.js` owns Flow Node View sub-action and
+    decision-branch drag/drop ordering.
   - `client/flow/node-view-connections.js` owns Flow Node View pending connection
     state, preview redraw, command-create action creation, completion, and cleanup.
   - `client/flow/node-view-drag.js` owns Flow Node View node dragging, selected-group
