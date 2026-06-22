@@ -8,7 +8,11 @@ function createFlowActionPublicRuntime({
   normalizeDecisionBranches,
   normalizeDecisionValueType,
   normalizeFlowVariableName,
+  normalizeHostAudioPlayMode = (value) => (value === "sequence" || value === "index" ? value : "random"),
+  normalizeLineIndex = (value) => Math.max(0, Math.floor(Number(value || 0) || 0)),
   normalizePlayerFilter,
+  readHostAudios = () => ({ hostAudios: [] }),
+  resolveHostAudioAction = (room, action) => action,
   normalizeVotingCardFilter
 }) {
   function publicFlowAction(action, index) {
@@ -67,6 +71,16 @@ function createFlowActionPublicRuntime({
     }
     if (action.type === "playAudio") {
       return { ...base, type: "playAudio", audioUrl: action.audioUrl || "" };
+    }
+    if (action.type === "playHostAudio") {
+      return {
+        ...base,
+        type: "playHostAudio",
+        hostAudioId: action.hostAudioId || "",
+        playMode: normalizeHostAudioPlayMode(action.playMode),
+        lineIndex: normalizeLineIndex(action.lineIndex),
+        audioUrl: ""
+      };
     }
     if (action.type === "getRandomMultipleChoiceContent") {
       return { ...base, type: "getRandomMultipleChoiceContent", variableName: normalizeFlowVariableName(action.variableName) };
@@ -138,13 +152,17 @@ function createFlowActionPublicRuntime({
 
   function resolveRoomActionText(action, room) {
     if (!action) return null;
-    return {
+    const resolved = {
       ...action,
       text: typeof action.text === "string" ? action.text.replaceAll("<ROUND_NUMBER>", roundNumberWord(room.currentRound || 1)) : action.text,
       prompt: typeof action.prompt === "string" ? action.prompt.replaceAll("<ROUND_NUMBER>", roundNumberWord(room.currentRound || 1)) : action.prompt,
       options: Array.isArray(action.options) ? action.options.map((option) => String(option).replaceAll("<ROUND_NUMBER>", roundNumberWord(room.currentRound || 1))) : action.options,
       subActions: (action.subActions || []).map((subAction) => resolveRoomActionText(subAction, room)).filter(Boolean)
     };
+    if (resolved.type === "playHostAudio") {
+      return resolveHostAudioAction(room, resolved, readHostAudios());
+    }
+    return resolved;
   }
 
   function roundNumberWord(value) {

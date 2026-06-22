@@ -12,6 +12,8 @@ function createGameFlowNormalizationRuntime({
   normalizeDecisionValueType,
   normalizeFlowId,
   normalizeFlowVariableName,
+  normalizeHostAudioPlayMode = (value) => (value === "sequence" || value === "index" ? value : "random"),
+  normalizeLineIndex = (value) => Math.max(0, Math.floor(Number(value || 0) || 0)),
   normalizePlayerFilter,
   normalizeVotingCardFilter
 }) {
@@ -117,6 +119,14 @@ function createGameFlowNormalizationRuntime({
       return {
         ...base,
         audioUrl: cleanFlowText(action?.audioUrl, "")
+      };
+    }
+    if (type === "playHostAudio") {
+      return {
+        ...base,
+        hostAudioId: normalizeFlowId(action?.hostAudioId, ""),
+        playMode: normalizeHostAudioPlayMode(action?.playMode),
+        lineIndex: normalizeLineIndex(action?.lineIndex)
       };
     }
     if (type === "getRandomMultipleChoiceContent") {

@@ -7,12 +7,16 @@ function createToolSourceReadersRuntime({
   defaultGameConstantsFile,
   defaultGameFlow,
   defaultGameFlowFile,
+  defaultHostAudios,
+  defaultHostAudiosFile,
   defaultStageLayouts,
   defaultStageLayoutsFile,
   gameConstantsFile,
   gameFlowFile,
+  hostAudiosFile,
   normalizeControllerLayouts,
   normalizeGameConstants,
+  normalizeHostAudios,
   normalizeStageLayouts,
   readJsonFile,
   stageLayoutsFile
@@ -38,6 +42,14 @@ function createToolSourceReadersRuntime({
       return normalizeStageLayouts(readJsonFile(defaultStageLayoutsFile));
     } catch (error) {
       return normalizeStageLayouts(defaultStageLayouts);
+    }
+  }
+
+  function readDefaultHostAudiosSource() {
+    try {
+      return normalizeHostAudios(readJsonFile(defaultHostAudiosFile));
+    } catch (error) {
+      return normalizeHostAudios(defaultHostAudios);
     }
   }
 
@@ -81,14 +93,24 @@ function createToolSourceReadersRuntime({
     }
   }
 
+  function readLocalHostAudiosSource() {
+    try {
+      return normalizeHostAudios(readJsonFile(hostAudiosFile));
+    } catch (error) {
+      return readDefaultHostAudiosSource();
+    }
+  }
+
   return {
     readDefaultControllerLayoutsSource,
     readDefaultGameConstantsSource,
     readDefaultGameFlowSource,
+    readDefaultHostAudiosSource,
     readDefaultStageLayoutsSource,
     readLocalControllerLayoutsSource,
     readLocalGameConstantsSource,
     readLocalGameFlowSource,
+    readLocalHostAudiosSource,
     readLocalStageLayoutsSource
   };
 }

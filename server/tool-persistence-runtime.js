@@ -18,11 +18,16 @@ function createToolPersistenceRuntime({
   gameFlowFile,
   gameFlowStore,
   githubToken,
+  hostAudiosBackupDir,
+  hostAudiosFile,
+  hostAudiosGithubPath,
+  hostAudiosStore,
   mergeFlowWithExistingSubActions,
   mirrorJsonFile,
   normalizeControllerLayouts,
   normalizeGameConstants,
   normalizeGameFlow,
+  normalizeHostAudios,
   normalizeStageLayouts,
   readControllerLayoutsSource,
   readGameConstantsSource,
@@ -32,7 +37,9 @@ function createToolPersistenceRuntime({
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
+  readLocalHostAudiosSource,
   readLocalStageLayoutsSource,
+  readHostAudiosSource,
   readStageLayoutsSource,
   stageLayoutsBackupDir,
   stageLayoutsFile,
@@ -176,6 +183,39 @@ function createToolPersistenceRuntime({
     return readGameFlowSource();
   }
 
+  async function loadHostAudiosSource({ refresh = false } = {}) {
+    if (hostAudiosStore.storageKind !== "github") {
+      hostAudiosStore.source = readLocalHostAudiosSource();
+      hostAudiosStore.loadedAt = Date.now();
+      hostAudiosStore.error = "";
+      return readHostAudiosSource();
+    }
+
+    if (!refresh && hostAudiosStore.loadedAt) return readHostAudiosSource();
+    if (!githubToken) {
+      hostAudiosStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
+      return readHostAudiosSource();
+    }
+
+    try {
+      const remote = await readGithubJsonSource(hostAudiosGithubPath);
+      if (remote?.data) {
+        hostAudiosStore.source = normalizeHostAudios(remote.data);
+        hostAudiosStore.remoteSha = remote.sha || "";
+      } else {
+        const seeded = await writeGithubJsonSource(readHostAudiosSource(), "", hostAudiosGithubPath, "Save host audios");
+        hostAudiosStore.source = normalizeHostAudios(seeded.data);
+        hostAudiosStore.remoteSha = seeded.sha || "";
+      }
+      hostAudiosStore.loadedAt = Date.now();
+      hostAudiosStore.error = "";
+    } catch (error) {
+      hostAudiosStore.error = `GitHub host audio storage unavailable: ${error.message}`;
+    }
+
+    return readHostAudiosSource();
+  }
+
   async function writeGameConstants(constants) {
     const normalized = normalizeGameConstants(constants);
     backupJsonFile(gameConstantsFile, gameConstantsBackupDir, "game-constants");
@@ -264,14 +304,37 @@ function createToolPersistenceRuntime({
     return merged;
   }
 
+  async function writeHostAudios(hostAudios) {
+    const normalized = normalizeHostAudios(hostAudios);
+    backupJsonFile(hostAudiosFile, hostAudiosBackupDir, "host-audios");
+    if (hostAudiosStore.storageKind === "github") {
+      if (!githubToken) {
+        throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
+      }
+      const saved = await writeGithubJsonSource(normalized, hostAudiosStore.remoteSha, hostAudiosGithubPath, "Save host audios");
+      hostAudiosStore.source = normalizeHostAudios(saved.data);
+      hostAudiosStore.remoteSha = saved.sha || "";
+      hostAudiosStore.loadedAt = Date.now();
+      hostAudiosStore.error = "";
+      mirrorJsonFile(hostAudiosFile, hostAudiosStore.source);
+      return readHostAudiosSource();
+    }
+    writeJsonFile(hostAudiosFile, normalized);
+    hostAudiosStore.source = normalized;
+    hostAudiosStore.loadedAt = Date.now();
+    return readHostAudiosSource();
+  }
+
   return {
     loadControllerLayoutsSource,
     loadGameConstantsSource,
     loadGameFlowSource,
+    loadHostAudiosSource,
     loadStageLayoutsSource,
     writeControllerLayouts,
     writeGameConstants,
     writeGameFlow,
+    writeHostAudios,
     writeStageLayouts,
   };
 }

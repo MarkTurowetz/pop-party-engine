@@ -19,6 +19,7 @@ function createRouterRuntime({
   handleSaveControllerLayouts,
   handleSaveGameConstants,
   handleSaveGameFlow,
+  handleSaveHostAudios,
   handleSaveStageLayouts,
   handleSelectAvatar,
   handleStart,
@@ -31,6 +32,7 @@ function createRouterRuntime({
   sendControllerLayouts,
   sendGameConstants,
   sendGameFlow,
+  sendHostAudios,
   sendJson,
   sendLocalDraft,
   sendStageLayouts,
@@ -87,6 +89,18 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/game-constants") {
       handleSaveGameConstants(req, res);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/host-audios") {
+      sendHostAudios(res).catch((error) => {
+        sendJson(res, 500, { ok: false, error: error.message });
+      });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/host-audios") {
+      handleSaveHostAudios(req, res);
       return;
     }
 

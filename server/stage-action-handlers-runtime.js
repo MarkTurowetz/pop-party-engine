@@ -22,7 +22,8 @@ const COMPLETABLE_ACTION_TYPES = new Set([
   "triviaInput",
   "textSubmissionInput",
   "doNothing",
-  "playAudio"
+  "playAudio",
+  "playHostAudio"
 ]);
 
 function createStageActionHandlersRuntime({

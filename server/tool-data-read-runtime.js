@@ -10,13 +10,17 @@ function createToolDataReadRuntime({
   githubBranch,
   githubRepo,
   hasGithubToken,
+  hostAudiosPath,
+  hostAudiosStore,
   loadControllerLayoutsSource,
   loadGameConstantsSource,
   loadGameFlowSource,
+  loadHostAudiosSource,
   loadStageLayoutsSource,
   localDraftStore,
   normalizeGameConstants,
   normalizeGameFlow,
+  normalizeHostAudios,
   sendJson,
   stageLayoutsPath,
   stageLayoutsStore,
@@ -92,10 +96,23 @@ function createToolDataReadRuntime({
     });
   }
 
+  async function sendHostAudios(res) {
+    const hostAudios = await loadHostAudiosSource({ refresh: hostAudiosStore.storageKind === "github" });
+    const responseHostAudios = localDraftStore.hostAudios || hostAudios;
+    sendJson(res, 200, {
+      ok: true,
+      hostAudios: normalizeHostAudios(responseHostAudios),
+      savedHostAudios: normalizeHostAudios(hostAudios),
+      hasLocalDraft: Boolean(localDraftStore.hostAudios),
+      storage: storagePayload(hostAudiosStore, hostAudiosPath)
+    });
+  }
+
   return {
     sendControllerLayouts,
     sendGameConstants,
     sendGameFlow,
+    sendHostAudios,
     sendStageLayouts
   };
 }

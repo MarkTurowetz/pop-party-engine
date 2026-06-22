@@ -6,6 +6,7 @@ function createLocalDraftRuntime({
   normalizeControllerLayouts,
   normalizeGameConstants,
   normalizeGameFlow,
+  normalizeHostAudios,
   normalizeStageLayouts,
   readGameFlow,
   readJson,
@@ -22,10 +23,12 @@ function createLocalDraftRuntime({
       constants: localDraftStore.constants,
       layouts: localDraftStore.layouts,
       controllerLayouts: localDraftStore.controllerLayouts,
+      hostAudios: localDraftStore.hostAudios,
       hasFlowDraft: Boolean(localDraftStore.flow),
       hasConstantsDraft: Boolean(localDraftStore.constants),
       hasLayoutDraft: Boolean(localDraftStore.layouts),
-      hasControllerLayoutDraft: Boolean(localDraftStore.controllerLayouts)
+      hasControllerLayoutDraft: Boolean(localDraftStore.controllerLayouts),
+      hasHostAudiosDraft: Boolean(localDraftStore.hostAudios)
     });
   }
 
@@ -67,7 +70,7 @@ function createLocalDraftRuntime({
   async function handleLocalDraft(req, res) {
     let payload;
     try {
-      payload = await readJson(req, 256 * 1024);
+      payload = await readJson(req, 512 * 1024);
     } catch (error) {
       sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
       return;
@@ -77,11 +80,13 @@ function createLocalDraftRuntime({
     if (payload.clearConstants) localDraftStore.constants = null;
     if (payload.clearLayouts) localDraftStore.layouts = null;
     if (payload.clearControllerLayouts) localDraftStore.controllerLayouts = null;
+    if (payload.clearHostAudios) localDraftStore.hostAudios = null;
 
     if (!applyDraftValue(res, "flow", payload.flow, normalizeGameFlow, "Local flow draft")) return;
     if (!applyDraftValue(res, "constants", payload.constants, normalizeGameConstants, "Local constants draft")) return;
     if (!applyDraftValue(res, "layouts", payload.layouts, normalizeStageLayouts, "Local layout draft")) return;
     if (!applyDraftValue(res, "controllerLayouts", payload.controllerLayouts, normalizeControllerLayouts, "Local controller layout draft")) return;
+    if (!applyDraftValue(res, "hostAudios", payload.hostAudios, normalizeHostAudios, "Local host audio draft")) return;
 
     syncDraftLayoutsToFlow();
     broadcastDraftChange(payload);

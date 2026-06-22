@@ -2,6 +2,7 @@ function createToolSourceStoresRuntime({
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
+  readLocalHostAudiosSource,
   readLocalStageLayoutsSource,
   storageKind
 }) {
@@ -40,10 +41,19 @@ function createToolSourceStoresRuntime({
     error: ""
   };
 
+  const hostAudiosStore = {
+    source: readLocalHostAudiosSource(),
+    remoteSha: "",
+    storageKind: normalizedStorageKind,
+    loadedAt: 0,
+    error: ""
+  };
+
   return {
     controllerLayoutsStore,
     gameConstantsStore,
     gameFlowStore,
+    hostAudiosStore,
     stageLayoutsStore
   };
 }

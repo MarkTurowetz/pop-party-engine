@@ -25,6 +25,7 @@ const { createGameConstantsRuntime } = require("./server/game-constants-runtime"
 const { createGameFlowMergeRuntime } = require("./server/game-flow-merge-runtime");
 const { createGameFlowNormalizationRuntime } = require("./server/game-flow-normalization-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
+const { createHostAudioRuntime } = require("./server/host-audio-runtime");
 const { contentTypeForFile, readJson, sendJson } = require("./server/http-utils");
 const { createInactivePlayerSweepRuntime } = require("./server/inactive-player-sweep-runtime");
 const { createInputStateRuntime } = require("./server/input-state-runtime");
@@ -92,6 +93,7 @@ const {
   defaultControllerLayouts,
   defaultGameConstants,
   defaultGameFlow,
+  defaultHostAudios,
   defaultPlayerColors,
   defaultStageLayouts,
   multipleChoicePrompts
@@ -114,6 +116,9 @@ const STAGE_LAYOUTS_BACKUP_DIR = path.join(ROOT, "stage-layouts.backups");
 const DEFAULT_CONTROLLER_LAYOUTS_FILE = path.join(ROOT, "controller-layouts.default.json");
 const CONTROLLER_LAYOUTS_FILE = path.resolve(ROOT, process.env.CONTROLLER_LAYOUTS_FILE || "controller-layouts.json");
 const CONTROLLER_LAYOUTS_BACKUP_DIR = path.join(ROOT, "controller-layouts.backups");
+const DEFAULT_HOST_AUDIOS_FILE = path.join(ROOT, "host-audios.default.json");
+const HOST_AUDIOS_FILE = path.resolve(ROOT, process.env.HOST_AUDIOS_FILE || "host-audios.json");
+const HOST_AUDIOS_BACKUP_DIR = path.join(ROOT, "host-audios.backups");
 const GAME_FLOW_GITHUB_TOKEN = process.env.GAME_FLOW_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
 const GAME_FLOW_STORAGE = String(process.env.GAME_FLOW_STORAGE || (GAME_FLOW_GITHUB_TOKEN ? "github" : "local")).toLowerCase();
 const GAME_FLOW_GITHUB_REPO = process.env.GAME_FLOW_GITHUB_REPO || process.env.GITHUB_REPOSITORY || "MarkTurowetz/pop-party";
@@ -123,6 +128,7 @@ const GAME_FLOW_GITHUB_PATH = process.env.GAME_FLOW_GITHUB_PATH || "game-flow.js
 const GAME_CONSTANTS_GITHUB_PATH = process.env.GAME_CONSTANTS_GITHUB_PATH || "game-constants.json";
 const STAGE_LAYOUTS_GITHUB_PATH = process.env.STAGE_LAYOUTS_GITHUB_PATH || "stage-layouts.json";
 const CONTROLLER_LAYOUTS_GITHUB_PATH = process.env.CONTROLLER_LAYOUTS_GITHUB_PATH || "controller-layouts.json";
+const HOST_AUDIOS_GITHUB_PATH = process.env.HOST_AUDIOS_GITHUB_PATH || "host-audios.json";
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
@@ -135,7 +141,8 @@ const localDraftStore = {
   flow: null,
   constants: null,
   layouts: null,
-  controllerLayouts: null
+  controllerLayouts: null,
+  hostAudios: null
 };
 
 const APP_VERSION = readAppVersion(ROOT);
@@ -150,6 +157,15 @@ const {
   normalizeConstantInteger,
   normalizeConstantString,
   normalizeDurationSeconds
+});
+
+const {
+  normalizeHostAudios,
+  normalizeHostAudioPlayMode,
+  normalizeLineIndex,
+  resolveHostAudioAction
+} = createHostAudioRuntime({
+  normalizeFlowId
 });
 
 const {
@@ -220,6 +236,8 @@ const {
   normalizeDecisionValueType,
   normalizeFlowId,
   normalizeFlowVariableName,
+  normalizeHostAudioPlayMode,
+  normalizeLineIndex,
   normalizePlayerFilter,
   normalizeVotingCardFilter
 });
@@ -237,7 +255,11 @@ const {
   normalizeDecisionBranches,
   normalizeDecisionValueType,
   normalizeFlowVariableName,
+  normalizeHostAudioPlayMode,
+  normalizeLineIndex,
   normalizePlayerFilter,
+  readHostAudios,
+  resolveHostAudioAction,
   normalizeVotingCardFilter
 });
 
@@ -568,10 +590,12 @@ const {
   readDefaultControllerLayoutsSource,
   readDefaultGameConstantsSource,
   readDefaultGameFlowSource,
+  readDefaultHostAudiosSource,
   readDefaultStageLayoutsSource,
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
+  readLocalHostAudiosSource,
   readLocalStageLayoutsSource
 } = createToolSourceReadersRuntime({
   cloneJson,
@@ -582,12 +606,16 @@ const {
   defaultGameConstantsFile: DEFAULT_GAME_CONSTANTS_FILE,
   defaultGameFlow,
   defaultGameFlowFile: DEFAULT_GAME_FLOW_FILE,
+  defaultHostAudios,
+  defaultHostAudiosFile: DEFAULT_HOST_AUDIOS_FILE,
   defaultStageLayouts,
   defaultStageLayoutsFile: DEFAULT_STAGE_LAYOUTS_FILE,
   gameConstantsFile: GAME_CONSTANTS_FILE,
   gameFlowFile: GAME_FLOW_FILE,
+  hostAudiosFile: HOST_AUDIOS_FILE,
   normalizeControllerLayouts,
   normalizeGameConstants,
+  normalizeHostAudios,
   normalizeStageLayouts,
   readJsonFile,
   stageLayoutsFile: STAGE_LAYOUTS_FILE
@@ -597,11 +625,13 @@ const {
   controllerLayoutsStore,
   gameConstantsStore,
   gameFlowStore,
+  hostAudiosStore,
   stageLayoutsStore
 } = createToolSourceStoresRuntime({
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
+  readLocalHostAudiosSource,
   readLocalStageLayoutsSource,
   storageKind: GAME_FLOW_STORAGE
 });
@@ -610,10 +640,12 @@ const {
   loadControllerLayoutsSource,
   loadGameConstantsSource,
   loadGameFlowSource,
+  loadHostAudiosSource,
   loadStageLayoutsSource,
   writeControllerLayouts,
   writeGameConstants,
   writeGameFlow,
+  writeHostAudios,
   writeStageLayouts,
 } = createToolPersistenceRuntime({
   backupJsonFile,
@@ -629,11 +661,16 @@ const {
   gameFlowFile: GAME_FLOW_FILE,
   gameFlowStore,
   githubToken: GAME_FLOW_GITHUB_TOKEN,
+  hostAudiosBackupDir: HOST_AUDIOS_BACKUP_DIR,
+  hostAudiosFile: HOST_AUDIOS_FILE,
+  hostAudiosGithubPath: HOST_AUDIOS_GITHUB_PATH,
+  hostAudiosStore,
   mergeFlowWithExistingSubActions,
   mirrorJsonFile,
   normalizeControllerLayouts,
   normalizeGameConstants,
   normalizeGameFlow,
+  normalizeHostAudios,
   normalizeStageLayouts,
   readControllerLayoutsSource,
   readGameConstantsSource,
@@ -643,7 +680,9 @@ const {
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
+  readLocalHostAudiosSource,
   readLocalStageLayoutsSource,
+  readHostAudiosSource,
   readStageLayoutsSource,
   stageLayoutsBackupDir: STAGE_LAYOUTS_BACKUP_DIR,
   stageLayoutsFile: STAGE_LAYOUTS_FILE,
@@ -667,6 +706,7 @@ const {
   normalizeControllerLayouts,
   normalizeGameConstants,
   normalizeGameFlow,
+  normalizeHostAudios,
   normalizeStageLayouts,
   readGameFlow,
   readJson,
@@ -681,6 +721,7 @@ const {
   handleSaveControllerLayouts,
   handleSaveGameConstants,
   handleSaveGameFlow,
+  handleSaveHostAudios,
   handleSaveStageLayouts
 } = createSaveHandlersRuntime({
   broadcastLobby,
@@ -690,7 +731,9 @@ const {
   gameConstantsStore,
   gameFlowStore,
   hasGithubToken: () => Boolean(GAME_FLOW_GITHUB_TOKEN),
+  hostAudiosStore,
   localDraftStore,
+  normalizeHostAudios,
   normalizeGameFlow,
   readJson,
   resetCraftingTimer,
@@ -700,6 +743,7 @@ const {
   writeControllerLayouts,
   writeGameConstants,
   writeGameFlow,
+  writeHostAudios,
   writeStageLayouts
 });
 
@@ -707,6 +751,7 @@ const {
   sendControllerLayouts,
   sendGameConstants,
   sendGameFlow,
+  sendHostAudios,
   sendStageLayouts
 } = createToolDataReadRuntime({
   availableFlowActionTypes,
@@ -720,13 +765,17 @@ const {
   githubBranch: GAME_FLOW_GITHUB_BRANCH,
   githubRepo: GAME_FLOW_GITHUB_REPO,
   hasGithubToken: () => Boolean(GAME_FLOW_GITHUB_TOKEN),
+  hostAudiosPath: HOST_AUDIOS_GITHUB_PATH,
+  hostAudiosStore,
   loadControllerLayoutsSource,
   loadGameConstantsSource,
   loadGameFlowSource,
+  loadHostAudiosSource,
   loadStageLayoutsSource,
   localDraftStore,
   normalizeGameConstants,
   normalizeGameFlow,
+  normalizeHostAudios,
   sendJson,
   stageLayoutsPath: STAGE_LAYOUTS_GITHUB_PATH,
   stageLayoutsStore,
@@ -756,6 +805,14 @@ function readStageLayoutsSource() {
 
 function readControllerLayoutsSource() {
   return cloneJson(controllerLayoutsStore.source || readDefaultControllerLayoutsSource());
+}
+
+function readHostAudiosSource() {
+  return cloneJson(hostAudiosStore.source || readDefaultHostAudiosSource());
+}
+
+function readHostAudios() {
+  return normalizeHostAudios(localDraftStore.hostAudios || readHostAudiosSource());
 }
 
 const {
@@ -961,6 +1018,7 @@ const {
   handleSaveControllerLayouts,
   handleSaveGameConstants,
   handleSaveGameFlow,
+  handleSaveHostAudios,
   handleSaveStageLayouts,
   handleSelectAvatar,
   handleStart,
@@ -973,6 +1031,7 @@ const {
   sendControllerLayouts,
   sendGameConstants,
   sendGameFlow,
+  sendHostAudios,
   sendJson,
   sendLocalDraft,
   sendStageLayouts,
@@ -1028,5 +1087,12 @@ server.listen(PORT, HOST, () => {
     })
     .catch((error) => {
       console.error(`Game constants storage failed: ${error.message}`);
+    });
+  loadHostAudiosSource({ refresh: true })
+    .then(() => {
+      console.log(`Host audio storage: ${hostAudiosStore.storageKind}${hostAudiosStore.error ? ` (${hostAudiosStore.error})` : ""}`);
+    })
+    .catch((error) => {
+      console.error(`Host audio storage failed: ${error.message}`);
     });
 });

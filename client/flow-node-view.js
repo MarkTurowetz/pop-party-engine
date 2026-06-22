@@ -1038,6 +1038,11 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
     action.variableName = action.variableName || "playerAnswers";
   }
   if (value === "playAudio") action.audioUrl = action.audioUrl || "";
+  if (value === "playHostAudio") {
+    action.hostAudioId = action.hostAudioId || firstHostAudioId();
+    action.playMode = action.playMode || "random";
+    action.lineIndex = Math.max(0, Math.floor(Number(action.lineIndex || 0)));
+  }
   if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown") action.isShown = action.isShown !== false;
   if (value === "setPlayerAnswersShown" || value === "showPoints") action.playerFilter = action.playerFilter || (value === "showPoints" ? "correct" : "all");
   if (value === "showPoints") action.points = Math.max(0, Math.floor(Number(action.points || 0)));
@@ -1386,6 +1391,23 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       rerender();
     }));
     target.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
+  }
+  if (action.type === "playHostAudio") {
+    target.appendChild(flowHostAudioSearch("Host Audio", action.hostAudioId || "", (value) => {
+      action.hostAudioId = value;
+      rerender();
+    }));
+    target.appendChild(flowSelect("Playback", action.playMode || "random", hostAudioPlayModeOptions(), (value) => {
+      action.playMode = value;
+      rerender();
+    }));
+    if ((action.playMode || "random") === "index") {
+      target.appendChild(flowInteger("Line Index (0 = First Line)", Number(action.lineIndex || 0), (value) => {
+        action.lineIndex = Math.max(0, Math.floor(Number(value) || 0));
+        rerender();
+      }));
+    }
+    target.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {
     target.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [

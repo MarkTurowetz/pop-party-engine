@@ -596,7 +596,7 @@ function runStageAction(action, isPrimary, actionKey) {
     if (isPrimary) completeFlowAction("callback", action.id);
     return;
   }
-  if (action.type === "playAudio") {
+  if (action.type === "playAudio" || action.type === "playHostAudio") {
     const audioUrl = String(action.audioUrl || "").trim();
     if (!audioUrl) {
       if (isPrimary) completeFlowAction("callback", action.id);

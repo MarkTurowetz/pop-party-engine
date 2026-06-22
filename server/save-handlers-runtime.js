@@ -5,7 +5,9 @@ function createSaveHandlersRuntime({
   gameConstantsStore,
   gameFlowStore,
   hasGithubToken,
+  hostAudiosStore,
   localDraftStore,
+  normalizeHostAudios,
   normalizeGameFlow,
   readJson,
   resetCraftingTimer,
@@ -16,6 +18,7 @@ function createSaveHandlersRuntime({
   writeControllerLayouts,
   writeGameConstants,
   writeGameFlow,
+  writeHostAudios,
   writeStageLayouts
 }) {
   function storagePayload(store) {
@@ -138,10 +141,33 @@ function createSaveHandlersRuntime({
     });
   }
 
+  async function handleSaveHostAudios(req, res) {
+    await handleSaveRequest(req, res, {
+      maxBytes: 256 * 1024,
+      label: "Host audios",
+      save: async (payload) => {
+        const hostAudios = await writeHostAudios(payload.hostAudios || payload);
+        localDraftStore.hostAudios = null;
+        return hostAudios;
+      },
+      afterSave: () => {
+        for (const room of rooms.values()) {
+          broadcastLobby(room);
+        }
+      },
+      response: (hostAudios) => ({
+        ok: true,
+        hostAudios: normalizeHostAudios(hostAudios),
+        storage: storagePayload(hostAudiosStore)
+      })
+    });
+  }
+
   return {
     handleSaveControllerLayouts,
     handleSaveGameConstants,
     handleSaveGameFlow,
+    handleSaveHostAudios,
     handleSaveStageLayouts
   };
 }

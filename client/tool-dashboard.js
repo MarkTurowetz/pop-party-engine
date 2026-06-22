@@ -10,6 +10,7 @@ async function loadGameConstants() {
 
 function toolLabel(toolId) {
   if (toolId === "flow") return "Flow Tool";
+  if (toolId === "host-audio") return "Host Audios";
   if (toolId === "constants") return "Game Constants";
   if (toolId === "art") return "Art Manager";
   if (toolId === "layout") return "Layout Tool";
@@ -20,6 +21,7 @@ function toolLabel(toolId) {
 function isToolDirty(toolId) {
   if (toolId === "art") return Boolean(pendingArtReplacement);
   if (toolId === "flow") return isFlowDirty();
+  if (toolId === "host-audio") return isHostAudiosDirty();
   if (toolId === "constants") return constantsSavedSnapshot && JSON.stringify(gameConstants) !== constantsSavedSnapshot;
   if (toolId === "layout") return isLayoutDirty();
   if (toolId === "controller-layout") return isControllerLayoutDirty();
@@ -27,7 +29,7 @@ function isToolDirty(toolId) {
 }
 
 function hasGlobalSaveWork() {
-  return isToolDirty("art") || isToolDirty("flow") || isToolDirty("constants") || isToolDirty("layout") || isToolDirty("controller-layout");
+  return isToolDirty("art") || isToolDirty("flow") || isToolDirty("host-audio") || isToolDirty("constants") || isToolDirty("layout") || isToolDirty("controller-layout");
 }
 
 function updateGlobalSaveButton() {
@@ -42,6 +44,10 @@ async function saveTool(toolId) {
   }
   if (toolId === "flow") {
     await saveGameFlow();
+    return;
+  }
+  if (toolId === "host-audio") {
+    await saveHostAudios();
     return;
   }
   if (toolId === "constants") {
@@ -64,6 +70,7 @@ async function saveAllTools() {
   try {
     if (pendingArtReplacement) await saveArtReplacement();
     if (isFlowDirty()) await saveGameFlow();
+    if (isHostAudiosDirty()) await saveHostAudios();
     if (isToolDirty("constants")) await saveGameConstants();
     if (isLayoutDirty()) await saveStageLayouts();
     if (isControllerLayoutDirty()) await saveControllerLayouts();
@@ -95,6 +102,7 @@ async function confirmToolSwitch() {
 function hideToolScreens() {
   artScreen.classList.add("hidden");
   flowScreen.classList.add("hidden");
+  hostAudioScreen.classList.add("hidden");
   constantsScreen.classList.add("hidden");
   layoutScreen.classList.add("hidden");
 }
@@ -107,6 +115,8 @@ async function activateTool(toolId, { force = false } = {}) {
   toolTabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.toolTarget === toolId));
   if (toolId === "art") {
     await setupArtTool();
+  } else if (toolId === "host-audio") {
+    await setupHostAudioTool();
   } else if (toolId === "constants") {
     await setupConstantsTool();
   } else if (toolId === "layout") {
@@ -131,6 +141,6 @@ function setupToolDashboard() {
   toolTabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTool(tab.dataset.toolTarget));
   });
-  const initialTool = ["flow", "constants", "art", "layout", "controller-layout"].includes(params.get("tool")) ? params.get("tool") : "flow";
+  const initialTool = ["flow", "host-audio", "constants", "art", "layout", "controller-layout"].includes(params.get("tool")) ? params.get("tool") : "flow";
   activateTool(initialTool, { force: true });
 }

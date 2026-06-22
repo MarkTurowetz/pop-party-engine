@@ -12,5 +12,7 @@ game-constants.json
 game-constants.backups/
 stage-layouts.json
 stage-layouts.backups/
+host-audios.json
+host-audios.backups/
 *.py
 *.sh

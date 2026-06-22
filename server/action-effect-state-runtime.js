@@ -2,6 +2,7 @@ function createActionEffectStateRuntime() {
   function clearAppliedActionEffects(room) {
     room.appliedActionEffectId = "";
     room.appliedActionEffectIds = new Set();
+    room.hostAudioActionSelections = {};
   }
 
   function hasAppliedActionEffect(room, actionId) {

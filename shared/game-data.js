@@ -9,6 +9,7 @@ const availableFlowActionTypes = [
   { id: "textSubmissionInput", name: "Text Submission Input", category: "input" },
   { id: "doNothing", name: "Do Nothing", category: "standard" },
   { id: "playAudio", name: "Play Audio", category: "standard" },
+  { id: "playHostAudio", name: "Play Host Audio", category: "standard" },
   { id: "getRandomMultipleChoiceContent", name: "Get Random Multiple Choice Content", category: "standard" },
   { id: "prepareVotingCards", name: "Prepare Voting Cards", category: "standard" },
   { id: "setVotingCardsShown", name: "Set Voting Cards Shown", category: "standard" },
@@ -183,6 +184,10 @@ const defaultGameConstants = {
   overrideFirstGameOfSession: false
 };
 
+const defaultHostAudios = {
+  hostAudios: []
+};
+
 const defaultStageLayouts = {
   canvas: { width: 1920, height: 1080 },
   global: {
@@ -295,6 +300,7 @@ module.exports = {
   defaultControllerLayouts,
   defaultGameConstants,
   defaultGameFlow,
+  defaultHostAudios,
   defaultPlayerColors,
   defaultStageLayouts,
   multipleChoicePrompts

@@ -228,6 +228,11 @@ function actionSummary(action, isSubAction = false) {
   }
   if (action.type === "revealVotingResults") return `Reveal voting results / ${timingText}`;
   if (action.type === "getPlayerAnswers") return `Get answers ← round ${action.round || "current"} / "${action.inputId || "input"}" → ${action.variableName || "playerAnswers"} / ${timingText}`;
+  if (action.type === "playAudio") return `Play audio URL / ${timingText}`;
+  if (action.type === "playHostAudio") {
+    const modeName = action.playMode === "sequence" ? "Sequence" : action.playMode === "index" ? `Index ${Number(action.lineIndex || 0)}` : "Random";
+    return `Play host audio: ${hostAudioDisplayName(action.hostAudioId)} / ${modeName} / ${timingText}`;
+  }
   if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
   if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
   if (action.type === "setPlayerAnswersShown") return `${action.isShown === false ? "Hide" : "Show"} ${action.playerFilter || "all"} player answers / ${timingText}${instantText}`;
@@ -398,6 +403,11 @@ function currentRuntimeLocalMessage(overrides = {}) {
     message.constants = constantsDirty ? gameConstants : null;
     message.clearConstants = !constantsDirty;
   }
+  if (hostAudiosSavedSnapshot) {
+    const hostAudiosDirty = isHostAudiosDirty();
+    message.hostAudios = hostAudiosDirty ? serializeHostAudiosForSave(hostAudios) : null;
+    message.clearHostAudios = !hostAudiosDirty;
+  }
   return { ...message, ...overrides };
 }
 
@@ -417,10 +427,12 @@ function publishRuntimeLocalClear() {
     layouts: null,
     controllerLayouts: null,
     constants: null,
+    hostAudios: null,
     clearFlow: true,
     clearLayouts: true,
     clearControllerLayouts: true,
-    clearConstants: true
+    clearConstants: true,
+    clearHostAudios: true
   };
   runtimeTestChannel?.postMessage(message);
   if (canUseServer) {
@@ -436,7 +448,7 @@ function renderFlowListAndPublish() {
 }
 
 window.addEventListener("beforeunload", () => {
-  if (isFlowDirty() || isLayoutDirty() || isControllerLayoutDirty()) publishRuntimeLocalClear();
+  if (isFlowDirty() || isLayoutDirty() || isControllerLayoutDirty() || isHostAudiosDirty()) publishRuntimeLocalClear();
 });
 
 async function loadGameFlow() {
@@ -1034,6 +1046,24 @@ function renderFlowEditor() {
     }));
     flowEditor.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
   }
+  if (action.type === "playHostAudio") {
+    flowEditor.appendChild(flowHostAudioSearch("Host Audio", action.hostAudioId || "", (value) => {
+      action.hostAudioId = value;
+      renderFlowListAndPublish();
+    }));
+    flowEditor.appendChild(flowSelect("Playback", action.playMode || "random", hostAudioPlayModeOptions(), (value) => {
+      action.playMode = value;
+      renderFlowEditor();
+      renderFlowListAndPublish();
+    }));
+    if ((action.playMode || "random") === "index") {
+      flowEditor.appendChild(flowInteger("Line Index (0 = First Line)", Number(action.lineIndex || 0), (value) => {
+        action.lineIndex = Math.max(0, Math.floor(Number(value) || 0));
+        renderFlowListAndPublish();
+      }));
+    }
+    flowEditor.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
+  }
   if (action.type === "setPlayersShown") {
     flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", [
       { id: "true", name: "True" },
@@ -1354,6 +1384,83 @@ function flowVariableSearch(label, value, options, onChange) {
   return field;
 }
 
+function hostAudioPlayModeOptions() {
+  return [
+    { id: "random", name: "Play Random" },
+    { id: "sequence", name: "Play In Sequence" },
+    { id: "index", name: "Play At Index" }
+  ];
+}
+
+function flowHostAudioSearch(label, value, onChange) {
+  const field = document.createElement("label");
+  field.className = "field-label flow-form-grid flow-search-field";
+  field.textContent = label;
+  const input = document.createElement("input");
+  input.className = "text-input";
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  const menu = document.createElement("div");
+  menu.className = "flow-search-options hidden";
+
+  const current = hostAudioFlowOptions().find((option) => option.id === value) || null;
+  input.value = current?.name || "";
+
+  const hideMenu = () => window.setTimeout(() => menu.classList.add("hidden"), 120);
+  const chooseOption = (option) => {
+    input.value = option.name;
+    menu.classList.add("hidden");
+    if (option.id !== value) {
+      pushFlowHistory();
+      onChange(option.id);
+    }
+  };
+  const renderOptions = () => {
+    const options = hostAudioFlowOptions();
+    const query = input.value.trim().toLowerCase();
+    const matches = fuzzyHostAudioMatches(options, query).slice(0, 8);
+    menu.replaceChildren();
+    if (matches.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "flow-search-option";
+      empty.textContent = "No matching host audios";
+      menu.appendChild(empty);
+    }
+    for (const option of matches) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "flow-search-option";
+      button.classList.toggle("is-active", option.id === value);
+      button.innerHTML = `<strong></strong><span></span>`;
+      button.querySelector("strong").textContent = option.name;
+      button.querySelector("span").textContent = option.detail || option.id;
+      button.addEventListener("mousedown", (event) => event.preventDefault());
+      button.addEventListener("click", () => chooseOption(option));
+      menu.appendChild(button);
+    }
+    menu.classList.remove("hidden");
+  };
+
+  input.addEventListener("focus", renderOptions);
+  input.addEventListener("input", renderOptions);
+  input.addEventListener("blur", hideMenu);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      menu.classList.add("hidden");
+      input.value = current?.name || "";
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const first = fuzzyHostAudioMatches(hostAudioFlowOptions(), input.value.trim().toLowerCase())[0];
+      if (first) chooseOption(first);
+    }
+  });
+
+  field.appendChild(input);
+  field.appendChild(menu);
+  return field;
+}
+
 function flowActionTypeSearch(label, value, options, onChange) {
   const field = document.createElement("label");
   field.className = "field-label flow-form-grid flow-search-field";
@@ -1440,6 +1547,15 @@ function fuzzyDecisionVariableMatches(options, query) {
     .map((item) => item.option);
 }
 
+function fuzzyHostAudioMatches(options, query) {
+  if (!query) return [...options];
+  return options
+    .map((option) => ({ option, score: fuzzyScore(`${option.name} ${option.id}`, query) }))
+    .filter((item) => item.score >= 0)
+    .sort((a, b) => a.score - b.score || a.option.name.localeCompare(b.option.name))
+    .map((item) => item.option);
+}
+
 function fuzzyScore(text, query) {
   let score = 0;
   let textIndex = 0;
@@ -1467,6 +1583,25 @@ function flowNumber(label, value, onChange) {
     const nextValue = Number(input.value || 0);
     pushFlowHistory();
     onChange(Math.max(0, Number.isFinite(nextValue) ? nextValue : 0));
+  });
+  field.appendChild(input);
+  return field;
+}
+
+function flowInteger(label, value, onChange) {
+  const field = document.createElement("label");
+  field.className = "field-label flow-form-grid";
+  field.textContent = label;
+  const input = document.createElement("input");
+  input.className = "text-input";
+  input.type = "number";
+  input.min = "0";
+  input.step = "1";
+  input.value = String(Math.max(0, Math.floor(Number(value || 0))));
+  input.addEventListener("change", () => {
+    const nextValue = Number(input.value || 0);
+    pushFlowHistory();
+    onChange(Math.max(0, Number.isFinite(nextValue) ? Math.floor(nextValue) : 0));
   });
   field.appendChild(input);
   return field;
@@ -1673,6 +1808,7 @@ async function setupFlowTool() {
   window.addEventListener("keydown", handleFlowHotkeys);
   try {
     await loadStageLayouts();
+    await loadHostAudios({ silent: true });
     await loadGameFlow();
   } catch (error) {
     flowEditorTitle.textContent = "Flow Tool Offline";
