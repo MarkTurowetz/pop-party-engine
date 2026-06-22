@@ -1874,6 +1874,35 @@
       line-height: 1.25;
     }
 
+    .art-create-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .art-create-controls select {
+      min-width: 0;
+      height: 40px;
+      padding: 0 10px;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.22);
+    }
+
+    .art-create-controls .secondary-button {
+      min-height: 40px;
+      padding: 0 10px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
     .art-list {
       display: grid;
       align-content: start;
@@ -2131,8 +2160,7 @@
 
     .art-composition-component {
       position: absolute;
-      display: grid;
-      place-items: center;
+      display: block;
       transform: translate(-50%, -50%) scale(var(--component-scale, 1));
       transform-origin: center;
       border: 2px dashed rgba(23, 19, 31, 0.45);
@@ -2145,6 +2173,22 @@
       cursor: grab;
       user-select: none;
       touch-action: none;
+      overflow: visible;
+    }
+
+    .art-composition-component.is-style-circle {
+      border-radius: 999px;
+      aspect-ratio: 1;
+    }
+
+    .art-component-label {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 4px;
+      pointer-events: none;
+      overflow-wrap: anywhere;
     }
 
     .art-composition-component.is-shape,
@@ -3905,6 +3949,15 @@
         <div class="art-header">
           <h1>Art Assets</h1>
           <p>Select an asset to preview it, replace it, or save a staged swap.</p>
+          <div class="art-create-controls">
+            <select id="artCreateKindSelect" aria-label="Art object type">
+              <option value="text">Text</option>
+              <option value="shape">Shape</option>
+              <option value="container">Container</option>
+            </select>
+            <button class="secondary-button" id="artCreateButton" type="button">Create</button>
+            <button class="secondary-button" id="artCreateChildButton" type="button" disabled>Create Child</button>
+          </div>
         </div>
         <div class="art-list" id="artAssetList"></div>
       </aside>

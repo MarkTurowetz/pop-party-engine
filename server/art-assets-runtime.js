@@ -17,6 +17,10 @@ function createArtAssetsRuntime({
   sendJson,
   writeArtManifestSource = null
 }) {
+  const knownCompositionIds = new Set(artCompositions.map((composition) => composition.id));
+  const allowedComponentKinds = new Set(["text", "shape", "container", "badge"]);
+  const allowedShapeStyles = new Set(["rectangle", "rounded", "pill", "circle"]);
+
   function readArtManifest() {
     try {
       return JSON.parse(fs.readFileSync(manifestFile, "utf8"));
@@ -60,28 +64,86 @@ function createArtAssetsRuntime({
     return /^#[0-9a-f]{6}$/i.test(text) ? text : fallback;
   }
 
-  function normalizeComponent(component, fallback) {
-    const kind = fallback.kind || "shape";
+  function cleanId(value, fallback = "") {
+    const text = String(value || fallback || "").trim().toLowerCase();
+    return /^[a-z0-9][a-z0-9_-]{0,79}$/.test(text) ? text : fallback;
+  }
+
+  function cleanText(value, fallback = "", maxLength = 120) {
+    const text = String(value ?? fallback ?? "").trim();
+    return text.slice(0, maxLength);
+  }
+
+  function normalizeComponentKind(value, fallback = "shape") {
+    const kind = String(value || fallback || "shape").trim().toLowerCase();
+    return allowedComponentKinds.has(kind) ? kind : "shape";
+  }
+
+  function defaultComponentName(kind) {
+    if (kind === "text") return "Text";
+    if (kind === "container") return "Container";
+    if (kind === "badge") return "Badge";
+    return "Shape";
+  }
+
+  function normalizeComponent(component, fallback = {}) {
+    const source = component && typeof component === "object" && !Array.isArray(component) ? component : {};
+    const base = fallback && typeof fallback === "object" && !Array.isArray(fallback) ? fallback : {};
+    const kind = normalizeComponentKind(source.kind || base.kind);
+    const id = cleanId(base.id || source.id);
+    if (!id) return null;
     const normalized = {
-      id: fallback.id,
-      name: fallback.name,
+      id,
+      name: cleanText(source.name, base.name || defaultComponentName(kind)),
       kind,
-      x: cleanNumber(component?.x, Number(fallback.x || 0)),
-      y: cleanNumber(component?.y, Number(fallback.y || 0)),
-      width: cleanNumber(component?.width, Number(fallback.width || 1), 1),
-      height: cleanNumber(component?.height, Number(fallback.height || 1), 1),
-      scale: cleanNumber(component?.scale, Number(fallback.scale || 1), 0.05, 8)
+      x: cleanNumber(source.x, Number(base.x || 0)),
+      y: cleanNumber(source.y, Number(base.y || 0)),
+      width: cleanNumber(source.width, Number(base.width || 1), 1),
+      height: cleanNumber(source.height, Number(base.height || 1), 1),
+      scale: cleanNumber(source.scale, Number(base.scale || 1), 0.05, 8)
     };
     if (kind === "text" || kind === "badge") {
-      normalized.defaultText = String(component?.defaultText ?? fallback.defaultText ?? "");
-      normalized.fontSize = cleanNumber(component?.fontSize, Number(fallback.fontSize || 16), 6, 240);
-      normalized.fontColor = cleanColor(component?.fontColor, fallback.fontColor || "#17131f");
+      normalized.defaultText = cleanText(source.defaultText, base.defaultText || "", 500);
+      normalized.fontSize = cleanNumber(source.fontSize, Number(base.fontSize || 16), 6, 240);
+      normalized.fontColor = cleanColor(source.fontColor, base.fontColor || "#17131f");
     }
     if (kind === "shape" || kind === "container" || kind === "badge") {
-      normalized.fillColor = cleanColor(component?.fillColor, fallback.fillColor || "transparent");
-      normalized.borderColor = cleanColor(component?.borderColor, fallback.borderColor || "transparent");
-      normalized.borderWidth = cleanNumber(component?.borderWidth, Number(fallback.borderWidth || 0), 0, 80);
-      normalized.borderRadius = cleanNumber(component?.borderRadius, Number(fallback.borderRadius || 0), 0, 999);
+      const shapeStyle = String(source.shapeStyle || base.shapeStyle || (kind === "container" ? "rectangle" : "rounded")).trim().toLowerCase();
+      normalized.shapeStyle = allowedShapeStyles.has(shapeStyle) ? shapeStyle : "rounded";
+      normalized.fillColor = cleanColor(source.fillColor, base.fillColor || "transparent");
+      normalized.borderColor = cleanColor(source.borderColor, base.borderColor || "transparent");
+      normalized.borderWidth = cleanNumber(source.borderWidth, Number(base.borderWidth || 0), 0, 80);
+      normalized.borderRadius = cleanNumber(source.borderRadius, Number(base.borderRadius || 0), 0, 999);
+    }
+
+    const fallbackChildren = new Map((Array.isArray(base.children) ? base.children : []).map((child) => [child.id, child]));
+    const sourceChildren = Array.isArray(source.children)
+      ? source.children
+      : Array.isArray(base.children)
+        ? base.children
+        : [];
+    const children = [];
+    const seenChildren = new Set();
+    for (const child of sourceChildren) {
+      const childId = cleanId(child?.id);
+      const fallbackChild = fallbackChildren.get(childId) || {};
+      const normalizedChild = normalizeComponent(child, fallbackChild);
+      if (normalizedChild && !seenChildren.has(normalizedChild.id)) {
+        children.push(normalizedChild);
+        seenChildren.add(normalizedChild.id);
+      }
+    }
+    if (Array.isArray(source.children)) {
+      for (const fallbackChild of fallbackChildren.values()) {
+        const normalizedChild = normalizeComponent(fallbackChild, fallbackChild);
+        if (normalizedChild && !seenChildren.has(normalizedChild.id)) {
+          children.push(normalizedChild);
+          seenChildren.add(normalizedChild.id);
+        }
+      }
+    }
+    if (children.length) {
+      normalized.children = children;
     }
     return normalized;
   }
@@ -89,27 +151,70 @@ function createArtAssetsRuntime({
   function normalizeComposition(composition, override = null) {
     const savedById = new Map((override?.components || []).map((component) => [component.id, component]));
     const hasSavedVoteCount = savedById.has("vote-count");
+    const usedIds = new Set();
+    const components = [];
+    for (const component of composition.components || []) {
+      let savedComponent = savedById.get(component.id) || (component.id === "vote-count" ? savedById.get("vote-widget") : null);
+      if (component.id === "vote-widget" && savedComponent && !hasSavedVoteCount) {
+        savedComponent = { ...savedComponent, x: component.x, y: component.y };
+      }
+      const normalizedComponent = normalizeComponent(savedComponent, component);
+      if (normalizedComponent) {
+        components.push(normalizedComponent);
+        usedIds.add(normalizedComponent.id);
+        if (savedComponent?.id) usedIds.add(savedComponent.id);
+      }
+    }
+    for (const component of override?.components || []) {
+      const componentId = cleanId(component?.id);
+      if (!componentId || usedIds.has(componentId)) continue;
+      const normalizedComponent = normalizeComponent(component, component);
+      if (normalizedComponent) {
+        components.push(normalizedComponent);
+        usedIds.add(normalizedComponent.id);
+      }
+    }
     return {
       id: composition.id,
-      name: composition.name,
-      description: composition.description || "",
+      name: cleanText(override?.name, composition.name || "Art Asset"),
+      description: cleanText(override?.description, composition.description || "Editable art asset.", 240),
+      isCustom: Boolean(composition.isCustom || override?.isCustom),
       canvas: {
         width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
         height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
       },
-      components: (composition.components || []).map((component) => {
-        let savedComponent = savedById.get(component.id) || (component.id === "vote-count" ? savedById.get("vote-widget") : null);
-        if (component.id === "vote-widget" && savedComponent && !hasSavedVoteCount) {
-          savedComponent = { ...savedComponent, x: component.x, y: component.y };
-        }
-        return normalizeComponent(savedComponent, component);
-      }),
+      components,
       updatedAt: override?.updatedAt || null
     };
   }
 
   function publicArtComposition(composition, manifest) {
     return normalizeComposition(composition, manifest.compositions?.[composition.id] || null);
+  }
+
+  function customArtCompositionDefinitions(manifest) {
+    const definitions = [];
+    const manifestCompositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
+    for (const [compositionId, composition] of Object.entries(manifestCompositions)) {
+      const id = cleanId(compositionId);
+      if (!id || knownCompositionIds.has(id)) continue;
+      definitions.push({
+        id,
+        name: cleanText(composition?.name, "Art Asset"),
+        description: cleanText(composition?.description, "Editable art asset.", 240),
+        isCustom: true,
+        canvas: composition?.canvas || { width: 560, height: 230 },
+        components: []
+      });
+    }
+    return definitions;
+  }
+
+  function allPublicArtCompositions(manifest) {
+    return [
+      ...artCompositions.map((composition) => publicArtComposition(composition, manifest)),
+      ...customArtCompositionDefinitions(manifest).map((composition) => publicArtComposition(composition, manifest))
+    ];
   }
 
   function cacheBustFileUrl(filePath, urlPath) {
@@ -151,14 +256,14 @@ function createArtAssetsRuntime({
       ok: true,
       groups: artGroups,
       assets: artAssets.map((asset) => publicArtAsset(asset, manifest)),
-      compositions: artCompositions.map((composition) => publicArtComposition(composition, manifest))
+      compositions: allPublicArtCompositions(manifest)
     });
   }
 
   async function handleSaveArtComposition(req, res, compositionId) {
-    const definition = artCompositions.find((item) => item.id === compositionId);
-    if (!definition) {
-      sendJson(res, 404, { ok: false, error: "Art composition not found" });
+    const safeCompositionId = cleanId(compositionId);
+    if (!safeCompositionId || safeCompositionId !== String(compositionId || "").toLowerCase()) {
+      sendJson(res, 400, { ok: false, error: "Invalid art composition id" });
       return;
     }
 
@@ -170,10 +275,23 @@ function createArtAssetsRuntime({
       return;
     }
 
-    const normalized = normalizeComposition(definition, payload.composition || payload);
     const manifest = await loadArtManifest();
+    const incoming = payload.composition || payload;
+    const savedDefinition = manifest.compositions?.[safeCompositionId] || null;
+    const definition = artCompositions.find((item) => item.id === safeCompositionId) || {
+      id: safeCompositionId,
+      name: cleanText(incoming?.name, savedDefinition?.name || "Art Asset"),
+      description: cleanText(incoming?.description, savedDefinition?.description || "Editable art asset.", 240),
+      isCustom: true,
+      canvas: incoming?.canvas || savedDefinition?.canvas || { width: 560, height: 230 },
+      components: []
+    };
+    const normalized = normalizeComposition(definition, incoming);
     manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
     manifest.compositions[definition.id] = {
+      name: normalized.name,
+      description: normalized.description,
+      isCustom: normalized.isCustom,
       canvas: normalized.canvas,
       components: normalized.components,
       updatedAt: new Date().toISOString()

@@ -9,30 +9,48 @@ function setupLab() {
 let selectedArtCompositionId = "";
 let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
+const artObjectKindOptions = new Set(["text", "shape", "container"]);
+const artShapeStyles = [
+  { value: "rounded", label: "Rounded" },
+  { value: "rectangle", label: "Rectangle" },
+  { value: "pill", label: "Pill" },
+  { value: "circle", label: "Circle" }
+];
 
 function serializeArtCompositionsForSave(source = artCompositions) {
   return (source || []).map((composition) => ({
     id: composition.id,
+    name: composition.name || "Art Asset",
+    description: composition.description || "",
+    isCustom: Boolean(composition.isCustom),
     canvas: {
       width: Number(composition.canvas?.width || 1),
       height: Number(composition.canvas?.height || 1)
     },
-    components: (composition.components || []).map((component) => ({
-      id: component.id,
-      x: Number(Number(component.x || 0).toFixed(3)),
-      y: Number(Number(component.y || 0).toFixed(3)),
-      width: Number(Number(component.width || 1).toFixed(3)),
-      height: Number(Number(component.height || 1).toFixed(3)),
-      scale: Number(Number(component.scale || 1).toFixed(3)),
-      defaultText: component.defaultText || "",
-      fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
-      fontColor: component.fontColor || "#17131f",
-      fillColor: component.fillColor || "transparent",
-      borderColor: component.borderColor || "transparent",
-      borderWidth: Number(Number(component.borderWidth || 0).toFixed(3)),
-      borderRadius: Number(Number(component.borderRadius || 0).toFixed(3))
-    }))
+    components: (composition.components || []).map(serializeArtComponentForSave)
   }));
+}
+
+function serializeArtComponentForSave(component) {
+  return {
+    id: component.id,
+    name: component.name || artKindLabel(component.kind || "shape"),
+    kind: component.kind || "shape",
+    x: Number(Number(component.x || 0).toFixed(3)),
+    y: Number(Number(component.y || 0).toFixed(3)),
+    width: Number(Number(component.width || 1).toFixed(3)),
+    height: Number(Number(component.height || 1).toFixed(3)),
+    scale: Number(Number(component.scale || 1).toFixed(3)),
+    defaultText: component.defaultText || "",
+    fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
+    fontColor: component.fontColor || "#17131f",
+    shapeStyle: component.shapeStyle || "rounded",
+    fillColor: component.fillColor || "transparent",
+    borderColor: component.borderColor || "transparent",
+    borderWidth: Number(Number(component.borderWidth || 0).toFixed(3)),
+    borderRadius: Number(Number(component.borderRadius || 0).toFixed(3)),
+    children: (component.children || []).map(serializeArtComponentForSave)
+  };
 }
 
 function isArtCompositionsDirty() {
@@ -45,12 +63,35 @@ function selectedArtComposition() {
 
 function selectedArtComponents() {
   const composition = selectedArtComposition();
-  return (composition?.components || []).filter((component) => selectedArtComponentIds.has(component.id));
+  return flattenArtComponents(composition?.components || []).filter(({ component }) => selectedArtComponentIds.has(component.id)).map(({ component }) => component);
 }
 
 function selectedEditableArtComponent() {
   const components = selectedArtComponents();
   return components[components.length - 1] || null;
+}
+
+function artKindLabel(kind) {
+  if (kind === "text") return "Text";
+  if (kind === "container") return "Container";
+  if (kind === "badge") return "Badge";
+  return "Shape";
+}
+
+function flattenArtComponents(components = [], depth = 0, parent = null, output = []) {
+  for (const component of components || []) {
+    output.push({ component, depth, parent });
+    flattenArtComponents(component.children || [], depth + 1, component, output);
+  }
+  return output;
+}
+
+function findArtComponent(composition, componentId) {
+  return flattenArtComponents(composition?.components || []).find(({ component }) => component.id === componentId) || null;
+}
+
+function allArtComponentIds(composition) {
+  return new Set(flattenArtComponents(composition?.components || []).map(({ component }) => component.id));
 }
 
 function renderArtList() {
@@ -92,6 +133,20 @@ function renderArtList() {
   }
   votingGroup.appendChild(votingChildren);
   artAssetList.appendChild(votingGroup);
+
+  const customGroup = document.createElement("section");
+  customGroup.className = "art-group";
+  customGroup.appendChild(createArtGroupTitle("Custom Art", "custom-art", collapsedArtSections));
+  const customChildren = document.createElement("div");
+  customChildren.className = "art-group-children";
+  if (!collapsedArtSections.has("custom-art")) {
+    for (const composition of artCompositions || []) {
+      if (composition.id !== "voting-card") customChildren.appendChild(createArtCompositionBlock(composition));
+    }
+  }
+  customGroup.appendChild(customChildren);
+  artAssetList.appendChild(customGroup);
+  updateArtCreateButtons();
 }
 
 function createDisclosureButton(id, collapsedSet, onToggle = () => {}, onMetaToggle = null) {
@@ -165,7 +220,7 @@ function createArtCompositionBlock(composition) {
   children.className = "art-composite-children";
   if (!collapsedArtComposites.has(composition.id)) {
     for (const component of composition.components || []) {
-      children.appendChild(createArtComponentButton(composition, component));
+      children.appendChild(createArtComponentBranch(composition, component, 0));
     }
   }
   wrapper.appendChild(children);
@@ -193,20 +248,40 @@ function createArtCompositionButton(composition) {
 
 function createArtComponentButton(composition, component) {
   const button = document.createElement("button");
-  button.className = "art-item";
+  const hasChildren = Boolean(component.children?.length);
+  button.className = `art-item${hasChildren ? " has-disclosure" : ""}`;
   button.type = "button";
   button.classList.toggle("is-selected", selectedArtCompositionId === composition.id && selectedArtComponentIds.has(component.id));
-  button.innerHTML = `
+  button.innerHTML = `${hasChildren ? '<span class="disclosure-slot"></span>' : ""}
     <span class="art-thumb art-component-thumb"></span>
     <span>
       <span class="art-item-title"></span>
       <span class="art-item-meta"></span>
     </span>
   `;
+  if (hasChildren) {
+    button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(`${composition.id}:${component.id}`, collapsedArtComposites, renderArtList));
+  }
   button.querySelector(".art-item-title").textContent = component.name;
-  button.querySelector(".art-item-meta").textContent = component.kind === "text" ? "Text component" : "Art component";
+  button.querySelector(".art-item-meta").textContent = `${artKindLabel(component.kind)} object`;
   button.addEventListener("click", (event) => selectArtComponent(composition.id, component.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey }));
   return button;
+}
+
+function createArtComponentBranch(composition, component, depth = 0) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "art-group";
+  wrapper.style.marginLeft = depth ? "12px" : "0";
+  wrapper.appendChild(createArtComponentButton(composition, component));
+  if (component.children?.length && !collapsedArtComposites.has(`${composition.id}:${component.id}`)) {
+    const children = document.createElement("div");
+    children.className = "art-composite-children";
+    for (const child of component.children || []) {
+      children.appendChild(createArtComponentBranch(composition, child, depth + 1));
+    }
+    wrapper.appendChild(children);
+  }
+  return wrapper;
 }
 
 function createCompositeButton(composite) {
@@ -282,6 +357,7 @@ function selectArtAsset(assetId) {
   artCancelButton.disabled = true;
   artFileInput.value = "";
   renderArtList();
+  updateArtCreateButtons();
   updateGlobalSaveButton();
 }
 
@@ -316,6 +392,7 @@ function selectArtComposite(compositeId) {
   artCancelButton.disabled = true;
   artFileInput.value = "";
   renderArtList();
+  updateArtCreateButtons();
   updateGlobalSaveButton();
 }
 
@@ -330,6 +407,7 @@ function selectArtComposition(compositionId) {
   pendingArtReplacement = null;
   renderSelectedArtComposition();
   renderArtList();
+  updateArtCreateButtons();
   updateGlobalSaveButton();
 }
 
@@ -339,7 +417,7 @@ function selectArtComponent(compositionId, componentId, options = {}) {
   selectedArtAsset = null;
   selectedArtComposite = null;
   selectedArtCompositionId = composition.id;
-  const validIds = new Set((composition.components || []).map((component) => component.id));
+  const validIds = allArtComponentIds(composition);
   if (options.additive) {
     const next = new Set(selectedArtComponentIds);
     if (next.has(componentId)) next.delete(componentId);
@@ -351,6 +429,7 @@ function selectArtComponent(compositionId, componentId, options = {}) {
   selectedArtComponentId = [...selectedArtComponentIds].pop() || "";
   renderSelectedArtComposition();
   renderArtList();
+  updateArtCreateButtons();
 }
 
 function hideArtComponentEditor() {
@@ -369,7 +448,7 @@ function renderSelectedArtComposition() {
   artPreviewArt.style.setProperty("--art-composition-aspect", `${Number(canvas.width || 1) / Math.max(1, Number(canvas.height || 1))}`);
   artPreviewArt.replaceChildren();
   for (const component of composition.components || []) {
-    artPreviewArt.appendChild(artComponentPreviewNode(composition, component));
+    artPreviewArt.appendChild(artComponentPreviewNode(composition, component, canvas));
   }
   artFileName.textContent = isArtCompositionsDirty() ? "Component layout has unsaved changes" : "Component layout saved";
   artReplaceButton.disabled = true;
@@ -378,12 +457,12 @@ function renderSelectedArtComposition() {
   artSaveCompositionButton.classList.remove("hidden");
   artSaveCompositionButton.disabled = !isArtCompositionsDirty();
   renderArtComponentEditor();
+  updateArtCreateButtons();
 }
 
-function artComponentPreviewNode(composition, component) {
-  const canvas = composition.canvas || { width: 560, height: 230 };
+function artComponentPreviewNode(composition, component, canvas) {
   const node = document.createElement("div");
-  node.className = `art-composition-component is-${component.kind || "shape"}`;
+  node.className = `art-composition-component is-${component.kind || "shape"} is-style-${component.shapeStyle || "rounded"}`;
   node.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
   node.dataset.componentId = component.id;
   node.style.left = `${Number(component.x || 0) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
@@ -397,8 +476,15 @@ function artComponentPreviewNode(composition, component) {
   node.style.setProperty("--component-border-color", component.borderColor || "transparent");
   node.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
   node.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
-  node.textContent = artComponentPreviewText(component);
   node.addEventListener("pointerdown", (event) => startArtComponentDrag(event, component));
+  const label = document.createElement("span");
+  label.className = "art-component-label";
+  label.textContent = artComponentPreviewText(component);
+  node.appendChild(label);
+  const childCanvas = { width: Number(component.width || 1), height: Number(component.height || 1) };
+  for (const child of component.children || []) {
+    node.appendChild(artComponentPreviewNode(composition, child, childCanvas));
+  }
   if (selectedArtComponentIds.has(component.id)) {
     const handle = document.createElement("span");
     handle.className = "layout-resize-handle";
@@ -525,14 +611,15 @@ function renderArtComponentEditor() {
   artComponentEditor.replaceChildren();
   const list = document.createElement("div");
   list.className = "art-component-list";
-  for (const component of composition.components || []) {
+  for (const { component, depth } of flattenArtComponents(composition.components || [])) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "art-component-row";
     button.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
     button.innerHTML = `<span></span><small></small>`;
     button.querySelector("span").textContent = component.name;
-    button.querySelector("small").textContent = component.kind || "art";
+    button.querySelector("span").style.paddingLeft = `${depth * 14}px`;
+    button.querySelector("small").textContent = artKindLabel(component.kind);
     button.addEventListener("click", (event) => selectArtComponent(composition.id, component.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey }));
     list.appendChild(button);
   }
@@ -540,27 +627,59 @@ function renderArtComponentEditor() {
   fields.className = "art-component-fields";
   const component = selectedEditableArtComponent();
   if (component) {
+    fields.appendChild(artTextField("Name", component.name || artKindLabel(component.kind), (value) => updateArtComponentValue("name", value || artKindLabel(component.kind))));
     fields.appendChild(artNumberField("X", component.x, (value) => updateArtComponentNumber("x", value)));
     fields.appendChild(artNumberField("Y", component.y, (value) => updateArtComponentNumber("y", value)));
     fields.appendChild(artNumberField("Scale", component.scale, (value) => updateArtComponentNumber("scale", Math.max(0.05, value)), 0.05));
     fields.appendChild(artNumberField("Width", component.width, (value) => updateArtComponentNumber("width", Math.max(1, value))));
     fields.appendChild(artNumberField("Height", component.height, (value) => updateArtComponentNumber("height", Math.max(1, value))));
     if (component.kind === "text" || component.kind === "badge") {
+      fields.appendChild(artTextField("Text", component.defaultText || "", (value) => updateArtComponentValue("defaultText", value)));
       fields.appendChild(artNumberField("Font Size", component.fontSize || 16, (value) => updateArtComponentValue("fontSize", Math.max(6, value))));
       fields.appendChild(artColorField("Font Color", component.fontColor || "#17131f", (value) => updateArtComponentValue("fontColor", value)));
     }
     if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {
+      fields.appendChild(artSelectField("Shape", component.shapeStyle || "rounded", artShapeStyles, (value) => updateArtShapeStyle(value)));
       fields.appendChild(artColorField("Fill", component.fillColor === "transparent" ? "#fff8d6" : component.fillColor || "#fff8d6", (value) => updateArtComponentValue("fillColor", value)));
       fields.appendChild(artColorField("Border", component.borderColor === "transparent" ? "#17131f" : component.borderColor || "#17131f", (value) => updateArtComponentValue("borderColor", value)));
       fields.appendChild(artNumberField("Border Width", component.borderWidth || 0, (value) => updateArtComponentValue("borderWidth", Math.max(0, value))));
       fields.appendChild(artNumberField("Radius", component.borderRadius || 0, (value) => updateArtComponentValue("borderRadius", Math.max(0, value))));
     }
   } else {
-    const empty = document.createElement("p");
-    empty.textContent = "Select a component to edit it.";
-    fields.appendChild(empty);
+    fields.appendChild(artTextField("Name", composition.name || "Art Asset", (value) => updateArtCompositionValue("name", value || "Art Asset")));
+    fields.appendChild(artNumberField("Canvas Width", composition.canvas?.width || 560, (value) => updateArtCompositionCanvas("width", Math.max(1, value))));
+    fields.appendChild(artNumberField("Canvas Height", composition.canvas?.height || 230, (value) => updateArtCompositionCanvas("height", Math.max(1, value))));
   }
   artComponentEditor.append(list, fields);
+}
+
+function artTextField(label, value, onChange) {
+  const field = document.createElement("label");
+  field.className = "layout-number-field";
+  field.textContent = label;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = value || "";
+  input.addEventListener("change", () => onChange(input.value));
+  field.appendChild(input);
+  return field;
+}
+
+function artSelectField(label, value, options, onChange) {
+  const field = document.createElement("label");
+  field.className = "layout-number-field";
+  field.textContent = label;
+  const select = document.createElement("select");
+  for (const option of options) {
+    const item = document.createElement("option");
+    item.value = option.value;
+    item.textContent = option.label;
+    select.appendChild(item);
+  }
+  select.value = value;
+  select.addEventListener("change", () => onChange(select.value));
+  field.appendChild(select);
+  return field;
 }
 
 function artNumberField(label, value, onChange, step = 1) {
@@ -606,17 +725,162 @@ function updateArtComponentValue(key, value) {
   if (!component) return;
   component[key] = typeof value === "number" ? Number(value.toFixed(3)) : value;
   renderSelectedArtComposition();
+  renderArtList();
   updateGlobalSaveButton();
 }
 
-async function saveArtCompositions() {
-  const composition = selectedArtComposition() || artComposition("voting-card");
+function updateArtCompositionValue(key, value) {
+  const composition = selectedArtComposition();
   if (!composition) return;
-  const result = await postJson(`/api/art-compositions/${composition.id}`, { composition });
-  artCompositions = artCompositions.map((item) => item.id === result.composition.id ? result.composition : item);
+  composition[key] = value;
+  renderSelectedArtComposition();
+  renderArtList();
+  updateGlobalSaveButton();
+}
+
+function updateArtCompositionCanvas(key, value) {
+  const composition = selectedArtComposition();
+  if (!composition) return;
+  composition.canvas = composition.canvas || { width: 560, height: 230 };
+  composition.canvas[key] = Number(Number(value || 1).toFixed(3));
+  renderSelectedArtComposition();
+  updateGlobalSaveButton();
+}
+
+function updateArtShapeStyle(shapeStyle) {
+  const component = selectedEditableArtComponent();
+  if (!component) return;
+  component.shapeStyle = shapeStyle;
+  if (shapeStyle === "rectangle") {
+    component.borderRadius = 0;
+  } else if (shapeStyle === "rounded") {
+    component.borderRadius = Math.max(12, Number(component.borderRadius || 0));
+  } else if (shapeStyle === "pill") {
+    component.borderRadius = 999;
+  } else if (shapeStyle === "circle") {
+    const size = Math.max(Number(component.width || 1), Number(component.height || 1));
+    component.width = size;
+    component.height = size;
+    component.borderRadius = 999;
+  }
+  renderSelectedArtComposition();
+  renderArtList();
+  updateGlobalSaveButton();
+}
+
+function normalizeArtCreateKind(value) {
+  const kind = String(value || "").trim().toLowerCase();
+  return artObjectKindOptions.has(kind) ? kind : "shape";
+}
+
+function createSecureArtId(prefix = "art") {
+  const randomId = window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  return `${prefix}-${String(randomId).replace(/[^a-z0-9-]/gi, "").toLowerCase()}`;
+}
+
+function defaultArtObject(kind, bounds = {}) {
+  const cleanKind = normalizeArtCreateKind(kind);
+  const width = cleanKind === "text" ? 220 : cleanKind === "container" ? 320 : 180;
+  const height = cleanKind === "text" ? 60 : cleanKind === "container" ? 140 : 96;
+  const component = {
+    id: createSecureArtId(cleanKind),
+    name: artKindLabel(cleanKind),
+    kind: cleanKind,
+    x: Number(bounds.x ?? (Number(bounds.width || 560) / 2)),
+    y: Number(bounds.y ?? (Number(bounds.height || 230) / 2)),
+    width,
+    height,
+    scale: 1,
+    children: []
+  };
+  if (cleanKind === "text") {
+    component.defaultText = "Text";
+    component.fontSize = 24;
+    component.fontColor = "#17131f";
+  } else if (cleanKind === "container") {
+    component.shapeStyle = "rectangle";
+    component.fillColor = "transparent";
+    component.borderColor = "#17131f";
+    component.borderWidth = 3;
+    component.borderRadius = 12;
+  } else {
+    component.shapeStyle = "rounded";
+    component.fillColor = "#fff8d6";
+    component.borderColor = "#17131f";
+    component.borderWidth = 4;
+    component.borderRadius = 16;
+  }
+  return component;
+}
+
+function createArtAssetComposition() {
+  const kind = normalizeArtCreateKind(artCreateKindSelect?.value);
+  const composition = {
+    id: createSecureArtId("art"),
+    name: `${artKindLabel(kind)} Art`,
+    description: "Editable art asset.",
+    isCustom: true,
+    canvas: { width: 560, height: 230 },
+    components: [defaultArtObject(kind, { width: 560, height: 230 })]
+  };
+  artCompositions = [...artCompositions, composition];
+  collapsedArtSections.delete("custom-art");
+  collapsedArtComposites.delete(composition.id);
+  selectedArtAsset = null;
+  selectedArtComposite = null;
+  selectedArtCompositionId = composition.id;
+  selectedArtComponentIds = new Set([composition.components[0].id]);
+  selectedArtComponentId = composition.components[0].id;
+  pendingArtReplacement = null;
+  renderSelectedArtComposition();
+  renderArtList();
+  updateGlobalSaveButton();
+}
+
+function createArtChildObject() {
+  const composition = selectedArtComposition();
+  if (!composition) return;
+  const kind = normalizeArtCreateKind(artCreateKindSelect?.value);
+  const parent = selectedEditableArtComponent();
+  const bounds = parent
+    ? { width: Number(parent.width || 1), height: Number(parent.height || 1) }
+    : { width: Number(composition.canvas?.width || 560), height: Number(composition.canvas?.height || 230) };
+  const child = defaultArtObject(kind, bounds);
+  if (parent) {
+    parent.children = Array.isArray(parent.children) ? parent.children : [];
+    parent.children.push(child);
+    collapsedArtComposites.delete(`${composition.id}:${parent.id}`);
+  } else {
+    composition.components = Array.isArray(composition.components) ? composition.components : [];
+    composition.components.push(child);
+    collapsedArtComposites.delete(composition.id);
+  }
+  selectedArtComponentIds = new Set([child.id]);
+  selectedArtComponentId = child.id;
+  renderSelectedArtComposition();
+  renderArtList();
+  updateGlobalSaveButton();
+}
+
+function updateArtCreateButtons() {
+  if (!artCreateChildButton) return;
+  artCreateChildButton.disabled = !selectedArtComposition();
+}
+
+async function saveArtCompositions() {
+  if (!artCompositions.length) return;
+  const selectedId = selectedArtCompositionId;
+  const savedCompositions = [];
+  for (const composition of artCompositions) {
+    const result = await postJson(`/api/art-compositions/${composition.id}`, { composition });
+    savedCompositions.push(result.composition);
+  }
+  artCompositions = savedCompositions;
   artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
   notifyArtAssetsChanged();
-  selectedArtCompositionId = result.composition.id;
+  selectedArtCompositionId = artComposition(selectedId)?.id || artCompositions[0]?.id || "";
   renderSelectedArtComposition();
   renderArtList();
   updateGlobalSaveButton();
@@ -692,6 +956,8 @@ async function setupArtTool() {
   artToolInitialized = true;
   artReplaceButton.addEventListener("click", () => artFileInput.click());
   artCancelButton.addEventListener("click", cancelArtReplacement);
+  artCreateButton.addEventListener("click", createArtAssetComposition);
+  artCreateChildButton.addEventListener("click", createArtChildObject);
   artSaveCompositionButton.addEventListener("click", () => saveArtCompositions().catch((error) => {
     artFileName.textContent = error.message;
   }));
