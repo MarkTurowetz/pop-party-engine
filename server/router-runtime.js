@@ -41,6 +41,7 @@ function createRouterRuntime({
   serveArtFile,
   serveClientFile,
   serveIndex,
+  serveSharedFile,
 }) {
   function router(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -162,6 +163,12 @@ function createRouterRuntime({
     const clientFileMatch = url.pathname.match(/^\/client\/(.+)$/i);
     if (req.method === "GET" && clientFileMatch) {
       serveClientFile(res, clientFileMatch[1]);
+      return;
+    }
+
+    const sharedFileMatch = url.pathname.match(/^\/shared\/(.+)$/i);
+    if (req.method === "GET" && sharedFileMatch) {
+      serveSharedFile(res, sharedFileMatch[1]);
       return;
     }
 

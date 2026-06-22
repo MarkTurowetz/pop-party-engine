@@ -105,6 +105,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const CLIENT_ROOT = path.join(ROOT, "client");
+const SHARED_ROOT = path.join(ROOT, "shared");
 const DEFAULT_GAME_FLOW_FILE = path.join(ROOT, "game-flow.default.json");
 const GAME_FLOW_FILE = path.resolve(ROOT, process.env.GAME_FLOW_FILE || "game-flow.json");
 const GAME_FLOW_BACKUP_DIR = path.join(ROOT, "game-flow.backups");
@@ -446,13 +447,15 @@ const {
 
 const {
   serveClientFile,
-  serveIndex
+  serveIndex,
+  serveSharedFile
 } = createStaticFilesRuntime({
   appVersion: APP_VERSION,
   clientRoot: CLIENT_ROOT,
   contentTypeForFile,
   indexFile: INDEX_FILE,
-  sendJson
+  sendJson,
+  sharedRoot: SHARED_ROOT
 });
 
 const {
@@ -1078,6 +1081,7 @@ const {
   serveArtFile,
   serveClientFile,
   serveIndex,
+  serveSharedFile,
 });
 
 

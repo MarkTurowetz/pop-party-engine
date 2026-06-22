@@ -216,7 +216,7 @@ function redrawFlowNodeWires() {
   }
   for (const [index, action] of (state.actions || []).entries()) {
     const fromNode = actionNodes.get(action.id);
-    if (action.type === "jumpNode") {
+    if (action.type === "jumpNode" && actionNodeIsSelected(action)) {
       const targetId = action.jumpTargetActionId || "";
       if (targetId && !isNoFlowTarget(targetId)) {
         const toNode = targetId === "return" ? returnNode : actionNodes.get(targetId);

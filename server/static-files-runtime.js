@@ -6,7 +6,8 @@ function createStaticFilesRuntime({
   clientRoot,
   contentTypeForFile,
   indexFile,
-  sendJson
+  sendJson,
+  sharedRoot
 }) {
   function serveIndex(res) {
     fs.readFile(indexFile, (error, data) => {
@@ -23,23 +24,23 @@ function createStaticFilesRuntime({
     });
   }
 
-  function serveClientFile(res, requestPath) {
+  function serveStaticFile(res, requestPath, root, label) {
     let decodedPath = "";
     try {
       decodedPath = decodeURIComponent(requestPath || "");
     } catch (error) {
-      sendJson(res, 404, { ok: false, error: "Client file not found" });
+      sendJson(res, 404, { ok: false, error: `${label} file not found` });
       return;
     }
     const normalizedPath = path.normalize(decodedPath).replace(/^(\.\.(\/|\\|$))+/, "");
-    const filePath = path.resolve(clientRoot, normalizedPath);
-    if (!filePath.startsWith(`${clientRoot}${path.sep}`) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-      sendJson(res, 404, { ok: false, error: "Client file not found" });
+    const filePath = path.resolve(root, normalizedPath);
+    if (!filePath.startsWith(`${root}${path.sep}`) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+      sendJson(res, 404, { ok: false, error: `${label} file not found` });
       return;
     }
     fs.readFile(filePath, (error, data) => {
       if (error) {
-        sendJson(res, 500, { ok: false, error: "Could not read client file" });
+        sendJson(res, 500, { ok: false, error: `Could not read ${label} file` });
         return;
       }
       res.writeHead(200, {
@@ -51,9 +52,18 @@ function createStaticFilesRuntime({
     });
   }
 
+  function serveClientFile(res, requestPath) {
+    serveStaticFile(res, requestPath, clientRoot, "Client");
+  }
+
+  function serveSharedFile(res, requestPath) {
+    serveStaticFile(res, requestPath, sharedRoot, "Shared");
+  }
+
   return {
     serveClientFile,
-    serveIndex
+    serveIndex,
+    serveSharedFile
   };
 }
 

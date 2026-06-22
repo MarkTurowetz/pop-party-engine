@@ -1,19 +1,6 @@
 (function () {
   "use strict";
 
-  function primaryServerEffect(action, runtime) {
-    runtime.complete(action);
-  }
-
-  function subActionServerEffect(action, runtime) {
-    runtime.applyEffect(action);
-  }
-
-  function completeOrApplyEffect(action, runtime) {
-    if (runtime.isPrimary) primaryServerEffect(action, runtime);
-    else subActionServerEffect(action, runtime);
-  }
-
   function completeAfter(action, runtime, delayMs) {
     window.setTimeout(() => {
       if (!runtime.isCurrent()) return;
@@ -21,54 +8,68 @@
     }, Math.max(0, Number(delayMs || 0)));
   }
 
-  function createRunner(context) {
-    const handlers = {
-      doNothing(action, runtime) {
-        if (runtime.isPrimary) runtime.complete(action);
-      },
-      jumpNode(action, runtime) {
+  const fallbackRunnerDefinitions = [
+    { type: "doNothing", runner: "immediateComplete" },
+    { type: "jumpNode", runner: "immediateComplete" },
+    { type: "playAudio", runner: "playAudio" },
+    { type: "playHostAudio", runner: "playAudio" },
+    { type: "getRandomMultipleChoiceContent", runner: "serverEffect" },
+    { type: "prepareVotingCards", runner: "serverEffect" },
+    { type: "setVotingCardsShown", runner: "serverEffect" },
+    { type: "revealVotingResults", runner: "votingReveal" },
+    { type: "revealAuthors", runner: "votingReveal" },
+    { type: "revealVotes", runner: "votingReveal" },
+    { type: "revealWinningAnswer", runner: "votingReveal" },
+    { type: "setupGame", runner: "serverEffect" },
+    { type: "getPlayerAnswers", runner: "serverEffect" },
+    { type: "present", runner: "displayText" },
+    { type: "displayText", runner: "displayText" },
+    { type: "setPlayersShown", runner: "setPlayersShown" },
+    { type: "setPlayerAnswersShown", runner: "setPlayerAnswersShown" },
+    { type: "revealPlayerAnswerCorrectness", runner: "delayedComplete", delayMs: 250 },
+    { type: "showPoints", runner: "delayedComplete", delayMs: 1500 },
+    { type: "givePendingPoints", runner: "serverEffect" },
+    { type: "setTimerShown", runner: "setTimerShown" },
+    { type: "setWipeShown", runner: "setWipeShown" },
+    { type: "startCraftingTimer", runner: "serverEffect" },
+    { type: "transition", runner: "transition" },
+    { type: "transitionState", runner: "immediateComplete" },
+    { type: "text", runner: "immediateComplete" }
+  ];
+
+  function runnerDefinitions() {
+    const sharedDefinitions = window.PartyGameFlowActionRegistry?.stageActionRunnerDefinitions;
+    return Array.isArray(sharedDefinitions) && sharedDefinitions.length
+      ? sharedDefinitions
+      : fallbackRunnerDefinitions;
+  }
+
+  function createBehaviorHandlers(context) {
+    return {
+      immediateComplete(action, runtime) {
         if (runtime.isPrimary) runtime.complete(action);
       },
       playAudio(action, runtime) {
         context.playStageAudioAction(action, runtime.isPrimary, runtime.actionKey);
       },
-      playHostAudio(action, runtime) {
-        context.playStageAudioAction(action, runtime.isPrimary, runtime.actionKey);
+      serverEffect(action, runtime) {
+        if (runtime.isPrimary) runtime.complete(action);
+        else runtime.applyEffect(action);
       },
-      getRandomMultipleChoiceContent: completeOrApplyEffect,
-      prepareVotingCards: completeOrApplyEffect,
-      setVotingCardsShown: completeOrApplyEffect,
-      revealVotingResults(action, runtime) {
+      votingReveal(action, runtime) {
         if (!runtime.isPrimary) {
           runtime.applyEffect(action);
           return;
         }
         completeAfter(action, runtime, context.voteRevealDurationMs(action));
       },
-      revealAuthors(action, runtime) {
-        handlers.revealVotingResults(action, runtime);
-      },
-      revealVotes(action, runtime) {
-        handlers.revealVotingResults(action, runtime);
-      },
-      revealWinningAnswer(action, runtime) {
-        handlers.revealVotingResults(action, runtime);
-      },
-      revealPlayerAnswerCorrectness(action, runtime) {
+      delayedComplete(action, runtime, definition) {
         if (!runtime.isPrimary) {
           runtime.applyEffect(action);
           return;
         }
-        completeAfter(action, runtime, 250);
+        completeAfter(action, runtime, definition.delayMs);
       },
-      showPoints(action, runtime) {
-        if (!runtime.isPrimary) {
-          runtime.applyEffect(action);
-          return;
-        }
-        completeAfter(action, runtime, 1500);
-      },
-      givePendingPoints: completeOrApplyEffect,
       setPlayersShown(action, runtime) {
         const duration = context.setPlayersShownForAction
           ? context.setPlayersShownForAction(action)
@@ -110,10 +111,6 @@
         }
         completeAfter(action, runtime, duration);
       },
-      startCraftingTimer: completeOrApplyEffect,
-      present(action, runtime) {
-        handlers.displayText(action, runtime);
-      },
       displayText(action, runtime) {
         context.setStageTextObject(action.textTarget || "presentation", {
           text: action.text || "",
@@ -129,14 +126,26 @@
       },
       transition(action, runtime) {
         if (!runtime.isPrimary) context.runStageWipe(() => {});
-      },
-      transitionState(action, runtime) {
-        if (runtime.isPrimary) runtime.complete(action);
-      },
-      text(action, runtime) {
-        if (runtime.isPrimary) runtime.complete(action);
       }
     };
+  }
+
+  function createHandlerRegistry(context) {
+    const behaviorHandlers = createBehaviorHandlers(context);
+    const handlers = new Map();
+    for (const definition of runnerDefinitions()) {
+      const behavior = behaviorHandlers[definition.runner];
+      if (!definition.type || !behavior) continue;
+      handlers.set(definition.type, (action, runtime) => behavior(action, runtime, definition));
+    }
+    if (!handlers.has("text")) {
+      handlers.set("text", behaviorHandlers.immediateComplete);
+    }
+    return handlers;
+  }
+
+  function createRunner(context) {
+    const handlers = createHandlerRegistry(context);
 
     function run(action, runtimeOptions) {
       const runtime = {
@@ -145,7 +154,7 @@
         complete: (targetAction) => context.completeFlowAction("callback", targetAction.id),
         isCurrent: () => context.isCurrentActionKey(runtimeOptions.actionKey)
       };
-      const handler = handlers[action?.type];
+      const handler = handlers.get(action?.type);
       if (handler) handler(action, runtime);
     }
 

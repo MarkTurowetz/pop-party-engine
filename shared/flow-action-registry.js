@@ -42,6 +42,7 @@ const flowActionDefinitions = [
     category: "input",
     canCompleteFromStage: true,
     stageActionType: "present",
+    stageRunner: "displayText",
     normalize: (action, base, context) => ({
       ...normalizeTextAction(action, base, context, "Presented text"),
       stageClickTargetActionId: context.flowActionTarget(action?.stageClickTargetActionId || action?.nextTargetActionId)
@@ -134,7 +135,8 @@ const flowActionDefinitions = [
     id: "doNothing",
     name: "Do Nothing",
     category: "standard",
-    ...identityAction("doNothing")
+    ...identityAction("doNothing"),
+    stageRunner: "immediateComplete"
   },
   {
     id: "jumpNode",
@@ -143,6 +145,7 @@ const flowActionDefinitions = [
     canCompleteFromStage: true,
     primaryOnly: true,
     stageActionType: "jumpNode",
+    stageRunner: "immediateComplete",
     normalize: (action, base, context) => ({
       ...base,
       timing: { mode: "E+", seconds: 0 },
@@ -165,6 +168,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "playAudio",
+    stageRunner: "playAudio",
     normalize: (action, base, context) => ({
       ...base,
       audioUrl: context.cleanFlowText(action?.audioUrl, "")
@@ -181,6 +185,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "playHostAudio",
+    stageRunner: "playAudio",
     normalize: (action, base, context) => ({
       ...base,
       hostAudioId: context.normalizeFlowId(action?.hostAudioId, ""),
@@ -202,6 +207,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "getRandomMultipleChoiceContent",
+    stageRunner: "serverEffect",
     normalize: (action, base, context) => ({
       ...base,
       variableName: context.normalizeFlowVariableName(action?.variableName)
@@ -220,6 +226,7 @@ const flowActionDefinitions = [
     name: "Prepare Voting Cards",
     category: "standard",
     ...identityAction("prepareVotingCards"),
+    stageRunner: "serverEffect",
     applyRoomEffect: (room, action, context) => {
       context.prepareVotingCards(room);
     }
@@ -230,6 +237,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "setVotingCardsShown",
+    stageRunner: "serverEffect",
     normalize: (action, base, context) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -274,6 +282,7 @@ const flowActionDefinitions = [
     name: "Reveal Voting Results",
     category: "standard",
     ...identityAction("revealVotingResults"),
+    stageRunner: "votingReveal",
     applyRoomEffect: (room, action, context) => {
       context.revealVotingResults(room);
     }
@@ -283,6 +292,7 @@ const flowActionDefinitions = [
     name: "Reveal Authors",
     category: "standard",
     ...identityAction("revealAuthors"),
+    stageRunner: "votingReveal",
     applyRoomEffect: (room, action, context) => {
       context.revealAuthors(room);
     }
@@ -293,6 +303,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "revealVotes",
+    stageRunner: "votingReveal",
     normalize: (action, base) => ({
       ...base,
       voteRevealStaggerSeconds: normalizeVoteRevealStaggerSeconds(action?.voteRevealStaggerSeconds)
@@ -311,6 +322,7 @@ const flowActionDefinitions = [
     name: "Reveal Winning Answer",
     category: "standard",
     ...identityAction("revealWinningAnswer"),
+    stageRunner: "votingReveal",
     applyRoomEffect: (room, action, context) => {
       context.revealWinningAnswer(room);
     }
@@ -319,6 +331,9 @@ const flowActionDefinitions = [
     id: "setupGame",
     name: "Setup Game",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "setupGame",
+    stageRunner: "serverEffect",
     applyRoomEffect: (room) => {
       for (const player of room.players.values()) {
         player.points = 0;
@@ -349,6 +364,9 @@ const flowActionDefinitions = [
     id: "getPlayerAnswers",
     name: "Get Player Answers",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "getPlayerAnswers",
+    stageRunner: "serverEffect",
     applyRoomEffect: (room, action, context) => {
       const inputId = String(action.inputId || "input").trim() || "input";
       const round = context.resolveStoredAnswerRound(room, action.round);
@@ -367,6 +385,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "displayText",
+    stageRunner: "displayText",
     normalize: (action, base, context) => normalizeTextAction(action, base, context, "Displayed text"),
     toPublic: (action, base, context) => publicTextAction(action, base, context, "displayText")
   },
@@ -376,6 +395,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "setPlayersShown",
+    stageRunner: "setPlayersShown",
     normalize: (action, base) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -397,6 +417,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "setPlayerAnswersShown",
+    stageRunner: "setPlayerAnswersShown",
     normalize: (action, base, context) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -441,6 +462,8 @@ const flowActionDefinitions = [
     name: "Reveal Player Answer Correctness",
     category: "standard",
     ...identityAction("revealPlayerAnswerCorrectness"),
+    stageRunner: "delayedComplete",
+    stageRunnerDelayMs: 250,
     applyRoomEffect: (room, action, context) => {
       context.markDisplayedAnswersCorrectness(room);
     }
@@ -451,6 +474,8 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "showPoints",
+    stageRunner: "delayedComplete",
+    stageRunnerDelayMs: 1500,
     normalize: (action, base, context) => ({
       ...base,
       playerFilter: context.normalizePlayerFilter(action?.playerFilter || "correct"),
@@ -479,6 +504,7 @@ const flowActionDefinitions = [
     name: "Give Pending Points",
     category: "standard",
     ...identityAction("givePendingPoints"),
+    stageRunner: "serverEffect",
     applyRoomEffect: (room) => {
       for (const player of room.players.values()) {
         const pending = Number(player.pendingPoints || 0);
@@ -495,6 +521,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "setTimerShown",
+    stageRunner: "setTimerShown",
     normalize: (action, base) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -516,6 +543,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "setWipeShown",
+    stageRunner: "setWipeShown",
     normalize: (action, base) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -536,6 +564,7 @@ const flowActionDefinitions = [
     name: "Start Crafting Timer",
     category: "standard",
     ...identityAction("startCraftingTimer"),
+    stageRunner: "serverEffect",
     applyRoomEffect: (room, action, context) => {
       context.startCraftingTimer(room, action);
     }
@@ -565,6 +594,7 @@ const flowActionDefinitions = [
     canCompleteFromStage: true,
     deprecated: true,
     stageActionType: "transition",
+    stageRunner: "transition",
     normalize: (action, base, context) => {
       const transition = context.availableFlowTransitions.some((item) => item.id === action?.transition)
         ? action.transition
@@ -583,6 +613,7 @@ const flowActionDefinitions = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "transitionState",
+    stageRunner: "immediateComplete",
     normalize: (action, base, context) => ({
       ...base,
       trigger: action?.trigger === "onCountdownComplete" ? "onCountdownComplete" : "",
@@ -613,6 +644,14 @@ const completableStageActionTypes = new Set(
     .filter((definition) => definition.canCompleteFromStage)
     .map((definition) => definition.stageActionType || definition.id)
 );
+const stageActionRunnerDefinitions = flowActionDefinitions
+  .filter((definition) => definition.stageRunner)
+  .map((definition) => ({
+    actionId: definition.id,
+    type: definition.stageActionType || definition.id,
+    runner: definition.stageRunner,
+    delayMs: Math.max(0, Number(definition.stageRunnerDelayMs || 0))
+  }));
 
 function fallbackNormalizeAction(action, base, context) {
   return normalizeTextAction(action, base, context, "Text");
@@ -667,12 +706,21 @@ function stageCompletionCleanupForActionType(type) {
   return definitionByStageActionType.get(type)?.completionCleanup || "";
 }
 
-module.exports = {
+const exportedRegistry = {
   availableFlowActionTypes,
   completableStageActionTypes,
   createFlowActionRegistry,
   flowActionDefinitions,
   isCompletableStageActionType,
   normalizeVoteRevealStaggerSeconds,
+  stageActionRunnerDefinitions,
   stageCompletionCleanupForActionType
 };
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = exportedRegistry;
+}
+
+if (typeof window !== "undefined") {
+  window.PartyGameFlowActionRegistry = exportedRegistry;
+}
