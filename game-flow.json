@@ -84,7 +84,7 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "intro-action-mqpm2581",
+          "nextTargetActionId": "intro-wipe",
           "nodePosition": {
             "x": 670,
             "y": 260
@@ -111,28 +111,6 @@
           },
           "subActions": [],
           "transition": "horizontalWipe"
-        },
-        {
-          "id": "intro-action-mqpm2581",
-          "name": "Play Host Audio",
-          "type": "playHostAudio",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 1013,
-            "y": 317
-          },
-          "hostAudioId": "host-audio-1b9b6465ae9948e98a35d0907f1d4ef0",
-          "playMode": "random",
-          "lineIndex": 0,
-          "nextTargetActionId": "intro-wipe"
         }
       ]
     },
