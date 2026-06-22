@@ -1,0 +1,441 @@
+"use strict";
+
+function normalizeVoteRevealStaggerSeconds(value) {
+  const number = Number(value);
+  return Number(Math.max(0, Math.min(60, Number.isFinite(number) ? number : 1)).toFixed(2));
+}
+
+function normalizeTextAction(action, base, context, fallbackText) {
+  return {
+    ...base,
+    text: context.cleanFlowText(action?.text, fallbackText),
+    textTarget: context.normalizeTextTarget(action?.textTarget),
+    isShown: action?.isShown !== false,
+    instant: action?.instant === true
+  };
+}
+
+function publicTextAction(action, base, context, publicType) {
+  return {
+    ...base,
+    type: publicType,
+    text: action.text,
+    textTarget: action.textTarget || "presentation",
+    isShown: action.isShown !== false,
+    instant: action.instant === true
+  };
+}
+
+function identityAction(publicType) {
+  return {
+    normalize: (action, base) => ({ ...base }),
+    toPublic: (action, base) => ({ ...base, type: publicType })
+  };
+}
+
+const flowActionDefinitions = [
+  {
+    id: "presentText",
+    name: "Present Text",
+    category: "input",
+    normalize: (action, base, context) => normalizeTextAction(action, base, context, "Presented text"),
+    toPublic: (action, base, context) => publicTextAction(action, base, context, "present")
+  },
+  {
+    id: "multipleChoiceInput",
+    name: "Multiple Choice Input",
+    category: "input",
+    normalize: (action, base, context) => ({
+      ...base,
+      prompt: context.cleanFlowText(action?.prompt, "Answer this question by tapping an answer"),
+      options: context.cleanChoiceOptions(action?.options),
+      inputMode: context.normalizeChoiceInputMode(action?.inputMode),
+      locked: action?.locked === true,
+      timerEndTargetActionId: context.flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: context.flowActionTarget(action?.answersSubmittedTargetActionId)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "multipleChoiceInput",
+      prompt: action.prompt || "Answer this question by tapping an answer",
+      options: context.cleanChoiceOptions(action.options),
+      inputMode: context.normalizeChoiceInputMode(action.inputMode),
+      locked: action.locked === true,
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+    })
+  },
+  {
+    id: "triviaInput",
+    name: "Trivia Input",
+    category: "input",
+    normalize: (action, base, context) => ({
+      ...base,
+      contentVariable: context.normalizeFlowVariableName(action?.contentVariable),
+      inputMode: context.normalizeChoiceInputMode(action?.inputMode),
+      locked: action?.locked === true,
+      randomizeOptions: action?.randomizeOptions === true,
+      timerEndTargetActionId: context.flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: context.flowActionTarget(action?.answersSubmittedTargetActionId)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "triviaInput",
+      contentVariable: context.normalizeFlowVariableName(action.contentVariable),
+      inputMode: context.normalizeChoiceInputMode(action.inputMode),
+      locked: action.locked === true,
+      randomizeOptions: action.randomizeOptions === true,
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+    })
+  },
+  {
+    id: "textSubmissionInput",
+    name: "Text Submission Input",
+    category: "input",
+    normalize: (action, base, context) => ({
+      ...base,
+      prompt: context.cleanFlowText(action?.prompt, "Write your answer"),
+      placeholder: context.cleanFlowText(action?.placeholder, "Answer here"),
+      characterLimit: context.normalizeCharacterLimit(action?.characterLimit),
+      timerEndTargetActionId: context.flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: context.flowActionTarget(action?.answersSubmittedTargetActionId)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "textSubmissionInput",
+      prompt: action.prompt || "Write your answer",
+      placeholder: action.placeholder || "Answer here",
+      characterLimit: context.normalizeCharacterLimit(action.characterLimit),
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+    })
+  },
+  {
+    id: "doNothing",
+    name: "Do Nothing",
+    category: "standard",
+    ...identityAction("doNothing")
+  },
+  {
+    id: "playAudio",
+    name: "Play Audio",
+    category: "standard",
+    normalize: (action, base, context) => ({
+      ...base,
+      audioUrl: context.cleanFlowText(action?.audioUrl, "")
+    }),
+    toPublic: (action, base) => ({
+      ...base,
+      type: "playAudio",
+      audioUrl: action.audioUrl || ""
+    })
+  },
+  {
+    id: "playHostAudio",
+    name: "Play Host Audio",
+    category: "standard",
+    normalize: (action, base, context) => ({
+      ...base,
+      hostAudioId: context.normalizeFlowId(action?.hostAudioId, ""),
+      playMode: context.normalizeHostAudioPlayMode(action?.playMode),
+      lineIndex: context.normalizeLineIndex(action?.lineIndex)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "playHostAudio",
+      hostAudioId: action.hostAudioId || "",
+      playMode: context.normalizeHostAudioPlayMode(action.playMode),
+      lineIndex: context.normalizeLineIndex(action.lineIndex),
+      audioUrl: ""
+    })
+  },
+  {
+    id: "getRandomMultipleChoiceContent",
+    name: "Get Random Multiple Choice Content",
+    category: "standard",
+    normalize: (action, base, context) => ({
+      ...base,
+      variableName: context.normalizeFlowVariableName(action?.variableName)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "getRandomMultipleChoiceContent",
+      variableName: context.normalizeFlowVariableName(action.variableName)
+    })
+  },
+  {
+    id: "prepareVotingCards",
+    name: "Prepare Voting Cards",
+    category: "standard",
+    ...identityAction("prepareVotingCards")
+  },
+  {
+    id: "setVotingCardsShown",
+    name: "Set Voting Cards Shown",
+    category: "standard",
+    normalize: (action, base, context) => ({
+      ...base,
+      isShown: action?.isShown !== false,
+      instant: action?.instant === true,
+      cardFilter: context.normalizeVotingCardFilter(action?.cardFilter)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "setVotingCardsShown",
+      isShown: action.isShown !== false,
+      instant: action.instant === true,
+      cardFilter: context.normalizeVotingCardFilter(action.cardFilter)
+    })
+  },
+  {
+    id: "voteOnAnswersInput",
+    name: "Vote On Answers Input",
+    category: "input",
+    normalize: (action, base, context) => ({
+      ...base,
+      prompt: context.cleanFlowText(action?.prompt, "Vote for your favorite answer"),
+      inputMode: "submitOnce",
+      timerEndTargetActionId: context.flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: context.flowActionTarget(action?.answersSubmittedTargetActionId)
+    }),
+    toPublic: (action, base) => ({
+      ...base,
+      type: "voteOnAnswersInput",
+      prompt: action.prompt || "Vote for your favorite answer",
+      inputMode: "submitOnce",
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+    })
+  },
+  {
+    id: "revealVotingResults",
+    name: "Reveal Voting Results",
+    category: "standard",
+    ...identityAction("revealVotingResults")
+  },
+  {
+    id: "revealAuthors",
+    name: "Reveal Authors",
+    category: "standard",
+    ...identityAction("revealAuthors")
+  },
+  {
+    id: "revealVotes",
+    name: "Reveal Votes",
+    category: "standard",
+    normalize: (action, base) => ({
+      ...base,
+      voteRevealStaggerSeconds: normalizeVoteRevealStaggerSeconds(action?.voteRevealStaggerSeconds)
+    }),
+    toPublic: (action, base) => ({
+      ...base,
+      type: "revealVotes",
+      voteRevealStaggerSeconds: normalizeVoteRevealStaggerSeconds(action.voteRevealStaggerSeconds)
+    })
+  },
+  {
+    id: "revealWinningAnswer",
+    name: "Reveal Winning Answer",
+    category: "standard",
+    ...identityAction("revealWinningAnswer")
+  },
+  {
+    id: "setupGame",
+    name: "Setup Game",
+    category: "standard"
+  },
+  {
+    id: "getPlayerAnswers",
+    name: "Get Player Answers",
+    category: "standard"
+  },
+  {
+    id: "displayText",
+    name: "Display Text",
+    category: "standard",
+    normalize: (action, base, context) => normalizeTextAction(action, base, context, "Displayed text"),
+    toPublic: (action, base, context) => publicTextAction(action, base, context, "displayText")
+  },
+  {
+    id: "setPlayersShown",
+    name: "Set Players Shown",
+    category: "standard",
+    normalize: (action, base) => ({
+      ...base,
+      isShown: action?.isShown !== false,
+      instant: action?.instant === true
+    }),
+    toPublic: (action, base) => ({
+      ...base,
+      type: "setPlayersShown",
+      isShown: action.isShown !== false,
+      instant: action.instant === true
+    })
+  },
+  {
+    id: "setPlayerAnswersShown",
+    name: "Set Player Answers Shown",
+    category: "standard",
+    normalize: (action, base, context) => ({
+      ...base,
+      isShown: action?.isShown !== false,
+      instant: action?.instant === true,
+      playerFilter: context.normalizePlayerFilter(action?.playerFilter)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "setPlayerAnswersShown",
+      isShown: action.isShown !== false,
+      instant: action.instant === true,
+      playerFilter: context.normalizePlayerFilter(action.playerFilter)
+    })
+  },
+  {
+    id: "revealPlayerAnswerCorrectness",
+    name: "Reveal Player Answer Correctness",
+    category: "standard",
+    ...identityAction("revealPlayerAnswerCorrectness")
+  },
+  {
+    id: "showPoints",
+    name: "Show Points",
+    category: "standard",
+    normalize: (action, base, context) => ({
+      ...base,
+      playerFilter: context.normalizePlayerFilter(action?.playerFilter || "correct"),
+      points: context.normalizeConstantInteger(action?.points, 0, 0, 999999)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "showPoints",
+      playerFilter: context.normalizePlayerFilter(action.playerFilter || "correct"),
+      points: context.normalizeConstantInteger(action.points, 0, 0, 999999)
+    })
+  },
+  {
+    id: "givePendingPoints",
+    name: "Give Pending Points",
+    category: "standard",
+    ...identityAction("givePendingPoints")
+  },
+  {
+    id: "setTimerShown",
+    name: "Set Timer Shown",
+    category: "standard",
+    normalize: (action, base) => ({
+      ...base,
+      isShown: action?.isShown !== false,
+      instant: action?.instant === true
+    }),
+    toPublic: (action, base) => ({
+      ...base,
+      type: "setTimerShown",
+      isShown: action.isShown !== false,
+      instant: action.instant === true
+    })
+  },
+  {
+    id: "startCraftingTimer",
+    name: "Start Crafting Timer",
+    category: "standard",
+    ...identityAction("startCraftingTimer")
+  },
+  {
+    id: "decision",
+    name: "Decision",
+    category: "standard",
+    normalize: (action, base, context) => ({
+      ...base,
+      variable: context.cleanFlowText(action?.variable, "activePlayerCount"),
+      valueType: context.normalizeDecisionValueType(action?.valueType),
+      branches: context.normalizeDecisionBranches(action)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "decision",
+      variable: action.variable || "activePlayerCount",
+      valueType: context.normalizeDecisionValueType(action.valueType),
+      branches: context.normalizeDecisionBranches(action)
+    })
+  },
+  {
+    id: "transition",
+    name: "Do Transition",
+    category: "standard",
+    normalize: (action, base, context) => {
+      const transition = context.availableFlowTransitions.some((item) => item.id === action?.transition)
+        ? action.transition
+        : "horizontalWipe";
+      return { ...base, transition };
+    },
+    toPublic: (action, base, context) => {
+      const transition = context.availableFlowTransitions.find((item) => item.id === action.transition)
+        || context.availableFlowTransitions[0];
+      return { ...base, type: "transition", transition: transition.id, transitionName: transition.name };
+    }
+  },
+  {
+    id: "transitionState",
+    name: "Transition To State",
+    category: "standard",
+    normalize: (action, base, context) => ({
+      ...base,
+      trigger: action?.trigger === "onCountdownComplete" ? "onCountdownComplete" : "",
+      targetState: context.normalizeFlowId(action?.targetState, "intro")
+    }),
+    toPublic: (action, base) => ({
+      ...base,
+      type: "transitionState",
+      targetState: action.targetState,
+      trigger: action.trigger || ""
+    })
+  }
+];
+
+const availableFlowActionTypes = flowActionDefinitions.map(({ id, name, category }) => ({ id, name, category }));
+const definitionById = new Map(flowActionDefinitions.map((definition) => [definition.id, definition]));
+
+function fallbackNormalizeAction(action, base, context) {
+  return normalizeTextAction(action, base, context, "Text");
+}
+
+function fallbackPublicAction(action, base, context) {
+  return publicTextAction(action, base, context, "displayText");
+}
+
+function createFlowActionRegistry(context) {
+  function hasActionType(type) {
+    return definitionById.has(type);
+  }
+
+  function actionTypeMeta(type) {
+    return availableFlowActionTypes.find((item) => item.id === type) || availableFlowActionTypes[0];
+  }
+
+  function normalizeAction(type, action, base) {
+    const definition = definitionById.get(type);
+    const normalize = definition?.normalize || fallbackNormalizeAction;
+    return normalize(action, base, context);
+  }
+
+  function publicAction(action, base) {
+    const definition = definitionById.get(action?.type);
+    const toPublic = definition?.toPublic || fallbackPublicAction;
+    return toPublic(action, base, context);
+  }
+
+  return {
+    actionTypeMeta,
+    hasActionType,
+    normalizeAction,
+    publicAction
+  };
+}
+
+module.exports = {
+  availableFlowActionTypes,
+  createFlowActionRegistry,
+  flowActionDefinitions,
+  normalizeVoteRevealStaggerSeconds
+};

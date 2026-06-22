@@ -1,3 +1,7 @@
+"use strict";
+
+const { createFlowActionRegistry } = require("../shared/flow-action-registry");
+
 function createGameFlowNormalizationRuntime({
   availableFlowActionTypes,
   availableFlowTransitions,
@@ -17,6 +21,25 @@ function createGameFlowNormalizationRuntime({
   normalizePlayerFilter,
   normalizeVotingCardFilter
 }) {
+  const actionRegistry = createFlowActionRegistry({
+    availableFlowTransitions,
+    cleanChoiceOptions,
+    cleanFlowText,
+    flowActionTarget,
+    normalizeCharacterLimit,
+    normalizeChoiceInputMode,
+    normalizeConstantInteger,
+    normalizeDecisionBranches,
+    normalizeDecisionValueType,
+    normalizeFlowId,
+    normalizeFlowVariableName,
+    normalizeHostAudioPlayMode,
+    normalizeLineIndex,
+    normalizePlayerFilter,
+    normalizeTextTarget,
+    normalizeVotingCardFilter
+  });
+
   function normalizeGameFlow(flow) {
     const incomingStates = Array.isArray(flow?.states) ? flow.states : defaultGameFlow.states;
     const states = incomingStates.map((state, stateIndex) => {
@@ -52,12 +75,12 @@ function createGameFlowNormalizationRuntime({
   }
 
   function flowActionTypeMeta(type) {
-    return availableFlowActionTypes.find((item) => item.id === type) || availableFlowActionTypes[0];
+    return actionRegistry.actionTypeMeta(type);
   }
 
   function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) {
     const requestedType = action?.type === "text" ? "displayText" : action?.type;
-    const type = availableFlowActionTypes.some((item) => item.id === requestedType) ? requestedType : "presentText";
+    const type = actionRegistry.hasActionType(requestedType) ? requestedType : "presentText";
     const category = flowActionTypeMeta(type).category;
     const fallbackId = `${stateId}-${isSubAction ? "sub-action" : "action"}-${actionIndex + 1}`;
     const base = {
@@ -70,148 +93,7 @@ function createGameFlowNormalizationRuntime({
       nodePosition: normalizeNodePosition(action?.nodePosition, actionIndex),
       subActions: normalizeSubActions(action?.subActions, stateId)
     };
-    if (type === "presentText") {
-      return {
-        ...base,
-        text: cleanFlowText(action?.text, "Presented text"),
-        textTarget: normalizeTextTarget(action?.textTarget),
-        isShown: action?.isShown !== false,
-        instant: action?.instant === true
-      };
-    }
-    if (type === "multipleChoiceInput") {
-      return {
-        ...base,
-        prompt: cleanFlowText(action?.prompt, "Answer this question by tapping an answer"),
-        options: cleanChoiceOptions(action?.options),
-        inputMode: normalizeChoiceInputMode(action?.inputMode),
-        locked: action?.locked === true,
-        timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
-        answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
-      };
-    }
-    if (type === "triviaInput") {
-      return {
-        ...base,
-        contentVariable: normalizeFlowVariableName(action?.contentVariable),
-        inputMode: normalizeChoiceInputMode(action?.inputMode),
-        locked: action?.locked === true,
-        randomizeOptions: action?.randomizeOptions === true,
-        timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
-        answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
-      };
-    }
-    if (type === "textSubmissionInput") {
-      const characterLimit = normalizeCharacterLimit(action?.characterLimit);
-      return {
-        ...base,
-        prompt: cleanFlowText(action?.prompt, "Write your answer"),
-        placeholder: cleanFlowText(action?.placeholder, "Answer here"),
-        characterLimit,
-        timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
-        answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
-      };
-    }
-    if (type === "doNothing") {
-      return { ...base };
-    }
-    if (type === "playAudio") {
-      return {
-        ...base,
-        audioUrl: cleanFlowText(action?.audioUrl, "")
-      };
-    }
-    if (type === "playHostAudio") {
-      return {
-        ...base,
-        hostAudioId: normalizeFlowId(action?.hostAudioId, ""),
-        playMode: normalizeHostAudioPlayMode(action?.playMode),
-        lineIndex: normalizeLineIndex(action?.lineIndex)
-      };
-    }
-    if (type === "getRandomMultipleChoiceContent") {
-      return {
-        ...base,
-        variableName: normalizeFlowVariableName(action?.variableName)
-      };
-    }
-    if (type === "prepareVotingCards") {
-      return { ...base };
-    }
-    if (type === "setVotingCardsShown") {
-      return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true, cardFilter: normalizeVotingCardFilter(action?.cardFilter) };
-    }
-    if (type === "voteOnAnswersInput") {
-      return {
-        ...base,
-        prompt: cleanFlowText(action?.prompt, "Vote for your favorite answer"),
-        inputMode: "submitOnce",
-        timerEndTargetActionId: flowActionTarget(action?.timerEndTargetActionId),
-        answersSubmittedTargetActionId: flowActionTarget(action?.answersSubmittedTargetActionId)
-      };
-    }
-    if (type === "revealVotes") {
-      return { ...base, voteRevealStaggerSeconds: normalizeVoteRevealStaggerSeconds(action?.voteRevealStaggerSeconds) };
-    }
-    if (type === "revealVotingResults" || type === "revealAuthors" || type === "revealWinningAnswer") {
-      return { ...base };
-    }
-    if (type === "displayText") {
-      return {
-        ...base,
-        text: cleanFlowText(action?.text, "Displayed text"),
-        textTarget: normalizeTextTarget(action?.textTarget),
-        isShown: action?.isShown !== false,
-        instant: action?.instant === true
-      };
-    }
-    if (type === "setPlayersShown") {
-      return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
-    }
-    if (type === "setPlayerAnswersShown") {
-      return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true, playerFilter: normalizePlayerFilter(action?.playerFilter) };
-    }
-    if (type === "revealPlayerAnswerCorrectness") {
-      return { ...base };
-    }
-    if (type === "showPoints") {
-      return { ...base, playerFilter: normalizePlayerFilter(action?.playerFilter || "correct"), points: normalizeConstantInteger(action?.points, 0, 0, 999999) };
-    }
-    if (type === "givePendingPoints") {
-      return { ...base };
-    }
-    if (type === "setTimerShown") {
-      return { ...base, isShown: action?.isShown !== false, instant: action?.instant === true };
-    }
-    if (type === "startCraftingTimer") {
-      return { ...base };
-    }
-    if (type === "decision") {
-      return {
-        ...base,
-        variable: cleanFlowText(action?.variable, "activePlayerCount"),
-        valueType: normalizeDecisionValueType(action?.valueType),
-        branches: normalizeDecisionBranches(action)
-      };
-    }
-    if (type === "transition") {
-      const transition = availableFlowTransitions.some((item) => item.id === action?.transition) ? action.transition : "horizontalWipe";
-      return { ...base, transition };
-    }
-    if (type === "transitionState") {
-      return {
-        ...base,
-        trigger: action?.trigger === "onCountdownComplete" ? "onCountdownComplete" : "",
-        targetState: normalizeFlowId(action?.targetState, "intro")
-      };
-    }
-    return {
-      ...base,
-      text: cleanFlowText(action?.text, "Text"),
-      textTarget: normalizeTextTarget(action?.textTarget),
-      isShown: action?.isShown !== false,
-      instant: action?.instant === true
-    };
+    return actionRegistry.normalizeAction(type, action, base);
   }
 
   function normalizeTextTarget(value) {
@@ -229,11 +111,6 @@ function createGameFlowNormalizationRuntime({
     const rawSeconds = Number(timing?.seconds || 0);
     const seconds = Number(Math.max(0, Math.min(999, Number.isFinite(rawSeconds) ? rawSeconds : 0)).toFixed(2));
     return { mode, seconds };
-  }
-
-  function normalizeVoteRevealStaggerSeconds(value) {
-    const number = Number(value);
-    return Number(Math.max(0, Math.min(60, Number.isFinite(number) ? number : 1)).toFixed(2));
   }
 
   return {

@@ -1,36 +1,7 @@
+const { availableFlowActionTypes } = require("./flow-action-registry");
+
 const availableFlowTransitions = [
   { id: "horizontalWipe", name: "Horizontal Wipe" }
-];
-
-const availableFlowActionTypes = [
-  { id: "presentText", name: "Present Text", category: "input" },
-  { id: "multipleChoiceInput", name: "Multiple Choice Input", category: "input" },
-  { id: "triviaInput", name: "Trivia Input", category: "input" },
-  { id: "textSubmissionInput", name: "Text Submission Input", category: "input" },
-  { id: "doNothing", name: "Do Nothing", category: "standard" },
-  { id: "playAudio", name: "Play Audio", category: "standard" },
-  { id: "playHostAudio", name: "Play Host Audio", category: "standard" },
-  { id: "getRandomMultipleChoiceContent", name: "Get Random Multiple Choice Content", category: "standard" },
-  { id: "prepareVotingCards", name: "Prepare Voting Cards", category: "standard" },
-  { id: "setVotingCardsShown", name: "Set Voting Cards Shown", category: "standard" },
-  { id: "voteOnAnswersInput", name: "Vote On Answers Input", category: "input" },
-  { id: "revealVotingResults", name: "Reveal Voting Results", category: "standard" },
-  { id: "revealAuthors", name: "Reveal Authors", category: "standard" },
-  { id: "revealVotes", name: "Reveal Votes", category: "standard" },
-  { id: "revealWinningAnswer", name: "Reveal Winning Answer", category: "standard" },
-  { id: "setupGame", name: "Setup Game", category: "standard" },
-  { id: "getPlayerAnswers", name: "Get Player Answers", category: "standard" },
-  { id: "displayText", name: "Display Text", category: "standard" },
-  { id: "setPlayersShown", name: "Set Players Shown", category: "standard" },
-  { id: "setPlayerAnswersShown", name: "Set Player Answers Shown", category: "standard" },
-  { id: "revealPlayerAnswerCorrectness", name: "Reveal Player Answer Correctness", category: "standard" },
-  { id: "showPoints", name: "Show Points", category: "standard" },
-  { id: "givePendingPoints", name: "Give Pending Points", category: "standard" },
-  { id: "setTimerShown", name: "Set Timer Shown", category: "standard" },
-  { id: "startCraftingTimer", name: "Start Crafting Timer", category: "standard" },
-  { id: "decision", name: "Decision", category: "standard" },
-  { id: "transition", name: "Do Transition", category: "standard" },
-  { id: "transitionState", name: "Transition To State", category: "standard" }
 ];
 
 const multipleChoicePrompts = [

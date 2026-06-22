@@ -61,8 +61,10 @@ concepts into focused modules.
   - `value-normalizers.js` owns reusable primitive value cleanup for ids, labels, colors, numbers, and text.
 - `shared/`
   - Data and schema-like constants shared by server runtime and tools.
-  - `game-data.js` owns action type metadata, default layouts, default constants, prompts,
-    avatar metadata, and art manifest metadata.
+  - `flow-action-registry.js` owns flow action descriptors, including action type metadata,
+    persisted action normalization, and public stage/controller serialization.
+  - `game-data.js` owns default layouts, default constants, prompts, avatar metadata,
+    and art manifest metadata.
 - `index.html`
   - Browser runtime for stage, controller, and tools.
   - This still needs a future split into stage/controller/tools modules.
@@ -79,14 +81,19 @@ concepts into focused modules.
    `server/room-state.js`, `server/voting.js`, and `server/persistence/`.
 4. Split browser code into static client modules under `client/`, keeping the current no-build
    Render deployment until a bundler becomes worth the complexity.
-5. Only after the boundaries are stable, introduce classes for concepts that carry behavior,
-   such as visual game objects, flow actions, controller views, and layout documents.
+5. Move action behavior toward registry descriptors rather than scattered action-name
+   conditionals. Server normalization/public serialization now use `shared/flow-action-registry.js`;
+   server effects, stage runners, and tool inspectors should follow in later passes.
+6. Only after the boundaries are stable, introduce classes for concepts that carry behavior,
+   such as visual game objects, controller views, and layout documents. Flow actions should
+   usually stay as data plus registry strategy descriptors rather than large instantiated classes.
 
 ## Rules Of Thumb
 
 - Game-authored data stays in JSON data files or GitHub-backed tool storage.
 - Runtime code can change without overwriting tool-authored game data.
-- New action metadata belongs in `shared/game-data.js`.
+- New flow action metadata and shared action shaping behavior belongs in
+  `shared/flow-action-registry.js`.
 - New server behavior should avoid growing `server.js` when it can live in a focused module.
 - Large UI changes should eventually land in `client/tools/`, `client/stage/`, or
   `client/controller/`.
