@@ -115,6 +115,7 @@ function createVotingRuntime({
       card.isWinner = highestVotes >= 0 && card.voteCount === highestVotes;
     }
     room.votingWinners = cards.filter((card) => card.isWinner).map((card) => card.authorPlayerId);
+    room.votingCardsShown = true;
     room.votingResultsShown = true;
   }
 
@@ -130,6 +131,7 @@ function createVotingRuntime({
       card.voteCount = (Array.isArray(card.voterIds) ? card.voterIds : []).length;
       highestVotes = Math.max(highestVotes, card.voteCount);
     }
+    room.votingCardsShown = true;
     room.votingVotesRevealed = true;
   }
 
@@ -144,6 +146,7 @@ function createVotingRuntime({
       card.isWinner = highestVotes >= 0 && card.voteCount === highestVotes;
     }
     room.votingWinners = cards.filter((card) => card.isWinner).map((card) => card.authorPlayerId);
+    room.votingCardsShown = true;
     room.votingWinnerRevealed = true;
     room.votingResultsShown = true;
   }

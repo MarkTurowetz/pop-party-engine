@@ -268,9 +268,21 @@ function renderVotingCards(cards = []) {
         badge = document.createElement("span");
         badge.className = "voting-card-voter-badge";
         badge.style.transitionDelay = `${i * 80}ms`;
+        badge.innerHTML = `
+          <span class="voting-card-voter-avatar"></span>
+          <span class="voting-card-voter-name"></span>
+        `;
         votersEl.appendChild(badge);
       }
-      badge.textContent = voter.name;
+      if (badge.dataset.voterId && badge.dataset.voterId !== voter.id) {
+        badge.classList.remove("is-revealed");
+      }
+      badge.dataset.voterId = voter.id || "";
+      const avatarEl = badge.querySelector(".voting-card-voter-avatar");
+      avatarEl.className = `voting-card-voter-avatar ${avatarClass(voter.avatar?.shape)}`;
+      avatarEl.style.setProperty("--avatar-color", voter.avatar?.color || "#22d3ee");
+      avatarEl.innerHTML = `${avatarFrameImage()}${dinoIcon(voter.avatar?.shape)}`;
+      badge.querySelector(".voting-card-voter-name").textContent = voter.name || "Player";
       requestAnimationFrame(() => badge.classList.add("is-revealed"));
     });
     // Remove extra badges
