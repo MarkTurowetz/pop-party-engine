@@ -1,5 +1,16 @@
 let draggedHostAudioLineId = "";
 
+function makeHostAudioReferenceId(prefix = "host-audio") {
+  if (window.crypto?.randomUUID) return `${prefix}-${window.crypto.randomUUID().replace(/-/g, "")}`;
+  const bytes = new Uint8Array(16);
+  if (window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) bytes[index] = Math.floor(Math.random() * 256);
+  }
+  return `${prefix}-${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
 function normalizeHostAudioId(value, fallback = "host-audio") {
   const id = String(value || fallback).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   return id || fallback;
@@ -28,11 +39,23 @@ function normalizeClientHostAudios(source = {}) {
 }
 
 function normalizeClientHostAudioLines(lines, hostAudioId) {
-  return (Array.isArray(lines) ? lines : []).map((line, index) => ({
-    id: normalizeHostAudioId(line?.id || `${hostAudioId}-line-${index + 1}`, `${hostAudioId}-line-${index + 1}`),
-    text: String(line?.text || "").slice(0, 240),
-    url: String(line?.url || line?.audioUrl || "").trim().slice(0, 2000)
-  }));
+  const usedIds = new Set();
+  return (Array.isArray(lines) ? lines : []).map((line, index) => {
+    const fallbackId = makeHostAudioReferenceId("host-line");
+    const baseId = normalizeHostAudioId(line?.id || fallbackId, fallbackId);
+    let id = baseId;
+    let suffix = 2;
+    while (usedIds.has(id)) {
+      id = normalizeHostAudioId(`${baseId}-${suffix}`, `${hostAudioId}-line-${index + 1}-${suffix}`);
+      suffix += 1;
+    }
+    usedIds.add(id);
+    return {
+      id,
+      text: String(line?.text || "").slice(0, 240),
+      url: String(line?.url || line?.audioUrl || "").trim().slice(0, 2000)
+    };
+  });
 }
 
 function serializeHostAudiosForSave(source = hostAudios) {
@@ -68,7 +91,7 @@ function firstHostAudioId() {
 }
 
 function createHostAudioId(name) {
-  const baseId = normalizeHostAudioId(name || `host-audio-${Date.now().toString(36)}`, "host-audio");
+  const baseId = normalizeHostAudioId(name || makeHostAudioReferenceId("host-audio"), "host-audio");
   const usedIds = new Set((hostAudios.hostAudios || []).map((item) => item.id));
   let id = baseId;
   let suffix = 2;
@@ -77,6 +100,23 @@ function createHostAudioId(name) {
     suffix += 1;
   }
   return id;
+}
+
+function createPermanentHostAudioId() {
+  return createHostAudioId(makeHostAudioReferenceId("host-audio"));
+}
+
+function createPermanentHostAudioLineId() {
+  const hostAudio = selectedHostAudio();
+  const usedIds = new Set((hostAudio?.lines || []).map((line) => line.id));
+  let id = normalizeHostAudioId(makeHostAudioReferenceId("host-line"), "host-line");
+  while (usedIds.has(id)) id = normalizeHostAudioId(makeHostAudioReferenceId("host-line"), "host-line");
+  return id;
+}
+
+function firstHostAudioLinePreview(hostAudio) {
+  const text = String((hostAudio?.lines || [])[0]?.text || "").trim();
+  return text || "First line: empty";
 }
 
 function updateHostAudioStorageStatus(storage) {
@@ -110,19 +150,18 @@ function isHostAudiosDirty() {
   return hostAudiosSavedSnapshot && JSON.stringify(serializeHostAudiosForSave(hostAudios)) !== hostAudiosSavedSnapshot;
 }
 
-function publishHostAudioChanges({ render = true } = {}) {
+function publishHostAudioChanges({ render = true, renderList = false } = {}) {
   if (render) renderHostAudioTool();
+  if (!render && renderList) renderHostAudioList();
   if (!render && revertHostAudiosButton) revertHostAudiosButton.disabled = !isHostAudiosDirty();
   if (typeof publishRuntimeLocalChanges === "function") publishRuntimeLocalChanges();
   updateGlobalSaveButton();
 }
 
 function addHostAudio() {
-  const nextNumber = (hostAudios.hostAudios || []).length + 1;
-  const name = `Host Audio ${nextNumber}`;
   const item = {
-    id: createHostAudioId(name),
-    name,
+    id: createPermanentHostAudioId(),
+    name: "Host Audio",
     lines: []
   };
   hostAudios.hostAudios.push(item);
@@ -145,7 +184,7 @@ function addHostAudioLine() {
   const index = (hostAudio.lines || []).length;
   hostAudio.lines = hostAudio.lines || [];
   const line = {
-    id: normalizeHostAudioId(`${hostAudio.id}-line-${Date.now().toString(36)}`, `${hostAudio.id}-line-${index + 1}`),
+    id: createPermanentHostAudioLineId(),
     text: "",
     url: ""
   };
@@ -226,13 +265,22 @@ function renderHostAudioList() {
     return;
   }
   for (const item of hostAudios.hostAudios) {
-    const button = document.createElement("button");
-    button.type = "button";
+    const button = document.createElement("div");
     button.className = "flow-state-header";
+    button.setAttribute("role", "button");
+    button.tabIndex = 0;
     button.classList.toggle("is-selected", item.id === selectedHostAudioId);
-    button.innerHTML = `<span><strong></strong><span></span></span><span class="flow-pill"></span>`;
-    button.querySelector("strong").textContent = item.name;
-    button.querySelector("span span").textContent = item.id;
+    button.innerHTML = `<span><input class="text-input host-audio-list-title"><span></span></span><span class="flow-pill"></span>`;
+    const titleInput = button.querySelector(".host-audio-list-title");
+    titleInput.value = item.name || "Host Audio";
+    titleInput.addEventListener("click", (event) => event.stopPropagation());
+    titleInput.addEventListener("keydown", (event) => event.stopPropagation());
+    titleInput.addEventListener("change", () => {
+      item.name = titleInput.value.trim().slice(0, 80) || "Host Audio";
+      if (item.id === selectedHostAudioId) hostAudioNameInput.value = item.name;
+      publishHostAudioChanges();
+    });
+    button.querySelector("span span").textContent = firstHostAudioLinePreview(item);
     button.querySelector(".flow-pill").textContent = `${(item.lines || []).length} lines`;
     const select = () => {
       selectedHostAudioId = item.id;
@@ -240,6 +288,11 @@ function renderHostAudioList() {
     };
     button.addEventListener("click", select);
     button.addEventListener("dblclick", select);
+    button.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      select();
+    });
     hostAudioList.appendChild(button);
   }
 }
@@ -315,7 +368,7 @@ function createHostAudioLineCard(line, index) {
   const textInput = document.createElement("textarea");
   textInput.className = "text-input flow-textarea";
   textInput.value = line.text || "";
-  textInput.addEventListener("input", () => updateHostAudioLine(line.id, { text: textInput.value.slice(0, 240) }, { render: false }));
+  textInput.addEventListener("input", () => updateHostAudioLine(line.id, { text: textInput.value.slice(0, 240) }, { render: false, renderList: index === 0 }));
   textField.appendChild(textInput);
 
   const urlField = document.createElement("label");

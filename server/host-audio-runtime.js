@@ -30,12 +30,26 @@ function createHostAudioRuntime({ normalizeFlowId, random = Math.random }) {
     };
   }
 
+  function normalizeHostAudioLines(lines, hostAudioId) {
+    const seenIds = new Set();
+    return (Array.isArray(lines) ? lines : []).map((line, lineIndex) => {
+      const normalized = normalizeHostAudioLine(line, lineIndex, hostAudioId);
+      let id = normalized.id;
+      let suffix = 2;
+      while (seenIds.has(id)) {
+        id = normalizeFlowId(`${normalized.id}-${suffix}`, `${hostAudioId}-line-${lineIndex + 1}-${suffix}`);
+        suffix += 1;
+      }
+      seenIds.add(id);
+      return { ...normalized, id };
+    });
+  }
+
   function normalizeHostAudio(hostAudio, index) {
-    const fallbackName = `Host Audio ${index + 1}`;
+    const fallbackName = "Host Audio";
     const name = cleanHostAudioText(hostAudio?.name, fallbackName);
-    const id = normalizeFlowId(hostAudio?.id || name, `host-audio-${index + 1}`);
-    const lines = (Array.isArray(hostAudio?.lines) ? hostAudio.lines : [])
-      .map((line, lineIndex) => normalizeHostAudioLine(line, lineIndex, id));
+    const id = normalizeFlowId(hostAudio?.id, `host-audio-${index + 1}`);
+    const lines = normalizeHostAudioLines(hostAudio?.lines, id);
     return { id, name, lines };
   }
 
