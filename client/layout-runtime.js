@@ -28,9 +28,6 @@ function globalStageLayout() {
   return stageLayouts.global || { id: "global", name: "Global Layout", elements: [] };
 }
 
-function stageLayoutGroup(groupId) {
-  return groupId === "global" ? globalStageLayout() : stageLayoutState(groupId);
-}
 
 function controllerLayoutState(stateId) {
   return (controllerLayouts.states || []).find((state) => state.id === stateId) || null;

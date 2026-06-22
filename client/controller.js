@@ -302,21 +302,6 @@ function enterControllerLobby(stageCode, playerId, lobby, player) {
   heartbeatTimer = window.setInterval(heartbeat, 1000);
 }
 
-async function leaveLobby() {
-  if (!controllerState) return;
-  const leaving = controllerState;
-  controllerState = null;
-  window.clearInterval(heartbeatTimer);
-  await postJson("/api/leave", {
-    stageCode: leaving.stageCode,
-    playerId: leaving.playerId
-  }).catch(() => {});
-  hideControllerViews();
-  joinState.classList.remove("hidden");
-  applyControllerLayoutForPhase("join");
-  updateJoinButton();
-}
-
 function setupController() {
   lockControllerViewport();
   bindControllerButtonPressStates();
