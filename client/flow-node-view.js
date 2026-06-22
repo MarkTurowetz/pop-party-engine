@@ -114,63 +114,19 @@ function setFlowNodeZoom(nextZoom, event = null) {
 }
 
 function positionFlowNodeMinimap() {
-  if (!flowNodeMinimap || !flowNodeStage) return;
-  flowNodeMinimap.style.left = `${flowNodeStage.scrollLeft + flowNodeStage.clientWidth - flowNodeMinimap.offsetWidth - 14}px`;
-  flowNodeMinimap.style.top = `${flowNodeStage.scrollTop + 14}px`;
+  getFlowNodeMinimap()?.position();
 }
 
 function renderFlowNodeMinimap() {
-  if (!flowNodeMinimap || !flowNodeMinimapViewport || !flowNodeStage || !flowNodeLayer) return;
-  const bounds = flowGraphNodeBounds();
-  const width = flowNodeMinimap.clientWidth || 190;
-  const height = flowNodeMinimap.clientHeight || 132;
-  const scale = Math.min(width / Math.max(1, bounds.width), height / Math.max(1, bounds.height));
-  Array.from(flowNodeMinimap.querySelectorAll(".flow-node-minimap-node")).forEach((item) => item.remove());
-  for (const item of bounds.nodes) {
-    const mini = document.createElement("div");
-    const id = flowNodeDepth === "moments" ? item.node.dataset.nodeId : item.node.dataset.actionId || item.node.dataset.nodeId;
-    const selected = Boolean(id && (flowActionIsSelected(id) || selectedFlowStateId === id));
-    mini.className = `flow-node-minimap-node${flowNodeDepth === "actions" ? " is-action" : ""}${selected ? " is-selected" : ""}`;
-    mini.style.left = `${(item.x - bounds.minX) * scale}px`;
-    mini.style.top = `${(item.y - bounds.minY) * scale}px`;
-    mini.style.width = `${Math.max(4, (item.right - item.x) * scale)}px`;
-    mini.style.height = `${Math.max(4, (item.bottom - item.y) * scale)}px`;
-    flowNodeMinimap.insertBefore(mini, flowNodeMinimapViewport);
-  }
-  const viewLeft = flowNodeStage.scrollLeft / flowNodeZoom;
-  const viewTop = flowNodeStage.scrollTop / flowNodeZoom;
-  const rawViewWidth = (flowNodeStage.clientWidth / flowNodeZoom) * scale;
-  const rawViewHeight = (flowNodeStage.clientHeight / flowNodeZoom) * scale;
-  const viewportWidth = Math.min(width, Math.max(8, rawViewWidth));
-  const viewportHeight = Math.min(height, Math.max(8, rawViewHeight));
-  const viewportLeft = Math.max(0, Math.min(width - viewportWidth, (viewLeft - bounds.minX) * scale));
-  const viewportTop = Math.max(0, Math.min(height - viewportHeight, (viewTop - bounds.minY) * scale));
-  flowNodeMinimapViewport.style.left = `${viewportLeft}px`;
-  flowNodeMinimapViewport.style.top = `${viewportTop}px`;
-  flowNodeMinimapViewport.style.width = `${viewportWidth}px`;
-  flowNodeMinimapViewport.style.height = `${viewportHeight}px`;
-  positionFlowNodeMinimap();
+  getFlowNodeMinimap()?.render();
 }
 
 function centerFlowNodeViewportOnGraphPoint(graphX, graphY) {
-  if (!flowNodeStage || !flowNodeGraph) return;
-  const maxLeft = Math.max(0, flowNodeGraph.offsetWidth - flowNodeStage.clientWidth);
-  const maxTop = Math.max(0, flowNodeGraph.offsetHeight - flowNodeStage.clientHeight);
-  flowNodeStage.scrollLeft = Math.max(0, Math.min(maxLeft, graphX * flowNodeZoom - flowNodeStage.clientWidth / 2));
-  flowNodeStage.scrollTop = Math.max(0, Math.min(maxTop, graphY * flowNodeZoom - flowNodeStage.clientHeight / 2));
-  renderFlowNodeMinimap();
+  getFlowNodeMinimap()?.centerOnGraphPoint(graphX, graphY);
 }
 
 function minimapGraphPoint(event) {
-  const rect = flowNodeMinimap.getBoundingClientRect();
-  const bounds = flowGraphNodeBounds();
-  const scale = Math.min(rect.width / Math.max(1, bounds.width), rect.height / Math.max(1, bounds.height));
-  const localX = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-  const localY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-  return {
-    x: bounds.minX + localX / scale,
-    y: bounds.minY + localY / scale
-  };
+  return getFlowNodeMinimap()?.graphPoint(event) || { x: 0, y: 0 };
 }
 
 function systemNodeModel(state, nodeId) {
@@ -1237,34 +1193,11 @@ function handleFlowNodeWheel(event) {
 }
 
 function jumpFlowNodeMinimap(event) {
-  if (!flowNodeStage || !flowNodeMinimap) return;
-  event.preventDefault();
-  event.stopPropagation();
-  const point = minimapGraphPoint(event);
-  centerFlowNodeViewportOnGraphPoint(point.x, point.y);
+  getFlowNodeMinimap()?.jump(event);
 }
 
 function startFlowNodeMinimapDrag(event) {
-  if (!flowNodeMinimap || event.button !== 0) return;
-  event.preventDefault();
-  event.stopPropagation();
-  flowNodeMinimap.setPointerCapture?.(event.pointerId);
-  const move = (moveEvent) => {
-    if (moveEvent.pointerId !== event.pointerId) return;
-    const point = minimapGraphPoint(moveEvent);
-    centerFlowNodeViewportOnGraphPoint(point.x, point.y);
-  };
-  const stop = (stopEvent) => {
-    if (stopEvent.pointerId !== event.pointerId) return;
-    flowNodeMinimap.releasePointerCapture?.(stopEvent.pointerId);
-    flowNodeMinimap.removeEventListener("pointermove", move);
-    flowNodeMinimap.removeEventListener("pointerup", stop);
-    flowNodeMinimap.removeEventListener("pointercancel", stop);
-  };
-  move(event);
-  flowNodeMinimap.addEventListener("pointermove", move);
-  flowNodeMinimap.addEventListener("pointerup", stop);
-  flowNodeMinimap.addEventListener("pointercancel", stop);
+  getFlowNodeMinimap()?.startDrag(event);
 }
 
 function completeNodeConnection(targetNode) {

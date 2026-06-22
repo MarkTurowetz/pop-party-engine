@@ -91,6 +91,8 @@ concepts into focused modules.
     composition so List View and Node View render from the same action control registry.
   - `client/flow/node-view-wires.js` owns Flow Node View SVG wire rendering,
     wire labels, preview wires, and graph-local pointer coordinate conversion.
+  - `client/flow/node-view-minimap.js` owns Flow Node View minimap rendering,
+    viewport positioning, minimap clicks, and minimap dragging.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
