@@ -982,7 +982,10 @@ function refreshFlowNodeInspectorChange() {
 
 function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
   action.type = value;
-  if (value === "presentText") action.text = action.text || "Presented text";
+  if (value === "presentText") {
+    action.text = action.text || "Presented text";
+    if (!("textTarget" in action)) action.textTarget = "";
+  }
   if (value === "multipleChoiceInput") {
     action.prompt = action.prompt || "Answer this question by tapping an answer";
     action.options = Array.isArray(action.options) && action.options.length ? action.options : ["A", "B", "C", "D"];
@@ -1019,7 +1022,10 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
     action.timerEndTargetActionId = action.timerEndTargetActionId || "";
     action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
   }
-  if (value === "displayText") action.text = action.text || "Displayed text";
+  if (value === "displayText") {
+    action.text = action.text || "Displayed text";
+    if (!("textTarget" in action)) action.textTarget = "";
+  }
   if (value === "playAudio") action.audioUrl = action.audioUrl || "";
   if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown") action.isShown = action.isShown !== false;
   if (value === "setPlayerAnswersShown" || value === "showPoints") action.playerFilter = action.playerFilter || (value === "showPoints" ? "correct" : "all");

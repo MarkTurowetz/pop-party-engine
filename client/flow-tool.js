@@ -174,9 +174,7 @@ function textTargetOptionsForFlowState(stateId, selectedTarget = "") {
   };
   for (const element of globalStageLayout().elements || []) addElement(element);
   for (const element of stageLayoutState(stateId)?.elements || []) addElement(element);
-  if (!options.length) {
-    options.push({ id: "presentation", name: "Presentation Text" }, { id: "prompt", name: "Prompt Text" });
-  }
+  options.unshift({ id: "", name: "— None —" });
   const normalizedSelected = normalizeTextTargetId(selectedTarget);
   if (normalizedSelected && !seen.has(normalizedSelected)) {
     options.push({ id: normalizedSelected, name: formatTextTargetName(normalizedSelected) });
@@ -200,7 +198,7 @@ function formatTextTargetName(normalized) {
 function actionSummary(action, isSubAction = false) {
   const timing = ensureActionTiming(action, isSubAction);
   const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
-  const targetText = textTargetName(action.textTarget || "presentation");
+  const targetText = action.textTarget ? textTargetName(action.textTarget) : "⚠ No Field";
   const instantText = action.instant ? " / Instant" : "";
   if (action.type === "presentText") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
   if (action.type === "multipleChoiceInput") {
@@ -258,6 +256,10 @@ function actionValueBadge(action) {
     "setVotingCardsShown"
   ]);
   if (!visibilityActionTypes.has(action.type)) return null;
+  const isTextAction = action.type === "presentText" || action.type === "displayText";
+  if (isTextAction && !action.textTarget) {
+    return { text: "⚠ No Field", className: "is-warning" };
+  }
   const isShown = action.isShown !== false;
   return {
     text: isShown ? "Show" : "Hide",
@@ -825,8 +827,8 @@ function renderFlowEditor() {
     renderFlowTool();
   }));
   if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
-    const textTargetOptions = textTargetOptionsForFlowState(state.id, action.textTarget || "presentation");
-    flowEditor.appendChild(flowSelect("Text Field", normalizeTextTargetId(action.textTarget || textTargetOptions[0]?.id || "presentation"), textTargetOptions, (value) => {
+    const textTargetOptions = textTargetOptionsForFlowState(state.id, action.textTarget);
+    flowEditor.appendChild(flowSelect("Text Field", normalizeTextTargetId(action.textTarget || ""), textTargetOptions, (value) => {
       action.textTarget = value;
       renderFlowListAndPublish();
     }));
@@ -1511,7 +1513,7 @@ function createDefaultFlowAction(stateId, name, isSubAction) {
     type: isSubAction ? "setPlayersShown" : "presentText",
     timing: { mode: isSubAction ? "S+" : "E+", seconds: 0 },
     text: "Presented text",
-    textTarget: "presentation",
+    textTarget: "",
     instant: false,
     isShown: true,
     subActions: []
