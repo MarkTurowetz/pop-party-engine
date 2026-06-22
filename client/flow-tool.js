@@ -871,8 +871,9 @@ function renderFlowEditor() {
     refreshActionNameFromType(state, action);
     renderFlowTool();
   }));
+  const controls = getFlowActionControlGroups();
   if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
-    getFlowActionControlGroups()?.appendTextActionControls(flowEditor, state, action, () => renderFlowListAndPublish());
+    controls?.appendTextActionControls(flowEditor, state, action, () => renderFlowListAndPublish());
   }
   if (action.type === "multipleChoiceInput") {
     flowEditor.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", choiceInputModeOptions(), (value) => {
@@ -895,7 +896,7 @@ function renderFlowEditor() {
       action.options = options.length ? options : ["A", "B", "C", "D"];
       renderFlowListAndPublish();
     }));
-    getFlowActionControlGroups()?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
+    controls?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
     flowEditor.appendChild(readOnlyFlowNote("Each line becomes one button label. Controllers send the option index; this action currently shows the matching line as the stage speech bubble. Choose None for On Answers Submitted when continuous input should wait for the timer."));
   }
   if (action.type === "getRandomMultipleChoiceContent") {
@@ -925,7 +926,7 @@ function renderFlowEditor() {
       action.randomizeOptions = value === "true";
       renderFlowListAndPublish();
     }));
-    getFlowActionControlGroups()?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
+    controls?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
   }
   if (action.type === "textSubmissionInput") {
     flowEditor.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
@@ -940,14 +941,13 @@ function renderFlowEditor() {
       action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
       renderFlowListAndPublish();
     }));
-    getFlowActionControlGroups()?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
+    controls?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish());
     flowEditor.appendChild(readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
   }
   if (action.type === "prepareVotingCards") {
     flowEditor.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
   }
   if (action.type === "setVotingCardsShown") {
-    const controls = getFlowActionControlGroups();
     controls?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Voting Cards Visible", includeInstant: false });
     flowEditor.appendChild(flowSelect("Cards", action.cardFilter || "all", votingCardFilterOptions(), (value) => {
       action.cardFilter = value;
@@ -960,7 +960,7 @@ function renderFlowEditor() {
       action.prompt = value || "Vote for your favorite answer";
       renderFlowListAndPublish();
     }));
-    getFlowActionControlGroups()?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish(), { submittedLabel: "On Votes Submitted" });
+    controls?.appendInputExitControls(flowEditor, state, action, () => renderFlowListAndPublish(), { submittedLabel: "On Votes Submitted" });
     flowEditor.appendChild(readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
   }
   if (action.type === "revealVotingResults") {
@@ -970,7 +970,7 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Reveals the author heading on each prepared voting card."));
   }
   if (action.type === "revealVotes") {
-    getFlowActionControlGroups()?.appendBoundedNumberControl(flowEditor, action, "voteRevealStaggerSeconds", "Vote Stagger Seconds", () => renderFlowListAndPublish(), { defaultValue: 1, min: 0, max: 60 });
+    controls?.appendBoundedNumberControl(flowEditor, action, "voteRevealStaggerSeconds", "Vote Stagger Seconds", () => renderFlowListAndPublish(), { defaultValue: 1, min: 0, max: 60 });
     flowEditor.appendChild(readOnlyFlowNote("Reveals one voter per card per stagger interval. E+ timing starts after the final voter appears."));
   }
   if (action.type === "revealWinningAnswer") {
@@ -987,7 +987,7 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
   }
   if (action.type === "playHostAudio") {
-    getFlowActionControlGroups()?.appendHostAudioPlaybackControls(flowEditor, action, () => renderFlowListAndPublish(), {
+    controls?.appendHostAudioPlaybackControls(flowEditor, action, () => renderFlowListAndPublish(), {
       onPlaybackModeChange: () => {
         renderFlowEditor();
         renderFlowListAndPublish();
@@ -996,25 +996,25 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {
-    getFlowActionControlGroups()?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Players Visible" });
+    controls?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Players Visible" });
   }
   if (action.type === "setPlayerAnswersShown") {
-    getFlowActionControlGroups()?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Player Answers Visible" });
-    getFlowActionControlGroups()?.appendPlayerFilterControls(flowEditor, action, () => renderFlowListAndPublish());
+    controls?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Player Answers Visible" });
+    controls?.appendPlayerFilterControls(flowEditor, action, () => renderFlowListAndPublish());
   }
   if (action.type === "revealPlayerAnswerCorrectness") {
     flowEditor.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
   }
   if (action.type === "showPoints") {
-    getFlowActionControlGroups()?.appendPlayerFilterControls(flowEditor, action, () => renderFlowListAndPublish(), { defaultFilter: "correct" });
-    getFlowActionControlGroups()?.appendBoundedNumberControl(flowEditor, action, "points", "Points (0 = Correct Answer Constant)", () => renderFlowListAndPublish(), { defaultValue: 0, min: 0, integer: true });
+    controls?.appendPlayerFilterControls(flowEditor, action, () => renderFlowListAndPublish(), { defaultFilter: "correct" });
+    controls?.appendBoundedNumberControl(flowEditor, action, "points", "Points (0 = Correct Answer Constant)", () => renderFlowListAndPublish(), { defaultValue: 0, min: 0, integer: true });
     flowEditor.appendChild(readOnlyFlowNote("Adds pending points immediately, then shows a temporary points popup above each targeted player's answer bubble."));
   }
   if (action.type === "givePendingPoints") {
     flowEditor.appendChild(readOnlyFlowNote("Transfers every player's pending points into their score, then resets pending points to 0. No visual popup is shown."));
   }
   if (action.type === "setTimerShown") {
-    getFlowActionControlGroups()?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Timer Visible" });
+    controls?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Timer Visible" });
     flowEditor.appendChild(readOnlyFlowNote("Showing the timer resets it to the Crafting Timer Duration game constant. Hiding pauses it and keeps the current remaining value."));
   }
   if (action.type === "startCraftingTimer") {

@@ -1208,8 +1208,9 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     refreshActionNameFromType(state, action);
     rerender();
   }));
+  const controls = getFlowActionControlGroups();
   if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
-    getFlowActionControlGroups()?.appendTextActionControls(target, state, action, rerender);
+    controls?.appendTextActionControls(target, state, action, rerender);
   }
   if (action.type === "multipleChoiceInput") {
     target.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", choiceInputModeOptions(), (value) => {
@@ -1231,7 +1232,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.options = options.length ? options : ["A", "B", "C", "D"];
       rerender(false);
     }));
-    getFlowActionControlGroups()?.appendInputExitControls(target, state, action, rerender);
+    controls?.appendInputExitControls(target, state, action, rerender);
   }
   if (action.type === "getRandomMultipleChoiceContent") {
     target.appendChild(flowField("Store In Variable", action.variableName || "multipleChoicePrompt", (value) => {
@@ -1259,7 +1260,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.randomizeOptions = value === "true";
       rerender();
     }));
-    getFlowActionControlGroups()?.appendInputExitControls(target, state, action, rerender);
+    controls?.appendInputExitControls(target, state, action, rerender);
   }
   if (action.type === "textSubmissionInput") {
     target.appendChild(flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
@@ -1274,13 +1275,12 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
       rerender();
     }));
-    getFlowActionControlGroups()?.appendInputExitControls(target, state, action, rerender);
+    controls?.appendInputExitControls(target, state, action, rerender);
   }
   if (action.type === "prepareVotingCards") {
     target.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
   }
   if (action.type === "setVotingCardsShown") {
-    const controls = getFlowActionControlGroups();
     controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Voting Cards Visible", includeInstant: false });
     target.appendChild(flowSelect("Cards", action.cardFilter || "all", votingCardFilterOptions(), (value) => {
       action.cardFilter = value;
@@ -1293,7 +1293,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
       action.prompt = value || "Vote for your favorite answer";
       rerender(false);
     }));
-    getFlowActionControlGroups()?.appendInputExitControls(target, state, action, rerender, { submittedLabel: "On Votes Submitted" });
+    controls?.appendInputExitControls(target, state, action, rerender, { submittedLabel: "On Votes Submitted" });
     target.appendChild(readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
   }
   if (action.type === "revealVotingResults") {
@@ -1303,7 +1303,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Reveals the author heading on each prepared voting card."));
   }
   if (action.type === "revealVotes") {
-    getFlowActionControlGroups()?.appendBoundedNumberControl(target, action, "voteRevealStaggerSeconds", "Vote Stagger Seconds", rerender, { defaultValue: 1, min: 0, max: 60 });
+    controls?.appendBoundedNumberControl(target, action, "voteRevealStaggerSeconds", "Vote Stagger Seconds", rerender, { defaultValue: 1, min: 0, max: 60 });
     target.appendChild(readOnlyFlowNote("Reveals the player vote widgets under the cards they voted for."));
   }
   if (action.type === "revealWinningAnswer") {
@@ -1320,29 +1320,29 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Callback fires when the audio ends. Leave blank to complete immediately, or use S+ timing for fire-and-forget sound effects."));
   }
   if (action.type === "playHostAudio") {
-    getFlowActionControlGroups()?.appendHostAudioPlaybackControls(target, action, rerender);
+    controls?.appendHostAudioPlaybackControls(target, action, rerender);
     target.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {
-    getFlowActionControlGroups()?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Players Visible" });
+    controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Players Visible" });
   }
   if (action.type === "setPlayerAnswersShown") {
-    getFlowActionControlGroups()?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Player Answers Visible" });
-    getFlowActionControlGroups()?.appendPlayerFilterControls(target, action, rerender);
+    controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Player Answers Visible" });
+    controls?.appendPlayerFilterControls(target, action, rerender);
   }
   if (action.type === "revealPlayerAnswerCorrectness") {
     target.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
   }
   if (action.type === "showPoints") {
-    getFlowActionControlGroups()?.appendPlayerFilterControls(target, action, rerender, { defaultFilter: "correct" });
-    getFlowActionControlGroups()?.appendBoundedNumberControl(target, action, "points", "Points (0 = Correct Answer Constant)", rerender, { defaultValue: 0, min: 0, integer: true });
+    controls?.appendPlayerFilterControls(target, action, rerender, { defaultFilter: "correct" });
+    controls?.appendBoundedNumberControl(target, action, "points", "Points (0 = Correct Answer Constant)", rerender, { defaultValue: 0, min: 0, integer: true });
     target.appendChild(readOnlyFlowNote("Adds pending points immediately, then shows a temporary points popup above each targeted player's answer bubble."));
   }
   if (action.type === "givePendingPoints") {
     target.appendChild(readOnlyFlowNote("Transfers every player's pending points into their score, then resets pending points to 0. No visual popup is shown."));
   }
   if (action.type === "setTimerShown") {
-    getFlowActionControlGroups()?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Timer Visible" });
+    controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Timer Visible" });
   }
   if (action.type === "decision") {
     appendDecisionControls(target, state, action, rerender);
