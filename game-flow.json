@@ -750,7 +750,7 @@
           "text": "What is your favorite movie?",
           "isShown": true,
           "instant": false,
-          "nextTargetActionId": "writing-moment-action-mqoxz4wn",
+          "nextTargetActionId": "writing-show-timer",
           "subActions": [],
           "nodePosition": {
             "x": 670,
