@@ -832,7 +832,7 @@
           "name": "Play Host Audio",
           "type": "playHostAudio",
           "timing": {
-            "mode": "E+",
+            "mode": "S+",
             "seconds": 0
           },
           "text": "Presented text",
