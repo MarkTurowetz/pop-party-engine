@@ -1,30 +1,6 @@
-const COMPLETABLE_ACTION_TYPES = new Set([
-  "transition",
-  "transitionState",
-  "displayText",
-  "present",
-  "setPlayersShown",
-  "setPlayerAnswersShown",
-  "revealPlayerAnswerCorrectness",
-  "showPoints",
-  "givePendingPoints",
-  "setTimerShown",
-  "startCraftingTimer",
-  "getRandomMultipleChoiceContent",
-  "prepareVotingCards",
-  "setVotingCardsShown",
-  "voteOnAnswersInput",
-  "revealVotingResults",
-  "revealAuthors",
-  "revealVotes",
-  "revealWinningAnswer",
-  "multipleChoiceInput",
-  "triviaInput",
-  "textSubmissionInput",
-  "doNothing",
-  "playAudio",
-  "playHostAudio"
-]);
+"use strict";
+
+const { isCompletableStageActionType } = require("../shared/flow-action-registry");
 
 function createStageActionHandlersRuntime({
   applyRoomActionEffects,
@@ -88,7 +64,7 @@ function createStageActionHandlersRuntime({
     }
 
     const currentAction = currentRoomAction(room);
-    if (COMPLETABLE_ACTION_TYPES.has(currentAction?.type)) {
+    if (isCompletableStageActionType(currentAction?.type)) {
       completeCurrentAction(room, payload.actionId, payload.source || "callback");
     }
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });

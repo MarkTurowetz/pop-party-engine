@@ -28,6 +28,8 @@ function publicTextAction(action, base, context, publicType) {
 
 function identityAction(publicType) {
   return {
+    canCompleteFromStage: true,
+    stageActionType: publicType,
     normalize: (action, base) => ({ ...base }),
     toPublic: (action, base) => ({ ...base, type: publicType })
   };
@@ -38,6 +40,8 @@ const flowActionDefinitions = [
     id: "presentText",
     name: "Present Text",
     category: "input",
+    canCompleteFromStage: true,
+    stageActionType: "present",
     normalize: (action, base, context) => normalizeTextAction(action, base, context, "Presented text"),
     toPublic: (action, base, context) => publicTextAction(action, base, context, "present")
   },
@@ -45,6 +49,8 @@ const flowActionDefinitions = [
     id: "multipleChoiceInput",
     name: "Multiple Choice Input",
     category: "input",
+    canCompleteFromStage: true,
+    stageActionType: "multipleChoiceInput",
     normalize: (action, base, context) => ({
       ...base,
       prompt: context.cleanFlowText(action?.prompt, "Answer this question by tapping an answer"),
@@ -69,6 +75,8 @@ const flowActionDefinitions = [
     id: "triviaInput",
     name: "Trivia Input",
     category: "input",
+    canCompleteFromStage: true,
+    stageActionType: "triviaInput",
     normalize: (action, base, context) => ({
       ...base,
       contentVariable: context.normalizeFlowVariableName(action?.contentVariable),
@@ -93,6 +101,8 @@ const flowActionDefinitions = [
     id: "textSubmissionInput",
     name: "Text Submission Input",
     category: "input",
+    canCompleteFromStage: true,
+    stageActionType: "textSubmissionInput",
     normalize: (action, base, context) => ({
       ...base,
       prompt: context.cleanFlowText(action?.prompt, "Write your answer"),
@@ -121,6 +131,8 @@ const flowActionDefinitions = [
     id: "playAudio",
     name: "Play Audio",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "playAudio",
     normalize: (action, base, context) => ({
       ...base,
       audioUrl: context.cleanFlowText(action?.audioUrl, "")
@@ -135,6 +147,8 @@ const flowActionDefinitions = [
     id: "playHostAudio",
     name: "Play Host Audio",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "playHostAudio",
     normalize: (action, base, context) => ({
       ...base,
       hostAudioId: context.normalizeFlowId(action?.hostAudioId, ""),
@@ -154,6 +168,8 @@ const flowActionDefinitions = [
     id: "getRandomMultipleChoiceContent",
     name: "Get Random Multiple Choice Content",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "getRandomMultipleChoiceContent",
     normalize: (action, base, context) => ({
       ...base,
       variableName: context.normalizeFlowVariableName(action?.variableName)
@@ -180,6 +196,8 @@ const flowActionDefinitions = [
     id: "setVotingCardsShown",
     name: "Set Voting Cards Shown",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "setVotingCardsShown",
     normalize: (action, base, context) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -201,6 +219,8 @@ const flowActionDefinitions = [
     id: "voteOnAnswersInput",
     name: "Vote On Answers Input",
     category: "input",
+    canCompleteFromStage: true,
+    stageActionType: "voteOnAnswersInput",
     normalize: (action, base, context) => ({
       ...base,
       prompt: context.cleanFlowText(action?.prompt, "Vote for your favorite answer"),
@@ -239,6 +259,8 @@ const flowActionDefinitions = [
     id: "revealVotes",
     name: "Reveal Votes",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "revealVotes",
     normalize: (action, base) => ({
       ...base,
       voteRevealStaggerSeconds: normalizeVoteRevealStaggerSeconds(action?.voteRevealStaggerSeconds)
@@ -311,6 +333,8 @@ const flowActionDefinitions = [
     id: "displayText",
     name: "Display Text",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "displayText",
     normalize: (action, base, context) => normalizeTextAction(action, base, context, "Displayed text"),
     toPublic: (action, base, context) => publicTextAction(action, base, context, "displayText")
   },
@@ -318,6 +342,8 @@ const flowActionDefinitions = [
     id: "setPlayersShown",
     name: "Set Players Shown",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "setPlayersShown",
     normalize: (action, base) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -337,6 +363,8 @@ const flowActionDefinitions = [
     id: "setPlayerAnswersShown",
     name: "Set Player Answers Shown",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "setPlayerAnswersShown",
     normalize: (action, base, context) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -389,6 +417,8 @@ const flowActionDefinitions = [
     id: "showPoints",
     name: "Show Points",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "showPoints",
     normalize: (action, base, context) => ({
       ...base,
       playerFilter: context.normalizePlayerFilter(action?.playerFilter || "correct"),
@@ -431,6 +461,8 @@ const flowActionDefinitions = [
     id: "setTimerShown",
     name: "Set Timer Shown",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "setTimerShown",
     normalize: (action, base) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -477,6 +509,8 @@ const flowActionDefinitions = [
     id: "transition",
     name: "Do Transition",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "transition",
     normalize: (action, base, context) => {
       const transition = context.availableFlowTransitions.some((item) => item.id === action?.transition)
         ? action.transition
@@ -493,6 +527,8 @@ const flowActionDefinitions = [
     id: "transitionState",
     name: "Transition To State",
     category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "transitionState",
     normalize: (action, base, context) => ({
       ...base,
       trigger: action?.trigger === "onCountdownComplete" ? "onCountdownComplete" : "",
@@ -509,6 +545,11 @@ const flowActionDefinitions = [
 
 const availableFlowActionTypes = flowActionDefinitions.map(({ id, name, category }) => ({ id, name, category }));
 const definitionById = new Map(flowActionDefinitions.map((definition) => [definition.id, definition]));
+const completableStageActionTypes = new Set(
+  flowActionDefinitions
+    .filter((definition) => definition.canCompleteFromStage)
+    .map((definition) => definition.stageActionType || definition.id)
+);
 
 function fallbackNormalizeAction(action, base, context) {
   return normalizeTextAction(action, base, context, "Text");
@@ -555,9 +596,15 @@ function createFlowActionRegistry(context) {
   };
 }
 
+function isCompletableStageActionType(type) {
+  return completableStageActionTypes.has(type);
+}
+
 module.exports = {
   availableFlowActionTypes,
+  completableStageActionTypes,
   createFlowActionRegistry,
   flowActionDefinitions,
+  isCompletableStageActionType,
   normalizeVoteRevealStaggerSeconds
 };
