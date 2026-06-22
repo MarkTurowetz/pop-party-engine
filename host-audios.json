@@ -1,3 +1,25 @@
 {
-  "hostAudios": []
+  "hostAudios": [
+    {
+      "id": "host-audio-1b9b6465ae9948e98a35d0907f1d4ef0",
+      "name": "Test",
+      "lines": [
+        {
+          "id": "host-line-e6bf3f0d33aa4ef69127e8de57f88480",
+          "text": "this is the first line",
+          "url": ""
+        },
+        {
+          "id": "host-line-e20b8767af7442a5a0c113a2b39ceb72",
+          "text": "this is the second line",
+          "url": ""
+        },
+        {
+          "id": "host-line-b066b2ccf4b64f1aa799be864eb7b384",
+          "text": "this is the third line",
+          "url": ""
+        }
+      ]
+    }
+  ]
 }
