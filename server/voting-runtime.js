@@ -119,6 +119,7 @@ function createVotingRuntime({
   }
 
   function revealAuthors(room) {
+    room.votingCardsShown = true;
     room.votingAuthorsRevealed = true;
   }
 

@@ -1,5 +1,14 @@
 "use strict";
 
+const VOTING_CARD_ACTION_TYPES = new Set([
+  "setVotingCardsShown",
+  "voteOnAnswersInput",
+  "revealVotingResults",
+  "revealAuthors",
+  "revealVotes",
+  "revealWinningAnswer"
+]);
+
 function createRoomPhaseRuntime({
   activePlayers,
   broadcastLobby,
@@ -27,6 +36,10 @@ function createRoomPhaseRuntime({
     if (runtimeGameFlow(room).states.some((item) => item.id === targetStateId)) {
       enterGamePhase(room, targetStateId);
     }
+  }
+
+  function actionListHasVotingCards(actions = []) {
+    return actions.some((action) => VOTING_CARD_ACTION_TYPES.has(action?.type) || actionListHasVotingCards(action?.subActions || []));
   }
 
   function isNoActionTarget(target) {
@@ -127,12 +140,12 @@ function createRoomPhaseRuntime({
       }
     }
 
-    // Auto-setup voting cards when entering a phase that contains voting input.
+    // Auto-setup voting cards when entering a phase that displays or uses voting cards.
     // Uses votingSourceStateId if explicitly configured, otherwise falls back to the
     // phase we just left (the common writing-then-voting pattern needs no configuration).
     const enteringState = runtimeGameFlow(room).states.find((s) => s.id === phase);
-    const hasVotingInput = (enteringState?.actions || []).some((a) => a.type === "voteOnAnswersInput");
-    const sourceStateId = enteringState?.votingSourceStateId || (hasVotingInput ? previousPhase : null);
+    const hasVotingCards = actionListHasVotingCards(enteringState?.actions || []);
+    const sourceStateId = enteringState?.votingSourceStateId || (hasVotingCards ? previousPhase : null);
     if (sourceStateId) {
       const loadRound = room.currentRound || 1;
       const sourceRecords = room.storedPlayerAnswers?.[loadRound]?.[sourceStateId] || {};
