@@ -351,6 +351,7 @@ function clearStageActionTimers() {
 
 function clearStageAudioPlayers() {
   for (const audio of stageAudioPlayers) {
+    audio.stageInterrupted = true;
     audio.pause();
     audio.removeAttribute("src");
     audio.load();
@@ -589,6 +590,30 @@ function scheduleSubActions(action, actionKey) {
   }
 }
 
+function playStageAudioAction(action, isPrimary, actionKey) {
+  const audioUrl = String(action.audioUrl || "").trim();
+  if (!audioUrl) {
+    if (isPrimary) completeFlowAction("callback", action.id);
+    return;
+  }
+
+  const audio = new Audio(audioUrl);
+  audio.stageInterrupted = false;
+  stageAudioPlayers.add(audio);
+  const finish = () => {
+    const wasInterrupted = audio.stageInterrupted === true;
+    stageAudioPlayers.delete(audio);
+    audio.removeEventListener("ended", finish);
+    audio.removeEventListener("error", finish);
+    if (!wasInterrupted && isPrimary && renderedActionKey === actionKey && action.timing?.mode !== "S+") {
+      completeFlowAction("callback", action.id);
+    }
+  };
+  audio.addEventListener("ended", finish);
+  audio.addEventListener("error", finish);
+  audio.play().catch(finish);
+}
+
 function runStageAction(action, isPrimary, actionKey) {
   if (!action) return;
   if (isPrimary) scheduleSubActions(action, actionKey);
@@ -597,24 +622,7 @@ function runStageAction(action, isPrimary, actionKey) {
     return;
   }
   if (action.type === "playAudio" || action.type === "playHostAudio") {
-    const audioUrl = String(action.audioUrl || "").trim();
-    if (!audioUrl) {
-      if (isPrimary) completeFlowAction("callback", action.id);
-      return;
-    }
-    const audio = new Audio(audioUrl);
-    stageAudioPlayers.add(audio);
-    const finish = () => {
-      stageAudioPlayers.delete(audio);
-      audio.removeEventListener("ended", finish);
-      audio.removeEventListener("error", finish);
-      if (isPrimary && renderedActionKey === actionKey && action.timing?.mode !== "S+") {
-        completeFlowAction("callback", action.id);
-      }
-    };
-    audio.addEventListener("ended", finish);
-    audio.addEventListener("error", finish);
-    audio.play().catch(finish);
+    playStageAudioAction(action, isPrimary, actionKey);
     return;
   }
   if (action.type === "getRandomMultipleChoiceContent") {

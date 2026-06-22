@@ -3406,6 +3406,29 @@
       border-radius: 8px;
       background: var(--paper);
       box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.3);
+      cursor: grab;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+
+    .host-audio-line-card.is-selected {
+      outline: 4px solid var(--yellow);
+      outline-offset: 3px;
+      box-shadow: 7px 7px 0 rgba(23, 19, 31, 0.42);
+    }
+
+    .host-audio-line-card.is-dragging {
+      opacity: 0.55;
+      cursor: grabbing;
+    }
+
+    .host-audio-line-card.is-drop-before {
+      transform: translateY(-4px);
+      border-top-color: var(--blue);
+    }
+
+    .host-audio-line-card.is-drop-after {
+      transform: translateY(4px);
+      border-bottom-color: var(--blue);
     }
 
     .host-audio-line-header {
@@ -4155,6 +4178,7 @@
     let hostAudios = { hostAudios: [] };
     let selectedGameConstantId = "gameTitle";
     let selectedHostAudioId = "";
+    let selectedHostAudioLineId = "";
     let stageLayouts = { canvas: { width: 1920, height: 1080 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let controllerLayouts = { canvas: { width: 390, height: 844 }, global: { id: "global", name: "Global Layout", elements: [] }, states: [] };
     let flowSavedSnapshot = "";
