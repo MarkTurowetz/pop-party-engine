@@ -944,8 +944,8 @@
             "seconds": 0
           },
           "prompt": "Vote for your favorite movie answer",
-          "timerEndTargetActionId": "voting-reveal-results",
-          "answersSubmittedTargetActionId": "voting-reveal-results",
+          "timerEndTargetActionId": "voting-moment-action-mqoipyj9",
+          "answersSubmittedTargetActionId": "voting-moment-action-mqoipyj9",
           "subActions": [],
           "nodePosition": {
             "x": 670,
