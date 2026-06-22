@@ -6,15 +6,9 @@ function playerTileSignature(player) {
   });
 }
 
-function applyAnswerBubbleTextFit(bubble, text) {
-  const length = String(text || "").length;
-  const fontSize = length > 72 ? 14 : length > 52 ? 16 : length > 34 ? 19 : length > 22 ? 23 : 28;
-  bubble.style.fontSize = `${fontSize}px`;
-  bubble.classList.toggle("is-long", length > 14);
-}
-
 let stageTextControllerInstance = null;
 let craftingTimerControllerInstance = null;
+let playerAnswerBubbleControllerInstance = null;
 
 function stageVisualControllers() {
   return window.PartyGameStageVisualControllers || null;
@@ -56,27 +50,15 @@ function craftingTimerController() {
   return craftingTimerControllerInstance;
 }
 
-function answerBubbleVisualFor(bubble) {
-  return visualAnimation.createCssVisualObject({
-    element: bubble,
-    hiddenClasses: ["is-hidden"],
-    motionHiddenClasses: ["is-hidden"],
-    exitingClass: "is-exiting",
-    updateClass: "is-updating",
-    instantClass: "is-instant",
-    getVisible: () => !bubble.classList.contains("is-hidden") && !bubble.classList.contains("is-exiting"),
-    setVisible: (isVisible) => {
-      bubble.dataset.visualVisible = isVisible ? "true" : "false";
-    }
-  });
-}
-
-function isBubbleVisible(bubble) {
-  return answerBubbleVisualFor(bubble).isVisible();
-}
-
-function playAnswerBubbleVisual(bubble, animation, options = {}) {
-  return answerBubbleVisualFor(bubble).play(animation, options);
+function playerAnswerBubbleController() {
+  if (!playerAnswerBubbleControllerInstance && stageVisualControllers()) {
+    playerAnswerBubbleControllerInstance = stageVisualControllers().createPlayerAnswerBubbleController({
+      visualAnimation,
+      host: playerLobby,
+      document
+    });
+  }
+  return playerAnswerBubbleControllerInstance;
 }
 
 let votingCardVisualRenderer = null;
@@ -117,90 +99,15 @@ function createPlayerTile(player, playerIndex, signature) {
 }
 
 function syncPlayerAnswerBubble(tile, player, options = {}) {
-  const displayedAnswer = player.displayedAnswer || null;
-  const answerText = displayedAnswer?.text || "";
-  const answerNonce = String(displayedAnswer?.nonce || "");
-  const answerHidden = displayedAnswer?.hidden === true;
-  let bubble = tile.querySelector(".player-answer-bubble");
-  if (!answerText || answerHidden) {
-    if (bubble) {
-      const bubbleToRemove = bubble;
-      bubble.dataset.answerHidden = "true";
-      const duration = playAnswerBubbleVisual(bubble, isBubbleVisible(bubble) ? "disappear" : "park", options);
-      const removalToken = bubble.dataset.visualAnimationToken || "";
-      const removeBubble = () => {
-        if (bubbleToRemove.parentElement && bubbleToRemove.dataset.visualAnimationToken === removalToken) bubbleToRemove.remove();
-      };
-      if (duration > 0) window.setTimeout(removeBubble, duration);
-      else removeBubble();
-    }
-    return 0;
-  }
-
-  const hadBubble = Boolean(bubble);
-  const previousNonce = bubble?.dataset.answerNonce || "";
-  const previousText = bubble?.dataset.answerText || "";
-  if (!bubble) {
-    bubble = document.createElement("div");
-    bubble.className = "player-answer-bubble is-hidden";
-    tile.insertBefore(bubble, tile.firstChild);
-  }
-
-  bubble.textContent = answerText;
-  bubble.dataset.answerNonce = answerNonce;
-  bubble.dataset.answerText = answerText;
-  bubble.dataset.answerHidden = "false";
-  bubble.classList.toggle("is-correct", displayedAnswer?.correct === true);
-  bubble.classList.toggle("is-wrong", displayedAnswer?.correct === false);
-  applyAnswerBubbleTextFit(bubble, answerText);
-
-  if (renderedPlayerAnswersShown === false) {
-    return playAnswerBubbleVisual(bubble, "park", { instant: true });
-  }
-
-  if (!hadBubble || !isBubbleVisible(bubble)) {
-    return playAnswerBubbleVisual(bubble, "appear", options);
-  }
-  if (previousNonce !== answerNonce || previousText !== answerText) {
-    return playAnswerBubbleVisual(bubble, "update", options);
-  }
-  return 0;
+  return playerAnswerBubbleController()?.sync(tile, player, options) || 0;
 }
 
 function setPlayerAnswerBubblesShown(isShown, options = {}) {
-  const instant = options.instant === true;
-  const remainingDuration = playerAnswerBubbleAnimationRemaining();
-  const wasShown = renderedPlayerAnswersShown !== false;
-  renderedPlayerAnswersShown = isShown;
-  playerLobby.classList.toggle("answers-hidden", !isShown);
-  const bubbles = Array.from(playerLobby.querySelectorAll(".player-answer-bubble"));
-  if (!bubbles.length) {
-    playerAnswerBubbleAnimationEndsAt = 0;
-    return 0;
-  }
-  if (!instant && wasShown === isShown && remainingDuration > 0) {
-    return remainingDuration;
-  }
-  let duration = 0;
-  if (isShown) {
-    for (const bubble of bubbles) {
-      if (bubble.dataset.answerHidden === "true") continue;
-      if (!isBubbleVisible(bubble)) {
-        duration = Math.max(duration, playAnswerBubbleVisual(bubble, "appear", { instant }));
-      }
-    }
-  } else {
-    for (const bubble of bubbles) {
-      const animation = isBubbleVisible(bubble) ? "disappear" : "park";
-      duration = Math.max(duration, playAnswerBubbleVisual(bubble, animation, { instant }));
-    }
-  }
-  playerAnswerBubbleAnimationEndsAt = duration > 0 ? Date.now() + duration : 0;
-  return duration;
+  return playerAnswerBubbleController()?.setShown(isShown, options) || 0;
 }
 
 function playerAnswerBubbleAnimationRemaining() {
-  return Math.max(0, playerAnswerBubbleAnimationEndsAt - Date.now());
+  return playerAnswerBubbleController()?.remaining() || 0;
 }
 
 function renderStagePlayers(players) {
@@ -353,8 +260,7 @@ function resetStageObjects() {
   clearStageAudioPlayers();
   craftingTimerController()?.reset();
   playerLobby.classList.remove("players-hidden", "players-instant");
-  renderedPlayerAnswersShown = true;
-  playerLobby.classList.remove("answers-hidden");
+  playerAnswerBubbleController()?.reset();
   renderedPointPopupIds.clear();
   clearVotingCardVisuals({ instant: true });
   initStageTextObjects();
@@ -431,8 +337,9 @@ function applyStageState(lobby) {
   playerLobby.classList.toggle("players-hidden", lobby.playersShown === false);
   const nextAnswersShown = lobby.playerAnswersShown !== false;
   const answersAreStillAnimating = playerAnswerBubbleAnimationRemaining() > 0;
-  const hasParkedShownBubbles = nextAnswersShown && Boolean(playerLobby.querySelector(".player-answer-bubble.is-hidden, .player-answer-bubble.is-exiting"));
-  setPlayerAnswerBubblesShown(nextAnswersShown, { instant: renderedPlayerAnswersShown === nextAnswersShown && !answersAreStillAnimating && !hasParkedShownBubbles });
+  const hasParkedShownBubbles = playerAnswerBubbleController()?.hasParkedShownBubbles() === true;
+  const answersWereAlreadyShown = playerAnswerBubbleController()?.currentShown() === nextAnswersShown;
+  setPlayerAnswerBubblesShown(nextAnswersShown, { instant: answersWereAlreadyShown && !answersAreStillAnimating && !hasParkedShownBubbles });
   renderPointPopups(lobby.pendingPointPopups || []);
   renderVotingCards(lobby.votingCards || [], votingCardRenderOptions(lobby));
   renderCraftingTimer(lobby.craftingTimer, { instant: action?.type === "setTimerShown" && action.instant === true });

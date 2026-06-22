@@ -204,10 +204,165 @@
     }
   }
 
+  class PlayerAnswerBubbleController {
+    constructor(options = {}) {
+      this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
+      this.host = options.host;
+      this.document = options.document || global.document;
+      this.renderedShown = true;
+      this.animationEndsAt = 0;
+    }
+
+    visualFor(bubble) {
+      if (!bubble || !this.visualAnimation) return null;
+      if (!bubble.playerAnswerBubbleVisual || bubble.playerAnswerBubbleVisual.element !== bubble) {
+        bubble.playerAnswerBubbleVisual = this.visualAnimation.createCssVisualObject({
+          element: bubble,
+          hiddenClasses: ["is-hidden"],
+          motionHiddenClasses: ["is-hidden"],
+          exitingClass: "is-exiting",
+          updateClass: "is-updating",
+          instantClass: "is-instant",
+          getVisible: () => !bubble.classList.contains("is-hidden") && !bubble.classList.contains("is-exiting"),
+          setVisible: (isVisible) => {
+            bubble.dataset.visualVisible = isVisible ? "true" : "false";
+          }
+        });
+      }
+      return bubble.playerAnswerBubbleVisual;
+    }
+
+    isVisible(bubble) {
+      return this.visualFor(bubble)?.isVisible() === true;
+    }
+
+    play(bubble, animation, options = {}) {
+      return this.visualFor(bubble)?.play(animation, options) || 0;
+    }
+
+    applyTextFit(bubble, text) {
+      const length = String(text || "").length;
+      const fontSize = length > 72 ? 14 : length > 52 ? 16 : length > 34 ? 19 : length > 22 ? 23 : 28;
+      bubble.style.fontSize = `${fontSize}px`;
+      bubble.classList.toggle("is-long", length > 14);
+    }
+
+    removeBubble(bubble, options = {}) {
+      if (!bubble) return 0;
+      const duration = this.play(bubble, this.isVisible(bubble) ? "disappear" : "park", options);
+      const removalToken = bubble.dataset.visualAnimationToken || "";
+      const removeBubble = () => {
+        if (bubble.parentElement && bubble.dataset.visualAnimationToken === removalToken) bubble.remove();
+      };
+      if (duration > 0) global.setTimeout(removeBubble, duration);
+      else removeBubble();
+      return duration;
+    }
+
+    sync(tile, player, options = {}) {
+      const displayedAnswer = player?.displayedAnswer || null;
+      const answerText = displayedAnswer?.text || "";
+      const answerNonce = String(displayedAnswer?.nonce || "");
+      const answerHidden = displayedAnswer?.hidden === true;
+      let bubble = tile?.querySelector(".player-answer-bubble");
+      if (!answerText || answerHidden) {
+        if (bubble) {
+          bubble.dataset.answerHidden = "true";
+          return this.removeBubble(bubble, options);
+        }
+        return 0;
+      }
+
+      const hadBubble = Boolean(bubble);
+      const previousNonce = bubble?.dataset.answerNonce || "";
+      const previousText = bubble?.dataset.answerText || "";
+      if (!bubble) {
+        bubble = this.document.createElement("div");
+        bubble.className = "player-answer-bubble is-hidden";
+        tile.insertBefore(bubble, tile.firstChild);
+      }
+
+      bubble.textContent = answerText;
+      bubble.dataset.answerNonce = answerNonce;
+      bubble.dataset.answerText = answerText;
+      bubble.dataset.answerHidden = "false";
+      bubble.classList.toggle("is-correct", displayedAnswer?.correct === true);
+      bubble.classList.toggle("is-wrong", displayedAnswer?.correct === false);
+      this.applyTextFit(bubble, answerText);
+
+      if (this.renderedShown === false) {
+        return this.play(bubble, "park", { instant: true });
+      }
+      if (!hadBubble || !this.isVisible(bubble)) {
+        return this.play(bubble, "appear", options);
+      }
+      if (previousNonce !== answerNonce || previousText !== answerText) {
+        return this.play(bubble, "update", options);
+      }
+      return 0;
+    }
+
+    bubbles() {
+      return Array.from(this.host?.querySelectorAll(".player-answer-bubble") || []);
+    }
+
+    currentShown() {
+      return this.renderedShown !== false;
+    }
+
+    remaining() {
+      return Math.max(0, this.animationEndsAt - Date.now());
+    }
+
+    hasParkedShownBubbles() {
+      return this.currentShown() && Boolean(this.host?.querySelector(".player-answer-bubble.is-hidden, .player-answer-bubble.is-exiting"));
+    }
+
+    reset() {
+      this.renderedShown = true;
+      this.animationEndsAt = 0;
+      this.host?.classList.remove("answers-hidden");
+    }
+
+    setShown(isShown, options = {}) {
+      const instant = options.instant === true;
+      const remainingDuration = this.remaining();
+      const wasShown = this.currentShown();
+      this.renderedShown = isShown;
+      this.host?.classList.toggle("answers-hidden", !isShown);
+      const bubbles = this.bubbles();
+      if (!bubbles.length) {
+        this.animationEndsAt = 0;
+        return 0;
+      }
+      if (!instant && wasShown === isShown && remainingDuration > 0) {
+        return remainingDuration;
+      }
+      let duration = 0;
+      if (isShown) {
+        for (const bubble of bubbles) {
+          if (bubble.dataset.answerHidden === "true") continue;
+          if (!this.isVisible(bubble)) {
+            duration = Math.max(duration, this.play(bubble, "appear", { instant }));
+          }
+        }
+      } else {
+        for (const bubble of bubbles) {
+          const animation = this.isVisible(bubble) ? "disappear" : "park";
+          duration = Math.max(duration, this.play(bubble, animation, { instant }));
+        }
+      }
+      this.animationEndsAt = duration > 0 ? Date.now() + duration : 0;
+      return duration;
+    }
+  }
+
   global.PartyGameStageVisualControllers = {
     CraftingTimerController,
+    PlayerAnswerBubbleController,
     StageTextController,
     createCraftingTimerController: (options) => new CraftingTimerController(options),
+    createPlayerAnswerBubbleController: (options) => new PlayerAnswerBubbleController(options),
     createStageTextController: (options) => new StageTextController(options)
   };
 })(window);
