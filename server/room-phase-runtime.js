@@ -75,7 +75,6 @@ function createRoomPhaseRuntime({
     room.flowVariables = {};
     clearPlayerAnswerData(room);
     room.pendingPointPopups = [];
-    room.wipeShown = false;
     room.currentRound = 1;
     room.hasEnteredRoundIntro = false;
     resetCraftingTimer(room);

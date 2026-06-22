@@ -317,7 +317,6 @@ const flowActionDefinitions = [
       room.votingWinners = [];
       room.playersShown = false;
       room.playerAnswersShown = false;
-      room.wipeShown = false;
       room.hiddenPlayerAnswerIds = new Set();
       room.displayedPlayerAnswers = new Map();
       room.displayedAnswerCorrectness = new Map();

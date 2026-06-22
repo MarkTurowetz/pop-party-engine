@@ -4,6 +4,7 @@ let playerAnswerBubbleControllerInstance = null;
 let playerRosterRendererInstance = null;
 let stageDebugPanelInstance = null;
 let stageWipeControllerInstance = null;
+let stageRenderOrchestratorInstance = null;
 
 function stageVisualControllers() {
   return window.PartyGameStageVisualControllers || null;
@@ -37,7 +38,7 @@ function craftingTimerController() {
       element: craftingTimer,
       label: craftingTimerLabel,
       timerSink: (timerId) => textObjectTimers.push(timerId),
-      getRenderedActionKey: () => renderedActionKey,
+      getRenderedActionKey: () => currentRenderedActionKey(),
       getCurrentStageState: () => currentStageState,
       fallbackDurationMs: () => Math.max(1, Number(gameConstants.craftingTimerDuration || 30)) * 1000
     });
@@ -88,6 +89,29 @@ function stageWipeController() {
     });
   }
   return stageWipeControllerInstance;
+}
+
+function stageRenderOrchestrator() {
+  if (!stageRenderOrchestratorInstance && window.PartyGameStageRenderOrchestrator) {
+    stageRenderOrchestratorInstance = window.PartyGameStageRenderOrchestrator.createOrchestrator({
+      applyStageState,
+      cancelStageWipe,
+      clearPointPopups: () => playerRosterRenderer()?.clearPointPopups(),
+      clearStageAudioPlayers,
+      completeFlowAction,
+      prepareNewStageAction,
+      renderVotingCards,
+      runStageAction,
+      runStageWipe,
+      scheduleSubActions,
+      showStageDecisionHalt
+    });
+  }
+  return stageRenderOrchestratorInstance;
+}
+
+function currentRenderedActionKey() {
+  return stageRenderOrchestrator()?.actionKey() || "";
 }
 
 let votingCardVisualRenderer = null;
@@ -237,7 +261,7 @@ function setStageWipeShownForAction(action, options = {}) {
 function syncStageWipeShown(lobby) {
   if (lobby?.action?.type === "setWipeShown") return;
   stageWipeController()?.syncShown(lobby?.wipeShown === true, {
-    actionKey: renderedActionKey,
+    actionKey: currentRenderedActionKey(),
     instant: true
   });
 }
@@ -339,50 +363,7 @@ function applyStageState(lobby) {
 }
 
 function renderStageLobby(lobby) {
-  const nextPhase = lobby.phase || "lobby";
-  const actionKey = `${nextPhase}:${lobby.action?.id || lobby.action?.index || ""}:${lobby.action?.type || ""}`;
-  const isNewAction = renderedActionKey !== actionKey;
-  const haltedByDecision = lobby.lastDecisionTrace?.selectedTarget === "none";
-  const currentActionIsWipeControl = lobby.action?.type === "setWipeShown";
-  const shouldWipeToIntro = renderedStagePhase
-    && renderedStagePhase !== "intro"
-    && nextPhase === "intro"
-    && lobby.wipeShown !== true
-    && !currentActionIsWipeControl;
-  const isNewPhase = renderedStagePhase && renderedStagePhase !== nextPhase;
-  if (isNewPhase) {
-    clearStageAudioPlayers();
-    playerRosterRenderer()?.clearPointPopups();
-    renderVotingCards([]);
-  }
-  renderedStagePhase = nextPhase;
-  if (isNewAction) prepareNewStageAction(lobby, actionKey);
-  if (haltedByDecision) {
-    cancelStageWipe();
-    showStageDecisionHalt(lobby);
-    renderedActionKey = actionKey;
-    applyStageState({ ...lobby, action: null });
-    return;
-  }
-  if (lobby.action?.type === "transition" && isNewAction) {
-    renderedActionKey = actionKey;
-    scheduleSubActions(lobby.action, actionKey);
-    runStageWipe(() => {
-      applyStageState(lobby);
-      completeFlowAction("callback", lobby.action.id);
-    });
-    return;
-  }
-  renderedActionKey = actionKey;
-  if (shouldWipeToIntro) {
-    runStageWipe(() => {
-      applyStageState(lobby);
-      if (isNewAction) runStageAction(lobby.action, true, actionKey);
-    });
-    return;
-  }
-  applyStageState(lobby);
-  if (isNewAction) runStageAction(lobby.action, true, actionKey);
+  stageRenderOrchestrator()?.render(lobby);
 }
 
 function prepareNewStageAction(lobby, actionKey) {
@@ -399,7 +380,7 @@ function scheduleActionTiming(lobby, actionKey) {
   if (!action || action.timing?.mode !== "S+") return;
   const delayMs = Math.max(0, Number(action.timing.seconds || 0) * 1000);
   actionTimingTimer = window.setTimeout(() => {
-    if (renderedActionKey !== actionKey) return;
+    if (currentRenderedActionKey() !== actionKey) return;
     completeFlowAction("startTimer", action.id);
   }, delayMs);
 }
@@ -408,11 +389,11 @@ function scheduleSubActions(action, actionKey) {
   for (const subAction of action?.subActions || []) {
     const delayMs = Math.max(0, Number(subAction.timing?.seconds || 0) * 1000);
     if (delayMs === 0) {
-      if (renderedActionKey === actionKey) runStageAction(subAction, false, actionKey);
+      if (currentRenderedActionKey() === actionKey) runStageAction(subAction, false, actionKey);
       continue;
     }
     const timerId = window.setTimeout(() => {
-      if (renderedActionKey !== actionKey) return;
+      if (currentRenderedActionKey() !== actionKey) return;
       runStageAction(subAction, false, actionKey);
     }, delayMs);
     subActionTimers.push(timerId);
@@ -434,7 +415,7 @@ function playStageAudioAction(action, isPrimary, actionKey) {
     stageAudioPlayers.delete(audio);
     audio.removeEventListener("ended", finish);
     audio.removeEventListener("error", finish);
-    if (!wasInterrupted && isPrimary && renderedActionKey === actionKey && action.timing?.mode !== "S+") {
+    if (!wasInterrupted && isPrimary && currentRenderedActionKey() === actionKey && action.timing?.mode !== "S+") {
       completeFlowAction("callback", action.id);
     }
   };
@@ -450,7 +431,7 @@ function getStageActionRunner() {
     stageActionRunner = window.PartyGameStageActionRunners.createRunner({
       applyFlowActionEffect,
       completeFlowAction,
-      isCurrentActionKey: (actionKey) => renderedActionKey === actionKey,
+      isCurrentActionKey: (actionKey) => currentRenderedActionKey() === actionKey,
       playStageAudioAction,
       playerAnswerBubbleAnimationRemaining,
       runStageWipe,
