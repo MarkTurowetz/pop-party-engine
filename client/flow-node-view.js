@@ -1209,23 +1209,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     rerender();
   }));
   if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
-    const textTargetOptions = textTargetOptionsForFlowState(state.id, action.textTarget || "presentation");
-    target.appendChild(flowSelect("Text Field", normalizeTextTargetId(action.textTarget || textTargetOptions[0]?.id || "presentation"), textTargetOptions, (value) => {
-      action.textTarget = value;
-      rerender();
-    }));
-    target.appendChild(flowTextarea("Text", action.text || "", (value) => {
-      action.text = value;
-      rerender(false);
-    }));
-    target.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      rerender();
-    }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendTextActionControls(target, state, action, rerender);
   }
   if (action.type === "multipleChoiceInput") {
     target.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", choiceInputModeOptions(), (value) => {

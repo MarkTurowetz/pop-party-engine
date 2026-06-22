@@ -1,0 +1,36 @@
+(function () {
+  "use strict";
+
+  function createActionControlGroups(context) {
+    function appendTextActionControls(target, state, action, rerender) {
+      const textTargetOptions = context.textTargetOptionsForFlowState(state.id, action.textTarget || "presentation");
+      target.appendChild(context.flowSelect("Text Field", context.normalizeTextTargetId(action.textTarget || textTargetOptions[0]?.id || "presentation"), textTargetOptions, (value) => {
+        action.textTarget = value;
+        rerender();
+      }));
+      target.appendChild(context.flowTextarea("Text", action.text || "", (value) => {
+        action.text = value;
+        rerender(false);
+      }));
+      appendBooleanSelect(target, "Text Visible", action.isShown === false ? "false" : "true", true, (value) => {
+        action.isShown = value !== "false";
+        rerender();
+      });
+      appendBooleanSelect(target, "Instant", action.instant === true ? "true" : "false", false, (value) => {
+        action.instant = value === "true";
+        rerender();
+      });
+    }
+
+    function appendBooleanSelect(target, label, value, trueFirst, onChange) {
+      target.appendChild(context.flowSelect(label, value, context.flowTrueFalseOptions(trueFirst), onChange));
+    }
+
+    return {
+      appendBooleanSelect,
+      appendTextActionControls
+    };
+  }
+
+  window.PartyGameFlowActionControlGroups = { createActionControlGroups };
+})();

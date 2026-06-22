@@ -270,6 +270,21 @@ function transitionTriggerOptions() {
   ];
 }
 
+let flowActionControlGroups = null;
+
+function getFlowActionControlGroups() {
+  if (!flowActionControlGroups && window.PartyGameFlowActionControlGroups) {
+    flowActionControlGroups = window.PartyGameFlowActionControlGroups.createActionControlGroups({
+      flowSelect,
+      flowTextarea,
+      flowTrueFalseOptions,
+      normalizeTextTargetId,
+      textTargetOptionsForFlowState
+    });
+  }
+  return flowActionControlGroups;
+}
+
 function flowTargetActionName(actionId) {
   if (!actionId) return "No Connection";
   if (actionId === "none") return "None";
@@ -852,23 +867,7 @@ function renderFlowEditor() {
     renderFlowTool();
   }));
   if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
-    const textTargetOptions = textTargetOptionsForFlowState(state.id, action.textTarget);
-    flowEditor.appendChild(flowSelect("Text Field", normalizeTextTargetId(action.textTarget || ""), textTargetOptions, (value) => {
-      action.textTarget = value;
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowTextarea("Text", action.text || "", (value) => {
-      action.text = value;
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("Text Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendTextActionControls(flowEditor, state, action, () => renderFlowListAndPublish());
   }
   if (action.type === "multipleChoiceInput") {
     flowEditor.appendChild(flowSelect("Button Style", action.inputMode || "singleSelect", choiceInputModeOptions(), (value) => {
