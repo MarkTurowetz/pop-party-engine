@@ -272,6 +272,7 @@ function transitionTriggerOptions() {
 
 let flowActionControlGroups = null;
 let flowActionInspectorRegistry = null;
+let flowNodeWireRenderer = null;
 
 function getFlowActionControlGroups() {
   if (!flowActionControlGroups && window.PartyGameFlowActionControlGroups) {
@@ -322,6 +323,18 @@ function getFlowActionInspectorRegistry() {
     });
   }
   return flowActionInspectorRegistry;
+}
+
+function getFlowNodeWireRenderer() {
+  if (!flowNodeWireRenderer && window.PartyGameFlowNodeWires) {
+    flowNodeWireRenderer = window.PartyGameFlowNodeWires.createFlowNodeWireRenderer({
+      flowNodeGraph: () => flowNodeGraph,
+      flowNodeWireLabels: () => flowNodeWireLabels,
+      flowNodeWires: () => flowNodeWires,
+      flowNodeZoom: () => flowNodeZoom
+    });
+  }
+  return flowNodeWireRenderer;
 }
 
 function flowTargetActionName(actionId) {

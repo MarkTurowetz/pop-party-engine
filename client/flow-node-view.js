@@ -1,8 +1,7 @@
 function renderFlowNodeView() {
   if (!flowNodeLayer || !flowNodeWires || flowViewMode !== "node") return;
   flowNodeLayer.replaceChildren();
-  flowNodeWires.replaceChildren();
-  flowNodeWireLabels?.replaceChildren();
+  clearFlowNodeWires();
   pendingNodeConnection = null;
   if (flowNodeDepth === "moments") {
     renderFlowMomentNodes();
@@ -187,71 +186,16 @@ function systemNodeModel(state, nodeId) {
   };
 }
 
-function nodeRectPoint(node, anchor = "center") {
-  if (!node || !flowNodeGraph) return { x: 0, y: 0 };
-  const nodeRect = node.getBoundingClientRect();
-  const rootRect = flowNodeGraph.getBoundingClientRect();
-  const x = nodeRect.left - rootRect.left + nodeRect.width / 2;
-  const anchorY = anchor === "top"
-    ? nodeRect.top - rootRect.top
-    : anchor === "bottom"
-      ? nodeRect.bottom - rootRect.top
-      : nodeRect.top - rootRect.top + nodeRect.height / 2;
-  return {
-    x: x / flowNodeZoom,
-    y: anchorY / flowNodeZoom
-  };
-}
-
-function nodePoint(node, anchor = "center") {
-  if (node?.classList?.contains("flow-node-branch") || node?.classList?.contains("flow-node-subaction")) {
-    if (anchor === "source") {
-      return nodeRectPoint(node.closest(".flow-node") || node, "bottom");
-    }
-    return nodeRectPoint(node, anchor === "target" ? "top" : "center");
-  }
-  if (anchor === "source") {
-    return nodeRectPoint(node, "bottom");
-  }
-  if (anchor === "target") {
-    const main = node.querySelector?.(".flow-node-main");
-    return nodeRectPoint(main || node, "top");
-  }
-  const main = node.querySelector?.(".flow-node-main");
-  return nodeRectPoint(main || node, "center");
-}
-
-function addFlowNodeWireLabel(text, from, to) {
-  if (!flowNodeWireLabels || !text) return;
-  const label = document.createElement("div");
-  label.className = "flow-node-wire-label";
-  label.textContent = text;
-  label.style.left = `${(from.x + to.x) / 2}px`;
-  label.style.top = `${(from.y + to.y) / 2}px`;
-  flowNodeWireLabels.appendChild(label);
+function clearFlowNodeWires() {
+  getFlowNodeWireRenderer()?.clear();
 }
 
 function drawNodeWire(fromNode, toNode, optionsOrMuted = false) {
-  if (!fromNode || !toNode) return;
-  const options = typeof optionsOrMuted === "boolean" ? { muted: optionsOrMuted } : (optionsOrMuted || {});
-  const from = nodePoint(fromNode, options.fromAnchor || "source");
-  const to = nodePoint(toNode, options.toAnchor || "target");
-  const curve = Math.max(50, Math.abs(to.y - from.y) * 0.35);
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("class", `flow-node-wire${options.muted ? " is-muted" : ""}${options.highlighted ? " is-highlighted" : ""}`);
-  path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x} ${from.y + curve}, ${to.x} ${to.y - curve}, ${to.x} ${to.y}`);
-  flowNodeWires.appendChild(path);
-  addFlowNodeWireLabel(options.label || "", from, to);
+  getFlowNodeWireRenderer()?.draw(fromNode, toNode, optionsOrMuted);
 }
 
 function drawPreviewNodeWire(fromNode, to) {
-  if (!fromNode || !to || !flowNodeWires) return;
-  const from = nodePoint(fromNode, "source");
-  const curve = Math.max(50, Math.abs(to.y - from.y) * 0.35);
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("class", "flow-node-wire is-preview");
-  path.setAttribute("d", `M ${from.x} ${from.y} C ${from.x} ${from.y + curve}, ${to.x} ${to.y - curve}, ${to.x} ${to.y}`);
-  flowNodeWires.appendChild(path);
+  getFlowNodeWireRenderer()?.drawPreview(fromNode, to);
 }
 
 function scheduleFlowNodeWireRedraw() {
@@ -265,11 +209,7 @@ function scheduleFlowNodeWireRedraw() {
 }
 
 function flowNodeLocalPoint(event) {
-  const rootRect = flowNodeGraph.getBoundingClientRect();
-  return {
-    x: (event.clientX - rootRect.left) / flowNodeZoom,
-    y: (event.clientY - rootRect.top) / flowNodeZoom
-  };
+  return getFlowNodeWireRenderer()?.localPoint(event) || { x: 0, y: 0 };
 }
 
 function shouldDrawImplicitActionWire(action) {
@@ -288,8 +228,7 @@ function selectedNodeWireMatches(sourceAction, targetId = "", branchId = "") {
 
 function redrawFlowNodeWires() {
   if (!flowNodeWires || !flowNodeLayer) return;
-  flowNodeWires.replaceChildren();
-  flowNodeWireLabels?.replaceChildren();
+  clearFlowNodeWires();
   if (flowNodeDepth === "moments") {
     const stateNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node"))
       .map((node) => [node.dataset.nodeId, node]));
