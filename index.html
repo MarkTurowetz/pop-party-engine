@@ -2509,11 +2509,11 @@
 
     .host-audio-list-title {
       width: 100%;
-      min-height: 28px;
+      min-height: 26px;
       border-width: 3px;
       border-radius: 8px;
       padding: 2px 7px;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 1000;
       line-height: 1;
       text-transform: uppercase;
@@ -3719,6 +3719,52 @@
       grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
     }
 
+    .host-audio-list {
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .host-audio-list-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      min-height: 82px;
+      max-height: 96px;
+      padding: 9px 10px;
+      border: 4px solid var(--ink);
+      border-radius: 10px;
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.24);
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .host-audio-list-item.is-selected {
+      background: var(--cyan);
+      box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.32);
+    }
+
+    .host-audio-list-copy {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .host-audio-list-preview {
+      display: -webkit-box;
+      overflow: hidden;
+      color: #5e5475;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-transform: none;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
     .host-audio-editor {
       display: grid;
       gap: 12px;
@@ -3728,24 +3774,34 @@
 
     .host-audio-line-list {
       display: grid;
-      gap: 12px;
+      gap: 9px;
+      align-content: start;
     }
 
     .host-audio-line-card {
       display: grid;
-      gap: 10px;
-      padding: 12px;
+      gap: 8px;
+      min-height: 66px;
+      padding: 9px 10px;
       border: 4px solid var(--ink);
       border-radius: 8px;
       background: var(--paper);
       box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.3);
       cursor: grab;
-      transition: transform 120ms ease, box-shadow 120ms ease;
+      overflow: hidden;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .host-audio-line-card:not(.is-selected) {
+      max-height: 74px;
+      align-content: center;
     }
 
     .host-audio-line-card.is-selected {
+      overflow: visible;
       outline: 4px solid var(--yellow);
       outline-offset: 3px;
+      background: var(--cream);
       box-shadow: 7px 7px 0 rgba(23, 19, 31, 0.42);
     }
 
@@ -3765,10 +3821,11 @@
     }
 
     .host-audio-line-header {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
       gap: 10px;
+      min-width: 0;
     }
 
     .host-audio-line-header strong {
@@ -3776,6 +3833,22 @@
       font-size: 14px;
       font-weight: 1000;
       text-transform: uppercase;
+    }
+
+    .host-audio-line-copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .host-audio-line-summary {
+      overflow: hidden;
+      color: #5e5475;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .host-audio-line-actions {
@@ -3792,6 +3865,19 @@
       border-radius: 8px;
       font-size: 11px;
       box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .host-audio-line-fields {
+      display: grid;
+      gap: 10px;
+    }
+
+    .host-audio-line-card:not(.is-selected) .host-audio-line-fields {
+      display: none;
+    }
+
+    .host-audio-line-fields .flow-textarea {
+      min-height: 72px;
     }
 
     @media (max-width: 760px) {
@@ -4219,7 +4305,7 @@
           <h1>Host Audios</h1>
           <p id="hostAudioStorageStatus">Checking audio storage...</p>
         </div>
-        <div class="flow-list" id="hostAudioList"></div>
+        <div class="flow-list host-audio-list" id="hostAudioList"></div>
         <div class="flow-actions">
           <button class="secondary-button" id="addHostAudioButton" type="button">Add Host Audio</button>
           <button class="secondary-button" id="revertHostAudiosButton" type="button">Revert</button>

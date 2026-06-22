@@ -171,6 +171,13 @@ function firstHostAudioLinePreview(hostAudio) {
   return text || "First line: empty";
 }
 
+function hostAudioLinePreview(line) {
+  const text = String(line?.text || "").trim();
+  if (text) return text;
+  const url = String(line?.url || "").trim();
+  return url ? "Audio URL set" : "Empty line";
+}
+
 function updateHostAudioStorageStatus(storage) {
   if (!hostAudioStorageStatus) return;
   if (!storage) {
@@ -334,20 +341,28 @@ function renderHostAudioList() {
   }
   for (const item of hostAudios.hostAudios) {
     const button = document.createElement("div");
-    button.className = "flow-state-header";
+    button.className = "host-audio-list-item";
     button.setAttribute("role", "button");
     button.tabIndex = 0;
     button.classList.toggle("is-selected", item.id === selectedHostAudioId);
-    button.innerHTML = `<span><input class="text-input host-audio-list-title"><span></span></span><span class="flow-pill"></span>`;
-    const titleInput = button.querySelector(".host-audio-list-title");
+    const copy = document.createElement("span");
+    copy.className = "host-audio-list-copy";
+    const titleInput = document.createElement("input");
+    titleInput.className = "text-input host-audio-list-title";
+    const preview = document.createElement("span");
+    preview.className = "host-audio-list-preview";
+    const count = document.createElement("span");
+    count.className = "flow-pill";
     titleInput.value = item.name || "Host Audio";
     titleInput.addEventListener("click", (event) => event.stopPropagation());
     titleInput.addEventListener("keydown", (event) => event.stopPropagation());
     titleInput.addEventListener("change", () => {
       renameHostAudio(item.id, titleInput.value);
     });
-    button.querySelector("span span").textContent = firstHostAudioLinePreview(item);
-    button.querySelector(".flow-pill").textContent = `${(item.lines || []).length} lines`;
+    preview.textContent = firstHostAudioLinePreview(item);
+    count.textContent = `${(item.lines || []).length} lines`;
+    copy.append(titleInput, preview);
+    button.append(copy, count);
     const select = () => {
       selectedHostAudioId = item.id;
       renderHostAudioTool();
@@ -371,11 +386,18 @@ function createHostAudioLineCard(line, index) {
   card.draggable = true;
   card.dataset.lineId = line.id;
   card.tabIndex = 0;
+  card.setAttribute("aria-expanded", String(isSelected));
 
   const header = document.createElement("div");
   header.className = "host-audio-line-header";
+  const copy = document.createElement("div");
+  copy.className = "host-audio-line-copy";
   const title = document.createElement("strong");
   title.textContent = `Line ${index + 1}`;
+  const summary = document.createElement("span");
+  summary.className = "host-audio-line-summary";
+  summary.textContent = hostAudioLinePreview(line);
+  copy.append(title, summary);
   const actions = document.createElement("div");
   actions.className = "host-audio-line-actions";
   if (isSelected) {
@@ -401,32 +423,31 @@ function createHostAudioLineCard(line, index) {
       event.stopPropagation();
       moveHostAudioLine(line.id, 1);
     });
-    actions.append(upButton, downButton);
+    const playButton = document.createElement("button");
+    playButton.type = "button";
+    playButton.className = "secondary-button";
+    playButton.textContent = "Play";
+    playButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+    const stopButton = document.createElement("button");
+    stopButton.type = "button";
+    stopButton.className = "secondary-button";
+    stopButton.textContent = "Stop";
+    stopButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "secondary-button";
+    deleteButton.textContent = "Delete";
+    deleteButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      removeHostAudioLine(line.id);
+    });
+    actions.append(upButton, downButton, playButton, stopButton, deleteButton);
   }
-  const playButton = document.createElement("button");
-  playButton.type = "button";
-  playButton.className = "secondary-button";
-  playButton.textContent = "Play";
-  playButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-  });
-  const stopButton = document.createElement("button");
-  stopButton.type = "button";
-  stopButton.className = "secondary-button";
-  stopButton.textContent = "Stop";
-  stopButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-  });
-  const deleteButton = document.createElement("button");
-  deleteButton.type = "button";
-  deleteButton.className = "secondary-button";
-  deleteButton.textContent = "Delete";
-  deleteButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    removeHostAudioLine(line.id);
-  });
-  actions.append(playButton, stopButton, deleteButton);
-  header.append(title, actions);
+  header.append(copy, actions);
 
   const textField = document.createElement("label");
   textField.className = "field-label flow-form-grid";
@@ -456,6 +477,10 @@ function createHostAudioLineCard(line, index) {
   urlInput.value = line.url || "";
   urlInput.addEventListener("change", () => updateHostAudioLine(line.id, { url: urlInput.value.trim().slice(0, 2000) }));
   urlField.appendChild(urlInput);
+
+  const fields = document.createElement("div");
+  fields.className = "host-audio-line-fields";
+  fields.append(textField, urlField);
 
   card.addEventListener("click", (event) => {
     if (event.target.closest("input, textarea, button")) return;
@@ -504,7 +529,7 @@ function createHostAudioLineCard(line, index) {
     if (shouldRenderSelection) renderHostAudioTool();
   });
 
-  card.append(header, textField, urlField);
+  card.append(header, fields);
   return card;
 }
 
