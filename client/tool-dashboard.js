@@ -7,30 +7,74 @@ async function loadGameConstants() {
   renderConstantsTool();
 }
 
+const TOOL_DEFINITIONS = [
+  {
+    id: "flow",
+    label: "Flow Tool",
+    screen: () => flowScreen,
+    isDirty: () => isFlowDirty(),
+    save: () => saveGameFlow(),
+    setup: () => setupFlowTool()
+  },
+  {
+    id: "host-audio",
+    label: "Host Audios",
+    screen: () => hostAudioScreen,
+    isDirty: () => isHostAudiosDirty(),
+    save: () => saveHostAudios(),
+    setup: () => setupHostAudioTool()
+  },
+  {
+    id: "constants",
+    label: "Game Constants",
+    screen: () => constantsScreen,
+    isDirty: () => constantsSavedSnapshot && JSON.stringify(gameConstants) !== constantsSavedSnapshot,
+    save: () => saveGameConstants(),
+    setup: () => setupConstantsTool()
+  },
+  {
+    id: "art",
+    label: "Art Manager",
+    screen: () => artScreen,
+    isDirty: () => Boolean(pendingArtReplacement) || isArtCompositionsDirty(),
+    save: async () => {
+      if (pendingArtReplacement) await saveArtReplacement();
+      if (isArtCompositionsDirty()) await saveArtCompositions();
+    },
+    setup: () => setupArtTool()
+  },
+  {
+    id: "layout",
+    label: "Layout Tool",
+    screen: () => layoutScreen,
+    isDirty: () => isLayoutDirty(),
+    save: () => saveStageLayouts(),
+    setup: () => setupLayoutTool("stage")
+  },
+  {
+    id: "controller-layout",
+    label: "Controller Layout Tool",
+    screen: () => layoutScreen,
+    isDirty: () => isControllerLayoutDirty(),
+    save: () => saveControllerLayouts(),
+    setup: () => setupLayoutTool("controller")
+  }
+];
 
+function toolDefinition(toolId) {
+  return TOOL_DEFINITIONS.find((definition) => definition.id === toolId) || null;
+}
 
 function toolLabel(toolId) {
-  if (toolId === "flow") return "Flow Tool";
-  if (toolId === "host-audio") return "Host Audios";
-  if (toolId === "constants") return "Game Constants";
-  if (toolId === "art") return "Art Manager";
-  if (toolId === "layout") return "Layout Tool";
-  if (toolId === "controller-layout") return "Controller Layout Tool";
-  return "Tool";
+  return toolDefinition(toolId)?.label || "Tool";
 }
 
 function isToolDirty(toolId) {
-  if (toolId === "art") return Boolean(pendingArtReplacement) || isArtCompositionsDirty();
-  if (toolId === "flow") return isFlowDirty();
-  if (toolId === "host-audio") return isHostAudiosDirty();
-  if (toolId === "constants") return constantsSavedSnapshot && JSON.stringify(gameConstants) !== constantsSavedSnapshot;
-  if (toolId === "layout") return isLayoutDirty();
-  if (toolId === "controller-layout") return isControllerLayoutDirty();
-  return false;
+  return Boolean(toolDefinition(toolId)?.isDirty());
 }
 
 function hasGlobalSaveWork() {
-  return isToolDirty("art") || isToolDirty("flow") || isToolDirty("host-audio") || isToolDirty("constants") || isToolDirty("layout") || isToolDirty("controller-layout");
+  return TOOL_DEFINITIONS.some((definition) => isToolDirty(definition.id));
 }
 
 function updateGlobalSaveButton() {
@@ -39,30 +83,8 @@ function updateGlobalSaveButton() {
 }
 
 async function saveTool(toolId) {
-  if (toolId === "art") {
-    if (pendingArtReplacement) await saveArtReplacement();
-    if (isArtCompositionsDirty()) await saveArtCompositions();
-    return;
-  }
-  if (toolId === "flow") {
-    await saveGameFlow();
-    return;
-  }
-  if (toolId === "host-audio") {
-    await saveHostAudios();
-    return;
-  }
-  if (toolId === "constants") {
-    await saveGameConstants();
-    return;
-  }
-  if (toolId === "layout") {
-    await saveStageLayouts();
-    return;
-  }
-  if (toolId === "controller-layout") {
-    await saveControllerLayouts();
-  }
+  const definition = toolDefinition(toolId);
+  if (definition) await definition.save();
 }
 
 async function saveAllTools() {
@@ -70,13 +92,9 @@ async function saveAllTools() {
   globalSaveButton.disabled = true;
   globalSaveButton.textContent = "Saving";
   try {
-    if (pendingArtReplacement) await saveArtReplacement();
-    if (isArtCompositionsDirty()) await saveArtCompositions();
-    if (isFlowDirty()) await saveGameFlow();
-    if (isHostAudiosDirty()) await saveHostAudios();
-    if (isToolDirty("constants")) await saveGameConstants();
-    if (isLayoutDirty()) await saveStageLayouts();
-    if (isControllerLayoutDirty()) await saveControllerLayouts();
+    for (const definition of TOOL_DEFINITIONS) {
+      if (isToolDirty(definition.id)) await definition.save();
+    }
   } finally {
     globalSaveButton.textContent = "Save All";
     updateGlobalSaveButton();
@@ -103,32 +121,19 @@ async function confirmToolSwitch() {
 }
 
 function hideToolScreens() {
-  artScreen.classList.add("hidden");
-  flowScreen.classList.add("hidden");
-  hostAudioScreen.classList.add("hidden");
-  constantsScreen.classList.add("hidden");
-  layoutScreen.classList.add("hidden");
+  new Set(TOOL_DEFINITIONS.map((definition) => definition.screen()).filter(Boolean)).forEach((screen) => {
+    screen.classList.add("hidden");
+  });
 }
 
 async function activateTool(toolId, { force = false } = {}) {
-  if (!force && toolId === activeToolId) return;
+  const definition = toolDefinition(toolId) || toolDefinition("flow");
+  if (!force && definition.id === activeToolId) return;
   if (!force && !(await confirmToolSwitch())) return;
   hideToolScreens();
-  activeToolId = toolId;
-  toolTabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.toolTarget === toolId));
-  if (toolId === "art") {
-    await setupArtTool();
-  } else if (toolId === "host-audio") {
-    await setupHostAudioTool();
-  } else if (toolId === "constants") {
-    await setupConstantsTool();
-  } else if (toolId === "layout") {
-    await setupLayoutTool("stage");
-  } else if (toolId === "controller-layout") {
-    await setupLayoutTool("controller");
-  } else {
-    await setupFlowTool();
-  }
+  activeToolId = definition.id;
+  toolTabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.toolTarget === definition.id));
+  await definition.setup();
 }
 
 function setupToolDashboard() {
@@ -144,6 +149,6 @@ function setupToolDashboard() {
   toolTabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTool(tab.dataset.toolTarget));
   });
-  const initialTool = ["flow", "host-audio", "constants", "art", "layout", "controller-layout"].includes(params.get("tool")) ? params.get("tool") : "flow";
+  const initialTool = toolDefinition(params.get("tool"))?.id || "flow";
   activateTool(initialTool, { force: true });
 }

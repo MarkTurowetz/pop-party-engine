@@ -79,6 +79,8 @@ concepts into focused modules.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants, and Host Audio
     tools use this shared primitive instead of owning bespoke history stacks.
+  - `client/tool-dashboard.js` owns the dashboard tool registry for labels, dirty checks,
+    save behavior, screen hiding, and setup behavior.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
