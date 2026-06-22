@@ -343,7 +343,12 @@ function renderStageLobby(lobby) {
   const actionKey = `${nextPhase}:${lobby.action?.id || lobby.action?.index || ""}:${lobby.action?.type || ""}`;
   const isNewAction = renderedActionKey !== actionKey;
   const haltedByDecision = lobby.lastDecisionTrace?.selectedTarget === "none";
-  const shouldWipeToIntro = renderedStagePhase && renderedStagePhase !== "intro" && nextPhase === "intro" && lobby.wipeShown !== true;
+  const currentActionIsWipeControl = lobby.action?.type === "setWipeShown";
+  const shouldWipeToIntro = renderedStagePhase
+    && renderedStagePhase !== "intro"
+    && nextPhase === "intro"
+    && lobby.wipeShown !== true
+    && !currentActionIsWipeControl;
   const isNewPhase = renderedStagePhase && renderedStagePhase !== nextPhase;
   if (isNewPhase) {
     clearStageAudioPlayers();

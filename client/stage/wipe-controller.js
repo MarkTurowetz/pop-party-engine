@@ -32,6 +32,14 @@
       if (this.element) this.element.dataset.wipeShown = this.targetShown ? "true" : "false";
     }
 
+    isVisuallyPresent() {
+      if (!this.element || this.element.classList.contains("hidden")) return false;
+      if (this.targetShown === true) return true;
+      return this.element.classList.contains("is-entering")
+        || this.element.classList.contains("is-covered")
+        || this.element.classList.contains("is-exiting");
+    }
+
     resetHidden() {
       if (!this.element) return;
       this.element.classList.add("hidden");
@@ -57,7 +65,7 @@
             appear: this.motionDuration(false),
             disappear: this.motionDuration(false)
           },
-          getVisible: () => this.targetShown === true,
+          getVisible: () => this.isVisuallyPresent(),
           setVisible: (isVisible) => this.setVisibleState(isVisible),
           animationHandlers: {
             appear: (api) => this.playAppear(api),
