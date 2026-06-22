@@ -12,14 +12,23 @@
         action.text = value;
         rerender(false);
       }));
-      appendBooleanSelect(target, "Text Visible", action.isShown === false ? "false" : "true", true, (value) => {
-        action.isShown = value !== "false";
-        rerender();
-      });
+      appendVisibilityControls(target, action, rerender, { visibleLabel: "Text Visible" });
+    }
+
+    function appendInstantControl(target, action, rerender) {
       appendBooleanSelect(target, "Instant", action.instant === true ? "true" : "false", false, (value) => {
         action.instant = value === "true";
         rerender();
       });
+    }
+
+    function appendVisibilityControls(target, action, rerender, options = {}) {
+      const visibleLabel = options.visibleLabel || "Visible";
+      appendBooleanSelect(target, visibleLabel, action.isShown === false ? "false" : "true", true, (value) => {
+        action.isShown = value !== "false";
+        rerender();
+      });
+      if (options.includeInstant !== false) appendInstantControl(target, action, rerender);
     }
 
     function appendBooleanSelect(target, label, value, trueFirst, onChange) {
@@ -28,6 +37,8 @@
 
     return {
       appendBooleanSelect,
+      appendInstantControl,
+      appendVisibilityControls,
       appendTextActionControls
     };
   }

@@ -1304,18 +1304,13 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
   }
   if (action.type === "setVotingCardsShown") {
-    target.appendChild(flowSelect("Voting Cards Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      rerender();
-    }));
+    const controls = getFlowActionControlGroups();
+    controls?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Voting Cards Visible", includeInstant: false });
     target.appendChild(flowSelect("Cards", action.cardFilter || "all", votingCardFilterOptions(), (value) => {
       action.cardFilter = value;
       rerender();
     }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      rerender();
-    }));
+    controls?.appendInstantControl(target, action, rerender);
   }
   if (action.type === "voteOnAnswersInput") {
     target.appendChild(flowTextarea("Prompt Text", action.prompt || "Vote for your favorite answer", (value) => {
@@ -1377,24 +1372,10 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {
-    target.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      rerender();
-    }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Players Visible" });
   }
   if (action.type === "setPlayerAnswersShown") {
-    target.appendChild(flowSelect("Player Answers Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      rerender();
-    }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Player Answers Visible" });
     target.appendChild(flowSelect("Players", action.playerFilter || "all", playerFilterOptions(), (value) => {
       action.playerFilter = value;
       rerender();
@@ -1418,14 +1399,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Transfers every player's pending points into their score, then resets pending points to 0. No visual popup is shown."));
   }
   if (action.type === "setTimerShown") {
-    target.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      rerender();
-    }));
-    target.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Timer Visible" });
   }
   if (action.type === "decision") {
     appendDecisionControls(target, state, action, rerender);

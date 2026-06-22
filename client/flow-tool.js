@@ -965,18 +965,13 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
   }
   if (action.type === "setVotingCardsShown") {
-    flowEditor.appendChild(flowSelect("Voting Cards Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      renderFlowListAndPublish();
-    }));
+    const controls = getFlowActionControlGroups();
+    controls?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Voting Cards Visible", includeInstant: false });
     flowEditor.appendChild(flowSelect("Cards", action.cardFilter || "all", votingCardFilterOptions(), (value) => {
       action.cardFilter = value;
       renderFlowListAndPublish();
     }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      renderFlowListAndPublish();
-    }));
+    controls?.appendInstantControl(flowEditor, action, () => renderFlowListAndPublish());
   }
   if (action.type === "voteOnAnswersInput") {
     flowEditor.appendChild(flowTextarea("Prompt Text", action.prompt || "Vote for your favorite answer", (value) => {
@@ -1039,24 +1034,10 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Callback fires when the selected host-audio line ends. Blank URLs complete immediately."));
   }
   if (action.type === "setPlayersShown") {
-    flowEditor.appendChild(flowSelect("Players Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Players Visible" });
   }
   if (action.type === "setPlayerAnswersShown") {
-    flowEditor.appendChild(flowSelect("Player Answers Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Player Answers Visible" });
     flowEditor.appendChild(flowSelect("Players", action.playerFilter || "all", playerFilterOptions(), (value) => {
       action.playerFilter = value;
       renderFlowListAndPublish();
@@ -1080,14 +1061,7 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Transfers every player's pending points into their score, then resets pending points to 0. No visual popup is shown."));
   }
   if (action.type === "setTimerShown") {
-    flowEditor.appendChild(flowSelect("Timer Visible", action.isShown === false ? "false" : "true", flowTrueFalseOptions(true), (value) => {
-      action.isShown = value !== "false";
-      renderFlowListAndPublish();
-    }));
-    flowEditor.appendChild(flowSelect("Instant", action.instant === true ? "true" : "false", flowTrueFalseOptions(false), (value) => {
-      action.instant = value === "true";
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Timer Visible" });
     flowEditor.appendChild(readOnlyFlowNote("Showing the timer resets it to the Crafting Timer Duration game constant. Hiding pauses it and keeps the current remaining value."));
   }
   if (action.type === "startCraftingTimer") {
