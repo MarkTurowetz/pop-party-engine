@@ -13,7 +13,7 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 768
+        "y": 1022
       },
       "entryTargetActionId": "lobby-action-mqojohry",
       "nextStateTargetId": "intro",
@@ -27,7 +27,7 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "return",
+          "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
             "x": 670,
             "y": 514
@@ -54,6 +54,25 @@
             "y": 260
           },
           "nextTargetActionId": "lobby-countdown-complete"
+        },
+        {
+          "id": "lobby-action-mqprlx3p",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "return"
         }
       ]
     },
@@ -70,9 +89,9 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 768
+        "y": 1022
       },
-      "entryTargetActionId": "",
+      "entryTargetActionId": "intro-action-mqprm6ln",
       "nextStateTargetId": "round-intro-game-state",
       "actions": [
         {
@@ -84,10 +103,10 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "intro-wipe",
+          "nextTargetActionId": "intro-action-mqprim01",
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           },
           "subActions": [],
           "text": "This is the Game Intro State",
@@ -96,21 +115,42 @@
           "instant": false
         },
         {
-          "id": "intro-wipe",
-          "name": "Do Horizontal Wipe",
-          "type": "transition",
-          "category": "standard",
+          "id": "intro-action-mqprim01",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "return",
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 768
           },
+          "nextTargetActionId": "return"
+        },
+        {
+          "id": "intro-action-mqprm6ln",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
           "subActions": [],
-          "transition": "horizontalWipe"
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "intro-present-1"
         }
       ]
     },
@@ -127,9 +167,9 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 768
+        "y": 1022
       },
-      "entryTargetActionId": "",
+      "entryTargetActionId": "round-intro-game-state-action-mqprj88i",
       "nextStateTargetId": "crafting-game-state",
       "actions": [
         {
@@ -141,10 +181,10 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "round-intro-game-state-action-mqlam2l4",
+          "nextTargetActionId": "round-intro-game-state-action-mqprjpxb",
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           },
           "subActions": [],
           "text": "Round <ROUND_NUMBER>",
@@ -153,21 +193,42 @@
           "instant": false
         },
         {
-          "id": "round-intro-game-state-action-mqlam2l4",
-          "name": "Do Transition",
-          "type": "transition",
-          "category": "standard",
+          "id": "round-intro-game-state-action-mqprj88i",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "return",
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 260
           },
+          "nextTargetActionId": "round-intro-action-mqkg361r"
+        },
+        {
+          "id": "round-intro-game-state-action-mqprjpxb",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
           "subActions": [],
-          "transition": "horizontalWipe"
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "return"
         }
       ]
     },
@@ -184,9 +245,9 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 3404
+        "y": 3658
       },
-      "entryTargetActionId": "",
+      "entryTargetActionId": "crafting-game-state-action-mqprk697",
       "nextStateTargetId": "presentation-game-state",
       "actions": [
         {
@@ -201,7 +262,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqn4qzpm",
           "nodePosition": {
             "x": 670,
-            "y": 260
+            "y": 514
           },
           "subActions": [],
           "text": "We are in the Crafting State",
@@ -221,7 +282,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqlrgs0y",
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 768
           },
           "subActions": [],
           "variableName": "multipleChoicePrompt"
@@ -238,7 +299,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqlronl5",
           "nodePosition": {
             "x": 670,
-            "y": 768
+            "y": 1022
           },
           "subActions": [],
           "isShown": true,
@@ -256,7 +317,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqlrlkp0",
           "nodePosition": {
             "x": 670,
-            "y": 1022
+            "y": 1276
           },
           "subActions": []
         },
@@ -272,7 +333,7 @@
           "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
-            "y": 1276
+            "y": 1530
           },
           "subActions": [
             {
@@ -312,7 +373,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqn4u54c",
           "nodePosition": {
             "x": 670,
-            "y": 1578
+            "y": 1832
           },
           "subActions": [
             {
@@ -337,23 +398,6 @@
           "instant": false
         },
         {
-          "id": "crafting-game-state-action-mqlag55r",
-          "name": "Do Transition",
-          "type": "transition",
-          "category": "standard",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "nextTargetActionId": "return",
-          "nodePosition": {
-            "x": 670,
-            "y": 3150
-          },
-          "subActions": [],
-          "transition": "horizontalWipe"
-        },
-        {
           "id": "crafting-game-state-action-mqn4u54c",
           "name": "Set Player Answers Shown",
           "type": "setPlayerAnswersShown",
@@ -365,7 +409,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqn9u17o",
           "nodePosition": {
             "x": 670,
-            "y": 1880
+            "y": 2134
           },
           "subActions": [],
           "isShown": true,
@@ -384,7 +428,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqn4uouf",
           "nodePosition": {
             "x": 670,
-            "y": 2134
+            "y": 2388
           },
           "subActions": []
         },
@@ -400,7 +444,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqn4v75w",
           "nodePosition": {
             "x": 670,
-            "y": 2388
+            "y": 2642
           },
           "subActions": [],
           "isShown": false,
@@ -419,7 +463,7 @@
           "nextTargetActionId": "crafting-game-state-action-mqn4xkyp",
           "nodePosition": {
             "x": 670,
-            "y": 2642
+            "y": 2896
           },
           "subActions": [],
           "playerFilter": "correct",
@@ -434,15 +478,53 @@
             "mode": "E+",
             "seconds": 1
           },
-          "nextTargetActionId": "crafting-game-state-action-mqlag55r",
+          "nextTargetActionId": "crafting-game-state-action-mqprkq1k",
           "nodePosition": {
             "x": 670,
-            "y": 2896
+            "y": 3150
           },
           "subActions": [],
           "isShown": false,
           "instant": false,
           "playerFilter": "all"
+        },
+        {
+          "id": "crafting-game-state-action-mqprk697",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlafl8m"
+        },
+        {
+          "id": "crafting-game-state-action-mqprkq1k",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 3404
+          },
+          "nextTargetActionId": "return"
         }
       ]
     },
