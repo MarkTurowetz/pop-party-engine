@@ -16,6 +16,7 @@ const artShapeStyles = [
   { value: "pill", label: "Pill" },
   { value: "circle", label: "Circle" }
 ];
+const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt", "voting-card", "custom-art"];
 
 function serializeArtCompositionsForSave(source = artCompositions) {
   return (source || []).map((composition) => ({
@@ -155,6 +156,33 @@ function allArtComponentIds(composition) {
   return new Set(flattenArtComponents(composition?.components || []).map(({ component }) => component.id));
 }
 
+function artCompositeCollapseIds() {
+  const ids = [];
+  for (const composite of avatarComposites || []) ids.push(composite.id);
+  for (const composition of artCompositions || []) {
+    ids.push(composition.id);
+    for (const { component } of flattenArtComponents(composition.components || [])) {
+      if (component.children?.length) ids.push(`${composition.id}:${component.id}`);
+    }
+  }
+  return ids;
+}
+
+function persistArtCollapseState() {
+  setLocalValue("partyTemplate.collapsedArtSections", JSON.stringify([...collapsedArtSections]));
+  setLocalValue("partyTemplate.collapsedArtComposites", JSON.stringify([...collapsedArtComposites]));
+}
+
+function renderAndPersistArtCollapseState() {
+  persistArtCollapseState();
+  renderArtList();
+}
+
+function toggleArtCollapsedIds(collapsedSet, ids) {
+  window.PartyGameToolAffordances?.toggleCollapsedSetForIds(collapsedSet, ids);
+  renderAndPersistArtCollapseState();
+}
+
 function renderArtList() {
   artAssetList.replaceChildren();
   const avatarGroup = document.createElement("section");
@@ -210,43 +238,15 @@ function renderArtList() {
   updateArtCreateButtons();
 }
 
-function createDisclosureButton(id, collapsedSet, onToggle = () => {}, onMetaToggle = null) {
-  const button = document.createElement("span");
-  button.setAttribute("role", "button");
-  button.tabIndex = 0;
-  button.className = "disclosure-button";
-  button.classList.toggle("is-collapsed", collapsedSet.has(id));
-  button.setAttribute("aria-label", collapsedSet.has(id) ? "Expand" : "Collapse");
-  const toggle = (event) => {
-    event.stopPropagation();
-    event.preventDefault();
-    if (onMetaToggle && (event.metaKey || event.ctrlKey)) {
-      onMetaToggle();
-      return;
-    }
-    if (collapsedSet.has(id)) {
-      collapsedSet.delete(id);
-    } else {
-      collapsedSet.add(id);
-    }
-    onToggle();
-  };
-  button.addEventListener("click", toggle);
-  button.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") toggle(event);
-  });
-  return button;
-}
-
-function persistFlowCollapseState() {
-  setLocalValue("partyTemplate.collapsedFlowStates", JSON.stringify([...collapsedFlowStates]));
-  setLocalValue("partyTemplate.collapsedFlowActions", JSON.stringify([...collapsedFlowActions]));
-}
-
 function createArtGroupTitle(label, collapseId, collapsedSet) {
   const title = document.createElement("div");
   title.className = "art-group-title";
-  title.appendChild(createDisclosureButton(collapseId, collapsedSet, renderArtList));
+  title.appendChild(createDisclosureButton(
+    collapseId,
+    collapsedSet,
+    renderAndPersistArtCollapseState,
+    () => toggleArtCollapsedIds(collapsedSet, artSectionCollapseIds)
+  ));
   const text = document.createElement("span");
   text.textContent = label;
   title.appendChild(text);
@@ -301,7 +301,12 @@ function createArtCompositionButton(composition) {
       <span class="art-item-meta">Editable composite art</span>
     </span>
   `;
-  button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(composition.id, collapsedArtComposites, renderArtList));
+  button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(
+    composition.id,
+    collapsedArtComposites,
+    renderAndPersistArtCollapseState,
+    () => toggleArtCollapsedIds(collapsedArtComposites, artCompositeCollapseIds())
+  ));
   button.querySelector(".art-item-title").textContent = composition.name;
   button.addEventListener("click", () => selectArtComposition(composition.id));
   return button;
@@ -321,7 +326,12 @@ function createArtComponentButton(composition, component) {
     </span>
   `;
   if (hasChildren) {
-    button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(`${composition.id}:${component.id}`, collapsedArtComposites, renderArtList));
+    button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(
+      `${composition.id}:${component.id}`,
+      collapsedArtComposites,
+      renderAndPersistArtCollapseState,
+      () => toggleArtCollapsedIds(collapsedArtComposites, artCompositeCollapseIds())
+    ));
   }
   button.querySelector(".art-item-title").textContent = component.name;
   button.querySelector(".art-item-meta").textContent = `${artKindLabel(component.kind)} object`;
@@ -358,7 +368,12 @@ function createCompositeButton(composite) {
       <span class="art-item-meta">Composite preview</span>
     </span>
   `;
-  button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(composite.id, collapsedArtComposites, renderArtList));
+  button.querySelector(".disclosure-slot").appendChild(createDisclosureButton(
+    composite.id,
+    collapsedArtComposites,
+    renderAndPersistArtCollapseState,
+    () => toggleArtCollapsedIds(collapsedArtComposites, artCompositeCollapseIds())
+  ));
   button.querySelector(".art-item-title").textContent = composite.name;
   button.addEventListener("click", () => selectArtComposite(composite.id));
   return button;
@@ -483,13 +498,34 @@ function selectArtComponent(compositionId, componentId, options = {}) {
     const next = new Set(selectedArtComponentIds);
     if (next.has(componentId)) next.delete(componentId);
     else if (validIds.has(componentId)) next.add(componentId);
-    selectedArtComponentIds = next;
+    setArtComponentSelection([...next]);
   } else {
-    selectedArtComponentIds = validIds.has(componentId) ? new Set([componentId]) : new Set();
+    setArtComponentSelection(validIds.has(componentId) ? [componentId] : []);
   }
-  selectedArtComponentId = [...selectedArtComponentIds].pop() || "";
   renderSelectedArtComposition();
   renderArtList();
+  updateArtCreateButtons();
+}
+
+function setArtComponentSelection(componentIds) {
+  const composition = selectedArtComposition();
+  if (!composition) {
+    selectedArtComponentIds = new Set();
+    selectedArtComponentId = "";
+    return;
+  }
+  const validIds = allArtComponentIds(composition);
+  const nextIds = (componentIds || []).filter((id) => validIds.has(id));
+  selectedArtComponentIds = new Set(nextIds);
+  selectedArtComponentId = nextIds[nextIds.length - 1] || "";
+}
+
+function renderArtSelectionOnly() {
+  for (const node of artPreviewArt.querySelectorAll(".art-composition-component")) {
+    node.classList.toggle("is-selected", selectedArtComponentIds.has(node.dataset.componentId));
+  }
+  renderArtList();
+  renderArtComponentEditor();
   updateArtCreateButtons();
 }
 
@@ -504,7 +540,7 @@ function renderSelectedArtComposition() {
   if (!composition) return;
   artPreviewTitle.textContent = composition.name;
   artPreviewMeta.textContent = composition.description || "Editable composite art.";
-  artPreviewArt.className = "art-preview-art is-voting-card-editor";
+  artPreviewArt.className = "art-preview-art is-composition-editor";
   const canvas = composition.canvas || { width: 560, height: 230 };
   artPreviewArt.style.setProperty("--art-composition-aspect", `${Number(canvas.width || 1) / Math.max(1, Number(canvas.height || 1))}`);
   artPreviewArt.replaceChildren();
@@ -570,6 +606,30 @@ function artCompositionPreviewScale() {
   if (!composition) return 1;
   const rect = artPreviewArt.getBoundingClientRect();
   return rect.width / Math.max(1, Number(composition.canvas?.width || 1));
+}
+
+function startArtSelectionMarquee(event) {
+  if (!selectedArtComposition() || !artPreviewArt.classList.contains("is-composition-editor")) return false;
+  const additiveSelection = event.metaKey || event.ctrlKey || event.shiftKey;
+  const baseSelection = additiveSelection ? new Set(selectedArtComponentIds) : new Set();
+  return window.PartyGameToolAffordances?.startSelectionMarquee(event, {
+    root: artPreviewArt,
+    itemRoot: artPreviewArt,
+    className: "art-selection-marquee",
+    itemSelector: ".art-composition-component",
+    getItemId: (node) => node.dataset.componentId,
+    shouldIgnoreTarget: (target) => Boolean(target.closest?.(".art-composition-component, .layout-resize-handle")),
+    onSelectionChange: (selectedIds) => {
+      const nextIds = new Set(baseSelection);
+      for (const id of selectedIds) nextIds.add(id);
+      setArtComponentSelection([...nextIds]);
+      renderArtSelectionOnly();
+    },
+    onComplete: () => {
+      renderSelectedArtComposition();
+      renderArtList();
+    }
+  });
 }
 
 function startArtComponentDrag(event, component) {
@@ -930,6 +990,7 @@ function createArtAssetComposition() {
   pendingArtReplacement = null;
   renderSelectedArtComposition();
   renderArtList();
+  persistArtCollapseState();
   updateGlobalSaveButton();
 }
 
@@ -956,6 +1017,7 @@ function createArtChildObject() {
   selectedArtComponentId = child.id;
   renderSelectedArtComposition();
   renderArtList();
+  persistArtCollapseState();
   updateGlobalSaveButton();
 }
 
@@ -1054,6 +1116,7 @@ async function setupArtTool() {
   artCreateButton.addEventListener("click", createArtAssetComposition);
   artCreateChildButton.addEventListener("click", createArtChildObject);
   window.addEventListener("keydown", handleArtHotkeys);
+  artPreviewArt.addEventListener("pointerdown", startArtSelectionMarquee);
   artSaveCompositionButton.addEventListener("click", () => saveArtCompositions().catch((error) => {
     artFileName.textContent = error.message;
   }));

@@ -614,67 +614,25 @@ function layoutPreviewPlayers() {
 }
 
 function startLayoutMarquee(event) {
-  if (event.button !== 0 || event.target.closest(".layout-preview-element")) return;
   const marqueeRoot = layoutStagePreview.parentElement || layoutStagePreview;
-  if (!marqueeRoot.contains(event.target)) return;
-  event.preventDefault();
-  const rootRect = marqueeRoot.getBoundingClientRect();
-  const startX = event.clientX - rootRect.left;
-  const startY = event.clientY - rootRect.top;
-  const marquee = document.createElement("div");
-  marquee.className = "layout-selection-marquee";
-  marqueeRoot.appendChild(marquee);
-  marqueeRoot.setPointerCapture(event.pointerId);
-
-  const updateMarquee = (moveEvent) => {
-    const currentX = moveEvent.clientX - rootRect.left;
-    const currentY = moveEvent.clientY - rootRect.top;
-    const left = Math.min(startX, currentX);
-    const top = Math.min(startY, currentY);
-    const width = Math.abs(currentX - startX);
-    const height = Math.abs(currentY - startY);
-    marquee.style.left = `${left}px`;
-    marquee.style.top = `${top}px`;
-    marquee.style.width = `${width}px`;
-    marquee.style.height = `${height}px`;
-
-    const selectionRect = { left, top, right: left + width, bottom: top + height };
-    const selectedIds = [];
-    for (const node of layoutStagePreview.querySelectorAll(".layout-preview-element:not(.is-global-preview)")) {
-      const nodeRect = node.getBoundingClientRect();
-      const localRect = {
-        left: nodeRect.left - rootRect.left,
-        top: nodeRect.top - rootRect.top,
-        right: nodeRect.right - rootRect.left,
-        bottom: nodeRect.bottom - rootRect.top
-      };
-      if (rectsIntersect(selectionRect, localRect)) selectedIds.push(node.dataset.elementId);
-    }
-    setLayoutSelection(selectedIds);
-    renderLayoutElements();
-    renderLayoutFields();
-    renderLayoutActions();
-    for (const node of layoutStagePreview.querySelectorAll(".layout-preview-element")) {
-      node.classList.toggle("is-selected", selectedLayoutElementIds.has(node.dataset.elementId) && !node.classList.contains("is-global-preview"));
-    }
-  };
-
-  const stopMarquee = () => {
-    marquee.remove();
-    window.removeEventListener("pointermove", updateMarquee);
-    window.removeEventListener("pointerup", stopMarquee);
-    window.removeEventListener("pointercancel", stopMarquee);
-    renderLayoutTool();
-  };
-
-  updateMarquee(event);
-  window.addEventListener("pointermove", updateMarquee);
-  window.addEventListener("pointerup", stopMarquee, { once: true });
-  window.addEventListener("pointercancel", stopMarquee, { once: true });
-}
-
-function rectsIntersect(a, b) {
-  return a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top;
+  return window.PartyGameToolAffordances?.startSelectionMarquee(event, {
+    root: marqueeRoot,
+    itemRoot: layoutStagePreview,
+    className: "layout-selection-marquee",
+    itemSelector: ".layout-preview-element:not(.is-global-preview)",
+    getItemId: (node) => node.dataset.elementId,
+    shouldIgnoreTarget: (target) => Boolean(target.closest?.(".layout-preview-element")),
+    onSelectionChange: (selectedIds) => {
+      setLayoutSelection(selectedIds);
+      renderLayoutElements();
+      renderLayoutFields();
+      renderLayoutActions();
+      for (const node of layoutStagePreview.querySelectorAll(".layout-preview-element")) {
+        node.classList.toggle("is-selected", selectedLayoutElementIds.has(node.dataset.elementId) && !node.classList.contains("is-global-preview"));
+      }
+    },
+    onComplete: () => renderLayoutTool()
+  });
 }
 
 function startLayoutDrag(event, element) {

@@ -679,74 +679,36 @@ function bindFlowNodeDrag(node, item, { afterDrag = null } = {}) {
 function startFlowNodeMarquee(event) {
   if (event.button !== 0 || flowViewMode !== "node") return;
   if (pendingNodeConnection) return;
-  if (event.target.closest?.(".flow-node, .flow-node-port-dot")) return;
-  if (!flowNodeStage?.contains(event.target) || !flowNodeLayer) return;
-  event.preventDefault();
-  const rootRect = flowNodeGraph.getBoundingClientRect();
-  const startX = (event.clientX - rootRect.left) / flowNodeZoom;
-  const startY = (event.clientY - rootRect.top) / flowNodeZoom;
-  const marquee = document.createElement("div");
-  marquee.className = "flow-node-selection-marquee";
-  flowNodeLayer.appendChild(marquee);
-  flowNodeStage.setPointerCapture?.(event.pointerId);
-
-  const updateMarquee = (moveEvent) => {
-    const currentX = (moveEvent.clientX - rootRect.left) / flowNodeZoom;
-    const currentY = (moveEvent.clientY - rootRect.top) / flowNodeZoom;
-    const left = Math.min(startX, currentX);
-    const top = Math.min(startY, currentY);
-    const width = Math.abs(currentX - startX);
-    const height = Math.abs(currentY - startY);
-    marquee.style.left = `${left}px`;
-    marquee.style.top = `${top}px`;
-    marquee.style.width = `${width}px`;
-    marquee.style.height = `${height}px`;
-
-    const selectionRect = { left, top, right: left + width, bottom: top + height };
-    const selectedIds = [];
-    const selector = flowNodeDepth === "moments" ? ".flow-node[data-node-id]" : ".flow-node[data-action-id]";
-    for (const node of flowNodeLayer.querySelectorAll(selector)) {
-      const nodeId = flowNodeDepth === "moments" ? node.dataset.nodeId : node.dataset.actionId;
-      if (!nodeId) continue;
-      const nodeRect = node.getBoundingClientRect();
-      const localRect = {
-        left: (nodeRect.left - rootRect.left) / flowNodeZoom,
-        top: (nodeRect.top - rootRect.top) / flowNodeZoom,
-        right: (nodeRect.right - rootRect.left) / flowNodeZoom,
-        bottom: (nodeRect.bottom - rootRect.top) / flowNodeZoom
-      };
-      if (rectsIntersect(selectionRect, localRect)) selectedIds.push(nodeId);
-    }
-    if (flowNodeDepth === "moments") {
-      selectedFlowActionIds = new Set(selectedIds);
-      selectedFlowStateId = selectedIds[selectedIds.length - 1] || selectedFlowStateId || gameFlow.states[0]?.id || "";
-      selectedFlowActionId = "";
-      for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-node-id]")) {
-        node.classList.toggle("is-selected", selectedFlowActionIds.has(node.dataset.nodeId) || selectedFlowStateId === node.dataset.nodeId);
+  if (!flowNodeGraph || !flowNodeLayer) return;
+  const selector = flowNodeDepth === "moments" ? ".flow-node[data-node-id]" : ".flow-node[data-action-id]";
+  return window.PartyGameToolAffordances?.startSelectionMarquee(event, {
+    root: flowNodeGraph,
+    itemRoot: flowNodeLayer,
+    marqueeRoot: flowNodeLayer,
+    className: "flow-node-selection-marquee",
+    itemSelector: selector,
+    coordinateScale: flowNodeZoom,
+    getItemId: (node) => (flowNodeDepth === "moments" ? node.dataset.nodeId : node.dataset.actionId),
+    shouldIgnoreTarget: (target) => Boolean(target.closest?.(".flow-node, .flow-node-port-dot")),
+    onSelectionChange: (selectedIds) => {
+      if (flowNodeDepth === "moments") {
+        selectedFlowActionIds = new Set(selectedIds);
+        selectedFlowStateId = selectedIds[selectedIds.length - 1] || selectedFlowStateId || gameFlow.states[0]?.id || "";
+        selectedFlowActionId = "";
+        for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-node-id]")) {
+          node.classList.toggle("is-selected", selectedFlowActionIds.has(node.dataset.nodeId) || selectedFlowStateId === node.dataset.nodeId);
+        }
+      } else {
+        setFlowActionSelection(selectedIds);
+        for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-action-id]")) {
+          node.classList.toggle("is-selected", flowActionIsSelected(node.dataset.actionId));
+        }
       }
-    } else {
-      setFlowActionSelection(selectedIds);
-      for (const node of flowNodeLayer.querySelectorAll(".flow-node[data-action-id]")) {
-        node.classList.toggle("is-selected", flowActionIsSelected(node.dataset.actionId));
-      }
-    }
-    renderFlowList();
-    renderFlowNodeInspector();
-  };
-
-  const stopMarquee = (stopEvent) => {
-    flowNodeStage.releasePointerCapture?.(stopEvent.pointerId);
-    marquee.remove();
-    window.removeEventListener("pointermove", updateMarquee);
-    window.removeEventListener("pointerup", stopMarquee);
-    window.removeEventListener("pointercancel", stopMarquee);
-    renderFlowTool();
-  };
-
-  updateMarquee(event);
-  window.addEventListener("pointermove", updateMarquee);
-  window.addEventListener("pointerup", stopMarquee, { once: true });
-  window.addEventListener("pointercancel", stopMarquee, { once: true });
+      renderFlowList();
+      renderFlowNodeInspector();
+    },
+    onComplete: () => renderFlowTool()
+  });
 }
 
 function renderFlowActionNodes() {

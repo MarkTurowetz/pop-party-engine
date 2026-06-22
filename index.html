@@ -2225,7 +2225,7 @@
       height: 100%;
     }
 
-    .art-preview-art.is-voting-card-editor {
+    .art-preview-art.is-composition-editor {
       width: min(720px, 78vw);
       aspect-ratio: var(--art-composition-aspect, 2.43);
       position: relative;
@@ -2287,6 +2287,15 @@
       outline: 4px solid var(--cyan);
       box-shadow: 0 0 0 4px rgba(23, 19, 31, 0.45);
       z-index: 4;
+    }
+
+    .art-selection-marquee {
+      position: absolute;
+      z-index: 30;
+      border: 3px dashed var(--cyan);
+      border-radius: 8px;
+      background: rgba(34, 211, 238, 0.16);
+      pointer-events: none;
     }
 
     .art-composition-component .layout-resize-handle {
@@ -4282,6 +4291,7 @@
   <script src="/client/stage/action-runners.js"></script>
   <script src="/client/stage-runtime.js"></script>
   <script src="/client/controller.js"></script>
+  <script src="/client/tool-affordances.js"></script>
   <script src="/client/art-tool.js"></script>
   <script src="/client/tool-dashboard.js"></script>
   <script src="/client/host-audio-tool.js"></script>
@@ -4508,8 +4518,8 @@
     let selectedArtAsset = null;
     let selectedArtComposite = null;
     let pendingArtReplacement = null;
-    const collapsedArtSections = new Set();
-    const collapsedArtComposites = new Set();
+    const collapsedArtSections = new Set(getLocalJsonArray("partyTemplate.collapsedArtSections"));
+    const collapsedArtComposites = new Set(getLocalJsonArray("partyTemplate.collapsedArtComposites"));
     let gameFlow = { states: [] };
     let gameConstants = {
       playerColors: [],

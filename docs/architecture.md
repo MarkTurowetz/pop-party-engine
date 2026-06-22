@@ -80,6 +80,8 @@ concepts into focused modules.
     can express state as a snapshot and restore function. Flow, layout, Constants,
     Host Audio, and editable Art compositions use this shared primitive instead of
     owning bespoke history stacks.
+  - `client/tool-affordances.js` owns reusable tool UI affordances such as disclosure
+    envelopes, collapse-all toggles, rectangle intersection, and marquee selection.
   - `client/tool-dashboard.js` owns the dashboard tool registry for labels, dirty checks,
     save behavior, screen hiding, and setup behavior.
   - `client/flow/action-control-groups.js` owns reusable Flow action inspector

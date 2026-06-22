@@ -570,6 +570,27 @@ function setupFlowResizer() {
   });
 }
 
+function persistFlowCollapseState() {
+  setLocalValue("partyTemplate.collapsedFlowStates", JSON.stringify([...collapsedFlowStates]));
+  setLocalValue("partyTemplate.collapsedFlowActions", JSON.stringify([...collapsedFlowActions]));
+}
+
+function renderAndPersistFlowCollapseState() {
+  persistFlowCollapseState();
+  renderFlowList();
+}
+
+function flowActionCollapseIds() {
+  return gameFlow.states.flatMap((state) => (
+    state.actions || []
+  ).filter((action) => action.subActions?.length).map((action) => action.id));
+}
+
+function toggleFlowCollapsedIds(collapsedSet, ids) {
+  window.PartyGameToolAffordances?.toggleCollapsedSetForIds(collapsedSet, ids);
+  renderAndPersistFlowCollapseState();
+}
+
 function renderFlowList() {
   const scrollTop = flowList.scrollTop;
   flowList.replaceChildren();
@@ -589,20 +610,12 @@ function renderFlowList() {
       <span class="flow-row-copy"><strong></strong><span class="flow-row-summary"></span></span>
       <span class="flow-pill">${state.actions.length} actions</span>
     `;
-    stateButton.querySelector(".disclosure-slot").appendChild(createDisclosureButton(state.id, collapsedFlowStates, () => {
-      persistFlowCollapseState();
-      renderFlowList();
-    }, () => {
-      const allIds = gameFlow.states.map((s) => s.id);
-      const allCollapsed = allIds.every((sid) => collapsedFlowStates.has(sid));
-      if (allCollapsed) {
-        for (const sid of allIds) collapsedFlowStates.delete(sid);
-      } else {
-        for (const sid of allIds) collapsedFlowStates.add(sid);
-      }
-      persistFlowCollapseState();
-      renderFlowList();
-    }));
+    stateButton.querySelector(".disclosure-slot").appendChild(createDisclosureButton(
+      state.id,
+      collapsedFlowStates,
+      renderAndPersistFlowCollapseState,
+      () => toggleFlowCollapsedIds(collapsedFlowStates, gameFlow.states.map((s) => s.id))
+    ));
     stateButton.querySelector("strong").textContent = state.name;
     stateButton.querySelector(".flow-row-summary").textContent = state.id;
     stateButton.addEventListener("click", (event) => {
@@ -655,10 +668,12 @@ function flowActionRow(state, action, isSubAction) {
   `;
   const disclosureSlot = actionButton.querySelector(".disclosure-slot");
   if (disclosureSlot) {
-    disclosureSlot.appendChild(createDisclosureButton(action.id, collapsedFlowActions, () => {
-      persistFlowCollapseState();
-      renderFlowList();
-    }));
+    disclosureSlot.appendChild(createDisclosureButton(
+      action.id,
+      collapsedFlowActions,
+      renderAndPersistFlowCollapseState,
+      () => toggleFlowCollapsedIds(collapsedFlowActions, flowActionCollapseIds())
+    ));
   }
   actionButton.querySelector("strong").textContent = isSubAction ? `Sub: ${action.name}` : action.name;
   actionButton.querySelector(".flow-row-summary").textContent = actionSummary(action, isSubAction);
