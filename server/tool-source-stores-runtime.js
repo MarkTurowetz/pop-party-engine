@@ -1,4 +1,5 @@
 function createToolSourceStoresRuntime({
+  readLocalArtManifestSource,
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
@@ -49,7 +50,16 @@ function createToolSourceStoresRuntime({
     error: ""
   };
 
+  const artManifestStore = {
+    source: readLocalArtManifestSource(),
+    remoteSha: "",
+    storageKind: normalizedStorageKind,
+    loadedAt: 0,
+    error: ""
+  };
+
   return {
+    artManifestStore,
     controllerLayoutsStore,
     gameConstantsStore,
     gameFlowStore,

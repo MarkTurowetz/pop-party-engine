@@ -50,6 +50,10 @@ GAME_FLOW_GITHUB_REPO=MarkTurowetz/pop-party
 GAME_FLOW_GITHUB_BRANCH=game-data
 GAME_FLOW_GITHUB_PATH=game-flow.json
 GAME_CONSTANTS_GITHUB_PATH=game-constants.json
+STAGE_LAYOUTS_GITHUB_PATH=stage-layouts.json
+CONTROLLER_LAYOUTS_GITHUB_PATH=controller-layouts.json
+HOST_AUDIOS_GITHUB_PATH=host-audios.json
+ART_MANIFEST_GITHUB_PATH=art-manifest.json
 ```
 
 Set `GAME_FLOW_GITHUB_TOKEN` in Render as a secret environment variable. Use a
@@ -62,8 +66,12 @@ When that token is present, the app automatically uses GitHub flow storage unles
 Local development still falls back to the ignored `game-flow.json` file unless
 `GAME_FLOW_STORAGE=github` is set.
 
-Game constants use the same durable storage layer. Open `/constants` to edit
-values such as the `playerColors` list used for random unique player colors.
+Game constants, stage layouts, controller layouts, host audio sets, and Art
+Manager composition data use the same durable storage layer. Open `/constants`
+to edit values such as the `playerColors` list used for random unique player
+colors. Art Manager saves composition edits, including voting-card component
+positions and colors, to `ART_MANIFEST_GITHUB_PATH` so deploys and app commits
+do not reset them.
 
 ## Chrome Controller Spawner
 

@@ -10,10 +10,12 @@ function createArtAssetsRuntime({
   contentTypeForFile,
   customDir,
   defaultDir,
+  loadArtManifestSource = null,
   manifestFile,
   onArtAssetsChanged = () => {},
   readJson,
-  sendJson
+  sendJson,
+  writeArtManifestSource = null
 }) {
   function readArtManifest() {
     try {
@@ -27,6 +29,23 @@ function createArtAssetsRuntime({
     fs.mkdirSync(artRoot, { recursive: true });
     fs.mkdirSync(customDir, { recursive: true });
     fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
+
+  async function loadArtManifest() {
+    if (typeof loadArtManifestSource === "function") {
+      const manifest = await loadArtManifestSource();
+      return manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {};
+    }
+    return readArtManifest();
+  }
+
+  async function saveArtManifest(manifest) {
+    if (typeof writeArtManifestSource === "function") {
+      const saved = await writeArtManifestSource(manifest);
+      return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : manifest;
+    }
+    writeArtManifest(manifest);
+    return manifest;
   }
 
   function cleanNumber(value, fallback, min = -Infinity, max = Infinity) {
@@ -126,8 +145,8 @@ function createArtAssetsRuntime({
     };
   }
 
-  function sendArtAssetList(res) {
-    const manifest = readArtManifest();
+  async function sendArtAssetList(res) {
+    const manifest = await loadArtManifest();
     sendJson(res, 200, {
       ok: true,
       groups: artGroups,
@@ -152,16 +171,16 @@ function createArtAssetsRuntime({
     }
 
     const normalized = normalizeComposition(definition, payload.composition || payload);
-    const manifest = readArtManifest();
+    const manifest = await loadArtManifest();
     manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
     manifest.compositions[definition.id] = {
       canvas: normalized.canvas,
       components: normalized.components,
       updatedAt: new Date().toISOString()
     };
-    writeArtManifest(manifest);
-    onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: manifest.compositions[definition.id].updatedAt });
-    sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, readArtManifest()) });
+    const savedManifest = await saveArtManifest(manifest);
+    onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: savedManifest.compositions?.[definition.id]?.updatedAt || manifest.compositions[definition.id].updatedAt });
+    sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, savedManifest) });
   }
 
   async function handleReplaceArtAsset(req, res, assetId) {
@@ -203,7 +222,7 @@ function createArtAssetsRuntime({
     }
 
     fs.mkdirSync(customDir, { recursive: true });
-    const manifest = readArtManifest();
+    const manifest = await loadArtManifest();
     const previousFile = manifest[asset.id]?.fileName;
     if (previousFile) {
       const previousPath = path.join(customDir, path.basename(previousFile));
@@ -225,9 +244,9 @@ function createArtAssetsRuntime({
       mimeType,
       updatedAt
     };
-    writeArtManifest(manifest);
+    const savedManifest = await saveArtManifest(manifest);
     onArtAssetsChanged({ type: "asset", id: asset.id, updatedAt });
-    sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, manifest) });
+    sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, savedManifest) });
   }
 
   function serveArtFile(res, kind, fileName) {

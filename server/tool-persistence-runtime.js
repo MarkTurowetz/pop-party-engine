@@ -5,6 +5,9 @@
 // as hoisted function declarations so early module constructions can reference them.
 
 function createToolPersistenceRuntime({
+  artManifestFile,
+  artManifestGithubPath,
+  artManifestStore,
   backupJsonFile,
   controllerLayoutsBackupDir,
   controllerLayoutsFile,
@@ -29,11 +32,13 @@ function createToolPersistenceRuntime({
   normalizeGameFlow,
   normalizeHostAudios,
   normalizeStageLayouts,
+  readArtManifestSource,
   readControllerLayoutsSource,
   readGameConstantsSource,
   readGameFlowSource,
   readGithubGameFlowSource,
   readGithubJsonSource,
+  readLocalArtManifestSource,
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
@@ -51,6 +56,43 @@ function createToolPersistenceRuntime({
   writeGithubJsonSource,
   writeJsonFile,
 }) {
+  function normalizeArtManifest(manifest) {
+    return manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {};
+  }
+
+  async function loadArtManifestSource({ refresh = false } = {}) {
+    if (artManifestStore.storageKind !== "github") {
+      artManifestStore.source = readLocalArtManifestSource();
+      artManifestStore.loadedAt = Date.now();
+      artManifestStore.error = "";
+      return readArtManifestSource();
+    }
+
+    if (!refresh && artManifestStore.loadedAt) return readArtManifestSource();
+    if (!githubToken) {
+      artManifestStore.error = "GAME_FLOW_GITHUB_TOKEN is not configured; using local fallback.";
+      return readArtManifestSource();
+    }
+
+    try {
+      const remote = await readGithubJsonSource(artManifestGithubPath);
+      if (remote?.data) {
+        artManifestStore.source = normalizeArtManifest(remote.data);
+        artManifestStore.remoteSha = remote.sha || "";
+      } else {
+        const seeded = await writeGithubJsonSource(readArtManifestSource(), "", artManifestGithubPath, "Save art manifest");
+        artManifestStore.source = normalizeArtManifest(seeded.data);
+        artManifestStore.remoteSha = seeded.sha || "";
+      }
+      artManifestStore.loadedAt = Date.now();
+      artManifestStore.error = "";
+    } catch (error) {
+      artManifestStore.error = `GitHub art manifest storage unavailable: ${error.message}`;
+    }
+
+    return readArtManifestSource();
+  }
+
   async function loadGameConstantsSource({ refresh = false } = {}) {
     if (gameConstantsStore.storageKind !== "github") {
       gameConstantsStore.source = readLocalGameConstantsSource();
@@ -325,7 +367,28 @@ function createToolPersistenceRuntime({
     return readHostAudiosSource();
   }
 
+  async function writeArtManifest(manifest) {
+    const normalized = normalizeArtManifest(manifest);
+    if (artManifestStore.storageKind === "github") {
+      if (!githubToken) {
+        throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
+      }
+      const saved = await writeGithubJsonSource(normalized, artManifestStore.remoteSha, artManifestGithubPath, "Save art manifest");
+      artManifestStore.source = normalizeArtManifest(saved.data);
+      artManifestStore.remoteSha = saved.sha || "";
+      artManifestStore.loadedAt = Date.now();
+      artManifestStore.error = "";
+      mirrorJsonFile(artManifestFile, artManifestStore.source);
+      return readArtManifestSource();
+    }
+    writeJsonFile(artManifestFile, normalized);
+    artManifestStore.source = normalized;
+    artManifestStore.loadedAt = Date.now();
+    return readArtManifestSource();
+  }
+
   return {
+    loadArtManifestSource,
     loadControllerLayoutsSource,
     loadGameConstantsSource,
     loadGameFlowSource,
@@ -335,6 +398,7 @@ function createToolPersistenceRuntime({
     writeGameConstants,
     writeGameFlow,
     writeHostAudios,
+    writeArtManifest,
     writeStageLayouts,
   };
 }

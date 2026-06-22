@@ -25,5 +25,9 @@ services:
         value: stage-layouts.json
       - key: CONTROLLER_LAYOUTS_GITHUB_PATH
         value: controller-layouts.json
+      - key: HOST_AUDIOS_GITHUB_PATH
+        value: host-audios.json
+      - key: ART_MANIFEST_GITHUB_PATH
+        value: art-manifest.json
       - key: GAME_FLOW_GITHUB_TOKEN
         sync: false

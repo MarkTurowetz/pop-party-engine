@@ -130,6 +130,7 @@ const GAME_CONSTANTS_GITHUB_PATH = process.env.GAME_CONSTANTS_GITHUB_PATH || "ga
 const STAGE_LAYOUTS_GITHUB_PATH = process.env.STAGE_LAYOUTS_GITHUB_PATH || "stage-layouts.json";
 const CONTROLLER_LAYOUTS_GITHUB_PATH = process.env.CONTROLLER_LAYOUTS_GITHUB_PATH || "controller-layouts.json";
 const HOST_AUDIOS_GITHUB_PATH = process.env.HOST_AUDIOS_GITHUB_PATH || "host-audios.json";
+const ART_MANIFEST_GITHUB_PATH = process.env.ART_MANIFEST_GITHUB_PATH || "art-manifest.json";
 const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
@@ -429,6 +430,7 @@ const {
   contentTypeForFile,
   customDir: ART_CUSTOM_DIR,
   defaultDir: ART_DEFAULT_DIR,
+  loadArtManifestSource: () => loadArtManifestSource({ refresh: artManifestStore.storageKind === "github" }),
   manifestFile: ART_MANIFEST_FILE,
   onArtAssetsChanged: (payload) => {
     for (const room of rooms.values()) {
@@ -438,7 +440,8 @@ const {
     }
   },
   readJson,
-  sendJson
+  sendJson,
+  writeArtManifestSource: (manifest) => writeArtManifest(manifest)
 });
 
 const {
@@ -632,12 +635,14 @@ const {
 });
 
 const {
+  artManifestStore,
   controllerLayoutsStore,
   gameConstantsStore,
   gameFlowStore,
   hostAudiosStore,
   stageLayoutsStore
 } = createToolSourceStoresRuntime({
+  readLocalArtManifestSource,
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
@@ -647,6 +652,7 @@ const {
 });
 
 const {
+  loadArtManifestSource,
   loadControllerLayoutsSource,
   loadGameConstantsSource,
   loadGameFlowSource,
@@ -656,8 +662,12 @@ const {
   writeGameConstants,
   writeGameFlow,
   writeHostAudios,
+  writeArtManifest,
   writeStageLayouts,
 } = createToolPersistenceRuntime({
+  artManifestFile: ART_MANIFEST_FILE,
+  artManifestGithubPath: ART_MANIFEST_GITHUB_PATH,
+  artManifestStore,
   backupJsonFile,
   controllerLayoutsBackupDir: CONTROLLER_LAYOUTS_BACKUP_DIR,
   controllerLayoutsFile: CONTROLLER_LAYOUTS_FILE,
@@ -682,11 +692,13 @@ const {
   normalizeGameFlow,
   normalizeHostAudios,
   normalizeStageLayouts,
+  readArtManifestSource,
   readControllerLayoutsSource,
   readGameConstantsSource,
   readGameFlowSource,
   readGithubGameFlowSource,
   readGithubJsonSource,
+  readLocalArtManifestSource,
   readLocalControllerLayoutsSource,
   readLocalGameConstantsSource,
   readLocalGameFlowSource,
@@ -795,6 +807,20 @@ const {
 
 function readGameFlowSource() {
   return cloneJson(gameFlowStore.source || readDefaultGameFlowSource());
+}
+
+function readLocalArtManifestSource() {
+  try {
+    const manifest = readJsonFile(ART_MANIFEST_FILE);
+    return manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function readArtManifestSource() {
+  const manifest = artManifestStore.source || readLocalArtManifestSource();
+  return cloneJson(manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {});
 }
 
 function readGameFlow() {
@@ -1105,5 +1131,12 @@ server.listen(PORT, HOST, () => {
     })
     .catch((error) => {
       console.error(`Host audio storage failed: ${error.message}`);
+    });
+  loadArtManifestSource({ refresh: true })
+    .then(() => {
+      console.log(`Art manifest storage: ${artManifestStore.storageKind}${artManifestStore.error ? ` (${artManifestStore.error})` : ""}`);
+    })
+    .catch((error) => {
+      console.error(`Art manifest storage failed: ${error.message}`);
     });
 });

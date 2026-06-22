@@ -14,5 +14,6 @@ stage-layouts.json
 stage-layouts.backups/
 host-audios.json
 host-audios.backups/
+art/art-manifest.json
 *.py
 *.sh
