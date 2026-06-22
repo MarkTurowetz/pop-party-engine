@@ -801,7 +801,7 @@
           "placeholder": "Write a movie title",
           "characterLimit": 80,
           "timerEndTargetActionId": "writing-moment-action-mqojhzba",
-          "answersSubmittedTargetActionId": "writing-moment-action-mqojhzba",
+          "answersSubmittedTargetActionId": "writing-moment-action-mqokbv8c",
           "subActions": [],
           "nodePosition": {
             "x": 670,
@@ -809,9 +809,9 @@
           }
         },
         {
-          "id": "writing-moment-action-mqojhzba",
-          "name": "Store Player Answers",
-          "type": "storePlayerAnswers",
+          "id": "writing-moment-action-mqokbv8c",
+          "name": "Do Transition",
+          "type": "transition",
           "timing": {
             "mode": "E+",
             "seconds": 0
@@ -822,11 +822,10 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 669,
-            "y": 1479
+            "x": 670,
+            "y": 1276
           },
-          "inputId": "writing-input",
-          "round": "current",
+          "transition": "horizontalWipe",
           "nextTargetActionId": "return"
         }
       ],
@@ -836,13 +835,13 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 1784
+        "y": 1530
       }
     },
     {
       "id": "voting-moment",
       "name": "Voting Moment",
-      "entryTargetActionId": "voting-moment-action-mqojfq4a",
+      "entryTargetActionId": "voting-show-cards",
       "nodePositions": {
         "start": {
           "x": 420,
@@ -888,7 +887,7 @@
       "actions": [
         {
           "id": "voting-show-cards",
-          "name": "Show Anonymous Answers",
+          "name": "Set Voting Cards Shown 1",
           "type": "setVotingCardsShown",
           "timing": {
             "mode": "E+",
@@ -1081,27 +1080,6 @@
           },
           "cardFilter": "all",
           "nextTargetActionId": "return"
-        },
-        {
-          "id": "voting-moment-action-mqojfq4a",
-          "name": "Setup Voting Moment",
-          "type": "setupVotingMoment",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "inputId": "writing-input",
-          "round": "current",
-          "nodePosition": {
-            "x": 670,
-            "y": 260
-          },
-          "nextTargetActionId": "voting-show-cards"
         }
       ],
       "nextStateTargetId": "scoreboard-game-state",
