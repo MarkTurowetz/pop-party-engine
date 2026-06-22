@@ -34,8 +34,7 @@ async function loadLayoutToolData() {
   const result = await getJson(activeLayoutEndpoint());
   setActiveLayoutData(result.layouts || activeLayoutData());
   setActiveLayoutSavedSnapshot(JSON.stringify(serializeStageLayoutsForSave(result.savedLayouts || result.layouts || activeLayoutData())));
-  layoutUndoStack = [];
-  layoutRedoStack = [];
+  getLayoutHistoryManager().clear();
   updateLayoutStorageStatus(result.storage);
   selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
   setLayoutSelection(layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
@@ -244,12 +243,19 @@ function layoutHistorySnapshot() {
   return JSON.stringify(serializeStageLayoutsForSave(activeLayoutData()));
 }
 
+function getLayoutHistoryManager() {
+  if (!layoutHistoryManager && window.PartyGameToolHistory) {
+    layoutHistoryManager = window.PartyGameToolHistory.createHistory({
+      snapshot: layoutHistorySnapshot,
+      restore: restoreLayoutHistory,
+      limit: 30
+    });
+  }
+  return layoutHistoryManager;
+}
+
 function pushLayoutHistory() {
-  const snapshot = layoutHistorySnapshot();
-  if (layoutUndoStack[layoutUndoStack.length - 1] === snapshot) return;
-  layoutUndoStack.push(snapshot);
-  if (layoutUndoStack.length > 30) layoutUndoStack.shift();
-  layoutRedoStack = [];
+  getLayoutHistoryManager()?.push();
 }
 
 function restoreLayoutHistory(snapshot) {
@@ -261,16 +267,11 @@ function restoreLayoutHistory(snapshot) {
 }
 
 function undoLayoutChange() {
-  if (!layoutUndoStack.length) return;
-  layoutRedoStack.push(layoutHistorySnapshot());
-  restoreLayoutHistory(layoutUndoStack.pop());
+  getLayoutHistoryManager()?.undo();
 }
 
 function redoLayoutChange() {
-  if (!layoutRedoStack.length) return;
-  layoutUndoStack.push(layoutHistorySnapshot());
-  if (layoutUndoStack.length > 30) layoutUndoStack.shift();
-  restoreLayoutHistory(layoutRedoStack.pop());
+  getLayoutHistoryManager()?.redo();
 }
 
 function handleLayoutHotkeys(event) {
@@ -964,8 +965,7 @@ function revertStageLayouts() {
   const snapshot = activeLayoutSavedSnapshot();
   if (!snapshot) return;
   setActiveLayoutData(JSON.parse(snapshot));
-  layoutUndoStack = [];
-  layoutRedoStack = [];
+  getLayoutHistoryManager().clear();
   selectedLayoutStateId = layoutGroup(selectedLayoutStateId)?.id || "global";
   setLayoutSelection(layoutElement(selectedLayoutStateId, selectedLayoutElementId)?.id || layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
   closeLayoutObjectPicker();

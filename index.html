@@ -4285,6 +4285,7 @@
   <script src="/client/art-tool.js"></script>
   <script src="/client/tool-dashboard.js"></script>
   <script src="/client/host-audio-tool.js"></script>
+  <script src="/client/tool-history.js"></script>
   <script src="/client/stage/visual-object.js"></script>
   <script src="/client/stage/art-object-visuals.js"></script>
   <script src="/client/stage/voting-card-visuals.js"></script>
@@ -4542,8 +4543,7 @@
     let pendingNodeConnection = null;
     const collapsedFlowStates = new Set(getLocalJsonArray("partyTemplate.collapsedFlowStates"));
     const collapsedFlowActions = new Set(getLocalJsonArray("partyTemplate.collapsedFlowActions"));
-    let flowUndoStack = [];
-    let flowRedoStack = [];
+    let flowHistoryManager = null;
     let artToolInitialized = false;
     let flowToolInitialized = false;
     let constantsToolInitialized = false;
@@ -4557,8 +4557,7 @@
     let selectedLayoutElementIds = new Set();
     const layoutPreviewHiddenElements = new Set();
     let currentStageLayoutStateId = "";
-    let layoutUndoStack = [];
-    let layoutRedoStack = [];
+    let layoutHistoryManager = null;
     const runtimeTestChannel = "BroadcastChannel" in window ? new BroadcastChannel("party-game-template-runtime-test") : null;
     const artAssetUrls = new Map([
       ["avatar-frame", "/art/default/avatar-frame.svg"],

@@ -1760,12 +1760,19 @@ function flowHistorySnapshot() {
   return JSON.stringify(serializeGameFlowForSave(gameFlow));
 }
 
+function getFlowHistoryManager() {
+  if (!flowHistoryManager && window.PartyGameToolHistory) {
+    flowHistoryManager = window.PartyGameToolHistory.createHistory({
+      snapshot: flowHistorySnapshot,
+      restore: restoreFlowHistory,
+      limit: 30
+    });
+  }
+  return flowHistoryManager;
+}
+
 function pushFlowHistory() {
-  const snapshot = flowHistorySnapshot();
-  if (flowUndoStack[flowUndoStack.length - 1] === snapshot) return;
-  flowUndoStack.push(snapshot);
-  if (flowUndoStack.length > 30) flowUndoStack.shift();
-  flowRedoStack = [];
+  getFlowHistoryManager()?.push();
 }
 
 function restoreFlowHistory(snapshot) {
@@ -1780,16 +1787,11 @@ function restoreFlowHistory(snapshot) {
 }
 
 function undoFlowChange() {
-  if (!flowUndoStack.length) return;
-  flowRedoStack.push(flowHistorySnapshot());
-  restoreFlowHistory(flowUndoStack.pop());
+  getFlowHistoryManager()?.undo();
 }
 
 function redoFlowChange() {
-  if (!flowRedoStack.length) return;
-  flowUndoStack.push(flowHistorySnapshot());
-  if (flowUndoStack.length > 30) flowUndoStack.shift();
-  restoreFlowHistory(flowRedoStack.pop());
+  getFlowHistoryManager()?.redo();
 }
 
 function handleFlowHotkeys(event) {

@@ -468,8 +468,7 @@ async function loadGameFlow() {
   flowActionTypes = result.availableActionTypes || [];
   flowTransitions = result.availableTransitions || [];
   flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(result.savedFlow || result.flow || gameFlow));
-  flowUndoStack = [];
-  flowRedoStack = [];
+  getFlowHistoryManager().clear();
   updateFlowStorageStatus(result.storage);
   selectedFlowStateId = selectedFlowStateId || gameFlow.states[0]?.id || "";
   clearFlowActionSelection();
@@ -1701,8 +1700,7 @@ async function saveGameFlow() {
 function revertGameFlow() {
   if (!flowSavedSnapshot) return;
   gameFlow = JSON.parse(flowSavedSnapshot);
-  flowUndoStack = [];
-  flowRedoStack = [];
+  getFlowHistoryManager().clear();
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
   clearFlowActionSelection();
   renderFlowTool();

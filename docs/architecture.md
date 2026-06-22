@@ -76,6 +76,8 @@ concepts into focused modules.
   - `client/stage/visual-object.js` owns the generic CSS visual object animation contract
     used by stage text and player answer bubbles.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
+  - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
+    can express state as a snapshot and restore function.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
@@ -103,3 +105,5 @@ concepts into focused modules.
 - New server behavior should avoid growing `server.js` when it can live in a focused module.
 - Large UI changes should eventually land in `client/tools/`, `client/stage/`, or
   `client/controller/`.
+- Cross-tool affordances such as undo/redo should live in shared tool primitives, then each
+  tool should plug in its own snapshot/restore functions instead of owning bespoke stacks.
