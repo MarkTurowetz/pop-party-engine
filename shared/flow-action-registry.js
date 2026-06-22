@@ -50,6 +50,7 @@ const flowActionDefinitions = [
     name: "Multiple Choice Input",
     category: "input",
     canCompleteFromStage: true,
+    completionCleanup: "choice",
     stageActionType: "multipleChoiceInput",
     normalize: (action, base, context) => ({
       ...base,
@@ -76,6 +77,7 @@ const flowActionDefinitions = [
     name: "Trivia Input",
     category: "input",
     canCompleteFromStage: true,
+    completionCleanup: "choice",
     stageActionType: "triviaInput",
     normalize: (action, base, context) => ({
       ...base,
@@ -102,6 +104,7 @@ const flowActionDefinitions = [
     name: "Text Submission Input",
     category: "input",
     canCompleteFromStage: true,
+    completionCleanup: "text",
     stageActionType: "textSubmissionInput",
     normalize: (action, base, context) => ({
       ...base,
@@ -545,6 +548,9 @@ const flowActionDefinitions = [
 
 const availableFlowActionTypes = flowActionDefinitions.map(({ id, name, category }) => ({ id, name, category }));
 const definitionById = new Map(flowActionDefinitions.map((definition) => [definition.id, definition]));
+const definitionByStageActionType = new Map(
+  flowActionDefinitions.map((definition) => [definition.stageActionType || definition.id, definition])
+);
 const completableStageActionTypes = new Set(
   flowActionDefinitions
     .filter((definition) => definition.canCompleteFromStage)
@@ -600,11 +606,16 @@ function isCompletableStageActionType(type) {
   return completableStageActionTypes.has(type);
 }
 
+function stageCompletionCleanupForActionType(type) {
+  return definitionByStageActionType.get(type)?.completionCleanup || "";
+}
+
 module.exports = {
   availableFlowActionTypes,
   completableStageActionTypes,
   createFlowActionRegistry,
   flowActionDefinitions,
   isCompletableStageActionType,
-  normalizeVoteRevealStaggerSeconds
+  normalizeVoteRevealStaggerSeconds,
+  stageCompletionCleanupForActionType
 };

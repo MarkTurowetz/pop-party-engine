@@ -11,7 +11,8 @@ concepts into focused modules.
   - This is still the largest file and should keep shrinking over time.
 - `server/`
   - Server-only helpers that do not need browser access.
-  - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules.
+  - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules,
+    using `shared/flow-action-registry.js` for input cleanup metadata.
   - `action-effect-state-runtime.js` owns room action-effect id tracking.
   - `app-version.js` owns build/version lookup.
   - `controller-input-payload-runtime.js` owns controller choice/vote/text input payload setup.
@@ -43,10 +44,12 @@ concepts into focused modules.
   - `player-public-runtime.js` owns player serialization for lobby/controller payloads.
   - `player-session-handlers-runtime.js` owns join, heartbeat, avatar selection, and leave endpoints.
   - `player-state-runtime.js` owns player avatar helpers, active-player filtering, and VIP selection.
-  - `room-action-effects-runtime.js` owns one-time room mutations caused by active flow actions.
+  - `room-action-effects-runtime.js` owns one-time room action-effect dispatch; effect behavior
+    lives on descriptors in `shared/flow-action-registry.js`.
   - `room-state-runtime.js` owns default room construction and room lookup helpers.
   - `save-handlers-runtime.js` owns common tool save endpoint handling and response shaping.
-  - `stage-action-handlers-runtime.js` owns stage action completion/effect callback endpoints.
+  - `stage-action-handlers-runtime.js` owns stage action completion/effect callback endpoints,
+    using registry metadata for stage-completable action types.
   - `stage-events-runtime.js` owns stage SSE connection setup, heartbeat, and cleanup.
   - `stage-layout-normalization-runtime.js` owns stage layout collection normalization and migration.
   - `stage-layout-state-runtime.js` owns default stage layout state creation for flow states.
@@ -72,6 +75,8 @@ concepts into focused modules.
   - Browser-side modules served directly by the Node server without a build step.
   - `client/stage/visual-object.js` owns the generic CSS visual object animation contract
     used by stage text and player answer bubbles.
+  - `client/stage/action-runners.js` owns client-side stage action dispatch.
+  - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
 
@@ -82,8 +87,9 @@ concepts into focused modules.
 4. Split browser code into static client modules under `client/`, keeping the current no-build
    Render deployment until a bundler becomes worth the complexity.
 5. Move action behavior toward registry descriptors rather than scattered action-name
-   conditionals. Server normalization/public serialization now use `shared/flow-action-registry.js`;
-   server effects, stage runners, and tool inspectors should follow in later passes.
+   conditionals. Server normalization, public serialization, room effects, stage-completion
+   metadata, and completion cleanup now use `shared/flow-action-registry.js`.
+   Tool inspector fields are still the largest remaining action-specific UI branch.
 6. Only after the boundaries are stable, introduce classes for concepts that carry behavior,
    such as visual game objects, controller views, and layout documents. Flow actions should
    usually stay as data plus registry strategy descriptors rather than large instantiated classes.

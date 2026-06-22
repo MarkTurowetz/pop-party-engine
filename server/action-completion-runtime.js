@@ -1,3 +1,7 @@
+"use strict";
+
+const { stageCompletionCleanupForActionType } = require("../shared/flow-action-registry");
+
 function createActionCompletionRuntime({
   advanceRoomAfterAction,
   applyRoomActionEffects = () => {},
@@ -7,6 +11,12 @@ function createActionCompletionRuntime({
   currentRoomAction,
   enterGamePhase
 }) {
+  function clearCompletionInput(room, action) {
+    const cleanup = stageCompletionCleanupForActionType(action?.type);
+    if (cleanup === "choice") clearChoiceInput(room);
+    if (cleanup === "text") clearTextInput(room);
+  }
+
   function clearActionTimer(room) {
     if (room.actionTimerId) {
       clearTimeout(room.actionTimerId);
@@ -60,8 +70,7 @@ function createActionCompletionRuntime({
       room.actionTimerId = setTimeout(() => {
         room.actionTimerId = null;
         room.actionCompletionPendingId = "";
-        if (currentAction.type === "multipleChoiceInput" || currentAction.type === "triviaInput") clearChoiceInput(room);
-        if (currentAction.type === "textSubmissionInput") clearTextInput(room);
+        clearCompletionInput(room, currentAction);
         advanceRoomAfterAction(room, currentAction);
         currentRoomAction(room);
         broadcastLobby(room);
@@ -69,8 +78,7 @@ function createActionCompletionRuntime({
       return true;
     }
 
-    if (currentAction.type === "multipleChoiceInput" || currentAction.type === "triviaInput") clearChoiceInput(room);
-    if (currentAction.type === "textSubmissionInput") clearTextInput(room);
+    clearCompletionInput(room, currentAction);
     advanceRoomAfterAction(room, currentAction);
     currentRoomAction(room);
     broadcastLobby(room);
