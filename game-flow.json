@@ -728,7 +728,7 @@
         "y": 1022
       },
       "entryTargetActionId": "scoreboard-game-state-action-mqpt5dmx",
-      "nextStateTargetId": "post-game-state",
+      "nextStateTargetId": "writing-moment",
       "actions": [
         {
           "id": "scoreboard-game-state-action-mqlaj01s",
@@ -795,8 +795,8 @@
       "id": "post-game-state",
       "name": "Post Game State",
       "nodePosition": {
-        "x": 479,
-        "y": 1377
+        "x": 1025,
+        "y": 1418
       },
       "startNodePosition": {
         "x": 715,
@@ -1045,6 +1045,10 @@
       "returnNodePosition": {
         "x": 705,
         "y": 2038
+      },
+      "nodePosition": {
+        "x": 778,
+        "y": 473
       }
     },
     {
@@ -1329,7 +1333,7 @@
           "nextTargetActionId": "return"
         }
       ],
-      "nextStateTargetId": "scoreboard-game-state",
+      "nextStateTargetId": "post-game-state",
       "startNodePosition": {
         "x": 715,
         "y": 70
@@ -1337,6 +1341,10 @@
       "returnNodePosition": {
         "x": 705,
         "y": 3562
+      },
+      "nodePosition": {
+        "x": 794,
+        "y": 681
       }
     }
   ]
