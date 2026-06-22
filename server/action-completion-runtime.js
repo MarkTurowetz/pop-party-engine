@@ -1,5 +1,6 @@
 function createActionCompletionRuntime({
   advanceRoomAfterAction,
+  applyRoomActionEffects = () => {},
   broadcastLobby,
   clearChoiceInput,
   clearTextInput,
@@ -23,6 +24,8 @@ function createActionCompletionRuntime({
     const timing = currentAction.timing || { mode: "E+", seconds: 0 };
     if (timing.mode === "S+" && source !== "startTimer") return false;
     if (timing.mode === "E+" && source === "startTimer") return false;
+
+    applyRoomActionEffects(room, currentAction);
 
     if (currentAction.type === "transitionState") {
       clearActionTimer(room);

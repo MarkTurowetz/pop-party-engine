@@ -281,12 +281,15 @@ let _completeCountdownTriggerFn;
 const completeCountdownTriggerProxy = (room) => _completeCountdownTriggerFn(room);
 let _emitInputFlowEventFn;
 const emitInputFlowEventProxy = (room, eventType) => _emitInputFlowEventFn(room, eventType);
+let _applyRoomActionEffectsFn;
+const applyRoomActionEffectsProxy = (room, action) => _applyRoomActionEffectsFn?.(room, action);
 
 const {
   clearActionTimer,
   completeCurrentAction
 } = createActionCompletionRuntime({
   advanceRoomAfterAction: advanceRoomAfterActionProxy,
+  applyRoomActionEffects: applyRoomActionEffectsProxy,
   broadcastLobby,
   clearChoiceInput,
   clearTextInput,
@@ -777,6 +780,7 @@ const {
   startCraftingTimer,
   storeRandomTriviaPrompt
 });
+_applyRoomActionEffectsFn = applyRoomActionEffects;
 
 const {
   applyChoiceInputAction,
