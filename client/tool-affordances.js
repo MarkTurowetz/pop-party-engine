@@ -44,6 +44,106 @@
     return !allCollapsed;
   }
 
+  function targetIsToolControl(target, ignoreSelector = "input, textarea, button, select, a") {
+    return Boolean(target?.closest?.(ignoreSelector));
+  }
+
+  function bindToolRowActivation(row, onActivate, options = {}) {
+    if (typeof onActivate !== "function") return row;
+    const ignoreSelector = options.ignoreSelector;
+    const activate = (event) => {
+      if (targetIsToolControl(event.target, ignoreSelector)) return;
+      onActivate(event);
+    };
+    row.addEventListener("click", activate);
+    if (options.activateOnDoubleClick) row.addEventListener("dblclick", activate);
+    row.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (targetIsToolControl(event.target, ignoreSelector)) return;
+      event.preventDefault();
+      onActivate(event);
+    });
+    return row;
+  }
+
+  function applyToolDataset(element, dataset = {}) {
+    for (const [key, value] of Object.entries(dataset || {})) {
+      if (value !== undefined && value !== null) element.dataset[key] = String(value);
+    }
+  }
+
+  function createToolSidebarRow(options = {}) {
+    const row = document.createElement(options.tagName || "div");
+    row.className = options.className || "tool-sidebar-row";
+    row.setAttribute("role", options.role || "button");
+    row.tabIndex = options.tabIndex ?? 0;
+    row.classList.toggle("is-selected", Boolean(options.selected));
+    applyToolDataset(row, options.dataset);
+
+    const copy = document.createElement(options.copyTagName || "span");
+    copy.className = options.copyClassName || "tool-sidebar-row-copy";
+    const title = options.titleNode || document.createElement(options.titleTagName || "strong");
+    if (!options.titleNode) title.textContent = options.title || "";
+    const summary = document.createElement(options.summaryTagName || "span");
+    summary.className = options.summaryClassName || "tool-sidebar-row-summary";
+    summary.textContent = options.summary || "";
+    copy.append(title, summary);
+    row.appendChild(copy);
+
+    let pill = null;
+    if (options.pill !== undefined && options.pill !== null) {
+      pill = document.createElement(options.pillTagName || "span");
+      pill.className = options.pillClassName || "flow-pill";
+      pill.textContent = options.pill;
+      row.appendChild(pill);
+    }
+
+    bindToolRowActivation(row, options.onActivate, {
+      activateOnDoubleClick: options.activateOnDoubleClick,
+      ignoreSelector: options.ignoreSelector
+    });
+    return { row, copy, title, summary, pill };
+  }
+
+  function appendToolNodes(target, nodes = []) {
+    for (const node of nodes || []) {
+      if (node) target.appendChild(node);
+    }
+  }
+
+  function createToolAccordionRow(options = {}) {
+    const row = document.createElement(options.tagName || "div");
+    row.className = options.className || "tool-accordion-row";
+    row.classList.toggle("is-selected", Boolean(options.expanded || options.selected));
+    row.setAttribute("aria-expanded", String(Boolean(options.expanded)));
+    row.tabIndex = options.tabIndex ?? 0;
+    row.draggable = Boolean(options.draggable);
+    applyToolDataset(row, options.dataset);
+
+    const header = document.createElement("div");
+    header.className = options.headerClassName || "tool-accordion-row-header";
+    const copy = document.createElement("div");
+    copy.className = options.copyClassName || "tool-accordion-row-copy";
+    const title = document.createElement(options.titleTagName || "strong");
+    title.textContent = options.title || "";
+    const summary = document.createElement(options.summaryTagName || "span");
+    summary.className = options.summaryClassName || "tool-accordion-row-summary";
+    summary.textContent = options.summary || "";
+    copy.append(title, summary);
+    const actions = document.createElement("div");
+    actions.className = options.actionsClassName || "tool-accordion-row-actions";
+    appendToolNodes(actions, options.actions);
+    header.append(copy, actions);
+
+    const fields = document.createElement("div");
+    fields.className = options.fieldsClassName || "tool-accordion-row-fields";
+    appendToolNodes(fields, options.fields);
+
+    row.append(header, fields);
+    bindToolRowActivation(row, options.onActivate, { ignoreSelector: options.ignoreSelector });
+    return { row, header, copy, title, summary, actions, fields };
+  }
+
   function capturePointer(element, pointerId) {
     try {
       element.setPointerCapture?.(pointerId);
@@ -125,7 +225,10 @@
   }
 
   window.PartyGameToolAffordances = {
+    bindToolRowActivation,
+    createToolAccordionRow,
     createDisclosureButton,
+    createToolSidebarRow,
     rectsIntersect,
     startSelectionMarquee,
     toggleCollapsedSetForIds

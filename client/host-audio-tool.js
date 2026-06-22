@@ -340,115 +340,50 @@ function renderHostAudioList() {
     return;
   }
   for (const item of hostAudios.hostAudios) {
-    const button = document.createElement("div");
-    button.className = "host-audio-list-item";
-    button.setAttribute("role", "button");
-    button.tabIndex = 0;
-    button.classList.toggle("is-selected", item.id === selectedHostAudioId);
-    const copy = document.createElement("span");
-    copy.className = "host-audio-list-copy";
     const titleInput = document.createElement("input");
     titleInput.className = "text-input host-audio-list-title";
-    const preview = document.createElement("span");
-    preview.className = "host-audio-list-preview";
-    const count = document.createElement("span");
-    count.className = "flow-pill";
     titleInput.value = item.name || "Host Audio";
     titleInput.addEventListener("click", (event) => event.stopPropagation());
     titleInput.addEventListener("keydown", (event) => event.stopPropagation());
     titleInput.addEventListener("change", () => {
       renameHostAudio(item.id, titleInput.value);
     });
-    preview.textContent = firstHostAudioLinePreview(item);
-    count.textContent = `${(item.lines || []).length} lines`;
-    copy.append(titleInput, preview);
-    button.append(copy, count);
     const select = () => {
       selectedHostAudioId = item.id;
       renderHostAudioTool();
     };
-    button.addEventListener("click", select);
-    button.addEventListener("dblclick", select);
-    button.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      select();
+    const { row } = window.PartyGameToolAffordances.createToolSidebarRow({
+      className: "host-audio-list-item",
+      copyClassName: "host-audio-list-copy",
+      summaryClassName: "host-audio-list-preview",
+      selected: item.id === selectedHostAudioId,
+      titleNode: titleInput,
+      summary: firstHostAudioLinePreview(item),
+      pill: `${(item.lines || []).length} lines`,
+      onActivate: select,
+      activateOnDoubleClick: true
     });
-    hostAudioList.appendChild(button);
+    hostAudioList.appendChild(row);
   }
 }
 
+function hostAudioLineActionButton(label, onClick, options = {}) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-button";
+  button.textContent = label;
+  if (options.title) button.title = options.title;
+  if (options.ariaLabel) button.setAttribute("aria-label", options.ariaLabel);
+  if (options.disabled) button.disabled = true;
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    onClick?.(event);
+  });
+  return button;
+}
+
 function createHostAudioLineCard(line, index) {
-  const card = document.createElement("div");
-  card.className = "host-audio-line-card";
   const isSelected = line.id === selectedHostAudioLineId;
-  card.classList.toggle("is-selected", isSelected);
-  card.draggable = true;
-  card.dataset.lineId = line.id;
-  card.tabIndex = 0;
-  card.setAttribute("aria-expanded", String(isSelected));
-
-  const header = document.createElement("div");
-  header.className = "host-audio-line-header";
-  const copy = document.createElement("div");
-  copy.className = "host-audio-line-copy";
-  const title = document.createElement("strong");
-  title.textContent = `Line ${index + 1}`;
-  const summary = document.createElement("span");
-  summary.className = "host-audio-line-summary";
-  summary.textContent = hostAudioLinePreview(line);
-  copy.append(title, summary);
-  const actions = document.createElement("div");
-  actions.className = "host-audio-line-actions";
-  if (isSelected) {
-    const upButton = document.createElement("button");
-    upButton.type = "button";
-    upButton.className = "secondary-button";
-    upButton.textContent = "↑";
-    upButton.title = "Move line up";
-    upButton.setAttribute("aria-label", "Move line up");
-    upButton.disabled = index <= 0;
-    upButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      moveHostAudioLine(line.id, -1);
-    });
-    const downButton = document.createElement("button");
-    downButton.type = "button";
-    downButton.className = "secondary-button";
-    downButton.textContent = "↓";
-    downButton.title = "Move line down";
-    downButton.setAttribute("aria-label", "Move line down");
-    downButton.disabled = index >= (selectedHostAudio()?.lines || []).length - 1;
-    downButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      moveHostAudioLine(line.id, 1);
-    });
-    const playButton = document.createElement("button");
-    playButton.type = "button";
-    playButton.className = "secondary-button";
-    playButton.textContent = "Play";
-    playButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-    const stopButton = document.createElement("button");
-    stopButton.type = "button";
-    stopButton.className = "secondary-button";
-    stopButton.textContent = "Stop";
-    stopButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "secondary-button";
-    deleteButton.textContent = "Delete";
-    deleteButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      removeHostAudioLine(line.id);
-    });
-    actions.append(upButton, downButton, playButton, stopButton, deleteButton);
-  }
-  header.append(copy, actions);
-
   const textField = document.createElement("label");
   textField.className = "field-label flow-form-grid";
   textField.textContent = "Line Text";
@@ -478,19 +413,37 @@ function createHostAudioLineCard(line, index) {
   urlInput.addEventListener("change", () => updateHostAudioLine(line.id, { url: urlInput.value.trim().slice(0, 2000) }));
   urlField.appendChild(urlInput);
 
-  const fields = document.createElement("div");
-  fields.className = "host-audio-line-fields";
-  fields.append(textField, urlField);
+  const actions = isSelected ? [
+    hostAudioLineActionButton("↑", () => moveHostAudioLine(line.id, -1), {
+      title: "Move line up",
+      ariaLabel: "Move line up",
+      disabled: index <= 0
+    }),
+    hostAudioLineActionButton("↓", () => moveHostAudioLine(line.id, 1), {
+      title: "Move line down",
+      ariaLabel: "Move line down",
+      disabled: index >= (selectedHostAudio()?.lines || []).length - 1
+    }),
+    hostAudioLineActionButton("Play"),
+    hostAudioLineActionButton("Stop"),
+    hostAudioLineActionButton("Delete", () => removeHostAudioLine(line.id))
+  ] : [];
 
-  card.addEventListener("click", (event) => {
-    if (event.target.closest("input, textarea, button")) return;
-    selectHostAudioLine(line.id);
-  });
-  card.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    if (event.target.closest("input, textarea, button")) return;
-    event.preventDefault();
-    selectHostAudioLine(line.id);
+  const { row: card } = window.PartyGameToolAffordances.createToolAccordionRow({
+    className: "host-audio-line-card",
+    headerClassName: "host-audio-line-header",
+    copyClassName: "host-audio-line-copy",
+    summaryClassName: "host-audio-line-summary",
+    actionsClassName: "host-audio-line-actions",
+    fieldsClassName: "host-audio-line-fields",
+    expanded: isSelected,
+    draggable: true,
+    dataset: { lineId: line.id },
+    title: `Line ${index + 1}`,
+    summary: hostAudioLinePreview(line),
+    actions,
+    fields: [textField, urlField],
+    onActivate: () => selectHostAudioLine(line.id)
   });
   card.addEventListener("dragstart", (event) => {
     if (event.target.closest("input, textarea, button")) {
@@ -529,7 +482,6 @@ function createHostAudioLineCard(line, index) {
     if (shouldRenderSelection) renderHostAudioTool();
   });
 
-  card.append(header, fields);
   return card;
 }
 
