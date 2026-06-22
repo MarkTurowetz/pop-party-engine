@@ -1344,19 +1344,13 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
   }
   if (action.type === "setPlayerAnswersShown") {
     getFlowActionControlGroups()?.appendVisibilityControls(target, action, rerender, { visibleLabel: "Player Answers Visible" });
-    target.appendChild(flowSelect("Players", action.playerFilter || "all", playerFilterOptions(), (value) => {
-      action.playerFilter = value;
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendPlayerFilterControls(target, action, rerender);
   }
   if (action.type === "revealPlayerAnswerCorrectness") {
     target.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
   }
   if (action.type === "showPoints") {
-    target.appendChild(flowSelect("Players", action.playerFilter || "correct", playerFilterOptions(), (value) => {
-      action.playerFilter = value;
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendPlayerFilterControls(target, action, rerender, { defaultFilter: "correct" });
     target.appendChild(flowNumber("Points (0 = Correct Answer Constant)", Number(action.points || 0), (value) => {
       action.points = Math.max(0, Math.floor(Number(value) || 0));
       rerender();

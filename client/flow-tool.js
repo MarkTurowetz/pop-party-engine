@@ -280,6 +280,7 @@ function getFlowActionControlGroups() {
       flowTextarea,
       flowTrueFalseOptions,
       normalizeTextTargetId,
+      playerFilterOptions,
       textTargetOptionsForFlowState
     });
   }
@@ -1007,19 +1008,13 @@ function renderFlowEditor() {
   }
   if (action.type === "setPlayerAnswersShown") {
     getFlowActionControlGroups()?.appendVisibilityControls(flowEditor, action, () => renderFlowListAndPublish(), { visibleLabel: "Player Answers Visible" });
-    flowEditor.appendChild(flowSelect("Players", action.playerFilter || "all", playerFilterOptions(), (value) => {
-      action.playerFilter = value;
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendPlayerFilterControls(flowEditor, action, () => renderFlowListAndPublish());
   }
   if (action.type === "revealPlayerAnswerCorrectness") {
     flowEditor.appendChild(readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
   }
   if (action.type === "showPoints") {
-    flowEditor.appendChild(flowSelect("Players", action.playerFilter || "correct", playerFilterOptions(), (value) => {
-      action.playerFilter = value;
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendPlayerFilterControls(flowEditor, action, () => renderFlowListAndPublish(), { defaultFilter: "correct" });
     flowEditor.appendChild(flowNumber("Points (0 = Correct Answer Constant)", Number(action.points || 0), (value) => {
       action.points = Math.max(0, Math.floor(Number(value) || 0));
       renderFlowListAndPublish();

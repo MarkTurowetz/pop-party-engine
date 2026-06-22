@@ -44,6 +44,15 @@
       }));
     }
 
+    function appendPlayerFilterControls(target, action, rerender, options = {}) {
+      const label = options.label || "Players";
+      const defaultFilter = options.defaultFilter || "all";
+      target.appendChild(context.flowSelect(label, action.playerFilter || defaultFilter, context.playerFilterOptions(), (value) => {
+        action.playerFilter = value;
+        rerender();
+      }));
+    }
+
     function appendBooleanSelect(target, label, value, trueFirst, onChange) {
       target.appendChild(context.flowSelect(label, value, context.flowTrueFalseOptions(trueFirst), onChange));
     }
@@ -52,6 +61,7 @@
       appendBooleanSelect,
       appendInputExitControls,
       appendInstantControl,
+      appendPlayerFilterControls,
       appendVisibilityControls,
       appendTextActionControls
     };
