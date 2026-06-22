@@ -103,8 +103,10 @@ function createRoomPhaseRuntime({
     resetCraftingTimer(room);
     clearChoiceInput(room);
     clearTextInput(room);
-    clearVotingInput(room);
+    clearVotingData(room);
     clearDisplayedPlayerAnswers(room);
+    room.playerAnswerRecords = {};
+    room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
     if (isRoundIntroStateId(phase) && previousPhase !== phase) {
       if (room.hasEnteredRoundIntro) {
         room.currentRound += 1;

@@ -60,6 +60,40 @@ function lockControllerViewport() {
   });
 }
 
+function bindButtonPress(button) {
+  const pressButton = () => {
+    if (button.disabled) return;
+    window.clearTimeout(button.releaseTimerId);
+    button.classList.remove("is-releasing");
+    button.classList.add("is-pressed");
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch (e) { /* optional */ }
+  };
+  const releaseButton = () => {
+    if (!button.classList.contains("is-pressed")) return;
+    button.classList.add("is-releasing");
+    button.classList.remove("is-pressed");
+    window.clearTimeout(button.releaseTimerId);
+    button.releaseTimerId = window.setTimeout(() => button.classList.remove("is-releasing"), 140);
+  };
+  button.addEventListener("pointerdown", pressButton);
+  button.addEventListener("pointerup", releaseButton);
+  button.addEventListener("pointercancel", releaseButton);
+  button.addEventListener("pointerleave", releaseButton);
+  button.addEventListener("blur", releaseButton);
+  let touchStarted = false;
+  button.addEventListener("touchstart", (e) => { e.preventDefault(); touchStarted = true; pressButton(); }, { passive: false });
+  button.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    const endedOn = touch ? document.elementFromPoint(touch.clientX, touch.clientY) : null;
+    releaseButton();
+    if (touchStarted && (endedOn === button || button.contains(endedOn)) && !button.disabled) button.click();
+    touchStarted = false;
+  }, { passive: false });
+  button.addEventListener("touchcancel", (e) => { e.preventDefault(); touchStarted = false; releaseButton(); }, { passive: false });
+  button.addEventListener("dblclick", (e) => e.preventDefault());
+}
+
 function bindControllerButtonPressStates() {
   const pressableButtons = controllerScreen.querySelectorAll("button");
   let lastHapticAt = 0;

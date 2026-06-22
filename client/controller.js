@@ -117,6 +117,7 @@ function renderControllerChoiceState(lobby, me) {
     button.textContent = option.label || option.text || `Option ${Number(option.index) + 1}`;
     button.disabled = isDone;
     button.addEventListener("click", () => submitControllerChoice(input.actionId, Number(option.index), option.cardId || ""));
+    bindButtonPress(button);
     controllerChoiceGrid.appendChild(button);
   }
   applyControllerLayoutForPhase(lobby.phase || "lobby");

@@ -19,6 +19,9 @@ function createVotingRuntime({
     room.votingCards = [];
     room.votingCardsShown = false;
     room.votingResultsShown = false;
+    room.votingAuthorsRevealed = false;
+    room.votingVotesRevealed = false;
+    room.votingWinnerRevealed = false;
     room.votingWinners = [];
   }
 
@@ -115,6 +118,35 @@ function createVotingRuntime({
     room.votingResultsShown = true;
   }
 
+  function revealAuthors(room) {
+    room.votingAuthorsRevealed = true;
+  }
+
+  function revealVotes(room) {
+    const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
+    let highestVotes = -1;
+    for (const card of cards) {
+      card.voteCount = (Array.isArray(card.voterIds) ? card.voterIds : []).length;
+      highestVotes = Math.max(highestVotes, card.voteCount);
+    }
+    room.votingVotesRevealed = true;
+  }
+
+  function revealWinningAnswer(room) {
+    const cards = Array.isArray(room.votingCards) ? room.votingCards : [];
+    let highestVotes = -1;
+    for (const card of cards) {
+      card.voteCount = (Array.isArray(card.voterIds) ? card.voterIds : []).length;
+      highestVotes = Math.max(highestVotes, card.voteCount);
+    }
+    for (const card of cards) {
+      card.isWinner = highestVotes >= 0 && card.voteCount === highestVotes;
+    }
+    room.votingWinners = cards.filter((card) => card.isWinner).map((card) => card.authorPlayerId);
+    room.votingWinnerRevealed = true;
+    room.votingResultsShown = true;
+  }
+
   function setVotingCardsShown(room, action) {
     const shouldShow = action?.isShown !== false;
     const filter = normalizeVotingCardFilter(action?.cardFilter);
@@ -130,22 +162,38 @@ function createVotingRuntime({
 
   function serializeVotingCards(room) {
     if (room.votingCardsShown === false) return [];
+    const votesRevealed = room.votingVotesRevealed === true || room.votingResultsShown === true;
+    const authorsRevealed = room.votingAuthorsRevealed === true || room.votingResultsShown === true;
+    const winnerRevealed = room.votingWinnerRevealed === true || room.votingResultsShown === true;
     return (room.votingCards || [])
       .filter((card) => card && card.hidden !== true)
       .map((card, index) => {
-        const voters = room.votingResultsShown === true
-          ? (card.voterIds || []).map((playerId) => {
-              const player = room.players.get(playerId);
-              return player ? { id: player.id, name: player.name, avatar: player.avatar } : null;
-            }).filter(Boolean)
+        const authorPlayer = authorsRevealed ? room.players.get(card.authorPlayerId) : null;
+        const voters = votesRevealed
+          ? (card.voterIds || [])
+              .map((playerId) => {
+                const player = room.players.get(playerId);
+                return player ? { id: player.id, name: player.name, avatar: player.avatar } : null;
+              })
+              .filter(Boolean)
+              .sort((a, b) => {
+                const players = [...(room.players?.values() || [])];
+                return players.findIndex((p) => p.id === a.id) - players.findIndex((p) => p.id === b.id);
+              })
           : [];
         return {
           id: card.id,
           index,
           text: card.text,
-          voteCount: Number(card.voteCount || 0),
-          isWinner: card.isWinner === true,
+          voteCount: votesRevealed ? Number(card.voteCount || 0) : 0,
+          isWinner: winnerRevealed && card.isWinner === true,
+          isLoser: winnerRevealed && card.isWinner === false && room.votingWinners.length > 0,
+          authorsRevealed,
+          votesRevealed,
+          winnerRevealed,
           resultsShown: room.votingResultsShown === true,
+          authorName: authorPlayer ? authorPlayer.name : "",
+          authorAvatar: authorPlayer ? authorPlayer.avatar : null,
           voters
         };
       });
@@ -157,6 +205,9 @@ function createVotingRuntime({
     clearVotingData,
     clearVotingInput,
     prepareVotingCards,
+    revealAuthors,
+    revealVotes,
+    revealWinningAnswer,
     revealVotingResults,
     serializeVotingCards,
     setVotingCardsShown,

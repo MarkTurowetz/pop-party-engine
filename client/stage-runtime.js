@@ -224,7 +224,7 @@ function renderVotingCards(cards = []) {
   if (!votingCardLayer) return;
   votingCardLayer.classList.toggle("hidden", !cards.length);
   const desired = new Set((cards || []).map((card) => card.id));
-  const existing = new Map(Array.from(votingCardLayer.querySelectorAll(".voting-card[data-card-id]")).map((card) => [card.dataset.cardId, card]));
+  const existing = new Map(Array.from(votingCardLayer.querySelectorAll(".voting-card[data-card-id]")).map((el) => [el.dataset.cardId, el]));
   for (const cardData of cards || []) {
     let card = existing.get(cardData.id);
     if (!card) {
@@ -232,20 +232,49 @@ function renderVotingCards(cards = []) {
       card.className = "voting-card";
       card.dataset.cardId = cardData.id;
       card.innerHTML = `
+        <div class="voting-card-author"></div>
         <div class="voting-card-answer"></div>
-        <div class="voting-card-voters"></div>
         <div class="voting-card-votes hidden"></div>
+        <div class="voting-card-voters"></div>
       `;
       votingCardLayer.appendChild(card);
     }
     card.classList.toggle("is-winner", cardData.isWinner === true);
+    card.classList.toggle("is-loser", cardData.isLoser === true);
+
+    // Author reveal
+    const authorEl = card.querySelector(".voting-card-author");
+    authorEl.textContent = cardData.authorName || "";
+    // Use rAF delay so entering cards animate in
+    requestAnimationFrame(() => authorEl.classList.toggle("is-revealed", cardData.authorsRevealed === true));
+
+    // Answer text
     card.querySelector(".voting-card-answer").textContent = cardData.text || "";
-    const voterNames = cardData.resultsShown ? (cardData.voters || []).map((voter) => voter.name).join(", ") : "";
-    card.querySelector(".voting-card-voters").textContent = voterNames ? `Votes: ${voterNames}` : "";
+
+    // Vote count badge
     const voteBadge = card.querySelector(".voting-card-votes");
-    voteBadge.classList.toggle("hidden", cardData.resultsShown !== true);
     const voteCount = Number(cardData.voteCount || 0);
+    voteBadge.classList.toggle("hidden", !cardData.votesRevealed);
     voteBadge.textContent = `${voteCount} vote${voteCount === 1 ? "" : "s"}`;
+
+    // Voter badges (appear one by one via staggered CSS transition delay)
+    const votersEl = card.querySelector(".voting-card-voters");
+    const voters = cardData.votesRevealed ? (cardData.voters || []) : [];
+    const existingBadges = Array.from(votersEl.querySelectorAll(".voting-card-voter-badge"));
+    // Add missing badges
+    voters.forEach((voter, i) => {
+      let badge = existingBadges[i];
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "voting-card-voter-badge";
+        badge.style.transitionDelay = `${i * 80}ms`;
+        votersEl.appendChild(badge);
+      }
+      badge.textContent = voter.name;
+      requestAnimationFrame(() => badge.classList.add("is-revealed"));
+    });
+    // Remove extra badges
+    for (let i = voters.length; i < existingBadges.length; i++) existingBadges[i].remove();
   }
   for (const card of Array.from(votingCardLayer.querySelectorAll(".voting-card[data-card-id]"))) {
     if (!desired.has(card.dataset.cardId)) card.remove();

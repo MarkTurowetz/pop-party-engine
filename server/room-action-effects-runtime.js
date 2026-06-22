@@ -8,6 +8,9 @@ function createRoomActionEffectsRuntime({
   markDisplayedAnswersCorrectness,
   normalizePlayerFilter,
   prepareVotingCards,
+  revealAuthors,
+  revealVotes,
+  revealWinningAnswer,
   revealVotingResults,
   seedDisplayedPlayerAnswers,
   setCraftingTimerShown,
@@ -29,6 +32,39 @@ function createRoomActionEffectsRuntime({
     }
     if (action.type === "revealVotingResults") {
       revealVotingResults(room);
+    }
+    if (action.type === "revealAuthors") {
+      revealAuthors(room);
+    }
+    if (action.type === "revealVotes") {
+      revealVotes(room);
+    }
+    if (action.type === "revealWinningAnswer") {
+      revealWinningAnswer(room);
+    }
+    if (action.type === "setupGame") {
+      for (const player of room.players.values()) {
+        player.points = 0;
+        player.pendingPoints = 0;
+      }
+      room.currentRound = 0;
+      room.flowVariables = {};
+      room.pendingPointPopups = [];
+      room.pendingPointPopupNonce = 0;
+      room.playerAnswerRecords = {};
+      room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
+      room.votingCards = [];
+      room.votingCardsShown = false;
+      room.votingResultsShown = false;
+      room.votingAuthorsRevealed = false;
+      room.votingVotesRevealed = false;
+      room.votingWinnerRevealed = false;
+      room.votingWinners = [];
+      room.playersShown = false;
+      room.playerAnswersShown = false;
+      room.hiddenPlayerAnswerIds = new Set();
+      room.displayedPlayerAnswers = new Map();
+      room.displayedAnswerCorrectness = new Map();
     }
     if (action.type === "setPlayersShown") {
       room.playersShown = action.isShown !== false;

@@ -17,6 +17,7 @@ const playerNamesInput = document.querySelector("#playerNamesInput");
 const spawnButton = document.querySelector("#spawnButton");
 const sortControllersButton = document.querySelector("#sortControllersButton");
 const tapRandomButton = document.querySelector("#tapRandomButton");
+const submitRandomTextButton = document.querySelector("#submitRandomTextButton");
 const closeControllersButton = document.querySelector("#closeControllersButton");
 const statusText = document.querySelector("#statusText");
 const appOrigin = document.querySelector("#appOrigin");
@@ -410,6 +411,66 @@ async function tapRandomOptionsInControllers() {
   setStatus(`Tapped ${clicked} of ${checked} open controller${checked === 1 ? "" : "s"} (${eligible} option${eligible === 1 ? "" : "s"} found).`);
 }
 
+function findTextInputAndFill() {
+  const textState = document.querySelector("#controllerTextState");
+  const textInput = document.querySelector("#controllerTextInput");
+  const submitButton = document.querySelector("#controllerTextSubmitButton");
+  if (!textInput || !submitButton) return { found: false, reason: "no text input" };
+  const style = window.getComputedStyle(textState || textInput);
+  if (style.display === "none" || textState?.classList.contains("hidden")) {
+    return { found: false, reason: "text input not visible" };
+  }
+  const playerName = document.querySelector("#controllerPlayerBannerName")?.textContent?.trim()
+    || document.querySelector("#controllerPlayerName")?.textContent?.trim()
+    || "Player";
+  textInput.value = `${playerName} Text response`;
+  textInput.dispatchEvent(new Event("input", { bubbles: true }));
+  const submitRect = submitButton.getBoundingClientRect();
+  return {
+    found: true,
+    x: submitRect.left + submitRect.width / 2,
+    y: submitRect.top + submitRect.height / 2
+  };
+}
+
+async function submitRandomTextInControllers() {
+  const stored = await chrome.storage.local.get(["spawnedControllers"]);
+  const controllers = stored.spawnedControllers || [];
+  if (controllers.length === 0) {
+    setStatus("No spawned controller windows are tracked.");
+    return;
+  }
+
+  submitRandomTextButton.disabled = true;
+  let filled = 0;
+  let checked = 0;
+  const stillOpen = [];
+
+  for (const controller of controllers) {
+    if (!controller.tabId) continue;
+    try {
+      await chrome.tabs.get(controller.tabId);
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: controller.tabId },
+        func: findTextInputAndFill
+      });
+      const result = results?.[0]?.result;
+      checked += 1;
+      if (result?.found) {
+        await dispatchTrustedClick(controller.tabId, result.x, result.y);
+        filled += 1;
+      }
+      stillOpen.push(controller);
+    } catch (error) {
+      // Tab closed or inaccessible.
+    }
+  }
+
+  await chrome.storage.local.set({ spawnedControllers: stillOpen });
+  submitRandomTextButton.disabled = false;
+  setStatus(`Submitted text in ${filled} of ${checked} controller${checked === 1 ? "" : "s"}.`);
+}
+
 async function closeAllControllers(options = {}) {
   const silent = options.silent === true;
   const stored = await chrome.storage.local.get(["spawnedControllers"]);
@@ -452,6 +513,7 @@ playerNamesInput.addEventListener("input", persistInputs);
 spawnButton.addEventListener("click", spawnControllers);
 sortControllersButton.addEventListener("click", sortControllers);
 tapRandomButton.addEventListener("click", tapRandomOptionsInControllers);
+submitRandomTextButton.addEventListener("click", submitRandomTextInControllers);
 closeControllersButton.addEventListener("click", closeAllControllers);
 
 loadState();
