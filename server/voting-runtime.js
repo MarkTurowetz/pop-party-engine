@@ -228,7 +228,7 @@ function createVotingRuntime({
     return (room.votingCards || [])
       .filter((card) => card && card.hidden !== true)
       .map((card, index) => {
-        const author = authorsRevealed ? revealedCardAuthor(room, card) : { name: "", avatar: null };
+        const author = revealedCardAuthor(room, card);
         const voters = votesRevealed
           ? (card.voterIds || [])
               .map((playerId) => {

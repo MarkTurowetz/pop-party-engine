@@ -73,6 +73,25 @@ function playAnswerBubbleVisual(bubble, animation, options = {}) {
   return answerBubbleVisualFor(bubble).play(animation, options);
 }
 
+let votingCardVisualRenderer = null;
+
+function votingCardRenderer() {
+  if (!votingCardVisualRenderer && votingCardLayer && window.PartyGameVotingCardVisuals) {
+    votingCardVisualRenderer = window.PartyGameVotingCardVisuals.createRenderer({
+      layer: votingCardLayer,
+      visualAnimation,
+      avatarClass,
+      avatarFrameImage,
+      dinoIcon
+    });
+  }
+  return votingCardVisualRenderer;
+}
+
+function clearVotingCardVisuals(options = {}) {
+  votingCardRenderer()?.clear(options);
+}
+
 function createPlayerTile(player, playerIndex, signature) {
   const tile = document.createElement("article");
   tile.className = "player-tile";
@@ -221,79 +240,7 @@ function renderPointPopups(popups = []) {
 }
 
 function renderVotingCards(cards = []) {
-  if (!votingCardLayer) return;
-  votingCardLayer.classList.toggle("hidden", !cards.length);
-  const desired = new Set((cards || []).map((card) => card.id));
-  const existing = new Map(Array.from(votingCardLayer.querySelectorAll(".voting-card[data-card-id]")).map((el) => [el.dataset.cardId, el]));
-  for (const cardData of cards || []) {
-    let card = existing.get(cardData.id);
-    if (!card) {
-      card = document.createElement("article");
-      card.className = "voting-card";
-      card.dataset.cardId = cardData.id;
-      card.innerHTML = `
-        <div class="voting-card-author"></div>
-        <div class="voting-card-answer"></div>
-        <div class="voting-card-votes hidden"></div>
-        <div class="voting-card-voters"></div>
-      `;
-      votingCardLayer.appendChild(card);
-    }
-    card.classList.toggle("is-winner", cardData.isWinner === true);
-    card.classList.toggle("is-loser", cardData.isLoser === true);
-
-    // Author reveal
-    const authorEl = card.querySelector(".voting-card-author");
-    authorEl.textContent = cardData.authorName || "";
-    if (cardData.authorsRevealed === true) {
-      requestAnimationFrame(() => authorEl.classList.add("is-revealed"));
-    } else {
-      authorEl.classList.remove("is-revealed");
-    }
-
-    // Answer text
-    card.querySelector(".voting-card-answer").textContent = cardData.text || "";
-
-    // Vote count badge
-    const voteBadge = card.querySelector(".voting-card-votes");
-    const voteCount = Number(cardData.voteCount || 0);
-    voteBadge.classList.toggle("hidden", !cardData.votesRevealed);
-    voteBadge.textContent = `${voteCount} vote${voteCount === 1 ? "" : "s"}`;
-
-    // Voter badges (appear one by one via staggered CSS transition delay)
-    const votersEl = card.querySelector(".voting-card-voters");
-    const voters = cardData.votesRevealed ? (cardData.voters || []) : [];
-    const existingBadges = Array.from(votersEl.querySelectorAll(".voting-card-voter-badge"));
-    // Add missing badges
-    voters.forEach((voter, i) => {
-      let badge = existingBadges[i];
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "voting-card-voter-badge";
-        badge.style.transitionDelay = `${i * 80}ms`;
-        badge.innerHTML = `
-          <span class="voting-card-voter-avatar"></span>
-          <span class="voting-card-voter-name"></span>
-        `;
-        votersEl.appendChild(badge);
-      }
-      if (badge.dataset.voterId && badge.dataset.voterId !== voter.id) {
-        badge.classList.remove("is-revealed");
-      }
-      badge.dataset.voterId = voter.id || "";
-      const avatarEl = badge.querySelector(".voting-card-voter-avatar");
-      avatarEl.className = `voting-card-voter-avatar ${avatarClass(voter.avatar?.shape)}`;
-      avatarEl.style.setProperty("--avatar-color", voter.avatar?.color || "#22d3ee");
-      avatarEl.innerHTML = `${avatarFrameImage()}${dinoIcon(voter.avatar?.shape)}`;
-      badge.querySelector(".voting-card-voter-name").textContent = voter.name || "Player";
-      requestAnimationFrame(() => badge.classList.add("is-revealed"));
-    });
-    // Remove extra badges
-    for (let i = voters.length; i < existingBadges.length; i++) existingBadges[i].remove();
-  }
-  for (const card of Array.from(votingCardLayer.querySelectorAll(".voting-card[data-card-id]"))) {
-    if (!desired.has(card.dataset.cardId)) card.remove();
-  }
+  votingCardRenderer()?.render(cards);
 }
 
 function runStageWipe(onCovered) {
@@ -372,6 +319,7 @@ function resetStageObjects() {
   renderedPlayerAnswersShown = true;
   playerLobby.classList.remove("answers-hidden");
   renderedPointPopupIds.clear();
+  clearVotingCardVisuals({ instant: true });
   initStageTextObjects();
   presentClickWidget.classList.add("hidden");
 }
