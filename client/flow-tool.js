@@ -278,6 +278,7 @@ function getFlowActionControlGroups() {
       flowActionTargetOptions,
       flowHostAudioSearch,
       flowInteger,
+      flowNumber,
       flowSelect,
       flowTextarea,
       flowTrueFalseOptions,
@@ -969,10 +970,7 @@ function renderFlowEditor() {
     flowEditor.appendChild(readOnlyFlowNote("Reveals the author heading on each prepared voting card."));
   }
   if (action.type === "revealVotes") {
-    flowEditor.appendChild(flowNumber("Vote Stagger Seconds", Number(action.voteRevealStaggerSeconds ?? 1), (value) => {
-      action.voteRevealStaggerSeconds = Math.max(0, Math.min(60, Number(value) || 0));
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendBoundedNumberControl(flowEditor, action, "voteRevealStaggerSeconds", "Vote Stagger Seconds", () => renderFlowListAndPublish(), { defaultValue: 1, min: 0, max: 60 });
     flowEditor.appendChild(readOnlyFlowNote("Reveals one voter per card per stagger interval. E+ timing starts after the final voter appears."));
   }
   if (action.type === "revealWinningAnswer") {
@@ -1009,10 +1007,7 @@ function renderFlowEditor() {
   }
   if (action.type === "showPoints") {
     getFlowActionControlGroups()?.appendPlayerFilterControls(flowEditor, action, () => renderFlowListAndPublish(), { defaultFilter: "correct" });
-    flowEditor.appendChild(flowNumber("Points (0 = Correct Answer Constant)", Number(action.points || 0), (value) => {
-      action.points = Math.max(0, Math.floor(Number(value) || 0));
-      renderFlowListAndPublish();
-    }));
+    getFlowActionControlGroups()?.appendBoundedNumberControl(flowEditor, action, "points", "Points (0 = Correct Answer Constant)", () => renderFlowListAndPublish(), { defaultValue: 0, min: 0, integer: true });
     flowEditor.appendChild(readOnlyFlowNote("Adds pending points immediately, then shows a temporary points popup above each targeted player's answer bubble."));
   }
   if (action.type === "givePendingPoints") {

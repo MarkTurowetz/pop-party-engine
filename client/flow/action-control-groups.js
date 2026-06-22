@@ -74,12 +74,25 @@
       }
     }
 
+    function appendBoundedNumberControl(target, action, key, label, rerender, options = {}) {
+      const defaultValue = Number(options.defaultValue ?? 0);
+      const min = Number(options.min ?? Number.NEGATIVE_INFINITY);
+      const max = Number(options.max ?? Number.POSITIVE_INFINITY);
+      target.appendChild(context.flowNumber(label, Number(action[key] ?? defaultValue), (value) => {
+        const rawValue = Number(value) || 0;
+        const roundedValue = options.integer ? Math.floor(rawValue) : rawValue;
+        action[key] = Math.max(min, Math.min(max, roundedValue));
+        rerender();
+      }));
+    }
+
     function appendBooleanSelect(target, label, value, trueFirst, onChange) {
       target.appendChild(context.flowSelect(label, value, context.flowTrueFalseOptions(trueFirst), onChange));
     }
 
     return {
       appendBooleanSelect,
+      appendBoundedNumberControl,
       appendHostAudioPlaybackControls,
       appendInputExitControls,
       appendInstantControl,

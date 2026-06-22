@@ -1303,10 +1303,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
     target.appendChild(readOnlyFlowNote("Reveals the author heading on each prepared voting card."));
   }
   if (action.type === "revealVotes") {
-    target.appendChild(flowNumber("Vote Stagger Seconds", Number(action.voteRevealStaggerSeconds ?? 1), (value) => {
-      action.voteRevealStaggerSeconds = Math.max(0, Math.min(60, Number(value) || 0));
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendBoundedNumberControl(target, action, "voteRevealStaggerSeconds", "Vote Stagger Seconds", rerender, { defaultValue: 1, min: 0, max: 60 });
     target.appendChild(readOnlyFlowNote("Reveals the player vote widgets under the cards they voted for."));
   }
   if (action.type === "revealWinningAnswer") {
@@ -1338,10 +1335,7 @@ function appendFlowActionPropertyControls(target, state, actionRef, { includeSub
   }
   if (action.type === "showPoints") {
     getFlowActionControlGroups()?.appendPlayerFilterControls(target, action, rerender, { defaultFilter: "correct" });
-    target.appendChild(flowNumber("Points (0 = Correct Answer Constant)", Number(action.points || 0), (value) => {
-      action.points = Math.max(0, Math.floor(Number(value) || 0));
-      rerender();
-    }));
+    getFlowActionControlGroups()?.appendBoundedNumberControl(target, action, "points", "Points (0 = Correct Answer Constant)", rerender, { defaultValue: 0, min: 0, integer: true });
     target.appendChild(readOnlyFlowNote("Adds pending points immediately, then shows a temporary points popup above each targeted player's answer bubble."));
   }
   if (action.type === "givePendingPoints") {
