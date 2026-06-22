@@ -74,6 +74,58 @@ function ensureSelectedHostAudioLine() {
   if (!selectedHostAudioLine()) selectedHostAudioLineId = "";
 }
 
+function hostAudioHistorySnapshot() {
+  return JSON.stringify(serializeHostAudiosForSave(hostAudios));
+}
+
+function getHostAudioHistoryManager() {
+  if (!hostAudioHistoryManager && window.PartyGameToolHistory) {
+    hostAudioHistoryManager = window.PartyGameToolHistory.createHistory({
+      snapshot: hostAudioHistorySnapshot,
+      restore: restoreHostAudioHistory,
+      limit: 30
+    });
+  }
+  return hostAudioHistoryManager;
+}
+
+function pushHostAudioHistory() {
+  getHostAudioHistoryManager()?.push();
+}
+
+function restoreHostAudioHistory(snapshot) {
+  const preferredHostAudioId = selectedHostAudioId;
+  const preferredLineId = selectedHostAudioLineId;
+  hostAudios = normalizeClientHostAudios(JSON.parse(snapshot));
+  selectedHostAudioId = preferredHostAudioId && hostAudios.hostAudios.some((item) => item.id === preferredHostAudioId)
+    ? preferredHostAudioId
+    : hostAudios.hostAudios[0]?.id || "";
+  selectedHostAudioLineId = preferredLineId;
+  ensureSelectedHostAudioLine();
+  renderHostAudioTool();
+  if (typeof publishRuntimeLocalChanges === "function") publishRuntimeLocalChanges();
+  updateGlobalSaveButton();
+}
+
+function undoHostAudioChange() {
+  getHostAudioHistoryManager()?.undo();
+}
+
+function redoHostAudioChange() {
+  getHostAudioHistoryManager()?.redo();
+}
+
+function handleHostAudioHotkeys(event) {
+  if (hostAudioScreen.classList.contains("hidden")) return;
+  if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+  event.preventDefault();
+  if (event.shiftKey) {
+    redoHostAudioChange();
+  } else {
+    undoHostAudioChange();
+  }
+}
+
 function hostAudioDisplayName(hostAudioId) {
   return (hostAudios.hostAudios || []).find((item) => item.id === hostAudioId)?.name || hostAudioId || "No Host Audio";
 }
@@ -140,6 +192,7 @@ async function loadHostAudios({ silent = false } = {}) {
     ? selectedHostAudioId
     : hostAudios.hostAudios[0]?.id || "";
   ensureSelectedHostAudioLine();
+  getHostAudioHistoryManager()?.clear();
   updateHostAudioStorageStatus(result.storage);
   if (!silent) renderHostAudioTool();
   updateGlobalSaveButton();
@@ -159,6 +212,7 @@ function publishHostAudioChanges({ render = true, renderList = false } = {}) {
 }
 
 function addHostAudio() {
+  pushHostAudioHistory();
   const item = {
     id: createPermanentHostAudioId(),
     name: "Host Audio",
@@ -172,6 +226,7 @@ function addHostAudio() {
 
 function deleteSelectedHostAudio() {
   if (!selectedHostAudioId) return;
+  pushHostAudioHistory();
   hostAudios.hostAudios = (hostAudios.hostAudios || []).filter((item) => item.id !== selectedHostAudioId);
   selectedHostAudioId = hostAudios.hostAudios[0]?.id || "";
   selectedHostAudioLineId = "";
@@ -181,7 +236,7 @@ function deleteSelectedHostAudio() {
 function addHostAudioLine() {
   const hostAudio = selectedHostAudio();
   if (!hostAudio) return;
-  const index = (hostAudio.lines || []).length;
+  pushHostAudioHistory();
   hostAudio.lines = hostAudio.lines || [];
   const line = {
     id: createPermanentHostAudioLineId(),
@@ -197,6 +252,8 @@ function removeHostAudioLine(lineId) {
   const hostAudio = selectedHostAudio();
   if (!hostAudio) return;
   const index = (hostAudio.lines || []).findIndex((line) => line.id === lineId);
+  if (index < 0) return;
+  pushHostAudioHistory();
   hostAudio.lines = (hostAudio.lines || []).filter((line) => line.id !== lineId);
   if (selectedHostAudioLineId === lineId) {
     selectedHostAudioLineId = hostAudio.lines[Math.min(index, hostAudio.lines.length - 1)]?.id || "";
@@ -218,6 +275,7 @@ function moveHostAudioLine(lineId, offset) {
   if (fromIndex < 0) return;
   const toIndex = Math.max(0, Math.min(lines.length - 1, fromIndex + offset));
   if (fromIndex === toIndex) return;
+  pushHostAudioHistory();
   const [line] = lines.splice(fromIndex, 1);
   lines.splice(toIndex, 0, line);
   selectedHostAudioLineId = line.id;
@@ -230,6 +288,7 @@ function reorderHostAudioLine(draggedLineId, targetLineId, placeAfter = false) {
   const fromIndex = lines.findIndex((line) => line.id === draggedLineId);
   const targetIndex = lines.findIndex((line) => line.id === targetLineId);
   if (fromIndex < 0 || targetIndex < 0 || draggedLineId === targetLineId) return;
+  pushHostAudioHistory();
   const [line] = lines.splice(fromIndex, 1);
   const adjustedTargetIndex = lines.findIndex((item) => item.id === targetLineId);
   const insertIndex = adjustedTargetIndex + (placeAfter ? 1 : 0);
@@ -240,16 +299,25 @@ function reorderHostAudioLine(draggedLineId, targetLineId, placeAfter = false) {
 }
 
 function updateHostAudioName(value) {
-  const hostAudio = selectedHostAudio();
+  renameHostAudio(selectedHostAudioId, value);
+}
+
+function renameHostAudio(hostAudioId, value, options = {}) {
+  const hostAudio = (hostAudios.hostAudios || []).find((item) => item.id === hostAudioId);
   if (!hostAudio) return;
-  hostAudio.name = value.trim().slice(0, 80) || hostAudio.name;
-  publishHostAudioChanges();
+  const nextName = value.trim().slice(0, 80) || "Host Audio";
+  if (hostAudio.name === nextName) return;
+  if (options.captureHistory !== false) pushHostAudioHistory();
+  hostAudio.name = nextName;
+  if (hostAudio.id === selectedHostAudioId && hostAudioNameInput) hostAudioNameInput.value = hostAudio.name;
+  publishHostAudioChanges(options.publishOptions || {});
 }
 
 function updateHostAudioLine(lineId, patch, options = {}) {
   const hostAudio = selectedHostAudio();
   const line = (hostAudio?.lines || []).find((item) => item.id === lineId);
   if (!line) return;
+  if (options.captureHistory !== false) pushHostAudioHistory();
   Object.assign(line, patch);
   publishHostAudioChanges(options);
 }
@@ -276,9 +344,7 @@ function renderHostAudioList() {
     titleInput.addEventListener("click", (event) => event.stopPropagation());
     titleInput.addEventListener("keydown", (event) => event.stopPropagation());
     titleInput.addEventListener("change", () => {
-      item.name = titleInput.value.trim().slice(0, 80) || "Host Audio";
-      if (item.id === selectedHostAudioId) hostAudioNameInput.value = item.name;
-      publishHostAudioChanges();
+      renameHostAudio(item.id, titleInput.value);
     });
     button.querySelector("span span").textContent = firstHostAudioLinePreview(item);
     button.querySelector(".flow-pill").textContent = `${(item.lines || []).length} lines`;
@@ -368,7 +434,17 @@ function createHostAudioLineCard(line, index) {
   const textInput = document.createElement("textarea");
   textInput.className = "text-input flow-textarea";
   textInput.value = line.text || "";
-  textInput.addEventListener("input", () => updateHostAudioLine(line.id, { text: textInput.value.slice(0, 240) }, { render: false, renderList: index === 0 }));
+  let textHistoryCaptured = false;
+  textInput.addEventListener("focus", () => {
+    textHistoryCaptured = false;
+  });
+  textInput.addEventListener("input", () => {
+    if (!textHistoryCaptured) {
+      pushHostAudioHistory();
+      textHistoryCaptured = true;
+    }
+    updateHostAudioLine(line.id, { text: textInput.value.slice(0, 240) }, { render: false, renderList: index === 0, captureHistory: false });
+  });
   textField.appendChild(textInput);
 
   const urlField = document.createElement("label");
@@ -488,6 +564,7 @@ async function saveHostAudios() {
 function revertHostAudios() {
   if (!hostAudiosSavedSnapshot) return;
   hostAudios = normalizeClientHostAudios(JSON.parse(hostAudiosSavedSnapshot));
+  getHostAudioHistoryManager()?.clear();
   selectedHostAudioId = hostAudios.hostAudios[0]?.id || "";
   ensureSelectedHostAudioLine();
   publishHostAudioChanges();
@@ -506,6 +583,7 @@ async function setupHostAudioTool() {
     deleteHostAudioButton.addEventListener("click", deleteSelectedHostAudio);
     revertHostAudiosButton.addEventListener("click", revertHostAudios);
     hostAudioNameInput.addEventListener("change", () => updateHostAudioName(hostAudioNameInput.value));
+    window.addEventListener("keydown", handleHostAudioHotkeys);
   }
   try {
     await loadHostAudios();

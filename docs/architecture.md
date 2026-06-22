@@ -77,7 +77,8 @@ concepts into focused modules.
     used by stage text and player answer bubbles.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
-    can express state as a snapshot and restore function.
+    can express state as a snapshot and restore function. Flow, layout, and Host Audio
+    tools use this shared primitive instead of owning bespoke history stacks.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order
@@ -103,7 +104,8 @@ concepts into focused modules.
 - New flow action metadata and shared action shaping behavior belongs in
   `shared/flow-action-registry.js`.
 - New server behavior should avoid growing `server.js` when it can live in a focused module.
-- Large UI changes should eventually land in `client/tools/`, `client/stage/`, or
-  `client/controller/`.
+- Large UI changes should eventually land in focused `client/` modules such as
+  `client/stage/` or `client/controller/`. Avoid adding a literal `tools/` directory
+  unless `.gitignore` is adjusted first.
 - Cross-tool affordances such as undo/redo should live in shared tool primitives, then each
   tool should plug in its own snapshot/restore functions instead of owning bespoke stacks.
