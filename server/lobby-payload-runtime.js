@@ -15,7 +15,9 @@ function createLobbyPayloadRuntime({
 }) {
   function lobbyPayload(room) {
     selectVip(room);
-    const currentAction = room.phase !== "lobby" && room.phase !== "starting" ? resolveRoomActionText(currentRoomAction(room), room) : null;
+    const shouldExposeAction = room.phase !== "lobby" && room.phase !== "starting"
+      || room.lobbyFlowActive === true;
+    const currentAction = shouldExposeAction ? resolveRoomActionText(currentRoomAction(room), room) : null;
     applyRoomActionEffects(room, currentAction);
     const input = choiceInputPayload(room, currentAction);
     const textInput = textInputPayload(room, currentAction);
@@ -24,6 +26,7 @@ function createLobbyPayloadRuntime({
       stageCode: room.stageCode,
       revision: room.revision,
       phase: room.phase,
+      lobbyFlowActive: room.lobbyFlowActive === true,
       countdownStartedAt: room.countdownStartedAt,
       countdownEndsAt: room.countdownEndsAt,
       action: currentAction,

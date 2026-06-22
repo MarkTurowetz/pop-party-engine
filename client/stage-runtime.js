@@ -332,7 +332,7 @@ function applyStageState(lobby) {
     stageCountdownTimer = window.setInterval(updateCountdown, 100);
   }
 
-  if (phase === "lobby") {
+  if (phase === "lobby" && lobby.lobbyFlowActive !== true) {
     resetStageObjects();
   }
   applyStageLayoutForPhase(phase);
@@ -476,7 +476,18 @@ async function pollLobby(stageCode) {
   }
 }
 
-async function advancePresentation() {
+async function emitStageInputEvent(eventType, actionId = currentStageState?.action?.id || "") {
+  if (!currentStageState?.stageCode || !eventType) return null;
+  const result = await postJson("/api/input-event", {
+    stageCode: currentStageState.stageCode,
+    actionId,
+    eventType
+  });
+  if (result.lobby) renderStageLobby(result.lobby);
+  return result;
+}
+
+async function handleStageScreenClick() {
   if (isStagePaused) return;
   if (presentationAdvancePending) return;
   if (currentStageState?.action?.type !== "present") return;
@@ -489,12 +500,7 @@ async function advancePresentation() {
   });
   try {
     if (delayMs > 0) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
-    const result = await postJson("/api/advance-presentation", {
-      stageCode: currentStageState.stageCode,
-      actionId: action.id,
-      source: "callback"
-    });
-    if (result.lobby) renderStageLobby(result.lobby);
+    await emitStageInputEvent("stageClick", action.id);
   } catch (error) {
     // Keep the current presented text on screen if the click cannot be saved.
   } finally {
@@ -639,7 +645,7 @@ function setupStage() {
   runtimeTestChannel?.addEventListener("message", (event) => {
     applyRuntimeTestMessage(event.data);
   });
-  stageScreen.addEventListener("click", advancePresentation);
+  stageScreen.addEventListener("click", handleStageScreenClick);
   pauseMenu.addEventListener("click", (event) => event.stopPropagation());
   returnToGameButton.addEventListener("click", () => setStagePaused(false));
   quitToLobbyButton.addEventListener("click", quitStageToLobby);

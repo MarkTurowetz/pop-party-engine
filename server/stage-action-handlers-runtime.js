@@ -7,6 +7,7 @@ function createStageActionHandlersRuntime({
   broadcastLobby,
   completeCurrentAction,
   currentRoomAction,
+  emitInputFlowEvent,
   getExistingRoom,
   lobbyPayload,
   normalizeStageCode,
@@ -45,6 +46,32 @@ function createStageActionHandlersRuntime({
 
     completeCurrentAction(room, payload.actionId, payload.source || "callback");
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+  }
+
+  async function handleInputEvent(req, res) {
+    let payload;
+    try {
+      payload = await readJson(req);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+      return;
+    }
+
+    const stageCode = normalizeStageCode(payload.stageCode);
+    const room = getExistingRoom(stageCode);
+    if (!room) {
+      sendJson(res, 404, { ok: false, error: "Room not found" });
+      return;
+    }
+
+    const eventType = String(payload.eventType || "");
+    const currentAction = currentRoomAction(room);
+    if (payload.actionId && currentAction?.id !== payload.actionId) {
+      sendJson(res, 409, { ok: false, error: "Input event is stale" });
+      return;
+    }
+    const advanced = emitInputFlowEvent(room, eventType);
+    sendJson(res, 200, { ok: true, advanced, lobby: lobbyPayload(room) });
   }
 
   async function handleCompleteAction(req, res) {
@@ -102,7 +129,8 @@ function createStageActionHandlersRuntime({
   return {
     handleActionEffect,
     handleAdvancePresentation,
-    handleCompleteAction
+    handleCompleteAction,
+    handleInputEvent
   };
 }
 

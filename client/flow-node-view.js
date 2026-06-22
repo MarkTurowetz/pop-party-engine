@@ -547,6 +547,9 @@ function flowNodeExitDefinitions(action) {
       { label: "Votes Submitted", field: "answersSubmittedTargetActionId" }
     ];
   }
+  if (action.type === "presentText") {
+    return [{ label: "Screen Click", field: "stageClickTargetActionId", fallbackField: "nextTargetActionId" }];
+  }
   if (action.type === "multipleChoiceInput" || action.type === "triviaInput" || action.type === "textSubmissionInput") {
     return [
       { label: "Timer Ends", field: "timerEndTargetActionId" },
@@ -572,7 +575,7 @@ function flowActionTargets(action) {
   return flowNodeExitDefinitions(action)
     .map((exit) => {
       const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
-      return branch ? branch.targetActionId : action[exit.field] || "";
+      return branch ? branch.targetActionId : action[exit.field] || action[exit.fallbackField] || "";
     })
     .filter((targetId) => targetId && !isNoFlowTarget(targetId));
 }
@@ -679,6 +682,7 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
   if (value === "presentText") {
     action.text = action.text || "Presented text";
     if (!("textTarget" in action)) action.textTarget = "";
+    action.stageClickTargetActionId = action.stageClickTargetActionId || action.nextTargetActionId || "";
   }
   if (value === "multipleChoiceInput") {
     action.prompt = action.prompt || "Answer this question by tapping an answer";

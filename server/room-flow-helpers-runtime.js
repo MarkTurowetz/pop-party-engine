@@ -84,7 +84,12 @@ function advanceRoomAfterAction(room, action) {
     const currentAction = currentRoomAction(room);
     const target = flowEventTargetForAction(currentAction, eventType);
     const eventKey = `${currentAction?.id || "none"}:${eventType}`;
-    if (!currentAction || room.activeInputFlowEventKey === eventKey || isNoActionTarget(target)) {
+    if (!currentAction || room.activeInputFlowEventKey === eventKey) {
+      return false;
+    }
+    const canUseCountdownFallback = eventType === "countdownComplete"
+      && currentAction.type === "transitionState";
+    if (isNoActionTarget(target) && !canUseCountdownFallback) {
       return false;
     }
     room.activeInputFlowEventKey = eventKey;
@@ -100,6 +105,10 @@ function advanceRoomAfterAction(room, action) {
     clearChoiceInput(room);
     clearTextInput(room);
     clearVotingInput(room);
+    if (isNoActionTarget(target)) {
+      enterGamePhase(room, currentAction.targetState || "intro");
+      return true;
+    }
     jumpToAction(room, target, fallbackIndex);
     broadcastLobby(room);
     return true;
@@ -129,18 +138,13 @@ function advanceRoomAfterAction(room, action) {
       enterGamePhase(room, "intro");
       return;
     }
-    if (action.nextTargetActionId) {
-      room.phase = lobbyState.id;
-      room.actionIndex = Math.max(0, lobbyState.actions.findIndex((item) => item.id === action.id));
-      room.currentPresentationActionId = "";
-      room.currentDisplayTextActionId = "";
-      clearActionTimer(room);
-      advanceRoomAfterAction(room, action);
-      currentRoomAction(room);
-      broadcastLobby(room);
-      return;
-    }
-    enterGamePhase(room, action.targetState || "intro");
+    room.phase = lobbyState.id;
+    room.lobbyFlowActive = true;
+    room.actionIndex = Math.max(0, lobbyState.actions.findIndex((item) => item.id === action.id));
+    room.currentPresentationActionId = "";
+    room.currentDisplayTextActionId = "";
+    clearActionTimer(room);
+    emitInputFlowEvent(room, "countdownComplete");
   }
 
   return {

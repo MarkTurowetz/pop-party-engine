@@ -46,6 +46,7 @@
       if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
         controls?.appendTextActionControls(target, state, action, handlers.controlChange);
       }
+      if (action.type === "presentText") appendStageClickExitControls(target, state, action, handlers.change);
       if (action.type === "multipleChoiceInput") appendMultipleChoiceControls(target, state, action, controls, handlers);
       if (action.type === "getRandomMultipleChoiceContent") appendRandomContentControls(target, action, handlers.change);
       if (action.type === "triviaInput") appendTriviaControls(target, state, action, controls, handlers);
@@ -193,6 +194,14 @@
       target.appendChild(context.readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
     }
 
+    function appendStageClickExitControls(target, state, action, change) {
+      target.appendChild(context.flowSelect("On Screen Click", action.stageClickTargetActionId || action.nextTargetActionId || "", context.flowActionTargetOptions(state, action.stageClickTargetActionId || action.nextTargetActionId || ""), (value) => {
+        action.stageClickTargetActionId = value;
+        change();
+      }));
+      target.appendChild(context.readOnlyFlowNote("This input waits for a stage screen click event before following its exit."));
+    }
+
     function appendPlayAudioControls(target, action, change) {
       target.appendChild(context.flowField("Audio URL", action.audioUrl || "", (value) => {
         action.audioUrl = value;
@@ -260,7 +269,7 @@
     }
 
     function appendNextActionControl(target, state, actionRef, action, change, options) {
-      const excludedTypes = new Set(["decision", "transitionState", "multipleChoiceInput", "triviaInput", "textSubmissionInput"]);
+      const excludedTypes = new Set(["decision", "transitionState", "presentText", "multipleChoiceInput", "triviaInput", "textSubmissionInput"]);
       for (const type of options.excludeNextActionTypes || []) excludedTypes.add(type);
       if (actionRef.isSubAction || excludedTypes.has(action.type)) return;
       target.appendChild(context.flowSelect("Next Action", action.nextTargetActionId || "", context.flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
@@ -270,13 +279,15 @@
     }
 
     function appendTimingControls(target, actionRef, action, change) {
-      const isInputAction = context.actionTypeMeta(action.type).category === "input" && !actionRef.isSubAction;
+      const waitsForFlowEvent = context.actionTypeMeta(action.type).category === "input"
+        || (action.type === "transitionState" && action.trigger === "onCountdownComplete");
+      const isInputAction = waitsForFlowEvent && !actionRef.isSubAction;
       const timingOptions = actionRef.isSubAction
         ? [{ id: "S+", name: "S+ Timing" }]
         : isInputAction
           ? [{ id: "E+", name: "E+ Timing" }]
           : [{ id: "E+", name: "E+ Timing" }, { id: "S+", name: "S+ Timing" }];
-      if (isInputAction) target.appendChild(context.readOnlyFlowNote("Input actions always use E+ timing because they wait for player or stage input."));
+      if (isInputAction) target.appendChild(context.readOnlyFlowNote("Input actions always use E+ timing because they wait for player, stage, or system events."));
       if (actionRef.isSubAction) target.appendChild(context.readOnlyFlowNote("Sub-actions use S+ timing as an offset from the primary action start."));
       const timing = context.ensureActionTiming(action, actionRef.isSubAction);
       target.appendChild(context.flowSelect("Timing Mode", timing.mode, timingOptions, (value) => {

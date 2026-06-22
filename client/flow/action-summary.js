@@ -7,7 +7,10 @@
       const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
       const targetText = action.textTarget ? context.textTargetName(action.textTarget) : "⚠ No Field";
       const instantText = action.instant ? " / Instant" : "";
-      if (action.type === "presentText") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
+      if (action.type === "presentText") {
+        const eventText = ` / click: ${context.flowTargetActionName(action.stageClickTargetActionId || action.nextTargetActionId)}`;
+        return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}"${eventText} / ${timingText}${instantText}`;
+      }
       if (action.type === "multipleChoiceInput") {
         const modeName = action.inputMode === "submitOnce" ? "Submit Once" : action.inputMode === "continuous" ? "Continuous" : "Single Select";
         const lockedText = action.inputMode === "singleSelect" && action.locked ? " / Locked" : "";
@@ -60,7 +63,13 @@
       if (action.type === "startCraftingTimer") return `Start crafting timer / ${timingText}`;
       if (action.type === "decision") return `${context.decisionVariableName(action.variable)}: ${context.decisionSummary(action)}`;
       if (action.type === "transition") return `${context.transitionName(action.transition)} / ${timingText}`;
-      if (action.type === "transitionState") return `To ${context.flowStateName(action.targetState)} / ${timingText}`;
+      if (action.type === "transitionState") {
+        if (action.trigger === "onCountdownComplete") {
+          const target = action.nextTargetActionId ? context.flowTargetActionName(action.nextTargetActionId) : context.flowStateName(action.targetState);
+          return `Countdown complete -> ${target} / ${timingText}`;
+        }
+        return `To ${context.flowStateName(action.targetState)} / ${timingText}`;
+      }
       return `${action.text || "Text"} / ${timingText}`;
     }
 

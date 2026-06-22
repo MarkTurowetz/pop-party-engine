@@ -6,6 +6,7 @@ function createDefaultRoom(stageCode) {
     vipPlayerId: "",
     startToken: "",
     phase: "lobby",
+    lobbyFlowActive: false,
     countdownStartedAt: 0,
     countdownEndsAt: 0,
     countdownTimerId: null,

@@ -966,12 +966,14 @@ const {
 const {
   handleActionEffect,
   handleAdvancePresentation,
-  handleCompleteAction
+  handleCompleteAction,
+  handleInputEvent
 } = createStageActionHandlersRuntime({
   applyRoomActionEffects,
   broadcastLobby,
   completeCurrentAction,
   currentRoomAction,
+  emitInputFlowEvent,
   getExistingRoom,
   lobbyPayload,
   normalizeStageCode,
@@ -1044,6 +1046,7 @@ const {
   handleControllerChoice,
   handleControllerTextSubmit,
   handleHeartbeat,
+  handleInputEvent,
   handleJoin,
   handleLeave,
   handleLobby,

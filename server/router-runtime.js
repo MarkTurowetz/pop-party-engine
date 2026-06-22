@@ -9,6 +9,7 @@ function createRouterRuntime({
   handleControllerChoice,
   handleControllerTextSubmit,
   handleHeartbeat,
+  handleInputEvent,
   handleJoin,
   handleLeave,
   handleLobby,
@@ -219,6 +220,11 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/complete-action") {
       handleCompleteAction(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/input-event") {
+      handleInputEvent(req, res);
       return;
     }
 

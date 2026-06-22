@@ -62,6 +62,7 @@ function createRoomPhaseRuntime({
     clearCountdownTimer(room);
     clearActionTimer(room);
     room.phase = "lobby";
+    room.lobbyFlowActive = false;
     room.countdownStartedAt = 0;
     room.countdownEndsAt = 0;
     room.actionIndex = 0;
@@ -124,6 +125,7 @@ function createRoomPhaseRuntime({
       }
     }
     room.phase = phase;
+    room.lobbyFlowActive = false;
     room.countdownStartedAt = 0;
     room.countdownEndsAt = 0;
     const entryActionIndex = entryActionIndexForPhase(room, phase);

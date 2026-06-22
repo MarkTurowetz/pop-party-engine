@@ -59,6 +59,8 @@ function createInputStateRuntime({ activePlayers }) {
     // Fall back to nextTargetActionId so flows where only "Next" was wired still work.
     if (eventType === "timerEnd") return action.timerEndTargetActionId || action.nextTargetActionId || "";
     if (eventType === "allPlayersSubmitted") return action.answersSubmittedTargetActionId || action.nextTargetActionId || "";
+    if (eventType === "stageClick") return action.stageClickTargetActionId || action.nextTargetActionId || "";
+    if (eventType === "countdownComplete") return action.nextTargetActionId || "";
     return "";
   }
 

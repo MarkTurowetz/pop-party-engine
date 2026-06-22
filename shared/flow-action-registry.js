@@ -42,8 +42,14 @@ const flowActionDefinitions = [
     category: "input",
     canCompleteFromStage: true,
     stageActionType: "present",
-    normalize: (action, base, context) => normalizeTextAction(action, base, context, "Presented text"),
-    toPublic: (action, base, context) => publicTextAction(action, base, context, "present")
+    normalize: (action, base, context) => ({
+      ...normalizeTextAction(action, base, context, "Presented text"),
+      stageClickTargetActionId: context.flowActionTarget(action?.stageClickTargetActionId || action?.nextTargetActionId)
+    }),
+    toPublic: (action, base, context) => ({
+      ...publicTextAction(action, base, context, "present"),
+      stageClickTargetActionId: action.stageClickTargetActionId || action.nextTargetActionId || ""
+    })
   },
   {
     id: "multipleChoiceInput",
