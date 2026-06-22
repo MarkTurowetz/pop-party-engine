@@ -16,7 +16,7 @@
         "y": 768
       },
       "entryTargetActionId": "lobby-action-mqojohry",
-      "nextStateTargetId": "writing-moment",
+      "nextStateTargetId": "intro",
       "actions": [
         {
           "id": "lobby-countdown-complete",
