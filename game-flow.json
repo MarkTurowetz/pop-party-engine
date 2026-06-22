@@ -1047,7 +1047,7 @@
           "type": "revealWinningAnswer",
           "timing": {
             "mode": "E+",
-            "seconds": 0
+            "seconds": 1.5
           },
           "text": "Presented text",
           "textTarget": "",
