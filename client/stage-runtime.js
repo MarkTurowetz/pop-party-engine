@@ -629,7 +629,7 @@ function runStageAction(action, isPrimary, actionKey) {
     }
     return;
   }
-  if (action.type === "revealVotingResults") {
+  if (action.type === "revealVotingResults" || action.type === "revealAuthors" || action.type === "revealVotes" || action.type === "revealWinningAnswer") {
     if (isPrimary) {
       completeFlowAction("callback", action.id);
     } else {
