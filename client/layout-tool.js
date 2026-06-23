@@ -812,23 +812,20 @@ function layoutToggleField(label, value, onChange) {
 }
 
 function layoutColorField(label, value, onChange) {
-  const field = document.createElement("label");
-  field.className = "layout-number-field layout-text-field layout-color-field";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.type = "color";
-  input.value = normalizeUiColor(value) || "#ffffff";
-  let pushedHistory = false;
-  input.addEventListener("input", () => {
-    onChange(input.value, { history: !pushedHistory, previewOnly: true });
-    pushedHistory = true;
+  return window.PartyGameColorControl.create({
+    document,
+    label,
+    value,
+    className: "layout-number-field layout-text-field layout-color-field layout-color-control",
+    normalizeColor: window.PartyGameColorControl.normalize,
+    onChange: (normalized, meta) => {
+      onChange(normalized, {
+        history: meta.captureHistory,
+        colorCommit: meta.commit,
+        previewOnly: meta.previewOnly
+      });
+    }
   });
-  input.addEventListener("change", () => {
-    onChange(input.value, { history: !pushedHistory, colorCommit: true });
-    pushedHistory = true;
-  });
-  field.appendChild(input);
-  return field;
 }
 
 function updateLayoutPreviewTextStyle(element) {

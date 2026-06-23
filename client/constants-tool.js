@@ -16,6 +16,10 @@ function normalizeUiColor(value) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
 }
 
+function normalizeEditableColor(value) {
+  return window.PartyGameColorControl?.normalize?.(value) || normalizeUiColor(value);
+}
+
 function normalizeClientGameConstants(constants = {}) {
   const colors = Array.isArray(constants.playerColors) ? constants.playerColors.map(normalizeUiColor).filter(Boolean) : [];
   return {
@@ -90,6 +94,15 @@ function commitGameConstants(nextConstants, { captureHistory = true, render = fa
   return true;
 }
 
+function updatePlayerColor(index, color, { captureHistory = true } = {}) {
+  const nextColor = normalizeEditableColor(color);
+  if (!nextColor || nextColor === gameConstants.playerColors[index]) return;
+  if (captureHistory) pushConstantsHistory();
+  const nextColors = [...gameConstants.playerColors];
+  nextColors[index] = nextColor;
+  commitGameConstants({ ...gameConstants, playerColors: nextColors }, { captureHistory: false });
+}
+
 function renderConstantsTool() {
   gameConstants = normalizeClientGameConstants(gameConstants);
   const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
@@ -120,43 +133,20 @@ function renderConstantsTool() {
     const row = document.createElement("div");
     row.className = "color-row";
 
-    const picker = document.createElement("input");
-    picker.className = "color-input";
-    picker.type = "color";
-    picker.value = normalizeUiColor(color) || "#22d3ee";
-    let colorHistoryCaptured = false;
-    picker.addEventListener("focus", () => {
-      colorHistoryCaptured = false;
-    });
-    picker.addEventListener("input", () => {
-      const nextColor = normalizeUiColor(picker.value);
-      if (!nextColor) return;
-      if (!colorHistoryCaptured && nextColor !== gameConstants.playerColors[index]) {
-        pushConstantsHistory();
-        colorHistoryCaptured = true;
-      }
-      const nextColors = [...gameConstants.playerColors];
-      nextColors[index] = nextColor;
-      commitGameConstants({ ...gameConstants, playerColors: nextColors }, { captureHistory: false });
-      value.value = picker.value.toUpperCase();
-    });
-
-    const value = document.createElement("input");
-    value.className = "color-value";
-    value.value = picker.value.toUpperCase();
-    value.maxLength = 7;
-    value.addEventListener("change", () => {
-      const nextColor = normalizeUiColor(value.value);
-      if (!nextColor) {
-        value.value = picker.value.toUpperCase();
-        return;
-      }
-      const nextColors = [...gameConstants.playerColors];
-      nextColors[index] = nextColor;
-      commitGameConstants({ ...gameConstants, playerColors: nextColors });
-      picker.value = nextColor;
-      value.value = nextColor.toUpperCase();
-    });
+    const picker = window.PartyGameColorControl?.create?.({
+      document,
+      label: `Color ${index + 1}`,
+      value: color,
+      className: "player-color-control",
+      normalizeColor: normalizeEditableColor,
+      onChange: (nextColor, meta) => updatePlayerColor(index, nextColor, { captureHistory: meta.captureHistory })
+    }) || document.createElement("input");
+    if (picker.tagName === "INPUT") {
+      picker.className = "color-value";
+      picker.value = (normalizeUiColor(color) || "#22d3ee").toUpperCase();
+      picker.maxLength = 7;
+      picker.addEventListener("change", () => updatePlayerColor(index, picker.value));
+    }
 
     const remove = document.createElement("button");
     remove.type = "button";
@@ -171,7 +161,6 @@ function renderConstantsTool() {
     });
 
     row.appendChild(picker);
-    row.appendChild(value);
     row.appendChild(remove);
     playerColorList.appendChild(row);
   });

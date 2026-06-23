@@ -4,6 +4,7 @@
   function createArtComponentEditor(options = {}) {
     const documentRef = options.document || global.document;
     const componentTree = options.componentTree || global.PartyGameArtComponentTree;
+    const colorControl = options.colorControl || global.PartyGameColorControl;
 
     function textField(label, value, onChange) {
       const field = documentRef.createElement("label");
@@ -48,25 +49,27 @@
     }
 
     function colorField(label, value, onChange) {
-      const field = documentRef.createElement("label");
-      field.className = "layout-number-field layout-color-field";
-      field.textContent = label;
-      const input = documentRef.createElement("input");
-      input.type = "color";
-      input.value = options.normalizeUiColor?.(value) || "#ffffff";
-      let historyCaptured = false;
-      input.addEventListener("focus", () => {
-        historyCaptured = false;
-      });
-      input.addEventListener("input", () => {
-        if (!historyCaptured) {
-          options.onPushHistory?.();
-          historyCaptured = true;
+      if (!colorControl?.create) {
+        return textField(label, options.normalizeUiColor?.(value) || "#ffffff", (nextValue) => {
+          const normalized = options.normalizeUiColor?.(nextValue) || "";
+          if (normalized) onChange(normalized);
+        });
+      }
+      return colorControl.create({
+        document: documentRef,
+        label,
+        value,
+        className: "layout-number-field layout-color-field",
+        normalizeColor: colorControl.normalize,
+        onChange: (normalized, meta) => {
+          if (meta.captureHistory) options.onPushHistory?.();
+          onChange(normalized, {
+            captureHistory: false,
+            colorCommit: meta.commit,
+            previewOnly: meta.previewOnly
+          });
         }
-        onChange(input.value, { captureHistory: false });
       });
-      field.appendChild(input);
-      return field;
     }
 
     function imageMaskField(component) {

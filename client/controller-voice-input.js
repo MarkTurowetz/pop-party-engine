@@ -9,6 +9,7 @@
     introMessage,
     introState,
     previewText,
+    renderGlobalMessage,
     status,
     submitText
   }) {
@@ -44,6 +45,10 @@
 
     function renderWaiting(lobby) {
       getLifecycle().cancel();
+      if (typeof renderGlobalMessage === "function") {
+        renderGlobalMessage(lobby, "Waiting for the VIP to answer", { id: "voiceInputWaiting" });
+        return;
+      }
       hideViews();
       introState.classList.remove("hidden");
       introMessage.textContent = "Waiting for the VIP to answer";

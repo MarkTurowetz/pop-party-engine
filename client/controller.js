@@ -36,6 +36,7 @@ function getControllerVoiceInput() {
       introMessage: controllerIntroMessage,
       introState: controllerIntroState,
       previewText: previewControllerText,
+      renderGlobalMessage: renderControllerGlobalMessage,
       status: controllerVoiceStatus,
       submitText: submitControllerText
     }));
@@ -52,6 +53,7 @@ function getControllerMicrophoneAccessView() {
       },
       grantAccess: grantControllerMicrophoneAccess,
       hideViews: hideControllerViews,
+      renderGlobalMessage: renderControllerGlobalMessage,
       waiting: {
         message: controllerIntroMessage,
         state: controllerIntroState
@@ -85,6 +87,13 @@ function getControllerGlobalActionView() {
       },
       hideViews: hideControllerViews
     }));
+}
+
+function renderControllerGlobalMessage(lobby, message, options = {}) {
+  return getControllerGlobalActionView().renderMessage(lobby, message, {
+    ...options,
+    showButton: false
+  });
 }
 
 function getControllerStateRuntime() {

@@ -6,6 +6,7 @@
     elements,
     grantAccess,
     hideViews,
+    renderGlobalMessage,
     waiting
   }) {
     const pendingAutoGrantActionIds = new Set();
@@ -98,6 +99,10 @@
     }
 
     function renderWaiting(lobby, message = "Waiting for the player to grant microphone access") {
+      if (typeof renderGlobalMessage === "function") {
+        renderGlobalMessage(lobby, message, { id: "microphoneAccessWaiting" });
+        return;
+      }
       hideViews();
       waiting.state.classList.remove("hidden");
       waiting.message.textContent = message;
