@@ -1,4 +1,8 @@
 const {
+  choiceInputActionConfig,
+  isChoiceInputAction
+} = require("../shared/choice-input-action-config");
+const {
   isTextAnswerAction,
   textAnswerActionConfig,
   textAnswerPayloadTypeForMode
@@ -13,18 +17,19 @@ function createControllerInputPayloadRuntime({
   triviaContentForAction
 }) {
   function applyChoiceInputAction(room, action) {
-    if (!action || (action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "voteOnAnswersInput")) return;
+    const config = choiceInputActionConfig(action);
+    if (!config) return;
     if (room.choiceInputActionId === action.id) return;
-    if (action.type === "voteOnAnswersInput") {
+    if (config.kind === "vote") {
       room.choiceInputActionId = action.id;
-      room.choiceInputPrompt = action.prompt || "Vote for your favorite answer";
+      room.choiceInputPrompt = action.prompt || config.prompt;
       room.choiceInputOptions = [];
       room.choiceInputOriginalIndexes = [];
       room.choiceInputCorrectAnswerIndex = null;
-      room.choiceInputKind = "vote";
+      room.choiceInputKind = config.kind;
       room.choiceInputContentId = "";
-      room.choiceInputMode = "submitOnce";
-      room.choiceInputLocked = true;
+      room.choiceInputMode = config.inputMode;
+      room.choiceInputLocked = config.locked === true;
       room.choiceInputAnswers = new Map();
       room.votingInputActionId = action.id;
       room.votingInputPrompt = room.choiceInputPrompt;
@@ -33,13 +38,13 @@ function createControllerInputPayloadRuntime({
     }
     clearDisplayedPlayerAnswers(room);
     clearPlayerAnswerData(room);
-    const triviaContent = action.type === "triviaInput" ? triviaContentForAction(room, action) : null;
+    const triviaContent = config.kind === "trivia" ? triviaContentForAction(room, action) : null;
     room.choiceInputActionId = action.id;
-    room.choiceInputPrompt = triviaContent?.prompt || action.prompt || "Answer this question by tapping an answer";
+    room.choiceInputPrompt = triviaContent?.prompt || action.prompt || config.prompt;
     room.choiceInputOptions = triviaContent?.options || cleanChoiceOptions(action.options);
     room.choiceInputOriginalIndexes = triviaContent?.optionOriginalIndexes || room.choiceInputOptions.map((_, index) => index);
     room.choiceInputCorrectAnswerIndex = Number.isFinite(Number(triviaContent?.correctAnswerIndex)) ? Number(triviaContent.correctAnswerIndex) : null;
-    room.choiceInputKind = action.type === "triviaInput" ? "trivia" : "multipleChoice";
+    room.choiceInputKind = config.kind;
     room.choiceInputContentId = triviaContent?.id || "";
     room.choiceInputMode = normalizeChoiceInputMode(action.inputMode);
     room.choiceInputLocked = action.locked === true;
@@ -47,9 +52,9 @@ function createControllerInputPayloadRuntime({
   }
 
   function choiceInputPayload(room, currentAction, player = null) {
-    if (!currentAction || (currentAction.type !== "multipleChoiceInput" && currentAction.type !== "triviaInput" && currentAction.type !== "voteOnAnswersInput")) return null;
+    if (!isChoiceInputAction(currentAction)) return null;
     applyChoiceInputAction(room, currentAction);
-    if (currentAction.type === "voteOnAnswersInput") {
+    if (room.choiceInputKind === "vote") {
       const visibleCards = (room.votingCards || []).filter((card) => card && card.authorPlayerId !== player?.id);
       return {
         actionId: room.choiceInputActionId,

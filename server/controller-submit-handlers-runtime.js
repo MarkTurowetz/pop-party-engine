@@ -1,3 +1,4 @@
+const { isChoiceInputAction } = require("../shared/choice-input-action-config");
 const { isTextAnswerAction } = require("./text-answer-action-runtime");
 
 function createControllerSubmitHandlersRuntime({
@@ -38,7 +39,7 @@ function createControllerSubmitHandlersRuntime({
     }
 
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);
-    if (!currentAction || (currentAction.type !== "multipleChoiceInput" && currentAction.type !== "triviaInput" && currentAction.type !== "voteOnAnswersInput")) {
+    if (!isChoiceInputAction(currentAction)) {
       sendJson(res, 409, { ok: false, error: "No active choice input" });
       return;
     }
