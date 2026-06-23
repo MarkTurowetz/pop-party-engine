@@ -35,14 +35,16 @@
         return `Trivia from ${action.contentVariable || "multipleChoicePrompt"} / ${modeName}${randomText}${eventText} / ${timingText}`;
       }
       if (action.type === "textSubmissionInput") {
+        const config = globalThis.PartyTextAnswerActions?.textAnswerActionConfig?.(action.type) || {};
         const limitText = Number(action.characterLimit || 0) > 0 ? ` / ${Number(action.characterLimit)} chars` : "";
         const eventText = ` / timer: ${context.flowTargetActionName(action.timerEndTargetActionId)} / answers: ${context.flowTargetActionName(action.answersSubmittedTargetActionId)}`;
-        return `Text Submit: ${action.prompt || "Write your answer"}${limitText} / Stage validates${eventText} / ${timingText}`;
+        return `Text Submit: ${action.prompt || config.prompt || "Write your answer"}${limitText} / Stage validates${eventText} / ${timingText}`;
       }
       if (action.type === "voiceSubmissionInput") {
+        const config = globalThis.PartyTextAnswerActions?.textAnswerActionConfig?.(action.type) || {};
         const limitText = Number(action.characterLimit || 0) > 0 ? ` / ${Number(action.characterLimit)} chars` : "";
         const eventText = ` / timer: ${context.flowTargetActionName(action.timerEndTargetActionId)} / answers: ${context.flowTargetActionName(action.answersSubmittedTargetActionId)}`;
-        return `VIP Voice Submit: ${action.prompt || "Say your answer"}${limitText} / Transcript stored as text${eventText} / ${timingText}`;
+        return `VIP Voice Submit: ${action.prompt || config.prompt || "Say your answer"}${limitText} / Transcript stored as text${eventText} / ${timingText}`;
       }
       if (action.type === "prepareVotingCards") return `Prepare anonymous voting cards / ${timingText}`;
       if (action.type === "setVotingCardsShown") {

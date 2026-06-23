@@ -180,9 +180,10 @@
     }
 
     function appendTextSubmissionControls(target, state, action, controls, handlers) {
-      const isVoice = action.type === "voiceSubmissionInput";
-      const defaultPrompt = isVoice ? "Say your answer" : "Write your answer";
-      const defaultPlaceholder = isVoice ? "Speak your answer" : "Answer here";
+      const textAnswerConfig = globalThis.PartyTextAnswerActions?.textAnswerActionConfig?.(action.type) || {};
+      const isVoice = textAnswerConfig.mode === "voiceVip";
+      const defaultPrompt = textAnswerConfig.prompt || (isVoice ? "Say your answer" : "Write your answer");
+      const defaultPlaceholder = textAnswerConfig.placeholder || (isVoice ? "Speak your answer" : "Answer here");
       target.appendChild(context.flowTextarea("Prompt Text", action.prompt || defaultPrompt, (value) => {
         action.prompt = value || defaultPrompt;
         handlers.softChange();

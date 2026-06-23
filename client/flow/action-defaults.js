@@ -32,16 +32,10 @@
         action.timerEndTargetActionId = action.timerEndTargetActionId || "";
         action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
       }
-      if (value === "textSubmissionInput") {
-        action.prompt = action.prompt || "Write your answer";
-        action.placeholder = action.placeholder || "Answer here";
-        action.characterLimit = Number(action.characterLimit || 0);
-        action.timerEndTargetActionId = action.timerEndTargetActionId || "";
-        action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
-      }
-      if (value === "voiceSubmissionInput") {
-        action.prompt = action.prompt || "Say your answer";
-        action.placeholder = action.placeholder || "Speak your answer";
+      const textAnswerConfig = globalThis.PartyTextAnswerActions?.textAnswerActionConfig?.(value);
+      if (textAnswerConfig) {
+        action.prompt = action.prompt || textAnswerConfig.prompt;
+        action.placeholder = action.placeholder || textAnswerConfig.placeholder;
         action.characterLimit = Number(action.characterLimit || 0);
         action.timerEndTargetActionId = action.timerEndTargetActionId || "";
         action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";

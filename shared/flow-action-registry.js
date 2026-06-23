@@ -1,5 +1,9 @@
 "use strict";
 
+const textAnswerActions = typeof require === "function"
+  ? require("./text-answer-action-config")
+  : globalThis.PartyTextAnswerActions;
+
 function normalizeVoteRevealStaggerSeconds(value) {
   const number = Number(value);
   return Number(Math.max(0, Math.min(60, Number.isFinite(number) ? number : 1)).toFixed(2));
@@ -36,6 +40,9 @@ function identityAction(publicType) {
 }
 
 function submissionInputDefinition({ id, name, prompt, placeholder }) {
+  const config = textAnswerActions?.textAnswerActionConfig?.(id) || {};
+  const defaultPrompt = config.prompt || prompt;
+  const defaultPlaceholder = config.placeholder || placeholder;
   return {
     id,
     name,
@@ -45,8 +52,8 @@ function submissionInputDefinition({ id, name, prompt, placeholder }) {
     stageActionType: id,
     normalize: (action, base, context) => ({
       ...base,
-      prompt: context.cleanFlowText(action?.prompt, prompt),
-      placeholder: context.cleanFlowText(action?.placeholder, placeholder),
+      prompt: context.cleanFlowText(action?.prompt, defaultPrompt),
+      placeholder: context.cleanFlowText(action?.placeholder, defaultPlaceholder),
       characterLimit: context.normalizeCharacterLimit(action?.characterLimit),
       timerEndTargetActionId: context.flowActionTarget(action?.timerEndTargetActionId),
       answersSubmittedTargetActionId: context.flowActionTarget(action?.answersSubmittedTargetActionId)
@@ -54,8 +61,8 @@ function submissionInputDefinition({ id, name, prompt, placeholder }) {
     toPublic: (action, base, context) => ({
       ...base,
       type: id,
-      prompt: action.prompt || prompt,
-      placeholder: action.placeholder || placeholder,
+      prompt: action.prompt || defaultPrompt,
+      placeholder: action.placeholder || defaultPlaceholder,
       characterLimit: context.normalizeCharacterLimit(action.characterLimit),
       timerEndTargetActionId: action.timerEndTargetActionId || "",
       answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
