@@ -3,6 +3,7 @@ let controllerVoiceInput = null;
 let controllerChoiceInputView = null;
 let controllerHeartbeatRuntime = null;
 let controllerLobbyView = null;
+let controllerSessionRuntime = null;
 let controllerSubmitApi = null;
 let controllerTextInputView = null;
 
@@ -146,6 +147,26 @@ function getControllerSubmitApi() {
   return controllerSubmitApi;
 }
 
+function getControllerSessionRuntime() {
+  if (!controllerSessionRuntime) {
+    controllerSessionRuntime = window.createControllerSessionRuntime({
+      elements: {
+        joinState,
+        lobbyState: controllerLobbyState
+      },
+      getControllerState: () => controllerState,
+      heartbeatRuntime: getControllerHeartbeatRuntime(),
+      renderState: renderControllerState,
+      setControllerState: (value) => {
+        controllerState = value;
+      },
+      setLocalValue,
+      setSessionValue
+    });
+  }
+  return controllerSessionRuntime;
+}
+
 function updateJoinButton() {
   const hasStage = normalizeStageCode(stageCodeInput.value).length > 0;
   const hasName = playerNameInput.value.trim().length > 0;
@@ -156,7 +177,7 @@ async function joinController(stageCode, playerName) {
   const playerId = getControllerPlayerId();
   joinButton.disabled = true;
   const result = await postJson("/api/join", { stageCode, playerName, playerId });
-  enterControllerLobby(stageCode, result.player.id, result.lobby, result.player);
+  getControllerSessionRuntime().enterLobby(stageCode, result.player.id, result.lobby, result.player);
   return result;
 }
 
@@ -265,18 +286,6 @@ function reloadControllerArtAssets() {
   }).catch(() => {});
 }
 
-function enterControllerLobby(stageCode, playerId, lobby, player) {
-  controllerState = { stageCode, playerId, player };
-  setSessionValue("partyTemplatePlayerId", playerId);
-  setSessionValue("partyTemplatePlayerName", player.name);
-  setSessionValue("partyTemplateStageCode", stageCode);
-  setLocalValue("partyTemplateStageCode", stageCode);
-  joinState.classList.add("hidden");
-  controllerLobbyState.classList.remove("hidden");
-  renderControllerState(lobby);
-  getControllerHeartbeatRuntime().start();
-}
-
 function setupController() {
   lockControllerViewport();
   bindControllerButtonPressStates();
@@ -355,12 +364,7 @@ function setupController() {
   });
 
   window.addEventListener("pagehide", () => {
-    if (!controllerState || !navigator.sendBeacon) return;
-    const body = JSON.stringify({
-      stageCode: controllerState.stageCode,
-      playerId: controllerState.playerId
-    });
-    navigator.sendBeacon(`${origin}/api/leave`, new Blob([body], { type: "application/json" }));
+    getControllerSessionRuntime().sendLeaveBeacon(origin);
   });
   window.addEventListener("resize", () => {
     if (!controllerScreen.classList.contains("hidden")) {
