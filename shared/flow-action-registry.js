@@ -3,6 +3,9 @@
 const textAnswerActions = typeof require === "function"
   ? require("./text-answer-action-config")
   : globalThis.PartyTextAnswerActions;
+const microphoneAccessActions = typeof require === "function"
+  ? require("./microphone-access-action-config")
+  : globalThis.PartyMicrophoneAccessActions;
 
 function normalizeVoteRevealStaggerSeconds(value) {
   const number = Number(value);
@@ -153,6 +156,35 @@ const flowActionDefinitions = [
     prompt: "Say your answer",
     placeholder: "Speak your answer"
   }),
+  {
+    id: "requestMicrophoneAccessInput",
+    name: "Request Microphone Access",
+    category: "input",
+    canCompleteFromStage: true,
+    completionCleanup: "microphone",
+    stageActionType: "requestMicrophoneAccessInput",
+    normalize: (action, base, context) => {
+      const config = microphoneAccessActions?.microphoneAccessActionConfig?.("requestMicrophoneAccessInput") || {};
+      return {
+        ...base,
+        prompt: context.cleanFlowText(action?.prompt, config.prompt || "Give microphone access to the game"),
+        buttonLabel: context.cleanFlowText(action?.buttonLabel, config.buttonLabel || "Yes"),
+        microphoneAccessMode: microphoneAccessActions?.normalizeMicrophoneAccessMode?.(action?.microphoneAccessMode) || "vip",
+        microphoneAccessGrantedTargetActionId: context.flowActionTarget(action?.microphoneAccessGrantedTargetActionId || action?.answersSubmittedTargetActionId)
+      };
+    },
+    toPublic: (action, base, context) => {
+      const config = microphoneAccessActions?.microphoneAccessActionConfig?.("requestMicrophoneAccessInput") || {};
+      return {
+        ...base,
+        type: "requestMicrophoneAccessInput",
+        prompt: action.prompt || config.prompt || "Give microphone access to the game",
+        buttonLabel: action.buttonLabel || config.buttonLabel || "Yes",
+        microphoneAccessMode: microphoneAccessActions?.normalizeMicrophoneAccessMode?.(action.microphoneAccessMode) || "vip",
+        microphoneAccessGrantedTargetActionId: context.flowActionTarget(action.microphoneAccessGrantedTargetActionId || action.answersSubmittedTargetActionId)
+      };
+    }
+  },
   {
     id: "doNothing",
     name: "Do Nothing",

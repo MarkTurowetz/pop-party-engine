@@ -1,14 +1,17 @@
 const { isChoiceInputAction } = require("../shared/choice-input-action-config");
+const { isMicrophoneAccessAction } = require("../shared/microphone-access-action-config");
 const { isTextAnswerAction } = require("./text-answer-action-runtime");
 
 function createControllerSubmitHandlersRuntime({
   allActivePlayersHaveSubmittedInput,
   applyChoiceInputAction,
+  applyMicrophoneAccessAction,
   applyTextInputAction,
   broadcastLobby,
   cleanSubmittedText,
   currentRoomAction,
   displayedAnswerCorrectness,
+  emitInputFlowEvent,
   forgetDisplayedPlayerAnswer,
   getExistingRoom,
   lobbyPayload,
@@ -170,6 +173,53 @@ function createControllerSubmitHandlersRuntime({
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
   }
 
+  async function handleControllerMicrophoneAccess(req, res) {
+    let payload;
+    try {
+      payload = await readJson(req);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+      return;
+    }
+
+    const stageCode = normalizeStageCode(payload.stageCode);
+    const playerId = normalizePlayerId(payload.playerId);
+    const room = getExistingRoom(stageCode);
+    const player = room?.players.get(playerId);
+    if (!room || !player || !player.active) {
+      sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+      return;
+    }
+
+    const currentAction = resolveRoomActionText(currentRoomAction(room), room);
+    if (!isMicrophoneAccessAction(currentAction)) {
+      sendJson(res, 409, { ok: false, error: "No active microphone access input" });
+      return;
+    }
+    applyMicrophoneAccessAction(room, currentAction);
+    if (payload.actionId && payload.actionId !== room.microphoneAccessActionId) {
+      sendJson(res, 409, { ok: false, error: "Microphone access input is stale" });
+      return;
+    }
+    if (room.microphoneAccessMode === "vip" && player.id !== room.vipPlayerId) {
+      sendJson(res, 403, { ok: false, error: "Only the VIP needs microphone access right now" });
+      return;
+    }
+
+    room.microphoneAccessAnswers.set(playerId, {
+      done: true,
+      grantedAt: Date.now(),
+      nonce: Date.now()
+    });
+
+    if (allActivePlayersHaveSubmittedInput(room)) {
+      emitInputFlowEvent(room, "microphoneAccessGranted");
+    } else {
+      broadcastLobby(room);
+    }
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+  }
+
   async function handleControllerTextSubmit(req, res) {
     let payload;
     try {
@@ -264,6 +314,7 @@ function createControllerSubmitHandlersRuntime({
 
   return {
     handleControllerChoice,
+    handleControllerMicrophoneAccess,
     handleControllerTextPreview,
     handleControllerTextSubmit
   };

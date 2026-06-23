@@ -8,8 +8,54 @@ function createControllerLayoutStateRuntime({
     const shouldSeedTextInput = isCraftingStateId(flowState.id)
       || flowStateHasActionType(flowState, "textSubmissionInput")
       || flowStateHasActionType(flowState, "voiceSubmissionInput");
-    if (shouldSeedChoiceInput || shouldSeedTextInput) {
+    const shouldSeedMicrophoneAccess = flowStateHasActionType(flowState, "requestMicrophoneAccessInput");
+    if (shouldSeedChoiceInput || shouldSeedTextInput || shouldSeedMicrophoneAccess) {
       const elements = [];
+      if (shouldSeedMicrophoneAccess) {
+        elements.push(
+          {
+            id: "controllerMicAccessPrompt",
+            name: "Microphone Access Prompt",
+            selector: "#controllerMicAccessPrompt",
+            kind: "text",
+            x: 195,
+            y: 190,
+            width: 330,
+            height: 150,
+            scale: 1,
+            defaultText: "Give microphone access to the game",
+            fontSize: 34,
+            autoFitText: true,
+            fontColor: "#17131f"
+          },
+          {
+            id: "controllerMicAccessButton",
+            name: "Microphone Access Button",
+            selector: "#controllerMicAccessButton",
+            kind: "art",
+            x: 195,
+            y: 430,
+            width: 280,
+            height: 82,
+            scale: 1
+          },
+          {
+            id: "controllerMicAccessStatus",
+            name: "Microphone Access Status",
+            selector: "#controllerMicAccessStatus",
+            kind: "text",
+            x: 195,
+            y: 540,
+            width: 330,
+            height: 80,
+            scale: 1,
+            defaultText: "Chrome will ask for microphone permission",
+            fontSize: 22,
+            autoFitText: true,
+            fontColor: "#17131f"
+          }
+        );
+      }
       if (shouldSeedChoiceInput) {
         elements.push(
           {

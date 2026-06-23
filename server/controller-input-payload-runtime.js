@@ -7,6 +7,11 @@ const {
   textAnswerActionConfig,
   textAnswerPayloadTypeForMode
 } = require("./text-answer-action-runtime");
+const {
+  isMicrophoneAccessAction,
+  microphoneAccessActionConfig,
+  normalizeMicrophoneAccessMode
+} = require("../shared/microphone-access-action-config");
 
 function createControllerInputPayloadRuntime({
   cleanChoiceOptions,
@@ -98,6 +103,31 @@ function createControllerInputPayloadRuntime({
     room.textInputAnswers = new Map();
   }
 
+  function applyMicrophoneAccessAction(room, action) {
+    if (!isMicrophoneAccessAction(action)) return;
+    if (room.microphoneAccessActionId === action.id) return;
+    const config = microphoneAccessActionConfig(action);
+    room.microphoneAccessActionId = action.id;
+    room.microphoneAccessPrompt = action.prompt || config.prompt;
+    room.microphoneAccessButtonLabel = action.buttonLabel || config.buttonLabel;
+    room.microphoneAccessMode = normalizeMicrophoneAccessMode(action.microphoneAccessMode || config.mode);
+    room.microphoneAccessAnswers = new Map();
+  }
+
+  function microphoneAccessPayload(room, currentAction) {
+    if (!isMicrophoneAccessAction(currentAction)) return null;
+    applyMicrophoneAccessAction(room, currentAction);
+    return {
+      actionId: room.microphoneAccessActionId,
+      type: "microphoneAccess",
+      mode: room.microphoneAccessMode,
+      vipPlayerId: room.microphoneAccessMode === "vip" ? room.vipPlayerId || "" : "",
+      prompt: room.microphoneAccessPrompt,
+      buttonLabel: room.microphoneAccessButtonLabel,
+      grantedPlayerIds: [...(room.microphoneAccessAnswers?.keys?.() || [])]
+    };
+  }
+
   function textInputPayload(room, currentAction) {
     if (!isTextAnswerAction(currentAction)) return null;
     applyTextInputAction(room, currentAction);
@@ -114,8 +144,10 @@ function createControllerInputPayloadRuntime({
 
   return {
     applyChoiceInputAction,
+    applyMicrophoneAccessAction,
     applyTextInputAction,
     choiceInputPayload,
+    microphoneAccessPayload,
     textInputPayload
   };
 }

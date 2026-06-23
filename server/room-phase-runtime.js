@@ -17,6 +17,7 @@ function createRoomPhaseRuntime({
   clearChoiceInput,
   clearCountdownTimer,
   clearDisplayedPlayerAnswers,
+  clearMicrophoneAccessInput,
   clearPlayerAnswerData,
   clearTextInput,
   clearVotingData,
@@ -125,6 +126,7 @@ function createRoomPhaseRuntime({
     room.hasEnteredRoundIntro = false;
     resetCraftingTimer(room);
     clearChoiceInput(room);
+    clearMicrophoneAccessInput(room);
     clearTextInput(room);
     clearVotingData(room);
     clearDisplayedPlayerAnswers(room);
@@ -188,6 +190,7 @@ function createRoomPhaseRuntime({
     room.pendingPointPopups = [];
     resetCraftingTimer(room);
     clearChoiceInput(room);
+    clearMicrophoneAccessInput(room);
     clearTextInput(room);
     clearVotingData(room);
     clearDisplayedPlayerAnswers(room);

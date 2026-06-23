@@ -204,6 +204,7 @@ const {
   clearActiveInputFlowEvent,
   clearAnswersSubmittedAdvanceTimer,
   clearChoiceInput,
+  clearMicrophoneAccessInput,
   clearTextInput,
   flowEventTargetForAction
 } = createInputStateRuntime({ activePlayers });
@@ -318,6 +319,7 @@ const {
   applyRoomActionEffects: applyRoomActionEffectsProxy,
   broadcastLobby,
   clearChoiceInput,
+  clearMicrophoneAccessInput,
   clearTextInput,
   currentRoomAction: currentRoomActionProxy,
   enterGamePhase: enterGamePhaseProxy
@@ -555,6 +557,7 @@ const {
   clearChoiceInput,
   clearCountdownTimer,
   clearDisplayedPlayerAnswers,
+  clearMicrophoneAccessInput,
   clearPlayerAnswerData,
   clearTextInput,
   clearVotingData,
@@ -590,6 +593,7 @@ const {
   clearAppliedActionEffects,
   clearChoiceInput,
   clearCraftingTimerTimeout,
+  clearMicrophoneAccessInput,
   clearTextInput,
   clearVotingInput,
   enterGamePhase,
@@ -895,8 +899,10 @@ _applyRoomActionEffectsFn = applyRoomActionEffects;
 
 const {
   applyChoiceInputAction,
+  applyMicrophoneAccessAction,
   applyTextInputAction,
   choiceInputPayload,
+  microphoneAccessPayload,
   textInputPayload
 } = createControllerInputPayloadRuntime({
   cleanChoiceOptions,
@@ -921,6 +927,7 @@ const {
   craftingTimerPayload,
   currentRoomAction,
   gameConstants,
+  microphoneAccessPayload,
   normalizePlayerFilter,
   publicPlayer,
   resolveRoomActionText,
@@ -1002,16 +1009,19 @@ const {
 
 const {
   handleControllerChoice,
+  handleControllerMicrophoneAccess,
   handleControllerTextPreview,
   handleControllerTextSubmit
 } = createControllerSubmitHandlersRuntime({
   allActivePlayersHaveSubmittedInput,
   applyChoiceInputAction,
+  applyMicrophoneAccessAction,
   applyTextInputAction,
   broadcastLobby,
   cleanSubmittedText,
   currentRoomAction,
   displayedAnswerCorrectness,
+  emitInputFlowEvent,
   forgetDisplayedPlayerAnswer,
   getExistingRoom,
   lobbyPayload,
@@ -1064,6 +1074,7 @@ const {
   handleCancelStart,
   handleCompleteAction,
   handleControllerChoice,
+  handleControllerMicrophoneAccess,
   handleControllerTextPreview,
   handleControllerTextSubmit,
   handleHeartbeat,

@@ -4271,6 +4271,12 @@
         <div class="controller-choice-done hidden" id="controllerChoiceDone">You chose:</div>
       </div>
 
+      <div class="controller-choice-state hidden" id="controllerMicAccessState" data-controller-view="microphone-access">
+        <div class="controller-choice-prompt controller-layout-text" id="controllerMicAccessPrompt">Give microphone access to the game</div>
+        <button class="primary-button controller-submit-button" id="controllerMicAccessButton" type="button" data-controller-option data-option-id="microphoneAccess.grant">Yes</button>
+        <div class="controller-voice-status" id="controllerMicAccessStatus">Chrome will ask for microphone permission</div>
+      </div>
+
       <div class="controller-text-state hidden" id="controllerTextState" data-controller-view="text-input">
         <div class="controller-text-prompt controller-layout-text" id="controllerTextPrompt">Write your answer</div>
         <div class="controller-invalid-banner hidden" id="controllerInvalidBanner">Your submission was invalid</div>
@@ -4550,6 +4556,7 @@
   <script src="/client/layout-runtime.js"></script>
   <script src="/client/stage/visual-object.js"></script>
   <script src="/shared/text-answer-action-config.js"></script>
+  <script src="/shared/microphone-access-action-config.js"></script>
   <script src="/shared/choice-input-action-config.js"></script>
   <script src="/shared/flow-action-registry.js"></script>
   <script src="/shared/art-component-schema.js"></script>
@@ -4564,6 +4571,7 @@
   <script src="/client/stage-runtime.js"></script>
   <script src="/client/controller-module-cache.js"></script>
   <script src="/client/controller-avatar-view.js"></script>
+  <script src="/client/controller-microphone-access-view.js"></script>
   <script src="/client/controller-voice-input.js"></script>
   <script src="/client/controller-choice-input-view.js"></script>
   <script src="/client/controller-text-input-view.js"></script>
@@ -4690,6 +4698,10 @@
     const controllerChoicePrompt = document.querySelector("#controllerChoicePrompt");
     const controllerChoiceGrid = document.querySelector("#controllerChoiceGrid");
     const controllerChoiceDone = document.querySelector("#controllerChoiceDone");
+    const controllerMicAccessState = document.querySelector("#controllerMicAccessState");
+    const controllerMicAccessPrompt = document.querySelector("#controllerMicAccessPrompt");
+    const controllerMicAccessButton = document.querySelector("#controllerMicAccessButton");
+    const controllerMicAccessStatus = document.querySelector("#controllerMicAccessStatus");
     const controllerTextState = document.querySelector("#controllerTextState");
     const controllerTextPrompt = document.querySelector("#controllerTextPrompt");
     const controllerInvalidBanner = document.querySelector("#controllerInvalidBanner");

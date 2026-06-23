@@ -11,6 +11,7 @@ function createRoomFlowHelpersRuntime({
   clearAppliedActionEffects,
   clearChoiceInput,
   clearCraftingTimerTimeout,
+  clearMicrophoneAccessInput,
   clearTextInput,
   clearVotingInput,
   getStateActions,
@@ -142,6 +143,7 @@ function createRoomFlowHelpersRuntime({
       room.craftingTimerEndHandled = true;
     }
     clearChoiceInput(room);
+    clearMicrophoneAccessInput(room);
     clearTextInput(room);
     clearVotingInput(room);
     if (isNoActionTarget(target)) {

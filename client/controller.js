@@ -40,6 +40,24 @@ function getControllerVoiceInput() {
     }));
 }
 
+function getControllerMicrophoneAccessView() {
+  return controllerModules.get("microphoneAccessView", () => window.createControllerMicrophoneAccessView({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      elements: {
+        button: controllerMicAccessButton,
+        prompt: controllerMicAccessPrompt,
+        state: controllerMicAccessState,
+        status: controllerMicAccessStatus
+      },
+      grantAccess: grantControllerMicrophoneAccess,
+      hideViews: hideControllerViews,
+      waiting: {
+        message: controllerIntroMessage,
+        state: controllerIntroState
+      }
+    }));
+}
+
 function getControllerChoiceInputView() {
   return controllerModules.get("choiceInputView", () => window.createControllerChoiceInputView({
       applyLayoutForPhase: applyControllerLayoutForPhase,
@@ -172,6 +190,7 @@ function hideControllerViews() {
   controllerLobbyState.classList.add("hidden");
   controllerIntroState.classList.add("hidden");
   controllerChoiceState.classList.add("hidden");
+  controllerMicAccessState.classList.add("hidden");
   controllerTextState.classList.add("hidden");
   introPresentButton.classList.add("hidden");
 }
@@ -194,6 +213,10 @@ function renderControllerTextState(lobby, me) {
   return getControllerTextInputView().render(lobby, me);
 }
 
+function renderControllerMicrophoneAccessState(lobby, me) {
+  return getControllerMicrophoneAccessView().render(lobby, me);
+}
+
 async function submitControllerText(actionId, textOverride = null) {
   if (!controllerState) return;
   const text = textOverride == null ? controllerTextInput.value : textOverride;
@@ -211,6 +234,13 @@ async function submitControllerText(actionId, textOverride = null) {
     controllerVoiceButton.disabled = false;
     controllerVoiceStatus.textContent = error.message;
   }
+}
+
+async function grantControllerMicrophoneAccess(actionId) {
+  if (!controllerState) return null;
+  const result = await getControllerSubmitApi().grantMicrophoneAccess(actionId);
+  if (result?.lobby) renderControllerState(result.lobby);
+  return result;
 }
 
 async function previewControllerText(actionId, text = "T") {
@@ -241,6 +271,10 @@ function renderControllerState(lobby) {
 
   const controllerPhase = lobby.phase || "lobby";
   controllerState.phase = controllerPhase;
+  if (lobby.microphoneAccess?.actionId) {
+    closeAvatarPicker({ commit: false });
+    if (renderControllerMicrophoneAccessState(lobby, me)) return;
+  }
   const controllerInput = me.input || lobby.input || null;
   if (controllerInput?.type || controllerInput?.options?.length) {
     closeAvatarPicker({ commit: false });

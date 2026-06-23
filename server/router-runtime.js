@@ -7,6 +7,7 @@ function createRouterRuntime({
   handleCancelStart,
   handleCompleteAction,
   handleControllerChoice,
+  handleControllerMicrophoneAccess,
   handleControllerTextPreview,
   handleControllerTextSubmit,
   handleHeartbeat,
@@ -243,6 +244,11 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/controller-choice") {
       handleControllerChoice(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/controller-microphone-access") {
+      handleControllerMicrophoneAccess(req, res);
       return;
     }
 

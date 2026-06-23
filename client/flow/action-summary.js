@@ -47,6 +47,12 @@
         const eventText = ` / timer: ${context.flowTargetActionName(action.timerEndTargetActionId)} / answers: ${context.flowTargetActionName(action.answersSubmittedTargetActionId)}`;
         return `VIP Voice Submit: ${action.prompt || config.prompt || "Say your answer"}${limitText} / Transcript stored as text${eventText} / ${timingText}`;
       }
+      if (action.type === "requestMicrophoneAccessInput") {
+        const config = globalThis.PartyMicrophoneAccessActions?.microphoneAccessActionConfig?.(action.type) || {};
+        const modeName = action.microphoneAccessMode === "all" ? "All Players" : "VIP";
+        const eventText = ` / granted: ${context.flowTargetActionName(action.microphoneAccessGrantedTargetActionId)}`;
+        return `Request Mic Access (${modeName}): ${action.prompt || config.prompt || "Give microphone access"}${eventText} / ${timingText}`;
+      }
       if (action.type === "prepareVotingCards") return `Prepare anonymous voting cards / ${timingText}`;
       if (action.type === "setVotingCardsShown") {
         const cardFilterName = action.cardFilter === "winners" || action.cardFilter === "correct"

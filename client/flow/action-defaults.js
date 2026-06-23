@@ -42,6 +42,13 @@
         action.timerEndTargetActionId = action.timerEndTargetActionId || "";
         action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
       }
+      const microphoneAccessConfig = globalThis.PartyMicrophoneAccessActions?.microphoneAccessActionConfig?.(value);
+      if (microphoneAccessConfig) {
+        action.prompt = action.prompt || microphoneAccessConfig.prompt;
+        action.buttonLabel = action.buttonLabel || microphoneAccessConfig.buttonLabel;
+        action.microphoneAccessMode = globalThis.PartyMicrophoneAccessActions?.normalizeMicrophoneAccessMode?.(action.microphoneAccessMode || microphoneAccessConfig.mode) || "vip";
+        action.microphoneAccessGrantedTargetActionId = action.microphoneAccessGrantedTargetActionId || action.answersSubmittedTargetActionId || "";
+      }
       if (value === "setVotingCardsShown") {
         action.isShown = action.isShown !== false;
         action.instant = action.instant === true;

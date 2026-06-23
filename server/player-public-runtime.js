@@ -10,7 +10,13 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     const textInputIsForPlayer = room.textInputMode === "voiceVip"
       ? player.id === room.vipPlayerId
       : true;
+    const microphoneAccessIsForPlayer = room.microphoneAccessMode === "all"
+      ? true
+      : player.id === room.vipPlayerId;
     const needsTextInput = Boolean(room.textInputActionId) && textInputIsForPlayer && textAnswer?.done !== true;
+    const needsMicrophoneAccess = Boolean(room.microphoneAccessActionId)
+      && microphoneAccessIsForPlayer
+      && room.microphoneAccessAnswers?.get(player.id)?.done !== true;
     const serializeAnswer = (value) => value ? {
       optionIndex: value.optionIndex,
       originalOptionIndex: value.originalOptionIndex,
@@ -30,7 +36,7 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
       points: Number(player.points || 0),
       pendingPoints: Number(player.pendingPoints || 0),
       isVip: player.id === room.vipPlayerId,
-      needsInput: player.active === true && (needsChoiceInput || needsTextInput),
+      needsInput: player.active === true && (needsChoiceInput || needsTextInput || needsMicrophoneAccess),
       input: choiceInputPayload(room, currentAction, player),
       answer: serializeAnswer(answer),
       displayedAnswer: serializeAnswer(displayedAnswer)

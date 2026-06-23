@@ -37,9 +37,32 @@ function createInputStateRuntime({ activePlayers }) {
     }
   }
 
+  function clearMicrophoneAccessInput(room) {
+    clearAnswersSubmittedAdvanceTimer(room);
+    room.microphoneAccessActionId = "";
+    room.microphoneAccessPrompt = "";
+    room.microphoneAccessButtonLabel = "";
+    room.microphoneAccessMode = "vip";
+    if (room.microphoneAccessAnswers?.clear) {
+      room.microphoneAccessAnswers.clear();
+    } else {
+      room.microphoneAccessAnswers = new Map();
+    }
+  }
+
+  function microphoneAccessPlayers(room, players = activePlayers(room)) {
+    if (room.microphoneAccessMode === "all") return players;
+    const vip = players.find((player) => player.id === room.vipPlayerId) || null;
+    return vip ? [vip] : [];
+  }
+
   function allActivePlayersHaveSubmittedInput(room) {
     const active = activePlayers(room);
     if (!active.length) return false;
+    if (room.microphoneAccessActionId) {
+      const requiredPlayers = microphoneAccessPlayers(room, active);
+      return Boolean(requiredPlayers.length) && requiredPlayers.every((player) => room.microphoneAccessAnswers.get(player.id)?.done === true);
+    }
     if (room.votingInputActionId) {
       return active.every((player) => {
         const eligibleCards = (room.votingCards || []).filter((card) => card && card.authorPlayerId !== player.id);
@@ -66,6 +89,7 @@ function createInputStateRuntime({ activePlayers }) {
     if (eventType === "allPlayersSubmitted") return action.answersSubmittedTargetActionId || action.nextTargetActionId || "";
     if (eventType === "stageClick") return action.stageClickTargetActionId || action.nextTargetActionId || "";
     if (eventType === "countdownComplete") return action.nextTargetActionId || "";
+    if (eventType === "microphoneAccessGranted") return action.microphoneAccessGrantedTargetActionId || action.nextTargetActionId || "";
     return "";
   }
 
@@ -78,6 +102,7 @@ function createInputStateRuntime({ activePlayers }) {
     clearActiveInputFlowEvent,
     clearAnswersSubmittedAdvanceTimer,
     clearChoiceInput,
+    clearMicrophoneAccessInput,
     clearTextInput,
     flowEventTargetForAction
   };

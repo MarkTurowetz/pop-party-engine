@@ -52,6 +52,15 @@
       });
     }
 
+    function grantMicrophoneAccess(actionId) {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson("/api/controller-microphone-access", {
+        ...base,
+        actionId
+      });
+    }
+
     function startOrCancelGame({ isCancel = false, startToken = "" } = {}) {
       const base = payloadBase();
       if (!base) return Promise.resolve(null);
@@ -81,6 +90,7 @@
 
     return {
       heartbeat,
+      grantMicrophoneAccess,
       join,
       presentIntro,
       previewText,

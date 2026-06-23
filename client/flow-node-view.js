@@ -392,6 +392,9 @@ function flowNodeExitDefinitions(action) {
   if (action.type === "presentText") {
     return [{ label: "Screen Click", field: "stageClickTargetActionId", fallbackField: "nextTargetActionId" }];
   }
+  if (action.type === "requestMicrophoneAccessInput") {
+    return [{ label: "Access Granted", field: "microphoneAccessGrantedTargetActionId" }];
+  }
   if (actionTypeMeta(action.type).category === "input") {
     return [
       { label: "Timer Ends", field: "timerEndTargetActionId" },

@@ -70,6 +70,7 @@
       if (action.type === "getRandomMultipleChoiceContent") appendRandomContentControls(target, action, handlers.change);
       if (action.type === "triviaInput") appendTriviaControls(target, state, action, controls, handlers);
       if (action.type === "textSubmissionInput" || action.type === "voiceSubmissionInput") appendTextSubmissionControls(target, state, action, controls, handlers);
+      if (action.type === "requestMicrophoneAccessInput") appendMicrophoneAccessControls(target, state, action, handlers);
       if (action.type === "prepareVotingCards") {
         target.appendChild(context.readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
       }
@@ -202,6 +203,30 @@
       target.appendChild(context.readOnlyFlowNote(isVoice
         ? "Only the VIP sees a microphone controller. The final transcript is stored like a text submission. Timer and answer exits belong to this input action."
         : "The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
+    }
+
+    function appendMicrophoneAccessControls(target, state, action, handlers) {
+      const config = globalThis.PartyMicrophoneAccessActions?.microphoneAccessActionConfig?.(action.type) || {};
+      target.appendChild(context.flowTextarea("Prompt Text", action.prompt || config.prompt || "Give microphone access to the game", (value) => {
+        action.prompt = value || config.prompt || "Give microphone access to the game";
+        handlers.softChange();
+      }));
+      target.appendChild(context.flowField("Button Label", action.buttonLabel || config.buttonLabel || "Yes", (value) => {
+        action.buttonLabel = value || config.buttonLabel || "Yes";
+        handlers.change();
+      }));
+      target.appendChild(context.flowSelect("Players", action.microphoneAccessMode || "vip", [
+        { id: "vip", name: "VIP Only" },
+        { id: "all", name: "All Players" }
+      ], (value) => {
+        action.microphoneAccessMode = globalThis.PartyMicrophoneAccessActions?.normalizeMicrophoneAccessMode?.(value) || "vip";
+        handlers.change();
+      }));
+      target.appendChild(context.flowSelect("On Access Granted", action.microphoneAccessGrantedTargetActionId || "", handlers.targetOptions(state, action, action.microphoneAccessGrantedTargetActionId || ""), (value) => {
+        action.microphoneAccessGrantedTargetActionId = value;
+        handlers.change();
+      }));
+      target.appendChild(context.readOnlyFlowNote("The target controller opens the browser microphone permission prompt. The action advances when the required player set has granted access."));
     }
 
     function appendVotingCardsShownControls(target, action, controls, change) {

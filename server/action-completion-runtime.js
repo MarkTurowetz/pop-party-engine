@@ -7,6 +7,7 @@ function createActionCompletionRuntime({
   applyRoomActionEffects = () => {},
   broadcastLobby,
   clearChoiceInput,
+  clearMicrophoneAccessInput,
   clearTextInput,
   currentRoomAction,
   enterGamePhase
@@ -14,6 +15,7 @@ function createActionCompletionRuntime({
   function clearCompletionInput(room, action) {
     const cleanup = stageCompletionCleanupForActionType(action?.type);
     if (cleanup === "choice") clearChoiceInput(room);
+    if (cleanup === "microphone") clearMicrophoneAccessInput(room);
     if (cleanup === "text") clearTextInput(room);
   }
 
