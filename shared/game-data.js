@@ -263,7 +263,61 @@ const artGroups = [
   { id: "voting-card", name: "Voting Card", description: "Composed answer card art used by voting moments." }
 ];
 
+function defaultPlayerAvatarComposition(species, label, assetId) {
+  return {
+    id: `player-avatar-${species}`,
+    name: `${label} Avatar`,
+    description: "Editable player avatar art composed from a frame and masked dino image.",
+    canvas: { width: 100, height: 100 },
+    components: [
+      {
+        id: "dino-mask",
+        name: "Dino Image Mask",
+        kind: "shape",
+        x: 50,
+        y: 50,
+        width: 70,
+        height: 70,
+        scale: 1,
+        rotation: 0,
+        shapeStyle: "rectangle",
+        fillColor: "currentColor",
+        borderColor: "transparent",
+        borderWidth: 0,
+        borderRadius: 0,
+        imageAssetId: assetId,
+        imageObjectFit: "contain",
+        imageTint: "currentColor"
+      },
+      {
+        id: "avatar-frame",
+        name: "Avatar Frame",
+        kind: "shape",
+        x: 50,
+        y: 50,
+        width: 100,
+        height: 100,
+        scale: 1,
+        rotation: 0,
+        shapeStyle: "rectangle",
+        fillColor: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        borderRadius: 0,
+        imageAssetId: "avatar-frame",
+        imageObjectFit: "contain"
+      }
+    ]
+  };
+}
+
 const defaultArtCompositions = [
+  defaultPlayerAvatarComposition("rex", "Rex", "avatar-rex"),
+  defaultPlayerAvatarComposition("stego", "Stego", "avatar-stego"),
+  defaultPlayerAvatarComposition("trike", "Trike", "avatar-trike"),
+  defaultPlayerAvatarComposition("raptor", "Raptor", "avatar-raptor"),
+  defaultPlayerAvatarComposition("bronto", "Bronto", "avatar-bronto"),
+  defaultPlayerAvatarComposition("ankylo", "Ankylo", "avatar-ankylo"),
   {
     id: "voting-card",
     name: "Voting Card",

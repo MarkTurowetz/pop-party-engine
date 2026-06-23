@@ -53,12 +53,13 @@
     }
 
     function createCompositionButton(data, composition) {
+      const isVotingCard = composition.id === "voting-card";
       return ui.createSidebarRow({
         className: "art-item is-composite has-disclosure",
         selected: data.selectedArtCompositionId === composition.id && !data.selectedArtComponentId,
         leadingNodes: [
           createDisclosureSlot(data, composition.id),
-          ui.createThumb("art-thumb art-composite-thumb", '<span class="art-voting-card-thumb"></span>')
+          ui.createThumb("art-thumb art-composite-thumb", isVotingCard ? '<span class="art-voting-card-thumb"></span>' : "")
         ],
         title: composition.name,
         summary: "Editable composite art",
@@ -190,7 +191,9 @@
       const data = state();
       target.replaceChildren();
       appendSection(target, data, "Player Avatars", "player-avatars", (children) => {
-        for (const composite of data.avatarComposites || []) children.appendChild(createCompositeBlock(data, composite));
+        for (const composition of data.artCompositions || []) {
+          if (String(composition.id || "").startsWith("player-avatar-")) children.appendChild(createCompositionBlock(data, composition));
+        }
       });
       appendSection(target, data, "Presentation Click Prompt", "presentation-click-prompt", (children) => {
         const cursorAsset = findArtAsset(data, "presentation-click-cursor");
@@ -203,7 +206,9 @@
       });
       appendSection(target, data, "Custom Art", "custom-art", (children) => {
         for (const composition of data.artCompositions || []) {
-          if (composition.id !== "voting-card") children.appendChild(createCompositionBlock(data, composition));
+          if (composition.id !== "voting-card" && !String(composition.id || "").startsWith("player-avatar-")) {
+            children.appendChild(createCompositionBlock(data, composition));
+          }
         }
       });
     }

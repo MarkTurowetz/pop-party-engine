@@ -9,11 +9,15 @@
     dinoIcon,
     elements,
     getControllerState,
+    playerAvatarArt,
     renderState,
     setControllerPlayer,
     setMetaText,
     updateAvatar
   }) {
+    const avatarArt = typeof playerAvatarArt === "function"
+      ? playerAvatarArt
+      : (shape) => `${avatarFrameImage()}${dinoIcon(shape)}`;
     let pendingShape = "";
     let pickerOpen = false;
 
@@ -22,13 +26,13 @@
       elements.bannerName.textContent = player.name || "Player";
       elements.bannerAvatar.className = `player-avatar ${avatarClass(player.avatar?.shape)}`;
       elements.bannerAvatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
-      elements.bannerAvatar.innerHTML = `${avatarFrameImage()}${dinoIcon(player.avatar?.shape)}`;
+      elements.bannerAvatar.innerHTML = avatarArt(player.avatar?.shape);
     }
 
     function setAvatar(player) {
       elements.avatar.className = `controller-avatar ${avatarClass(player.avatar?.shape)}`;
       elements.avatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
-      elements.avatar.innerHTML = `${avatarFrameImage()}${dinoIcon(player.avatar?.shape)}`;
+      elements.avatar.innerHTML = avatarArt(player.avatar?.shape);
       setBanner(player);
     }
 
@@ -46,7 +50,7 @@
         button.classList.toggle("is-selected", composite.species === pendingShape);
         button.style.setProperty("--avatar-color", currentColor);
         button.innerHTML = `
-          <span class="avatar-choice-icon">${avatarFrameImage()}${dinoIcon(composite.species)}</span>
+          <span class="avatar-choice-icon">${avatarArt(composite.species)}</span>
           <span class="avatar-choice-label"></span>
         `;
         button.querySelector(".avatar-choice-label").textContent = avatarLabel(composite.species);

@@ -66,6 +66,7 @@ function playerRosterRenderer() {
       avatarClass,
       avatarFrameImage,
       dinoIcon,
+      playerAvatarArt,
       syncAnswerBubble: syncPlayerAnswerBubble
     });
   }
@@ -126,6 +127,7 @@ function votingCardRenderer() {
       avatarClass,
       avatarFrameImage,
       dinoIcon,
+      playerAvatarArt,
       getComposition: () => artComposition("voting-card")
     });
   }

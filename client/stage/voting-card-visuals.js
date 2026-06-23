@@ -44,6 +44,7 @@
       this.avatarClass = options.avatarClass;
       this.avatarFrameImage = options.avatarFrameImage;
       this.dinoIcon = options.dinoIcon;
+      this.playerAvatarArt = options.playerAvatarArt || ((shape) => `${this.avatarFrameImage()}${this.dinoIcon(shape)}`);
       this.getComposition = options.getComposition;
       this.element = createVotingCardElement(this.document, options.cardId);
       this.authorElement = this.element.querySelector(".voting-card-author");
@@ -297,7 +298,7 @@
       const avatarElement = badge.querySelector(".voting-card-voter-avatar");
       avatarElement.className = `voting-card-voter-avatar ${this.avatarClass(voter.avatar?.shape)}`;
       avatarElement.style.setProperty("--avatar-color", voter.avatar?.color || "#22d3ee");
-      avatarElement.innerHTML = `${this.avatarFrameImage()}${this.dinoIcon(voter.avatar?.shape)}`;
+      avatarElement.innerHTML = this.playerAvatarArt(voter.avatar?.shape);
       badge.querySelector(".voting-card-voter-name").textContent = voter.name || "Player";
     }
 
@@ -343,6 +344,7 @@
       this.avatarClass = options.avatarClass;
       this.avatarFrameImage = options.avatarFrameImage;
       this.dinoIcon = options.dinoIcon;
+      this.playerAvatarArt = options.playerAvatarArt;
       this.getComposition = options.getComposition;
       this.cards = new Map();
       this.hideLayerTimer = null;
@@ -362,6 +364,7 @@
             avatarClass: this.avatarClass,
             avatarFrameImage: this.avatarFrameImage,
             dinoIcon: this.dinoIcon,
+            playerAvatarArt: this.playerAvatarArt,
             getComposition: this.getComposition,
             cardId: cardData.id
           });

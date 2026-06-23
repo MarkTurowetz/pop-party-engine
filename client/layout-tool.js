@@ -496,7 +496,7 @@ function layoutPreviewContent(element) {
     } else if (id === "joinbutton") {
       content.innerHTML = `<div class="layout-preview-button">Join</div>`;
     } else if (id === "controlleravatar") {
-      content.innerHTML = `<div class="player-avatar avatar-rex" style="--avatar-color:#7c3aed">${avatarFrameImage()}${dinoIcon("rex")}</div>`;
+      content.innerHTML = `<div class="player-avatar avatar-rex" style="--avatar-color:#7c3aed">${playerAvatarArt("rex")}</div>`;
     } else if (id === "controllerplayername") {
       content.appendChild(layoutPreviewTextNode(element, "Ava"));
     } else if (id === "controllermeta") {
@@ -506,7 +506,7 @@ function layoutPreviewContent(element) {
     } else if (id === "controllerplayerbanner") {
       content.innerHTML = `
         <div class="controller-player-banner">
-          <div class="player-avatar avatar-rex" style="--avatar-color:#7c3aed">${avatarFrameImage()}${dinoIcon("rex")}</div>
+          <div class="player-avatar avatar-rex" style="--avatar-color:#7c3aed">${playerAvatarArt("rex")}</div>
           <div class="controller-player-banner-name">Ava</div>
         </div>
       `;
@@ -626,7 +626,7 @@ function layoutPreviewPlayers() {
     const tile = document.createElement("article");
     tile.className = "layout-preview-player";
     tile.innerHTML = `
-      <div class="player-avatar ${avatarClass(player.shape)}" style="--avatar-color:${player.color}">${avatarFrameImage()}${dinoIcon(player.shape)}</div>
+      <div class="player-avatar ${avatarClass(player.shape)}" style="--avatar-color:${player.color}">${playerAvatarArt(player.shape)}</div>
       <div class="player-name">${player.name}</div>
       ${player.vip ? `<div class="vip-badge">VIP</div>` : ""}
     `;

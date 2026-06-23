@@ -16,6 +16,7 @@ function getControllerAvatarView() {
         pickerGrid: avatarPickerGrid
       },
       getControllerState: () => controllerState,
+      playerAvatarArt,
       renderState: renderControllerState,
       setControllerPlayer: (player) => {
         controllerState.player = player;

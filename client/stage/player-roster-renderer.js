@@ -8,6 +8,7 @@
       this.avatarClass = typeof options.avatarClass === "function" ? options.avatarClass : () => "";
       this.avatarFrameImage = typeof options.avatarFrameImage === "function" ? options.avatarFrameImage : () => "";
       this.dinoIcon = typeof options.dinoIcon === "function" ? options.dinoIcon : () => "";
+      this.playerAvatarArt = typeof options.playerAvatarArt === "function" ? options.playerAvatarArt : (shape) => `${this.avatarFrameImage()}${this.dinoIcon(shape)}`;
       this.syncAnswerBubble = typeof options.syncAnswerBubble === "function" ? options.syncAnswerBubble : () => 0;
       this.pointPopupIds = new Set();
     }
@@ -28,7 +29,7 @@
       tile.dataset.signature = signature;
       tile.style.setProperty("--player-index", playerIndex);
       tile.innerHTML = `
-        <div class="player-avatar ${this.avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${this.avatarFrameImage()}${this.dinoIcon(player.avatar?.shape)}</div>
+        <div class="player-avatar ${this.avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${this.playerAvatarArt(player.avatar?.shape)}</div>
         <div class="player-name"></div>
         ${player.isVip ? '<div class="vip-badge">VIP</div>' : ""}
       `;

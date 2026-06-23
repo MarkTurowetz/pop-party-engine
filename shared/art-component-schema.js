@@ -61,7 +61,7 @@ function componentSupportsImageMask(componentOrKind) {
 }
 
 function componentHasImageMask(component) {
-  return componentSupportsImageMask(component) && Boolean(component?.imageDataUrl);
+  return componentSupportsImageMask(component) && Boolean(component?.imageDataUrl || component?.imageAssetId);
 }
 
 function componentImageMaskDataUrl(component) {

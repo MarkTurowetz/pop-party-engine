@@ -87,17 +87,29 @@ function createArtAssetsRuntime({
   }
 
   function normalizeComponentImageMask(source = {}, base = {}) {
+    const imageAssetId = cleanId(source.imageAssetId, base.imageAssetId || "");
     const dataUrl = String(source.imageDataUrl || base.imageDataUrl || "").trim();
-    if (!dataUrl) return null;
+    if (!dataUrl) {
+      if (!imageAssetId) return null;
+      return {
+        imageAssetId,
+        imageName: cleanImageName(source.imageName, base.imageName || imageAssetId),
+        imageMimeType: "",
+        imageObjectFit: artComponentSchema.normalizeImageObjectFit(source.imageObjectFit || base.imageObjectFit),
+        imageTint: cleanText(source.imageTint, base.imageTint || "", 40)
+      };
+    }
     const parsed = artComponentSchema.parseImageDataUrl(dataUrl);
     if (!parsed || !acceptedArtTypes[parsed.mimeType]) return null;
     const byteLength = artComponentSchema.imageBase64ByteLength(parsed.base64);
     if (byteLength === 0 || byteLength > artComponentSchema.componentImageMaxBytes) return null;
     return {
       imageDataUrl: dataUrl,
+      imageAssetId,
       imageName: cleanImageName(source.imageName, base.imageName || "Uploaded image"),
       imageMimeType: parsed.mimeType,
-      imageObjectFit: artComponentSchema.normalizeImageObjectFit(source.imageObjectFit || base.imageObjectFit)
+      imageObjectFit: artComponentSchema.normalizeImageObjectFit(source.imageObjectFit || base.imageObjectFit),
+      imageTint: cleanText(source.imageTint, base.imageTint || "", 40)
     };
   }
 

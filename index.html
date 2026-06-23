@@ -1417,6 +1417,32 @@
       object-fit: contain;
     }
 
+    .player-avatar-art-composition {
+      position: absolute;
+      inset: 0;
+      display: block;
+      color: inherit;
+      pointer-events: none;
+    }
+
+    .avatar-art-component {
+      position: absolute;
+      display: block;
+      transform-origin: center;
+      pointer-events: none;
+    }
+
+    .avatar-art-mask {
+      background: currentColor;
+      -webkit-mask: var(--avatar-mask-url) center / var(--avatar-component-fit, cover) no-repeat;
+      mask: var(--avatar-mask-url) center / var(--avatar-component-fit, cover) no-repeat;
+      filter: drop-shadow(3px 3px 0 rgba(23, 19, 31, 0.5));
+    }
+
+    .avatar-art-image {
+      object-fit: var(--avatar-component-fit, contain);
+    }
+
     .player-name {
       max-width: 100%;
       padding: 7px 10px;
@@ -1780,6 +1806,7 @@
       display: grid;
       place-items: center;
       position: relative;
+      color: var(--avatar-color);
     }
 
     .avatar-choice-label {

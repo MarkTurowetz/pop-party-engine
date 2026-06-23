@@ -260,6 +260,49 @@ function artAssetUrl(assetId) {
   return artAssetUrls.get(assetId) || "";
 }
 
+function avatarCompositionId(shape) {
+  const species = avatarAssetIds[shape] ? shape : "rex";
+  return `player-avatar-${species}`;
+}
+
+function avatarComponentStyle(component, canvas) {
+  const canvasWidth = Math.max(1, Number(canvas?.width || 1));
+  const canvasHeight = Math.max(1, Number(canvas?.height || 1));
+  return [
+    `left:${Number(component.x || 0) / canvasWidth * 100}%`,
+    `top:${Number(component.y || 0) / canvasHeight * 100}%`,
+    `width:${Number(component.width || 1) / canvasWidth * 100}%`,
+    `height:${Number(component.height || 1) / canvasHeight * 100}%`,
+    `transform:translate(-50%, -50%) rotate(${Number(component.rotation || 0)}deg) scale(${Number(component.scale || 1)})`,
+    `--avatar-component-fit:${component.imageObjectFit || "cover"}`,
+    `--avatar-component-fill:${component.fillColor || "transparent"}`
+  ].join(";");
+}
+
+function avatarComponentImageSource(component) {
+  return component?.imageDataUrl || artAssetUrl(component?.imageAssetId) || "";
+}
+
+function avatarCompositionComponentMarkup(component, canvas) {
+  const imageSource = avatarComponentImageSource(component);
+  const style = avatarComponentStyle(component, canvas);
+  if (component.imageTint === "currentColor" && imageSource) {
+    return `<span class="avatar-art-component avatar-art-mask" style="${style};--avatar-mask-url:${cssUrl(imageSource)}"></span>`;
+  }
+  if (imageSource) {
+    return `<img class="avatar-art-component avatar-art-image" alt="" draggable="false" src="${imageSource}" style="${style}">`;
+  }
+  return `<span class="avatar-art-component" style="${style}"></span>`;
+}
+
+function playerAvatarArt(shape) {
+  const composition = artComposition(avatarCompositionId(shape));
+  if (!composition) return `${avatarFrameImage()}${dinoIcon(shape)}`;
+  const canvas = composition.canvas || { width: 100, height: 100 };
+  const components = (composition.components || []).map((component) => avatarCompositionComponentMarkup(component, canvas)).join("");
+  return `<span class="player-avatar-art-composition">${components}</span>`;
+}
+
 function dinoIcon(shape) {
   const species = avatarAssetIds[shape] ? shape : "rex";
   const url = artAssetUrl(avatarAssetIds[species]);

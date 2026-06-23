@@ -56,9 +56,11 @@ function serializeArtComponentForSave(component) {
     borderWidth: Number(Number(component.borderWidth || 0).toFixed(3)),
     borderRadius: Number(Number(component.borderRadius || 0).toFixed(3)),
     imageDataUrl: artComponentSupportsImageMask(component) ? component.imageDataUrl || "" : "",
+    imageAssetId: artComponentSupportsImageMask(component) ? component.imageAssetId || "" : "",
     imageName: artComponentSupportsImageMask(component) ? component.imageName || "" : "",
     imageMimeType: artComponentSupportsImageMask(component) ? component.imageMimeType || "" : "",
     imageObjectFit: artComponentSupportsImageMask(component) ? artComponentSchema.normalizeImageObjectFit(component.imageObjectFit) : "cover",
+    imageTint: artComponentSupportsImageMask(component) ? component.imageTint || "" : "",
     children: (component.children || []).map(serializeArtComponentForSave)
   };
 }
@@ -158,6 +160,11 @@ function artComponentSupportsImageMask(component) {
 
 function artComponentHasImageMask(component) {
   return artComponentSchema.componentHasImageMask(component);
+}
+
+function artComponentImageSource(component) {
+  if (!artComponentSupportsImageMask(component)) return "";
+  return component.imageDataUrl || artAssetUrl(component.imageAssetId) || "";
 }
 
 function flattenArtComponents(components = [], depth = 0, parent = null, output = []) {
@@ -525,12 +532,13 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
       stageArtComponentImageFile(component, event.dataTransfer?.files?.[0]);
     });
   }
-  if (artComponentHasImageMask(component)) {
+  const imageSource = artComponentImageSource(component);
+  if (imageSource) {
     const image = document.createElement("img");
     image.className = "art-component-mask-image";
     image.alt = "";
     image.draggable = false;
-    image.src = component.imageDataUrl;
+    image.src = imageSource;
     node.appendChild(image);
   }
   const label = document.createElement("span");

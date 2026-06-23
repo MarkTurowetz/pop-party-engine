@@ -25,6 +25,10 @@
     element.style.setProperty("--component-image-fit", componentSchema.normalizeImageObjectFit(component.imageObjectFit));
   }
 
+  function componentImageSource(component) {
+    return componentSchema.componentImageMaskDataUrl(component) || global.artAssetUrl?.(component?.imageAssetId) || "";
+  }
+
   function componentLayerIndex(index, siblingCount) {
     return Math.max(1, Number(siblingCount || 1) - Number(index || 0));
   }
@@ -61,12 +65,12 @@
       this.element.className = `${RUNTIME_CLASS} is-${kind} is-style-${componentSchema.normalizeShapeStyle(this.component.shapeStyle, kind)}`;
       if (this.visual.isVisible() === false) this.element.classList.add(HIDDEN_CLASS);
       this.element.style.zIndex = String(componentLayerIndex(layer.index, layer.total));
-      const imageDataUrl = componentSchema.componentImageMaskDataUrl(this.component);
-      this.element.classList.toggle("has-image-mask", Boolean(imageDataUrl));
-      this.image.hidden = !imageDataUrl;
-      this.label.hidden = Boolean(imageDataUrl);
-      if (imageDataUrl) {
-        if (this.image.getAttribute("src") !== imageDataUrl) this.image.src = imageDataUrl;
+      const imageSource = componentImageSource(this.component);
+      this.element.classList.toggle("has-image-mask", Boolean(imageSource));
+      this.image.hidden = !imageSource;
+      this.label.hidden = Boolean(imageSource);
+      if (imageSource) {
+        if (this.image.getAttribute("src") !== imageSource) this.image.src = imageSource;
       } else {
         this.image.removeAttribute("src");
       }
