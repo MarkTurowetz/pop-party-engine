@@ -44,7 +44,7 @@
       }
       for (const node of routeNodes()) {
         if (node.id === currentNodeId) continue;
-        const typeName = node.routeNodeType === "decision" ? "Decision" : "Entry";
+        const typeName = node.routeNodeType === "decision" ? "Decision" : node.routeNodeType === "action" ? "Action" : "Entry";
         options.push({ id: node.id, name: `${typeName}: ${node.name || node.id}` });
       }
       if (selectedTargetId && !options.some((option) => option.id === selectedTargetId)) {
@@ -55,7 +55,7 @@
 
     function appendRouteTargets(options, currentStateId = "") {
       for (const node of routeNodes()) {
-        const typeName = node.routeNodeType === "decision" ? "Route Decision" : "Moment Entry";
+        const typeName = node.routeNodeType === "decision" ? "Decision" : node.routeNodeType === "action" ? "Action" : "Moment Entry";
         options.push({ id: node.id, name: `${typeName}: ${node.name || node.id}` });
       }
       if (currentStateId && !options.some((option) => option.id === currentStateId)) {
@@ -83,14 +83,33 @@
       return {
         id: `route-decision-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
         routeNodeType: "decision",
-        name: `Route Decision ${nextNumber}`,
+        name: `Decision ${nextNumber}`,
         variable: "activePlayerCount",
         valueType: "int",
         branches: [
-          { id: "legacy-hit", type: "code", code: "x < 3", value: "3", targetNodeId: "" },
+          { id: "legacy-hit", type: "hit", code: "", value: "3", targetNodeId: "" },
           { id: "no-match", type: "noMatch", value: "", code: "", targetNodeId: "" }
         ],
         nodePosition: context.defaultNodePosition?.(nextNumber - 1, 2, 860, 360, 360, 240) || null
+      };
+    }
+
+    function createRouteActionNode(point = null) {
+      const nodes = routeNodes();
+      const nextNumber = nodes.filter((node) => node.routeNodeType === "action").length + 1;
+      return {
+        id: `route-action-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        routeNodeType: "action",
+        name: `Action ${nextNumber}`,
+        type: "presentText",
+        timing: { mode: "E+", seconds: 0 },
+        text: "Presented text",
+        textTarget: "",
+        instant: false,
+        isShown: true,
+        subActions: [],
+        nextTargetNodeId: "",
+        nodePosition: point || context.defaultNodePosition?.(nextNumber - 1, 2, 860, 600, 360, 220) || null
       };
     }
 
@@ -115,6 +134,17 @@
           })) || []
         };
       }
+      if (node.routeNodeType === "action") {
+        return {
+          ...node,
+          ...base,
+          routeNodeType: "action",
+          type: node.type || "presentText",
+          timing: node.timing || { mode: "E+", seconds: 0 },
+          nextTargetNodeId: node.nextTargetNodeId || node.nextTargetActionId || "",
+          subActions: (node.subActions || []).map((subAction) => ({ ...subAction }))
+        };
+      }
       return {
         ...base,
         targetStateId: node.targetStateId || ""
@@ -134,6 +164,7 @@
             if (targetSet.has(branch.targetNodeId)) branch.targetNodeId = "";
           }
         }
+        if (node.routeNodeType === "action" && targetSet.has(node.nextTargetNodeId)) node.nextTargetNodeId = "";
       }
     }
 
@@ -146,6 +177,7 @@
       appendRouteTargets,
       clearTargetReferences,
       createMomentEntryNode,
+      createRouteActionNode,
       createRouteDecisionNode,
       graphTargetOptions,
       momentEntryTargetOptions,

@@ -84,8 +84,8 @@ function createGameFlowNormalizationRuntime({
     if (!Array.isArray(routeNodes)) return [];
     return routeNodes.map((node, nodeIndex) => {
       const id = normalizeFlowId(node?.id || node?.name, `moment-entry-${nodeIndex + 1}`);
-      const routeNodeType = node?.routeNodeType === "decision" ? "decision" : "momentEntry";
-      const fallbackName = routeNodeType === "decision" ? `Route Decision ${nodeIndex + 1}` : `Moment Entry ${nodeIndex + 1}`;
+      const routeNodeType = node?.routeNodeType === "decision" ? "decision" : node?.routeNodeType === "action" ? "action" : "momentEntry";
+      const fallbackName = routeNodeType === "decision" ? `Decision ${nodeIndex + 1}` : routeNodeType === "action" ? `Action ${nodeIndex + 1}` : `Moment Entry ${nodeIndex + 1}`;
       const targetStateId = normalizeFlowId(node?.targetStateId, "");
       const base = {
         id,
@@ -99,6 +99,16 @@ function createGameFlowNormalizationRuntime({
           variable: cleanFlowText(node?.variable, "activePlayerCount"),
           valueType: normalizeDecisionValueType(node?.valueType),
           branches: normalizeDecisionBranches(node, { targetField: "targetNodeId" })
+        };
+      }
+      if (routeNodeType === "action") {
+        const normalizedAction = normalizeFlowAction(node, nodeIndex, "moment-route");
+        return {
+          ...normalizedAction,
+          ...base,
+          routeNodeType: "action",
+          nextTargetNodeId: normalizeFlowId(node?.nextTargetNodeId || node?.nextTargetActionId, ""),
+          subActions: normalizeSubActions(node?.subActions, "moment-route")
         };
       }
       return {

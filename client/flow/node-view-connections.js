@@ -61,6 +61,9 @@
     }
 
     function createAction(event) {
+      if (pending?.targetKind === "momentGraph" && context.flowNodeDepth?.() === "moments") {
+        return createMomentGraphAction(event);
+      }
       if (!pending || pending.targetKind !== "action" || context.flowNodeDepth?.() !== "actions") return false;
       const state = context.flowState?.(pending.stateId);
       const sourceAction = pending.sourceKind === "start" ? null : context.flowAction?.(state?.id, pending.actionId);
@@ -77,6 +80,43 @@
       connectSourceToTarget(sourceAction, action.id);
       pending = null;
       context.setFlowActionSelection?.([action.id]);
+      context.renderFlowListAndPublish?.();
+      context.renderFlowNodeView?.();
+      return true;
+    }
+
+    function connectMomentGraphSourceToTarget(routeNode, targetId) {
+      if (!pending) return;
+      if (pending.sourceKind === "moment") {
+        const state = context.flowState?.(pending.stateId);
+        if (state) state[pending.field] = targetId;
+        return;
+      }
+      if (pending.sourceKind !== "routeNode" || !routeNode) return;
+      if (pending.branchId) {
+        const branch = context.decisionBranchById?.(routeNode, pending.branchId, { targetField: pending.field });
+        if (branch) branch[pending.field] = targetId;
+        return;
+      }
+      routeNode[pending.field] = targetId;
+    }
+
+    function createMomentGraphAction(event) {
+      if (!pending) return false;
+      const point = context.flowNodeLocalPoint?.(event) || { x: 0, y: 0 };
+      const nodePosition = {
+        x: Math.max(0, Math.round(point.x - 130)),
+        y: Math.max(0, Math.round(point.y - 67))
+      };
+      const node = context.createRouteActionNode?.(nodePosition);
+      if (!node) return false;
+      const routeNodes = context.flowRouteNodes?.() || [];
+      const sourceNode = pending.sourceKind === "routeNode" ? context.flowRouteNode?.(pending.routeNodeId) : null;
+      context.pushFlowHistory?.();
+      routeNodes.push(node);
+      connectMomentGraphSourceToTarget(sourceNode, node.id);
+      pending = null;
+      context.selectFlowRouteNode?.(node.id);
       context.renderFlowListAndPublish?.();
       context.renderFlowNodeView?.();
       return true;
@@ -109,7 +149,7 @@
       if (pending.sourceKind === "routeNode") {
         const routeNode = context.flowRouteNode?.(pending.routeNodeId);
         const targetId = targetIdForNode(targetNode);
-        if (!routeNode || !targetId || targetId === routeNode.targetStateId) return false;
+        if (!routeNode || !targetId || targetId === routeNode[pending.field]) return false;
         if (targetId === routeNode.id) return false;
         if (pending.branchId) {
           const branch = context.decisionBranchById?.(routeNode, pending.branchId, { targetField: pending.field });

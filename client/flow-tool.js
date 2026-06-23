@@ -60,6 +60,14 @@ function actionNodeIsSelected(action) {
     || (action.type === "decision" && ensureDecisionBranches(action).some((branch) => flowActionIsSelected(branch.id)));
 }
 
+function flowNodeClassForAction(action) {
+  if (action.type === "decision") return "is-decision";
+  if (action.type === "jumpNode") return "is-jump";
+  if (actionTypeMeta(action.type).category === "input") return "is-input";
+  if (action.type === "transition" || action.type === "transitionState") return "is-transition";
+  return "is-standard";
+}
+
 function primaryFlowActionIdForSelection(actionId) {
   const ref = flowActionRef(selectedFlowStateId, actionId);
   return ref?.parentAction?.id || ref?.action?.id || "";
@@ -365,9 +373,15 @@ function getFlowMomentRouteGraph() {
 function getFlowMomentRouteRenderer() {
   if (!flowMomentRouteRenderer && window.PartyGameFlowMomentRouteRenderer) {
     flowMomentRouteRenderer = window.PartyGameFlowMomentRouteRenderer.createMomentRouteRenderer({
+      actionCategoryName,
+      actionTimingLabel,
+      actionTypeMeta,
+      actionValueBadge,
       appendDecisionControls,
+      applyFlowActionTypeDefaults,
       bindFlowNodeDrag,
       createFlowMomentRoutePorts,
+      createFlowMomentRouteActionPorts,
       createFlowNode,
       createFlowNodeBranches,
       decisionVariableName,
@@ -377,8 +391,10 @@ function getFlowMomentRouteRenderer() {
       flowActionButton,
       flowField,
       flowMomentEntryTargetOptions,
+      flowActionTypes: () => flowActionTypes,
       flowNodeDepth: () => flowNodeDepth,
       flowNodeInspector: () => flowNodeInspector,
+      flowNodeClassForAction,
       flowNodeLayer: () => flowNodeLayer,
       flowRouteGraphTargetOptions,
       flowRouteNodes,
@@ -620,6 +636,7 @@ function getFlowNodePortsFactory() {
     flowNodePortsFactory = window.PartyGameFlowNodePorts.createFlowNodePortsFactory({
       armConnection: armFlowNodeConnection,
       flowStateName,
+      flowRouteTargetName,
       flowTargetActionName,
       selectedFlowStateId: () => selectedFlowStateId
     });
@@ -640,7 +657,10 @@ function getFlowNodeConnectionController() {
       flowNodeLayer: () => flowNodeLayer,
       flowNodeLocalPoint,
       flowRouteNode,
+      flowRouteNodes,
       flowState,
+      createRouteActionNode: (...args) => getFlowMomentRouteGraph()?.createRouteActionNode(...args),
+      selectFlowRouteNode,
       pushFlowHistory,
       redrawFlowNodeWires,
       renderFlowListAndPublish,
@@ -959,7 +979,7 @@ function renderFlowActions() {
   if (nodeOptimizeButton) nodeOptimizeButton.disabled = flowViewMode !== "node" || flowNodeDepth !== "actions" || !flowState(selectedFlowStateId);
   if (deleteFlowItemButton) deleteFlowItemButton.disabled = !selectedFlowRouteNodeId && !selectedFlowStateId;
   if (addActionButton) {
-    addActionButton.textContent = flowViewMode === "node" && flowNodeDepth === "moments" ? "Add Moment Entry" : "Add Action";
+    addActionButton.textContent = "Add Action";
     addActionButton.disabled = flowViewMode === "node" && flowNodeDepth === "moments" ? false : !flowState(selectedFlowStateId);
   }
   if (addRouteDecisionButton) {
@@ -1422,7 +1442,7 @@ function addFlowState() {
 
 function addFlowAction() {
   if (flowViewMode === "node" && flowNodeDepth === "moments") {
-    addFlowMomentEntryNode();
+    addFlowRouteActionNode();
     return;
   }
   const state = flowState(selectedFlowStateId);
@@ -1437,6 +1457,18 @@ function addFlowAction() {
   state.actions.splice(insertIndex, 0, action);
   setFlowActionSelection([action.id]);
   renderFlowTool();
+}
+
+function addFlowRouteActionNode(point = null) {
+  if (flowViewMode !== "node" || flowNodeDepth !== "moments") return null;
+  const nodes = flowRouteNodes();
+  const node = getFlowMomentRouteGraph()?.createRouteActionNode(point);
+  if (!node) return null;
+  pushFlowHistory();
+  nodes.push(node);
+  selectFlowRouteNode(node.id);
+  renderFlowTool();
+  return node;
 }
 
 function addFlowMomentEntryNode() {

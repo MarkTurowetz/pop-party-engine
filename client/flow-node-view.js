@@ -227,6 +227,10 @@ function createFlowMomentRoutePorts(routeNode) {
   return getFlowNodePortsFactory()?.createMomentRoutePorts(routeNode) || emptyFlowNodePorts();
 }
 
+function createFlowMomentRouteActionPorts(routeNode) {
+  return getFlowNodePortsFactory()?.createMomentRouteActionPorts(routeNode) || emptyFlowNodePorts();
+}
+
 function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x, y, width, height, className = "", selected = false, jumpTarget = false }) {
   const node = document.createElement("div");
   node.role = "button";

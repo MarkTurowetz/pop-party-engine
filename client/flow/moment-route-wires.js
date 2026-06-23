@@ -54,12 +54,25 @@
       });
     }
 
+    function drawRouteActionWire(stateNodes, routeNodes, routeNode, fromNode) {
+      const toNode = context.targetNode?.(stateNodes, routeNodes, routeNode.nextTargetNodeId);
+      if (!toNode) return;
+      context.drawNodeWire?.(fromNode, toNode, {
+        highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
+        label: "Next"
+      });
+    }
+
     function drawRouteWires(layer, stateNodes, routeNodes) {
       for (const routeNode of context.flowRouteNodes?.() || []) {
         const fromNode = routeNodes.get(routeNode.id);
         if (!fromNode) continue;
         if (routeNode.routeNodeType === "decision") {
           drawRouteDecisionWires(layer, stateNodes, routeNodes, routeNode, fromNode);
+          continue;
+        }
+        if (routeNode.routeNodeType === "action") {
+          drawRouteActionWire(stateNodes, routeNodes, routeNode, fromNode);
           continue;
         }
         drawMomentEntryWire(stateNodes, routeNode, fromNode);

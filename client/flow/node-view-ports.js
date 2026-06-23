@@ -49,7 +49,8 @@
           field: "nextStateTargetId",
           targetKind: "momentGraph"
         },
-        hint: "Release over a moment-layer node to connect this exit."
+        hint: "Release over a moment-layer node to connect this exit.",
+        metaHint: "Release over a node to connect, or release on empty graph space to add an action."
       }]);
     }
 
@@ -68,6 +69,25 @@
           targetKind: "state"
         },
         hint: "Release over a moment to set this Moment Entry target."
+      }]);
+    }
+
+    function createMomentRouteActionPorts(routeNode) {
+      return createPorts([{
+        label: `Next${routeNode.nextTargetNodeId ? ` -> ${context.flowRouteTargetName?.(routeNode.nextTargetNodeId) || routeNode.nextTargetNodeId}` : ""}`,
+        dotDataset: {
+          routeNodeId: routeNode.id,
+          field: "nextTargetNodeId",
+          targetKind: "momentGraph"
+        },
+        connection: {
+          sourceKind: "routeNode",
+          routeNodeId: routeNode.id,
+          field: "nextTargetNodeId",
+          targetKind: "momentGraph"
+        },
+        hint: "Release over a moment-layer node to connect this action.",
+        metaHint: "Release over a node to connect, or release on empty graph space to add an action."
       }]);
     }
 
@@ -117,6 +137,7 @@
 
     return {
       createActionPorts,
+      createMomentRouteActionPorts,
       createMomentRoutePorts,
       createMomentPorts,
       createStartPorts

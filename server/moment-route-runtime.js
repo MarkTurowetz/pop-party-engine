@@ -76,6 +76,20 @@ function createMomentRouteRuntime({
         visited: nextVisited
       });
     }
+    if (routeNode.routeNodeType === "action") {
+      const actionTrace = {
+        kind: "action",
+        id: routeNode.id,
+        name: routeNode.name || routeNode.id,
+        type: routeNode.type || "",
+        nextTargetNodeId: routeNode.nextTargetNodeId || routeNode.nextTargetActionId || ""
+      };
+      return resolveMomentTarget(room, routeNode.nextTargetNodeId || routeNode.nextTargetActionId || "", {
+        flow,
+        trace: [...trace, actionTrace],
+        visited: nextVisited
+      });
+    }
     const entryTrace = {
       kind: "momentEntry",
       id: routeNode.id,
