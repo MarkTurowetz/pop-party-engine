@@ -637,52 +637,30 @@ function startArtComponentDrag(event, component) {
     renderArtList();
   }
   const scale = artCompositionPreviewScale();
-  const startX = event.clientX;
-  const startY = event.clientY;
   const moving = selectedArtComponents();
   const origins = new Map(moving.map((item) => [item.id, { x: Number(item.x || 0), y: Number(item.y || 0) }]));
-  let lockedAxis = null;
   let historyCaptured = false;
-  event.currentTarget.setPointerCapture(event.pointerId);
-  const move = (moveEvent) => {
-    if (!historyCaptured) {
-      pushArtHistory();
-      historyCaptured = true;
-    }
-    let deltaX = (moveEvent.clientX - startX) / scale;
-    let deltaY = (moveEvent.clientY - startY) / scale;
-    if (moveEvent.shiftKey) {
-      if (!lockedAxis) {
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        if (Math.max(absX, absY) >= 2) lockedAxis = absX >= absY ? "x" : "y";
+  PartyGameToolAffordances.startPointerDrag(event, {
+    scale,
+    onMove: (moveEvent, dragState) => {
+      if (!historyCaptured) {
+        pushArtHistory();
+        historyCaptured = true;
       }
-      if (lockedAxis === "x") {
-        deltaY = 0;
-        if (moveEvent.metaKey || moveEvent.ctrlKey) deltaX = Math.round(deltaX / 10) * 10;
-      } else if (lockedAxis === "y") {
-        deltaX = 0;
-        if (moveEvent.metaKey || moveEvent.ctrlKey) deltaY = Math.round(deltaY / 10) * 10;
+      const { deltaX, deltaY } = PartyGameToolAffordances.dragDeltaFromEvent(moveEvent, dragState, { axisLock: true });
+      for (const item of moving) {
+        const origin = origins.get(item.id);
+        item.x = Number((origin.x + deltaX).toFixed(3));
+        item.y = Number((origin.y + deltaY).toFixed(3));
       }
+      renderSelectedArtComposition();
+      updateGlobalSaveButton();
+    },
+    onEnd: () => {
+      renderSelectedArtComposition();
+      renderArtList();
     }
-    for (const item of moving) {
-      const origin = origins.get(item.id);
-      item.x = Number((origin.x + deltaX).toFixed(3));
-      item.y = Number((origin.y + deltaY).toFixed(3));
-    }
-    renderSelectedArtComposition();
-    updateGlobalSaveButton();
-  };
-  const stop = () => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", stop);
-    window.removeEventListener("pointercancel", stop);
-    renderSelectedArtComposition();
-    renderArtList();
-  };
-  window.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", stop, { once: true });
-  window.addEventListener("pointercancel", stop, { once: true });
+  });
 }
 
 function startArtComponentScale(event, component) {
@@ -692,38 +670,30 @@ function startArtComponentScale(event, component) {
     selectedArtComponentIds = new Set([component.id]);
     selectedArtComponentId = component.id;
   }
-  const previewScale = artCompositionPreviewScale();
-  const startX = event.clientX;
-  const startY = event.clientY;
   const scaling = selectedArtComponents();
   const origins = new Map(scaling.map((item) => [item.id, Number(item.scale || 1)]));
   const originScale = Number(component.scale || 1);
   const baseSize = Math.max(Number(component.width || 1), Number(component.height || 1));
   let historyCaptured = false;
-  event.currentTarget.setPointerCapture(event.pointerId);
-  const move = (moveEvent) => {
-    if (!historyCaptured) {
-      pushArtHistory();
-      historyCaptured = true;
-    }
-    const delta = Math.max(moveEvent.clientX - startX, moveEvent.clientY - startY) / previewScale;
-    const nextPrimaryScale = Math.max(0.05, Math.min(8, originScale + delta / baseSize));
-    const scaleDelta = nextPrimaryScale - originScale;
-    for (const item of scaling) {
-      item.scale = Number(Math.max(0.05, Math.min(8, origins.get(item.id) + scaleDelta)).toFixed(3));
-    }
-    renderSelectedArtComposition();
-    updateGlobalSaveButton();
-  };
-  const stop = () => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", stop);
-    window.removeEventListener("pointercancel", stop);
-    renderSelectedArtComposition();
-  };
-  window.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", stop, { once: true });
-  window.addEventListener("pointercancel", stop, { once: true });
+  PartyGameToolAffordances.startPointerDrag(event, {
+    scale: artCompositionPreviewScale(),
+    originScale,
+    baseSize,
+    onMove: (moveEvent, dragState) => {
+      if (!historyCaptured) {
+        pushArtHistory();
+        historyCaptured = true;
+      }
+      const nextPrimaryScale = PartyGameToolAffordances.scaledValueFromPointer(moveEvent, dragState, { min: 0.05, max: 8 });
+      const scaleDelta = nextPrimaryScale - originScale;
+      for (const item of scaling) {
+        item.scale = Number(Math.max(0.05, Math.min(8, origins.get(item.id) + scaleDelta)).toFixed(3));
+      }
+      renderSelectedArtComposition();
+      updateGlobalSaveButton();
+    },
+    onEnd: () => renderSelectedArtComposition()
+  });
 }
 
 function getArtComponentEditorRenderer() {

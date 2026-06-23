@@ -685,49 +685,26 @@ function startLayoutDrag(event, element) {
     setLayoutSelection([element.id]);
   }
   pushLayoutHistory();
-  const scale = layoutPreviewScale() || 1;
-  const startX = event.clientX;
-  const startY = event.clientY;
   const movingElements = selectedEditableLayoutElements();
   const origins = new Map(movingElements.map((item) => [item.id, { x: Number(item.x || 0), y: Number(item.y || 0) }]));
-  let lockedAxis = null;
   let moved = false;
-  event.currentTarget.setPointerCapture(event.pointerId);
-  const move = (moveEvent) => {
-    let deltaX = (moveEvent.clientX - startX) / scale;
-    let deltaY = (moveEvent.clientY - startY) / scale;
-    if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) return;
-    moved = true;
-    if (moveEvent.shiftKey) {
-      if (!lockedAxis) {
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        if (Math.max(absX, absY) >= 2) lockedAxis = absX >= absY ? "x" : "y";
+  PartyGameToolAffordances.startPointerDrag(event, {
+    scale: layoutPreviewScale() || 1,
+    onMove: (moveEvent, dragState) => {
+      const { deltaX, deltaY } = PartyGameToolAffordances.dragDeltaFromEvent(moveEvent, dragState, { axisLock: true });
+      if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) return;
+      moved = true;
+      for (const item of movingElements) {
+        const origin = origins.get(item.id);
+        item.x = Number((origin.x + deltaX).toFixed(3));
+        item.y = Number((origin.y + deltaY).toFixed(3));
       }
-      if (lockedAxis === "x") {
-        deltaY = 0;
-        if (moveEvent.metaKey) deltaX = Math.round(deltaX / 10) * 10;
-      } else if (lockedAxis === "y") {
-        deltaX = 0;
-        if (moveEvent.metaKey) deltaY = Math.round(deltaY / 10) * 10;
-      }
+      renderLayoutTool();
+    },
+    onEnd: () => {
+      if (!moved) renderLayoutTool();
     }
-    for (const item of movingElements) {
-      const origin = origins.get(item.id);
-      item.x = Number((origin.x + deltaX).toFixed(3));
-      item.y = Number((origin.y + deltaY).toFixed(3));
-    }
-    renderLayoutTool();
-  };
-  const stop = () => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", stop);
-    window.removeEventListener("pointercancel", stop);
-    if (!moved) renderLayoutTool();
-  };
-  window.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", stop, { once: true });
-  window.addEventListener("pointercancel", stop, { once: true });
+  });
 }
 
 function startLayoutScale(event, element) {
@@ -735,32 +712,24 @@ function startLayoutScale(event, element) {
   event.stopPropagation();
   if (!selectedLayoutElementIds.has(element.id)) setLayoutSelection([element.id]);
   pushLayoutHistory();
-  const previewScale = layoutPreviewScale() || 1;
-  const startX = event.clientX;
-  const startY = event.clientY;
   const scalingElements = selectedEditableLayoutElements();
   const origins = new Map(scalingElements.map((item) => [item.id, Number(item.scale || 1)]));
   const originScale = Number(element.scale || 1);
   const baseSize = Math.max(Number(element.width || 1), Number(element.height || 1));
-  event.currentTarget.setPointerCapture(event.pointerId);
-  const move = (moveEvent) => {
-    const delta = Math.max(moveEvent.clientX - startX, moveEvent.clientY - startY) / previewScale;
-    const nextPrimaryScale = Math.max(0.1, Math.min(6, originScale + delta / baseSize));
-    const scaleDelta = nextPrimaryScale - originScale;
-    for (const item of scalingElements) {
-      const nextScale = Math.max(0.1, Math.min(6, origins.get(item.id) + scaleDelta));
-      item.scale = Number(nextScale.toFixed(3));
+  PartyGameToolAffordances.startPointerDrag(event, {
+    scale: layoutPreviewScale() || 1,
+    originScale,
+    baseSize,
+    onMove: (moveEvent, dragState) => {
+      const nextPrimaryScale = PartyGameToolAffordances.scaledValueFromPointer(moveEvent, dragState, { min: 0.1, max: 6 });
+      const scaleDelta = nextPrimaryScale - originScale;
+      for (const item of scalingElements) {
+        const nextScale = Math.max(0.1, Math.min(6, origins.get(item.id) + scaleDelta));
+        item.scale = Number(nextScale.toFixed(3));
+      }
+      renderLayoutTool();
     }
-    renderLayoutTool();
-  };
-  const stop = () => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", stop);
-    window.removeEventListener("pointercancel", stop);
-  };
-  window.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", stop, { once: true });
-  window.addEventListener("pointercancel", stop, { once: true });
+  });
 }
 
 function renderLayoutFields() {

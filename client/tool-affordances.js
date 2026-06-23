@@ -351,6 +351,72 @@
     return Math.atan2(event.clientY - center.y, event.clientX - center.x) * 180 / Math.PI;
   }
 
+  function dragDeltaFromEvent(event, dragState, options = {}) {
+    const scale = Number(options.scale || dragState.scale || 1) || 1;
+    let deltaX = (event.clientX - dragState.startX) / scale;
+    let deltaY = (event.clientY - dragState.startY) / scale;
+    if (options.axisLock && event.shiftKey) {
+      if (!dragState.lockedAxis) {
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
+        if (Math.max(absX, absY) >= Number(options.axisLockThreshold || 2)) {
+          dragState.lockedAxis = absX >= absY ? "x" : "y";
+        }
+      }
+      const snapSize = Number(options.snapSize || 10);
+      const shouldSnap = Boolean(event.metaKey || event.ctrlKey);
+      if (dragState.lockedAxis === "x") {
+        deltaY = 0;
+        if (shouldSnap && snapSize > 0) deltaX = Math.round(deltaX / snapSize) * snapSize;
+      } else if (dragState.lockedAxis === "y") {
+        deltaX = 0;
+        if (shouldSnap && snapSize > 0) deltaY = Math.round(deltaY / snapSize) * snapSize;
+      }
+    }
+    return { deltaX, deltaY };
+  }
+
+  function scaledValueFromPointer(event, dragState, options = {}) {
+    const scale = Number(options.scale || dragState.scale || 1) || 1;
+    const originScale = Number(options.originScale ?? dragState.originScale ?? 1);
+    const baseSize = Math.max(1, Number(options.baseSize ?? dragState.baseSize ?? 1));
+    const min = Number(options.min ?? 0.05);
+    const max = Number(options.max ?? 8);
+    const delta = Math.max(event.clientX - dragState.startX, event.clientY - dragState.startY) / scale;
+    return Math.max(min, Math.min(max, originScale + delta / baseSize));
+  }
+
+  function createPointerDragState(event, options = {}) {
+    return {
+      startX: event.clientX,
+      startY: event.clientY,
+      scale: Number(options.scale || 1) || 1,
+      originScale: Number(options.originScale || 1),
+      baseSize: Math.max(1, Number(options.baseSize || 1)),
+      lockedAxis: null
+    };
+  }
+
+  function startPointerDrag(event, options = {}) {
+    if (event.button !== undefined && event.button !== 0) return false;
+    const target = options.captureElement || event.currentTarget;
+    const dragState = createPointerDragState(event, options);
+    capturePointer(target, event.pointerId);
+    options.onStart?.(dragState, event);
+    const move = (moveEvent) => options.onMove?.(moveEvent, dragState);
+    const stop = (stopEvent) => {
+      releasePointer(target, stopEvent.pointerId);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+      options.onEnd?.(stopEvent, dragState);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop, { once: true });
+    window.addEventListener("pointercancel", stop, { once: true });
+    return true;
+  }
+
   function createRotationHandle(options = {}) {
     const handle = document.createElement("span");
     handle.className = options.className || "layout-rotation-handle";
@@ -400,8 +466,11 @@
     createToolAccordionRow,
     createDisclosureButton,
     createToolSidebarRow,
+    dragDeltaFromEvent,
     handleToolDeleteHotkey,
     rectsIntersect,
+    scaledValueFromPointer,
+    startPointerDrag,
     startSelectionMarquee,
     targetIsTextEditingControl,
     toggleCollapsedSetForIds
