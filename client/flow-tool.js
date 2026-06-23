@@ -327,6 +327,7 @@ let flowNodeMinimapController = null;
 let flowNodePortsFactory = null;
 let flowNodeWireRenderer = null;
 let flowMomentRouteGraph = null;
+let flowMomentRouteRenderer = null;
 
 function getFlowFormControls() {
   if (!flowFormControls && window.PartyGameFlowFormControls) {
@@ -349,6 +350,46 @@ function getFlowMomentRouteGraph() {
     });
   }
   return flowMomentRouteGraph;
+}
+
+function getFlowMomentRouteRenderer() {
+  if (!flowMomentRouteRenderer && window.PartyGameFlowMomentRouteRenderer) {
+    flowMomentRouteRenderer = window.PartyGameFlowMomentRouteRenderer.createMomentRouteRenderer({
+      appendDecisionControls,
+      bindFlowNodeDrag,
+      createFlowMomentRoutePorts,
+      createFlowNode,
+      createFlowNodeBranches,
+      decisionVariableName,
+      defaultNodePosition,
+      deleteSelectedFlowRouteNode,
+      ensureDecisionBranches,
+      flowActionButton,
+      flowField,
+      flowMomentEntryTargetOptions,
+      flowNodeDepth: () => flowNodeDepth,
+      flowNodeInspector: () => flowNodeInspector,
+      flowNodeLayer: () => flowNodeLayer,
+      flowRouteGraphTargetOptions,
+      flowRouteNodes,
+      flowRouteTargetName,
+      flowSelect,
+      flowStateName,
+      isNoFlowTarget,
+      pushFlowHistory,
+      readOnlyFlowNote,
+      redrawFlowNodeWires,
+      refreshFlowNodeInspectorChange,
+      renderFlowListAndPublish,
+      renderFlowNodeView,
+      renderFlowTool,
+      savedNodePosition,
+      selectFlowRouteNode,
+      selectedFlowRouteNode,
+      selectedFlowRouteNodeId: () => selectedFlowRouteNodeId
+    });
+  }
+  return flowMomentRouteRenderer;
 }
 
 function getFlowActionControlGroups() {

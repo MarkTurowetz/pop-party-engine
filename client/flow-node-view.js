@@ -319,45 +319,7 @@ function renderFlowMomentNodes() {
     });
     flowNodeLayer.appendChild(node);
   }
-  for (const [index, routeNode] of flowRouteNodes().entries()) {
-    const isDecision = routeNode.routeNodeType === "decision";
-    const { x, y } = savedNodePosition(routeNode, defaultNodePosition(index, 2, 860, isDecision ? 360 : 80, 360, 240));
-    const branches = isDecision ? ensureDecisionBranches(routeNode, { targetField: "targetNodeId" }) : [];
-    const missingBranchTarget = branches.some((branch) => !branch.targetNodeId || isNoFlowTarget(branch.targetNodeId));
-    const targetName = routeNode.targetStateId ? flowStateName(routeNode.targetStateId) : "No target";
-    const node = createFlowNode({
-      id: routeNode.id,
-      title: routeNode.name || (isDecision ? "Route Decision" : "Moment Entry"),
-      subtitle: isDecision ? `Route Decision / ${decisionVariableName(routeNode.variable)}` : `Moment Entry -> ${targetName}`,
-      x,
-      y,
-      width: isDecision ? 320 : 260,
-      height: isDecision ? 134 : 120,
-      className: isDecision ? "is-decision is-route-decision" : "is-moment-entry",
-      selected: selectedFlowRouteNodeId === routeNode.id,
-      valueBadge: isDecision
-        ? (missingBranchTarget ? { text: "Needs Target", className: "is-warning" } : null)
-        : (routeNode.targetStateId ? null : { text: "Needs Target", className: "is-warning" })
-    });
-    node.dataset.routeNodeId = routeNode.id;
-    delete node.dataset.nodeId;
-    const childList = isDecision
-      ? createFlowNodeBranches(null, routeNode, {
-          sourceKind: "routeNode",
-          targetField: "targetNodeId",
-          targetKind: "momentGraph",
-          targetName: flowRouteTargetName
-        })
-      : null;
-    if (childList) node.appendChild(childList);
-    if (!isDecision) node.querySelector(".flow-node-main")?.appendChild(createFlowMomentRoutePorts(routeNode));
-    bindFlowNodeDrag(node, routeNode);
-    node.addEventListener("click", () => {
-      selectFlowRouteNode(routeNode.id);
-      renderFlowTool();
-    });
-    flowNodeLayer.appendChild(node);
-  }
+  getFlowMomentRouteRenderer()?.renderRouteNodes();
   scheduleFlowNodeWireRedraw();
 }
 
@@ -890,58 +852,10 @@ function renderFlowNodeInspector() {
   if (!flowNodeInspector) return;
   flowNodeInspector.replaceChildren();
   const state = flowState(selectedFlowStateId);
-  const routeNode = selectedFlowRouteNode();
   const actionRef = state ? flowActionRef(selectedFlowStateId, selectedFlowActionId) : null;
   const action = actionRef?.action || null;
   const title = document.createElement("h3");
-  if (flowNodeDepth === "moments" && routeNode) {
-    const isRouteDecision = routeNode.routeNodeType === "decision";
-    title.textContent = routeNode.name || (isRouteDecision ? "Route Decision" : "Moment Entry");
-    const copy = document.createElement("p");
-    copy.textContent = isRouteDecision
-      ? "Route Decisions use the same branch logic as action decisions, but their branch targets live on the moment graph."
-      : "Moment Entry nodes are reusable routing anchors on the moment graph. Later decision paths can target these anchors instead of hard-coding a moment jump.";
-    flowNodeInspector.append(title, copy);
-    if (!isRouteDecision && !routeNode.targetStateId) {
-      flowNodeInspector.appendChild(readOnlyFlowNote("Warning: this Moment Entry needs a target or any future path that reaches it will hang."));
-    }
-    if (isRouteDecision && ensureDecisionBranches(routeNode, { targetField: "targetNodeId" }).some((branch) => !branch.targetNodeId || isNoFlowTarget(branch.targetNodeId))) {
-      flowNodeInspector.appendChild(readOnlyFlowNote("Warning: every route decision branch should target a moment-layer node, or that branch will halt."));
-    }
-    flowNodeInspector.appendChild(flowField("Name", routeNode.name || (isRouteDecision ? "Route Decision" : "Moment Entry"), (value) => {
-      pushFlowHistory();
-      routeNode.name = value || (isRouteDecision ? "Route Decision" : "Moment Entry");
-      renderFlowListAndPublish();
-      renderFlowNodeView();
-    }));
-    if (isRouteDecision) {
-      appendDecisionControls(flowNodeInspector, null, routeNode, (redrawNodeView = true) => {
-        if (redrawNodeView) {
-          refreshFlowNodeInspectorChange();
-          return;
-        }
-        renderFlowListAndPublish();
-        redrawFlowNodeWires();
-      }, {
-        targetField: "targetNodeId",
-        targetOptions: (stateForOptions, actionForOptions, branch) => flowRouteGraphTargetOptions(branch.targetNodeId || "", actionForOptions.id)
-      });
-      flowNodeInspector.appendChild(flowActionButton("Delete Route Decision", () => {
-        deleteSelectedFlowRouteNode();
-      }));
-      return;
-    }
-    flowNodeInspector.appendChild(flowSelect("Target Moment", routeNode.targetStateId || "", flowMomentEntryTargetOptions(routeNode.targetStateId || ""), (value) => {
-      pushFlowHistory();
-      routeNode.targetStateId = value;
-      renderFlowListAndPublish();
-      renderFlowNodeView();
-    }));
-    flowNodeInspector.appendChild(flowActionButton("Delete Moment Entry", () => {
-      deleteSelectedFlowRouteNode();
-    }));
-    return;
-  }
+  if (getFlowMomentRouteRenderer()?.renderInspector()) return;
   if (flowNodeDepth === "moments" || !state) {
     title.textContent = selectedFlowStateId ? flowState(selectedFlowStateId)?.name || "Game Moment" : "Node View";
     const copy = document.createElement("p");
