@@ -13,6 +13,7 @@
         dot.dataset[key] = value || "";
       });
       dot.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
         event.stopPropagation();
         context.armConnection?.({
           connection: {

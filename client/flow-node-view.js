@@ -323,6 +323,7 @@ function createFlowNodeBranches(state, action, options = {}) {
     dot.dataset.branchId = branch.id;
     dot.dataset.targetKind = descriptor.targetKind || "action";
     dot.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
       event.stopPropagation();
       armFlowNodeConnection({
         connection: { ...connection, pointerId: event.pointerId, commandCreate: event.metaKey },
