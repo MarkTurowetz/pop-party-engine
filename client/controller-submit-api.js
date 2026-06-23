@@ -42,6 +42,16 @@
       });
     }
 
+    function previewText(actionId, text) {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson("/api/controller-text-preview", {
+        ...base,
+        actionId,
+        text
+      });
+    }
+
     function startOrCancelGame({ isCancel = false, startToken = "" } = {}) {
       const base = payloadBase();
       if (!base) return Promise.resolve(null);
@@ -73,6 +83,7 @@
       heartbeat,
       join,
       presentIntro,
+      previewText,
       submitChoice,
       submitText,
       startOrCancelGame,

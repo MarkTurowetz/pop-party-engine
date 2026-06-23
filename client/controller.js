@@ -34,6 +34,7 @@ function getControllerVoiceInput() {
       hideViews: hideControllerViews,
       introMessage: controllerIntroMessage,
       introState: controllerIntroState,
+      previewText: previewControllerText,
       status: controllerVoiceStatus,
       submitText: submitControllerText
     }));
@@ -208,6 +209,16 @@ async function submitControllerText(actionId, textOverride = null) {
     controllerTextInput.value = "";
     controllerTextSubmitButton.disabled = true;
     controllerVoiceButton.disabled = false;
+    controllerVoiceStatus.textContent = error.message;
+  }
+}
+
+async function previewControllerText(actionId, text = "T") {
+  if (!controllerState) return;
+  try {
+    const result = await getControllerSubmitApi().previewText(actionId, text);
+    if (result?.lobby) renderControllerState(result.lobby);
+  } catch (error) {
     controllerVoiceStatus.textContent = error.message;
   }
 }

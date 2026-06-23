@@ -61,7 +61,7 @@
 
       elements.submitButton.disabled = elements.input.value.trim().length === 0;
       elements.submitButton.onclick = () => submitText(input.actionId);
-      elements.voiceButton.onclick = () => voiceInput.start(input.actionId);
+      voiceInput.bindButton(input.actionId);
       applyLayoutForPhase(lobby.phase || "lobby");
       setVisibility({ isDone, isVoiceInput, showInvalid });
       return true;

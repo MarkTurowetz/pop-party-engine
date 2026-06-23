@@ -1002,6 +1002,7 @@ const {
 
 const {
   handleControllerChoice,
+  handleControllerTextPreview,
   handleControllerTextSubmit
 } = createControllerSubmitHandlersRuntime({
   allActivePlayersHaveSubmittedInput,
@@ -1017,6 +1018,7 @@ const {
   normalizePlayerId,
   normalizeStageCode,
   readJson,
+  rememberDisplayedPlayerAnswer,
   resolveRoomActionText,
   scheduleAnswersSubmittedAdvance,
   sendJson,
@@ -1062,6 +1064,7 @@ const {
   handleCancelStart,
   handleCompleteAction,
   handleControllerChoice,
+  handleControllerTextPreview,
   handleControllerTextSubmit,
   handleHeartbeat,
   handleInputEvent,

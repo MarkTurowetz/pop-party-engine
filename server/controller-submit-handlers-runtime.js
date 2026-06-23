@@ -15,11 +15,39 @@ function createControllerSubmitHandlersRuntime({
   normalizePlayerId,
   normalizeStageCode,
   readJson,
+  rememberDisplayedPlayerAnswer,
   resolveRoomActionText,
   scheduleAnswersSubmittedAdvance,
   sendJson,
   updatePlayerAnswerGroups
 }) {
+  function resolveTextInputContext(payload) {
+    const stageCode = normalizeStageCode(payload.stageCode);
+    const playerId = normalizePlayerId(payload.playerId);
+    const room = getExistingRoom(stageCode);
+    const player = room?.players.get(playerId);
+    if (!room || !player || !player.active) {
+      return { status: 404, error: "Player is not in this lobby" };
+    }
+
+    const currentAction = resolveRoomActionText(currentRoomAction(room), room);
+    if (!isTextAnswerAction(currentAction)) {
+      return { status: 409, error: "No active text input" };
+    }
+    applyTextInputAction(room, currentAction);
+    if (room.textInputMode === "voiceVip" && player.id !== room.vipPlayerId) {
+      return { status: 403, error: "Only the VIP can submit this voice answer" };
+    }
+    if (payload.actionId && payload.actionId !== room.textInputActionId) {
+      return { status: 409, error: "Text input is stale" };
+    }
+    return { room, player, playerId };
+  }
+
+  function sendTextInputContextError(res, context) {
+    sendJson(res, context.status || 400, { ok: false, error: context.error || "Text input is not available" });
+  }
+
   async function handleControllerChoice(req, res) {
     let payload;
     try {
@@ -151,29 +179,12 @@ function createControllerSubmitHandlersRuntime({
       return;
     }
 
-    const stageCode = normalizeStageCode(payload.stageCode);
-    const playerId = normalizePlayerId(payload.playerId);
-    const room = getExistingRoom(stageCode);
-    const player = room?.players.get(playerId);
-    if (!room || !player || !player.active) {
-      sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+    const context = resolveTextInputContext(payload);
+    if (!context.room) {
+      sendTextInputContextError(res, context);
       return;
     }
-
-    const currentAction = resolveRoomActionText(currentRoomAction(room), room);
-    if (!isTextAnswerAction(currentAction)) {
-      sendJson(res, 409, { ok: false, error: "No active text input" });
-      return;
-    }
-    applyTextInputAction(room, currentAction);
-    if (room.textInputMode === "voiceVip" && player.id !== room.vipPlayerId) {
-      sendJson(res, 403, { ok: false, error: "Only the VIP can submit this voice answer" });
-      return;
-    }
-    if (payload.actionId && payload.actionId !== room.textInputActionId) {
-      sendJson(res, 409, { ok: false, error: "Text input is stale" });
-      return;
-    }
+    const { room, playerId } = context;
 
     const submittedText = cleanSubmittedText(payload.text, room.textInputCharacterLimit || 240);
     const isValid = Boolean(submittedText) && !/\d/.test(submittedText);
@@ -197,6 +208,7 @@ function createControllerSubmitHandlersRuntime({
       nonce: Date.now()
     };
     room.textInputAnswers.set(playerId, answer);
+    rememberDisplayedPlayerAnswer(room, playerId, answer);
     room.playerAnswerRecords = room.playerAnswerRecords || {};
     room.playerAnswerRecords[playerId] = {
       playerId,
@@ -216,8 +228,43 @@ function createControllerSubmitHandlersRuntime({
     sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
   }
 
+  async function handleControllerTextPreview(req, res) {
+    let payload;
+    try {
+      payload = await readJson(req);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+      return;
+    }
+
+    const context = resolveTextInputContext(payload);
+    if (!context.room) {
+      sendTextInputContextError(res, context);
+      return;
+    }
+    const { room, playerId } = context;
+    if (room.textInputAnswers.get(playerId)?.done === true) {
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      return;
+    }
+
+    const previewText = cleanSubmittedText(payload.text, room.textInputCharacterLimit || 240) || "T";
+    const answer = {
+      text: previewText,
+      invalid: false,
+      done: false,
+      nonce: Date.now()
+    };
+    room.textInputAnswers.set(playerId, answer);
+    rememberDisplayedPlayerAnswer(room, playerId, answer);
+    updatePlayerAnswerGroups(room);
+    broadcastLobby(room);
+    sendJson(res, 200, { ok: true, preview: true, lobby: lobbyPayload(room) });
+  }
+
   return {
     handleControllerChoice,
+    handleControllerTextPreview,
     handleControllerTextSubmit
   };
 }
