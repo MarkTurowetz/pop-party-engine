@@ -6,86 +6,89 @@
       return context.selectedFlowActionIds?.() || new Set();
     }
 
-    function stateNodeMap(layer) {
-      return new Map(Array.from(layer.querySelectorAll(".flow-node[data-node-id]"))
-        .map((node) => [node.dataset.nodeId, node]));
-    }
-
-    function routeNodeMap(layer) {
-      return new Map(Array.from(layer.querySelectorAll(".flow-node[data-route-node-id]"))
-        .map((node) => [node.dataset.routeNodeId, node]));
-    }
-
-    function branchNode(layer, routeNode, branch) {
-      return layer.querySelector(`.flow-node[data-route-node-id="${context.cssEscape?.(routeNode.id) || routeNode.id}"] .flow-node-branch[data-branch-id="${context.cssEscape?.(branch.id) || branch.id}"]`);
-    }
-
-    function drawStateWires(stateNodes, routeNodes) {
+    function drawStateWires(planner, nodeMaps) {
       const selectedIds = selectedActionIds();
       for (const state of context.gameStates?.() || []) {
-        const fromNode = stateNodes.get(state.id);
-        const toNode = context.targetNode?.(stateNodes, routeNodes, state.nextStateTargetId);
-        if (!fromNode || !toNode) continue;
-        context.drawNodeWire?.(fromNode, toNode, {
-          highlighted: context.selectedFlowStateId?.() === state.id || selectedIds.has(state.id)
+        const fromNode = nodeMaps.states.get(state.id);
+        planner.drawTargetWire(nodeMaps, {
+          fromNode,
+          targetId: state.nextStateTargetId,
+          targetKind: "momentGraph",
+          options: {
+            highlighted: context.selectedFlowStateId?.() === state.id || selectedIds.has(state.id)
+          }
         });
       }
     }
 
-    function drawRouteDecisionWires(layer, stateNodes, routeNodes, routeNode, fromNode) {
+    function drawRouteDecisionWires(planner, nodeMaps, layer, routeNode, fromNode) {
       const branches = context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" }) || [];
       for (const [index, branch] of branches.entries()) {
-        const toNode = context.targetNode?.(stateNodes, routeNodes, branch.targetNodeId);
-        if (!toNode) continue;
-        const sourceNode = branchNode(layer, routeNode, branch) || fromNode;
-        context.drawNodeWire?.(sourceNode, toNode, {
-          highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
-          label: context.decisionBranchWireLabel?.(branch, index) || ""
+        const sourceNode = planner.branchSourceNode(layer, {
+          branchId: branch.id,
+          sourceId: routeNode.id,
+          sourceKind: "routeNode"
+        }, fromNode);
+        planner.drawTargetWire(nodeMaps, {
+          fromNode: sourceNode,
+          targetId: branch.targetNodeId,
+          targetKind: "momentGraph",
+          options: {
+            highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
+            label: context.decisionBranchWireLabel?.(branch, index) || ""
+          }
         });
       }
     }
 
-    function drawMomentEntryWire(stateNodes, routeNode, fromNode) {
-      const toNode = routeNode.targetStateId ? stateNodes.get(routeNode.targetStateId) : null;
-      if (!toNode) return;
-      context.drawNodeWire?.(fromNode, toNode, {
-        highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
-        label: "Entry"
+    function drawMomentEntryWire(planner, nodeMaps, routeNode, fromNode) {
+      planner.drawTargetWire(nodeMaps, {
+        fromNode,
+        targetId: routeNode.targetStateId,
+        targetKind: "state",
+        options: {
+          highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
+          label: "Entry"
+        }
       });
     }
 
-    function drawRouteActionWire(stateNodes, routeNodes, routeNode, fromNode) {
-      const toNode = context.targetNode?.(stateNodes, routeNodes, routeNode.nextTargetNodeId);
-      if (!toNode) return;
-      context.drawNodeWire?.(fromNode, toNode, {
-        highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
-        label: "Next"
+    function drawRouteActionWire(planner, nodeMaps, routeNode, fromNode) {
+      planner.drawTargetWire(nodeMaps, {
+        fromNode,
+        targetId: routeNode.nextTargetNodeId,
+        targetKind: "momentGraph",
+        options: {
+          highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
+          label: "Next"
+        }
       });
     }
 
-    function drawRouteWires(layer, stateNodes, routeNodes) {
+    function drawRouteWires(planner, nodeMaps, layer) {
       for (const routeNode of context.flowRouteNodes?.() || []) {
-        const fromNode = routeNodes.get(routeNode.id);
+        const fromNode = nodeMaps.routes.get(routeNode.id);
         if (!fromNode) continue;
         if (routeNode.routeNodeType === "decision") {
-          drawRouteDecisionWires(layer, stateNodes, routeNodes, routeNode, fromNode);
+          drawRouteDecisionWires(planner, nodeMaps, layer, routeNode, fromNode);
           continue;
         }
         if (routeNode.routeNodeType === "action") {
-          drawRouteActionWire(stateNodes, routeNodes, routeNode, fromNode);
+          drawRouteActionWire(planner, nodeMaps, routeNode, fromNode);
           continue;
         }
-        drawMomentEntryWire(stateNodes, routeNode, fromNode);
+        drawMomentEntryWire(planner, nodeMaps, routeNode, fromNode);
       }
     }
 
     function redraw() {
       const layer = context.flowNodeLayer?.();
       if (!layer) return;
-      const stateNodes = stateNodeMap(layer);
-      const routeNodes = routeNodeMap(layer);
-      drawStateWires(stateNodes, routeNodes);
-      drawRouteWires(layer, stateNodes, routeNodes);
+      const planner = context.nodeWirePlanner?.();
+      if (!planner) return;
+      const nodeMaps = planner.maps(layer);
+      drawStateWires(planner, nodeMaps);
+      drawRouteWires(planner, nodeMaps, layer);
       context.renderFlowNodeMinimap?.();
     }
 

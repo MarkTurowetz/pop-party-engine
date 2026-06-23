@@ -344,6 +344,7 @@ let flowNodeWireRenderer = null;
 let flowMomentRouteGraph = null;
 let flowMomentRouteRenderer = null;
 let flowMomentRouteWires = null;
+let flowNodeWirePlanner = null;
 let flowActionNodeRenderer = null;
 let flowActionNodeWires = null;
 
@@ -418,21 +419,30 @@ function getFlowMomentRouteRenderer() {
   return flowMomentRouteRenderer;
 }
 
+function getFlowNodeWirePlanner() {
+  if (!flowNodeWirePlanner && window.PartyGameFlowNodeWirePlanner) {
+    flowNodeWirePlanner = window.PartyGameFlowNodeWirePlanner.createNodeWirePlanner({
+      cssEscape,
+      drawNodeWire,
+      isNoFlowTarget
+    });
+  }
+  return flowNodeWirePlanner;
+}
+
 function getFlowMomentRouteWires() {
   if (!flowMomentRouteWires && window.PartyGameFlowMomentRouteWires) {
     flowMomentRouteWires = window.PartyGameFlowMomentRouteWires.createMomentRouteWires({
-      cssEscape,
       decisionBranchWireLabel,
-      drawNodeWire,
       ensureDecisionBranches,
       flowNodeLayer: () => flowNodeLayer,
       flowRouteNodes,
       gameStates: () => gameFlow.states || [],
+      nodeWirePlanner: () => getFlowNodeWirePlanner(),
       renderFlowNodeMinimap,
       selectedFlowActionIds: () => selectedFlowActionIds,
       selectedFlowRouteNodeId: () => selectedFlowRouteNodeId,
-      selectedFlowStateId: () => selectedFlowStateId,
-      targetNode: (...args) => getFlowMomentRouteGraph()?.targetNode(...args)
+      selectedFlowStateId: () => selectedFlowStateId
     });
   }
   return flowMomentRouteWires;
@@ -483,17 +493,15 @@ function getFlowActionNodeWires() {
   if (!flowActionNodeWires && window.PartyGameFlowActionNodeWires) {
     flowActionNodeWires = window.PartyGameFlowActionNodeWires.createActionNodeWires({
       actionNodeIsSelected,
-      cssEscape,
       decisionBranchById,
       decisionBranchWireLabel,
-      drawNodeWire,
       ensureDecisionBranches,
       flowActionIsSelected,
       flowActionRef,
       flowNodeExitDefinitions,
       flowNodeLayer: () => flowNodeLayer,
       flowState,
-      isNoFlowTarget,
+      nodeWirePlanner: () => getFlowNodeWirePlanner(),
       renderFlowNodeMinimap,
       selectedFlowActionId: () => selectedFlowActionId,
       selectedFlowStateId: () => selectedFlowStateId,
