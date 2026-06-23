@@ -33,20 +33,38 @@
     }
 
     function routeNodeSource(pending) {
-      const routeNode = context.flowRouteNode?.(pending.routeNodeId);
+      const routeNodeId = pending.routeNodeId || "";
+      const routeNode = context.flowRouteNode?.(routeNodeId);
       if (!routeNode) return null;
       const field = pending.field || "nextTargetNodeId";
-      const branch = pending.branchId
-        ? context.decisionBranchById?.(routeNode, pending.branchId, { targetField: field })
+      const branchId = pending.branchId || "";
+      const branch = branchId
+        ? context.decisionBranchById?.(routeNode, branchId, { targetField: field })
         : null;
-      if (pending.branchId && !branch) return null;
+      if (branchId && !branch) return null;
+      function liveRouteNode() {
+        return context.flowRouteNode?.(routeNodeId) || routeNode;
+      }
+      function liveBranch() {
+        if (!branchId) return null;
+        return context.decisionBranchById?.(liveRouteNode(), branchId, { targetField: field }) || null;
+      }
       return {
         kind: "routeNode",
-        selfId: routeNode.id,
-        currentTarget: () => branch ? branch[field] || "" : routeNode[field] || "",
+        selfId: routeNodeId,
+        currentTarget: () => {
+          const currentBranch = liveBranch();
+          if (branchId) return currentBranch?.[field] || "";
+          return liveRouteNode()?.[field] || "";
+        },
         setTarget: (targetId) => {
-          if (branch) branch[field] = targetId;
-          else routeNode[field] = targetId;
+          const currentRouteNode = liveRouteNode();
+          if (branchId) {
+            const currentBranch = liveBranch();
+            if (currentBranch) currentBranch[field] = targetId;
+            return;
+          }
+          if (currentRouteNode) currentRouteNode[field] = targetId;
         }
       };
     }

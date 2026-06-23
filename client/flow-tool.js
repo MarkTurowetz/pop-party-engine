@@ -1027,7 +1027,8 @@ function showFlowConnectionDebug(details = {}) {
     `field: ${pending.field || "?"}`,
     `branch: ${pending.branchId || "-"}`,
     `targetNode: ${details.targetNode || "-"}`,
-    `targetId: ${details.targetId || "-"}`
+    `targetId: ${details.targetId || "-"}`,
+    `sourceAfter: ${details.sourceTargetAfter || "-"}`
   ].join(" / ");
 }
 

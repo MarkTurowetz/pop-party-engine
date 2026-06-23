@@ -55,8 +55,9 @@
         || "";
     }
 
-    function debugDrop(status, reason, targetNode = null, targetId = "") {
+    function debugDrop(status, reason, targetNode = null, targetId = "", extra = {}) {
       context.showConnectionDebug?.({
+        ...extra,
         pending,
         reason,
         status,
@@ -121,7 +122,7 @@
       }
       context.pushFlowHistory?.();
       source.setTarget(targetId);
-      debugDrop("connected", "set target", targetNode, targetId);
+      debugDrop("connected", "set target", targetNode, targetId, { sourceTargetAfter: source.currentTarget?.() || "" });
       pending = null;
       context.renderFlowListAndPublish?.();
       context.renderFlowNodeView?.();
