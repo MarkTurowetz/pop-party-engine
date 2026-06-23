@@ -351,11 +351,7 @@ function setupController() {
     if (!controllerState.player?.isVip) return;
     const isCancel = startGameButton.dataset.optionId === "lobby.cancelStart";
     try {
-      const result = await postJson(isCancel ? "/api/cancel-start" : "/api/start", {
-        stageCode: controllerState.stageCode,
-        playerId: controllerState.playerId,
-        startToken: controllerState.startToken
-      });
+      const result = await getControllerSubmitApi().startOrCancelGame({ isCancel, startToken: controllerState.startToken });
       if (result.lobby) renderControllerState(result.lobby);
     } catch (error) {
       controllerMeta.textContent = error.message;
@@ -376,11 +372,7 @@ function setupController() {
     if (!controllerState.player?.isVip) return;
     introPresentButton.disabled = true;
     try {
-      const result = await postJson("/api/present-hi", {
-        stageCode: controllerState.stageCode,
-        playerId: controllerState.playerId,
-        startToken: controllerState.startToken
-      });
+      const result = await getControllerSubmitApi().presentIntro({ startToken: controllerState.startToken });
       if (result.lobby) renderControllerState(result.lobby);
     } catch (error) {
       introPresentButton.textContent = error.message;

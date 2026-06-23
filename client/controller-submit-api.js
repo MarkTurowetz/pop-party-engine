@@ -32,9 +32,29 @@
       });
     }
 
+    function startOrCancelGame({ isCancel = false, startToken = "" } = {}) {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson(isCancel ? "/api/cancel-start" : "/api/start", {
+        ...base,
+        startToken
+      });
+    }
+
+    function presentIntro({ startToken = "" } = {}) {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson("/api/present-hi", {
+        ...base,
+        startToken
+      });
+    }
+
     return {
+      presentIntro,
       submitChoice,
-      submitText
+      submitText,
+      startOrCancelGame
     };
   }
 
