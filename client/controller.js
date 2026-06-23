@@ -82,8 +82,8 @@ function getControllerHeartbeatRuntime() {
       },
       getControllerState: () => controllerState,
       hideViews: hideControllerViews,
-      postJson,
       renderState: renderControllerState,
+      sendHeartbeat: () => getControllerSubmitApi().heartbeat(),
       setControllerState: (value) => {
         controllerState = value;
       }

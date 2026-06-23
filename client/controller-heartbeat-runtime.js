@@ -7,8 +7,8 @@
     elements,
     getControllerState,
     hideViews,
-    postJson,
     renderState,
+    sendHeartbeat,
     setControllerState
   }) {
     let timer = null;
@@ -18,14 +18,11 @@
       timer = null;
     }
 
-    async function heartbeat() {
+    async function pollHeartbeat() {
       const state = getControllerState();
       if (!state) return;
       try {
-        const result = await postJson("/api/heartbeat", {
-          stageCode: state.stageCode,
-          playerId: state.playerId
-        });
+        const result = await sendHeartbeat();
         renderState(result.lobby);
       } catch (error) {
         if (error.code === "KICKED_TO_LOBBY") {
@@ -44,7 +41,7 @@
 
     function start() {
       stop();
-      timer = window.setInterval(heartbeat, 1000);
+      timer = window.setInterval(pollHeartbeat, 1000);
     }
 
     return {

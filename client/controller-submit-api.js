@@ -15,6 +15,12 @@
       return postJson("/api/join", { stageCode, playerName, playerId });
     }
 
+    function heartbeat() {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson("/api/heartbeat", base);
+    }
+
     function submitChoice(actionId, optionIndex, cardId = "") {
       const base = payloadBase();
       if (!base) return Promise.resolve(null);
@@ -64,6 +70,7 @@
     }
 
     return {
+      heartbeat,
       join,
       presentIntro,
       submitChoice,
