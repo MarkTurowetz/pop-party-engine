@@ -127,20 +127,18 @@ function setLayoutSelection(ids) {
   if (selectedLayoutStateId !== "global") {
     for (const element of activeGlobalLayout().elements || []) validIds.add(element.id);
   }
-  const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
-  selectedLayoutElementIds = new Set(nextIds);
-  selectedLayoutElementId = nextIds[nextIds.length - 1] || "";
+  const selection = PartyGameToolAffordances.normalizeSelection(ids, validIds);
+  selectedLayoutElementIds = selection.idSet;
+  selectedLayoutElementId = selection.primaryId;
 }
 
 function selectLayoutElement(elementId, options = {}) {
   if (options.additive) {
-    const nextIds = new Set(selectedLayoutElementIds);
-    if (nextIds.has(elementId)) {
-      nextIds.delete(elementId);
-    } else {
-      nextIds.add(elementId);
+    const validIds = new Set((layoutGroup(selectedLayoutStateId)?.elements || []).map((element) => element.id));
+    if (selectedLayoutStateId !== "global") {
+      for (const element of activeGlobalLayout().elements || []) validIds.add(element.id);
     }
-    setLayoutSelection([...nextIds]);
+    setLayoutSelection(PartyGameToolAffordances.toggleSelectionId(selectedLayoutElementIds, elementId, validIds));
   } else {
     setLayoutSelection([elementId]);
   }

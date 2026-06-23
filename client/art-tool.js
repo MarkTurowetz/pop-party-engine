@@ -396,10 +396,7 @@ function selectArtComponent(compositionId, componentId, options = {}) {
   selectedArtCompositionId = composition.id;
   const validIds = allArtComponentIds(composition);
   if (options.additive) {
-    const next = new Set(selectedArtComponentIds);
-    if (next.has(componentId)) next.delete(componentId);
-    else if (validIds.has(componentId)) next.add(componentId);
-    setArtComponentSelection([...next]);
+    setArtComponentSelection(PartyGameToolAffordances.toggleSelectionId(selectedArtComponentIds, componentId, validIds));
   } else {
     setArtComponentSelection(validIds.has(componentId) ? [componentId] : []);
   }
@@ -416,9 +413,9 @@ function setArtComponentSelection(componentIds) {
     return;
   }
   const validIds = allArtComponentIds(composition);
-  const nextIds = (componentIds || []).filter((id) => validIds.has(id));
-  selectedArtComponentIds = new Set(nextIds);
-  selectedArtComponentId = nextIds[nextIds.length - 1] || "";
+  const selection = PartyGameToolAffordances.normalizeSelection(componentIds, validIds);
+  selectedArtComponentIds = selection.idSet;
+  selectedArtComponentId = selection.primaryId;
 }
 
 function renderArtSelectionOnly() {

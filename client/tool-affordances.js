@@ -192,6 +192,26 @@
     }
   }
 
+  function normalizeSelection(ids, validIds = new Set()) {
+    const validSet = validIds instanceof Set ? validIds : new Set(validIds || []);
+    const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validSet.has(id));
+    return {
+      ids: nextIds,
+      idSet: new Set(nextIds),
+      primaryId: nextIds[nextIds.length - 1] || ""
+    };
+  }
+
+  function toggleSelectionId(currentIds, id, validIds = new Set()) {
+    const next = new Set(currentIds || []);
+    if (next.has(id)) {
+      next.delete(id);
+    } else if ((validIds instanceof Set ? validIds : new Set(validIds || [])).has(id)) {
+      next.add(id);
+    }
+    return [...next];
+  }
+
   function createToolSidebarRow(options = {}) {
     const row = document.createElement(options.tagName || "div");
     row.className = options.className || "tool-sidebar-row";
@@ -503,11 +523,13 @@
     createToolSidebarRow,
     dragDeltaFromEvent,
     handleToolDeleteHotkey,
+    normalizeSelection,
     rectsIntersect,
     scaledValueFromPointer,
     startPointerDrag,
     startSelectionMarquee,
     targetIsTextEditingControl,
+    toggleSelectionId,
     toggleCollapsedSetForIds
   };
   window.createDisclosureButton = createDisclosureButton;
