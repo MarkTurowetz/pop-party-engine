@@ -3,6 +3,7 @@
 function createRoomFlowHelpersRuntime({
   activePlayers,
   advanceRoomFromMomentReturn,
+  advanceRoomFromRouteAction,
   broadcastLobby,
   clearActionTimer,
   clearActiveInputFlowEvent,
@@ -24,8 +25,30 @@ function createRoomFlowHelpersRuntime({
   resolveDecisionActionIndex,
   runtimeGameFlow,
 }) {
+  function routeNodeById(room, nodeId) {
+    const target = String(nodeId || "");
+    if (!target) return null;
+    return (runtimeGameFlow(room).routeNodes || []).find((node) => node.id === target) || null;
+  }
+
+  function currentRouteAction(room) {
+    const node = routeNodeById(room, room.routeActionSession?.currentNodeId);
+    if (!node || node.routeNodeType !== "action") {
+      if (room.routeActionSession) room.routeActionSession = null;
+      return null;
+    }
+    return publicFlowAction({
+      ...node,
+      routeNodeType: "action",
+      routeNodeId: node.id,
+      nextTargetActionId: node.nextTargetNodeId || node.nextTargetActionId || ""
+    }, -1);
+  }
+
   function currentRoomAction(room) {
     if (room.presentedAction) return room.presentedAction;
+    const routeAction = currentRouteAction(room);
+    if (routeAction) return routeAction;
     const actions = getStateActions(room.phase, room);
     if (room.actionIndex >= actions.length) return null;
     let guard = 0;
@@ -46,6 +69,10 @@ function createRoomFlowHelpersRuntime({
   }
 
   function advanceRoomAfterAction(room, action) {
+    if (action?.routeNodeType === "action" || room.routeActionSession?.currentNodeId === action?.id) {
+      advanceRoomFromRouteAction(room, action);
+      return;
+    }
     const target = actionAdvanceTarget(action);
     if (isNoActionTarget(target)) return;
     if (isReturnActionTarget(target)) {
@@ -69,6 +96,13 @@ function createRoomFlowHelpersRuntime({
   }
 
   function jumpToAction(room, actionId, fallbackIndex = room.actionIndex + 1) {
+    if (room.routeActionSession?.currentNodeId) {
+      room.presentedAction = null;
+      clearActiveInputFlowEvent(room);
+      clearAppliedActionEffects(room);
+      advanceRoomFromRouteAction(room, { nextTargetNodeId: actionId });
+      return;
+    }
     if (isReturnActionTarget(actionId)) {
       room.presentedAction = null;
       clearActiveInputFlowEvent(room);

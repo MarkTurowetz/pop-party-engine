@@ -478,6 +478,7 @@ const {
 });
 
 const {
+  resolveMomentRouteTarget,
   resolveMomentTargetStateId
 } = createMomentRouteRuntime({
   evaluateDecisionAction,
@@ -541,6 +542,7 @@ const {
 // Wire the enterGamePhase proxy after construction.
 const {
   advanceRoomFromMomentReturn,
+  advanceRoomFromRouteAction,
   enterGamePhase,
   enterIntroPhase,
   enterLobbyPhase,
@@ -563,6 +565,7 @@ const {
   normalizeFlowId,
   prepareVotingCards,
   resetCraftingTimer,
+  resolveMomentRouteTarget,
   resolveMomentTargetStateId,
   runtimeGameFlow,
 });
@@ -579,6 +582,7 @@ const {
 } = createRoomFlowHelpersRuntime({
   activePlayers,
   advanceRoomFromMomentReturn,
+  advanceRoomFromRouteAction,
   broadcastLobby,
   clearActionTimer,
   clearActiveInputFlowEvent,

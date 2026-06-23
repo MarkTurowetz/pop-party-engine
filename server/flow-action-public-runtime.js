@@ -49,6 +49,9 @@ function createFlowActionPublicRuntime({
       category: action.category || flowActionTypeMeta(action.type).category,
       timing,
       nextTargetActionId: action.nextTargetActionId || "",
+      nextTargetNodeId: action.nextTargetNodeId || "",
+      routeNodeId: action.routeNodeId || "",
+      routeNodeType: action.routeNodeType || "",
       subActions: (action.subActions || []).map((subAction, subActionIndex) => publicFlowAction(subAction, subActionIndex)).filter(Boolean)
     };
     return actionRegistry.publicAction(action, base);

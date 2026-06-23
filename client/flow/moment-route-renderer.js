@@ -63,6 +63,79 @@
       }
     }
 
+    function ensureTiming(action) {
+      action.timing = action.timing && typeof action.timing === "object" ? action.timing : { mode: "E+", seconds: 0 };
+      action.timing.mode = action.timing.mode === "S+" ? "S+" : "E+";
+      action.timing.seconds = Math.max(0, Number(action.timing.seconds || 0) || 0);
+      return action.timing;
+    }
+
+    function appendRouteActionControls(inspector, routeNode) {
+      if (routeNode.type === "presentText" || routeNode.type === "displayText" || routeNode.type === "text") {
+        inspector.appendChild(context.flowField?.("Text", routeNode.text || "Presented text", (value) => {
+          context.pushFlowHistory?.();
+          routeNode.text = value || "Presented text";
+          context.renderFlowListAndPublish?.();
+          context.renderFlowNodeView?.();
+        }));
+      }
+      if (routeNode.type === "setWipeShown") {
+        inspector.appendChild(context.flowSelect?.("Wipe Visible", routeNode.isShown === false ? "false" : "true", context.flowTrueFalseOptions?.(true) || [
+          { id: "true", name: "True" },
+          { id: "false", name: "False" }
+        ], (value) => {
+          context.pushFlowHistory?.();
+          routeNode.isShown = value !== "false";
+          context.renderFlowListAndPublish?.();
+          context.renderFlowNodeView?.();
+        }));
+        inspector.appendChild(context.flowSelect?.("Instant", routeNode.instant === true ? "true" : "false", context.flowTrueFalseOptions?.(false) || [
+          { id: "false", name: "False" },
+          { id: "true", name: "True" }
+        ], (value) => {
+          context.pushFlowHistory?.();
+          routeNode.instant = value === "true";
+          context.renderFlowListAndPublish?.();
+          context.renderFlowNodeView?.();
+        }));
+      }
+      if (routeNode.type === "doNothing") {
+        inspector.appendChild(context.readOnlyFlowNote?.("This action intentionally has no effect. Use its timing to create a pause between moment graph nodes."));
+      }
+      if (routeNode.type === "playAudio") {
+        inspector.appendChild(context.flowField?.("Audio URL", routeNode.audioUrl || "", (value) => {
+          context.pushFlowHistory?.();
+          routeNode.audioUrl = value;
+          context.renderFlowListAndPublish?.();
+          context.renderFlowNodeView?.();
+        }));
+      }
+      const timing = ensureTiming(routeNode);
+      inspector.appendChild(context.flowSelect?.("Timing Mode", timing.mode, [
+        { id: "E+", name: "E+ Timing" },
+        { id: "S+", name: "S+ Timing" }
+      ], (value) => {
+        context.pushFlowHistory?.();
+        ensureTiming(routeNode).mode = value === "S+" ? "S+" : "E+";
+        context.renderFlowListAndPublish?.();
+        context.renderFlowNodeView?.();
+      }));
+      inspector.appendChild(context.flowNumber?.("Timing Seconds", timing.seconds, (value) => {
+        context.pushFlowHistory?.();
+        ensureTiming(routeNode).seconds = Math.max(0, Number(value || 0) || 0);
+        context.renderFlowListAndPublish?.();
+        context.renderFlowNodeView?.();
+      }));
+    }
+
+    function routeActionTypeOptions(routeNode) {
+      return (context.flowActionTypes?.() || []).filter((option) => {
+        if (option.deprecated && option.id !== routeNode.type) return false;
+        if (option.id === "decision" || option.id === "jumpNode" || option.id === "transitionState") return option.id === routeNode.type;
+        return true;
+      });
+    }
+
     function renderInspector() {
       if (context.flowNodeDepth?.() !== "moments") return false;
       const routeNode = context.selectedFlowRouteNode?.();
@@ -109,13 +182,14 @@
         return true;
       }
       if (isRouteAction) {
-        inspector.appendChild(context.flowSelect?.("Action Type", routeNode.type || "presentText", context.flowActionTypes?.() || [], (value) => {
+        inspector.appendChild(context.flowSelect?.("Action Type", routeNode.type || "presentText", routeActionTypeOptions(routeNode), (value) => {
           context.pushFlowHistory?.();
           routeNode.type = value || "presentText";
           context.applyFlowActionTypeDefaults?.(routeNode, routeNode.type, false);
           context.renderFlowListAndPublish?.();
           context.renderFlowNodeView?.();
         }));
+        appendRouteActionControls(inspector, routeNode);
         inspector.appendChild(context.flowSelect?.("Next", routeNode.nextTargetNodeId || "", context.flowRouteGraphTargetOptions?.(routeNode.nextTargetNodeId || "", routeNode.id) || [], (value) => {
           context.pushFlowHistory?.();
           routeNode.nextTargetNodeId = value;

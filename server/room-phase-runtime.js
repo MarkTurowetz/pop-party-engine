@@ -27,16 +27,59 @@ function createRoomPhaseRuntime({
   normalizeFlowId,
   prepareVotingCards,
   resetCraftingTimer,
+  resolveMomentRouteTarget,
   resolveMomentTargetStateId,
   runtimeGameFlow,
 }) {
   function advanceRoomFromMomentReturn(room) {
     const state = runtimeGameFlow(room).states.find((item) => item.id === room.phase);
-    const targetStateId = resolveMomentTargetStateId(room, state?.nextStateTargetId || "");
+    advanceRoomToMomentGraphTarget(room, state?.nextStateTargetId || "");
+  }
+
+  function setRouteTrace(room, selectedTarget, result) {
+    if (result?.trace?.some((step) => step.kind === "decision" || step.kind === "action") || result?.haltReason) {
+      room.lastRouteDecisionTrace = {
+        selectedTarget: selectedTarget || "",
+        resolvedStateId: result.stateId || "",
+        haltReason: result.haltReason || "",
+        trace: result.trace || [],
+        evaluatedAt: Date.now()
+      };
+    }
+  }
+
+  function startRouteActionSession(room, target, result) {
+    if (!result?.routeNodeId) return false;
+    room.routeActionSession = {
+      currentNodeId: result.routeNodeId,
+      sourcePhase: room.phase,
+      selectedTarget: target || "",
+      trace: result.trace || [],
+      startedAt: Date.now()
+    };
+    room.presentedAction = null;
+    setRouteTrace(room, target, result);
+    broadcastLobby(room);
+    return true;
+  }
+
+  function advanceRoomToMomentGraphTarget(room, target) {
+    const result = resolveMomentRouteTarget(room, target);
+    setRouteTrace(room, target, result);
+    if (result?.targetKind === "action") {
+      startRouteActionSession(room, target, result);
+      return;
+    }
+    room.routeActionSession = null;
+    const targetStateId = result?.stateId || resolveMomentTargetStateId(room, target);
     if (!targetStateId || isNoActionTarget(targetStateId)) return;
     if (runtimeGameFlow(room).states.some((item) => item.id === targetStateId)) {
       enterGamePhase(room, targetStateId);
     }
+  }
+
+  function advanceRoomFromRouteAction(room, action) {
+    advanceRoomToMomentGraphTarget(room, action?.nextTargetNodeId || action?.nextTargetActionId || "");
   }
 
   function actionListHasVotingCards(actions = []) {
@@ -68,6 +111,7 @@ function createRoomPhaseRuntime({
     room.countdownEndsAt = 0;
     room.actionIndex = 0;
     room.presentedAction = null;
+    room.routeActionSession = null;
     room.lastDecisionTrace = null;
     room.lastRouteDecisionTrace = null;
     clearAppliedActionEffects(room);
@@ -126,6 +170,7 @@ function createRoomPhaseRuntime({
       }
     }
     room.phase = phase;
+    room.routeActionSession = null;
     room.lobbyFlowActive = false;
     room.countdownStartedAt = 0;
     room.countdownEndsAt = 0;
@@ -191,7 +236,7 @@ function createRoomPhaseRuntime({
     broadcastLobby(room);
   }
 
-  return { advanceRoomFromMomentReturn, enterGamePhase, enterIntroPhase, enterLobbyPhase, quitRoomToLobby };
+  return { advanceRoomFromMomentReturn, advanceRoomFromRouteAction, enterGamePhase, enterIntroPhase, enterLobbyPhase, quitRoomToLobby };
 }
 
 module.exports = { createRoomPhaseRuntime };

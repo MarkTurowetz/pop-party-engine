@@ -24,28 +24,29 @@ function createMomentRouteRuntime({
     return { targetKind: "missing", targetId };
   }
 
-  function resolveMomentTarget(room, target, context = {}) {
+  function resolveMomentTargetInternal(room, target, context = {}, options = {}) {
     const flow = context.flow || runtimeGameFlow(room);
     const targetId = normalizeFlowId(target, "");
     const trace = context.trace || [];
     const visited = context.visited || new Set();
     if (!targetId || isNoActionTarget(targetId)) {
-      return { stateId: "", haltReason: "No Target", trace };
+      return { targetKind: "none", stateId: "", haltReason: "No Target", trace };
     }
     const directState = flowStateById(flow, targetId);
     if (directState) {
       return {
+        targetKind: "state",
         stateId: directState.id,
         haltReason: "",
         trace: [...trace, { kind: "state", id: directState.id, name: directState.name || directState.id }]
       };
     }
     if (visited.has(targetId)) {
-      return { stateId: "", haltReason: "Route Loop", trace };
+      return { targetKind: "none", stateId: "", haltReason: "Route Loop", trace };
     }
     const routeNode = routeNodeById(flow, targetId);
     if (!routeNode) {
-      return { stateId: "", haltReason: "Missing Route Target", trace: [...trace, { kind: "missing", id: targetId }] };
+      return { targetKind: "missing", stateId: "", haltReason: "Missing Route Target", trace: [...trace, { kind: "missing", id: targetId }] };
     }
     const nextVisited = new Set(visited);
     nextVisited.add(targetId);
@@ -64,31 +65,44 @@ function createMomentRouteRuntime({
       };
       if (isNoActionTarget(decision.selectedTarget)) {
         return {
+          targetKind: "none",
           stateId: "",
           haltReason: decision.haltReason || "No Matching Branch",
           trace: [...trace, decisionTrace],
           decision
         };
       }
-      return resolveMomentTarget(room, decision.selectedTarget, {
+      return resolveMomentTargetInternal(room, decision.selectedTarget, {
         flow,
         trace: [...trace, decisionTrace],
         visited: nextVisited
-      });
+      }, options);
     }
     if (routeNode.routeNodeType === "action") {
+      const nextTargetNodeId = routeNode.nextTargetNodeId || routeNode.nextTargetActionId || "";
       const actionTrace = {
         kind: "action",
         id: routeNode.id,
         name: routeNode.name || routeNode.id,
         type: routeNode.type || "",
-        nextTargetNodeId: routeNode.nextTargetNodeId || routeNode.nextTargetActionId || ""
+        nextTargetNodeId
       };
-      return resolveMomentTarget(room, routeNode.nextTargetNodeId || routeNode.nextTargetActionId || "", {
+      if (options.stopAtAction) {
+        return {
+          targetKind: "action",
+          routeNodeId: routeNode.id,
+          action: routeNode,
+          nextTargetNodeId,
+          stateId: "",
+          haltReason: "",
+          trace: [...trace, actionTrace]
+        };
+      }
+      return resolveMomentTargetInternal(room, nextTargetNodeId, {
         flow,
         trace: [...trace, actionTrace],
         visited: nextVisited
-      });
+      }, options);
     }
     const entryTrace = {
       kind: "momentEntry",
@@ -96,16 +110,24 @@ function createMomentRouteRuntime({
       name: routeNode.name || routeNode.id,
       targetStateId: routeNode.targetStateId || ""
     };
-    return resolveMomentTarget(room, routeNode.targetStateId, {
+    return resolveMomentTargetInternal(room, routeNode.targetStateId, {
       flow,
       trace: [...trace, entryTrace],
       visited: nextVisited
-    });
+    }, options);
+  }
+
+  function resolveMomentRouteTarget(room, target, context = {}) {
+    return resolveMomentTargetInternal(room, target, context, { stopAtAction: true });
+  }
+
+  function resolveMomentTarget(room, target, context = {}) {
+    return resolveMomentTargetInternal(room, target, context, { stopAtAction: false });
   }
 
   function resolveMomentTargetStateId(room, target) {
     const result = resolveMomentTarget(room, target);
-    if (result.trace?.some((step) => step.kind === "decision") || result.haltReason) {
+    if (result.trace?.some((step) => step.kind === "decision" || step.kind === "action") || result.haltReason) {
       room.lastRouteDecisionTrace = {
         selectedTarget: target || "",
         resolvedStateId: result.stateId || "",
@@ -119,6 +141,7 @@ function createMomentRouteRuntime({
 
   return {
     resolveMomentTarget,
+    resolveMomentRouteTarget,
     resolveMomentTargetStateId
   };
 }
