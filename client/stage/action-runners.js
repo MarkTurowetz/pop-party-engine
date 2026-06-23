@@ -31,6 +31,7 @@
     { type: "givePendingPoints", runner: "serverEffect" },
     { type: "setTimerShown", runner: "setTimerShown" },
     { type: "setWipeShown", runner: "setWipeShown" },
+    { type: "setControllerLayout", runner: "serverEffect" },
     { type: "startCraftingTimer", runner: "serverEffect" },
     { type: "transition", runner: "transition" },
     { type: "transitionState", runner: "immediateComplete" },

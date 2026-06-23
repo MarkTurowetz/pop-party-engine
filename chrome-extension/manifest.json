@@ -7,6 +7,32 @@
     "default_title": "Controller Spawner",
     "default_popup": "popup.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "spawn-controllers": {
+      "suggested_key": {
+        "default": "Ctrl+Alt+Shift+1",
+        "mac": "Command+Alt+Shift+1"
+      },
+      "description": "Spawn controller windows"
+    },
+    "tap-random-option": {
+      "suggested_key": {
+        "default": "Ctrl+Alt+Shift+2",
+        "mac": "Command+Alt+Shift+2"
+      },
+      "description": "Tap a random visible controller option"
+    },
+    "submit-random-text": {
+      "suggested_key": {
+        "default": "Ctrl+Alt+Shift+3",
+        "mac": "Command+Alt+Shift+3"
+      },
+      "description": "Submit random text in controllers"
+    }
+  },
   "permissions": [
     "activeTab",
     "debugger",

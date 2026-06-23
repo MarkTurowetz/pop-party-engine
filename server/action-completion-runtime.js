@@ -25,9 +25,75 @@ function createActionCompletionRuntime({
       room.actionTimerId = null;
     }
     room.actionCompletionPendingId = "";
+    room.actionTimerStartedAt = 0;
+    room.actionTimerEndsAt = 0;
+    room.actionTimerRemainingMs = 0;
+  }
+
+  function finishPendingAction(room, expectedActionId) {
+    const currentAction = currentRoomAction(room);
+    if (!currentAction || currentAction.id !== expectedActionId) {
+      clearActionTimer(room);
+      return false;
+    }
+    room.actionTimerId = null;
+    room.actionCompletionPendingId = "";
+    room.actionTimerStartedAt = 0;
+    room.actionTimerEndsAt = 0;
+    room.actionTimerRemainingMs = 0;
+
+    if (currentAction.type === "transitionState") {
+      const useNodeExit = Boolean(currentAction.nextTargetActionId);
+      if (useNodeExit) {
+        advanceRoomAfterAction(room, currentAction);
+        currentRoomAction(room);
+        broadcastLobby(room);
+        return true;
+      }
+      enterGamePhase(room, currentAction.targetState || "intro");
+      return true;
+    }
+
+    clearCompletionInput(room, currentAction);
+    advanceRoomAfterAction(room, currentAction);
+    currentRoomAction(room);
+    broadcastLobby(room);
+    return true;
+  }
+
+  function schedulePendingAction(room, currentAction, delayMs) {
+    const delay = Math.max(0, Number(delayMs || 0));
+    const now = Date.now();
+    room.actionCompletionPendingId = currentAction.id;
+    room.actionTimerStartedAt = now;
+    room.actionTimerEndsAt = now + delay;
+    room.actionTimerRemainingMs = delay;
+    room.actionTimerId = setTimeout(() => {
+      finishPendingAction(room, currentAction.id);
+    }, delay);
+  }
+
+  function pauseActionTimer(room) {
+    if (!room.actionTimerId) return;
+    clearTimeout(room.actionTimerId);
+    room.actionTimerId = null;
+    room.actionTimerRemainingMs = Math.max(0, (room.actionTimerEndsAt || Date.now()) - Date.now());
+    room.actionTimerStartedAt = 0;
+    room.actionTimerEndsAt = 0;
+  }
+
+  function resumeActionTimer(room) {
+    if (room.actionTimerId || !room.actionCompletionPendingId) return;
+    const currentAction = currentRoomAction(room);
+    if (!currentAction || currentAction.id !== room.actionCompletionPendingId) {
+      clearActionTimer(room);
+      return;
+    }
+    schedulePendingAction(room, currentAction, room.actionTimerRemainingMs || 0);
   }
 
   function completeCurrentAction(room, expectedActionId = "", source = "callback") {
+    if (room.isPaused) return false;
     const currentAction = currentRoomAction(room);
     if (!currentAction) return false;
     if (expectedActionId && currentAction.id !== expectedActionId) return false;
@@ -53,12 +119,7 @@ function createActionCompletionRuntime({
         enterGamePhase(room, currentAction.targetState || "intro");
       };
       if (delayMs > 0) {
-        room.actionCompletionPendingId = currentAction.id;
-        room.actionTimerId = setTimeout(() => {
-          room.actionTimerId = null;
-          room.actionCompletionPendingId = "";
-          completeTransitionState();
-        }, delayMs);
+        schedulePendingAction(room, currentAction, delayMs);
         return true;
       }
       completeTransitionState();
@@ -68,15 +129,7 @@ function createActionCompletionRuntime({
     clearActionTimer(room);
     const delayMs = timing.mode === "E+" ? Math.max(0, Number(timing.seconds || 0) * 1000) : 0;
     if (delayMs > 0) {
-      room.actionCompletionPendingId = currentAction.id;
-      room.actionTimerId = setTimeout(() => {
-        room.actionTimerId = null;
-        room.actionCompletionPendingId = "";
-        clearCompletionInput(room, currentAction);
-        advanceRoomAfterAction(room, currentAction);
-        currentRoomAction(room);
-        broadcastLobby(room);
-      }, delayMs);
+      schedulePendingAction(room, currentAction, delayMs);
       return true;
     }
 
@@ -89,7 +142,9 @@ function createActionCompletionRuntime({
 
   return {
     clearActionTimer,
-    completeCurrentAction
+    completeCurrentAction,
+    pauseActionTimer,
+    resumeActionTimer
   };
 }
 

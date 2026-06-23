@@ -587,6 +587,7 @@ function getFlowActionControlGroups() {
 function getFlowActionDefaults() {
   if (!flowActionDefaults && window.PartyGameFlowActionDefaults) {
     flowActionDefaults = window.PartyGameFlowActionDefaults.createActionDefaults({
+      defaultControllerLayoutId,
       ensureActionTiming,
       ensureDecisionBranches,
       firstHostAudioId
@@ -618,6 +619,7 @@ function getFlowActionInspectorRegistry() {
       appendDecisionControls,
       applyFlowActionTypeDefaults,
       choiceInputModeOptions,
+      controllerLayoutOptions,
       ensureActionTiming,
       flowActionTargetOptions,
       flowActionTypes: () => flowActionTypes,
@@ -959,6 +961,21 @@ function flowRouteGraphTargetOptions(selectedTargetId = "", currentNodeId = "") 
 
 function flowRouteTargetName(targetId) {
   return getFlowMomentRouteGraph()?.targetName(targetId) || targetId || "No Target";
+}
+
+function defaultControllerLayoutId() {
+  return selectedFlowStateId || controllerLayouts.states?.[0]?.id || "";
+}
+
+function controllerLayoutOptions(selectedLayoutId = "") {
+  const options = [{ id: "", name: "Current Moment Default" }];
+  for (const state of controllerLayouts.states || []) {
+    options.push({ id: state.id, name: state.name || state.id });
+  }
+  if (selectedLayoutId && !options.some((option) => option.id === selectedLayoutId)) {
+    options.push({ id: selectedLayoutId, name: selectedLayoutId });
+  }
+  return options;
 }
 
 function currentRuntimeLocalMessage(overrides = {}) {

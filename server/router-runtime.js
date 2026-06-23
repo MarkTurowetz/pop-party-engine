@@ -16,6 +16,7 @@ function createRouterRuntime({
   handleLeave,
   handleLobby,
   handleLocalDraft,
+  handlePause,
   handlePresentHi,
   handleQuitToLobby,
   handleReplaceArtAsset,
@@ -234,6 +235,11 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/input-event") {
       handleInputEvent(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/pause") {
+      handlePause(req, res);
       return;
     }
 

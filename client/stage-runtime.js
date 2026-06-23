@@ -300,6 +300,7 @@ function showStageDecisionHalt(lobby) {
 }
 
 function applyStageState(lobby) {
+  const wasPaused = isStagePaused;
   currentStageState = lobby;
   const players = lobby.players || [];
   const phase = lobby.phase || "lobby";
@@ -333,6 +334,16 @@ function applyStageState(lobby) {
   renderVotingCards(lobby.votingCards || [], votingCardRenderOptions(lobby));
   renderCraftingTimer(lobby.craftingTimer, { instant: action?.type === "setTimerShown" && action.instant === true });
   syncStageWipeShown(lobby);
+  setStagePaused(lobby.isPaused === true, { localOnly: true });
+  if (wasPaused && lobby.isPaused !== true && pausedCompletionRequest) {
+    const pending = pausedCompletionRequest;
+    pausedCompletionRequest = null;
+    window.setTimeout(() => {
+      if (currentStageState?.action?.id === pending.actionId) {
+        completeFlowAction(pending.source, pending.actionId);
+      }
+    }, 0);
+  }
 
   const vip = players.find((player) => player.isVip);
   joinPrompt.classList.toggle("hidden", !isLobbyPhase);
@@ -497,6 +508,10 @@ async function handleStageScreenClick() {
 
 async function completeFlowAction(source = "callback", actionId = currentStageState?.action?.id || "") {
   if (!currentStageState?.stageCode) return;
+  if (currentStageState?.isPaused === true) {
+    pausedCompletionRequest = { source, actionId };
+    return;
+  }
   try {
     const result = await postJson("/api/complete-action", {
       stageCode: currentStageState.stageCode,
@@ -505,6 +520,10 @@ async function completeFlowAction(source = "callback", actionId = currentStageSt
     });
     if (result.lobby) renderStageLobby(result.lobby);
   } catch (error) {
+    if (error.message === "Game is paused") {
+      pausedCompletionRequest = { source, actionId };
+      return;
+    }
     waitingStatus.classList.remove("hidden");
     waitingStatus.textContent = error.message;
   }
@@ -571,15 +590,32 @@ function clearRuntimeTestConfigForStage(stageCode) {
   postJson(`/api/stage/${stageCode}/test-config`, { clearFlow: true }).catch(() => {});
 }
 
-function setStagePaused(isPaused) {
+function setStagePaused(isPaused, options = {}) {
   isStagePaused = isPaused;
   pauseMenu.classList.toggle("hidden", !isPaused);
+}
+
+async function requestStagePaused(isPaused) {
+  if (!currentStageState?.stageCode) {
+    setStagePaused(isPaused, { localOnly: true });
+    return;
+  }
+  try {
+    const result = await postJson("/api/pause", {
+      stageCode: currentStageState.stageCode,
+      isPaused
+    });
+    if (result.lobby) renderStageLobby(result.lobby);
+  } catch (error) {
+    waitingStatus.classList.remove("hidden");
+    waitingStatus.textContent = error.message;
+  }
 }
 
 async function quitStageToLobby() {
   if (!currentStageState?.stageCode) return;
   resetStageObjects();
-  setStagePaused(false);
+  setStagePaused(false, { localOnly: true });
   try {
     const result = await postJson("/api/quit-to-lobby", {
       stageCode: currentStageState.stageCode
@@ -634,12 +670,12 @@ function setupStage() {
   });
   stageScreen.addEventListener("click", handleStageScreenClick);
   pauseMenu.addEventListener("click", (event) => event.stopPropagation());
-  returnToGameButton.addEventListener("click", () => setStagePaused(false));
+  returnToGameButton.addEventListener("click", () => requestStagePaused(false));
   quitToLobbyButton.addEventListener("click", quitStageToLobby);
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     event.preventDefault();
-    setStagePaused(!isStagePaused);
+    requestStagePaused(!isStagePaused);
   });
   window.addEventListener("resize", () => {
     if (currentStageState) applyStageLayoutForPhase(currentStageState.phase);

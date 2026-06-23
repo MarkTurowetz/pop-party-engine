@@ -20,10 +20,17 @@ function createControllerSubmitHandlersRuntime({
   readJson,
   rememberDisplayedPlayerAnswer,
   resolveRoomActionText,
+  roomIsPaused = () => false,
   scheduleAnswersSubmittedAdvance,
   sendJson,
   updatePlayerAnswerGroups
 }) {
+  function rejectIfPaused(room, res) {
+    if (!roomIsPaused(room)) return false;
+    sendJson(res, 423, { ok: false, error: "Game is paused" });
+    return true;
+  }
+
   function resolveTextInputContext(payload) {
     const stageCode = normalizeStageCode(payload.stageCode);
     const playerId = normalizePlayerId(payload.playerId);
@@ -31,6 +38,9 @@ function createControllerSubmitHandlersRuntime({
     const player = room?.players.get(playerId);
     if (!room || !player || !player.active) {
       return { status: 404, error: "Player is not in this lobby" };
+    }
+    if (roomIsPaused(room)) {
+      return { status: 423, error: "Game is paused" };
     }
 
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);
@@ -68,6 +78,7 @@ function createControllerSubmitHandlersRuntime({
       sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
       return;
     }
+    if (rejectIfPaused(room, res)) return;
 
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);
     if (!isChoiceInputAction(currentAction)) {
@@ -190,6 +201,7 @@ function createControllerSubmitHandlersRuntime({
       sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
       return;
     }
+    if (rejectIfPaused(room, res)) return;
 
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);
     if (!isMicrophoneAccessAction(currentAction)) {

@@ -38,6 +38,7 @@ const { createMomentRouteRuntime } = require("./server/moment-route-runtime");
 const { backupJsonFile, mirrorJsonFile, readJsonFile, writeJsonFile } = require("./server/local-json-store");
 const { createNetworkUrlsRuntime } = require("./server/network-urls-runtime");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
+const { createPauseRuntime } = require("./server/pause-runtime");
 const { createPlayerPublicRuntime } = require("./server/player-public-runtime");
 const { createPlayerSessionHandlersRuntime } = require("./server/player-session-handlers-runtime");
 const { createPlayerStateRuntime } = require("./server/player-state-runtime");
@@ -313,7 +314,9 @@ const applyRoomActionEffectsProxy = (room, action) => _applyRoomActionEffectsFn?
 
 const {
   clearActionTimer,
-  completeCurrentAction
+  completeCurrentAction,
+  pauseActionTimer,
+  resumeActionTimer
 } = createActionCompletionRuntime({
   advanceRoomAfterAction: advanceRoomAfterActionProxy,
   applyRoomActionEffects: applyRoomActionEffectsProxy,
@@ -327,7 +330,9 @@ const {
 
 const {
   clearCountdownTimer,
-  enterStartingPhase
+  enterStartingPhase,
+  pauseCountdownTimer,
+  resumeCountdownTimer
 } = createCountdownRuntime({
   broadcastLobby,
   completeCountdownTrigger: completeCountdownTriggerProxy,
@@ -530,6 +535,7 @@ const {
   clearCraftingTimerTimeout,
   craftingTimerPayload,
   pauseCraftingTimer,
+  resumeCraftingTimer,
   resetCraftingTimer,
   setCraftingTimerShown,
   startCraftingTimer
@@ -581,6 +587,8 @@ const {
   currentRoomAction,
   emitInputFlowEvent,
   jumpToAction,
+  pauseAnswersSubmittedAdvanceTimer,
+  resumeAnswersSubmittedAdvanceTimer,
   scheduleAnswersSubmittedAdvance,
   scheduleMicrophoneAccessAdvance,
 } = createRoomFlowHelpersRuntime({
@@ -992,6 +1000,26 @@ const {
 });
 
 const {
+  handlePause,
+  roomIsPaused
+} = createPauseRuntime({
+  broadcastLobby,
+  getExistingRoom,
+  lobbyPayload,
+  normalizeStageCode,
+  pauseActionTimer,
+  pauseAnswersSubmittedAdvanceTimer,
+  pauseCountdownTimer,
+  pauseCraftingTimer,
+  readJson,
+  resumeActionTimer,
+  resumeAnswersSubmittedAdvanceTimer,
+  resumeCountdownTimer,
+  resumeCraftingTimer,
+  sendJson
+});
+
+const {
   handleActionEffect,
   handleAdvancePresentation,
   handleCompleteAction,
@@ -1007,6 +1035,7 @@ const {
   normalizeStageCode,
   readJson,
   resolveRoomActionText,
+  roomIsPaused,
   sendJson
 });
 
@@ -1033,6 +1062,7 @@ const {
   readJson,
   rememberDisplayedPlayerAnswer,
   resolveRoomActionText,
+  roomIsPaused,
   scheduleAnswersSubmittedAdvance,
   sendJson,
   updatePlayerAnswerGroups
@@ -1086,6 +1116,7 @@ const {
   handleLeave,
   handleLobby,
   handleLocalDraft,
+  handlePause,
   handlePresentHi,
   handleQuitToLobby,
   handleReplaceArtAsset,

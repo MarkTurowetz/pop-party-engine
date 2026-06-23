@@ -85,6 +85,9 @@
         action.isShown = action.isShown !== false;
         action.instant = action.instant === true;
       }
+      if (value === "setControllerLayout") {
+        action.controllerLayoutId = action.controllerLayoutId || context.defaultControllerLayoutId?.() || "";
+      }
       if (value === "jumpNode") {
         action.jumpTargetActionId = action.jumpTargetActionId || "none";
         action.nextTargetActionId = "";

@@ -758,7 +758,7 @@ function renderLayoutFields() {
     layoutEditorFields.appendChild(layoutTextAreaField("Default Text", layoutDefaultText(element), (value) => updateLayoutTextValue(element, "defaultText", value)));
     layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutTextValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText === true));
     layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText === true, (value) => updateLayoutTextValue(element, "autoFitText", value)));
-    layoutEditorFields.appendChild(layoutColorField("Font Color", normalizeUiColor(element.fontColor) || "#ffffff", (value) => updateLayoutTextValue(element, "fontColor", value)));
+    layoutEditorFields.appendChild(layoutColorField("Font Color", normalizeUiColor(element.fontColor) || "#ffffff", (value, options) => updateLayoutTextValue(element, "fontColor", value, options)));
   }
 }
 
@@ -810,7 +810,15 @@ function layoutColorField(label, value, onChange) {
   const input = document.createElement("input");
   input.type = "color";
   input.value = normalizeUiColor(value) || "#ffffff";
-  input.addEventListener("input", () => onChange(input.value));
+  let pushedHistory = false;
+  input.addEventListener("input", () => {
+    onChange(input.value, { history: !pushedHistory, redraw: false });
+    pushedHistory = true;
+  });
+  input.addEventListener("change", () => {
+    onChange(input.value, { history: !pushedHistory, redraw: true });
+    pushedHistory = true;
+  });
   field.appendChild(input);
   return field;
 }
@@ -828,12 +836,18 @@ function updateLayoutNumber(key, value) {
   renderLayoutTool();
 }
 
-function updateLayoutTextValue(element, key, value) {
-  pushLayoutHistory();
+function updateLayoutTextValue(element, key, value, options = {}) {
+  if (options.history !== false) pushLayoutHistory();
   if (key === "fontSize") {
     element[key] = Number(Number(value).toFixed(3));
   } else {
     element[key] = value;
+  }
+  if (options.redraw === false) {
+    renderLayoutPreview();
+    publishRuntimeLocalChanges();
+    updateGlobalSaveButton();
+    return;
   }
   renderLayoutTool();
 }

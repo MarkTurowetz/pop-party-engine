@@ -1,8 +1,10 @@
 function createInputStateRuntime({ activePlayers }) {
   function clearAnswersSubmittedAdvanceTimer(room) {
-    if (!room.answersSubmittedAdvanceTimerId) return;
-    clearTimeout(room.answersSubmittedAdvanceTimerId);
+    if (room.answersSubmittedAdvanceTimerId) clearTimeout(room.answersSubmittedAdvanceTimerId);
     room.answersSubmittedAdvanceTimerId = null;
+    room.answersSubmittedAdvanceStartedAt = 0;
+    room.answersSubmittedAdvanceEndsAt = 0;
+    room.answersSubmittedAdvanceRemainingMs = 0;
   }
 
   function clearChoiceInput(room) {

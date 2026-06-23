@@ -39,7 +39,8 @@ function globalControllerLayout() {
 
 function controllerLayoutStateForPhase(phase) {
   if (!controllerState) return controllerLayoutState("join") || (controllerLayouts.states || [])[0] || null;
-  const preferred = phase === "starting" ? "lobby" : phase || "lobby";
+  const selectedLayoutId = controllerState?.lobby?.controllerLayoutId || "";
+  const preferred = selectedLayoutId || (phase === "starting" ? "lobby" : phase || "lobby");
   return controllerLayoutState(preferred) || controllerLayoutState("lobby") || (controllerLayouts.states || [])[0] || null;
 }
 

@@ -13,8 +13,15 @@ function createStageActionHandlersRuntime({
   normalizeStageCode,
   readJson,
   resolveRoomActionText,
+  roomIsPaused = () => false,
   sendJson
 }) {
+  function rejectIfPaused(room, res) {
+    if (!roomIsPaused(room)) return false;
+    sendJson(res, 423, { ok: false, error: "Game is paused" });
+    return true;
+  }
+
   async function handleAdvancePresentation(req, res) {
     let payload;
     try {
@@ -30,6 +37,7 @@ function createStageActionHandlersRuntime({
       sendJson(res, 404, { ok: false, error: "Room not found" });
       return;
     }
+    if (rejectIfPaused(room, res)) return;
 
     if (room.presentedAction?.type === "present") {
       room.presentedAction = null;
@@ -63,6 +71,7 @@ function createStageActionHandlersRuntime({
       sendJson(res, 404, { ok: false, error: "Room not found" });
       return;
     }
+    if (rejectIfPaused(room, res)) return;
 
     const eventType = String(payload.eventType || "");
     const currentAction = currentRoomAction(room);
@@ -89,6 +98,7 @@ function createStageActionHandlersRuntime({
       sendJson(res, 404, { ok: false, error: "Room not found" });
       return;
     }
+    if (rejectIfPaused(room, res)) return;
 
     const currentAction = currentRoomAction(room);
     if (isCompletableStageActionType(currentAction?.type)) {
@@ -112,6 +122,7 @@ function createStageActionHandlersRuntime({
       sendJson(res, 404, { ok: false, error: "Room not found" });
       return;
     }
+    if (rejectIfPaused(room, res)) return;
 
     const actionId = String(payload.actionId || "");
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);

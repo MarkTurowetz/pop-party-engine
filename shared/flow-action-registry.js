@@ -614,6 +614,26 @@ const flowActionDefinitions = [
     }
   },
   {
+    id: "setControllerLayout",
+    name: "Set Controller Layout",
+    category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "setControllerLayout",
+    stageRunner: "serverEffect",
+    normalize: (action, base, context) => ({
+      ...base,
+      controllerLayoutId: context.normalizeFlowId(action?.controllerLayoutId, "")
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "setControllerLayout",
+      controllerLayoutId: context.normalizeFlowId(action.controllerLayoutId, "")
+    }),
+    applyRoomEffect: (room, action) => {
+      room.controllerLayoutId = action.controllerLayoutId || room.phase || "";
+    }
+  },
+  {
     id: "startCraftingTimer",
     name: "Start Crafting Timer",
     category: "standard",

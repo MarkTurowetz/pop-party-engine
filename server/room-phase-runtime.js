@@ -107,9 +107,13 @@ function createRoomPhaseRuntime({
     clearCountdownTimer(room);
     clearActionTimer(room);
     room.phase = "lobby";
+    room.controllerLayoutId = "lobby";
+    room.isPaused = false;
+    room.pausedAt = 0;
     room.lobbyFlowActive = false;
     room.countdownStartedAt = 0;
     room.countdownEndsAt = 0;
+    room.countdownRemainingMs = 0;
     room.actionIndex = 0;
     room.presentedAction = null;
     room.routeActionSession = null;
@@ -172,10 +176,14 @@ function createRoomPhaseRuntime({
       }
     }
     room.phase = phase;
+    room.controllerLayoutId = phase;
+    room.isPaused = false;
+    room.pausedAt = 0;
     room.routeActionSession = null;
     room.lobbyFlowActive = false;
     room.countdownStartedAt = 0;
     room.countdownEndsAt = 0;
+    room.countdownRemainingMs = 0;
     const entryActionIndex = entryActionIndexForPhase(room, phase);
     room.actionIndex = entryActionIndex === -1
       ? getStateActions(phase, room).length

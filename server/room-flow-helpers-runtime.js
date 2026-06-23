@@ -160,10 +160,18 @@ function createRoomFlowHelpersRuntime({
     const currentAction = currentRoomAction(room);
     const target = flowEventTargetForAction(currentAction, "allPlayersSubmitted");
     if (isNoActionTarget(target)) return;
+    const delayMs = 500;
+    const now = Date.now();
+    room.answersSubmittedAdvanceStartedAt = now;
+    room.answersSubmittedAdvanceEndsAt = now + delayMs;
+    room.answersSubmittedAdvanceRemainingMs = delayMs;
     room.answersSubmittedAdvanceTimerId = setTimeout(() => {
       room.answersSubmittedAdvanceTimerId = null;
+      room.answersSubmittedAdvanceStartedAt = 0;
+      room.answersSubmittedAdvanceEndsAt = 0;
+      room.answersSubmittedAdvanceRemainingMs = 0;
       emitInputFlowEvent(room, "allPlayersSubmitted");
-    }, 500);
+    }, delayMs);
   }
 
   function scheduleMicrophoneAccessAdvance(room) {
@@ -175,6 +183,36 @@ function createRoomFlowHelpersRuntime({
       room.answersSubmittedAdvanceTimerId = null;
       emitInputFlowEvent(room, "microphoneAccessGranted");
     }, 100);
+  }
+
+  function pauseAnswersSubmittedAdvanceTimer(room) {
+    if (!room.answersSubmittedAdvanceTimerId) return;
+    clearTimeout(room.answersSubmittedAdvanceTimerId);
+    room.answersSubmittedAdvanceTimerId = null;
+    room.answersSubmittedAdvanceRemainingMs = Math.max(0, (room.answersSubmittedAdvanceEndsAt || Date.now()) - Date.now());
+    room.answersSubmittedAdvanceStartedAt = 0;
+    room.answersSubmittedAdvanceEndsAt = 0;
+  }
+
+  function resumeAnswersSubmittedAdvanceTimer(room) {
+    if (room.answersSubmittedAdvanceTimerId || room.answersSubmittedAdvanceRemainingMs <= 0) return;
+    const currentAction = currentRoomAction(room);
+    const target = flowEventTargetForAction(currentAction, "allPlayersSubmitted");
+    if (isNoActionTarget(target)) {
+      clearAnswersSubmittedAdvanceTimer(room);
+      return;
+    }
+    const delayMs = Math.max(0, room.answersSubmittedAdvanceRemainingMs || 0);
+    const now = Date.now();
+    room.answersSubmittedAdvanceStartedAt = now;
+    room.answersSubmittedAdvanceEndsAt = now + delayMs;
+    room.answersSubmittedAdvanceTimerId = setTimeout(() => {
+      room.answersSubmittedAdvanceTimerId = null;
+      room.answersSubmittedAdvanceStartedAt = 0;
+      room.answersSubmittedAdvanceEndsAt = 0;
+      room.answersSubmittedAdvanceRemainingMs = 0;
+      emitInputFlowEvent(room, "allPlayersSubmitted");
+    }, delayMs);
   }
 
   function countdownTargetState(room) {
@@ -206,6 +244,8 @@ function createRoomFlowHelpersRuntime({
     currentRoomAction,
     emitInputFlowEvent,
     jumpToAction,
+    pauseAnswersSubmittedAdvanceTimer,
+    resumeAnswersSubmittedAdvanceTimer,
     scheduleAnswersSubmittedAdvance,
     scheduleMicrophoneAccessAdvance,
   };

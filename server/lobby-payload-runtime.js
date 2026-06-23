@@ -34,6 +34,8 @@ function createLobbyPayloadRuntime({
       stageCode: room.stageCode,
       revision: room.revision,
       phase: room.phase,
+      controllerLayoutId: room.controllerLayoutId || room.phase || "lobby",
+      isPaused: room.isPaused === true,
       lobbyFlowActive: room.lobbyFlowActive === true,
       countdownStartedAt: room.countdownStartedAt,
       countdownEndsAt: room.countdownEndsAt,

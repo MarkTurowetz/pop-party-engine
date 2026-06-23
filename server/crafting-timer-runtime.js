@@ -19,6 +19,15 @@ function createCraftingTimerRuntime({
     clearCraftingTimerTimeout(room);
   }
 
+  function resumeCraftingTimer(room) {
+    if (!room.craftingTimerShown || room.craftingTimerRunning || room.craftingTimerRemainingMs <= 0) return;
+    const now = Date.now();
+    room.craftingTimerRunning = true;
+    room.craftingTimerStartedAt = now;
+    room.craftingTimerEndsAt = now + Math.max(0, room.craftingTimerRemainingMs || room.craftingTimerDurationMs);
+    scheduleCraftingTimerEnd(room);
+  }
+
   function resetCraftingTimer(room) {
     clearAnswersSubmittedAdvanceTimer(room);
     clearCraftingTimerTimeout(room);
@@ -97,6 +106,7 @@ function createCraftingTimerRuntime({
     clearCraftingTimerTimeout,
     craftingTimerPayload,
     pauseCraftingTimer,
+    resumeCraftingTimer,
     resetCraftingTimer,
     setCraftingTimerShown,
     startCraftingTimer

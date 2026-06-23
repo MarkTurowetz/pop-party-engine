@@ -237,6 +237,16 @@ function renderControllerGlobalActionState(lobby, me) {
   return getControllerGlobalActionView().render(lobby, me);
 }
 
+function renderControllerPausedState(lobby) {
+  hideControllerViews();
+  getControllerVoiceInput().stopRecognition();
+  controllerGlobalActionState.classList.remove("hidden");
+  controllerGlobalActionButton.classList.add("hidden");
+  controllerGlobalActionButton.disabled = true;
+  controllerGlobalActionMessage.textContent = "Game Paused";
+  applyControllerLayoutForPhase(lobby.phase || "lobby");
+}
+
 async function submitControllerText(actionId, textOverride = null) {
   if (!controllerState) return;
   const text = textOverride == null ? controllerTextInput.value : textOverride;
@@ -298,6 +308,11 @@ function renderControllerState(lobby) {
 
   const controllerPhase = lobby.phase || "lobby";
   controllerState.phase = controllerPhase;
+  if (lobby.isPaused === true && controllerPhase !== "lobby" && controllerPhase !== "starting") {
+    closeAvatarPicker({ commit: false });
+    renderControllerPausedState(lobby);
+    return;
+  }
   if (lobby.microphoneAccess?.actionId) {
     closeAvatarPicker({ commit: false });
     if (renderControllerMicrophoneAccessState(lobby, me)) return;
