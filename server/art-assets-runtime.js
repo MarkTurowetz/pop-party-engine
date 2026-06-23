@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const artComponentSchema = require("../shared/art-component-schema");
 
 function createArtAssetsRuntime({
   acceptedArtTypes,
@@ -18,10 +19,6 @@ function createArtAssetsRuntime({
   writeArtManifestSource = null
 }) {
   const knownCompositionIds = new Set(artCompositions.map((composition) => composition.id));
-  const allowedComponentKinds = new Set(["text", "shape", "container", "badge"]);
-  const allowedShapeStyles = new Set(["rectangle", "rounded", "pill", "circle"]);
-  const allowedImageObjectFits = new Set(["cover", "contain", "fill"]);
-  const componentImageMaxBytes = 5 * 1024 * 1024;
 
   function readArtManifest() {
     try {
@@ -81,30 +78,25 @@ function createArtAssetsRuntime({
   }
 
   function normalizeComponentKind(value, fallback = "shape") {
-    const kind = String(value || fallback || "shape").trim().toLowerCase();
-    return allowedComponentKinds.has(kind) ? kind : "shape";
+    return artComponentSchema.normalizeComponentKind(value, fallback);
   }
 
   function defaultComponentName(kind) {
-    if (kind === "text") return "Text";
-    if (kind === "container") return "Container";
-    if (kind === "badge") return "Badge";
-    return "Shape";
+    return artComponentSchema.componentKindLabel(kind);
   }
 
   function normalizeComponentImageMask(source = {}, base = {}) {
     const dataUrl = String(source.imageDataUrl || base.imageDataUrl || "").trim();
     if (!dataUrl) return null;
-    const match = dataUrl.match(/^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/);
-    if (!match || !acceptedArtTypes[match[1]]) return null;
-    const buffer = Buffer.from(match[2], "base64");
-    if (buffer.length === 0 || buffer.length > componentImageMaxBytes) return null;
-    const imageObjectFit = String(source.imageObjectFit || base.imageObjectFit || "cover").trim().toLowerCase();
+    const parsed = artComponentSchema.parseImageDataUrl(dataUrl);
+    if (!parsed || !acceptedArtTypes[parsed.mimeType]) return null;
+    const byteLength = artComponentSchema.imageBase64ByteLength(parsed.base64);
+    if (byteLength === 0 || byteLength > artComponentSchema.componentImageMaxBytes) return null;
     return {
       imageDataUrl: dataUrl,
       imageName: cleanImageName(source.imageName, base.imageName || "Uploaded image"),
-      imageMimeType: match[1],
-      imageObjectFit: allowedImageObjectFits.has(imageObjectFit) ? imageObjectFit : "cover"
+      imageMimeType: parsed.mimeType,
+      imageObjectFit: artComponentSchema.normalizeImageObjectFit(source.imageObjectFit || base.imageObjectFit)
     };
   }
 
@@ -130,14 +122,13 @@ function createArtAssetsRuntime({
       normalized.fontColor = cleanColor(source.fontColor, base.fontColor || "#17131f");
     }
     if (kind === "shape" || kind === "container" || kind === "badge") {
-      const shapeStyle = String(source.shapeStyle || base.shapeStyle || (kind === "container" ? "rectangle" : "rounded")).trim().toLowerCase();
-      normalized.shapeStyle = allowedShapeStyles.has(shapeStyle) ? shapeStyle : "rounded";
+      normalized.shapeStyle = artComponentSchema.normalizeShapeStyle(source.shapeStyle || base.shapeStyle, kind);
       normalized.fillColor = cleanColor(source.fillColor, base.fillColor || "transparent");
       normalized.borderColor = cleanColor(source.borderColor, base.borderColor || "transparent");
       normalized.borderWidth = cleanNumber(source.borderWidth, Number(base.borderWidth || 0), 0, 80);
       normalized.borderRadius = cleanNumber(source.borderRadius, Number(base.borderRadius || 0), 0, 999);
     }
-    if (kind === "shape") {
+    if (artComponentSchema.componentSupportsImageMask(kind)) {
       const imageMask = normalizeComponentImageMask(source, base);
       if (imageMask) Object.assign(normalized, imageMask);
     }

@@ -4,27 +4,7 @@
   const EXITING_CLASS = "art-runtime-object-exiting";
   const UPDATE_CLASS = "art-runtime-object-update";
   const INSTANT_CLASS = "art-runtime-object-instant";
-
-  function componentKind(component) {
-    const kind = String(component?.kind || "shape").trim().toLowerCase();
-    return kind === "text" || kind === "container" || kind === "badge" ? kind : "shape";
-  }
-
-  function componentLabel(component) {
-    const kind = componentKind(component);
-    if (kind === "text" || kind === "badge") return String(component?.defaultText || component?.name || "");
-    return "";
-  }
-
-  function componentImageMaskDataUrl(component) {
-    return componentKind(component) === "shape" ? String(component?.imageDataUrl || "") : "";
-  }
-
-  function shapeStyle(component) {
-    const style = String(component?.shapeStyle || "rounded").trim().toLowerCase();
-    if (style === "rectangle" || style === "pill" || style === "circle") return style;
-    return "rounded";
-  }
+  const componentSchema = global.PartyGameArtComponentSchema;
 
   function applyComponentLayout(element, component, canvas) {
     if (!element || !component) return;
@@ -41,7 +21,7 @@
     element.style.setProperty("--component-border-color", component.borderColor || "transparent");
     element.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
     element.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
-    element.style.setProperty("--component-image-fit", component.imageObjectFit || "cover");
+    element.style.setProperty("--component-image-fit", componentSchema.normalizeImageObjectFit(component.imageObjectFit));
   }
 
   class ArtObjectView {
@@ -72,10 +52,10 @@
 
     update(component, canvas) {
       this.component = component || {};
-      const kind = componentKind(this.component);
-      this.element.className = `${RUNTIME_CLASS} is-${kind} is-style-${shapeStyle(this.component)}`;
+      const kind = componentSchema.normalizeComponentKind(this.component.kind);
+      this.element.className = `${RUNTIME_CLASS} is-${kind} is-style-${componentSchema.normalizeShapeStyle(this.component.shapeStyle, kind)}`;
       if (this.visual.isVisible() === false) this.element.classList.add(HIDDEN_CLASS);
-      const imageDataUrl = componentImageMaskDataUrl(this.component);
+      const imageDataUrl = componentSchema.componentImageMaskDataUrl(this.component);
       this.element.classList.toggle("has-image-mask", Boolean(imageDataUrl));
       this.image.hidden = !imageDataUrl;
       this.label.hidden = Boolean(imageDataUrl);
@@ -84,7 +64,7 @@
       } else {
         this.image.removeAttribute("src");
       }
-      this.label.textContent = componentLabel(this.component);
+      this.label.textContent = componentSchema.componentLabel(this.component);
       applyComponentLayout(this.element, this.component, canvas);
       this.renderChildren(this.component.children || []);
     }

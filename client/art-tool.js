@@ -9,16 +9,9 @@ function setupLab() {
 let selectedArtCompositionId = "";
 let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
-const artObjectKindOptions = new Set(["text", "shape", "container"]);
-const artShapeStyles = [
-  { value: "rounded", label: "Rounded" },
-  { value: "rectangle", label: "Rectangle" },
-  { value: "pill", label: "Pill" },
-  { value: "circle", label: "Circle" }
-];
-const artComponentImageMaxBytes = 5 * 1024 * 1024;
-const artComponentImageTypes = new Set(["image/png", "image/svg+xml", "image/jpeg", "image/webp"]);
-const artComponentImageAccept = [...artComponentImageTypes].join(",");
+const artComponentSchema = window.PartyGameArtComponentSchema;
+const artShapeStyles = artComponentSchema.shapeStyleOptions;
+const artComponentImageAccept = artComponentSchema.imageAccept;
 const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt", "voting-card", "custom-art"];
 
 function serializeArtCompositionsForSave(source = artCompositions) {
@@ -48,15 +41,15 @@ function serializeArtComponentForSave(component) {
     defaultText: component.defaultText || "",
     fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
     fontColor: component.fontColor || "#17131f",
-    shapeStyle: component.shapeStyle || "rounded",
+    shapeStyle: artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind),
     fillColor: component.fillColor || "transparent",
     borderColor: component.borderColor || "transparent",
     borderWidth: Number(Number(component.borderWidth || 0).toFixed(3)),
     borderRadius: Number(Number(component.borderRadius || 0).toFixed(3)),
-    imageDataUrl: component.kind === "shape" ? component.imageDataUrl || "" : "",
-    imageName: component.kind === "shape" ? component.imageName || "" : "",
-    imageMimeType: component.kind === "shape" ? component.imageMimeType || "" : "",
-    imageObjectFit: component.kind === "shape" ? component.imageObjectFit || "cover" : "cover",
+    imageDataUrl: artComponentSupportsImageMask(component) ? component.imageDataUrl || "" : "",
+    imageName: artComponentSupportsImageMask(component) ? component.imageName || "" : "",
+    imageMimeType: artComponentSupportsImageMask(component) ? component.imageMimeType || "" : "",
+    imageObjectFit: artComponentSupportsImageMask(component) ? artComponentSchema.normalizeImageObjectFit(component.imageObjectFit) : "cover",
     children: (component.children || []).map(serializeArtComponentForSave)
   };
 }
@@ -141,18 +134,15 @@ function selectedEditableArtComponent() {
 }
 
 function artKindLabel(kind) {
-  if (kind === "text") return "Text";
-  if (kind === "container") return "Container";
-  if (kind === "badge") return "Badge";
-  return "Shape";
+  return artComponentSchema.componentKindLabel(kind);
 }
 
 function artComponentSupportsImageMask(component) {
-  return component?.kind === "shape";
+  return artComponentSchema.componentSupportsImageMask(component);
 }
 
 function artComponentHasImageMask(component) {
-  return artComponentSupportsImageMask(component) && Boolean(component.imageDataUrl);
+  return artComponentSchema.componentHasImageMask(component);
 }
 
 function flattenArtComponents(components = [], depth = 0, parent = null, output = []) {
@@ -579,7 +569,7 @@ function renderSelectedArtComposition() {
 
 function artComponentPreviewNode(composition, component, canvas) {
   const node = document.createElement("div");
-  node.className = `art-composition-component is-${component.kind || "shape"} is-style-${component.shapeStyle || "rounded"}`;
+  node.className = `art-composition-component is-${artComponentSchema.normalizeComponentKind(component.kind)} is-style-${artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind)}`;
   node.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
   node.classList.toggle("has-image-mask", artComponentHasImageMask(component));
   node.dataset.componentId = component.id;
@@ -594,7 +584,7 @@ function artComponentPreviewNode(composition, component, canvas) {
   node.style.setProperty("--component-border-color", component.borderColor || "transparent");
   node.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
   node.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
-  node.style.setProperty("--component-image-fit", component.imageObjectFit || "cover");
+  node.style.setProperty("--component-image-fit", artComponentSchema.normalizeImageObjectFit(component.imageObjectFit));
   node.addEventListener("pointerdown", (event) => startArtComponentDrag(event, component));
   if (artComponentSupportsImageMask(component)) {
     node.addEventListener("dragover", (event) => {
@@ -1000,6 +990,7 @@ function updateArtCompositionCanvas(key, value, options = {}) {
 function updateArtShapeStyle(shapeStyle, options = {}) {
   const component = selectedEditableArtComponent();
   if (!component) return;
+  shapeStyle = artComponentSchema.normalizeShapeStyle(shapeStyle, component.kind);
   if (component.shapeStyle === shapeStyle) return;
   if (options.captureHistory !== false) pushArtHistory();
   component.shapeStyle = shapeStyle;
@@ -1025,10 +1016,7 @@ function artDragEventHasFiles(event) {
 }
 
 function validateArtComponentImageFile(file) {
-  if (!file) return "Choose an image file first.";
-  if (!artComponentImageTypes.has(file.type)) return "Use PNG, SVG, JPG, or WEBP.";
-  if (file.size <= 0 || file.size > artComponentImageMaxBytes) return "Image masks must be under 5 MB.";
-  return "";
+  return artComponentSchema.validateImageFile(file);
 }
 
 function readArtComponentImageDataUrl(file) {
@@ -1063,7 +1051,7 @@ async function stageArtComponentImageFile(component, file) {
     target.imageDataUrl = dataUrl;
     target.imageName = file.name || "Uploaded image";
     target.imageMimeType = file.type;
-    target.imageObjectFit = target.imageObjectFit || "cover";
+    target.imageObjectFit = artComponentSchema.normalizeImageObjectFit(target.imageObjectFit);
     artFileName.textContent = `Masked image: ${target.imageName}`;
     renderSelectedArtComposition();
     renderArtList();
@@ -1088,8 +1076,7 @@ function clearArtComponentImage(component) {
 }
 
 function normalizeArtCreateKind(value) {
-  const kind = String(value || "").trim().toLowerCase();
-  return artObjectKindOptions.has(kind) ? kind : "shape";
+  return artComponentSchema.normalizeCreatableComponentKind(value);
 }
 
 function createSecureArtId(prefix = "art") {
