@@ -3973,7 +3973,7 @@
 
     .color-control-row {
       display: grid;
-      grid-template-columns: 42px minmax(0, 1fr);
+      grid-template-columns: 42px minmax(0, 1fr) auto;
       gap: 8px;
       align-items: center;
     }
@@ -3991,6 +3991,33 @@
       height: 34px;
       min-height: 34px;
       text-transform: uppercase;
+    }
+
+    .color-control-toggle {
+      width: 54px;
+      min-height: 34px;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      padding: 0 8px;
+      background: var(--cream);
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 1000;
+      box-shadow: 2px 2px 0 rgba(23, 19, 31, 0.24);
+      cursor: pointer;
+    }
+
+    .color-control.is-expanded .color-control-toggle {
+      background: var(--yellow);
+    }
+
+    .color-control-details {
+      display: none;
+      gap: 7px;
+    }
+
+    .color-control.is-expanded .color-control-details {
+      display: grid;
     }
 
     .color-control-slider {

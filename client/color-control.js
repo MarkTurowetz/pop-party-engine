@@ -44,6 +44,13 @@
     input.inputMode = "text";
     input.spellcheck = false;
     input.maxLength = 7;
+    const toggle = documentRef.createElement("button");
+    toggle.type = "button";
+    toggle.className = "color-control-toggle";
+    toggle.textContent = "RGB";
+    toggle.setAttribute("aria-expanded", "false");
+    const details = documentRef.createElement("div");
+    details.className = "color-control-details";
     const sliders = ["r", "g", "b"].map((channel) => {
       const wrap = documentRef.createElement("label");
       wrap.className = "color-control-slider";
@@ -92,6 +99,12 @@
 
     root.addEventListener("pointerdown", (event) => event.stopPropagation());
     root.addEventListener("click", (event) => event.stopPropagation());
+    global.PartyGameToolAffordances?.bindScrollStableControls?.(root);
+    toggle.addEventListener("click", () => {
+      const expanded = !root.classList.contains("is-expanded");
+      root.classList.toggle("is-expanded", expanded);
+      toggle.setAttribute("aria-expanded", String(expanded));
+    });
     setControls(currentValue);
     input.addEventListener("input", () => applyColor(input.value, { commit: false }));
     input.addEventListener("change", () => {
@@ -102,8 +115,8 @@
       item.slider.addEventListener("input", () => applyColor(currentSliderColor(), { commit: false }));
       item.slider.addEventListener("change", () => applyColor(currentSliderColor(), { commit: true, sync: true }));
     }
-    row.append(swatch, input);
-    root.append(title, row, ...sliders.map((item) => item.wrap));
+    row.append(swatch, input, toggle);
+    details.append(...sliders.map((item) => item.wrap));
     const presets = Array.isArray(options.presets) && options.presets.length ? options.presets : DEFAULT_PRESETS;
     const presetRow = documentRef.createElement("div");
     presetRow.className = "color-control-presets";
@@ -117,7 +130,8 @@
       button.addEventListener("click", () => applyColor(normalizedPreset, { commit: true, sync: true }));
       presetRow.appendChild(button);
     }
-    root.appendChild(presetRow);
+    details.appendChild(presetRow);
+    root.append(title, row, details);
     return root;
   }
 

@@ -174,6 +174,7 @@
     function render(target, data = {}) {
       const composition = data.composition;
       if (!target || !composition) return;
+      global.PartyGameToolAffordances?.bindScrollStableControls?.(target);
       const selectedIds = data.selectedComponentIds || new Set();
       target.replaceChildren();
       const fields = documentRef.createElement("div");

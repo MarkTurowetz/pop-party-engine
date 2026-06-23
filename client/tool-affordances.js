@@ -53,6 +53,52 @@
     return Boolean(target?.closest?.(ignoreSelector));
   }
 
+  function scrollableAncestors(element) {
+    const result = [];
+    let current = element?.parentElement || null;
+    while (current && current !== document.body && current !== document.documentElement) {
+      const style = window.getComputedStyle(current);
+      const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+      const canScrollX = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+      if (canScrollY || canScrollX) result.push(current);
+      current = current.parentElement;
+    }
+    return result;
+  }
+
+  function bindScrollStableControls(root, options = {}) {
+    if (!root || root.dataset.scrollStableControlsBound === "true") return;
+    root.dataset.scrollStableControlsBound = "true";
+    const selector = options.selector || "input, textarea, select, button, [role='button']";
+    root.addEventListener("pointerdown", (event) => {
+      if (!event.target?.closest?.(selector)) return;
+      const snapshot = scrollableAncestors(event.target).map((node) => ({
+        node,
+        left: node.scrollLeft,
+        top: node.scrollTop
+      }));
+      if (!snapshot.length) return;
+      const restore = () => {
+        for (const item of snapshot) {
+          item.node.scrollLeft = item.left;
+          item.node.scrollTop = item.top;
+        }
+      };
+      const stop = () => {
+        requestAnimationFrame(restore);
+        window.removeEventListener("pointermove", restore);
+        window.removeEventListener("pointerup", stop);
+        window.removeEventListener("pointercancel", stop);
+        window.removeEventListener("scroll", restore, true);
+      };
+      requestAnimationFrame(restore);
+      window.addEventListener("pointermove", restore);
+      window.addEventListener("pointerup", stop, { once: true });
+      window.addEventListener("pointercancel", stop, { once: true });
+      window.addEventListener("scroll", restore, true);
+    }, { capture: true });
+  }
+
   function handleToolDeleteHotkey(event, options = {}) {
     if (event.key !== "Delete" && event.key !== "Backspace") return false;
     if (event.metaKey || event.ctrlKey || event.altKey) return false;
@@ -304,6 +350,7 @@
   window.PartyGameToolAffordances = {
     bindToolRowActivation,
     bindSortableRow,
+    bindScrollStableControls,
     createToolAccordionRow,
     createDisclosureButton,
     createToolSidebarRow,

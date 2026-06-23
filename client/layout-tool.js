@@ -999,6 +999,7 @@ async function setupLayoutTool(mode = "stage") {
   layoutPreviewAddObjectButton.addEventListener("click", openLayoutObjectPicker);
   removeLayoutObjectButton.addEventListener("click", removeSelectedLayoutObject);
   layoutPreviewRemoveObjectButton.addEventListener("click", removeSelectedLayoutObject);
+  window.PartyGameToolAffordances?.bindScrollStableControls?.(layoutEditorFields);
   layoutObjectSearch.addEventListener("input", renderLayoutObjectOptions);
   layoutObjectSearch.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeLayoutObjectPicker();

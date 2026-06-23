@@ -128,6 +128,7 @@ function renderConstantsTool() {
   if (speechToTextSendInputBufferInput) speechToTextSendInputBufferInput.value = String(gameConstants.speechToTextSendInputBuffer);
   if (overrideFirstGameInput) overrideFirstGameInput.value = gameConstants.overrideFirstGameOfSession ? "true" : "false";
   playerColorCount.textContent = `${colors.length} ${colors.length === 1 ? "color" : "colors"}`;
+  window.PartyGameToolAffordances?.bindScrollStableControls?.(playerColorList);
   playerColorList.replaceChildren();
   colors.forEach((color, index) => {
     const row = document.createElement("div");
