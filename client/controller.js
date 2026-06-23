@@ -293,58 +293,29 @@ function setupController() {
   updateJoinButton();
   applyControllerLayoutForPhase("join");
 
-  stageCodeInput.addEventListener("input", () => {
-    const cursorPosition = stageCodeInput.selectionStart;
-    stageCodeInput.value = normalizeStageCode(stageCodeInput.value);
-    stageCodeInput.setSelectionRange(cursorPosition, cursorPosition);
-    updateJoinButton();
+  const setupBindings = window.createControllerSetupBindings({
+    elements: {
+      invalidBanner: controllerInvalidBanner,
+      joinButton,
+      joinForm,
+      playerNameInput,
+      stageCodeInput,
+      textInput: controllerTextInput,
+      textSubmitButton: controllerTextSubmitButton
+    },
+    getControllerState: () => controllerState,
+    getSessionValue,
+    joinController,
+    normalizeStageCode,
+    removeSessionValue,
+    setDismissedInvalidKey: (value) => {
+      dismissedTextInvalidKey = value;
+    },
+    shouldAutoJoin,
+    updateJoinButton
   });
-  playerNameInput.addEventListener("input", () => {
-    if (!controllerState && playerNameInput.value.trim() !== getSessionValue("partyTemplatePlayerName")) {
-      removeSessionValue("partyTemplatePlayerId");
-    }
-    updateJoinButton();
-  });
-  controllerTextInput.addEventListener("input", () => {
-    if (controllerState?.player?.answer?.invalid) {
-      dismissedTextInvalidKey = `${controllerState.phaseActionId || ""}:${controllerState.player.answer.nonce || 0}`;
-    }
-    controllerInvalidBanner.classList.add("hidden");
-    controllerTextSubmitButton.disabled = controllerTextInput.value.trim().length === 0;
-  });
-  controllerTextInput.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" || event.shiftKey) return;
-    event.preventDefault();
-    if (!controllerTextSubmitButton.disabled) controllerTextSubmitButton.click();
-  });
-
-  joinForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const stageCode = normalizeStageCode(stageCodeInput.value);
-    const playerName = playerNameInput.value.trim();
-    try {
-      await joinController(stageCode, playerName);
-    } catch (error) {
-      joinButton.disabled = false;
-      joinButton.textContent = error.message;
-      window.setTimeout(() => {
-        joinButton.textContent = "Join";
-        updateJoinButton();
-      }, 1800);
-    }
-  });
-
-  if (shouldAutoJoin() && normalizeStageCode(stageCodeInput.value) && playerNameInput.value.trim()) {
-    joinButton.textContent = "Joining";
-    joinController(normalizeStageCode(stageCodeInput.value), playerNameInput.value.trim()).catch((error) => {
-      joinButton.disabled = false;
-      joinButton.textContent = error.message;
-      window.setTimeout(() => {
-        joinButton.textContent = "Join";
-        updateJoinButton();
-      }, 1800);
-    });
-  }
+  setupBindings.bindJoinControls();
+  setupBindings.bindTextInputControls();
 
   startGameButton.addEventListener("click", async () => {
     if (!controllerState) return;
