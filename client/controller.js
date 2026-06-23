@@ -1,6 +1,7 @@
 let controllerAvatarView = null;
 let controllerVoiceInput = null;
 let controllerChoiceInputView = null;
+let controllerLobbyView = null;
 let controllerSubmitApi = null;
 let controllerTextInputView = null;
 
@@ -65,6 +66,25 @@ function getControllerChoiceInputView() {
     });
   }
   return controllerChoiceInputView;
+}
+
+function getControllerLobbyView() {
+  if (!controllerLobbyView) {
+    controllerLobbyView = window.createControllerLobbyView({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      elements: {
+        introPresentButton,
+        introState: controllerIntroState,
+        lobbyState: controllerLobbyState,
+        meta: controllerMeta,
+        playerName: controllerPlayerName,
+        startButton: startGameButton
+      },
+      hideViews: hideControllerViews,
+      setAvatar: setControllerAvatar
+    });
+  }
+  return controllerLobbyView;
 }
 
 function getControllerTextInputView() {
@@ -187,11 +207,7 @@ function renderControllerState(lobby) {
   if (!me) {
     closeAvatarPicker({ commit: false });
     controllerState.startToken = "";
-    controllerMeta.textContent = "Reconnecting to lobby";
-    hideControllerViews();
-    introPresentButton.classList.add("hidden");
-    controllerLobbyState.classList.remove("hidden");
-    startGameButton.classList.add("hidden");
+    getControllerLobbyView().renderMissingPlayer();
     return;
   }
   controllerState.player = me;
@@ -212,40 +228,11 @@ function renderControllerState(lobby) {
   }
   if (controllerPhase !== "lobby" && controllerPhase !== "starting") {
     closeAvatarPicker({ commit: false });
-    hideControllerViews();
-    controllerIntroState.classList.toggle("hidden", controllerPhase !== "intro");
-    introPresentButton.classList.toggle("hidden", !(me.isVip && controllerPhase === "intro"));
-    introPresentButton.disabled = !(me.isVip && controllerPhase === "intro");
-    applyControllerLayoutForPhase(controllerPhase);
+    getControllerLobbyView().renderInGamePhase(me, controllerPhase);
     return;
   }
 
-  hideControllerViews();
-  introPresentButton.classList.add("hidden");
-  controllerLobbyState.classList.remove("hidden");
-  controllerPlayerName.textContent = me.name;
-  setControllerAvatar(me);
-  controllerMeta.textContent = me.isVip ? "VIP Player" : "Waiting for the VIP";
-  startGameButton.classList.toggle("hidden", !me.isVip);
-  startGameButton.classList.toggle("danger-button", controllerPhase === "starting");
-  startGameButton.textContent = controllerPhase === "starting" ? "Cancel" : "Start Game";
-  startGameButton.dataset.optionId = controllerPhase === "starting" ? "lobby.cancelStart" : "lobby.startGame";
-  startGameButton.disabled = !me.isVip;
-  applyControllerLayoutForPhase(controllerPhase);
-
-  if (me.isVip && controllerPhase === "starting") {
-    controllerClockOffset = (lobby.serverNow || Date.now()) - Date.now();
-    const updateCancelButton = () => {
-      const now = Date.now() + controllerClockOffset;
-      const cancelLocked = now >= (lobby.countdownEndsAt || now);
-      startGameButton.disabled = cancelLocked;
-      if (cancelLocked) {
-        startGameButton.classList.remove("is-pressed", "is-releasing");
-      }
-    };
-    updateCancelButton();
-    controllerCountdownTimer = window.setInterval(updateCancelButton, 50);
-  }
+  controllerCountdownTimer = getControllerLobbyView().renderLobby(lobby, me, controllerPhase);
 }
 
 function reloadControllerArtAssets() {
