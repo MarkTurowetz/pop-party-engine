@@ -378,7 +378,7 @@ function getFlowMomentRouteRenderer() {
       actionTypeMeta,
       actionValueBadge,
       appendDecisionControls,
-      applyFlowActionTypeDefaults,
+      appendActionPropertyControls: (...args) => getFlowActionInspectorRegistry()?.appendActionPropertyControls(...args),
       bindFlowNodeDrag,
       createFlowMomentRoutePorts,
       createFlowMomentRouteActionPorts,
@@ -392,7 +392,6 @@ function getFlowMomentRouteRenderer() {
       flowField,
       flowMomentEntryTargetOptions,
       flowActionTypes: () => flowActionTypes,
-      flowNumber,
       flowNodeDepth: () => flowNodeDepth,
       flowNodeInspector: () => flowNodeInspector,
       flowNodeClassForAction,
@@ -401,7 +400,6 @@ function getFlowMomentRouteRenderer() {
       flowRouteNodes,
       flowRouteTargetName,
       flowSelect,
-      flowTrueFalseOptions,
       flowStateName,
       isNoFlowTarget,
       pushFlowHistory,
@@ -414,7 +412,8 @@ function getFlowMomentRouteRenderer() {
       savedNodePosition,
       selectFlowRouteNode,
       selectedFlowRouteNode,
-      selectedFlowRouteNodeId: () => selectedFlowRouteNodeId
+      selectedFlowRouteNodeId: () => selectedFlowRouteNodeId,
+      selectedFlowStateId: () => selectedFlowStateId
     });
   }
   return flowMomentRouteRenderer;

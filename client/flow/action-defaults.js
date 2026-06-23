@@ -11,7 +11,7 @@
       if (value === "presentText") {
         action.text = action.text || "Presented text";
         if (!("textTarget" in action)) action.textTarget = "";
-        action.stageClickTargetActionId = action.stageClickTargetActionId || action.nextTargetActionId || "";
+        action.stageClickTargetActionId = action.stageClickTargetActionId || action.nextTargetActionId || action.nextTargetNodeId || "";
       }
       if (value === "multipleChoiceInput") {
         action.prompt = action.prompt || "Answer this question by tapping an answer";

@@ -33,12 +33,14 @@
 
     function appendInputExitControls(target, state, action, rerender, options = {}) {
       const submittedLabel = options.submittedLabel || "On Answers Submitted";
-      const targetOptions = context.flowActionTargetOptions(state, action.timerEndTargetActionId || action.answersSubmittedTargetActionId || "");
-      target.appendChild(context.flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions, (value) => {
+      const targetOptions = typeof options.targetOptions === "function"
+        ? options.targetOptions
+        : (stateForOptions, actionForOptions, selectedTarget) => context.flowActionTargetOptions(stateForOptions, selectedTarget || "");
+      target.appendChild(context.flowSelect("On Timer Ends", action.timerEndTargetActionId || "", targetOptions(state, action, action.timerEndTargetActionId || ""), (value) => {
         action.timerEndTargetActionId = value;
         rerender();
       }));
-      target.appendChild(context.flowSelect(submittedLabel, action.answersSubmittedTargetActionId || "", targetOptions, (value) => {
+      target.appendChild(context.flowSelect(submittedLabel, action.answersSubmittedTargetActionId || "", targetOptions(state, action, action.answersSubmittedTargetActionId || ""), (value) => {
         action.answersSubmittedTargetActionId = value;
         rerender();
       }));

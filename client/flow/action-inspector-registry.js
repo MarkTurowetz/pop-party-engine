@@ -11,13 +11,19 @@
       const refresh = typeof options.refresh === "function" ? options.refresh : change;
       const refreshAll = typeof options.refreshAll === "function" ? options.refreshAll : refresh;
       const decisionChange = typeof options.decisionChange === "function" ? options.decisionChange : change;
+      const targetOptions = typeof options.targetOptions === "function"
+        ? options.targetOptions
+        : (stateForOptions, actionForOptions, selectedTarget) => context.flowActionTargetOptions(stateForOptions, selectedTarget || "");
       const controlChange = (redraw = true) => (redraw ? change() : softChange());
 
       target.appendChild(context.flowActionNameField(state, action, (value) => {
         action.name = value || action.name;
         refreshAll();
       }, refreshAll));
-      target.appendChild(context.flowActionTypeSearch("Action Type", action.type, actionTypeOptions(action, actionRef.isSubAction), (value) => {
+      const typeOptions = typeof options.actionTypeOptions === "function"
+        ? options.actionTypeOptions(action, actionRef)
+        : actionTypeOptions(action, actionRef.isSubAction);
+      target.appendChild(context.flowActionTypeSearch("Action Type", action.type, typeOptions, (value) => {
         context.applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
         context.refreshActionNameFromType(state, action);
         refreshAll();
@@ -29,6 +35,7 @@
         refresh,
         controlChange,
         decisionChange,
+        targetOptions,
         stopAfterDecision: options.stopAfterDecision !== false
       });
 
@@ -54,7 +61,7 @@
       if (action.type === "presentText" || action.type === "displayText" || action.type === "text") {
         controls?.appendTextActionControls(target, state, action, handlers.controlChange);
       }
-      if (action.type === "presentText") appendStageClickExitControls(target, state, action, handlers.change);
+      if (action.type === "presentText") appendStageClickExitControls(target, state, action, handlers);
       if (action.type === "multipleChoiceInput") appendMultipleChoiceControls(target, state, action, controls, handlers);
       if (action.type === "getRandomMultipleChoiceContent") appendRandomContentControls(target, action, handlers.change);
       if (action.type === "triviaInput") appendTriviaControls(target, state, action, controls, handlers);
@@ -111,7 +118,7 @@
       if (action.type === "getPlayerAnswers") appendGetPlayerAnswersControls(target, action, handlers.change);
       if (action.type === "decision") appendDecisionActionControls(target, state, action, handlers);
       if (action.type === "transition") appendTransitionControls(target, action, handlers.change);
-      if (action.type === "transitionState") appendTransitionStateControls(target, state, action, handlers.change);
+      if (action.type === "transitionState") appendTransitionStateControls(target, state, action, handlers);
     }
 
     function appendMultipleChoiceControls(target, state, action, controls, handlers) {
@@ -134,7 +141,7 @@
         action.options = nextOptions.length ? nextOptions : ["A", "B", "C", "D"];
         handlers.softChange();
       }));
-      controls?.appendInputExitControls(target, state, action, handlers.change);
+      controls?.appendInputExitControls(target, state, action, handlers.change, { targetOptions: handlers.targetOptions });
       target.appendChild(context.readOnlyFlowNote("Each line becomes one button label. Controllers send the option index; this action currently shows the matching line as the stage speech bubble. Choose None for On Answers Submitted when continuous input should wait for the timer."));
     }
 
@@ -165,7 +172,7 @@
         action.randomizeOptions = value === "true";
         handlers.change();
       }));
-      controls?.appendInputExitControls(target, state, action, handlers.change);
+      controls?.appendInputExitControls(target, state, action, handlers.change, { targetOptions: handlers.targetOptions });
     }
 
     function appendTextSubmissionControls(target, state, action, controls, handlers) {
@@ -181,7 +188,7 @@
         action.characterLimit = Math.max(0, Math.floor(Number(value) || 0));
         handlers.change();
       }));
-      controls?.appendInputExitControls(target, state, action, handlers.change);
+      controls?.appendInputExitControls(target, state, action, handlers.change, { targetOptions: handlers.targetOptions });
       target.appendChild(context.readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
     }
 
@@ -199,14 +206,18 @@
         action.prompt = value || "Vote for your favorite answer";
         handlers.softChange();
       }));
-      controls?.appendInputExitControls(target, state, action, handlers.change, { submittedLabel: "On Votes Submitted" });
+      controls?.appendInputExitControls(target, state, action, handlers.change, {
+        submittedLabel: "On Votes Submitted",
+        targetOptions: handlers.targetOptions
+      });
       target.appendChild(context.readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));
     }
 
-    function appendStageClickExitControls(target, state, action, change) {
-      target.appendChild(context.flowSelect("On Screen Click", action.stageClickTargetActionId || action.nextTargetActionId || "", context.flowActionTargetOptions(state, action.stageClickTargetActionId || action.nextTargetActionId || ""), (value) => {
+    function appendStageClickExitControls(target, state, action, handlers) {
+      const selectedTarget = action.stageClickTargetActionId || action.nextTargetActionId || action.nextTargetNodeId || "";
+      target.appendChild(context.flowSelect("On Screen Click", selectedTarget, handlers.targetOptions(state, action, selectedTarget), (value) => {
         action.stageClickTargetActionId = value;
-        change();
+        handlers.change();
       }));
       target.appendChild(context.readOnlyFlowNote("This input waits for a stage screen click event before following its exit."));
     }
@@ -277,7 +288,9 @@
     }
 
     function appendDecisionActionControls(target, state, action, handlers) {
-      context.appendDecisionControls(target, state, action, handlers.decisionChange);
+      context.appendDecisionControls(target, state, action, handlers.decisionChange, {
+        targetOptions: (stateForOptions, actionForOptions, branch) => handlers.targetOptions(stateForOptions, actionForOptions, branch.targetActionId || "")
+      });
       target.appendChild(context.readOnlyFlowNote(handlers.stopAfterDecision
         ? "Decision actions do not use timing. They evaluate branches in order and wait forever if the selected branch has no connection."
         : "Decision actions are invisible branch points. Runtime evaluates them immediately and jumps to the selected target action."));
@@ -291,18 +304,18 @@
       target.appendChild(context.readOnlyFlowNote("Deprecated: use Set Wipe Shown for wipe art and Jump Node for explicit flow jumps."));
     }
 
-    function appendTransitionStateControls(target, state, action, change) {
+    function appendTransitionStateControls(target, state, action, handlers) {
       target.appendChild(context.flowSelect("Target State", action.targetState || "intro", context.gameStates().map((item) => ({ id: item.id, name: item.name })), (value) => {
         action.targetState = value;
-        change();
+        handlers.change();
       }));
       target.appendChild(context.flowSelect("Trigger", action.trigger || "", context.transitionTriggerOptions(), (value) => {
         action.trigger = value;
-        change();
+        handlers.change();
       }));
-      target.appendChild(context.flowSelect(action.trigger === "onCountdownComplete" ? "On Countdown Complete Exit" : "Event Exit", action.nextTargetActionId || "", context.flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
+      target.appendChild(context.flowSelect(action.trigger === "onCountdownComplete" ? "On Countdown Complete Exit" : "Event Exit", action.nextTargetActionId || "", handlers.targetOptions(state, action, action.nextTargetActionId || ""), (value) => {
         action.nextTargetActionId = value;
-        change();
+        handlers.change();
       }));
     }
 
@@ -310,8 +323,10 @@
       const excludedTypes = new Set(["decision", "jumpNode", "transitionState", "presentText", "multipleChoiceInput", "triviaInput", "textSubmissionInput"]);
       for (const type of options.excludeNextActionTypes || []) excludedTypes.add(type);
       if (actionRef.isSubAction || excludedTypes.has(action.type)) return;
-      target.appendChild(context.flowSelect("Next Action", action.nextTargetActionId || "", context.flowActionTargetOptions(state, action.nextTargetActionId || ""), (value) => {
-        action.nextTargetActionId = value;
+      const nextTargetField = options.nextTargetField || "nextTargetActionId";
+      const selectedTarget = action[nextTargetField] || "";
+      target.appendChild(context.flowSelect(options.nextTargetLabel || "Next Action", selectedTarget, (options.targetOptions || ((stateForOptions, actionForOptions, targetId) => context.flowActionTargetOptions(stateForOptions, targetId || "")))(state, action, selectedTarget), (value) => {
+        action[nextTargetField] = value;
         change();
       }));
     }

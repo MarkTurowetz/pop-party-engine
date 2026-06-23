@@ -63,76 +63,60 @@
       }
     }
 
-    function ensureTiming(action) {
-      action.timing = action.timing && typeof action.timing === "object" ? action.timing : { mode: "E+", seconds: 0 };
-      action.timing.mode = action.timing.mode === "S+" ? "S+" : "E+";
-      action.timing.seconds = Math.max(0, Number(action.timing.seconds || 0) || 0);
-      return action.timing;
-    }
-
-    function appendRouteActionControls(inspector, routeNode) {
-      if (routeNode.type === "presentText" || routeNode.type === "displayText" || routeNode.type === "text") {
-        inspector.appendChild(context.flowField?.("Text", routeNode.text || "Presented text", (value) => {
-          context.pushFlowHistory?.();
-          routeNode.text = value || "Presented text";
-          context.renderFlowListAndPublish?.();
-          context.renderFlowNodeView?.();
-        }));
-      }
-      if (routeNode.type === "setWipeShown") {
-        inspector.appendChild(context.flowSelect?.("Wipe Visible", routeNode.isShown === false ? "false" : "true", context.flowTrueFalseOptions?.(true) || [
-          { id: "true", name: "True" },
-          { id: "false", name: "False" }
-        ], (value) => {
-          context.pushFlowHistory?.();
-          routeNode.isShown = value !== "false";
-          context.renderFlowListAndPublish?.();
-          context.renderFlowNodeView?.();
-        }));
-        inspector.appendChild(context.flowSelect?.("Instant", routeNode.instant === true ? "true" : "false", context.flowTrueFalseOptions?.(false) || [
-          { id: "false", name: "False" },
-          { id: "true", name: "True" }
-        ], (value) => {
-          context.pushFlowHistory?.();
-          routeNode.instant = value === "true";
-          context.renderFlowListAndPublish?.();
-          context.renderFlowNodeView?.();
-        }));
-      }
-      if (routeNode.type === "doNothing") {
-        inspector.appendChild(context.readOnlyFlowNote?.("This action intentionally has no effect. Use its timing to create a pause between moment graph nodes."));
-      }
-      if (routeNode.type === "playAudio") {
-        inspector.appendChild(context.flowField?.("Audio URL", routeNode.audioUrl || "", (value) => {
-          context.pushFlowHistory?.();
-          routeNode.audioUrl = value;
-          context.renderFlowListAndPublish?.();
-          context.renderFlowNodeView?.();
-        }));
-      }
-      const timing = ensureTiming(routeNode);
-      inspector.appendChild(context.flowSelect?.("Timing Mode", timing.mode, [
-        { id: "E+", name: "E+ Timing" },
-        { id: "S+", name: "S+ Timing" }
-      ], (value) => {
-        context.pushFlowHistory?.();
-        ensureTiming(routeNode).mode = value === "S+" ? "S+" : "E+";
-        context.renderFlowListAndPublish?.();
-        context.renderFlowNodeView?.();
-      }));
-      inspector.appendChild(context.flowNumber?.("Timing Seconds", timing.seconds, (value) => {
-        context.pushFlowHistory?.();
-        ensureTiming(routeNode).seconds = Math.max(0, Number(value || 0) || 0);
-        context.renderFlowListAndPublish?.();
-        context.renderFlowNodeView?.();
-      }));
-    }
-
     function routeActionTypeOptions(routeNode) {
       return (context.flowActionTypes?.() || []).filter((option) => {
         if (option.deprecated && option.id !== routeNode.type) return false;
         if (option.id === "decision" || option.id === "jumpNode" || option.id === "transitionState") return option.id === routeNode.type;
         return true;
+      });
+    }
+
+    function routeActionInspectorState(routeNode) {
+      return {
+        id: context.selectedFlowStateId?.() || "moment-route",
+        name: "Moment Graph",
+        actions: (context.flowRouteNodes?.() || []).filter((node) => node.routeNodeType === "action" && node.id !== routeNode.id)
+      };
+    }
+
+    function routeActionTargetOptions(routeNode) {
+      return (state, action, selectedTarget) => context.flowRouteGraphTargetOptions?.(selectedTarget || "", routeNode.id) || [{ id: "", name: "No Target" }];
+    }
+
+    function renderRouteActionInspector(inspector, routeNode) {
+      if (!routeNode.nextTargetNodeId && routeNode.nextTargetActionId) {
+        routeNode.nextTargetNodeId = routeNode.nextTargetActionId;
+      }
+      const state = routeActionInspectorState(routeNode);
+      context.appendActionPropertyControls?.(inspector, state, {
+        action: routeNode,
+        parentAction: null,
+        actions: state.actions,
+        isSubAction: false,
+        isBranch: false
+      }, {
+        change: () => context.refreshFlowNodeInspectorChange?.(),
+        softChange: () => {
+          context.renderFlowListAndPublish?.();
+          context.redrawFlowNodeWires?.();
+        },
+        refresh: () => context.refreshFlowNodeInspectorChange?.(),
+        refreshAll: () => context.refreshFlowNodeInspectorChange?.(),
+        decisionChange: (redrawNodeView = true) => {
+          if (redrawNodeView) {
+            context.refreshFlowNodeInspectorChange?.();
+            return;
+          }
+          context.renderFlowListAndPublish?.();
+          context.redrawFlowNodeWires?.();
+        },
+        actionTypeOptions: routeActionTypeOptions,
+        excludeNextActionTypes: ["voteOnAnswersInput"],
+        nextTargetField: "nextTargetNodeId",
+        nextTargetLabel: "Next",
+        targetOptions: routeActionTargetOptions(routeNode),
+        includeSubActionButton: false,
+        stopAfterDecision: false
       });
     }
 
@@ -158,12 +142,14 @@
       if (isRouteDecision && (context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" }) || []).some((branch) => !branch.targetNodeId || context.isNoFlowTarget?.(branch.targetNodeId))) {
         inspector.appendChild(context.readOnlyFlowNote?.("Warning: every decision branch should target a moment-layer node, or that branch will halt."));
       }
-      inspector.appendChild(context.flowField?.("Name", routeNode.name || (isRouteDecision ? "Decision" : isRouteAction ? "Action" : "Moment Entry"), (value) => {
-        context.pushFlowHistory?.();
-        routeNode.name = value || (isRouteDecision ? "Decision" : isRouteAction ? "Action" : "Moment Entry");
-        context.renderFlowListAndPublish?.();
-        context.renderFlowNodeView?.();
-      }));
+      if (!isRouteAction) {
+        inspector.appendChild(context.flowField?.("Name", routeNode.name || (isRouteDecision ? "Decision" : "Moment Entry"), (value) => {
+          context.pushFlowHistory?.();
+          routeNode.name = value || (isRouteDecision ? "Decision" : "Moment Entry");
+          context.renderFlowListAndPublish?.();
+          context.renderFlowNodeView?.();
+        }));
+      }
       if (isRouteDecision) {
         context.appendDecisionControls?.(inspector, null, routeNode, (redrawNodeView = true) => {
           if (redrawNodeView) {
@@ -182,20 +168,7 @@
         return true;
       }
       if (isRouteAction) {
-        inspector.appendChild(context.flowSelect?.("Action Type", routeNode.type || "presentText", routeActionTypeOptions(routeNode), (value) => {
-          context.pushFlowHistory?.();
-          routeNode.type = value || "presentText";
-          context.applyFlowActionTypeDefaults?.(routeNode, routeNode.type, false);
-          context.renderFlowListAndPublish?.();
-          context.renderFlowNodeView?.();
-        }));
-        appendRouteActionControls(inspector, routeNode);
-        inspector.appendChild(context.flowSelect?.("Next", routeNode.nextTargetNodeId || "", context.flowRouteGraphTargetOptions?.(routeNode.nextTargetNodeId || "", routeNode.id) || [], (value) => {
-          context.pushFlowHistory?.();
-          routeNode.nextTargetNodeId = value;
-          context.renderFlowListAndPublish?.();
-          context.renderFlowNodeView?.();
-        }));
+        renderRouteActionInspector(inspector, routeNode);
         inspector.appendChild(context.flowActionButton?.("Delete Action", () => {
           context.deleteSelectedFlowRouteNode?.();
         }));
