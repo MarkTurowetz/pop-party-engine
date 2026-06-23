@@ -184,8 +184,7 @@ function selectedNodeWireMatches(sourceAction, targetId = "", branchId = "") {
 }
 
 function momentGraphTargetNode(stateNodes, routeNodes, targetId) {
-  if (!targetId || isNoFlowTarget(targetId)) return null;
-  return stateNodes.get(targetId) || routeNodes.get(targetId) || null;
+  return getFlowMomentRouteGraph()?.targetNode(stateNodes, routeNodes, targetId) || null;
 }
 
 function redrawFlowNodeWires() {
