@@ -1,3 +1,5 @@
+const { isTextAnswerAction } = require("./text-answer-action-runtime");
+
 function createControllerSubmitHandlersRuntime({
   allActivePlayersHaveSubmittedInput,
   applyChoiceInputAction,
@@ -17,10 +19,6 @@ function createControllerSubmitHandlersRuntime({
   sendJson,
   updatePlayerAnswerGroups
 }) {
-  function isTextAnswerAction(action) {
-    return action?.type === "textSubmissionInput" || action?.type === "voiceSubmissionInput";
-  }
-
   async function handleControllerChoice(req, res) {
     let payload;
     try {

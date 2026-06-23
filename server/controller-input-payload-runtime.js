@@ -1,3 +1,9 @@
+const {
+  isTextAnswerAction,
+  textAnswerActionConfig,
+  textAnswerPayloadTypeForMode
+} = require("./text-answer-action-runtime");
+
 function createControllerInputPayloadRuntime({
   cleanChoiceOptions,
   clearDisplayedPlayerAnswers,
@@ -6,10 +12,6 @@ function createControllerInputPayloadRuntime({
   normalizeChoiceInputMode,
   triviaContentForAction
 }) {
-  function isTextAnswerAction(action) {
-    return action?.type === "textSubmissionInput" || action?.type === "voiceSubmissionInput";
-  }
-
   function applyChoiceInputAction(room, action) {
     if (!action || (action.type !== "multipleChoiceInput" && action.type !== "triviaInput" && action.type !== "voteOnAnswersInput")) return;
     if (room.choiceInputActionId === action.id) return;
@@ -81,11 +83,12 @@ function createControllerInputPayloadRuntime({
   function applyTextInputAction(room, action) {
     if (!isTextAnswerAction(action)) return;
     if (room.textInputActionId === action.id) return;
+    const config = textAnswerActionConfig(action);
     clearDisplayedPlayerAnswers(room);
     room.textInputActionId = action.id;
-    room.textInputMode = action.type === "voiceSubmissionInput" ? "voiceVip" : "textAll";
-    room.textInputPrompt = action.prompt || (room.textInputMode === "voiceVip" ? "Say your answer" : "Write your answer");
-    room.textInputPlaceholder = action.placeholder || (room.textInputMode === "voiceVip" ? "Speak your answer" : "Answer here");
+    room.textInputMode = config.mode;
+    room.textInputPrompt = action.prompt || config.prompt;
+    room.textInputPlaceholder = action.placeholder || config.placeholder;
     room.textInputCharacterLimit = normalizeCharacterLimit(action.characterLimit);
     room.textInputAnswers = new Map();
   }
@@ -95,7 +98,7 @@ function createControllerInputPayloadRuntime({
     applyTextInputAction(room, currentAction);
     return {
       actionId: room.textInputActionId,
-      type: room.textInputMode === "voiceVip" ? "voice" : "text",
+      type: textAnswerPayloadTypeForMode(room.textInputMode),
       mode: room.textInputMode,
       vipPlayerId: room.textInputMode === "voiceVip" ? room.vipPlayerId || "" : "",
       prompt: room.textInputPrompt,
