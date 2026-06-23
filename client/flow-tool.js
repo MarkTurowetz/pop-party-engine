@@ -73,13 +73,13 @@ function selectedFlowMomentStates() {
   return gameFlow.states.filter((state) => state.id === selectedFlowStateId || selectedFlowActionIds.has(state.id));
 }
 
-function setFlowMomentSelection(ids) {
+function setFlowMomentSelection(ids, { expandInList = true } = {}) {
   const validIds = new Set((gameFlow.states || []).map((state) => state.id));
   const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
   selectedFlowActionIds = new Set(nextIds);
   selectedFlowStateId = nextIds[nextIds.length - 1] || "";
   selectedFlowActionId = "";
-  expandFlowStateInList(selectedFlowStateId);
+  if (expandInList) expandFlowStateInList(selectedFlowStateId);
 }
 
 function selectFlowMoment(stateId, options = {}) {
@@ -90,10 +90,21 @@ function selectFlowMoment(stateId, options = {}) {
     } else {
       currentIds.add(stateId);
     }
-    setFlowMomentSelection([...currentIds]);
+    setFlowMomentSelection([...currentIds], options);
   } else {
-    setFlowMomentSelection([stateId]);
+    setFlowMomentSelection([stateId], options);
   }
+}
+
+function selectFlowMomentFromList(stateId, event) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey) {
+    selectFlowMoment(stateId, { additive: true, expandInList: false });
+  } else {
+    selectedFlowStateId = stateId;
+    clearFlowActionSelection();
+  }
+  if (flowViewMode === "node") flowNodeDepth = "actions";
+  renderFlowTool();
 }
 
 function expandFlowStateInList(stateId, { persist = true } = {}) {
@@ -825,17 +836,7 @@ function renderFlowList() {
     ));
     stateButton.querySelector("strong").textContent = state.name;
     stateButton.querySelector(".flow-row-summary").textContent = state.id;
-    stateButton.addEventListener("click", (event) => {
-      if (event.metaKey || event.ctrlKey) {
-        selectFlowMoment(state.id, { additive: true });
-      } else {
-        selectedFlowStateId = state.id;
-        clearFlowActionSelection();
-        expandFlowStateInList(state.id);
-      }
-      if (flowViewMode === "node") flowNodeDepth = "actions";
-      renderFlowTool();
-    });
+    stateButton.addEventListener("click", (event) => selectFlowMomentFromList(state.id, event));
     stateEl.appendChild(stateButton);
 
     const actionsEl = document.createElement("div");
