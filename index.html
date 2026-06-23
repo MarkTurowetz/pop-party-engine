@@ -4569,6 +4569,7 @@
   <script src="/client/controller-lobby-view.js"></script>
   <script src="/client/controller-submit-api.js"></script>
   <script src="/client/controller-setup-bindings.js"></script>
+  <script src="/client/controller-heartbeat-runtime.js"></script>
   <script src="/client/controller.js"></script>
   <script src="/client/tool-affordances.js"></script>
   <script src="/client/art-component-tree.js"></script>
@@ -4786,7 +4787,6 @@
     const layoutObjectOptions = document.querySelector("#layoutObjectOptions");
     const revertLayoutButton = document.querySelector("#revertLayoutButton");
     let controllerState = null;
-    let heartbeatTimer = null;
     let lobbyPollTimer = null;
     let stageCountdownTimer = null;
     let controllerCountdownTimer = null;

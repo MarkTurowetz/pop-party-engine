@@ -1,0 +1,57 @@
+(function () {
+  "use strict";
+
+  function createControllerHeartbeatRuntime({
+    applyLayoutForPhase,
+    closeAvatarPicker,
+    elements,
+    getControllerState,
+    hideViews,
+    postJson,
+    renderState,
+    setControllerState
+  }) {
+    let timer = null;
+
+    function stop() {
+      window.clearInterval(timer);
+      timer = null;
+    }
+
+    async function heartbeat() {
+      const state = getControllerState();
+      if (!state) return;
+      try {
+        const result = await postJson("/api/heartbeat", {
+          stageCode: state.stageCode,
+          playerId: state.playerId
+        });
+        renderState(result.lobby);
+      } catch (error) {
+        if (error.code === "KICKED_TO_LOBBY") {
+          stop();
+          setControllerState(null);
+          closeAvatarPicker({ commit: false });
+          hideViews();
+          elements.joinState.classList.remove("hidden");
+          applyLayoutForPhase("join");
+          elements.joinButton.disabled = false;
+          return;
+        }
+        elements.meta.textContent = "Reconnecting to lobby";
+      }
+    }
+
+    function start() {
+      stop();
+      timer = window.setInterval(heartbeat, 1000);
+    }
+
+    return {
+      start,
+      stop
+    };
+  }
+
+  window.createControllerHeartbeatRuntime = createControllerHeartbeatRuntime;
+})();

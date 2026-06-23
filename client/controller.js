@@ -1,6 +1,7 @@
 let controllerAvatarView = null;
 let controllerVoiceInput = null;
 let controllerChoiceInputView = null;
+let controllerHeartbeatRuntime = null;
 let controllerLobbyView = null;
 let controllerSubmitApi = null;
 let controllerTextInputView = null;
@@ -66,6 +67,28 @@ function getControllerChoiceInputView() {
     });
   }
   return controllerChoiceInputView;
+}
+
+function getControllerHeartbeatRuntime() {
+  if (!controllerHeartbeatRuntime) {
+    controllerHeartbeatRuntime = window.createControllerHeartbeatRuntime({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      closeAvatarPicker,
+      elements: {
+        joinButton,
+        joinState,
+        meta: controllerMeta
+      },
+      getControllerState: () => controllerState,
+      hideViews: hideControllerViews,
+      postJson,
+      renderState: renderControllerState,
+      setControllerState: (value) => {
+        controllerState = value;
+      }
+    });
+  }
+  return controllerHeartbeatRuntime;
 }
 
 function getControllerLobbyView() {
@@ -242,29 +265,6 @@ function reloadControllerArtAssets() {
   }).catch(() => {});
 }
 
-async function heartbeat() {
-  if (!controllerState) return;
-  try {
-    const result = await postJson("/api/heartbeat", {
-      stageCode: controllerState.stageCode,
-      playerId: controllerState.playerId
-    });
-    renderControllerState(result.lobby);
-  } catch (error) {
-    if (error.code === "KICKED_TO_LOBBY") {
-      window.clearInterval(heartbeatTimer);
-      controllerState = null;
-      closeAvatarPicker({ commit: false });
-      hideControllerViews();
-      joinState.classList.remove("hidden");
-      applyControllerLayoutForPhase("join");
-      joinButton.disabled = false;
-      return;
-    }
-    controllerMeta.textContent = "Reconnecting to lobby";
-  }
-}
-
 function enterControllerLobby(stageCode, playerId, lobby, player) {
   controllerState = { stageCode, playerId, player };
   setSessionValue("partyTemplatePlayerId", playerId);
@@ -274,8 +274,7 @@ function enterControllerLobby(stageCode, playerId, lobby, player) {
   joinState.classList.add("hidden");
   controllerLobbyState.classList.remove("hidden");
   renderControllerState(lobby);
-  window.clearInterval(heartbeatTimer);
-  heartbeatTimer = window.setInterval(heartbeat, 1000);
+  getControllerHeartbeatRuntime().start();
 }
 
 function setupController() {
