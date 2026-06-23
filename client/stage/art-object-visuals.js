@@ -16,6 +16,10 @@
     return "";
   }
 
+  function componentImageMaskDataUrl(component) {
+    return componentKind(component) === "shape" ? String(component?.imageDataUrl || "") : "";
+  }
+
   function shapeStyle(component) {
     const style = String(component?.shapeStyle || "rounded").trim().toLowerCase();
     if (style === "rectangle" || style === "pill" || style === "circle") return style;
@@ -37,6 +41,7 @@
     element.style.setProperty("--component-border-color", component.borderColor || "transparent");
     element.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
     element.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
+    element.style.setProperty("--component-image-fit", component.imageObjectFit || "cover");
   }
 
   class ArtObjectView {
@@ -46,8 +51,13 @@
       this.component = null;
       this.children = new Map();
       this.element = this.document.createElement("div");
+      this.image = this.document.createElement("img");
+      this.image.className = "art-runtime-object-image";
+      this.image.alt = "";
+      this.image.draggable = false;
       this.label = this.document.createElement("span");
       this.label.className = "art-runtime-object-label";
+      this.element.appendChild(this.image);
       this.element.appendChild(this.label);
       this.visual = this.visualAnimation.createCssVisualObject({
         element: this.element,
@@ -65,6 +75,15 @@
       const kind = componentKind(this.component);
       this.element.className = `${RUNTIME_CLASS} is-${kind} is-style-${shapeStyle(this.component)}`;
       if (this.visual.isVisible() === false) this.element.classList.add(HIDDEN_CLASS);
+      const imageDataUrl = componentImageMaskDataUrl(this.component);
+      this.element.classList.toggle("has-image-mask", Boolean(imageDataUrl));
+      this.image.hidden = !imageDataUrl;
+      this.label.hidden = Boolean(imageDataUrl);
+      if (imageDataUrl) {
+        if (this.image.getAttribute("src") !== imageDataUrl) this.image.src = imageDataUrl;
+      } else {
+        this.image.removeAttribute("src");
+      }
       this.label.textContent = componentLabel(this.component);
       applyComponentLayout(this.element, this.component, canvas);
       this.renderChildren(this.component.children || []);

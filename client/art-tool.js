@@ -16,6 +16,9 @@ const artShapeStyles = [
   { value: "pill", label: "Pill" },
   { value: "circle", label: "Circle" }
 ];
+const artComponentImageMaxBytes = 5 * 1024 * 1024;
+const artComponentImageTypes = new Set(["image/png", "image/svg+xml", "image/jpeg", "image/webp"]);
+const artComponentImageAccept = [...artComponentImageTypes].join(",");
 const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt", "voting-card", "custom-art"];
 
 function serializeArtCompositionsForSave(source = artCompositions) {
@@ -50,6 +53,10 @@ function serializeArtComponentForSave(component) {
     borderColor: component.borderColor || "transparent",
     borderWidth: Number(Number(component.borderWidth || 0).toFixed(3)),
     borderRadius: Number(Number(component.borderRadius || 0).toFixed(3)),
+    imageDataUrl: component.kind === "shape" ? component.imageDataUrl || "" : "",
+    imageName: component.kind === "shape" ? component.imageName || "" : "",
+    imageMimeType: component.kind === "shape" ? component.imageMimeType || "" : "",
+    imageObjectFit: component.kind === "shape" ? component.imageObjectFit || "cover" : "cover",
     children: (component.children || []).map(serializeArtComponentForSave)
   };
 }
@@ -138,6 +145,14 @@ function artKindLabel(kind) {
   if (kind === "container") return "Container";
   if (kind === "badge") return "Badge";
   return "Shape";
+}
+
+function artComponentSupportsImageMask(component) {
+  return component?.kind === "shape";
+}
+
+function artComponentHasImageMask(component) {
+  return artComponentSupportsImageMask(component) && Boolean(component.imageDataUrl);
 }
 
 function flattenArtComponents(components = [], depth = 0, parent = null, output = []) {
@@ -566,6 +581,7 @@ function artComponentPreviewNode(composition, component, canvas) {
   const node = document.createElement("div");
   node.className = `art-composition-component is-${component.kind || "shape"} is-style-${component.shapeStyle || "rounded"}`;
   node.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
+  node.classList.toggle("has-image-mask", artComponentHasImageMask(component));
   node.dataset.componentId = component.id;
   node.style.left = `${Number(component.x || 0) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
   node.style.top = `${Number(component.y || 0) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
@@ -578,7 +594,34 @@ function artComponentPreviewNode(composition, component, canvas) {
   node.style.setProperty("--component-border-color", component.borderColor || "transparent");
   node.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
   node.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
+  node.style.setProperty("--component-image-fit", component.imageObjectFit || "cover");
   node.addEventListener("pointerdown", (event) => startArtComponentDrag(event, component));
+  if (artComponentSupportsImageMask(component)) {
+    node.addEventListener("dragover", (event) => {
+      if (!artDragEventHasFiles(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      node.classList.add("is-image-drop-target");
+    });
+    node.addEventListener("dragleave", (event) => {
+      if (!node.contains(event.relatedTarget)) node.classList.remove("is-image-drop-target");
+    });
+    node.addEventListener("drop", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      node.classList.remove("is-image-drop-target");
+      selectArtComponent(composition.id, component.id);
+      stageArtComponentImageFile(component, event.dataTransfer?.files?.[0]);
+    });
+  }
+  if (artComponentHasImageMask(component)) {
+    const image = document.createElement("img");
+    image.className = "art-component-mask-image";
+    image.alt = "";
+    image.draggable = false;
+    image.src = component.imageDataUrl;
+    node.appendChild(image);
+  }
   const label = document.createElement("span");
   label.className = "art-component-label";
   label.textContent = artComponentPreviewText(component);
@@ -781,6 +824,9 @@ function renderArtComponentEditor() {
       fields.appendChild(artNumberField("Border Width", component.borderWidth || 0, (value) => updateArtComponentValue("borderWidth", Math.max(0, value))));
       fields.appendChild(artNumberField("Radius", component.borderRadius || 0, (value) => updateArtComponentValue("borderRadius", Math.max(0, value))));
     }
+    if (artComponentSupportsImageMask(component)) {
+      fields.appendChild(artImageMaskField(component));
+    }
   } else {
     fields.appendChild(artTextField("Name", composition.name || "Art Asset", (value) => updateArtCompositionValue("name", value || "Art Asset")));
     fields.appendChild(artNumberField("Canvas Width", composition.canvas?.width || 560, (value) => updateArtCompositionCanvas("width", Math.max(1, value))));
@@ -853,6 +899,54 @@ function artColorField(label, value, onChange) {
   return field;
 }
 
+function artImageMaskField(component) {
+  const field = document.createElement("section");
+  field.className = "art-image-mask-field";
+  const label = document.createElement("strong");
+  label.textContent = "Image Mask";
+  const status = document.createElement("span");
+  status.className = "art-image-mask-status";
+  status.textContent = component.imageName ? `Current: ${component.imageName}` : "Drop or upload PNG, SVG, JPG, or WEBP";
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = artComponentImageAccept;
+  input.className = "art-file-input";
+  const actions = document.createElement("div");
+  actions.className = "art-image-mask-actions";
+  const uploadButton = document.createElement("button");
+  uploadButton.type = "button";
+  uploadButton.textContent = component.imageDataUrl ? "Replace Image" : "Upload Image";
+  uploadButton.addEventListener("click", () => input.click());
+  const clearButton = document.createElement("button");
+  clearButton.type = "button";
+  clearButton.textContent = "Clear";
+  clearButton.disabled = !component.imageDataUrl;
+  clearButton.addEventListener("click", () => clearArtComponentImage(component));
+  actions.append(uploadButton, clearButton);
+  input.addEventListener("change", () => {
+    stageArtComponentImageFile(component, input.files?.[0]).finally(() => {
+      input.value = "";
+    });
+  });
+  field.addEventListener("dragover", (event) => {
+    if (!artDragEventHasFiles(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    field.classList.add("is-dragging");
+  });
+  field.addEventListener("dragleave", (event) => {
+    if (!field.contains(event.relatedTarget)) field.classList.remove("is-dragging");
+  });
+  field.addEventListener("drop", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    field.classList.remove("is-dragging");
+    stageArtComponentImageFile(component, event.dataTransfer?.files?.[0]);
+  });
+  field.append(label, status, actions, input);
+  return field;
+}
+
 function updateArtComponentNumber(key, value, options = {}) {
   const components = selectedArtComponents();
   const primary = selectedEditableArtComponent();
@@ -921,6 +1015,73 @@ function updateArtShapeStyle(shapeStyle, options = {}) {
     component.height = size;
     component.borderRadius = 999;
   }
+  renderSelectedArtComposition();
+  renderArtList();
+  updateGlobalSaveButton();
+}
+
+function artDragEventHasFiles(event) {
+  return Array.from(event.dataTransfer?.types || []).includes("Files");
+}
+
+function validateArtComponentImageFile(file) {
+  if (!file) return "Choose an image file first.";
+  if (!artComponentImageTypes.has(file.type)) return "Use PNG, SVG, JPG, or WEBP.";
+  if (file.size <= 0 || file.size > artComponentImageMaxBytes) return "Image masks must be under 5 MB.";
+  return "";
+}
+
+function readArtComponentImageDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => reject(new Error("Could not read image file.")));
+    reader.readAsDataURL(file);
+  });
+}
+
+function currentArtComponentForImageUpdate(component) {
+  const composition = selectedArtComposition();
+  if (!composition || !component?.id) return null;
+  return findArtComponent(composition, component.id)?.component || null;
+}
+
+async function stageArtComponentImageFile(component, file) {
+  const target = currentArtComponentForImageUpdate(component);
+  if (!artComponentSupportsImageMask(target)) {
+    artFileName.textContent = "Select a shape component first";
+    return;
+  }
+  const validationError = validateArtComponentImageFile(file);
+  if (validationError) {
+    artFileName.textContent = validationError;
+    return;
+  }
+  try {
+    const dataUrl = await readArtComponentImageDataUrl(file);
+    pushArtHistory();
+    target.imageDataUrl = dataUrl;
+    target.imageName = file.name || "Uploaded image";
+    target.imageMimeType = file.type;
+    target.imageObjectFit = target.imageObjectFit || "cover";
+    artFileName.textContent = `Masked image: ${target.imageName}`;
+    renderSelectedArtComposition();
+    renderArtList();
+    updateGlobalSaveButton();
+  } catch (error) {
+    artFileName.textContent = error.message;
+  }
+}
+
+function clearArtComponentImage(component) {
+  const target = currentArtComponentForImageUpdate(component);
+  if (!target?.imageDataUrl) return;
+  pushArtHistory();
+  target.imageDataUrl = "";
+  target.imageName = "";
+  target.imageMimeType = "";
+  target.imageObjectFit = "cover";
+  artFileName.textContent = "Image mask cleared";
   renderSelectedArtComposition();
   renderArtList();
   updateGlobalSaveButton();

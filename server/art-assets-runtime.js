@@ -20,6 +20,8 @@ function createArtAssetsRuntime({
   const knownCompositionIds = new Set(artCompositions.map((composition) => composition.id));
   const allowedComponentKinds = new Set(["text", "shape", "container", "badge"]);
   const allowedShapeStyles = new Set(["rectangle", "rounded", "pill", "circle"]);
+  const allowedImageObjectFits = new Set(["cover", "contain", "fill"]);
+  const componentImageMaxBytes = 5 * 1024 * 1024;
 
   function readArtManifest() {
     try {
@@ -74,6 +76,10 @@ function createArtAssetsRuntime({
     return text.slice(0, maxLength);
   }
 
+  function cleanImageName(value, fallback = "Uploaded image") {
+    return cleanText(path.basename(String(value || fallback)), fallback, 180);
+  }
+
   function normalizeComponentKind(value, fallback = "shape") {
     const kind = String(value || fallback || "shape").trim().toLowerCase();
     return allowedComponentKinds.has(kind) ? kind : "shape";
@@ -84,6 +90,22 @@ function createArtAssetsRuntime({
     if (kind === "container") return "Container";
     if (kind === "badge") return "Badge";
     return "Shape";
+  }
+
+  function normalizeComponentImageMask(source = {}, base = {}) {
+    const dataUrl = String(source.imageDataUrl || base.imageDataUrl || "").trim();
+    if (!dataUrl) return null;
+    const match = dataUrl.match(/^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/);
+    if (!match || !acceptedArtTypes[match[1]]) return null;
+    const buffer = Buffer.from(match[2], "base64");
+    if (buffer.length === 0 || buffer.length > componentImageMaxBytes) return null;
+    const imageObjectFit = String(source.imageObjectFit || base.imageObjectFit || "cover").trim().toLowerCase();
+    return {
+      imageDataUrl: dataUrl,
+      imageName: cleanImageName(source.imageName, base.imageName || "Uploaded image"),
+      imageMimeType: match[1],
+      imageObjectFit: allowedImageObjectFits.has(imageObjectFit) ? imageObjectFit : "cover"
+    };
   }
 
   function normalizeComponent(component, fallback = {}) {
@@ -114,6 +136,10 @@ function createArtAssetsRuntime({
       normalized.borderColor = cleanColor(source.borderColor, base.borderColor || "transparent");
       normalized.borderWidth = cleanNumber(source.borderWidth, Number(base.borderWidth || 0), 0, 80);
       normalized.borderRadius = cleanNumber(source.borderRadius, Number(base.borderRadius || 0), 0, 999);
+    }
+    if (kind === "shape") {
+      const imageMask = normalizeComponentImageMask(source, base);
+      if (imageMask) Object.assign(normalized, imageMask);
     }
 
     const fallbackChildren = new Map((Array.isArray(base.children) ? base.children : []).map((child) => [child.id, child]));
@@ -269,7 +295,7 @@ function createArtAssetsRuntime({
 
     let payload;
     try {
-      payload = await readJson(req);
+      payload = await readJson(req, 8 * 1024 * 1024);
     } catch (error) {
       sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
       return;
