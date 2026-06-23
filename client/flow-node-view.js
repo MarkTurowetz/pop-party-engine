@@ -10,21 +10,13 @@ function renderFlowNodeView() {
       flowNodeDepth = "moments";
       renderFlowMomentNodes();
     } else {
-      renderFlowActionNodes();
+      getFlowActionNodeRenderer()?.render();
     }
   }
   applyFlowNodeZoom();
   scheduleFlowNodeWireRedraw();
   renderFlowNodeInspector();
   renderFlowActions();
-}
-
-function flowNodeClassForAction(action) {
-  if (action.type === "decision") return "is-decision";
-  if (action.type === "jumpNode") return "is-jump";
-  if (actionTypeMeta(action.type).category === "input") return "is-input";
-  if (action.type === "transition" || action.type === "transitionState") return "is-transition";
-  return "is-standard";
 }
 
 function defaultNodePosition(index, columns = 3, startX = 80, startY = 80, gapX = 380, gapY = 230) {
@@ -279,53 +271,8 @@ function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x
   return node;
 }
 
-function actionNodeIsSelected(action) {
-  return flowActionIsSelected(action.id)
-    || (action.subActions || []).some((subAction) => flowActionIsSelected(subAction.id))
-    || (action.type === "decision" && ensureDecisionBranches(action).some((branch) => flowActionIsSelected(branch.id)));
-}
-
 function bindFlowNodeChildSort(item, parentAction, collectionName, childId) {
   getFlowNodeChildSortController()?.bind(item, parentAction, collectionName, childId);
-}
-
-function createFlowNodeSubActions(state, parentAction) {
-  const subActions = parentAction.subActions || [];
-  if (!subActions.length) return null;
-  const list = document.createElement("div");
-  list.className = "flow-node-subactions";
-  for (const subAction of subActions) {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "flow-node-subaction";
-    item.classList.toggle("is-selected", flowActionIsSelected(subAction.id));
-    const title = document.createElement("strong");
-    title.textContent = subAction.name || "Sub-Action";
-    const meta = document.createElement("div");
-    meta.className = "flow-node-subaction-meta";
-    const timing = document.createElement("span");
-    timing.textContent = actionTimingLabel(subAction, true);
-    meta.appendChild(timing);
-    const valueBadge = actionValueBadge(subAction);
-    if (valueBadge?.text) {
-      const badge = document.createElement("span");
-      badge.className = `flow-node-value-badge ${valueBadge.className || ""}`.trim();
-      badge.textContent = valueBadge.text;
-      meta.appendChild(badge);
-    }
-    item.append(title, meta);
-    bindFlowNodeChildSort(item, parentAction, "subActions", subAction.id);
-    item.addEventListener("pointerdown", (event) => event.stopPropagation());
-    item.addEventListener("click", (event) => {
-      event.stopPropagation();
-      selectedFlowStateId = state.id;
-      expandFlowStateInList(state.id);
-      selectFlowAction(subAction.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
-      renderFlowTool();
-    });
-    list.appendChild(item);
-  }
-  return list;
 }
 
 function createFlowNodeBranches(state, action, options = {}) {
@@ -395,107 +342,6 @@ function bindFlowNodeDrag(node, item, { afterDrag = null } = {}) {
 
 function startFlowNodeMarquee(event) {
   return getFlowNodeMarqueeController()?.start(event);
-}
-
-function renderFlowActionNodes() {
-  const state = flowState(selectedFlowStateId);
-  if (!state) return;
-  nodeBackButton.disabled = false;
-  nodeViewHelp.textContent = `Inside ${state.name}. Click nodes for properties; drag exit dots to connect actions.`;
-  const actionNodes = new Map();
-  const jumpTargetIds = new Set((state.actions || [])
-    .filter((action) => action.type === "jumpNode" && actionNodeIsSelected(action))
-    .map((action) => action.jumpTargetActionId || "")
-    .filter((targetId) => targetId && !isNoFlowTarget(targetId)));
-  const startModel = systemNodeModel(state, "start");
-  const startPosition = savedNodePosition(startModel, { x: 70, y: 70 });
-  const startNode = createFlowNode({
-    id: "start",
-    title: "Start",
-    subtitle: state.entryTargetActionId ? `Entry -> ${flowTargetActionName(state.entryTargetActionId)}` : "Moment entry",
-    x: startPosition.x,
-    y: startPosition.y,
-    width: 170,
-    height: 86,
-    className: "is-return",
-    selected: flowActionIsSelected("start")
-  });
-  startNode.querySelector(".flow-node-main")?.appendChild(createFlowStartPorts(state));
-  bindFlowNodeDrag(startNode, startModel);
-  startNode.addEventListener("click", (event) => {
-    selectedFlowStateId = state.id;
-    expandFlowStateInList(state.id);
-    selectFlowAction("start", { additive: event.metaKey || event.ctrlKey || event.shiftKey });
-    renderFlowTool();
-  });
-  startNode.addEventListener("dblclick", () => {
-    flowNodeDepth = "moments";
-    clearFlowActionSelection();
-    renderFlowTool();
-  });
-  flowNodeLayer.appendChild(startNode);
-  for (const [index, action] of (state.actions || []).entries()) {
-    const fallback = defaultNodePosition(index, 3, 340, 70, 360, 230);
-    const { x, y } = savedNodePosition(action, fallback);
-    const node = createFlowNode({
-      id: action.id,
-      title: action.name || `Action ${index + 1}`,
-      subtitle: `${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`,
-      timing: action.type === "decision" || action.type === "jumpNode" ? "" : actionTimingLabel(action, false),
-      valueBadge: actionValueBadge(action),
-      x,
-      y,
-      width: action.type === "decision" ? 320 : 260,
-      height: 134,
-      className: flowNodeClassForAction(action),
-      selected: actionNodeIsSelected(action),
-      jumpTarget: jumpTargetIds.has(action.id)
-    });
-    node.dataset.actionId = action.id;
-    const childList = action.type === "decision"
-      ? createFlowNodeBranches(state, action)
-      : createFlowNodeSubActions(state, action);
-    if (childList) node.appendChild(childList);
-    if (action.type !== "decision" && action.type !== "jumpNode") node.querySelector(".flow-node-main")?.appendChild(createFlowNodePorts(action));
-    bindFlowNodeDrag(node, action);
-    node.addEventListener("click", (event) => {
-      selectedFlowStateId = state.id;
-      expandFlowStateInList(state.id);
-      selectFlowAction(action.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
-      renderFlowTool();
-    });
-    flowNodeLayer.appendChild(node);
-    actionNodes.set(action.id, node);
-  }
-  const returnModel = systemNodeModel(state, "return");
-  const returnPosition = savedNodePosition(returnModel, { x: 1240, y: 720 });
-  const returnNode = createFlowNode({
-    id: "return",
-    title: "Return",
-    subtitle: "Back to moments",
-    x: returnPosition.x,
-    y: returnPosition.y,
-    width: 190,
-    height: 92,
-    className: "is-return",
-    selected: flowActionIsSelected("return"),
-    jumpTarget: jumpTargetIds.has("return")
-  });
-  returnNode.dataset.actionId = "return";
-  bindFlowNodeDrag(returnNode, returnModel);
-  returnNode.addEventListener("click", (event) => {
-    selectedFlowStateId = state.id;
-    expandFlowStateInList(state.id);
-    selectFlowAction("return", { additive: event.metaKey || event.ctrlKey || event.shiftKey });
-    renderFlowTool();
-  });
-  returnNode.addEventListener("dblclick", () => {
-    flowNodeDepth = "moments";
-    clearFlowActionSelection();
-    renderFlowTool();
-  });
-  flowNodeLayer.appendChild(returnNode);
-  scheduleFlowNodeWireRedraw();
 }
 
 function isNoFlowTarget(value) {

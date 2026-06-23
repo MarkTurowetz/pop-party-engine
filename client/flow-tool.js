@@ -54,6 +54,12 @@ function flowActionIsSelected(actionId) {
   return selectedFlowActionIds.has(actionId) || selectedFlowActionId === actionId;
 }
 
+function actionNodeIsSelected(action) {
+  return flowActionIsSelected(action.id)
+    || (action.subActions || []).some((subAction) => flowActionIsSelected(subAction.id))
+    || (action.type === "decision" && ensureDecisionBranches(action).some((branch) => flowActionIsSelected(branch.id)));
+}
+
 function primaryFlowActionIdForSelection(actionId) {
   const ref = flowActionRef(selectedFlowStateId, actionId);
   return ref?.parentAction?.id || ref?.action?.id || "";
@@ -329,6 +335,7 @@ let flowNodeWireRenderer = null;
 let flowMomentRouteGraph = null;
 let flowMomentRouteRenderer = null;
 let flowMomentRouteWires = null;
+let flowActionNodeRenderer = null;
 let flowActionNodeWires = null;
 
 function getFlowFormControls() {
@@ -412,6 +419,47 @@ function getFlowMomentRouteWires() {
     });
   }
   return flowMomentRouteWires;
+}
+
+function getFlowActionNodeRenderer() {
+  if (!flowActionNodeRenderer && window.PartyGameFlowActionNodeRenderer) {
+    flowActionNodeRenderer = window.PartyGameFlowActionNodeRenderer.createActionNodeRenderer({
+      actionCategoryName,
+      actionNodeIsSelected,
+      actionTimingLabel,
+      actionTypeMeta,
+      actionValueBadge,
+      bindFlowNodeChildSort,
+      bindFlowNodeDrag,
+      clearFlowActionSelection,
+      createFlowNode,
+      createFlowNodeBranches,
+      createFlowNodePorts,
+      createFlowStartPorts,
+      defaultNodePosition,
+      expandFlowStateInList,
+      flowActionIsSelected,
+      flowNodeLayer: () => flowNodeLayer,
+      flowState,
+      flowTargetActionName,
+      isNoFlowTarget,
+      nodeBackButton: () => nodeBackButton,
+      nodeViewHelp: () => nodeViewHelp,
+      renderFlowTool,
+      savedNodePosition,
+      scheduleFlowNodeWireRedraw,
+      selectFlowAction,
+      selectedFlowStateId: () => selectedFlowStateId,
+      setFlowNodeDepth: (depth) => {
+        flowNodeDepth = depth;
+      },
+      setSelectedFlowStateId: (stateId) => {
+        selectedFlowStateId = stateId;
+      },
+      systemNodeModel
+    });
+  }
+  return flowActionNodeRenderer;
 }
 
 function getFlowActionNodeWires() {
