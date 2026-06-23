@@ -127,6 +127,7 @@
       element.style.width = `${Number(component.width || 1) / canvasWidth * 100}%`;
       element.style.height = `${Number(component.height || 1) / canvasHeight * 100}%`;
       element.style.setProperty("--component-scale", Number(component.scale || 1));
+      element.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
       element.style.setProperty("--component-font-size", `${Number(component.fontSize || 16)}px`);
       element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
       element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
@@ -306,6 +307,7 @@
       badge.style.width = `${Number(component.width || 112)}px`;
       badge.style.minHeight = `${Number(component.height || 32)}px`;
       badge.style.setProperty("--component-scale", Number(component.scale || 1));
+      badge.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
       badge.style.setProperty("--component-font-size", `${Number(component.fontSize || 15)}px`);
       badge.style.setProperty("--component-text-color", component.fontColor || "#17131f");
       badge.style.setProperty("--component-fill-color", component.fillColor || "#fff8d6");

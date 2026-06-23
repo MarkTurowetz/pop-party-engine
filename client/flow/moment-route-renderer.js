@@ -155,6 +155,7 @@
         context.refreshFlowNodeInspectorChange?.();
       }, context.refreshFlowNodeInspectorChange) || document.createTextNode(""));
       context.appendDecisionControls?.(inspector, state, routeNode, routeInspectorChangeHandlers().decisionChange, {
+        includeBranchPanels: false,
         targetField: routeBranchTargetField(),
         targetOptions: routeTargetOptions(routeNode)
       });
@@ -178,6 +179,7 @@
         nextTargetLabel: "Next",
         targetOptions: routeTargetOptions(routeNode),
         includeSubActionButton: false,
+        includeDecisionBranchPanels: false,
         stopAfterDecision: true
       });
     }

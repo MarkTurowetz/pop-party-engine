@@ -146,6 +146,7 @@
       fields.appendChild(numberField("X", component.x, (value) => options.onUpdateComponentNumber?.("x", value)));
       fields.appendChild(numberField("Y", component.y, (value) => options.onUpdateComponentNumber?.("y", value)));
       fields.appendChild(numberField("Scale", component.scale, (value) => options.onUpdateComponentNumber?.("scale", Math.max(0.05, value)), 0.05));
+      fields.appendChild(numberField("Rotation", component.rotation || 0, (value) => options.onUpdateComponentNumber?.("rotation", value)));
       fields.appendChild(numberField("Width", component.width, (value) => options.onUpdateComponentNumber?.("width", Math.max(1, value))));
       fields.appendChild(numberField("Height", component.height, (value) => options.onUpdateComponentNumber?.("height", Math.max(1, value))));
       if (component.kind === "text" || component.kind === "badge") {

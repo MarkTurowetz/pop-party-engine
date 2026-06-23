@@ -263,7 +263,7 @@ function artAssetUrl(assetId) {
 function dinoIcon(shape) {
   const species = avatarAssetIds[shape] ? shape : "rex";
   const url = artAssetUrl(avatarAssetIds[species]);
-  return `<span class="dino-icon dino-${species}" style="--dino-url:${cssUrl(url)}"></span>`;
+  return `<span class="avatar-dino-mask dino-icon dino-${species}" style="--dino-url:${cssUrl(url)}"><span class="avatar-dino-mask-image"></span></span>`;
 }
 
 function avatarFrameImage() {

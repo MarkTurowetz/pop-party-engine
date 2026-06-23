@@ -182,17 +182,15 @@
         action.valueType = value;
         rerender();
       }));
-      target.appendChild(context.readOnlyFlowNote("Branches are evaluated in order. The required No Match branch acts like an else statement."));
-      const branches = context.ensureDecisionBranches(action, options);
-      branches.forEach((branch, index) => {
-        appendDecisionBranchControls(target, state, action, branch, index, rerender, options);
-      });
-      target.appendChild(context.flowActionButton("+ Hit Branch", () => {
+      if (options.includeBranchPanels !== false) {
+        target.appendChild(context.readOnlyFlowNote("Branches are evaluated in order. The required No Match branch acts like an else statement."));
+        const branches = context.ensureDecisionBranches(action, options);
+        branches.forEach((branch, index) => {
+          appendDecisionBranchControls(target, state, action, branch, index, rerender, options);
+        });
+      }
+      target.appendChild(context.flowActionButton("Add Branch", () => {
         addDecisionBranch(action, "hit", options);
-        rerender();
-      }));
-      target.appendChild(context.flowActionButton("+ Code Branch", () => {
-        addDecisionBranch(action, "code", options);
         rerender();
       }));
     }

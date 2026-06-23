@@ -38,6 +38,7 @@
         refresh,
         controlChange,
         decisionChange,
+        includeBranchPanels: options.includeDecisionBranchPanels !== false,
         decisionTargetField,
         targetOptions,
         stopAfterDecision: options.stopAfterDecision !== false
@@ -330,6 +331,7 @@
     function appendDecisionActionControls(target, state, action, handlers) {
       const targetField = handlers.decisionTargetField || "targetActionId";
       context.appendDecisionControls(target, state, action, handlers.decisionChange, {
+        includeBranchPanels: handlers.includeBranchPanels,
         targetField,
         targetOptions: (stateForOptions, actionForOptions, selectedTarget) => handlers.targetOptions(stateForOptions, actionForOptions, selectedTarget || "")
       });

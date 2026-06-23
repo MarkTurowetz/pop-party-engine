@@ -15,6 +15,7 @@
     element.style.width = `${Number(component.width || 1) / canvasWidth * 100}%`;
     element.style.height = `${Number(component.height || 1) / canvasHeight * 100}%`;
     element.style.setProperty("--component-scale", Number(component.scale || 1));
+    element.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
     element.style.setProperty("--component-font-size", `${Number(component.fontSize || 16)}px`);
     element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
     element.style.setProperty("--component-fill-color", component.fillColor || "transparent");

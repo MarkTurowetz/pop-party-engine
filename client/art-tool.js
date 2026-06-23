@@ -10,6 +10,7 @@ let selectedArtCompositionId = "";
 let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
 let draggedArtComponentId = "";
+let artCreateKindMenu = null;
 const artComponentSchema = window.PartyGameArtComponentSchema;
 const artComponentTree = window.PartyGameArtComponentTree;
 const artToolUi = window.PartyGameArtToolUi;
@@ -45,6 +46,7 @@ function serializeArtComponentForSave(component) {
     width: Number(Number(component.width || 1).toFixed(3)),
     height: Number(Number(component.height || 1).toFixed(3)),
     scale: Number(Number(component.scale || 1).toFixed(3)),
+    rotation: Number(Number(component.rotation || 0).toFixed(3)),
     defaultText: component.defaultText || "",
     fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
     fontColor: component.fontColor || "#17131f",
@@ -496,6 +498,7 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
   node.style.width = `${Number(component.width || 1) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
   node.style.height = `${Number(component.height || 1) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
   node.style.setProperty("--component-scale", Number(component.scale || 1));
+  node.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
   node.style.setProperty("--component-font-size", `${Number(component.fontSize || 16)}px`);
   node.style.setProperty("--component-text-color", component.fontColor || "#17131f");
   node.style.setProperty("--component-fill-color", component.fillColor || "transparent");
@@ -569,8 +572,9 @@ function startArtSelectionMarquee(event) {
   const additiveSelection = event.metaKey || event.ctrlKey || event.shiftKey;
   const baseSelection = additiveSelection ? new Set(selectedArtComponentIds) : new Set();
   return window.PartyGameToolAffordances?.startSelectionMarquee(event, {
-    root: artPreviewArt,
+    root: artPreviewStage,
     itemRoot: artPreviewArt,
+    marqueeRoot: artPreviewStage,
     className: "art-selection-marquee",
     itemSelector: ".art-composition-component",
     getItemId: (node) => node.dataset.componentId,
@@ -888,6 +892,7 @@ function defaultArtObject(kind, bounds = {}) {
     width,
     height,
     scale: 1,
+    rotation: 0,
     children: []
   };
   if (cleanKind === "text") {
@@ -910,8 +915,8 @@ function defaultArtObject(kind, bounds = {}) {
   return component;
 }
 
-function createArtAssetComposition() {
-  const kind = normalizeArtCreateKind(artCreateKindSelect?.value);
+function createArtAssetComposition(kind = "shape") {
+  kind = normalizeArtCreateKind(kind);
   pushArtHistory();
   const composition = {
     id: createSecureArtId("art"),
@@ -936,10 +941,10 @@ function createArtAssetComposition() {
   updateGlobalSaveButton();
 }
 
-function createArtChildObject() {
+function createArtChildObject(kind = "shape") {
   const composition = selectedArtComposition();
   if (!composition) return;
-  const kind = normalizeArtCreateKind(artCreateKindSelect?.value);
+  kind = normalizeArtCreateKind(kind);
   pushArtHistory();
   const parent = selectedEditableArtComponent();
   const bounds = parent
@@ -966,6 +971,51 @@ function createArtChildObject() {
 function updateArtCreateButtons() {
   if (!artCreateChildButton) return;
   artCreateChildButton.disabled = !selectedArtComposition();
+}
+
+function closeArtCreateKindMenu() {
+  artCreateKindMenu?.remove();
+  artCreateKindMenu = null;
+}
+
+function artCreateKindChoices() {
+  return [
+    { kind: "text", label: "Text" },
+    { kind: "shape", label: "Shape" },
+    { kind: "container", label: "Container" }
+  ];
+}
+
+function openArtCreateKindMenu(anchor, onChoose) {
+  if (!anchor) return;
+  closeArtCreateKindMenu();
+  const menu = document.createElement("div");
+  menu.className = "art-create-kind-menu";
+  menu.setAttribute("role", "menu");
+  for (const choice of artCreateKindChoices()) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("role", "menuitem");
+    button.textContent = choice.label;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeArtCreateKindMenu();
+      onChoose?.(choice.kind);
+    });
+    menu.appendChild(button);
+  }
+  document.body.appendChild(menu);
+  const rect = anchor.getBoundingClientRect();
+  menu.style.left = `${Math.round(rect.left)}px`;
+  menu.style.top = `${Math.round(rect.bottom + 6)}px`;
+  artCreateKindMenu = menu;
+  const closeOnOutside = (event) => {
+    if (menu.contains(event.target) || event.target === anchor) return;
+    closeArtCreateKindMenu();
+    document.removeEventListener("pointerdown", closeOnOutside, true);
+  };
+  requestAnimationFrame(() => document.addEventListener("pointerdown", closeOnOutside, true));
 }
 
 async function saveArtCompositions() {
@@ -1055,10 +1105,10 @@ async function setupArtTool() {
   artToolInitialized = true;
   artReplaceButton.addEventListener("click", () => artFileInput.click());
   artCancelButton.addEventListener("click", cancelArtReplacement);
-  artCreateButton.addEventListener("click", createArtAssetComposition);
-  artCreateChildButton.addEventListener("click", createArtChildObject);
+  artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition));
+  artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject));
   window.addEventListener("keydown", handleArtHotkeys);
-  artPreviewArt.addEventListener("pointerdown", startArtSelectionMarquee);
+  artPreviewStage.addEventListener("pointerdown", startArtSelectionMarquee);
   artSaveCompositionButton.addEventListener("click", () => saveArtCompositions().catch((error) => {
     artFileName.textContent = error.message;
   }));

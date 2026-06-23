@@ -914,7 +914,7 @@
       background: var(--paper);
       box-shadow: var(--shadow);
       text-align: left;
-      transform: translate(-50%, -50%) scale(var(--component-scale, 1));
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       opacity: 1;
       transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease, background 400ms ease;
       background: var(--component-fill-color, var(--paper));
@@ -930,7 +930,7 @@
 
     .voting-card.is-loser {
       opacity: 0.45;
-      transform: translate(-50%, -50%) scale(calc(var(--component-scale, 1) * 0.97));
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(calc(var(--component-scale, 1) * 0.97));
     }
 
     .voting-card-author {
@@ -945,7 +945,7 @@
       letter-spacing: 0.06em;
       color: var(--component-text-color, var(--purple-muted));
       opacity: 1;
-      transform: translate(-50%, -50%) scale(var(--component-scale, 1));
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       transform-origin: center;
       transition: opacity 300ms ease, transform 300ms ease;
       overflow: hidden;
@@ -953,7 +953,7 @@
 
     .voting-card-widget-hidden {
       opacity: 0;
-      transform: translate(-50%, -50%) scale(0);
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(0);
       pointer-events: none;
     }
 
@@ -970,7 +970,7 @@
       overflow-wrap: anywhere;
       color: var(--component-text-color, var(--ink));
       text-align: center;
-      transform: translate(-50%, -50%) scale(var(--component-scale, 1));
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       transform-origin: center;
     }
 
@@ -993,7 +993,7 @@
       border-color: var(--component-border-color, var(--ink));
       border-width: var(--component-border-width, 3px);
       border-radius: var(--component-border-radius, 999px);
-      transform: translate(-50%, -50%) scale(var(--component-scale, 1));
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
     }
 
     .voting-card-voters {
@@ -1013,7 +1013,7 @@
       border-style: solid;
       border-width: var(--component-border-width, 0);
       border-radius: var(--component-border-radius, 0);
-      transform: translate(-50%, -50%) scale(var(--component-scale, 1));
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       transform-origin: center;
       opacity: 1;
       transition: opacity 300ms ease, transform 300ms ease;
@@ -1031,7 +1031,7 @@
       font-weight: 800;
       color: var(--component-text-color, var(--ink));
       opacity: 1;
-      transform: scale(var(--component-scale, 1));
+      transform: rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       transform-origin: center;
       transition: opacity 200ms ease, transform 200ms cubic-bezier(0.19, 1, 0.22, 1);
       background: var(--component-fill-color, var(--paper));
@@ -1042,7 +1042,7 @@
 
     .voting-card-vote-hidden {
       opacity: 0;
-      transform: scale(0);
+      transform: rotate(var(--component-rotation, 0deg)) scale(0);
       pointer-events: none;
     }
 
@@ -1093,7 +1093,7 @@
       line-height: 1;
       text-align: center;
       text-transform: uppercase;
-      transform: translate(-50%, -50%) scale(var(--component-scale, 1));
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       transform-origin: center;
       opacity: 1;
       transition: opacity 500ms ease, transform 500ms cubic-bezier(0.19, 1, 0.22, 1);
@@ -1155,7 +1155,7 @@
     .art-runtime-object-hidden,
     .art-runtime-object-exiting {
       opacity: 0;
-      transform: translate(-50%, -50%) scale(0);
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(0);
       pointer-events: none;
     }
 
@@ -1169,9 +1169,9 @@
     }
 
     @keyframes artRuntimeObjectUpdate {
-      0% { transform: translate(-50%, -50%) scale(calc(var(--component-scale, 1) * 1)); }
-      40% { transform: translate(-50%, -50%) scale(calc(var(--component-scale, 1) * 1.2)); }
-      100% { transform: translate(-50%, -50%) scale(var(--component-scale, 1)); }
+      0% { transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(calc(var(--component-scale, 1) * 1)); }
+      40% { transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(calc(var(--component-scale, 1) * 1.2)); }
+      100% { transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1)); }
     }
 
     .pause-menu {
@@ -1388,16 +1388,25 @@
       transform-origin: center;
     }
 
+    .avatar-dino-mask,
     .dino-icon {
       position: relative;
       z-index: 1;
       width: 70%;
       height: 70%;
       display: block;
+      overflow: hidden;
+      border-radius: 0;
       background: currentColor;
       -webkit-mask: var(--dino-url) center / contain no-repeat;
       mask: var(--dino-url) center / contain no-repeat;
       filter: drop-shadow(3px 3px 0 rgba(23, 19, 31, 0.5));
+    }
+
+    .avatar-dino-mask-image {
+      position: absolute;
+      inset: 0;
+      background: currentColor;
     }
 
     .avatar-frame-art {
@@ -2362,7 +2371,7 @@
     .art-composition-component {
       position: absolute;
       display: block;
-      transform: translate(-50%, -50%) scale(var(--component-scale, 1));
+      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       transform-origin: center;
       border: 2px dashed rgba(23, 19, 31, 0.45);
       color: var(--component-text-color, var(--ink));
@@ -2488,6 +2497,35 @@
 
     .art-component-row.is-selected {
       background: var(--cyan);
+    }
+
+    .art-create-kind-menu {
+      position: fixed;
+      z-index: 120;
+      display: grid;
+      gap: 6px;
+      min-width: 150px;
+      padding: 8px;
+      border: 4px solid var(--ink);
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: 7px 7px 0 rgba(23, 19, 31, 0.35);
+    }
+
+    .art-create-kind-menu button {
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 1000;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .art-create-kind-menu button:hover,
+    .art-create-kind-menu button:focus-visible {
+      background: var(--yellow);
     }
 
     .art-image-mask-field {
@@ -4535,11 +4573,6 @@
           <h1>Art Assets</h1>
           <p>Select an asset to preview it, replace it, or save a staged swap.</p>
           <div class="art-create-controls">
-            <select id="artCreateKindSelect" aria-label="Art object type">
-              <option value="text">Text</option>
-              <option value="shape">Shape</option>
-              <option value="container">Container</option>
-            </select>
             <button class="secondary-button" id="artCreateButton" type="button">Create</button>
             <button class="secondary-button" id="artCreateChildButton" type="button" disabled>Create Child</button>
           </div>

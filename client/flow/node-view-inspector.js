@@ -32,6 +32,7 @@
           softChange();
         },
         includeSubActionButton,
+        includeDecisionBranchPanels: false,
         excludeNextActionTypes: ["voteOnAnswersInput"]
       });
     }

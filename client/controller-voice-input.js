@@ -14,6 +14,7 @@
     submitText
   }) {
     let lifecycle = null;
+    const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
 
     function setButtonState(isBusy) {
       if (!isBusy) {
@@ -61,7 +62,38 @@
       status.textContent = "Hold to record";
     }
 
-    function beginRecording(actionId) {
+    function hasRememberedMicrophoneAccess() {
+      try {
+        return localStorage.getItem(rememberedAccessKey) === "true";
+      } catch (error) {
+        return false;
+      }
+    }
+
+    async function canRecordWithMicrophone() {
+      try {
+        const permission = await navigator.permissions?.query?.({ name: "microphone" });
+        if (permission?.state === "granted") {
+          try {
+            localStorage.setItem(rememberedAccessKey, "true");
+          } catch (error) {
+            // Storage can be unavailable in private browsing modes.
+          }
+          return true;
+        }
+        if (permission?.state === "denied") return false;
+      } catch (error) {
+        // Some browsers do not expose microphone permission state.
+      }
+      return hasRememberedMicrophoneAccess();
+    }
+
+    async function beginRecording(actionId) {
+      if (!(await canRecordWithMicrophone())) {
+        status.textContent = "Give microphone access first";
+        button.disabled = false;
+        return;
+      }
       if (getLifecycle().begin(actionId)) {
         button.textContent = "Release To Send";
         button.disabled = false;

@@ -373,6 +373,17 @@ function toggleLayoutPreviewElement(elementId, stateId = selectedLayoutStateId) 
   renderLayoutPreview();
 }
 
+function setAllLayoutPreviewElementsHidden(stateId, hidden) {
+  const state = layoutGroup(stateId);
+  for (const element of state?.elements || []) {
+    const key = layoutPreviewHiddenKey(element.id, stateId);
+    if (hidden) layoutPreviewHiddenElements.add(key);
+    else layoutPreviewHiddenElements.delete(key);
+  }
+  renderLayoutElements();
+  renderLayoutPreview();
+}
+
 function layoutVisibilityToggle(elementId, stateId) {
   const button = document.createElement("button");
   button.type = "button";
@@ -384,6 +395,10 @@ function layoutVisibilityToggle(elementId, stateId) {
   button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+    if (event.metaKey || event.ctrlKey) {
+      setAllLayoutPreviewElementsHidden(stateId, !isLayoutPreviewElementHidden(elementId, stateId));
+      return;
+    }
     toggleLayoutPreviewElement(elementId, stateId);
   });
   return button;
