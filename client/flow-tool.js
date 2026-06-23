@@ -1260,31 +1260,101 @@ function removeDeletedFlowStateFromLayouts(stateId) {
   return removedStageLayout || removedControllerLayout;
 }
 
-function deleteFlowItem() {
-  if (!selectedFlowStateId) return;
-  if (selectedFlowActionId) {
-    const ref = flowActionRef(selectedFlowStateId, selectedFlowActionId);
-    if (ref) {
-      const index = ref.actions.findIndex((action) => action.id === selectedFlowActionId);
-      if (index >= 0) {
-        pushFlowHistory();
-        ref.actions.splice(index, 1);
-      }
+function flattenedFlowActionIds(actions = [], output = []) {
+  for (const action of actions || []) {
+    output.push(action.id);
+    for (const subAction of action.subActions || []) output.push(subAction.id);
+    if (action.type === "decision") {
+      for (const branch of ensureDecisionBranches(action)) output.push(branch.id);
     }
-    clearFlowActionSelection();
-    renderFlowTool();
-    return;
   }
-  if (selectedFlowStateId === "lobby" || selectedFlowStateId === "intro") return;
-  const deletedStateId = selectedFlowStateId;
+  return output;
+}
+
+function removeSelectedFlowActionsFromList(actions = [], selectedIds, removedIds = []) {
+  return (actions || []).filter((action) => {
+    if (selectedIds.has(action.id)) {
+      removedIds.push(action.id);
+      return false;
+    }
+    if (Array.isArray(action.subActions)) {
+      action.subActions = action.subActions.filter((subAction) => {
+        if (!selectedIds.has(subAction.id)) return true;
+        removedIds.push(subAction.id);
+        return false;
+      });
+    }
+    if (action.type === "decision" && Array.isArray(action.branches)) {
+      action.branches = action.branches.filter((branch) => {
+        if (!selectedIds.has(branch.id)) return true;
+        removedIds.push(branch.id);
+        return false;
+      });
+    }
+    return true;
+  });
+}
+
+function deleteSelectedFlowActions() {
+  const state = flowState(selectedFlowStateId);
+  if (!state) return false;
+  const selectedIds = new Set([...selectedFlowActionIds, selectedFlowActionId].filter(Boolean));
+  selectedIds.delete("start");
+  selectedIds.delete("return");
+  if (!selectedIds.size) return false;
+  const beforeIds = flattenedFlowActionIds(state.actions || []);
+  const firstDeletedIndex = beforeIds.findIndex((id) => selectedIds.has(id));
+  if (firstDeletedIndex < 0) return false;
+  const removedIds = [];
   pushFlowHistory();
-  gameFlow.states = gameFlow.states.filter((state) => state.id !== selectedFlowStateId);
-  removeDeletedFlowStateFromLayouts(deletedStateId);
-  selectedFlowStateId = gameFlow.states[0]?.id || "";
+  state.actions = removeSelectedFlowActionsFromList(state.actions || [], selectedIds, removedIds);
+  const afterIds = flattenedFlowActionIds(state.actions || []);
+  const nextId = afterIds[Math.min(firstDeletedIndex, afterIds.length - 1)] || afterIds[firstDeletedIndex - 1] || "";
+  setFlowActionSelection(nextId ? [nextId] : []);
+  renderFlowTool();
+  return removedIds.length > 0;
+}
+
+function flowStateIdsForDelete() {
+  const ids = new Set();
+  if (flowNodeDepth === "moments" && !selectedFlowActionId) {
+    for (const id of selectedFlowActionIds) ids.add(id);
+  }
+  if (selectedFlowStateId) ids.add(selectedFlowStateId);
+  return [...ids].filter((id) => id && id !== "lobby" && id !== "intro" && flowState(id));
+}
+
+function deleteSelectedFlowStates() {
+  const stateIds = flowStateIdsForDelete();
+  if (!stateIds.length) return false;
+  const stateIdSet = new Set(stateIds);
+  const firstDeletedIndex = gameFlow.states.findIndex((state) => stateIdSet.has(state.id));
+  pushFlowHistory();
+  gameFlow.states = gameFlow.states.filter((state) => !stateIdSet.has(state.id));
+  for (const stateId of stateIds) removeDeletedFlowStateFromLayouts(stateId);
+  selectedFlowStateId = gameFlow.states[Math.min(firstDeletedIndex, gameFlow.states.length - 1)]?.id
+    || gameFlow.states[firstDeletedIndex - 1]?.id
+    || gameFlow.states[0]?.id
+    || "";
   clearFlowActionSelection();
   expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();
   if (!layoutScreen.classList.contains("hidden")) renderLayoutTool();
+  return true;
+}
+
+function deleteFlowItem() {
+  if (!selectedFlowStateId) return;
+  if (flowNodeDepth === "moments" && !selectedFlowActionId && selectedFlowActionIds.size) {
+    if (deleteSelectedFlowStates()) return;
+  }
+  if (selectedFlowActionId || selectedFlowActionIds.size) {
+    if (deleteSelectedFlowActions()) return;
+    clearFlowActionSelection();
+    renderFlowTool();
+    return;
+  }
+  deleteSelectedFlowStates();
 }
 
 async function saveGameFlow() {

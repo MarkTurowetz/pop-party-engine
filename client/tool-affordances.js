@@ -49,6 +49,22 @@
     return Boolean(control && control !== root);
   }
 
+  function targetIsTextEditingControl(target, ignoreSelector = "input, textarea, select, [contenteditable='true']") {
+    return Boolean(target?.closest?.(ignoreSelector));
+  }
+
+  function handleToolDeleteHotkey(event, options = {}) {
+    if (event.key !== "Delete" && event.key !== "Backspace") return false;
+    if (event.metaKey || event.ctrlKey || event.altKey) return false;
+    if (typeof options.isEnabled === "function" && !options.isEnabled(event)) return false;
+    if (targetIsTextEditingControl(event.target, options.ignoreSelector)) return false;
+    if (typeof options.canDelete === "function" && !options.canDelete(event)) return false;
+    if (typeof options.onDelete !== "function") return false;
+    event.preventDefault();
+    options.onDelete(event);
+    return true;
+  }
+
   function bindToolRowActivation(row, onActivate, options = {}) {
     if (typeof onActivate !== "function") return row;
     const ignoreSelector = options.ignoreSelector;
@@ -233,8 +249,10 @@
     createToolAccordionRow,
     createDisclosureButton,
     createToolSidebarRow,
+    handleToolDeleteHotkey,
     rectsIntersect,
     startSelectionMarquee,
+    targetIsTextEditingControl,
     toggleCollapsedSetForIds
   };
   window.createDisclosureButton = createDisclosureButton;

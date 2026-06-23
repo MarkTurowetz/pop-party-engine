@@ -276,8 +276,6 @@ function redoLayoutChange() {
 
 function handleLayoutHotkeys(event) {
   if (layoutScreen.classList.contains("hidden")) return;
-  const tagName = event.target?.tagName?.toLowerCase();
-  const isEditingField = tagName === "input" || tagName === "textarea" || tagName === "select";
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
     event.preventDefault();
     if (event.shiftKey) {
@@ -287,10 +285,10 @@ function handleLayoutHotkeys(event) {
     }
     return;
   }
-  if (!isEditingField && (event.key === "Delete" || event.key === "Backspace")) {
-    event.preventDefault();
-    removeSelectedLayoutObject();
-  }
+  window.PartyGameToolAffordances?.handleToolDeleteHotkey(event, {
+    canDelete: () => selectedEditableLayoutElements().length > 0,
+    onDelete: removeSelectedLayoutObject
+  });
 }
 
 function fitLayoutStagePreview() {

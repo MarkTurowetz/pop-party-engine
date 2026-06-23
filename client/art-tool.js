@@ -110,13 +110,19 @@ function redoArtCompositionChange() {
 
 function handleArtHotkeys(event) {
   if (artScreen.classList.contains("hidden")) return;
-  if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
-  event.preventDefault();
-  if (event.shiftKey) {
-    redoArtCompositionChange();
-  } else {
-    undoArtCompositionChange();
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    if (event.shiftKey) {
+      redoArtCompositionChange();
+    } else {
+      undoArtCompositionChange();
+    }
+    return;
   }
+  window.PartyGameToolAffordances?.handleToolDeleteHotkey(event, {
+    canDelete: () => selectedArtComponentIds.size > 0,
+    onDelete: deleteSelectedArtComponents
+  });
 }
 
 function selectedArtComposition() {
@@ -537,6 +543,38 @@ function renderArtSelectionOnly() {
   renderArtList();
   renderArtComponentEditor();
   updateArtCreateButtons();
+}
+
+function removeSelectedArtComponentsFromList(components = [], selectedIds, removedIds = []) {
+  return (components || []).filter((component) => {
+    if (selectedIds.has(component.id)) {
+      removedIds.push(component.id);
+      return false;
+    }
+    if (Array.isArray(component.children)) {
+      component.children = removeSelectedArtComponentsFromList(component.children, selectedIds, removedIds);
+    }
+    return true;
+  });
+}
+
+function deleteSelectedArtComponents() {
+  const composition = selectedArtComposition();
+  const selectedIds = new Set(selectedArtComponentIds);
+  if (!composition || !selectedIds.size) return;
+  const beforeComponents = flattenArtComponents(composition.components || []).map(({ component }) => component.id);
+  const firstDeletedIndex = beforeComponents.findIndex((id) => selectedIds.has(id));
+  if (firstDeletedIndex < 0) return;
+  const removedIds = [];
+  pushArtHistory();
+  composition.components = removeSelectedArtComponentsFromList(composition.components || [], selectedIds, removedIds);
+  const afterComponents = flattenArtComponents(composition.components || []).map(({ component }) => component.id);
+  const nextId = afterComponents[Math.min(firstDeletedIndex, afterComponents.length - 1)] || afterComponents[firstDeletedIndex - 1] || "";
+  setArtComponentSelection(nextId ? [nextId] : []);
+  renderSelectedArtComposition();
+  renderArtList();
+  artFileName.textContent = removedIds.length === 1 ? "Deleted 1 component" : `Deleted ${removedIds.length} components`;
+  updateGlobalSaveButton();
 }
 
 function hideArtComponentEditor() {
