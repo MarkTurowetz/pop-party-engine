@@ -987,8 +987,6 @@ function publishRuntimeLocalChanges(overrides = {}) {
 }
 
 function flowNodeAtPointer(event) {
-  const directNode = event.target.closest?.(".flow-node");
-  if (directNode) return directNode;
   const pointNodes = typeof document.elementsFromPoint === "function"
     ? document.elementsFromPoint(event.clientX, event.clientY)
     : [document.elementFromPoint(event.clientX, event.clientY)].filter(Boolean);
@@ -996,7 +994,7 @@ function flowNodeAtPointer(event) {
     const flowNode = node?.closest?.(".flow-node");
     if (flowNode) return flowNode;
   }
-  return null;
+  return event.target.closest?.(".flow-node") || null;
 }
 
 function publishRuntimeLocalClear() {
