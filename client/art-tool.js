@@ -14,10 +14,12 @@ const artComponentSchema = window.PartyGameArtComponentSchema;
 const artComponentTree = window.PartyGameArtComponentTree;
 const artToolUi = window.PartyGameArtToolUi;
 const artSidebarRendererRuntime = window.PartyGameArtSidebarRenderer;
+const artComponentEditorRuntime = window.PartyGameArtComponentEditor;
 const artShapeStyles = artComponentSchema.shapeStyleOptions;
 const artComponentImageAccept = artComponentSchema.imageAccept;
 const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt", "voting-card", "custom-art"];
 let artSidebarRenderer = null;
+let artComponentEditorRenderer = null;
 
 function serializeArtCompositionsForSave(source = artCompositions) {
   return (source || []).map((composition) => ({
@@ -689,168 +691,39 @@ function startArtComponentScale(event, component) {
   window.addEventListener("pointercancel", stop, { once: true });
 }
 
+function getArtComponentEditorRenderer() {
+  if (!artComponentEditorRenderer) {
+    artComponentEditorRenderer = artComponentEditorRuntime.create({
+      componentTree: artComponentTree,
+      artKindLabel,
+      shapeStyles: artShapeStyles,
+      imageAccept: artComponentImageAccept,
+      normalizeUiColor,
+      onPushHistory: pushArtHistory,
+      supportsImageMask: artComponentSupportsImageMask,
+      eventHasFiles: artDragEventHasFiles,
+      onSelectComponent: selectArtComponent,
+      onUpdateComponentValue: updateArtComponentValue,
+      onUpdateComponentNumber: updateArtComponentNumber,
+      onUpdateCompositionValue: updateArtCompositionValue,
+      onUpdateCompositionCanvas: updateArtCompositionCanvas,
+      onUpdateShapeStyle: updateArtShapeStyle,
+      onImageFile: stageArtComponentImageFile,
+      onClearImage: clearArtComponentImage
+    });
+  }
+  return artComponentEditorRenderer;
+}
+
 function renderArtComponentEditor() {
   const composition = selectedArtComposition();
   if (!composition) return hideArtComponentEditor();
   artComponentEditor.classList.remove("hidden");
-  artComponentEditor.replaceChildren();
-  const list = document.createElement("div");
-  list.className = "art-component-list";
-  for (const { component, depth } of flattenArtComponents(composition.components || [])) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "art-component-row";
-    button.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
-    button.innerHTML = `<span></span><small></small>`;
-    button.querySelector("span").textContent = component.name;
-    button.querySelector("span").style.paddingLeft = `${depth * 14}px`;
-    button.querySelector("small").textContent = artKindLabel(component.kind);
-    button.addEventListener("click", (event) => selectArtComponent(composition.id, component.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey }));
-    list.appendChild(button);
-  }
-  const fields = document.createElement("div");
-  fields.className = "art-component-fields";
-  const component = selectedEditableArtComponent();
-  if (component) {
-    fields.appendChild(artTextField("Name", component.name || artKindLabel(component.kind), (value) => updateArtComponentValue("name", value || artKindLabel(component.kind))));
-    fields.appendChild(artNumberField("X", component.x, (value) => updateArtComponentNumber("x", value)));
-    fields.appendChild(artNumberField("Y", component.y, (value) => updateArtComponentNumber("y", value)));
-    fields.appendChild(artNumberField("Scale", component.scale, (value) => updateArtComponentNumber("scale", Math.max(0.05, value)), 0.05));
-    fields.appendChild(artNumberField("Width", component.width, (value) => updateArtComponentNumber("width", Math.max(1, value))));
-    fields.appendChild(artNumberField("Height", component.height, (value) => updateArtComponentNumber("height", Math.max(1, value))));
-    if (component.kind === "text" || component.kind === "badge") {
-      fields.appendChild(artTextField("Text", component.defaultText || "", (value) => updateArtComponentValue("defaultText", value)));
-      fields.appendChild(artNumberField("Font Size", component.fontSize || 16, (value) => updateArtComponentValue("fontSize", Math.max(6, value))));
-      fields.appendChild(artColorField("Font Color", component.fontColor || "#17131f", (value, options) => updateArtComponentValue("fontColor", value, options)));
-    }
-    if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {
-      fields.appendChild(artSelectField("Shape", component.shapeStyle || "rounded", artShapeStyles, (value) => updateArtShapeStyle(value)));
-      fields.appendChild(artColorField("Fill", component.fillColor === "transparent" ? "#fff8d6" : component.fillColor || "#fff8d6", (value, options) => updateArtComponentValue("fillColor", value, options)));
-      fields.appendChild(artColorField("Border", component.borderColor === "transparent" ? "#17131f" : component.borderColor || "#17131f", (value, options) => updateArtComponentValue("borderColor", value, options)));
-      fields.appendChild(artNumberField("Border Width", component.borderWidth || 0, (value) => updateArtComponentValue("borderWidth", Math.max(0, value))));
-      fields.appendChild(artNumberField("Radius", component.borderRadius || 0, (value) => updateArtComponentValue("borderRadius", Math.max(0, value))));
-    }
-    if (artComponentSupportsImageMask(component)) {
-      fields.appendChild(artImageMaskField(component));
-    }
-  } else {
-    fields.appendChild(artTextField("Name", composition.name || "Art Asset", (value) => updateArtCompositionValue("name", value || "Art Asset")));
-    fields.appendChild(artNumberField("Canvas Width", composition.canvas?.width || 560, (value) => updateArtCompositionCanvas("width", Math.max(1, value))));
-    fields.appendChild(artNumberField("Canvas Height", composition.canvas?.height || 230, (value) => updateArtCompositionCanvas("height", Math.max(1, value))));
-  }
-  artComponentEditor.append(list, fields);
-}
-
-function artTextField(label, value, onChange) {
-  const field = document.createElement("label");
-  field.className = "layout-number-field";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.type = "text";
-  input.value = value || "";
-  input.addEventListener("change", () => onChange(input.value));
-  field.appendChild(input);
-  return field;
-}
-
-function artSelectField(label, value, options, onChange) {
-  const field = document.createElement("label");
-  field.className = "layout-number-field";
-  field.textContent = label;
-  const select = document.createElement("select");
-  for (const option of options) {
-    const item = document.createElement("option");
-    item.value = option.value;
-    item.textContent = option.label;
-    select.appendChild(item);
-  }
-  select.value = value;
-  select.addEventListener("change", () => onChange(select.value));
-  field.appendChild(select);
-  return field;
-}
-
-function artNumberField(label, value, onChange, step = 1) {
-  const field = document.createElement("label");
-  field.className = "layout-number-field";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.type = "number";
-  input.step = String(step);
-  input.value = Number(value || 0);
-  input.addEventListener("change", () => onChange(Number(input.value)));
-  field.appendChild(input);
-  return field;
-}
-
-function artColorField(label, value, onChange) {
-  const field = document.createElement("label");
-  field.className = "layout-number-field layout-color-field";
-  field.textContent = label;
-  const input = document.createElement("input");
-  input.type = "color";
-  input.value = normalizeUiColor(value) || "#ffffff";
-  let historyCaptured = false;
-  input.addEventListener("focus", () => {
-    historyCaptured = false;
+  getArtComponentEditorRenderer().render(artComponentEditor, {
+    composition,
+    selectedComponentIds: selectedArtComponentIds,
+    selectedComponent: selectedEditableArtComponent()
   });
-  input.addEventListener("input", () => {
-    if (!historyCaptured) {
-      pushArtHistory();
-      historyCaptured = true;
-    }
-    onChange(input.value, { captureHistory: false });
-  });
-  field.appendChild(input);
-  return field;
-}
-
-function artImageMaskField(component) {
-  const field = document.createElement("section");
-  field.className = "art-image-mask-field";
-  const label = document.createElement("strong");
-  label.textContent = "Image Mask";
-  const status = document.createElement("span");
-  status.className = "art-image-mask-status";
-  status.textContent = component.imageName ? `Current: ${component.imageName}` : "Drop or upload PNG, SVG, JPG, or WEBP";
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = artComponentImageAccept;
-  input.className = "art-file-input";
-  const actions = document.createElement("div");
-  actions.className = "art-image-mask-actions";
-  const uploadButton = document.createElement("button");
-  uploadButton.type = "button";
-  uploadButton.textContent = component.imageDataUrl ? "Replace Image" : "Upload Image";
-  uploadButton.addEventListener("click", () => input.click());
-  const clearButton = document.createElement("button");
-  clearButton.type = "button";
-  clearButton.textContent = "Clear";
-  clearButton.disabled = !component.imageDataUrl;
-  clearButton.addEventListener("click", () => clearArtComponentImage(component));
-  actions.append(uploadButton, clearButton);
-  input.addEventListener("change", () => {
-    stageArtComponentImageFile(component, input.files?.[0]).finally(() => {
-      input.value = "";
-    });
-  });
-  field.addEventListener("dragover", (event) => {
-    if (!artDragEventHasFiles(event)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    field.classList.add("is-dragging");
-  });
-  field.addEventListener("dragleave", (event) => {
-    if (!field.contains(event.relatedTarget)) field.classList.remove("is-dragging");
-  });
-  field.addEventListener("drop", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    field.classList.remove("is-dragging");
-    stageArtComponentImageFile(component, event.dataTransfer?.files?.[0]);
-  });
-  field.append(label, status, actions, input);
-  return field;
 }
 
 function updateArtComponentNumber(key, value, options = {}) {
