@@ -1,4 +1,5 @@
 let controllerVoiceInput = null;
+let controllerTextInputView = null;
 
 function getControllerVoiceInput() {
   if (!controllerVoiceInput) {
@@ -13,6 +14,32 @@ function getControllerVoiceInput() {
     });
   }
   return controllerVoiceInput;
+}
+
+function getControllerTextInputView() {
+  if (!controllerTextInputView) {
+    controllerTextInputView = window.createControllerTextInputView({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      dismissedInvalidKey: () => dismissedTextInvalidKey,
+      elements: {
+        done: controllerTextDone,
+        input: controllerTextInput,
+        invalidBanner: controllerInvalidBanner,
+        prompt: controllerTextPrompt,
+        state: controllerTextState,
+        submitButton: controllerTextSubmitButton,
+        voiceButton: controllerVoiceButton,
+        voiceStatus: controllerVoiceStatus
+      },
+      getVoiceInput: getControllerVoiceInput,
+      hideViews: hideControllerViews,
+      setPhaseActionId: (actionId) => {
+        controllerState.phaseActionId = actionId;
+      },
+      submitText: submitControllerText
+    });
+  }
+  return controllerTextInputView;
 }
 
 function updateJoinButton() {
@@ -158,54 +185,7 @@ async function submitControllerChoice(actionId, optionIndex, cardId = "") {
 }
 
 function renderControllerTextState(lobby, me) {
-  const input = lobby.textInput || null;
-  if (!input) return false;
-  const isVoiceInput = input.type === "voice" || input.mode === "voiceVip";
-  if (isVoiceInput && !me.isVip) {
-    getControllerVoiceInput().renderWaiting(lobby);
-    return true;
-  }
-  if (!isVoiceInput) getControllerVoiceInput().stopRecognition();
-  hideControllerViews();
-  controllerState.phaseActionId = input.actionId;
-  controllerTextState.classList.remove("hidden");
-  controllerTextPrompt.textContent = input.prompt || (isVoiceInput ? "Say your answer" : "Write your answer");
-  controllerInvalidBanner.textContent = "Your submission was invalid";
-  controllerTextInput.placeholder = input.placeholder || "Answer here";
-  const limit = Number(input.characterLimit || 0);
-  if (limit > 0) {
-    controllerTextInput.maxLength = limit;
-  } else {
-    controllerTextInput.removeAttribute("maxlength");
-  }
-  const isDone = me.answer?.done === true;
-  const isInvalid = me.answer?.invalid === true;
-  const invalidKey = `${input.actionId}:${me.answer?.nonce || 0}`;
-  const showInvalid = isInvalid && dismissedTextInvalidKey !== invalidKey;
-  controllerTextDone.classList.toggle("hidden", !isDone);
-  controllerTextInput.classList.toggle("hidden", isDone || isVoiceInput);
-  controllerTextSubmitButton.classList.toggle("hidden", isDone || isVoiceInput);
-  controllerVoiceButton.classList.toggle("hidden", isDone || !isVoiceInput);
-  controllerVoiceStatus.classList.toggle("hidden", isDone || !isVoiceInput);
-  controllerInvalidBanner.classList.toggle("hidden", !showInvalid || isDone);
-  if (isDone) {
-    controllerTextDone.textContent = isVoiceInput ? `You said: ${me.answer?.text || ""}` : `You wrote: ${me.answer?.text || ""}`;
-  } else if (showInvalid) {
-    controllerTextInput.value = "";
-  } else if (isVoiceInput && !getControllerVoiceInput().isListening()) {
-    getControllerVoiceInput().resetUi();
-  }
-  controllerTextSubmitButton.disabled = controllerTextInput.value.trim().length === 0;
-  controllerTextSubmitButton.onclick = () => submitControllerText(input.actionId);
-  controllerVoiceButton.onclick = () => getControllerVoiceInput().start(input.actionId);
-  applyControllerLayoutForPhase(lobby.phase || "lobby");
-  controllerTextDone.classList.toggle("hidden", !isDone);
-  controllerTextInput.classList.toggle("hidden", isDone || isVoiceInput);
-  controllerTextSubmitButton.classList.toggle("hidden", isDone || isVoiceInput);
-  controllerVoiceButton.classList.toggle("hidden", isDone || !isVoiceInput);
-  controllerVoiceStatus.classList.toggle("hidden", isDone || !isVoiceInput);
-  controllerInvalidBanner.classList.toggle("hidden", !showInvalid || isDone);
-  return true;
+  return getControllerTextInputView().render(lobby, me);
 }
 
 async function submitControllerText(actionId, textOverride = null) {
