@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Party Game Controller Spawner",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Spawn multiple Party Game Template controller windows and tap random game options across them.",
   "action": {
     "default_title": "Controller Spawner",
@@ -10,6 +10,18 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "hotkeys.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
   "commands": {
     "spawn-controllers": {
       "suggested_key": {

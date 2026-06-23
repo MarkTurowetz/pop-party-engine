@@ -11,6 +11,13 @@ const DEFAULT_NAMES = [
   "Jax"
 ];
 
+const commandHandlers = {
+  "spawn-controllers": spawnControllersFromCommand,
+  "tap-random-option": tapRandomOptionsFromCommand,
+  "submit-random-text": submitRandomTextFromCommand
+};
+let lastCommandRun = { command: "", at: 0 };
+
 function normalizeStageCode(value) {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
@@ -319,8 +326,23 @@ function runCommand(task) {
   });
 }
 
+function runNamedCommand(command) {
+  const task = commandHandlers[command];
+  if (!task) return false;
+  const now = Date.now();
+  if (lastCommandRun.command === command && now - lastCommandRun.at < 500) return true;
+  lastCommandRun = { command, at: now };
+  runCommand(task);
+  return true;
+}
+
 chrome.commands.onCommand.addListener((command) => {
-  if (command === "spawn-controllers") runCommand(spawnControllersFromCommand);
-  if (command === "tap-random-option") runCommand(tapRandomOptionsFromCommand);
-  if (command === "submit-random-text") runCommand(submitRandomTextFromCommand);
+  runNamedCommand(command);
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== "party-game-hotkey-command") return false;
+  const handled = runNamedCommand(message.command);
+  sendResponse({ ok: handled });
+  return false;
 });
