@@ -51,6 +51,17 @@
     toggle.setAttribute("aria-expanded", "false");
     const details = documentRef.createElement("div");
     details.className = "color-control-details";
+    const actions = documentRef.createElement("div");
+    actions.className = "color-control-actions";
+    const applyButton = documentRef.createElement("button");
+    applyButton.type = "button";
+    applyButton.className = "color-control-apply";
+    applyButton.textContent = "Apply";
+    const resetButton = documentRef.createElement("button");
+    resetButton.type = "button";
+    resetButton.className = "color-control-reset";
+    resetButton.textContent = "Reset";
+    actions.append(applyButton, resetButton);
     const sliders = ["r", "g", "b"].map((channel) => {
       const wrap = documentRef.createElement("label");
       wrap.className = "color-control-slider";
@@ -66,38 +77,61 @@
     });
     let historyCaptured = false;
     let currentValue = normalizeColor(options.value) || "#ffffff";
+    let draftValue = currentValue;
 
-    function setControls(hex) {
+    function setDirty(isDirty) {
+      root.classList.toggle("is-dirty", Boolean(isDirty));
+      applyButton.disabled = !isDirty;
+      resetButton.disabled = !isDirty;
+    }
+
+    function setControls(hex, { syncText = true } = {}) {
       const rgb = hexToRgb(hex, normalizeColor) || { r: 255, g: 255, b: 255 };
       const normalized = rgbToHex(rgb);
-      input.value = normalized.toUpperCase();
+      draftValue = normalized;
+      if (syncText) input.value = normalized.toUpperCase();
       swatch.style.background = normalized;
       for (const item of sliders) {
         item.slider.value = String(rgb[item.channel]);
       }
+      setDirty(draftValue !== currentValue);
     }
 
     function currentSliderColor() {
       return rgbToHex(Object.fromEntries(sliders.map((item) => [item.channel, Number(item.slider.value)])));
     }
 
-    function applyColor(hex, { commit = false, sync = false } = {}) {
+    function previewDraft(hex, { syncText = true } = {}) {
       const normalized = normalizeColor(hex);
       if (!normalized) return false;
-      currentValue = normalized;
-      if (sync) {
-        setControls(normalized);
-      } else {
-        input.value = normalized.toUpperCase();
-        swatch.style.background = normalized;
+      setControls(normalized, { syncText });
+      return true;
+    }
+
+    function commitColor(hex, { sync = true } = {}) {
+      const normalized = normalizeColor(hex);
+      if (!normalized) {
+        setControls(currentValue);
+        return false;
       }
+      if (normalized === currentValue && draftValue === currentValue) {
+        setControls(currentValue);
+        setDirty(false);
+        return false;
+      }
+      currentValue = normalized;
       const captureHistory = !historyCaptured;
-      options.onChange?.(normalized, { captureHistory, commit, previewOnly: !commit });
+      if (sync) setControls(normalized);
+      setDirty(false);
+      options.onChange?.(normalized, { captureHistory, commit: true, previewOnly: false });
       historyCaptured = true;
       return true;
     }
 
-    root.addEventListener("pointerdown", (event) => event.stopPropagation());
+    root.addEventListener("pointerdown", (event) => {
+      historyCaptured = false;
+      event.stopPropagation();
+    });
     root.addEventListener("click", (event) => event.stopPropagation());
     global.PartyGameToolAffordances?.bindScrollStableControls?.(root);
     toggle.addEventListener("click", () => {
@@ -106,17 +140,38 @@
       toggle.setAttribute("aria-expanded", String(expanded));
     });
     setControls(currentValue);
-    input.addEventListener("input", () => applyColor(input.value, { commit: false }));
+    setDirty(false);
+    input.addEventListener("focus", () => {
+      historyCaptured = false;
+    });
+    input.addEventListener("input", () => {
+      const normalized = normalizeColor(input.value);
+      if (normalized) previewDraft(normalized, { syncText: false });
+    });
     input.addEventListener("change", () => {
-      const committed = applyColor(input.value, { commit: true, sync: true });
-      if (!committed) setControls(currentValue);
+      commitColor(input.value);
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        commitColor(input.value);
+        input.blur();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setControls(currentValue);
+        input.blur();
+      }
     });
     for (const item of sliders) {
-      item.slider.addEventListener("input", () => applyColor(currentSliderColor(), { commit: false }));
-      item.slider.addEventListener("change", () => applyColor(currentSliderColor(), { commit: true, sync: true }));
+      item.slider.addEventListener("input", () => {
+        previewDraft(currentSliderColor());
+      });
     }
+    applyButton.addEventListener("click", () => commitColor(draftValue));
+    resetButton.addEventListener("click", () => setControls(currentValue));
     row.append(swatch, input, toggle);
     details.append(...sliders.map((item) => item.wrap));
+    details.appendChild(actions);
     const presets = Array.isArray(options.presets) && options.presets.length ? options.presets : DEFAULT_PRESETS;
     const presetRow = documentRef.createElement("div");
     presetRow.className = "color-control-presets";
@@ -127,7 +182,7 @@
       button.type = "button";
       button.style.setProperty("--preset-color", normalizedPreset);
       button.setAttribute("aria-label", normalizedPreset);
-      button.addEventListener("click", () => applyColor(normalizedPreset, { commit: true, sync: true }));
+      button.addEventListener("click", () => commitColor(normalizedPreset));
       presetRow.appendChild(button);
     }
     details.appendChild(presetRow);

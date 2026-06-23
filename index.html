@@ -4042,6 +4042,32 @@
       gap: 5px;
     }
 
+    .color-control-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .color-control-actions button {
+      min-height: 30px;
+      border: 3px solid var(--ink);
+      border-radius: 9px;
+      background: var(--cream);
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 1000;
+      cursor: pointer;
+    }
+
+    .color-control.is-dirty .color-control-apply {
+      background: var(--yellow);
+    }
+
+    .color-control-actions button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     .color-control-presets button {
       aspect-ratio: 1;
       min-width: 0;

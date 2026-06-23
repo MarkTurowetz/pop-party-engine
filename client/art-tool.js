@@ -458,7 +458,7 @@ function hideArtComponentEditor() {
   if (artSaveCompositionButton) artSaveCompositionButton.disabled = true;
 }
 
-function renderSelectedArtComposition() {
+function renderSelectedArtComposition(options = {}) {
   const composition = selectedArtComposition();
   if (!composition) return;
   artPreviewTitle.textContent = composition.name;
@@ -476,7 +476,7 @@ function renderSelectedArtComposition() {
   artFileInput.value = "";
   artSaveCompositionButton.classList.remove("hidden");
   artSaveCompositionButton.disabled = !isArtCompositionsDirty();
-  renderArtComponentEditor();
+  if (options.renderEditor !== false) renderArtComponentEditor();
   updateArtCreateButtons();
 }
 
@@ -748,7 +748,7 @@ function updateArtComponentValue(key, value, options = {}) {
   if (component[key] === nextValue) return;
   if (options.captureHistory !== false) pushArtHistory();
   component[key] = nextValue;
-  renderSelectedArtComposition();
+  renderSelectedArtComposition({ renderEditor: options.colorCommit !== true && options.previewOnly !== true });
   renderArtList();
   updateGlobalSaveButton();
 }
