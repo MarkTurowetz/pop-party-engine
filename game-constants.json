@@ -9,5 +9,6 @@
     "#2458ff",
     "#ef4444",
     "#f97316"
-  ]
+  ],
+  "speechToTextSendInputBuffer": 1
 }
