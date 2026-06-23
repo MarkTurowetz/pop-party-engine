@@ -185,6 +185,7 @@ function baseLayoutObjectCatalog() {
   return [
     { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "art", width: 1080, height: 150 },
     { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", width: 620, height: 220 },
+    { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", width: 260, height: 300 },
     { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "text", width: 740, height: 90 },
     { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", kind: "text", width: 900, height: 86 },
     { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", kind: "art", width: 260, height: 260 },
@@ -514,6 +515,13 @@ function layoutPreviewContent(element) {
     content.innerHTML = `<div class="layout-preview-title">Party Game Template</div>`;
   } else if (id === "stagecodepanel") {
     content.innerHTML = `<div class="layout-preview-code-card"><span>Stage Code</span><strong>NUZ7</strong></div>`;
+  } else if (id === "stagejoinqr") {
+    content.innerHTML = `
+      <div class="layout-preview-qr-card">
+        <div class="layout-preview-qr-grid"></div>
+        <span>Scan To Join</span>
+      </div>
+    `;
   } else if (id === "waitingstatus") {
     const pill = document.createElement("div");
     pill.className = "layout-preview-pill";
@@ -812,7 +820,7 @@ function layoutColorField(label, value, onChange) {
   input.value = normalizeUiColor(value) || "#ffffff";
   let pushedHistory = false;
   input.addEventListener("input", () => {
-    onChange(input.value, { history: !pushedHistory, redraw: false });
+    onChange(input.value, { history: !pushedHistory, previewOnly: true });
     pushedHistory = true;
   });
   input.addEventListener("change", () => {
@@ -821,6 +829,13 @@ function layoutColorField(label, value, onChange) {
   });
   field.appendChild(input);
   return field;
+}
+
+function updateLayoutPreviewTextStyle(element) {
+  const node = layoutStagePreview.querySelector(`.layout-preview-element[data-element-id="${CSS.escape(element.id)}"]`);
+  if (!node) return;
+  const textNode = node.querySelector(".layout-preview-presentation, .layout-preview-pill");
+  if (textNode) applyLayoutPreviewTextStyle(textNode, element);
 }
 
 function updateLayoutNumber(key, value) {
@@ -842,6 +857,11 @@ function updateLayoutTextValue(element, key, value, options = {}) {
     element[key] = Number(Number(value).toFixed(3));
   } else {
     element[key] = value;
+  }
+  if (options.previewOnly === true) {
+    updateLayoutPreviewTextStyle(element);
+    updateGlobalSaveButton();
+    return;
   }
   if (options.redraw === false) {
     renderLayoutPreview();

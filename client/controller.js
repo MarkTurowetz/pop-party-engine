@@ -89,20 +89,13 @@ function getControllerGlobalActionView() {
 
 function getControllerStateRuntime() {
   return controllerModules.get("stateRuntime", () => window.createControllerStateRuntime({
-      applyLayoutForPhase: applyControllerLayoutForPhase,
       closeAvatarPicker,
-      elements: {
-        globalActionButton: controllerGlobalActionButton,
-        globalActionMessage: controllerGlobalActionMessage,
-        globalActionState: controllerGlobalActionState
-      },
       getChoiceInputView: getControllerChoiceInputView,
       getGlobalActionView: getControllerGlobalActionView,
       getLobbyView: getControllerLobbyView,
       getMicrophoneAccessView: getControllerMicrophoneAccessView,
       getTextInputView: getControllerTextInputView,
-      getVoiceInput: getControllerVoiceInput,
-      hideViews: hideControllerViews
+      getVoiceInput: getControllerVoiceInput
     }));
 }
 

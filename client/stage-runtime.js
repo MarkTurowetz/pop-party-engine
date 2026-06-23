@@ -5,6 +5,7 @@ let playerRosterRendererInstance = null;
 let stageDebugPanelInstance = null;
 let stageWipeControllerInstance = null;
 let stageRenderOrchestratorInstance = null;
+let renderedStageJoinQrUrl = "";
 
 function stageVisualControllers() {
   return window.PartyGameStageVisualControllers || null;
@@ -299,6 +300,32 @@ function showStageDecisionHalt(lobby) {
   stageDebugPanel()?.showDecisionHalt(lobby);
 }
 
+function controllerJoinUrlForStage(stageCode) {
+  const url = new URL("/controller", origin);
+  url.searchParams.set("stage", normalizeStageCode(stageCode));
+  return url.toString();
+}
+
+function renderStageJoinQr(stageCode, isVisible = true) {
+  if (!stageJoinQr || !stageJoinQrCanvas || !stageJoinQrUrl) return;
+  const normalizedCode = normalizeStageCode(stageCode);
+  stageJoinQr.classList.toggle("hidden", !isVisible || !normalizedCode);
+  if (!isVisible || !normalizedCode) return;
+  const joinUrl = controllerJoinUrlForStage(normalizedCode);
+  stageJoinQrUrl.textContent = joinUrl.replace(/^https?:\/\//, "");
+  if (renderedStageJoinQrUrl === joinUrl) return;
+  renderedStageJoinQrUrl = joinUrl;
+  try {
+    window.PartyGameQrCode?.renderCanvas(stageJoinQrCanvas, joinUrl, {
+      background: "#fff8d6",
+      foreground: "#17131f",
+      size: 220
+    });
+  } catch (error) {
+    stageJoinQrUrl.textContent = joinUrl;
+  }
+}
+
 function applyStageState(lobby) {
   const wasPaused = isStagePaused;
   currentStageState = lobby;
@@ -315,6 +342,7 @@ function applyStageState(lobby) {
   const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
   if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
   stageCodeBadgeRoot.classList.toggle("hidden", isLobbyPhase);
+  renderStageJoinQr(lobby.stageCode || stageCodeText.textContent, isLobbyPhase);
   window.clearInterval(stageCountdownTimer);
   startPopup.classList.add("hidden");
   stageMain.classList.toggle("hidden", !isLobbyPhase);
@@ -664,6 +692,7 @@ function setupStage() {
   const stageCode = getOrCreateStageCode();
   stageCodeText.textContent = stageCode;
   stageCodeBadge.textContent = stageCode;
+  renderStageJoinQr(stageCode, true);
   clearRuntimeTestConfigForStage(stageCode);
   runtimeTestChannel?.addEventListener("message", (event) => {
     applyRuntimeTestMessage(event.data);

@@ -444,6 +444,54 @@
       letter-spacing: 0.06em;
     }
 
+    .stage-join-qr {
+      position: absolute;
+      right: 70px;
+      top: 255px;
+      z-index: 4;
+      width: 260px;
+      display: grid;
+      gap: 12px;
+      justify-items: center;
+      padding: 18px;
+      border: 5px solid var(--ink);
+      border-radius: 18px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      text-align: center;
+      transform: rotate(1deg);
+    }
+
+    .stage-join-qr.hidden {
+      display: none;
+    }
+
+    .stage-join-qr canvas {
+      width: 212px;
+      height: 212px;
+      image-rendering: pixelated;
+      border: 3px solid var(--ink);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .stage-join-qr-label {
+      font-size: 20px;
+      font-weight: 1000;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .stage-join-qr-url {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 1000;
+      line-height: 1.1;
+    }
+
     .stage-status {
       min-height: 52px;
       display: inline-flex;
@@ -457,6 +505,10 @@
       box-shadow: 6px 6px 0 rgba(23, 19, 31, 0.45);
       font-size: 30px;
       font-weight: 1000;
+    }
+
+    .stage-layout-target.stage-join-qr {
+      transform: translate(-50%, -50%) scale(var(--stage-layout-scale, 1)) rotate(1deg) !important;
     }
 
     .stage-intro-content {
@@ -3671,6 +3723,41 @@
       letter-spacing: 0.06em;
     }
 
+    .layout-preview-qr-card {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: calc(12px * var(--layout-fit-scale, 1));
+      padding: calc(18px * var(--layout-fit-scale, 1));
+      border: calc(5px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: calc(18px * var(--layout-fit-scale, 1));
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: calc(10px * var(--layout-fit-scale, 1)) calc(10px * var(--layout-fit-scale, 1)) 0 rgba(23, 19, 31, 0.45);
+      transform: rotate(1deg);
+    }
+
+    .layout-preview-qr-grid {
+      width: 64%;
+      aspect-ratio: 1;
+      border: calc(3px * var(--layout-fit-scale, 1)) solid var(--ink);
+      border-radius: calc(8px * var(--layout-fit-scale, 1));
+      background:
+        linear-gradient(90deg, var(--ink) 12%, transparent 12% 24%, var(--ink) 24% 36%, transparent 36% 48%, var(--ink) 48% 60%, transparent 60% 72%, var(--ink) 72% 84%, transparent 84%),
+        linear-gradient(var(--ink) 12%, transparent 12% 24%, var(--ink) 24% 36%, transparent 36% 48%, var(--ink) 48% 60%, transparent 60% 72%, var(--ink) 72% 84%, transparent 84%);
+      background-color: var(--paper);
+      background-blend-mode: multiply;
+    }
+
+    .layout-preview-qr-card span {
+      font-size: calc(20px * var(--layout-fit-scale, 1));
+      font-weight: 1000;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
     .layout-preview-pill {
       width: 100%;
       height: 100%;
@@ -4197,6 +4284,11 @@
         </section>
         <div class="stage-status hidden" id="waitingStatus"></div>
       </main>
+      <section class="stage-join-qr hidden" id="stageJoinQr" aria-label="Controller QR code">
+        <canvas id="stageJoinQrCanvas" width="220" height="220"></canvas>
+        <div class="stage-join-qr-label">Scan To Join</div>
+        <div class="stage-join-qr-url" id="stageJoinQrUrl"></div>
+      </section>
       <section class="voting-card-layer hidden" id="votingCardLayer" aria-label="Anonymous answer cards"></section>
       <main class="stage-intro-content hidden" id="stageIntroContent">
         <h1 class="stage-intro-title" id="stageIntroTitle">GAME INTRO</h1>
@@ -4580,6 +4672,7 @@
   <script src="/client/stage/art-object-visuals.js"></script>
   <script src="/client/stage/voting-card-visuals.js"></script>
   <script src="/client/stage/render-orchestrator.js"></script>
+  <script src="/client/qr-code.js"></script>
   <script src="/client/stage-runtime.js"></script>
   <script src="/client/controller-module-cache.js"></script>
   <script src="/client/controller-avatar-view.js"></script>
@@ -4684,6 +4777,9 @@
     const stageCodeText = document.querySelector("#stageCodeText");
     const stageCodeBadgeRoot = document.querySelector("#stageCodeBadge");
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
+    const stageJoinQr = document.querySelector("#stageJoinQr");
+    const stageJoinQrCanvas = document.querySelector("#stageJoinQrCanvas");
+    const stageJoinQrUrl = document.querySelector("#stageJoinQrUrl");
     const craftingTimer = document.querySelector("#craftingTimer");
     const craftingTimerLabel = document.querySelector("#craftingTimerLabel");
     const stageDebugAction = document.querySelector("#stageDebugAction");

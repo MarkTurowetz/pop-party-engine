@@ -78,6 +78,16 @@
           "scale": 1
         },
         {
+          "id": "stageJoinQr",
+          "name": "Join QR Code",
+          "selector": "#stageJoinQr",
+          "x": 1510,
+          "y": 420,
+          "width": 260,
+          "height": 300,
+          "scale": 1
+        },
+        {
           "id": "waitingStatus",
           "name": "Waiting Status",
           "selector": "#waitingStatus",

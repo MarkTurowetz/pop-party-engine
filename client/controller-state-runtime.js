@@ -2,16 +2,13 @@
   "use strict";
 
   function createControllerStateRuntime({
-    applyLayoutForPhase,
     closeAvatarPicker,
-    elements,
     getChoiceInputView,
     getGlobalActionView,
     getLobbyView,
     getMicrophoneAccessView,
     getTextInputView,
-    getVoiceInput,
-    hideViews
+    getVoiceInput
   }) {
     function phaseFor(lobby) {
       return lobby?.phase || "lobby";
@@ -31,14 +28,12 @@
     }
 
     function renderPaused(context) {
-      hideViews();
       getVoiceInput().stopRecognition();
-      elements.globalActionState.classList.remove("hidden");
-      elements.globalActionButton.classList.add("hidden");
-      elements.globalActionButton.disabled = true;
-      elements.globalActionMessage.textContent = "Game Paused";
-      applyLayoutForPhase(context.phase);
-      return true;
+      return getGlobalActionView().renderMessage(context.lobby, "Game Paused", {
+        id: "paused",
+        layoutPhase: context.phase,
+        showButton: false
+      });
     }
 
     function renderInGame(context) {
