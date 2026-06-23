@@ -301,8 +301,10 @@ function createFlowNodeBranches(state, action, options = {}) {
     const dot = document.createElement("span");
     dot.className = "flow-node-port-dot";
     if (options.sourceKind === "routeNode") {
+      dot.dataset.sourceKind = "routeNode";
       dot.dataset.routeNodeId = action.id;
     } else {
+      dot.dataset.sourceKind = "action";
       dot.dataset.actionId = action.id;
     }
     dot.dataset.branchId = branch.id;
@@ -311,7 +313,7 @@ function createFlowNodeBranches(state, action, options = {}) {
       event.stopPropagation();
       const connection = options.sourceKind === "routeNode"
         ? { sourceKind: "routeNode", routeNodeId: action.id, field: targetField, branchId: branch.id, targetKind: options.targetKind || "momentGraph" }
-        : { stateId: state.id, actionId: action.id, field: "", branchId: branch.id, targetKind: "action" };
+        : { sourceKind: "action", stateId: state.id, actionId: action.id, field: targetField, branchId: branch.id, targetKind: "action" };
       armFlowNodeConnection({
         connection: { ...connection, pointerId: event.pointerId, commandCreate: event.metaKey },
         dot,

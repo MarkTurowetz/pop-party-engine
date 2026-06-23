@@ -39,6 +39,7 @@
       return createPorts([{
         label: `Next Moment${state.nextStateTargetId ? ` -> ${context.flowStateName?.(state.nextStateTargetId) || state.nextStateTargetId}` : ""}`,
         dotDataset: {
+          sourceKind: "moment",
           stateId: state.id,
           field: "nextStateTargetId",
           targetKind: "momentGraph"
@@ -58,6 +59,7 @@
       return createPorts([{
         label: `Target${routeNode.targetStateId ? ` -> ${context.flowStateName?.(routeNode.targetStateId) || routeNode.targetStateId}` : ""}`,
         dotDataset: {
+          sourceKind: "routeNode",
           routeNodeId: routeNode.id,
           field: "targetStateId",
           targetKind: "state"
@@ -76,6 +78,7 @@
       return createPorts([{
         label: `Next${routeNode.nextTargetNodeId ? ` -> ${context.flowRouteTargetName?.(routeNode.nextTargetNodeId) || routeNode.nextTargetNodeId}` : ""}`,
         dotDataset: {
+          sourceKind: "routeNode",
           routeNodeId: routeNode.id,
           field: "nextTargetNodeId",
           targetKind: "momentGraph"
@@ -98,12 +101,14 @@
         return {
           label: `${exit.label}${target ? ` -> ${context.flowTargetActionName?.(target) || target}` : ""}`,
           dotDataset: {
+            sourceKind: "action",
             actionId: action.id,
             field: exit.field || "",
             branchId: exit.branchId || "",
             targetKind: exit.targetKind || "action"
           },
           connection: {
+            sourceKind: "action",
             stateId: context.selectedFlowStateId?.() || "",
             actionId: action.id,
             field: exit.field || "",
@@ -120,6 +125,7 @@
       return createPorts([{
         label: `Entry${state.entryTargetActionId ? ` -> ${context.flowTargetActionName?.(state.entryTargetActionId) || state.entryTargetActionId}` : ""}`,
         dotDataset: {
+          sourceKind: "start",
           stateId: state.id,
           field: "entryTargetActionId",
           targetKind: "action"

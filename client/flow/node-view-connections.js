@@ -24,6 +24,14 @@
       return Boolean(pending);
     }
 
+    function pendingSourceKind() {
+      return pending?.sourceKind || "action";
+    }
+
+    function escaped(value) {
+      return context.cssEscape?.(value) || value;
+    }
+
     function shouldCreateAction(event) {
       return Boolean(pending?.commandCreate || event?.metaKey);
     }
@@ -31,19 +39,24 @@
     function sourceNode() {
       const layer = context.flowNodeLayer?.();
       if (!pending || !layer) return null;
-      if (pending.sourceKind === "moment") {
-        return layer.querySelector(`.flow-node[data-node-id="${context.cssEscape(pending.stateId)}"]`);
+      const kind = pendingSourceKind();
+      if (pending.branchId) {
+        const parentSelector = kind === "routeNode"
+          ? `.flow-node[data-route-node-id="${escaped(pending.routeNodeId)}"]`
+          : `.flow-node[data-action-id="${escaped(pending.actionId)}"]`;
+        const branchNode = layer.querySelector(`${parentSelector} .flow-node-branch[data-branch-id="${escaped(pending.branchId)}"]`);
+        if (branchNode) return branchNode;
       }
-      if (pending.sourceKind === "routeNode") {
-        return layer.querySelector(`.flow-node[data-route-node-id="${context.cssEscape(pending.routeNodeId)}"]`);
+      if (kind === "moment") {
+        return layer.querySelector(`.flow-node[data-node-id="${escaped(pending.stateId)}"]`);
       }
-      if (pending.sourceKind === "start") {
+      if (kind === "routeNode") {
+        return layer.querySelector(`.flow-node[data-route-node-id="${escaped(pending.routeNodeId)}"]`);
+      }
+      if (kind === "start") {
         return layer.querySelector('.flow-node[data-node-id="start"]');
       }
-      if (pending.branchId) {
-        return layer.querySelector(`.flow-node-branch[data-branch-id="${context.cssEscape(pending.branchId)}"]`);
-      }
-      return layer.querySelector(`.flow-node[data-action-id="${context.cssEscape(pending.actionId)}"]`);
+      return layer.querySelector(`.flow-node[data-action-id="${escaped(pending.actionId)}"]`);
     }
 
     function redrawPreview(event) {
@@ -60,14 +73,84 @@
       }
     }
 
+    function connectionSource() {
+      if (!pending) return null;
+      const kind = pendingSourceKind();
+      if (kind === "moment") {
+        const state = context.flowState?.(pending.stateId);
+        if (!state) return null;
+        const field = pending.field || "nextStateTargetId";
+        return {
+          kind,
+          selfId: state.id,
+          currentTarget: () => state[field] || "",
+          setTarget: (targetId) => { state[field] = targetId; }
+        };
+      }
+      if (kind === "routeNode") {
+        const routeNode = context.flowRouteNode?.(pending.routeNodeId);
+        if (!routeNode) return null;
+        const field = pending.field || "nextTargetNodeId";
+        const branch = pending.branchId
+          ? context.decisionBranchById?.(routeNode, pending.branchId, { targetField: field })
+          : null;
+        if (pending.branchId && !branch) return null;
+        return {
+          kind,
+          selfId: routeNode.id,
+          currentTarget: () => branch ? branch[field] || "" : routeNode[field] || "",
+          setTarget: (targetId) => {
+            if (branch) branch[field] = targetId;
+            else routeNode[field] = targetId;
+          }
+        };
+      }
+      if (kind === "start") {
+        const state = context.flowState?.(pending.stateId);
+        if (!state) return null;
+        const field = pending.field || "entryTargetActionId";
+        return {
+          kind,
+          selfId: "",
+          currentTarget: () => state[field] || "",
+          setTarget: (targetId) => { state[field] = targetId; }
+        };
+      }
+      const state = context.flowState?.(pending.stateId);
+      const action = context.flowAction?.(state?.id, pending.actionId);
+      if (!state || !action) return null;
+      const field = pending.field || "targetActionId";
+      const branch = pending.branchId
+        ? context.decisionBranchById?.(action, pending.branchId, { targetField: field })
+        : null;
+      if (pending.branchId && !branch) return null;
+      return {
+        kind: "action",
+        selfId: action.id,
+        currentTarget: () => branch ? branch[field] || "" : action[field] || "",
+        setTarget: (targetId) => {
+          if (branch) branch[field] = targetId;
+          else action[field] = targetId;
+        }
+      };
+    }
+
+    function connectPendingSourceToTarget(targetId) {
+      const source = connectionSource();
+      if (!source) return false;
+      source.setTarget(targetId);
+      return true;
+    }
+
     function createAction(event) {
       if (pending?.targetKind === "momentGraph" && context.flowNodeDepth?.() === "moments") {
         return createMomentGraphAction(event);
       }
       if (!pending || pending.targetKind !== "action" || context.flowNodeDepth?.() !== "actions") return false;
+      const source = connectionSource();
+      if (!source || (source.kind !== "start" && source.kind !== "action")) return false;
       const state = context.flowState?.(pending.stateId);
-      const sourceAction = pending.sourceKind === "start" ? null : context.flowAction?.(state?.id, pending.actionId);
-      if (!state || (pending.sourceKind !== "start" && !sourceAction)) return false;
+      if (!state) return false;
       const point = context.flowNodeLocalPoint?.(event) || { x: 0, y: 0 };
       const nextNumber = state.actions.length + 1;
       const action = context.createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
@@ -77,7 +160,7 @@
       };
       context.pushFlowHistory?.();
       state.actions.push(action);
-      connectSourceToTarget(sourceAction, action.id);
+      connectPendingSourceToTarget(action.id);
       pending = null;
       context.setFlowActionSelection?.([action.id]);
       context.renderFlowListAndPublish?.();
@@ -85,24 +168,10 @@
       return true;
     }
 
-    function connectMomentGraphSourceToTarget(routeNode, targetId) {
-      if (!pending) return;
-      if (pending.sourceKind === "moment") {
-        const state = context.flowState?.(pending.stateId);
-        if (state) state[pending.field] = targetId;
-        return;
-      }
-      if (pending.sourceKind !== "routeNode" || !routeNode) return;
-      if (pending.branchId) {
-        const branch = context.decisionBranchById?.(routeNode, pending.branchId, { targetField: pending.field });
-        if (branch) branch[pending.field] = targetId;
-        return;
-      }
-      routeNode[pending.field] = targetId;
-    }
-
     function createMomentGraphAction(event) {
       if (!pending) return false;
+      const source = connectionSource();
+      if (!source || (source.kind !== "moment" && source.kind !== "routeNode")) return false;
       const point = context.flowNodeLocalPoint?.(event) || { x: 0, y: 0 };
       const nodePosition = {
         x: Math.max(0, Math.round(point.x - 130)),
@@ -111,30 +180,14 @@
       const node = context.createRouteActionNode?.(nodePosition);
       if (!node) return false;
       const routeNodes = context.flowRouteNodes?.() || [];
-      const sourceNode = pending.sourceKind === "routeNode" ? context.flowRouteNode?.(pending.routeNodeId) : null;
       context.pushFlowHistory?.();
       routeNodes.push(node);
-      connectMomentGraphSourceToTarget(sourceNode, node.id);
+      connectPendingSourceToTarget(node.id);
       pending = null;
       context.selectFlowRouteNode?.(node.id);
       context.renderFlowListAndPublish?.();
       context.renderFlowNodeView?.();
       return true;
-    }
-
-    function connectSourceToTarget(sourceAction, targetId) {
-      if (!pending) return;
-      if (pending.sourceKind === "start") {
-        const state = context.flowState?.(pending.stateId);
-        if (state) state.entryTargetActionId = targetId;
-        return;
-      }
-      if (pending.branchId) {
-        const branch = context.decisionBranchById?.(sourceAction, pending.branchId);
-        if (branch) branch.targetActionId = targetId;
-        return;
-      }
-      if (sourceAction) sourceAction[pending.field] = targetId;
     }
 
     function targetIdForNode(targetNode) {
@@ -146,45 +199,14 @@
 
     function complete(targetNode) {
       if (!pending) return false;
-      if (pending.sourceKind === "routeNode") {
-        const routeNode = context.flowRouteNode?.(pending.routeNodeId);
-        const targetId = targetIdForNode(targetNode);
-        if (!routeNode || !targetId || targetId === routeNode[pending.field]) return false;
-        if (targetId === routeNode.id) return false;
-        if (pending.branchId) {
-          const branch = context.decisionBranchById?.(routeNode, pending.branchId, { targetField: pending.field });
-          if (!branch) return false;
-          context.pushFlowHistory?.();
-          branch[pending.field] = targetId;
-        } else {
-          context.pushFlowHistory?.();
-          routeNode[pending.field] = targetId;
-        }
-        pending = null;
-        context.renderFlowListAndPublish?.();
-        context.renderFlowNodeView?.();
-        return true;
-      }
-      const state = context.flowState?.(pending.stateId);
-      if (!state) return false;
-      const action = pending.sourceKind === "moment" || pending.sourceKind === "start"
-        ? null
-        : context.flowAction?.(state.id, pending.actionId);
-      if (pending.sourceKind !== "moment" && pending.sourceKind !== "start" && !action) return false;
+      const source = connectionSource();
+      if (!source) return false;
       const targetId = targetIdForNode(targetNode);
       if (!targetId) return false;
-      if (pending.sourceKind === "moment") {
-        if (targetId === state.id) return false;
-        context.pushFlowHistory?.();
-        state[pending.field] = targetId;
-        pending = null;
-        context.renderFlowListAndPublish?.();
-        context.renderFlowNodeView?.();
-        return true;
-      }
-      if (pending.sourceKind !== "start" && targetId === action.id) return false;
+      if (source.selfId && targetId === source.selfId) return false;
+      if (targetId === source.currentTarget()) return false;
       context.pushFlowHistory?.();
-      connectSourceToTarget(action, targetId);
+      source.setTarget(targetId);
       pending = null;
       context.renderFlowListAndPublish?.();
       context.renderFlowNodeView?.();
