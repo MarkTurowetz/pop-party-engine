@@ -325,50 +325,26 @@ function setupController() {
   setupBindings.bindJoinControls();
   setupBindings.bindTextInputControls();
 
-  startGameButton.addEventListener("click", async () => {
-    if (!controllerState) return;
-    if (!controllerState.player?.isVip) return;
-    const isCancel = startGameButton.dataset.optionId === "lobby.cancelStart";
-    try {
-      const result = await getControllerSubmitApi().startOrCancelGame({ isCancel, startToken: controllerState.startToken });
-      if (result.lobby) renderControllerState(result.lobby);
-    } catch (error) {
-      controllerMeta.textContent = error.message;
+  window.createControllerActionBindings({
+    applyLayoutForPhase: applyControllerLayoutForPhase,
+    closeAvatarPicker,
+    elements: {
+      avatar: controllerAvatar,
+      avatarPicker,
+      avatarPickerDoneButton,
+      avatarPickerPanel: avatarPicker.querySelector(".avatar-picker-panel"),
+      controllerScreen,
+      introPresentButton,
+      startButton: startGameButton
+    },
+    getControllerState: () => controllerState,
+    getSessionRuntime: getControllerSessionRuntime,
+    getSubmitApi: getControllerSubmitApi,
+    openAvatarPicker,
+    origin,
+    renderState: renderControllerState,
+    setMetaText: (value) => {
+      controllerMeta.textContent = value;
     }
-  });
-
-  controllerAvatar.addEventListener("click", openAvatarPicker);
-  avatarPicker.addEventListener("click", (event) => {
-    if (event.target === avatarPicker) closeAvatarPicker({ commit: true });
-  });
-  avatarPicker.querySelector(".avatar-picker-panel").addEventListener("click", (event) => {
-    event.stopPropagation();
-  });
-  avatarPickerDoneButton.addEventListener("click", () => closeAvatarPicker({ commit: true }));
-
-  introPresentButton.addEventListener("click", async () => {
-    if (!controllerState) return;
-    if (!controllerState.player?.isVip) return;
-    introPresentButton.disabled = true;
-    try {
-      const result = await getControllerSubmitApi().presentIntro({ startToken: controllerState.startToken });
-      if (result.lobby) renderControllerState(result.lobby);
-    } catch (error) {
-      introPresentButton.textContent = error.message;
-      window.setTimeout(() => {
-        introPresentButton.textContent = "Present HI THERE";
-      }, 1800);
-    } finally {
-      introPresentButton.disabled = false;
-    }
-  });
-
-  window.addEventListener("pagehide", () => {
-    getControllerSessionRuntime().sendLeaveBeacon(origin);
-  });
-  window.addEventListener("resize", () => {
-    if (!controllerScreen.classList.contains("hidden")) {
-      applyControllerLayoutForPhase(controllerState ? controllerState.phase || "lobby" : "join");
-    }
-  });
+  }).bindAll();
 }
