@@ -888,9 +888,23 @@ function decisionBranchWireLabel(branch, index = 0) {
   return decisionBranchName(branch, index);
 }
 
-function decisionSummary(action) {
-  return ensureDecisionBranches(action).map((branch, index) => {
-    const target = flowTargetActionName(branch.targetActionId);
+function decisionSummary(action, options = {}) {
+  const descriptorFactory = getFlowNodeBranchDescriptors();
+  const descriptors = descriptorFactory?.descriptorsFor(null, action, {
+    targetField: options.targetField || "targetActionId",
+    targetKind: options.targetKind || "action",
+    targetName: options.targetName || flowTargetActionName
+  }) || [];
+  const branchRows = descriptors.length
+    ? descriptors
+    : ensureDecisionBranches(action, { targetField: options.targetField || "targetActionId" }).map((branch, index) => ({
+      branch,
+      index,
+      targetId: branch[options.targetField || "targetActionId"] || ""
+    }));
+  return branchRows.map(({ branch, index, targetId }) => {
+    const targetName = options.targetName || flowTargetActionName;
+    const target = targetName(targetId);
     if (branch.type === "noMatch") return `else -> ${target}`;
     if (branch.type === "code") return `${branch.code || "x < 3"} -> ${target}`;
     return `${decisionVariableName(action.variable)} = ${branch.value || ""} -> ${target}`;
