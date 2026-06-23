@@ -34,6 +34,9 @@
       if (pending.sourceKind === "moment") {
         return layer.querySelector(`.flow-node[data-node-id="${context.cssEscape(pending.stateId)}"]`);
       }
+      if (pending.sourceKind === "routeNode") {
+        return layer.querySelector(`.flow-node[data-route-node-id="${context.cssEscape(pending.routeNodeId)}"]`);
+      }
       if (pending.sourceKind === "start") {
         return layer.querySelector('.flow-node[data-node-id="start"]');
       }
@@ -96,6 +99,17 @@
 
     function complete(targetNode) {
       if (!pending) return false;
+      if (pending.sourceKind === "routeNode") {
+        const routeNode = context.flowRouteNode?.(pending.routeNodeId);
+        const targetId = targetNode?.dataset.nodeId || "";
+        if (!routeNode || !targetId || targetId === routeNode.targetStateId) return false;
+        context.pushFlowHistory?.();
+        routeNode[pending.field] = targetId;
+        pending = null;
+        context.renderFlowListAndPublish?.();
+        context.renderFlowNodeView?.();
+        return true;
+      }
       const state = context.flowState?.(pending.stateId);
       if (!state) return false;
       const action = pending.sourceKind === "moment" || pending.sourceKind === "start"

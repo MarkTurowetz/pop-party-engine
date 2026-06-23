@@ -53,6 +53,24 @@
       }]);
     }
 
+    function createMomentRoutePorts(routeNode) {
+      return createPorts([{
+        label: `Target${routeNode.targetStateId ? ` -> ${context.flowStateName?.(routeNode.targetStateId) || routeNode.targetStateId}` : ""}`,
+        dotDataset: {
+          routeNodeId: routeNode.id,
+          field: "targetStateId",
+          targetKind: "state"
+        },
+        connection: {
+          sourceKind: "routeNode",
+          routeNodeId: routeNode.id,
+          field: "targetStateId",
+          targetKind: "state"
+        },
+        hint: "Release over a moment to set this Moment Entry target."
+      }]);
+    }
+
     function createActionPorts(action, exits) {
       return createPorts((exits || []).map((exit) => {
         const branch = exit.branch || null;
@@ -99,6 +117,7 @@
 
     return {
       createActionPorts,
+      createMomentRoutePorts,
       createMomentPorts,
       createStartPorts
     };

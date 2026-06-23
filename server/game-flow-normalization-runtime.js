@@ -60,7 +60,8 @@ function createGameFlowNormalizationRuntime({
     if (!states.some((state) => state.id === "lobby")) {
       states.unshift(defaultGameFlow.states[0]);
     }
-    return { states };
+    const routeNodes = normalizeMomentRouteNodes(flow?.routeNodes, states);
+    return { states, routeNodes };
   }
 
   function normalizeNodePosition(position, index = 0) {
@@ -76,6 +77,22 @@ function createGameFlowNormalizationRuntime({
 
   function flowActionTypeMeta(type) {
     return actionRegistry.actionTypeMeta(type);
+  }
+
+  function normalizeMomentRouteNodes(routeNodes = [], states = []) {
+    const knownStateIds = new Set((states || []).map((state) => state.id));
+    if (!Array.isArray(routeNodes)) return [];
+    return routeNodes.map((node, nodeIndex) => {
+      const id = normalizeFlowId(node?.id || node?.name, `moment-entry-${nodeIndex + 1}`);
+      const targetStateId = normalizeFlowId(node?.targetStateId, "");
+      return {
+        id,
+        routeNodeType: "momentEntry",
+        name: cleanFlowText(node?.name, `Moment Entry ${nodeIndex + 1}`),
+        targetStateId: knownStateIds.has(targetStateId) ? targetStateId : "",
+        nodePosition: normalizeNodePosition(node?.nodePosition, nodeIndex)
+      };
+    }).filter((node) => node.id);
   }
 
   function normalizeFlowAction(action, actionIndex, stateId, isSubAction = false) {

@@ -187,8 +187,10 @@ function redrawFlowNodeWires() {
   if (!flowNodeWires || !flowNodeLayer) return;
   clearFlowNodeWires();
   if (flowNodeDepth === "moments") {
-    const stateNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node"))
+    const stateNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node[data-node-id]"))
       .map((node) => [node.dataset.nodeId, node]));
+    const routeNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node[data-route-node-id]"))
+      .map((node) => [node.dataset.routeNodeId, node]));
     for (const state of gameFlow.states || []) {
       const fromNode = stateNodes.get(state.id);
       const toNode = state.nextStateTargetId ? stateNodes.get(state.nextStateTargetId) : null;
@@ -197,6 +199,15 @@ function redrawFlowNodeWires() {
           highlighted: selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id)
         });
       }
+    }
+    for (const routeNode of flowRouteNodes()) {
+      const fromNode = routeNodes.get(routeNode.id);
+      const toNode = routeNode.targetStateId ? stateNodes.get(routeNode.targetStateId) : null;
+      if (!fromNode || !toNode) continue;
+      drawNodeWire(fromNode, toNode, {
+        highlighted: selectedFlowRouteNodeId === routeNode.id,
+        label: "Entry"
+      });
     }
     renderFlowNodeMinimap();
     return;
@@ -260,7 +271,7 @@ function renderFlowMomentNodes() {
   flowNodeWires.setAttribute("width", "1600");
   flowNodeWires.setAttribute("height", "920");
   nodeBackButton.disabled = true;
-  nodeViewHelp.textContent = "Double-click a game moment to edit its action graph.";
+  nodeViewHelp.textContent = "Double-click a game moment to edit its action graph. Add Moment Entry nodes for reusable routing anchors.";
   for (const [index, state] of (gameFlow.states || []).entries()) {
     const { x, y } = savedNodePosition(state, defaultNodePosition(index, 3, 80, 80, 420, 240));
     const node = createFlowNode({
@@ -272,7 +283,7 @@ function renderFlowMomentNodes() {
       width: 300,
       height: 150,
       className: "is-moment",
-      selected: !selectedFlowActionId && (selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id))
+      selected: !selectedFlowRouteNodeId && !selectedFlowActionId && (selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id))
     });
     node.querySelector(".flow-node-main")?.appendChild(createFlowMomentPorts(state));
     bindFlowNodeDrag(node, state);
@@ -282,9 +293,35 @@ function renderFlowMomentNodes() {
     });
     node.addEventListener("dblclick", () => {
       selectedFlowStateId = state.id;
+      clearFlowRouteNodeSelection();
       clearFlowActionSelection();
       expandFlowStateInList(state.id);
       flowNodeDepth = "actions";
+      renderFlowTool();
+    });
+    flowNodeLayer.appendChild(node);
+  }
+  for (const [index, routeNode] of flowRouteNodes().entries()) {
+    const { x, y } = savedNodePosition(routeNode, defaultNodePosition(index, 2, 860, 80, 320, 190));
+    const targetName = routeNode.targetStateId ? flowStateName(routeNode.targetStateId) : "No target";
+    const node = createFlowNode({
+      id: routeNode.id,
+      title: routeNode.name || "Moment Entry",
+      subtitle: `Moment Entry -> ${targetName}`,
+      x,
+      y,
+      width: 260,
+      height: 120,
+      className: "is-moment-entry",
+      selected: selectedFlowRouteNodeId === routeNode.id,
+      valueBadge: routeNode.targetStateId ? null : { text: "Needs Target", className: "is-warning" }
+    });
+    node.dataset.routeNodeId = routeNode.id;
+    delete node.dataset.nodeId;
+    node.querySelector(".flow-node-main")?.appendChild(createFlowMomentRoutePorts(routeNode));
+    bindFlowNodeDrag(node, routeNode);
+    node.addEventListener("click", () => {
+      selectFlowRouteNode(routeNode.id);
       renderFlowTool();
     });
     flowNodeLayer.appendChild(node);
@@ -300,6 +337,10 @@ function emptyFlowNodePorts() {
 
 function createFlowMomentPorts(state) {
   return getFlowNodePortsFactory()?.createMomentPorts(state) || emptyFlowNodePorts();
+}
+
+function createFlowMomentRoutePorts(routeNode) {
+  return getFlowNodePortsFactory()?.createMomentRoutePorts(routeNode) || emptyFlowNodePorts();
 }
 
 function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x, y, width, height, className = "", selected = false, jumpTarget = false }) {
@@ -802,9 +843,35 @@ function renderFlowNodeInspector() {
   if (!flowNodeInspector) return;
   flowNodeInspector.replaceChildren();
   const state = flowState(selectedFlowStateId);
+  const routeNode = selectedFlowRouteNode();
   const actionRef = state ? flowActionRef(selectedFlowStateId, selectedFlowActionId) : null;
   const action = actionRef?.action || null;
   const title = document.createElement("h3");
+  if (flowNodeDepth === "moments" && routeNode) {
+    title.textContent = routeNode.name || "Moment Entry";
+    const copy = document.createElement("p");
+    copy.textContent = "Moment Entry nodes are reusable routing anchors on the moment graph. Later decision paths can target these anchors instead of hard-coding a moment jump.";
+    flowNodeInspector.append(title, copy);
+    if (!routeNode.targetStateId) {
+      flowNodeInspector.appendChild(readOnlyFlowNote("Warning: this Moment Entry needs a target or any future path that reaches it will hang."));
+    }
+    flowNodeInspector.appendChild(flowField("Name", routeNode.name || "Moment Entry", (value) => {
+      pushFlowHistory();
+      routeNode.name = value || "Moment Entry";
+      renderFlowListAndPublish();
+      renderFlowNodeView();
+    }));
+    flowNodeInspector.appendChild(flowSelect("Target Moment", routeNode.targetStateId || "", flowMomentEntryTargetOptions(routeNode.targetStateId || ""), (value) => {
+      pushFlowHistory();
+      routeNode.targetStateId = value;
+      renderFlowListAndPublish();
+      renderFlowNodeView();
+    }));
+    flowNodeInspector.appendChild(flowActionButton("Delete Moment Entry", () => {
+      deleteSelectedFlowRouteNode();
+    }));
+    return;
+  }
   if (flowNodeDepth === "moments" || !state) {
     title.textContent = selectedFlowStateId ? flowState(selectedFlowStateId)?.name || "Game Moment" : "Node View";
     const copy = document.createElement("p");
@@ -885,6 +952,7 @@ function pushFlowHistory() {
 function restoreFlowHistory(snapshot) {
   gameFlow = JSON.parse(snapshot);
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
+  selectedFlowRouteNodeId = flowRouteNode(selectedFlowRouteNodeId)?.id || "";
   expandFlowStateInList(selectedFlowStateId);
   if (flowAction(selectedFlowStateId, selectedFlowActionId)) {
     setFlowActionSelection([...selectedFlowActionIds, selectedFlowActionId]);

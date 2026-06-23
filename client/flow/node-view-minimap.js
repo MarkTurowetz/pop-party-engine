@@ -32,9 +32,12 @@
       for (const item of graphBounds.nodes) {
         const mini = document.createElement("div");
         const id = context.flowNodeDepth?.() === "moments"
-          ? item.node.dataset.nodeId
+          ? item.node.dataset.nodeId || item.node.dataset.routeNodeId
           : item.node.dataset.actionId || item.node.dataset.nodeId;
-        const selected = Boolean(id && (context.flowActionIsSelected?.(id) || context.selectedFlowStateId?.() === id));
+        const selectedRouteNodeId = context.selectedFlowRouteNodeId?.() || "";
+        const selected = context.flowNodeDepth?.() === "moments"
+          ? Boolean(id && (selectedRouteNodeId ? selectedRouteNodeId === id : context.selectedFlowStateId?.() === id || context.flowActionIsSelected?.(id)))
+          : Boolean(id && (context.flowActionIsSelected?.(id) || context.selectedFlowStateId?.() === id));
         mini.className = `flow-node-minimap-node${context.flowNodeDepth?.() === "actions" ? " is-action" : ""}${selected ? " is-selected" : ""}`;
         mini.style.left = `${(item.x - graphBounds.minX) * scale}px`;
         mini.style.top = `${(item.y - graphBounds.minY) * scale}px`;

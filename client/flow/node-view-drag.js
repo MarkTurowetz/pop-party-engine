@@ -10,7 +10,7 @@
       const layer = context.flowNodeLayer?.();
       if (!layer || !item?.id) return null;
       const id = context.cssEscape(item.id);
-      return layer.querySelector(`.flow-node[data-action-id="${id}"], .flow-node[data-node-id="${id}"]`);
+      return layer.querySelector(`.flow-node[data-action-id="${id}"], .flow-node[data-node-id="${id}"], .flow-node[data-route-node-id="${id}"]`);
     }
 
     function selectedMovingItems(item) {
@@ -19,6 +19,7 @@
         return selectedActions.some((action) => action.id === item.id) ? selectedActions : [item];
       }
       if (context.flowNodeDepth?.() === "moments" && !item?.type) {
+        if (item.routeNodeType) return [item];
         const selectedStates = context.selectedFlowMomentStates?.() || [];
         return selectedStates.some((state) => state.id === item.id) ? selectedStates : [item];
       }
