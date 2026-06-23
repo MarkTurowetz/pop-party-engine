@@ -328,6 +328,7 @@ let flowNodePortsFactory = null;
 let flowNodeWireRenderer = null;
 let flowMomentRouteGraph = null;
 let flowMomentRouteRenderer = null;
+let flowMomentRouteWires = null;
 
 function getFlowFormControls() {
   if (!flowFormControls && window.PartyGameFlowFormControls) {
@@ -390,6 +391,26 @@ function getFlowMomentRouteRenderer() {
     });
   }
   return flowMomentRouteRenderer;
+}
+
+function getFlowMomentRouteWires() {
+  if (!flowMomentRouteWires && window.PartyGameFlowMomentRouteWires) {
+    flowMomentRouteWires = window.PartyGameFlowMomentRouteWires.createMomentRouteWires({
+      cssEscape,
+      decisionBranchWireLabel,
+      drawNodeWire,
+      ensureDecisionBranches,
+      flowNodeLayer: () => flowNodeLayer,
+      flowRouteNodes,
+      gameStates: () => gameFlow.states || [],
+      renderFlowNodeMinimap,
+      selectedFlowActionIds: () => selectedFlowActionIds,
+      selectedFlowRouteNodeId: () => selectedFlowRouteNodeId,
+      selectedFlowStateId: () => selectedFlowStateId,
+      targetNode: (...args) => getFlowMomentRouteGraph()?.targetNode(...args)
+    });
+  }
+  return flowMomentRouteWires;
 }
 
 function getFlowActionControlGroups() {

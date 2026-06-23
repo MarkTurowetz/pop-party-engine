@@ -183,51 +183,11 @@ function selectedNodeWireMatches(sourceAction, targetId = "", branchId = "") {
   return flowActionIsSelected(sourceAction.id);
 }
 
-function momentGraphTargetNode(stateNodes, routeNodes, targetId) {
-  return getFlowMomentRouteGraph()?.targetNode(stateNodes, routeNodes, targetId) || null;
-}
-
 function redrawFlowNodeWires() {
   if (!flowNodeWires || !flowNodeLayer) return;
   clearFlowNodeWires();
   if (flowNodeDepth === "moments") {
-    const stateNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node[data-node-id]"))
-      .map((node) => [node.dataset.nodeId, node]));
-    const routeNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node[data-route-node-id]"))
-      .map((node) => [node.dataset.routeNodeId, node]));
-    for (const state of gameFlow.states || []) {
-      const fromNode = stateNodes.get(state.id);
-      const toNode = momentGraphTargetNode(stateNodes, routeNodes, state.nextStateTargetId);
-      if (toNode) {
-        drawNodeWire(fromNode, toNode, {
-          highlighted: selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id)
-        });
-      }
-    }
-    for (const routeNode of flowRouteNodes()) {
-      const fromNode = routeNodes.get(routeNode.id);
-      if (!fromNode) continue;
-      if (routeNode.routeNodeType === "decision") {
-        for (const [index, branch] of ensureDecisionBranches(routeNode, { targetField: "targetNodeId" }).entries()) {
-          const toNode = momentGraphTargetNode(stateNodes, routeNodes, branch.targetNodeId);
-          if (!toNode) continue;
-          const sourceNode = flowNodeLayer.querySelector(`.flow-node[data-route-node-id="${cssEscape(routeNode.id)}"] .flow-node-branch[data-branch-id="${cssEscape(branch.id)}"]`) || fromNode;
-          drawNodeWire(sourceNode, toNode, {
-            highlighted: selectedFlowRouteNodeId === routeNode.id,
-            label: decisionBranchWireLabel(branch, index)
-          });
-        }
-        continue;
-      }
-      const toNode = routeNode.targetStateId ? stateNodes.get(routeNode.targetStateId) : null;
-      if (toNode) {
-        drawNodeWire(fromNode, toNode, {
-          highlighted: selectedFlowRouteNodeId === routeNode.id,
-          label: "Entry"
-        });
-      }
-    }
-    renderFlowNodeMinimap();
+    getFlowMomentRouteWires()?.redraw();
     return;
   }
   const state = flowState(selectedFlowStateId);
