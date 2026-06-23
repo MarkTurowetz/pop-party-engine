@@ -87,6 +87,25 @@ function getControllerGlobalActionView() {
     }));
 }
 
+function getControllerStateRuntime() {
+  return controllerModules.get("stateRuntime", () => window.createControllerStateRuntime({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      closeAvatarPicker,
+      elements: {
+        globalActionButton: controllerGlobalActionButton,
+        globalActionMessage: controllerGlobalActionMessage,
+        globalActionState: controllerGlobalActionState
+      },
+      getChoiceInputView: getControllerChoiceInputView,
+      getGlobalActionView: getControllerGlobalActionView,
+      getLobbyView: getControllerLobbyView,
+      getMicrophoneAccessView: getControllerMicrophoneAccessView,
+      getTextInputView: getControllerTextInputView,
+      getVoiceInput: getControllerVoiceInput,
+      hideViews: hideControllerViews
+    }));
+}
+
 function getControllerHeartbeatRuntime() {
   return controllerModules.get("heartbeatRuntime", () => window.createControllerHeartbeatRuntime({
       applyLayoutForPhase: applyControllerLayoutForPhase,
@@ -211,10 +230,6 @@ function hideControllerViews() {
   introPresentButton.classList.add("hidden");
 }
 
-function renderControllerChoiceState(lobby, me) {
-  return getControllerChoiceInputView().render(lobby, me);
-}
-
 async function submitControllerChoice(actionId, optionIndex, cardId = "") {
   if (!controllerState) return;
   try {
@@ -223,28 +238,6 @@ async function submitControllerChoice(actionId, optionIndex, cardId = "") {
   } catch (error) {
     controllerChoicePrompt.textContent = error.message;
   }
-}
-
-function renderControllerTextState(lobby, me) {
-  return getControllerTextInputView().render(lobby, me);
-}
-
-function renderControllerMicrophoneAccessState(lobby, me) {
-  return getControllerMicrophoneAccessView().render(lobby, me);
-}
-
-function renderControllerGlobalActionState(lobby, me) {
-  return getControllerGlobalActionView().render(lobby, me);
-}
-
-function renderControllerPausedState(lobby) {
-  hideControllerViews();
-  getControllerVoiceInput().stopRecognition();
-  controllerGlobalActionState.classList.remove("hidden");
-  controllerGlobalActionButton.classList.add("hidden");
-  controllerGlobalActionButton.disabled = true;
-  controllerGlobalActionMessage.textContent = "Game Paused";
-  applyControllerLayoutForPhase(lobby.phase || "lobby");
 }
 
 async function submitControllerText(actionId, textOverride = null) {
@@ -308,32 +301,9 @@ function renderControllerState(lobby) {
 
   const controllerPhase = lobby.phase || "lobby";
   controllerState.phase = controllerPhase;
-  if (lobby.isPaused === true && controllerPhase !== "lobby" && controllerPhase !== "starting") {
-    closeAvatarPicker({ commit: false });
-    renderControllerPausedState(lobby);
-    return;
-  }
-  if (lobby.microphoneAccess?.actionId) {
-    closeAvatarPicker({ commit: false });
-    if (renderControllerMicrophoneAccessState(lobby, me)) return;
-  }
-  const controllerInput = me.input || lobby.input || null;
-  if (controllerInput?.type || controllerInput?.options?.length) {
-    closeAvatarPicker({ commit: false });
-    if (renderControllerChoiceState(lobby, me)) return;
-  }
-  if (lobby.textInput?.actionId) {
-    closeAvatarPicker({ commit: false });
-    if (renderControllerTextState(lobby, me)) return;
-  }
-  if (controllerPhase !== "lobby" && controllerPhase !== "starting") {
-    closeAvatarPicker({ commit: false });
-    if (renderControllerGlobalActionState(lobby, me)) return;
-    getControllerLobbyView().renderInGamePhase(me, controllerPhase);
-    return;
-  }
-
-  controllerCountdownTimer = getControllerLobbyView().renderLobby(lobby, me, controllerPhase);
+  const renderedState = getControllerStateRuntime().render(lobby, me);
+  controllerState.controllerViewStateId = renderedState.id;
+  controllerCountdownTimer = renderedState.countdownTimer;
 }
 
 function reloadControllerArtAssets() {
