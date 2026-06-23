@@ -19,14 +19,19 @@ function createDecisionActionNormalizationRuntime({
     const type = normalizeDecisionBranchType(branch?.type);
     const fallbackId = type === "noMatch" ? "no-match" : `branch-${index + 1}`;
     const targetField = options.targetField || "targetActionId";
-    const targetValue = branch?.[targetField] ?? branch?.targetActionId;
-    return {
+    const targetActionId = flowActionTarget(branch?.targetActionId);
+    const targetNodeId = flowActionTarget(branch?.targetNodeId);
+    const targetValue = branch?.[targetField] ?? (targetField === "targetNodeId" ? branch?.targetActionId : "");
+    const normalized = {
       id: normalizeFlowId(branch?.id, fallbackId),
       type,
       value: cleanFlowText(branch?.value, type === "hit" ? "0" : ""),
       code: cleanFlowText(branch?.code, type === "code" ? "x < 3" : ""),
       [targetField]: flowActionTarget(targetValue)
     };
+    if (targetField !== "targetActionId" && targetActionId) normalized.targetActionId = targetActionId;
+    if (targetField !== "targetNodeId" && targetNodeId) normalized.targetNodeId = targetNodeId;
+    return normalized;
   }
 
   function normalizeDecisionBranches(action, options = {}) {

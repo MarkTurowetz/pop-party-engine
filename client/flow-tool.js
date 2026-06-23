@@ -858,14 +858,19 @@ function ensureDecisionBranches(action, options = {}) {
     ];
   }
   action.branches = action.branches.map((branch, index) => {
-    const target = branch[targetField] || branch.targetActionId || "";
-    return {
+    const targetActionId = branch.targetActionId || "";
+    const targetNodeId = branch.targetNodeId || "";
+    const target = branch[targetField] || (targetField === "targetNodeId" ? targetActionId : "") || "";
+    const normalized = {
       id: branch.id || (branch.type === "noMatch" ? "no-match" : makeDecisionBranchId(`branch-${index + 1}`)),
       type: ["hit", "code", "noMatch"].includes(branch.type) ? branch.type : "hit",
       value: branch.value ?? "",
       code: branch.code || "x < 3",
       [targetField]: target
     };
+    if (targetField !== "targetActionId" && targetActionId) normalized.targetActionId = targetActionId;
+    if (targetField !== "targetNodeId" && targetNodeId) normalized.targetNodeId = targetNodeId;
+    return normalized;
   });
   const regular = action.branches.filter((branch) => branch.type !== "noMatch");
   const noMatch = action.branches.find((branch) => branch.type === "noMatch") || { id: "no-match", type: "noMatch", value: "", code: "", [targetField]: "" };
