@@ -1810,13 +1810,28 @@ async function setupFlowTool() {
   flowNodeStage?.addEventListener("scroll", renderFlowNodeMinimap);
   flowNodeMinimap?.addEventListener("pointerdown", startFlowNodeMinimapDrag);
   flowNodeMinimap?.addEventListener("click", jumpFlowNodeMinimap);
+  flowNodeStage?.addEventListener("click", (event) => {
+    if (flowNodeStage.dataset.skipConnectionClick !== "true") return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    delete flowNodeStage.dataset.skipConnectionClick;
+  }, true);
   flowNodeStage?.addEventListener("pointerup", (event) => {
     const targetNode = event.target.closest?.(".flow-node")
       || document.elementFromPoint(event.clientX, event.clientY)?.closest?.(".flow-node");
+    let completedConnection = false;
     if (targetNode) {
-      completeNodeConnection(targetNode);
+      completedConnection = completeNodeConnection(targetNode);
     } else if (shouldCreateActionFromPendingConnection(event)) {
-      createActionFromPendingConnection(event);
+      completedConnection = createActionFromPendingConnection(event);
+    }
+    if (completedConnection) {
+      event.preventDefault();
+      event.stopPropagation();
+      flowNodeStage.dataset.skipConnectionClick = "true";
+      window.setTimeout(() => {
+        delete flowNodeStage.dataset.skipConnectionClick;
+      }, 0);
     }
     clearPendingFlowNodeConnection();
   });

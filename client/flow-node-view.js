@@ -583,7 +583,7 @@ function startFlowNodeMinimapDrag(event) {
 }
 
 function completeNodeConnection(targetNode) {
-  getFlowNodeConnectionController()?.complete(targetNode);
+  return Boolean(getFlowNodeConnectionController()?.complete(targetNode));
 }
 
 function renderFlowNodeInspector() {
