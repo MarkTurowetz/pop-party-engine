@@ -9,10 +9,10 @@
     dinoIcon,
     elements,
     getControllerState,
-    postJson,
     renderState,
     setControllerPlayer,
-    setMetaText
+    setMetaText,
+    updateAvatar
   }) {
     let pendingShape = "";
     let pickerOpen = false;
@@ -76,11 +76,7 @@
       if (!commit || !state?.player) return;
       if (!pendingShape || pendingShape === state.player.avatar?.shape) return;
       try {
-        const result = await postJson("/api/avatar", {
-          stageCode: state.stageCode,
-          playerId: state.playerId,
-          shape: pendingShape
-        });
+        const result = await updateAvatar(pendingShape);
         if (result.player) {
           setControllerPlayer(result.player);
           setAvatar(result.player);

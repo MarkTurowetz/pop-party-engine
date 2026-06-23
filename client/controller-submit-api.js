@@ -54,12 +54,22 @@
       });
     }
 
+    function updateAvatar(shape) {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson("/api/avatar", {
+        ...base,
+        shape
+      });
+    }
+
     return {
       join,
       presentIntro,
       submitChoice,
       submitText,
-      startOrCancelGame
+      startOrCancelGame,
+      updateAvatar
     };
   }
 

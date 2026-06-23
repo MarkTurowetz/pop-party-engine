@@ -24,14 +24,14 @@ function getControllerAvatarView() {
         pickerGrid: avatarPickerGrid
       },
       getControllerState: () => controllerState,
-      postJson,
       renderState: renderControllerState,
       setControllerPlayer: (player) => {
         controllerState.player = player;
       },
       setMetaText: (value) => {
         controllerMeta.textContent = value;
-      }
+      },
+      updateAvatar: (shape) => getControllerSubmitApi().updateAvatar(shape)
     });
   }
   return controllerAvatarView;
