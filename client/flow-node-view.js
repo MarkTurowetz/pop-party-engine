@@ -173,16 +173,6 @@ function shouldDrawImplicitActionWire(action) {
   return false;
 }
 
-function selectedNodeWireMatches(sourceAction, targetId = "", branchId = "") {
-  if (!sourceAction) return false;
-  const selectedRef = flowActionRef(selectedFlowStateId, selectedFlowActionId);
-  if (branchId) {
-    if (selectedRef?.isBranch) return flowActionIsSelected(branchId);
-    return flowActionIsSelected(sourceAction.id);
-  }
-  return flowActionIsSelected(sourceAction.id);
-}
-
 function redrawFlowNodeWires() {
   if (!flowNodeWires || !flowNodeLayer) return;
   clearFlowNodeWires();
@@ -190,59 +180,7 @@ function redrawFlowNodeWires() {
     getFlowMomentRouteWires()?.redraw();
     return;
   }
-  const state = flowState(selectedFlowStateId);
-  if (!state) return;
-  const actionNodes = new Map(Array.from(flowNodeLayer.querySelectorAll(".flow-node[data-action-id]"))
-    .map((node) => [node.dataset.actionId, node]));
-  const startNode = flowNodeLayer.querySelector('.flow-node[data-node-id="start"]');
-  const returnNode = actionNodes.get("return");
-  const entryTargetId = state.entryTargetActionId || "";
-  const fallbackEntryActionId = !entryTargetId && state.actions?.[0]?.id ? state.actions[0].id : "";
-  const entryTarget = entryTargetId || fallbackEntryActionId;
-  if (entryTarget && !isNoFlowTarget(entryTarget)) {
-    const toNode = entryTarget === "return" ? returnNode : actionNodes.get(entryTarget);
-    if (toNode) drawNodeWire(startNode, toNode, { muted: !entryTargetId });
-  }
-  for (const [index, action] of (state.actions || []).entries()) {
-    const fromNode = actionNodes.get(action.id);
-    if (action.type === "jumpNode" && actionNodeIsSelected(action)) {
-      const targetId = action.jumpTargetActionId || "";
-      if (targetId && !isNoFlowTarget(targetId)) {
-        const toNode = targetId === "return" ? returnNode : actionNodes.get(targetId);
-        if (toNode) {
-          drawNodeWire(fromNode, toNode, {
-            highlighted: actionNodeIsSelected(action),
-            label: "Jump",
-            fromAnchor: "center"
-          });
-        }
-      }
-    }
-    for (const exit of flowNodeExitDefinitions(action)) {
-      if (exit.targetKind === "state") continue;
-      const branch = exit.branchId ? decisionBranchById(action, exit.branchId) : null;
-      const targetId = branch ? branch.targetActionId : action[exit.field] || "";
-      if (!targetId || isNoFlowTarget(targetId)) {
-        continue;
-      }
-      const sourceNode = branch
-        ? flowNodeLayer.querySelector(`.flow-node[data-action-id="${cssEscape(action.id)}"] .flow-node-branch[data-branch-id="${cssEscape(branch.id)}"]`) || fromNode
-        : fromNode;
-      const highlighted = selectedNodeWireMatches(action, targetId, branch?.id || "");
-      const label = branch ? decisionBranchWireLabel(branch, ensureDecisionBranches(action).findIndex((item) => item.id === branch.id)) : "";
-      if (targetId === "return") {
-        drawNodeWire(sourceNode, returnNode, { highlighted, label });
-        continue;
-      }
-      const toNode = actionNodes.get(targetId);
-      if (toNode) drawNodeWire(sourceNode, toNode, { highlighted, label });
-    }
-    if (shouldDrawImplicitActionWire(action)) {
-      const nextAction = state.actions[index + 1];
-      if (nextAction) drawNodeWire(fromNode, actionNodes.get(nextAction.id), true);
-    }
-  }
-  renderFlowNodeMinimap();
+  getFlowActionNodeWires()?.redraw();
 }
 
 function renderFlowMomentNodes() {

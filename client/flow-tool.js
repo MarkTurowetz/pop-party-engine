@@ -329,6 +329,7 @@ let flowNodeWireRenderer = null;
 let flowMomentRouteGraph = null;
 let flowMomentRouteRenderer = null;
 let flowMomentRouteWires = null;
+let flowActionNodeWires = null;
 
 function getFlowFormControls() {
   if (!flowFormControls && window.PartyGameFlowFormControls) {
@@ -411,6 +412,30 @@ function getFlowMomentRouteWires() {
     });
   }
   return flowMomentRouteWires;
+}
+
+function getFlowActionNodeWires() {
+  if (!flowActionNodeWires && window.PartyGameFlowActionNodeWires) {
+    flowActionNodeWires = window.PartyGameFlowActionNodeWires.createActionNodeWires({
+      actionNodeIsSelected,
+      cssEscape,
+      decisionBranchById,
+      decisionBranchWireLabel,
+      drawNodeWire,
+      ensureDecisionBranches,
+      flowActionIsSelected,
+      flowActionRef,
+      flowNodeExitDefinitions,
+      flowNodeLayer: () => flowNodeLayer,
+      flowState,
+      isNoFlowTarget,
+      renderFlowNodeMinimap,
+      selectedFlowActionId: () => selectedFlowActionId,
+      selectedFlowStateId: () => selectedFlowStateId,
+      shouldDrawImplicitActionWire
+    });
+  }
+  return flowActionNodeWires;
 }
 
 function getFlowActionControlGroups() {
