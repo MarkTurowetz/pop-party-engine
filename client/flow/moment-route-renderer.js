@@ -2,16 +2,25 @@
   "use strict";
 
   function createMomentRouteRenderer(context) {
+    function isRouteDecisionNode(routeNode) {
+      return routeNode?.routeNodeType === "decision" || (routeNode?.routeNodeType === "action" && routeNode?.type === "decision");
+    }
+
+    function isRouteActionNode(routeNode) {
+      return routeNode?.routeNodeType === "action";
+    }
+
     function renderRouteNodes() {
       const routeNodes = context.flowRouteNodes?.() || [];
       const layer = context.flowNodeLayer?.();
       if (!layer) return;
       for (const [index, routeNode] of routeNodes.entries()) {
-        const isDecision = routeNode.routeNodeType === "decision";
-        const isAction = routeNode.routeNodeType === "action";
+        const isDecision = isRouteDecisionNode(routeNode);
+        const isAction = isRouteActionNode(routeNode);
+        const isOrdinaryAction = isAction && !isDecision;
         const { x, y } = context.savedNodePosition?.(
           routeNode,
-          context.defaultNodePosition?.(index, 2, 860, isDecision ? 360 : isAction ? 600 : 80, 360, 240) || { x: 860, y: isDecision ? 360 : isAction ? 600 : 80 }
+          context.defaultNodePosition?.(index, 2, 860, isDecision ? 360 : isOrdinaryAction ? 600 : 80, 360, 240) || { x: 860, y: isDecision ? 360 : isOrdinaryAction ? 600 : 80 }
         ) || { x: 860, y: isDecision ? 360 : isAction ? 600 : 80 };
         const branches = isDecision ? context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" }) || [] : [];
         const missingBranchTarget = branches.some((branch) => !branch.targetNodeId || context.isNoFlowTarget?.(branch.targetNodeId));
@@ -24,7 +33,7 @@
             : isAction
               ? `${context.actionCategoryName?.(routeNode) || "Standard"} / ${context.actionTypeMeta?.(routeNode.type)?.name || routeNode.type}`
               : `Moment Entry -> ${targetName}`,
-          timing: isAction ? context.actionTimingLabel?.(routeNode, false) || "" : "",
+          timing: isOrdinaryAction ? context.actionTimingLabel?.(routeNode, false) || "" : "",
           valueBadge: isDecision
             ? (missingBranchTarget ? { text: "Needs Target", className: "is-warning" } : null)
             : isAction
@@ -49,7 +58,7 @@
             })
           : null;
         if (childList) node.appendChild(childList);
-        if (isAction) {
+        if (isOrdinaryAction) {
           node.querySelector(".flow-node-main")?.appendChild(context.createFlowMomentRouteActionPorts?.(routeNode));
         } else if (!isDecision) {
           node.querySelector(".flow-node-main")?.appendChild(context.createFlowMomentRoutePorts?.(routeNode));
@@ -66,7 +75,7 @@
     function routeActionTypeOptions(routeNode) {
       return (context.flowActionTypes?.() || []).filter((option) => {
         if (option.deprecated && option.id !== routeNode.type) return false;
-        if (option.id === "decision" || option.id === "jumpNode" || option.id === "transitionState") return option.id === routeNode.type;
+        if (option.id === "jumpNode" || option.id === "transitionState") return option.id === routeNode.type;
         return true;
       });
     }
@@ -133,16 +142,20 @@
       if (!routeNode.nextTargetNodeId && routeNode.nextTargetActionId) {
         routeNode.nextTargetNodeId = routeNode.nextTargetActionId;
       }
+      if (routeNode.type === "decision") {
+        context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" });
+      }
       const state = routeInspectorState(routeNode);
       context.appendActionPropertyControls?.(inspector, state, routeActionRef(routeNode, state), {
         ...routeInspectorChangeHandlers(),
         actionTypeOptions: routeActionTypeOptions,
+        decisionTargetField: "targetNodeId",
         excludeNextActionTypes: ["voteOnAnswersInput"],
         nextTargetField: "nextTargetNodeId",
         nextTargetLabel: "Next",
         targetOptions: routeTargetOptions(routeNode),
         includeSubActionButton: false,
-        stopAfterDecision: false
+        stopAfterDecision: true
       });
     }
 
@@ -151,8 +164,9 @@
       const routeNode = context.selectedFlowRouteNode?.();
       const inspector = context.flowNodeInspector?.();
       if (!routeNode || !inspector) return false;
-      const isRouteDecision = routeNode.routeNodeType === "decision";
-      const isRouteAction = routeNode.routeNodeType === "action";
+      const isRouteDecision = isRouteDecisionNode(routeNode);
+      const isRouteAction = isRouteActionNode(routeNode);
+      const isLegacyRouteDecision = routeNode.routeNodeType === "decision";
       const title = document.createElement("h3");
       title.textContent = routeNode.name || (isRouteDecision ? "Decision" : isRouteAction ? "Action" : "Moment Entry");
       const copy = document.createElement("p");
@@ -176,7 +190,7 @@
           context.renderFlowNodeView?.();
         }));
       }
-      if (isRouteDecision) {
+      if (isRouteDecision && isLegacyRouteDecision) {
         renderRouteDecisionInspector(inspector, routeNode);
         inspector.appendChild(context.flowActionButton?.("Delete Decision", () => {
           context.deleteSelectedFlowRouteNode?.();

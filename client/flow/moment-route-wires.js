@@ -2,6 +2,10 @@
   "use strict";
 
   function createMomentRouteWires(context) {
+    function isRouteDecisionNode(routeNode) {
+      return routeNode?.routeNodeType === "decision" || (routeNode?.routeNodeType === "action" && routeNode?.type === "decision");
+    }
+
     function selectedActionIds() {
       return context.selectedFlowActionIds?.() || new Set();
     }
@@ -69,7 +73,7 @@
       for (const routeNode of context.flowRouteNodes?.() || []) {
         const fromNode = nodeMaps.routes.get(routeNode.id);
         if (!fromNode) continue;
-        if (routeNode.routeNodeType === "decision") {
+        if (isRouteDecisionNode(routeNode)) {
           drawRouteDecisionWires(planner, nodeMaps, layer, routeNode, fromNode);
           continue;
         }

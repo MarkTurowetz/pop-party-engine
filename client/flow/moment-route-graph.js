@@ -16,6 +16,16 @@
       return routeNodes().find((node) => node.id === routeNodeId) || null;
     }
 
+    function isRouteDecisionNode(node) {
+      return node?.routeNodeType === "decision" || (node?.routeNodeType === "action" && node?.type === "decision");
+    }
+
+    function routeNodeTypeName(node) {
+      if (isRouteDecisionNode(node)) return "Decision";
+      if (node?.routeNodeType === "action") return "Action";
+      return "Moment Entry";
+    }
+
     function targetName(targetId) {
       if (!targetId) return "No Target";
       if (String(targetId).toLowerCase() === "none") return "None";
@@ -44,8 +54,7 @@
       }
       for (const node of routeNodes()) {
         if (node.id === currentNodeId) continue;
-        const typeName = node.routeNodeType === "decision" ? "Decision" : node.routeNodeType === "action" ? "Action" : "Entry";
-        options.push({ id: node.id, name: `${typeName}: ${node.name || node.id}` });
+        options.push({ id: node.id, name: `${routeNodeTypeName(node)}: ${node.name || node.id}` });
       }
       if (selectedTargetId && !options.some((option) => option.id === selectedTargetId)) {
         options.push({ id: selectedTargetId, name: selectedTargetId });
@@ -55,8 +64,7 @@
 
     function appendRouteTargets(options, currentStateId = "") {
       for (const node of routeNodes()) {
-        const typeName = node.routeNodeType === "decision" ? "Decision" : node.routeNodeType === "action" ? "Action" : "Moment Entry";
-        options.push({ id: node.id, name: `${typeName}: ${node.name || node.id}` });
+        options.push({ id: node.id, name: `${routeNodeTypeName(node)}: ${node.name || node.id}` });
       }
       if (currentStateId && !options.some((option) => option.id === currentStateId)) {
         options.push({ id: currentStateId, name: currentStateId });
@@ -74,23 +82,6 @@
         name: `Moment Entry ${nextNumber}`,
         targetStateId,
         nodePosition: context.defaultNodePosition?.(nextNumber - 1, 2, 860, 80, 320, 190) || null
-      };
-    }
-
-    function createRouteDecisionNode() {
-      const nodes = routeNodes();
-      const nextNumber = nodes.filter((node) => node.routeNodeType === "decision").length + 1;
-      return {
-        id: `route-decision-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-        routeNodeType: "decision",
-        name: `Decision ${nextNumber}`,
-        variable: "activePlayerCount",
-        valueType: "int",
-        branches: [
-          { id: "legacy-hit", type: "hit", code: "", value: "3", targetNodeId: "" },
-          { id: "no-match", type: "noMatch", value: "", code: "", targetNodeId: "" }
-        ],
-        nodePosition: context.defaultNodePosition?.(nextNumber - 1, 2, 860, 360, 360, 240) || null
       };
     }
 
@@ -135,15 +126,29 @@
         };
       }
       if (node.routeNodeType === "action") {
-        return {
+        const serialized = {
           ...node,
           ...base,
           routeNodeType: "action",
           type: node.type || "presentText",
           timing: node.timing || { mode: "E+", seconds: 0 },
-          nextTargetNodeId: node.nextTargetNodeId || node.nextTargetActionId || "",
           subActions: (node.subActions || []).map((subAction) => ({ ...subAction }))
         };
+        if (serialized.type === "decision") {
+          serialized.nextTargetNodeId = "";
+          serialized.variable = node.variable || "activePlayerCount";
+          serialized.valueType = node.valueType || "int";
+          serialized.branches = context.ensureDecisionBranches?.(node, { targetField: "targetNodeId" }).map((branch) => ({
+            id: branch.id,
+            type: branch.type,
+            value: branch.value || "",
+            code: branch.code || "",
+            targetNodeId: branch.targetNodeId || ""
+          })) || [];
+          return serialized;
+        }
+        serialized.nextTargetNodeId = node.nextTargetNodeId || node.nextTargetActionId || "";
+        return serialized;
       }
       return {
         ...base,
@@ -159,12 +164,12 @@
       }
       for (const node of routeNodes()) {
         if (targetSet.has(node.targetStateId)) node.targetStateId = "";
-        if (node.routeNodeType === "decision") {
+        if (isRouteDecisionNode(node)) {
           for (const branch of context.ensureDecisionBranches?.(node, { targetField: "targetNodeId" }) || []) {
             if (targetSet.has(branch.targetNodeId)) branch.targetNodeId = "";
           }
         }
-        if (node.routeNodeType === "action" && targetSet.has(node.nextTargetNodeId)) node.nextTargetNodeId = "";
+        if (node.routeNodeType === "action" && node.type !== "decision" && targetSet.has(node.nextTargetNodeId)) node.nextTargetNodeId = "";
       }
     }
 
@@ -178,7 +183,6 @@
       clearTargetReferences,
       createMomentEntryNode,
       createRouteActionNode,
-      createRouteDecisionNode,
       graphTargetOptions,
       momentEntryTargetOptions,
       routeNode,

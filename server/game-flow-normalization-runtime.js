@@ -103,13 +103,18 @@ function createGameFlowNormalizationRuntime({
       }
       if (routeNodeType === "action") {
         const normalizedAction = normalizeFlowAction(node, nodeIndex, "moment-route");
-        return {
+        const normalizedRouteAction = {
           ...normalizedAction,
           ...base,
           routeNodeType: "action",
           nextTargetNodeId: normalizeFlowId(node?.nextTargetNodeId || node?.nextTargetActionId, ""),
           subActions: normalizeSubActions(node?.subActions, "moment-route")
         };
+        if (normalizedRouteAction.type === "decision") {
+          normalizedRouteAction.nextTargetNodeId = "";
+          normalizedRouteAction.branches = normalizeDecisionBranches(node, { targetField: "targetNodeId" });
+        }
+        return normalizedRouteAction;
       }
       return {
         ...base,

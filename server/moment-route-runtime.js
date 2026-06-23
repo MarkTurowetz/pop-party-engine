@@ -50,7 +50,7 @@ function createMomentRouteRuntime({
     }
     const nextVisited = new Set(visited);
     nextVisited.add(targetId);
-    if (routeNode.routeNodeType === "decision") {
+    if (routeNode.routeNodeType === "decision" || (routeNode.routeNodeType === "action" && routeNode.type === "decision")) {
       const decision = evaluateDecisionAction(room, routeNode, {
         targetField: "targetNodeId",
         resolveTarget: (selectedTarget) => resolveTargetKind(flow, selectedTarget)

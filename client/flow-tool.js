@@ -1000,11 +1000,6 @@ function renderFlowActions() {
     addActionButton.textContent = "Add Action";
     addActionButton.disabled = flowViewMode === "node" && flowNodeDepth === "moments" ? false : !flowState(selectedFlowStateId);
   }
-  if (addRouteDecisionButton) {
-    const showRouteDecisionButton = flowViewMode === "node" && flowNodeDepth === "moments";
-    addRouteDecisionButton.classList.toggle("hidden", !showRouteDecisionButton);
-    addRouteDecisionButton.disabled = !showRouteDecisionButton;
-  }
 }
 
 function setFlowViewMode(mode) {
@@ -1499,17 +1494,6 @@ function addFlowMomentEntryNode() {
   renderFlowTool();
 }
 
-function addFlowRouteDecisionNode() {
-  if (flowViewMode !== "node" || flowNodeDepth !== "moments") return;
-  const nodes = flowRouteNodes();
-  const node = getFlowMomentRouteGraph()?.createRouteDecisionNode();
-  if (!node) return;
-  pushFlowHistory();
-  nodes.push(node);
-  selectFlowRouteNode(node.id);
-  renderFlowTool();
-}
-
 function addFlowSubAction(actionRef) {
   const state = flowState(selectedFlowStateId);
   if (!state || !actionRef?.action) return;
@@ -1728,7 +1712,6 @@ async function setupFlowTool() {
   flowToolInitialized = true;
   addStateButton.addEventListener("click", addFlowState);
   addActionButton.addEventListener("click", addFlowAction);
-  addRouteDecisionButton?.addEventListener("click", addFlowRouteDecisionNode);
   deleteFlowItemButton.addEventListener("click", deleteFlowItem);
   revertFlowButton.addEventListener("click", revertGameFlow);
   flowListViewButton?.addEventListener("click", () => setFlowViewMode("list"));
