@@ -201,7 +201,6 @@
       if (!routeNode || !inspector) return false;
       const isRouteDecision = isRouteDecisionNode(routeNode);
       const isRouteAction = isRouteActionNode(routeNode);
-      const isLegacyRouteDecision = routeNode.routeNodeType === "decision";
       const routeBranch = isRouteDecision ? context.selectedFlowRouteBranch?.() : null;
       if (routeBranch && renderRouteBranchInspector(inspector, routeNode, routeBranch)) return true;
       const title = document.createElement("h3");
@@ -227,7 +226,7 @@
           context.renderFlowNodeView?.();
         }));
       }
-      if (isRouteDecision && isLegacyRouteDecision) {
+      if (isRouteDecision) {
         renderRouteDecisionInspector(inspector, routeNode);
         inspector.appendChild(context.flowActionButton?.("Delete Decision", () => {
           context.deleteSelectedFlowRouteNode?.();

@@ -61,14 +61,18 @@
       const targetField = decisionTargetField(options);
       const branches = context.ensureDecisionBranches(action, options);
       const noMatchIndex = Math.max(0, branches.findIndex((branch) => branch.type === "noMatch"));
-      context.pushFlowHistory?.();
-      branches.splice(noMatchIndex, 0, {
+      const branch = {
         id: context.makeDecisionBranchId(type),
         type,
         value: type === "hit" ? "0" : "",
         code: type === "code" ? "x < 3" : "",
         [targetField]: ""
-      });
+      };
+      context.pushFlowHistory?.();
+      branches.splice(noMatchIndex, 0, branch);
+      action.branches = branches;
+      context.ensureDecisionBranches(action, options);
+      return branch.id;
     }
 
     function moveDecisionBranch(action, branchId, direction, options = {}) {
