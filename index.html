@@ -2115,6 +2115,23 @@
       box-shadow: 4px 4px 0 var(--ink);
     }
 
+    .art-item.is-dragging {
+      opacity: 0.55;
+      cursor: grabbing;
+    }
+
+    .art-item.is-drop-before {
+      transform: translateY(-3px);
+      border-top-color: var(--blue);
+      box-shadow: 0 -5px 0 var(--blue), 4px 4px 0 rgba(23, 19, 31, 0.2);
+    }
+
+    .art-item.is-drop-after {
+      transform: translateY(3px);
+      border-bottom-color: var(--blue);
+      box-shadow: 0 5px 0 var(--blue), 4px 4px 0 rgba(23, 19, 31, 0.2);
+    }
+
     .art-thumb,
     .art-preview-art {
       display: grid;

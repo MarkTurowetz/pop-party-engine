@@ -9,6 +9,7 @@ function setupLab() {
 let selectedArtCompositionId = "";
 let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
+let draggedArtComponentId = "";
 const artComponentSchema = window.PartyGameArtComponentSchema;
 const artShapeStyles = artComponentSchema.shapeStyleOptions;
 const artComponentImageAccept = artComponentSchema.imageAccept;
@@ -161,6 +162,44 @@ function flattenArtComponents(components = [], depth = 0, parent = null, output 
 
 function findArtComponent(composition, componentId) {
   return flattenArtComponents(composition?.components || []).find(({ component }) => component.id === componentId) || null;
+}
+
+function artComponentCollectionRef(composition, componentId, components = composition?.components || [], parent = null) {
+  if (!composition || !componentId) return null;
+  for (const component of components || []) {
+    if (component.id === componentId) return { parent, components };
+    const childRef = artComponentCollectionRef(composition, componentId, component.children || [], component);
+    if (childRef) return childRef;
+  }
+  return null;
+}
+
+function canReorderArtComponent(draggedComponentId, targetComponentId) {
+  const composition = selectedArtComposition();
+  const draggedRef = artComponentCollectionRef(composition, draggedComponentId);
+  const targetRef = artComponentCollectionRef(composition, targetComponentId);
+  return Boolean(draggedRef && targetRef && draggedRef.components === targetRef.components);
+}
+
+function reorderArtComponent(draggedComponentId, targetComponentId, placeAfter = false) {
+  const composition = selectedArtComposition();
+  const draggedRef = artComponentCollectionRef(composition, draggedComponentId);
+  const targetRef = artComponentCollectionRef(composition, targetComponentId);
+  if (!draggedRef || !targetRef || draggedRef.components !== targetRef.components || draggedComponentId === targetComponentId) return;
+  const siblings = draggedRef.components;
+  const fromIndex = siblings.findIndex((component) => component.id === draggedComponentId);
+  const targetIndex = siblings.findIndex((component) => component.id === targetComponentId);
+  if (fromIndex < 0 || targetIndex < 0) return;
+  pushArtHistory();
+  const [component] = siblings.splice(fromIndex, 1);
+  const adjustedTargetIndex = siblings.findIndex((item) => item.id === targetComponentId);
+  const insertIndex = adjustedTargetIndex + (placeAfter ? 1 : 0);
+  siblings.splice(Math.max(0, Math.min(siblings.length, insertIndex)), 0, component);
+  setArtComponentSelection([component.id]);
+  renderSelectedArtComposition();
+  renderArtList();
+  artFileName.textContent = "Layer order updated";
+  updateGlobalSaveButton();
 }
 
 function allArtComponentIds(composition) {
@@ -355,7 +394,7 @@ function createArtCompositionButton(composition) {
 
 function createArtComponentButton(composition, component) {
   const hasChildren = Boolean(component.children?.length);
-  return createArtRow({
+  const row = createArtRow({
     className: `art-item${hasChildren ? " has-disclosure" : ""}`,
     selected: selectedArtCompositionId === composition.id && selectedArtComponentIds.has(component.id),
     leadingNodes: [
@@ -363,9 +402,34 @@ function createArtComponentButton(composition, component) {
       createArtThumb("art-thumb art-component-thumb")
     ],
     title: component.name,
-    summary: `${artKindLabel(component.kind)} object`,
+    summary: `${artKindLabel(component.kind)} object / drag to layer`,
     onActivate: (event) => selectArtComponent(composition.id, component.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey })
   });
+  row.title = "Drag to reorder layers. Top of list is frontmost.";
+  window.PartyGameToolAffordances?.bindSortableRow(row, {
+    itemId: component.id,
+    dragType: "application/x-party-art-component",
+    ignoreSelector: ".disclosure-button, input, textarea, button, select, a",
+    getDraggedId: () => draggedArtComponentId,
+    canDrop: (draggedId, targetId) => canReorderArtComponent(draggedId, targetId),
+    onDragStart: (componentId) => {
+      draggedArtComponentId = componentId;
+      selectedArtAsset = null;
+      selectedArtComposite = null;
+      selectedArtCompositionId = composition.id;
+      if (!selectedArtComponentIds.has(componentId)) {
+        setArtComponentSelection([componentId]);
+        row.classList.add("is-selected");
+        renderArtComponentEditor();
+        renderSelectedArtComposition();
+      }
+    },
+    onReorder: (draggedId, targetId, placeAfter) => reorderArtComponent(draggedId, targetId, placeAfter),
+    onDragEnd: () => {
+      draggedArtComponentId = "";
+    }
+  });
+  return row;
 }
 
 function createArtComponentBranch(composition, component, depth = 0) {
@@ -592,8 +656,8 @@ function renderSelectedArtComposition() {
   const canvas = composition.canvas || { width: 560, height: 230 };
   artPreviewArt.style.setProperty("--art-composition-aspect", `${Number(canvas.width || 1) / Math.max(1, Number(canvas.height || 1))}`);
   artPreviewArt.replaceChildren();
-  for (const component of composition.components || []) {
-    artPreviewArt.appendChild(artComponentPreviewNode(composition, component, canvas));
+  for (const [index, component] of (composition.components || []).entries()) {
+    artPreviewArt.appendChild(artComponentPreviewNode(composition, component, canvas, index, (composition.components || []).length));
   }
   artFileName.textContent = isArtCompositionsDirty() ? "Component layout has unsaved changes" : "Component layout saved";
   artReplaceButton.disabled = true;
@@ -605,12 +669,17 @@ function renderSelectedArtComposition() {
   updateArtCreateButtons();
 }
 
-function artComponentPreviewNode(composition, component, canvas) {
+function artComponentLayerIndex(index, siblingCount) {
+  return Math.max(1, Number(siblingCount || 1) - Number(index || 0));
+}
+
+function artComponentPreviewNode(composition, component, canvas, layerIndex = 0, siblingCount = 1) {
   const node = document.createElement("div");
   node.className = `art-composition-component is-${artComponentSchema.normalizeComponentKind(component.kind)} is-style-${artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind)}`;
   node.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
   node.classList.toggle("has-image-mask", artComponentHasImageMask(component));
   node.dataset.componentId = component.id;
+  node.style.zIndex = String(artComponentLayerIndex(layerIndex, siblingCount));
   node.style.left = `${Number(component.x || 0) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
   node.style.top = `${Number(component.y || 0) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
   node.style.width = `${Number(component.width || 1) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
@@ -655,8 +724,8 @@ function artComponentPreviewNode(composition, component, canvas) {
   label.textContent = artComponentPreviewText(component);
   node.appendChild(label);
   const childCanvas = { width: Number(component.width || 1), height: Number(component.height || 1) };
-  for (const child of component.children || []) {
-    node.appendChild(artComponentPreviewNode(composition, child, childCanvas));
+  for (const [childIndex, child] of (component.children || []).entries()) {
+    node.appendChild(artComponentPreviewNode(composition, child, childCanvas, childIndex, (component.children || []).length));
   }
   if (selectedArtComponentIds.has(component.id)) {
     const handle = document.createElement("span");

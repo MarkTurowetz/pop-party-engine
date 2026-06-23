@@ -24,6 +24,10 @@
     element.style.setProperty("--component-image-fit", componentSchema.normalizeImageObjectFit(component.imageObjectFit));
   }
 
+  function componentLayerIndex(index, siblingCount) {
+    return Math.max(1, Number(siblingCount || 1) - Number(index || 0));
+  }
+
   class ArtObjectView {
     constructor(options = {}) {
       this.document = options.document || global.document;
@@ -47,14 +51,15 @@
         updateClass: UPDATE_CLASS,
         instantClass: INSTANT_CLASS
       });
-      if (options.component) this.update(options.component, options.canvas);
+      if (options.component) this.update(options.component, options.canvas, options.layer);
     }
 
-    update(component, canvas) {
+    update(component, canvas, layer = {}) {
       this.component = component || {};
       const kind = componentSchema.normalizeComponentKind(this.component.kind);
       this.element.className = `${RUNTIME_CLASS} is-${kind} is-style-${componentSchema.normalizeShapeStyle(this.component.shapeStyle, kind)}`;
       if (this.visual.isVisible() === false) this.element.classList.add(HIDDEN_CLASS);
+      this.element.style.zIndex = String(componentLayerIndex(layer.index, layer.total));
       const imageDataUrl = componentSchema.componentImageMaskDataUrl(this.component);
       this.element.classList.toggle("has-image-mask", Boolean(imageDataUrl));
       this.image.hidden = !imageDataUrl;
@@ -75,21 +80,22 @@
         height: Number(this.component?.height || 1)
       };
       const desiredIds = new Set((children || []).map((child) => child.id));
-      for (const child of children || []) {
+      for (const [index, child] of (children || []).entries()) {
         let view = this.children.get(child.id);
         if (!view) {
           view = new ArtObjectView({
             document: this.document,
             visualAnimation: this.visualAnimation,
             component: child,
-            canvas: childCanvas
+            canvas: childCanvas,
+            layer: { index, total: (children || []).length }
           });
           this.children.set(child.id, view);
-          this.element.appendChild(view.element);
           view.on({ instant: true });
         } else {
-          view.update(child, childCanvas);
+          view.update(child, childCanvas, { index, total: (children || []).length });
         }
+        this.element.appendChild(view.element);
       }
       for (const [childId, view] of Array.from(this.children.entries())) {
         if (desiredIds.has(childId)) continue;
@@ -150,21 +156,22 @@
     render(components = [], canvas, options = {}) {
       if (!this.host) return;
       const desiredIds = new Set((components || []).map((component) => component.id));
-      for (const component of components || []) {
+      for (const [index, component] of (components || []).entries()) {
         let view = this.views.get(component.id);
         if (!view) {
           view = new ArtObjectView({
             document: this.document,
             visualAnimation: this.visualAnimation,
             component,
-            canvas
+            canvas,
+            layer: { index, total: (components || []).length }
           });
           this.views.set(component.id, view);
-          this.host.appendChild(view.element);
           view.play(component.defaultAnimationState || options.defaultAnimation || "on", { instant: options.instant !== false });
         } else {
-          view.update(component, canvas);
+          view.update(component, canvas, { index, total: (components || []).length });
         }
+        this.host.appendChild(view.element);
       }
       for (const [componentId, view] of Array.from(this.views.entries())) {
         if (desiredIds.has(componentId)) continue;

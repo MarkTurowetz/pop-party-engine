@@ -65,6 +65,63 @@
     return true;
   }
 
+  function sortableDropPlacement(row, event, axis = "vertical") {
+    const rect = row.getBoundingClientRect();
+    if (axis === "horizontal") return event.clientX > rect.left + rect.width / 2;
+    return event.clientY > rect.top + rect.height / 2;
+  }
+
+  function bindSortableRow(row, options = {}) {
+    if (!row) return row;
+    const dragType = options.dragType || "text/plain";
+    const draggingClass = options.draggingClass || "is-dragging";
+    const dropBeforeClass = options.dropBeforeClass || "is-drop-before";
+    const dropAfterClass = options.dropAfterClass || "is-drop-after";
+    const itemId = String(options.itemId || row.dataset?.selectionId || "");
+    row.draggable = options.draggable !== false;
+    row.addEventListener("dragstart", (event) => {
+      if (targetIsToolControl(event.target, options.ignoreSelector, row)) {
+        event.preventDefault();
+        return;
+      }
+      if (!itemId || (typeof options.canDrag === "function" && !options.canDrag(itemId, event))) {
+        event.preventDefault();
+        return;
+      }
+      row.classList.add(draggingClass);
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData(dragType, itemId);
+      if (dragType !== "text/plain") event.dataTransfer.setData("text/plain", itemId);
+      options.onDragStart?.(itemId, event, row);
+    });
+    row.addEventListener("dragover", (event) => {
+      const draggedId = String(options.getDraggedId?.(event, row) || "");
+      if (!draggedId || draggedId === itemId) return;
+      if (typeof options.canDrop === "function" && !options.canDrop(draggedId, itemId, event, row)) return;
+      event.preventDefault();
+      const placeAfter = sortableDropPlacement(row, event, options.axis);
+      row.classList.toggle(dropBeforeClass, !placeAfter);
+      row.classList.toggle(dropAfterClass, placeAfter);
+    });
+    row.addEventListener("dragleave", () => {
+      row.classList.remove(dropBeforeClass, dropAfterClass);
+    });
+    row.addEventListener("drop", (event) => {
+      const draggedId = String(options.getDraggedId?.(event, row) || event.dataTransfer.getData(dragType) || event.dataTransfer.getData("text/plain") || "");
+      if (!draggedId || draggedId === itemId) return;
+      if (typeof options.canDrop === "function" && !options.canDrop(draggedId, itemId, event, row)) return;
+      event.preventDefault();
+      const placeAfter = sortableDropPlacement(row, event, options.axis);
+      row.classList.remove(dropBeforeClass, dropAfterClass);
+      options.onReorder?.(draggedId, itemId, placeAfter, event, row);
+    });
+    row.addEventListener("dragend", (event) => {
+      row.classList.remove(draggingClass, dropBeforeClass, dropAfterClass);
+      options.onDragEnd?.(itemId, event, row);
+    });
+    return row;
+  }
+
   function bindToolRowActivation(row, onActivate, options = {}) {
     if (typeof onActivate !== "function") return row;
     const ignoreSelector = options.ignoreSelector;
@@ -246,6 +303,7 @@
 
   window.PartyGameToolAffordances = {
     bindToolRowActivation,
+    bindSortableRow,
     createToolAccordionRow,
     createDisclosureButton,
     createToolSidebarRow,
