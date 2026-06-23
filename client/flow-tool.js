@@ -279,6 +279,7 @@ function transitionTriggerOptions() {
 }
 
 let flowActionControlGroups = null;
+let flowActionDefaults = null;
 let flowDecisionControls = null;
 let flowFormControls = null;
 let flowActionInspectorRegistry = null;
@@ -314,6 +315,17 @@ function getFlowActionControlGroups() {
     });
   }
   return flowActionControlGroups;
+}
+
+function getFlowActionDefaults() {
+  if (!flowActionDefaults && window.PartyGameFlowActionDefaults) {
+    flowActionDefaults = window.PartyGameFlowActionDefaults.createActionDefaults({
+      ensureActionTiming,
+      ensureDecisionBranches,
+      firstHostAudioId
+    });
+  }
+  return flowActionDefaults;
 }
 
 function getFlowDecisionControls() {

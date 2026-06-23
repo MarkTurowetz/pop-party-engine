@@ -39,11 +39,19 @@
       this.updateClass = options.updateClass || "";
       this.instantClass = options.instantClass || "";
       this.animationHandlers = options.animationHandlers || {};
+      this.transformOrigin = options.transformOrigin === false ? "" : options.transformOrigin || "center center";
       this.getVisible = typeof options.getVisible === "function" ? options.getVisible : null;
       this.setVisible = typeof options.setVisible === "function" ? options.setVisible : null;
       this.timerSink = typeof options.timerSink === "function" ? options.timerSink : null;
       this.durations = { ...DEFAULT_DURATIONS, ...(options.durations || {}) };
       this.token = "";
+      this.applyTransformOrigin();
+    }
+
+    applyTransformOrigin() {
+      if (this.element && this.transformOrigin) {
+        this.element.style.transformOrigin = this.transformOrigin;
+      }
     }
 
     addClasses(classes) {
