@@ -824,7 +824,7 @@ function layoutColorField(label, value, onChange) {
     pushedHistory = true;
   });
   input.addEventListener("change", () => {
-    onChange(input.value, { history: !pushedHistory, redraw: true });
+    onChange(input.value, { history: !pushedHistory, colorCommit: true });
     pushedHistory = true;
   });
   field.appendChild(input);
@@ -860,6 +860,12 @@ function updateLayoutTextValue(element, key, value, options = {}) {
   }
   if (options.previewOnly === true) {
     updateLayoutPreviewTextStyle(element);
+    updateGlobalSaveButton();
+    return;
+  }
+  if (options.colorCommit === true) {
+    updateLayoutPreviewTextStyle(element);
+    publishRuntimeLocalChanges();
     updateGlobalSaveButton();
     return;
   }
