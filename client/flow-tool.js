@@ -986,6 +986,19 @@ function publishRuntimeLocalChanges(overrides = {}) {
   updateGlobalSaveButton();
 }
 
+function flowNodeAtPointer(event) {
+  const directNode = event.target.closest?.(".flow-node");
+  if (directNode) return directNode;
+  const pointNodes = typeof document.elementsFromPoint === "function"
+    ? document.elementsFromPoint(event.clientX, event.clientY)
+    : [document.elementFromPoint(event.clientX, event.clientY)].filter(Boolean);
+  for (const node of pointNodes) {
+    const flowNode = node?.closest?.(".flow-node");
+    if (flowNode) return flowNode;
+  }
+  return null;
+}
+
 function publishRuntimeLocalClear() {
   const message = {
     type: "runtime-test-config",
@@ -1817,8 +1830,7 @@ async function setupFlowTool() {
     delete flowNodeStage.dataset.skipConnectionClick;
   }, true);
   flowNodeStage?.addEventListener("pointerup", (event) => {
-    const targetNode = event.target.closest?.(".flow-node")
-      || document.elementFromPoint(event.clientX, event.clientY)?.closest?.(".flow-node");
+    const targetNode = flowNodeAtPointer(event);
     let completedConnection = false;
     if (targetNode) {
       completedConnection = completeNodeConnection(targetNode);

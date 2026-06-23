@@ -74,6 +74,10 @@
       branch = model.branch;
       index = model.index;
       const targetField = model.targetField;
+      const branchId = branch?.id || "";
+      const liveBranchModel = () => decisionBranchModel(state, action, { id: branchId }, index, options);
+      const liveBranch = () => liveBranchModel().branch || branch;
+      const liveTargetField = () => liveBranchModel().targetField || targetField;
       const panel = document.createElement("div");
       panel.className = "flow-form-grid";
       const branchTypeOptions = branch.type === "noMatch"
@@ -83,26 +87,27 @@
             { id: "code", name: "Code Branch" }
           ];
       panel.appendChild(context.flowSelect(`Branch ${index + 1} Type`, branch.type, branchTypeOptions, (value) => {
-        branch.type = value;
-        if (value === "code" && !branch.code) branch.code = "x < 3";
+        const currentBranch = liveBranch();
+        currentBranch.type = value;
+        if (value === "code" && !currentBranch.code) currentBranch.code = "x < 3";
         rerender();
       }));
       if (branch.type === "hit") {
         const hitValueControl = (context.flowTextarea || context.flowField)("Hit Value", branch.value || "", (value) => {
-          branch.value = value;
+          liveBranch().value = value;
           rerender(false);
         });
         panel.appendChild(hitValueControl);
       }
       if (branch.type === "code") {
         const codeControl = (context.flowTextarea || context.flowField)("Code", branch.code || "x < 3", (value) => {
-          branch.code = value || "x < 3";
+          liveBranch().code = value || "x < 3";
           rerender(false);
         });
         panel.appendChild(codeControl);
       }
       panel.appendChild(context.flowSelect("Branch Target", branch[targetField] || "", decisionTargetOptions(state, action, branch, options), (value) => {
-        branch[targetField] = value;
+        liveBranch()[liveTargetField()] = value;
         rerender();
       }));
       if (branch.type !== "noMatch") {

@@ -13,6 +13,10 @@
       return context.selectedFlowActionIds?.() || new Set();
     }
 
+    function hasRouteSelection() {
+      return Boolean(context.selectedFlowRouteNodeId?.());
+    }
+
     function drawStateWires(planner, nodeMaps) {
       const selectedIds = selectedActionIds();
       for (const state of context.gameStates?.() || []) {
@@ -22,7 +26,7 @@
           targetId: state.nextStateTargetId,
           targetKind: "momentGraph",
           options: {
-            highlighted: context.selectedFlowStateId?.() === state.id || selectedIds.has(state.id)
+            highlighted: !hasRouteSelection() && (context.selectedFlowStateId?.() === state.id || selectedIds.has(state.id))
           }
         });
       }
