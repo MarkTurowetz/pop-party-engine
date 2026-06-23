@@ -336,7 +336,6 @@ function createFlowNodeBranches(state, action, options = {}) {
       event.stopPropagation();
     });
     item.append(title, target, dot);
-    bindFlowNodeChildSort(item, action, "branches", branch.id, descriptor.sortOptions);
     item.addEventListener("pointerdown", (event) => {
       if (!event.target.closest(".flow-node-port-dot")) event.stopPropagation();
     });

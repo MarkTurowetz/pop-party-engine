@@ -84,6 +84,7 @@
       context.pushFlowHistory?.();
       const [branch] = branches.splice(index, 1);
       branches.splice(targetIndex, 0, branch);
+      action.branches = branches;
       context.ensureDecisionBranches(action, options);
       return true;
     }

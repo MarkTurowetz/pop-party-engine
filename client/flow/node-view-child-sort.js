@@ -9,21 +9,19 @@
 
   function createFlowNodeChildSortController(context) {
     function canDrag(parentAction, collectionName, childId, options = {}) {
-      return collectionName !== "branches"
-        || context.decisionBranchById?.(parentAction, childId, options)?.type !== "noMatch";
+      return collectionName !== "branches";
     }
 
     function reorder(parentAction, collectionName, draggedId, targetId, options = {}) {
+      if (collectionName === "branches") return false;
       const items = parentAction?.[collectionName] || [];
       const fromIndex = items.findIndex((item) => item.id === draggedId);
       const toIndex = items.findIndex((item) => item.id === targetId);
       if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return false;
-      if (collectionName === "branches" && items[fromIndex]?.type === "noMatch") return false;
       context.pushFlowHistory?.();
       const [moved] = items.splice(fromIndex, 1);
       const adjustedIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
       items.splice(adjustedIndex, 0, moved);
-      if (collectionName === "branches") context.ensureDecisionBranches?.(parentAction, options);
       context.renderFlowListAndPublish?.();
       context.renderFlowNodeView?.();
       return true;
