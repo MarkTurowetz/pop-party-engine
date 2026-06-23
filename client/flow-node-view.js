@@ -501,36 +501,8 @@ function applyFlowActionTypeDefaults(action, value, isSubAction = false) {
   getFlowActionDefaults()?.applyActionTypeDefaults(action, value, isSubAction);
 }
 
-function appendDecisionBranchControls(target, state, action, branch, index, rerender) {
-  getFlowDecisionControls()?.appendDecisionBranchControls(target, state, action, branch, index, rerender);
-}
-
 function appendDecisionControls(target, state, action, rerender, options = {}) {
   getFlowDecisionControls()?.appendDecisionControls(target, state, action, rerender, options);
-}
-
-function appendFlowActionPropertyControls(target, state, actionRef, { includeSubActionButton = false } = {}) {
-  const action = actionRef?.action;
-  if (!state || !action) return;
-  const softChange = () => {
-    renderFlowListAndPublish();
-    redrawFlowNodeWires();
-  };
-  getFlowActionInspectorRegistry()?.appendActionPropertyControls(target, state, actionRef, {
-    change: () => refreshFlowNodeInspectorChange(),
-    softChange,
-    refresh: () => refreshFlowNodeInspectorChange(),
-    refreshAll: () => refreshFlowNodeInspectorChange(),
-    decisionChange: (redrawNodeView = true) => {
-      if (redrawNodeView) {
-        refreshFlowNodeInspectorChange();
-        return;
-      }
-      softChange();
-    },
-    includeSubActionButton,
-    excludeNextActionTypes: ["voteOnAnswersInput"]
-  });
 }
 
 function createFlowNodePorts(action) {
@@ -593,69 +565,7 @@ function completeNodeConnection(targetNode) {
 }
 
 function renderFlowNodeInspector() {
-  if (!flowNodeInspector) return;
-  flowNodeInspector.replaceChildren();
-  const state = flowState(selectedFlowStateId);
-  const actionRef = state ? flowActionRef(selectedFlowStateId, selectedFlowActionId) : null;
-  const action = actionRef?.action || null;
-  const title = document.createElement("h3");
-  if (getFlowMomentRouteRenderer()?.renderInspector()) return;
-  if (flowNodeDepth === "moments" || !state) {
-    title.textContent = selectedFlowStateId ? flowState(selectedFlowStateId)?.name || "Game Moment" : "Node View";
-    const copy = document.createElement("p");
-    copy.textContent = "Double-click a moment node to inspect and connect the actions inside it. Moment wires use the same Next Moment data shown in List View.";
-    flowNodeInspector.append(title, copy);
-    if (state) {
-      flowNodeInspector.appendChild(flowSelect("Entry Action", state.entryTargetActionId || "", flowActionTargetOptions(state, state.entryTargetActionId || ""), (value) => {
-        pushFlowHistory();
-        state.entryTargetActionId = value;
-        renderFlowListAndPublish();
-        renderFlowNodeView();
-      }));
-      flowNodeInspector.appendChild(flowSelect("Next Moment", state.nextStateTargetId || "", flowStateTargetOptions(state.nextStateTargetId || "", state.id), (value) => {
-        pushFlowHistory();
-        state.nextStateTargetId = value;
-        renderFlowListAndPublish();
-        renderFlowNodeView();
-      }));
-    }
-    return;
-  }
-  if (!action) {
-    title.textContent = state.name;
-    const copy = document.createElement("p");
-    copy.textContent = "Select an action node to inspect its properties and exit connections.";
-    flowNodeInspector.append(title, copy);
-    return;
-  }
-  title.textContent = action.name;
-  const summary = document.createElement("p");
-  if (actionRef.isBranch) {
-    const branchIndex = ensureDecisionBranches(actionRef.parentAction).findIndex((branch) => branch.id === action.id);
-    title.textContent = decisionBranchName(action, branchIndex);
-    summary.textContent = `Branch under ${actionRef.parentAction?.name || "Decision"}.`;
-    flowNodeInspector.append(title, summary);
-    flowNodeInspector.appendChild(readOnlyFlowNote("Branches are checked in order. A branch with no connection will halt the game when it is selected."));
-    appendDecisionBranchControls(flowNodeInspector, state, actionRef.parentAction, action, branchIndex, (redrawNodeView = true) => {
-      if (redrawNodeView) {
-        refreshFlowNodeInspectorChange();
-        return;
-      }
-      renderFlowListAndPublish();
-      redrawFlowNodeWires();
-    });
-    flowNodeInspector.appendChild(flowActionButton("Edit In List View", () => {
-      setFlowViewMode("list");
-    }));
-    return;
-  }
-  summary.textContent = `${actionRef.isSubAction ? `Sub-action under ${actionRef.parentAction?.name || "Action"}. ` : ""}${actionSummary(action, actionRef.isSubAction)}`;
-  flowNodeInspector.append(title, summary);
-  flowNodeInspector.appendChild(readOnlyFlowNote(`${actionCategoryName(action)} / ${actionTypeMeta(action.type).name}`));
-  appendFlowActionPropertyControls(flowNodeInspector, state, actionRef, { includeSubActionButton: !actionRef.isSubAction && action.type !== "decision" && action.type !== "jumpNode" });
-  flowNodeInspector.appendChild(flowActionButton("Edit In List View", () => {
-    setFlowViewMode("list");
-  }));
+  getFlowNodeInspectorRenderer()?.render();
 }
 
 function flowHistorySnapshot() {
