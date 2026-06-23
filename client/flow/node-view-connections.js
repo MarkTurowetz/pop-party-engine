@@ -97,14 +97,29 @@
       if (sourceAction) sourceAction[pending.field] = targetId;
     }
 
+    function targetIdForNode(targetNode) {
+      if (!targetNode) return "";
+      if (pending?.targetKind === "state") return targetNode.dataset.nodeId || "";
+      if (pending?.targetKind === "momentGraph") return targetNode.dataset.nodeId || targetNode.dataset.routeNodeId || "";
+      return targetNode.dataset.actionId || "";
+    }
+
     function complete(targetNode) {
       if (!pending) return false;
       if (pending.sourceKind === "routeNode") {
         const routeNode = context.flowRouteNode?.(pending.routeNodeId);
-        const targetId = targetNode?.dataset.nodeId || "";
+        const targetId = targetIdForNode(targetNode);
         if (!routeNode || !targetId || targetId === routeNode.targetStateId) return false;
-        context.pushFlowHistory?.();
-        routeNode[pending.field] = targetId;
+        if (targetId === routeNode.id) return false;
+        if (pending.branchId) {
+          const branch = context.decisionBranchById?.(routeNode, pending.branchId, { targetField: pending.field });
+          if (!branch) return false;
+          context.pushFlowHistory?.();
+          branch[pending.field] = targetId;
+        } else {
+          context.pushFlowHistory?.();
+          routeNode[pending.field] = targetId;
+        }
         pending = null;
         context.renderFlowListAndPublish?.();
         context.renderFlowNodeView?.();
@@ -116,9 +131,7 @@
         ? null
         : context.flowAction?.(state.id, pending.actionId);
       if (pending.sourceKind !== "moment" && pending.sourceKind !== "start" && !action) return false;
-      const targetId = pending.targetKind === "state"
-        ? targetNode?.dataset.nodeId
-        : targetNode?.dataset.actionId;
+      const targetId = targetIdForNode(targetNode);
       if (!targetId) return false;
       if (pending.sourceKind === "moment") {
         if (targetId === state.id) return false;

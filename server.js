@@ -34,6 +34,7 @@ const { createLayoutSyncRuntime } = require("./server/layout-sync-runtime");
 const { createLobbyControlHandlersRuntime } = require("./server/lobby-control-handlers-runtime");
 const { createLobbyPayloadRuntime } = require("./server/lobby-payload-runtime");
 const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
+const { createMomentRouteRuntime } = require("./server/moment-route-runtime");
 const { backupJsonFile, mirrorJsonFile, readJsonFile, writeJsonFile } = require("./server/local-json-store");
 const { createNetworkUrlsRuntime } = require("./server/network-urls-runtime");
 const { createPlayerAnswersRuntime } = require("./server/player-answers-runtime");
@@ -477,6 +478,15 @@ const {
 });
 
 const {
+  resolveMomentTargetStateId
+} = createMomentRouteRuntime({
+  evaluateDecisionAction,
+  isNoActionTarget,
+  normalizeFlowId,
+  runtimeGameFlow
+});
+
+const {
   clearDisplayedCorrectnessForPlayers,
   clearDisplayedPlayerAnswers,
   clearPlayerAnswerData,
@@ -553,6 +563,7 @@ const {
   normalizeFlowId,
   prepareVotingCards,
   resetCraftingTimer,
+  resolveMomentTargetStateId,
   runtimeGameFlow,
 });
 _enterGamePhaseFn = enterGamePhase;

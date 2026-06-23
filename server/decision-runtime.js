@@ -133,17 +133,22 @@ function createDecisionRuntime({
     return compareDecisionValues(leftValue, branch.value, valueType, "==");
   }
 
-  function evaluateDecisionAction(room, action) {
+  function evaluateDecisionAction(room, action, options = {}) {
+    const targetField = options.targetField || "targetActionId";
+    const resolveTarget = typeof options.resolveTarget === "function"
+      ? options.resolveTarget
+      : (target) => ({ targetIndex: flowActionIndexById(room, target) });
     const variable = action.variable || "activePlayerCount";
     const valueType = normalizeDecisionValueType(action.valueType);
     const leftValue = decisionVariableValue(room, variable);
-    const branches = normalizeDecisionBranches(action);
+    const branches = normalizeDecisionBranches(action, { targetField });
     const regularBranchResults = branches.filter((branch) => branch.type !== "noMatch").map((branch) => ({
       id: branch.id,
       type: branch.type,
       value: branch.value || "",
       code: branch.code || "",
-      targetActionId: branch.targetActionId || "",
+      target: branch[targetField] || "",
+      [targetField]: branch[targetField] || "",
       passed: evaluateDecisionBranch(branch, leftValue, valueType)
     }));
     const firstPassingRegular = regularBranchResults.find((branch) => branch.passed);
@@ -153,15 +158,17 @@ function createDecisionRuntime({
       type: noMatchBranch.type,
       value: noMatchBranch.value || "",
       code: noMatchBranch.code || "",
-      targetActionId: noMatchBranch.targetActionId || "",
+      target: noMatchBranch[targetField] || "",
+      [targetField]: noMatchBranch[targetField] || "",
       passed: !firstPassingRegular
     } : null;
     const branchResults = noMatchResult ? [...regularBranchResults, noMatchResult] : regularBranchResults;
     const selectedBranchResult = firstPassingRegular || noMatchResult;
     const selectedBranch = branches.find((branch) => branch.id === selectedBranchResult?.id) || null;
-    const target = selectedBranch?.targetActionId || "";
+    const target = selectedBranch?.[targetField] || "";
     const selectedTarget = target && !isNoActionTarget(target) ? String(target) : "none";
-    const targetIndex = selectedTarget === "none" ? null : flowActionIndexById(room, selectedTarget);
+    const targetResolution = selectedTarget === "none" ? {} : resolveTarget(selectedTarget) || {};
+    const targetIndex = Number.isInteger(targetResolution.targetIndex) ? targetResolution.targetIndex : null;
     return {
       actionId: action.id,
       actionName: action.name,
@@ -173,7 +180,9 @@ function createDecisionRuntime({
       branchResults,
       selectedTarget,
       haltReason: selectedTarget === "none" ? "No Matching Branch" : "",
-      targetIndex
+      targetField,
+      targetIndex,
+      targetResolution
     };
   }
 

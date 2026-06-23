@@ -27,11 +27,12 @@ function createRoomPhaseRuntime({
   normalizeFlowId,
   prepareVotingCards,
   resetCraftingTimer,
+  resolveMomentTargetStateId,
   runtimeGameFlow,
 }) {
   function advanceRoomFromMomentReturn(room) {
     const state = runtimeGameFlow(room).states.find((item) => item.id === room.phase);
-    const targetStateId = normalizeFlowId(state?.nextStateTargetId, "");
+    const targetStateId = resolveMomentTargetStateId(room, state?.nextStateTargetId || "");
     if (!targetStateId || isNoActionTarget(targetStateId)) return;
     if (runtimeGameFlow(room).states.some((item) => item.id === targetStateId)) {
       enterGamePhase(room, targetStateId);
@@ -68,6 +69,7 @@ function createRoomPhaseRuntime({
     room.actionIndex = 0;
     room.presentedAction = null;
     room.lastDecisionTrace = null;
+    room.lastRouteDecisionTrace = null;
     clearAppliedActionEffects(room);
     room.playersShown = true;
     room.playerAnswersShown = true;
@@ -133,6 +135,7 @@ function createRoomPhaseRuntime({
       : Math.max(0, entryActionIndex);
     room.presentedAction = null;
     room.lastDecisionTrace = null;
+    room.lastRouteDecisionTrace = null;
     clearAppliedActionEffects(room);
     room.playersShown = true;
     room.playerAnswersShown = true;

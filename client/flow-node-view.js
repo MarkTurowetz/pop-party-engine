@@ -183,6 +183,11 @@ function selectedNodeWireMatches(sourceAction, targetId = "", branchId = "") {
   return flowActionIsSelected(sourceAction.id);
 }
 
+function momentGraphTargetNode(stateNodes, routeNodes, targetId) {
+  if (!targetId || isNoFlowTarget(targetId)) return null;
+  return stateNodes.get(targetId) || routeNodes.get(targetId) || null;
+}
+
 function redrawFlowNodeWires() {
   if (!flowNodeWires || !flowNodeLayer) return;
   clearFlowNodeWires();
@@ -193,7 +198,7 @@ function redrawFlowNodeWires() {
       .map((node) => [node.dataset.routeNodeId, node]));
     for (const state of gameFlow.states || []) {
       const fromNode = stateNodes.get(state.id);
-      const toNode = state.nextStateTargetId ? stateNodes.get(state.nextStateTargetId) : null;
+      const toNode = momentGraphTargetNode(stateNodes, routeNodes, state.nextStateTargetId);
       if (toNode) {
         drawNodeWire(fromNode, toNode, {
           highlighted: selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id)
@@ -202,12 +207,26 @@ function redrawFlowNodeWires() {
     }
     for (const routeNode of flowRouteNodes()) {
       const fromNode = routeNodes.get(routeNode.id);
+      if (!fromNode) continue;
+      if (routeNode.routeNodeType === "decision") {
+        for (const [index, branch] of ensureDecisionBranches(routeNode, { targetField: "targetNodeId" }).entries()) {
+          const toNode = momentGraphTargetNode(stateNodes, routeNodes, branch.targetNodeId);
+          if (!toNode) continue;
+          const sourceNode = flowNodeLayer.querySelector(`.flow-node[data-route-node-id="${cssEscape(routeNode.id)}"] .flow-node-branch[data-branch-id="${cssEscape(branch.id)}"]`) || fromNode;
+          drawNodeWire(sourceNode, toNode, {
+            highlighted: selectedFlowRouteNodeId === routeNode.id,
+            label: decisionBranchWireLabel(branch, index)
+          });
+        }
+        continue;
+      }
       const toNode = routeNode.targetStateId ? stateNodes.get(routeNode.targetStateId) : null;
-      if (!fromNode || !toNode) continue;
-      drawNodeWire(fromNode, toNode, {
-        highlighted: selectedFlowRouteNodeId === routeNode.id,
-        label: "Entry"
-      });
+      if (toNode) {
+        drawNodeWire(fromNode, toNode, {
+          highlighted: selectedFlowRouteNodeId === routeNode.id,
+          label: "Entry"
+        });
+      }
     }
     renderFlowNodeMinimap();
     return;
@@ -248,7 +267,7 @@ function redrawFlowNodeWires() {
         continue;
       }
       const sourceNode = branch
-        ? flowNodeLayer.querySelector(`.flow-node-branch[data-branch-id="${cssEscape(branch.id)}"]`) || fromNode
+        ? flowNodeLayer.querySelector(`.flow-node[data-action-id="${cssEscape(action.id)}"] .flow-node-branch[data-branch-id="${cssEscape(branch.id)}"]`) || fromNode
         : fromNode;
       const highlighted = selectedNodeWireMatches(action, targetId, branch?.id || "");
       const label = branch ? decisionBranchWireLabel(branch, ensureDecisionBranches(action).findIndex((item) => item.id === branch.id)) : "";
@@ -302,23 +321,37 @@ function renderFlowMomentNodes() {
     flowNodeLayer.appendChild(node);
   }
   for (const [index, routeNode] of flowRouteNodes().entries()) {
-    const { x, y } = savedNodePosition(routeNode, defaultNodePosition(index, 2, 860, 80, 320, 190));
+    const isDecision = routeNode.routeNodeType === "decision";
+    const { x, y } = savedNodePosition(routeNode, defaultNodePosition(index, 2, 860, isDecision ? 360 : 80, 360, 240));
+    const branches = isDecision ? ensureDecisionBranches(routeNode, { targetField: "targetNodeId" }) : [];
+    const missingBranchTarget = branches.some((branch) => !branch.targetNodeId || isNoFlowTarget(branch.targetNodeId));
     const targetName = routeNode.targetStateId ? flowStateName(routeNode.targetStateId) : "No target";
     const node = createFlowNode({
       id: routeNode.id,
-      title: routeNode.name || "Moment Entry",
-      subtitle: `Moment Entry -> ${targetName}`,
+      title: routeNode.name || (isDecision ? "Route Decision" : "Moment Entry"),
+      subtitle: isDecision ? `Route Decision / ${decisionVariableName(routeNode.variable)}` : `Moment Entry -> ${targetName}`,
       x,
       y,
-      width: 260,
-      height: 120,
-      className: "is-moment-entry",
+      width: isDecision ? 320 : 260,
+      height: isDecision ? 134 : 120,
+      className: isDecision ? "is-decision is-route-decision" : "is-moment-entry",
       selected: selectedFlowRouteNodeId === routeNode.id,
-      valueBadge: routeNode.targetStateId ? null : { text: "Needs Target", className: "is-warning" }
+      valueBadge: isDecision
+        ? (missingBranchTarget ? { text: "Needs Target", className: "is-warning" } : null)
+        : (routeNode.targetStateId ? null : { text: "Needs Target", className: "is-warning" })
     });
     node.dataset.routeNodeId = routeNode.id;
     delete node.dataset.nodeId;
-    node.querySelector(".flow-node-main")?.appendChild(createFlowMomentRoutePorts(routeNode));
+    const childList = isDecision
+      ? createFlowNodeBranches(null, routeNode, {
+          sourceKind: "routeNode",
+          targetField: "targetNodeId",
+          targetKind: "momentGraph",
+          targetName: flowRouteTargetName
+        })
+      : null;
+    if (childList) node.appendChild(childList);
+    if (!isDecision) node.querySelector(".flow-node-main")?.appendChild(createFlowMomentRoutePorts(routeNode));
     bindFlowNodeDrag(node, routeNode);
     node.addEventListener("click", () => {
       selectFlowRouteNode(routeNode.id);
@@ -436,8 +469,10 @@ function createFlowNodeSubActions(state, parentAction) {
   return list;
 }
 
-function createFlowNodeBranches(state, action) {
-  const branches = ensureDecisionBranches(action);
+function createFlowNodeBranches(state, action, options = {}) {
+  const targetField = options.targetField || "targetActionId";
+  const targetName = typeof options.targetName === "function" ? options.targetName : flowTargetActionName;
+  const branches = ensureDecisionBranches(action, { targetField });
   if (!branches.length) return null;
   const list = document.createElement("div");
   list.className = "flow-node-subactions";
@@ -446,21 +481,29 @@ function createFlowNodeBranches(state, action) {
     item.type = "button";
     item.className = "flow-node-subaction flow-node-branch";
     item.dataset.branchId = branch.id;
+    item.dataset.parentNodeId = action.id;
     item.classList.toggle("is-no-match", branch.type === "noMatch");
     item.classList.toggle("is-selected", flowActionIsSelected(branch.id));
     const title = document.createElement("strong");
     title.textContent = decisionBranchName(branch, index);
     const target = document.createElement("span");
-    target.textContent = branch.targetActionId ? `-> ${flowTargetActionName(branch.targetActionId)}` : "No Connection";
+    target.textContent = branch[targetField] ? `-> ${targetName(branch[targetField])}` : "No Connection";
     const dot = document.createElement("span");
     dot.className = "flow-node-port-dot";
-    dot.dataset.actionId = action.id;
+    if (options.sourceKind === "routeNode") {
+      dot.dataset.routeNodeId = action.id;
+    } else {
+      dot.dataset.actionId = action.id;
+    }
     dot.dataset.branchId = branch.id;
-    dot.dataset.targetKind = "action";
+    dot.dataset.targetKind = options.targetKind || "action";
     dot.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
+      const connection = options.sourceKind === "routeNode"
+        ? { sourceKind: "routeNode", routeNodeId: action.id, field: targetField, branchId: branch.id, targetKind: options.targetKind || "momentGraph" }
+        : { stateId: state.id, actionId: action.id, field: "", branchId: branch.id, targetKind: "action" };
       armFlowNodeConnection({
-        connection: { stateId: state.id, actionId: action.id, field: "", branchId: branch.id, targetKind: "action", pointerId: event.pointerId, commandCreate: event.metaKey },
+        connection: { ...connection, pointerId: event.pointerId, commandCreate: event.metaKey },
         dot,
         hint: event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over a node to connect this branch."
       });
@@ -472,6 +515,11 @@ function createFlowNodeBranches(state, action) {
     });
     item.addEventListener("click", (event) => {
       event.stopPropagation();
+      if (options.sourceKind === "routeNode") {
+        selectFlowRouteNode(action.id);
+        renderFlowTool();
+        return;
+      }
       selectedFlowStateId = state.id;
       expandFlowStateInList(state.id);
       selectFlowAction(branch.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey });
@@ -752,8 +800,8 @@ function appendDecisionBranchControls(target, state, action, branch, index, rere
   getFlowDecisionControls()?.appendDecisionBranchControls(target, state, action, branch, index, rerender);
 }
 
-function appendDecisionControls(target, state, action, rerender) {
-  getFlowDecisionControls()?.appendDecisionControls(target, state, action, rerender);
+function appendDecisionControls(target, state, action, rerender, options = {}) {
+  getFlowDecisionControls()?.appendDecisionControls(target, state, action, rerender, options);
 }
 
 function appendFlowActionPropertyControls(target, state, actionRef, { includeSubActionButton = false } = {}) {
@@ -848,19 +896,42 @@ function renderFlowNodeInspector() {
   const action = actionRef?.action || null;
   const title = document.createElement("h3");
   if (flowNodeDepth === "moments" && routeNode) {
-    title.textContent = routeNode.name || "Moment Entry";
+    const isRouteDecision = routeNode.routeNodeType === "decision";
+    title.textContent = routeNode.name || (isRouteDecision ? "Route Decision" : "Moment Entry");
     const copy = document.createElement("p");
-    copy.textContent = "Moment Entry nodes are reusable routing anchors on the moment graph. Later decision paths can target these anchors instead of hard-coding a moment jump.";
+    copy.textContent = isRouteDecision
+      ? "Route Decisions use the same branch logic as action decisions, but their branch targets live on the moment graph."
+      : "Moment Entry nodes are reusable routing anchors on the moment graph. Later decision paths can target these anchors instead of hard-coding a moment jump.";
     flowNodeInspector.append(title, copy);
-    if (!routeNode.targetStateId) {
+    if (!isRouteDecision && !routeNode.targetStateId) {
       flowNodeInspector.appendChild(readOnlyFlowNote("Warning: this Moment Entry needs a target or any future path that reaches it will hang."));
     }
-    flowNodeInspector.appendChild(flowField("Name", routeNode.name || "Moment Entry", (value) => {
+    if (isRouteDecision && ensureDecisionBranches(routeNode, { targetField: "targetNodeId" }).some((branch) => !branch.targetNodeId || isNoFlowTarget(branch.targetNodeId))) {
+      flowNodeInspector.appendChild(readOnlyFlowNote("Warning: every route decision branch should target a moment-layer node, or that branch will halt."));
+    }
+    flowNodeInspector.appendChild(flowField("Name", routeNode.name || (isRouteDecision ? "Route Decision" : "Moment Entry"), (value) => {
       pushFlowHistory();
-      routeNode.name = value || "Moment Entry";
+      routeNode.name = value || (isRouteDecision ? "Route Decision" : "Moment Entry");
       renderFlowListAndPublish();
       renderFlowNodeView();
     }));
+    if (isRouteDecision) {
+      appendDecisionControls(flowNodeInspector, null, routeNode, (redrawNodeView = true) => {
+        if (redrawNodeView) {
+          refreshFlowNodeInspectorChange();
+          return;
+        }
+        renderFlowListAndPublish();
+        redrawFlowNodeWires();
+      }, {
+        targetField: "targetNodeId",
+        targetOptions: (stateForOptions, actionForOptions, branch) => flowRouteGraphTargetOptions(branch.targetNodeId || "", actionForOptions.id)
+      });
+      flowNodeInspector.appendChild(flowActionButton("Delete Route Decision", () => {
+        deleteSelectedFlowRouteNode();
+      }));
+      return;
+    }
     flowNodeInspector.appendChild(flowSelect("Target Moment", routeNode.targetStateId || "", flowMomentEntryTargetOptions(routeNode.targetStateId || ""), (value) => {
       pushFlowHistory();
       routeNode.targetStateId = value;

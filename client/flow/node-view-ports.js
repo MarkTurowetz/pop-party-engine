@@ -41,15 +41,15 @@
         dotDataset: {
           stateId: state.id,
           field: "nextStateTargetId",
-          targetKind: "state"
+          targetKind: "momentGraph"
         },
         connection: {
           sourceKind: "moment",
           stateId: state.id,
           field: "nextStateTargetId",
-          targetKind: "state"
+          targetKind: "momentGraph"
         },
-        hint: "Release over another moment to connect this exit."
+        hint: "Release over a moment-layer node to connect this exit."
       }]);
     }
 

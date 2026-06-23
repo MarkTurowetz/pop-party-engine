@@ -534,7 +534,7 @@ function getFlowNodeMarqueeController() {
 }
 
 function flowStateName(stateId) {
-  return flowState(stateId)?.name || stateId || "State";
+  return flowState(stateId)?.name || flowRouteNode(stateId)?.name || stateId || "State";
 }
 
 function flowTargetActionName(actionId) {
@@ -563,8 +563,11 @@ function makeDecisionBranchId(type = "branch") {
   return `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function ensureDecisionBranches(action) {
+function ensureDecisionBranches(action, options = {}) {
   if (!action) return [];
+  const targetField = options.targetField || "targetActionId";
+  const trueTargetField = options.trueTargetField || "trueTargetActionId";
+  const falseTargetField = options.falseTargetField || "falseTargetActionId";
   if (!Array.isArray(action.branches) || !action.branches.length) {
     action.branches = [
       {
@@ -572,30 +575,33 @@ function ensureDecisionBranches(action) {
         type: "code",
         code: `x ${action.operator || "<"} ${action.compareValue || "3"}`,
         value: action.compareValue || "3",
-        targetActionId: action.trueTargetActionId || ""
+        [targetField]: action[trueTargetField] || ""
       },
       {
         id: "no-match",
         type: "noMatch",
-        targetActionId: action.falseTargetActionId || ""
+        [targetField]: action[falseTargetField] || ""
       }
     ];
   }
-  action.branches = action.branches.map((branch, index) => ({
-    id: branch.id || (branch.type === "noMatch" ? "no-match" : makeDecisionBranchId(`branch-${index + 1}`)),
-    type: ["hit", "code", "noMatch"].includes(branch.type) ? branch.type : "hit",
-    value: branch.value ?? "",
-    code: branch.code || "x < 3",
-    targetActionId: branch.targetActionId || ""
-  }));
+  action.branches = action.branches.map((branch, index) => {
+    const target = branch[targetField] || branch.targetActionId || "";
+    return {
+      id: branch.id || (branch.type === "noMatch" ? "no-match" : makeDecisionBranchId(`branch-${index + 1}`)),
+      type: ["hit", "code", "noMatch"].includes(branch.type) ? branch.type : "hit",
+      value: branch.value ?? "",
+      code: branch.code || "x < 3",
+      [targetField]: target
+    };
+  });
   const regular = action.branches.filter((branch) => branch.type !== "noMatch");
-  const noMatch = action.branches.find((branch) => branch.type === "noMatch") || { id: "no-match", type: "noMatch", value: "", code: "", targetActionId: "" };
+  const noMatch = action.branches.find((branch) => branch.type === "noMatch") || { id: "no-match", type: "noMatch", value: "", code: "", [targetField]: "" };
   action.branches = [...regular, { ...noMatch, type: "noMatch", id: noMatch.id || "no-match" }];
   return action.branches;
 }
 
-function decisionBranchById(action, branchId) {
-  return ensureDecisionBranches(action).find((branch) => branch.id === branchId);
+function decisionBranchById(action, branchId, options = {}) {
+  return ensureDecisionBranches(action, options).find((branch) => branch.id === branchId);
 }
 
 function decisionBranchName(branch, index = 0) {
@@ -638,6 +644,10 @@ function flowStateTargetOptions(selectedStateId = "", currentStateId = "") {
     if (state.id === currentStateId) continue;
     options.push({ id: state.id, name: state.name || state.id });
   }
+  for (const node of flowRouteNodes()) {
+    const typeName = node.routeNodeType === "decision" ? "Route Decision" : "Moment Entry";
+    options.push({ id: node.id, name: `${typeName}: ${node.name || node.id}` });
+  }
   if (selectedStateId && !options.some((option) => option.id === selectedStateId)) {
     options.push({ id: selectedStateId, name: selectedStateId });
   }
@@ -653,6 +663,32 @@ function flowMomentEntryTargetOptions(selectedStateId = "") {
     options.push({ id: selectedStateId, name: selectedStateId });
   }
   return options;
+}
+
+function flowRouteGraphTargetOptions(selectedTargetId = "", currentNodeId = "") {
+  const options = [{ id: "", name: "No Target" }, { id: "none", name: "None / Halt" }];
+  for (const state of gameFlow.states || []) {
+    options.push({ id: state.id, name: `Moment: ${state.name || state.id}` });
+  }
+  for (const node of flowRouteNodes()) {
+    if (node.id === currentNodeId) continue;
+    const typeName = node.routeNodeType === "decision" ? "Decision" : "Entry";
+    options.push({ id: node.id, name: `${typeName}: ${node.name || node.id}` });
+  }
+  if (selectedTargetId && !options.some((option) => option.id === selectedTargetId)) {
+    options.push({ id: selectedTargetId, name: selectedTargetId });
+  }
+  return options;
+}
+
+function flowRouteTargetName(targetId) {
+  if (!targetId) return "No Target";
+  if (String(targetId).toLowerCase() === "none") return "None";
+  const state = flowState(targetId);
+  if (state) return state.name || state.id;
+  const node = flowRouteNode(targetId);
+  if (node) return node.name || node.id;
+  return targetId;
 }
 
 function currentRuntimeLocalMessage(overrides = {}) {
@@ -768,9 +804,15 @@ function isFlowDirty() {
 function renderFlowActions() {
   if (revertFlowButton) revertFlowButton.disabled = !flowSavedSnapshot || !isFlowDirty();
   if (nodeOptimizeButton) nodeOptimizeButton.disabled = flowViewMode !== "node" || flowNodeDepth !== "actions" || !flowState(selectedFlowStateId);
+  if (deleteFlowItemButton) deleteFlowItemButton.disabled = !selectedFlowRouteNodeId && !selectedFlowStateId;
   if (addActionButton) {
     addActionButton.textContent = flowViewMode === "node" && flowNodeDepth === "moments" ? "Add Moment Entry" : "Add Action";
     addActionButton.disabled = flowViewMode === "node" && flowNodeDepth === "moments" ? false : !flowState(selectedFlowStateId);
+  }
+  if (addRouteDecisionButton) {
+    const showRouteDecisionButton = flowViewMode === "node" && flowNodeDepth === "moments";
+    addRouteDecisionButton.classList.toggle("hidden", !showRouteDecisionButton);
+    addRouteDecisionButton.disabled = !showRouteDecisionButton;
   }
 }
 
@@ -1261,6 +1303,28 @@ function addFlowMomentEntryNode() {
   renderFlowTool();
 }
 
+function addFlowRouteDecisionNode() {
+  if (flowViewMode !== "node" || flowNodeDepth !== "moments") return;
+  const nodes = flowRouteNodes();
+  const nextNumber = nodes.filter((node) => node.routeNodeType === "decision").length + 1;
+  const node = {
+    id: `route-decision-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    routeNodeType: "decision",
+    name: `Route Decision ${nextNumber}`,
+    variable: "activePlayerCount",
+    valueType: "int",
+    branches: [
+      { id: "legacy-hit", type: "code", code: "x < 3", value: "3", targetNodeId: "" },
+      { id: "no-match", type: "noMatch", value: "", code: "", targetNodeId: "" }
+    ],
+    nodePosition: defaultNodePosition(nextNumber - 1, 2, 860, 360, 360, 240)
+  };
+  pushFlowHistory();
+  nodes.push(node);
+  selectFlowRouteNode(node.id);
+  renderFlowTool();
+}
+
 function addFlowSubAction(actionRef) {
   const state = flowState(selectedFlowStateId);
   if (!state || !actionRef?.action) return;
@@ -1305,12 +1369,29 @@ function serializeGameFlowForSave(flow) {
 }
 
 function serializeFlowRouteNodeForSave(node) {
-  return {
+  const base = {
     id: node.id,
     routeNodeType: node.routeNodeType || "momentEntry",
     name: node.name || "Moment Entry",
-    targetStateId: node.targetStateId || "",
     nodePosition: node.nodePosition || null
+  };
+  if (node.routeNodeType === "decision") {
+    return {
+      ...base,
+      variable: node.variable || "activePlayerCount",
+      valueType: node.valueType || "int",
+      branches: ensureDecisionBranches(node, { targetField: "targetNodeId" }).map((branch) => ({
+        id: branch.id,
+        type: branch.type,
+        value: branch.value || "",
+        code: branch.code || "",
+        targetNodeId: branch.targetNodeId || ""
+      }))
+    };
+  }
+  return {
+    ...base,
+    targetStateId: node.targetStateId || ""
   };
 }
 
@@ -1336,6 +1417,22 @@ function removeDeletedFlowStateFromLayouts(stateId) {
     setLayoutSelection(activeLayoutData().global?.elements?.[0]?.id || "");
   }
   return removedStageLayout || removedControllerLayout;
+}
+
+function clearMomentGraphTargetReferences(targetIds) {
+  const targetSet = new Set((Array.isArray(targetIds) ? targetIds : [targetIds]).filter(Boolean));
+  if (!targetSet.size) return;
+  for (const state of gameFlow.states || []) {
+    if (targetSet.has(state.nextStateTargetId)) state.nextStateTargetId = "";
+  }
+  for (const routeNode of flowRouteNodes()) {
+    if (targetSet.has(routeNode.targetStateId)) routeNode.targetStateId = "";
+    if (routeNode.routeNodeType === "decision") {
+      for (const branch of ensureDecisionBranches(routeNode, { targetField: "targetNodeId" })) {
+        if (targetSet.has(branch.targetNodeId)) branch.targetNodeId = "";
+      }
+    }
+  }
 }
 
 function flattenedFlowActionIds(actions = [], output = []) {
@@ -1409,9 +1506,7 @@ function deleteSelectedFlowStates() {
   const firstDeletedIndex = gameFlow.states.findIndex((state) => stateIdSet.has(state.id));
   pushFlowHistory();
   gameFlow.states = gameFlow.states.filter((state) => !stateIdSet.has(state.id));
-  for (const routeNode of flowRouteNodes()) {
-    if (stateIdSet.has(routeNode.targetStateId)) routeNode.targetStateId = "";
-  }
+  clearMomentGraphTargetReferences(stateIds);
   for (const stateId of stateIds) removeDeletedFlowStateFromLayouts(stateId);
   selectedFlowStateId = gameFlow.states[Math.min(firstDeletedIndex, gameFlow.states.length - 1)]?.id
     || gameFlow.states[firstDeletedIndex - 1]?.id
@@ -1432,6 +1527,7 @@ function deleteSelectedFlowRouteNode() {
     return false;
   }
   pushFlowHistory();
+  clearMomentGraphTargetReferences(selectedFlowRouteNodeId);
   gameFlow.routeNodes = nodes.filter((node) => node.id !== selectedFlowRouteNodeId);
   clearFlowRouteNodeSelection();
   renderFlowTool();
@@ -1482,6 +1578,7 @@ async function setupFlowTool() {
   flowToolInitialized = true;
   addStateButton.addEventListener("click", addFlowState);
   addActionButton.addEventListener("click", addFlowAction);
+  addRouteDecisionButton?.addEventListener("click", addFlowRouteDecisionNode);
   deleteFlowItemButton.addEventListener("click", deleteFlowItem);
   revertFlowButton.addEventListener("click", revertGameFlow);
   flowListViewButton?.addEventListener("click", () => setFlowViewMode("list"));

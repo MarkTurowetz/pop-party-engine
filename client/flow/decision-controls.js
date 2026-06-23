@@ -33,19 +33,31 @@
       ];
     }
 
-    function addDecisionBranch(action, type) {
-      const branches = context.ensureDecisionBranches(action);
+    function decisionTargetField(options = {}) {
+      return options.targetField || "targetActionId";
+    }
+
+    function decisionTargetOptions(state, action, branch, options = {}) {
+      if (typeof options.targetOptions === "function") return options.targetOptions(state, action, branch);
+      const targetField = decisionTargetField(options);
+      return context.flowActionTargetOptions(state, branch[targetField] || "");
+    }
+
+    function addDecisionBranch(action, type, options = {}) {
+      const targetField = decisionTargetField(options);
+      const branches = context.ensureDecisionBranches(action, options);
       const noMatchIndex = Math.max(0, branches.findIndex((branch) => branch.type === "noMatch"));
       branches.splice(noMatchIndex, 0, {
         id: context.makeDecisionBranchId(type),
         type,
         value: type === "hit" ? "0" : "",
         code: type === "code" ? "x < 3" : "",
-        targetActionId: ""
+        [targetField]: ""
       });
     }
 
-    function appendDecisionBranchControls(target, state, action, branch, index, rerender) {
+    function appendDecisionBranchControls(target, state, action, branch, index, rerender, options = {}) {
+      const targetField = decisionTargetField(options);
       const panel = document.createElement("div");
       panel.className = "flow-form-grid";
       const branchTypeOptions = branch.type === "noMatch"
@@ -71,22 +83,22 @@
           rerender(false);
         }));
       }
-      panel.appendChild(context.flowSelect("Branch Target", branch.targetActionId || "", context.flowActionTargetOptions(state, branch.targetActionId || ""), (value) => {
-        branch.targetActionId = value;
+      panel.appendChild(context.flowSelect("Branch Target", branch[targetField] || "", decisionTargetOptions(state, action, branch, options), (value) => {
+        branch[targetField] = value;
         rerender();
       }));
       if (branch.type !== "noMatch") {
         panel.appendChild(context.flowActionButton("Remove Branch", () => {
-          action.branches = context.ensureDecisionBranches(action).filter((item) => item.id !== branch.id);
-          context.ensureDecisionBranches(action);
+          action.branches = context.ensureDecisionBranches(action, options).filter((item) => item.id !== branch.id);
+          context.ensureDecisionBranches(action, options);
           rerender();
         }));
       }
       target.appendChild(panel);
     }
 
-    function appendDecisionControls(target, state, action, rerender) {
-      context.ensureDecisionBranches(action);
+    function appendDecisionControls(target, state, action, rerender, options = {}) {
+      context.ensureDecisionBranches(action, options);
       const variable = action.variable || "activePlayerCount";
       const usesCustomVariable = action.variableMode === "custom" || !isKnownDecisionVariable(variable);
       target.appendChild(context.flowVariableSearch("Variable", usesCustomVariable ? customDecisionVariableId : variable, decisionVariableOptions(), (value) => {
@@ -115,16 +127,16 @@
         rerender();
       }));
       target.appendChild(context.readOnlyFlowNote("Branches are evaluated in order. The required No Match branch acts like an else statement."));
-      const branches = context.ensureDecisionBranches(action);
+      const branches = context.ensureDecisionBranches(action, options);
       branches.forEach((branch, index) => {
-        appendDecisionBranchControls(target, state, action, branch, index, rerender);
+        appendDecisionBranchControls(target, state, action, branch, index, rerender, options);
       });
       target.appendChild(context.flowActionButton("+ Hit Branch", () => {
-        addDecisionBranch(action, "hit");
+        addDecisionBranch(action, "hit", options);
         rerender();
       }));
       target.appendChild(context.flowActionButton("+ Code Branch", () => {
-        addDecisionBranch(action, "code");
+        addDecisionBranch(action, "code", options);
         rerender();
       }));
     }

@@ -84,13 +84,26 @@ function createGameFlowNormalizationRuntime({
     if (!Array.isArray(routeNodes)) return [];
     return routeNodes.map((node, nodeIndex) => {
       const id = normalizeFlowId(node?.id || node?.name, `moment-entry-${nodeIndex + 1}`);
+      const routeNodeType = node?.routeNodeType === "decision" ? "decision" : "momentEntry";
+      const fallbackName = routeNodeType === "decision" ? `Route Decision ${nodeIndex + 1}` : `Moment Entry ${nodeIndex + 1}`;
       const targetStateId = normalizeFlowId(node?.targetStateId, "");
-      return {
+      const base = {
         id,
-        routeNodeType: "momentEntry",
-        name: cleanFlowText(node?.name, `Moment Entry ${nodeIndex + 1}`),
-        targetStateId: knownStateIds.has(targetStateId) ? targetStateId : "",
+        routeNodeType,
+        name: cleanFlowText(node?.name, fallbackName),
         nodePosition: normalizeNodePosition(node?.nodePosition, nodeIndex)
+      };
+      if (routeNodeType === "decision") {
+        return {
+          ...base,
+          variable: cleanFlowText(node?.variable, "activePlayerCount"),
+          valueType: normalizeDecisionValueType(node?.valueType),
+          branches: normalizeDecisionBranches(node, { targetField: "targetNodeId" })
+        };
+      }
+      return {
+        ...base,
+        targetStateId: knownStateIds.has(targetStateId) ? targetStateId : ""
       };
     }).filter((node) => node.id);
   }
