@@ -16,7 +16,7 @@
         "y": 1276
       },
       "entryTargetActionId": "lobby-action-mqojohry",
-      "nextStateTargetId": "intro",
+      "nextStateTargetId": "route-action-mqqwadxk-oji3m",
       "actions": [
         {
           "id": "lobby-countdown-complete",
@@ -795,8 +795,8 @@
       "id": "post-game-state",
       "name": "Post Game State",
       "nodePosition": {
-        "x": 1025,
-        "y": 1418
+        "x": 1652,
+        "y": 1474
       },
       "startNodePosition": {
         "x": 715,
@@ -1047,8 +1047,8 @@
         "y": 2038
       },
       "nodePosition": {
-        "x": 778,
-        "y": 473
+        "x": 461,
+        "y": 1422
       }
     },
     {
@@ -1228,8 +1228,8 @@
         "y": 2038
       },
       "nodePosition": {
-        "x": 1198,
-        "y": 693
+        "x": 811,
+        "y": 1424
       }
     },
     {
@@ -1524,9 +1524,49 @@
         "y": 3562
       },
       "nodePosition": {
-        "x": 794,
-        "y": 681
+        "x": 589,
+        "y": 1814
       }
+    }
+  ],
+  "routeNodes": [
+    {
+      "id": "route-action-mqqwadxk-oji3m",
+      "routeNodeType": "action",
+      "name": "Decision",
+      "type": "decision",
+      "timing": {
+        "mode": "E+",
+        "seconds": 0
+      },
+      "text": "Presented text",
+      "textTarget": "",
+      "instant": false,
+      "isShown": true,
+      "subActions": [],
+      "nextTargetNodeId": "",
+      "nodePosition": {
+        "x": 624,
+        "y": 1129
+      },
+      "variable": "activePlayerCount",
+      "valueType": "int",
+      "branches": [
+        {
+          "id": "legacy-hit",
+          "type": "code",
+          "value": "3",
+          "code": "x <= 3",
+          "targetNodeId": "voice-moment"
+        },
+        {
+          "id": "no-match",
+          "type": "noMatch",
+          "value": "",
+          "code": "x < 3",
+          "targetNodeId": "writing-moment"
+        }
+      ]
     }
   ]
 }
