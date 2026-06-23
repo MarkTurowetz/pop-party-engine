@@ -1052,6 +1052,187 @@
       }
     },
     {
+      "id": "voice-moment",
+      "name": "Voice Moment",
+      "nextStateTargetId": "voting-moment",
+      "entryTargetActionId": "voice-moment-action-mqpsey1p",
+      "nodePositions": {
+        "start": {
+          "x": 360,
+          "y": 60
+        },
+        "return": {
+          "x": 360,
+          "y": 860
+        },
+        "voice-show-prompt": {
+          "x": 320,
+          "y": 190
+        },
+        "voice-show-timer": {
+          "x": 320,
+          "y": 340
+        },
+        "voice-start-timer": {
+          "x": 320,
+          "y": 490
+        },
+        "voice-text-input": {
+          "x": 320,
+          "y": 640
+        },
+        "voice-prepare-cards": {
+          "x": 700,
+          "y": 640
+        },
+        "voice-to-voting": {
+          "x": 700,
+          "y": 790
+        }
+      },
+      "actions": [
+        {
+          "id": "voice-show-prompt",
+          "name": "Display Text",
+          "type": "displayText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "textTarget": "voice-moment-moment-text",
+          "text": "What is your favorite movie?",
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "voice-show-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          }
+        },
+        {
+          "id": "voice-show-timer",
+          "name": "Show Voice Timer",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "voice-start-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          }
+        },
+        {
+          "id": "voice-start-timer",
+          "name": "Start Voice Timer",
+          "type": "startCraftingTimer",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voice-text-input",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          }
+        },
+        {
+          "id": "voice-text-input",
+          "name": "Say Favorite Movie",
+          "type": "voiceSubmissionInput",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "prompt": "What is your favorite movie?",
+          "placeholder": "Speak a movie title",
+          "characterLimit": 80,
+          "timerEndTargetActionId": "voice-moment-action-mqork62r",
+          "answersSubmittedTargetActionId": "voice-moment-action-mqork62r",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          }
+        },
+        {
+          "id": "voice-moment-action-mqork62r",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1530
+          },
+          "nextTargetActionId": "voice-moment-action-mqpt6uvj"
+        },
+        {
+          "id": "voice-moment-action-mqpsey1p",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "voice-show-prompt"
+        },
+        {
+          "id": "voice-moment-action-mqpt6uvj",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1784
+          },
+          "nextTargetActionId": "return"
+        }
+      ],
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 2038
+      },
+      "nodePosition": {
+        "x": 1198,
+        "y": 693
+      }
+    },
+    {
       "id": "voting-moment",
       "name": "Voting Moment",
       "entryTargetActionId": "voting-moment-action-mqpt7alu",
