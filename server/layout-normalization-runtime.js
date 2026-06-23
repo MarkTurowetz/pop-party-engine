@@ -39,6 +39,7 @@ function createLayoutNormalizationRuntime({
       width,
       height,
       scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10),
+      rotation: normalizeLayoutNumber(element.rotation, 0, -3600, 3600),
       defaultText: kind === "text" ? cleanLayoutText(element.defaultText) : "",
       fontSize: kind === "text" ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
       autoFitText: kind === "text" ? element.autoFitText === true : false,

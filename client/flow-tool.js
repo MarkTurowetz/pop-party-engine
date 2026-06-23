@@ -29,7 +29,6 @@ function setFlowActionSelection(ids) {
   selectedFlowActionId = nextIds[nextIds.length - 1] || "";
   selectedFlowRouteNodeId = "";
   selectedFlowRouteBranchId = "";
-  if (selectedFlowActionId) expandFlowStateInList(selectedFlowStateId);
 }
 
 function clearFlowActionSelection() {

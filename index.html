@@ -240,7 +240,7 @@
       margin: 0 !important;
       --stage-object-visible-scale: 1;
       --visual-scale: 1;
-      transform: translate(-50%, -50%) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1) * var(--visual-scale, 1))) !important;
+      transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1) * var(--visual-scale, 1))) !important;
       transform-origin: center !important;
     }
 
@@ -250,7 +250,7 @@
     }
 
     .stage-code-panel.stage-layout-target {
-      transform: translate(-50%, -50%) scale(var(--stage-layout-scale, 1)) rotate(-1deg) !important;
+      transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(var(--stage-layout-scale, 1)) rotate(-1deg) !important;
     }
 
     .stage-layout-target.text-hidden {
@@ -333,7 +333,7 @@
 
     .crafting-timer.stage-layout-target.hidden {
       --stage-object-visible-scale: 0;
-      transform: translate(-50%, -50%) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1))) !important;
+      transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1))) !important;
     }
 
     .version-badge,
@@ -508,7 +508,7 @@
     }
 
     .stage-layout-target.stage-join-qr {
-      transform: translate(-50%, -50%) scale(var(--stage-layout-scale, 1)) rotate(1deg) !important;
+      transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(var(--stage-layout-scale, 1)) rotate(1deg) !important;
     }
 
     .stage-intro-content {
@@ -1122,12 +1122,23 @@
       background: transparent;
     }
 
+    .art-runtime-object.has-tinted-image-mask {
+      background: currentColor;
+      -webkit-mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
+      mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
+    }
+
+    .art-runtime-object.has-tinted-image-mask > .art-runtime-object-image {
+      display: none;
+    }
+
     .art-runtime-object-image {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
       object-fit: var(--component-image-fit, cover);
+      object-position: center;
       pointer-events: none;
     }
 
@@ -1440,7 +1451,10 @@
     }
 
     .avatar-art-image {
+      width: 100%;
+      height: 100%;
       object-fit: var(--avatar-component-fit, contain);
+      object-position: center;
     }
 
     .player-name {
@@ -1551,7 +1565,7 @@
       width: var(--controller-layout-w) !important;
       height: var(--controller-layout-h) !important;
       margin: 0 !important;
-      transform: translate(-50%, -50%) scale(var(--controller-layout-scale, 1)) var(--controller-press-transform, translate3d(0, 0, 0) scale(1)) !important;
+      transform: translate(-50%, -50%) rotate(var(--controller-layout-rotation, 0deg)) scale(var(--controller-layout-scale, 1)) var(--controller-press-transform, translate3d(0, 0, 0) scale(1)) !important;
       transform-origin: center !important;
     }
 
@@ -2331,6 +2345,7 @@
       place-items: center;
       padding: clamp(18px, 4vw, 42px);
       position: relative;
+      overflow: auto;
       background:
         linear-gradient(90deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
         linear-gradient(0deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
@@ -2381,7 +2396,8 @@
     }
 
     .art-preview-art.is-composition-editor {
-      width: min(720px, 78vw);
+      width: max(min(720px, 78vw), 620px);
+      min-height: 360px;
       aspect-ratio: var(--art-composition-aspect, 2.43);
       position: relative;
       border: 4px solid var(--ink);
@@ -2392,7 +2408,7 @@
         rgba(255, 248, 214, 0.18);
       background-size: 28px 28px, 28px 28px, auto;
       filter: drop-shadow(8px 8px 0 rgba(23, 19, 31, 0.35));
-      overflow: hidden;
+      overflow: visible;
     }
 
     .art-composition-component {
@@ -2423,6 +2439,16 @@
       background: transparent;
     }
 
+    .art-composition-component.has-tinted-image-mask {
+      background: currentColor;
+      -webkit-mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
+      mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
+    }
+
+    .art-composition-component.has-tinted-image-mask > .art-component-mask-image {
+      display: none;
+    }
+
     .art-composition-component.is-image-drop-target {
       outline: 5px solid var(--yellow);
       box-shadow: 0 0 0 4px var(--ink);
@@ -2435,6 +2461,7 @@
       width: 100%;
       height: 100%;
       object-fit: var(--component-image-fit, cover);
+      object-position: center;
       pointer-events: none;
     }
 
@@ -3962,6 +3989,32 @@
       cursor: nwse-resize;
     }
 
+    .layout-rotation-handle {
+      position: absolute;
+      left: 50%;
+      top: -42px;
+      width: 24px;
+      height: 24px;
+      transform: translateX(-50%);
+      border: 4px solid var(--ink);
+      border-radius: 999px;
+      background: var(--cyan);
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.4);
+      cursor: grab;
+      z-index: 10;
+    }
+
+    .layout-rotation-handle::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      width: 4px;
+      height: 18px;
+      transform: translateX(-50%);
+      background: var(--ink);
+    }
+
     .layout-editor-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -4172,6 +4225,11 @@
 
     .host-audio-shell {
       grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+    }
+
+    .host-audio-shell .flow-panel {
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      align-content: start;
     }
 
     .host-audio-list {

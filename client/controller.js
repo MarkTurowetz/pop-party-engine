@@ -327,7 +327,7 @@ function setupController() {
     applyControllerRuntimeTestMessage(event.data);
   });
   stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(getSessionValue("partyTemplateStageCode") || getLocalValue("partyTemplateStageCode"));
-  playerNameInput.value = getPlayerNameFromUrl() || getSessionValue("partyTemplatePlayerName") || "";
+  playerNameInput.value = getPlayerNameFromUrl() || getSessionValue("partyTemplatePlayerName") || getLocalValue("partyTemplatePlayerName") || "";
   updateJoinButton();
   applyControllerLayoutForPhase("join");
 
@@ -346,6 +346,7 @@ function setupController() {
     joinController,
     normalizeStageCode,
     removeSessionValue,
+    setLocalValue,
     setDismissedInvalidKey: (value) => {
       dismissedTextInvalidKey = value;
     },

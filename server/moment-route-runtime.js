@@ -79,7 +79,9 @@ function createMomentRouteRuntime({
       }, options);
     }
     if (routeNode.routeNodeType === "action") {
-      const nextTargetNodeId = routeNode.nextTargetNodeId || routeNode.nextTargetActionId || "";
+      const nextTargetNodeId = routeNode.type === "jumpNode"
+        ? routeNode.jumpTargetActionId || routeNode.nextTargetNodeId || routeNode.nextTargetActionId || ""
+        : routeNode.nextTargetNodeId || routeNode.nextTargetActionId || "";
       const actionTrace = {
         kind: "action",
         id: routeNode.id,

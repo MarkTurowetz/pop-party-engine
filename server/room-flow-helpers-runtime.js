@@ -42,7 +42,9 @@ function createRoomFlowHelpersRuntime({
       ...node,
       routeNodeType: "action",
       routeNodeId: node.id,
-      nextTargetActionId: node.nextTargetNodeId || node.nextTargetActionId || ""
+      nextTargetActionId: node.type === "jumpNode"
+        ? node.jumpTargetActionId || node.nextTargetNodeId || node.nextTargetActionId || ""
+        : node.nextTargetNodeId || node.nextTargetActionId || ""
     }, -1);
   }
 
@@ -101,7 +103,7 @@ function createRoomFlowHelpersRuntime({
       room.presentedAction = null;
       clearActiveInputFlowEvent(room);
       clearAppliedActionEffects(room);
-      advanceRoomFromRouteAction(room, { nextTargetNodeId: actionId });
+      advanceRoomFromRouteAction(room, { nextTargetNodeId: actionId, jumpTargetActionId: actionId, type: "jumpNode" });
       return;
     }
     if (isReturnActionTarget(actionId)) {

@@ -75,6 +75,7 @@ function clearControllerLayoutTargets() {
     target.style.removeProperty("--controller-layout-w");
     target.style.removeProperty("--controller-layout-h");
     target.style.removeProperty("--controller-layout-scale");
+    target.style.removeProperty("--controller-layout-rotation");
     target.style.removeProperty("--controller-text-color");
     target.style.removeProperty("--controller-text-font-size");
     target.style.removeProperty("color");
@@ -113,6 +114,7 @@ function applyControllerElementLayout(element) {
   target.style.setProperty("--controller-layout-w", `${element.width}px`);
   target.style.setProperty("--controller-layout-h", `${element.height}px`);
   target.style.setProperty("--controller-layout-scale", `${element.scale || 1}`);
+  target.style.setProperty("--controller-layout-rotation", `${Number(element.rotation || 0)}deg`);
   if (element.kind === "text") {
     target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
@@ -183,6 +185,7 @@ function clearStageLayoutTargets() {
     target.style.removeProperty("--stage-layout-w");
     target.style.removeProperty("--stage-layout-h");
     target.style.removeProperty("--stage-layout-scale");
+    target.style.removeProperty("--stage-layout-rotation");
     target.style.removeProperty("--stage-object-visible-scale");
     target.style.removeProperty("--stage-text-color");
     target.style.removeProperty("--stage-text-font-size");
@@ -227,6 +230,7 @@ function applyStageElementLayout(element, isGlobal) {
   target.style.setProperty("--stage-layout-w", `${element.width}px`);
   target.style.setProperty("--stage-layout-h", `${element.height}px`);
   target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
+  target.style.setProperty("--stage-layout-rotation", `${Number(element.rotation || 0)}deg`);
   if (element.kind === "text") {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);

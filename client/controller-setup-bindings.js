@@ -8,6 +8,7 @@
     joinController,
     normalizeStageCode,
     removeSessionValue,
+    setLocalValue,
     setDismissedInvalidKey,
     shouldAutoJoin,
     updateJoinButton
@@ -32,6 +33,7 @@
         if (!getControllerState() && elements.playerNameInput.value.trim() !== getSessionValue("partyTemplatePlayerName")) {
           removeSessionValue("partyTemplatePlayerId");
         }
+        setLocalValue?.("partyTemplatePlayerName", elements.playerNameInput.value.trim());
         updateJoinButton();
       });
 
@@ -39,6 +41,7 @@
         event.preventDefault();
         const stageCode = normalizeStageCode(elements.stageCodeInput.value);
         const playerName = elements.playerNameInput.value.trim();
+        setLocalValue?.("partyTemplatePlayerName", playerName);
         try {
           await joinController(stageCode, playerName);
         } catch (error) {

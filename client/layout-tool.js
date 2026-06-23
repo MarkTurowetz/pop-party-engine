@@ -81,6 +81,7 @@ function serializeLayoutGroup(group) {
       width: Number(Number(element.width || 0).toFixed(3)),
       height: Number(Number(element.height || 0).toFixed(3)),
       scale: Number(Number(element.scale || 1).toFixed(3)),
+      rotation: Number(Number(element.rotation || 0).toFixed(3)),
       defaultText: element.kind === "text" ? String(element.defaultText ?? layoutDefaultText(element)) : "",
       fontSize: element.kind === "text" ? Number(Number(element.fontSize || 58).toFixed(3)) : 58,
       autoFitText: element.kind === "text" ? element.autoFitText === true : false,
@@ -233,6 +234,7 @@ function makeLayoutObject(item) {
     width: item.width || 240,
     height: item.height || 120,
     scale: 1,
+    rotation: 0,
     defaultText: item.kind === "text" ? layoutDefaultText(item) : "",
     fontSize: item.kind === "text" ? 58 : 58,
     autoFitText: false,
@@ -460,7 +462,7 @@ function renderLayoutPreview() {
     node.style.top = `${element.y * scale}px`;
     node.style.width = `${element.width * scale}px`;
     node.style.height = `${element.height * scale}px`;
-    node.style.transform = `translate(-50%, -50%) scale(${element.scale || 1})`;
+    node.style.transform = `translate(-50%, -50%) rotate(${Number(element.rotation || 0)}deg) scale(${element.scale || 1})`;
     node.style.setProperty("--layout-fit-scale", scale);
     node.appendChild(layoutPreviewContent(element));
     if (isEditableElement) {
@@ -477,6 +479,20 @@ function renderLayoutPreview() {
       handle.className = "layout-resize-handle";
       handle.addEventListener("pointerdown", (event) => startLayoutScale(event, element));
       node.appendChild(handle);
+      if (element.id === selectedLayoutElementId) {
+        node.appendChild(window.PartyGameToolAffordances.createRotationHandle({
+          targetElement: node,
+          origins: () => selectedEditableLayoutElements().map((item) => ({ id: item.id, rotation: Number(item.rotation || 0) })),
+          onStart: pushLayoutHistory,
+          onRotate: (items) => {
+            const byId = new Map(items.map((item) => [item.id, item.rotation]));
+            for (const item of selectedEditableLayoutElements()) {
+              item.rotation = Number(Number(byId.get(item.id) || 0).toFixed(3));
+            }
+            renderLayoutTool();
+          }
+        }));
+      }
     }
     layoutStagePreview.appendChild(node);
   }
@@ -643,7 +659,7 @@ function startLayoutMarquee(event) {
     className: "layout-selection-marquee",
     itemSelector: ".layout-preview-element:not(.is-global-preview)",
     getItemId: (node) => node.dataset.elementId,
-    shouldIgnoreTarget: (target) => Boolean(target.closest?.(".layout-preview-element")),
+    shouldIgnoreTarget: (target) => Boolean(target.closest?.(".layout-preview-element, .layout-resize-handle, .layout-rotation-handle")),
     onSelectionChange: (selectedIds) => {
       setLayoutSelection(selectedIds);
       renderLayoutElements();
@@ -658,7 +674,7 @@ function startLayoutMarquee(event) {
 }
 
 function startLayoutDrag(event, element) {
-  if (event.target.closest(".layout-resize-handle")) return;
+  if (event.target.closest(".layout-resize-handle, .layout-rotation-handle")) return;
   event.preventDefault();
   event.stopPropagation();
   if (event.metaKey || event.ctrlKey) {
@@ -775,6 +791,7 @@ function renderLayoutFields() {
   layoutEditorFields.appendChild(layoutNumberField("X", element.x, (value) => updateLayoutNumber("x", value)));
   layoutEditorFields.appendChild(layoutNumberField("Y", element.y, (value) => updateLayoutNumber("y", value)));
   layoutEditorFields.appendChild(layoutNumberField("Scale", element.scale, (value) => updateLayoutNumber("scale", Math.max(0.1, value)), 0.05));
+  layoutEditorFields.appendChild(layoutNumberField("Rotation", element.rotation || 0, (value) => updateLayoutNumber("rotation", value)));
   layoutEditorFields.appendChild(layoutNumberField("Width", element.width, (value) => updateLayoutNumber("width", Math.max(24, value))));
   layoutEditorFields.appendChild(layoutNumberField("Height", element.height, (value) => updateLayoutNumber("height", Math.max(24, value))));
   if (elements.length === 1 && element.kind === "text") {

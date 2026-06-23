@@ -80,7 +80,10 @@ function createRoomPhaseRuntime({
   }
 
   function advanceRoomFromRouteAction(room, action) {
-    advanceRoomToMomentGraphTarget(room, action?.nextTargetNodeId || action?.nextTargetActionId || "");
+    const target = action?.type === "jumpNode"
+      ? action?.jumpTargetActionId || action?.nextTargetNodeId || action?.nextTargetActionId || ""
+      : action?.nextTargetNodeId || action?.nextTargetActionId || "";
+    advanceRoomToMomentGraphTarget(room, target);
   }
 
   function actionListHasVotingCards(actions = []) {

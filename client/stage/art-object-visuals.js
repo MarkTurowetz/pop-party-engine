@@ -67,12 +67,15 @@
       this.element.style.zIndex = String(componentLayerIndex(layer.index, layer.total));
       const imageSource = componentImageSource(this.component);
       this.element.classList.toggle("has-image-mask", Boolean(imageSource));
+      this.element.classList.toggle("has-tinted-image-mask", Boolean(imageSource && this.component.imageTint === "currentColor"));
       this.image.hidden = !imageSource;
       this.label.hidden = Boolean(imageSource);
       if (imageSource) {
         if (this.image.getAttribute("src") !== imageSource) this.image.src = imageSource;
+        this.element.style.setProperty("--component-mask-url", `url('${String(imageSource).replaceAll("'", "%27")}')`);
       } else {
         this.image.removeAttribute("src");
+        this.element.style.removeProperty("--component-mask-url");
       }
       this.label.textContent = componentSchema.componentLabel(this.component);
       applyComponentLayout(this.element, this.component, canvas);

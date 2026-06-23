@@ -47,6 +47,7 @@ function serializeArtComponentForSave(component) {
     height: Number(Number(component.height || 1).toFixed(3)),
     scale: Number(Number(component.scale || 1).toFixed(3)),
     rotation: Number(Number(component.rotation || 0).toFixed(3)),
+    defaultAnimationState: component.defaultAnimationState || "",
     defaultText: component.defaultText || "",
     fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
     fontColor: component.fontColor || "#17131f",
@@ -498,6 +499,7 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
   node.className = `art-composition-component is-${artComponentSchema.normalizeComponentKind(component.kind)} is-style-${artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind)}`;
   node.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
   node.classList.toggle("has-image-mask", artComponentHasImageMask(component));
+  node.classList.toggle("has-tinted-image-mask", artComponentHasImageMask(component) && component.imageTint === "currentColor");
   node.dataset.componentId = component.id;
   node.style.zIndex = String(artComponentLayerIndex(layerIndex, siblingCount));
   node.style.left = `${Number(component.x || 0) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
@@ -513,6 +515,9 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
   node.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
   node.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
   node.style.setProperty("--component-image-fit", artComponentSchema.normalizeImageObjectFit(component.imageObjectFit));
+  const imageSource = artComponentImageSource(component);
+  if (imageSource) node.style.setProperty("--component-mask-url", cssUrl(imageSource));
+  else node.style.removeProperty("--component-mask-url");
   node.addEventListener("pointerdown", (event) => startArtComponentDrag(event, component));
   if (artComponentSupportsImageMask(component)) {
     node.addEventListener("dragover", (event) => {
@@ -532,7 +537,6 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
       stageArtComponentImageFile(component, event.dataTransfer?.files?.[0]);
     });
   }
-  const imageSource = artComponentImageSource(component);
   if (imageSource) {
     const image = document.createElement("img");
     image.className = "art-component-mask-image";
@@ -554,11 +558,30 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
     handle.className = "layout-resize-handle";
     handle.addEventListener("pointerdown", (event) => startArtComponentScale(event, component));
     node.appendChild(handle);
+    if (component.id === selectedArtComponentId) {
+      node.appendChild(window.PartyGameToolAffordances.createRotationHandle({
+        targetElement: node,
+        origins: () => selectedArtComponents().map((item) => ({ id: item.id, rotation: Number(item.rotation || 0) })),
+        onRotate: (items) => {
+          const byId = new Map(items.map((item) => [item.id, item.rotation]));
+          for (const item of selectedArtComponents()) {
+            item.rotation = Number(Number(byId.get(item.id) || 0).toFixed(3));
+          }
+          renderSelectedArtComposition({ renderEditor: false });
+          renderArtList();
+          updateGlobalSaveButton();
+        },
+        onStart: pushArtHistory,
+        onEnd: () => renderSelectedArtComposition()
+      }));
+    }
   }
   return node;
 }
 
 function artComponentPreviewText(component) {
+  const kind = artComponentSchema.normalizeComponentKind(component.kind);
+  if (kind === "shape" || kind === "container") return "";
   if (component.id === "current-card") return "";
   if (component.id === "answer-text") return "FUNNY ANSWER";
   if (component.id === "author-heading") return "AVA";
@@ -586,7 +609,7 @@ function startArtSelectionMarquee(event) {
     className: "art-selection-marquee",
     itemSelector: ".art-composition-component",
     getItemId: (node) => node.dataset.componentId,
-    shouldIgnoreTarget: (target) => Boolean(target.closest?.(".art-composition-component, .layout-resize-handle")),
+    shouldIgnoreTarget: (target) => Boolean(target.closest?.(".art-composition-component, .layout-resize-handle, .layout-rotation-handle")),
     onSelectionChange: (selectedIds) => {
       const nextIds = new Set(baseSelection);
       for (const id of selectedIds) nextIds.add(id);
@@ -601,7 +624,7 @@ function startArtSelectionMarquee(event) {
 }
 
 function startArtComponentDrag(event, component) {
-  if (event.target.closest(".layout-resize-handle")) return;
+  if (event.target.closest(".layout-resize-handle, .layout-rotation-handle")) return;
   event.preventDefault();
   event.stopPropagation();
   if (event.metaKey || event.ctrlKey) {

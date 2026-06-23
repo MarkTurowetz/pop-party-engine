@@ -97,7 +97,6 @@
     function routeActionTypeOptions(routeNode) {
       return (context.flowActionTypes?.() || []).filter((option) => {
         if (option.deprecated && option.id !== routeNode.type) return false;
-        if (option.id === "jumpNode" || option.id === "transitionState") return option.id === routeNode.type;
         return true;
       });
     }
@@ -106,10 +105,7 @@
       return {
         id: context.selectedFlowStateId?.() || "moment-route",
         name: "Moment Graph",
-        actions: (context.flowRouteNodes?.() || []).filter((node) => {
-          if (node.id === routeNode.id) return false;
-          return node.routeNodeType === "action" || node.routeNodeType === "decision";
-        })
+        actions: (context.flowRouteNodes?.() || []).filter((node) => node.id !== routeNode.id)
       };
     }
 

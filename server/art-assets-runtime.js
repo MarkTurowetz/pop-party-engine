@@ -128,7 +128,8 @@ function createArtAssetsRuntime({
       width: cleanNumber(source.width, Number(base.width || 1), 1),
       height: cleanNumber(source.height, Number(base.height || 1), 1),
       scale: cleanNumber(source.scale, Number(base.scale || 1), 0.05, 8),
-      rotation: cleanNumber(source.rotation, Number(base.rotation || 0), -3600, 3600)
+      rotation: cleanNumber(source.rotation, Number(base.rotation || 0), -3600, 3600),
+      defaultAnimationState: cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24)
     };
     if (kind === "text" || kind === "badge") {
       normalized.defaultText = cleanText(source.defaultText, base.defaultText || "", 500);

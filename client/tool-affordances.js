@@ -347,10 +347,56 @@
     return true;
   }
 
+  function pointerAngleDegrees(center, event) {
+    return Math.atan2(event.clientY - center.y, event.clientX - center.x) * 180 / Math.PI;
+  }
+
+  function createRotationHandle(options = {}) {
+    const handle = document.createElement("span");
+    handle.className = options.className || "layout-rotation-handle";
+    handle.title = options.title || "Rotate";
+    handle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const target = options.targetElement || handle.parentElement;
+      const rect = target?.getBoundingClientRect?.();
+      if (!rect) return;
+      const origins = typeof options.origins === "function" ? options.origins(event) : [];
+      if (!origins.length) return;
+      const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const startAngle = pointerAngleDegrees(center, event);
+      options.onStart?.(event);
+      capturePointer(handle, event.pointerId);
+      const move = (moveEvent) => {
+        const delta = pointerAngleDegrees(center, moveEvent) - startAngle;
+        const snap = moveEvent.shiftKey ? 15 : 0;
+        options.onRotate?.(origins.map((origin) => {
+          const next = Number(origin.rotation || 0) + delta;
+          return {
+            ...origin,
+            rotation: snap ? Math.round(next / snap) * snap : next
+          };
+        }), moveEvent);
+      };
+      const stop = (stopEvent) => {
+        releasePointer(handle, stopEvent.pointerId);
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", stop);
+        window.removeEventListener("pointercancel", stop);
+        options.onEnd?.(stopEvent);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", stop, { once: true });
+      window.addEventListener("pointercancel", stop, { once: true });
+    });
+    return handle;
+  }
+
   window.PartyGameToolAffordances = {
     bindToolRowActivation,
     bindSortableRow,
     bindScrollStableControls,
+    createRotationHandle,
     createToolAccordionRow,
     createDisclosureButton,
     createToolSidebarRow,
