@@ -19,6 +19,26 @@
       }
     }
 
+    async function microphonePermissionState() {
+      try {
+        const permission = await navigator.permissions?.query?.({ name: "microphone" });
+        return permission?.state || "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    async function requestMicrophoneAccess() {
+      const permissionState = await microphonePermissionState();
+      if (permissionState === "granted") return true;
+      if (permissionState === "denied") {
+        throw new DOMException("Microphone access was blocked", "NotAllowedError");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stopStream(stream);
+      return true;
+    }
+
     function renderWaiting(lobby, message = "Waiting for the player to grant microphone access") {
       hideViews();
       waiting.state.classList.remove("hidden");
@@ -50,9 +70,8 @@
         elements.button.disabled = true;
         elements.status.textContent = "Opening microphone permission";
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          stopStream(stream);
-          elements.status.textContent = "Access granted";
+          await requestMicrophoneAccess();
+          elements.status.textContent = "Microphone ready";
           await grantAccess(input.actionId);
         } catch (error) {
           elements.button.disabled = false;
