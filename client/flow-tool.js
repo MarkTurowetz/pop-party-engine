@@ -593,6 +593,7 @@ function getFlowDecisionControls() {
     flowDecisionControls = window.PartyGameFlowDecisionControls.createDecisionControls({
       ...(getFlowFormControls() || {}),
       ensureDecisionBranches,
+      flowNodeBranchDescriptors: () => getFlowNodeBranchDescriptors(),
       flowActionTargetOptions,
       makeDecisionBranchId
     });

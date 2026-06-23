@@ -37,6 +37,19 @@
       return options.targetField || "targetActionId";
     }
 
+    function decisionBranchModel(state, action, branch, index, options = {}) {
+      const descriptors = context.flowNodeBranchDescriptors?.()?.descriptorsFor(state, action, options) || [];
+      const descriptor = descriptors.find((item) => item.branch.id === branch?.id) || descriptors[index] || null;
+      const targetField = descriptor?.targetField || decisionTargetField(options);
+      const liveBranch = descriptor?.branch || branch;
+      return {
+        branch: liveBranch,
+        descriptor,
+        index: descriptor?.index ?? index,
+        targetField
+      };
+    }
+
     function decisionTargetOptions(state, action, branch, options = {}) {
       if (typeof options.targetOptions === "function") return options.targetOptions(state, action, branch);
       const targetField = decisionTargetField(options);
@@ -57,7 +70,10 @@
     }
 
     function appendDecisionBranchControls(target, state, action, branch, index, rerender, options = {}) {
-      const targetField = decisionTargetField(options);
+      const model = decisionBranchModel(state, action, branch, index, options);
+      branch = model.branch;
+      index = model.index;
+      const targetField = model.targetField;
       const panel = document.createElement("div");
       panel.className = "flow-form-grid";
       const branchTypeOptions = branch.type === "noMatch"
