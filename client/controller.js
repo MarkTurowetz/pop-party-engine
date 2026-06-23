@@ -1,7 +1,38 @@
+let controllerAvatarView = null;
 let controllerVoiceInput = null;
 let controllerChoiceInputView = null;
 let controllerSubmitApi = null;
 let controllerTextInputView = null;
+
+function getControllerAvatarView() {
+  if (!controllerAvatarView) {
+    controllerAvatarView = window.createControllerAvatarView({
+      avatarClass,
+      avatarComposites,
+      avatarFrameImage,
+      avatarLabel,
+      dinoIcon,
+      elements: {
+        avatar: controllerAvatar,
+        banner: controllerPlayerBanner,
+        bannerAvatar: controllerPlayerBannerAvatar,
+        bannerName: controllerPlayerBannerName,
+        picker: avatarPicker,
+        pickerGrid: avatarPickerGrid
+      },
+      getControllerState: () => controllerState,
+      postJson,
+      renderState: renderControllerState,
+      setControllerPlayer: (player) => {
+        controllerState.player = player;
+      },
+      setMetaText: (value) => {
+        controllerMeta.textContent = value;
+      }
+    });
+  }
+  return controllerAvatarView;
+}
 
 function getControllerVoiceInput() {
   if (!controllerVoiceInput) {
@@ -87,74 +118,19 @@ async function joinController(stageCode, playerName) {
 }
 
 function setControllerAvatar(player) {
-  controllerAvatar.className = `controller-avatar ${avatarClass(player.avatar?.shape)}`;
-  controllerAvatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
-  controllerAvatar.innerHTML = `${avatarFrameImage()}${dinoIcon(player.avatar?.shape)}`;
-  setControllerPlayerBanner(player);
+  getControllerAvatarView().setAvatar(player);
 }
 
 function setControllerPlayerBanner(player) {
-  if (!player || !controllerPlayerBanner) return;
-  controllerPlayerBannerName.textContent = player.name || "Player";
-  controllerPlayerBannerAvatar.className = `player-avatar ${avatarClass(player.avatar?.shape)}`;
-  controllerPlayerBannerAvatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
-  controllerPlayerBannerAvatar.innerHTML = `${avatarFrameImage()}${dinoIcon(player.avatar?.shape)}`;
-}
-
-function renderAvatarPicker() {
-  if (!controllerState?.player) return;
-  const currentShape = controllerState.player.avatar?.shape || "rex";
-  const currentColor = controllerState.player.avatar?.color || "#22d3ee";
-  pendingAvatarShape = pendingAvatarShape || currentShape;
-  avatarPickerGrid.replaceChildren();
-  for (const composite of avatarComposites) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "avatar-choice";
-    button.classList.toggle("is-selected", composite.species === pendingAvatarShape);
-    button.style.setProperty("--avatar-color", currentColor);
-    button.innerHTML = `
-      <span class="avatar-choice-icon">${avatarFrameImage()}${dinoIcon(composite.species)}</span>
-      <span class="avatar-choice-label"></span>
-    `;
-    button.querySelector(".avatar-choice-label").textContent = avatarLabel(composite.species);
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      pendingAvatarShape = composite.species;
-      renderAvatarPicker();
-    });
-    avatarPickerGrid.appendChild(button);
-  }
+  getControllerAvatarView().setBanner(player);
 }
 
 function openAvatarPicker() {
-  if (!controllerState?.player) return;
-  pendingAvatarShape = controllerState.player.avatar?.shape || "rex";
-  avatarPickerOpen = true;
-  renderAvatarPicker();
-  avatarPicker.classList.remove("hidden");
+  getControllerAvatarView().open();
 }
 
 async function closeAvatarPicker({ commit = true } = {}) {
-  if (!avatarPickerOpen) return;
-  avatarPickerOpen = false;
-  avatarPicker.classList.add("hidden");
-  if (!commit || !controllerState?.player) return;
-  if (!pendingAvatarShape || pendingAvatarShape === controllerState.player.avatar?.shape) return;
-  try {
-    const result = await postJson("/api/avatar", {
-      stageCode: controllerState.stageCode,
-      playerId: controllerState.playerId,
-      shape: pendingAvatarShape
-    });
-    if (result.player) {
-      controllerState.player = result.player;
-      setControllerAvatar(result.player);
-    }
-    if (result.lobby) renderControllerState(result.lobby);
-  } catch (error) {
-    controllerMeta.textContent = error.message;
-  }
+  return getControllerAvatarView().close({ commit });
 }
 
 function hideControllerViews() {
@@ -221,7 +197,7 @@ function renderControllerState(lobby) {
   controllerState.player = me;
   setControllerPlayerBanner(me);
   controllerState.startToken = me.isVip ? lobby.startToken : "";
-  if (!avatarPickerOpen) pendingAvatarShape = me.avatar?.shape || "";
+  getControllerAvatarView().syncPendingShape(me);
 
   const controllerPhase = lobby.phase || "lobby";
   controllerState.phase = controllerPhase;

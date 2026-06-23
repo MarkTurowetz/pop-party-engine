@@ -4562,6 +4562,7 @@
   <script src="/client/stage/voting-card-visuals.js"></script>
   <script src="/client/stage/render-orchestrator.js"></script>
   <script src="/client/stage-runtime.js"></script>
+  <script src="/client/controller-avatar-view.js"></script>
   <script src="/client/controller-voice-input.js"></script>
   <script src="/client/controller-choice-input-view.js"></script>
   <script src="/client/controller-text-input-view.js"></script>
@@ -4783,8 +4784,6 @@
     const layoutObjectOptions = document.querySelector("#layoutObjectOptions");
     const revertLayoutButton = document.querySelector("#revertLayoutButton");
     let controllerState = null;
-    let pendingAvatarShape = "";
-    let avatarPickerOpen = false;
     let heartbeatTimer = null;
     let lobbyPollTimer = null;
     let stageCountdownTimer = null;
