@@ -11,6 +11,10 @@
       };
     }
 
+    function join(stageCode, playerName, playerId) {
+      return postJson("/api/join", { stageCode, playerName, playerId });
+    }
+
     function submitChoice(actionId, optionIndex, cardId = "") {
       const base = payloadBase();
       if (!base) return Promise.resolve(null);
@@ -51,6 +55,7 @@
     }
 
     return {
+      join,
       presentIntro,
       submitChoice,
       submitText,

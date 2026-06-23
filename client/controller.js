@@ -176,7 +176,7 @@ function updateJoinButton() {
 async function joinController(stageCode, playerName) {
   const playerId = getControllerPlayerId();
   joinButton.disabled = true;
-  const result = await postJson("/api/join", { stageCode, playerName, playerId });
+  const result = await getControllerSubmitApi().join(stageCode, playerName, playerId);
   getControllerSessionRuntime().enterLobby(stageCode, result.player.id, result.lobby, result.player);
   return result;
 }
