@@ -1,0 +1,42 @@
+(function () {
+  "use strict";
+
+  function createControllerSubmitApi({ getControllerState, postJson }) {
+    function payloadBase() {
+      const state = getControllerState();
+      if (!state) return null;
+      return {
+        playerId: state.playerId,
+        stageCode: state.stageCode
+      };
+    }
+
+    function submitChoice(actionId, optionIndex, cardId = "") {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson("/api/controller-choice", {
+        ...base,
+        actionId,
+        cardId,
+        optionIndex
+      });
+    }
+
+    function submitText(actionId, text) {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson("/api/controller-text-submit", {
+        ...base,
+        actionId,
+        text
+      });
+    }
+
+    return {
+      submitChoice,
+      submitText
+    };
+  }
+
+  window.createControllerSubmitApi = createControllerSubmitApi;
+})();

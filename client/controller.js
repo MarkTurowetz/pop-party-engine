@@ -1,5 +1,6 @@
 let controllerVoiceInput = null;
 let controllerChoiceInputView = null;
+let controllerSubmitApi = null;
 let controllerTextInputView = null;
 
 function getControllerVoiceInput() {
@@ -59,6 +60,16 @@ function getControllerTextInputView() {
     });
   }
   return controllerTextInputView;
+}
+
+function getControllerSubmitApi() {
+  if (!controllerSubmitApi) {
+    controllerSubmitApi = window.createControllerSubmitApi({
+      getControllerState: () => controllerState,
+      postJson
+    });
+  }
+  return controllerSubmitApi;
 }
 
 function updateJoinButton() {
@@ -162,13 +173,7 @@ function renderControllerChoiceState(lobby, me) {
 async function submitControllerChoice(actionId, optionIndex, cardId = "") {
   if (!controllerState) return;
   try {
-    const result = await postJson("/api/controller-choice", {
-      stageCode: controllerState.stageCode,
-      playerId: controllerState.playerId,
-      actionId,
-      optionIndex,
-      cardId
-    });
+    const result = await getControllerSubmitApi().submitChoice(actionId, optionIndex, cardId);
     if (result.lobby) renderControllerState(result.lobby);
   } catch (error) {
     controllerChoicePrompt.textContent = error.message;
@@ -186,12 +191,7 @@ async function submitControllerText(actionId, textOverride = null) {
   controllerTextSubmitButton.disabled = true;
   controllerVoiceButton.disabled = true;
   try {
-    const result = await postJson("/api/controller-text-submit", {
-      stageCode: controllerState.stageCode,
-      playerId: controllerState.playerId,
-      actionId,
-      text
-    });
+    const result = await getControllerSubmitApi().submitText(actionId, text);
     if (result.lobby) renderControllerState(result.lobby);
   } catch (error) {
     controllerInvalidBanner.textContent = error.message;
