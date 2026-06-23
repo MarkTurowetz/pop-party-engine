@@ -14,20 +14,23 @@
       const targetOptions = typeof options.targetOptions === "function"
         ? options.targetOptions
         : (stateForOptions, actionForOptions, selectedTarget) => context.flowActionTargetOptions(stateForOptions, selectedTarget || "");
+      const decisionTargetField = options.decisionTargetField || "targetActionId";
       const controlChange = (redraw = true) => (redraw ? change() : softChange());
 
       target.appendChild(context.flowActionNameField(state, action, (value) => {
         action.name = value || action.name;
         refreshAll();
       }, refreshAll));
-      const typeOptions = typeof options.actionTypeOptions === "function"
-        ? options.actionTypeOptions(action, actionRef)
-        : actionTypeOptions(action, actionRef.isSubAction);
-      target.appendChild(context.flowActionTypeSearch("Action Type", action.type, typeOptions, (value) => {
-        context.applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
-        context.refreshActionNameFromType(state, action);
-        refreshAll();
-      }));
+      if (options.includeActionTypeControl !== false) {
+        const typeOptions = typeof options.actionTypeOptions === "function"
+          ? options.actionTypeOptions(action, actionRef)
+          : actionTypeOptions(action, actionRef.isSubAction);
+        target.appendChild(context.flowActionTypeSearch("Action Type", action.type, typeOptions, (value) => {
+          context.applyFlowActionTypeDefaults(action, value, actionRef.isSubAction);
+          context.refreshActionNameFromType(state, action);
+          refreshAll();
+        }));
+      }
 
       appendActionTypeControls(target, state, actionRef, action, controls, {
         change,
@@ -35,6 +38,7 @@
         refresh,
         controlChange,
         decisionChange,
+        decisionTargetField,
         targetOptions,
         stopAfterDecision: options.stopAfterDecision !== false
       });
@@ -288,8 +292,10 @@
     }
 
     function appendDecisionActionControls(target, state, action, handlers) {
+      const targetField = handlers.decisionTargetField || "targetActionId";
       context.appendDecisionControls(target, state, action, handlers.decisionChange, {
-        targetOptions: (stateForOptions, actionForOptions, branch) => handlers.targetOptions(stateForOptions, actionForOptions, branch.targetActionId || "")
+        targetField,
+        targetOptions: (stateForOptions, actionForOptions, branch) => handlers.targetOptions(stateForOptions, actionForOptions, branch[targetField] || "")
       });
       target.appendChild(context.readOnlyFlowNote(handlers.stopAfterDecision
         ? "Decision actions do not use timing. They evaluate branches in order and wait forever if the selected branch has no connection."

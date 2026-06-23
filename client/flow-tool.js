@@ -377,7 +377,6 @@ function getFlowMomentRouteRenderer() {
       actionTimingLabel,
       actionTypeMeta,
       actionValueBadge,
-      appendDecisionControls,
       appendActionPropertyControls: (...args) => getFlowActionInspectorRegistry()?.appendActionPropertyControls(...args),
       bindFlowNodeDrag,
       createFlowMomentRoutePorts,
