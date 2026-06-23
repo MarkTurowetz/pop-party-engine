@@ -51,8 +51,9 @@
     }
 
     function decisionTargetOptions(state, action, branch, options = {}) {
-      if (typeof options.targetOptions === "function") return options.targetOptions(state, action, branch);
       const targetField = decisionTargetField(options);
+      const selectedTarget = branch[targetField] || "";
+      if (typeof options.targetOptions === "function") return options.targetOptions(state, action, selectedTarget, branch);
       return context.flowActionTargetOptions(state, branch[targetField] || "");
     }
 

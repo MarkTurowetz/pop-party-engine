@@ -295,7 +295,7 @@
       const targetField = handlers.decisionTargetField || "targetActionId";
       context.appendDecisionControls(target, state, action, handlers.decisionChange, {
         targetField,
-        targetOptions: (stateForOptions, actionForOptions, branch) => handlers.targetOptions(stateForOptions, actionForOptions, branch[targetField] || "")
+        targetOptions: (stateForOptions, actionForOptions, selectedTarget) => handlers.targetOptions(stateForOptions, actionForOptions, selectedTarget || "")
       });
       target.appendChild(context.readOnlyFlowNote(handlers.stopAfterDecision
         ? "Decision actions do not use timing. They evaluate branches in order and wait forever if the selected branch has no connection."

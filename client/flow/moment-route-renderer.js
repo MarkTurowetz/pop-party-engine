@@ -132,14 +132,15 @@
     function renderRouteDecisionInspector(inspector, routeNode) {
       routeNode.type = "decision";
       const state = routeInspectorState(routeNode);
-      context.appendActionPropertyControls?.(inspector, state, routeActionRef(routeNode, state), {
-        ...routeInspectorChangeHandlers(),
-        decisionTargetField: "targetNodeId",
-        includeActionTypeControl: false,
-        includeSubActionButton: false,
-        stopAfterDecision: true,
+      inspector.appendChild(context.flowActionNameField?.(state, routeNode, (value) => {
+        routeNode.name = value || routeNode.name;
+        context.refreshFlowNodeInspectorChange?.();
+      }, context.refreshFlowNodeInspectorChange) || document.createTextNode(""));
+      context.appendDecisionControls?.(inspector, state, routeNode, routeInspectorChangeHandlers().decisionChange, {
+        targetField: "targetNodeId",
         targetOptions: routeTargetOptions(routeNode)
       });
+      inspector.appendChild(context.readOnlyFlowNote?.("Decision actions do not use timing. They evaluate branches in order and wait forever if the selected branch has no connection."));
     }
 
     function renderRouteActionInspector(inspector, routeNode) {
