@@ -7,7 +7,10 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     const needsChoiceInput = Boolean(room.choiceInputActionId) && (
       room.choiceInputMode === "continuous" || !choiceAnswer
     );
-    const needsTextInput = Boolean(room.textInputActionId) && textAnswer?.done !== true;
+    const textInputIsForPlayer = room.textInputMode === "voiceVip"
+      ? player.id === room.vipPlayerId
+      : true;
+    const needsTextInput = Boolean(room.textInputActionId) && textInputIsForPlayer && textAnswer?.done !== true;
     const serializeAnswer = (value) => value ? {
       optionIndex: value.optionIndex,
       originalOptionIndex: value.originalOptionIndex,

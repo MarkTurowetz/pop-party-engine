@@ -17,6 +17,10 @@ function createControllerSubmitHandlersRuntime({
   sendJson,
   updatePlayerAnswerGroups
 }) {
+  function isTextAnswerAction(action) {
+    return action?.type === "textSubmissionInput" || action?.type === "voiceSubmissionInput";
+  }
+
   async function handleControllerChoice(req, res) {
     let payload;
     try {
@@ -158,11 +162,15 @@ function createControllerSubmitHandlersRuntime({
     }
 
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);
-    if (!currentAction || currentAction.type !== "textSubmissionInput") {
+    if (!isTextAnswerAction(currentAction)) {
       sendJson(res, 409, { ok: false, error: "No active text input" });
       return;
     }
     applyTextInputAction(room, currentAction);
+    if (room.textInputMode === "voiceVip" && player.id !== room.vipPlayerId) {
+      sendJson(res, 403, { ok: false, error: "Only the VIP can submit this voice answer" });
+      return;
+    }
     if (payload.actionId && payload.actionId !== room.textInputActionId) {
       sendJson(res, 409, { ok: false, error: "Text input is stale" });
       return;

@@ -8,7 +8,10 @@
           "id": "lobby-countdown-complete",
           "name": "On Countdown Complete",
           "type": "transitionState",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "trigger": "onCountdownComplete",
           "targetState": "intro"
         }
@@ -22,7 +25,10 @@
           "id": "intro-present-1",
           "name": "Present Intro Text",
           "type": "presentText",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "textTarget": "presentation",
           "instant": false,
           "text": "I'm using this tool to dictate game actions"
@@ -31,7 +37,10 @@
           "id": "intro-present-2",
           "name": "Present Second Text",
           "type": "presentText",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "textTarget": "presentation",
           "instant": false,
           "text": "This is the second action"
@@ -40,14 +49,20 @@
           "id": "intro-wipe",
           "name": "Do Horizontal Wipe",
           "type": "transition",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "transition": "horizontalWipe"
         },
         {
           "id": "intro-hide-players",
           "name": "Hide Players",
           "type": "setPlayersShown",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "isShown": false,
           "instant": false
         },
@@ -55,7 +70,10 @@
           "id": "intro-show-players",
           "name": "Show Players",
           "type": "setPlayersShown",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "isShown": true,
           "instant": false
         }
@@ -67,20 +85,44 @@
       "nextStateTargetId": "voting-moment",
       "entryTargetActionId": "writing-show-prompt",
       "nodePositions": {
-        "start": { "x": 360, "y": 60 },
-        "return": { "x": 360, "y": 860 },
-        "writing-show-prompt": { "x": 320, "y": 190 },
-        "writing-show-timer": { "x": 320, "y": 340 },
-        "writing-start-timer": { "x": 320, "y": 490 },
-        "writing-text-input": { "x": 320, "y": 640 },
-        "writing-to-voting": { "x": 320, "y": 790 }
+        "start": {
+          "x": 360,
+          "y": 60
+        },
+        "return": {
+          "x": 360,
+          "y": 860
+        },
+        "writing-show-prompt": {
+          "x": 320,
+          "y": 190
+        },
+        "writing-show-timer": {
+          "x": 320,
+          "y": 340
+        },
+        "writing-start-timer": {
+          "x": 320,
+          "y": 490
+        },
+        "writing-text-input": {
+          "x": 320,
+          "y": 640
+        },
+        "writing-to-voting": {
+          "x": 320,
+          "y": 790
+        }
       },
       "actions": [
         {
           "id": "writing-show-prompt",
           "name": "Show Movie Prompt",
           "type": "displayText",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "textTarget": "prompt",
           "text": "What is your favorite movie?",
           "isShown": true,
@@ -91,7 +133,10 @@
           "id": "writing-show-timer",
           "name": "Show Writing Timer",
           "type": "setTimerShown",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "isShown": true,
           "instant": false,
           "nextTargetActionId": "writing-start-timer"
@@ -100,14 +145,20 @@
           "id": "writing-start-timer",
           "name": "Start Writing Timer",
           "type": "startCraftingTimer",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "nextTargetActionId": "writing-text-input"
         },
         {
           "id": "writing-text-input",
           "name": "Write Favorite Movie",
           "type": "textSubmissionInput",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "prompt": "What is your favorite movie?",
           "placeholder": "Write a movie title",
           "characterLimit": 80,
@@ -118,10 +169,115 @@
           "id": "writing-to-voting",
           "name": "Go To Voting Moment",
           "type": "transitionState",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "targetState": "voting-moment"
         }
       ]
+    },
+    {
+      "id": "voice-moment",
+      "name": "Voice Moment",
+      "nextStateTargetId": "voting-moment",
+      "entryTargetActionId": "voice-show-prompt",
+      "nodePositions": {
+        "start": {
+          "x": 360,
+          "y": 60
+        },
+        "return": {
+          "x": 360,
+          "y": 860
+        },
+        "voice-show-prompt": {
+          "x": 320,
+          "y": 190
+        },
+        "voice-show-timer": {
+          "x": 320,
+          "y": 340
+        },
+        "voice-start-timer": {
+          "x": 320,
+          "y": 490
+        },
+        "voice-text-input": {
+          "x": 320,
+          "y": 640
+        },
+        "voice-to-voting": {
+          "x": 320,
+          "y": 790
+        }
+      },
+      "actions": [
+        {
+          "id": "voice-show-prompt",
+          "name": "Show Movie Prompt",
+          "type": "displayText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "textTarget": "prompt",
+          "text": "What is your favorite movie?",
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "voice-show-timer"
+        },
+        {
+          "id": "voice-show-timer",
+          "name": "Show Voice Timer",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "voice-start-timer"
+        },
+        {
+          "id": "voice-start-timer",
+          "name": "Start Voice Timer",
+          "type": "startCraftingTimer",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voice-text-input"
+        },
+        {
+          "id": "voice-text-input",
+          "name": "Say Favorite Movie",
+          "type": "voiceSubmissionInput",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "prompt": "What is your favorite movie?",
+          "placeholder": "Speak a movie title",
+          "characterLimit": 80,
+          "timerEndTargetActionId": "voice-to-voting",
+          "answersSubmittedTargetActionId": "voice-to-voting"
+        },
+        {
+          "id": "voice-to-voting",
+          "name": "Go To Voting Moment",
+          "type": "transitionState",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "targetState": "voting-moment"
+        }
+      ],
+      "nodePosition": {
+        "x": 560,
+        "y": 1120
+      }
     },
     {
       "id": "voting-moment",
@@ -129,23 +285,56 @@
       "votingSourceStateId": "writing-moment",
       "entryTargetActionId": "voting-show-cards",
       "nodePositions": {
-        "start": { "x": 420, "y": 60 },
-        "return": { "x": 420, "y": 1180 },
-        "voting-show-cards": { "x": 380, "y": 190 },
-        "voting-show-timer": { "x": 380, "y": 340 },
-        "voting-start-timer": { "x": 380, "y": 490 },
-        "voting-input": { "x": 380, "y": 640 },
-        "voting-reveal-results": { "x": 380, "y": 790 },
-        "voting-hide-losing-cards": { "x": 380, "y": 940 },
-        "voting-show-winner-points": { "x": 120, "y": 1090 },
-        "voting-bank-points": { "x": 640, "y": 1090 }
+        "start": {
+          "x": 420,
+          "y": 60
+        },
+        "return": {
+          "x": 420,
+          "y": 1180
+        },
+        "voting-show-cards": {
+          "x": 380,
+          "y": 190
+        },
+        "voting-show-timer": {
+          "x": 380,
+          "y": 340
+        },
+        "voting-start-timer": {
+          "x": 380,
+          "y": 490
+        },
+        "voting-input": {
+          "x": 380,
+          "y": 640
+        },
+        "voting-reveal-results": {
+          "x": 380,
+          "y": 790
+        },
+        "voting-hide-losing-cards": {
+          "x": 380,
+          "y": 940
+        },
+        "voting-show-winner-points": {
+          "x": 120,
+          "y": 1090
+        },
+        "voting-bank-points": {
+          "x": 640,
+          "y": 1090
+        }
       },
       "actions": [
         {
           "id": "voting-show-cards",
           "name": "Show Anonymous Answers",
           "type": "setVotingCardsShown",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "isShown": true,
           "cardFilter": "all",
           "instant": false,
@@ -155,7 +344,10 @@
           "id": "voting-show-timer",
           "name": "Show Voting Timer",
           "type": "setTimerShown",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "isShown": true,
           "instant": false,
           "nextTargetActionId": "voting-start-timer"
@@ -164,14 +356,20 @@
           "id": "voting-start-timer",
           "name": "Start Voting Timer",
           "type": "startCraftingTimer",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "nextTargetActionId": "voting-input"
         },
         {
           "id": "voting-input",
           "name": "Vote On Favorite Answer",
           "type": "voteOnAnswersInput",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "prompt": "Vote for your favorite movie answer",
           "timerEndTargetActionId": "voting-reveal-results",
           "answersSubmittedTargetActionId": "voting-reveal-results"
@@ -180,14 +378,20 @@
           "id": "voting-reveal-results",
           "name": "Reveal Voters",
           "type": "revealVotingResults",
-          "timing": { "mode": "E+", "seconds": 1 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
           "nextTargetActionId": "voting-hide-losing-cards"
         },
         {
           "id": "voting-hide-losing-cards",
           "name": "Hide Losing Answers",
           "type": "setVotingCardsShown",
-          "timing": { "mode": "E+", "seconds": 0.5 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0.5
+          },
           "isShown": false,
           "cardFilter": "losers",
           "instant": false,
@@ -197,7 +401,10 @@
           "id": "voting-show-winner-points",
           "name": "Show Winner Points",
           "type": "showPoints",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "playerFilter": "votingWinner",
           "points": 500,
           "nextTargetActionId": "voting-bank-points"
@@ -206,7 +413,10 @@
           "id": "voting-bank-points",
           "name": "Bank Winner Points",
           "type": "givePendingPoints",
-          "timing": { "mode": "E+", "seconds": 0 },
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
           "nextTargetActionId": "return"
         }
       ]

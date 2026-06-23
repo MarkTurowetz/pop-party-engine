@@ -5,7 +5,9 @@ function createControllerLayoutStateRuntime({
 }) {
   function createControllerLayoutStateForFlowState(flowState) {
     const shouldSeedChoiceInput = isCraftingStateId(flowState.id) || flowStateHasActionType(flowState, "multipleChoiceInput");
-    const shouldSeedTextInput = isCraftingStateId(flowState.id) || flowStateHasActionType(flowState, "textSubmissionInput");
+    const shouldSeedTextInput = isCraftingStateId(flowState.id)
+      || flowStateHasActionType(flowState, "textSubmissionInput")
+      || flowStateHasActionType(flowState, "voiceSubmissionInput");
     if (shouldSeedChoiceInput || shouldSeedTextInput) {
       const elements = [];
       if (shouldSeedChoiceInput) {
@@ -102,6 +104,32 @@ function createControllerLayoutStateRuntime({
             width: 300,
             height: 70,
             scale: 1
+          },
+          {
+            id: "controllerVoiceButton",
+            name: "Voice Record Button",
+            selector: "#controllerVoiceButton",
+            kind: "art",
+            x: 195,
+            y: 390,
+            width: 300,
+            height: 110,
+            scale: 1
+          },
+          {
+            id: "controllerVoiceStatus",
+            name: "Voice Status",
+            selector: "#controllerVoiceStatus",
+            kind: "text",
+            x: 195,
+            y: 510,
+            width: 330,
+            height: 64,
+            scale: 1,
+            defaultText: "Tap to record",
+            fontSize: 22,
+            autoFitText: true,
+            fontColor: "#17131f"
           },
           {
             id: "controllerTextDone",

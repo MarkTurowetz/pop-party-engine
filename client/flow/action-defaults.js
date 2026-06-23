@@ -39,6 +39,13 @@
         action.timerEndTargetActionId = action.timerEndTargetActionId || "";
         action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
       }
+      if (value === "voiceSubmissionInput") {
+        action.prompt = action.prompt || "Say your answer";
+        action.placeholder = action.placeholder || "Speak your answer";
+        action.characterLimit = Number(action.characterLimit || 0);
+        action.timerEndTargetActionId = action.timerEndTargetActionId || "";
+        action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
+      }
       if (value === "setVotingCardsShown") {
         action.isShown = action.isShown !== false;
         action.instant = action.instant === true;

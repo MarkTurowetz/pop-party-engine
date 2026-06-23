@@ -29,6 +29,7 @@ function createInputStateRuntime({ activePlayers }) {
     room.textInputPrompt = "";
     room.textInputPlaceholder = "";
     room.textInputCharacterLimit = 0;
+    room.textInputMode = "textAll";
     if (room.textInputAnswers?.clear) {
       room.textInputAnswers.clear();
     } else {
@@ -46,6 +47,10 @@ function createInputStateRuntime({ activePlayers }) {
       });
     }
     if (room.textInputActionId) {
+      if (room.textInputMode === "voiceVip") {
+        const vip = active.find((player) => player.id === room.vipPlayerId) || null;
+        return Boolean(vip) && room.textInputAnswers.get(vip.id)?.done === true;
+      }
       return active.every((player) => room.textInputAnswers.get(player.id)?.done === true);
     }
     if (room.choiceInputActionId) {

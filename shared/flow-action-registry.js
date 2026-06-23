@@ -35,6 +35,34 @@ function identityAction(publicType) {
   };
 }
 
+function submissionInputDefinition({ id, name, prompt, placeholder }) {
+  return {
+    id,
+    name,
+    category: "input",
+    canCompleteFromStage: true,
+    completionCleanup: "text",
+    stageActionType: id,
+    normalize: (action, base, context) => ({
+      ...base,
+      prompt: context.cleanFlowText(action?.prompt, prompt),
+      placeholder: context.cleanFlowText(action?.placeholder, placeholder),
+      characterLimit: context.normalizeCharacterLimit(action?.characterLimit),
+      timerEndTargetActionId: context.flowActionTarget(action?.timerEndTargetActionId),
+      answersSubmittedTargetActionId: context.flowActionTarget(action?.answersSubmittedTargetActionId)
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: id,
+      prompt: action.prompt || prompt,
+      placeholder: action.placeholder || placeholder,
+      characterLimit: context.normalizeCharacterLimit(action.characterLimit),
+      timerEndTargetActionId: action.timerEndTargetActionId || "",
+      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
+    })
+  };
+}
+
 const flowActionDefinitions = [
   {
     id: "presentText",
@@ -106,31 +134,18 @@ const flowActionDefinitions = [
       answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
     })
   },
-  {
+  submissionInputDefinition({
     id: "textSubmissionInput",
     name: "Text Submission Input",
-    category: "input",
-    canCompleteFromStage: true,
-    completionCleanup: "text",
-    stageActionType: "textSubmissionInput",
-    normalize: (action, base, context) => ({
-      ...base,
-      prompt: context.cleanFlowText(action?.prompt, "Write your answer"),
-      placeholder: context.cleanFlowText(action?.placeholder, "Answer here"),
-      characterLimit: context.normalizeCharacterLimit(action?.characterLimit),
-      timerEndTargetActionId: context.flowActionTarget(action?.timerEndTargetActionId),
-      answersSubmittedTargetActionId: context.flowActionTarget(action?.answersSubmittedTargetActionId)
-    }),
-    toPublic: (action, base, context) => ({
-      ...base,
-      type: "textSubmissionInput",
-      prompt: action.prompt || "Write your answer",
-      placeholder: action.placeholder || "Answer here",
-      characterLimit: context.normalizeCharacterLimit(action.characterLimit),
-      timerEndTargetActionId: action.timerEndTargetActionId || "",
-      answersSubmittedTargetActionId: action.answersSubmittedTargetActionId || ""
-    })
-  },
+    prompt: "Write your answer",
+    placeholder: "Answer here"
+  }),
+  submissionInputDefinition({
+    id: "voiceSubmissionInput",
+    name: "Voice Submission Input",
+    prompt: "Say your answer",
+    placeholder: "Speak your answer"
+  }),
   {
     id: "doNothing",
     name: "Do Nothing",

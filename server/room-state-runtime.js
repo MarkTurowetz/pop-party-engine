@@ -47,6 +47,7 @@ function createDefaultRoom(stageCode) {
     textInputPrompt: "",
     textInputPlaceholder: "",
     textInputCharacterLimit: 0,
+    textInputMode: "textAll",
     textInputAnswers: new Map(),
     votingCards: [],
     votingCardsShown: false,

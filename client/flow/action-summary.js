@@ -39,6 +39,11 @@
         const eventText = ` / timer: ${context.flowTargetActionName(action.timerEndTargetActionId)} / answers: ${context.flowTargetActionName(action.answersSubmittedTargetActionId)}`;
         return `Text Submit: ${action.prompt || "Write your answer"}${limitText} / Stage validates${eventText} / ${timingText}`;
       }
+      if (action.type === "voiceSubmissionInput") {
+        const limitText = Number(action.characterLimit || 0) > 0 ? ` / ${Number(action.characterLimit)} chars` : "";
+        const eventText = ` / timer: ${context.flowTargetActionName(action.timerEndTargetActionId)} / answers: ${context.flowTargetActionName(action.answersSubmittedTargetActionId)}`;
+        return `VIP Voice Submit: ${action.prompt || "Say your answer"}${limitText} / Transcript stored as text${eventText} / ${timingText}`;
+      }
       if (action.type === "prepareVotingCards") return `Prepare anonymous voting cards / ${timingText}`;
       if (action.type === "setVotingCardsShown") {
         const cardFilterName = action.cardFilter === "winners" || action.cardFilter === "correct"

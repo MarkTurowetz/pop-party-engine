@@ -69,7 +69,7 @@
       if (action.type === "multipleChoiceInput") appendMultipleChoiceControls(target, state, action, controls, handlers);
       if (action.type === "getRandomMultipleChoiceContent") appendRandomContentControls(target, action, handlers.change);
       if (action.type === "triviaInput") appendTriviaControls(target, state, action, controls, handlers);
-      if (action.type === "textSubmissionInput") appendTextSubmissionControls(target, state, action, controls, handlers);
+      if (action.type === "textSubmissionInput" || action.type === "voiceSubmissionInput") appendTextSubmissionControls(target, state, action, controls, handlers);
       if (action.type === "prepareVotingCards") {
         target.appendChild(context.readOnlyFlowNote("Builds shuffled anonymous voting cards from the latest stored text answers. The card keeps the author internally, but players only see the answer text."));
       }
@@ -180,12 +180,15 @@
     }
 
     function appendTextSubmissionControls(target, state, action, controls, handlers) {
-      target.appendChild(context.flowTextarea("Prompt Text", action.prompt || "Write your answer", (value) => {
-        action.prompt = value || "Write your answer";
+      const isVoice = action.type === "voiceSubmissionInput";
+      const defaultPrompt = isVoice ? "Say your answer" : "Write your answer";
+      const defaultPlaceholder = isVoice ? "Speak your answer" : "Answer here";
+      target.appendChild(context.flowTextarea("Prompt Text", action.prompt || defaultPrompt, (value) => {
+        action.prompt = value || defaultPrompt;
         handlers.softChange();
       }));
-      target.appendChild(context.flowField("Placeholder Text", action.placeholder || "Answer here", (value) => {
-        action.placeholder = value || "Answer here";
+      target.appendChild(context.flowField(isVoice ? "Transcript Placeholder" : "Placeholder Text", action.placeholder || defaultPlaceholder, (value) => {
+        action.placeholder = value || defaultPlaceholder;
         handlers.change();
       }));
       target.appendChild(context.flowNumber("Character Limit (0 = No Limit)", Number(action.characterLimit || 0), (value) => {
@@ -193,7 +196,9 @@
         handlers.change();
       }));
       controls?.appendInputExitControls(target, state, action, handlers.change, { targetOptions: handlers.targetOptions });
-      target.appendChild(context.readOnlyFlowNote("The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
+      target.appendChild(context.readOnlyFlowNote(isVoice
+        ? "Only the VIP sees a microphone controller. The final transcript is stored like a text submission. Timer and answer exits belong to this input action."
+        : "The stage validates text submissions. Current test rule: submissions must be non-empty and contain no numbers. Timer and answer exits belong to this input action."));
     }
 
     function appendVotingCardsShownControls(target, action, controls, change) {
@@ -326,7 +331,8 @@
     }
 
     function appendNextActionControl(target, state, actionRef, action, change, options) {
-      const excludedTypes = new Set(["decision", "jumpNode", "transitionState", "presentText", "multipleChoiceInput", "triviaInput", "textSubmissionInput"]);
+      const excludedTypes = new Set(["decision", "jumpNode", "transitionState"]);
+      if (context.actionTypeMeta(action.type).category === "input") excludedTypes.add(action.type);
       for (const type of options.excludeNextActionTypes || []) excludedTypes.add(type);
       if (actionRef.isSubAction || excludedTypes.has(action.type)) return;
       const nextTargetField = options.nextTargetField || "nextTargetActionId";

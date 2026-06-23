@@ -60,7 +60,10 @@ function createLobbyPayloadRuntime({
     if (room.votingInputActionId) {
       submittedInputCount = players.filter((player) => room.votingAnswers?.has(player.id)).length;
     } else if (room.textInputActionId) {
-      submittedInputCount = players.filter((player) => room.textInputAnswers?.get(player.id)?.done === true).length;
+      const textInputPlayers = room.textInputMode === "voiceVip"
+        ? players.filter((player) => player.id === room.vipPlayerId)
+        : players;
+      submittedInputCount = textInputPlayers.filter((player) => room.textInputAnswers?.get(player.id)?.done === true).length;
     } else if (room.choiceInputActionId) {
       submittedInputCount = players.filter((player) => room.choiceInputAnswers?.has(player.id)).length;
     }
@@ -71,7 +74,7 @@ function createLobbyPayloadRuntime({
       actionName: currentAction?.name || "",
       actionType: currentAction?.type || "",
       actionIndex: Number.isFinite(Number(currentAction?.index)) ? Number(currentAction.index) : room.actionIndex,
-      requiredInputCount: players.length,
+      requiredInputCount: room.textInputMode === "voiceVip" && room.textInputActionId ? Math.min(1, players.length) : players.length,
       submittedInputCount,
       playerAnswerRecordCount: Object.keys(room.playerAnswerRecords || {}).length,
       storedAnswerRoundCount: Object.keys(room.storedPlayerAnswers || {}).length,

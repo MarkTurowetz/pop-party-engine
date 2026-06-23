@@ -391,7 +391,7 @@ function flowNodeExitDefinitions(action) {
   if (action.type === "presentText") {
     return [{ label: "Screen Click", field: "stageClickTargetActionId", fallbackField: "nextTargetActionId" }];
   }
-  if (action.type === "multipleChoiceInput" || action.type === "triviaInput" || action.type === "textSubmissionInput") {
+  if (actionTypeMeta(action.type).category === "input") {
     return [
       { label: "Timer Ends", field: "timerEndTargetActionId" },
       { label: "Answers", field: "answersSubmittedTargetActionId" }
