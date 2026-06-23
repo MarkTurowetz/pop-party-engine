@@ -335,6 +335,7 @@ let flowFormControls = null;
 let flowActionInspectorRegistry = null;
 let flowNodeChildSortController = null;
 let flowNodeConnectionController = null;
+let flowNodeConnectionPlanner = null;
 let flowNodeDragController = null;
 let flowNodeMarqueeController = null;
 let flowNodeInspectorRenderer = null;
@@ -652,22 +653,31 @@ function getFlowNodePortsFactory() {
   return flowNodePortsFactory;
 }
 
+function getFlowNodeConnectionPlanner() {
+  if (!flowNodeConnectionPlanner && window.PartyGameFlowNodeConnectionPlanner) {
+    flowNodeConnectionPlanner = window.PartyGameFlowNodeConnectionPlanner.createFlowNodeConnectionPlanner({
+      createDefaultFlowAction,
+      createRouteActionNode: (...args) => getFlowMomentRouteGraph()?.createRouteActionNode(...args),
+      cssEscape,
+      decisionBranchById,
+      flowAction,
+      flowRouteNode,
+      flowRouteNodes,
+      flowState
+    });
+  }
+  return flowNodeConnectionPlanner;
+}
+
 function getFlowNodeConnectionController() {
   if (!flowNodeConnectionController && window.PartyGameFlowNodeConnections) {
     flowNodeConnectionController = window.PartyGameFlowNodeConnections.createFlowNodeConnectionController({
-      createDefaultFlowAction,
-      cssEscape,
-      decisionBranchById,
+      connectionPlanner: () => getFlowNodeConnectionPlanner(),
       drawPreviewNodeWire,
-      flowAction,
       flowNodeDepth: () => flowNodeDepth,
       flowNodeHint: () => flowNodeHint,
       flowNodeLayer: () => flowNodeLayer,
       flowNodeLocalPoint,
-      flowRouteNode,
-      flowRouteNodes,
-      flowState,
-      createRouteActionNode: (...args) => getFlowMomentRouteGraph()?.createRouteActionNode(...args),
       selectFlowRouteNode,
       pushFlowHistory,
       redrawFlowNodeWires,
