@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.179",
+  "version": "1.0.17.180",
   "baseVersion": "1.0.17",
-  "buildNumber": 179,
-  "commit": "7b20518",
-  "branch": "codex/update-speech-buffer-constants",
-  "generatedAt": "2026-06-23T18:46:48.152Z"
+  "buildNumber": 180,
+  "commit": "10b08e2",
+  "branch": "codex/add-global-controller-layout",
+  "generatedAt": "2026-06-23T19:05:30.771Z"
 }

@@ -22,6 +22,36 @@
         "fontSize": 58,
         "autoFitText": false,
         "fontColor": "#ffffff"
+      },
+      {
+        "id": "controllerglobalactionmessage",
+        "name": "Global Action Message",
+        "selector": "#controllerGlobalActionMessage",
+        "kind": "text",
+        "x": 195,
+        "y": 255,
+        "width": 330,
+        "height": 132,
+        "scale": 1,
+        "defaultText": "Tap Next to continue",
+        "fontSize": 42,
+        "autoFitText": true,
+        "fontColor": "#17131f"
+      },
+      {
+        "id": "controllerglobalactionbutton",
+        "name": "Global Action Button",
+        "selector": "#controllerGlobalActionButton",
+        "kind": "art",
+        "x": 195,
+        "y": 455,
+        "width": 300,
+        "height": 78,
+        "scale": 1,
+        "defaultText": "",
+        "fontSize": 58,
+        "autoFitText": false,
+        "fontColor": "#ffffff"
       }
     ]
   },
@@ -30,7 +60,9 @@
       "id": "join",
       "name": "Join Controller",
       "hiddenGlobals": [
-        "controllerplayerbanner"
+        "controllerplayerbanner",
+        "controllerglobalactionmessage",
+        "controllerglobalactionbutton"
       ],
       "elements": [
         {
@@ -99,7 +131,9 @@
       "id": "lobby",
       "name": "Lobby Controller",
       "hiddenGlobals": [
-        "controllerplayerbanner"
+        "controllerplayerbanner",
+        "controllerglobalactionmessage",
+        "controllerglobalactionbutton"
       ],
       "elements": [
         {
