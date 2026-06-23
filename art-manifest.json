@@ -10,21 +10,6 @@
       },
       "components": [
         {
-          "id": "current-card",
-          "name": "Current Card",
-          "kind": "shape",
-          "x": 280,
-          "y": 86,
-          "width": 520,
-          "height": 150,
-          "scale": 1,
-          "shapeStyle": "rounded",
-          "fillColor": "#fff8d6",
-          "borderColor": "#17131f",
-          "borderWidth": 5,
-          "borderRadius": 16
-        },
-        {
           "id": "answer-text",
           "name": "Answer Text",
           "kind": "text",
@@ -100,9 +85,24 @@
           "borderColor": "#17131f",
           "borderWidth": 2,
           "borderRadius": 999
+        },
+        {
+          "id": "current-card",
+          "name": "Current Card",
+          "kind": "shape",
+          "x": 280,
+          "y": 86,
+          "width": 520,
+          "height": 150,
+          "scale": 1,
+          "shapeStyle": "rounded",
+          "fillColor": "#fff8d6",
+          "borderColor": "#17131f",
+          "borderWidth": 5,
+          "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-23T02:37:34.690Z"
+      "updatedAt": "2026-06-23T05:34:15.204Z"
     }
   }
 }
