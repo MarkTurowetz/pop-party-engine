@@ -104,6 +104,7 @@ function stageRenderOrchestrator() {
       runStageAction,
       runStageWipe,
       scheduleSubActions,
+      setStageTextObject,
       showStageDecisionHalt
     });
   }

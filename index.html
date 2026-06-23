@@ -4265,6 +4265,11 @@
         <button class="primary-button hidden" id="introPresentButton" type="button" data-controller-option data-option-id="intro.presentHi">Present HI THERE</button>
       </div>
 
+      <div class="controller-lobby hidden" id="controllerGlobalActionState" data-controller-view="global-action">
+        <h1 class="controller-player-name controller-layout-text" id="controllerGlobalActionMessage">Waiting for the next instruction</h1>
+        <button class="primary-button hidden" id="controllerGlobalActionButton" type="button" data-controller-option data-option-id="global.next">Next</button>
+      </div>
+
       <div class="controller-choice-state hidden" id="controllerChoiceState" data-controller-view="choice">
         <div class="controller-choice-prompt controller-layout-text" id="controllerChoicePrompt">Answer this question by tapping an answer</div>
         <div class="controller-choice-grid" id="controllerChoiceGrid"></div>
@@ -4584,6 +4589,7 @@
   <script src="/client/controller-choice-input-view.js"></script>
   <script src="/client/controller-text-input-view.js"></script>
   <script src="/client/controller-lobby-view.js"></script>
+  <script src="/client/controller-global-action-view.js"></script>
   <script src="/client/controller-submit-api.js"></script>
   <script src="/client/controller-setup-bindings.js"></script>
   <script src="/client/controller-heartbeat-runtime.js"></script>
@@ -4702,6 +4708,9 @@
     const controllerLobbyState = document.querySelector("#controllerLobbyState");
     const controllerIntroState = document.querySelector("#controllerIntroState");
     const controllerIntroMessage = document.querySelector("#controllerIntroMessage");
+    const controllerGlobalActionState = document.querySelector("#controllerGlobalActionState");
+    const controllerGlobalActionMessage = document.querySelector("#controllerGlobalActionMessage");
+    const controllerGlobalActionButton = document.querySelector("#controllerGlobalActionButton");
     const controllerChoiceState = document.querySelector("#controllerChoiceState");
     const controllerChoicePrompt = document.querySelector("#controllerChoicePrompt");
     const controllerChoiceGrid = document.querySelector("#controllerChoiceGrid");

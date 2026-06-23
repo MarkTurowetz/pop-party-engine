@@ -61,6 +61,16 @@
       });
     }
 
+    function inputEvent(actionId, eventType) {
+      const base = payloadBase();
+      if (!base) return Promise.resolve(null);
+      return postJson("/api/input-event", {
+        ...base,
+        actionId,
+        eventType
+      });
+    }
+
     function startOrCancelGame({ isCancel = false, startToken = "" } = {}) {
       const base = payloadBase();
       if (!base) return Promise.resolve(null);
@@ -91,6 +101,7 @@
     return {
       heartbeat,
       grantMicrophoneAccess,
+      inputEvent,
       join,
       presentIntro,
       previewText,

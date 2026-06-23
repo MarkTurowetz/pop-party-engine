@@ -12,6 +12,7 @@
       this.options = options;
       this.renderedActionKey = "";
       this.renderedPhase = "";
+      this.renderedAction = null;
     }
 
     actionKey() {
@@ -29,6 +30,8 @@
       const isNewAction = this.renderedActionKey !== actionKey;
       const isNewPhase = Boolean(this.renderedPhase && this.renderedPhase !== nextPhase);
       const haltedByDecision = lobby.lastDecisionTrace?.selectedTarget === "none";
+      const previousAction = this.renderedAction;
+      const nextAction = lobby.action || null;
 
       if (isNewPhase) {
         options.clearStageAudioPlayers?.();
@@ -38,17 +41,29 @@
 
       this.renderedPhase = nextPhase;
       if (isNewAction) options.prepareNewStageAction?.(lobby, actionKey);
+      if (isNewAction && previousAction?.type === "present") {
+        const previousTarget = previousAction.textTarget || "presentation";
+        const nextTarget = nextAction?.textTarget || "presentation";
+        if (nextAction?.type !== "present" || nextTarget !== previousTarget) {
+          options.setStageTextObject?.(previousTarget, {
+            isShown: false,
+            instant: previousAction.instant === true
+          });
+        }
+      }
 
       if (haltedByDecision) {
         options.cancelStageWipe?.();
         options.showStageDecisionHalt?.(lobby);
         this.renderedActionKey = actionKey;
+        this.renderedAction = null;
         options.applyStageState?.({ ...lobby, action: null });
         return;
       }
 
       if (lobby.action?.type === "transition" && isNewAction) {
         this.renderedActionKey = actionKey;
+        this.renderedAction = lobby.action || null;
         options.scheduleSubActions?.(lobby.action, actionKey);
         options.runStageWipe?.(() => {
           options.applyStageState?.(lobby);
@@ -58,6 +73,7 @@
       }
 
       this.renderedActionKey = actionKey;
+      this.renderedAction = lobby.action || null;
       options.applyStageState?.(lobby);
       if (isNewAction) options.runStageAction?.(lobby.action, true, actionKey);
     }

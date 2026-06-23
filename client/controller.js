@@ -74,6 +74,19 @@ function getControllerChoiceInputView() {
     }));
 }
 
+function getControllerGlobalActionView() {
+  return controllerModules.get("globalActionView", () => window.createControllerGlobalActionView({
+      advanceStageClick: advanceControllerStageClick,
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      elements: {
+        button: controllerGlobalActionButton,
+        message: controllerGlobalActionMessage,
+        state: controllerGlobalActionState
+      },
+      hideViews: hideControllerViews
+    }));
+}
+
 function getControllerHeartbeatRuntime() {
   return controllerModules.get("heartbeatRuntime", () => window.createControllerHeartbeatRuntime({
       applyLayoutForPhase: applyControllerLayoutForPhase,
@@ -190,6 +203,8 @@ function hideControllerViews() {
   joinState.classList.add("hidden");
   controllerLobbyState.classList.add("hidden");
   controllerIntroState.classList.add("hidden");
+  controllerGlobalActionState.classList.add("hidden");
+  controllerGlobalActionButton.classList.add("hidden");
   controllerChoiceState.classList.add("hidden");
   controllerMicAccessState.classList.add("hidden");
   controllerTextState.classList.add("hidden");
@@ -216,6 +231,10 @@ function renderControllerTextState(lobby, me) {
 
 function renderControllerMicrophoneAccessState(lobby, me) {
   return getControllerMicrophoneAccessView().render(lobby, me);
+}
+
+function renderControllerGlobalActionState(lobby, me) {
+  return getControllerGlobalActionView().render(lobby, me);
 }
 
 async function submitControllerText(actionId, textOverride = null) {
@@ -254,6 +273,13 @@ async function previewControllerText(actionId, text = "T") {
   }
 }
 
+async function advanceControllerStageClick(actionId) {
+  if (!controllerState) return null;
+  const result = await getControllerSubmitApi().inputEvent(actionId, "stageClick");
+  if (result?.lobby) renderControllerState(result.lobby);
+  return result;
+}
+
 function renderControllerState(lobby) {
   if (!controllerState) return;
   controllerState.lobby = lobby;
@@ -287,6 +313,7 @@ function renderControllerState(lobby) {
   }
   if (controllerPhase !== "lobby" && controllerPhase !== "starting") {
     closeAvatarPicker({ commit: false });
+    if (renderControllerGlobalActionState(lobby, me)) return;
     getControllerLobbyView().renderInGamePhase(me, controllerPhase);
     return;
   }
