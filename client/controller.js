@@ -1,4 +1,5 @@
 let controllerVoiceInput = null;
+let controllerChoiceInputView = null;
 let controllerTextInputView = null;
 
 function getControllerVoiceInput() {
@@ -14,6 +15,24 @@ function getControllerVoiceInput() {
     });
   }
   return controllerVoiceInput;
+}
+
+function getControllerChoiceInputView() {
+  if (!controllerChoiceInputView) {
+    controllerChoiceInputView = window.createControllerChoiceInputView({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      bindPress: bindButtonPress,
+      elements: {
+        done: controllerChoiceDone,
+        grid: controllerChoiceGrid,
+        prompt: controllerChoicePrompt,
+        state: controllerChoiceState
+      },
+      hideViews: hideControllerViews,
+      submitChoice: submitControllerChoice
+    });
+  }
+  return controllerChoiceInputView;
 }
 
 function getControllerTextInputView() {
@@ -137,35 +156,7 @@ function hideControllerViews() {
 }
 
 function renderControllerChoiceState(lobby, me) {
-  const input = me.input || lobby.input || null;
-  if (!input) return false;
-  hideControllerViews();
-  controllerChoiceState.classList.remove("hidden");
-  controllerChoicePrompt.textContent = input.prompt || "Answer this question by tapping an answer";
-  controllerChoiceGrid.replaceChildren();
-  const selectedIndex = Number.isFinite(Number(me.answer?.optionIndex)) ? Number(me.answer.optionIndex) : -1;
-  const isDone = input.mode === "submitOnce" && me.answer?.done === true;
-  controllerChoiceDone.classList.toggle("hidden", !isDone);
-  controllerChoiceGrid.classList.toggle("hidden", isDone);
-  if (isDone) {
-    controllerChoiceDone.textContent = `You chose: ${me.answer?.text || ""}`;
-  }
-  const visibleOptions = (input.options || []).filter((option) => input.type !== "vote" || option.authorPlayerId !== me.id);
-  for (const option of visibleOptions) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "choice-option-button";
-    button.dataset.controllerOption = "";
-    button.dataset.optionId = `choice.${option.index}`;
-    button.classList.toggle("is-selected", Number(option.index) === selectedIndex);
-    button.textContent = option.label || option.text || `Option ${Number(option.index) + 1}`;
-    button.disabled = isDone;
-    button.addEventListener("click", () => submitControllerChoice(input.actionId, Number(option.index), option.cardId || ""));
-    bindButtonPress(button);
-    controllerChoiceGrid.appendChild(button);
-  }
-  applyControllerLayoutForPhase(lobby.phase || "lobby");
-  return true;
+  return getControllerChoiceInputView().render(lobby, me);
 }
 
 async function submitControllerChoice(actionId, optionIndex, cardId = "") {
