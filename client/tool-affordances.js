@@ -53,6 +53,19 @@
     return Boolean(target?.closest?.(ignoreSelector));
   }
 
+  function eventIsMetaToggle(event) {
+    return Boolean(event?.metaKey || event?.ctrlKey);
+  }
+
+  function setMembershipForIds(set, ids, included) {
+    const cleanIds = [...new Set((ids || []).filter(Boolean))];
+    for (const id of cleanIds) {
+      if (included) set.add(id);
+      else set.delete(id);
+    }
+    return set;
+  }
+
   function scrollableAncestors(element) {
     const result = [];
     let current = element?.parentElement || null;
@@ -522,10 +535,12 @@
     createDisclosureButton,
     createToolSidebarRow,
     dragDeltaFromEvent,
+    eventIsMetaToggle,
     handleToolDeleteHotkey,
     normalizeSelection,
     rectsIntersect,
     scaledValueFromPointer,
+    setMembershipForIds,
     startPointerDrag,
     startSelectionMarquee,
     targetIsTextEditingControl,

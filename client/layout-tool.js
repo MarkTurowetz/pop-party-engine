@@ -375,11 +375,8 @@ function toggleLayoutPreviewElement(elementId, stateId = selectedLayoutStateId) 
 
 function setAllLayoutPreviewElementsHidden(stateId, hidden) {
   const state = layoutGroup(stateId);
-  for (const element of state?.elements || []) {
-    const key = layoutPreviewHiddenKey(element.id, stateId);
-    if (hidden) layoutPreviewHiddenElements.add(key);
-    else layoutPreviewHiddenElements.delete(key);
-  }
+  const keys = (state?.elements || []).map((element) => layoutPreviewHiddenKey(element.id, stateId));
+  PartyGameToolAffordances.setMembershipForIds(layoutPreviewHiddenElements, keys, hidden);
   renderLayoutElements();
   renderLayoutPreview();
 }
@@ -395,7 +392,7 @@ function layoutVisibilityToggle(elementId, stateId) {
   button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (event.metaKey || event.ctrlKey) {
+    if (PartyGameToolAffordances.eventIsMetaToggle(event)) {
       setAllLayoutPreviewElementsHidden(stateId, !isLayoutPreviewElementHidden(elementId, stateId));
       return;
     }
