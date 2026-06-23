@@ -166,6 +166,17 @@ function createRoomFlowHelpersRuntime({
     }, 500);
   }
 
+  function scheduleMicrophoneAccessAdvance(room) {
+    if (room.answersSubmittedAdvanceTimerId) return;
+    const currentAction = currentRoomAction(room);
+    const target = flowEventTargetForAction(currentAction, "microphoneAccessGranted");
+    if (isNoActionTarget(target)) return;
+    room.answersSubmittedAdvanceTimerId = setTimeout(() => {
+      room.answersSubmittedAdvanceTimerId = null;
+      emitInputFlowEvent(room, "microphoneAccessGranted");
+    }, 100);
+  }
+
   function countdownTargetState(room) {
     const lobbyState = getFlowState(runtimeGameFlow(room), "lobby");
     const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
@@ -196,6 +207,7 @@ function createRoomFlowHelpersRuntime({
     emitInputFlowEvent,
     jumpToAction,
     scheduleAnswersSubmittedAdvance,
+    scheduleMicrophoneAccessAdvance,
   };
 }
 

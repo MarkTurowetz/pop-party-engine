@@ -78,6 +78,7 @@ function createDecisionRuntime({
       gameTitle: constants.gameTitle,
       numberOfRounds: constants.numberOfRounds,
       randomChanceTest: constants.randomChanceTest,
+      speechToTextSendInputBuffer: constants.speechToTextSendInputBuffer,
       craftingTimerDuration: constants.craftingTimerDuration,
       startGameCountdownDuration: constants.startGameCountdownDuration,
       pointsForCorrectAnswer: constants.pointsForCorrectAnswer,

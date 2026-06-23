@@ -211,6 +211,10 @@ function createControllerSubmitHandlersRuntime({
       grantedAt: Date.now(),
       nonce: Date.now()
     });
+    if (!room.microphoneAccessGrantedPlayerIds || typeof room.microphoneAccessGrantedPlayerIds.add !== "function") {
+      room.microphoneAccessGrantedPlayerIds = new Set();
+    }
+    room.microphoneAccessGrantedPlayerIds.add(playerId);
 
     if (allActivePlayersHaveSubmittedInput(room)) {
       emitInputFlowEvent(room, "microphoneAccessGranted");

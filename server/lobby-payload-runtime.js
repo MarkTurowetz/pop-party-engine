@@ -1,5 +1,6 @@
 function createLobbyPayloadRuntime({
   activePlayers,
+  allActivePlayersHaveSubmittedInput,
   applyRoomActionEffects,
   choiceInputPayload,
   craftingTimerPayload,
@@ -10,6 +11,7 @@ function createLobbyPayloadRuntime({
   publicPlayer,
   resolveRoomActionText,
   runtimeGameFlow,
+  scheduleMicrophoneAccessAdvance,
   selectVip,
   serializeVotingCards,
   textInputPayload
@@ -20,9 +22,13 @@ function createLobbyPayloadRuntime({
       || room.lobbyFlowActive === true;
     const currentAction = shouldExposeAction ? resolveRoomActionText(currentRoomAction(room), room) : null;
     applyRoomActionEffects(room, currentAction);
+    const constants = gameConstants();
     const input = choiceInputPayload(room, currentAction);
     const textInput = textInputPayload(room, currentAction);
     const microphoneAccess = microphoneAccessPayload(room, currentAction);
+    if (microphoneAccess && allActivePlayersHaveSubmittedInput(room)) {
+      scheduleMicrophoneAccessAdvance(room);
+    }
     return {
       type: "lobby",
       stageCode: room.stageCode,
@@ -39,7 +45,8 @@ function createLobbyPayloadRuntime({
       craftingTimer: craftingTimerPayload(room),
       lastDecisionTrace: room.lastDecisionTrace,
       currentRound: room.currentRound || 1,
-      gameTitle: gameConstants().gameTitle,
+      gameTitle: constants.gameTitle,
+      speechToTextSendInputBuffer: constants.speechToTextSendInputBuffer,
       numSequentialGames: room.numSequentialGames || 0,
       serverNow: Date.now(),
       vipPlayerId: room.vipPlayerId,
@@ -71,7 +78,10 @@ function createLobbyPayloadRuntime({
       const microphoneAccessPlayers = room.microphoneAccessMode === "all"
         ? players
         : players.filter((player) => player.id === room.vipPlayerId);
-      submittedInputCount = microphoneAccessPlayers.filter((player) => room.microphoneAccessAnswers?.get(player.id)?.done === true).length;
+      submittedInputCount = microphoneAccessPlayers.filter((player) => (
+        room.microphoneAccessAnswers?.get(player.id)?.done === true
+        || room.microphoneAccessGrantedPlayerIds?.has?.(player.id) === true
+      )).length;
     } else if (room.choiceInputActionId) {
       submittedInputCount = players.filter((player) => room.choiceInputAnswers?.has(player.id)).length;
     }

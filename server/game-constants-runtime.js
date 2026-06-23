@@ -13,6 +13,7 @@ function createGameConstantsRuntime({
     const craftingTimerDuration = normalizeDurationSeconds(constants?.craftingTimerDuration, defaultGameConstants.craftingTimerDuration);
     const startGameCountdownDuration = normalizeDurationSeconds(constants?.startGameCountdownDuration, defaultGameConstants.startGameCountdownDuration);
     const pointsForCorrectAnswer = normalizeConstantInteger(constants?.pointsForCorrectAnswer, defaultGameConstants.pointsForCorrectAnswer || 200, 0, 999999);
+    const speechToTextSendInputBuffer = normalizeConstantFloat(constants?.speechToTextSendInputBuffer, defaultGameConstants.speechToTextSendInputBuffer || 1, 0, 10);
     return {
       playerColors: playerColors.length ? playerColors : [...defaultPlayerColors],
       craftingTimerDuration,
@@ -21,6 +22,7 @@ function createGameConstantsRuntime({
       gameTitle: normalizeConstantString(constants?.gameTitle, defaultGameConstants.gameTitle),
       numberOfRounds: normalizeConstantInteger(constants?.numberOfRounds, defaultGameConstants.numberOfRounds, 1, 99),
       randomChanceTest: normalizeConstantFloat(constants?.randomChanceTest, defaultGameConstants.randomChanceTest, 0, 1),
+      speechToTextSendInputBuffer,
       overrideFirstGameOfSession: constants?.overrideFirstGameOfSession === true
     };
   }

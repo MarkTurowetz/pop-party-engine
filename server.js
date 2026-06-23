@@ -582,6 +582,7 @@ const {
   emitInputFlowEvent,
   jumpToAction,
   scheduleAnswersSubmittedAdvance,
+  scheduleMicrophoneAccessAdvance,
 } = createRoomFlowHelpersRuntime({
   activePlayers,
   advanceRoomFromMomentReturn,
@@ -922,6 +923,7 @@ const {
   lobbyPayload
 } = createLobbyPayloadRuntime({
   activePlayers,
+  allActivePlayersHaveSubmittedInput,
   applyRoomActionEffects,
   choiceInputPayload,
   craftingTimerPayload,
@@ -932,6 +934,7 @@ const {
   publicPlayer,
   resolveRoomActionText,
   runtimeGameFlow,
+  scheduleMicrophoneAccessAdvance,
   selectVip,
   serializeVotingCards,
   textInputPayload

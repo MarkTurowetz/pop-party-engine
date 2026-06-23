@@ -26,6 +26,7 @@ function normalizeClientGameConstants(constants = {}) {
     gameTitle: String(constants.gameTitle || "Party Game Template").trim().slice(0, 80) || "Party Game Template",
     numberOfRounds: Math.max(1, Math.min(99, Math.floor(Number(constants.numberOfRounds || 3)))),
     randomChanceTest: Math.max(0, Math.min(1, Number(constants.randomChanceTest ?? 0.5))),
+    speechToTextSendInputBuffer: Math.max(0, Math.min(10, Number(constants.speechToTextSendInputBuffer ?? 1))),
     overrideFirstGameOfSession: constants.overrideFirstGameOfSession === true
   };
 }
@@ -111,6 +112,7 @@ function renderConstantsTool() {
   }
   if (numberOfRoundsInput) numberOfRoundsInput.value = String(gameConstants.numberOfRounds);
   if (randomChanceTestInput) randomChanceTestInput.value = String(gameConstants.randomChanceTest);
+  if (speechToTextSendInputBufferInput) speechToTextSendInputBufferInput.value = String(gameConstants.speechToTextSendInputBuffer);
   if (overrideFirstGameInput) overrideFirstGameInput.value = gameConstants.overrideFirstGameOfSession ? "true" : "false";
   playerColorCount.textContent = `${colors.length} ${colors.length === 1 ? "color" : "colors"}`;
   playerColorList.replaceChildren();
@@ -261,6 +263,14 @@ async function setupConstantsTool() {
       randomChanceTest: Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0.5))
     });
     randomChanceTestInput.value = String(gameConstants.randomChanceTest);
+  });
+  speechToTextSendInputBufferInput?.addEventListener("change", () => {
+    const value = Number(speechToTextSendInputBufferInput.value || 1);
+    commitGameConstants({
+      ...gameConstants,
+      speechToTextSendInputBuffer: Math.max(0, Math.min(10, Number.isFinite(value) ? value : 1))
+    });
+    speechToTextSendInputBufferInput.value = String(gameConstants.speechToTextSendInputBuffer);
   });
   overrideFirstGameInput?.addEventListener("change", () => {
     commitGameConstants({

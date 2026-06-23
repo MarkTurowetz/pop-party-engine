@@ -54,6 +54,7 @@ function createDefaultRoom(stageCode) {
     microphoneAccessButtonLabel: "",
     microphoneAccessMode: "vip",
     microphoneAccessAnswers: new Map(),
+    microphoneAccessGrantedPlayerIds: new Set(),
     votingCards: [],
     votingCardsShown: false,
     votingResultsShown: false,

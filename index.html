@@ -4424,6 +4424,9 @@
           <button class="flow-state-header" type="button" data-constant-target="randomChanceTest">
             <span><strong>Random Chance Test</strong><span>Temporary float test value</span></span>
           </button>
+          <button class="flow-state-header" type="button" data-constant-target="speechToTextSendInputBuffer">
+            <span><strong>Speech to Text Buffer</strong><span>Extra listen time after release</span></span>
+          </button>
           <button class="flow-state-header" type="button" data-constant-target="overrideFirstGameOfSession">
             <span><strong>First Game Override</strong><span>Force first-game checks</span></span>
           </button>
@@ -4465,6 +4468,10 @@
         <label class="field-label flow-form-grid" data-constant-detail="randomChanceTest">
           Random Chance Test
           <input class="text-input" id="randomChanceTestInput" type="number" min="0" max="1" step="0.01" value="0.5">
+        </label>
+        <label class="field-label flow-form-grid" data-constant-detail="speechToTextSendInputBuffer">
+          Speech to Text Send Input Buffer Seconds
+          <input class="text-input" id="speechToTextSendInputBufferInput" type="number" min="0" max="10" step="0.1" value="1">
         </label>
         <label class="field-label flow-form-grid" data-constant-detail="overrideFirstGameOfSession">
           Override First Game of Session
@@ -4572,6 +4579,7 @@
   <script src="/client/controller-module-cache.js"></script>
   <script src="/client/controller-avatar-view.js"></script>
   <script src="/client/controller-microphone-access-view.js"></script>
+  <script src="/client/controller-recording-lifecycle.js"></script>
   <script src="/client/controller-voice-input.js"></script>
   <script src="/client/controller-choice-input-view.js"></script>
   <script src="/client/controller-text-input-view.js"></script>
@@ -4770,6 +4778,7 @@
     const pointsForCorrectAnswerInput = document.querySelector("#pointsForCorrectAnswerInput");
     const numberOfRoundsInput = document.querySelector("#numberOfRoundsInput");
     const randomChanceTestInput = document.querySelector("#randomChanceTestInput");
+    const speechToTextSendInputBufferInput = document.querySelector("#speechToTextSendInputBufferInput");
     const overrideFirstGameInput = document.querySelector("#overrideFirstGameInput");
     const playerColorList = document.querySelector("#playerColorList");
     const playerColorCount = document.querySelector("#playerColorCount");
@@ -4836,6 +4845,7 @@
       gameTitle: "Party Game Template",
       numberOfRounds: 3,
       randomChanceTest: 0.5,
+      speechToTextSendInputBuffer: 1,
       overrideFirstGameOfSession: false
     };
     let hostAudios = { hostAudios: [] };

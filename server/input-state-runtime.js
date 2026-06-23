@@ -56,12 +56,17 @@ function createInputStateRuntime({ activePlayers }) {
     return vip ? [vip] : [];
   }
 
+  function playerHasMicrophoneAccess(room, playerId) {
+    return room.microphoneAccessAnswers?.get(playerId)?.done === true
+      || room.microphoneAccessGrantedPlayerIds?.has?.(playerId) === true;
+  }
+
   function allActivePlayersHaveSubmittedInput(room) {
     const active = activePlayers(room);
     if (!active.length) return false;
     if (room.microphoneAccessActionId) {
       const requiredPlayers = microphoneAccessPlayers(room, active);
-      return Boolean(requiredPlayers.length) && requiredPlayers.every((player) => room.microphoneAccessAnswers.get(player.id)?.done === true);
+      return Boolean(requiredPlayers.length) && requiredPlayers.every((player) => playerHasMicrophoneAccess(room, player.id));
     }
     if (room.votingInputActionId) {
       return active.every((player) => {

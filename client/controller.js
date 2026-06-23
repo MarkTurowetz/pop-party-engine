@@ -31,6 +31,7 @@ function getControllerVoiceInput() {
   return controllerModules.get("voiceInput", () => window.createControllerVoiceInput({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       button: controllerVoiceButton,
+      getReleaseBufferSeconds: () => Number(controllerState?.lobby?.speechToTextSendInputBuffer ?? gameConstants.speechToTextSendInputBuffer ?? 1),
       hideViews: hideControllerViews,
       introMessage: controllerIntroMessage,
       introState: controllerIntroState,

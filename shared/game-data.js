@@ -151,6 +151,7 @@ const defaultGameConstants = {
   gameTitle: "Party Game Template",
   numberOfRounds: 3,
   randomChanceTest: 0.5,
+  speechToTextSendInputBuffer: 1,
   overrideFirstGameOfSession: false
 };
 

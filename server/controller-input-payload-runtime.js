@@ -117,6 +117,10 @@ function createControllerInputPayloadRuntime({
   function microphoneAccessPayload(room, currentAction) {
     if (!isMicrophoneAccessAction(currentAction)) return null;
     applyMicrophoneAccessAction(room, currentAction);
+    const grantedPlayerIds = new Set([
+      ...(room.microphoneAccessGrantedPlayerIds || []),
+      ...(room.microphoneAccessAnswers?.keys?.() || [])
+    ]);
     return {
       actionId: room.microphoneAccessActionId,
       type: "microphoneAccess",
@@ -124,7 +128,7 @@ function createControllerInputPayloadRuntime({
       vipPlayerId: room.microphoneAccessMode === "vip" ? room.vipPlayerId || "" : "",
       prompt: room.microphoneAccessPrompt,
       buttonLabel: room.microphoneAccessButtonLabel,
-      grantedPlayerIds: [...(room.microphoneAccessAnswers?.keys?.() || [])]
+      grantedPlayerIds: [...grantedPlayerIds]
     };
   }
 
