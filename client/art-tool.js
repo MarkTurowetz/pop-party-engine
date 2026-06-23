@@ -11,6 +11,7 @@ let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
 let draggedArtComponentId = "";
 const artComponentSchema = window.PartyGameArtComponentSchema;
+const artComponentTree = window.PartyGameArtComponentTree;
 const artShapeStyles = artComponentSchema.shapeStyleOptions;
 const artComponentImageAccept = artComponentSchema.imageAccept;
 const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt", "voting-card", "custom-art"];
@@ -153,25 +154,16 @@ function artComponentHasImageMask(component) {
 }
 
 function flattenArtComponents(components = [], depth = 0, parent = null, output = []) {
-  for (const component of components || []) {
-    output.push({ component, depth, parent });
-    flattenArtComponents(component.children || [], depth + 1, component, output);
-  }
-  return output;
+  return artComponentTree.flattenComponents(components, depth, parent, output);
 }
 
 function findArtComponent(composition, componentId) {
-  return flattenArtComponents(composition?.components || []).find(({ component }) => component.id === componentId) || null;
+  return artComponentTree.findComponent(composition?.components || [], componentId);
 }
 
 function artComponentCollectionRef(composition, componentId, components = composition?.components || [], parent = null) {
-  if (!composition || !componentId) return null;
-  for (const component of components || []) {
-    if (component.id === componentId) return { parent, components };
-    const childRef = artComponentCollectionRef(composition, componentId, component.children || [], component);
-    if (childRef) return childRef;
-  }
-  return null;
+  if (!composition) return null;
+  return artComponentTree.collectionRef(components, componentId, parent);
 }
 
 function canReorderArtComponent(draggedComponentId, targetComponentId) {
@@ -203,7 +195,7 @@ function reorderArtComponent(draggedComponentId, targetComponentId, placeAfter =
 }
 
 function allArtComponentIds(composition) {
-  return new Set(flattenArtComponents(composition?.components || []).map(({ component }) => component.id));
+  return artComponentTree.componentIds(composition?.components || []);
 }
 
 function artCompositeCollapseIds() {

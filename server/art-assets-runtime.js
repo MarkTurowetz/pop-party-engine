@@ -165,32 +165,48 @@ function createArtAssetsRuntime({
     return normalized;
   }
 
-  function normalizeComposition(composition, override = null) {
-    const savedById = new Map((override?.components || []).map((component) => [component.id, component]));
+  function normalizeCompositionComponents(defaultComponents = [], savedComponents = null) {
+    const defaultById = new Map((defaultComponents || []).map((component) => [component.id, component]));
+    const cleanSavedComponents = Array.isArray(savedComponents) ? savedComponents : null;
+    const savedById = new Map((cleanSavedComponents || []).map((component) => [cleanId(component?.id), component]).filter(([id]) => id));
     const hasSavedVoteCount = savedById.has("vote-count");
     const usedIds = new Set();
     const components = [];
-    for (const component of composition.components || []) {
-      let savedComponent = savedById.get(component.id) || (component.id === "vote-count" ? savedById.get("vote-widget") : null);
-      if (component.id === "vote-widget" && savedComponent && !hasSavedVoteCount) {
-        savedComponent = { ...savedComponent, x: component.x, y: component.y };
-      }
-      const normalizedComponent = normalizeComponent(savedComponent, component);
-      if (normalizedComponent) {
-        components.push(normalizedComponent);
-        usedIds.add(normalizedComponent.id);
-        if (savedComponent?.id) usedIds.add(savedComponent.id);
+
+    const appendComponent = (source, fallback) => {
+      const normalizedComponent = normalizeComponent(source, fallback);
+      if (!normalizedComponent || usedIds.has(normalizedComponent.id)) return;
+      components.push(normalizedComponent);
+      usedIds.add(normalizedComponent.id);
+    };
+
+    if (cleanSavedComponents) {
+      for (const component of cleanSavedComponents) {
+        const componentId = cleanId(component?.id);
+        if (!componentId || usedIds.has(componentId)) continue;
+        const fallback = defaultById.get(componentId) || component;
+        const source = componentId === "vote-widget" && !hasSavedVoteCount && defaultById.has(componentId)
+          ? { ...component, x: fallback.x, y: fallback.y }
+          : component;
+        appendComponent(source, fallback);
       }
     }
-    for (const component of override?.components || []) {
+
+    for (const component of defaultComponents || []) {
       const componentId = cleanId(component?.id);
       if (!componentId || usedIds.has(componentId)) continue;
-      const normalizedComponent = normalizeComponent(component, component);
-      if (normalizedComponent) {
-        components.push(normalizedComponent);
-        usedIds.add(normalizedComponent.id);
-      }
+      const savedComponent = savedById.get(componentId) || (componentId === "vote-count" ? savedById.get("vote-widget") : null);
+      const source = componentId === "vote-widget" && savedComponent && !hasSavedVoteCount
+        ? { ...savedComponent, x: component.x, y: component.y }
+        : savedComponent || component;
+      appendComponent(source, component);
     }
+
+    return components;
+  }
+
+  function normalizeComposition(composition, override = null) {
+    const components = normalizeCompositionComponents(composition.components || [], override?.components);
     return {
       id: composition.id,
       name: cleanText(override?.name, composition.name || "Art Asset"),
