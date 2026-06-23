@@ -13,9 +13,11 @@ let draggedArtComponentId = "";
 const artComponentSchema = window.PartyGameArtComponentSchema;
 const artComponentTree = window.PartyGameArtComponentTree;
 const artToolUi = window.PartyGameArtToolUi;
+const artSidebarRendererRuntime = window.PartyGameArtSidebarRenderer;
 const artShapeStyles = artComponentSchema.shapeStyleOptions;
 const artComponentImageAccept = artComponentSchema.imageAccept;
 const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt", "voting-card", "custom-art"];
+let artSidebarRenderer = null;
 
 function serializeArtCompositionsForSave(source = artCompositions) {
   return (source || []).map((composition) => ({
@@ -226,230 +228,64 @@ function toggleArtCollapsedIds(collapsedSet, ids) {
   renderAndPersistArtCollapseState();
 }
 
-function renderArtList() {
-  artAssetList.replaceChildren();
-  const avatarGroup = document.createElement("section");
-  avatarGroup.className = "art-group";
-  avatarGroup.appendChild(createArtGroupTitle("Player Avatars", "player-avatars", collapsedArtSections));
-  const avatarChildren = document.createElement("div");
-  avatarChildren.className = "art-group-children";
-  if (!collapsedArtSections.has("player-avatars")) {
-    for (const composite of avatarComposites) {
-      avatarChildren.appendChild(createCompositeBlock(composite));
-    }
-  }
-  avatarGroup.appendChild(avatarChildren);
-  artAssetList.appendChild(avatarGroup);
-
-  const promptGroup = document.createElement("section");
-  promptGroup.className = "art-group";
-  promptGroup.appendChild(createArtGroupTitle("Presentation Click Prompt", "presentation-click-prompt", collapsedArtSections));
-  const promptChildren = document.createElement("div");
-  promptChildren.className = "art-group-children";
-  if (!collapsedArtSections.has("presentation-click-prompt")) {
-    const cursorAsset = findArtAsset("presentation-click-cursor");
-    if (cursorAsset) promptChildren.appendChild(createArtItemButton(cursorAsset, "Cursor Art"));
-  }
-  promptGroup.appendChild(promptChildren);
-  artAssetList.appendChild(promptGroup);
-
-  const votingGroup = document.createElement("section");
-  votingGroup.className = "art-group";
-  votingGroup.appendChild(createArtGroupTitle("Voting Card", "voting-card", collapsedArtSections));
-  const votingChildren = document.createElement("div");
-  votingChildren.className = "art-group-children";
-  if (!collapsedArtSections.has("voting-card")) {
-    for (const composition of artCompositions || []) {
-      if (composition.id === "voting-card") votingChildren.appendChild(createArtCompositionBlock(composition));
-    }
-  }
-  votingGroup.appendChild(votingChildren);
-  artAssetList.appendChild(votingGroup);
-
-  const customGroup = document.createElement("section");
-  customGroup.className = "art-group";
-  customGroup.appendChild(createArtGroupTitle("Custom Art", "custom-art", collapsedArtSections));
-  const customChildren = document.createElement("div");
-  customChildren.className = "art-group-children";
-  if (!collapsedArtSections.has("custom-art")) {
-    for (const composition of artCompositions || []) {
-      if (composition.id !== "voting-card") customChildren.appendChild(createArtCompositionBlock(composition));
-    }
-  }
-  customGroup.appendChild(customChildren);
-  artAssetList.appendChild(customGroup);
-  updateArtCreateButtons();
-}
-
-function createArtGroupTitle(label, collapseId, collapsedSet) {
-  const title = document.createElement("div");
-  title.className = "art-group-title";
-  title.appendChild(createDisclosureButton(
-    collapseId,
-    collapsedSet,
-    renderAndPersistArtCollapseState,
-    () => toggleArtCollapsedIds(collapsedSet, artSectionCollapseIds)
-  ));
-  const text = document.createElement("span");
-  text.textContent = label;
-  title.appendChild(text);
-  return title;
-}
-
-function findArtAsset(assetId) {
-  return artAssets.find((asset) => asset.id === assetId) || null;
-}
-
-function createCompositeBlock(composite) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "art-group";
-  wrapper.appendChild(createCompositeButton(composite));
-  const children = document.createElement("div");
-  children.className = "art-composite-children";
-  if (!collapsedArtComposites.has(composite.id)) {
-    const dinoAsset = findArtAsset(composite.dinoAssetId);
-    const frameAsset = findArtAsset("avatar-frame");
-    if (dinoAsset) children.appendChild(createArtItemButton(dinoAsset, "Dino Art"));
-    if (frameAsset) children.appendChild(createArtItemButton(frameAsset, "Rectangle (shared)"));
-  }
-  wrapper.appendChild(children);
-  return wrapper;
-}
-
-function createArtCompositionBlock(composition) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "art-group";
-  wrapper.appendChild(createArtCompositionButton(composition));
-  const children = document.createElement("div");
-  children.className = "art-composite-children";
-  if (!collapsedArtComposites.has(composition.id)) {
-    for (const component of composition.components || []) {
-      children.appendChild(createArtComponentBranch(composition, component, 0));
-    }
-  }
-  wrapper.appendChild(children);
-  return wrapper;
-}
-
-function createArtDisclosureSlot(id) {
-  const slot = document.createElement("span");
-  slot.className = "disclosure-slot";
-  slot.appendChild(createDisclosureButton(
-    id,
+function artSidebarState() {
+  return {
+    artAssets,
+    avatarComposites,
+    artCompositions,
+    artSectionCollapseIds,
+    collapsedArtSections,
     collapsedArtComposites,
-    renderAndPersistArtCollapseState,
-    () => toggleArtCollapsedIds(collapsedArtComposites, artCompositeCollapseIds())
-  ));
-  return slot;
+    selectedArtAsset,
+    selectedArtComposite,
+    selectedArtCompositionId,
+    selectedArtComponentId,
+    selectedArtComponentIds
+  };
 }
 
-function createArtThumb(className, content = "") {
-  return artToolUi.createThumb(className, content);
-}
-
-function createArtRow(options = {}) {
-  return artToolUi.createSidebarRow(options);
-}
-
-function createArtCompositionButton(composition) {
-  return createArtRow({
-    className: "art-item is-composite has-disclosure",
-    selected: selectedArtCompositionId === composition.id && !selectedArtComponentId,
-    leadingNodes: [
-      createArtDisclosureSlot(composition.id),
-      createArtThumb("art-thumb art-composite-thumb", '<span class="art-voting-card-thumb"></span>')
-    ],
-    title: composition.name,
-    summary: "Editable composite art",
-    onActivate: () => selectArtComposition(composition.id)
-  });
-}
-
-function createArtComponentButton(composition, component) {
-  const hasChildren = Boolean(component.children?.length);
-  const row = createArtRow({
-    className: `art-item${hasChildren ? " has-disclosure" : ""}`,
-    selected: selectedArtCompositionId === composition.id && selectedArtComponentIds.has(component.id),
-    leadingNodes: [
-      ...(hasChildren ? [createArtDisclosureSlot(`${composition.id}:${component.id}`)] : []),
-      createArtThumb("art-thumb art-component-thumb")
-    ],
-    title: component.name,
-    summary: `${artKindLabel(component.kind)} object / drag to layer`,
-    onActivate: (event) => selectArtComponent(composition.id, component.id, { additive: event.metaKey || event.ctrlKey || event.shiftKey })
-  });
-  row.title = "Drag to reorder layers. Top of list is frontmost.";
-  window.PartyGameToolAffordances?.bindSortableRow(row, {
-    itemId: component.id,
-    dragType: "application/x-party-art-component",
-    ignoreSelector: ".disclosure-button, input, textarea, button, select, a",
-    getDraggedId: () => draggedArtComponentId,
-    canDrop: (draggedId, targetId) => canReorderArtComponent(draggedId, targetId),
-    onDragStart: (componentId) => {
-      draggedArtComponentId = componentId;
-      selectedArtAsset = null;
-      selectedArtComposite = null;
-      selectedArtCompositionId = composition.id;
-      if (!selectedArtComponentIds.has(componentId)) {
-        setArtComponentSelection([componentId]);
-        row.classList.add("is-selected");
-        renderArtComponentEditor();
-        renderSelectedArtComposition();
-      }
-    },
-    onReorder: (draggedId, targetId, placeAfter) => reorderArtComponent(draggedId, targetId, placeAfter),
-    onDragEnd: () => {
-      draggedArtComponentId = "";
-    }
-  });
-  return row;
-}
-
-function createArtComponentBranch(composition, component, depth = 0) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "art-group";
-  wrapper.style.marginLeft = depth ? "12px" : "0";
-  wrapper.appendChild(createArtComponentButton(composition, component));
-  if (component.children?.length && !collapsedArtComposites.has(`${composition.id}:${component.id}`)) {
-    const children = document.createElement("div");
-    children.className = "art-composite-children";
-    for (const child of component.children || []) {
-      children.appendChild(createArtComponentBranch(composition, child, depth + 1));
-    }
-    wrapper.appendChild(children);
+function handleArtComponentSidebarDragStart(compositionId, componentId, row) {
+  draggedArtComponentId = componentId;
+  selectedArtAsset = null;
+  selectedArtComposite = null;
+  selectedArtCompositionId = compositionId;
+  if (!selectedArtComponentIds.has(componentId)) {
+    setArtComponentSelection([componentId]);
+    row.classList.add("is-selected");
+    renderArtComponentEditor();
+    renderSelectedArtComposition();
   }
-  return wrapper;
 }
 
-function createCompositeButton(composite) {
-  return createArtRow({
-    className: "art-item is-composite has-disclosure",
-    selected: selectedArtComposite?.id === composite.id && !selectedArtAsset,
-    leadingNodes: [
-      createArtDisclosureSlot(composite.id),
-      createArtThumb("art-thumb art-composite-thumb", compositePreviewMarkup(composite))
-    ],
-    title: composite.name,
-    summary: "Composite preview",
-    onActivate: () => selectArtComposite(composite.id)
-  });
+function getArtSidebarRenderer() {
+  if (!artSidebarRenderer) {
+    artSidebarRenderer = artSidebarRendererRuntime.create({
+      ui: artToolUi,
+      componentTree: artComponentTree,
+      getState: artSidebarState,
+      artKindLabel,
+      compositePreviewMarkup,
+      onCollapseChange: renderAndPersistArtCollapseState,
+      onToggleCollapsedIds: toggleArtCollapsedIds,
+      onSelectArtAsset: selectArtAsset,
+      onSelectArtComposite: selectArtComposite,
+      onSelectArtComposition: selectArtComposition,
+      onSelectArtComponent: selectArtComponent,
+      getDraggedComponentId: () => draggedArtComponentId,
+      canReorderArtComponent,
+      onComponentDragStart: handleArtComponentSidebarDragStart,
+      onReorderArtComponent: reorderArtComponent,
+      onComponentDragEnd: () => {
+        draggedArtComponentId = "";
+      }
+    });
+  }
+  return artSidebarRenderer;
 }
 
-function createArtItemButton(asset, label = asset.name) {
-  const image = document.createElement("img");
-  image.alt = "";
-  image.src = asset.currentUrl;
-  const button = createArtRow({
-    className: "art-item",
-    selected: selectedArtAsset?.id === asset.id,
-    dataset: { assetId: asset.id },
-    leadingNodes: [createArtThumb("art-thumb", image)],
-    title: label,
-    summary: `${asset.sharedBy?.length ? "Shared / " : ""}${asset.hasCustom ? "Custom" : "Default"}`,
-    onActivate: () => selectArtAsset(asset.id)
-  });
-  button.classList.toggle("is-shared", Boolean(asset.sharedBy?.length));
-  return button;
+function renderArtList() {
+  getArtSidebarRenderer().render(artAssetList);
+  updateArtCreateButtons();
 }
 
 function compositePreviewMarkup(composite) {
