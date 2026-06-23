@@ -11,17 +11,20 @@
   const CHOICE_INPUT_ACTION_CONFIGS = {
     multipleChoiceInput: {
       kind: "multipleChoice",
-      prompt: "Answer this question by tapping an answer"
+      prompt: "Answer this question by tapping an answer",
+      submittedLabel: "Answers"
     },
     triviaInput: {
       kind: "trivia",
-      prompt: "Answer this question by tapping an answer"
+      prompt: "Answer this question by tapping an answer",
+      submittedLabel: "Answers"
     },
     voteOnAnswersInput: {
       kind: "vote",
       prompt: "Vote for your favorite answer",
       inputMode: "submitOnce",
-      locked: true
+      locked: true,
+      submittedLabel: "Votes Submitted"
     }
   };
 

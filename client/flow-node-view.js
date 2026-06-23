@@ -383,9 +383,10 @@ function flowNodeExitDefinitions(action) {
     }));
   }
   if (action.type === "voteOnAnswersInput") {
+    const config = globalThis.PartyChoiceInputActions?.choiceInputActionConfig?.(action.type) || {};
     return [
       { label: "Timer Ends", field: "timerEndTargetActionId" },
-      { label: "Votes Submitted", field: "answersSubmittedTargetActionId" }
+      { label: config.submittedLabel || "Votes Submitted", field: "answersSubmittedTargetActionId" }
     ];
   }
   if (action.type === "presentText") {

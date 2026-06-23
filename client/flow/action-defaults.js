@@ -13,8 +13,9 @@
         if (!("textTarget" in action)) action.textTarget = "";
         action.stageClickTargetActionId = action.stageClickTargetActionId || action.nextTargetActionId || action.nextTargetNodeId || "";
       }
+      const choiceInputConfig = globalThis.PartyChoiceInputActions?.choiceInputActionConfig?.(value);
       if (value === "multipleChoiceInput") {
-        action.prompt = action.prompt || "Answer this question by tapping an answer";
+        action.prompt = action.prompt || choiceInputConfig?.prompt || "Answer this question by tapping an answer";
         action.options = Array.isArray(action.options) && action.options.length ? action.options : ["A", "B", "C", "D"];
         action.inputMode = action.inputMode || "singleSelect";
         action.locked = action.locked === true;
@@ -26,7 +27,8 @@
       }
       if (value === "triviaInput") {
         action.contentVariable = action.contentVariable || "multipleChoicePrompt";
-        action.inputMode = action.inputMode || "submitOnce";
+        action.prompt = action.prompt || choiceInputConfig?.prompt || "Answer this question by tapping an answer";
+        action.inputMode = action.inputMode || choiceInputConfig?.inputMode || "submitOnce";
         action.locked = action.locked === true;
         action.randomizeOptions = action.randomizeOptions === true;
         action.timerEndTargetActionId = action.timerEndTargetActionId || "";
@@ -46,7 +48,7 @@
         action.cardFilter = action.cardFilter || "all";
       }
       if (value === "voteOnAnswersInput") {
-        action.prompt = action.prompt || "Vote for your favorite answer";
+        action.prompt = action.prompt || choiceInputConfig?.prompt || "Vote for your favorite answer";
         action.timerEndTargetActionId = action.timerEndTargetActionId || "";
         action.answersSubmittedTargetActionId = action.answersSubmittedTargetActionId || "";
       }

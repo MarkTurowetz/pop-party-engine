@@ -126,6 +126,8 @@
     }
 
     function appendMultipleChoiceControls(target, state, action, controls, handlers) {
+      const choiceConfig = globalThis.PartyChoiceInputActions?.choiceInputActionConfig?.(action.type) || {};
+      const defaultPrompt = choiceConfig.prompt || "Answer this question by tapping an answer";
       target.appendChild(context.flowSelect("Button Style", action.inputMode || "singleSelect", context.choiceInputModeOptions(), (value) => {
         action.inputMode = value;
         handlers.refresh();
@@ -136,8 +138,8 @@
           handlers.change();
         }));
       }
-      target.appendChild(context.flowTextarea("Prompt Text", action.prompt || "Answer this question by tapping an answer", (value) => {
-        action.prompt = value || "Answer this question by tapping an answer";
+      target.appendChild(context.flowTextarea("Prompt Text", action.prompt || defaultPrompt, (value) => {
+        action.prompt = value || defaultPrompt;
         handlers.softChange();
       }));
       target.appendChild(context.flowTextarea("Answer Bubble Text Options", (action.options || ["A", "B", "C", "D"]).join("\n"), (value) => {
@@ -212,12 +214,14 @@
     }
 
     function appendVoteInputControls(target, state, action, controls, handlers) {
-      target.appendChild(context.flowTextarea("Prompt Text", action.prompt || "Vote for your favorite answer", (value) => {
-        action.prompt = value || "Vote for your favorite answer";
+      const choiceConfig = globalThis.PartyChoiceInputActions?.choiceInputActionConfig?.(action.type) || {};
+      const defaultPrompt = choiceConfig.prompt || "Vote for your favorite answer";
+      target.appendChild(context.flowTextarea("Prompt Text", action.prompt || defaultPrompt, (value) => {
+        action.prompt = value || defaultPrompt;
         handlers.softChange();
       }));
       controls?.appendInputExitControls(target, state, action, handlers.change, {
-        submittedLabel: "On Votes Submitted",
+        submittedLabel: `On ${choiceConfig.submittedLabel || "Votes Submitted"}`,
         targetOptions: handlers.targetOptions
       });
       target.appendChild(context.readOnlyFlowNote("Players vote for one anonymous answer card. The controller hides the player's own answer, and the stage stores votes secretly until results are revealed."));

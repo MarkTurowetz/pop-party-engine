@@ -22,10 +22,11 @@
         return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}"${eventText} / ${timingText}${instantText}`;
       }
       if (action.type === "multipleChoiceInput") {
+        const config = globalThis.PartyChoiceInputActions?.choiceInputActionConfig?.(action.type) || {};
         const modeName = action.inputMode === "submitOnce" ? "Submit Once" : action.inputMode === "continuous" ? "Continuous" : "Single Select";
         const lockedText = action.inputMode === "singleSelect" && action.locked ? " / Locked" : "";
         const eventText = ` / timer: ${context.flowTargetActionName(action.timerEndTargetActionId)} / answers: ${context.flowTargetActionName(action.answersSubmittedTargetActionId)}`;
-        return `${modeName}${lockedText}: ${action.prompt || "Choice input"} / ${(action.options || []).length || 0} options${eventText} / ${timingText}`;
+        return `${modeName}${lockedText}: ${action.prompt || config.prompt || "Choice input"} / ${(action.options || []).length || 0} options${eventText} / ${timingText}`;
       }
       if (action.type === "getRandomMultipleChoiceContent") return `Get random prompt -> ${action.variableName || "multipleChoicePrompt"} / ${timingText}`;
       if (action.type === "triviaInput") {
@@ -56,8 +57,9 @@
         return `${action.isShown === false ? "Hide" : "Show"} ${cardFilterName} voting cards / ${timingText}${instantText}`;
       }
       if (action.type === "voteOnAnswersInput") {
+        const config = globalThis.PartyChoiceInputActions?.choiceInputActionConfig?.(action.type) || {};
         const eventText = ` / timer: ${context.flowTargetActionName(action.timerEndTargetActionId)} / votes: ${context.flowTargetActionName(action.answersSubmittedTargetActionId)}`;
-        return `Vote on answers: ${action.prompt || "Vote for your favorite answer"}${eventText} / ${timingText}`;
+        return `Vote on answers: ${action.prompt || config.prompt || "Vote for your favorite answer"}${eventText} / ${timingText}`;
       }
       if (action.type === "revealVotingResults") return `Reveal voting results / ${timingText}`;
       if (action.type === "revealAuthors") return `Reveal voting card authors / ${timingText}`;
