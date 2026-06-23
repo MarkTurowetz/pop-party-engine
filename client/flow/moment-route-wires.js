@@ -72,8 +72,7 @@
         targetId: routeNode.nextTargetNodeId,
         targetKind: "momentGraph",
         options: {
-          highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
-          label: "Next"
+          highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id
         }
       });
     }

@@ -88,16 +88,18 @@
         rerender();
       }));
       if (branch.type === "hit") {
-        panel.appendChild(context.flowField("Hit Value", branch.value || "", (value) => {
+        const hitValueControl = (context.flowTextarea || context.flowField)("Hit Value", branch.value || "", (value) => {
           branch.value = value;
           rerender(false);
-        }));
+        });
+        panel.appendChild(hitValueControl);
       }
       if (branch.type === "code") {
-        panel.appendChild(context.flowField("Code", branch.code || "x < 3", (value) => {
+        const codeControl = (context.flowTextarea || context.flowField)("Code", branch.code || "x < 3", (value) => {
           branch.code = value || "x < 3";
           rerender(false);
-        }));
+        });
+        panel.appendChild(codeControl);
       }
       panel.appendChild(context.flowSelect("Branch Target", branch[targetField] || "", decisionTargetOptions(state, action, branch, options), (value) => {
         branch[targetField] = value;

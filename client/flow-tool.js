@@ -1811,7 +1811,8 @@ async function setupFlowTool() {
   flowNodeMinimap?.addEventListener("pointerdown", startFlowNodeMinimapDrag);
   flowNodeMinimap?.addEventListener("click", jumpFlowNodeMinimap);
   flowNodeStage?.addEventListener("pointerup", (event) => {
-    const targetNode = event.target.closest?.(".flow-node");
+    const targetNode = event.target.closest?.(".flow-node")
+      || document.elementFromPoint(event.clientX, event.clientY)?.closest?.(".flow-node");
     if (targetNode) {
       completeNodeConnection(targetNode);
     } else if (shouldCreateActionFromPendingConnection(event)) {
