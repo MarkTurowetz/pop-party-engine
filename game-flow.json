@@ -1055,7 +1055,7 @@
       "id": "voice-moment",
       "name": "Voice Moment",
       "nextStateTargetId": "voting-moment",
-      "entryTargetActionId": "voice-moment-action-mqpsey1p",
+      "entryTargetActionId": "voice-mic-access",
       "nodePositions": {
         "start": {
           "x": 360,
@@ -1064,6 +1064,10 @@
         "return": {
           "x": 360,
           "y": 860
+        },
+        "voice-mic-access": {
+          "x": 320,
+          "y": 40
         },
         "voice-show-prompt": {
           "x": 320,
@@ -1091,6 +1095,24 @@
         }
       },
       "actions": [
+        {
+          "id": "voice-mic-access",
+          "name": "Request Microphone Access",
+          "type": "requestMicrophoneAccessInput",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "prompt": "Give microphone access to the game",
+          "buttonLabel": "Yes",
+          "microphoneAccessMode": "vip",
+          "microphoneAccessGrantedTargetActionId": "voice-moment-action-mqpsey1p",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 6
+          }
+        },
         {
           "id": "voice-show-prompt",
           "name": "Display Text",

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.175",
+  "version": "1.0.17.177",
   "baseVersion": "1.0.17",
-  "buildNumber": 175,
-  "commit": "7e51090",
-  "branch": "codex/game-data-voice-moment",
-  "generatedAt": "2026-06-23T09:55:46.708Z"
+  "buildNumber": 177,
+  "commit": "17bf419",
+  "branch": "codex/update-mic-access-game-data",
+  "generatedAt": "2026-06-23T18:03:21.297Z"
 }
