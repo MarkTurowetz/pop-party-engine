@@ -3979,11 +3979,15 @@
     }
 
     .color-control-swatch {
+      --color-control-value: var(--paper);
       width: 42px;
       height: 34px;
       border: 3px solid var(--ink);
       border-radius: 10px;
-      background: var(--paper);
+      background:
+        linear-gradient(var(--color-control-value), var(--color-control-value)),
+        conic-gradient(#d7d3c7 25%, #fff 0 50%, #d7d3c7 0 75%, #fff 0);
+      background-size: auto, 12px 12px;
       box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.24);
     }
 
@@ -3994,7 +3998,7 @@
     }
 
     .color-control-toggle {
-      width: 54px;
+      width: 64px;
       min-height: 34px;
       border: 3px solid var(--ink);
       border-radius: 10px;
@@ -4027,6 +4031,10 @@
       align-items: center;
       font-size: 10px;
       line-height: 1;
+    }
+
+    .color-control-slider span {
+      display: block;
     }
 
     .color-control-slider input[type="range"] {
@@ -4779,6 +4787,7 @@
     </div>
   </section>
 
+  <script src="/shared/color-utils.js"></script>
   <script src="/client/utils.js"></script>
   <script src="/client/layout-runtime.js"></script>
   <script src="/client/stage/visual-object.js"></script>

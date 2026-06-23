@@ -1,3 +1,5 @@
+const { normalizeColor: normalizeSharedColor } = require("../shared/color-utils");
+
 function normalizeStageCode(value) {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
@@ -71,8 +73,7 @@ function normalizeCharacterLimit(value) {
 }
 
 function normalizeColor(value) {
-  const color = String(value || "").trim();
-  return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
+  return normalizeSharedColor(value);
 }
 
 function normalizeDurationSeconds(value, fallback = 30) {

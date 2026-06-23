@@ -3,33 +3,41 @@
 
   const DEFAULT_PRESETS = ["#17131f", "#ffffff", "#fff8d6", "#ffe156", "#2458ff", "#22d3ee", "#ff4fa3", "#7c3aed"];
 
+  const colorUtils = global.PartyGameColorUtils || {};
+
   function fallbackNormalizeColor(value) {
     const raw = String(value || "").trim();
-    if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase();
-    if (/^[0-9a-fA-F]{6}$/.test(raw)) return `#${raw}`.toLowerCase();
-    return "";
+    const hex = raw.startsWith("#") ? raw.slice(1) : raw;
+    if (!/^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(hex)) return "";
+    const normalized = `#${hex.toLowerCase()}`;
+    return normalized.length === 9 && normalized.endsWith("ff") ? normalized.slice(0, 7) : normalized;
   }
 
-  function hexToRgb(hex, normalizeColor) {
-    const normalized = normalizeColor(hex);
+  function fallbackColorToRgba(value, normalizeColor) {
+    const normalized = normalizeColor(value);
     if (!normalized) return null;
     return {
       r: Number.parseInt(normalized.slice(1, 3), 16),
       g: Number.parseInt(normalized.slice(3, 5), 16),
-      b: Number.parseInt(normalized.slice(5, 7), 16)
+      b: Number.parseInt(normalized.slice(5, 7), 16),
+      a: normalized.length === 9 ? Number.parseInt(normalized.slice(7, 9), 16) : 255
     };
   }
 
-  function rgbToHex(rgb) {
-    return `#${["r", "g", "b"].map((channel) => {
-      const value = Math.max(0, Math.min(255, Number(rgb[channel]) || 0));
+  function fallbackRgbaToColor(rgba) {
+    const channels = ["r", "g", "b", "a"].map((channel) => {
+      const value = Math.max(0, Math.min(255, Math.round(Number(rgba?.[channel] ?? 255))));
       return value.toString(16).padStart(2, "0");
-    }).join("")}`;
+    });
+    const base = `#${channels.slice(0, 3).join("")}`;
+    return channels[3] === "ff" ? base : `${base}${channels[3]}`;
   }
 
   function createColorControl(options = {}) {
     const documentRef = options.document || global.document;
-    const normalizeColor = options.normalizeColor || fallbackNormalizeColor;
+    const normalizeColor = options.normalizeColor || colorUtils.normalizeColor || fallbackNormalizeColor;
+    const colorToRgba = colorUtils.colorToRgba || ((value) => fallbackColorToRgba(value, normalizeColor));
+    const rgbaToColor = colorUtils.rgbaToColor || fallbackRgbaToColor;
     const root = documentRef.createElement("section");
     root.className = ["color-control", options.className || ""].filter(Boolean).join(" ");
     const title = documentRef.createElement("span");
@@ -43,11 +51,11 @@
     input.type = "text";
     input.inputMode = "text";
     input.spellcheck = false;
-    input.maxLength = 7;
+    input.maxLength = 9;
     const toggle = documentRef.createElement("button");
     toggle.type = "button";
     toggle.className = "color-control-toggle";
-    toggle.textContent = "RGB";
+    toggle.textContent = "RGBA";
     toggle.setAttribute("aria-expanded", "false");
     const details = documentRef.createElement("div");
     details.className = "color-control-details";
@@ -62,17 +70,18 @@
     resetButton.className = "color-control-reset";
     resetButton.textContent = "Reset";
     actions.append(applyButton, resetButton);
-    const sliders = ["r", "g", "b"].map((channel) => {
+    const sliders = ["r", "g", "b", "a"].map((channel) => {
       const wrap = documentRef.createElement("label");
       wrap.className = "color-control-slider";
-      wrap.textContent = channel.toUpperCase();
+      const label = documentRef.createElement("span");
+      label.textContent = channel.toUpperCase();
       const slider = documentRef.createElement("input");
       slider.type = "range";
       slider.min = "0";
       slider.max = "255";
       slider.step = "1";
       slider.dataset.channel = channel;
-      wrap.appendChild(slider);
+      wrap.append(label, slider);
       return { channel, slider, wrap };
     });
     let historyCaptured = false;
@@ -86,19 +95,19 @@
     }
 
     function setControls(hex, { syncText = true } = {}) {
-      const rgb = hexToRgb(hex, normalizeColor) || { r: 255, g: 255, b: 255 };
-      const normalized = rgbToHex(rgb);
+      const rgba = colorToRgba(hex) || { r: 255, g: 255, b: 255, a: 255 };
+      const normalized = rgbaToColor(rgba);
       draftValue = normalized;
       if (syncText) input.value = normalized.toUpperCase();
-      swatch.style.background = normalized;
+      swatch.style.setProperty("--color-control-value", normalized);
       for (const item of sliders) {
-        item.slider.value = String(rgb[item.channel]);
+        item.slider.value = String(rgba[item.channel]);
       }
       setDirty(draftValue !== currentValue);
     }
 
     function currentSliderColor() {
-      return rgbToHex(Object.fromEntries(sliders.map((item) => [item.channel, Number(item.slider.value)])));
+      return rgbaToColor(Object.fromEntries(sliders.map((item) => [item.channel, Number(item.slider.value)])));
     }
 
     function previewDraft(hex, { syncText = true } = {}) {
@@ -190,7 +199,10 @@
     return root;
   }
 
-  const api = { create: createColorControl, normalize: fallbackNormalizeColor };
+  const api = {
+    create: createColorControl,
+    normalize: colorUtils.normalizeColor || fallbackNormalizeColor
+  };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   global.PartyGameColorControl = api;

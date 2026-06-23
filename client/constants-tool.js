@@ -12,8 +12,7 @@ function updateConstantsStorageStatus(storage) {
 }
 
 function normalizeUiColor(value) {
-  const color = String(value || "").trim();
-  return /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : "";
+  return window.PartyGameColorUtils?.normalizeColor?.(value) || window.PartyGameColorControl?.normalize?.(value) || "";
 }
 
 function normalizeEditableColor(value) {
@@ -21,7 +20,7 @@ function normalizeEditableColor(value) {
 }
 
 function normalizeClientGameConstants(constants = {}) {
-  const colors = Array.isArray(constants.playerColors) ? constants.playerColors.map(normalizeUiColor).filter(Boolean) : [];
+  const colors = Array.isArray(constants.playerColors) ? constants.playerColors.map(normalizeEditableColor).filter(Boolean) : [];
   return {
     playerColors: colors.length ? colors : ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"],
     craftingTimerDuration: Math.max(1, Math.min(3600, Number(constants.craftingTimerDuration || 30))),
@@ -145,7 +144,7 @@ function renderConstantsTool() {
     if (picker.tagName === "INPUT") {
       picker.className = "color-value";
       picker.value = (normalizeUiColor(color) || "#22d3ee").toUpperCase();
-      picker.maxLength = 7;
+      picker.maxLength = 9;
       picker.addEventListener("change", () => updatePlayerColor(index, picker.value));
     }
 

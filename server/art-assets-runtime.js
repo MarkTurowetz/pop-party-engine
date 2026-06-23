@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const artComponentSchema = require("../shared/art-component-schema");
+const { normalizeColor } = require("../shared/color-utils");
 
 function createArtAssetsRuntime({
   acceptedArtTypes,
@@ -60,7 +61,7 @@ function createArtAssetsRuntime({
   function cleanColor(value, fallback) {
     const text = String(value ?? "").trim();
     if (text === "transparent") return text;
-    return /^#[0-9a-f]{6}$/i.test(text) ? text : fallback;
+    return normalizeColor(text) || fallback;
   }
 
   function cleanId(value, fallback = "") {
