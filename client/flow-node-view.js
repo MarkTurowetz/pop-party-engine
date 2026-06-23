@@ -275,8 +275,8 @@ function createFlowNode({ id, title, subtitle, timing = "", valueBadge = null, x
   return node;
 }
 
-function bindFlowNodeChildSort(item, parentAction, collectionName, childId) {
-  getFlowNodeChildSortController()?.bind(item, parentAction, collectionName, childId);
+function bindFlowNodeChildSort(item, parentAction, collectionName, childId, options = {}) {
+  getFlowNodeChildSortController()?.bind(item, parentAction, collectionName, childId, options);
 }
 
 function createFlowNodeBranches(state, action, options = {}) {
@@ -293,13 +293,16 @@ function createFlowNodeBranches(state, action, options = {}) {
     item.dataset.branchId = branch.id;
     item.dataset.parentNodeId = action.id;
     item.classList.toggle("is-no-match", branch.type === "noMatch");
-    item.classList.toggle("is-selected", flowActionIsSelected(branch.id));
+    item.classList.toggle("is-selected", options.sourceKind === "routeNode"
+      ? selectedFlowRouteNodeId === action.id && selectedFlowRouteBranchId === branch.id
+      : flowActionIsSelected(branch.id));
     const title = document.createElement("strong");
     title.textContent = decisionBranchName(branch, index);
     const target = document.createElement("span");
     target.textContent = branch[targetField] ? `-> ${targetName(branch[targetField])}` : "No Connection";
     const dot = document.createElement("span");
     dot.className = "flow-node-port-dot";
+    dot.draggable = false;
     if (options.sourceKind === "routeNode") {
       dot.dataset.sourceKind = "routeNode";
       dot.dataset.routeNodeId = action.id;
@@ -320,15 +323,20 @@ function createFlowNodeBranches(state, action, options = {}) {
         hint: event.metaKey ? "Release over a node to connect, or release on empty graph space to add an action." : "Release over a node to connect this branch."
       });
     });
+    dot.addEventListener("dragstart", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
     item.append(title, target, dot);
-    bindFlowNodeChildSort(item, action, "branches", branch.id);
+    bindFlowNodeChildSort(item, action, "branches", branch.id, { targetField });
     item.addEventListener("pointerdown", (event) => {
       if (!event.target.closest(".flow-node-port-dot")) event.stopPropagation();
     });
     item.addEventListener("click", (event) => {
       event.stopPropagation();
+      if (event.target.closest(".flow-node-port-dot")) return;
       if (options.sourceKind === "routeNode") {
-        selectFlowRouteNode(action.id);
+        selectFlowRouteBranch(action.id, branch.id);
         renderFlowTool();
         return;
       }
@@ -596,7 +604,7 @@ function pushFlowHistory() {
 function restoreFlowHistory(snapshot) {
   gameFlow = JSON.parse(snapshot);
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
-  selectedFlowRouteNodeId = flowRouteNode(selectedFlowRouteNodeId)?.id || "";
+  repairSelectedFlowRouteBranch();
   expandFlowStateInList(selectedFlowStateId);
   if (flowAction(selectedFlowStateId, selectedFlowActionId)) {
     setFlowActionSelection([...selectedFlowActionIds, selectedFlowActionId]);

@@ -28,6 +28,7 @@ function setFlowActionSelection(ids) {
   selectedFlowActionIds = new Set(nextIds);
   selectedFlowActionId = nextIds[nextIds.length - 1] || "";
   selectedFlowRouteNodeId = "";
+  selectedFlowRouteBranchId = "";
   if (selectedFlowActionId) expandFlowStateInList(selectedFlowStateId);
 }
 
@@ -100,14 +101,42 @@ function selectedFlowRouteNode() {
   return flowRouteNode(selectedFlowRouteNodeId);
 }
 
+function selectedFlowRouteBranch() {
+  const routeNode = selectedFlowRouteNode();
+  if (!routeNode || !selectedFlowRouteBranchId) return null;
+  return decisionBranchById(routeNode, selectedFlowRouteBranchId, { targetField: "targetNodeId" }) || null;
+}
+
+function repairSelectedFlowRouteBranch() {
+  selectedFlowRouteNodeId = flowRouteNode(selectedFlowRouteNodeId)?.id || "";
+  if (!selectedFlowRouteNodeId) {
+    selectedFlowRouteBranchId = "";
+    return;
+  }
+  if (selectedFlowRouteBranchId && !selectedFlowRouteBranch()) {
+    selectedFlowRouteBranchId = "";
+  }
+}
+
 function selectFlowRouteNode(routeNodeId) {
   selectedFlowRouteNodeId = flowRouteNode(routeNodeId)?.id || "";
+  selectedFlowRouteBranchId = "";
+  clearFlowActionSelection();
+  selectedFlowActionIds = new Set();
+}
+
+function selectFlowRouteBranch(routeNodeId, branchId) {
+  const routeNode = flowRouteNode(routeNodeId);
+  const branch = routeNode ? decisionBranchById(routeNode, branchId, { targetField: "targetNodeId" }) : null;
+  selectedFlowRouteNodeId = branch ? routeNode.id : "";
+  selectedFlowRouteBranchId = branch?.id || "";
   clearFlowActionSelection();
   selectedFlowActionIds = new Set();
 }
 
 function clearFlowRouteNodeSelection() {
   selectedFlowRouteNodeId = "";
+  selectedFlowRouteBranchId = "";
 }
 
 function setFlowMomentSelection(ids, { expandInList = true } = {}) {
@@ -380,11 +409,13 @@ function getFlowMomentRouteRenderer() {
       actionTypeMeta,
       actionValueBadge,
       appendActionPropertyControls: (...args) => getFlowActionInspectorRegistry()?.appendActionPropertyControls(...args),
+      appendDecisionBranchControls: (...args) => getFlowDecisionControls()?.appendDecisionBranchControls(...args),
       bindFlowNodeDrag,
       createFlowMomentRoutePorts,
       createFlowMomentRouteActionPorts,
       createFlowNode,
       createFlowNodeBranches,
+      decisionBranchName,
       decisionVariableName,
       defaultNodePosition,
       deleteSelectedFlowRouteNode,
@@ -411,7 +442,10 @@ function getFlowMomentRouteRenderer() {
       renderFlowNodeView,
       renderFlowTool,
       savedNodePosition,
+      selectFlowRouteBranch,
       selectFlowRouteNode,
+      selectedFlowRouteBranch: () => selectedFlowRouteBranch(),
+      selectedFlowRouteBranchId: () => selectedFlowRouteBranchId,
       selectedFlowRouteNode,
       selectedFlowRouteNodeId: () => selectedFlowRouteNodeId,
       selectedFlowStateId: () => selectedFlowStateId
@@ -442,6 +476,7 @@ function getFlowMomentRouteWires() {
       nodeWirePlanner: () => getFlowNodeWirePlanner(),
       renderFlowNodeMinimap,
       selectedFlowActionIds: () => selectedFlowActionIds,
+      selectedFlowRouteBranchId: () => selectedFlowRouteBranchId,
       selectedFlowRouteNodeId: () => selectedFlowRouteNodeId,
       selectedFlowStateId: () => selectedFlowStateId
     });
@@ -1656,9 +1691,25 @@ function deleteSelectedFlowStates() {
 function deleteSelectedFlowRouteNode() {
   if (flowNodeDepth !== "moments" || !selectedFlowRouteNodeId) return false;
   const nodes = flowRouteNodes();
-  if (!nodes.some((node) => node.id === selectedFlowRouteNodeId)) {
+  const routeNode = nodes.find((node) => node.id === selectedFlowRouteNodeId) || null;
+  if (!routeNode) {
     clearFlowRouteNodeSelection();
     return false;
+  }
+  if (selectedFlowRouteBranchId) {
+    const branch = decisionBranchById(routeNode, selectedFlowRouteBranchId, { targetField: "targetNodeId" });
+    if (!branch) {
+      selectedFlowRouteBranchId = "";
+      renderFlowTool();
+      return true;
+    }
+    if (branch.type === "noMatch") return true;
+    pushFlowHistory();
+    routeNode.branches = ensureDecisionBranches(routeNode, { targetField: "targetNodeId" }).filter((item) => item.id !== selectedFlowRouteBranchId);
+    ensureDecisionBranches(routeNode, { targetField: "targetNodeId" });
+    selectedFlowRouteBranchId = "";
+    renderFlowTool();
+    return true;
   }
   pushFlowHistory();
   clearMomentGraphTargetReferences(selectedFlowRouteNodeId);
@@ -1689,7 +1740,7 @@ async function saveGameFlow() {
   flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
   updateFlowStorageStatus(result.storage);
   selectedFlowStateId = gameFlow.states.find((state) => state.id === selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
-  selectedFlowRouteNodeId = flowRouteNode(selectedFlowRouteNodeId)?.id || "";
+  repairSelectedFlowRouteBranch();
   clearFlowActionSelection();
   expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();
@@ -1700,7 +1751,7 @@ function revertGameFlow() {
   gameFlow = JSON.parse(flowSavedSnapshot);
   getFlowHistoryManager().clear();
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
-  selectedFlowRouteNodeId = flowRouteNode(selectedFlowRouteNodeId)?.id || "";
+  repairSelectedFlowRouteBranch();
   clearFlowActionSelection();
   expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();

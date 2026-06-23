@@ -66,8 +66,9 @@
     }
 
     function renderBranchInspector(inspector, state, actionRef) {
-      const action = actionRef.action;
-      const branchIndex = (context.ensureDecisionBranches?.(actionRef.parentAction) || []).findIndex((branch) => branch.id === action.id);
+      const branches = context.ensureDecisionBranches?.(actionRef.parentAction) || [];
+      const branchIndex = branches.findIndex((branch) => branch.id === actionRef.action?.id);
+      const action = branches[branchIndex] || actionRef.action;
       const title = document.createElement("h3");
       title.textContent = context.decisionBranchName?.(action, branchIndex) || action.name || "Branch";
       const summary = document.createElement("p");

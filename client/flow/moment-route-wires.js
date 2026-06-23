@@ -38,7 +38,8 @@
           targetId: branch.targetNodeId,
           targetKind: "momentGraph",
           options: {
-            highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
+            highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id
+              && (!context.selectedFlowRouteBranchId?.() || context.selectedFlowRouteBranchId?.() === branch.id),
             label: context.decisionBranchWireLabel?.(branch, index) || ""
           }
         });

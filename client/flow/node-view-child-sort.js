@@ -8,12 +8,12 @@
   }
 
   function createFlowNodeChildSortController(context) {
-    function canDrag(parentAction, collectionName, childId) {
+    function canDrag(parentAction, collectionName, childId, options = {}) {
       return collectionName !== "branches"
-        || context.decisionBranchById?.(parentAction, childId)?.type !== "noMatch";
+        || context.decisionBranchById?.(parentAction, childId, options)?.type !== "noMatch";
     }
 
-    function reorder(parentAction, collectionName, draggedId, targetId) {
+    function reorder(parentAction, collectionName, draggedId, targetId, options = {}) {
       const items = parentAction?.[collectionName] || [];
       const fromIndex = items.findIndex((item) => item.id === draggedId);
       const toIndex = items.findIndex((item) => item.id === targetId);
@@ -23,15 +23,20 @@
       const [moved] = items.splice(fromIndex, 1);
       const adjustedIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
       items.splice(adjustedIndex, 0, moved);
-      if (collectionName === "branches") context.ensureDecisionBranches?.(parentAction);
+      if (collectionName === "branches") context.ensureDecisionBranches?.(parentAction, options);
       context.renderFlowListAndPublish?.();
       context.renderFlowNodeView?.();
       return true;
     }
 
-    function bind(item, parentAction, collectionName, childId) {
-      item.draggable = canDrag(parentAction, collectionName, childId);
+    function bind(item, parentAction, collectionName, childId, options = {}) {
+      item.draggable = canDrag(parentAction, collectionName, childId, options);
       item.addEventListener("dragstart", (event) => {
+        if (event.target?.closest?.(".flow-node-port-dot")) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         event.stopPropagation();
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData(CHILD_DRAG_TYPE, JSON.stringify({
@@ -49,7 +54,7 @@
         try {
           const payload = JSON.parse(event.dataTransfer.getData(CHILD_DRAG_TYPE));
           if (payload.parentActionId === parentAction.id && payload.collectionName === collectionName) {
-            reorder(parentAction, collectionName, payload.childId, childId);
+            reorder(parentAction, collectionName, payload.childId, childId, options);
           }
         } catch (error) {
           // Ignore malformed drag payloads from outside the tool.

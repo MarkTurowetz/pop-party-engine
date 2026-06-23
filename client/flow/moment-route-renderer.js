@@ -159,6 +159,36 @@
       });
     }
 
+    function renderRouteBranchInspector(inspector, routeNode, branch) {
+      const branches = context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" }) || [];
+      const branchIndex = branches.findIndex((item) => item.id === branch.id);
+      if (branchIndex < 0) return false;
+      const liveBranch = branches[branchIndex];
+      const title = document.createElement("h3");
+      title.textContent = context.decisionBranchName?.(liveBranch, branchIndex) || "Branch";
+      const summary = document.createElement("p");
+      summary.textContent = `Branch under ${routeNode.name || "Decision"}.`;
+      inspector.append(title, summary);
+      inspector.appendChild(context.readOnlyFlowNote?.("Branches are checked in order. A branch with no connection will halt the game when it is selected."));
+      const state = routeInspectorState(routeNode);
+      context.appendDecisionBranchControls?.(inspector, state, routeNode, liveBranch, branchIndex, (redrawNodeView = true) => {
+        if (redrawNodeView) {
+          context.refreshFlowNodeInspectorChange?.();
+          return;
+        }
+        context.renderFlowListAndPublish?.();
+        context.redrawFlowNodeWires?.();
+      }, {
+        targetField: "targetNodeId",
+        targetOptions: routeTargetOptions(routeNode)
+      });
+      inspector.appendChild(context.flowActionButton?.("Edit Full Decision", () => {
+        context.selectFlowRouteNode?.(routeNode.id);
+        context.renderFlowTool?.();
+      }));
+      return true;
+    }
+
     function renderInspector() {
       if (context.flowNodeDepth?.() !== "moments") return false;
       const routeNode = context.selectedFlowRouteNode?.();
@@ -167,6 +197,8 @@
       const isRouteDecision = isRouteDecisionNode(routeNode);
       const isRouteAction = isRouteActionNode(routeNode);
       const isLegacyRouteDecision = routeNode.routeNodeType === "decision";
+      const routeBranch = isRouteDecision ? context.selectedFlowRouteBranch?.() : null;
+      if (routeBranch && renderRouteBranchInspector(inspector, routeNode, routeBranch)) return true;
       const title = document.createElement("h3");
       title.textContent = routeNode.name || (isRouteDecision ? "Decision" : isRouteAction ? "Action" : "Moment Entry");
       const copy = document.createElement("p");
