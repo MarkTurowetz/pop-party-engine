@@ -378,6 +378,7 @@ let flowMomentRouteWires = null;
 let flowNodeWirePlanner = null;
 let flowActionNodeRenderer = null;
 let flowActionNodeWires = null;
+let flowConnectionDebug = null;
 
 function getFlowFormControls() {
   if (!flowFormControls && window.PartyGameFlowFormControls) {
@@ -595,7 +596,8 @@ function getFlowDecisionControls() {
       ensureDecisionBranches,
       flowNodeBranchDescriptors: () => getFlowNodeBranchDescriptors(),
       flowActionTargetOptions,
-      makeDecisionBranchId
+      makeDecisionBranchId,
+      pushFlowHistory
     });
   }
   return flowDecisionControls;
@@ -734,7 +736,8 @@ function getFlowNodeConnectionController() {
       redrawFlowNodeWires,
       renderFlowListAndPublish,
       renderFlowNodeView,
-      setFlowActionSelection
+      setFlowActionSelection,
+      showConnectionDebug: showFlowConnectionDebug
     });
   }
   return flowNodeConnectionController;
@@ -984,6 +987,43 @@ function publishRuntimeLocalChanges(overrides = {}) {
     postJson("/api/tool-drafts", message).catch(() => {});
   }
   updateGlobalSaveButton();
+}
+
+function showFlowConnectionDebug(details = {}) {
+  if (!flowNodeStage) return;
+  if (!flowConnectionDebug) {
+    flowConnectionDebug = document.createElement("div");
+    flowConnectionDebug.className = "flow-connection-debug";
+    Object.assign(flowConnectionDebug.style, {
+      position: "sticky",
+      left: "10px",
+      bottom: "10px",
+      zIndex: "30",
+      maxWidth: "620px",
+      margin: "10px",
+      padding: "8px 10px",
+      border: "3px solid var(--ink)",
+      borderRadius: "8px",
+      background: "rgba(255, 247, 214, 0.96)",
+      color: "var(--ink)",
+      fontSize: "12px",
+      fontWeight: "900",
+      lineHeight: "1.2",
+      pointerEvents: "none"
+    });
+    flowNodeStage.appendChild(flowConnectionDebug);
+  }
+  const pending = details.pending || {};
+  flowConnectionDebug.textContent = [
+    `connection ${details.status || "debug"}`,
+    `reason: ${details.reason || "unknown"}`,
+    `source: ${pending.sourceKind || "?"}`,
+    `targetKind: ${pending.targetKind || "?"}`,
+    `field: ${pending.field || "?"}`,
+    `branch: ${pending.branchId || "-"}`,
+    `targetNode: ${details.targetNode || "-"}`,
+    `targetId: ${details.targetId || "-"}`
+  ].join(" / ");
 }
 
 function flowNodeAtPointer(event) {

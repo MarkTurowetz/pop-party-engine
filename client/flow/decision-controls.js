@@ -60,6 +60,7 @@
       const targetField = decisionTargetField(options);
       const branches = context.ensureDecisionBranches(action, options);
       const noMatchIndex = Math.max(0, branches.findIndex((branch) => branch.type === "noMatch"));
+      context.pushFlowHistory?.();
       branches.splice(noMatchIndex, 0, {
         id: context.makeDecisionBranchId(type),
         type,
@@ -67,6 +68,19 @@
         code: type === "code" ? "x < 3" : "",
         [targetField]: ""
       });
+    }
+
+    function moveDecisionBranch(action, branchId, direction, options = {}) {
+      const branches = context.ensureDecisionBranches(action, options);
+      const index = branches.findIndex((branch) => branch.id === branchId);
+      if (index < 0 || branches[index]?.type === "noMatch") return false;
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= branches.length || branches[targetIndex]?.type === "noMatch") return false;
+      context.pushFlowHistory?.();
+      const [branch] = branches.splice(index, 1);
+      branches.splice(targetIndex, 0, branch);
+      context.ensureDecisionBranches(action, options);
+      return true;
     }
 
     function appendDecisionBranchControls(target, state, action, branch, index, rerender, options = {}) {
@@ -111,7 +125,20 @@
         rerender();
       }));
       if (branch.type !== "noMatch") {
+        const moveRow = document.createElement("div");
+        moveRow.className = "flow-form-grid";
+        const upButton = context.flowActionButton("Move Branch Up", () => {
+          if (moveDecisionBranch(action, branchId, -1, options)) rerender();
+        });
+        const downButton = context.flowActionButton("Move Branch Down", () => {
+          if (moveDecisionBranch(action, branchId, 1, options)) rerender();
+        });
+        upButton.disabled = index <= 0;
+        downButton.disabled = index >= context.ensureDecisionBranches(action, options).filter((item) => item.type !== "noMatch").length - 1;
+        moveRow.append(upButton, downButton);
+        panel.appendChild(moveRow);
         panel.appendChild(context.flowActionButton("Remove Branch", () => {
+          context.pushFlowHistory?.();
           action.branches = context.ensureDecisionBranches(action, options).filter((item) => item.id !== branch.id);
           context.ensureDecisionBranches(action, options);
           rerender();

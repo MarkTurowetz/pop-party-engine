@@ -46,18 +46,44 @@
       }
     }
 
+    function targetNodeSummary(targetNode) {
+      if (!targetNode) return "";
+      return targetNode.dataset?.actionId
+        || targetNode.dataset?.routeNodeId
+        || targetNode.dataset?.nodeId
+        || targetNode.dataset?.branchId
+        || "";
+    }
+
+    function debugDrop(status, reason, targetNode = null, targetId = "") {
+      context.showConnectionDebug?.({
+        pending,
+        reason,
+        status,
+        targetId,
+        targetNode: targetNodeSummary(targetNode)
+      });
+    }
+
     function connectPendingSourceToTarget(targetId) {
       return Boolean(context.connectionPlanner?.()?.connect(pending, targetId));
     }
 
     function createAction(event) {
-      if (!pending) return false;
+      if (!pending) {
+        debugDrop("blocked", "no pending connection");
+        return false;
+      }
       const point = context.flowNodeLocalPoint?.(event) || { x: 0, y: 0 };
       const creation = context.connectionPlanner?.()?.createTarget(pending, point, context.flowNodeDepth?.());
-      if (!creation?.collection || !creation.node || !creation.targetId) return false;
+      if (!creation?.collection || !creation.node || !creation.targetId) {
+        debugDrop("blocked", "could not create target");
+        return false;
+      }
       context.pushFlowHistory?.();
       creation.collection.push(creation.node);
       connectPendingSourceToTarget(creation.targetId);
+      debugDrop("connected", "created target", null, creation.targetId);
       pending = null;
       if (creation.selectionKind === "routeNode") {
         context.selectFlowRouteNode?.(creation.targetId);
@@ -70,16 +96,32 @@
     }
 
     function complete(targetNode) {
-      if (!pending) return false;
+      if (!pending) {
+        debugDrop("blocked", "no pending connection", targetNode);
+        return false;
+      }
       const planner = context.connectionPlanner?.();
       const source = planner?.connectionSource(pending);
-      if (!source) return false;
+      if (!source) {
+        debugDrop("blocked", "missing source", targetNode);
+        return false;
+      }
       const targetId = planner.targetIdForNode(pending, targetNode);
-      if (!targetId) return false;
-      if (source.selfId && targetId === source.selfId) return false;
-      if (targetId === source.currentTarget()) return false;
+      if (!targetId) {
+        debugDrop("blocked", "missing target id", targetNode);
+        return false;
+      }
+      if (source.selfId && targetId === source.selfId) {
+        debugDrop("blocked", "cannot target itself", targetNode, targetId);
+        return false;
+      }
+      if (targetId === source.currentTarget()) {
+        debugDrop("blocked", "already connected", targetNode, targetId);
+        return false;
+      }
       context.pushFlowHistory?.();
       source.setTarget(targetId);
+      debugDrop("connected", "set target", targetNode, targetId);
       pending = null;
       context.renderFlowListAndPublish?.();
       context.renderFlowNodeView?.();
