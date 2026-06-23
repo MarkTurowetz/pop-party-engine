@@ -2,6 +2,8 @@
   "use strict";
 
   function createMomentRouteGraph(context) {
+    const routeNodeTypes = window.PartyGameFlowMomentRouteNodeTypes;
+
     function gameFlow() {
       return context.gameFlow?.() || { states: [], routeNodes: [] };
     }
@@ -17,10 +19,12 @@
     }
 
     function isRouteDecisionNode(node) {
+      if (routeNodeTypes?.isDecision) return routeNodeTypes.isDecision(node);
       return node?.routeNodeType === "decision" || (node?.routeNodeType === "action" && node?.type === "decision");
     }
 
     function routeNodeTypeName(node) {
+      if (routeNodeTypes?.name) return routeNodeTypes.name(node);
       if (isRouteDecisionNode(node)) return "Decision";
       if (node?.routeNodeType === "action") return "Action";
       return "Moment Entry";

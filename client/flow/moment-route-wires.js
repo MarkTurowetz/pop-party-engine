@@ -2,7 +2,10 @@
   "use strict";
 
   function createMomentRouteWires(context) {
+    const routeNodeTypes = window.PartyGameFlowMomentRouteNodeTypes;
+
     function isRouteDecisionNode(routeNode) {
+      if (routeNodeTypes?.isDecision) return routeNodeTypes.isDecision(routeNode);
       return routeNode?.routeNodeType === "decision" || (routeNode?.routeNodeType === "action" && routeNode?.type === "decision");
     }
 
