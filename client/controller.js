@@ -1,111 +1,18 @@
-let controllerSpeechRecognition = null;
-let controllerVoiceListening = false;
-let controllerVoiceTranscript = "";
-let controllerVoiceShouldSubmitOnEnd = false;
+let controllerVoiceInput = null;
 
-function speechRecognitionConstructor() {
-  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
-}
-
-function stopControllerVoiceRecognition() {
-  if (!controllerSpeechRecognition) return;
-  controllerVoiceListening = false;
-  controllerVoiceShouldSubmitOnEnd = false;
-  try {
-    controllerSpeechRecognition.stop();
-  } catch (error) {
-    // SpeechRecognition may already be stopped.
+function getControllerVoiceInput() {
+  if (!controllerVoiceInput) {
+    controllerVoiceInput = window.createControllerVoiceInput({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      button: controllerVoiceButton,
+      hideViews: hideControllerViews,
+      introMessage: controllerIntroMessage,
+      introState: controllerIntroState,
+      status: controllerVoiceStatus,
+      submitText: submitControllerText
+    });
   }
-  controllerSpeechRecognition = null;
-}
-
-function renderControllerVoiceWaiting(lobby) {
-  stopControllerVoiceRecognition();
-  hideControllerViews();
-  controllerIntroState.classList.remove("hidden");
-  controllerIntroMessage.textContent = "Waiting for the VIP to answer";
-  applyControllerLayoutForPhase(lobby.phase || "lobby");
-}
-
-function resetControllerVoiceUi() {
-  controllerVoiceTranscript = "";
-  controllerVoiceButton.textContent = "Start Recording";
-  controllerVoiceButton.disabled = false;
-  controllerVoiceStatus.textContent = "Tap to record";
-}
-
-function startControllerVoiceInput(actionId) {
-  if (controllerVoiceListening) {
-    controllerVoiceListening = false;
-    controllerVoiceButton.disabled = true;
-    controllerVoiceStatus.textContent = "Finishing transcript";
-    try {
-      controllerSpeechRecognition?.stop();
-    } catch (error) {
-      controllerVoiceButton.disabled = false;
-      controllerVoiceStatus.textContent = "Could not stop recording";
-    }
-    return;
-  }
-  const Recognition = speechRecognitionConstructor();
-  if (!Recognition) {
-    controllerVoiceStatus.textContent = "Speech recognition is not available in this browser";
-    controllerVoiceButton.disabled = true;
-    return;
-  }
-  controllerVoiceTranscript = "";
-  controllerSpeechRecognition = new Recognition();
-  controllerSpeechRecognition.continuous = false;
-  controllerSpeechRecognition.interimResults = true;
-  controllerSpeechRecognition.lang = "en-US";
-  controllerSpeechRecognition.onresult = (event) => {
-    let finalText = "";
-    let interimText = "";
-    for (let index = event.resultIndex; index < event.results.length; index += 1) {
-      const transcript = event.results[index]?.[0]?.transcript || "";
-      if (event.results[index]?.isFinal) finalText += transcript;
-      else interimText += transcript;
-    }
-    if (finalText.trim()) controllerVoiceTranscript = `${controllerVoiceTranscript} ${finalText}`.trim();
-    controllerVoiceStatus.textContent = (controllerVoiceTranscript || interimText || "Listening").trim();
-  };
-  controllerSpeechRecognition.onerror = (event) => {
-    controllerVoiceListening = false;
-    controllerVoiceShouldSubmitOnEnd = false;
-    controllerVoiceStatus.textContent = event.error === "not-allowed" ? "Microphone access was blocked" : "Voice capture failed";
-    controllerVoiceButton.textContent = "Start Recording";
-    controllerVoiceButton.disabled = false;
-  };
-  controllerSpeechRecognition.onend = () => {
-    const transcript = controllerVoiceTranscript.trim();
-    const shouldSubmit = controllerVoiceShouldSubmitOnEnd;
-    controllerVoiceListening = false;
-    controllerVoiceShouldSubmitOnEnd = false;
-    controllerSpeechRecognition = null;
-    if (shouldSubmit && transcript) {
-      controllerVoiceButton.disabled = true;
-      controllerVoiceStatus.textContent = "Saving transcript";
-      submitControllerText(actionId, transcript);
-      return;
-    }
-    controllerVoiceButton.textContent = "Start Recording";
-    controllerVoiceButton.disabled = false;
-    controllerVoiceStatus.textContent = "No speech detected";
-  };
-  try {
-    controllerVoiceListening = true;
-    controllerVoiceShouldSubmitOnEnd = true;
-    controllerVoiceButton.textContent = "Stop Recording";
-    controllerVoiceStatus.textContent = "Listening";
-    controllerSpeechRecognition.start();
-  } catch (error) {
-    controllerVoiceListening = false;
-    controllerVoiceShouldSubmitOnEnd = false;
-    controllerSpeechRecognition = null;
-    controllerVoiceButton.textContent = "Start Recording";
-    controllerVoiceButton.disabled = false;
-    controllerVoiceStatus.textContent = "Could not start microphone";
-  }
+  return controllerVoiceInput;
 }
 
 function updateJoinButton() {
@@ -255,10 +162,10 @@ function renderControllerTextState(lobby, me) {
   if (!input) return false;
   const isVoiceInput = input.type === "voice" || input.mode === "voiceVip";
   if (isVoiceInput && !me.isVip) {
-    renderControllerVoiceWaiting(lobby);
+    getControllerVoiceInput().renderWaiting(lobby);
     return true;
   }
-  if (!isVoiceInput) stopControllerVoiceRecognition();
+  if (!isVoiceInput) getControllerVoiceInput().stopRecognition();
   hideControllerViews();
   controllerState.phaseActionId = input.actionId;
   controllerTextState.classList.remove("hidden");
@@ -285,12 +192,12 @@ function renderControllerTextState(lobby, me) {
     controllerTextDone.textContent = isVoiceInput ? `You said: ${me.answer?.text || ""}` : `You wrote: ${me.answer?.text || ""}`;
   } else if (showInvalid) {
     controllerTextInput.value = "";
-  } else if (isVoiceInput && !controllerVoiceListening) {
-    resetControllerVoiceUi();
+  } else if (isVoiceInput && !getControllerVoiceInput().isListening()) {
+    getControllerVoiceInput().resetUi();
   }
   controllerTextSubmitButton.disabled = controllerTextInput.value.trim().length === 0;
   controllerTextSubmitButton.onclick = () => submitControllerText(input.actionId);
-  controllerVoiceButton.onclick = () => startControllerVoiceInput(input.actionId);
+  controllerVoiceButton.onclick = () => getControllerVoiceInput().start(input.actionId);
   applyControllerLayoutForPhase(lobby.phase || "lobby");
   controllerTextDone.classList.toggle("hidden", !isDone);
   controllerTextInput.classList.toggle("hidden", isDone || isVoiceInput);
