@@ -640,15 +640,10 @@ function redoFlowChange() {
 
 function handleFlowHotkeys(event) {
   if (flowScreen.classList.contains("hidden")) return;
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
-    event.preventDefault();
-    if (event.shiftKey) {
-      redoFlowChange();
-    } else {
-      undoFlowChange();
-    }
-    return;
-  }
+  if (window.PartyGameToolAffordances?.handleToolHistoryHotkey(event, {
+    onUndo: undoFlowChange,
+    onRedo: redoFlowChange
+  })) return;
   window.PartyGameToolAffordances?.handleToolDeleteHotkey(event, {
     canDelete: () => Boolean(selectedFlowStateId || selectedFlowActionId || selectedFlowActionIds.size),
     onDelete: deleteFlowItem

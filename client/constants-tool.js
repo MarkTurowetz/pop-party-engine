@@ -70,13 +70,10 @@ function redoConstantsChange() {
 
 function handleConstantsHotkeys(event) {
   if (constantsScreen.classList.contains("hidden")) return;
-  if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
-  event.preventDefault();
-  if (event.shiftKey) {
-    redoConstantsChange();
-  } else {
-    undoConstantsChange();
-  }
+  window.PartyGameToolAffordances?.handleToolHistoryHotkey(event, {
+    onUndo: undoConstantsChange,
+    onRedo: redoConstantsChange
+  });
 }
 
 function commitGameConstants(nextConstants, { captureHistory = true, render = false } = {}) {

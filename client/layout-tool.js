@@ -277,15 +277,10 @@ function redoLayoutChange() {
 
 function handleLayoutHotkeys(event) {
   if (layoutScreen.classList.contains("hidden")) return;
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
-    event.preventDefault();
-    if (event.shiftKey) {
-      redoLayoutChange();
-    } else {
-      undoLayoutChange();
-    }
-    return;
-  }
+  if (window.PartyGameToolAffordances?.handleToolHistoryHotkey(event, {
+    onUndo: undoLayoutChange,
+    onRedo: redoLayoutChange
+  })) return;
   window.PartyGameToolAffordances?.handleToolDeleteHotkey(event, {
     canDelete: () => selectedEditableLayoutElements().length > 0,
     onDelete: removeSelectedLayoutObject

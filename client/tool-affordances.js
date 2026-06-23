@@ -124,6 +124,21 @@
     return true;
   }
 
+  function handleToolHistoryHotkey(event, options = {}) {
+    if (!eventIsMetaToggle(event) || String(event.key || "").toLowerCase() !== "z") return false;
+    if (event.altKey) return false;
+    if (typeof options.isEnabled === "function" && !options.isEnabled(event)) return false;
+    if (targetIsTextEditingControl(event.target, options.ignoreSelector)) return false;
+    const undo = options.onUndo;
+    const redo = options.onRedo;
+    if (!event.shiftKey && typeof undo !== "function") return false;
+    if (event.shiftKey && typeof redo !== "function") return false;
+    event.preventDefault();
+    if (event.shiftKey) redo(event);
+    else undo(event);
+    return true;
+  }
+
   function sortableDropPlacement(row, event, axis = "vertical") {
     const rect = row.getBoundingClientRect();
     if (axis === "horizontal") return event.clientX > rect.left + rect.width / 2;
@@ -537,6 +552,7 @@
     dragDeltaFromEvent,
     eventIsMetaToggle,
     handleToolDeleteHotkey,
+    handleToolHistoryHotkey,
     normalizeSelection,
     rectsIntersect,
     scaledValueFromPointer,

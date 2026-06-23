@@ -117,13 +117,10 @@ function redoHostAudioChange() {
 
 function handleHostAudioHotkeys(event) {
   if (hostAudioScreen.classList.contains("hidden")) return;
-  if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
-  event.preventDefault();
-  if (event.shiftKey) {
-    redoHostAudioChange();
-  } else {
-    undoHostAudioChange();
-  }
+  window.PartyGameToolAffordances?.handleToolHistoryHotkey(event, {
+    onUndo: undoHostAudioChange,
+    onRedo: redoHostAudioChange
+  });
 }
 
 function hostAudioDisplayName(hostAudioId) {

@@ -122,15 +122,10 @@ function redoArtCompositionChange() {
 
 function handleArtHotkeys(event) {
   if (artScreen.classList.contains("hidden")) return;
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
-    event.preventDefault();
-    if (event.shiftKey) {
-      redoArtCompositionChange();
-    } else {
-      undoArtCompositionChange();
-    }
-    return;
-  }
+  if (window.PartyGameToolAffordances?.handleToolHistoryHotkey(event, {
+    onUndo: undoArtCompositionChange,
+    onRedo: redoArtCompositionChange
+  })) return;
   window.PartyGameToolAffordances?.handleToolDeleteHotkey(event, {
     canDelete: () => selectedArtComponentIds.size > 0,
     onDelete: deleteSelectedArtComponents
