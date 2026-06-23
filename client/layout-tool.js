@@ -475,24 +475,19 @@ function renderLayoutPreview() {
       });
     }
     if (isEditableElement && selectedLayoutElementIds.has(element.id)) {
-      const handle = document.createElement("span");
-      handle.className = "layout-resize-handle";
-      handle.addEventListener("pointerdown", (event) => startLayoutScale(event, element));
-      node.appendChild(handle);
-      if (element.id === selectedLayoutElementId) {
-        node.appendChild(window.PartyGameToolAffordances.createRotationHandle({
-          targetElement: node,
-          origins: () => selectedEditableLayoutElements().map((item) => ({ id: item.id, rotation: Number(item.rotation || 0) })),
-          onStart: pushLayoutHistory,
-          onRotate: (items) => {
-            const byId = new Map(items.map((item) => [item.id, item.rotation]));
-            for (const item of selectedEditableLayoutElements()) {
-              item.rotation = Number(Number(byId.get(item.id) || 0).toFixed(3));
-            }
-            renderLayoutTool();
+      window.PartyGameToolAffordances.appendTransformHandles(node, {
+        primary: element.id === selectedLayoutElementId,
+        onResize: (event) => startLayoutScale(event, element),
+        rotationOrigins: () => selectedEditableLayoutElements().map((item) => ({ id: item.id, rotation: Number(item.rotation || 0) })),
+        onRotateStart: pushLayoutHistory,
+        onRotate: (items) => {
+          const byId = new Map(items.map((item) => [item.id, item.rotation]));
+          for (const item of selectedEditableLayoutElements()) {
+            item.rotation = Number(Number(byId.get(item.id) || 0).toFixed(3));
           }
-        }));
-      }
+          renderLayoutTool();
+        }
+      });
     }
     layoutStagePreview.appendChild(node);
   }

@@ -554,27 +554,22 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
     node.appendChild(artComponentPreviewNode(composition, child, childCanvas, childIndex, (component.children || []).length));
   }
   if (selectedArtComponentIds.has(component.id)) {
-    const handle = document.createElement("span");
-    handle.className = "layout-resize-handle";
-    handle.addEventListener("pointerdown", (event) => startArtComponentScale(event, component));
-    node.appendChild(handle);
-    if (component.id === selectedArtComponentId) {
-      node.appendChild(window.PartyGameToolAffordances.createRotationHandle({
-        targetElement: node,
-        origins: () => selectedArtComponents().map((item) => ({ id: item.id, rotation: Number(item.rotation || 0) })),
-        onRotate: (items) => {
-          const byId = new Map(items.map((item) => [item.id, item.rotation]));
-          for (const item of selectedArtComponents()) {
-            item.rotation = Number(Number(byId.get(item.id) || 0).toFixed(3));
-          }
-          renderSelectedArtComposition({ renderEditor: false });
-          renderArtList();
-          updateGlobalSaveButton();
-        },
-        onStart: pushArtHistory,
-        onEnd: () => renderSelectedArtComposition()
-      }));
-    }
+    window.PartyGameToolAffordances.appendTransformHandles(node, {
+      primary: component.id === selectedArtComponentId,
+      onResize: (event) => startArtComponentScale(event, component),
+      rotationOrigins: () => selectedArtComponents().map((item) => ({ id: item.id, rotation: Number(item.rotation || 0) })),
+      onRotateStart: pushArtHistory,
+      onRotate: (items) => {
+        const byId = new Map(items.map((item) => [item.id, item.rotation]));
+        for (const item of selectedArtComponents()) {
+          item.rotation = Number(Number(byId.get(item.id) || 0).toFixed(3));
+        }
+        renderSelectedArtComposition({ renderEditor: false });
+        renderArtList();
+        updateGlobalSaveButton();
+      },
+      onRotateEnd: () => renderSelectedArtComposition()
+    });
   }
   return node;
 }

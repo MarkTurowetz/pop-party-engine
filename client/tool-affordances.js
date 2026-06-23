@@ -458,10 +458,45 @@
     return handle;
   }
 
+  function createResizeHandle(options = {}) {
+    const handle = document.createElement("span");
+    handle.className = options.className || "layout-resize-handle";
+    handle.title = options.title || "Resize";
+    if (typeof options.onPointerDown === "function") {
+      handle.addEventListener("pointerdown", options.onPointerDown);
+    }
+    return handle;
+  }
+
+  function appendTransformHandles(target, options = {}) {
+    if (!target) return target;
+    if (options.resize !== false) {
+      target.appendChild(createResizeHandle({
+        className: options.resizeClassName,
+        title: options.resizeTitle,
+        onPointerDown: options.onResize
+      }));
+    }
+    if (options.primary) {
+      target.appendChild(createRotationHandle({
+        className: options.rotationClassName,
+        title: options.rotationTitle,
+        targetElement: target,
+        origins: options.rotationOrigins,
+        onStart: options.onRotateStart,
+        onRotate: options.onRotate,
+        onEnd: options.onRotateEnd
+      }));
+    }
+    return target;
+  }
+
   window.PartyGameToolAffordances = {
+    appendTransformHandles,
     bindToolRowActivation,
     bindSortableRow,
     bindScrollStableControls,
+    createResizeHandle,
     createRotationHandle,
     createToolAccordionRow,
     createDisclosureButton,
