@@ -44,8 +44,14 @@
     function drawExitWires(planner, nodeMaps, layer, action, fromNode) {
       for (const exit of context.flowNodeExitDefinitions?.(action) || []) {
         if (exit.targetKind === "state") continue;
-        const branch = exit.branchId ? context.decisionBranchById?.(action, exit.branchId) : null;
-        const targetId = branch ? branch.targetActionId : action[exit.field] || "";
+        const branchDescriptor = exit.branchId
+          ? context.flowNodeBranchDescriptors?.()?.descriptorsFor(null, action, {
+            targetField: exit.field || "targetActionId",
+            targetKind: exit.targetKind || "action"
+          }).find((item) => item.branch.id === exit.branchId)
+          : null;
+        const branch = branchDescriptor?.branch || null;
+        const targetId = branchDescriptor ? branchDescriptor.targetId : action[exit.field] || "";
         if (planner.isMissingTarget(targetId)) continue;
         const sourceNode = branch
           ? planner.branchSourceNode(layer, {
@@ -56,12 +62,12 @@
           : fromNode;
         const highlighted = selectedNodeWireMatches(action, branch?.id || "");
         const label = branch
-          ? context.decisionBranchWireLabel?.(branch, (context.ensureDecisionBranches?.(action) || []).findIndex((item) => item.id === branch.id)) || ""
+          ? context.decisionBranchWireLabel?.(branch, branchDescriptor?.index ?? (context.ensureDecisionBranches?.(action) || []).findIndex((item) => item.id === branch.id)) || ""
           : "";
         planner.drawTargetWire(nodeMaps, {
           fromNode: sourceNode,
           targetId,
-          targetKind: "action",
+          targetKind: branchDescriptor?.targetKind || "action",
           options: { highlighted, label }
         });
       }

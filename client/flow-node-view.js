@@ -280,13 +280,23 @@ function bindFlowNodeChildSort(item, parentAction, collectionName, childId, opti
 }
 
 function createFlowNodeBranches(state, action, options = {}) {
-  const targetField = options.targetField || "targetActionId";
-  const targetName = typeof options.targetName === "function" ? options.targetName : flowTargetActionName;
-  const branches = ensureDecisionBranches(action, { targetField });
-  if (!branches.length) return null;
+  const descriptorFactory = typeof getFlowNodeBranchDescriptors === "function" ? getFlowNodeBranchDescriptors() : null;
+  const descriptors = descriptorFactory?.descriptorsFor(state, action, options)
+    || (ensureDecisionBranches(action, { targetField: options.targetField || "targetActionId" }).map((branch, index) => ({
+      branch,
+      connection: options.sourceKind === "routeNode"
+        ? { sourceKind: "routeNode", routeNodeId: action.id, field: options.targetField || "targetActionId", branchId: branch.id, targetKind: options.targetKind || "momentGraph" }
+        : { sourceKind: "action", stateId: state?.id || "", actionId: action.id, field: options.targetField || "targetActionId", branchId: branch.id, targetKind: options.targetKind || "action" },
+      index,
+      label: decisionBranchName(branch, index),
+      sortOptions: { targetField: options.targetField || "targetActionId" },
+      targetLabel: branch[options.targetField || "targetActionId"] ? `-> ${branch[options.targetField || "targetActionId"]}` : "No Connection"
+    })));
+  if (!descriptors.length) return null;
   const list = document.createElement("div");
   list.className = "flow-node-subactions";
-  branches.forEach((branch, index) => {
+  descriptors.forEach((descriptor) => {
+    const { branch, connection } = descriptor;
     const item = document.createElement("button");
     item.type = "button";
     item.className = "flow-node-subaction flow-node-branch";
@@ -297,9 +307,9 @@ function createFlowNodeBranches(state, action, options = {}) {
       ? selectedFlowRouteNodeId === action.id && selectedFlowRouteBranchId === branch.id
       : flowActionIsSelected(branch.id));
     const title = document.createElement("strong");
-    title.textContent = decisionBranchName(branch, index);
+    title.textContent = descriptor.label;
     const target = document.createElement("span");
-    target.textContent = branch[targetField] ? `-> ${targetName(branch[targetField])}` : "No Connection";
+    target.textContent = descriptor.targetLabel;
     const dot = document.createElement("span");
     dot.className = "flow-node-port-dot";
     dot.draggable = false;
@@ -311,12 +321,9 @@ function createFlowNodeBranches(state, action, options = {}) {
       dot.dataset.actionId = action.id;
     }
     dot.dataset.branchId = branch.id;
-    dot.dataset.targetKind = options.targetKind || "action";
+    dot.dataset.targetKind = descriptor.targetKind || "action";
     dot.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
-      const connection = options.sourceKind === "routeNode"
-        ? { sourceKind: "routeNode", routeNodeId: action.id, field: targetField, branchId: branch.id, targetKind: options.targetKind || "momentGraph" }
-        : { sourceKind: "action", stateId: state.id, actionId: action.id, field: targetField, branchId: branch.id, targetKind: "action" };
       armFlowNodeConnection({
         connection: { ...connection, pointerId: event.pointerId, commandCreate: event.metaKey },
         dot,
@@ -328,7 +335,7 @@ function createFlowNodeBranches(state, action, options = {}) {
       event.stopPropagation();
     });
     item.append(title, target, dot);
-    bindFlowNodeChildSort(item, action, "branches", branch.id, { targetField });
+    bindFlowNodeChildSort(item, action, "branches", branch.id, descriptor.sortOptions);
     item.addEventListener("pointerdown", (event) => {
       if (!event.target.closest(".flow-node-port-dot")) event.stopPropagation();
     });

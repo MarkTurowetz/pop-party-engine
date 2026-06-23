@@ -362,6 +362,7 @@ let flowActionDefaults = null;
 let flowDecisionControls = null;
 let flowFormControls = null;
 let flowActionInspectorRegistry = null;
+let flowNodeBranchDescriptors = null;
 let flowNodeChildSortController = null;
 let flowNodeConnectionController = null;
 let flowNodeConnectionPlanner = null;
@@ -401,6 +402,17 @@ function getFlowMomentRouteGraph() {
   return flowMomentRouteGraph;
 }
 
+function getFlowNodeBranchDescriptors() {
+  if (!flowNodeBranchDescriptors && window.PartyGameFlowNodeBranchDescriptors) {
+    flowNodeBranchDescriptors = window.PartyGameFlowNodeBranchDescriptors.createFlowNodeBranchDescriptors({
+      decisionBranchName,
+      ensureDecisionBranches,
+      flowTargetActionName
+    });
+  }
+  return flowNodeBranchDescriptors;
+}
+
 function getFlowMomentRouteRenderer() {
   if (!flowMomentRouteRenderer && window.PartyGameFlowMomentRouteRenderer) {
     flowMomentRouteRenderer = window.PartyGameFlowMomentRouteRenderer.createMomentRouteRenderer({
@@ -415,6 +427,7 @@ function getFlowMomentRouteRenderer() {
       createFlowMomentRouteActionPorts,
       createFlowNode,
       createFlowNodeBranches,
+      createFlowNodeBranchDescriptors: () => getFlowNodeBranchDescriptors(),
       decisionBranchName,
       decisionVariableName,
       defaultNodePosition,
@@ -470,6 +483,7 @@ function getFlowMomentRouteWires() {
     flowMomentRouteWires = window.PartyGameFlowMomentRouteWires.createMomentRouteWires({
       decisionBranchWireLabel,
       ensureDecisionBranches,
+      flowNodeBranchDescriptors: () => getFlowNodeBranchDescriptors(),
       flowNodeLayer: () => flowNodeLayer,
       flowRouteNodes,
       gameStates: () => gameFlow.states || [],
@@ -534,6 +548,7 @@ function getFlowActionNodeWires() {
       ensureDecisionBranches,
       flowActionIsSelected,
       flowActionRef,
+      flowNodeBranchDescriptors: () => getFlowNodeBranchDescriptors(),
       flowNodeExitDefinitions,
       flowNodeLayer: () => flowNodeLayer,
       flowState,

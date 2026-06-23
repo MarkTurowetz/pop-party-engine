@@ -26,8 +26,13 @@
     }
 
     function drawRouteDecisionWires(planner, nodeMaps, layer, routeNode, fromNode) {
-      const branches = context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" }) || [];
-      for (const [index, branch] of branches.entries()) {
+      const descriptors = context.flowNodeBranchDescriptors?.()?.descriptorsFor(null, routeNode, {
+        sourceKind: "routeNode",
+        targetField: "targetNodeId",
+        targetKind: "momentGraph"
+      }) || [];
+      for (const descriptor of descriptors) {
+        const { branch } = descriptor;
         const sourceNode = planner.branchSourceNode(layer, {
           branchId: branch.id,
           sourceId: routeNode.id,
@@ -35,12 +40,12 @@
         }, fromNode);
         planner.drawTargetWire(nodeMaps, {
           fromNode: sourceNode,
-          targetId: branch.targetNodeId,
-          targetKind: "momentGraph",
+          targetId: descriptor.targetId,
+          targetKind: descriptor.targetKind,
           options: {
             highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id
               && (!context.selectedFlowRouteBranchId?.() || context.selectedFlowRouteBranchId?.() === branch.id),
-            label: context.decisionBranchWireLabel?.(branch, index) || ""
+            label: context.decisionBranchWireLabel?.(branch, descriptor.index) || ""
           }
         });
       }
