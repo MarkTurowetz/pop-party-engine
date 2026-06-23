@@ -1,15 +1,7 @@
-let controllerAvatarView = null;
-let controllerVoiceInput = null;
-let controllerChoiceInputView = null;
-let controllerHeartbeatRuntime = null;
-let controllerLobbyView = null;
-let controllerSessionRuntime = null;
-let controllerSubmitApi = null;
-let controllerTextInputView = null;
+const controllerModules = window.createControllerModuleCache();
 
 function getControllerAvatarView() {
-  if (!controllerAvatarView) {
-    controllerAvatarView = window.createControllerAvatarView({
+  return controllerModules.get("avatarView", () => window.createControllerAvatarView({
       avatarClass,
       avatarComposites,
       avatarFrameImage,
@@ -32,14 +24,11 @@ function getControllerAvatarView() {
         controllerMeta.textContent = value;
       },
       updateAvatar: (shape) => getControllerSubmitApi().updateAvatar(shape)
-    });
-  }
-  return controllerAvatarView;
+    }));
 }
 
 function getControllerVoiceInput() {
-  if (!controllerVoiceInput) {
-    controllerVoiceInput = window.createControllerVoiceInput({
+  return controllerModules.get("voiceInput", () => window.createControllerVoiceInput({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       button: controllerVoiceButton,
       hideViews: hideControllerViews,
@@ -47,14 +36,11 @@ function getControllerVoiceInput() {
       introState: controllerIntroState,
       status: controllerVoiceStatus,
       submitText: submitControllerText
-    });
-  }
-  return controllerVoiceInput;
+    }));
 }
 
 function getControllerChoiceInputView() {
-  if (!controllerChoiceInputView) {
-    controllerChoiceInputView = window.createControllerChoiceInputView({
+  return controllerModules.get("choiceInputView", () => window.createControllerChoiceInputView({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       bindPress: bindButtonPress,
       elements: {
@@ -65,14 +51,11 @@ function getControllerChoiceInputView() {
       },
       hideViews: hideControllerViews,
       submitChoice: submitControllerChoice
-    });
-  }
-  return controllerChoiceInputView;
+    }));
 }
 
 function getControllerHeartbeatRuntime() {
-  if (!controllerHeartbeatRuntime) {
-    controllerHeartbeatRuntime = window.createControllerHeartbeatRuntime({
+  return controllerModules.get("heartbeatRuntime", () => window.createControllerHeartbeatRuntime({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       closeAvatarPicker,
       elements: {
@@ -87,14 +70,11 @@ function getControllerHeartbeatRuntime() {
       setControllerState: (value) => {
         controllerState = value;
       }
-    });
-  }
-  return controllerHeartbeatRuntime;
+    }));
 }
 
 function getControllerLobbyView() {
-  if (!controllerLobbyView) {
-    controllerLobbyView = window.createControllerLobbyView({
+  return controllerModules.get("lobbyView", () => window.createControllerLobbyView({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       elements: {
         introPresentButton,
@@ -106,14 +86,11 @@ function getControllerLobbyView() {
       },
       hideViews: hideControllerViews,
       setAvatar: setControllerAvatar
-    });
-  }
-  return controllerLobbyView;
+    }));
 }
 
 function getControllerTextInputView() {
-  if (!controllerTextInputView) {
-    controllerTextInputView = window.createControllerTextInputView({
+  return controllerModules.get("textInputView", () => window.createControllerTextInputView({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       dismissedInvalidKey: () => dismissedTextInvalidKey,
       elements: {
@@ -132,24 +109,18 @@ function getControllerTextInputView() {
         controllerState.phaseActionId = actionId;
       },
       submitText: submitControllerText
-    });
-  }
-  return controllerTextInputView;
+    }));
 }
 
 function getControllerSubmitApi() {
-  if (!controllerSubmitApi) {
-    controllerSubmitApi = window.createControllerSubmitApi({
+  return controllerModules.get("submitApi", () => window.createControllerSubmitApi({
       getControllerState: () => controllerState,
       postJson
-    });
-  }
-  return controllerSubmitApi;
+    }));
 }
 
 function getControllerSessionRuntime() {
-  if (!controllerSessionRuntime) {
-    controllerSessionRuntime = window.createControllerSessionRuntime({
+  return controllerModules.get("sessionRuntime", () => window.createControllerSessionRuntime({
       elements: {
         joinState,
         lobbyState: controllerLobbyState
@@ -162,9 +133,7 @@ function getControllerSessionRuntime() {
       },
       setLocalValue,
       setSessionValue
-    });
-  }
-  return controllerSessionRuntime;
+    }));
 }
 
 function updateJoinButton() {
