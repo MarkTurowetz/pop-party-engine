@@ -281,16 +281,21 @@ function bindFlowNodeChildSort(item, parentAction, collectionName, childId, opti
 
 function createFlowNodeBranches(state, action, options = {}) {
   const descriptorFactory = typeof getFlowNodeBranchDescriptors === "function" ? getFlowNodeBranchDescriptors() : null;
+  const graphBranchOptions = window.PartyGameFlowNodeGraphSchema?.branchOptions?.(options) || {
+    sourceKind: options.sourceKind === "routeNode" ? "routeNode" : "action",
+    targetField: options.targetField || (options.sourceKind === "routeNode" ? "targetNodeId" : "targetActionId"),
+    targetKind: options.targetKind || (options.sourceKind === "routeNode" ? "momentGraph" : "action")
+  };
   const descriptors = descriptorFactory?.descriptorsFor(state, action, options)
-    || (ensureDecisionBranches(action, { targetField: options.targetField || "targetActionId" }).map((branch, index) => ({
+    || (ensureDecisionBranches(action, { targetField: graphBranchOptions.targetField }).map((branch, index) => ({
       branch,
-      connection: options.sourceKind === "routeNode"
-        ? { sourceKind: "routeNode", routeNodeId: action.id, field: options.targetField || "targetActionId", branchId: branch.id, targetKind: options.targetKind || "momentGraph" }
-        : { sourceKind: "action", stateId: state?.id || "", actionId: action.id, field: options.targetField || "targetActionId", branchId: branch.id, targetKind: options.targetKind || "action" },
+      connection: graphBranchOptions.sourceKind === "routeNode"
+        ? { sourceKind: "routeNode", routeNodeId: action.id, field: graphBranchOptions.targetField, branchId: branch.id, targetKind: graphBranchOptions.targetKind }
+        : { sourceKind: "action", stateId: state?.id || "", actionId: action.id, field: graphBranchOptions.targetField, branchId: branch.id, targetKind: graphBranchOptions.targetKind },
       index,
       label: decisionBranchName(branch, index),
-      sortOptions: { targetField: options.targetField || "targetActionId" },
-      targetLabel: branch[options.targetField || "targetActionId"] ? `-> ${branch[options.targetField || "targetActionId"]}` : "No Connection"
+      sortOptions: { targetField: graphBranchOptions.targetField },
+      targetLabel: branch[graphBranchOptions.targetField] ? `-> ${branch[graphBranchOptions.targetField]}` : "No Connection"
     })));
   if (!descriptors.length) return null;
   const list = document.createElement("div");

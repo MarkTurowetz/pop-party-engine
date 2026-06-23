@@ -3,6 +3,15 @@
 
   function createMomentRouteGraph(context) {
     const routeNodeTypes = window.PartyGameFlowMomentRouteNodeTypes;
+    const nodeGraphSchema = window.PartyGameFlowNodeGraphSchema;
+
+    function routeBranchTargetField() {
+      return nodeGraphSchema?.forDepth?.("moments")?.branchTargetField || "targetNodeId";
+    }
+
+    function routeDecisionBranches(node) {
+      return context.ensureDecisionBranches?.(node, { targetField: routeBranchTargetField() }) || [];
+    }
 
     function gameFlow() {
       return context.gameFlow?.() || { states: [], routeNodes: [] };
@@ -120,12 +129,12 @@
           ...base,
           variable: node.variable || "activePlayerCount",
           valueType: node.valueType || "int",
-          branches: context.ensureDecisionBranches?.(node, { targetField: "targetNodeId" }).map((branch) => ({
+          branches: routeDecisionBranches(node).map((branch) => ({
             id: branch.id,
             type: branch.type,
             value: branch.value || "",
             code: branch.code || "",
-            targetNodeId: branch.targetNodeId || ""
+            [routeBranchTargetField()]: branch[routeBranchTargetField()] || ""
           })) || []
         };
       }
@@ -142,12 +151,12 @@
           serialized.nextTargetNodeId = "";
           serialized.variable = node.variable || "activePlayerCount";
           serialized.valueType = node.valueType || "int";
-          serialized.branches = context.ensureDecisionBranches?.(node, { targetField: "targetNodeId" }).map((branch) => ({
+          serialized.branches = routeDecisionBranches(node).map((branch) => ({
             id: branch.id,
             type: branch.type,
             value: branch.value || "",
             code: branch.code || "",
-            targetNodeId: branch.targetNodeId || ""
+            [routeBranchTargetField()]: branch[routeBranchTargetField()] || ""
           })) || [];
           return serialized;
         }
@@ -169,8 +178,9 @@
       for (const node of routeNodes()) {
         if (targetSet.has(node.targetStateId)) node.targetStateId = "";
         if (isRouteDecisionNode(node)) {
-          for (const branch of context.ensureDecisionBranches?.(node, { targetField: "targetNodeId" }) || []) {
-            if (targetSet.has(branch.targetNodeId)) branch.targetNodeId = "";
+          for (const branch of routeDecisionBranches(node)) {
+            const targetField = routeBranchTargetField();
+            if (targetSet.has(branch[targetField])) branch[targetField] = "";
           }
         }
         if (node.routeNodeType === "action" && node.type !== "decision" && targetSet.has(node.nextTargetNodeId)) node.nextTargetNodeId = "";

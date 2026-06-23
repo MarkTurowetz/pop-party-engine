@@ -3,6 +3,29 @@
 
   function createMomentRouteRenderer(context) {
     const routeNodeTypes = window.PartyGameFlowMomentRouteNodeTypes;
+    const nodeGraphSchema = window.PartyGameFlowNodeGraphSchema;
+
+    function routeBranchOptions(options = {}) {
+      if (nodeGraphSchema?.branchOptions) return nodeGraphSchema.branchOptions({ depth: "moments", ...options });
+      return {
+        sourceKind: "routeNode",
+        targetField: "targetNodeId",
+        targetKind: "momentGraph",
+        targetName: options.targetName || null
+      };
+    }
+
+    function routeBranchTargetField() {
+      return routeBranchOptions().targetField;
+    }
+
+    function routeDecisionBranches(routeNode) {
+      return context.ensureDecisionBranches?.(routeNode, { targetField: routeBranchTargetField() }) || [];
+    }
+
+    function routeBranchTarget(branch) {
+      return branch?.[routeBranchTargetField()] || "";
+    }
 
     function isRouteDecisionNode(routeNode) {
       if (routeNodeTypes?.isDecision) return routeNodeTypes.isDecision(routeNode);
@@ -26,8 +49,8 @@
           routeNode,
           context.defaultNodePosition?.(index, 2, 860, isDecision ? 360 : isOrdinaryAction ? 600 : 80, 360, 240) || { x: 860, y: isDecision ? 360 : isOrdinaryAction ? 600 : 80 }
         ) || { x: 860, y: isDecision ? 360 : isAction ? 600 : 80 };
-        const branches = isDecision ? context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" }) || [] : [];
-        const missingBranchTarget = branches.some((branch) => !branch.targetNodeId || context.isNoFlowTarget?.(branch.targetNodeId));
+        const branches = isDecision ? routeDecisionBranches(routeNode) : [];
+        const missingBranchTarget = branches.some((branch) => !routeBranchTarget(branch) || context.isNoFlowTarget?.(routeBranchTarget(branch)));
         const targetName = routeNode.targetStateId ? context.flowStateName?.(routeNode.targetStateId) : "No target";
         const node = context.createFlowNode?.({
           id: routeNode.id,
@@ -54,12 +77,7 @@
         node.dataset.routeNodeId = routeNode.id;
         delete node.dataset.nodeId;
         const childList = isDecision
-          ? context.createFlowNodeBranches?.(null, routeNode, {
-              sourceKind: "routeNode",
-              targetField: "targetNodeId",
-              targetKind: "momentGraph",
-              targetName: context.flowRouteTargetName
-            })
+          ? context.createFlowNodeBranches?.(null, routeNode, routeBranchOptions({ targetName: context.flowRouteTargetName }))
           : null;
         if (childList) node.appendChild(childList);
         if (isOrdinaryAction) {
@@ -137,7 +155,7 @@
         context.refreshFlowNodeInspectorChange?.();
       }, context.refreshFlowNodeInspectorChange) || document.createTextNode(""));
       context.appendDecisionControls?.(inspector, state, routeNode, routeInspectorChangeHandlers().decisionChange, {
-        targetField: "targetNodeId",
+        targetField: routeBranchTargetField(),
         targetOptions: routeTargetOptions(routeNode)
       });
       inspector.appendChild(context.readOnlyFlowNote?.("Decision actions do not use timing. They evaluate branches in order and wait forever if the selected branch has no connection."));
@@ -148,13 +166,13 @@
         routeNode.nextTargetNodeId = routeNode.nextTargetActionId;
       }
       if (routeNode.type === "decision") {
-        context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" });
+        routeDecisionBranches(routeNode);
       }
       const state = routeInspectorState(routeNode);
       context.appendActionPropertyControls?.(inspector, state, routeActionRef(routeNode, state), {
         ...routeInspectorChangeHandlers(),
         actionTypeOptions: routeActionTypeOptions,
-        decisionTargetField: "targetNodeId",
+        decisionTargetField: routeBranchTargetField(),
         excludeNextActionTypes: ["voteOnAnswersInput"],
         nextTargetField: "nextTargetNodeId",
         nextTargetLabel: "Next",
@@ -165,7 +183,7 @@
     }
 
     function renderRouteBranchInspector(inspector, routeNode, branch) {
-      const branches = context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" }) || [];
+      const branches = routeDecisionBranches(routeNode);
       const branchIndex = branches.findIndex((item) => item.id === branch.id);
       if (branchIndex < 0) return false;
       const liveBranch = branches[branchIndex];
@@ -184,7 +202,7 @@
         context.renderFlowListAndPublish?.();
         context.redrawFlowNodeWires?.();
       }, {
-        targetField: "targetNodeId",
+        targetField: routeBranchTargetField(),
         targetOptions: routeTargetOptions(routeNode)
       });
       inspector.appendChild(context.flowActionButton?.("Edit Full Decision", () => {
@@ -215,7 +233,7 @@
       if (!isRouteDecision && !isRouteAction && !routeNode.targetStateId) {
         inspector.appendChild(context.readOnlyFlowNote?.("Warning: this Moment Entry needs a target or any future path that reaches it will hang."));
       }
-      if (isRouteDecision && (context.ensureDecisionBranches?.(routeNode, { targetField: "targetNodeId" }) || []).some((branch) => !branch.targetNodeId || context.isNoFlowTarget?.(branch.targetNodeId))) {
+      if (isRouteDecision && routeDecisionBranches(routeNode).some((branch) => !routeBranchTarget(branch) || context.isNoFlowTarget?.(routeBranchTarget(branch)))) {
         inspector.appendChild(context.readOnlyFlowNote?.("Warning: every decision branch should target a moment-layer node, or that branch will halt."));
       }
       if (!isRouteAction && !isRouteDecision) {

@@ -97,6 +97,10 @@ function flowRouteNode(routeNodeId) {
   return getFlowMomentRouteGraph()?.routeNode(routeNodeId) || null;
 }
 
+function flowRouteBranchTargetField() {
+  return window.PartyGameFlowNodeGraphSchema?.forDepth?.("moments")?.branchTargetField || "targetNodeId";
+}
+
 function selectedFlowRouteNode() {
   return flowRouteNode(selectedFlowRouteNodeId);
 }
@@ -104,7 +108,7 @@ function selectedFlowRouteNode() {
 function selectedFlowRouteBranch() {
   const routeNode = selectedFlowRouteNode();
   if (!routeNode || !selectedFlowRouteBranchId) return null;
-  return decisionBranchById(routeNode, selectedFlowRouteBranchId, { targetField: "targetNodeId" }) || null;
+  return decisionBranchById(routeNode, selectedFlowRouteBranchId, { targetField: flowRouteBranchTargetField() }) || null;
 }
 
 function repairSelectedFlowRouteBranch() {
@@ -127,7 +131,7 @@ function selectFlowRouteNode(routeNodeId) {
 
 function selectFlowRouteBranch(routeNodeId, branchId) {
   const routeNode = flowRouteNode(routeNodeId);
-  const branch = routeNode ? decisionBranchById(routeNode, branchId, { targetField: "targetNodeId" }) : null;
+  const branch = routeNode ? decisionBranchById(routeNode, branchId, { targetField: flowRouteBranchTargetField() }) : null;
   selectedFlowRouteNodeId = branch ? routeNode.id : "";
   selectedFlowRouteBranchId = branch?.id || "";
   clearFlowActionSelection();
@@ -1786,7 +1790,8 @@ function deleteSelectedFlowRouteNode() {
     return false;
   }
   if (selectedFlowRouteBranchId) {
-    const branch = decisionBranchById(routeNode, selectedFlowRouteBranchId, { targetField: "targetNodeId" });
+    const targetField = flowRouteBranchTargetField();
+    const branch = decisionBranchById(routeNode, selectedFlowRouteBranchId, { targetField });
     if (!branch) {
       selectedFlowRouteBranchId = "";
       renderFlowTool();
@@ -1794,8 +1799,8 @@ function deleteSelectedFlowRouteNode() {
     }
     if (branch.type === "noMatch") return true;
     pushFlowHistory();
-    routeNode.branches = ensureDecisionBranches(routeNode, { targetField: "targetNodeId" }).filter((item) => item.id !== selectedFlowRouteBranchId);
-    ensureDecisionBranches(routeNode, { targetField: "targetNodeId" });
+    routeNode.branches = ensureDecisionBranches(routeNode, { targetField }).filter((item) => item.id !== selectedFlowRouteBranchId);
+    ensureDecisionBranches(routeNode, { targetField });
     selectedFlowRouteBranchId = "";
     renderFlowTool();
     return true;

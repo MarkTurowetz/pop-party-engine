@@ -3,6 +3,17 @@
 
   function createMomentRouteWires(context) {
     const routeNodeTypes = window.PartyGameFlowMomentRouteNodeTypes;
+    const nodeGraphSchema = window.PartyGameFlowNodeGraphSchema;
+
+    function routeBranchOptions(options = {}) {
+      if (nodeGraphSchema?.branchOptions) return nodeGraphSchema.branchOptions({ depth: "moments", ...options });
+      return {
+        sourceKind: "routeNode",
+        targetField: "targetNodeId",
+        targetKind: "momentGraph",
+        ...options
+      };
+    }
 
     function isRouteDecisionNode(routeNode) {
       if (routeNodeTypes?.isDecision) return routeNodeTypes.isDecision(routeNode);
@@ -34,9 +45,7 @@
 
     function drawRouteDecisionWires(planner, nodeMaps, layer, routeNode, fromNode) {
       const descriptors = context.flowNodeBranchDescriptors?.()?.descriptorsFor(null, routeNode, {
-        sourceKind: "routeNode",
-        targetField: "targetNodeId",
-        targetKind: "momentGraph"
+        ...routeBranchOptions()
       }) || [];
       for (const descriptor of descriptors) {
         const { branch } = descriptor;

@@ -2,17 +2,29 @@
   "use strict";
 
   function createFlowNodeBranchDescriptors(context) {
+    const graphSchema = window.PartyGameFlowNodeGraphSchema;
+
+    function branchOptions(options = {}) {
+      if (graphSchema?.branchOptions) return graphSchema.branchOptions(options);
+      const sourceKind = options.sourceKind === "routeNode" ? "routeNode" : "action";
+      return {
+        sourceKind,
+        targetField: options.targetField || (sourceKind === "routeNode" ? "targetNodeId" : "targetActionId"),
+        targetKind: options.targetKind || (sourceKind === "routeNode" ? "momentGraph" : "action"),
+        targetName: options.targetName || null
+      };
+    }
+
     function branchTargetField(options = {}) {
-      return options.targetField || "targetActionId";
+      return branchOptions(options).targetField;
     }
 
     function branchSourceKind(options = {}) {
-      return options.sourceKind === "routeNode" ? "routeNode" : "action";
+      return branchOptions(options).sourceKind;
     }
 
     function branchTargetKind(options = {}) {
-      if (options.targetKind) return options.targetKind;
-      return branchSourceKind(options) === "routeNode" ? "momentGraph" : "action";
+      return branchOptions(options).targetKind;
     }
 
     function ensureBranches(action, options = {}) {
@@ -20,7 +32,9 @@
     }
 
     function targetNameFor(options = {}) {
+      const normalizedOptions = branchOptions(options);
       if (typeof options.targetName === "function") return options.targetName;
+      if (typeof normalizedOptions.targetName === "function") return normalizedOptions.targetName;
       return context.flowTargetActionName || ((targetId) => targetId || "No Connection");
     }
 
