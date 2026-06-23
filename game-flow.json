@@ -1055,7 +1055,7 @@
       "id": "voice-moment",
       "name": "Voice Moment",
       "nextStateTargetId": "voting-moment",
-      "entryTargetActionId": "voice-mic-access",
+      "entryTargetActionId": "voice-moment-action-mqpsey1p",
       "nodePositions": {
         "start": {
           "x": 360,
@@ -1106,11 +1106,11 @@
           "prompt": "Give microphone access to the game",
           "buttonLabel": "Yes",
           "microphoneAccessMode": "vip",
-          "microphoneAccessGrantedTargetActionId": "voice-moment-action-mqpsey1p",
+          "microphoneAccessGrantedTargetActionId": "voice-show-prompt",
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 6
+            "y": 514
           }
         },
         {
@@ -1129,7 +1129,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 514
+            "y": 768
           }
         },
         {
@@ -1146,7 +1146,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 768
+            "y": 1022
           }
         },
         {
@@ -1161,7 +1161,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1022
+            "y": 1276
           }
         },
         {
@@ -1180,7 +1180,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1276
+            "y": 1530
           }
         },
         {
@@ -1198,7 +1198,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1530
+            "y": 1784
           },
           "nextTargetActionId": "voice-moment-action-mqpt6uvj"
         },
@@ -1219,7 +1219,7 @@
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "voice-show-prompt"
+          "nextTargetActionId": "voice-mic-access"
         },
         {
           "id": "voice-moment-action-mqpt6uvj",
@@ -1236,7 +1236,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1784
+            "y": 2038
           },
           "nextTargetActionId": "return"
         }
@@ -1247,7 +1247,7 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 2038
+        "y": 2292
       },
       "nodePosition": {
         "x": 811,
