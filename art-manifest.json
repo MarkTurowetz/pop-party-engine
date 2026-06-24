@@ -200,6 +200,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -222,6 +223,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -232,7 +234,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-24T01:35:02.527Z"
+      "updatedAt": "2026-06-24T04:03:17.332Z"
     },
     "player-avatar-trike": {
       "name": "Trike Avatar",
