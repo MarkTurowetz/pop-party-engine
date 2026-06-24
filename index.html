@@ -1445,8 +1445,8 @@
 
     .avatar-art-mask {
       background: currentColor;
-      -webkit-mask: var(--avatar-mask-url) center / var(--avatar-component-fit, cover) no-repeat;
-      mask: var(--avatar-mask-url) center / var(--avatar-component-fit, cover) no-repeat;
+      -webkit-mask: var(--avatar-mask-url) center / var(--avatar-component-fit, contain) no-repeat;
+      mask: var(--avatar-mask-url) center / var(--avatar-component-fit, contain) no-repeat;
       filter: drop-shadow(3px 3px 0 rgba(23, 19, 31, 0.5));
     }
 
@@ -1455,6 +1455,7 @@
       height: 100%;
       object-fit: var(--avatar-component-fit, contain);
       object-position: center;
+      display: block;
     }
 
     .player-name {
@@ -2414,6 +2415,7 @@
     .art-composition-component {
       position: absolute;
       display: block;
+      box-sizing: border-box;
       transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       transform-origin: center;
       border: 2px dashed rgba(23, 19, 31, 0.45);
@@ -4371,8 +4373,19 @@
       justify-content: flex-end;
     }
 
-    .host-audio-line-actions .secondary-button {
+    .host-audio-line-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      padding-top: 2px;
+    }
+
+    .host-audio-line-actions .secondary-button,
+    .host-audio-line-toolbar .secondary-button {
       min-height: 32px;
+      max-height: 36px;
       padding: 0 10px;
       border-width: 3px;
       border-radius: 8px;

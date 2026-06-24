@@ -410,21 +410,25 @@ function createHostAudioLineCard(line, index) {
   urlInput.addEventListener("change", () => updateHostAudioLine(line.id, { url: urlInput.value.trim().slice(0, 2000) }));
   urlField.appendChild(urlInput);
 
-  const actions = isSelected ? [
-    hostAudioLineActionButton("↑", () => moveHostAudioLine(line.id, -1), {
-      title: "Move line up",
-      ariaLabel: "Move line up",
-      disabled: index <= 0
-    }),
-    hostAudioLineActionButton("↓", () => moveHostAudioLine(line.id, 1), {
-      title: "Move line down",
-      ariaLabel: "Move line down",
-      disabled: index >= (selectedHostAudio()?.lines || []).length - 1
-    }),
-    hostAudioLineActionButton("Play"),
-    hostAudioLineActionButton("Stop"),
-    hostAudioLineActionButton("Delete", () => removeHostAudioLine(line.id))
-  ] : [];
+  const toolbar = document.createElement("div");
+  toolbar.className = "host-audio-line-toolbar";
+  if (isSelected) {
+    toolbar.append(
+      hostAudioLineActionButton("↑", () => moveHostAudioLine(line.id, -1), {
+        title: "Move line up",
+        ariaLabel: "Move line up",
+        disabled: index <= 0
+      }),
+      hostAudioLineActionButton("↓", () => moveHostAudioLine(line.id, 1), {
+        title: "Move line down",
+        ariaLabel: "Move line down",
+        disabled: index >= (selectedHostAudio()?.lines || []).length - 1
+      }),
+      hostAudioLineActionButton("Play"),
+      hostAudioLineActionButton("Stop"),
+      hostAudioLineActionButton("Delete", () => removeHostAudioLine(line.id))
+    );
+  }
 
   const { row: card } = window.PartyGameToolAffordances.createToolAccordionRow({
     className: "host-audio-line-card",
@@ -438,8 +442,8 @@ function createHostAudioLineCard(line, index) {
     dataset: { lineId: line.id },
     title: `Line ${index + 1}`,
     summary: hostAudioLinePreview(line),
-    actions,
-    fields: [textField, urlField],
+    actions: [],
+    fields: isSelected ? [textField, urlField, toolbar] : [textField, urlField],
     onActivate: () => selectHostAudioLine(line.id)
   });
   card.addEventListener("dragstart", (event) => {

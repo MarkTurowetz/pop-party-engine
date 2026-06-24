@@ -13,6 +13,7 @@ function createLayoutNormalizationRuntime({
     return {
       id: normalizeFlowId(state.id || state.name, fallbackId),
       name: cleanFlowText(state.name, state.id || fallbackId),
+      hiddenInStates: state.id === "global" || stateIndex < 0 ? state.hiddenInStates === true : false,
       hiddenGlobals: Array.isArray(state.hiddenGlobals)
         ? [...new Set(state.hiddenGlobals.map((id) => normalizeFlowId(id, "")).filter(Boolean))]
         : null,

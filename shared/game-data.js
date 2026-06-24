@@ -164,6 +164,7 @@ const defaultStageLayouts = {
   global: {
     id: "global",
     name: "Global Layout",
+    hiddenInStates: false,
     elements: [
       { id: "stageCodeBadge", name: "Small Room Code Widget", selector: "#stageCodeBadge", x: 108, y: 70, width: 170, height: 82, scale: 1 },
       { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", x: 1780, y: 930, width: 90, height: 90, scale: 1 },
@@ -201,6 +202,7 @@ const defaultControllerLayouts = {
   global: {
     id: "global",
     name: "Global Layout",
+    hiddenInStates: false,
     elements: [
       { id: "controllerPlayerBanner", name: "Player Banner", selector: "#controllerPlayerBanner", x: 195, y: 58, width: 338, height: 78, scale: 1 }
     ]

@@ -98,7 +98,9 @@ function applyControllerLayoutForPhase(phase) {
     applyControllerElementLayout(element);
   }
   const hiddenGlobals = new Set(state.hiddenGlobals || []);
-  for (const element of globalControllerLayout().elements || []) {
+  const globalLayout = globalControllerLayout();
+  if (globalLayout.hiddenInStates === true) return;
+  for (const element of globalLayout.elements || []) {
     if (hiddenGlobals.has(element.id)) continue;
     applyControllerElementLayout(element);
   }
@@ -210,7 +212,15 @@ function applyStageLayoutForPhase(phase) {
     applyStageElementLayout(element, false);
   }
   const hiddenGlobals = new Set(state.hiddenGlobals || []);
-  for (const element of globalStageLayout().elements || []) {
+  const globalLayout = globalStageLayout();
+  if (globalLayout.hiddenInStates === true) {
+    for (const element of globalLayout.elements || []) {
+      const target = stageLayoutTargetElement(element);
+      if (target) target.classList.add("stage-layout-hidden");
+    }
+    return;
+  }
+  for (const element of globalLayout.elements || []) {
     if (hiddenGlobals.has(element.id)) {
       const target = stageLayoutTargetElement(element);
       if (target) target.classList.add("stage-layout-hidden");

@@ -6,6 +6,7 @@
   "global": {
     "id": "global",
     "name": "Global Layout",
+    "hiddenInStates": false,
     "elements": [
       {
         "id": "controllerPlayerBanner",

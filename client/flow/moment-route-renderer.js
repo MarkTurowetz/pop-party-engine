@@ -102,10 +102,18 @@
     }
 
     function routeInspectorState(routeNode) {
+      const routeTargets = (context.flowRouteNodes?.() || []).filter((node) => node.id !== routeNode.id);
+      const stateTargets = (context.gameStates?.() || []).filter((state) => state.id !== routeNode.id);
+      const seen = new Set();
+      const actions = [...routeTargets, ...stateTargets].filter((item) => {
+        if (!item?.id || seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
       return {
         id: context.selectedFlowStateId?.() || "moment-route",
         name: "Moment Graph",
-        actions: (context.flowRouteNodes?.() || []).filter((node) => node.id !== routeNode.id)
+        actions
       };
     }
 

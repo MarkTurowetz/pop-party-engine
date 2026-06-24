@@ -70,6 +70,7 @@ function serializeLayoutGroup(group) {
   return {
     id: group.id,
     name: group.name,
+    hiddenInStates: group.id === "global" ? group.hiddenInStates === true : false,
     hiddenGlobals: Array.isArray(group.hiddenGlobals) ? [...group.hiddenGlobals] : [],
     elements: (group.elements || []).map((element) => ({
       id: element.id,
@@ -342,6 +343,7 @@ function renderLayoutStates() {
       title: state.name,
       summary: state.id,
       pill: `${state.elements?.length || 0} assets`,
+      leadingNodes: state.id === "global" ? [globalLayerVisibilityToggle()] : [],
       onActivate: selectState
     });
     layoutStateList.appendChild(row);
@@ -396,6 +398,24 @@ function layoutVisibilityToggle(elementId, stateId) {
   return button;
 }
 
+function globalLayerVisibilityToggle() {
+  const global = activeGlobalLayout();
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "layout-visibility-toggle";
+  button.classList.toggle("is-hidden", global.hiddenInStates === true);
+  button.title = global.hiddenInStates === true ? "Show global layer in layouts" : "Hide global layer in layouts";
+  button.innerHTML = `<span class="layout-eye-icon" aria-hidden="true"></span>`;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    pushLayoutHistory();
+    activeGlobalLayout().hiddenInStates = activeGlobalLayout().hiddenInStates !== true;
+    renderLayoutTool();
+  });
+  return button;
+}
+
 function renderLayoutElements() {
   const scrollTop = layoutElementList.scrollTop;
   layoutElementList.replaceChildren();
@@ -432,9 +452,10 @@ function renderLayoutPreview() {
   layoutStagePreview.classList.toggle("is-controller-preview", layoutToolMode === "controller");
   const state = layoutGroup(selectedLayoutStateId);
   const scale = fitLayoutStagePreview() || 1;
+  const showGlobalLayer = selectedLayoutStateId === "global" || activeGlobalLayout().hiddenInStates !== true;
   const previewElements = selectedLayoutStateId === "global"
     ? (state?.elements || [])
-    : [...(state?.elements || []), ...(activeGlobalLayout().elements || [])];
+    : [...(state?.elements || []), ...(showGlobalLayer ? activeGlobalLayout().elements || [] : [])];
   const hiddenGlobals = new Set(state?.hiddenGlobals || []);
   for (const element of previewElements) {
     if (isLayoutPreviewElementHidden(element.id, selectedLayoutStateId)) continue;
