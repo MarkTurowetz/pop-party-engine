@@ -43,6 +43,64 @@ function controllerLayoutGameObjectRegistry() {
   return controllerLayoutGameObjects;
 }
 
+function getOrCreateLayoutArtInstance(element, root, selector, className) {
+  const id = String(element?.id || "");
+  if (!id || !root) return null;
+  let host = root.querySelector(`${selector}[data-layout-element-id="${CSS.escape(id)}"]`);
+  if (!host) {
+    host = document.createElement("div");
+    host.className = className;
+    host.dataset.layoutElementId = id;
+    root.appendChild(host);
+  }
+  return host;
+}
+
+function renderLayoutArtInstance(element, host, options = {}) {
+  const composition = artComposition(element?.artCompositionId);
+  const artRuntime = window.PartyGameArtObject;
+  if (!host) return false;
+  if (!composition || !artRuntime) {
+    options.clearRenderer?.(element?.id, host);
+    host.dataset[options.missingDatasetKey] = "true";
+    return false;
+  }
+  delete host.dataset[options.missingDatasetKey];
+  let renderer = options.renderers.get(element.id);
+  if (!renderer) {
+    const layer = document.createElement("div");
+    layer.className = options.layerClassName;
+    host.replaceChildren(layer);
+    renderer = new artRuntime.ArtObjectTreeRenderer({
+      host: layer,
+      document,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
+      visualAnimation: window.PartyGameVisualObject
+    });
+    options.renderers.set(element.id, renderer);
+  }
+  renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, { instant: true });
+  return true;
+}
+
+function clearLayoutArtInstanceRenderer(renderers, elementId, host = null) {
+  const renderer = renderers.get(elementId);
+  if (renderer) renderer.clear({ instant: true });
+  renderers.delete(elementId);
+  if (host) host.replaceChildren();
+}
+
+function removeInactiveLayoutArtInstances({ root, selector, activeIds, clearRenderer, registry }) {
+  if (!root) return;
+  for (const element of Array.from(root.querySelectorAll(`${selector}[data-layout-element-id]`))) {
+    if (!activeIds.has(element.dataset.layoutElementId)) {
+      clearRenderer(element.dataset.layoutElementId, element);
+      registry?.remove(element.dataset.layoutElementId);
+      element.remove();
+    }
+  }
+}
+
 async function loadStageLayouts({ forceServer = false } = {}) {
   if (runtimeTestLayouts && !forceServer) {
     stageLayouts = runtimeTestLayouts;
@@ -270,60 +328,35 @@ function activeControllerArtInstanceIds(state) {
 }
 
 function removeInactiveControllerArtInstances(activeIds) {
-  for (const element of Array.from(controllerPanel.querySelectorAll(".dynamic-controller-art-instance[data-layout-element-id]"))) {
-    if (!activeIds.has(element.dataset.layoutElementId)) {
-      clearControllerArtInstanceRenderer(element.dataset.layoutElementId, element);
-      controllerLayoutGameObjectRegistry()?.remove(element.dataset.layoutElementId);
-      element.remove();
-    }
-  }
+  removeInactiveLayoutArtInstances({
+    root: controllerPanel,
+    selector: ".dynamic-controller-art-instance",
+    activeIds,
+    clearRenderer: clearControllerArtInstanceRenderer,
+    registry: controllerLayoutGameObjectRegistry()
+  });
 }
 
 function getOrCreateControllerArtInstance(element) {
-  const id = String(element?.id || "");
-  if (!id || !controllerPanel) return null;
-  let host = controllerPanel.querySelector(`.dynamic-controller-art-instance[data-layout-element-id="${CSS.escape(id)}"]`);
-  if (!host) {
-    host = document.createElement("div");
-    host.className = "dynamic-controller-art-instance controller-widget-art-host";
-    host.dataset.layoutElementId = id;
-    controllerPanel.appendChild(host);
-  }
-  return host;
+  return getOrCreateLayoutArtInstance(
+    element,
+    controllerPanel,
+    ".dynamic-controller-art-instance",
+    "dynamic-controller-art-instance controller-widget-art-host"
+  );
 }
 
 function renderControllerArtInstance(element, host) {
-  const composition = artComposition(element.artCompositionId);
-  const artRuntime = window.PartyGameArtObject;
-  if (!host) return false;
-  if (!composition || !artRuntime) {
-    clearControllerArtInstanceRenderer(element.id, host);
-    host.dataset.controllerLayoutArtMissing = "true";
-    return false;
-  }
-  delete host.dataset.controllerLayoutArtMissing;
-  let renderer = controllerArtInstanceRenderers.get(element.id);
-  if (!renderer) {
-    const layer = document.createElement("div");
-    layer.className = "controller-widget-art-layer";
-    host.replaceChildren(layer);
-    renderer = new artRuntime.ArtObjectTreeRenderer({
-      host: layer,
-      document,
-      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
-      visualAnimation: window.PartyGameVisualObject
-    });
-    controllerArtInstanceRenderers.set(element.id, renderer);
-  }
-  renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, { instant: true });
-  return true;
+  return renderLayoutArtInstance(element, host, {
+    renderers: controllerArtInstanceRenderers,
+    layerClassName: "controller-widget-art-layer",
+    missingDatasetKey: "controllerLayoutArtMissing",
+    clearRenderer: clearControllerArtInstanceRenderer
+  });
 }
 
 function clearControllerArtInstanceRenderer(elementId, host = null) {
-  const renderer = controllerArtInstanceRenderers.get(elementId);
-  if (renderer) renderer.clear({ instant: true });
-  controllerArtInstanceRenderers.delete(elementId);
-  if (host) host.replaceChildren();
+  clearLayoutArtInstanceRenderer(controllerArtInstanceRenderers, elementId, host);
 }
 
 function stageLayoutStateForPhase(phase) {
@@ -362,13 +395,13 @@ function activeStageArtInstanceIds(state) {
 }
 
 function removeInactiveStageArtInstances(activeIds) {
-  for (const element of Array.from(stageBoard.querySelectorAll(".dynamic-stage-art-instance[data-layout-element-id]"))) {
-    if (!activeIds.has(element.dataset.layoutElementId)) {
-      clearStageArtInstanceRenderer(element.dataset.layoutElementId, element);
-      stageLayoutGameObjectRegistry()?.remove(element.dataset.layoutElementId);
-      element.remove();
-    }
-  }
+  removeInactiveLayoutArtInstances({
+    root: stageBoard,
+    selector: ".dynamic-stage-art-instance",
+    activeIds,
+    clearRenderer: clearStageArtInstanceRenderer,
+    registry: stageLayoutGameObjectRegistry()
+  });
 }
 
 function clearStageLayoutTargets() {
@@ -583,48 +616,25 @@ function isDynamicStageArtInstance(element) {
 }
 
 function getOrCreateStageArtInstance(element) {
-  if (!stageBoard || !element?.id) return null;
-  let host = stageBoard.querySelector(`.dynamic-stage-art-instance[data-layout-element-id="${CSS.escape(element.id)}"]`);
-  if (host) return host;
-  host = document.createElement("div");
-  host.className = "dynamic-stage-art-instance stage-widget-art-host has-stage-widget-art";
-  host.dataset.layoutElementId = element.id;
-  stageBoard.appendChild(host);
-  return host;
+  return getOrCreateLayoutArtInstance(
+    element,
+    stageBoard,
+    ".dynamic-stage-art-instance",
+    "dynamic-stage-art-instance stage-widget-art-host has-stage-widget-art"
+  );
 }
 
 function renderStageArtInstance(element, host) {
-  const composition = artComposition(element.artCompositionId);
-  const artRuntime = window.PartyGameArtObject;
-  if (!host) return false;
-  if (!composition || !artRuntime) {
-    clearStageArtInstanceRenderer(element.id, host);
-    host.dataset.stageLayoutArtMissing = "true";
-    return false;
-  }
-  delete host.dataset.stageLayoutArtMissing;
-  let renderer = stageArtInstanceRenderers.get(element.id);
-  if (!renderer) {
-    const layer = document.createElement("div");
-    layer.className = "stage-widget-art-layer";
-    host.replaceChildren(layer);
-    renderer = new artRuntime.ArtObjectTreeRenderer({
-      host: layer,
-      document,
-      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
-      visualAnimation: window.PartyGameVisualObject
-    });
-    stageArtInstanceRenderers.set(element.id, renderer);
-  }
-  renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, { instant: true });
-  return true;
+  return renderLayoutArtInstance(element, host, {
+    renderers: stageArtInstanceRenderers,
+    layerClassName: "stage-widget-art-layer",
+    missingDatasetKey: "stageLayoutArtMissing",
+    clearRenderer: clearStageArtInstanceRenderer
+  });
 }
 
 function clearStageArtInstanceRenderer(elementId, host = null) {
-  const renderer = stageArtInstanceRenderers.get(elementId);
-  if (renderer) renderer.clear({ instant: true });
-  stageArtInstanceRenderers.delete(elementId);
-  if (host) host.replaceChildren();
+  clearLayoutArtInstanceRenderer(stageArtInstanceRenderers, elementId, host);
 }
 
 function dynamicStageTextElementId(element) {
