@@ -797,6 +797,16 @@ function stageLayoutEntityForElementId(elementId, target = null, scope = "") {
 }
 
 function setStageLayoutArtElementShownForAction(action) {
+  const surface = String(action?.targetLayoutSurface || "stage").toLowerCase();
+  if (surface !== "stage") {
+    window.PartyGameStageDebugRuntime?.showArtAssetWarning?.({
+      elementId: action?.targetLayoutElementId || "",
+      name: action?.name || action?.actionName || "",
+      scope: action?.targetLayoutScope || "",
+      reason: `target layout surface ${surface} is not handled by the stage runner`
+    });
+    return 0;
+  }
   return stageLayoutArtTargets.setShownForAction(action);
 }
 
