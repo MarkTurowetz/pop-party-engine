@@ -101,13 +101,14 @@ function removeInactiveLayoutArtInstances({ root, selector, activeIds, clearRend
   }
 }
 
-function layoutTargetByElementId({ root, elementId, layoutAttribute, dynamicSelector, scope = "" }) {
+function layoutTargetByElementId({ root, elementId, layoutAttribute, dynamicSelector, globalClass = "", scope = "" }) {
   if (!root || !elementId) return null;
   const escapedId = CSS.escape(elementId);
-  const scopedSuffix = scope === "global"
-    ? ".stage-global-layout-target"
-    : scope === "moment"
-      ? ":not(.stage-global-layout-target)"
+  const escapedGlobalClass = globalClass ? CSS.escape(globalClass) : "";
+  const scopedSuffix = scope === "global" && escapedGlobalClass
+    ? `.${escapedGlobalClass}`
+    : (scope === "moment" || scope === "controller") && escapedGlobalClass
+      ? `:not(.${escapedGlobalClass})`
       : "";
   return root.querySelector(`[${layoutAttribute}="${escapedId}"]${scopedSuffix}`)
     || root.querySelector(`${dynamicSelector}[data-layout-element-id="${escapedId}"]${scopedSuffix}`)
@@ -321,6 +322,7 @@ function clearControllerLayoutTargets() {
     target.classList.remove("controller-layout-visual-update");
     target.classList.remove("controller-layout-visual-instant");
     target.classList.remove("controller-layout-transition-suppressed");
+    target.classList.remove("controller-global-layout-target");
     target.style.removeProperty("--controller-layout-x");
     target.style.removeProperty("--controller-layout-y");
     target.style.removeProperty("--controller-layout-w");
@@ -370,6 +372,7 @@ function applyControllerElementLayout(element, isGlobal = false) {
   if (isNewLayoutTarget) target.classList.add("controller-layout-transition-suppressed");
   target.classList.remove("controller-layout-hidden");
   target.classList.add("controller-layout-target");
+  target.classList.toggle("controller-global-layout-target", isGlobal);
   target.dataset.controllerLayoutElementId = entity.id || "";
   target.dataset.controllerLayoutVisibilityKey = entity.visibilityKey || "";
   target.style.setProperty("--controller-layout-x", `${element.x}px`);
@@ -422,7 +425,8 @@ function controllerLayoutTargetByElementId(elementId) {
     root: controllerPanel,
     elementId,
     layoutAttribute: "data-controller-layout-element-id",
-    dynamicSelector: ".dynamic-controller-art-instance"
+    dynamicSelector: ".dynamic-controller-art-instance",
+    globalClass: "controller-global-layout-target"
   });
 }
 
@@ -442,10 +446,7 @@ function controllerLayoutEntityForElementId(elementId, target = null) {
     visibilityKeyForTarget: controllerLayoutElementVisibilityKey,
     isArtTarget: (resolvedTarget) => resolvedTarget.classList.contains("dynamic-controller-art-instance"),
     isDynamicTarget: (resolvedTarget) => resolvedTarget.classList.contains("dynamic-controller-art-instance"),
-    isGlobalTarget: (resolvedTarget) => {
-      const key = resolvedTarget.dataset.controllerLayoutVisibilityKey || "";
-      return key.startsWith("global:");
-    }
+    isGlobalTarget: (resolvedTarget) => resolvedTarget.classList.contains("controller-global-layout-target")
   });
 }
 
@@ -735,6 +736,7 @@ function stageLayoutTargetByElementId(elementId, scope = "") {
     elementId,
     layoutAttribute: "data-stage-layout-element-id",
     dynamicSelector: ".dynamic-stage-art-instance",
+    globalClass: "stage-global-layout-target",
     scope
   });
 }
