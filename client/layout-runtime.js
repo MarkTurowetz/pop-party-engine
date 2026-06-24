@@ -501,6 +501,7 @@ function applyControllerElementLayout(element, isGlobal = false) {
 function registerControllerLayoutEntity(element, target, isGlobal = false) {
   return registerPlacedLayoutEntity(element, target, isGlobal, {
     registry: controllerLayoutGameObjectRegistry,
+    registryKeyFor: controllerLayoutRegistryKeyForElement,
     visibilityKeyFor: controllerLayoutVisibilityKey,
     isArt: (layoutElement) => layoutElement?.kind === "art" || Boolean(layoutElement?.artCompositionId),
     isDynamic: (layoutElement, layoutTarget) => (
@@ -513,6 +514,12 @@ function registerControllerLayoutEntity(element, target, isGlobal = false) {
 function controllerLayoutVisibilityKey(elementId, isGlobal = false) {
   if (!elementId) return "";
   return `${isGlobal ? "global" : currentControllerLayoutStateId || "controller"}:${elementId}`;
+}
+
+function controllerLayoutRegistryKeyForElement(elementId, scopeOrGlobal = "", target = null) {
+  if (scopeOrGlobal === true || scopeOrGlobal === "global") return controllerLayoutVisibilityKey(elementId, true);
+  if (scopeOrGlobal === false || scopeOrGlobal === "moment" || scopeOrGlobal === "controller") return controllerLayoutVisibilityKey(elementId, false);
+  return controllerLayoutVisibilityKey(elementId, target?.classList?.contains("controller-global-layout-target") === true);
 }
 
 function controllerLayoutTargetByElementId(elementId, scope = "") {
@@ -540,6 +547,7 @@ const controllerLayoutArtTargets = createPlacedLayoutArtTargetResolver({
   registry: controllerLayoutGameObjectRegistry,
   targetByElementId: controllerLayoutTargetByElementId,
   visibilityKeyForTarget: controllerLayoutElementVisibilityKey,
+  registryKeyFor: controllerLayoutRegistryKeyForElement,
   visibilityOverrides: controllerLayoutVisibilityOverrides,
   hiddenClass: "controller-layout-visual-hidden",
   exitingClass: "controller-layout-visual-exiting",
