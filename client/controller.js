@@ -313,6 +313,7 @@ function reloadControllerArtAssets() {
   loadArtAssets().then(() => {
     if (controllerState?.player) setControllerAvatar(controllerState.player);
     if (controllerState?.lobby) renderControllerState(controllerState.lobby);
+    else applyControllerLayoutForPhase(controllerState?.phase || "join");
   }).catch(() => {});
 }
 
