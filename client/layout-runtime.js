@@ -183,6 +183,15 @@ function registerPlacedLayoutEntity(element, target, isGlobal = false, options =
   return options.registry?.()?.register(entity) || entity;
 }
 
+function attachRenderedLayoutArtEntity(entity, renderInstance) {
+  const renderer = typeof renderInstance === "function" ? renderInstance() : null;
+  entity?.update?.({
+    artRenderer: renderer,
+    syncArtRendererOnShow: Boolean(renderer)
+  });
+  return renderer;
+}
+
 function createPlacedLayoutArtTargetResolver(options = {}) {
   const resolver = {
     entityForElementId(elementId, target = null, scope = "") {
@@ -466,10 +475,7 @@ function applyControllerElementLayout(element, isGlobal = false) {
     target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
   } else if (isDynamicControllerArtInstance(element)) {
-    entity.update?.({
-      artRenderer: renderControllerArtInstance(element, target, entity.visibilityKey),
-      syncArtRendererOnShow: true
-    });
+    attachRenderedLayoutArtEntity(entity, () => renderControllerArtInstance(element, target, entity.visibilityKey));
   }
   applyControllerLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {
@@ -759,10 +765,7 @@ function applyStageElementLayout(element, isGlobal) {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
   } else if (isDynamicStageArtInstance(element)) {
-    entity.update?.({
-      artRenderer: renderStageArtInstance(element, target, entity.visibilityKey),
-      syncArtRendererOnShow: true
-    });
+    attachRenderedLayoutArtEntity(entity, () => renderStageArtInstance(element, target, entity.visibilityKey));
   }
   applyStageLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {
