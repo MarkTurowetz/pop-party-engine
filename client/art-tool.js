@@ -50,6 +50,7 @@ function serializeArtComponentForSave(component) {
     defaultAnimationState: component.defaultAnimationState || "",
     defaultText: component.defaultText || "",
     fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
+    autoFitText: component.autoFitText === true,
     fontColor: component.fontColor || "#17131f",
     shapeStyle: artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind),
     fillColor: component.fillColor || "transparent",
@@ -500,7 +501,7 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
   node.style.height = `${Number(component.height || 1) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
   node.style.setProperty("--component-scale", Number(component.scale || 1));
   node.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-  node.style.setProperty("--component-font-size", `${Number(component.fontSize || 16)}px`);
+  node.style.setProperty("--component-font-size", `${artComponentComputedFontSize(component)}px`);
   node.style.setProperty("--component-text-color", component.fontColor || "#17131f");
   node.style.setProperty("--component-fill-color", component.fillColor || "transparent");
   node.style.setProperty("--component-border-color", component.borderColor || "transparent");
@@ -566,6 +567,12 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
     });
   }
   return node;
+}
+
+function artComponentComputedFontSize(component) {
+  const baseSize = Number(component?.fontSize || 16);
+  if (component?.autoFitText !== true || typeof fittedLayoutTextSize !== "function") return baseSize;
+  return fittedLayoutTextSize(component, artComponentPreviewText(component), baseSize);
 }
 
 function artComponentPreviewText(component) {
@@ -891,6 +898,7 @@ function defaultArtObject(kind, bounds = {}) {
   if (cleanKind === "text") {
     component.defaultText = "Text";
     component.fontSize = 24;
+    component.autoFitText = true;
     component.fontColor = "#17131f";
   } else if (cleanKind === "container") {
     component.shapeStyle = "rectangle";
@@ -911,22 +919,32 @@ function defaultArtObject(kind, bounds = {}) {
 function createArtAssetComposition(kind = "shape") {
   kind = normalizeArtCreateKind(kind);
   pushArtHistory();
+  const root = defaultArtObject("container", { width: 560, height: 230 });
+  root.id = createSecureArtId("root");
+  root.name = "Art Root";
+  root.x = 280;
+  root.y = 115;
+  root.width = 520;
+  root.height = 190;
+  root.fillColor = "transparent";
+  root.borderColor = "transparent";
+  root.borderWidth = 0;
+  root.children = [defaultArtObject(kind, { width: root.width, height: root.height })];
   const composition = {
     id: createSecureArtId("art"),
     name: `${artKindLabel(kind)} Art`,
     description: "Editable art asset.",
     isCustom: true,
     canvas: { width: 560, height: 230 },
-    components: [defaultArtObject(kind, { width: 560, height: 230 })]
+    components: [root]
   };
   artCompositions = [...artCompositions, composition];
-  collapsedArtSections.delete("custom-art");
   collapsedArtComposites.delete(composition.id);
   selectedArtAsset = null;
   selectedArtComposite = null;
   selectedArtCompositionId = composition.id;
-  selectedArtComponentIds = new Set([composition.components[0].id]);
-  selectedArtComponentId = composition.components[0].id;
+  selectedArtComponentIds = new Set([root.children[0].id]);
+  selectedArtComponentId = root.children[0].id;
   pendingArtReplacement = null;
   renderSelectedArtComposition();
   renderArtList();

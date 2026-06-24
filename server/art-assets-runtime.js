@@ -134,6 +134,7 @@ function createArtAssetsRuntime({
     if (kind === "text" || kind === "badge") {
       normalized.defaultText = cleanText(source.defaultText, base.defaultText || "", 500);
       normalized.fontSize = cleanNumber(source.fontSize, Number(base.fontSize || 16), 6, 240);
+      normalized.autoFitText = source.autoFitText === true || (source.autoFitText !== false && base.autoFitText === true);
       normalized.fontColor = cleanColor(source.fontColor, base.fontColor || "#17131f");
     }
     if (kind === "shape" || kind === "container" || kind === "badge") {

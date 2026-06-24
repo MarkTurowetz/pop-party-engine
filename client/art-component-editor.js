@@ -48,6 +48,18 @@
       return field;
     }
 
+    function toggleField(label, value, onChange) {
+      const field = documentRef.createElement("label");
+      field.className = "layout-number-field";
+      field.textContent = label;
+      const input = documentRef.createElement("input");
+      input.type = "checkbox";
+      input.checked = value === true;
+      input.addEventListener("change", () => onChange(input.checked));
+      field.appendChild(input);
+      return field;
+    }
+
     function colorField(label, value, onChange) {
       if (!colorControl?.create) {
         return textField(label, options.normalizeUiColor?.(value) || "#ffffff", (nextValue) => {
@@ -88,12 +100,12 @@
       actions.className = "art-image-mask-actions";
       const uploadButton = documentRef.createElement("button");
       uploadButton.type = "button";
-      uploadButton.textContent = component.imageDataUrl ? "Replace Image" : "Upload Image";
+      uploadButton.textContent = component.imageDataUrl || component.imageAssetId ? "Replace Image" : "Upload Image";
       uploadButton.addEventListener("click", () => input.click());
       const clearButton = documentRef.createElement("button");
       clearButton.type = "button";
       clearButton.textContent = "Clear";
-      clearButton.disabled = !component.imageDataUrl;
+      clearButton.disabled = !component.imageDataUrl && !component.imageAssetId;
       clearButton.addEventListener("click", () => options.onClearImage?.(component));
       actions.append(uploadButton, clearButton);
       input.addEventListener("change", () => {
@@ -152,6 +164,7 @@
       if (component.kind === "text" || component.kind === "badge") {
         fields.appendChild(textField("Text", component.defaultText || "", (value) => options.onUpdateComponentValue?.("defaultText", value)));
         fields.appendChild(numberField("Font Size", component.fontSize || 16, (value) => options.onUpdateComponentValue?.("fontSize", Math.max(6, value))));
+        fields.appendChild(toggleField("Auto Fit Text", component.autoFitText === true, (value) => options.onUpdateComponentValue?.("autoFitText", value)));
         fields.appendChild(colorField("Font Color", component.fontColor || "#17131f", (value, fieldOptions) => options.onUpdateComponentValue?.("fontColor", value, fieldOptions)));
       }
       if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {

@@ -353,6 +353,7 @@ const defaultArtCompositions = [
         scale: 1,
         defaultText: "ANSWER TEXT",
         fontSize: 32,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -366,6 +367,7 @@ const defaultArtCompositions = [
         scale: 1,
         defaultText: "AUTHOR NAME",
         fontSize: 15,
+        autoFitText: true,
         fontColor: "#6b5a80"
       },
       {
@@ -396,6 +398,7 @@ const defaultArtCompositions = [
         borderWidth: 2,
         borderRadius: 999,
         fontSize: 15,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -412,6 +415,255 @@ const defaultArtCompositions = [
         borderWidth: 2,
         borderRadius: 999,
         fontSize: 15,
+        autoFitText: true,
+        fontColor: "#17131f"
+      }
+    ]
+  },
+  {
+    id: "presentation-click-prompt",
+    name: "Presentation Click Prompt",
+    description: "Editable prompt art shown when the VIP can advance presented text.",
+    canvas: { width: 92, height: 92 },
+    components: [
+      {
+        id: "cursor-shape",
+        name: "Cursor Shape",
+        kind: "shape",
+        x: 46,
+        y: 46,
+        width: 72,
+        height: 72,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "rectangle",
+        fillColor: "currentColor",
+        borderColor: "transparent",
+        borderWidth: 0,
+        borderRadius: 0,
+        imageAssetId: "presentation-click-cursor",
+        imageObjectFit: "contain",
+        imageTint: "currentColor"
+      }
+    ]
+  },
+  {
+    id: "stage-code-panel",
+    name: "Stage Code Panel",
+    description: "Editable lobby card that displays the current stage code.",
+    canvas: { width: 560, height: 190 },
+    components: [
+      {
+        id: "panel-card",
+        name: "Panel Card",
+        kind: "shape",
+        x: 280,
+        y: 95,
+        width: 540,
+        height: 170,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "rounded",
+        fillColor: "#fff8d6",
+        borderColor: "#17131f",
+        borderWidth: 5,
+        borderRadius: 18
+      },
+      {
+        id: "panel-label",
+        name: "Panel Label",
+        kind: "text",
+        x: 280,
+        y: 52,
+        width: 320,
+        height: 30,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "STAGE",
+        fontSize: 24,
+        autoFitText: true,
+        fontColor: "#17131f"
+      },
+      {
+        id: "panel-code",
+        name: "Panel Code",
+        kind: "text",
+        x: 280,
+        y: 108,
+        width: 420,
+        height: 78,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "NUZ7",
+        fontSize: 72,
+        autoFitText: true,
+        fontColor: "#17131f"
+      }
+    ]
+  },
+  {
+    id: "stage-code-widget",
+    name: "Small Room Code Widget",
+    description: "Editable small global stage-code badge.",
+    canvas: { width: 210, height: 112 },
+    components: [
+      {
+        id: "badge-card",
+        name: "Badge Card",
+        kind: "shape",
+        x: 105,
+        y: 56,
+        width: 190,
+        height: 92,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "rounded",
+        fillColor: "#ffe256",
+        borderColor: "#17131f",
+        borderWidth: 4,
+        borderRadius: 14
+      },
+      {
+        id: "badge-label",
+        name: "Badge Label",
+        kind: "text",
+        x: 105,
+        y: 30,
+        width: 140,
+        height: 22,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "STAGE",
+        fontSize: 18,
+        autoFitText: true,
+        fontColor: "#17131f"
+      },
+      {
+        id: "badge-code",
+        name: "Badge Code",
+        kind: "text",
+        x: 105,
+        y: 64,
+        width: 150,
+        height: 42,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "NUZ7",
+        fontSize: 42,
+        autoFitText: true,
+        fontColor: "#17131f"
+      }
+    ]
+  },
+  {
+    id: "join-widget",
+    name: "Join Widget",
+    description: "Editable lobby instruction text.",
+    canvas: { width: 740, height: 76 },
+    components: [
+      {
+        id: "join-text",
+        name: "Join Text",
+        kind: "text",
+        x: 370,
+        y: 38,
+        width: 720,
+        height: 58,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "Join the Lobby at bit.ly/popcontroller",
+        fontSize: 42,
+        autoFitText: true,
+        fontColor: "#ffffff"
+      }
+    ]
+  },
+  {
+    id: "countdown-popup",
+    name: "Countdown Popup",
+    description: "Editable popup shown while the lobby countdown is running.",
+    canvas: { width: 700, height: 130 },
+    components: [
+      {
+        id: "popup-card",
+        name: "Popup Card",
+        kind: "shape",
+        x: 350,
+        y: 65,
+        width: 660,
+        height: 104,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "rounded",
+        fillColor: "#ffe256",
+        borderColor: "#17131f",
+        borderWidth: 5,
+        borderRadius: 20
+      },
+      {
+        id: "popup-text",
+        name: "Popup Text",
+        kind: "text",
+        x: 350,
+        y: 65,
+        width: 600,
+        height: 78,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "Starting Game",
+        fontSize: 54,
+        autoFitText: true,
+        fontColor: "#17131f"
+      }
+    ]
+  },
+  {
+    id: "crafting-timer-widget",
+    name: "Crafting Timer",
+    description: "Editable timer art used during timed input moments.",
+    canvas: { width: 190, height: 190 },
+    components: [
+      {
+        id: "timer-ring",
+        name: "Timer Ring",
+        kind: "shape",
+        x: 95,
+        y: 95,
+        width: 170,
+        height: 170,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "circle",
+        fillColor: "#ffe256",
+        borderColor: "#17131f",
+        borderWidth: 6,
+        borderRadius: 999
+      },
+      {
+        id: "timer-value",
+        name: "Timer Value",
+        kind: "text",
+        x: 95,
+        y: 95,
+        width: 120,
+        height: 82,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "30",
+        fontSize: 72,
+        autoFitText: true,
         fontColor: "#17131f"
       }
     ]
@@ -469,6 +721,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "SCAN TO JOIN",
         fontSize: 24,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -484,6 +737,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "controller link",
         fontSize: 14,
+        autoFitText: true,
         fontColor: "#17131f"
       }
     ]

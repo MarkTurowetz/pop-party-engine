@@ -16,13 +16,19 @@
     element.style.height = `${Number(component.height || 1) / canvasHeight * 100}%`;
     element.style.setProperty("--component-scale", Number(component.scale || 1));
     element.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-    element.style.setProperty("--component-font-size", `${Number(component.fontSize || 16)}px`);
+    element.style.setProperty("--component-font-size", `${componentFontSize(component)}px`);
     element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
     element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
     element.style.setProperty("--component-border-color", component.borderColor || "transparent");
     element.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
     element.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
     element.style.setProperty("--component-image-fit", componentSchema.normalizeImageObjectFit(component.imageObjectFit));
+  }
+
+  function componentFontSize(component) {
+    const baseSize = Number(component?.fontSize || 16);
+    if (component?.autoFitText !== true || typeof global.fittedLayoutTextSize !== "function") return baseSize;
+    return global.fittedLayoutTextSize(component, componentSchema.componentLabel(component), baseSize);
   }
 
   function componentImageSource(component) {

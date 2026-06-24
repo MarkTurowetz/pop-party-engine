@@ -196,21 +196,24 @@
         }
       });
       appendSection(target, data, "Presentation Click Prompt", "presentation-click-prompt", (children) => {
-        const cursorAsset = findArtAsset(data, "presentation-click-cursor");
-        if (cursorAsset) children.appendChild(createArtItemButton(data, cursorAsset, "Cursor Art"));
-      });
-      appendSection(target, data, "Voting Card", "voting-card", (children) => {
         for (const composition of data.artCompositions || []) {
-          if (composition.id === "voting-card") children.appendChild(createCompositionBlock(data, composition));
+          if (composition.id === "presentation-click-prompt") children.appendChild(createCompositionBlock(data, composition));
         }
       });
-      appendSection(target, data, "Custom Art", "custom-art", (children) => {
-        for (const composition of data.artCompositions || []) {
-          if (composition.id !== "voting-card" && !String(composition.id || "").startsWith("player-avatar-")) {
-            children.appendChild(createCompositionBlock(data, composition));
-          }
-        }
+      for (const composition of data.artCompositions || []) {
+        if (String(composition.id || "").startsWith("player-avatar-")) continue;
+        if (composition.id === "presentation-click-prompt") continue;
+        target.appendChild(createCompositionBlock(data, composition));
+      }
+      const looseAssets = (data.artAssets || []).filter((asset) => {
+        return !asset.parent || !["player-avatar", "presentation-click-prompt"].includes(asset.parent);
       });
+      for (const asset of looseAssets) {
+        const wrapper = documentRef.createElement("section");
+        wrapper.className = "art-group";
+        wrapper.appendChild(createArtItemButton(data, asset));
+        target.appendChild(wrapper);
+      }
     }
 
     return { render };
