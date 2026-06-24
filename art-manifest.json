@@ -271,6 +271,62 @@
         }
       ],
       "updatedAt": "2026-06-24T01:27:23.539Z"
+    },
+    "player-avatar-raptor": {
+      "name": "Raptor Avatar",
+      "description": "Editable player avatar art composed from a frame and masked dino image.",
+      "isCustom": false,
+      "canvas": {
+        "width": 100,
+        "height": 100
+      },
+      "components": [
+        {
+          "id": "dino-mask",
+          "name": "Dino Image Mask",
+          "kind": "shape",
+          "x": 50,
+          "y": 50,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rectangle",
+          "fillColor": "currentColor",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0,
+          "imageAssetId": "avatar-raptor",
+          "imageName": "avatar-raptor",
+          "imageMimeType": "",
+          "imageObjectFit": "contain",
+          "imageTint": "currentColor"
+        },
+        {
+          "id": "avatar-frame",
+          "name": "Avatar Frame",
+          "kind": "shape",
+          "x": 50,
+          "y": 50,
+          "width": 100,
+          "height": 100,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rectangle",
+          "fillColor": "transparent",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0,
+          "imageAssetId": "avatar-frame",
+          "imageName": "avatar-frame",
+          "imageMimeType": "",
+          "imageObjectFit": "contain",
+          "imageTint": ""
+        }
+      ],
+      "updatedAt": "2026-06-24T01:27:24.958Z"
     }
   }
 }
