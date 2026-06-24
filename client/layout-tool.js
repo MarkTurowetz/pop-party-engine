@@ -318,7 +318,6 @@ function layoutUnsavedArtCompositions(beforeLoad = []) {
 }
 
 async function refreshLayoutArtCatalog() {
-  if (layoutToolMode !== "stage") return;
   const localChanges = layoutUnsavedArtCompositions(artCompositions || []);
   await loadArtAssets().catch(() => {});
   invalidateBaseLayoutObjectCatalog();
@@ -330,7 +329,6 @@ async function refreshLayoutArtCatalog() {
 }
 
 function refreshLayoutArtCatalogInBackground(options = {}) {
-  if (layoutToolMode !== "stage") return Promise.resolve();
   if (!layoutArtCatalogRefreshPromise) {
     layoutArtCatalogRefreshPromise = refreshLayoutArtCatalog()
       .catch(() => {})
@@ -1177,6 +1175,7 @@ function updateLayoutGlobalHidden(elementId, isHidden) {
 
 function openLayoutObjectPicker() {
   if (!layoutGroup(selectedLayoutStateId)) return;
+  invalidateBaseLayoutObjectCatalog();
   layoutObjectPicker.classList.remove("hidden");
   layoutObjectSearch.value = "";
   renderLayoutObjectOptions();
@@ -1213,7 +1212,7 @@ function renderLayoutObjectOptions() {
 }
 
 function handleLayoutArtAssetsChanged() {
-  if (layoutToolMode !== "stage" || layoutScreen.classList.contains("hidden")) return;
+  if (layoutScreen.classList.contains("hidden")) return;
   invalidateBaseLayoutObjectCatalog();
   if (!layoutObjectPicker.classList.contains("hidden")) renderLayoutObjectOptions();
   renderLayoutPreview();
