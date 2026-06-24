@@ -109,6 +109,19 @@ function removeInactiveLayoutArtInstances({ root, selector, activeIds, clearRend
   }
 }
 
+function activeDynamicLayoutArtInstanceIds(state, globalLayout, isDynamicInstance) {
+  const ids = new Set();
+  for (const element of state?.elements || []) {
+    if (isDynamicInstance(element)) ids.add(element.id);
+  }
+  if (globalLayout?.hiddenInStates === true) return ids;
+  const hiddenGlobals = new Set(state?.hiddenGlobals || []);
+  for (const element of globalLayout?.elements || []) {
+    if (isDynamicInstance(element) && !hiddenGlobals.has(element.id)) ids.add(element.id);
+  }
+  return ids;
+}
+
 function beginLayoutElementTargetApplication(target, options = {}) {
   if (!target) return false;
   const isNewLayoutTarget = !target.classList.contains(options.targetClass);
@@ -625,18 +638,7 @@ function isDynamicControllerArtInstance(element) {
 }
 
 function activeControllerArtInstanceIds(state) {
-  const ids = new Set();
-  for (const element of state?.elements || []) {
-    if (isDynamicControllerArtInstance(element)) ids.add(element.id);
-  }
-  const globalLayout = globalControllerLayout();
-  if (globalLayout.hiddenInStates !== true) {
-    const hiddenGlobals = new Set(state?.hiddenGlobals || []);
-    for (const element of globalLayout.elements || []) {
-      if (isDynamicControllerArtInstance(element) && !hiddenGlobals.has(element.id)) ids.add(element.id);
-    }
-  }
-  return ids;
+  return activeDynamicLayoutArtInstanceIds(state, globalControllerLayout(), isDynamicControllerArtInstance);
 }
 
 function removeInactiveControllerArtInstances(activeIds) {
@@ -693,18 +695,7 @@ function allStageLayoutSelectors() {
 const stageArtInstanceRenderers = new Map();
 
 function activeStageArtInstanceIds(state) {
-  const ids = new Set();
-  for (const element of state?.elements || []) {
-    if (isDynamicStageArtInstance(element)) ids.add(element.id);
-  }
-  const globalLayout = globalStageLayout();
-  if (globalLayout.hiddenInStates !== true) {
-    const hiddenGlobals = new Set(state?.hiddenGlobals || []);
-    for (const element of globalLayout.elements || []) {
-      if (isDynamicStageArtInstance(element) && !hiddenGlobals.has(element.id)) ids.add(element.id);
-    }
-  }
-  return ids;
+  return activeDynamicLayoutArtInstanceIds(state, globalStageLayout(), isDynamicStageArtInstance);
 }
 
 function removeInactiveStageArtInstances(activeIds) {
