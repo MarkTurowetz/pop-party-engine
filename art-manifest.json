@@ -572,6 +572,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -582,7 +583,7 @@
           "imageTint": "currentColor"
         }
       ],
-      "updatedAt": "2026-06-24T01:35:12.242Z"
+      "updatedAt": "2026-06-24T04:03:26.437Z"
     },
     "stage-code-panel": {
       "name": "Stage Code Panel",
