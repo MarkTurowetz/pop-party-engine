@@ -253,6 +253,10 @@ function registerPlacedLayoutEntity(element, target, isGlobal = false, options =
   return options.registry?.()?.register(entity) || entity;
 }
 
+function createPlacedLayoutEntityRegistrar(options = {}) {
+  return (element, target, isGlobal = false) => registerPlacedLayoutEntity(element, target, isGlobal, options);
+}
+
 function attachRenderedLayoutArtEntity(entity, renderInstance) {
   const renderer = typeof renderInstance === "function" ? renderInstance() : null;
   entity?.update?.({
@@ -561,18 +565,16 @@ function applyControllerElementLayout(element, isGlobal = false) {
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "controller-layout-transition-suppressed");
 }
 
-function registerControllerLayoutEntity(element, target, isGlobal = false) {
-  return registerPlacedLayoutEntity(element, target, isGlobal, {
-    registry: controllerLayoutGameObjectRegistry,
-    registryKeyFor: controllerLayoutRegistryKeyForElement,
-    visibilityKeyFor: controllerLayoutVisibilityKey,
-    isArt: (layoutElement) => layoutElement?.kind === "art" || Boolean(layoutElement?.artCompositionId),
-    isDynamic: (layoutElement, layoutTarget) => (
-      isDynamicControllerArtInstance(layoutElement)
-        || (layoutElement?.kind === "text" && !layoutElementTargetMatchesSelector(layoutElement, layoutTarget))
-    )
-  });
-}
+const registerControllerLayoutEntity = createPlacedLayoutEntityRegistrar({
+  registry: controllerLayoutGameObjectRegistry,
+  registryKeyFor: controllerLayoutRegistryKeyForElement,
+  visibilityKeyFor: controllerLayoutVisibilityKey,
+  isArt: (layoutElement) => layoutElement?.kind === "art" || Boolean(layoutElement?.artCompositionId),
+  isDynamic: (layoutElement, layoutTarget) => (
+    isDynamicControllerArtInstance(layoutElement)
+      || (layoutElement?.kind === "text" && !layoutElementTargetMatchesSelector(layoutElement, layoutTarget))
+  )
+});
 
 function controllerLayoutVisibilityKey(elementId, isGlobal = false) {
   if (!elementId) return "";
@@ -823,15 +825,13 @@ function applyStageElementLayout(element, isGlobal) {
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "stage-layout-transition-suppressed");
 }
 
-function registerStageLayoutEntity(element, target, isGlobal = false) {
-  return registerPlacedLayoutEntity(element, target, isGlobal, {
-    registry: stageLayoutGameObjectRegistry,
-    registryKeyFor: (id, globalTarget) => stageLayoutArtVisibilityKey(id, globalTarget),
-    visibilityKeyFor: stageLayoutArtVisibilityKey,
-    isArt: (layoutElement) => layoutElement?.kind === "art" && Boolean(layoutElement?.artCompositionId),
-    isDynamic: isDynamicStageArtInstance
-  });
-}
+const registerStageLayoutEntity = createPlacedLayoutEntityRegistrar({
+  registry: stageLayoutGameObjectRegistry,
+  registryKeyFor: (id, globalTarget) => stageLayoutArtVisibilityKey(id, globalTarget),
+  visibilityKeyFor: stageLayoutArtVisibilityKey,
+  isArt: (layoutElement) => layoutElement?.kind === "art" && Boolean(layoutElement?.artCompositionId),
+  isDynamic: isDynamicStageArtInstance
+});
 
 function applyStageLayoutArtVisibilityOverride(entity) {
   stageLayoutArtTargets.applyVisibilityOverride(entity);
