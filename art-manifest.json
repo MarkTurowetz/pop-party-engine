@@ -724,18 +724,36 @@
           "kind": "text",
           "x": 370,
           "y": 38,
-          "width": 720,
-          "height": 58,
+          "width": 704,
+          "height": 52,
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
           "defaultText": "Join the Lobby at bit.ly/popcontroller",
-          "fontSize": 42,
+          "fontSize": 28,
           "autoFitText": true,
-          "fontColor": "#ffffff"
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "join-pill",
+          "name": "Join Pill",
+          "kind": "shape",
+          "x": 370,
+          "y": 38,
+          "width": 740,
+          "height": 76,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "pill",
+          "fillColor": "#fff6d8",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 999
         }
       ],
-      "updatedAt": "2026-06-24T01:35:17.101Z"
+      "updatedAt": "2026-06-24T04:03:31.152Z"
     },
     "countdown-popup": {
       "name": "Countdown Popup",
