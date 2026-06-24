@@ -1,6 +1,22 @@
 const stageLayoutArtVisibilityOverrides = new Map();
-const stageLayoutArtVisuals = new Map();
-const stageLayoutEntities = new Map();
+let stageLayoutGameObjects = null;
+
+function stageLayoutGameObjectRegistry() {
+  if (stageLayoutGameObjects) return stageLayoutGameObjects;
+  const registry = window.PartyGameStageGameObject?.StageGameObjectRegistry;
+  if (!registry) return null;
+  stageLayoutGameObjects = new registry({
+    visibilityOverrides: stageLayoutArtVisibilityOverrides,
+    visualOptions: {
+      hiddenClasses: ["stage-layout-visual-hidden"],
+      motionHiddenClasses: ["stage-layout-visual-hidden"],
+      exitingClass: "stage-layout-visual-exiting",
+      updateClass: "stage-layout-visual-update",
+      instantClass: "stage-layout-visual-instant"
+    }
+  });
+  return stageLayoutGameObjects;
+}
 
 async function loadStageLayouts({ forceServer = false } = {}) {
   if (runtimeTestLayouts && !forceServer) {
@@ -197,6 +213,7 @@ function removeInactiveStageArtInstances(activeIds) {
   for (const element of Array.from(stageBoard.querySelectorAll(".dynamic-stage-art-instance[data-layout-element-id]"))) {
     if (!activeIds.has(element.dataset.layoutElementId)) {
       clearStageArtInstanceRenderer(element.dataset.layoutElementId, element);
+      stageLayoutGameObjectRegistry()?.remove(element.dataset.layoutElementId);
       element.remove();
     }
   }
@@ -236,7 +253,7 @@ function applyStageLayoutForPhase(phase) {
   const state = stageLayoutStateForPhase(phase);
   if (!state || !stageScreen || !stageBoard) return;
   currentStageLayoutStateId = state.id;
-  stageLayoutEntities.clear();
+  stageLayoutGameObjectRegistry()?.beginFrame();
   hideStageMomentTextOutsideLayout(state);
   clearStageLayoutTargets();
   removeInactiveStageArtInstances(activeStageArtInstanceIds(state));
@@ -309,13 +326,12 @@ function registerStageLayoutEntity(element, target, isGlobal = false) {
     target,
     visibilityKey: stageLayoutArtVisibilityKey(id, isGlobal)
   };
-  if (id) stageLayoutEntities.set(id, entity);
-  return entity;
+  return stageLayoutGameObjectRegistry()?.register(entity) || entity;
 }
 
 function stageLayoutEntityForElementId(elementId, target = null) {
   if (!elementId) return null;
-  const entity = stageLayoutEntities.get(elementId);
+  const entity = stageLayoutGameObjectRegistry()?.get(elementId);
   if (entity) return entity;
   const resolvedTarget = target || stageLayoutTargetByElementId(elementId);
   if (!resolvedTarget) return null;
@@ -334,9 +350,8 @@ function stageLayoutArtVisualFor(entity) {
   const target = entity?.target;
   const visibilityKey = entity?.visibilityKey || "";
   if (!visibilityKey || !target || !window.PartyGameVisualObject) return null;
-  const existing = stageLayoutArtVisuals.get(visibilityKey);
-  if (existing?.element === target) return existing.visual;
-  const visual = window.PartyGameVisualObject.createCssVisualObject({
+  if (typeof entity.createVisual === "function") return entity.createVisual();
+  return window.PartyGameVisualObject.createCssVisualObject({
     element: target,
     hiddenClasses: ["stage-layout-visual-hidden"],
     motionHiddenClasses: ["stage-layout-visual-hidden"],
@@ -357,11 +372,13 @@ function stageLayoutArtVisualFor(entity) {
       target.dataset.visualVisible = isVisible ? "true" : "false";
     }
   });
-  stageLayoutArtVisuals.set(visibilityKey, { element: target, visual });
-  return visual;
 }
 
 function applyStageLayoutArtVisibilityOverride(entity) {
+  if (typeof entity?.applyVisibilityOverride === "function") {
+    entity.applyVisibilityOverride();
+    return;
+  }
   const target = entity?.target;
   const visibilityKey = entity?.visibilityKey || "";
   if (!visibilityKey || !target || !stageLayoutArtVisibilityOverrides.has(visibilityKey)) return;
@@ -408,6 +425,9 @@ function setStageLayoutArtElementShownForAction(action) {
   const visibilityKey = entity?.visibilityKey || stageLayoutElementVisibilityKey(elementId, target);
   stageLayoutArtVisibilityOverrides.set(visibilityKey, isShown);
   if (!target) return 0;
+  if (typeof entity?.playVisibility === "function") {
+    return entity.playVisibility(isShown, { instant: action.instant === true });
+  }
   const visual = stageLayoutArtVisualFor(entity || stageLayoutEntityForElementId(elementId, target));
   if (!visual) return 0;
   const animation = window.PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
