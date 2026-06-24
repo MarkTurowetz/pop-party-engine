@@ -86,11 +86,10 @@
     createVisual(element, options = {}, key = "") {
       if (!element) return null;
       const id = `voting-card:${this.cardId || this.element?.dataset.cardId || "card"}:${key || element.dataset.voterId || element.className || "visual"}`;
-      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
-      if (GameObject) {
+      if (typeof this.gameObjectApi?.create === "function") {
         let gameObject = this.visualGameObjects.get(element);
         if (!gameObject || gameObject.id !== id || gameObject.target !== element) {
-          gameObject = new GameObject({
+          gameObject = this.gameObjectApi.create({
             id,
             target: element,
             visibilityKey: id,

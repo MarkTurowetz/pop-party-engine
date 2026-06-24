@@ -66,11 +66,10 @@
     }
 
     createGameObject() {
-      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
-      if (!this.element || !GameObject) return null;
+      if (!this.element || typeof this.gameObjectApi?.create !== "function") return null;
       const id = this.gameObjectId();
       if (!this.gameObject || this.gameObject.target !== this.element || this.gameObject.id !== id) {
-        this.gameObject = new GameObject({
+        this.gameObject = this.gameObjectApi.create({
           id,
           target: this.element,
           visibilityKey: id,

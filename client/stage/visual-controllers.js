@@ -6,8 +6,7 @@
   }
 
   function createStageGameObject(gameObjectApi, options = {}) {
-    const GameObject = gameObjectApi?.GameObject || gameObjectApi?.StageGameObject;
-    return GameObject ? new GameObject(options) : null;
+    return typeof gameObjectApi?.create === "function" ? gameObjectApi.create(options) : null;
   }
 
   class StageTextController {

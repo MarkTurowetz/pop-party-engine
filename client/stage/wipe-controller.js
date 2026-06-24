@@ -58,11 +58,10 @@
 
     visualObject() {
       if (!this.element || !this.visualAnimation) return null;
-      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
-      if (GameObject) {
+      if (typeof this.gameObjectApi?.create === "function") {
         const visualOptions = this.visualOptions();
         if (!this.gameObject || this.gameObject.target !== this.element) {
-          this.gameObject = new GameObject({
+          this.gameObject = this.gameObjectApi.create({
             id: "global:wipe",
             target: this.element,
             visibilityKey: "global:wipe",

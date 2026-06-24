@@ -185,7 +185,13 @@
     }
   }
 
+  function createGameObject(options = {}) {
+    return new StageGameObject(options);
+  }
+
   const api = {
+    create: createGameObject,
+    createGameObject,
     GameObject: StageGameObject,
     GameObjectRegistry: StageGameObjectRegistry,
     StageGameObject,
