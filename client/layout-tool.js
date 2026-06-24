@@ -220,6 +220,37 @@ function baseLayoutObjectCatalog() {
   ];
 }
 
+function layoutSerializedArtComposition(composition) {
+  if (typeof serializeArtCompositionsForSave === "function") {
+    return JSON.stringify(serializeArtCompositionsForSave([composition])[0]);
+  }
+  return JSON.stringify(composition || {});
+}
+
+function layoutUnsavedArtCompositions(beforeLoad = []) {
+  if (!artCompositionsSavedSnapshot) return [];
+  let savedById = new Map();
+  try {
+    savedById = new Map(JSON.parse(artCompositionsSavedSnapshot).map((composition) => [composition.id, JSON.stringify(composition)]));
+  } catch (error) {
+    savedById = new Map();
+  }
+  return (beforeLoad || []).filter((composition) => {
+    const saved = savedById.get(composition.id);
+    return !saved || layoutSerializedArtComposition(composition) !== saved;
+  });
+}
+
+async function refreshLayoutArtCatalog() {
+  if (layoutToolMode !== "stage") return;
+  const localChanges = layoutUnsavedArtCompositions(artCompositions || []);
+  await loadArtAssets().catch(() => {});
+  if (!localChanges.length) return;
+  const byId = new Map((artCompositions || []).map((composition) => [composition.id, composition]));
+  for (const composition of localChanges) byId.set(composition.id, composition);
+  artCompositions = [...byId.values()];
+}
+
 function stageLayoutCatalogCompositionId(elementId, compositionIds = new Set()) {
   const definition = window.PartyGameStageWidgetBindings?.definitionForLayoutElement?.(elementId);
   const compositionId = definition?.compositionId || "";
@@ -1015,8 +1046,9 @@ function updateLayoutGlobalHidden(elementId, isHidden) {
   renderLayoutTool();
 }
 
-function openLayoutObjectPicker() {
+async function openLayoutObjectPicker() {
   if (!layoutGroup(selectedLayoutStateId)) return;
+  await refreshLayoutArtCatalog();
   layoutObjectPicker.classList.remove("hidden");
   layoutObjectSearch.value = "";
   renderLayoutObjectOptions();
@@ -1051,8 +1083,9 @@ function renderLayoutObjectOptions() {
   }
 }
 
-function handleLayoutArtAssetsChanged() {
+async function handleLayoutArtAssetsChanged() {
   if (layoutToolMode !== "stage" || layoutScreen.classList.contains("hidden")) return;
+  await refreshLayoutArtCatalog();
   if (!layoutObjectPicker.classList.contains("hidden")) renderLayoutObjectOptions();
   renderLayoutPreview();
 }
@@ -1117,9 +1150,7 @@ async function saveControllerLayouts() {
 async function setupLayoutTool(mode = "stage") {
   layoutToolMode = mode === "controller" ? "controller" : "stage";
   layoutScreen.classList.remove("hidden");
-  if (!artCompositions.length || !isArtCompositionsDirty()) {
-    await loadArtAssets().catch(() => {});
-  }
+  await refreshLayoutArtCatalog();
   if (layoutToolInitialized) {
     if (!activeLayoutSavedSnapshot()) {
       await loadLayoutToolData().catch((error) => {
