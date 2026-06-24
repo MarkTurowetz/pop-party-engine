@@ -6,6 +6,7 @@ let stageDebugPanelInstance = null;
 let stageWipeControllerInstance = null;
 let stageRenderOrchestratorInstance = null;
 let renderedStageJoinQrUrl = "";
+const stageWidgetArtRenderers = new Map();
 
 function stageVisualControllers() {
   return window.PartyGameStageVisualControllers || null;
@@ -41,7 +42,10 @@ function craftingTimerController() {
       timerSink: (timerId) => textObjectTimers.push(timerId),
       getRenderedActionKey: () => currentRenderedActionKey(),
       getCurrentStageState: () => currentStageState,
-      fallbackDurationMs: () => Math.max(1, Number(gameConstants.craftingTimerDuration || 30)) * 1000
+      fallbackDurationMs: () => Math.max(1, Number(gameConstants.craftingTimerDuration || 30)) * 1000,
+      onTick: ({ label }) => renderStageWidgetArt(craftingTimer, "crafting-timer-widget", {
+        "timer-value": label
+      })
     });
   }
   return craftingTimerControllerInstance;
@@ -287,7 +291,83 @@ function setStageTextObject(target, options = {}) {
 }
 
 function renderCraftingTimer(timer, options = {}) {
-  return craftingTimerController()?.render(timer, options) || 0;
+  const duration = craftingTimerController()?.render(timer, options) || 0;
+  if (timer?.shown) {
+    renderStageWidgetArt(craftingTimer, "crafting-timer-widget", {
+      "timer-value": craftingTimerLabel.textContent || String(Math.ceil(Number(timer.remainingMs || timer.durationMs || 30000) / 1000))
+    }, { instant: options.instant === true });
+  }
+  return duration;
+}
+
+function stageWidgetRendererKey(host, compositionId) {
+  return `${host?.id || host?.className || "stage-widget"}:${compositionId}`;
+}
+
+function stageWidgetLayer(host) {
+  if (!host) return null;
+  let layer = Array.from(host.children).find((child) => child.classList?.contains("stage-widget-art-layer"));
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.className = "stage-widget-art-layer";
+    host.prepend(layer);
+  }
+  return layer;
+}
+
+function cloneStageWidgetComponent(component, textOverrides = {}) {
+  const clone = {
+    ...component,
+    children: (component.children || []).map((child) => cloneStageWidgetComponent(child, textOverrides))
+  };
+  if (Object.prototype.hasOwnProperty.call(textOverrides, clone.id)) {
+    clone.defaultText = String(textOverrides[clone.id] ?? "");
+  }
+  return clone;
+}
+
+function renderStageWidgetArt(host, compositionId, textOverrides = {}, options = {}) {
+  const composition = artComposition(compositionId);
+  const artRuntime = window.PartyGameArtObject;
+  if (!host || !composition || !artRuntime) return null;
+  host.classList.add("stage-widget-art-host", "has-stage-widget-art");
+  const layer = stageWidgetLayer(host);
+  if (!layer) return null;
+  const key = stageWidgetRendererKey(host, compositionId);
+  let renderer = stageWidgetArtRenderers.get(key);
+  if (!renderer) {
+    renderer = new artRuntime.ArtObjectTreeRenderer({
+      host: layer,
+      document,
+      visualAnimation
+    });
+    stageWidgetArtRenderers.set(key, renderer);
+  }
+  const components = (composition.components || []).map((component) => cloneStageWidgetComponent(component, textOverrides));
+  renderer.render(components, composition.canvas || { width: 1, height: 1 }, { instant: options.instant !== false });
+  return composition;
+}
+
+function stageWidgetComponent(composition, componentId) {
+  const stack = [...(composition?.components || [])];
+  while (stack.length) {
+    const component = stack.shift();
+    if (component.id === componentId) return component;
+    stack.push(...(component.children || []));
+  }
+  return null;
+}
+
+function positionStageWidgetOverlay(host, composition, componentId, overlay) {
+  const component = stageWidgetComponent(composition, componentId);
+  if (!host || !component || !overlay) return;
+  const canvas = composition.canvas || { width: 1, height: 1 };
+  overlay.classList.add("stage-widget-art-overlay");
+  overlay.style.left = `${Number(component.x || 0) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
+  overlay.style.top = `${Number(component.y || 0) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
+  overlay.style.width = `${Number(component.width || 1) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
+  overlay.style.height = `${Number(component.height || 1) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
+  overlay.style.transform = "translate(-50%, -50%)";
 }
 
 function renderStageActionDebug(lobby) {
@@ -315,6 +395,10 @@ function renderStageJoinQr(stageCode, isVisible = true) {
   if (!isVisible || !normalizedCode) return;
   const joinUrl = controllerJoinUrlForStage(normalizedCode);
   stageJoinQrUrl.textContent = joinUrl.replace(/^https?:\/\//, "");
+  const composition = renderStageWidgetArt(stageJoinQr, "join-qr-code", {
+    "qr-url": stageJoinQrUrl.textContent
+  });
+  positionStageWidgetOverlay(stageJoinQr, composition, "qr-placeholder", stageJoinQrCanvas);
   if (renderedStageJoinQrUrl === joinUrl) return;
   renderedStageJoinQrUrl = joinUrl;
   try {
@@ -344,6 +428,12 @@ function applyStageState(lobby) {
   const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
   if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
   stageCodeBadgeRoot.classList.toggle("hidden", isLobbyPhase);
+  renderStageWidgetArt(stageCodeText.closest(".stage-code-panel"), "stage-code-panel", {
+    "panel-code": lobby.stageCode || stageCodeText.textContent
+  });
+  renderStageWidgetArt(stageCodeBadgeRoot, "stage-code-widget", {
+    "badge-code": lobby.stageCode || stageCodeBadge.textContent
+  });
   renderStageJoinQr(lobby.stageCode || stageCodeText.textContent, isLobbyPhase);
   window.clearInterval(stageCountdownTimer);
   startPopup.classList.add("hidden");
@@ -352,6 +442,7 @@ function applyStageState(lobby) {
   stageIntroContent.classList.toggle("hidden", phase !== "intro");
   stageIntroTitle.textContent = "GAME INTRO";
   presentClickWidget.classList.toggle("hidden", !(action?.type === "present" && action?.timing?.mode !== "S+"));
+  renderStageWidgetArt(presentClickWidget, "presentation-click-prompt");
   clearStageDecisionDebug(lobby);
   renderStagePlayers(players);
   setPlayersShown(lobby.playersShown !== false);
@@ -377,6 +468,9 @@ function applyStageState(lobby) {
 
   const vip = players.find((player) => player.isVip);
   joinPrompt.classList.toggle("hidden", !isLobbyPhase);
+  renderStageWidgetArt(joinPrompt, "join-widget", {
+    "join-text": joinPrompt.textContent || "Join the Lobby at bit.ly/popcontroller"
+  });
   waitingStatus.classList.toggle("hidden", phase === "intro" || players.length === 0);
   waitingStatus.textContent = vip ? `Waiting for ${vip.name} to start the game` : "";
 
@@ -390,9 +484,9 @@ function applyStageState(lobby) {
       const remainingMs = Math.max(0, (lobby.countdownEndsAt || now) - now);
       const seconds = Math.ceil(remainingMs / 1000);
       startPopup.classList.toggle("is-go", seconds <= 0);
-      startPopup.innerHTML = seconds > 0
-        ? `<span class="countdown-kicker">Starting in</span><span class="countdown-number">${seconds}</span>`
-        : `<span class="countdown-go">Let's Go</span>`;
+      renderStageWidgetArt(startPopup, "countdown-popup", {
+        "popup-text": seconds > 0 ? `Starting in ${seconds}` : "Let's Go"
+      });
     };
     updateCountdown();
     stageCountdownTimer = window.setInterval(updateCountdown, 100);

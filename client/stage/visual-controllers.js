@@ -99,6 +99,7 @@
       this.getRenderedActionKey = typeof options.getRenderedActionKey === "function" ? options.getRenderedActionKey : () => "";
       this.getCurrentStageState = typeof options.getCurrentStageState === "function" ? options.getCurrentStageState : () => null;
       this.fallbackDurationMs = typeof options.fallbackDurationMs === "function" ? options.fallbackDurationMs : () => 30000;
+      this.onTick = typeof options.onTick === "function" ? options.onTick : null;
       this.visual = null;
       this.visibilityRequest = null;
       this.intervalId = null;
@@ -193,7 +194,9 @@
           : Math.max(0, Number(nextTimer.remainingMs || 0));
         const progress = Math.max(0, Math.min(1, remainingMs / durationMs));
         this.element.style.setProperty("--timer-progress", progress.toFixed(4));
-        this.label.textContent = String(Math.ceil(remainingMs / 1000));
+        const label = String(Math.ceil(remainingMs / 1000));
+        this.label.textContent = label;
+        this.onTick?.({ label, progress, timer: nextTimer });
       };
       const visibilityDuration = this.setVisible(true, { instant: options.instant === true });
       update();
