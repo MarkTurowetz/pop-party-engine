@@ -86,45 +86,30 @@
     createVisual(element, options = {}, key = "") {
       if (!element) return null;
       const id = `voting-card:${this.cardId || this.element?.dataset.cardId || "card"}:${key || element.dataset.voterId || element.className || "visual"}`;
-      if (typeof this.gameObjectApi?.create === "function") {
-        let gameObject = this.visualGameObjects.get(element);
-        if (!gameObject || gameObject.id !== id || gameObject.target !== element) {
-          gameObject = this.gameObjectApi.create({
-            id,
-            target: element,
-            visibilityKey: id,
-            isArt: true,
-            isDynamic: true,
-            visualOptions: {
-              ...options,
-              layoutHiddenClasses: [
-                ...(Array.isArray(options.hiddenClasses) ? options.hiddenClasses : [options.hiddenClasses]).filter(Boolean),
-                ...(options.exitingClass ? [options.exitingClass] : [])
-              ]
-            }
-          });
-          this.visualGameObjects.set(element, gameObject);
-        } else {
-          gameObject.update({
-            id,
-            visibilityKey: id,
-            isArt: true,
-            isDynamic: true,
-            visualOptions: options
-          });
-        }
-        return gameObject.createVisual();
-      }
-      if (!this.visualAnimation) return null;
-      let visual = this.visualFallbacks.get(element);
-      if (!visual || visual.element !== element) {
-        visual = this.visualAnimation.createLegacyCssVisualObject({
-          element,
-          ...options
-        });
-        this.visualFallbacks.set(element, visual);
-      }
-      return visual;
+      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+        gameObjectApi: this.gameObjectApi,
+        visualAnimation: this.visualAnimation,
+        target: element,
+        gameObject: this.visualGameObjects.get(element),
+        legacyVisual: this.visualFallbacks.get(element),
+        gameObjectOptions: {
+          id,
+          visibilityKey: id,
+          isArt: true,
+          isDynamic: true,
+          visualOptions: {
+            ...options,
+            layoutHiddenClasses: [
+              ...(Array.isArray(options.hiddenClasses) ? options.hiddenClasses : [options.hiddenClasses]).filter(Boolean),
+              ...(options.exitingClass ? [options.exitingClass] : [])
+            ]
+          }
+        },
+        legacyVisualOptions: options
+      });
+      if (bridge?.gameObject) this.visualGameObjects.set(element, bridge.gameObject);
+      if (bridge?.legacyVisual) this.visualFallbacks.set(element, bridge.legacyVisual);
+      return bridge?.visual || null;
     }
 
     createArtTreeRenderer(host) {
