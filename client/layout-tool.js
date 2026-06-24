@@ -74,7 +74,9 @@ function serializeLayoutGroup(group) {
     name: group.name,
     hiddenInStates: group.id === "global" ? group.hiddenInStates === true : false,
     hiddenGlobals: Array.isArray(group.hiddenGlobals) ? [...group.hiddenGlobals] : [],
-    elements: (group.elements || []).map((element) => ({
+    elements: (group.elements || [])
+      .filter((element) => !element.artCompositionId || typeof isArtCompositionPendingDelete !== "function" || !isArtCompositionPendingDelete(element.artCompositionId))
+      .map((element) => ({
       id: element.id,
       name: element.name,
       selector: element.selector,
@@ -159,6 +161,41 @@ function isControllerLayoutDirty() {
 
 function isActiveLayoutDirty() {
   return layoutToolMode === "controller" ? isControllerLayoutDirty() : isLayoutDirty();
+}
+
+function removeArtCompositionFromLayoutData(layouts, compositionId) {
+  if (!layouts || !compositionId) return 0;
+  const removedElementIds = new Set();
+  let removedCount = 0;
+  const groups = [layouts.global, ...(layouts.states || [])].filter(Boolean);
+  for (const group of groups) {
+    const before = group.elements || [];
+    group.elements = before.filter((element) => {
+      if (element.artCompositionId !== compositionId) return true;
+      if (element.id) removedElementIds.add(element.id);
+      removedCount += 1;
+      return false;
+    });
+  }
+  if (removedElementIds.size) {
+    for (const group of groups) {
+      if (!Array.isArray(group.hiddenGlobals)) continue;
+      group.hiddenGlobals = group.hiddenGlobals.filter((elementId) => !removedElementIds.has(elementId));
+    }
+  }
+  return removedCount;
+}
+
+function removeArtCompositionLayoutInstances(compositionId) {
+  const removedCount = removeArtCompositionFromLayoutData(stageLayouts, compositionId)
+    + removeArtCompositionFromLayoutData(controllerLayouts, compositionId);
+  if (!removedCount) return 0;
+  if ([...selectedLayoutElementIds].some((elementId) => !layoutElement(selectedLayoutStateId, elementId))) {
+    setLayoutSelection(layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
+  }
+  if (layoutScreen && !layoutScreen.classList.contains("hidden")) renderLayoutTool();
+  updateGlobalSaveButton();
+  return removedCount;
 }
 
 function baseLayoutObjectCatalog() {

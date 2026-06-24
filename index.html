@@ -240,8 +240,10 @@
       margin: 0 !important;
       --stage-object-visible-scale: 1;
       --visual-scale: 1;
+      opacity: 1;
       transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1) * var(--visual-scale, 1))) !important;
       transform-origin: center !important;
+      transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease;
     }
 
     .stage-layout-target.stage-text-object {
@@ -257,6 +259,27 @@
       --stage-object-visible-scale: 0;
       opacity: 0;
       pointer-events: none;
+    }
+
+    .stage-layout-target.stage-layout-visual-hidden,
+    .stage-layout-target.stage-layout-visual-exiting {
+      --visual-scale: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .stage-layout-target.stage-layout-visual-update {
+      animation: stageLayoutVisualUpdate 200ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    .stage-layout-target.stage-layout-visual-instant {
+      transition-duration: 0ms !important;
+      animation: none !important;
+    }
+
+    @keyframes stageLayoutVisualUpdate {
+      0% { --visual-scale: 1.2; }
+      100% { --visual-scale: 1; }
     }
 
     .stage-layout-hidden {

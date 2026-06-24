@@ -1,3 +1,6 @@
+const stageLayoutArtVisibilityOverrides = new Map();
+const stageLayoutArtVisuals = new Map();
+
 async function loadStageLayouts({ forceServer = false } = {}) {
   if (runtimeTestLayouts && !forceServer) {
     stageLayouts = runtimeTestLayouts;
@@ -208,6 +211,8 @@ function clearStageLayoutTargets() {
     target.classList.remove("stage-layout-target");
     target.classList.remove("stage-global-layout-target");
     target.classList.remove("stage-layout-hidden");
+    target.classList.remove("stage-layout-visual-update");
+    target.classList.remove("stage-layout-visual-instant");
     target.style.removeProperty("--stage-layout-x");
     target.style.removeProperty("--stage-layout-y");
     target.style.removeProperty("--stage-layout-w");
@@ -219,6 +224,9 @@ function clearStageLayoutTargets() {
     target.style.removeProperty("--stage-text-font-size");
     target.style.removeProperty("color");
     target.style.removeProperty("font-size");
+    delete target.dataset.stageLayoutElementId;
+    delete target.dataset.stageLayoutArtCompositionId;
+    delete target.dataset.stageLayoutVisibilityKey;
   }
 }
 
@@ -262,6 +270,9 @@ function applyStageElementLayout(element, isGlobal) {
   if (!target) return;
   target.classList.add("stage-layout-target");
   if (isGlobal) target.classList.add("stage-global-layout-target");
+  target.dataset.stageLayoutElementId = element.id || "";
+  target.dataset.stageLayoutArtCompositionId = element.artCompositionId || "";
+  target.dataset.stageLayoutVisibilityKey = stageLayoutArtVisibilityKey(element.id, isGlobal);
   target.style.setProperty("--stage-layout-x", `${element.x}px`);
   target.style.setProperty("--stage-layout-y", `${element.y}px`);
   target.style.setProperty("--stage-layout-w", `${element.width}px`);
@@ -274,6 +285,76 @@ function applyStageElementLayout(element, isGlobal) {
   } else if (isDynamicStageArtInstance(element)) {
     renderStageArtInstance(element, target);
   }
+  applyStageLayoutArtVisibilityOverride(element, target);
+}
+
+function stageLayoutArtVisualFor(elementId, target) {
+  const visibilityKey = target?.dataset.stageLayoutVisibilityKey || elementId || "";
+  if (!visibilityKey || !target || !window.PartyGameVisualObject) return null;
+  const existing = stageLayoutArtVisuals.get(visibilityKey);
+  if (existing?.element === target) return existing.visual;
+  const visual = window.PartyGameVisualObject.createCssVisualObject({
+    element: target,
+    hiddenClasses: ["stage-layout-visual-hidden"],
+    motionHiddenClasses: ["stage-layout-visual-hidden"],
+    exitingClass: "stage-layout-visual-exiting",
+    updateClass: "stage-layout-visual-update",
+    instantClass: "stage-layout-visual-instant",
+    getVisible: () => {
+      if (stageLayoutArtVisibilityOverrides.has(visibilityKey)) {
+        return stageLayoutArtVisibilityOverrides.get(visibilityKey) === true;
+      }
+      return target.dataset.visualVisible === "true"
+        || (!target.classList.contains("stage-layout-visual-hidden")
+          && !target.classList.contains("stage-layout-visual-exiting")
+          && !target.classList.contains("stage-layout-hidden"));
+    },
+    setVisible: (isVisible) => {
+      stageLayoutArtVisibilityOverrides.set(visibilityKey, isVisible === true);
+      target.dataset.visualVisible = isVisible ? "true" : "false";
+    }
+  });
+  stageLayoutArtVisuals.set(visibilityKey, { element: target, visual });
+  return visual;
+}
+
+function applyStageLayoutArtVisibilityOverride(element, target) {
+  const visibilityKey = target?.dataset.stageLayoutVisibilityKey || stageLayoutArtVisibilityKey(element?.id, target?.classList.contains("stage-global-layout-target"));
+  if (!visibilityKey || !target || !stageLayoutArtVisibilityOverrides.has(visibilityKey)) return;
+  const isShown = stageLayoutArtVisibilityOverrides.get(visibilityKey) !== false;
+  target.dataset.visualVisible = isShown ? "true" : "false";
+  if (isShown) {
+    target.classList.remove("stage-layout-visual-hidden", "stage-layout-visual-exiting");
+    return;
+  }
+  if (!target.classList.contains("stage-layout-visual-exiting")) {
+    target.classList.add("stage-layout-visual-hidden");
+  }
+}
+
+function stageLayoutTargetByElementId(elementId) {
+  if (!stageBoard || !elementId) return null;
+  return stageBoard.querySelector(`[data-stage-layout-element-id="${CSS.escape(elementId)}"]`)
+    || stageBoard.querySelector(`.dynamic-stage-art-instance[data-layout-element-id="${CSS.escape(elementId)}"]`);
+}
+
+function stageLayoutArtVisibilityKey(elementId, isGlobal = false) {
+  if (!elementId) return "";
+  return `${isGlobal ? "global" : currentStageLayoutStateId || "moment"}:${elementId}`;
+}
+
+function setStageLayoutArtElementShownForAction(action) {
+  const elementId = action?.targetLayoutElementId || "";
+  if (!elementId || !window.PartyGameVisualObject) return 0;
+  const isShown = action.isShown !== false;
+  const target = stageLayoutTargetByElementId(elementId);
+  const visibilityKey = target?.dataset.stageLayoutVisibilityKey || stageLayoutArtVisibilityKey(elementId);
+  stageLayoutArtVisibilityOverrides.set(visibilityKey, isShown);
+  if (!target) return 0;
+  const visual = stageLayoutArtVisualFor(elementId, target);
+  if (!visual) return 0;
+  const animation = window.PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
+  return visual.play(animation, { instant: action.instant === true });
 }
 
 function stageLayoutTargetElement(element) {

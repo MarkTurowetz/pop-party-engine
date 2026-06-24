@@ -69,11 +69,17 @@ function serializeArtComponentForSave(component) {
 }
 
 function isArtCompositionsDirty() {
-  return artCompositionsSavedSnapshot && JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot;
+  return artCompositionsSavedSnapshot && (
+    JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot
+    || artCompositionsPendingDeleteCount() > 0
+  );
 }
 
 function artCompositionHistorySnapshot() {
-  return JSON.stringify(serializeArtCompositionsForSave(artCompositions));
+  return JSON.stringify({
+    compositions: serializeArtCompositionsForSave(artCompositions),
+    pendingDeleteIds: pendingArtCompositionDeleteIds()
+  });
 }
 
 function getArtHistoryManager() {
@@ -94,7 +100,13 @@ function pushArtHistory() {
 function restoreArtCompositionHistory(snapshot) {
   const preferredCompositionId = selectedArtCompositionId;
   const preferredComponentIds = [...selectedArtComponentIds];
-  artCompositions = JSON.parse(snapshot);
+  const parsed = JSON.parse(snapshot);
+  const snapshotCompositions = Array.isArray(parsed) ? parsed : parsed.compositions || [];
+  clearAllArtCompositionPendingDeletes();
+  for (const compositionId of (Array.isArray(parsed?.pendingDeleteIds) ? parsed.pendingDeleteIds : [])) {
+    markArtCompositionPendingDelete(compositionId);
+  }
+  artCompositions = snapshotCompositions.filter((composition) => !isArtCompositionPendingDelete(composition.id));
   selectedArtCompositionId = preferredCompositionId && artComposition(preferredCompositionId)
     ? preferredCompositionId
     : artCompositions[0]?.id || "";
@@ -1058,10 +1070,19 @@ function openArtCreateKindMenu(anchor, onChoose) {
 }
 
 async function saveArtCompositions() {
-  if (!artCompositions.length) return;
+  if (!artCompositions.length && artCompositionsPendingDeleteCount() <= 0) return;
   const selectedId = selectedArtCompositionId;
+  const deleteIds = pendingArtCompositionDeleteIds();
+  for (const compositionId of deleteIds) {
+    const response = await fetch(`${origin}/api/art-compositions/${encodeURIComponent(compositionId)}`, { method: "DELETE" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.ok === false) throw new Error(result.error || "Could not delete art asset");
+    clearArtCompositionPendingDelete(compositionId);
+    forgetArtCompositionDraft(compositionId);
+  }
   const savedCompositions = [];
   for (const composition of artCompositions) {
+    if (isArtCompositionPendingDelete(composition.id)) continue;
     const result = await postJson(`/api/art-compositions/${composition.id}`, { composition });
     savedCompositions.push(result.composition);
   }
@@ -1078,43 +1099,35 @@ async function saveArtCompositions() {
 async function deleteSelectedArtComposition() {
   const composition = selectedArtComposition();
   if (!composition) return;
-  const confirmed = window.confirm(`Delete "${composition.name || "Art Asset"}"?`);
-  if (!confirmed) return;
   const deletedId = composition.id;
   const deletedIndex = artCompositions.findIndex((item) => item.id === deletedId);
-  if (artDeleteCompositionButton) artDeleteCompositionButton.disabled = true;
-  artFileName.textContent = "Deleting art asset...";
-  try {
-    const response = await fetch(`${origin}/api/art-compositions/${encodeURIComponent(deletedId)}`, { method: "DELETE" });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || result.ok === false) throw new Error(result.error || "Could not delete art asset");
-    artCompositions = Array.isArray(result.compositions)
-      ? result.compositions
-      : artCompositions.filter((item) => item.id !== deletedId);
-    forgetArtCompositionDraft(deletedId);
-    artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
-    notifyArtAssetsChanged();
-    const nextComposition = artCompositions[Math.min(deletedIndex, artCompositions.length - 1)] || artCompositions[deletedIndex - 1] || null;
-    if (nextComposition) {
-      selectArtComposition(nextComposition.id);
-    } else {
-      selectedArtCompositionId = "";
-      selectedArtComponentId = "";
-      selectedArtComponentIds = new Set();
-      hideArtComponentEditor();
-      artPreviewTitle.textContent = "No Art Assets";
-      artPreviewMeta.textContent = "Create an art asset to begin.";
-      artPreviewArt.className = "art-preview-art";
-      artPreviewArt.replaceChildren();
-      artFileName.textContent = `Deleted ${composition.name || "art asset"}`;
-      renderArtList();
-      updateArtCreateButtons();
-    }
-    updateGlobalSaveButton();
-  } catch (error) {
-    if (artDeleteCompositionButton) artDeleteCompositionButton.disabled = false;
-    artFileName.textContent = error.message;
+  pushArtHistory();
+  markArtCompositionPendingDelete(deletedId);
+  artCompositions = artCompositions.filter((item) => item.id !== deletedId);
+  const removedLayoutCount = typeof removeArtCompositionLayoutInstances === "function"
+    ? removeArtCompositionLayoutInstances(deletedId)
+    : 0;
+  notifyArtAssetsChanged();
+  const nextComposition = artCompositions[Math.min(deletedIndex, artCompositions.length - 1)] || artCompositions[deletedIndex - 1] || null;
+  if (nextComposition) {
+    selectArtComposition(nextComposition.id);
+  } else {
+    selectedArtCompositionId = "";
+    selectedArtComponentId = "";
+    selectedArtComponentIds = new Set();
+    hideArtComponentEditor();
+    artPreviewTitle.textContent = "No Art Assets";
+    artPreviewMeta.textContent = "Create an art asset to begin.";
+    artPreviewArt.className = "art-preview-art";
+    artPreviewArt.replaceChildren();
+    renderArtList();
+    updateArtCreateButtons();
   }
+  const layoutMessage = removedLayoutCount
+    ? ` and removed ${removedLayoutCount} layout instance${removedLayoutCount === 1 ? "" : "s"}`
+    : "";
+  artFileName.textContent = `Marked ${composition.name || "art asset"} for deletion${layoutMessage}. Save All to permanently delete.`;
+  updateGlobalSaveButton();
 }
 
 function renderArtPreviewMeta(asset) {

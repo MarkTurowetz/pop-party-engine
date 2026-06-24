@@ -193,6 +193,7 @@ const artAssetsChangedStorageKey = "partyTemplate.artAssetsChangedAt";
 const artAssetsChangedChannelName = "partyTemplate.artAssetsChanged";
 const artAssetsChangedChannels = [];
 const artCompositionDrafts = new Map();
+const pendingDeletedArtCompositionIds = new Set();
 
 function cloneArtCompositionDraft(composition) {
   try {
@@ -205,6 +206,7 @@ function cloneArtCompositionDraft(composition) {
 function rememberArtCompositionDrafts(compositions = artCompositions) {
   for (const composition of compositions || []) {
     if (!composition?.id) continue;
+    if (pendingDeletedArtCompositionIds.has(composition.id)) continue;
     artCompositionDrafts.set(composition.id, cloneArtCompositionDraft(composition));
   }
 }
@@ -217,9 +219,39 @@ function clearArtCompositionDrafts() {
   artCompositionDrafts.clear();
 }
 
+function markArtCompositionPendingDelete(compositionId) {
+  if (!compositionId) return;
+  pendingDeletedArtCompositionIds.add(compositionId);
+  forgetArtCompositionDraft(compositionId);
+}
+
+function clearArtCompositionPendingDelete(compositionId) {
+  if (!compositionId) return;
+  pendingDeletedArtCompositionIds.delete(compositionId);
+}
+
+function clearAllArtCompositionPendingDeletes() {
+  pendingDeletedArtCompositionIds.clear();
+}
+
+function isArtCompositionPendingDelete(compositionId) {
+  return pendingDeletedArtCompositionIds.has(compositionId);
+}
+
+function artCompositionsPendingDeleteCount() {
+  return pendingDeletedArtCompositionIds.size;
+}
+
+function pendingArtCompositionDeleteIds() {
+  return [...pendingDeletedArtCompositionIds];
+}
+
 function mergeArtCompositionDrafts(compositions = []) {
-  const byId = new Map((compositions || []).map((composition) => [composition.id, composition]));
+  const byId = new Map((compositions || [])
+    .filter((composition) => composition?.id && !pendingDeletedArtCompositionIds.has(composition.id))
+    .map((composition) => [composition.id, composition]));
   for (const [id, composition] of artCompositionDrafts.entries()) {
+    if (pendingDeletedArtCompositionIds.has(id)) continue;
     byId.set(id, cloneArtCompositionDraft(composition));
   }
   return [...byId.values()];

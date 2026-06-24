@@ -89,6 +89,13 @@ async function saveTool(toolId) {
 
 async function saveAllTools() {
   if (!globalSaveButton) return;
+  const pendingDeleteCount = typeof artCompositionsPendingDeleteCount === "function"
+    ? artCompositionsPendingDeleteCount()
+    : 0;
+  if (pendingDeleteCount > 0) {
+    const confirmed = window.confirm(`Save All will permanently delete ${pendingDeleteCount} art asset${pendingDeleteCount === 1 ? "" : "s"} and any layout instances that use them. This action cannot be undone.`);
+    if (!confirmed) return;
+  }
   globalSaveButton.disabled = true;
   globalSaveButton.textContent = "Saving";
   try {

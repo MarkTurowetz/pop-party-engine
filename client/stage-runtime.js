@@ -570,6 +570,7 @@ function getStageActionRunner() {
       playerAnswerBubbleAnimationRemaining,
       runStageWipe,
       setCraftingTimerShownForAction,
+      setStageLayoutArtElementShownForAction,
       setPlayerAnswerBubblesShown,
       setPlayersShownForAction,
       setStageWipeShownForAction,

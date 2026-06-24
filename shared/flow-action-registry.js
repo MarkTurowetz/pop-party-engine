@@ -512,6 +512,27 @@ const flowActionDefinitions = [
     }
   },
   {
+    id: "setArtAssetShown",
+    name: "Set Art Asset Shown",
+    category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "setArtAssetShown",
+    stageRunner: "setArtAssetShown",
+    normalize: (action, base, context) => ({
+      ...base,
+      targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
+      isShown: action?.isShown !== false,
+      instant: action?.instant === true
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "setArtAssetShown",
+      targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
+      isShown: action.isShown !== false,
+      instant: action.instant === true
+    })
+  },
+  {
     id: "revealPlayerAnswerCorrectness",
     name: "Reveal Player Answer Correctness",
     category: "standard",

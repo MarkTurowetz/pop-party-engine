@@ -289,6 +289,7 @@ function getFlowActionSummaryRuntime() {
       ensureActionTiming,
       flowStateName,
       flowTargetActionName,
+      artAssetTargetName: flowArtAssetTargetName,
       hostAudioDisplayName,
       textTargetName,
       transitionName: (transitionId) => flowTransitions.find((item) => item.id === transitionId)?.name || transitionId
@@ -627,6 +628,7 @@ function getFlowActionInspectorRegistry() {
       flowTrueFalseOptions,
       gameStates: () => gameFlow.states || [],
       getFlowActionControlGroups,
+      artAssetTargetOptions: flowArtAssetTargetOptions,
       readOnlyFlowNote,
       refreshActionNameFromType,
       roundOptions,
@@ -976,6 +978,32 @@ function controllerLayoutOptions(selectedLayoutId = "") {
     options.push({ id: selectedLayoutId, name: selectedLayoutId });
   }
   return options;
+}
+
+function flowArtAssetLayoutElements(state) {
+  const stateId = state?.id || selectedFlowStateId || "";
+  const layout = (stageLayouts.states || []).find((item) => item.id === stateId);
+  return (layout?.elements || []).filter((element) => element.kind === "art" && element.artCompositionId);
+}
+
+function flowArtAssetTargetOptions(state, selectedElementId = "") {
+  const options = [{ id: "", name: "No Art Asset" }];
+  for (const element of flowArtAssetLayoutElements(state)) {
+    options.push({ id: element.id, name: element.name || element.id });
+  }
+  if (selectedElementId && !options.some((option) => option.id === selectedElementId)) {
+    options.push({ id: selectedElementId, name: selectedElementId });
+  }
+  return options;
+}
+
+function flowArtAssetTargetName(elementId) {
+  if (!elementId) return "No Art Asset";
+  for (const state of stageLayouts.states || []) {
+    const element = (state.elements || []).find((item) => item.id === elementId);
+    if (element) return element.name || element.id;
+  }
+  return elementId;
 }
 
 function currentRuntimeLocalMessage(overrides = {}) {

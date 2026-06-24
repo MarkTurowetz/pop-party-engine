@@ -104,6 +104,7 @@
         controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Player Answers Visible" });
         controls?.appendPlayerFilterControls(target, action, handlers.change);
       }
+      if (action.type === "setArtAssetShown") appendArtAssetShownControls(target, state, action, controls, handlers);
       if (action.type === "revealPlayerAnswerCorrectness") {
         target.appendChild(context.readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
       }
@@ -302,6 +303,17 @@
       target.appendChild(context.readOnlyFlowNote(jumpTargetIsMissing(action)
         ? "Warning: this Jump Node needs a target. If runtime reaches it while the target is None, the moment will hang here."
         : "Jump Nodes immediately move to the selected action in this moment. They do not use timing or draggable exit dots."));
+    }
+
+    function appendArtAssetShownControls(target, state, action, controls, handlers) {
+      const selectedTarget = action.targetLayoutElementId || "";
+      const options = context.artAssetTargetOptions?.(state, selectedTarget) || [{ id: "", name: "No Art Asset" }];
+      target.appendChild(context.flowSelect("Art Asset", selectedTarget, options, (value) => {
+        action.targetLayoutElementId = value || "";
+        handlers.change();
+      }));
+      controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Art Asset Visible" });
+      target.appendChild(context.readOnlyFlowNote("Targets a placed art asset instance in this moment's layout and runs the standard appear/disappear animation."));
     }
 
     function appendPlayHostAudioControls(target, action, controls, handlers) {
