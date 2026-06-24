@@ -41,6 +41,14 @@
     return Math.max(1, Number(siblingCount || 1) - Number(index || 0));
   }
 
+  function artComponentViewKey(component, index, counts) {
+    const rawId = String(component?.id || "").trim();
+    const baseKey = rawId || `component-${Number(index || 0)}`;
+    const count = Number(counts?.get(baseKey) || 0);
+    counts?.set(baseKey, count + 1);
+    return count > 0 ? `${baseKey}::${count}` : baseKey;
+  }
+
   class ArtObjectView {
     constructor(options = {}) {
       this.document = options.document || global.document;
@@ -136,29 +144,35 @@
         width: Number(this.component?.width || 1),
         height: Number(this.component?.height || 1)
       };
-      const desiredIds = new Set((children || []).map((child) => child.id));
-      for (const [index, child] of (children || []).entries()) {
-        let view = this.children.get(child.id);
+      const counts = new Map();
+      const keyedChildren = (children || []).map((child, index) => ({
+        child,
+        index,
+        key: artComponentViewKey(child, index, counts)
+      }));
+      const desiredKeys = new Set(keyedChildren.map((child) => child.key));
+      for (const { child, index, key } of keyedChildren) {
+        let view = this.children.get(key);
         if (!view) {
           view = new ArtObjectView({
             document: this.document,
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
-            instanceId: `${this.instanceId}/${child.id || index}`,
+            instanceId: `${this.instanceId}/${key}`,
             component: child,
             canvas: childCanvas,
             layer: { index, total: (children || []).length }
           });
-          this.children.set(child.id, view);
+          this.children.set(key, view);
           view.on({ instant: true });
         } else {
           view.update(child, childCanvas, { index, total: (children || []).length });
         }
         this.element.appendChild(view.element);
       }
-      for (const [childId, view] of Array.from(this.children.entries())) {
-        if (desiredIds.has(childId)) continue;
-        this.children.delete(childId);
+      for (const [childKey, view] of Array.from(this.children.entries())) {
+        if (desiredKeys.has(childKey)) continue;
+        this.children.delete(childKey);
         view.remove();
       }
     }
@@ -216,29 +230,35 @@
 
     render(components = [], canvas, options = {}) {
       if (!this.host) return;
-      const desiredIds = new Set((components || []).map((component) => component.id));
-      for (const [index, component] of (components || []).entries()) {
-        let view = this.views.get(component.id);
+      const counts = new Map();
+      const keyedComponents = (components || []).map((component, index) => ({
+        component,
+        index,
+        key: artComponentViewKey(component, index, counts)
+      }));
+      const desiredKeys = new Set(keyedComponents.map((component) => component.key));
+      for (const { component, index, key } of keyedComponents) {
+        let view = this.views.get(key);
         if (!view) {
           view = new ArtObjectView({
             document: this.document,
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
-            instanceId: `${this.instanceId}/${component.id || index}`,
+            instanceId: `${this.instanceId}/${key}`,
             component,
             canvas,
             layer: { index, total: (components || []).length }
           });
-          this.views.set(component.id, view);
+          this.views.set(key, view);
           view.play(component.defaultAnimationState || options.defaultAnimation || "on", { instant: options.instant !== false });
         } else {
           view.update(component, canvas, { index, total: (components || []).length });
         }
         this.host.appendChild(view.element);
       }
-      for (const [componentId, view] of Array.from(this.views.entries())) {
-        if (desiredIds.has(componentId)) continue;
-        this.views.delete(componentId);
+      for (const [componentKey, view] of Array.from(this.views.entries())) {
+        if (desiredKeys.has(componentKey)) continue;
+        this.views.delete(componentKey);
         view.remove({ instant: options.instant === true });
       }
     }
