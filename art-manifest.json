@@ -760,6 +760,51 @@
         }
       ],
       "updatedAt": "2026-06-24T01:35:18.675Z"
+    },
+    "crafting-timer-widget": {
+      "name": "Crafting Timer",
+      "description": "Editable timer art used during timed input moments.",
+      "isCustom": false,
+      "canvas": {
+        "width": 190,
+        "height": 190
+      },
+      "components": [
+        {
+          "id": "timer-value",
+          "name": "Timer Value",
+          "kind": "text",
+          "x": 95,
+          "y": 95,
+          "width": 120,
+          "height": 82,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "30",
+          "fontSize": 72,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "timer-ring",
+          "name": "Timer Ring",
+          "kind": "shape",
+          "x": 95,
+          "y": 95,
+          "width": 170,
+          "height": 170,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "circle",
+          "fillColor": "#ffe256",
+          "borderColor": "#17131f",
+          "borderWidth": 6,
+          "borderRadius": 999
+        }
+      ],
+      "updatedAt": "2026-06-24T01:35:20.187Z"
     }
   }
 }
