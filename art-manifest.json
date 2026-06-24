@@ -531,6 +531,40 @@
         }
       ],
       "updatedAt": "2026-06-24T01:27:31.088Z"
+    },
+    "presentation-click-prompt": {
+      "name": "Presentation Click Prompt",
+      "description": "Editable prompt art shown when the VIP can advance presented text.",
+      "isCustom": false,
+      "canvas": {
+        "width": 92,
+        "height": 92
+      },
+      "components": [
+        {
+          "id": "cursor-shape",
+          "name": "Cursor Shape",
+          "kind": "shape",
+          "x": 46,
+          "y": 46,
+          "width": 72,
+          "height": 72,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rectangle",
+          "fillColor": "currentColor",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0,
+          "imageAssetId": "presentation-click-cursor",
+          "imageName": "presentation-click-cursor",
+          "imageMimeType": "",
+          "imageObjectFit": "contain",
+          "imageTint": "currentColor"
+        }
+      ],
+      "updatedAt": "2026-06-24T01:35:12.242Z"
     }
   }
 }
