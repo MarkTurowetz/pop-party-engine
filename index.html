@@ -2286,6 +2286,34 @@
       white-space: nowrap;
     }
 
+    .art-surface-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .art-surface-tab {
+      min-height: 38px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.28);
+      cursor: pointer;
+    }
+
+    .art-surface-tab.is-selected {
+      background: #22d3ee;
+      color: var(--ink);
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 rgba(23, 19, 31, 0.28);
+    }
+
     .art-list {
       display: grid;
       align-content: start;
@@ -4870,6 +4898,10 @@
         <div class="art-header">
           <h1>Art Assets</h1>
           <p>Select an asset to preview it, replace it, or save a staged swap.</p>
+          <div class="art-surface-tabs" role="tablist" aria-label="Art surface">
+            <button class="art-surface-tab is-selected" id="stageArtSurfaceTab" type="button" data-art-surface="stage" role="tab" aria-selected="true">Stage Art</button>
+            <button class="art-surface-tab" id="controllerArtSurfaceTab" type="button" data-art-surface="controller" role="tab" aria-selected="false">Controller Art</button>
+          </div>
           <div class="art-create-controls">
             <button class="secondary-button" id="artCreateButton" type="button">Create</button>
             <button class="secondary-button" id="artCreateChildButton" type="button" disabled>Create Child</button>
@@ -5315,6 +5347,7 @@
     const avatarPickerGrid = document.querySelector("#avatarPickerGrid");
     const avatarPickerDoneButton = document.querySelector("#avatarPickerDoneButton");
     const artAssetList = document.querySelector("#artAssetList");
+    const artSurfaceTabs = document.querySelectorAll("[data-art-surface]");
     const artPreviewTitle = document.querySelector("#artPreviewTitle");
     const artPreviewMeta = document.querySelector("#artPreviewMeta");
     const artPreviewStage = document.querySelector(".art-preview-stage");

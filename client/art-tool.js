@@ -162,6 +162,10 @@ function visibleArtCompositions() {
   return (artCompositions || []).filter((composition) => normalizeArtCompositionSurface(composition.surface) === selectedArtSurface);
 }
 
+function artSurfaceLabel(surface = selectedArtSurface) {
+  return normalizeArtCompositionSurface(surface) === "controller" ? "Controller Art" : "Stage Art";
+}
+
 function selectedArtComponents() {
   const composition = selectedArtComposition();
   return flattenArtComponents(composition?.components || []).filter(({ component }) => selectedArtComponentIds.has(component.id)).map(({ component }) => component);
@@ -262,9 +266,10 @@ function toggleArtCollapsedIds(collapsedSet, ids) {
 }
 
 function artSidebarState() {
+  const isStageSurface = selectedArtSurface === "stage";
   return {
-    artAssets,
-    avatarComposites,
+    artAssets: isStageSurface ? artAssets : [],
+    avatarComposites: isStageSurface ? avatarComposites : [],
     artCompositions: visibleArtCompositions(),
     selectedArtSurface,
     artSectionCollapseIds,
@@ -318,8 +323,47 @@ function getArtSidebarRenderer() {
 }
 
 function renderArtList() {
+  renderArtSurfaceTabs();
   getArtSidebarRenderer().render(artAssetList);
   updateArtCreateButtons();
+}
+
+function renderArtSurfaceTabs() {
+  for (const tab of artSurfaceTabs || []) {
+    const isSelected = tab.dataset.artSurface === selectedArtSurface;
+    tab.classList.toggle("is-selected", isSelected);
+    tab.setAttribute("aria-selected", isSelected ? "true" : "false");
+  }
+}
+
+function selectArtSurface(surface) {
+  const nextSurface = normalizeArtCompositionSurface(surface);
+  if (selectedArtSurface === nextSurface) return;
+  selectedArtSurface = nextSurface;
+  selectedArtAsset = null;
+  selectedArtComposite = null;
+  const visible = visibleArtCompositions();
+  const currentComposition = selectedArtComposition();
+  selectedArtCompositionId = currentComposition && normalizeArtCompositionSurface(currentComposition.surface) === selectedArtSurface
+    ? currentComposition.id
+    : visible[0]?.id || "";
+  selectedArtComponentId = "";
+  selectedArtComponentIds = new Set();
+  pendingArtReplacement = null;
+  if (selectedArtCompositionId) {
+    renderSelectedArtComposition();
+  } else {
+    hideArtComponentEditor();
+    artPreviewTitle.textContent = artSurfaceLabel();
+    artPreviewMeta.textContent = "Create an art asset to edit this surface.";
+    artPreviewArt.className = "art-preview-art";
+    artPreviewArt.replaceChildren();
+    updateArtCompositionDeleteButton();
+  }
+  artFileName.textContent = `${artSurfaceLabel()} selected`;
+  artFileInput.value = "";
+  renderArtList();
+  updateGlobalSaveButton();
 }
 
 function compositePreviewMarkup(composite) {
@@ -1216,6 +1260,9 @@ async function setupArtTool() {
   artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition));
   artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject));
   artDeleteCompositionButton?.addEventListener("click", () => deleteSelectedArtComposition());
+  for (const tab of artSurfaceTabs || []) {
+    tab.addEventListener("click", () => selectArtSurface(tab.dataset.artSurface));
+  }
   window.addEventListener("keydown", handleArtHotkeys);
   artPreviewStage.addEventListener("pointerdown", startArtSelectionMarquee);
   artSaveCompositionButton.addEventListener("click", () => saveArtCompositions().catch((error) => {
@@ -1242,7 +1289,11 @@ async function setupArtTool() {
     await loadArtAssets();
     artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
     getArtHistoryManager()?.clear();
-    selectArtComposition("voting-card");
+    const initialCompositionId = selectedArtSurface === "stage" && artComposition("voting-card")
+      ? "voting-card"
+      : visibleArtCompositions()[0]?.id || "";
+    if (initialCompositionId) selectArtComposition(initialCompositionId);
+    else selectArtSurface(selectedArtSurface);
   } catch (error) {
     artPreviewTitle.textContent = "Art Tool Offline";
     artPreviewMeta.textContent = error.message;
