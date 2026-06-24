@@ -130,13 +130,16 @@ function layoutElementVisibilityKey(elementId, target, options = {}) {
 
 function layoutEntityForElementId(elementId, target = null, options = {}) {
   if (!elementId) return null;
-  const entity = options.registry?.get(elementId);
+  const registryKey = options.registryKeyFor?.(elementId, options.scope || "", target) || elementId;
+  const entity = options.registry?.get(elementId, { registryKey });
   if (entity && (!options.scope || (options.scope === "global") === entity.isGlobal)) return entity;
   const resolvedTarget = target || options.targetByElementId?.(elementId, options.scope || "");
   if (!resolvedTarget) return null;
+  const resolvedRegistryKey = options.registryKeyFor?.(elementId, options.scope || "", resolvedTarget) || registryKey;
   const fallbackEntity = {
     element: null,
     id: elementId,
+    registryKey: resolvedRegistryKey,
     isArt: options.isArtTarget?.(resolvedTarget) === true,
     isDynamic: options.isDynamicTarget?.(resolvedTarget) === true,
     isGlobal: options.isGlobalTarget?.(resolvedTarget) === true,
@@ -676,14 +679,16 @@ function applyStageElementLayout(element, isGlobal) {
 
 function registerStageLayoutEntity(element, target, isGlobal = false) {
   const id = element?.id || "";
+  const visibilityKey = stageLayoutArtVisibilityKey(id, isGlobal);
   const entity = {
     element,
     id,
+    registryKey: visibilityKey,
     isArt: element?.kind === "art" && Boolean(element?.artCompositionId),
     isDynamic: isDynamicStageArtInstance(element),
     isGlobal: isGlobal === true,
     target,
-    visibilityKey: stageLayoutArtVisibilityKey(id, isGlobal)
+    visibilityKey
   };
   return stageLayoutGameObjectRegistry()?.register(entity) || entity;
 }
@@ -693,6 +698,7 @@ function stageLayoutEntityForElementId(elementId, target = null, scope = "") {
     registry: stageLayoutGameObjectRegistry(),
     targetByElementId: stageLayoutTargetByElementId,
     visibilityKeyForTarget: stageLayoutElementVisibilityKey,
+    registryKeyFor: stageLayoutRegistryKeyForElement,
     scope,
     isArtTarget: (resolvedTarget) => Boolean(resolvedTarget.dataset.stageLayoutArtCompositionId),
     isDynamicTarget: (resolvedTarget) => resolvedTarget.classList.contains("dynamic-stage-art-instance"),
@@ -731,6 +737,12 @@ function stageLayoutElementVisibilityKey(elementId, target = null, scope = "") {
 function stageLayoutArtVisibilityKey(elementId, isGlobal = false) {
   if (!elementId) return "";
   return `${isGlobal ? "global" : currentStageLayoutStateId || "moment"}:${elementId}`;
+}
+
+function stageLayoutRegistryKeyForElement(elementId, scope = "", target = null) {
+  if (scope === "global") return stageLayoutArtVisibilityKey(elementId, true);
+  if (scope === "moment") return stageLayoutArtVisibilityKey(elementId, false);
+  return stageLayoutArtVisibilityKey(elementId, target?.classList?.contains("stage-global-layout-target") === true);
 }
 
 function setStageLayoutArtElementShownForAction(action) {

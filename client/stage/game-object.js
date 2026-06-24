@@ -179,18 +179,25 @@
       if (!id) return;
       this.activeIds.delete(id);
       this.objects.delete(id);
+      for (const [key, object] of Array.from(this.objects.entries())) {
+        if (object?.id === id || object?.element?.id === id) {
+          this.activeIds.delete(key);
+          this.objects.delete(key);
+        }
+      }
     }
 
     register(options = {}) {
       const id = options.id || options.element?.id || "";
+      const registryKey = options.registryKey || id;
       if (!id) return new GameObject({
         ...options,
         visibilityOverrides: this.visibilityOverrides,
         visualOptions: this.visualOptions,
         layoutHiddenClasses: this.visualOptions.layoutHiddenClasses
       });
-      this.activeIds.add(id);
-      const existing = this.objects.get(id);
+      this.activeIds.add(registryKey);
+      const existing = this.objects.get(registryKey);
       if (existing) {
         existing.update({
           ...options,
@@ -206,13 +213,14 @@
         visualOptions: this.visualOptions,
         layoutHiddenClasses: this.visualOptions.layoutHiddenClasses
       });
-      this.objects.set(id, object);
+      this.objects.set(registryKey, object);
       return object;
     }
 
-    get(id) {
-      if (!id || !this.activeIds.has(id)) return null;
-      const object = this.objects.get(id) || null;
+    get(id, options = {}) {
+      const registryKey = options.registryKey || id;
+      if (!registryKey || !this.activeIds.has(registryKey)) return null;
+      const object = this.objects.get(registryKey) || null;
       return object?.isActive() ? object : null;
     }
   }
