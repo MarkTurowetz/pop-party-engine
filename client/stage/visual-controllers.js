@@ -269,14 +269,46 @@
   class PlayerAnswerBubbleController {
     constructor(options = {}) {
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.host = options.host;
       this.document = options.document || global.document;
       this.renderedShown = true;
       this.animationEndsAt = 0;
     }
 
+    gameObjectFor(bubble) {
+      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
+      if (!bubble || !GameObject) return null;
+      if (!bubble.playerAnswerBubbleGameObject || bubble.playerAnswerBubbleGameObject.target !== bubble) {
+        bubble.playerAnswerBubbleGameObject = new GameObject({
+          id: bubble.id || bubble.dataset.answerNonce || `answer-bubble-${Math.random().toString(36).slice(2)}`,
+          target: bubble,
+          visibilityKey: `answer-bubble:${bubble.dataset.answerNonce || bubble.id || ""}`,
+          visualOptions: {
+            hiddenClasses: ["is-hidden"],
+            motionHiddenClasses: ["is-hidden"],
+            exitingClass: "is-exiting",
+            updateClass: "is-updating",
+            instantClass: "is-instant",
+            layoutHiddenClasses: ["is-hidden", "is-exiting"]
+          },
+          getVisible: () => !bubble.classList.contains("is-hidden") && !bubble.classList.contains("is-exiting"),
+          setVisible: (isVisible) => {
+            bubble.dataset.visualVisible = isVisible ? "true" : "false";
+          }
+        });
+      } else {
+        bubble.playerAnswerBubbleGameObject.update({
+          visibilityKey: `answer-bubble:${bubble.dataset.answerNonce || bubble.id || ""}`
+        });
+      }
+      return bubble.playerAnswerBubbleGameObject;
+    }
+
     visualFor(bubble) {
       if (!bubble || !this.visualAnimation) return null;
+      const gameObject = this.gameObjectFor(bubble);
+      if (gameObject) return gameObject.createVisual();
       if (!bubble.playerAnswerBubbleVisual || bubble.playerAnswerBubbleVisual.element !== bubble) {
         bubble.playerAnswerBubbleVisual = this.visualAnimation.createCssVisualObject({
           element: bubble,
