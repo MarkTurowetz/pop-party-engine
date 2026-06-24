@@ -5,7 +5,7 @@
     return element.classList.contains(hiddenClass) || element.classList.contains(parkedClass);
   }
 
-  function createStageGameObject(gameObjectApi, options = {}) {
+  function createGameObject(gameObjectApi, options = {}) {
     return typeof gameObjectApi?.create === "function" ? gameObjectApi.create(options) : null;
   }
 
@@ -80,7 +80,7 @@
       if (!object?.element) return null;
       if (!object.gameObject || object.gameObject.target !== object.element) {
         const id = this.normalizeTextTargetId(object.element.id || object.layoutElement?.id || "text");
-        object.gameObject = createStageGameObject(this.gameObjectApi, {
+        object.gameObject = createGameObject(this.gameObjectApi, {
           id,
           element: object.layoutElement || null,
           target: object.element,
@@ -137,15 +137,16 @@
       this.getCurrentStageState = typeof options.getCurrentStageState === "function" ? options.getCurrentStageState : () => null;
       this.fallbackDurationMs = typeof options.fallbackDurationMs === "function" ? options.fallbackDurationMs : () => 30000;
       this.onTick = typeof options.onTick === "function" ? options.onTick : null;
-      this.visual = null;
+      this.gameObjectInstance = null;
+      this.legacyVisual = null;
       this.visibilityRequest = null;
       this.intervalId = null;
     }
 
     gameObject() {
       if (!this.element) return null;
-      if (!this.visual || this.visual.target !== this.element) {
-        this.visual = createStageGameObject(this.gameObjectApi, {
+      if (!this.gameObjectInstance || this.gameObjectInstance.target !== this.element) {
+        this.gameObjectInstance = createGameObject(this.gameObjectApi, {
           id: this.element.id || "craftingTimer",
           target: this.element,
           visibilityKey: `widget:${this.element.id || "craftingTimer"}`,
@@ -158,15 +159,15 @@
           timerSink: this.timerSink
         });
       }
-      return this.visual;
+      return this.gameObjectInstance;
     }
 
     visualObject() {
       if (!this.element || !this.visualAnimation) return null;
       const gameObject = this.gameObject();
       if (gameObject) return gameObject.createVisual();
-      if (!this.visual) {
-        this.visual = this.visualAnimation.createLegacyCssVisualObject({
+      if (!this.legacyVisual) {
+        this.legacyVisual = this.visualAnimation.createLegacyCssVisualObject({
           element: this.element,
           hiddenClasses: ["hidden"],
           motionHiddenClasses: ["hidden"],
@@ -174,7 +175,7 @@
           timerSink: this.timerSink
         });
       }
-      return this.visual;
+      return this.legacyVisual;
     }
 
     clearRequest(actionKey = "") {
@@ -280,7 +281,7 @@
     gameObjectFor(bubble) {
       if (!bubble) return null;
       if (!bubble.playerAnswerBubbleGameObject || bubble.playerAnswerBubbleGameObject.target !== bubble) {
-        bubble.playerAnswerBubbleGameObject = createStageGameObject(this.gameObjectApi, {
+        bubble.playerAnswerBubbleGameObject = createGameObject(this.gameObjectApi, {
           id: bubble.id || bubble.dataset.answerNonce || `answer-bubble-${Math.random().toString(36).slice(2)}`,
           target: bubble,
           visibilityKey: `answer-bubble:${bubble.dataset.answerNonce || bubble.id || ""}`,
