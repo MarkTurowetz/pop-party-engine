@@ -16,6 +16,7 @@
       this.visibilityOverrides = options.visibilityOverrides || new Map();
       this.getVisible = typeof options.getVisible === "function" ? options.getVisible : null;
       this.setVisibleHandler = typeof options.setVisible === "function" ? options.setVisible : null;
+      this.timerSink = typeof options.timerSink === "function" ? options.timerSink : null;
       this.update(options);
     }
 
@@ -32,6 +33,7 @@
       if (options.visibilityOverrides) this.visibilityOverrides = options.visibilityOverrides;
       if (typeof options.getVisible === "function") this.getVisible = options.getVisible;
       if (typeof options.setVisible === "function") this.setVisibleHandler = options.setVisible;
+      if (typeof options.timerSink === "function") this.timerSink = options.timerSink;
       return this;
     }
 
@@ -51,7 +53,8 @@
         updateClass: options.updateClass || "stage-layout-visual-update",
         instantClass: options.instantClass || "stage-layout-visual-instant",
         getVisible: () => this.isVisible(),
-        setVisible: (isVisible) => this.setVisible(isVisible)
+        setVisible: (isVisible) => this.setVisible(isVisible),
+        timerSink: this.timerSink
       });
       return this.visual;
     }

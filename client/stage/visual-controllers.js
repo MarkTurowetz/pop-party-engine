@@ -127,6 +127,7 @@
   class CraftingTimerController {
     constructor(options = {}) {
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.element = options.element;
       this.label = options.label;
       this.timerSink = typeof options.timerSink === "function" ? options.timerSink : null;
@@ -139,8 +140,30 @@
       this.intervalId = null;
     }
 
+    gameObject() {
+      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
+      if (!this.element || !GameObject) return null;
+      if (!this.visual || this.visual.target !== this.element) {
+        this.visual = new GameObject({
+          id: this.element.id || "craftingTimer",
+          target: this.element,
+          visibilityKey: `widget:${this.element.id || "craftingTimer"}`,
+          visualOptions: {
+            hiddenClasses: ["hidden"],
+            motionHiddenClasses: ["hidden"],
+            instantClass: "is-instant",
+            layoutHiddenClasses: ["hidden"]
+          },
+          timerSink: this.timerSink
+        });
+      }
+      return this.visual;
+    }
+
     visualObject() {
       if (!this.element || !this.visualAnimation) return null;
+      const gameObject = this.gameObject();
+      if (gameObject) return gameObject.createVisual();
       if (!this.visual) {
         this.visual = this.visualAnimation.createCssVisualObject({
           element: this.element,
@@ -193,6 +216,8 @@
     }
 
     setVisible(isShown, options = {}) {
+      const gameObject = this.gameObject();
+      if (gameObject) return gameObject.playVisibility(isShown, { instant: options.instant === true });
       const visual = this.visualObject();
       if (!visual) {
         this.element?.classList.toggle("hidden", !isShown);
