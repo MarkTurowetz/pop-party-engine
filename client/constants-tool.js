@@ -19,9 +19,16 @@ function normalizeEditableColor(value) {
   return window.PartyGameColorControl?.normalize?.(value) || normalizeUiColor(value);
 }
 
+const constantsSchema = window.PartyGameConstantsSchema;
+const customConstantTypes = constantsSchema.CUSTOM_CONSTANT_TYPES;
+const reservedConstantIds = new Set(constantsSchema.RESERVED_CONSTANT_IDS);
+const normalizeCustomConstantValue = constantsSchema.normalizeCustomConstantValue;
+const normalizeCustomConstants = constantsSchema.normalizeCustomConstants;
+
 function normalizeClientGameConstants(constants = {}) {
   const colors = Array.isArray(constants.playerColors) ? constants.playerColors.map(normalizeEditableColor).filter(Boolean) : [];
-  return {
+  const customConstants = normalizeCustomConstants(constants);
+  const normalized = {
     playerColors: colors.length ? colors : ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"],
     craftingTimerDuration: Math.max(1, Math.min(3600, Number(constants.craftingTimerDuration || 30))),
     startGameCountdownDuration: Math.max(1, Math.min(60, Number(constants.startGameCountdownDuration || 1))),
@@ -30,8 +37,11 @@ function normalizeClientGameConstants(constants = {}) {
     numberOfRounds: Math.max(1, Math.min(99, Math.floor(Number(constants.numberOfRounds || 3)))),
     randomChanceTest: Math.max(0, Math.min(1, Number(constants.randomChanceTest ?? 0.5))),
     speechToTextSendInputBuffer: Math.max(0, Math.min(10, Number(constants.speechToTextSendInputBuffer ?? 1))),
-    overrideFirstGameOfSession: constants.overrideFirstGameOfSession === true
+    overrideFirstGameOfSession: constants.overrideFirstGameOfSession === true,
+    customConstants
   };
+  constantsSchema.applyCustomConstantsToObject(normalized, customConstants);
+  return normalized;
 }
 
 function constantsHistorySnapshot() {
@@ -99,6 +109,106 @@ function updatePlayerColor(index, color, { captureHistory = true } = {}) {
   commitGameConstants({ ...gameConstants, playerColors: nextColors }, { captureHistory: false });
 }
 
+function updateCustomConstant(index, patch, { captureHistory = true, render = false } = {}) {
+  const customConstants = [...(gameConstants.customConstants || [])];
+  if (!customConstants[index]) return;
+  if (captureHistory) pushConstantsHistory();
+  customConstants[index] = { ...customConstants[index], ...patch };
+  commitGameConstants({ ...gameConstants, customConstants }, { captureHistory: false, render });
+}
+
+function renderCustomConstantList() {
+  if (!customConstantList) return;
+  const customConstants = Array.isArray(gameConstants.customConstants) ? gameConstants.customConstants : [];
+  if (customConstantCount) customConstantCount.textContent = `${customConstants.length} ${customConstants.length === 1 ? "constant" : "constants"}`;
+  customConstantList.replaceChildren();
+  if (!customConstants.length) {
+    const note = document.createElement("p");
+    note.className = "flow-empty-note";
+    note.textContent = "No custom constants yet.";
+    customConstantList.appendChild(note);
+    return;
+  }
+  customConstants.forEach((constant, index) => {
+    const row = document.createElement("div");
+    row.className = "custom-constant-row";
+
+    const idField = document.createElement("label");
+    idField.className = "field-label";
+    idField.textContent = "Reference Name";
+    const idInput = document.createElement("input");
+    idInput.className = "text-input";
+    idInput.type = "text";
+    idInput.value = constant.id;
+    idInput.maxLength = 48;
+    idInput.addEventListener("change", () => updateCustomConstant(index, { id: idInput.value, name: idInput.value }, { render: true }));
+    idField.appendChild(idInput);
+
+    const typeField = document.createElement("label");
+    typeField.className = "field-label";
+    typeField.textContent = "Type";
+    const typeSelect = document.createElement("select");
+    typeSelect.className = "text-input";
+    customConstantTypes.forEach((type) => {
+      const option = document.createElement("option");
+      option.value = type;
+      option.textContent = type === "bool" ? "Boolean" : type.charAt(0).toUpperCase() + type.slice(1);
+      typeSelect.appendChild(option);
+    });
+    typeSelect.value = constant.type;
+    typeSelect.addEventListener("change", () => updateCustomConstant(index, {
+      type: typeSelect.value,
+      value: normalizeCustomConstantValue(constant.value, typeSelect.value)
+    }, { render: true }));
+    typeField.appendChild(typeSelect);
+
+    const valueField = document.createElement("label");
+    valueField.className = "field-label";
+    valueField.textContent = constant.type === "list" ? "Values" : "Value";
+    let valueInput;
+    if (constant.type === "bool") {
+      valueInput = document.createElement("select");
+      valueInput.className = "text-input";
+      ["false", "true"].forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value === "true" ? "True" : "False";
+        valueInput.appendChild(option);
+      });
+      valueInput.value = constant.value ? "true" : "false";
+      valueInput.addEventListener("change", () => updateCustomConstant(index, { value: valueInput.value === "true" }));
+    } else if (constant.type === "list") {
+      valueInput = document.createElement("textarea");
+      valueInput.className = "text-input";
+      valueInput.value = Array.isArray(constant.value) ? constant.value.join("\n") : "";
+      valueInput.addEventListener("change", () => updateCustomConstant(index, { value: valueInput.value }, { render: true }));
+    } else {
+      valueInput = document.createElement("input");
+      valueInput.className = "text-input";
+      valueInput.type = constant.type === "string" ? "text" : "number";
+      if (constant.type === "int") valueInput.step = "1";
+      if (constant.type === "float") valueInput.step = "0.01";
+      valueInput.value = String(constant.value ?? "");
+      valueInput.addEventListener("change", () => updateCustomConstant(index, { value: valueInput.value }));
+    }
+    valueField.appendChild(valueInput);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary-button";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      commitGameConstants({
+        ...gameConstants,
+        customConstants: gameConstants.customConstants.filter((_, constantIndex) => constantIndex !== index)
+      }, { render: true });
+    });
+
+    row.append(idField, typeField, valueField, remove);
+    customConstantList.appendChild(row);
+  });
+}
+
 function renderConstantsTool() {
   gameConstants = normalizeClientGameConstants(gameConstants);
   const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
@@ -109,6 +219,7 @@ function renderConstantsTool() {
     detail.classList.toggle("hidden", detail.dataset.constantDetail !== selectedGameConstantId);
   });
   addPlayerColorButton?.classList.toggle("hidden", selectedGameConstantId !== "playerColors");
+  addCustomConstantButton?.classList.toggle("hidden", selectedGameConstantId !== "customConstants");
   if (gameTitleInput) gameTitleInput.value = gameConstants.gameTitle;
   if (craftingTimerDurationInput) {
     craftingTimerDurationInput.value = String(Math.max(1, Number(gameConstants.craftingTimerDuration || 30)));
@@ -161,6 +272,7 @@ function renderConstantsTool() {
     row.appendChild(remove);
     playerColorList.appendChild(row);
   });
+  renderCustomConstantList();
   updateGlobalSaveButton();
 }
 
@@ -176,6 +288,24 @@ function addPlayerColor() {
   commitGameConstants({
     ...gameConstants,
     playerColors: [...(gameConstants.playerColors || []), next]
+  }, { render: true });
+}
+
+function addCustomConstant() {
+  const existing = new Set((gameConstants.customConstants || []).map((constant) => constant.id));
+  let index = existing.size + 1;
+  let id = `customConstant${index}`;
+  while (existing.has(id) || reservedConstantIds.has(id)) {
+    index += 1;
+    id = `customConstant${index}`;
+  }
+  selectedGameConstantId = "customConstants";
+  commitGameConstants({
+    ...gameConstants,
+    customConstants: [
+      ...(gameConstants.customConstants || []),
+      { id, name: id, type: "int", value: 0 }
+    ]
   }, { render: true });
 }
 
@@ -198,6 +328,7 @@ async function setupConstantsTool() {
     });
   });
   addPlayerColorButton.addEventListener("click", addPlayerColor);
+  addCustomConstantButton?.addEventListener("click", addCustomConstant);
   let gameTitleHistoryCaptured = false;
   gameTitleInput?.addEventListener("focus", () => {
     gameTitleHistoryCaptured = false;

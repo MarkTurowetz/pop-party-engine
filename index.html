@@ -3648,6 +3648,29 @@
       margin: 0;
     }
 
+    .custom-constant-row {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.75fr) minmax(120px, 0.45fr) minmax(180px, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+      padding: 12px;
+      border: 4px solid var(--ink);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.2);
+    }
+
+    .custom-constant-row textarea {
+      min-height: 74px;
+      resize: vertical;
+    }
+
+    @media (max-width: 880px) {
+      .custom-constant-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
     .color-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -4564,6 +4587,12 @@
       box-shadow: 3px 3px 0 var(--ink);
     }
 
+    .host-audio-line-toolbar .host-audio-preview-button.is-active:not(:disabled) {
+      background: var(--cyan);
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
     .host-audio-line-fields {
       display: grid;
       gap: 10px;
@@ -4965,9 +4994,14 @@
             <span><strong>Player Colors</strong><span>Random unique colors for joined players</span></span>
             <span class="flow-pill" id="playerColorCount">0 colors</span>
           </button>
+          <button class="flow-state-header" type="button" data-constant-target="customConstants">
+            <span><strong>Custom Constants</strong><span>Typed values for flow decisions</span></span>
+            <span class="flow-pill" id="customConstantCount">0 constants</span>
+          </button>
         </div>
         <div class="flow-actions">
           <button class="secondary-button" id="addPlayerColorButton" type="button">Add Color</button>
+          <button class="secondary-button hidden" id="addCustomConstantButton" type="button">Add Constant</button>
         </div>
       </aside>
 
@@ -5012,6 +5046,7 @@
           </select>
         </label>
         <div class="constants-editor" id="playerColorList" data-constant-detail="playerColors"></div>
+        <div class="constants-editor" id="customConstantList" data-constant-detail="customConstants"></div>
       </main>
     </div>
   </section>
@@ -5091,6 +5126,7 @@
   </section>
 
   <script src="/shared/color-utils.js"></script>
+  <script src="/shared/game-constants-schema.js"></script>
   <script src="/client/utils.js"></script>
   <script src="/client/stage/visual-object.js"></script>
   <script src="/client/stage/game-object.js"></script>
@@ -5329,6 +5365,9 @@
     const playerColorList = document.querySelector("#playerColorList");
     const playerColorCount = document.querySelector("#playerColorCount");
     const addPlayerColorButton = document.querySelector("#addPlayerColorButton");
+    const customConstantList = document.querySelector("#customConstantList");
+    const customConstantCount = document.querySelector("#customConstantCount");
+    const addCustomConstantButton = document.querySelector("#addCustomConstantButton");
     const hostAudioStorageStatus = document.querySelector("#hostAudioStorageStatus");
     const hostAudioList = document.querySelector("#hostAudioList");
     const hostAudioEditorTitle = document.querySelector("#hostAudioEditorTitle");
@@ -5393,7 +5432,8 @@
       numberOfRounds: 3,
       randomChanceTest: 0.5,
       speechToTextSendInputBuffer: 1,
-      overrideFirstGameOfSession: false
+      overrideFirstGameOfSession: false,
+      customConstants: []
     };
     let hostAudios = { hostAudios: [] };
     let selectedGameConstantId = "gameTitle";

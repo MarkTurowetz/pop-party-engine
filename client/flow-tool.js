@@ -604,6 +604,7 @@ function getFlowDecisionControls() {
       ensureDecisionBranches,
       flowNodeBranchDescriptors: () => getFlowNodeBranchDescriptors(),
       flowActionTargetOptions,
+      gameConstants: () => gameConstants,
       makeDecisionBranchId,
       pushFlowHistory
     });

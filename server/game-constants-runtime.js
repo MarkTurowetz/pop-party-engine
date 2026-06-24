@@ -1,3 +1,8 @@
+const {
+  applyCustomConstantsToObject,
+  normalizeCustomConstants
+} = require("../shared/game-constants-schema");
+
 function createGameConstantsRuntime({
   defaultGameConstants,
   defaultPlayerColors,
@@ -14,7 +19,8 @@ function createGameConstantsRuntime({
     const startGameCountdownDuration = normalizeDurationSeconds(constants?.startGameCountdownDuration, defaultGameConstants.startGameCountdownDuration);
     const pointsForCorrectAnswer = normalizeConstantInteger(constants?.pointsForCorrectAnswer, defaultGameConstants.pointsForCorrectAnswer || 200, 0, 999999);
     const speechToTextSendInputBuffer = normalizeConstantFloat(constants?.speechToTextSendInputBuffer, defaultGameConstants.speechToTextSendInputBuffer || 1, 0, 10);
-    return {
+    const customConstants = normalizeCustomConstants(constants);
+    const normalized = {
       playerColors: playerColors.length ? playerColors : [...defaultPlayerColors],
       craftingTimerDuration,
       startGameCountdownDuration,
@@ -23,8 +29,10 @@ function createGameConstantsRuntime({
       numberOfRounds: normalizeConstantInteger(constants?.numberOfRounds, defaultGameConstants.numberOfRounds, 1, 99),
       randomChanceTest: normalizeConstantFloat(constants?.randomChanceTest, defaultGameConstants.randomChanceTest, 0, 1),
       speechToTextSendInputBuffer,
-      overrideFirstGameOfSession: constants?.overrideFirstGameOfSession === true
+      overrideFirstGameOfSession: constants?.overrideFirstGameOfSession === true,
+      customConstants
     };
+    return applyCustomConstantsToObject(normalized, customConstants);
   }
 
   return { normalizeGameConstants };

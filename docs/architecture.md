@@ -66,6 +66,8 @@ concepts into focused modules.
   - Data and schema-like constants shared by server runtime and tools.
   - `flow-action-registry.js` owns flow action descriptors, including action type metadata,
     persisted action normalization, and public stage/controller serialization.
+  - `game-constants-schema.js` owns shared custom game constant primitive/type
+    normalization for the Constants Tool and server runtime.
   - `game-data.js` owns default layouts, default constants, prompts, avatar metadata,
     and art manifest metadata.
 - `index.html`

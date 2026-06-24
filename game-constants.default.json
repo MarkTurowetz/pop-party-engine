@@ -17,5 +17,6 @@
   "numberOfRounds": 3,
   "randomChanceTest": 0.5,
   "speechToTextSendInputBuffer": 1,
-  "overrideFirstGameOfSession": false
+  "overrideFirstGameOfSession": false,
+  "customConstants": []
 }

@@ -1,4 +1,9 @@
 let draggedHostAudioLineId = "";
+let hostAudioPreview = {
+  audio: null,
+  lineId: "",
+  status: "stopped"
+};
 
 function makeHostAudioReferenceId(prefix = "host-audio") {
   if (window.crypto?.randomUUID) return `${prefix}-${window.crypto.randomUUID().replace(/-/g, "")}`;
@@ -70,8 +75,78 @@ function selectedHostAudioLine() {
   return (selectedHostAudio()?.lines || []).find((line) => line.id === selectedHostAudioLineId) || null;
 }
 
+function resetHostAudioPreviewAudio(audio = hostAudioPreview.audio) {
+  if (!audio) return;
+  audio.pause();
+  try {
+    audio.currentTime = 0;
+  } catch (error) {
+    // Some streams do not allow seeking before metadata is ready.
+  }
+}
+
+function clearHostAudioPreview({ render = true } = {}) {
+  if (hostAudioPreview.audio) {
+    hostAudioPreview.audio.removeEventListener("ended", handleHostAudioPreviewEnded);
+    hostAudioPreview.audio.removeEventListener("error", handleHostAudioPreviewEnded);
+    resetHostAudioPreviewAudio(hostAudioPreview.audio);
+  }
+  hostAudioPreview = {
+    audio: null,
+    lineId: "",
+    status: "stopped"
+  };
+  if (render) renderHostAudioTool();
+}
+
+function handleHostAudioPreviewEnded() {
+  clearHostAudioPreview();
+}
+
+function isHostAudioPreviewActiveForLine(lineId) {
+  return hostAudioPreview.lineId === lineId && hostAudioPreview.audio && hostAudioPreview.status !== "stopped";
+}
+
+function isHostAudioPreviewPlayingForLine(lineId) {
+  return isHostAudioPreviewActiveForLine(lineId) && hostAudioPreview.status === "playing";
+}
+
+function playHostAudioPreview(lineId, url) {
+  const audioUrl = String(url || "").trim();
+  if (!audioUrl) return;
+  if (hostAudioPreview.audio && hostAudioPreview.lineId !== lineId) {
+    clearHostAudioPreview({ render: false });
+  }
+  if (!hostAudioPreview.audio || hostAudioPreview.lineId !== lineId) {
+    const audio = new Audio(audioUrl);
+    audio.addEventListener("ended", handleHostAudioPreviewEnded);
+    audio.addEventListener("error", handleHostAudioPreviewEnded);
+    hostAudioPreview = {
+      audio,
+      lineId,
+      status: "playing"
+    };
+  } else {
+    resetHostAudioPreviewAudio(hostAudioPreview.audio);
+    hostAudioPreview.status = "playing";
+  }
+  hostAudioPreview.audio.play().then(() => {
+    hostAudioPreview.status = "playing";
+    renderHostAudioTool();
+  }).catch(() => {
+    clearHostAudioPreview();
+  });
+  renderHostAudioTool();
+}
+
+function stopHostAudioPreview(lineId = "", options = {}) {
+  if (lineId && hostAudioPreview.lineId !== lineId) return;
+  clearHostAudioPreview(options);
+}
+
 function ensureSelectedHostAudioLine() {
   if (!selectedHostAudioLine()) selectedHostAudioLineId = "";
+  if (hostAudioPreview.lineId && !selectedHostAudioLine()) clearHostAudioPreview({ render: false });
 }
 
 function hostAudioHistorySnapshot() {
@@ -190,6 +265,7 @@ function updateHostAudioStorageStatus(storage) {
 
 async function loadHostAudios({ silent = false } = {}) {
   const result = await getJson("/api/host-audios");
+  clearHostAudioPreview({ render: false });
   hostAudios = normalizeClientHostAudios(result.hostAudios || {});
   hostAudiosSavedSnapshot = JSON.stringify(serializeHostAudiosForSave(result.savedHostAudios || result.hostAudios || hostAudios));
   selectedHostAudioId = selectedHostAudioId && hostAudios.hostAudios.some((item) => item.id === selectedHostAudioId)
@@ -231,6 +307,7 @@ function addHostAudio() {
 function deleteSelectedHostAudio() {
   if (!selectedHostAudioId) return;
   pushHostAudioHistory();
+  clearHostAudioPreview({ render: false });
   hostAudios.hostAudios = (hostAudios.hostAudios || []).filter((item) => item.id !== selectedHostAudioId);
   selectedHostAudioId = hostAudios.hostAudios[0]?.id || "";
   selectedHostAudioLineId = "";
@@ -258,6 +335,7 @@ function removeHostAudioLine(lineId) {
   const index = (hostAudio.lines || []).findIndex((line) => line.id === lineId);
   if (index < 0) return;
   pushHostAudioHistory();
+  stopHostAudioPreview(lineId, { render: false });
   hostAudio.lines = (hostAudio.lines || []).filter((line) => line.id !== lineId);
   if (selectedHostAudioLineId === lineId) {
     selectedHostAudioLineId = hostAudio.lines[Math.min(index, hostAudio.lines.length - 1)]?.id || "";
@@ -268,6 +346,7 @@ function removeHostAudioLine(lineId) {
 function selectHostAudioLine(lineId) {
   const hostAudio = selectedHostAudio();
   if (!(hostAudio?.lines || []).some((line) => line.id === lineId)) return;
+  if (selectedHostAudioLineId !== lineId) clearHostAudioPreview({ render: false });
   selectedHostAudioLineId = lineId;
   renderHostAudioTool();
 }
@@ -372,6 +451,8 @@ function hostAudioLineActionButton(label, onClick, options = {}) {
   if (options.title) button.title = options.title;
   if (options.ariaLabel) button.setAttribute("aria-label", options.ariaLabel);
   if (options.disabled) button.disabled = true;
+  if (options.pressed) button.setAttribute("aria-pressed", "true");
+  if (options.className) button.classList.add(...String(options.className).split(/\s+/).filter(Boolean));
   button.addEventListener("click", (event) => {
     event.stopPropagation();
     onClick?.(event);
@@ -407,12 +488,49 @@ function createHostAudioLineCard(line, index) {
   urlInput.className = "text-input";
   urlInput.type = "url";
   urlInput.value = line.url || "";
-  urlInput.addEventListener("change", () => updateHostAudioLine(line.id, { url: urlInput.value.trim().slice(0, 2000) }));
+  let urlHistoryCaptured = false;
+  urlInput.addEventListener("focus", () => {
+    urlHistoryCaptured = false;
+  });
+  urlInput.addEventListener("input", () => {
+    if (!urlHistoryCaptured) {
+      pushHostAudioHistory();
+      urlHistoryCaptured = true;
+    }
+    if (isHostAudioPreviewActiveForLine(line.id)) stopHostAudioPreview(line.id, { render: false });
+    updateHostAudioLine(line.id, { url: urlInput.value.trim().slice(0, 2000) }, { render: false, renderList: index === 0, captureHistory: false });
+  });
+  urlInput.addEventListener("change", () => {
+    const nextUrl = urlInput.value.trim().slice(0, 2000);
+    if (line.url !== nextUrl) updateHostAudioLine(line.id, { url: nextUrl });
+  });
   urlField.appendChild(urlInput);
 
   const toolbar = document.createElement("div");
   toolbar.className = "host-audio-line-toolbar";
+  let previewPlayButton = null;
+  let previewStopButton = null;
   if (isSelected) {
+    const hasAudioUrl = Boolean(String(urlInput.value || "").trim());
+    const isPreviewActive = isHostAudioPreviewActiveForLine(line.id);
+    const isPreviewPlaying = isHostAudioPreviewPlayingForLine(line.id);
+    previewPlayButton = hostAudioLineActionButton("Play", () => {
+      playHostAudioPreview(line.id, urlInput.value);
+    }, {
+      title: isPreviewActive ? "Restart audio preview" : "Play audio preview",
+      ariaLabel: "Play audio preview",
+      disabled: !hasAudioUrl,
+      pressed: isPreviewPlaying,
+      className: isPreviewPlaying ? "host-audio-preview-button is-active" : "host-audio-preview-button"
+    });
+    previewStopButton = hostAudioLineActionButton("Stop", () => {
+      stopHostAudioPreview(line.id);
+    }, {
+      title: "Stop preview and return to the beginning",
+      ariaLabel: "Stop audio preview",
+      disabled: !isPreviewActive,
+      className: "host-audio-preview-button"
+    });
     toolbar.append(
       hostAudioLineActionButton("↑", () => moveHostAudioLine(line.id, -1), {
         title: "Move line up",
@@ -424,10 +542,21 @@ function createHostAudioLineCard(line, index) {
         ariaLabel: "Move line down",
         disabled: index >= (selectedHostAudio()?.lines || []).length - 1
       }),
-      hostAudioLineActionButton("Play"),
-      hostAudioLineActionButton("Stop"),
+      previewPlayButton,
+      previewStopButton,
       hostAudioLineActionButton("Delete", () => removeHostAudioLine(line.id))
     );
+    urlInput.addEventListener("input", () => {
+      const hasUrl = Boolean(String(urlInput.value || "").trim());
+      if (previewPlayButton && !isHostAudioPreviewActiveForLine(line.id)) {
+        previewPlayButton.disabled = !hasUrl;
+        previewPlayButton.classList.remove("is-active");
+        previewPlayButton.removeAttribute("aria-pressed");
+      }
+      if (previewStopButton) {
+        previewStopButton.disabled = !isHostAudioPreviewActiveForLine(line.id);
+      }
+    });
   }
 
   const { row: card } = window.PartyGameToolAffordances.createToolAccordionRow({
@@ -528,6 +657,7 @@ function renderHostAudioTool() {
 
 async function saveHostAudios() {
   const result = await postJson("/api/host-audios", { hostAudios: serializeHostAudiosForSave(hostAudios) });
+  clearHostAudioPreview({ render: false });
   hostAudios = normalizeClientHostAudios(result.hostAudios || {});
   hostAudiosSavedSnapshot = JSON.stringify(serializeHostAudiosForSave(hostAudios));
   selectedHostAudioId = selectedHostAudioId && hostAudios.hostAudios.some((item) => item.id === selectedHostAudioId)
@@ -541,6 +671,7 @@ async function saveHostAudios() {
 
 function revertHostAudios() {
   if (!hostAudiosSavedSnapshot) return;
+  clearHostAudioPreview({ render: false });
   hostAudios = normalizeClientHostAudios(JSON.parse(hostAudiosSavedSnapshot));
   getHostAudioHistoryManager()?.clear();
   selectedHostAudioId = hostAudios.hostAudios[0]?.id || "";

@@ -5,6 +5,23 @@
 
   function createDecisionControls(context) {
     function baseDecisionVariableOptions() {
+      const currentConstants = typeof context.gameConstants === "function" ? context.gameConstants() : {};
+      const customConstants = Array.isArray(currentConstants?.customConstants) ? currentConstants.customConstants : [];
+      const customOptions = customConstants.flatMap((constant) => {
+        const label = constant.name || constant.id;
+        const typeLabel = constant.type ? ` (${constant.type})` : "";
+        const options = [{
+          id: `constants.${constant.id}`,
+          name: `Constant: ${label}${typeLabel}`
+        }];
+        if (constant.type === "list") {
+          options.push({
+            id: `constants.${constant.id}.count`,
+            name: `Constant: ${label} Count`
+          });
+        }
+        return options;
+      });
       return [
         { id: "activePlayerCount", name: "Active Player Count" },
         { id: "currentRound", name: "Current Round" },
@@ -18,7 +35,8 @@
         { id: "startGameCountdownDuration", name: "Start Game Countdown Duration" },
         { id: "players.length", name: "Players.length" },
         { id: "choiceInputAnswers.count", name: "Choice Answers.count" },
-        { id: "textInputAnswers.count", name: "Text Answers.count" }
+        { id: "textInputAnswers.count", name: "Text Answers.count" },
+        ...customOptions
       ];
     }
 
