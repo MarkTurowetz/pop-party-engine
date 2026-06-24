@@ -374,6 +374,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -396,6 +397,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -406,7 +408,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-24T01:35:07.341Z"
+      "updatedAt": "2026-06-24T04:03:21.963Z"
     },
     "player-avatar-ankylo": {
       "name": "Ankylo Avatar",
