@@ -22,6 +22,16 @@
       return layer;
     }
 
+    function hideLegacyTextNodes(host) {
+      const textNodeType = global.Node?.TEXT_NODE || 3;
+      for (const node of Array.from(host?.childNodes || [])) {
+        if (node === widgetLayer(host)) continue;
+        if (node.nodeType === textNodeType && String(node.nodeValue || "").trim()) {
+          node.nodeValue = "";
+        }
+      }
+    }
+
     function cloneComponent(component, textOverrides = {}) {
       const clone = {
         ...component,
@@ -40,6 +50,7 @@
       host.classList.add("stage-widget-art-host", "has-stage-widget-art");
       const layer = widgetLayer(host);
       if (!layer) return null;
+      hideLegacyTextNodes(host);
       const key = rendererKey(host, compositionId);
       let renderer = renderers.get(key);
       if (!renderer) {

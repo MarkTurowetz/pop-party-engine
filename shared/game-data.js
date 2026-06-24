@@ -455,21 +455,20 @@ const defaultArtCompositions = [
     canvas: { width: 560, height: 190 },
     components: [
       {
-        id: "panel-card",
-        name: "Panel Card",
-        kind: "shape",
+        id: "panel-code",
+        name: "Panel Code",
+        kind: "text",
         x: 280,
-        y: 95,
-        width: 560,
-        height: 190,
+        y: 120,
+        width: 500,
+        height: 105,
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        shapeStyle: "rounded",
-        fillColor: "#ffe256",
-        borderColor: "#17131f",
-        borderWidth: 5,
-        borderRadius: 24
+        defaultText: "NUZ7",
+        fontSize: 112,
+        autoFitText: false,
+        fontColor: "#17131f"
       },
       {
         id: "panel-label",
@@ -488,20 +487,21 @@ const defaultArtCompositions = [
         fontColor: "#17131f"
       },
       {
-        id: "panel-code",
-        name: "Panel Code",
-        kind: "text",
+        id: "panel-card",
+        name: "Panel Card",
+        kind: "shape",
         x: 280,
-        y: 120,
-        width: 500,
-        height: 105,
+        y: 95,
+        width: 560,
+        height: 190,
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        defaultText: "NUZ7",
-        fontSize: 112,
-        autoFitText: false,
-        fontColor: "#17131f"
+        shapeStyle: "rounded",
+        fillColor: "#ffe256",
+        borderColor: "#17131f",
+        borderWidth: 5,
+        borderRadius: 24
       }
     ]
   },
@@ -512,21 +512,20 @@ const defaultArtCompositions = [
     canvas: { width: 170, height: 82 },
     components: [
       {
-        id: "badge-card",
-        name: "Badge Card",
-        kind: "shape",
+        id: "badge-code",
+        name: "Badge Code",
+        kind: "text",
         x: 85,
-        y: 41,
-        width: 170,
-        height: 82,
+        y: 50,
+        width: 140,
+        height: 32,
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        shapeStyle: "rounded",
-        fillColor: "#ffe256",
-        borderColor: "#17131f",
-        borderWidth: 4,
-        borderRadius: 14
+        defaultText: "NUZ7",
+        fontSize: 32,
+        autoFitText: false,
+        fontColor: "#17131f"
       },
       {
         id: "badge-label",
@@ -545,20 +544,21 @@ const defaultArtCompositions = [
         fontColor: "#17131f"
       },
       {
-        id: "badge-code",
-        name: "Badge Code",
-        kind: "text",
+        id: "badge-card",
+        name: "Badge Card",
+        kind: "shape",
         x: 85,
-        y: 50,
-        width: 140,
-        height: 32,
+        y: 41,
+        width: 170,
+        height: 82,
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        defaultText: "NUZ7",
-        fontSize: 32,
-        autoFitText: false,
-        fontColor: "#17131f"
+        shapeStyle: "rounded",
+        fillColor: "#ffe256",
+        borderColor: "#17131f",
+        borderWidth: 4,
+        borderRadius: 14
       }
     ]
   },
@@ -568,6 +568,22 @@ const defaultArtCompositions = [
     description: "Editable lobby instruction text.",
     canvas: { width: 740, height: 76 },
     components: [
+      {
+        id: "join-text",
+        name: "Join Text",
+        kind: "text",
+        x: 370,
+        y: 38,
+        width: 704,
+        height: 52,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "Join the Lobby at bit.ly/popcontroller",
+        fontSize: 28,
+        autoFitText: true,
+        fontColor: "#17131f"
+      },
       {
         id: "join-pill",
         name: "Join Pill",
@@ -584,22 +600,6 @@ const defaultArtCompositions = [
         borderColor: "#17131f",
         borderWidth: 4,
         borderRadius: 999
-      },
-      {
-        id: "join-text",
-        name: "Join Text",
-        kind: "text",
-        x: 370,
-        y: 38,
-        width: 704,
-        height: 52,
-        scale: 1,
-        rotation: 0,
-        defaultAnimationState: "on",
-        defaultText: "Join the Lobby at bit.ly/popcontroller",
-        fontSize: 28,
-        autoFitText: true,
-        fontColor: "#17131f"
       }
     ]
   },
@@ -609,6 +609,22 @@ const defaultArtCompositions = [
     description: "Editable popup shown while the lobby countdown is running.",
     canvas: { width: 700, height: 130 },
     components: [
+      {
+        id: "popup-text",
+        name: "Popup Text",
+        kind: "text",
+        x: 350,
+        y: 65,
+        width: 600,
+        height: 78,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "Starting Game",
+        fontSize: 54,
+        autoFitText: true,
+        fontColor: "#17131f"
+      },
       {
         id: "popup-card",
         name: "Popup Card",
@@ -625,22 +641,6 @@ const defaultArtCompositions = [
         borderColor: "#17131f",
         borderWidth: 5,
         borderRadius: 20
-      },
-      {
-        id: "popup-text",
-        name: "Popup Text",
-        kind: "text",
-        x: 350,
-        y: 65,
-        width: 600,
-        height: 78,
-        scale: 1,
-        rotation: 0,
-        defaultAnimationState: "on",
-        defaultText: "Starting Game",
-        fontSize: 54,
-        autoFitText: true,
-        fontColor: "#17131f"
       }
     ]
   },
@@ -650,6 +650,22 @@ const defaultArtCompositions = [
     description: "Editable timer art used during timed input moments.",
     canvas: { width: 180, height: 180 },
     components: [
+      {
+        id: "timer-value",
+        name: "Timer Value",
+        kind: "text",
+        x: 90,
+        y: 92,
+        width: 130,
+        height: 82,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "30",
+        fontSize: 74,
+        autoFitText: false,
+        fontColor: "#17131f"
+      },
       {
         id: "timer-ring",
         name: "Timer Ring",
@@ -667,22 +683,6 @@ const defaultArtCompositions = [
         borderColor: "#17131f",
         borderWidth: 5,
         borderRadius: 36
-      },
-      {
-        id: "timer-value",
-        name: "Timer Value",
-        kind: "text",
-        x: 90,
-        y: 92,
-        width: 130,
-        height: 82,
-        scale: 1,
-        rotation: 0,
-        defaultAnimationState: "on",
-        defaultText: "30",
-        fontSize: 74,
-        autoFitText: false,
-        fontColor: "#17131f"
       }
     ]
   },
@@ -693,21 +693,36 @@ const defaultArtCompositions = [
     canvas: { width: 260, height: 300 },
     components: [
       {
-        id: "qr-card",
-        name: "QR Card",
-        kind: "shape",
+        id: "qr-url",
+        name: "QR URL",
+        kind: "text",
         x: 130,
-        y: 150,
-        width: 260,
-        height: 300,
+        y: 278,
+        width: 220,
+        height: 30,
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        shapeStyle: "rounded",
-        fillColor: "#fffdf4",
-        borderColor: "#17131f",
-        borderWidth: 5,
-        borderRadius: 18
+        defaultText: "controller link",
+        fontSize: 12,
+        autoFitText: true,
+        fontColor: "#17131f"
+      },
+      {
+        id: "qr-label",
+        name: "QR Label",
+        kind: "text",
+        x: 130,
+        y: 248,
+        width: 220,
+        height: 24,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "SCAN TO JOIN",
+        fontSize: 20,
+        autoFitText: false,
+        fontColor: "#17131f"
       },
       {
         id: "qr-placeholder",
@@ -727,36 +742,21 @@ const defaultArtCompositions = [
         borderRadius: 8
       },
       {
-        id: "qr-label",
-        name: "QR Label",
-        kind: "text",
+        id: "qr-card",
+        name: "QR Card",
+        kind: "shape",
         x: 130,
-        y: 248,
-        width: 220,
-        height: 24,
+        y: 150,
+        width: 260,
+        height: 300,
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        defaultText: "SCAN TO JOIN",
-        fontSize: 20,
-        autoFitText: false,
-        fontColor: "#17131f"
-      },
-      {
-        id: "qr-url",
-        name: "QR URL",
-        kind: "text",
-        x: 130,
-        y: 278,
-        width: 220,
-        height: 30,
-        scale: 1,
-        rotation: 0,
-        defaultAnimationState: "on",
-        defaultText: "controller link",
-        fontSize: 12,
-        autoFitText: true,
-        fontColor: "#17131f"
+        shapeStyle: "rounded",
+        fillColor: "#fffdf4",
+        borderColor: "#17131f",
+        borderWidth: 5,
+        borderRadius: 18
       }
     ]
   }

@@ -226,6 +226,7 @@ function createArtAssetsRuntime({
     const components = normalizeCompositionComponents(composition.components || [], override?.components);
     migrateGeneratedStageCodePanelDefaults(composition.id, components);
     migrateGeneratedWidgetDefaults(composition.id, components);
+    migrateGeneratedWidgetLayerOrder(composition.id, components);
     const canvas = {
       width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
       height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
@@ -388,6 +389,26 @@ function createArtAssetsRuntime({
         url.fontSize = 12;
       }
     }
+  }
+
+  function migrateGeneratedWidgetLayerOrder(compositionId, components = []) {
+    const preferredOrders = {
+      "stage-code-panel": ["panel-code", "panel-label", "panel-card"],
+      "stage-code-widget": ["badge-code", "badge-label", "badge-card"],
+      "join-widget": ["join-text", "join-pill"],
+      "countdown-popup": ["popup-text", "popup-card"],
+      "crafting-timer-widget": ["timer-value", "timer-ring"],
+      "join-qr-code": ["qr-url", "qr-label", "qr-placeholder", "qr-card"]
+    };
+    const preferredOrder = preferredOrders[compositionId];
+    if (!preferredOrder?.length) return;
+    const componentIds = components.map((component) => component.id);
+    const generatedIds = new Set(preferredOrder);
+    const onlyGenerated = componentIds.every((id) => generatedIds.has(id));
+    const hasEveryGeneratedId = preferredOrder.every((id) => componentIds.includes(id));
+    if (!onlyGenerated || !hasEveryGeneratedId) return;
+    const byId = new Map(components.map((component) => [component.id, component]));
+    components.splice(0, components.length, ...preferredOrder.map((id) => byId.get(id)));
   }
 
   function publicArtComposition(composition, manifest) {
