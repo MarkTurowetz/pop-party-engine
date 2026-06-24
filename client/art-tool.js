@@ -530,11 +530,13 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
     });
   }
   if (imageSource) {
-    const image = document.createElement("img");
+    const image = component.imageTint === "currentColor" ? document.createElement("span") : document.createElement("img");
     image.className = "art-component-mask-image";
-    image.alt = "";
-    image.draggable = false;
-    image.src = imageSource;
+    if (image.tagName === "IMG") {
+      image.alt = "";
+      image.draggable = false;
+      image.src = imageSource;
+    }
     node.appendChild(image);
   }
   const label = document.createElement("span");

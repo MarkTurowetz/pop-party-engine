@@ -1123,15 +1123,14 @@
     }
 
     .art-runtime-object.has-tinted-image-mask {
-      background: currentColor;
-      -webkit-mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
-      mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
+      background: transparent;
     }
 
     .art-runtime-object.has-tinted-image-mask > .art-runtime-object-image {
       display: block;
-      opacity: 0.18;
-      mix-blend-mode: multiply;
+      background: currentColor;
+      -webkit-mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
+      mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
     }
 
     .art-runtime-object-image {
@@ -1140,7 +1139,7 @@
       width: 100%;
       height: 100%;
       object-fit: var(--component-image-fit, cover);
-      object-position: center;
+      object-position: center center;
       pointer-events: none;
     }
 
@@ -2445,15 +2444,14 @@
     }
 
     .art-composition-component.has-tinted-image-mask {
-      background: currentColor;
-      -webkit-mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
-      mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
+      background: transparent;
     }
 
     .art-composition-component.has-tinted-image-mask > .art-component-mask-image {
       display: block;
-      opacity: 0.18;
-      mix-blend-mode: multiply;
+      background: currentColor;
+      -webkit-mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
+      mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
     }
 
     .art-composition-component.is-image-drop-target {
@@ -2468,7 +2466,7 @@
       width: 100%;
       height: 100%;
       object-fit: var(--component-image-fit, cover);
-      object-position: center;
+      object-position: center center;
       pointer-events: none;
     }
 
