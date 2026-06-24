@@ -79,7 +79,10 @@ concepts into focused modules.
     used by stage text and player answer bubbles.
   - `client/stage/game-object.js` owns the shared game-object wrapper that routes
     staged elements through a consistent visibility/animation API, including
-    custom visual-object animation handlers for assets with bespoke motion.
+    custom visual-object animation handlers for assets with bespoke motion. It also
+    exposes `PartyGameVisualBridge.createVisualForTarget`, the standard bridge for
+    controllers/renderers that need a visual object backed by a game object with a
+    legacy visual fallback.
   - `client/stage/art-object-visuals.js` owns rendered Art Manager component trees;
     each rendered component is backed by the shared game-object wrapper.
   - `client/stage/voting-card-visuals.js` owns voting card composition rendering and
@@ -136,6 +139,9 @@ concepts into focused modules.
 
 - Game-authored data stays in JSON data files or GitHub-backed tool storage.
 - Runtime code can change without overwriting tool-authored game data.
+- New visible stage/controller elements should use `PartyGameVisualBridge.createVisualForTarget`
+  or a registry-backed layout entity rather than calling `PartyGameVisualObject` directly.
+  Direct visual-object creation should be limited to the bridge/core animation layer.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same
   composition schema rather than maintaining separate art systems.
