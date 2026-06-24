@@ -12,6 +12,7 @@
       this.visibilityKey = "";
       this.defaultAnimationState = "";
       this.visual = null;
+      this.artRenderer = null;
       this.visualOptions = options.visualOptions || {};
       this.layoutHiddenClasses = options.layoutHiddenClasses || this.visualOptions.layoutHiddenClasses || ["stage-layout-hidden"];
       this.visibilityOverrides = options.visibilityOverrides || new Map();
@@ -33,6 +34,7 @@
       if (options.defaultAnimationState !== undefined || options.element?.defaultAnimationState !== undefined) {
         this.defaultAnimationState = String(options.defaultAnimationState ?? options.element?.defaultAnimationState ?? "");
       }
+      if (options.artRenderer !== undefined) this.artRenderer = options.artRenderer || null;
       if (options.visualOptions) this.visualOptions = options.visualOptions;
       if (options.layoutHiddenClasses) this.layoutHiddenClasses = options.layoutHiddenClasses;
       if (options.visibilityOverrides) this.visibilityOverrides = options.visibilityOverrides;

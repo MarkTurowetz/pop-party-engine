@@ -60,11 +60,11 @@ function renderLayoutArtInstance(element, host, options = {}) {
   const composition = artComposition(element?.artCompositionId);
   const artRuntime = window.PartyGameArtObject;
   const rendererKey = options.rendererKey || element?.id || "";
-  if (!host) return false;
+  if (!host) return null;
   if (!composition || !artRuntime) {
     options.clearRenderer?.(element?.id, host);
     host.dataset[options.missingDatasetKey] = "true";
-    return false;
+    return null;
   }
   delete host.dataset[options.missingDatasetKey];
   host.dataset.layoutRendererKey = rendererKey;
@@ -87,7 +87,7 @@ function renderLayoutArtInstance(element, host, options = {}) {
     instant: true,
     respectDefaultAnimationState: false
   });
-  return true;
+  return renderer;
 }
 
 function clearLayoutArtInstanceRenderer(renderers, elementId, host = null) {
@@ -466,7 +466,7 @@ function applyControllerElementLayout(element, isGlobal = false) {
     target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
   } else if (isDynamicControllerArtInstance(element)) {
-    renderControllerArtInstance(element, target, entity.visibilityKey);
+    entity.update?.({ artRenderer: renderControllerArtInstance(element, target, entity.visibilityKey) });
   }
   applyControllerLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {
@@ -756,7 +756,7 @@ function applyStageElementLayout(element, isGlobal) {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
   } else if (isDynamicStageArtInstance(element)) {
-    renderStageArtInstance(element, target, entity.visibilityKey);
+    entity.update?.({ artRenderer: renderStageArtInstance(element, target, entity.visibilityKey) });
   }
   applyStageLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {

@@ -156,6 +156,8 @@ concepts into focused modules.
 - Layout prefab instances should let the placed layout entity own park/appear/disappear.
   Their internal art tree is rendered into a ready `on` state by layout runtime so a
   parked source-root component does not make `Set Art Asset Shown` appear an empty host.
+- Dynamic layout art entities should carry their `ArtObjectTreeRenderer` on the same
+  registered GameObject entity that owns the placed instance host.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same
   composition schema rather than maintaining separate art systems.
