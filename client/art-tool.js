@@ -9,6 +9,7 @@ function setupLab() {
 let selectedArtCompositionId = "";
 let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
+let selectedArtSurface = "stage";
 let draggedArtComponentId = "";
 let artCreateKindMenu = null;
 const artComponentSchema = window.PartyGameArtComponentSchema;
@@ -157,6 +158,10 @@ function selectedArtComposition() {
   return artComposition(selectedArtCompositionId);
 }
 
+function visibleArtCompositions() {
+  return (artCompositions || []).filter((composition) => normalizeArtCompositionSurface(composition.surface) === selectedArtSurface);
+}
+
 function selectedArtComponents() {
   const composition = selectedArtComposition();
   return flattenArtComponents(composition?.components || []).filter(({ component }) => selectedArtComponentIds.has(component.id)).map(({ component }) => component);
@@ -260,7 +265,8 @@ function artSidebarState() {
   return {
     artAssets,
     avatarComposites,
-    artCompositions,
+    artCompositions: visibleArtCompositions(),
+    selectedArtSurface,
     artSectionCollapseIds,
     collapsedArtSections,
     collapsedArtComposites,
@@ -976,7 +982,7 @@ function createArtAssetComposition(kind = "shape") {
     id: createSecureArtId("art"),
     name: `${artKindLabel(kind)} Art`,
     description: "Editable art asset.",
-    surface: "stage",
+    surface: selectedArtSurface,
     canvas: { width: 560, height: 230 },
     components: [root]
   };
@@ -1096,7 +1102,8 @@ async function saveArtCompositions() {
   artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
   clearArtCompositionDrafts();
   notifyArtAssetsChanged();
-  selectedArtCompositionId = artComposition(selectedId)?.id || artCompositions[0]?.id || "";
+  const visibleCompositions = visibleArtCompositions();
+  selectedArtCompositionId = artComposition(selectedId)?.id || visibleCompositions[0]?.id || artCompositions[0]?.id || "";
   renderSelectedArtComposition();
   renderArtList();
   updateGlobalSaveButton();
