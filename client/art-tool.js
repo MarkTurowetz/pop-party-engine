@@ -542,7 +542,7 @@ function renderSelectedArtComposition(options = {}) {
   const composition = selectedArtComposition();
   if (!composition) return;
   artPreviewTitle.textContent = composition.name;
-  artPreviewMeta.textContent = composition.description || "Editable composite art.";
+  artPreviewMeta.textContent = composition.description || `Editable ${artSurfaceLabel().toLowerCase()}.`;
   artPreviewArt.className = "art-preview-art is-composition-editor";
   const canvas = composition.canvas || { width: 560, height: 230 };
   artPreviewArt.style.setProperty("--art-composition-aspect", `${Number(canvas.width || 1) / Math.max(1, Number(canvas.height || 1))}`);

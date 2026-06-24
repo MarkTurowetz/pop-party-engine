@@ -181,15 +181,15 @@
       group.appendChild(createGroupTitle(data, label, collapseId));
       const children = documentRef.createElement("div");
       children.className = "art-group-children";
-      if (!data.collapsedArtSections.has(collapseId)) fillChildren(children);
+      fillChildren(children);
+      if (!children.childElementCount) return false;
+      if (data.collapsedArtSections.has(collapseId)) children.replaceChildren();
       group.appendChild(children);
       target.appendChild(group);
+      return true;
     }
 
-    function render(target) {
-      if (!target) return;
-      const data = state();
-      target.replaceChildren();
+    function renderStageCompositions(target, data) {
       appendSection(target, data, "Player Avatars", "player-avatars", (children) => {
         for (const composition of data.artCompositions || []) {
           if (String(composition.id || "").startsWith("player-avatar-")) children.appendChild(createCompositionBlock(data, composition));
@@ -205,6 +205,30 @@
         if (composition.id === "presentation-click-prompt") continue;
         target.appendChild(createCompositionBlock(data, composition));
       }
+    }
+
+    function renderFlatCompositions(target, data) {
+      for (const composition of data.artCompositions || []) {
+        target.appendChild(createCompositionBlock(data, composition));
+      }
+    }
+
+    function appendEmptyState(target, data) {
+      if ((data.artCompositions || []).length || (data.artAssets || []).length) return;
+      const empty = documentRef.createElement("div");
+      empty.className = "art-empty-state";
+      empty.textContent = data.selectedArtSurface === "controller"
+        ? "Create controller art to use it in controller layouts."
+        : "Create stage art to use it in stage layouts.";
+      target.appendChild(empty);
+    }
+
+    function render(target) {
+      if (!target) return;
+      const data = state();
+      target.replaceChildren();
+      if (data.selectedArtSurface === "controller") renderFlatCompositions(target, data);
+      else renderStageCompositions(target, data);
       const looseAssets = (data.artAssets || []).filter((asset) => {
         return !asset.parent || !["player-avatar", "presentation-click-prompt"].includes(asset.parent);
       });
@@ -214,6 +238,7 @@
         wrapper.appendChild(createArtItemButton(data, asset));
         target.appendChild(wrapper);
       }
+      appendEmptyState(target, data);
     }
 
     return { render };
