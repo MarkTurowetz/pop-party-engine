@@ -67,7 +67,10 @@
 
     createVisual() {
       const id = this.gameObjectId();
-      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+      const createVisualForTarget = this.gameObjectApi?.createVisualForTarget
+        || global.PartyGameGameObject?.createVisualForTarget
+        || global.PartyGameStageGameObject?.createVisualForTarget;
+      const bridge = createVisualForTarget?.({
         gameObjectApi: this.gameObjectApi,
         visualAnimation: this.visualAnimation,
         target: this.element,

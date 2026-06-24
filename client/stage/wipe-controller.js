@@ -59,7 +59,10 @@
     visualObject() {
       if (!this.element || !this.visualAnimation) return null;
       const visualOptions = this.visualOptions();
-      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+      const createVisualForTarget = this.gameObjectApi?.createVisualForTarget
+        || global.PartyGameGameObject?.createVisualForTarget
+        || global.PartyGameStageGameObject?.createVisualForTarget;
+      const bridge = createVisualForTarget?.({
         gameObjectApi: this.gameObjectApi,
         visualAnimation: this.visualAnimation,
         target: this.element,

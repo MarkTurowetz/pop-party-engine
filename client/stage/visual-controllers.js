@@ -52,7 +52,10 @@
     visualFor(object) {
       if (!object?.element || !this.visualAnimation) return null;
       const id = this.normalizeTextTargetId(object.element.id || object.layoutElement?.id || "text");
-      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+      const createVisualForTarget = this.gameObjectApi?.createVisualForTarget
+        || global.PartyGameGameObject?.createVisualForTarget
+        || global.PartyGameStageGameObject?.createVisualForTarget;
+      const bridge = createVisualForTarget?.({
         gameObjectApi: this.gameObjectApi,
         visualAnimation: this.visualAnimation,
         target: object.element,
@@ -135,7 +138,10 @@
 
     visualObject() {
       if (!this.element || !this.visualAnimation) return null;
-      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+      const createVisualForTarget = this.gameObjectApi?.createVisualForTarget
+        || global.PartyGameGameObject?.createVisualForTarget
+        || global.PartyGameStageGameObject?.createVisualForTarget;
+      const bridge = createVisualForTarget?.({
         gameObjectApi: this.gameObjectApi,
         visualAnimation: this.visualAnimation,
         target: this.element,
@@ -266,7 +272,10 @@
     visualFor(bubble) {
       if (!bubble || !this.visualAnimation) return null;
       const id = bubble.id || bubble.dataset.answerNonce || `answer-bubble-${Math.random().toString(36).slice(2)}`;
-      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+      const createVisualForTarget = this.gameObjectApi?.createVisualForTarget
+        || global.PartyGameGameObject?.createVisualForTarget
+        || global.PartyGameStageGameObject?.createVisualForTarget;
+      const bridge = createVisualForTarget?.({
         gameObjectApi: this.gameObjectApi,
         visualAnimation: this.visualAnimation,
         target: bubble,
