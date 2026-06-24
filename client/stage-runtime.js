@@ -76,6 +76,8 @@ function playerRosterRenderer() {
     playerRosterRendererInstance = window.PartyGamePlayerRoster.createRenderer({
       host: playerLobby,
       document,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
+      timerSink: (timerId) => textObjectTimers.push(timerId),
       avatarClass,
       avatarFrameImage,
       dinoIcon,

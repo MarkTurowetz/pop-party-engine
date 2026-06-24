@@ -1,16 +1,23 @@
 (function attachPartyGamePlayerRoster(global) {
   "use strict";
 
+  function createGameObject(gameObjectApi, options = {}) {
+    return typeof gameObjectApi?.create === "function" ? gameObjectApi.create(options) : null;
+  }
+
   class PlayerRosterRenderer {
     constructor(options = {}) {
       this.host = options.host;
       this.document = options.document || global.document;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
+      this.timerSink = typeof options.timerSink === "function" ? options.timerSink : null;
       this.avatarClass = typeof options.avatarClass === "function" ? options.avatarClass : () => "";
       this.avatarFrameImage = typeof options.avatarFrameImage === "function" ? options.avatarFrameImage : () => "";
       this.dinoIcon = typeof options.dinoIcon === "function" ? options.dinoIcon : () => "";
       this.playerAvatarArt = typeof options.playerAvatarArt === "function" ? options.playerAvatarArt : (shape) => `${this.avatarFrameImage()}${this.dinoIcon(shape)}`;
       this.syncAnswerBubble = typeof options.syncAnswerBubble === "function" ? options.syncAnswerBubble : () => 0;
       this.pointPopupIds = new Set();
+      this.gameObject = null;
     }
 
     playerSignature(player) {
@@ -78,12 +85,43 @@
       return 1000 + Math.max(0, playerCount - 1) * 45;
     }
 
+    gameObjectForRoster(options = {}) {
+      if (!this.host) return null;
+      const duration = this.visibilityDuration(options);
+      const gameObjectOptions = {
+        id: this.host.id || "playerLobby",
+        target: this.host,
+        visibilityKey: `widget:${this.host.id || "playerLobby"}`,
+        visualOptions: {
+          hiddenClasses: ["players-hidden"],
+          motionHiddenClasses: ["players-hidden"],
+          instantClass: "players-instant",
+          layoutHiddenClasses: ["players-hidden"],
+          durations: {
+            appear: duration,
+            disappear: duration
+          }
+        },
+        getVisible: () => !this.host.classList.contains("players-hidden"),
+        setVisible: (isVisible) => {
+          this.host.dataset.visualVisible = isVisible ? "true" : "false";
+        },
+        timerSink: this.timerSink
+      };
+      if (!this.gameObject || this.gameObject.target !== this.host) {
+        this.gameObject = createGameObject(this.gameObjectApi, gameObjectOptions);
+      } else {
+        this.gameObject.update(gameObjectOptions);
+      }
+      return this.gameObject;
+    }
+
     setShown(isShown, options = {}) {
       if (!this.host) return 0;
+      const gameObject = this.gameObjectForRoster(options);
+      if (gameObject) return gameObject.playVisibility(isShown !== false, { instant: options.instant === true });
       this.host.classList.toggle("players-hidden", isShown === false);
-      if (Object.prototype.hasOwnProperty.call(options, "instant")) {
-        this.host.classList.toggle("players-instant", options.instant === true);
-      }
+      this.host.classList.toggle("players-instant", options.instant === true);
       return this.visibilityDuration(options);
     }
 
