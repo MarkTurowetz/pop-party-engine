@@ -239,11 +239,15 @@
       max-height: none !important;
       margin: 0 !important;
       --stage-object-visible-scale: 1;
+      --stage-layout-tilt: 0deg;
       --visual-scale: 1;
       opacity: 1;
-      transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1) * var(--visual-scale, 1))) !important;
+      translate: -50% -50%;
+      rotate: calc(var(--stage-layout-rotation, 0deg) + var(--stage-layout-tilt, 0deg));
+      scale: calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1) * var(--visual-scale, 1));
+      transform: none !important;
       transform-origin: center !important;
-      transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease;
+      transition: scale 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease;
     }
 
     .stage-layout-target.stage-text-object {
@@ -252,7 +256,7 @@
     }
 
     .stage-code-panel.stage-layout-target {
-      transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(var(--stage-layout-scale, 1)) rotate(-1deg) !important;
+      --stage-layout-tilt: -1deg;
     }
 
     .stage-layout-target.text-hidden {
@@ -277,9 +281,14 @@
       animation: none !important;
     }
 
+    .stage-layout-target.stage-layout-transition-suppressed {
+      transition-duration: 0ms !important;
+      animation: none !important;
+    }
+
     @keyframes stageLayoutVisualUpdate {
-      0% { --visual-scale: 1.2; }
-      100% { --visual-scale: 1; }
+      0% { scale: calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1) * 1.2); }
+      100% { scale: calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1)); }
     }
 
     .stage-layout-hidden {
@@ -354,9 +363,13 @@
       transition-duration: 0ms !important;
     }
 
+    .crafting-timer.stage-layout-target {
+      transition: scale 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms cubic-bezier(0.19, 1, 0.22, 1);
+      will-change: scale, opacity;
+    }
+
     .crafting-timer.stage-layout-target.hidden {
       --stage-object-visible-scale: 0;
-      transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(calc(var(--stage-layout-scale, 1) * var(--stage-object-visible-scale, 1))) !important;
     }
 
     .version-badge,
@@ -575,7 +588,7 @@
     }
 
     .stage-layout-target.stage-join-qr {
-      transform: translate(-50%, -50%) rotate(var(--stage-layout-rotation, 0deg)) scale(var(--stage-layout-scale, 1)) rotate(1deg) !important;
+      --stage-layout-tilt: 1deg;
     }
 
     .stage-intro-content {
@@ -685,6 +698,11 @@
     .stage-text-object {
       transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms cubic-bezier(0.19, 1, 0.22, 1);
       will-change: transform, opacity;
+    }
+
+    .stage-text-object.stage-layout-target {
+      transition: scale 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms cubic-bezier(0.19, 1, 0.22, 1);
+      will-change: scale, opacity;
     }
 
     .stage-text-object.text-hidden {
@@ -981,9 +999,12 @@
       background: var(--paper);
       box-shadow: var(--shadow);
       text-align: left;
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
+      translate: -50% -50%;
+      rotate: var(--component-rotation, 0deg);
+      scale: var(--component-scale, 1);
+      transform: none;
       opacity: 1;
-      transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease, background 400ms ease;
+      transition: scale 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease, background 400ms ease;
       background: var(--component-fill-color, var(--paper));
       border-color: var(--component-border-color, var(--ink));
       border-width: var(--component-border-width, 5px);
@@ -997,7 +1018,7 @@
 
     .voting-card.is-loser {
       opacity: 0.45;
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(calc(var(--component-scale, 1) * 0.97));
+      scale: calc(var(--component-scale, 1) * 0.97);
     }
 
     .voting-card-author {
@@ -1012,15 +1033,18 @@
       letter-spacing: 0.06em;
       color: var(--component-text-color, var(--purple-muted));
       opacity: 1;
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
+      translate: -50% -50%;
+      rotate: var(--component-rotation, 0deg);
+      scale: var(--component-scale, 1);
+      transform: none;
       transform-origin: center;
-      transition: opacity 300ms ease, transform 300ms ease;
+      transition: opacity 300ms ease, scale 300ms ease;
       overflow: hidden;
     }
 
     .voting-card-widget-hidden {
       opacity: 0;
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(0);
+      scale: 0;
       pointer-events: none;
     }
 
@@ -1037,7 +1061,10 @@
       overflow-wrap: anywhere;
       color: var(--component-text-color, var(--ink));
       text-align: center;
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
+      translate: -50% -50%;
+      rotate: var(--component-rotation, 0deg);
+      scale: var(--component-scale, 1);
+      transform: none;
       transform-origin: center;
     }
 
@@ -1060,7 +1087,10 @@
       border-color: var(--component-border-color, var(--ink));
       border-width: var(--component-border-width, 3px);
       border-radius: var(--component-border-radius, 999px);
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
+      translate: -50% -50%;
+      rotate: var(--component-rotation, 0deg);
+      scale: var(--component-scale, 1);
+      transform: none;
     }
 
     .voting-card-voters {
@@ -1080,10 +1110,13 @@
       border-style: solid;
       border-width: var(--component-border-width, 0);
       border-radius: var(--component-border-radius, 0);
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
+      translate: -50% -50%;
+      rotate: var(--component-rotation, 0deg);
+      scale: var(--component-scale, 1);
+      transform: none;
       transform-origin: center;
       opacity: 1;
-      transition: opacity 300ms ease, transform 300ms ease;
+      transition: opacity 300ms ease, scale 300ms ease;
     }
 
     .voting-card-voter-badge {
@@ -1098,9 +1131,11 @@
       font-weight: 800;
       color: var(--component-text-color, var(--ink));
       opacity: 1;
-      transform: rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
+      rotate: var(--component-rotation, 0deg);
+      scale: var(--component-scale, 1);
+      transform: none;
       transform-origin: center;
-      transition: opacity 200ms ease, transform 200ms cubic-bezier(0.19, 1, 0.22, 1);
+      transition: opacity 200ms ease, scale 200ms cubic-bezier(0.19, 1, 0.22, 1);
       background: var(--component-fill-color, var(--paper));
       border-color: var(--component-border-color, var(--ink));
       border-width: var(--component-border-width, 2px);
@@ -1109,7 +1144,7 @@
 
     .voting-card-vote-hidden {
       opacity: 0;
-      transform: rotate(var(--component-rotation, 0deg)) scale(0);
+      scale: 0;
       pointer-events: none;
     }
 
@@ -1160,13 +1195,17 @@
       line-height: 1;
       text-align: center;
       text-transform: uppercase;
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
+      --art-runtime-visual-scale: 1;
+      translate: -50% -50%;
+      rotate: var(--component-rotation, 0deg);
+      scale: calc(var(--component-scale, 1) * var(--art-runtime-visual-scale, 1));
+      transform: none;
       transform-origin: center;
       opacity: 1;
-      transition: opacity 500ms ease, transform 500ms cubic-bezier(0.19, 1, 0.22, 1);
+      transition: opacity 500ms ease, scale 500ms cubic-bezier(0.19, 1, 0.22, 1);
       pointer-events: none;
       overflow: visible;
-      will-change: transform, opacity;
+      will-change: scale, opacity;
     }
 
     .art-runtime-object.is-shape,
@@ -1233,8 +1272,8 @@
 
     .art-runtime-object-hidden,
     .art-runtime-object-exiting {
+      --art-runtime-visual-scale: 0;
       opacity: 0;
-      transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(0);
       pointer-events: none;
     }
 
@@ -1248,9 +1287,9 @@
     }
 
     @keyframes artRuntimeObjectUpdate {
-      0% { transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(calc(var(--component-scale, 1) * 1)); }
-      40% { transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(calc(var(--component-scale, 1) * 1.2)); }
-      100% { transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1)); }
+      0% { scale: calc(var(--component-scale, 1) * 1); }
+      40% { scale: calc(var(--component-scale, 1) * 1.2); }
+      100% { scale: var(--component-scale, 1); }
     }
 
     .pause-menu {

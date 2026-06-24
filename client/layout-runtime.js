@@ -213,6 +213,7 @@ function clearStageLayoutTargets() {
     target.classList.remove("stage-layout-hidden");
     target.classList.remove("stage-layout-visual-update");
     target.classList.remove("stage-layout-visual-instant");
+    target.classList.remove("stage-layout-transition-suppressed");
     target.style.removeProperty("--stage-layout-x");
     target.style.removeProperty("--stage-layout-y");
     target.style.removeProperty("--stage-layout-w");
@@ -268,6 +269,8 @@ function applyStageLayoutForPhase(phase) {
 function applyStageElementLayout(element, isGlobal) {
   const target = stageLayoutTargetElement(element);
   if (!target) return;
+  const isNewLayoutTarget = !target.classList.contains("stage-layout-target");
+  if (isNewLayoutTarget) target.classList.add("stage-layout-transition-suppressed");
   target.classList.add("stage-layout-target");
   if (isGlobal) target.classList.add("stage-global-layout-target");
   target.dataset.stageLayoutElementId = element.id || "";
@@ -286,6 +289,10 @@ function applyStageElementLayout(element, isGlobal) {
     renderStageArtInstance(element, target);
   }
   applyStageLayoutArtVisibilityOverride(element, target);
+  if (isNewLayoutTarget) {
+    void target.offsetWidth;
+    target.classList.remove("stage-layout-transition-suppressed");
+  }
 }
 
 function stageLayoutArtVisualFor(elementId, target) {
