@@ -1,5 +1,6 @@
 const stageLayoutArtVisibilityOverrides = new Map();
 const stageLayoutArtVisuals = new Map();
+const stageLayoutEntities = new Map();
 
 async function loadStageLayouts({ forceServer = false } = {}) {
   if (runtimeTestLayouts && !forceServer) {
@@ -195,7 +196,7 @@ function activeStageArtInstanceIds(state) {
 function removeInactiveStageArtInstances(activeIds) {
   for (const element of Array.from(stageBoard.querySelectorAll(".dynamic-stage-art-instance[data-layout-element-id]"))) {
     if (!activeIds.has(element.dataset.layoutElementId)) {
-      stageArtInstanceRenderers.delete(element.dataset.layoutElementId);
+      clearStageArtInstanceRenderer(element.dataset.layoutElementId, element);
       element.remove();
     }
   }
@@ -235,6 +236,7 @@ function applyStageLayoutForPhase(phase) {
   const state = stageLayoutStateForPhase(phase);
   if (!state || !stageScreen || !stageBoard) return;
   currentStageLayoutStateId = state.id;
+  stageLayoutEntities.clear();
   hideStageMomentTextOutsideLayout(state);
   clearStageLayoutTargets();
   removeInactiveStageArtInstances(activeStageArtInstanceIds(state));
@@ -269,13 +271,14 @@ function applyStageLayoutForPhase(phase) {
 function applyStageElementLayout(element, isGlobal) {
   const target = stageLayoutTargetElement(element);
   if (!target) return;
+  const entity = registerStageLayoutEntity(element, target, isGlobal);
   const isNewLayoutTarget = !target.classList.contains("stage-layout-target");
   if (isNewLayoutTarget) target.classList.add("stage-layout-transition-suppressed");
   target.classList.add("stage-layout-target");
   if (isGlobal) target.classList.add("stage-global-layout-target");
-  target.dataset.stageLayoutElementId = element.id || "";
+  target.dataset.stageLayoutElementId = entity.id || "";
   target.dataset.stageLayoutArtCompositionId = element.artCompositionId || "";
-  target.dataset.stageLayoutVisibilityKey = stageLayoutArtVisibilityKey(element.id, isGlobal);
+  target.dataset.stageLayoutVisibilityKey = entity.visibilityKey;
   target.style.setProperty("--stage-layout-x", `${element.x}px`);
   target.style.setProperty("--stage-layout-y", `${element.y}px`);
   target.style.setProperty("--stage-layout-w", `${element.width}px`);
@@ -288,15 +291,48 @@ function applyStageElementLayout(element, isGlobal) {
   } else if (isDynamicStageArtInstance(element)) {
     renderStageArtInstance(element, target);
   }
-  applyStageLayoutArtVisibilityOverride(element, target);
+  applyStageLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {
     void target.offsetWidth;
     target.classList.remove("stage-layout-transition-suppressed");
   }
 }
 
-function stageLayoutArtVisualFor(elementId, target) {
-  const visibilityKey = target?.dataset.stageLayoutVisibilityKey || elementId || "";
+function registerStageLayoutEntity(element, target, isGlobal = false) {
+  const id = element?.id || "";
+  const entity = {
+    element,
+    id,
+    isArt: element?.kind === "art" && Boolean(element?.artCompositionId),
+    isDynamic: isDynamicStageArtInstance(element),
+    isGlobal: isGlobal === true,
+    target,
+    visibilityKey: stageLayoutArtVisibilityKey(id, isGlobal)
+  };
+  if (id) stageLayoutEntities.set(id, entity);
+  return entity;
+}
+
+function stageLayoutEntityForElementId(elementId, target = null) {
+  if (!elementId) return null;
+  const entity = stageLayoutEntities.get(elementId);
+  if (entity) return entity;
+  const resolvedTarget = target || stageLayoutTargetByElementId(elementId);
+  if (!resolvedTarget) return null;
+  return {
+    element: null,
+    id: elementId,
+    isArt: Boolean(resolvedTarget.dataset.stageLayoutArtCompositionId),
+    isDynamic: resolvedTarget.classList.contains("dynamic-stage-art-instance"),
+    isGlobal: resolvedTarget.classList.contains("stage-global-layout-target"),
+    target: resolvedTarget,
+    visibilityKey: stageLayoutElementVisibilityKey(elementId, resolvedTarget)
+  };
+}
+
+function stageLayoutArtVisualFor(entity) {
+  const target = entity?.target;
+  const visibilityKey = entity?.visibilityKey || "";
   if (!visibilityKey || !target || !window.PartyGameVisualObject) return null;
   const existing = stageLayoutArtVisuals.get(visibilityKey);
   if (existing?.element === target) return existing.visual;
@@ -325,8 +361,9 @@ function stageLayoutArtVisualFor(elementId, target) {
   return visual;
 }
 
-function applyStageLayoutArtVisibilityOverride(element, target) {
-  const visibilityKey = target?.dataset.stageLayoutVisibilityKey || stageLayoutArtVisibilityKey(element?.id, target?.classList.contains("stage-global-layout-target"));
+function applyStageLayoutArtVisibilityOverride(entity) {
+  const target = entity?.target;
+  const visibilityKey = entity?.visibilityKey || "";
   if (!visibilityKey || !target || !stageLayoutArtVisibilityOverrides.has(visibilityKey)) return;
   const isShown = stageLayoutArtVisibilityOverrides.get(visibilityKey) !== false;
   target.dataset.visualVisible = isShown ? "true" : "false";
@@ -345,6 +382,18 @@ function stageLayoutTargetByElementId(elementId) {
     || stageBoard.querySelector(`.dynamic-stage-art-instance[data-layout-element-id="${CSS.escape(elementId)}"]`);
 }
 
+function stageLayoutElementVisibilityKey(elementId, target = null) {
+  if (target?.dataset.stageLayoutVisibilityKey) return target.dataset.stageLayoutVisibilityKey;
+  const state = stageLayoutState(currentStageLayoutStateId);
+  if ((state?.elements || []).some((element) => element.id === elementId)) {
+    return stageLayoutArtVisibilityKey(elementId, false);
+  }
+  if ((globalStageLayout().elements || []).some((element) => element.id === elementId)) {
+    return stageLayoutArtVisibilityKey(elementId, true);
+  }
+  return stageLayoutArtVisibilityKey(elementId);
+}
+
 function stageLayoutArtVisibilityKey(elementId, isGlobal = false) {
   if (!elementId) return "";
   return `${isGlobal ? "global" : currentStageLayoutStateId || "moment"}:${elementId}`;
@@ -354,11 +403,12 @@ function setStageLayoutArtElementShownForAction(action) {
   const elementId = action?.targetLayoutElementId || "";
   if (!elementId || !window.PartyGameVisualObject) return 0;
   const isShown = action.isShown !== false;
-  const target = stageLayoutTargetByElementId(elementId);
-  const visibilityKey = target?.dataset.stageLayoutVisibilityKey || stageLayoutArtVisibilityKey(elementId);
+  const entity = stageLayoutEntityForElementId(elementId);
+  const target = entity?.target || null;
+  const visibilityKey = entity?.visibilityKey || stageLayoutElementVisibilityKey(elementId, target);
   stageLayoutArtVisibilityOverrides.set(visibilityKey, isShown);
   if (!target) return 0;
-  const visual = stageLayoutArtVisualFor(elementId, target);
+  const visual = stageLayoutArtVisualFor(entity || stageLayoutEntityForElementId(elementId, target));
   if (!visual) return 0;
   const animation = window.PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
   return visual.play(animation, { instant: action.instant === true });
@@ -394,7 +444,13 @@ function getOrCreateStageArtInstance(element) {
 function renderStageArtInstance(element, host) {
   const composition = artComposition(element.artCompositionId);
   const artRuntime = window.PartyGameArtObject;
-  if (!composition || !artRuntime || !host) return;
+  if (!host) return false;
+  if (!composition || !artRuntime) {
+    clearStageArtInstanceRenderer(element.id, host);
+    host.dataset.stageLayoutArtMissing = "true";
+    return false;
+  }
+  delete host.dataset.stageLayoutArtMissing;
   let renderer = stageArtInstanceRenderers.get(element.id);
   if (!renderer) {
     const layer = document.createElement("div");
@@ -408,6 +464,14 @@ function renderStageArtInstance(element, host) {
     stageArtInstanceRenderers.set(element.id, renderer);
   }
   renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, { instant: true });
+  return true;
+}
+
+function clearStageArtInstanceRenderer(elementId, host = null) {
+  const renderer = stageArtInstanceRenderers.get(elementId);
+  if (renderer) renderer.clear({ instant: true });
+  stageArtInstanceRenderers.delete(elementId);
+  if (host) host.replaceChildren();
 }
 
 function dynamicStageTextElementId(element) {

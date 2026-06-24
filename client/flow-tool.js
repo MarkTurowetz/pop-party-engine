@@ -983,7 +983,22 @@ function controllerLayoutOptions(selectedLayoutId = "") {
 function flowArtAssetLayoutElements(state) {
   const stateId = state?.id || selectedFlowStateId || "";
   const layout = (stageLayouts.states || []).find((item) => item.id === stateId);
-  return (layout?.elements || []).filter((element) => element.kind === "art" && element.artCompositionId);
+  const momentElements = (layout?.elements || [])
+    .filter((element) => element.kind === "art" && element.artCompositionId);
+  const momentIds = new Set(momentElements.map((element) => element.id));
+  const globalLayout = stageLayouts.global || {};
+  const hiddenGlobals = new Set(layout?.hiddenGlobals || []);
+  const globalElements = globalLayout.hiddenInStates === true
+    ? []
+    : (globalLayout.elements || [])
+      .filter((element) => element.kind === "art" && element.artCompositionId)
+      .filter((element) => !hiddenGlobals.has(element.id))
+      .filter((element) => !momentIds.has(element.id))
+      .map((element) => ({ ...element, name: `Global: ${element.name || element.id}` }));
+  return [
+    ...momentElements,
+    ...globalElements
+  ];
 }
 
 function flowArtAssetTargetOptions(state, selectedElementId = "") {
@@ -999,6 +1014,11 @@ function flowArtAssetTargetOptions(state, selectedElementId = "") {
 
 function flowArtAssetTargetName(elementId) {
   if (!elementId) return "No Art Asset";
+  const selectedState = (stageLayouts.states || []).find((state) => state.id === selectedFlowStateId);
+  const selectedElement = (selectedState?.elements || []).find((item) => item.id === elementId);
+  if (selectedElement) return selectedElement.name || selectedElement.id;
+  const globalElement = (stageLayouts.global?.elements || []).find((item) => item.id === elementId);
+  if (globalElement) return `Global: ${globalElement.name || globalElement.id}`;
   for (const state of stageLayouts.states || []) {
     const element = (state.elements || []).find((item) => item.id === elementId);
     if (element) return element.name || element.id;
