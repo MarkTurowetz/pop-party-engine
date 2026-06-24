@@ -121,6 +121,9 @@
       const exitingClass = this.visualClass("exitingClass", "stage-layout-visual-exiting");
       this.target.dataset.visualVisible = isShown ? "true" : "false";
       if (isShown) {
+        for (const className of this.layoutHiddenClasses || []) {
+          if (className) this.target.classList.remove(className);
+        }
         this.target.classList.remove(hiddenClass, exitingClass);
         return;
       }
@@ -155,7 +158,9 @@
       if (!global.PartyGameVisualObject) return 0;
       const visual = this.createVisual();
       if (!visual) return 0;
-      const animation = global.PartyGameVisualObject.animationForVisibility(isShown === true, visual.isVisible());
+      const shouldShow = isShown === true;
+      const animation = global.PartyGameVisualObject.animationForVisibility(shouldShow, visual.isVisible());
+      this.visibilityOverrides.set(this.visibilityKey, shouldShow);
       return visual.play(animation, options);
     }
   }
@@ -285,6 +290,9 @@
     }
     const isShown = options.isShown !== false;
     const animation = global.PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
+    if (bridge.gameObject?.visibilityOverrides && bridge.gameObject.visibilityKey) {
+      bridge.gameObject.visibilityOverrides.set(bridge.gameObject.visibilityKey, isShown);
+    }
     const duration = visual.play(animation, options.playOptions || {});
     return {
       ...bridge,

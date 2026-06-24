@@ -638,6 +638,7 @@ function applyStageElementLayout(element, isGlobal) {
   const entity = registerStageLayoutEntity(element, target, isGlobal);
   const isNewLayoutTarget = !target.classList.contains("stage-layout-target");
   if (isNewLayoutTarget) target.classList.add("stage-layout-transition-suppressed");
+  target.classList.remove("stage-layout-hidden");
   target.classList.add("stage-layout-target");
   if (isGlobal) target.classList.add("stage-global-layout-target");
   target.dataset.stageLayoutElementId = entity.id || "";
