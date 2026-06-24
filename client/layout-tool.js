@@ -629,37 +629,12 @@ function layoutWidgetArtPreviewComponent(component, textOverrides = {}) {
 }
 
 function layoutWidgetArtPreviewBinding(elementId) {
-  const bindings = {
-    stagecodepanel: {
-      compositionId: "stage-code-panel",
-      textOverrides: { "panel-code": "NUZ7" }
-    },
-    stagejoinqr: {
-      compositionId: "join-qr-code",
-      textOverrides: { "qr-url": "pop-party.onrender.com/controller?stage=NUZ7" }
-    },
-    joinprompt: {
-      compositionId: "join-widget",
-      textOverrides: { "join-text": "Join the Lobby at bit.ly/popcontroller" }
-    },
-    startpopup: {
-      compositionId: "countdown-popup",
-      textOverrides: { "popup-text": "Starting in 3" }
-    },
-    craftingtimer: {
-      compositionId: "crafting-timer-widget",
-      textOverrides: { "timer-value": "30" }
-    },
-    stagecodebadge: {
-      compositionId: "stage-code-widget",
-      textOverrides: { "badge-code": "NUZ7" }
-    },
-    presentclickwidget: {
-      compositionId: "presentation-click-prompt",
-      textOverrides: {}
-    }
+  const definition = window.PartyGameStageWidgetBindings?.definitionForLayoutElement?.(elementId);
+  if (!definition) return null;
+  return {
+    compositionId: definition.compositionId,
+    textOverrides: window.PartyGameStageWidgetBindings?.previewTextOverrides?.(elementId) || {}
   };
-  return bindings[elementId] || null;
 }
 
 function layoutDefaultText(element) {

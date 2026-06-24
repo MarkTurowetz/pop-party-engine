@@ -312,21 +312,21 @@ function renderCraftingTimer(timer, options = {}) {
 
 const stageWidgetBindings = {
   stageCodePanel: {
-    compositionId: "stage-code-panel",
+    compositionId: stageWidgetArtDefinition("stageCodePanel")?.compositionId,
     host: () => stageCodeText.closest(".stage-code-panel"),
     textOverrides: (context) => ({
       "panel-code": context.stageCode || stageCodeText.textContent
     })
   },
   stageCodeWidget: {
-    compositionId: "stage-code-widget",
+    compositionId: stageWidgetArtDefinition("stageCodeWidget")?.compositionId,
     host: () => stageCodeBadgeRoot,
     textOverrides: (context) => ({
       "badge-code": context.stageCode || stageCodeBadge.textContent
     })
   },
   joinQr: {
-    compositionId: "join-qr-code",
+    compositionId: stageWidgetArtDefinition("joinQr")?.compositionId,
     host: () => stageJoinQr,
     textOverrides: (context) => ({
       "qr-url": context.displayUrl || ""
@@ -339,35 +339,39 @@ const stageWidgetBindings = {
     ]
   },
   joinWidget: {
-    compositionId: "join-widget",
+    compositionId: stageWidgetArtDefinition("joinWidget")?.compositionId,
     host: () => joinPrompt,
     textOverrides: () => ({
       "join-text": joinPrompt.textContent || "Join the Lobby at bit.ly/popcontroller"
     })
   },
   countdownPopup: {
-    compositionId: "countdown-popup",
+    compositionId: stageWidgetArtDefinition("countdownPopup")?.compositionId,
     host: () => startPopup,
     textOverrides: (context) => ({
       "popup-text": context.seconds > 0 ? `Starting in ${context.seconds}` : "Let's Go"
     })
   },
   craftingTimer: {
-    compositionId: "crafting-timer-widget",
+    compositionId: stageWidgetArtDefinition("craftingTimer")?.compositionId,
     host: () => craftingTimer,
     textOverrides: (context) => ({
       "timer-value": context.label || craftingTimerLabel.textContent || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
     })
   },
   presentationClickPrompt: {
-    compositionId: "presentation-click-prompt",
+    compositionId: stageWidgetArtDefinition("presentationClickPrompt")?.compositionId,
     host: () => presentClickWidget
   }
 };
 
+function stageWidgetArtDefinition(widgetId) {
+  return window.PartyGameStageWidgetBindings?.definition?.(widgetId) || null;
+}
+
 function renderStageWidgetBinding(bindingId, context = {}) {
   const binding = stageWidgetBindings[bindingId];
-  if (!binding) return null;
+  if (!binding?.compositionId) return null;
   const host = binding.host?.(context);
   if (!host) return null;
   return stageWidgetArtRenderer()?.renderBound(host, binding, context) || null;
