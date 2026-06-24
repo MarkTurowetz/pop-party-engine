@@ -401,7 +401,7 @@ function stageLayoutEntityForElementId(elementId, target = null) {
   if (entity) return entity;
   const resolvedTarget = target || stageLayoutTargetByElementId(elementId);
   if (!resolvedTarget) return null;
-  return {
+  const fallbackEntity = {
     element: null,
     id: elementId,
     isArt: Boolean(resolvedTarget.dataset.stageLayoutArtCompositionId),
@@ -410,6 +410,7 @@ function stageLayoutEntityForElementId(elementId, target = null) {
     target: resolvedTarget,
     visibilityKey: stageLayoutElementVisibilityKey(elementId, resolvedTarget)
   };
+  return stageLayoutGameObjectRegistry()?.register(fallbackEntity) || fallbackEntity;
 }
 
 function stageLayoutArtVisualFor(entity) {
