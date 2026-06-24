@@ -765,23 +765,6 @@
       },
       "components": [
         {
-          "id": "popup-card",
-          "name": "Popup Card",
-          "kind": "shape",
-          "x": 350,
-          "y": 65,
-          "width": 660,
-          "height": 104,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "on",
-          "shapeStyle": "rounded",
-          "fillColor": "#ffe256",
-          "borderColor": "#17131f",
-          "borderWidth": 5,
-          "borderRadius": 20
-        },
-        {
           "id": "popup-text",
           "name": "Popup Text",
           "kind": "text",
@@ -796,9 +779,27 @@
           "fontSize": 54,
           "autoFitText": true,
           "fontColor": "#17131f"
+        },
+        {
+          "id": "popup-card",
+          "name": "Popup Card",
+          "kind": "shape",
+          "x": 350,
+          "y": 65,
+          "width": 660,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "#60d394",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 5,
+          "borderRadius": 20
         }
       ],
-      "updatedAt": "2026-06-24T01:35:18.675Z"
+      "updatedAt": "2026-06-24T04:03:32.677Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer",
