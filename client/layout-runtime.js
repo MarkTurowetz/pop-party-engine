@@ -59,6 +59,7 @@ function getOrCreateLayoutArtInstance(element, root, selector, className) {
 function renderLayoutArtInstance(element, host, options = {}) {
   const composition = artComposition(element?.artCompositionId);
   const artRuntime = window.PartyGameArtObject;
+  const rendererKey = options.rendererKey || element?.id || "";
   if (!host) return false;
   if (!composition || !artRuntime) {
     options.clearRenderer?.(element?.id, host);
@@ -66,7 +67,8 @@ function renderLayoutArtInstance(element, host, options = {}) {
     return false;
   }
   delete host.dataset[options.missingDatasetKey];
-  let renderer = options.renderers.get(element.id);
+  host.dataset.layoutRendererKey = rendererKey;
+  let renderer = options.renderers.get(rendererKey);
   if (!renderer) {
     const layer = document.createElement("div");
     layer.className = options.layerClassName;
@@ -77,16 +79,17 @@ function renderLayoutArtInstance(element, host, options = {}) {
       gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
       visualAnimation: window.PartyGameVisualObject
     });
-    options.renderers.set(element.id, renderer);
+    options.renderers.set(rendererKey, renderer);
   }
   renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, { instant: true });
   return true;
 }
 
 function clearLayoutArtInstanceRenderer(renderers, elementId, host = null) {
-  const renderer = renderers.get(elementId);
+  const rendererKey = host?.dataset?.layoutRendererKey || elementId;
+  const renderer = renderers.get(rendererKey);
   if (renderer) renderer.clear({ instant: true });
-  renderers.delete(elementId);
+  renderers.delete(rendererKey);
   if (host) host.replaceChildren();
 }
 
@@ -458,7 +461,7 @@ function applyControllerElementLayout(element, isGlobal = false) {
     target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
   } else if (isDynamicControllerArtInstance(element)) {
-    renderControllerArtInstance(element, target);
+    renderControllerArtInstance(element, target, entity.visibilityKey);
   }
   applyControllerLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {
@@ -601,9 +604,10 @@ function getOrCreateControllerArtInstance(element) {
   );
 }
 
-function renderControllerArtInstance(element, host) {
+function renderControllerArtInstance(element, host, rendererKey = "") {
   return renderLayoutArtInstance(element, host, {
     renderers: controllerArtInstanceRenderers,
+    rendererKey,
     layerClassName: "controller-widget-art-layer",
     missingDatasetKey: "controllerLayoutArtMissing",
     clearRenderer: clearControllerArtInstanceRenderer
@@ -747,7 +751,7 @@ function applyStageElementLayout(element, isGlobal) {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
   } else if (isDynamicStageArtInstance(element)) {
-    renderStageArtInstance(element, target);
+    renderStageArtInstance(element, target, entity.visibilityKey);
   }
   applyStageLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {
@@ -858,9 +862,10 @@ function getOrCreateStageArtInstance(element) {
   );
 }
 
-function renderStageArtInstance(element, host) {
+function renderStageArtInstance(element, host, rendererKey = "") {
   return renderLayoutArtInstance(element, host, {
     renderers: stageArtInstanceRenderers,
+    rendererKey,
     layerClassName: "stage-widget-art-layer",
     missingDatasetKey: "stageLayoutArtMissing",
     clearRenderer: clearStageArtInstanceRenderer
