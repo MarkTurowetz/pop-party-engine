@@ -172,6 +172,32 @@ function allStageLayoutSelectors() {
   return selectors;
 }
 
+const stageArtInstanceRenderers = new Map();
+
+function activeStageArtInstanceIds(state) {
+  const ids = new Set();
+  for (const element of state?.elements || []) {
+    if (element.artCompositionId) ids.add(element.id);
+  }
+  const globalLayout = globalStageLayout();
+  if (globalLayout.hiddenInStates !== true) {
+    const hiddenGlobals = new Set(state?.hiddenGlobals || []);
+    for (const element of globalLayout.elements || []) {
+      if (element.artCompositionId && !hiddenGlobals.has(element.id)) ids.add(element.id);
+    }
+  }
+  return ids;
+}
+
+function removeInactiveStageArtInstances(activeIds) {
+  for (const element of Array.from(stageBoard.querySelectorAll(".dynamic-stage-art-instance[data-layout-element-id]"))) {
+    if (!activeIds.has(element.dataset.layoutElementId)) {
+      stageArtInstanceRenderers.delete(element.dataset.layoutElementId);
+      element.remove();
+    }
+  }
+}
+
 function clearStageLayoutTargets() {
   const targets = new Set(stageBoard.querySelectorAll(".stage-layout-target"));
   for (const selector of allStageLayoutSelectors()) {
@@ -202,6 +228,7 @@ function applyStageLayoutForPhase(phase) {
   currentStageLayoutStateId = state.id;
   hideStageMomentTextOutsideLayout(state);
   clearStageLayoutTargets();
+  removeInactiveStageArtInstances(activeStageArtInstanceIds(state));
   const canvas = stageLayouts.canvas || { width: 1920, height: 1080 };
   const stageRect = stageScreen.getBoundingClientRect();
   const fitScale = Math.min(stageRect.width / canvas.width, stageRect.height / canvas.height);
@@ -244,10 +271,13 @@ function applyStageElementLayout(element, isGlobal) {
   if (element.kind === "text") {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
+  } else if (element.artCompositionId) {
+    renderStageArtInstance(element, target);
   }
 }
 
 function stageLayoutTargetElement(element) {
+  if (element.artCompositionId) return getOrCreateStageArtInstance(element);
   if (element.kind !== "text") return stageBoard.querySelector(element.selector);
   const dynamicId = dynamicStageTextElementId(element);
   const selectorTarget = stageBoard.querySelector(element.selector);
@@ -256,6 +286,36 @@ function stageLayoutTargetElement(element) {
   const shouldUseDynamicTextTarget = elementId && selectorId && selectorId !== elementId;
   if (!shouldUseDynamicTextTarget && selectorTarget) return selectorTarget;
   return getOrCreateDynamicStageTextElement(dynamicId || elementId || selectorId);
+}
+
+function getOrCreateStageArtInstance(element) {
+  if (!stageBoard || !element?.id) return null;
+  let host = stageBoard.querySelector(`.dynamic-stage-art-instance[data-layout-element-id="${CSS.escape(element.id)}"]`);
+  if (host) return host;
+  host = document.createElement("div");
+  host.className = "dynamic-stage-art-instance stage-widget-art-host has-stage-widget-art";
+  host.dataset.layoutElementId = element.id;
+  stageBoard.appendChild(host);
+  return host;
+}
+
+function renderStageArtInstance(element, host) {
+  const composition = artComposition(element.artCompositionId);
+  const artRuntime = window.PartyGameArtObject;
+  if (!composition || !artRuntime || !host) return;
+  let renderer = stageArtInstanceRenderers.get(element.id);
+  if (!renderer) {
+    const layer = document.createElement("div");
+    layer.className = "stage-widget-art-layer";
+    host.replaceChildren(layer);
+    renderer = new artRuntime.ArtObjectTreeRenderer({
+      host: layer,
+      document,
+      visualAnimation: window.PartyGameVisualObject
+    });
+    stageArtInstanceRenderers.set(element.id, renderer);
+  }
+  renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, { instant: true });
 }
 
 function dynamicStageTextElementId(element) {

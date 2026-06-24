@@ -30,11 +30,13 @@ function createLayoutNormalizationRuntime({
     const height = normalizeLayoutNumber(element.height, 100, 24, 4000);
     const selector = cleanLayoutSelector(element.selector);
     const kind = normalizeLayoutElementKind(element.kind, selector);
+    const artCompositionId = normalizeFlowId(element.artCompositionId, "");
     return {
       id: normalizeFlowId(element.id || element.name, fallbackId),
       name: cleanFlowText(element.name, element.id || fallbackId),
       selector,
       kind,
+      artCompositionId: kind === "art" ? artCompositionId : "",
       x: normalizeLayoutNumber(element.x, defaultCanvas.width / 2, -5000, 15000),
       y: normalizeLayoutNumber(element.y, defaultCanvas.height / 2, -5000, 15000),
       width,

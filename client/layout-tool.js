@@ -77,6 +77,7 @@ function serializeLayoutGroup(group) {
       name: element.name,
       selector: element.selector,
       kind: element.kind || "art",
+      artCompositionId: element.artCompositionId || "",
       x: Number(Number(element.x || 0).toFixed(3)),
       y: Number(Number(element.y || 0).toFixed(3)),
       width: Number(Number(element.width || 0).toFixed(3)),
@@ -159,6 +160,18 @@ function isActiveLayoutDirty() {
 }
 
 function baseLayoutObjectCatalog() {
+  const artPrefabObjects = layoutToolMode === "stage"
+    ? (artCompositions || []).map((composition) => ({
+      id: `art-${composition.id}`,
+      name: composition.name || "Art Asset",
+      selector: "",
+      kind: "art",
+      artCompositionId: composition.id,
+      width: Number(composition.canvas?.width || 240),
+      height: Number(composition.canvas?.height || 120),
+      instanced: true
+    }))
+    : [];
   if (layoutToolMode === "controller") {
     return [
       { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", width: 330, height: 86 },
@@ -183,6 +196,7 @@ function baseLayoutObjectCatalog() {
     ];
   }
   return [
+    ...artPrefabObjects,
     { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "art", width: 1080, height: 150 },
     { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", width: 620, height: 220 },
     { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", width: 260, height: 300 },
@@ -207,6 +221,7 @@ function layoutObjectCatalog() {
   const existingIds = new Set((group?.elements || []).map((element) => String(element.id || "").toLowerCase()));
   const existingSelectors = new Set((group?.elements || []).map((element) => String(element.selector || "").toLowerCase()));
   return baseLayoutObjectCatalog().filter((item) => {
+    if (item.instanced || item.artCompositionId) return true;
     return !existingIds.has(item.id.toLowerCase()) && !existingSelectors.has(item.selector.toLowerCase());
   });
 }
@@ -223,11 +238,13 @@ function layoutObjectMatches(query) {
 
 function makeLayoutObject(item) {
   const canvas = activeLayoutData().canvas || (layoutToolMode === "controller" ? { width: 390, height: 844 } : { width: 1920, height: 1080 });
+  const isPrefabInstance = Boolean(item.artCompositionId);
   return {
-    id: item.id,
+    id: isPrefabInstance ? uniqueLayoutElementId(item.artCompositionId || item.id) : item.id,
     name: item.name,
-    selector: item.selector,
+    selector: isPrefabInstance ? "" : item.selector,
     kind: item.kind || "art",
+    artCompositionId: item.artCompositionId || "",
     x: Math.round(canvas.width / 2),
     y: Math.round(canvas.height / 2),
     width: item.width || 240,
@@ -239,6 +256,19 @@ function makeLayoutObject(item) {
     autoFitText: false,
     fontColor: item.kind === "text" ? (layoutToolMode === "controller" ? "#17131f" : "#ffffff") : "#ffffff"
   };
+}
+
+function uniqueLayoutElementId(baseId) {
+  const group = layoutGroup(selectedLayoutStateId);
+  const cleanBase = String(baseId || "art").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "art";
+  const existingIds = new Set((group?.elements || []).map((element) => String(element.id || "").toLowerCase()));
+  let index = 1;
+  let id = `${cleanBase}-instance-${index}`;
+  while (existingIds.has(id)) {
+    index += 1;
+    id = `${cleanBase}-instance-${index}`;
+  }
+  return id;
 }
 
 function layoutHistorySnapshot() {
@@ -550,6 +580,8 @@ function layoutPreviewContent(element) {
     }
   } else if (id === "stagetitle") {
     content.innerHTML = `<div class="layout-preview-title">Party Game Template</div>`;
+  } else if (renderLayoutArtCompositionPreview(content, element)) {
+    return content;
   } else if (renderLayoutWidgetArtPreview(content, id)) {
     return content;
   } else if (id === "stagecodepanel") {
@@ -601,13 +633,23 @@ function layoutPreviewContent(element) {
   return content;
 }
 
+function renderLayoutArtCompositionPreview(content, element) {
+  const compositionId = element?.artCompositionId || "";
+  if (!compositionId) return false;
+  return renderLayoutArtComposition(content, compositionId, {});
+}
+
 function renderLayoutWidgetArtPreview(content, elementId) {
   const binding = layoutWidgetArtPreviewBinding(elementId);
-  const composition = binding ? artComposition(binding.compositionId) : null;
+  return binding ? renderLayoutArtComposition(content, binding.compositionId, binding.textOverrides || {}) : false;
+}
+
+function renderLayoutArtComposition(content, compositionId, textOverrides = {}) {
+  const composition = artComposition(compositionId);
   const artRuntime = window.PartyGameArtObject;
-  if (!content || !binding || !composition || !artRuntime) return false;
+  if (!content || !composition || !artRuntime) return false;
   content.classList.add("is-art-composition-preview");
-  const components = (composition.components || []).map((component) => layoutWidgetArtPreviewComponent(component, binding.textOverrides || {}));
+  const components = (composition.components || []).map((component) => layoutWidgetArtPreviewComponent(component, textOverrides));
   const renderer = new artRuntime.ArtObjectTreeRenderer({
     host: content,
     document,
@@ -963,7 +1005,7 @@ function renderLayoutObjectOptions() {
     button.className = "flow-search-option";
     button.innerHTML = `<strong></strong><span></span>`;
     button.querySelector("strong").textContent = item.name;
-    button.querySelector("span").textContent = item.kind === "text" ? "Text Field" : "Game Art";
+    button.querySelector("span").textContent = item.artCompositionId ? "Art Prefab" : item.kind === "text" ? "Text Field" : "Game Art";
     button.addEventListener("mousedown", (event) => event.preventDefault());
     button.addEventListener("click", () => addLayoutObject(item));
     layoutObjectOptions.appendChild(button);
@@ -1030,7 +1072,9 @@ async function saveControllerLayouts() {
 async function setupLayoutTool(mode = "stage") {
   layoutToolMode = mode === "controller" ? "controller" : "stage";
   layoutScreen.classList.remove("hidden");
-  await loadArtAssets().catch(() => {});
+  if (!artCompositions.length || !isArtCompositionsDirty()) {
+    await loadArtAssets().catch(() => {});
+  }
   if (layoutToolInitialized) {
     if (!activeLayoutSavedSnapshot()) {
       await loadLayoutToolData().catch((error) => {
