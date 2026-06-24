@@ -5,10 +5,6 @@
     return element.classList.contains(hiddenClass) || element.classList.contains(parkedClass);
   }
 
-  function createGameObject(gameObjectApi, options = {}) {
-    return typeof gameObjectApi?.create === "function" ? gameObjectApi.create(options) : null;
-  }
-
   class StageTextController {
     constructor(options = {}) {
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
@@ -55,35 +51,16 @@
 
     visualFor(object) {
       if (!object?.element || !this.visualAnimation) return null;
-      const gameObject = this.gameObjectFor(object);
-      if (gameObject) return gameObject.createVisual();
-      if (!object.visual || object.visual.element !== object.element) {
-        object.visual = this.visualAnimation.createLegacyCssVisualObject({
-          element: object.element,
-          hiddenClasses: ["text-hidden", "hidden"],
-          motionHiddenClasses: ["text-hidden"],
-          displayHiddenClasses: ["hidden"],
-          updateClass: "text-update",
-          instantClass: "text-instant",
-          getVisible: () => object.visible === true || !isElementParked(object.element),
-          setVisible: (isVisible) => {
-            object.visible = isVisible;
-            object.element.dataset.visualVisible = isVisible ? "true" : "false";
-          },
-          timerSink: this.timerSink
-        });
-      }
-      return object.visual;
-    }
-
-    gameObjectFor(object) {
-      if (!object?.element) return null;
-      if (!object.gameObject || object.gameObject.target !== object.element) {
-        const id = this.normalizeTextTargetId(object.element.id || object.layoutElement?.id || "text");
-        object.gameObject = createGameObject(this.gameObjectApi, {
+      const id = this.normalizeTextTargetId(object.element.id || object.layoutElement?.id || "text");
+      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+        gameObjectApi: this.gameObjectApi,
+        visualAnimation: this.visualAnimation,
+        target: object.element,
+        gameObject: object.gameObject,
+        legacyVisual: object.visual,
+        gameObjectOptions: {
           id,
           element: object.layoutElement || null,
-          target: object.element,
           visibilityKey: `text:${id}`,
           visualOptions: {
             hiddenClasses: ["text-hidden", "hidden"],
@@ -98,9 +75,24 @@
             object.visible = isVisible;
             object.element.dataset.visualVisible = isVisible ? "true" : "false";
           }
-        });
-      }
-      return object.gameObject;
+        },
+        legacyVisualOptions: {
+          hiddenClasses: ["text-hidden", "hidden"],
+          motionHiddenClasses: ["text-hidden"],
+          displayHiddenClasses: ["hidden"],
+          updateClass: "text-update",
+          instantClass: "text-instant",
+          getVisible: () => object.visible === true || !isElementParked(object.element),
+          setVisible: (isVisible) => {
+            object.visible = isVisible;
+            object.element.dataset.visualVisible = isVisible ? "true" : "false";
+          },
+          timerSink: this.timerSink
+        }
+      });
+      object.gameObject = bridge?.gameObject || object.gameObject;
+      object.visual = bridge?.visual || bridge?.legacyVisual || object.visual;
+      return object.visual;
     }
 
     isVisible(object) {
@@ -119,8 +111,6 @@
       element.classList.toggle("is-long", nextText.length > 62);
       element.classList.toggle("is-extra-long", nextText.length > 104);
       object.text = nextText;
-      const gameObject = this.gameObjectFor(object);
-      if (gameObject) return gameObject.playVisibility(isShown, { instant, complete: options.complete });
       const animation = this.visualAnimation.animationForVisibility(isShown, this.isVisible(object));
       return this.visualFor(object)?.play(animation, { instant, complete: options.complete }) || 0;
     }
@@ -143,12 +133,16 @@
       this.intervalId = null;
     }
 
-    gameObject() {
-      if (!this.element) return null;
-      if (!this.gameObjectInstance || this.gameObjectInstance.target !== this.element) {
-        this.gameObjectInstance = createGameObject(this.gameObjectApi, {
+    visualObject() {
+      if (!this.element || !this.visualAnimation) return null;
+      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+        gameObjectApi: this.gameObjectApi,
+        visualAnimation: this.visualAnimation,
+        target: this.element,
+        gameObject: this.gameObjectInstance,
+        legacyVisual: this.legacyVisual,
+        gameObjectOptions: {
           id: this.element.id || "craftingTimer",
-          target: this.element,
           visibilityKey: `widget:${this.element.id || "craftingTimer"}`,
           visualOptions: {
             hiddenClasses: ["hidden"],
@@ -157,24 +151,17 @@
             layoutHiddenClasses: ["hidden"]
           },
           timerSink: this.timerSink
-        });
-      }
-      return this.gameObjectInstance;
-    }
-
-    visualObject() {
-      if (!this.element || !this.visualAnimation) return null;
-      const gameObject = this.gameObject();
-      if (gameObject) return gameObject.createVisual();
-      if (!this.legacyVisual) {
-        this.legacyVisual = this.visualAnimation.createLegacyCssVisualObject({
-          element: this.element,
+        },
+        legacyVisualOptions: {
           hiddenClasses: ["hidden"],
           motionHiddenClasses: ["hidden"],
           instantClass: "is-instant",
           timerSink: this.timerSink
-        });
-      }
+        }
+      });
+      this.gameObjectInstance = bridge?.gameObject || this.gameObjectInstance;
+      this.legacyVisual = bridge?.legacyVisual || this.legacyVisual;
+      if (bridge?.visual) return bridge.visual;
       return this.legacyVisual;
     }
 
@@ -218,8 +205,6 @@
     }
 
     setVisible(isShown, options = {}) {
-      const gameObject = this.gameObject();
-      if (gameObject) return gameObject.playVisibility(isShown, { instant: options.instant === true });
       const visual = this.visualObject();
       if (!visual) {
         this.element?.classList.toggle("hidden", !isShown);
@@ -278,12 +263,17 @@
       this.animationEndsAt = 0;
     }
 
-    gameObjectFor(bubble) {
-      if (!bubble) return null;
-      if (!bubble.playerAnswerBubbleGameObject || bubble.playerAnswerBubbleGameObject.target !== bubble) {
-        bubble.playerAnswerBubbleGameObject = createGameObject(this.gameObjectApi, {
-          id: bubble.id || bubble.dataset.answerNonce || `answer-bubble-${Math.random().toString(36).slice(2)}`,
-          target: bubble,
+    visualFor(bubble) {
+      if (!bubble || !this.visualAnimation) return null;
+      const id = bubble.id || bubble.dataset.answerNonce || `answer-bubble-${Math.random().toString(36).slice(2)}`;
+      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+        gameObjectApi: this.gameObjectApi,
+        visualAnimation: this.visualAnimation,
+        target: bubble,
+        gameObject: bubble.playerAnswerBubbleGameObject,
+        legacyVisual: bubble.playerAnswerBubbleVisual,
+        gameObjectOptions: {
+          id,
           visibilityKey: `answer-bubble:${bubble.dataset.answerNonce || bubble.id || ""}`,
           visualOptions: {
             hiddenClasses: ["is-hidden"],
@@ -297,22 +287,8 @@
           setVisible: (isVisible) => {
             bubble.dataset.visualVisible = isVisible ? "true" : "false";
           }
-        });
-      } else {
-        bubble.playerAnswerBubbleGameObject.update({
-          visibilityKey: `answer-bubble:${bubble.dataset.answerNonce || bubble.id || ""}`
-        });
-      }
-      return bubble.playerAnswerBubbleGameObject;
-    }
-
-    visualFor(bubble) {
-      if (!bubble || !this.visualAnimation) return null;
-      const gameObject = this.gameObjectFor(bubble);
-      if (gameObject) return gameObject.createVisual();
-      if (!bubble.playerAnswerBubbleVisual || bubble.playerAnswerBubbleVisual.element !== bubble) {
-        bubble.playerAnswerBubbleVisual = this.visualAnimation.createLegacyCssVisualObject({
-          element: bubble,
+        },
+        legacyVisualOptions: {
           hiddenClasses: ["is-hidden"],
           motionHiddenClasses: ["is-hidden"],
           exitingClass: "is-exiting",
@@ -322,8 +298,10 @@
           setVisible: (isVisible) => {
             bubble.dataset.visualVisible = isVisible ? "true" : "false";
           }
-        });
-      }
+        }
+      });
+      bubble.playerAnswerBubbleGameObject = bridge?.gameObject || bubble.playerAnswerBubbleGameObject;
+      bubble.playerAnswerBubbleVisual = bridge?.visual || bridge?.legacyVisual || bubble.playerAnswerBubbleVisual;
       return bubble.playerAnswerBubbleVisual;
     }
 
