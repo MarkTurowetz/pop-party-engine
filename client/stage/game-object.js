@@ -1,7 +1,7 @@
-(function attachPartyGameStageGameObject(global) {
+(function attachPartyGameGameObject(global) {
   "use strict";
 
-  class StageGameObject {
+  class GameObject {
     constructor(options = {}) {
       this.id = "";
       this.element = null;
@@ -131,7 +131,7 @@
     }
   }
 
-  class StageGameObjectRegistry {
+  class GameObjectRegistry {
     constructor(options = {}) {
       this.objects = new Map();
       this.activeIds = new Set();
@@ -151,7 +151,7 @@
 
     register(options = {}) {
       const id = options.id || options.element?.id || "";
-      if (!id) return new StageGameObject({
+      if (!id) return new GameObject({
         ...options,
         visibilityOverrides: this.visibilityOverrides,
         visualOptions: this.visualOptions,
@@ -168,7 +168,7 @@
         });
         return existing;
       }
-      const object = new StageGameObject({
+      const object = new GameObject({
         ...options,
         visibilityOverrides: this.visibilityOverrides,
         visualOptions: this.visualOptions,
@@ -186,11 +186,11 @@
   }
 
   function createGameObject(options = {}) {
-    return new StageGameObject(options);
+    return new GameObject(options);
   }
 
   function createGameObjectRegistry(options = {}) {
-    return new StageGameObjectRegistry(options);
+    return new GameObjectRegistry(options);
   }
 
   const api = {
@@ -198,10 +198,10 @@
     createGameObject,
     createRegistry: createGameObjectRegistry,
     createGameObjectRegistry,
-    GameObject: StageGameObject,
-    GameObjectRegistry: StageGameObjectRegistry,
-    StageGameObject,
-    StageGameObjectRegistry
+    GameObject,
+    GameObjectRegistry,
+    StageGameObject: GameObject,
+    StageGameObjectRegistry: GameObjectRegistry
   };
   global.PartyGameGameObject = api;
   global.PartyGameStageGameObject = api;
