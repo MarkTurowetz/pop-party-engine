@@ -71,7 +71,8 @@
           width: isDecision ? 320 : 260,
           height: isDecision || isAction ? 134 : 120,
           className: isDecision ? "is-decision" : isAction ? context.flowNodeClassForAction?.(routeNode) || "is-standard" : "is-moment-entry",
-          selected: context.selectedFlowRouteNodeId?.() === routeNode.id
+          selected: context.selectedFlowRouteNodeId?.() === routeNode.id,
+          jumpTarget: context.selectedRouteJumpTargetIds?.().has(routeNode.id)
         });
         if (!node) continue;
         node.dataset.routeNodeId = routeNode.id;

@@ -180,6 +180,7 @@ function renderFlowMomentNodes() {
   flowNodeWires.setAttribute("height", "920");
   nodeBackButton.disabled = true;
   nodeViewHelp.textContent = "Double-click a game moment to edit its action graph. Add Moment Entry nodes for reusable routing anchors.";
+  const routeJumpTargetIds = selectedRouteJumpTargetIds();
   for (const [index, state] of (gameFlow.states || []).entries()) {
     const { x, y } = savedNodePosition(state, defaultNodePosition(index, 3, 80, 80, 420, 240));
     const node = createFlowNode({
@@ -191,7 +192,8 @@ function renderFlowMomentNodes() {
       width: 300,
       height: 150,
       className: "is-moment",
-      selected: !selectedFlowRouteNodeId && !selectedFlowActionId && (selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id))
+      selected: !selectedFlowRouteNodeId && !selectedFlowActionId && (selectedFlowStateId === state.id || selectedFlowActionIds.has(state.id)),
+      jumpTarget: routeJumpTargetIds.has(state.id)
     });
     node.querySelector(".flow-node-main")?.appendChild(createFlowMomentPorts(state));
     bindFlowNodeDrag(node, state);
@@ -211,6 +213,13 @@ function renderFlowMomentNodes() {
   }
   getFlowMomentRouteRenderer()?.renderRouteNodes();
   scheduleFlowNodeWireRedraw();
+}
+
+function selectedRouteJumpTargetIds() {
+  const routeNode = flowRouteNode(selectedFlowRouteNodeId);
+  if (!routeNode || routeNode.routeNodeType !== "action" || routeNode.type !== "jumpNode") return new Set();
+  const targetId = routeNode.jumpTargetActionId || "";
+  return targetId && !isNoFlowTarget(targetId) ? new Set([targetId]) : new Set();
 }
 
 function emptyFlowNodePorts() {

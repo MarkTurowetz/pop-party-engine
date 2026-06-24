@@ -39,9 +39,27 @@ function createStageLayoutNormalizationRuntime({
         const defaultState = defaultStatesById.get(state.id);
         if (!defaultState) return state;
         const hiddenGlobals = Array.isArray(state.hiddenGlobals) ? state.hiddenGlobals : defaultState.hiddenGlobals || [];
-        return { ...state, hiddenGlobals };
+        return {
+          ...state,
+          hiddenGlobals,
+          elements: mergeMissingDefaultElements(state.elements, defaultState.elements)
+        };
       })
     };
+  }
+
+  function mergeMissingDefaultElements(elements = [], defaultElements = []) {
+    const merged = [...(elements || [])];
+    const existingIds = new Set(merged.map((element) => element.id));
+    const existingSelectors = new Set(merged.map((element) => element.selector).filter(Boolean));
+    for (const defaultElement of defaultElements || []) {
+      if (existingIds.has(defaultElement.id)) continue;
+      if (defaultElement.selector && existingSelectors.has(defaultElement.selector)) continue;
+      merged.push(cloneJson(defaultElement));
+      existingIds.add(defaultElement.id);
+      if (defaultElement.selector) existingSelectors.add(defaultElement.selector);
+    }
+    return merged;
   }
 
   function migrateStageLayoutStates(states, global, defaultGlobal, hasExplicitGlobal = false) {

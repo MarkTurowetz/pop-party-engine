@@ -338,7 +338,7 @@ function renderLayoutStates() {
     };
     const { row } = window.PartyGameToolAffordances.createToolSidebarRow({
       tagName: "button",
-      className: "flow-state-header",
+      className: state.id === "global" ? "flow-state-header has-disclosure" : "flow-state-header",
       selected: state.id === selectedLayoutStateId,
       title: state.name,
       summary: state.id,

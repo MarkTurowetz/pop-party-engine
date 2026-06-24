@@ -467,6 +467,7 @@ function getFlowMomentRouteRenderer() {
       selectedFlowRouteBranchId: () => selectedFlowRouteBranchId,
       selectedFlowRouteNode,
       selectedFlowRouteNodeId: () => selectedFlowRouteNodeId,
+      selectedRouteJumpTargetIds,
       selectedFlowStateId: () => selectedFlowStateId
     });
   }
