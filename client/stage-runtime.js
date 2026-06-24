@@ -671,6 +671,14 @@ function currentStageCodeForRuntimeTest() {
 async function applyRuntimeTestMessage(message) {
   if (!message || message.type !== "runtime-test-config") return;
 
+  if (message.clearArtCompositions) {
+    await loadArtAssets().catch(() => artCompositions);
+  } else if (message.artCompositions) {
+    artCompositions = typeof mergeArtCompositionDrafts === "function"
+      ? mergeArtCompositionDrafts(message.artCompositions)
+      : message.artCompositions;
+  }
+
   if (message.clearLayouts) {
     runtimeTestLayouts = null;
     await loadStageLayouts({ forceServer: true }).catch(() => stageLayouts);

@@ -259,19 +259,21 @@ function mergeArtCompositionDrafts(compositions = []) {
 
 function notifyArtAssetsChanged() {
   const updatedAt = String(Date.now());
+  if (typeof publishRuntimeLocalChanges === "function") publishRuntimeLocalChanges();
   try {
     setLocalValue(artAssetsChangedStorageKey, updatedAt);
   } catch (error) {
     // Local storage can be unavailable in privacy modes; BroadcastChannel may still work.
   }
   window.dispatchEvent(new CustomEvent("partyTemplate:artAssetsChanged", { detail: { updatedAt } }));
-  if (!("BroadcastChannel" in window)) return;
-  try {
-    const channel = new BroadcastChannel(artAssetsChangedChannelName);
-    channel.postMessage({ updatedAt });
-    channel.close();
-  } catch (error) {
-    // Art changes are still saved server-side even if cross-window notification fails.
+  if ("BroadcastChannel" in window) {
+    try {
+      const channel = new BroadcastChannel(artAssetsChangedChannelName);
+      channel.postMessage({ updatedAt });
+      channel.close();
+    } catch (error) {
+      // Art changes are still saved server-side even if cross-window notification fails.
+    }
   }
 }
 

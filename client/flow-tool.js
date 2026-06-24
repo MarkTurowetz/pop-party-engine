@@ -1033,6 +1033,11 @@ function currentRuntimeLocalMessage(overrides = {}) {
     message.hostAudios = hostAudiosDirty ? serializeHostAudiosForSave(hostAudios) : null;
     message.clearHostAudios = !hostAudiosDirty;
   }
+  if (artCompositionsSavedSnapshot) {
+    const artDirty = isArtCompositionsDirty();
+    message.artCompositions = artDirty ? serializeArtCompositionsForSave(artCompositions) : null;
+    message.clearArtCompositions = !artDirty;
+  }
   return { ...message, ...overrides };
 }
 
@@ -1102,11 +1107,13 @@ function publishRuntimeLocalClear() {
     controllerLayouts: null,
     constants: null,
     hostAudios: null,
+    artCompositions: null,
     clearFlow: true,
     clearLayouts: true,
     clearControllerLayouts: true,
     clearConstants: true,
-    clearHostAudios: true
+    clearHostAudios: true,
+    clearArtCompositions: true
   };
   runtimeTestChannel?.postMessage(message);
   if (canUseServer) {

@@ -4,6 +4,7 @@ function createLocalDraftRuntime({
   clearAppliedActionEffects,
   localDraftStore,
   normalizeControllerLayouts,
+  normalizeArtCompositionsDraft,
   normalizeGameConstants,
   normalizeGameFlow,
   normalizeHostAudios,
@@ -11,6 +12,7 @@ function createLocalDraftRuntime({
   readGameFlow,
   readJson,
   resetCraftingTimer,
+  onArtAssetsChanged = () => {},
   rooms,
   sendJson,
   syncControllerLayoutsWithFlow,
@@ -24,11 +26,13 @@ function createLocalDraftRuntime({
       layouts: localDraftStore.layouts,
       controllerLayouts: localDraftStore.controllerLayouts,
       hostAudios: localDraftStore.hostAudios,
+      artCompositions: localDraftStore.artCompositions,
       hasFlowDraft: Boolean(localDraftStore.flow),
       hasConstantsDraft: Boolean(localDraftStore.constants),
       hasLayoutDraft: Boolean(localDraftStore.layouts),
       hasControllerLayoutDraft: Boolean(localDraftStore.controllerLayouts),
-      hasHostAudiosDraft: Boolean(localDraftStore.hostAudios)
+      hasHostAudiosDraft: Boolean(localDraftStore.hostAudios),
+      hasArtCompositionsDraft: Boolean(localDraftStore.artCompositions)
     });
   }
 
@@ -70,7 +74,7 @@ function createLocalDraftRuntime({
   async function handleLocalDraft(req, res) {
     let payload;
     try {
-      payload = await readJson(req, 512 * 1024);
+      payload = await readJson(req, 8 * 1024 * 1024);
     } catch (error) {
       sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
       return;
@@ -81,15 +85,20 @@ function createLocalDraftRuntime({
     if (payload.clearLayouts) localDraftStore.layouts = null;
     if (payload.clearControllerLayouts) localDraftStore.controllerLayouts = null;
     if (payload.clearHostAudios) localDraftStore.hostAudios = null;
+    if (payload.clearArtCompositions) localDraftStore.artCompositions = null;
 
     if (!applyDraftValue(res, "flow", payload.flow, normalizeGameFlow, "Local flow draft")) return;
     if (!applyDraftValue(res, "constants", payload.constants, normalizeGameConstants, "Local constants draft")) return;
     if (!applyDraftValue(res, "layouts", payload.layouts, normalizeStageLayouts, "Local layout draft")) return;
     if (!applyDraftValue(res, "controllerLayouts", payload.controllerLayouts, normalizeControllerLayouts, "Local controller layout draft")) return;
     if (!applyDraftValue(res, "hostAudios", payload.hostAudios, normalizeHostAudios, "Local host audio draft")) return;
+    if (!applyDraftValue(res, "artCompositions", payload.artCompositions, normalizeArtCompositionsDraft, "Local art composition draft")) return;
 
     syncDraftLayoutsToFlow();
     broadcastDraftChange(payload);
+    if (payload.artCompositions || payload.clearArtCompositions) {
+      onArtAssetsChanged({ type: "art-compositions-draft", updatedAt: new Date().toISOString() });
+    }
     sendLocalDraft(res);
   }
 

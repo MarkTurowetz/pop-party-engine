@@ -13,6 +13,7 @@ function createArtAssetsRuntime({
   customDir,
   defaultDir,
   loadArtManifestSource = null,
+  localDraftStore = null,
   manifestFile,
   onArtAssetsChanged = () => {},
   readJson,
@@ -442,10 +443,17 @@ function createArtAssetsRuntime({
 
   function allPublicArtCompositions(manifest) {
     const deletedIds = deletedCompositionIds(manifest);
-    return [
+    const compositions = [
       ...artCompositions.filter((composition) => !deletedIds.has(composition.id)).map((composition) => publicArtComposition(composition, manifest)),
       ...customArtCompositionDefinitions(manifest).map((composition) => publicArtComposition(composition, manifest))
     ];
+    if (!Array.isArray(localDraftStore?.artCompositions)) return compositions;
+    const byId = new Map(compositions.map((composition) => [composition.id, composition]));
+    for (const composition of localDraftStore.artCompositions) {
+      if (!composition?.id || deletedIds.has(composition.id)) continue;
+      byId.set(composition.id, composition);
+    }
+    return [...byId.values()];
   }
 
   function cacheBustFileUrl(filePath, urlPath) {
@@ -488,6 +496,23 @@ function createArtAssetsRuntime({
       groups: artGroups,
       assets: artAssets.map((asset) => publicArtAsset(asset, manifest)),
       compositions: allPublicArtCompositions(manifest)
+    });
+  }
+
+  function normalizeArtCompositionsDraft(source = []) {
+    if (!Array.isArray(source)) throw new Error("Art composition draft must be an array");
+    return source.map((incoming) => {
+      const safeCompositionId = cleanId(incoming?.id);
+      if (!safeCompositionId) throw new Error("Art composition draft contains an invalid id");
+      const definition = artCompositions.find((item) => item.id === safeCompositionId) || {
+        id: safeCompositionId,
+        name: cleanText(incoming?.name, "Art Asset"),
+        description: cleanText(incoming?.description, "Editable art asset.", 240),
+        isCustom: true,
+        canvas: incoming?.canvas || { width: 560, height: 230 },
+        components: []
+      };
+      return normalizeComposition(definition, incoming);
     });
   }
 
@@ -645,6 +670,7 @@ function createArtAssetsRuntime({
     handleDeleteArtComposition,
     handleSaveArtComposition,
     handleReplaceArtAsset,
+    normalizeArtCompositionsDraft,
     publicArtAsset,
     publicArtComposition,
     readArtManifest,

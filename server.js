@@ -147,7 +147,8 @@ const localDraftStore = {
   constants: null,
   layouts: null,
   controllerLayouts: null,
-  hostAudios: null
+  hostAudios: null,
+  artCompositions: null
 };
 
 const APP_VERSION = readAppVersion(ROOT);
@@ -297,6 +298,14 @@ const {
   sendSse
 } = createRoomBroadcastRuntime({ getLobbyPayload: () => lobbyPayload });
 
+function broadcastArtAssetsChanged(payload) {
+  for (const room of rooms.values()) {
+    for (const client of room.stageClients) {
+      sendSse(client, "artAssetsChanged", payload);
+    }
+  }
+}
+
 // Proxies for functions that live in later-constructed runtimes but are needed as deps by earlier ones.
 // All are safe: they're only called at request time, after the server is fully initialized.
 let _enterGamePhaseFn;
@@ -429,6 +438,7 @@ const {
   handleDeleteArtComposition,
   handleSaveArtComposition,
   handleReplaceArtAsset,
+  normalizeArtCompositionsDraft,
   sendArtAssetList,
   serveArtFile
 } = createArtAssetsRuntime({
@@ -441,14 +451,9 @@ const {
   customDir: ART_CUSTOM_DIR,
   defaultDir: ART_DEFAULT_DIR,
   loadArtManifestSource: () => loadArtManifestSource({ refresh: artManifestStore.storageKind === "github" }),
+  localDraftStore,
   manifestFile: ART_MANIFEST_FILE,
-  onArtAssetsChanged: (payload) => {
-    for (const room of rooms.values()) {
-      for (const client of room.stageClients) {
-        sendSse(client, "artAssetsChanged", payload);
-      }
-    }
-  },
+  onArtAssetsChanged: broadcastArtAssetsChanged,
   readJson,
   sendJson,
   writeArtManifestSource: (manifest) => writeArtManifest(manifest)
@@ -761,10 +766,12 @@ const {
   normalizeGameConstants,
   normalizeGameFlow,
   normalizeHostAudios,
+  normalizeArtCompositionsDraft,
   normalizeStageLayouts,
   readGameFlow,
   readJson,
   resetCraftingTimer,
+  onArtAssetsChanged: broadcastArtAssetsChanged,
   rooms,
   sendJson,
   syncControllerLayoutsWithFlow,
