@@ -98,6 +98,10 @@ function stageDebugPanel() {
   return stageDebugPanelInstance;
 }
 
+window.PartyGameStageDebugRuntime = {
+  showArtAssetWarning: (details) => stageDebugPanel()?.showArtAssetWarning(details)
+};
+
 function stageWipeController() {
   if (!stageWipeControllerInstance && window.PartyGameStageWipe) {
     stageWipeControllerInstance = window.PartyGameStageWipe.createController({

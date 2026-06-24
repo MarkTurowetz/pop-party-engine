@@ -208,11 +208,20 @@ function setLayoutArtElementShownForAction(action, options = {}) {
   if (!elementId || !window.PartyGameVisualObject) return 0;
   const isShown = action.isShown !== false;
   const scope = ["global", "moment"].includes(String(action?.targetLayoutScope || "")) ? action.targetLayoutScope : "";
+  const warn = (reason) => {
+    window.PartyGameStageDebugRuntime?.showArtAssetWarning?.({
+      elementId,
+      name: action?.name || action?.actionName || "",
+      scope,
+      reason
+    });
+  };
   const entity = options.entityForElementId?.(elementId, null, scope);
   const target = entity?.target || null;
   const visibilityKey = entity?.visibilityKey || options.visibilityKeyForTarget?.(elementId, target, scope);
   if (!target) {
     if (visibilityKey) options.visibilityOverrides?.set(visibilityKey, isShown);
+    warn(visibilityKey ? "target not active; saved pending visibility" : "target not found");
     return 0;
   }
   if (typeof entity?.playVisibility === "function") {
@@ -220,6 +229,7 @@ function setLayoutArtElementShownForAction(action, options = {}) {
   }
   const resolvedEntity = entity || options.entityForElementId?.(elementId, target, scope);
   const visual = layoutArtVisualFor(resolvedEntity);
+  if (!visual) warn("visual object unavailable");
   const result = window.PartyGameVisualBridge?.playVisibilityForTarget?.({
     target,
     visual,

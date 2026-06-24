@@ -59,6 +59,15 @@
       this.alertElement.textContent = `No Matching Branch: ${lobby.lastDecisionTrace?.actionId || "Unknown Action"}`;
       this.alertElement.classList.remove("hidden");
     }
+
+    showArtAssetWarning(details = {}) {
+      if (!this.alertElement) return;
+      const name = details.name || details.elementId || "Unknown Art Asset";
+      const scope = details.scope ? ` / ${details.scope}` : "";
+      const reason = details.reason || "target unavailable";
+      this.alertElement.textContent = `Art Asset Warning: ${name}${scope} / ${reason}`;
+      this.alertElement.classList.remove("hidden");
+    }
   }
 
   global.PartyGameStageDebug = {
