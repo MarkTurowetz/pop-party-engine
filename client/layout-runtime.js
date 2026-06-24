@@ -414,31 +414,8 @@ function stageLayoutEntityForElementId(elementId, target = null) {
 }
 
 function stageLayoutArtVisualFor(entity) {
-  const target = entity?.target;
-  const visibilityKey = entity?.visibilityKey || "";
-  if (!visibilityKey || !target || !window.PartyGameVisualObject) return null;
-  if (typeof entity.createVisual === "function") return entity.createVisual();
-  return window.PartyGameVisualObject.createCssVisualObject({
-    element: target,
-    hiddenClasses: ["stage-layout-visual-hidden"],
-    motionHiddenClasses: ["stage-layout-visual-hidden"],
-    exitingClass: "stage-layout-visual-exiting",
-    updateClass: "stage-layout-visual-update",
-    instantClass: "stage-layout-visual-instant",
-    getVisible: () => {
-      if (stageLayoutArtVisibilityOverrides.has(visibilityKey)) {
-        return stageLayoutArtVisibilityOverrides.get(visibilityKey) === true;
-      }
-      return target.dataset.visualVisible === "true"
-        || (!target.classList.contains("stage-layout-visual-hidden")
-          && !target.classList.contains("stage-layout-visual-exiting")
-          && !target.classList.contains("stage-layout-hidden"));
-    },
-    setVisible: (isVisible) => {
-      stageLayoutArtVisibilityOverrides.set(visibilityKey, isVisible === true);
-      target.dataset.visualVisible = isVisible ? "true" : "false";
-    }
-  });
+  if (!entity?.target || !window.PartyGameVisualObject) return null;
+  return typeof entity.createVisual === "function" ? entity.createVisual() : null;
 }
 
 function applyStageLayoutArtVisibilityOverride(entity) {
@@ -497,7 +474,6 @@ function setStageLayoutArtElementShownForAction(action) {
   if (typeof entity?.playVisibility === "function") {
     return entity.playVisibility(isShown, { instant: action.instant === true });
   }
-  stageLayoutArtVisibilityOverrides.set(visibilityKey, isShown);
   const visual = stageLayoutArtVisualFor(entity || stageLayoutEntityForElementId(elementId, target));
   if (!visual) return 0;
   const animation = window.PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
