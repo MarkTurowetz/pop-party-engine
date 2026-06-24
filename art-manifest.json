@@ -22,6 +22,7 @@
           "defaultAnimationState": "",
           "defaultText": "ANSWER TEXT",
           "fontSize": 32,
+          "autoFitText": true,
           "fontColor": "#17131f"
         },
         {
@@ -37,6 +38,7 @@
           "defaultAnimationState": "",
           "defaultText": "AUTHOR NAME",
           "fontSize": 15,
+          "autoFitText": true,
           "fontColor": "#6b5a80"
         },
         {
@@ -69,6 +71,7 @@
           "defaultAnimationState": "",
           "defaultText": "",
           "fontSize": 15,
+          "autoFitText": true,
           "fontColor": "#17131f",
           "shapeStyle": "rounded",
           "fillColor": "#fff8d6",
@@ -89,6 +92,7 @@
           "defaultAnimationState": "",
           "defaultText": "",
           "fontSize": 15,
+          "autoFitText": true,
           "fontColor": "#17131f",
           "shapeStyle": "rounded",
           "fillColor": "#fff8d6",
@@ -114,7 +118,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-24T01:27:29.627Z"
+      "updatedAt": "2026-06-24T01:35:10.721Z"
     },
     "player-avatar-rex": {
       "name": "Rex Avatar",
