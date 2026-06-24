@@ -78,9 +78,10 @@ concepts into focused modules.
   - `client/stage/visual-object.js` owns the generic CSS visual object animation contract
     used by stage text and player answer bubbles.
   - `client/stage/game-object.js` owns the shared game-object wrapper that routes
-    staged elements through a consistent visibility/animation API, including
-    custom visual-object animation handlers for assets with bespoke motion. It also
-    exposes `PartyGameVisualBridge.createVisualForTarget`, the standard bridge for
+    staged elements through a consistent visibility/default-state/animation API,
+    including custom visual-object animation handlers for assets with bespoke motion.
+    It also exposes `PartyGameVisualBridge.createVisualForTarget` and
+    `PartyGameVisualBridge.playVisibilityForTarget`, the standard bridge for
     controllers/renderers that need a visual object backed by a game object with a
     legacy visual fallback.
   - `client/stage/art-object-visuals.js` owns rendered Art Manager component trees;

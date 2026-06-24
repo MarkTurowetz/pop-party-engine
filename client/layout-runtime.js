@@ -142,12 +142,9 @@ function layoutArtVisualFor(entity) {
 }
 
 function layoutDefaultVisibilityForEntity(entity) {
-  const element = entity?.element || {};
-  const state = String(element.defaultAnimationState || "").trim().toLowerCase();
-  if (["on", "appear", "update", "visible", "shown"].includes(state)) return true;
-  if (["park", "off", "disappear", "hidden", "hide"].includes(state)) return false;
-  if (entity?.isDynamic && entity?.isArt) return false;
-  return null;
+  const gameObjectApi = window.PartyGameGameObject || window.PartyGameStageGameObject;
+  if (typeof gameObjectApi?.defaultVisibleFor === "function") return gameObjectApi.defaultVisibleFor(entity);
+  return entity?.isDynamic && entity?.isArt ? false : null;
 }
 
 function applyLayoutDefaultVisibility(entity, options = {}) {
@@ -167,6 +164,10 @@ function applyLayoutDefaultVisibility(entity, options = {}) {
 }
 
 function applyLayoutVisibilityOverride(entity, options = {}) {
+  if (typeof entity?.applyVisibilityState === "function") {
+    entity.applyVisibilityState();
+    return;
+  }
   if (options.visibilityOverrides?.has(entity?.visibilityKey || "") && typeof entity?.applyVisibilityOverride === "function") {
     entity.applyVisibilityOverride();
     return;

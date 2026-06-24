@@ -10,6 +10,7 @@
       this.isDynamic = false;
       this.isGlobal = false;
       this.visibilityKey = "";
+      this.defaultAnimationState = "";
       this.visual = null;
       this.visualOptions = options.visualOptions || {};
       this.layoutHiddenClasses = options.layoutHiddenClasses || this.visualOptions.layoutHiddenClasses || ["stage-layout-hidden"];
@@ -29,6 +30,9 @@
       this.isDynamic = options.isDynamic === true;
       this.isGlobal = options.isGlobal === true;
       this.visibilityKey = options.visibilityKey || this.visibilityKey || this.id;
+      if (options.defaultAnimationState !== undefined || options.element?.defaultAnimationState !== undefined) {
+        this.defaultAnimationState = String(options.defaultAnimationState ?? options.element?.defaultAnimationState ?? "");
+      }
       if (options.visualOptions) this.visualOptions = options.visualOptions;
       if (options.layoutHiddenClasses) this.layoutHiddenClasses = options.layoutHiddenClasses;
       if (options.visibilityOverrides) this.visibilityOverrides = options.visibilityOverrides;
@@ -107,9 +111,12 @@
       if (this.setVisibleHandler) this.setVisibleHandler(isVisible === true);
     }
 
-    applyVisibilityOverride() {
-      if (!this.target || !this.visibilityOverrides.has(this.visibilityKey)) return;
-      const isShown = this.visibilityOverrides.get(this.visibilityKey) !== false;
+    defaultVisible() {
+      return defaultVisibleFor(this);
+    }
+
+    applyTargetVisibility(isShown) {
+      if (!this.target) return;
       const hiddenClass = this.visualClass("hiddenClasses", "stage-layout-visual-hidden");
       const exitingClass = this.visualClass("exitingClass", "stage-layout-visual-exiting");
       this.target.dataset.visualVisible = isShown ? "true" : "false";
@@ -120,6 +127,28 @@
       if (!this.hasClass(exitingClass)) {
         this.target.classList.add(hiddenClass);
       }
+    }
+
+    applyVisibilityOverride() {
+      if (!this.target || !this.visibilityOverrides.has(this.visibilityKey)) return;
+      this.applyTargetVisibility(this.visibilityOverrides.get(this.visibilityKey) !== false);
+    }
+
+    applyDefaultVisibility() {
+      if (!this.target || this.visibilityOverrides.has(this.visibilityKey)) return false;
+      const isShown = this.defaultVisible();
+      if (isShown === null) return false;
+      this.applyTargetVisibility(isShown);
+      return true;
+    }
+
+    applyVisibilityState() {
+      if (!this.target) return;
+      if (this.visibilityOverrides.has(this.visibilityKey)) {
+        this.applyVisibilityOverride();
+        return;
+      }
+      this.applyDefaultVisibility();
     }
 
     playVisibility(isShown, options = {}) {
@@ -193,6 +222,14 @@
     return new GameObjectRegistry(options);
   }
 
+  function defaultVisibleFor(options = {}) {
+    const state = String(options.defaultAnimationState ?? options.element?.defaultAnimationState ?? "").trim().toLowerCase();
+    if (["on", "appear", "update", "visible", "shown"].includes(state)) return true;
+    if (["park", "off", "disappear", "hidden", "hide"].includes(state)) return false;
+    if (options.isDynamic && options.isArt) return false;
+    return null;
+  }
+
   function createVisualForTarget(options = {}) {
     const target = options.target || null;
     const gameObjectApi = options.gameObjectApi || api;
@@ -261,6 +298,7 @@
     createRegistry: createGameObjectRegistry,
     createGameObjectRegistry,
     createVisualForTarget,
+    defaultVisibleFor,
     playVisibilityForTarget,
     GameObject,
     GameObjectRegistry,
