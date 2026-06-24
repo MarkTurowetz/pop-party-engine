@@ -59,8 +59,7 @@ function createInputStateRuntime({ activePlayers }) {
   }
 
   function playerHasMicrophoneAccess(room, playerId) {
-    return room.microphoneAccessAnswers?.get(playerId)?.done === true
-      || room.microphoneAccessGrantedPlayerIds?.has?.(playerId) === true;
+    return room.microphoneAccessAnswers?.get(playerId)?.done === true;
   }
 
   function allActivePlayersHaveSubmittedInput(room) {

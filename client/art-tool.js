@@ -319,6 +319,7 @@ function selectArtAsset(assetId) {
     artPreviewArt.replaceChildren();
     artReplaceButton.disabled = true;
     artCancelButton.disabled = true;
+    updateArtCompositionDeleteButton();
     artFileName.textContent = "No replacement selected";
     return;
   }
@@ -329,6 +330,7 @@ function selectArtAsset(assetId) {
   artFileName.textContent = selectedArtAsset.hasCustom ? `Current: ${selectedArtAsset.fileName}` : "Using default art";
   artReplaceButton.disabled = false;
   artCancelButton.disabled = true;
+  updateArtCompositionDeleteButton();
   artFileInput.value = "";
   renderArtList();
   updateArtCreateButtons();
@@ -364,6 +366,7 @@ function selectArtComposite(compositeId) {
   artFileName.textContent = "Select a nested asset to replace art";
   artReplaceButton.disabled = true;
   artCancelButton.disabled = true;
+  updateArtCompositionDeleteButton();
   artFileInput.value = "";
   renderArtList();
   updateArtCreateButtons();
@@ -460,6 +463,8 @@ function hideArtComponentEditor() {
   artComponentEditor?.classList.add("hidden");
   artSaveCompositionButton?.classList.add("hidden");
   if (artSaveCompositionButton) artSaveCompositionButton.disabled = true;
+  artDeleteCompositionButton?.classList.add("hidden");
+  if (artDeleteCompositionButton) artDeleteCompositionButton.disabled = true;
 }
 
 function renderSelectedArtComposition(options = {}) {
@@ -480,8 +485,16 @@ function renderSelectedArtComposition(options = {}) {
   artFileInput.value = "";
   artSaveCompositionButton.classList.remove("hidden");
   artSaveCompositionButton.disabled = !isArtCompositionsDirty();
+  updateArtCompositionDeleteButton();
   if (options.renderEditor !== false) renderArtComponentEditor();
   updateArtCreateButtons();
+}
+
+function updateArtCompositionDeleteButton() {
+  if (!artDeleteCompositionButton) return;
+  const hasComposition = Boolean(selectedArtComposition());
+  artDeleteCompositionButton.classList.toggle("hidden", !hasComposition);
+  artDeleteCompositionButton.disabled = !hasComposition;
 }
 
 function artComponentLayerIndex(index, siblingCount) {
@@ -1049,6 +1062,47 @@ async function saveArtCompositions() {
   updateGlobalSaveButton();
 }
 
+async function deleteSelectedArtComposition() {
+  const composition = selectedArtComposition();
+  if (!composition) return;
+  const confirmed = window.confirm(`Delete "${composition.name || "Art Asset"}"?`);
+  if (!confirmed) return;
+  const deletedId = composition.id;
+  const deletedIndex = artCompositions.findIndex((item) => item.id === deletedId);
+  if (artDeleteCompositionButton) artDeleteCompositionButton.disabled = true;
+  artFileName.textContent = "Deleting art asset...";
+  try {
+    const response = await fetch(`${origin}/api/art-compositions/${encodeURIComponent(deletedId)}`, { method: "DELETE" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.ok === false) throw new Error(result.error || "Could not delete art asset");
+    artCompositions = Array.isArray(result.compositions)
+      ? result.compositions
+      : artCompositions.filter((item) => item.id !== deletedId);
+    artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
+    notifyArtAssetsChanged();
+    const nextComposition = artCompositions[Math.min(deletedIndex, artCompositions.length - 1)] || artCompositions[deletedIndex - 1] || null;
+    if (nextComposition) {
+      selectArtComposition(nextComposition.id);
+    } else {
+      selectedArtCompositionId = "";
+      selectedArtComponentId = "";
+      selectedArtComponentIds = new Set();
+      hideArtComponentEditor();
+      artPreviewTitle.textContent = "No Art Assets";
+      artPreviewMeta.textContent = "Create an art asset to begin.";
+      artPreviewArt.className = "art-preview-art";
+      artPreviewArt.replaceChildren();
+      artFileName.textContent = `Deleted ${composition.name || "art asset"}`;
+      renderArtList();
+      updateArtCreateButtons();
+    }
+    updateGlobalSaveButton();
+  } catch (error) {
+    if (artDeleteCompositionButton) artDeleteCompositionButton.disabled = false;
+    artFileName.textContent = error.message;
+  }
+}
+
 function renderArtPreviewMeta(asset) {
   artPreviewMeta.replaceChildren();
   const use = document.createElement("span");
@@ -1121,6 +1175,7 @@ async function setupArtTool() {
   artCancelButton.addEventListener("click", cancelArtReplacement);
   artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition));
   artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject));
+  artDeleteCompositionButton?.addEventListener("click", () => deleteSelectedArtComposition());
   window.addEventListener("keydown", handleArtHotkeys);
   artPreviewStage.addEventListener("pointerdown", startArtSelectionMarquee);
   artSaveCompositionButton.addEventListener("click", () => saveArtCompositions().catch((error) => {

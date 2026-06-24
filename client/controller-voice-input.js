@@ -85,7 +85,14 @@
       } catch (error) {
         // Some browsers do not expose microphone permission state.
       }
-      return hasRememberedMicrophoneAccess();
+      if (hasRememberedMicrophoneAccess()) {
+        try {
+          localStorage.removeItem(rememberedAccessKey);
+        } catch (error) {
+          // Storage can be unavailable in private browsing modes.
+        }
+      }
+      return false;
     }
 
     async function beginRecording(actionId) {

@@ -117,10 +117,7 @@ function createControllerInputPayloadRuntime({
   function microphoneAccessPayload(room, currentAction) {
     if (!isMicrophoneAccessAction(currentAction)) return null;
     applyMicrophoneAccessAction(room, currentAction);
-    const grantedPlayerIds = new Set([
-      ...(room.microphoneAccessGrantedPlayerIds || []),
-      ...(room.microphoneAccessAnswers?.keys?.() || [])
-    ]);
+    const grantedPlayerIds = new Set(room.microphoneAccessAnswers?.keys?.() || []);
     return {
       actionId: room.microphoneAccessActionId,
       type: "microphoneAccess",

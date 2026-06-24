@@ -415,12 +415,19 @@ function createArtAssetsRuntime({
     return normalizeComposition(composition, manifest.compositions?.[composition.id] || null);
   }
 
+  function deletedCompositionIds(manifest) {
+    return new Set(Array.isArray(manifest.deletedCompositionIds)
+      ? manifest.deletedCompositionIds.map(cleanId).filter(Boolean)
+      : []);
+  }
+
   function customArtCompositionDefinitions(manifest) {
     const definitions = [];
     const manifestCompositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
+    const deletedIds = deletedCompositionIds(manifest);
     for (const [compositionId, composition] of Object.entries(manifestCompositions)) {
       const id = cleanId(compositionId);
-      if (!id || knownCompositionIds.has(id)) continue;
+      if (!id || knownCompositionIds.has(id) || deletedIds.has(id)) continue;
       definitions.push({
         id,
         name: cleanText(composition?.name, "Art Asset"),
@@ -434,8 +441,9 @@ function createArtAssetsRuntime({
   }
 
   function allPublicArtCompositions(manifest) {
+    const deletedIds = deletedCompositionIds(manifest);
     return [
-      ...artCompositions.map((composition) => publicArtComposition(composition, manifest)),
+      ...artCompositions.filter((composition) => !deletedIds.has(composition.id)).map((composition) => publicArtComposition(composition, manifest)),
       ...customArtCompositionDefinitions(manifest).map((composition) => publicArtComposition(composition, manifest))
     ];
   }
@@ -511,6 +519,9 @@ function createArtAssetsRuntime({
     };
     const normalized = normalizeComposition(definition, incoming);
     manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
+    manifest.deletedCompositionIds = Array.isArray(manifest.deletedCompositionIds)
+      ? manifest.deletedCompositionIds.filter((id) => cleanId(id) !== definition.id)
+      : [];
     manifest.compositions[definition.id] = {
       name: normalized.name,
       description: normalized.description,
@@ -522,6 +533,24 @@ function createArtAssetsRuntime({
     const savedManifest = await saveArtManifest(manifest);
     onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: savedManifest.compositions?.[definition.id]?.updatedAt || manifest.compositions[definition.id].updatedAt });
     sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, savedManifest) });
+  }
+
+  async function handleDeleteArtComposition(req, res, compositionId) {
+    const safeCompositionId = cleanId(compositionId);
+    if (!safeCompositionId || safeCompositionId !== String(compositionId || "").toLowerCase()) {
+      sendJson(res, 400, { ok: false, error: "Invalid art composition id" });
+      return;
+    }
+
+    const manifest = await loadArtManifest();
+    manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
+    delete manifest.compositions[safeCompositionId];
+    const deletedIds = deletedCompositionIds(manifest);
+    if (knownCompositionIds.has(safeCompositionId)) deletedIds.add(safeCompositionId);
+    manifest.deletedCompositionIds = [...deletedIds];
+    const savedManifest = await saveArtManifest(manifest);
+    onArtAssetsChanged({ type: "composition-delete", id: safeCompositionId, updatedAt: new Date().toISOString() });
+    sendJson(res, 200, { ok: true, compositions: allPublicArtCompositions(savedManifest) });
   }
 
   async function handleReplaceArtAsset(req, res, assetId) {
@@ -613,6 +642,7 @@ function createArtAssetsRuntime({
   }
 
   return {
+    handleDeleteArtComposition,
     handleSaveArtComposition,
     handleReplaceArtAsset,
     publicArtAsset,

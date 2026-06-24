@@ -426,6 +426,7 @@ const {
 });
 
 const {
+  handleDeleteArtComposition,
   handleSaveArtComposition,
   handleReplaceArtAsset,
   sendArtAssetList,
@@ -1119,6 +1120,7 @@ const {
   handlePause,
   handlePresentHi,
   handleQuitToLobby,
+  handleDeleteArtComposition,
   handleReplaceArtAsset,
   handleSaveArtComposition,
   handleSaveControllerLayouts,

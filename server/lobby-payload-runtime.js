@@ -82,7 +82,6 @@ function createLobbyPayloadRuntime({
         : players.filter((player) => player.id === room.vipPlayerId);
       submittedInputCount = microphoneAccessPlayers.filter((player) => (
         room.microphoneAccessAnswers?.get(player.id)?.done === true
-        || room.microphoneAccessGrantedPlayerIds?.has?.(player.id) === true
       )).length;
     } else if (room.choiceInputActionId) {
       submittedInputCount = players.filter((player) => room.choiceInputAnswers?.has(player.id)).length;

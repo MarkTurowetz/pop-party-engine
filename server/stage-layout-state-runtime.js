@@ -1,3 +1,7 @@
+const {
+  stageLayoutWidgetArtCompositionId
+} = require("../shared/stage-layout-art-widgets");
+
 function createStageLayoutStateRuntime({
   flowStateHasActionType,
   isCraftingStateId,
@@ -35,7 +39,7 @@ function createStageLayoutStateRuntime({
         name: "Crafting Timer",
         selector: "#craftingTimer",
         kind: "art",
-        artCompositionId: "crafting-timer-widget",
+        artCompositionId: stageLayoutWidgetArtCompositionId("craftingTimer"),
         x: 1660,
         y: 185,
         width: 190,

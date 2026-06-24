@@ -19,6 +19,7 @@ function createRouterRuntime({
   handlePause,
   handlePresentHi,
   handleQuitToLobby,
+  handleDeleteArtComposition,
   handleReplaceArtAsset,
   handleSaveArtComposition,
   handleSaveControllerLayouts,
@@ -152,6 +153,12 @@ function createRouterRuntime({
     const artCompositionMatch = url.pathname.match(/^\/api\/art-compositions\/([a-z0-9-]+)$/i);
     if (req.method === "POST" && artCompositionMatch) {
       handleSaveArtComposition(req, res, artCompositionMatch[1]).catch((error) => {
+        sendJson(res, 500, { ok: false, error: error.message });
+      });
+      return;
+    }
+    if (req.method === "DELETE" && artCompositionMatch) {
+      handleDeleteArtComposition(req, res, artCompositionMatch[1]).catch((error) => {
         sendJson(res, 500, { ok: false, error: error.message });
       });
       return;

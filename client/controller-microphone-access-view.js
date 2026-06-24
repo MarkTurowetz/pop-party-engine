@@ -55,7 +55,14 @@
         return true;
       }
       if (permissionState === "denied") return false;
-      return hasRememberedAccess();
+      if (hasRememberedAccess()) {
+        try {
+          localStorage.removeItem(rememberedAccessKey);
+        } catch (error) {
+          // Storage can be unavailable in private browsing modes.
+        }
+      }
+      return false;
     }
 
     async function requestMicrophoneAccess() {

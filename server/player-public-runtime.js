@@ -16,8 +16,7 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     const needsTextInput = Boolean(room.textInputActionId) && textInputIsForPlayer && textAnswer?.done !== true;
     const needsMicrophoneAccess = Boolean(room.microphoneAccessActionId)
       && microphoneAccessIsForPlayer
-      && room.microphoneAccessAnswers?.get(player.id)?.done !== true
-      && room.microphoneAccessGrantedPlayerIds?.has?.(player.id) !== true;
+      && room.microphoneAccessAnswers?.get(player.id)?.done !== true;
     const serializeAnswer = (value) => value ? {
       optionIndex: value.optionIndex,
       originalOptionIndex: value.originalOptionIndex,

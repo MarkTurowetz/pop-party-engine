@@ -4767,6 +4767,7 @@
           <input class="art-file-input" id="artFileInput" type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp">
           <button class="secondary-button" id="artCancelButton" type="button" disabled>Cancel</button>
           <button class="secondary-button hidden" id="artSaveCompositionButton" type="button" disabled>Save Components</button>
+          <button class="secondary-button hidden" id="artDeleteCompositionButton" type="button" disabled>Delete Art Asset</button>
           <button class="secondary-button" id="artReplaceButton" type="button" disabled>Replace File</button>
         </div>
       </main>
@@ -5189,6 +5190,7 @@
     const artCancelButton = document.querySelector("#artCancelButton");
     const artComponentEditor = document.querySelector("#artComponentEditor");
     const artSaveCompositionButton = document.querySelector("#artSaveCompositionButton");
+    const artDeleteCompositionButton = document.querySelector("#artDeleteCompositionButton");
     const flowShell = document.querySelector(".flow-shell");
     const flowResizer = document.querySelector("#flowResizer");
     const flowList = document.querySelector("#flowList");
