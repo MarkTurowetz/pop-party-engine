@@ -147,6 +147,9 @@ concepts into focused modules.
   instances of those prefabs. Runtime visibility actions should target the layout
   instance identity (`targetLayoutScope` plus `targetLayoutElementId`), not the
   source art composition id.
+- Placed layout art targets are resolved through the shared layout target resolver
+  in `client/layout-runtime.js`. Stage and controller surfaces should plug into that
+  resolver rather than building separate visibility/action lookup paths.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same
   composition schema rather than maintaining separate art systems.
