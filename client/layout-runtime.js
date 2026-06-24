@@ -109,6 +109,31 @@ function removeInactiveLayoutArtInstances({ root, selector, activeIds, clearRend
   }
 }
 
+function beginLayoutElementTargetApplication(target, options = {}) {
+  if (!target) return false;
+  const isNewLayoutTarget = !target.classList.contains(options.targetClass);
+  if (isNewLayoutTarget) target.classList.add(options.suppressedClass);
+  target.classList.remove(options.hiddenClass);
+  target.classList.add(options.targetClass);
+  return isNewLayoutTarget;
+}
+
+function applyLayoutElementBoxStyles(target, element, prefix) {
+  if (!target || !element || !prefix) return;
+  target.style.setProperty(`--${prefix}-layout-x`, `${element.x}px`);
+  target.style.setProperty(`--${prefix}-layout-y`, `${element.y}px`);
+  target.style.setProperty(`--${prefix}-layout-w`, `${element.width}px`);
+  target.style.setProperty(`--${prefix}-layout-h`, `${element.height}px`);
+  target.style.setProperty(`--${prefix}-layout-scale`, `${element.scale || 1}`);
+  target.style.setProperty(`--${prefix}-layout-rotation`, `${Number(element.rotation || 0)}deg`);
+}
+
+function finishLayoutElementTargetApplication(target, isNewLayoutTarget, suppressedClass) {
+  if (!target || !isNewLayoutTarget) return;
+  void target.offsetWidth;
+  target.classList.remove(suppressedClass);
+}
+
 function layoutTargetByElementId({ root, elementId, layoutAttribute, dynamicSelector, globalClass = "", scope = "" }) {
   if (!root || !elementId) return null;
   const escapedId = CSS.escape(elementId);
@@ -472,19 +497,15 @@ function applyControllerElementLayout(element, isGlobal = false) {
   const target = controllerLayoutTargetElement(element);
   if (!target) return;
   const entity = registerControllerLayoutEntity(element, target, isGlobal);
-  const isNewLayoutTarget = !target.classList.contains("controller-layout-target");
-  if (isNewLayoutTarget) target.classList.add("controller-layout-transition-suppressed");
-  target.classList.remove("controller-layout-hidden");
-  target.classList.add("controller-layout-target");
+  const isNewLayoutTarget = beginLayoutElementTargetApplication(target, {
+    targetClass: "controller-layout-target",
+    hiddenClass: "controller-layout-hidden",
+    suppressedClass: "controller-layout-transition-suppressed"
+  });
   target.classList.toggle("controller-global-layout-target", isGlobal);
   target.dataset.controllerLayoutElementId = entity.id || "";
   target.dataset.controllerLayoutVisibilityKey = entity.visibilityKey || "";
-  target.style.setProperty("--controller-layout-x", `${element.x}px`);
-  target.style.setProperty("--controller-layout-y", `${element.y}px`);
-  target.style.setProperty("--controller-layout-w", `${element.width}px`);
-  target.style.setProperty("--controller-layout-h", `${element.height}px`);
-  target.style.setProperty("--controller-layout-scale", `${element.scale || 1}`);
-  target.style.setProperty("--controller-layout-rotation", `${Number(element.rotation || 0)}deg`);
+  applyLayoutElementBoxStyles(target, element, "controller");
   if (element.kind === "text") {
     target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
@@ -492,10 +513,7 @@ function applyControllerElementLayout(element, isGlobal = false) {
     attachRenderedLayoutArtEntity(entity, () => renderControllerArtInstance(element, target, entity.visibilityKey));
   }
   applyControllerLayoutArtVisibilityOverride(entity);
-  if (isNewLayoutTarget) {
-    void target.offsetWidth;
-    target.classList.remove("controller-layout-transition-suppressed");
-  }
+  finishLayoutElementTargetApplication(target, isNewLayoutTarget, "controller-layout-transition-suppressed");
 }
 
 function registerControllerLayoutEntity(element, target, isGlobal = false) {
@@ -769,20 +787,16 @@ function applyStageElementLayout(element, isGlobal) {
   const target = stageLayoutTargetElement(element);
   if (!target) return;
   const entity = registerStageLayoutEntity(element, target, isGlobal);
-  const isNewLayoutTarget = !target.classList.contains("stage-layout-target");
-  if (isNewLayoutTarget) target.classList.add("stage-layout-transition-suppressed");
-  target.classList.remove("stage-layout-hidden");
-  target.classList.add("stage-layout-target");
+  const isNewLayoutTarget = beginLayoutElementTargetApplication(target, {
+    targetClass: "stage-layout-target",
+    hiddenClass: "stage-layout-hidden",
+    suppressedClass: "stage-layout-transition-suppressed"
+  });
   if (isGlobal) target.classList.add("stage-global-layout-target");
   target.dataset.stageLayoutElementId = entity.id || "";
   target.dataset.stageLayoutArtCompositionId = element.artCompositionId || "";
   target.dataset.stageLayoutVisibilityKey = entity.visibilityKey;
-  target.style.setProperty("--stage-layout-x", `${element.x}px`);
-  target.style.setProperty("--stage-layout-y", `${element.y}px`);
-  target.style.setProperty("--stage-layout-w", `${element.width}px`);
-  target.style.setProperty("--stage-layout-h", `${element.height}px`);
-  target.style.setProperty("--stage-layout-scale", `${element.scale || 1}`);
-  target.style.setProperty("--stage-layout-rotation", `${Number(element.rotation || 0)}deg`);
+  applyLayoutElementBoxStyles(target, element, "stage");
   if (element.kind === "text") {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
@@ -790,10 +804,7 @@ function applyStageElementLayout(element, isGlobal) {
     attachRenderedLayoutArtEntity(entity, () => renderStageArtInstance(element, target, entity.visibilityKey));
   }
   applyStageLayoutArtVisibilityOverride(entity);
-  if (isNewLayoutTarget) {
-    void target.offsetWidth;
-    target.classList.remove("stage-layout-transition-suppressed");
-  }
+  finishLayoutElementTargetApplication(target, isNewLayoutTarget, "stage-layout-transition-suppressed");
 }
 
 function registerStageLayoutEntity(element, target, isGlobal = false) {
