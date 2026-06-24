@@ -2,6 +2,8 @@ function activeLayoutData() {
   return layoutToolMode === "controller" ? controllerLayouts : stageLayouts;
 }
 
+let layoutArtCatalogRefreshPromise = null;
+
 function setActiveLayoutData(layouts) {
   if (layoutToolMode === "controller") {
     controllerLayouts = layouts;
@@ -251,6 +253,21 @@ async function refreshLayoutArtCatalog() {
   artCompositions = [...byId.values()];
 }
 
+function refreshLayoutArtCatalogInBackground(options = {}) {
+  if (layoutToolMode !== "stage") return Promise.resolve();
+  if (!layoutArtCatalogRefreshPromise) {
+    layoutArtCatalogRefreshPromise = refreshLayoutArtCatalog()
+      .catch(() => {})
+      .finally(() => {
+        layoutArtCatalogRefreshPromise = null;
+      });
+  }
+  return layoutArtCatalogRefreshPromise.then(() => {
+    if (options.renderPicker && !layoutObjectPicker.classList.contains("hidden")) renderLayoutObjectOptions();
+    if (options.renderPreview && !layoutScreen.classList.contains("hidden")) renderLayoutPreview();
+  });
+}
+
 function stageLayoutCatalogCompositionId(elementId, compositionIds = new Set()) {
   const definition = window.PartyGameStageWidgetBindings?.definitionForLayoutElement?.(elementId);
   const compositionId = definition?.compositionId || "";
@@ -284,12 +301,17 @@ function layoutObjectFuzzyScore(item, query) {
   const id = String(item?.id || "").toLowerCase();
   const kind = String(item?.kind || "").toLowerCase();
   const selector = String(item?.selector || "").toLowerCase();
-  const haystack = `${name} ${id} ${kind} ${selector}`;
+  const artCompositionId = String(item?.artCompositionId || "").toLowerCase();
+  const fields = [name, id, artCompositionId, kind, selector].filter(Boolean);
+  if (name === cleanQuery) return -300;
+  if (id === cleanQuery || artCompositionId === cleanQuery) return -260;
+  if (name.startsWith(cleanQuery)) return -220;
+  if (fields.some((field) => field.startsWith(cleanQuery))) return -180;
+  if (name.split(/\s+/).some((word) => word.startsWith(cleanQuery))) return -150;
+  if (fields.some((field) => field.includes(cleanQuery))) return -80;
+  const haystack = `${name} ${id} ${artCompositionId} ${kind} ${selector}`;
   const score = simpleLayoutFuzzyScore(haystack, cleanQuery);
   if (score < 0) return -1;
-  if (name === cleanQuery) return score - 200;
-  if (name.startsWith(cleanQuery)) return score - 150;
-  if (name.split(/\s+/).some((word) => word.startsWith(cleanQuery))) return score - 110;
   return score;
 }
 
@@ -1046,13 +1068,13 @@ function updateLayoutGlobalHidden(elementId, isHidden) {
   renderLayoutTool();
 }
 
-async function openLayoutObjectPicker() {
+function openLayoutObjectPicker() {
   if (!layoutGroup(selectedLayoutStateId)) return;
-  await refreshLayoutArtCatalog();
   layoutObjectPicker.classList.remove("hidden");
   layoutObjectSearch.value = "";
   renderLayoutObjectOptions();
   layoutObjectSearch.focus();
+  refreshLayoutArtCatalogInBackground({ renderPicker: true });
 }
 
 function closeLayoutObjectPicker() {
@@ -1083,11 +1105,11 @@ function renderLayoutObjectOptions() {
   }
 }
 
-async function handleLayoutArtAssetsChanged() {
+function handleLayoutArtAssetsChanged() {
   if (layoutToolMode !== "stage" || layoutScreen.classList.contains("hidden")) return;
-  await refreshLayoutArtCatalog();
   if (!layoutObjectPicker.classList.contains("hidden")) renderLayoutObjectOptions();
   renderLayoutPreview();
+  refreshLayoutArtCatalogInBackground({ renderPicker: true, renderPreview: true });
 }
 
 function addLayoutObject(item) {
@@ -1150,7 +1172,7 @@ async function saveControllerLayouts() {
 async function setupLayoutTool(mode = "stage") {
   layoutToolMode = mode === "controller" ? "controller" : "stage";
   layoutScreen.classList.remove("hidden");
-  await refreshLayoutArtCatalog();
+  refreshLayoutArtCatalogInBackground({ renderPicker: true, renderPreview: true });
   if (layoutToolInitialized) {
     if (!activeLayoutSavedSnapshot()) {
       await loadLayoutToolData().catch((error) => {
