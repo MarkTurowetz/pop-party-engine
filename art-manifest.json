@@ -687,6 +687,34 @@
         }
       ],
       "updatedAt": "2026-06-24T01:35:15.446Z"
+    },
+    "join-widget": {
+      "name": "Join Widget",
+      "description": "Editable lobby instruction text.",
+      "isCustom": false,
+      "canvas": {
+        "width": 740,
+        "height": 76
+      },
+      "components": [
+        {
+          "id": "join-text",
+          "name": "Join Text",
+          "kind": "text",
+          "x": 370,
+          "y": 38,
+          "width": 720,
+          "height": 58,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "Join the Lobby at bit.ly/popcontroller",
+          "fontSize": 42,
+          "autoFitText": true,
+          "fontColor": "#ffffff"
+        }
+      ],
+      "updatedAt": "2026-06-24T01:35:17.101Z"
     }
   }
 }
