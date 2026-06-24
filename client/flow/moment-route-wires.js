@@ -80,6 +80,9 @@
     }
 
     function drawRouteActionWire(planner, nodeMaps, routeNode, fromNode) {
+      const isJumpNode = routeNode.type === "jumpNode";
+      const isSelected = context.selectedFlowRouteNodeId?.() === routeNode.id;
+      if (isJumpNode && !isSelected) return;
       const targetId = routeNode.type === "jumpNode"
         ? routeNode.jumpTargetActionId || ""
         : routeNode.nextTargetNodeId || "";
@@ -88,8 +91,8 @@
         targetId,
         targetKind: "momentGraph",
         options: {
-          highlighted: context.selectedFlowRouteNodeId?.() === routeNode.id,
-          label: routeNode.type === "jumpNode" ? "Jump" : ""
+          highlighted: isSelected,
+          label: isJumpNode ? "Jump" : ""
         }
       });
     }
