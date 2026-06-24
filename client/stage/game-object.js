@@ -12,6 +12,7 @@
       this.visibilityKey = "";
       this.visual = null;
       this.visualOptions = options.visualOptions || {};
+      this.layoutHiddenClasses = options.layoutHiddenClasses || this.visualOptions.layoutHiddenClasses || ["stage-layout-hidden"];
       this.visibilityOverrides = options.visibilityOverrides || new Map();
       this.update(options);
     }
@@ -25,6 +26,7 @@
       this.isGlobal = options.isGlobal === true;
       this.visibilityKey = options.visibilityKey || this.visibilityKey || this.id;
       if (options.visualOptions) this.visualOptions = options.visualOptions;
+      if (options.layoutHiddenClasses) this.layoutHiddenClasses = options.layoutHiddenClasses;
       if (options.visibilityOverrides) this.visibilityOverrides = options.visibilityOverrides;
       return this;
     }
@@ -50,15 +52,27 @@
       return this.visual;
     }
 
+    visualClass(name, fallback) {
+      const value = this.visualOptions?.[name] ?? fallback;
+      return Array.isArray(value) ? value[0] : value;
+    }
+
+    hasClass(className) {
+      return Boolean(className && this.target?.classList.contains(className));
+    }
+
     isVisible() {
       if (!this.target) return false;
+      const hiddenClass = this.visualClass("hiddenClasses", "stage-layout-visual-hidden");
+      const exitingClass = this.visualClass("exitingClass", "stage-layout-visual-exiting");
+      const layoutHiddenClasses = this.layoutHiddenClasses || [];
       if (this.visibilityOverrides.has(this.visibilityKey)) {
         return this.visibilityOverrides.get(this.visibilityKey) === true;
       }
       return this.target.dataset.visualVisible === "true"
-        || (!this.target.classList.contains("stage-layout-visual-hidden")
-          && !this.target.classList.contains("stage-layout-visual-exiting")
-          && !this.target.classList.contains("stage-layout-hidden"));
+        || (!this.hasClass(hiddenClass)
+          && !this.hasClass(exitingClass)
+          && !layoutHiddenClasses.some((className) => this.hasClass(className)));
     }
 
     setVisible(isVisible) {
@@ -70,13 +84,15 @@
     applyVisibilityOverride() {
       if (!this.target || !this.visibilityOverrides.has(this.visibilityKey)) return;
       const isShown = this.visibilityOverrides.get(this.visibilityKey) !== false;
+      const hiddenClass = this.visualClass("hiddenClasses", "stage-layout-visual-hidden");
+      const exitingClass = this.visualClass("exitingClass", "stage-layout-visual-exiting");
       this.target.dataset.visualVisible = isShown ? "true" : "false";
       if (isShown) {
-        this.target.classList.remove("stage-layout-visual-hidden", "stage-layout-visual-exiting");
+        this.target.classList.remove(hiddenClass, exitingClass);
         return;
       }
-      if (!this.target.classList.contains("stage-layout-visual-exiting")) {
-        this.target.classList.add("stage-layout-visual-hidden");
+      if (!this.hasClass(exitingClass)) {
+        this.target.classList.add(hiddenClass);
       }
     }
 
@@ -113,7 +129,8 @@
       if (!id) return new StageGameObject({
         ...options,
         visibilityOverrides: this.visibilityOverrides,
-        visualOptions: this.visualOptions
+        visualOptions: this.visualOptions,
+        layoutHiddenClasses: this.visualOptions.layoutHiddenClasses
       });
       this.activeIds.add(id);
       const existing = this.objects.get(id);
@@ -121,14 +138,16 @@
         existing.update({
           ...options,
           visibilityOverrides: this.visibilityOverrides,
-          visualOptions: this.visualOptions
+          visualOptions: this.visualOptions,
+          layoutHiddenClasses: this.visualOptions.layoutHiddenClasses
         });
         return existing;
       }
       const object = new StageGameObject({
         ...options,
         visibilityOverrides: this.visibilityOverrides,
-        visualOptions: this.visualOptions
+        visualOptions: this.visualOptions,
+        layoutHiddenClasses: this.visualOptions.layoutHiddenClasses
       });
       this.objects.set(id, object);
       return object;
@@ -141,8 +160,12 @@
     }
   }
 
-  global.PartyGameStageGameObject = {
+  const api = {
+    GameObject: StageGameObject,
+    GameObjectRegistry: StageGameObjectRegistry,
     StageGameObject,
     StageGameObjectRegistry
   };
+  global.PartyGameGameObject = api;
+  global.PartyGameStageGameObject = api;
 })(window);

@@ -1,9 +1,12 @@
 const stageLayoutArtVisibilityOverrides = new Map();
 let stageLayoutGameObjects = null;
+const controllerLayoutVisibilityOverrides = new Map();
+let controllerLayoutGameObjects = null;
+let currentControllerLayoutStateId = "";
 
 function stageLayoutGameObjectRegistry() {
   if (stageLayoutGameObjects) return stageLayoutGameObjects;
-  const registry = window.PartyGameStageGameObject?.StageGameObjectRegistry;
+  const registry = window.PartyGameGameObject?.GameObjectRegistry || window.PartyGameStageGameObject?.StageGameObjectRegistry;
   if (!registry) return null;
   stageLayoutGameObjects = new registry({
     visibilityOverrides: stageLayoutArtVisibilityOverrides,
@@ -16,6 +19,24 @@ function stageLayoutGameObjectRegistry() {
     }
   });
   return stageLayoutGameObjects;
+}
+
+function controllerLayoutGameObjectRegistry() {
+  if (controllerLayoutGameObjects) return controllerLayoutGameObjects;
+  const registry = window.PartyGameGameObject?.GameObjectRegistry || window.PartyGameStageGameObject?.StageGameObjectRegistry;
+  if (!registry) return null;
+  controllerLayoutGameObjects = new registry({
+    visibilityOverrides: controllerLayoutVisibilityOverrides,
+    visualOptions: {
+      hiddenClasses: ["controller-layout-visual-hidden"],
+      motionHiddenClasses: ["controller-layout-visual-hidden"],
+      exitingClass: "controller-layout-visual-exiting",
+      updateClass: "controller-layout-visual-update",
+      instantClass: "controller-layout-visual-instant",
+      layoutHiddenClasses: ["controller-layout-hidden"]
+    }
+  });
+  return controllerLayoutGameObjects;
 }
 
 async function loadStageLayouts({ forceServer = false } = {}) {
@@ -90,6 +111,11 @@ function clearControllerLayoutTargets() {
     }
     target.classList.remove("controller-layout-target");
     target.classList.add("controller-layout-hidden");
+    target.classList.remove("controller-layout-visual-hidden");
+    target.classList.remove("controller-layout-visual-exiting");
+    target.classList.remove("controller-layout-visual-update");
+    target.classList.remove("controller-layout-visual-instant");
+    target.classList.remove("controller-layout-transition-suppressed");
     target.style.removeProperty("--controller-layout-x");
     target.style.removeProperty("--controller-layout-y");
     target.style.removeProperty("--controller-layout-w");
@@ -100,6 +126,8 @@ function clearControllerLayoutTargets() {
     target.style.removeProperty("--controller-text-font-size");
     target.style.removeProperty("color");
     target.style.removeProperty("font-size");
+    delete target.dataset.controllerLayoutElementId;
+    delete target.dataset.controllerLayoutVisibilityKey;
   }
 }
 
@@ -107,6 +135,8 @@ function applyControllerLayoutForPhase(phase) {
   if (!controllerScreen || !controllerPanel) return;
   const state = controllerLayoutStateForPhase(phase);
   if (!state) return;
+  currentControllerLayoutStateId = state.id;
+  controllerLayoutGameObjectRegistry()?.beginFrame();
   clearControllerLayoutTargets();
   const canvas = controllerLayouts.canvas || { width: 390, height: 844 };
   const screenRect = controllerScreen.getBoundingClientRect();
@@ -115,22 +145,27 @@ function applyControllerLayoutForPhase(phase) {
   controllerPanel.style.height = `${canvas.height}px`;
   controllerPanel.style.setProperty("--controller-board-scale", `${fitScale}`);
   for (const element of state.elements || []) {
-    applyControllerElementLayout(element);
+    applyControllerElementLayout(element, false);
   }
   const hiddenGlobals = new Set(state.hiddenGlobals || []);
   const globalLayout = globalControllerLayout();
   if (globalLayout.hiddenInStates === true) return;
   for (const element of globalLayout.elements || []) {
     if (hiddenGlobals.has(element.id)) continue;
-    applyControllerElementLayout(element);
+    applyControllerElementLayout(element, true);
   }
 }
 
-function applyControllerElementLayout(element) {
+function applyControllerElementLayout(element, isGlobal = false) {
   const target = controllerLayoutTargetElement(element);
   if (!target) return;
+  const entity = registerControllerLayoutEntity(element, target, isGlobal);
+  const isNewLayoutTarget = !target.classList.contains("controller-layout-target");
+  if (isNewLayoutTarget) target.classList.add("controller-layout-transition-suppressed");
   target.classList.remove("controller-layout-hidden");
   target.classList.add("controller-layout-target");
+  target.dataset.controllerLayoutElementId = entity.id || "";
+  target.dataset.controllerLayoutVisibilityKey = entity.visibilityKey || "";
   target.style.setProperty("--controller-layout-x", `${element.x}px`);
   target.style.setProperty("--controller-layout-y", `${element.y}px`);
   target.style.setProperty("--controller-layout-w", `${element.width}px`);
@@ -141,6 +176,37 @@ function applyControllerElementLayout(element) {
     target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
   }
+  if (typeof entity.applyVisibilityOverride === "function") entity.applyVisibilityOverride();
+  if (isNewLayoutTarget) {
+    void target.offsetWidth;
+    target.classList.remove("controller-layout-transition-suppressed");
+  }
+}
+
+function registerControllerLayoutEntity(element, target, isGlobal = false) {
+  const id = element?.id || "";
+  const selector = String(element?.selector || "");
+  let matchesSelector = false;
+  try {
+    matchesSelector = selector ? target.matches(selector) : false;
+  } catch (_error) {
+    matchesSelector = false;
+  }
+  const entity = {
+    element,
+    id,
+    isArt: false,
+    isDynamic: element?.kind === "text" && !matchesSelector,
+    isGlobal: isGlobal === true,
+    target,
+    visibilityKey: controllerLayoutVisibilityKey(id, isGlobal)
+  };
+  return controllerLayoutGameObjectRegistry()?.register(entity) || entity;
+}
+
+function controllerLayoutVisibilityKey(elementId, isGlobal = false) {
+  if (!elementId) return "";
+  return `${isGlobal ? "global" : currentControllerLayoutStateId || "controller"}:${elementId}`;
 }
 
 function controllerLayoutComputedFontSize(element, textOverride = "") {
