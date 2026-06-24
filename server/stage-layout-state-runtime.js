@@ -35,6 +35,7 @@ function createStageLayoutStateRuntime({
         name: "Crafting Timer",
         selector: "#craftingTimer",
         kind: "art",
+        artCompositionId: "crafting-timer-widget",
         x: 1660,
         y: 185,
         width: 190,

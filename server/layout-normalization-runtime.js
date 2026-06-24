@@ -26,13 +26,15 @@ function createLayoutNormalizationRuntime({
   function normalizeLayoutElement(element, elementIndex) {
     if (!element || typeof element !== "object") return null;
     const fallbackId = `layout-element-${elementIndex + 1}`;
+    const id = normalizeFlowId(element.id || element.name, fallbackId);
     const width = normalizeLayoutNumber(element.width, 240, 24, 4000);
     const height = normalizeLayoutNumber(element.height, 100, 24, 4000);
     const selector = cleanLayoutSelector(element.selector);
-    const kind = normalizeLayoutElementKind(element.kind, selector);
-    const artCompositionId = normalizeFlowId(element.artCompositionId, "");
+    const widgetArtCompositionId = layoutWidgetArtCompositionId(id);
+    const kind = widgetArtCompositionId ? "art" : normalizeLayoutElementKind(element.kind, selector);
+    const artCompositionId = normalizeFlowId(element.artCompositionId, "") || widgetArtCompositionId;
     return {
-      id: normalizeFlowId(element.id || element.name, fallbackId),
+      id,
       name: cleanFlowText(element.name, element.id || fallbackId),
       selector,
       kind,
@@ -54,6 +56,19 @@ function createLayoutNormalizationRuntime({
     const cleanKind = String(kind || "").trim().toLowerCase();
     if (cleanKind === "text") return "text";
     return /waitingstatus|joinprompt|stage(?:presentation|prompt)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
+  }
+
+  function layoutWidgetArtCompositionId(elementId) {
+    const ids = {
+      stagecodepanel: "stage-code-panel",
+      stagecodebadge: "stage-code-widget",
+      stagejoinqr: "join-qr-code",
+      joinprompt: "join-widget",
+      startpopup: "countdown-popup",
+      craftingtimer: "crafting-timer-widget",
+      presentclickwidget: "presentation-click-prompt"
+    };
+    return ids[String(elementId || "").toLowerCase()] || "";
   }
 
   function dedupeLayoutElements(elements) {

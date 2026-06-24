@@ -177,13 +177,13 @@ const stageArtInstanceRenderers = new Map();
 function activeStageArtInstanceIds(state) {
   const ids = new Set();
   for (const element of state?.elements || []) {
-    if (element.artCompositionId) ids.add(element.id);
+    if (isDynamicStageArtInstance(element)) ids.add(element.id);
   }
   const globalLayout = globalStageLayout();
   if (globalLayout.hiddenInStates !== true) {
     const hiddenGlobals = new Set(state?.hiddenGlobals || []);
     for (const element of globalLayout.elements || []) {
-      if (element.artCompositionId && !hiddenGlobals.has(element.id)) ids.add(element.id);
+      if (isDynamicStageArtInstance(element) && !hiddenGlobals.has(element.id)) ids.add(element.id);
     }
   }
   return ids;
@@ -271,13 +271,13 @@ function applyStageElementLayout(element, isGlobal) {
   if (element.kind === "text") {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
-  } else if (element.artCompositionId) {
+  } else if (isDynamicStageArtInstance(element)) {
     renderStageArtInstance(element, target);
   }
 }
 
 function stageLayoutTargetElement(element) {
-  if (element.artCompositionId) return getOrCreateStageArtInstance(element);
+  if (isDynamicStageArtInstance(element)) return getOrCreateStageArtInstance(element);
   if (element.kind !== "text") return stageBoard.querySelector(element.selector);
   const dynamicId = dynamicStageTextElementId(element);
   const selectorTarget = stageBoard.querySelector(element.selector);
@@ -286,6 +286,10 @@ function stageLayoutTargetElement(element) {
   const shouldUseDynamicTextTarget = elementId && selectorId && selectorId !== elementId;
   if (!shouldUseDynamicTextTarget && selectorTarget) return selectorTarget;
   return getOrCreateDynamicStageTextElement(dynamicId || elementId || selectorId);
+}
+
+function isDynamicStageArtInstance(element) {
+  return Boolean(element?.artCompositionId && !element.selector);
 }
 
 function getOrCreateStageArtInstance(element) {

@@ -166,8 +166,8 @@ const defaultStageLayouts = {
     name: "Global Layout",
     hiddenInStates: false,
     elements: [
-      { id: "stageCodeBadge", name: "Small Room Code Widget", selector: "#stageCodeBadge", x: 108, y: 70, width: 170, height: 82, scale: 1 },
-      { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", x: 1780, y: 930, width: 90, height: 90, scale: 1 },
+      { id: "stageCodeBadge", name: "Small Room Code Widget", selector: "#stageCodeBadge", kind: "art", artCompositionId: "stage-code-widget", x: 108, y: 70, width: 170, height: 82, scale: 1 },
+      { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", kind: "art", artCompositionId: "presentation-click-prompt", x: 1780, y: 930, width: 90, height: 90, scale: 1 },
       { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 935, width: 1320, height: 150, scale: 1 }
     ]
   },
@@ -177,12 +177,12 @@ const defaultStageLayouts = {
       name: "Lobby",
       hiddenGlobals: ["stagecodebadge"],
       elements: [
-        { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", x: 960, y: 130, width: 700, height: 130, scale: 1 },
+        { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", kind: "art", artCompositionId: "countdown-popup", x: 960, y: 130, width: 700, height: 130, scale: 1 },
         { id: "stageTitle", name: "Header", selector: ".stage-title", x: 960, y: 190, width: 1080, height: 150, scale: 1 },
-        { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
-        { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", x: 1510, y: 420, width: 260, height: 300, scale: 1 },
+        { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", artCompositionId: "stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
+        { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", artCompositionId: "join-qr-code", x: 1510, y: 420, width: 260, height: 300, scale: 1 },
         { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", x: 960, y: 575, width: 700, height: 82, scale: 1 },
-        { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", x: 960, y: 650, width: 740, height: 76, scale: 1 }
+        { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", kind: "art", artCompositionId: "join-widget", x: 960, y: 650, width: 740, height: 76, scale: 1 }
       ]
     },
     {
