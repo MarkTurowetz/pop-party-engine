@@ -100,6 +100,7 @@ function stageWipeController() {
   if (!stageWipeControllerInstance && window.PartyGameStageWipe) {
     stageWipeControllerInstance = window.PartyGameStageWipe.createController({
       element: stageWipe,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
       visualAnimation
     });
   }

@@ -78,11 +78,14 @@ concepts into focused modules.
   - `client/stage/visual-object.js` owns the generic CSS visual object animation contract
     used by stage text and player answer bubbles.
   - `client/stage/game-object.js` owns the shared game-object wrapper that routes
-    staged elements through a consistent visibility/animation API.
+    staged elements through a consistent visibility/animation API, including
+    custom visual-object animation handlers for assets with bespoke motion.
   - `client/stage/art-object-visuals.js` owns rendered Art Manager component trees;
     each rendered component is backed by the shared game-object wrapper.
   - `client/stage/voting-card-visuals.js` owns voting card composition rendering and
     routes card groups, widgets, and voter badges through shared game objects.
+  - `client/stage/wipe-controller.js` owns the global wipe as a game object with
+    custom appear/disappear animation handlers.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,

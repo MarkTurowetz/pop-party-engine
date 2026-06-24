@@ -12,6 +12,8 @@
     constructor(options = {}) {
       this.element = options.element || null;
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
+      this.gameObject = null;
       this.visual = null;
       this.targetShown = false;
       this.visibilityRequest = null;
@@ -56,28 +58,59 @@
 
     visualObject() {
       if (!this.element || !this.visualAnimation) return null;
+      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
+      if (GameObject) {
+        const visualOptions = this.visualOptions();
+        if (!this.gameObject || this.gameObject.target !== this.element) {
+          this.gameObject = new GameObject({
+            id: "global:wipe",
+            target: this.element,
+            visibilityKey: "global:wipe",
+            isArt: true,
+            isGlobal: true,
+            visualOptions,
+            getVisible: () => this.isVisuallyPresent(),
+            setVisible: (isVisible) => this.setVisibleState(isVisible)
+          });
+        } else {
+          this.gameObject.update({
+            visibilityKey: "global:wipe",
+            isArt: true,
+            isGlobal: true,
+            visualOptions
+          });
+        }
+        this.visual = this.gameObject.createVisual();
+        return this.visual;
+      }
       if (!this.visual) {
         this.visual = this.visualAnimation.createCssVisualObject({
           element: this.element,
-          hiddenClasses: ["hidden"],
-          instantClass: "is-instant",
-          durations: {
-            appear: this.motionDuration(false),
-            disappear: this.motionDuration(false)
-          },
+          ...this.visualOptions(),
           getVisible: () => this.isVisuallyPresent(),
-          setVisible: (isVisible) => this.setVisibleState(isVisible),
-          animationHandlers: {
-            appear: (api) => this.playAppear(api),
-            disappear: (api) => this.playDisappear(api),
-            off: () => this.playOff(),
-            on: () => this.playOn(),
-            park: () => this.playOff(),
-            update: () => this.playUpdate()
-          }
+          setVisible: (isVisible) => this.setVisibleState(isVisible)
         });
       }
       return this.visual;
+    }
+
+    visualOptions() {
+      return {
+        hiddenClasses: ["hidden"],
+        instantClass: "is-instant",
+        durations: {
+          appear: this.motionDuration(false),
+          disappear: this.motionDuration(false)
+        },
+        animationHandlers: {
+          appear: (api) => this.playAppear(api),
+          disappear: (api) => this.playDisappear(api),
+          off: () => this.playOff(),
+          on: () => this.playOn(),
+          park: () => this.playOff(),
+          update: () => this.playUpdate()
+        }
+      };
     }
 
     playAppear(api) {

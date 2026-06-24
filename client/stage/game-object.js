@@ -17,6 +17,7 @@
       this.getVisible = typeof options.getVisible === "function" ? options.getVisible : null;
       this.setVisibleHandler = typeof options.setVisible === "function" ? options.setVisible : null;
       this.timerSink = typeof options.timerSink === "function" ? options.timerSink : null;
+      this.visualOptionsKey = "";
       this.update(options);
     }
 
@@ -42,16 +43,32 @@
     }
 
     createVisual() {
-      if (this.visual?.element === this.target) return this.visual;
       if (!this.target || !global.PartyGameVisualObject) return null;
       const options = this.visualOptions || {};
+      const nextVisualOptionsKey = JSON.stringify({
+        animationHandlers: Object.keys(options.animationHandlers || {}),
+        displayHiddenClasses: options.displayHiddenClasses || [],
+        durations: options.durations || {},
+        exitingClass: options.exitingClass || "",
+        hiddenClasses: options.hiddenClasses || [],
+        instantClass: options.instantClass || "",
+        motionHiddenClasses: options.motionHiddenClasses || [],
+        transformOrigin: options.transformOrigin ?? "center center",
+        updateClass: options.updateClass || ""
+      });
+      if (this.visual?.element === this.target && this.visualOptionsKey === nextVisualOptionsKey) return this.visual;
+      this.visualOptionsKey = nextVisualOptionsKey;
       this.visual = global.PartyGameVisualObject.createCssVisualObject({
         element: this.target,
         hiddenClasses: options.hiddenClasses || ["stage-layout-visual-hidden"],
         motionHiddenClasses: options.motionHiddenClasses || options.hiddenClasses || ["stage-layout-visual-hidden"],
+        displayHiddenClasses: options.displayHiddenClasses,
         exitingClass: options.exitingClass || "stage-layout-visual-exiting",
         updateClass: options.updateClass || "stage-layout-visual-update",
         instantClass: options.instantClass || "stage-layout-visual-instant",
+        durations: options.durations,
+        animationHandlers: options.animationHandlers,
+        transformOrigin: options.transformOrigin,
         getVisible: () => this.isVisible(),
         setVisible: (isVisible) => this.setVisible(isVisible),
         timerSink: this.timerSink
