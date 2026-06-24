@@ -86,10 +86,7 @@
     createVisual(element, options = {}, key = "") {
       if (!element) return null;
       const id = `voting-card:${this.cardId || this.element?.dataset.cardId || "card"}:${key || element.dataset.voterId || element.className || "visual"}`;
-      const createVisualForTarget = this.gameObjectApi?.createVisualForTarget
-        || global.PartyGameGameObject?.createVisualForTarget
-        || global.PartyGameStageGameObject?.createVisualForTarget;
-      const bridge = createVisualForTarget?.({
+      const bridge = global.PartyGameVisualBridge?.createVisualForTarget?.({
         gameObjectApi: this.gameObjectApi,
         visualAnimation: this.visualAnimation,
         target: element,

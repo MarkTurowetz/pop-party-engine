@@ -244,4 +244,7 @@
   };
   global.PartyGameGameObject = api;
   global.PartyGameStageGameObject = api;
+  global.PartyGameVisualBridge = {
+    createVisualForTarget
+  };
 })(window);
