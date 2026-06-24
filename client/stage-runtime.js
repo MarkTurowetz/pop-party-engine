@@ -5,11 +5,22 @@ let playerRosterRendererInstance = null;
 let stageDebugPanelInstance = null;
 let stageWipeControllerInstance = null;
 let stageRenderOrchestratorInstance = null;
+let stageWidgetArtRendererInstance = null;
 let renderedStageJoinQrUrl = "";
-const stageWidgetArtRenderers = new Map();
 
 function stageVisualControllers() {
   return window.PartyGameStageVisualControllers || null;
+}
+
+function stageWidgetArtRenderer() {
+  if (!stageWidgetArtRendererInstance && window.PartyGameStageWidgetArt) {
+    stageWidgetArtRendererInstance = window.PartyGameStageWidgetArt.createRenderer({
+      document,
+      visualAnimation,
+      getComposition: artComposition
+    });
+  }
+  return stageWidgetArtRendererInstance;
 }
 
 function stageTextController() {
@@ -300,74 +311,12 @@ function renderCraftingTimer(timer, options = {}) {
   return duration;
 }
 
-function stageWidgetRendererKey(host, compositionId) {
-  return `${host?.id || host?.className || "stage-widget"}:${compositionId}`;
-}
-
-function stageWidgetLayer(host) {
-  if (!host) return null;
-  let layer = Array.from(host.children).find((child) => child.classList?.contains("stage-widget-art-layer"));
-  if (!layer) {
-    layer = document.createElement("div");
-    layer.className = "stage-widget-art-layer";
-    host.prepend(layer);
-  }
-  return layer;
-}
-
-function cloneStageWidgetComponent(component, textOverrides = {}) {
-  const clone = {
-    ...component,
-    children: (component.children || []).map((child) => cloneStageWidgetComponent(child, textOverrides))
-  };
-  if (Object.prototype.hasOwnProperty.call(textOverrides, clone.id)) {
-    clone.defaultText = String(textOverrides[clone.id] ?? "");
-  }
-  return clone;
-}
-
 function renderStageWidgetArt(host, compositionId, textOverrides = {}, options = {}) {
-  const composition = artComposition(compositionId);
-  const artRuntime = window.PartyGameArtObject;
-  if (!host || !composition || !artRuntime) return null;
-  host.classList.add("stage-widget-art-host", "has-stage-widget-art");
-  const layer = stageWidgetLayer(host);
-  if (!layer) return null;
-  const key = stageWidgetRendererKey(host, compositionId);
-  let renderer = stageWidgetArtRenderers.get(key);
-  if (!renderer) {
-    renderer = new artRuntime.ArtObjectTreeRenderer({
-      host: layer,
-      document,
-      visualAnimation
-    });
-    stageWidgetArtRenderers.set(key, renderer);
-  }
-  const components = (composition.components || []).map((component) => cloneStageWidgetComponent(component, textOverrides));
-  renderer.render(components, composition.canvas || { width: 1, height: 1 }, { instant: options.instant !== false });
-  return composition;
-}
-
-function stageWidgetComponent(composition, componentId) {
-  const stack = [...(composition?.components || [])];
-  while (stack.length) {
-    const component = stack.shift();
-    if (component.id === componentId) return component;
-    stack.push(...(component.children || []));
-  }
-  return null;
+  return stageWidgetArtRenderer()?.render(host, compositionId, textOverrides, options) || null;
 }
 
 function positionStageWidgetOverlay(host, composition, componentId, overlay) {
-  const component = stageWidgetComponent(composition, componentId);
-  if (!host || !component || !overlay) return;
-  const canvas = composition.canvas || { width: 1, height: 1 };
-  overlay.classList.add("stage-widget-art-overlay");
-  overlay.style.left = `${Number(component.x || 0) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
-  overlay.style.top = `${Number(component.y || 0) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
-  overlay.style.width = `${Number(component.width || 1) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
-  overlay.style.height = `${Number(component.height || 1) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
-  overlay.style.transform = "translate(-50%, -50%)";
+  stageWidgetArtRenderer()?.positionOverlay(host, composition, componentId, overlay);
 }
 
 function renderStageActionDebug(lobby) {
