@@ -4,38 +4,41 @@ const controllerLayoutVisibilityOverrides = new Map();
 let controllerLayoutGameObjects = null;
 let currentControllerLayoutStateId = "";
 
-function stageLayoutGameObjectRegistry() {
-  if (stageLayoutGameObjects) return stageLayoutGameObjects;
+function createLayoutGameObjectRegistry(visibilityOverrides, visualOptions = {}) {
   const registry = window.PartyGameGameObject?.GameObjectRegistry || window.PartyGameStageGameObject?.StageGameObjectRegistry;
   if (!registry) return null;
-  stageLayoutGameObjects = new registry({
-    visibilityOverrides: stageLayoutArtVisibilityOverrides,
-    visualOptions: {
+  return new registry({ visibilityOverrides, visualOptions });
+}
+
+function stageLayoutGameObjectRegistry() {
+  if (stageLayoutGameObjects) return stageLayoutGameObjects;
+  stageLayoutGameObjects = createLayoutGameObjectRegistry(
+    stageLayoutArtVisibilityOverrides,
+    {
       hiddenClasses: ["stage-layout-visual-hidden"],
       motionHiddenClasses: ["stage-layout-visual-hidden"],
       exitingClass: "stage-layout-visual-exiting",
       updateClass: "stage-layout-visual-update",
       instantClass: "stage-layout-visual-instant"
     }
-  });
+  );
   return stageLayoutGameObjects;
 }
 
 function controllerLayoutGameObjectRegistry() {
-  if (controllerLayoutGameObjects) return controllerLayoutGameObjects;
-  const registry = window.PartyGameGameObject?.GameObjectRegistry || window.PartyGameStageGameObject?.StageGameObjectRegistry;
-  if (!registry) return null;
-  controllerLayoutGameObjects = new registry({
-    visibilityOverrides: controllerLayoutVisibilityOverrides,
-    visualOptions: {
-      hiddenClasses: ["controller-layout-visual-hidden"],
-      motionHiddenClasses: ["controller-layout-visual-hidden"],
-      exitingClass: "controller-layout-visual-exiting",
-      updateClass: "controller-layout-visual-update",
-      instantClass: "controller-layout-visual-instant",
-      layoutHiddenClasses: ["controller-layout-hidden"]
-    }
-  });
+  if (!controllerLayoutGameObjects) {
+    controllerLayoutGameObjects = createLayoutGameObjectRegistry(
+      controllerLayoutVisibilityOverrides,
+      {
+        hiddenClasses: ["controller-layout-visual-hidden"],
+        motionHiddenClasses: ["controller-layout-visual-hidden"],
+        exitingClass: "controller-layout-visual-exiting",
+        updateClass: "controller-layout-visual-update",
+        instantClass: "controller-layout-visual-instant",
+        layoutHiddenClasses: ["controller-layout-hidden"]
+      }
+    );
+  }
   return controllerLayoutGameObjects;
 }
 
