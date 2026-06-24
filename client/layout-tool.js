@@ -1028,13 +1028,13 @@ function renderLayoutFields() {
       { id: "appear", name: "Appear" },
       { id: "disappear", name: "Disappear" },
       { id: "update", name: "Update" }
-    ], (value) => updateLayoutTextValue(element, "defaultAnimationState", value)));
+    ], (value) => updateLayoutElementValue(element, "defaultAnimationState", value)));
   }
   if (elements.length === 1 && element.kind === "text") {
-    layoutEditorFields.appendChild(layoutTextAreaField("Default Text", layoutDefaultText(element), (value) => updateLayoutTextValue(element, "defaultText", value)));
-    layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutTextValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText === true));
-    layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText === true, (value) => updateLayoutTextValue(element, "autoFitText", value)));
-    layoutEditorFields.appendChild(layoutColorField("Font Color", normalizeUiColor(element.fontColor) || "#ffffff", (value, options) => updateLayoutTextValue(element, "fontColor", value, options)));
+    layoutEditorFields.appendChild(layoutTextAreaField("Default Text", layoutDefaultText(element), (value) => updateLayoutElementValue(element, "defaultText", value)));
+    layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutElementValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText === true));
+    layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText === true, (value) => updateLayoutElementValue(element, "autoFitText", value)));
+    layoutEditorFields.appendChild(layoutColorField("Font Color", normalizeUiColor(element.fontColor) || "#ffffff", (value, options) => updateLayoutElementValue(element, "fontColor", value, options)));
   }
 }
 
@@ -1133,7 +1133,7 @@ function updateLayoutNumber(key, value) {
   renderLayoutTool();
 }
 
-function updateLayoutTextValue(element, key, value, options = {}) {
+function updateLayoutElementValue(element, key, value, options = {}) {
   if (options.history !== false) pushLayoutHistory();
   if (key === "fontSize") {
     element[key] = Number(Number(value).toFixed(3));
