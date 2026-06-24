@@ -806,45 +806,46 @@
       "description": "Editable timer art used during timed input moments.",
       "isCustom": false,
       "canvas": {
-        "width": 190,
-        "height": 190
+        "width": 180,
+        "height": 180
       },
       "components": [
         {
           "id": "timer-value",
           "name": "Timer Value",
           "kind": "text",
-          "x": 95,
-          "y": 95,
-          "width": 120,
+          "x": 90,
+          "y": 92,
+          "width": 130,
           "height": 82,
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
           "defaultText": "30",
-          "fontSize": 72,
-          "autoFitText": true,
+          "fontSize": 74,
+          "autoFitText": false,
           "fontColor": "#17131f"
         },
         {
           "id": "timer-ring",
           "name": "Timer Ring",
           "kind": "shape",
-          "x": 95,
-          "y": 95,
-          "width": 170,
-          "height": 170,
+          "x": 90,
+          "y": 90,
+          "width": 180,
+          "height": 180,
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
-          "shapeStyle": "circle",
-          "fillColor": "#ffe256",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "radial-gradient(circle at center, #fffdf4 0 54%, transparent 55%), conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)",
           "borderColor": "#17131f",
-          "borderWidth": 6,
-          "borderRadius": 999
+          "borderWidth": 5,
+          "borderRadius": 36
         }
       ],
-      "updatedAt": "2026-06-24T01:35:20.187Z"
+      "updatedAt": "2026-06-24T04:03:34.228Z"
     }
   }
 }
