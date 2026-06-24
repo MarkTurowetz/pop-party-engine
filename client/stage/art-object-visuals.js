@@ -19,6 +19,7 @@
     element.style.setProperty("--component-font-size", `${componentFontSize(component)}px`);
     element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
     element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
+    element.style.setProperty("--component-fill-css", componentSchema.normalizeFillCss(component.fillCss) || component.fillColor || "transparent");
     element.style.setProperty("--component-border-color", component.borderColor || "transparent");
     element.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
     element.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);

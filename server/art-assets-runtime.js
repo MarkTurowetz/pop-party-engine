@@ -140,6 +140,7 @@ function createArtAssetsRuntime({
     if (kind === "shape" || kind === "container" || kind === "badge") {
       normalized.shapeStyle = artComponentSchema.normalizeShapeStyle(source.shapeStyle || base.shapeStyle, kind);
       normalized.fillColor = cleanColor(source.fillColor, base.fillColor || "transparent");
+      normalized.fillCss = artComponentSchema.normalizeFillCss(source.fillCss || base.fillCss);
       normalized.borderColor = cleanColor(source.borderColor, base.borderColor || "transparent");
       normalized.borderWidth = cleanNumber(source.borderWidth, Number(base.borderWidth || 0), 0, 80);
       normalized.borderRadius = cleanNumber(source.borderRadius, Number(base.borderRadius || 0), 0, 999);
@@ -224,15 +225,18 @@ function createArtAssetsRuntime({
   function normalizeComposition(composition, override = null) {
     const components = normalizeCompositionComponents(composition.components || [], override?.components);
     migrateGeneratedStageCodePanelDefaults(composition.id, components);
+    migrateGeneratedWidgetDefaults(composition.id, components);
+    const canvas = {
+      width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
+      height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
+    };
+    migrateGeneratedWidgetCanvas(composition.id, canvas);
     return {
       id: composition.id,
       name: cleanText(override?.name, composition.name || "Art Asset"),
       description: cleanText(override?.description, composition.description || "Editable art asset.", 240),
       isCustom: Boolean(composition.isCustom || override?.isCustom),
-      canvas: {
-        width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
-        height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
-      },
+      canvas,
       components,
       updatedAt: override?.updatedAt || null
     };
@@ -273,6 +277,116 @@ function createArtAssetsRuntime({
       code.height = 105;
       code.fontSize = 112;
       code.autoFitText = false;
+    }
+  }
+
+  function migrateGeneratedWidgetCanvas(compositionId, canvas = {}) {
+    if (compositionId === "stage-code-widget" && canvas.width === 210 && canvas.height === 112) {
+      canvas.width = 170;
+      canvas.height = 82;
+    }
+    if (compositionId === "crafting-timer-widget" && canvas.width === 190 && canvas.height === 190) {
+      canvas.width = 180;
+      canvas.height = 180;
+    }
+  }
+
+  function migrateGeneratedWidgetDefaults(compositionId, components = []) {
+    const byId = new Map((components || []).map((component) => [component.id, component]));
+    if (compositionId === "stage-code-widget") {
+      const card = byId.get("badge-card");
+      if (card && card.width === 190 && card.height === 92 && card.x === 105 && card.y === 56) {
+        card.x = 85;
+        card.y = 41;
+        card.width = 170;
+        card.height = 82;
+      }
+      const label = byId.get("badge-label");
+      if (label && label.fontSize === 18 && label.autoFitText === true) {
+        label.x = 85;
+        label.y = 22;
+        label.width = 130;
+        label.height = 14;
+        label.fontSize = 10;
+        label.autoFitText = false;
+      }
+      const code = byId.get("badge-code");
+      if (code && code.fontSize === 42 && code.autoFitText === true) {
+        code.x = 85;
+        code.y = 50;
+        code.width = 140;
+        code.height = 32;
+        code.fontSize = 32;
+        code.autoFitText = false;
+      }
+    }
+    if (compositionId === "join-widget") {
+      const text = byId.get("join-text");
+      if (text && text.fontColor === "#ffffff" && text.fontSize === 42) {
+        text.width = 704;
+        text.height = 52;
+        text.fontSize = 28;
+        text.fontColor = "#17131f";
+      }
+    }
+    if (compositionId === "countdown-popup") {
+      const card = byId.get("popup-card");
+      if (card && card.fillColor === "#ffe256") {
+        card.fillColor = "#60d394";
+      }
+    }
+    if (compositionId === "crafting-timer-widget") {
+      const ring = byId.get("timer-ring");
+      if (ring && ring.shapeStyle === "circle" && ring.fillColor === "#ffe256") {
+        ring.x = 90;
+        ring.y = 90;
+        ring.width = 180;
+        ring.height = 180;
+        ring.shapeStyle = "rounded";
+        ring.fillColor = "#fffdf4";
+        ring.fillCss = "radial-gradient(circle at center, #fffdf4 0 54%, transparent 55%), conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)";
+        ring.borderWidth = 5;
+        ring.borderRadius = 36;
+      }
+      const value = byId.get("timer-value");
+      if (value && value.x === 95 && value.y === 95 && value.fontSize === 72) {
+        value.x = 90;
+        value.y = 92;
+        value.width = 130;
+        value.height = 82;
+        value.fontSize = 74;
+        value.autoFitText = false;
+      }
+    }
+    if (compositionId === "join-qr-code") {
+      const card = byId.get("qr-card");
+      if (card && card.width === 240 && card.height === 280) {
+        card.width = 260;
+        card.height = 300;
+        card.fillColor = "#fffdf4";
+      }
+      const placeholder = byId.get("qr-placeholder");
+      if (placeholder && placeholder.width === 162 && placeholder.height === 162) {
+        placeholder.y = 124;
+        placeholder.width = 212;
+        placeholder.height = 212;
+        placeholder.fillColor = "#fffdf4";
+      }
+      const label = byId.get("qr-label");
+      if (label && label.fontSize === 24 && label.autoFitText === true) {
+        label.y = 248;
+        label.width = 220;
+        label.height = 24;
+        label.fontSize = 20;
+        label.autoFitText = false;
+      }
+      const url = byId.get("qr-url");
+      if (url && url.fontSize === 14) {
+        url.y = 278;
+        url.width = 220;
+        url.height = 30;
+        url.fontSize = 12;
+      }
     }
   }
 

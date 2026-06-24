@@ -13,6 +13,7 @@ const imageMimeTypes = ["image/png", "image/svg+xml", "image/jpeg", "image/webp"
 const imageObjectFits = ["cover", "contain", "fill"];
 const componentImageMaxBytes = 5 * 1024 * 1024;
 const imageAccept = imageMimeTypes.join(",");
+const fillCssMaxLength = 240;
 
 function normalizeValue(value) {
   return String(value || "").trim().toLowerCase();
@@ -105,6 +106,15 @@ function validateImageFile(file) {
   return "";
 }
 
+function normalizeFillCss(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (text.length > fillCssMaxLength) return "";
+  if (!/^[a-zA-Z0-9#%.,()*_\-\s]+$/.test(text)) return "";
+  if (!/\b(?:linear-gradient|radial-gradient|conic-gradient)\(/.test(text)) return "";
+  return text;
+}
+
 const exportedSchema = {
   componentHasImageMask,
   componentImageMaskDataUrl,
@@ -124,6 +134,7 @@ const exportedSchema = {
   isSupportedImageMimeType,
   normalizeComponentKind,
   normalizeCreatableComponentKind,
+  normalizeFillCss,
   normalizeImageObjectFit,
   normalizeShapeStyle,
   parseImageDataUrl,

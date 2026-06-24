@@ -54,6 +54,7 @@ function serializeArtComponentForSave(component) {
     fontColor: component.fontColor || "#17131f",
     shapeStyle: artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind),
     fillColor: component.fillColor || "transparent",
+    fillCss: artComponentSchema.normalizeFillCss(component.fillCss),
     borderColor: component.borderColor || "transparent",
     borderWidth: Number(Number(component.borderWidth || 0).toFixed(3)),
     borderRadius: Number(Number(component.borderRadius || 0).toFixed(3)),
@@ -504,6 +505,7 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
   node.style.setProperty("--component-font-size", `${artComponentComputedFontSize(component)}px`);
   node.style.setProperty("--component-text-color", component.fontColor || "#17131f");
   node.style.setProperty("--component-fill-color", component.fillColor || "transparent");
+  node.style.setProperty("--component-fill-css", artComponentSchema.normalizeFillCss(component.fillCss) || component.fillColor || "transparent");
   node.style.setProperty("--component-border-color", component.borderColor || "transparent");
   node.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
   node.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);

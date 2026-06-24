@@ -550,6 +550,8 @@ function layoutPreviewContent(element) {
     }
   } else if (id === "stagetitle") {
     content.innerHTML = `<div class="layout-preview-title">Party Game Template</div>`;
+  } else if (renderLayoutWidgetArtPreview(content, id)) {
+    return content;
   } else if (id === "stagecodepanel") {
     content.innerHTML = `<div class="layout-preview-code-card"><span>Stage Code</span><strong>NUZ7</strong></div>`;
   } else if (id === "stagejoinqr") {
@@ -597,6 +599,67 @@ function layoutPreviewContent(element) {
     content.textContent = element.name;
   }
   return content;
+}
+
+function renderLayoutWidgetArtPreview(content, elementId) {
+  const binding = layoutWidgetArtPreviewBinding(elementId);
+  const composition = binding ? artComposition(binding.compositionId) : null;
+  const artRuntime = window.PartyGameArtObject;
+  if (!content || !binding || !composition || !artRuntime) return false;
+  content.classList.add("is-art-composition-preview");
+  const components = (composition.components || []).map((component) => layoutWidgetArtPreviewComponent(component, binding.textOverrides || {}));
+  const renderer = new artRuntime.ArtObjectTreeRenderer({
+    host: content,
+    document,
+    visualAnimation: window.PartyGameVisualObject
+  });
+  renderer.render(components, composition.canvas || { width: 1, height: 1 }, { instant: true });
+  return true;
+}
+
+function layoutWidgetArtPreviewComponent(component, textOverrides = {}) {
+  const clone = {
+    ...component,
+    children: (component.children || []).map((child) => layoutWidgetArtPreviewComponent(child, textOverrides))
+  };
+  if (Object.prototype.hasOwnProperty.call(textOverrides, clone.id)) {
+    clone.defaultText = String(textOverrides[clone.id] ?? "");
+  }
+  return clone;
+}
+
+function layoutWidgetArtPreviewBinding(elementId) {
+  const bindings = {
+    stagecodepanel: {
+      compositionId: "stage-code-panel",
+      textOverrides: { "panel-code": "NUZ7" }
+    },
+    stagejoinqr: {
+      compositionId: "join-qr-code",
+      textOverrides: { "qr-url": "pop-party.onrender.com/controller?stage=NUZ7" }
+    },
+    joinprompt: {
+      compositionId: "join-widget",
+      textOverrides: { "join-text": "Join the Lobby at bit.ly/popcontroller" }
+    },
+    startpopup: {
+      compositionId: "countdown-popup",
+      textOverrides: { "popup-text": "Starting in 3" }
+    },
+    craftingtimer: {
+      compositionId: "crafting-timer-widget",
+      textOverrides: { "timer-value": "30" }
+    },
+    stagecodebadge: {
+      compositionId: "stage-code-widget",
+      textOverrides: { "badge-code": "NUZ7" }
+    },
+    presentclickwidget: {
+      compositionId: "presentation-click-prompt",
+      textOverrides: {}
+    }
+  };
+  return bindings[elementId] || null;
 }
 
 function layoutDefaultText(element) {

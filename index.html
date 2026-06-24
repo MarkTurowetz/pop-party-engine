@@ -1151,7 +1151,7 @@
       border-color: var(--component-border-color, var(--ink));
       border-width: var(--component-border-width, 2px);
       border-radius: var(--component-border-radius, 12px);
-      background: var(--component-fill-color, transparent);
+      background: var(--component-fill-css, var(--component-fill-color, transparent));
     }
 
     .art-runtime-object.is-style-circle {
@@ -2538,7 +2538,7 @@
       border-color: var(--component-border-color, var(--ink));
       border-width: var(--component-border-width, 2px);
       border-radius: var(--component-border-radius, 12px);
-      background: var(--component-fill-color, transparent);
+      background: var(--component-fill-css, var(--component-fill-color, transparent));
     }
 
     .art-composition-component.is-shape.has-image-mask {
@@ -3747,6 +3747,12 @@
       display: grid;
       place-items: center;
       pointer-events: none;
+    }
+
+    .layout-preview-content.is-art-composition-preview {
+      position: relative;
+      display: block;
+      overflow: visible;
     }
 
     .layout-preview-input-label {
