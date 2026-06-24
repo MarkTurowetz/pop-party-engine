@@ -466,7 +466,10 @@ function applyControllerElementLayout(element, isGlobal = false) {
     target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
   } else if (isDynamicControllerArtInstance(element)) {
-    entity.update?.({ artRenderer: renderControllerArtInstance(element, target, entity.visibilityKey) });
+    entity.update?.({
+      artRenderer: renderControllerArtInstance(element, target, entity.visibilityKey),
+      syncArtRendererOnShow: true
+    });
   }
   applyControllerLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {
@@ -756,7 +759,10 @@ function applyStageElementLayout(element, isGlobal) {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
   } else if (isDynamicStageArtInstance(element)) {
-    entity.update?.({ artRenderer: renderStageArtInstance(element, target, entity.visibilityKey) });
+    entity.update?.({
+      artRenderer: renderStageArtInstance(element, target, entity.visibilityKey),
+      syncArtRendererOnShow: true
+    });
   }
   applyStageLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {

@@ -158,6 +158,9 @@ concepts into focused modules.
   parked source-root component does not make `Set Art Asset Shown` appear an empty host.
 - Dynamic layout art entities should carry their `ArtObjectTreeRenderer` on the same
   registered GameObject entity that owns the placed instance host.
+- Layout art entities opt into syncing that renderer to `on` before a show animation,
+  so `Set Art Asset Shown` can reliably reveal prefab instances without changing the
+  default behavior of unrelated GameObjects.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same
   composition schema rather than maintaining separate art systems.

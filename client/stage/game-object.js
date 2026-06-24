@@ -13,6 +13,7 @@
       this.defaultAnimationState = "";
       this.visual = null;
       this.artRenderer = null;
+      this.syncArtRendererOnShow = false;
       this.visualOptions = options.visualOptions || {};
       this.layoutHiddenClasses = options.layoutHiddenClasses || this.visualOptions.layoutHiddenClasses || ["stage-layout-hidden"];
       this.visibilityOverrides = options.visibilityOverrides || new Map();
@@ -35,6 +36,7 @@
         this.defaultAnimationState = String(options.defaultAnimationState ?? options.element?.defaultAnimationState ?? "");
       }
       if (options.artRenderer !== undefined) this.artRenderer = options.artRenderer || null;
+      if (options.syncArtRendererOnShow !== undefined) this.syncArtRendererOnShow = options.syncArtRendererOnShow === true;
       if (options.visualOptions) this.visualOptions = options.visualOptions;
       if (options.layoutHiddenClasses) this.layoutHiddenClasses = options.layoutHiddenClasses;
       if (options.visibilityOverrides) this.visibilityOverrides = options.visibilityOverrides;
@@ -158,6 +160,9 @@
 
     playVisibility(isShown, options = {}) {
       if (!global.PartyGameVisualObject) return 0;
+      if (isShown === true && this.syncArtRendererOnShow && typeof this.artRenderer?.playAll === "function") {
+        this.artRenderer.playAll("on", { instant: true });
+      }
       const visual = this.createVisual();
       if (!visual) return 0;
       const animation = global.PartyGameVisualObject.animationForVisibility(isShown === true, visual.isVisible());
