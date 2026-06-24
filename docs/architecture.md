@@ -81,6 +81,8 @@ concepts into focused modules.
     staged elements through a consistent visibility/animation API.
   - `client/stage/art-object-visuals.js` owns rendered Art Manager component trees;
     each rendered component is backed by the shared game-object wrapper.
+  - `client/stage/voting-card-visuals.js` owns voting card composition rendering and
+    routes card groups, widgets, and voter badges through shared game objects.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,

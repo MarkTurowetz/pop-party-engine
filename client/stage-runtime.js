@@ -141,6 +141,7 @@ function votingCardRenderer() {
       avatarFrameImage,
       dinoIcon,
       playerAvatarArt,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
       getComposition: () => artComposition("voting-card")
     });
   }

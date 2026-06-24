@@ -46,6 +46,10 @@
       this.dinoIcon = options.dinoIcon;
       this.playerAvatarArt = options.playerAvatarArt || ((shape) => `${this.avatarFrameImage()}${this.dinoIcon(shape)}`);
       this.getComposition = options.getComposition;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
+      this.cardId = options.cardId;
+      this.visualGameObjects = new WeakMap();
+      this.visualFallbacks = new WeakMap();
       this.element = createVotingCardElement(this.document, options.cardId);
       this.authorElement = this.element.querySelector(".voting-card-author");
       this.cardElement = this.element.querySelector(".voting-card");
@@ -66,24 +70,62 @@
         exitingClass: "voting-card-group-exiting",
         updateClass: "voting-card-update",
         instantClass: "voting-card-instant"
-      });
+      }, "group");
       this.authorVisual = this.createVisual(this.authorElement, {
         hiddenClasses: ["voting-card-widget-hidden"],
         motionHiddenClasses: ["voting-card-widget-hidden"],
         instantClass: "voting-card-widget-instant"
-      });
+      }, "author");
       this.votersVisual = this.createVisual(this.votersElement, {
         hiddenClasses: ["voting-card-widget-hidden"],
         motionHiddenClasses: ["voting-card-widget-hidden"],
         instantClass: "voting-card-widget-instant"
-      });
+      }, "voters");
     }
 
-    createVisual(element, options) {
-      return this.visualAnimation.createCssVisualObject({
-        element,
-        ...options
-      });
+    createVisual(element, options = {}, key = "") {
+      if (!element) return null;
+      const id = `voting-card:${this.cardId || this.element?.dataset.cardId || "card"}:${key || element.dataset.voterId || element.className || "visual"}`;
+      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
+      if (GameObject) {
+        let gameObject = this.visualGameObjects.get(element);
+        if (!gameObject || gameObject.id !== id || gameObject.target !== element) {
+          gameObject = new GameObject({
+            id,
+            target: element,
+            visibilityKey: id,
+            isArt: true,
+            isDynamic: true,
+            visualOptions: {
+              ...options,
+              layoutHiddenClasses: [
+                ...(Array.isArray(options.hiddenClasses) ? options.hiddenClasses : [options.hiddenClasses]).filter(Boolean),
+                ...(options.exitingClass ? [options.exitingClass] : [])
+              ]
+            }
+          });
+          this.visualGameObjects.set(element, gameObject);
+        } else {
+          gameObject.update({
+            id,
+            visibilityKey: id,
+            isArt: true,
+            isDynamic: true,
+            visualOptions: options
+          });
+        }
+        return gameObject.createVisual();
+      }
+      if (!this.visualAnimation) return null;
+      let visual = this.visualFallbacks.get(element);
+      if (!visual || visual.element !== element) {
+        visual = this.visualAnimation.createCssVisualObject({
+          element,
+          ...options
+        });
+        this.visualFallbacks.set(element, visual);
+      }
+      return visual;
     }
 
     createArtTreeRenderer(host) {
@@ -91,6 +133,7 @@
       return new this.artObjectRuntime.ArtObjectTreeRenderer({
         host,
         document: this.document,
+        gameObjectApi: this.gameObjectApi,
         visualAnimation: this.visualAnimation
       });
     }
@@ -221,7 +264,7 @@
         hiddenClasses: ["voting-card-vote-hidden"],
         motionHiddenClasses: ["voting-card-vote-hidden"],
         instantClass: "voting-card-vote-instant"
-      }).play("appear");
+      }, `voter:${badge.dataset.voterId || ""}`)?.play("appear");
       this.syncVoteCount(visibleVoteCount);
     }
 
@@ -274,7 +317,7 @@
           hiddenClasses: ["voting-card-vote-hidden"],
           motionHiddenClasses: ["voting-card-vote-hidden"],
           instantClass: "voting-card-vote-instant"
-        }).play("park", { instant: true });
+        }, `voter:${badge.dataset.voterId || ""}`)?.play("park", { instant: true });
       });
       if (!badges.length) return;
       badges.forEach((badge, index) => {
@@ -352,6 +395,7 @@
       this.dinoIcon = options.dinoIcon;
       this.playerAvatarArt = options.playerAvatarArt;
       this.getComposition = options.getComposition;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.cards = new Map();
       this.hideLayerTimer = null;
     }
@@ -372,6 +416,7 @@
             dinoIcon: this.dinoIcon,
             playerAvatarArt: this.playerAvatarArt,
             getComposition: this.getComposition,
+            gameObjectApi: this.gameObjectApi,
             cardId: cardData.id
           });
           this.cards.set(cardData.id, view);
