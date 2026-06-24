@@ -111,8 +111,13 @@
       element.classList.toggle("is-long", nextText.length > 62);
       element.classList.toggle("is-extra-long", nextText.length > 104);
       object.text = nextText;
-      const animation = this.visualAnimation.animationForVisibility(isShown, this.isVisible(object));
-      return this.visualFor(object)?.play(animation, { instant, complete: options.complete }) || 0;
+      const visual = this.visualFor(object);
+      const result = global.PartyGameVisualBridge?.playVisibilityForTarget?.({
+        visual,
+        isShown,
+        playOptions: { instant, complete: options.complete }
+      });
+      return result?.duration || 0;
     }
   }
 
@@ -210,8 +215,12 @@
         this.element?.classList.toggle("hidden", !isShown);
         return 0;
       }
-      const animation = this.visualAnimation.animationForVisibility(isShown, visual.isVisible());
-      return visual.play(animation, { instant: options.instant === true });
+      const result = global.PartyGameVisualBridge?.playVisibilityForTarget?.({
+        visual,
+        isShown,
+        playOptions: { instant: options.instant === true }
+      });
+      return result?.duration || 0;
     }
 
     setShownForAction(action, options = {}) {

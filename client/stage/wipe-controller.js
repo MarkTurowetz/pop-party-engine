@@ -166,11 +166,15 @@
         return 0;
       }
       const nextShown = isShown !== false;
-      const animation = this.visualAnimation.animationForVisibility(nextShown, visual.isVisible());
-      return visual.play(animation, {
-        complete: options.complete,
-        instant: options.instant === true
+      const result = global.PartyGameVisualBridge?.playVisibilityForTarget?.({
+        visual,
+        isShown: nextShown,
+        playOptions: {
+          complete: options.complete,
+          instant: options.instant === true
+        }
       });
+      return result?.duration || 0;
     }
 
     setShownForAction(action, options = {}) {

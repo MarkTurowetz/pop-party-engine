@@ -49,6 +49,7 @@ function createLayoutNormalizationRuntime({
       height,
       scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10),
       rotation: normalizeLayoutNumber(element.rotation, 0, -3600, 3600),
+      defaultAnimationState: normalizeLayoutDefaultAnimationState(element.defaultAnimationState),
       defaultText: kind === "text" ? cleanLayoutText(element.defaultText) : "",
       fontSize: kind === "text" ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
       autoFitText: kind === "text" ? element.autoFitText === true : false,
@@ -60,6 +61,11 @@ function createLayoutNormalizationRuntime({
     const cleanKind = String(kind || "").trim().toLowerCase();
     if (cleanKind === "text") return "text";
     return /waitingstatus|joinprompt|stage(?:presentation|prompt)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
+  }
+
+  function normalizeLayoutDefaultAnimationState(value) {
+    const cleanValue = String(value || "").trim().toLowerCase();
+    return ["park", "on", "off", "appear", "disappear", "update"].includes(cleanValue) ? cleanValue : "";
   }
 
   function dedupeLayoutElements(elements) {

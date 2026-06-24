@@ -141,14 +141,43 @@ function layoutArtVisualFor(entity) {
   return typeof entity.createVisual === "function" ? entity.createVisual() : null;
 }
 
+function layoutDefaultVisibilityForEntity(entity) {
+  const element = entity?.element || {};
+  const state = String(element.defaultAnimationState || "").trim().toLowerCase();
+  if (["on", "appear", "update", "visible", "shown"].includes(state)) return true;
+  if (["park", "off", "disappear", "hidden", "hide"].includes(state)) return false;
+  if (entity?.isDynamic && entity?.isArt) return false;
+  return null;
+}
+
+function applyLayoutDefaultVisibility(entity, options = {}) {
+  const target = entity?.target;
+  if (!target || options.visibilityOverrides?.has(entity?.visibilityKey || "")) return false;
+  const isShown = layoutDefaultVisibilityForEntity(entity);
+  if (isShown === null) return false;
+  target.dataset.visualVisible = isShown ? "true" : "false";
+  if (isShown) {
+    target.classList.remove(options.hiddenClass, options.exitingClass);
+    return true;
+  }
+  if (!target.classList.contains(options.exitingClass)) {
+    target.classList.add(options.hiddenClass);
+  }
+  return true;
+}
+
 function applyLayoutVisibilityOverride(entity, options = {}) {
-  if (typeof entity?.applyVisibilityOverride === "function") {
+  if (options.visibilityOverrides?.has(entity?.visibilityKey || "") && typeof entity?.applyVisibilityOverride === "function") {
     entity.applyVisibilityOverride();
     return;
   }
   const target = entity?.target;
   const visibilityKey = entity?.visibilityKey || "";
-  if (!visibilityKey || !target || !options.visibilityOverrides?.has(visibilityKey)) return;
+  if (!visibilityKey || !target) return;
+  if (!options.visibilityOverrides?.has(visibilityKey)) {
+    applyLayoutDefaultVisibility(entity, options);
+    return;
+  }
   const isShown = options.visibilityOverrides.get(visibilityKey) !== false;
   target.dataset.visualVisible = isShown ? "true" : "false";
   if (isShown) {
@@ -174,10 +203,15 @@ function setLayoutArtElementShownForAction(action, options = {}) {
   if (typeof entity?.playVisibility === "function") {
     return entity.playVisibility(isShown, { instant: action.instant === true });
   }
-  const visual = layoutArtVisualFor(entity || options.entityForElementId?.(elementId, target));
-  if (!visual) return 0;
-  const animation = window.PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
-  return visual.play(animation, { instant: action.instant === true });
+  const resolvedEntity = entity || options.entityForElementId?.(elementId, target);
+  const visual = layoutArtVisualFor(resolvedEntity);
+  const result = window.PartyGameVisualBridge?.playVisibilityForTarget?.({
+    target,
+    visual,
+    isShown,
+    playOptions: { instant: action.instant === true }
+  });
+  return result?.duration || 0;
 }
 
 async function loadStageLayouts({ forceServer = false } = {}) {

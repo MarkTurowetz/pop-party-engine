@@ -231,12 +231,37 @@
     };
   }
 
+  function playVisibilityForTarget(options = {}) {
+    const bridge = options.visual
+      ? {
+          gameObject: options.gameObject || null,
+          legacyVisual: options.legacyVisual || null,
+          visual: options.visual
+        }
+      : createVisualForTarget(options);
+    const visual = bridge.visual || null;
+    if (!visual || !global.PartyGameVisualObject) {
+      return {
+        ...bridge,
+        duration: 0
+      };
+    }
+    const isShown = options.isShown !== false;
+    const animation = global.PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
+    const duration = visual.play(animation, options.playOptions || {});
+    return {
+      ...bridge,
+      duration
+    };
+  }
+
   const api = {
     create: createGameObject,
     createGameObject,
     createRegistry: createGameObjectRegistry,
     createGameObjectRegistry,
     createVisualForTarget,
+    playVisibilityForTarget,
     GameObject,
     GameObjectRegistry,
     StageGameObject: GameObject,
@@ -245,6 +270,7 @@
   global.PartyGameGameObject = api;
   global.PartyGameStageGameObject = api;
   global.PartyGameVisualBridge = {
-    createVisualForTarget
+    createVisualForTarget,
+    playVisibilityForTarget
   };
 })(window);
