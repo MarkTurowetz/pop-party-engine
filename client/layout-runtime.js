@@ -303,6 +303,18 @@ function playLayoutEntityVisibility(entity, isShown, options = {}) {
   return result?.duration || 0;
 }
 
+function layoutArtMissingTargetReason(details = {}) {
+  const actionVerb = details.isShown ? "show" : "hide";
+  const scopeText = details.scope ? ` in ${details.scope} scope` : "";
+  if (details.visibilityKey) {
+    return `placed instance not active${scopeText}; saved pending ${actionVerb} for ${details.visibilityKey}`;
+  }
+  if (details.sourceArtAsset) {
+    return `target id is a source prefab (${details.elementId}); add it to this layout and target the placed instance`;
+  }
+  return `no placed layout entity found for ${details.elementId || "unknown target"}${scopeText}`;
+}
+
 function setLayoutArtElementShownForAction(action, options = {}) {
   const elementId = action?.targetLayoutElementId || "";
   if (!elementId || !window.PartyGameVisualObject) return 0;
@@ -322,11 +334,13 @@ function setLayoutArtElementShownForAction(action, options = {}) {
   const visibilityKey = entity?.visibilityKey || options.visibilityKeyForTarget?.(elementId, target, scope);
   if (!target) {
     if (visibilityKey) options.visibilityOverrides?.set(visibilityKey, isShown);
-    warn(visibilityKey
-      ? "target not active; saved pending visibility"
-      : sourceArtAsset
-        ? "target is an art asset source; add it to this layout and select the placed instance"
-        : "target not found");
+    warn(layoutArtMissingTargetReason({
+      elementId,
+      isShown,
+      scope,
+      sourceArtAsset,
+      visibilityKey
+    }));
     return 0;
   }
   return playLayoutEntityVisibility(entity || options.entityForElementId?.(elementId, target, scope), isShown, {
