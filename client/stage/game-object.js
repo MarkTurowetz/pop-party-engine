@@ -14,6 +14,8 @@
       this.visualOptions = options.visualOptions || {};
       this.layoutHiddenClasses = options.layoutHiddenClasses || this.visualOptions.layoutHiddenClasses || ["stage-layout-hidden"];
       this.visibilityOverrides = options.visibilityOverrides || new Map();
+      this.getVisible = typeof options.getVisible === "function" ? options.getVisible : null;
+      this.setVisibleHandler = typeof options.setVisible === "function" ? options.setVisible : null;
       this.update(options);
     }
 
@@ -28,6 +30,8 @@
       if (options.visualOptions) this.visualOptions = options.visualOptions;
       if (options.layoutHiddenClasses) this.layoutHiddenClasses = options.layoutHiddenClasses;
       if (options.visibilityOverrides) this.visibilityOverrides = options.visibilityOverrides;
+      if (typeof options.getVisible === "function") this.getVisible = options.getVisible;
+      if (typeof options.setVisible === "function") this.setVisibleHandler = options.setVisible;
       return this;
     }
 
@@ -69,6 +73,7 @@
       if (this.visibilityOverrides.has(this.visibilityKey)) {
         return this.visibilityOverrides.get(this.visibilityKey) === true;
       }
+      if (this.getVisible) return this.getVisible() === true;
       return this.target.dataset.visualVisible === "true"
         || (!this.hasClass(hiddenClass)
           && !this.hasClass(exitingClass)
@@ -79,6 +84,7 @@
       if (!this.target) return;
       this.visibilityOverrides.set(this.visibilityKey, isVisible === true);
       this.target.dataset.visualVisible = isVisible ? "true" : "false";
+      if (this.setVisibleHandler) this.setVisibleHandler(isVisible === true);
     }
 
     applyVisibilityOverride() {
@@ -98,7 +104,6 @@
 
     playVisibility(isShown, options = {}) {
       if (!global.PartyGameVisualObject) return 0;
-      this.visibilityOverrides.set(this.visibilityKey, isShown === true);
       const visual = this.createVisual();
       if (!visual) return 0;
       const animation = global.PartyGameVisualObject.animationForVisibility(isShown === true, visual.isVisible());

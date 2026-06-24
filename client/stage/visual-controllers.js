@@ -8,6 +8,7 @@
   class StageTextController {
     constructor(options = {}) {
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.queryTextElements = typeof options.queryTextElements === "function" ? options.queryTextElements : () => [];
       this.normalizeTextTargetId = typeof options.normalizeTextTargetId === "function" ? options.normalizeTextTargetId : (value) => String(value || "");
       this.applyTextProperties = typeof options.applyTextProperties === "function" ? options.applyTextProperties : () => {};
@@ -50,6 +51,8 @@
 
     visualFor(object) {
       if (!object?.element || !this.visualAnimation) return null;
+      const gameObject = this.gameObjectFor(object);
+      if (gameObject) return gameObject.createVisual();
       if (!object.visual || object.visual.element !== object.element) {
         object.visual = this.visualAnimation.createCssVisualObject({
           element: object.element,
@@ -69,6 +72,35 @@
       return object.visual;
     }
 
+    gameObjectFor(object) {
+      if (!object?.element) return null;
+      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
+      if (!GameObject) return null;
+      if (!object.gameObject || object.gameObject.target !== object.element) {
+        const id = this.normalizeTextTargetId(object.element.id || object.layoutElement?.id || "text");
+        object.gameObject = new GameObject({
+          id,
+          element: object.layoutElement || null,
+          target: object.element,
+          visibilityKey: `text:${id}`,
+          visualOptions: {
+            hiddenClasses: ["text-hidden", "hidden"],
+            motionHiddenClasses: ["text-hidden"],
+            displayHiddenClasses: ["hidden"],
+            updateClass: "text-update",
+            instantClass: "text-instant",
+            layoutHiddenClasses: ["hidden", "text-hidden"]
+          },
+          getVisible: () => object.visible === true || !isElementParked(object.element),
+          setVisible: (isVisible) => {
+            object.visible = isVisible;
+            object.element.dataset.visualVisible = isVisible ? "true" : "false";
+          }
+        });
+      }
+      return object.gameObject;
+    }
+
     isVisible(object) {
       return this.visualFor(object)?.isVisible() === true;
     }
@@ -80,12 +112,14 @@
       const nextText = options.text ?? object.text ?? "";
       const isShown = options.isShown !== false;
       const instant = options.instant === true;
-      const animation = this.visualAnimation.animationForVisibility(isShown, this.isVisible(object));
       if (nextText || isShown) element.textContent = nextText;
       if (object.layoutElement) this.applyTextProperties(element, object.layoutElement);
       element.classList.toggle("is-long", nextText.length > 62);
       element.classList.toggle("is-extra-long", nextText.length > 104);
       object.text = nextText;
+      const gameObject = this.gameObjectFor(object);
+      if (gameObject) return gameObject.playVisibility(isShown, { instant, complete: options.complete });
+      const animation = this.visualAnimation.animationForVisibility(isShown, this.isVisible(object));
       return this.visualFor(object)?.play(animation, { instant, complete: options.complete }) || 0;
     }
   }

@@ -489,11 +489,14 @@ function setStageLayoutArtElementShownForAction(action) {
   const entity = stageLayoutEntityForElementId(elementId);
   const target = entity?.target || null;
   const visibilityKey = entity?.visibilityKey || stageLayoutElementVisibilityKey(elementId, target);
-  stageLayoutArtVisibilityOverrides.set(visibilityKey, isShown);
-  if (!target) return 0;
+  if (!target) {
+    stageLayoutArtVisibilityOverrides.set(visibilityKey, isShown);
+    return 0;
+  }
   if (typeof entity?.playVisibility === "function") {
     return entity.playVisibility(isShown, { instant: action.instant === true });
   }
+  stageLayoutArtVisibilityOverrides.set(visibilityKey, isShown);
   const visual = stageLayoutArtVisualFor(entity || stageLayoutEntityForElementId(elementId, target));
   if (!visual) return 0;
   const animation = window.PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
