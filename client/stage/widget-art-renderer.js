@@ -57,6 +57,7 @@
         renderer = new artRuntime.ArtObjectTreeRenderer({
           host: layer,
           document: documentRef,
+          gameObjectApi: global.PartyGameGameObject || global.PartyGameStageGameObject,
           visualAnimation
         });
         renderers.set(key, renderer);

@@ -548,6 +548,7 @@ function renderStageArtInstance(element, host) {
     renderer = new artRuntime.ArtObjectTreeRenderer({
       host: layer,
       document,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
       visualAnimation: window.PartyGameVisualObject
     });
     stageArtInstanceRenderers.set(element.id, renderer);

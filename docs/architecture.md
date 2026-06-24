@@ -77,6 +77,10 @@ concepts into focused modules.
   - Browser-side modules served directly by the Node server without a build step.
   - `client/stage/visual-object.js` owns the generic CSS visual object animation contract
     used by stage text and player answer bubbles.
+  - `client/stage/game-object.js` owns the shared game-object wrapper that routes
+    staged elements through a consistent visibility/animation API.
+  - `client/stage/art-object-visuals.js` owns rendered Art Manager component trees;
+    each rendered component is backed by the shared game-object wrapper.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,

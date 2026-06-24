@@ -44,6 +44,7 @@
     constructor(options = {}) {
       this.document = options.document || global.document;
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.component = null;
       this.children = new Map();
       this.element = this.document.createElement("div");
@@ -55,22 +56,75 @@
       this.label.className = "art-runtime-object-label";
       this.element.appendChild(this.image);
       this.element.appendChild(this.label);
-      this.visual = this.visualAnimation.createCssVisualObject({
-        element: this.element,
-        hiddenClasses: [HIDDEN_CLASS],
-        motionHiddenClasses: [HIDDEN_CLASS],
-        exitingClass: EXITING_CLASS,
-        updateClass: UPDATE_CLASS,
-        instantClass: INSTANT_CLASS
-      });
+      this.gameObject = null;
+      this.visual = null;
       if (options.component) this.update(options.component, options.canvas, options.layer);
+    }
+
+    gameObjectId() {
+      return `art-component:${this.component?.id || this.element.dataset.artComponentId || ""}`;
+    }
+
+    createGameObject() {
+      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
+      if (!this.element || !GameObject) return null;
+      const id = this.gameObjectId();
+      if (!this.gameObject || this.gameObject.target !== this.element || this.gameObject.id !== id) {
+        this.gameObject = new GameObject({
+          id,
+          target: this.element,
+          visibilityKey: id,
+          isArt: true,
+          visualOptions: {
+            hiddenClasses: [HIDDEN_CLASS],
+            motionHiddenClasses: [HIDDEN_CLASS],
+            exitingClass: EXITING_CLASS,
+            updateClass: UPDATE_CLASS,
+            instantClass: INSTANT_CLASS,
+            layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS]
+          }
+        });
+      } else {
+        this.gameObject.update({
+          id,
+          visibilityKey: id,
+          isArt: true
+        });
+      }
+      return this.gameObject;
+    }
+
+    createVisual() {
+      const gameObject = this.createGameObject();
+      if (gameObject) {
+        this.visual = gameObject.createVisual();
+        return this.visual;
+      }
+      if (!this.visualAnimation) return null;
+      if (!this.visual || this.visual.element !== this.element) {
+        this.visual = this.visualAnimation.createCssVisualObject({
+          element: this.element,
+          hiddenClasses: [HIDDEN_CLASS],
+          motionHiddenClasses: [HIDDEN_CLASS],
+          exitingClass: EXITING_CLASS,
+          updateClass: UPDATE_CLASS,
+          instantClass: INSTANT_CLASS
+        });
+      }
+      return this.visual;
+    }
+
+    isVisible() {
+      return this.createVisual()?.isVisible() === true;
     }
 
     update(component, canvas, layer = {}) {
       this.component = component || {};
       const kind = componentSchema.normalizeComponentKind(this.component.kind);
+      const wasVisible = this.visual ? this.isVisible() : true;
       this.element.className = `${RUNTIME_CLASS} is-${kind} is-style-${componentSchema.normalizeShapeStyle(this.component.shapeStyle, kind)}`;
-      if (this.visual.isVisible() === false) this.element.classList.add(HIDDEN_CLASS);
+      this.element.dataset.artComponentId = this.component.id || "";
+      if (!wasVisible) this.element.classList.add(HIDDEN_CLASS);
       this.element.style.zIndex = String(componentLayerIndex(layer.index, layer.total));
       const imageSource = componentImageSource(this.component);
       this.element.classList.toggle("has-image-mask", Boolean(imageSource));
@@ -101,6 +155,7 @@
           view = new ArtObjectView({
             document: this.document,
             visualAnimation: this.visualAnimation,
+            gameObjectApi: this.gameObjectApi,
             component: child,
             canvas: childCanvas,
             layer: { index, total: (children || []).length }
@@ -120,7 +175,7 @@
     }
 
     play(animation, options = {}) {
-      return this.visual.play(animation, options);
+      return this.createVisual()?.play(animation, options) || 0;
     }
 
     park(options = {}) {
@@ -165,6 +220,7 @@
       this.host = options.host;
       this.document = options.document || global.document;
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
+      this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.views = new Map();
     }
 
@@ -177,6 +233,7 @@
           view = new ArtObjectView({
             document: this.document,
             visualAnimation: this.visualAnimation,
+            gameObjectApi: this.gameObjectApi,
             component,
             canvas,
             layer: { index, total: (components || []).length }

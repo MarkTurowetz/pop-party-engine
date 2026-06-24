@@ -785,6 +785,7 @@ function renderLayoutArtComposition(content, compositionId, textOverrides = {}) 
   const renderer = new artRuntime.ArtObjectTreeRenderer({
     host: content,
     document,
+    gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
     visualAnimation: window.PartyGameVisualObject
   });
   renderer.render(components, composition.canvas || { width: 1, height: 1 }, { instant: true });
