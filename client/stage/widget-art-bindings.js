@@ -15,6 +15,7 @@
     joinQr: {
       compositionId: "join-qr-code",
       layoutElementId: "stagejoinqr",
+      overlayComponentId: "qr-placeholder",
       previewTextOverrides: { "qr-url": "pop-party.onrender.com/controller?stage=NUZ7" }
     },
     joinWidget: {

@@ -333,7 +333,7 @@ const stageWidgetBindings = {
     }),
     overlays: [
       {
-        componentId: "qr-placeholder",
+        componentId: stageWidgetArtDefinition("joinQr")?.overlayComponentId,
         element: () => stageJoinQrCanvas
       }
     ]
