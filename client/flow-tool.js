@@ -996,11 +996,19 @@ function flowArtAssetLayoutElements(state) {
       .filter((element) => element.kind === "art" && element.artCompositionId)
       .filter((element) => !hiddenGlobals.has(element.id))
       .filter((element) => !momentIds.has(element.id))
-      .map((element) => ({ ...element, targetLayoutScope: "global", name: `Global: ${element.name || element.id}` }));
+      .map((element) => ({ ...element, targetLayoutScope: "global" }));
   return [
     ...momentElements,
     ...globalElements
   ];
+}
+
+function flowArtAssetTargetLabel(element) {
+  const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
+  const name = String(element?.name || element?.id || "Art Asset");
+  const id = String(element?.id || "");
+  const idSuffix = id && id.toLowerCase() !== name.toLowerCase() ? ` (${id})` : "";
+  return `${scope === "global" ? "Global: " : ""}${name}${idSuffix}`;
 }
 
 function flowArtAssetTargetValue(element) {
@@ -1019,7 +1027,7 @@ function flowArtAssetTargetOptions(state, selectedElementId = "") {
   const selectedParts = flowArtAssetTargetParts(selectedElementId);
   const options = [{ id: "", name: "No Art Asset" }];
   for (const element of flowArtAssetLayoutElements(state)) {
-    options.push({ id: flowArtAssetTargetValue(element), name: element.name || element.id });
+    options.push({ id: flowArtAssetTargetValue(element), name: flowArtAssetTargetLabel(element) });
   }
   const selectedValue = selectedParts.id ? `${selectedParts.scope || "moment"}:${selectedParts.id}` : "";
   if (selectedParts.id && !options.some((option) => option.id === selectedValue)) {
@@ -1034,13 +1042,13 @@ function flowArtAssetTargetName(elementId, targetLayoutScope = "") {
   const selectedState = (stageLayouts.states || []).find((state) => state.id === selectedFlowStateId);
   const momentElement = (selectedState?.elements || []).find((item) => item.id === elementId);
   const globalElement = (stageLayouts.global?.elements || []).find((item) => item.id === elementId);
-  if (scope === "moment" && momentElement) return momentElement.name || momentElement.id;
-  if (scope === "global" && globalElement) return `Global: ${globalElement.name || globalElement.id}`;
-  if (momentElement) return momentElement.name || momentElement.id;
-  if (globalElement) return `Global: ${globalElement.name || globalElement.id}`;
+  if (scope === "moment" && momentElement) return flowArtAssetTargetLabel({ ...momentElement, targetLayoutScope: "moment" });
+  if (scope === "global" && globalElement) return flowArtAssetTargetLabel({ ...globalElement, targetLayoutScope: "global" });
+  if (momentElement) return flowArtAssetTargetLabel({ ...momentElement, targetLayoutScope: "moment" });
+  if (globalElement) return flowArtAssetTargetLabel({ ...globalElement, targetLayoutScope: "global" });
   for (const state of stageLayouts.states || []) {
     const element = (state.elements || []).find((item) => item.id === elementId);
-    if (element) return element.name || element.id;
+    if (element) return flowArtAssetTargetLabel({ ...element, targetLayoutScope: "moment" });
   }
   return elementId;
 }
