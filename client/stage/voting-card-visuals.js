@@ -120,9 +120,11 @@
 
     createArtTreeRenderer(host) {
       if (!this.artObjectRuntime || !host) return null;
+      const hostKey = host.dataset?.artChildHostFor || host.className || "root";
       return new this.artObjectRuntime.ArtObjectTreeRenderer({
         host,
         document: this.document,
+        instanceId: `voting-card:${this.cardId}:${hostKey}`,
         gameObjectApi: this.gameObjectApi,
         visualAnimation: this.visualAnimation
       });

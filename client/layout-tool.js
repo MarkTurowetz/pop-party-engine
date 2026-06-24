@@ -822,6 +822,7 @@ function renderLayoutArtComposition(content, compositionId, textOverrides = {}) 
   const renderer = new artRuntime.ArtObjectTreeRenderer({
     host: content,
     document,
+    instanceId: `layout-preview:${elementId || compositionId}`,
     gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
     visualAnimation: window.PartyGameVisualObject
   });

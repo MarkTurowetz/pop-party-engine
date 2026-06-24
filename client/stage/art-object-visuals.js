@@ -5,6 +5,7 @@
   const UPDATE_CLASS = "art-runtime-object-update";
   const INSTANT_CLASS = "art-runtime-object-instant";
   const componentSchema = global.PartyGameArtComponentSchema;
+  let artTreeInstanceCounter = 1;
 
   function applyComponentLayout(element, component, canvas) {
     if (!element || !component) return;
@@ -45,6 +46,7 @@
       this.document = options.document || global.document;
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
       this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
+      this.instanceId = String(options.instanceId || "");
       this.component = null;
       this.children = new Map();
       this.element = this.document.createElement("div");
@@ -62,7 +64,8 @@
     }
 
     gameObjectId() {
-      return `art-component:${this.component?.id || this.element.dataset.artComponentId || ""}`;
+      const componentId = this.component?.id || this.element.dataset.artComponentId || "";
+      return `art-component:${this.instanceId || "default"}:${componentId}`;
     }
 
     createVisual() {
@@ -141,6 +144,7 @@
             document: this.document,
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
+            instanceId: `${this.instanceId}/${child.id || index}`,
             component: child,
             canvas: childCanvas,
             layer: { index, total: (children || []).length }
@@ -206,6 +210,7 @@
       this.document = options.document || global.document;
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
       this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
+      this.instanceId = String(options.instanceId || `art-tree:${artTreeInstanceCounter++}`);
       this.views = new Map();
     }
 
@@ -219,6 +224,7 @@
             document: this.document,
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
+            instanceId: `${this.instanceId}/${component.id || index}`,
             component,
             canvas,
             layer: { index, total: (components || []).length }

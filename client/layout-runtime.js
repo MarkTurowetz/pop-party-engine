@@ -76,6 +76,7 @@ function renderLayoutArtInstance(element, host, options = {}) {
     renderer = new artRuntime.ArtObjectTreeRenderer({
       host: layer,
       document,
+      instanceId: `layout:${rendererKey}`,
       gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
       visualAnimation: window.PartyGameVisualObject
     });
