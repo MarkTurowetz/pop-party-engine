@@ -143,6 +143,10 @@ concepts into focused modules.
 - New visible stage/controller elements should use `PartyGameVisualBridge.createVisualForTarget`
   or a registry-backed layout entity rather than calling `PartyGameVisualObject` directly.
   Direct visual-object creation should be limited to the bridge/core animation layer.
+- Art Manager compositions are prefab/source assets. Stage layout entries are placed
+  instances of those prefabs. Runtime visibility actions should target the layout
+  instance identity (`targetLayoutScope` plus `targetLayoutElementId`), not the
+  source art composition id.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same
   composition schema rather than maintaining separate art systems.

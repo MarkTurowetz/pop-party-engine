@@ -317,7 +317,7 @@
         handlers.change();
       }));
       controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Art Asset Visible" });
-      target.appendChild(context.readOnlyFlowNote("Targets a placed art asset instance in this moment's layout and runs the standard appear/disappear animation."));
+      target.appendChild(context.readOnlyFlowNote("Targets a placed art asset instance in the current moment or global layout. Source art assets must be added to a layout before this action can show them."));
     }
 
     function appendPlayHostAudioControls(target, action, controls, handlers) {

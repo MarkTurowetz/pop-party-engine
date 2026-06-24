@@ -208,6 +208,7 @@ function setLayoutArtElementShownForAction(action, options = {}) {
   if (!elementId || !window.PartyGameVisualObject) return 0;
   const isShown = action.isShown !== false;
   const scope = ["global", "moment"].includes(String(action?.targetLayoutScope || "")) ? action.targetLayoutScope : "";
+  const sourceArtAsset = typeof artComposition === "function" ? artComposition(elementId) : null;
   const warn = (reason) => {
     window.PartyGameStageDebugRuntime?.showArtAssetWarning?.({
       elementId,
@@ -221,7 +222,11 @@ function setLayoutArtElementShownForAction(action, options = {}) {
   const visibilityKey = entity?.visibilityKey || options.visibilityKeyForTarget?.(elementId, target, scope);
   if (!target) {
     if (visibilityKey) options.visibilityOverrides?.set(visibilityKey, isShown);
-    warn(visibilityKey ? "target not active; saved pending visibility" : "target not found");
+    warn(visibilityKey
+      ? "target not active; saved pending visibility"
+      : sourceArtAsset
+        ? "target is an art asset source; add it to this layout and select the placed instance"
+        : "target not found");
     return 0;
   }
   if (typeof entity?.playVisibility === "function") {
