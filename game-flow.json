@@ -16,7 +16,7 @@
         "y": 1276
       },
       "entryTargetActionId": "lobby-action-mqojohry",
-      "nextStateTargetId": "route-action-mqqwadxk-oji3m",
+      "nextStateTargetId": "intro",
       "actions": [
         {
           "id": "lobby-countdown-complete",
@@ -728,7 +728,7 @@
         "y": 1022
       },
       "entryTargetActionId": "scoreboard-game-state-action-mqpt5dmx",
-      "nextStateTargetId": "writing-moment",
+      "nextStateTargetId": "route-action-mqqwadxk-oji3m",
       "actions": [
         {
           "id": "scoreboard-game-state-action-mqlaj01s",
@@ -795,8 +795,8 @@
       "id": "post-game-state",
       "name": "Post Game State",
       "nodePosition": {
-        "x": 1652,
-        "y": 1474
+        "x": 1650,
+        "y": 1370
       },
       "startNodePosition": {
         "x": 715,
@@ -807,7 +807,7 @@
         "y": 1022
       },
       "entryTargetActionId": "post-game-state-action-mqpt63ca",
-      "nextStateTargetId": "lobby",
+      "nextStateTargetId": "route-action-mqrd9q26-4rz7m",
       "actions": [
         {
           "id": "post-game-state-action-mqlak7zw",
@@ -1589,6 +1589,48 @@
           "targetNodeId": "writing-moment"
         }
       ]
+    },
+    {
+      "id": "route-action-mqrd9i6n-8mb29",
+      "routeNodeType": "action",
+      "name": "Jump Node",
+      "type": "jumpNode",
+      "timing": {
+        "mode": "E+",
+        "seconds": 0
+      },
+      "text": "Presented text",
+      "textTarget": "",
+      "instant": false,
+      "isShown": true,
+      "subActions": [],
+      "nextTargetNodeId": "",
+      "nodePosition": {
+        "x": 1676,
+        "y": 1922
+      },
+      "jumpTargetActionId": "lobby",
+      "nextTargetActionId": ""
+    },
+    {
+      "id": "route-action-mqrd9q26-4rz7m",
+      "routeNodeType": "action",
+      "name": "Set Wipe Shown",
+      "type": "setWipeShown",
+      "timing": {
+        "mode": "E+",
+        "seconds": 0
+      },
+      "text": "Presented text",
+      "textTarget": "",
+      "instant": false,
+      "isShown": false,
+      "subActions": [],
+      "nextTargetNodeId": "route-action-mqrd9i6n-8mb29",
+      "nodePosition": {
+        "x": 1680,
+        "y": 1650
+      }
     }
   ]
 }
