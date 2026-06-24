@@ -306,10 +306,14 @@
     }
 
     function appendArtAssetShownControls(target, state, action, controls, handlers) {
-      const selectedTarget = action.targetLayoutElementId || "";
+      const selectedTarget = action.targetLayoutElementId
+        ? `${action.targetLayoutScope || "moment"}:${action.targetLayoutElementId}`
+        : "";
       const options = context.artAssetTargetOptions?.(state, selectedTarget) || [{ id: "", name: "No Art Asset" }];
       target.appendChild(context.flowSelect("Art Asset", selectedTarget, options, (value) => {
-        action.targetLayoutElementId = value || "";
+        const match = String(value || "").match(/^(global|moment):(.+)$/);
+        action.targetLayoutScope = match ? match[1] : "";
+        action.targetLayoutElementId = match ? match[2] : value || "";
         handlers.change();
       }));
       controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Art Asset Visible" });

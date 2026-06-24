@@ -521,6 +521,9 @@ const flowActionDefinitions = [
     normalize: (action, base, context) => ({
       ...base,
       targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
+      targetLayoutScope: ["global", "moment"].includes(String(action?.targetLayoutScope || "").toLowerCase())
+        ? String(action.targetLayoutScope).toLowerCase()
+        : "",
       isShown: action?.isShown !== false,
       instant: action?.instant === true
     }),
@@ -528,6 +531,9 @@ const flowActionDefinitions = [
       ...base,
       type: "setArtAssetShown",
       targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
+      targetLayoutScope: ["global", "moment"].includes(String(action.targetLayoutScope || "").toLowerCase())
+        ? String(action.targetLayoutScope).toLowerCase()
+        : "",
       isShown: action.isShown !== false,
       instant: action.instant === true
     })

@@ -101,13 +101,23 @@ function removeInactiveLayoutArtInstances({ root, selector, activeIds, clearRend
   }
 }
 
-function layoutTargetByElementId({ root, elementId, layoutAttribute, dynamicSelector }) {
+function layoutTargetByElementId({ root, elementId, layoutAttribute, dynamicSelector, scope = "" }) {
   if (!root || !elementId) return null;
-  return root.querySelector(`[${layoutAttribute}="${CSS.escape(elementId)}"]`)
-    || root.querySelector(`${dynamicSelector}[data-layout-element-id="${CSS.escape(elementId)}"]`);
+  const escapedId = CSS.escape(elementId);
+  const scopedSuffix = scope === "global"
+    ? ".stage-global-layout-target"
+    : scope === "moment"
+      ? ":not(.stage-global-layout-target)"
+      : "";
+  return root.querySelector(`[${layoutAttribute}="${escapedId}"]${scopedSuffix}`)
+    || root.querySelector(`${dynamicSelector}[data-layout-element-id="${escapedId}"]${scopedSuffix}`)
+    || root.querySelector(`[${layoutAttribute}="${escapedId}"]`)
+    || root.querySelector(`${dynamicSelector}[data-layout-element-id="${escapedId}"]`);
 }
 
 function layoutElementVisibilityKey(elementId, target, options = {}) {
+  if (options.scope === "global") return options.keyFor(elementId, true);
+  if (options.scope === "moment") return options.keyFor(elementId, false);
   if (target?.dataset?.[options.visibilityDatasetKey]) return target.dataset[options.visibilityDatasetKey];
   if ((options.currentElements?.() || []).some((element) => element.id === elementId)) {
     return options.keyFor(elementId, false);
@@ -121,8 +131,8 @@ function layoutElementVisibilityKey(elementId, target, options = {}) {
 function layoutEntityForElementId(elementId, target = null, options = {}) {
   if (!elementId) return null;
   const entity = options.registry?.get(elementId);
-  if (entity) return entity;
-  const resolvedTarget = target || options.targetByElementId?.(elementId);
+  if (entity && (!options.scope || (options.scope === "global") === entity.isGlobal)) return entity;
+  const resolvedTarget = target || options.targetByElementId?.(elementId, options.scope || "");
   if (!resolvedTarget) return null;
   const fallbackEntity = {
     element: null,
@@ -131,7 +141,7 @@ function layoutEntityForElementId(elementId, target = null, options = {}) {
     isDynamic: options.isDynamicTarget?.(resolvedTarget) === true,
     isGlobal: options.isGlobalTarget?.(resolvedTarget) === true,
     target: resolvedTarget,
-    visibilityKey: options.visibilityKeyForTarget?.(elementId, resolvedTarget) || ""
+    visibilityKey: options.visibilityKeyForTarget?.(elementId, resolvedTarget, options.scope || "") || ""
   };
   return options.registry?.register(fallbackEntity) || fallbackEntity;
 }
@@ -194,9 +204,10 @@ function setLayoutArtElementShownForAction(action, options = {}) {
   const elementId = action?.targetLayoutElementId || "";
   if (!elementId || !window.PartyGameVisualObject) return 0;
   const isShown = action.isShown !== false;
-  const entity = options.entityForElementId?.(elementId);
+  const scope = ["global", "moment"].includes(String(action?.targetLayoutScope || "")) ? action.targetLayoutScope : "";
+  const entity = options.entityForElementId?.(elementId, null, scope);
   const target = entity?.target || null;
-  const visibilityKey = entity?.visibilityKey || options.visibilityKeyForTarget?.(elementId, target);
+  const visibilityKey = entity?.visibilityKey || options.visibilityKeyForTarget?.(elementId, target, scope);
   if (!target) {
     if (visibilityKey) options.visibilityOverrides?.set(visibilityKey, isShown);
     return 0;
@@ -204,7 +215,7 @@ function setLayoutArtElementShownForAction(action, options = {}) {
   if (typeof entity?.playVisibility === "function") {
     return entity.playVisibility(isShown, { instant: action.instant === true });
   }
-  const resolvedEntity = entity || options.entityForElementId?.(elementId, target);
+  const resolvedEntity = entity || options.entityForElementId?.(elementId, target, scope);
   const visual = layoutArtVisualFor(resolvedEntity);
   const result = window.PartyGameVisualBridge?.playVisibilityForTarget?.({
     target,
@@ -677,11 +688,12 @@ function registerStageLayoutEntity(element, target, isGlobal = false) {
   return stageLayoutGameObjectRegistry()?.register(entity) || entity;
 }
 
-function stageLayoutEntityForElementId(elementId, target = null) {
+function stageLayoutEntityForElementId(elementId, target = null, scope = "") {
   return layoutEntityForElementId(elementId, target, {
     registry: stageLayoutGameObjectRegistry(),
     targetByElementId: stageLayoutTargetByElementId,
     visibilityKeyForTarget: stageLayoutElementVisibilityKey,
+    scope,
     isArtTarget: (resolvedTarget) => Boolean(resolvedTarget.dataset.stageLayoutArtCompositionId),
     isDynamicTarget: (resolvedTarget) => resolvedTarget.classList.contains("dynamic-stage-art-instance"),
     isGlobalTarget: (resolvedTarget) => resolvedTarget.classList.contains("stage-global-layout-target")
@@ -696,18 +708,20 @@ function applyStageLayoutArtVisibilityOverride(entity) {
   });
 }
 
-function stageLayoutTargetByElementId(elementId) {
+function stageLayoutTargetByElementId(elementId, scope = "") {
   return layoutTargetByElementId({
     root: stageBoard,
     elementId,
     layoutAttribute: "data-stage-layout-element-id",
-    dynamicSelector: ".dynamic-stage-art-instance"
+    dynamicSelector: ".dynamic-stage-art-instance",
+    scope
   });
 }
 
-function stageLayoutElementVisibilityKey(elementId, target = null) {
+function stageLayoutElementVisibilityKey(elementId, target = null, scope = "") {
   return layoutElementVisibilityKey(elementId, target, {
     visibilityDatasetKey: "stageLayoutVisibilityKey",
+    scope,
     currentElements: () => stageLayoutState(currentStageLayoutStateId)?.elements || [],
     globalElements: () => globalStageLayout().elements || [],
     keyFor: stageLayoutArtVisibilityKey

@@ -985,7 +985,8 @@ function flowArtAssetLayoutElements(state) {
   const stateId = state?.id || selectedFlowStateId || "";
   const layout = (stageLayouts.states || []).find((item) => item.id === stateId);
   const momentElements = (layout?.elements || [])
-    .filter((element) => element.kind === "art" && element.artCompositionId);
+    .filter((element) => element.kind === "art" && element.artCompositionId)
+    .map((element) => ({ ...element, targetLayoutScope: "moment" }));
   const momentIds = new Set(momentElements.map((element) => element.id));
   const globalLayout = stageLayouts.global || {};
   const hiddenGlobals = new Set(layout?.hiddenGlobals || []);
@@ -995,20 +996,33 @@ function flowArtAssetLayoutElements(state) {
       .filter((element) => element.kind === "art" && element.artCompositionId)
       .filter((element) => !hiddenGlobals.has(element.id))
       .filter((element) => !momentIds.has(element.id))
-      .map((element) => ({ ...element, name: `Global: ${element.name || element.id}` }));
+      .map((element) => ({ ...element, targetLayoutScope: "global", name: `Global: ${element.name || element.id}` }));
   return [
     ...momentElements,
     ...globalElements
   ];
 }
 
+function flowArtAssetTargetValue(element) {
+  const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
+  return `${scope}:${element.id || ""}`;
+}
+
+function flowArtAssetTargetParts(value, fallbackScope = "") {
+  const text = String(value || "");
+  const match = text.match(/^(global|moment):(.+)$/);
+  if (match) return { scope: match[1], id: match[2] };
+  return { scope: fallbackScope || "", id: text };
+}
+
 function flowArtAssetTargetOptions(state, selectedElementId = "") {
+  const selectedParts = flowArtAssetTargetParts(selectedElementId);
   const options = [{ id: "", name: "No Art Asset" }];
   for (const element of flowArtAssetLayoutElements(state)) {
-    options.push({ id: element.id, name: element.name || element.id });
+    options.push({ id: flowArtAssetTargetValue(element), name: element.name || element.id });
   }
-  if (selectedElementId && !options.some((option) => option.id === selectedElementId)) {
-    options.push({ id: selectedElementId, name: selectedElementId });
+  if (selectedParts.id && !options.some((option) => flowArtAssetTargetParts(option.id).id === selectedParts.id)) {
+    options.push({ id: selectedElementId, name: selectedParts.id });
   }
   return options;
 }
