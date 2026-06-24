@@ -320,7 +320,7 @@ function applyControllerElementLayout(element, isGlobal = false) {
   } else if (isDynamicControllerArtInstance(element)) {
     renderControllerArtInstance(element, target);
   }
-  if (typeof entity.applyVisibilityOverride === "function") entity.applyVisibilityOverride();
+  applyControllerLayoutArtVisibilityOverride(entity);
   if (isNewLayoutTarget) {
     void target.offsetWidth;
     target.classList.remove("controller-layout-transition-suppressed");
@@ -390,6 +390,14 @@ function setControllerLayoutArtElementShownForAction(action) {
     entityForElementId: controllerLayoutEntityForElementId,
     visibilityKeyForTarget: controllerLayoutElementVisibilityKey,
     visibilityOverrides: controllerLayoutVisibilityOverrides
+  });
+}
+
+function applyControllerLayoutArtVisibilityOverride(entity) {
+  applyLayoutVisibilityOverride(entity, {
+    visibilityOverrides: controllerLayoutVisibilityOverrides,
+    hiddenClass: "controller-layout-visual-hidden",
+    exitingClass: "controller-layout-visual-exiting"
   });
 }
 
