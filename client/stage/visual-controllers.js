@@ -5,6 +5,11 @@
     return element.classList.contains(hiddenClass) || element.classList.contains(parkedClass);
   }
 
+  function createStageGameObject(gameObjectApi, options = {}) {
+    const GameObject = gameObjectApi?.GameObject || gameObjectApi?.StageGameObject;
+    return GameObject ? new GameObject(options) : null;
+  }
+
   class StageTextController {
     constructor(options = {}) {
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
@@ -74,11 +79,9 @@
 
     gameObjectFor(object) {
       if (!object?.element) return null;
-      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
-      if (!GameObject) return null;
       if (!object.gameObject || object.gameObject.target !== object.element) {
         const id = this.normalizeTextTargetId(object.element.id || object.layoutElement?.id || "text");
-        object.gameObject = new GameObject({
+        object.gameObject = createStageGameObject(this.gameObjectApi, {
           id,
           element: object.layoutElement || null,
           target: object.element,
@@ -141,10 +144,9 @@
     }
 
     gameObject() {
-      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
-      if (!this.element || !GameObject) return null;
+      if (!this.element) return null;
       if (!this.visual || this.visual.target !== this.element) {
-        this.visual = new GameObject({
+        this.visual = createStageGameObject(this.gameObjectApi, {
           id: this.element.id || "craftingTimer",
           target: this.element,
           visibilityKey: `widget:${this.element.id || "craftingTimer"}`,
@@ -277,10 +279,9 @@
     }
 
     gameObjectFor(bubble) {
-      const GameObject = this.gameObjectApi?.GameObject || this.gameObjectApi?.StageGameObject;
-      if (!bubble || !GameObject) return null;
+      if (!bubble) return null;
       if (!bubble.playerAnswerBubbleGameObject || bubble.playerAnswerBubbleGameObject.target !== bubble) {
-        bubble.playerAnswerBubbleGameObject = new GameObject({
+        bubble.playerAnswerBubbleGameObject = createStageGameObject(this.gameObjectApi, {
           id: bubble.id || bubble.dataset.answerNonce || `answer-bubble-${Math.random().toString(36).slice(2)}`,
           target: bubble,
           visibilityKey: `answer-bubble:${bubble.dataset.answerNonce || bubble.id || ""}`,
