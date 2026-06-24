@@ -264,6 +264,25 @@ function applyLayoutVisibilityOverride(entity, options = {}) {
   }
 }
 
+function playLayoutEntityVisibility(entity, isShown, options = {}) {
+  if (typeof entity?.playVisibility === "function") {
+    return entity.playVisibility(isShown, { instant: options.instant === true });
+  }
+  const target = entity?.target || null;
+  const visual = layoutArtVisualFor(entity);
+  if (!target || !visual) {
+    options.warn?.("visual object unavailable");
+    return 0;
+  }
+  const result = window.PartyGameVisualBridge?.playVisibilityForTarget?.({
+    target,
+    visual,
+    isShown,
+    playOptions: { instant: options.instant === true }
+  });
+  return result?.duration || 0;
+}
+
 function setLayoutArtElementShownForAction(action, options = {}) {
   const elementId = action?.targetLayoutElementId || "";
   if (!elementId || !window.PartyGameVisualObject) return 0;
@@ -290,19 +309,10 @@ function setLayoutArtElementShownForAction(action, options = {}) {
         : "target not found");
     return 0;
   }
-  if (typeof entity?.playVisibility === "function") {
-    return entity.playVisibility(isShown, { instant: action.instant === true });
-  }
-  const resolvedEntity = entity || options.entityForElementId?.(elementId, target, scope);
-  const visual = layoutArtVisualFor(resolvedEntity);
-  if (!visual) warn("visual object unavailable");
-  const result = window.PartyGameVisualBridge?.playVisibilityForTarget?.({
-    target,
-    visual,
-    isShown,
-    playOptions: { instant: action.instant === true }
+  return playLayoutEntityVisibility(entity || options.entityForElementId?.(elementId, target, scope), isShown, {
+    instant: action.instant === true,
+    warn
   });
-  return result?.duration || 0;
 }
 
 async function loadStageLayouts({ forceServer = false } = {}) {
