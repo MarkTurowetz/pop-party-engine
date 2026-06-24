@@ -150,6 +150,31 @@ function layoutEntityForElementId(elementId, target = null, options = {}) {
   return options.registry?.register(fallbackEntity) || fallbackEntity;
 }
 
+function layoutElementTargetMatchesSelector(element, target) {
+  const selector = String(element?.selector || "");
+  if (!selector || !target) return false;
+  try {
+    return target.matches(selector);
+  } catch (_error) {
+    return false;
+  }
+}
+
+function registerPlacedLayoutEntity(element, target, isGlobal = false, options = {}) {
+  const id = element?.id || "";
+  const entity = {
+    element,
+    id,
+    registryKey: options.registryKeyFor?.(id, isGlobal, target) || id,
+    isArt: options.isArt?.(element, target) === true,
+    isDynamic: options.isDynamic?.(element, target) === true,
+    isGlobal: isGlobal === true,
+    target,
+    visibilityKey: options.visibilityKeyFor?.(id, isGlobal) || ""
+  };
+  return options.registry?.()?.register(entity) || entity;
+}
+
 function createPlacedLayoutArtTargetResolver(options = {}) {
   const resolver = {
     entityForElementId(elementId, target = null, scope = "") {
@@ -430,24 +455,15 @@ function applyControllerElementLayout(element, isGlobal = false) {
 }
 
 function registerControllerLayoutEntity(element, target, isGlobal = false) {
-  const id = element?.id || "";
-  const selector = String(element?.selector || "");
-  let matchesSelector = false;
-  try {
-    matchesSelector = selector ? target.matches(selector) : false;
-  } catch (_error) {
-    matchesSelector = false;
-  }
-  const entity = {
-    element,
-    id,
-    isArt: element?.kind === "art" || Boolean(element?.artCompositionId),
-    isDynamic: isDynamicControllerArtInstance(element) || (element?.kind === "text" && !matchesSelector),
-    isGlobal: isGlobal === true,
-    target,
-    visibilityKey: controllerLayoutVisibilityKey(id, isGlobal)
-  };
-  return controllerLayoutGameObjectRegistry()?.register(entity) || entity;
+  return registerPlacedLayoutEntity(element, target, isGlobal, {
+    registry: controllerLayoutGameObjectRegistry,
+    visibilityKeyFor: controllerLayoutVisibilityKey,
+    isArt: (layoutElement) => layoutElement?.kind === "art" || Boolean(layoutElement?.artCompositionId),
+    isDynamic: (layoutElement, layoutTarget) => (
+      isDynamicControllerArtInstance(layoutElement)
+        || (layoutElement?.kind === "text" && !layoutElementTargetMatchesSelector(layoutElement, layoutTarget))
+    )
+  });
 }
 
 function controllerLayoutVisibilityKey(elementId, isGlobal = false) {
@@ -728,19 +744,13 @@ function applyStageElementLayout(element, isGlobal) {
 }
 
 function registerStageLayoutEntity(element, target, isGlobal = false) {
-  const id = element?.id || "";
-  const visibilityKey = stageLayoutArtVisibilityKey(id, isGlobal);
-  const entity = {
-    element,
-    id,
-    registryKey: visibilityKey,
-    isArt: element?.kind === "art" && Boolean(element?.artCompositionId),
-    isDynamic: isDynamicStageArtInstance(element),
-    isGlobal: isGlobal === true,
-    target,
-    visibilityKey
-  };
-  return stageLayoutGameObjectRegistry()?.register(entity) || entity;
+  return registerPlacedLayoutEntity(element, target, isGlobal, {
+    registry: stageLayoutGameObjectRegistry,
+    registryKeyFor: (id, globalTarget) => stageLayoutArtVisibilityKey(id, globalTarget),
+    visibilityKeyFor: stageLayoutArtVisibilityKey,
+    isArt: (layoutElement) => layoutElement?.kind === "art" && Boolean(layoutElement?.artCompositionId),
+    isDynamic: isDynamicStageArtInstance
+  });
 }
 
 function applyStageLayoutArtVisibilityOverride(entity) {
