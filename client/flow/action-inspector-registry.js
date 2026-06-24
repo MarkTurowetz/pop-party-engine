@@ -41,6 +41,7 @@
         includeBranchPanels: options.includeDecisionBranchPanels !== false,
         decisionTargetField,
         targetOptions,
+        jumpTargetOptions: options.jumpTargetOptions,
         stopAfterDecision: options.stopAfterDecision !== false
       });
 
@@ -93,7 +94,7 @@
       if (action.type === "doNothing") {
         target.appendChild(context.readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
       }
-      if (action.type === "jumpNode") appendJumpNodeControls(target, state, action, handlers.change);
+      if (action.type === "jumpNode") appendJumpNodeControls(target, state, action, handlers);
       if (action.type === "playAudio") appendPlayAudioControls(target, action, handlers.change);
       if (action.type === "playHostAudio") appendPlayHostAudioControls(target, action, controls, handlers);
       if (action.type === "setPlayersShown") {
@@ -289,10 +290,14 @@
       return !target || target === "none";
     }
 
-    function appendJumpNodeControls(target, state, action, change) {
-      target.appendChild(context.flowSelect("Jump Target", action.jumpTargetActionId || "none", jumpTargetOptions(state, action), (value) => {
+    function appendJumpNodeControls(target, state, action, handlers) {
+      const selectedTarget = action.jumpTargetActionId || "none";
+      const options = typeof handlers.jumpTargetOptions === "function"
+        ? handlers.jumpTargetOptions(state, action, selectedTarget)
+        : jumpTargetOptions(state, action);
+      target.appendChild(context.flowSelect("Jump Target", selectedTarget, options, (value) => {
         action.jumpTargetActionId = value || "none";
-        change();
+        handlers.change();
       }));
       target.appendChild(context.readOnlyFlowNote(jumpTargetIsMissing(action)
         ? "Warning: this Jump Node needs a target. If runtime reaches it while the target is None, the moment will hang here."

@@ -182,6 +182,7 @@
         nextTargetField: "nextTargetNodeId",
         nextTargetLabel: "Next",
         targetOptions: routeTargetOptions(routeNode),
+        jumpTargetOptions: routeTargetOptions(routeNode),
         includeSubActionButton: false,
         includeDecisionBranchPanels: false,
         stopAfterDecision: true
