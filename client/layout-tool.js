@@ -705,6 +705,7 @@ function layoutPreviewContent(element) {
   const id = String(element.id || "").toLowerCase();
   const content = document.createElement("div");
   content.className = "layout-preview-content";
+  if (element.artCompositionId && renderLayoutArtCompositionPreview(content, element)) return content;
   if (layoutToolMode === "controller") {
     if (id === "jointitle") {
       content.appendChild(layoutPreviewTextNode(element, "Join Lobby"));
@@ -803,7 +804,7 @@ function layoutPreviewContent(element) {
 function renderLayoutArtCompositionPreview(content, element) {
   const compositionId = element?.artCompositionId || "";
   if (!compositionId) return false;
-  return renderLayoutArtComposition(content, compositionId, {});
+  return renderLayoutArtComposition(content, compositionId, {}, element?.id || compositionId);
 }
 
 function renderLayoutWidgetArtPreview(content, elementId) {
@@ -811,7 +812,7 @@ function renderLayoutWidgetArtPreview(content, elementId) {
   return binding ? renderLayoutArtComposition(content, binding.compositionId, binding.textOverrides || {}) : false;
 }
 
-function renderLayoutArtComposition(content, compositionId, textOverrides = {}) {
+function renderLayoutArtComposition(content, compositionId, textOverrides = {}, instanceKey = compositionId) {
   const composition = artComposition(compositionId);
   const artRuntime = window.PartyGameArtObject;
   if (!content || !composition || !artRuntime) return false;
@@ -820,7 +821,7 @@ function renderLayoutArtComposition(content, compositionId, textOverrides = {}) 
   const renderer = new artRuntime.ArtObjectTreeRenderer({
     host: content,
     document,
-    instanceId: `layout-preview:${elementId || compositionId}`,
+    instanceId: `layout-preview:${instanceKey || compositionId}`,
     gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
     visualAnimation: window.PartyGameVisualObject
   });
