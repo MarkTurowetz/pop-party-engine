@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.444",
+  "version": "1.0.17.445",
   "baseVersion": "1.0.17",
-  "buildNumber": 444,
-  "commit": "40d821e",
+  "buildNumber": 445,
+  "commit": "d43ca66",
   "branch": "main",
-  "generatedAt": "2026-06-24T21:01:55.205Z"
+  "generatedAt": "2026-06-24T21:05:48.457Z"
 }

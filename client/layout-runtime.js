@@ -221,11 +221,13 @@ function layoutDefaultVisibilityForEntity(entity) {
   return entity?.isDynamic && entity?.isArt ? false : null;
 }
 
-function applyLayoutDefaultVisibility(entity, options = {}) {
+function applyLayoutEntityTargetVisibility(entity, isShown, options = {}) {
+  if (typeof entity?.applyTargetVisibility === "function") {
+    entity.applyTargetVisibility(isShown === true);
+    return true;
+  }
   const target = entity?.target;
-  if (!target || options.visibilityOverrides?.has(entity?.visibilityKey || "")) return false;
-  const isShown = layoutDefaultVisibilityForEntity(entity);
-  if (isShown === null) return false;
+  if (!target) return false;
   target.dataset.visualVisible = isShown ? "true" : "false";
   if (isShown) {
     target.classList.remove(options.hiddenClass, options.exitingClass);
@@ -235,6 +237,14 @@ function applyLayoutDefaultVisibility(entity, options = {}) {
     target.classList.add(options.hiddenClass);
   }
   return true;
+}
+
+function applyLayoutDefaultVisibility(entity, options = {}) {
+  const target = entity?.target;
+  if (!target || options.visibilityOverrides?.has(entity?.visibilityKey || "")) return false;
+  const isShown = layoutDefaultVisibilityForEntity(entity);
+  if (isShown === null) return false;
+  return applyLayoutEntityTargetVisibility(entity, isShown, options);
 }
 
 function applyLayoutVisibilityOverride(entity, options = {}) {
@@ -254,14 +264,7 @@ function applyLayoutVisibilityOverride(entity, options = {}) {
     return;
   }
   const isShown = options.visibilityOverrides.get(visibilityKey) !== false;
-  target.dataset.visualVisible = isShown ? "true" : "false";
-  if (isShown) {
-    target.classList.remove(options.hiddenClass, options.exitingClass);
-    return;
-  }
-  if (!target.classList.contains(options.exitingClass)) {
-    target.classList.add(options.hiddenClass);
-  }
+  applyLayoutEntityTargetVisibility(entity, isShown, options);
 }
 
 function playLayoutEntityVisibility(entity, isShown, options = {}) {
