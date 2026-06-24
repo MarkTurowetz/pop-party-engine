@@ -432,6 +432,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -454,6 +455,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -464,7 +466,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-24T01:35:09.151Z"
+      "updatedAt": "2026-06-24T04:03:23.439Z"
     },
     "join-qr-code": {
       "name": "Join QR Code",
