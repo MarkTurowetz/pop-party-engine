@@ -62,7 +62,7 @@
           ui.createThumb("art-thumb art-composite-thumb", isVotingCard ? '<span class="art-voting-card-thumb"></span>' : "")
         ],
         title: composition.name,
-        summary: "Editable composite art",
+        summary: "Editable art asset",
         onActivate: () => options.onSelectArtComposition?.(composition.id)
       });
     }

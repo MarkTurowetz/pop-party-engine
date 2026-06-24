@@ -18,7 +18,7 @@ const artSidebarRendererRuntime = window.PartyGameArtSidebarRenderer;
 const artComponentEditorRuntime = window.PartyGameArtComponentEditor;
 const artShapeStyles = artComponentSchema.shapeStyleOptions;
 const artComponentImageAccept = artComponentSchema.imageAccept;
-const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt", "voting-card", "custom-art"];
+const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt"];
 let artSidebarRenderer = null;
 let artComponentEditorRenderer = null;
 
@@ -936,7 +936,6 @@ function createArtAssetComposition(kind = "shape") {
     id: createSecureArtId("art"),
     name: `${artKindLabel(kind)} Art`,
     description: "Editable art asset.",
-    isCustom: true,
     canvas: { width: 560, height: 230 },
     components: [root]
   };
