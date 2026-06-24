@@ -109,6 +109,38 @@ function removeInactiveLayoutArtInstances({ root, selector, activeIds, clearRend
   }
 }
 
+function createDynamicLayoutArtInstanceApi(options = {}) {
+  const renderers = options.renderers || new Map();
+  const root = () => typeof options.root === "function" ? options.root() : options.root;
+  const api = {
+    getOrCreate(element) {
+      return getOrCreateLayoutArtInstance(element, root(), options.selector, options.className);
+    },
+    render(element, host, rendererKey = "") {
+      return renderLayoutArtInstance(element, host, {
+        renderers,
+        rendererKey,
+        layerClassName: options.layerClassName,
+        missingDatasetKey: options.missingDatasetKey,
+        clearRenderer: api.clear
+      });
+    },
+    clear(elementId, host = null) {
+      clearLayoutArtInstanceRenderer(renderers, elementId, host);
+    },
+    removeInactive(activeIds, registry) {
+      removeInactiveLayoutArtInstances({
+        root: root(),
+        selector: options.selector,
+        activeIds,
+        clearRenderer: api.clear,
+        registry
+      });
+    }
+  };
+  return api;
+}
+
 function activeDynamicLayoutArtInstanceIds(state, globalLayout, isDynamicInstance) {
   const ids = new Set();
   for (const element of state?.elements || []) {
@@ -632,6 +664,14 @@ function controllerLayoutTargetElement(element) {
 }
 
 const controllerArtInstanceRenderers = new Map();
+const controllerDynamicArtInstances = createDynamicLayoutArtInstanceApi({
+  root: () => controllerPanel,
+  selector: ".dynamic-controller-art-instance",
+  className: "dynamic-controller-art-instance controller-widget-art-host",
+  renderers: controllerArtInstanceRenderers,
+  layerClassName: "controller-widget-art-layer",
+  missingDatasetKey: "controllerLayoutArtMissing"
+});
 
 function isDynamicControllerArtInstance(element) {
   return Boolean(element?.artCompositionId && !element.selector);
@@ -642,36 +682,19 @@ function activeControllerArtInstanceIds(state) {
 }
 
 function removeInactiveControllerArtInstances(activeIds) {
-  removeInactiveLayoutArtInstances({
-    root: controllerPanel,
-    selector: ".dynamic-controller-art-instance",
-    activeIds,
-    clearRenderer: clearControllerArtInstanceRenderer,
-    registry: controllerLayoutGameObjectRegistry()
-  });
+  controllerDynamicArtInstances.removeInactive(activeIds, controllerLayoutGameObjectRegistry());
 }
 
 function getOrCreateControllerArtInstance(element) {
-  return getOrCreateLayoutArtInstance(
-    element,
-    controllerPanel,
-    ".dynamic-controller-art-instance",
-    "dynamic-controller-art-instance controller-widget-art-host"
-  );
+  return controllerDynamicArtInstances.getOrCreate(element);
 }
 
 function renderControllerArtInstance(element, host, rendererKey = "") {
-  return renderLayoutArtInstance(element, host, {
-    renderers: controllerArtInstanceRenderers,
-    rendererKey,
-    layerClassName: "controller-widget-art-layer",
-    missingDatasetKey: "controllerLayoutArtMissing",
-    clearRenderer: clearControllerArtInstanceRenderer
-  });
+  return controllerDynamicArtInstances.render(element, host, rendererKey);
 }
 
 function clearControllerArtInstanceRenderer(elementId, host = null) {
-  clearLayoutArtInstanceRenderer(controllerArtInstanceRenderers, elementId, host);
+  controllerDynamicArtInstances.clear(elementId, host);
 }
 
 function stageLayoutStateForPhase(phase) {
@@ -693,19 +716,21 @@ function allStageLayoutSelectors() {
 }
 
 const stageArtInstanceRenderers = new Map();
+const stageDynamicArtInstances = createDynamicLayoutArtInstanceApi({
+  root: () => stageBoard,
+  selector: ".dynamic-stage-art-instance",
+  className: "dynamic-stage-art-instance stage-widget-art-host has-stage-widget-art",
+  renderers: stageArtInstanceRenderers,
+  layerClassName: "stage-widget-art-layer",
+  missingDatasetKey: "stageLayoutArtMissing"
+});
 
 function activeStageArtInstanceIds(state) {
   return activeDynamicLayoutArtInstanceIds(state, globalStageLayout(), isDynamicStageArtInstance);
 }
 
 function removeInactiveStageArtInstances(activeIds) {
-  removeInactiveLayoutArtInstances({
-    root: stageBoard,
-    selector: ".dynamic-stage-art-instance",
-    activeIds,
-    clearRenderer: clearStageArtInstanceRenderer,
-    registry: stageLayoutGameObjectRegistry()
-  });
+  stageDynamicArtInstances.removeInactive(activeIds, stageLayoutGameObjectRegistry());
 }
 
 function clearStageLayoutTargets() {
@@ -892,26 +917,15 @@ function isDynamicStageArtInstance(element) {
 }
 
 function getOrCreateStageArtInstance(element) {
-  return getOrCreateLayoutArtInstance(
-    element,
-    stageBoard,
-    ".dynamic-stage-art-instance",
-    "dynamic-stage-art-instance stage-widget-art-host has-stage-widget-art"
-  );
+  return stageDynamicArtInstances.getOrCreate(element);
 }
 
 function renderStageArtInstance(element, host, rendererKey = "") {
-  return renderLayoutArtInstance(element, host, {
-    renderers: stageArtInstanceRenderers,
-    rendererKey,
-    layerClassName: "stage-widget-art-layer",
-    missingDatasetKey: "stageLayoutArtMissing",
-    clearRenderer: clearStageArtInstanceRenderer
-  });
+  return stageDynamicArtInstances.render(element, host, rendererKey);
 }
 
 function clearStageArtInstanceRenderer(elementId, host = null) {
-  clearLayoutArtInstanceRenderer(stageArtInstanceRenderers, elementId, host);
+  stageDynamicArtInstances.clear(elementId, host);
 }
 
 function dynamicStageTextElementId(element) {
