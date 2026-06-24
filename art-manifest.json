@@ -626,6 +626,67 @@
         }
       ],
       "updatedAt": "2026-06-24T01:35:13.823Z"
+    },
+    "stage-code-widget": {
+      "name": "Small Room Code Widget",
+      "description": "Editable small global stage-code badge.",
+      "isCustom": false,
+      "canvas": {
+        "width": 210,
+        "height": 112
+      },
+      "components": [
+        {
+          "id": "badge-label",
+          "name": "Badge Label",
+          "kind": "text",
+          "x": 105,
+          "y": 30,
+          "width": 140,
+          "height": 22,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "STAGE",
+          "fontSize": 18,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "badge-code",
+          "name": "Badge Code",
+          "kind": "text",
+          "x": 105,
+          "y": 64,
+          "width": 150,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "NUZ7",
+          "fontSize": 42,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "badge-card",
+          "name": "Badge Card",
+          "kind": "shape",
+          "x": 105,
+          "y": 56,
+          "width": 190,
+          "height": 92,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "#ffe256",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 14
+        }
+      ],
+      "updatedAt": "2026-06-24T01:35:15.446Z"
     }
   }
 }
