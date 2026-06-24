@@ -54,6 +54,7 @@
           "defaultAnimationState": "",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0
@@ -75,6 +76,7 @@
           "fontColor": "#17131f",
           "shapeStyle": "rounded",
           "fillColor": "#fff8d6",
+          "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 2,
           "borderRadius": 999
@@ -96,6 +98,7 @@
           "fontColor": "#17131f",
           "shapeStyle": "rounded",
           "fillColor": "#fff8d6",
+          "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 2,
           "borderRadius": 999
@@ -113,12 +116,13 @@
           "defaultAnimationState": "",
           "shapeStyle": "rounded",
           "fillColor": "#fff8d6",
+          "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 5,
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-24T01:35:10.721Z"
+      "updatedAt": "2026-06-24T04:03:25.026Z"
     },
     "player-avatar-rex": {
       "name": "Rex Avatar",
