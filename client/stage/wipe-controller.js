@@ -58,38 +58,30 @@
 
     visualObject() {
       if (!this.element || !this.visualAnimation) return null;
-      if (typeof this.gameObjectApi?.create === "function") {
-        const visualOptions = this.visualOptions();
-        if (!this.gameObject || this.gameObject.target !== this.element) {
-          this.gameObject = this.gameObjectApi.create({
-            id: "global:wipe",
-            target: this.element,
-            visibilityKey: "global:wipe",
-            isArt: true,
-            isGlobal: true,
-            visualOptions,
-            getVisible: () => this.isVisuallyPresent(),
-            setVisible: (isVisible) => this.setVisibleState(isVisible)
-          });
-        } else {
-          this.gameObject.update({
-            visibilityKey: "global:wipe",
-            isArt: true,
-            isGlobal: true,
-            visualOptions
-          });
-        }
-        this.visual = this.gameObject.createVisual();
-        return this.visual;
-      }
-      if (!this.visual) {
-        this.visual = this.visualAnimation.createLegacyCssVisualObject({
-          element: this.element,
+      const visualOptions = this.visualOptions();
+      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+        gameObjectApi: this.gameObjectApi,
+        visualAnimation: this.visualAnimation,
+        target: this.element,
+        gameObject: this.gameObject,
+        legacyVisual: this.visual,
+        gameObjectOptions: {
+          id: "global:wipe",
+          visibilityKey: "global:wipe",
+          isArt: true,
+          isGlobal: true,
+          visualOptions,
+          getVisible: () => this.isVisuallyPresent(),
+          setVisible: (isVisible) => this.setVisibleState(isVisible)
+        },
+        legacyVisualOptions: {
           ...this.visualOptions(),
           getVisible: () => this.isVisuallyPresent(),
           setVisible: (isVisible) => this.setVisibleState(isVisible)
-        });
-      }
+        }
+      });
+      this.gameObject = bridge?.gameObject || this.gameObject;
+      this.visual = bridge?.visual || bridge?.legacyVisual || this.visual;
       return this.visual;
     }
 

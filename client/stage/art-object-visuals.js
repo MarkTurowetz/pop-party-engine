@@ -65,13 +65,16 @@
       return `art-component:${this.component?.id || this.element.dataset.artComponentId || ""}`;
     }
 
-    createGameObject() {
-      if (!this.element || typeof this.gameObjectApi?.create !== "function") return null;
+    createVisual() {
       const id = this.gameObjectId();
-      if (!this.gameObject || this.gameObject.target !== this.element || this.gameObject.id !== id) {
-        this.gameObject = this.gameObjectApi.create({
+      const bridge = this.gameObjectApi?.createVisualForTarget?.({
+        gameObjectApi: this.gameObjectApi,
+        visualAnimation: this.visualAnimation,
+        target: this.element,
+        gameObject: this.gameObject,
+        legacyVisual: this.visual,
+        gameObjectOptions: {
           id,
-          target: this.element,
           visibilityKey: id,
           isArt: true,
           visualOptions: {
@@ -82,34 +85,17 @@
             instantClass: INSTANT_CLASS,
             layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS]
           }
-        });
-      } else {
-        this.gameObject.update({
-          id,
-          visibilityKey: id,
-          isArt: true
-        });
-      }
-      return this.gameObject;
-    }
-
-    createVisual() {
-      const gameObject = this.createGameObject();
-      if (gameObject) {
-        this.visual = gameObject.createVisual();
-        return this.visual;
-      }
-      if (!this.visualAnimation) return null;
-      if (!this.visual || this.visual.element !== this.element) {
-        this.visual = this.visualAnimation.createLegacyCssVisualObject({
-          element: this.element,
+        },
+        legacyVisualOptions: {
           hiddenClasses: [HIDDEN_CLASS],
           motionHiddenClasses: [HIDDEN_CLASS],
           exitingClass: EXITING_CLASS,
           updateClass: UPDATE_CLASS,
           instantClass: INSTANT_CLASS
-        });
-      }
+        }
+      });
+      this.gameObject = bridge?.gameObject || this.gameObject;
+      this.visual = bridge?.visual || bridge?.legacyVisual || this.visual;
       return this.visual;
     }
 

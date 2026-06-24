@@ -193,11 +193,50 @@
     return new GameObjectRegistry(options);
   }
 
+  function createVisualForTarget(options = {}) {
+    const target = options.target || null;
+    const gameObjectApi = options.gameObjectApi || api;
+    const visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
+    let gameObject = options.gameObject || null;
+    let legacyVisual = options.legacyVisual || null;
+    if (target && typeof gameObjectApi?.create === "function") {
+      const gameObjectOptions = options.gameObjectOptions || {};
+      if (!gameObject || gameObject.target !== target || gameObject.id !== gameObjectOptions.id) {
+        gameObject = gameObjectApi.create({
+          ...gameObjectOptions,
+          target
+        });
+      } else {
+        gameObject.update(gameObjectOptions);
+      }
+      return {
+        gameObject,
+        legacyVisual,
+        visual: gameObject.createVisual()
+      };
+    }
+    if (!target || !visualAnimation) {
+      return { gameObject, legacyVisual, visual: null };
+    }
+    if (!legacyVisual || legacyVisual.element !== target) {
+      legacyVisual = visualAnimation.createLegacyCssVisualObject({
+        element: target,
+        ...(options.legacyVisualOptions || {})
+      });
+    }
+    return {
+      gameObject,
+      legacyVisual,
+      visual: legacyVisual
+    };
+  }
+
   const api = {
     create: createGameObject,
     createGameObject,
     createRegistry: createGameObjectRegistry,
     createGameObjectRegistry,
+    createVisualForTarget,
     GameObject,
     GameObjectRegistry,
     StageGameObject: GameObject,
