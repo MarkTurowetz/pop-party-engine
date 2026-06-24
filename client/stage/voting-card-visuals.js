@@ -19,7 +19,7 @@
     group.innerHTML = `
       <div class="voting-card"></div>
       <div class="voting-card-answer"></div>
-      <div class="voting-card-votes hidden"></div>
+      <div class="voting-card-votes voting-card-widget-hidden"></div>
       <div class="voting-card-author voting-card-widget-hidden"></div>
       <div class="voting-card-voters voting-card-widget-hidden"></div>
       <div class="voting-card-art-objects"></div>
@@ -81,6 +81,12 @@
         motionHiddenClasses: ["voting-card-widget-hidden"],
         instantClass: "voting-card-widget-instant"
       }, "voters");
+      this.voteCountVisual = this.createVisual(this.voteBadgeElement, {
+        hiddenClasses: ["voting-card-widget-hidden"],
+        motionHiddenClasses: ["voting-card-widget-hidden"],
+        instantClass: "voting-card-widget-instant",
+        updateClass: "voting-card-update"
+      }, "vote-count");
     }
 
     createVisual(element, options = {}, key = "") {
@@ -223,8 +229,7 @@
     syncAuthor(cardData) {
       this.authorElement.textContent = cardData.authorName || "";
       if (cardData.authorsRevealed === true) {
-        const duration = this.authorVisual.play("appear");
-        if (duration === 0) this.authorElement.classList.remove("voting-card-widget-hidden");
+        this.authorVisual.play("appear");
       } else {
         this.authorVisual.play("park", { instant: true });
       }
@@ -237,10 +242,15 @@
 
     syncVoteCount(visibleVoteCount) {
       const count = Math.max(0, Math.floor(Number(visibleVoteCount || 0)));
+      const wasVisible = this.voteCountVisual?.isVisible?.() === true;
       this.visibleVoteCount = count;
-      this.voteBadgeElement.classList.toggle("hidden", count <= 0);
       this.voteBadgeElement.textContent = count > 0 ? String(count) : "";
       this.renderComponentChildren("vote-count", this.voteBadgeElement);
+      if (count > 0) {
+        this.voteCountVisual?.play(wasVisible ? "update" : "appear");
+      } else {
+        this.voteCountVisual?.play("park", { instant: true });
+      }
     }
 
     revealVoterBadge(badge, visibleVoteCount) {
