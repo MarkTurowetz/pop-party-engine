@@ -192,6 +192,38 @@ function setLocalValue(key, value) {
 const artAssetsChangedStorageKey = "partyTemplate.artAssetsChangedAt";
 const artAssetsChangedChannelName = "partyTemplate.artAssetsChanged";
 const artAssetsChangedChannels = [];
+const artCompositionDrafts = new Map();
+
+function cloneArtCompositionDraft(composition) {
+  try {
+    return JSON.parse(JSON.stringify(composition));
+  } catch (error) {
+    return composition;
+  }
+}
+
+function rememberArtCompositionDrafts(compositions = artCompositions) {
+  for (const composition of compositions || []) {
+    if (!composition?.id) continue;
+    artCompositionDrafts.set(composition.id, cloneArtCompositionDraft(composition));
+  }
+}
+
+function forgetArtCompositionDraft(compositionId) {
+  artCompositionDrafts.delete(compositionId);
+}
+
+function clearArtCompositionDrafts() {
+  artCompositionDrafts.clear();
+}
+
+function mergeArtCompositionDrafts(compositions = []) {
+  const byId = new Map((compositions || []).map((composition) => [composition.id, composition]));
+  for (const [id, composition] of artCompositionDrafts.entries()) {
+    byId.set(id, cloneArtCompositionDraft(composition));
+  }
+  return [...byId.values()];
+}
 
 function notifyArtAssetsChanged() {
   const updatedAt = String(Date.now());
@@ -331,7 +363,7 @@ function artComposition(compositionId) {
 function applyArtAssets(assets, groups = artGroups, compositions = artCompositions) {
   artAssets = assets || [];
   artGroups = groups || [];
-  artCompositions = compositions || [];
+  artCompositions = mergeArtCompositionDrafts(compositions || []);
   for (const asset of artAssets) {
     artAssetUrls.set(asset.id, asset.currentUrl);
   }

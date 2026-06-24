@@ -111,6 +111,8 @@ function restoreArtCompositionHistory(snapshot) {
     hideArtComponentEditor();
   }
   renderArtList();
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -456,6 +458,8 @@ function deleteSelectedArtComponents() {
   renderSelectedArtComposition();
   renderArtList();
   artFileName.textContent = removedIds.length === 1 ? "Deleted 1 component" : `Deleted ${removedIds.length} components`;
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -754,6 +758,8 @@ function updateArtComponentNumber(key, value, options = {}) {
   }
   renderSelectedArtComposition();
   renderArtList();
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -766,6 +772,8 @@ function updateArtComponentValue(key, value, options = {}) {
   component[key] = nextValue;
   renderSelectedArtComposition({ renderEditor: options.colorCommit !== true && options.previewOnly !== true });
   renderArtList();
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -777,6 +785,8 @@ function updateArtCompositionValue(key, value, options = {}) {
   composition[key] = value;
   renderSelectedArtComposition();
   renderArtList();
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -963,6 +973,7 @@ function createArtAssetComposition(kind = "shape") {
   renderSelectedArtComposition();
   renderArtList();
   persistArtCollapseState();
+  rememberArtCompositionDrafts();
   notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
@@ -991,6 +1002,7 @@ function createArtChildObject(kind = "shape") {
   renderSelectedArtComposition();
   renderArtList();
   persistArtCollapseState();
+  rememberArtCompositionDrafts();
   notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
@@ -1055,6 +1067,7 @@ async function saveArtCompositions() {
   }
   artCompositions = savedCompositions;
   artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
+  clearArtCompositionDrafts();
   notifyArtAssetsChanged();
   selectedArtCompositionId = artComposition(selectedId)?.id || artCompositions[0]?.id || "";
   renderSelectedArtComposition();
@@ -1078,6 +1091,7 @@ async function deleteSelectedArtComposition() {
     artCompositions = Array.isArray(result.compositions)
       ? result.compositions
       : artCompositions.filter((item) => item.id !== deletedId);
+    forgetArtCompositionDraft(deletedId);
     artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
     notifyArtAssetsChanged();
     const nextComposition = artCompositions[Math.min(deletedIndex, artCompositions.length - 1)] || artCompositions[deletedIndex - 1] || null;

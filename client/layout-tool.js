@@ -162,9 +162,12 @@ function isActiveLayoutDirty() {
 }
 
 function baseLayoutObjectCatalog() {
-  const artCompositionIds = new Set((artCompositions || []).map((composition) => composition.id));
+  const catalogArtCompositions = typeof mergeArtCompositionDrafts === "function"
+    ? mergeArtCompositionDrafts(artCompositions || [])
+    : artCompositions || [];
+  const artCompositionIds = new Set((catalogArtCompositions || []).map((composition) => composition.id));
   const artPrefabObjects = layoutToolMode === "stage"
-    ? (artCompositions || []).map((composition) => ({
+    ? (catalogArtCompositions || []).map((composition) => ({
       id: `art-${composition.id}`,
       name: composition.name || "Art Asset",
       selector: "",
@@ -303,16 +306,16 @@ function layoutObjectFuzzyScore(item, query) {
   const selector = String(item?.selector || "").toLowerCase();
   const artCompositionId = String(item?.artCompositionId || "").toLowerCase();
   const fields = [name, id, artCompositionId, kind, selector].filter(Boolean);
-  if (name === cleanQuery) return -300;
-  if (id === cleanQuery || artCompositionId === cleanQuery) return -260;
-  if (name.startsWith(cleanQuery)) return -220;
-  if (fields.some((field) => field.startsWith(cleanQuery))) return -180;
-  if (name.split(/\s+/).some((word) => word.startsWith(cleanQuery))) return -150;
-  if (fields.some((field) => field.includes(cleanQuery))) return -80;
+  if (name === cleanQuery) return 0;
+  if (id === cleanQuery || artCompositionId === cleanQuery) return 1;
+  if (name.startsWith(cleanQuery)) return 2;
+  if (fields.some((field) => field.startsWith(cleanQuery))) return 3;
+  if (name.split(/\s+/).some((word) => word.startsWith(cleanQuery))) return 4;
+  if (fields.some((field) => field.includes(cleanQuery))) return 10;
   const haystack = `${name} ${id} ${artCompositionId} ${kind} ${selector}`;
   const score = simpleLayoutFuzzyScore(haystack, cleanQuery);
   if (score < 0) return -1;
-  return score;
+  return 100 + score;
 }
 
 function simpleLayoutFuzzyScore(text, query) {
