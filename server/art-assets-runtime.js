@@ -223,6 +223,7 @@ function createArtAssetsRuntime({
 
   function normalizeComposition(composition, override = null) {
     const components = normalizeCompositionComponents(composition.components || [], override?.components);
+    migrateGeneratedStageCodePanelDefaults(composition.id, components);
     return {
       id: composition.id,
       name: cleanText(override?.name, composition.name || "Art Asset"),
@@ -235,6 +236,44 @@ function createArtAssetsRuntime({
       components,
       updatedAt: override?.updatedAt || null
     };
+  }
+
+  function migrateGeneratedStageCodePanelDefaults(compositionId, components = []) {
+    if (compositionId !== "stage-code-panel") return;
+    const byId = new Map((components || []).map((component) => [component.id, component]));
+    const card = byId.get("panel-card");
+    if (card
+      && card.width === 540
+      && card.height === 170
+      && card.fillColor === "#fff8d6"
+      && card.borderRadius === 18) {
+      card.width = 560;
+      card.height = 190;
+      card.fillColor = "#ffe256";
+      card.borderRadius = 24;
+    }
+    const label = byId.get("panel-label");
+    if (label
+      && label.defaultText === "STAGE"
+      && label.fontSize === 24
+      && label.autoFitText === true) {
+      label.y = 54;
+      label.width = 420;
+      label.height = 34;
+      label.defaultText = "STAGE CODE";
+      label.fontSize = 22;
+      label.autoFitText = false;
+    }
+    const code = byId.get("panel-code");
+    if (code
+      && code.fontSize === 72
+      && code.autoFitText === true) {
+      code.y = 120;
+      code.width = 500;
+      code.height = 105;
+      code.fontSize = 112;
+      code.autoFitText = false;
+    }
   }
 
   function publicArtComposition(composition, manifest) {

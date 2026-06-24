@@ -54,9 +54,7 @@ function craftingTimerController() {
       getRenderedActionKey: () => currentRenderedActionKey(),
       getCurrentStageState: () => currentStageState,
       fallbackDurationMs: () => Math.max(1, Number(gameConstants.craftingTimerDuration || 30)) * 1000,
-      onTick: ({ label }) => renderStageWidgetArt(craftingTimer, "crafting-timer-widget", {
-        "timer-value": label
-      })
+      onTick: ({ label, timer }) => renderStageWidgetBinding("craftingTimer", { label, timer })
     });
   }
   return craftingTimerControllerInstance;
@@ -304,19 +302,75 @@ function setStageTextObject(target, options = {}) {
 function renderCraftingTimer(timer, options = {}) {
   const duration = craftingTimerController()?.render(timer, options) || 0;
   if (timer?.shown) {
-    renderStageWidgetArt(craftingTimer, "crafting-timer-widget", {
-      "timer-value": craftingTimerLabel.textContent || String(Math.ceil(Number(timer.remainingMs || timer.durationMs || 30000) / 1000))
-    }, { instant: options.instant === true });
+    renderStageWidgetBinding("craftingTimer", {
+      timer,
+      instant: options.instant === true
+    });
   }
   return duration;
 }
 
-function renderStageWidgetArt(host, compositionId, textOverrides = {}, options = {}) {
-  return stageWidgetArtRenderer()?.render(host, compositionId, textOverrides, options) || null;
-}
+const stageWidgetBindings = {
+  stageCodePanel: {
+    compositionId: "stage-code-panel",
+    host: () => stageCodeText.closest(".stage-code-panel"),
+    textOverrides: (context) => ({
+      "panel-code": context.stageCode || stageCodeText.textContent
+    })
+  },
+  stageCodeWidget: {
+    compositionId: "stage-code-widget",
+    host: () => stageCodeBadgeRoot,
+    textOverrides: (context) => ({
+      "badge-code": context.stageCode || stageCodeBadge.textContent
+    })
+  },
+  joinQr: {
+    compositionId: "join-qr-code",
+    host: () => stageJoinQr,
+    textOverrides: (context) => ({
+      "qr-url": context.displayUrl || ""
+    }),
+    overlays: [
+      {
+        componentId: "qr-placeholder",
+        element: () => stageJoinQrCanvas
+      }
+    ]
+  },
+  joinWidget: {
+    compositionId: "join-widget",
+    host: () => joinPrompt,
+    textOverrides: () => ({
+      "join-text": joinPrompt.textContent || "Join the Lobby at bit.ly/popcontroller"
+    })
+  },
+  countdownPopup: {
+    compositionId: "countdown-popup",
+    host: () => startPopup,
+    textOverrides: (context) => ({
+      "popup-text": context.seconds > 0 ? `Starting in ${context.seconds}` : "Let's Go"
+    })
+  },
+  craftingTimer: {
+    compositionId: "crafting-timer-widget",
+    host: () => craftingTimer,
+    textOverrides: (context) => ({
+      "timer-value": context.label || craftingTimerLabel.textContent || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
+    })
+  },
+  presentationClickPrompt: {
+    compositionId: "presentation-click-prompt",
+    host: () => presentClickWidget
+  }
+};
 
-function positionStageWidgetOverlay(host, composition, componentId, overlay) {
-  stageWidgetArtRenderer()?.positionOverlay(host, composition, componentId, overlay);
+function renderStageWidgetBinding(bindingId, context = {}) {
+  const binding = stageWidgetBindings[bindingId];
+  if (!binding) return null;
+  const host = binding.host?.(context);
+  if (!host) return null;
+  return stageWidgetArtRenderer()?.renderBound(host, binding, context) || null;
 }
 
 function renderStageActionDebug(lobby) {
@@ -344,10 +398,9 @@ function renderStageJoinQr(stageCode, isVisible = true) {
   if (!isVisible || !normalizedCode) return;
   const joinUrl = controllerJoinUrlForStage(normalizedCode);
   stageJoinQrUrl.textContent = joinUrl.replace(/^https?:\/\//, "");
-  const composition = renderStageWidgetArt(stageJoinQr, "join-qr-code", {
-    "qr-url": stageJoinQrUrl.textContent
+  renderStageWidgetBinding("joinQr", {
+    displayUrl: stageJoinQrUrl.textContent
   });
-  positionStageWidgetOverlay(stageJoinQr, composition, "qr-placeholder", stageJoinQrCanvas);
   if (renderedStageJoinQrUrl === joinUrl) return;
   renderedStageJoinQrUrl = joinUrl;
   try {
@@ -377,12 +430,8 @@ function applyStageState(lobby) {
   const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
   if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
   stageCodeBadgeRoot.classList.toggle("hidden", isLobbyPhase);
-  renderStageWidgetArt(stageCodeText.closest(".stage-code-panel"), "stage-code-panel", {
-    "panel-code": lobby.stageCode || stageCodeText.textContent
-  });
-  renderStageWidgetArt(stageCodeBadgeRoot, "stage-code-widget", {
-    "badge-code": lobby.stageCode || stageCodeBadge.textContent
-  });
+  renderStageWidgetBinding("stageCodePanel", { stageCode: lobby.stageCode || stageCodeText.textContent });
+  renderStageWidgetBinding("stageCodeWidget", { stageCode: lobby.stageCode || stageCodeBadge.textContent });
   renderStageJoinQr(lobby.stageCode || stageCodeText.textContent, isLobbyPhase);
   window.clearInterval(stageCountdownTimer);
   startPopup.classList.add("hidden");
@@ -391,7 +440,7 @@ function applyStageState(lobby) {
   stageIntroContent.classList.toggle("hidden", phase !== "intro");
   stageIntroTitle.textContent = "GAME INTRO";
   presentClickWidget.classList.toggle("hidden", !(action?.type === "present" && action?.timing?.mode !== "S+"));
-  renderStageWidgetArt(presentClickWidget, "presentation-click-prompt");
+  renderStageWidgetBinding("presentationClickPrompt");
   clearStageDecisionDebug(lobby);
   renderStagePlayers(players);
   setPlayersShown(lobby.playersShown !== false);
@@ -417,9 +466,7 @@ function applyStageState(lobby) {
 
   const vip = players.find((player) => player.isVip);
   joinPrompt.classList.toggle("hidden", !isLobbyPhase);
-  renderStageWidgetArt(joinPrompt, "join-widget", {
-    "join-text": joinPrompt.textContent || "Join the Lobby at bit.ly/popcontroller"
-  });
+  renderStageWidgetBinding("joinWidget");
   waitingStatus.classList.toggle("hidden", phase === "intro" || players.length === 0);
   waitingStatus.textContent = vip ? `Waiting for ${vip.name} to start the game` : "";
 
@@ -433,9 +480,7 @@ function applyStageState(lobby) {
       const remainingMs = Math.max(0, (lobby.countdownEndsAt || now) - now);
       const seconds = Math.ceil(remainingMs / 1000);
       startPopup.classList.toggle("is-go", seconds <= 0);
-      renderStageWidgetArt(startPopup, "countdown-popup", {
-        "popup-text": seconds > 0 ? `Starting in ${seconds}` : "Let's Go"
-      });
+      renderStageWidgetBinding("countdownPopup", { seconds });
     };
     updateCountdown();
     stageCountdownTimer = window.setInterval(updateCountdown, 100);

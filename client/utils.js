@@ -265,10 +265,11 @@ function avatarCompositionId(shape) {
   return `player-avatar-${species}`;
 }
 
-function avatarComponentStyle(component, canvas) {
+function avatarComponentStyle(component, canvas, layerIndex = 0, siblingCount = 1) {
   const canvasWidth = Math.max(1, Number(canvas?.width || 1));
   const canvasHeight = Math.max(1, Number(canvas?.height || 1));
   return [
+    `z-index:${Math.max(1, Number(siblingCount || 1) - Number(layerIndex || 0))}`,
     `left:${Number(component.x || 0) / canvasWidth * 100}%`,
     `top:${Number(component.y || 0) / canvasHeight * 100}%`,
     `width:${Number(component.width || 1) / canvasWidth * 100}%`,
@@ -283,9 +284,9 @@ function avatarComponentImageSource(component) {
   return component?.imageDataUrl || artAssetUrl(component?.imageAssetId) || "";
 }
 
-function avatarCompositionComponentMarkup(component, canvas) {
+function avatarCompositionComponentMarkup(component, canvas, layerIndex = 0, siblingCount = 1) {
   const imageSource = avatarComponentImageSource(component);
-  const style = avatarComponentStyle(component, canvas);
+  const style = avatarComponentStyle(component, canvas, layerIndex, siblingCount);
   const kind = window.PartyGameArtComponentSchema?.normalizeComponentKind?.(component?.kind) || component?.kind || "shape";
   const shapeStyle = window.PartyGameArtComponentSchema?.normalizeShapeStyle?.(component?.shapeStyle, kind) || component?.shapeStyle || "rounded";
   const classes = `avatar-art-component is-${kind} is-style-${shapeStyle}${imageSource ? " has-image-mask" : ""}${component.imageTint === "currentColor" && imageSource ? " has-tinted-image-mask" : ""}`;
@@ -302,7 +303,8 @@ function playerAvatarArt(shape) {
   const composition = artComposition(avatarCompositionId(shape));
   if (!composition) return `${avatarFrameImage()}${dinoIcon(shape)}`;
   const canvas = composition.canvas || { width: 100, height: 100 };
-  const components = (composition.components || []).map((component) => avatarCompositionComponentMarkup(component, canvas)).join("");
+  const componentList = composition.components || [];
+  const components = componentList.map((component, index) => avatarCompositionComponentMarkup(component, canvas, index, componentList.length)).join("");
   return `<span class="player-avatar-art-composition">${components}</span>`;
 }
 

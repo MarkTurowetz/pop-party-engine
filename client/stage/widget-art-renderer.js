@@ -77,7 +77,19 @@
       overlay.style.transform = "translate(-50%, -50%)";
     }
 
-    return { render, positionOverlay };
+    function renderBound(host, binding = {}, context = {}) {
+      const textOverrides = typeof binding.textOverrides === "function"
+        ? binding.textOverrides(context)
+        : binding.textOverrides || {};
+      const composition = render(host, binding.compositionId, textOverrides, binding.options || {});
+      for (const overlay of binding.overlays || []) {
+        const element = typeof overlay.element === "function" ? overlay.element(context) : overlay.element;
+        positionOverlay(host, composition, overlay.componentId, element);
+      }
+      return composition;
+    }
+
+    return { render, renderBound, positionOverlay };
   }
 
   global.PartyGameStageWidgetArt = { createRenderer };
