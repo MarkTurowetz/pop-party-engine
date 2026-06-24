@@ -471,7 +471,19 @@
       overflow: visible;
     }
 
+    .controller-widget-art-host {
+      position: absolute;
+      overflow: visible;
+    }
+
     .stage-widget-art-host > .stage-widget-art-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .controller-widget-art-host > .controller-widget-art-layer {
       position: absolute;
       inset: 0;
       z-index: 0;

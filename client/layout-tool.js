@@ -203,8 +203,10 @@ function baseLayoutObjectCatalog() {
     ? mergeArtCompositionDrafts(artCompositions || [])
     : artCompositions || [];
   const artCompositionIds = new Set((catalogArtCompositions || []).map((composition) => composition.id));
-  const artPrefabObjects = layoutToolMode === "stage"
-    ? (catalogArtCompositions || []).map((composition) => ({
+  const artSurface = layoutToolMode === "controller" ? "controller" : "stage";
+  const artPrefabObjects = (catalogArtCompositions || [])
+    .filter((composition) => layoutArtCompositionSurface(composition) === artSurface)
+    .map((composition) => ({
       id: `art-${composition.id}`,
       name: composition.name || "Art Asset",
       selector: "",
@@ -213,8 +215,7 @@ function baseLayoutObjectCatalog() {
       width: Number(composition.canvas?.width || 240),
       height: Number(composition.canvas?.height || 120),
       instanced: true
-    }))
-    : [];
+    }));
   if (layoutToolMode === "controller") {
     return [
       { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", width: 330, height: 86 },
@@ -235,7 +236,8 @@ function baseLayoutObjectCatalog() {
       { id: "controllerInvalidBanner", name: "Invalid Submission Banner", selector: "#controllerInvalidBanner", kind: "art", width: 330, height: 64 },
       { id: "controllerTextInput", name: "Text Input Field", selector: "#controllerTextInput", kind: "art", width: 330, height: 128 },
       { id: "controllerTextSubmitButton", name: "Text Submit Button", selector: "#controllerTextSubmitButton", kind: "art", width: 300, height: 70 },
-      { id: "controllerTextDone", name: "Text Done Message", selector: "#controllerTextDone", kind: "text", width: 330, height: 150 }
+      { id: "controllerTextDone", name: "Text Done Message", selector: "#controllerTextDone", kind: "text", width: 330, height: 150 },
+      ...artPrefabObjects
     ];
   }
   const legacyStageObjects = [
@@ -260,6 +262,10 @@ function baseLayoutObjectCatalog() {
     ...artPrefabObjects,
     ...legacyStageObjects
   ];
+}
+
+function layoutArtCompositionSurface(composition) {
+  return composition?.surface === "controller" ? "controller" : "stage";
 }
 
 function layoutSerializedArtComposition(composition) {

@@ -141,6 +141,7 @@ function applyControllerLayoutForPhase(phase) {
   if (!state) return;
   currentControllerLayoutStateId = state.id;
   controllerLayoutGameObjectRegistry()?.beginFrame();
+  removeInactiveControllerArtInstances(activeControllerArtInstanceIds(state));
   clearControllerLayoutTargets();
   const canvas = controllerLayouts.canvas || { width: 390, height: 844 };
   const screenRect = controllerScreen.getBoundingClientRect();
@@ -179,6 +180,8 @@ function applyControllerElementLayout(element, isGlobal = false) {
   if (element.kind === "text") {
     target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
+  } else if (isDynamicControllerArtInstance(element)) {
+    renderControllerArtInstance(element, target);
   }
   if (typeof entity.applyVisibilityOverride === "function") entity.applyVisibilityOverride();
   if (isNewLayoutTarget) {
@@ -199,8 +202,8 @@ function registerControllerLayoutEntity(element, target, isGlobal = false) {
   const entity = {
     element,
     id,
-    isArt: false,
-    isDynamic: element?.kind === "text" && !matchesSelector,
+    isArt: element?.kind === "art" || Boolean(element?.artCompositionId),
+    isDynamic: isDynamicControllerArtInstance(element) || (element?.kind === "text" && !matchesSelector),
     isGlobal: isGlobal === true,
     target,
     visibilityKey: controllerLayoutVisibilityKey(id, isGlobal)
@@ -230,6 +233,7 @@ function applyControllerLayoutTextProperties(target, element) {
 }
 
 function controllerLayoutTargetElement(element) {
+  if (isDynamicControllerArtInstance(element)) return getOrCreateControllerArtInstance(element);
   const target = controllerPanel.querySelector(element.selector);
   if (target || element.kind !== "text") return target;
   const id = String(element.selector || "").replace(/^#/, "") || element.id;
@@ -242,6 +246,84 @@ function controllerLayoutTargetElement(element) {
     controllerPanel.appendChild(dynamic);
   }
   return dynamic;
+}
+
+const controllerArtInstanceRenderers = new Map();
+
+function isDynamicControllerArtInstance(element) {
+  return Boolean(element?.artCompositionId && !element.selector);
+}
+
+function activeControllerArtInstanceIds(state) {
+  const ids = new Set();
+  for (const element of state?.elements || []) {
+    if (isDynamicControllerArtInstance(element)) ids.add(element.id);
+  }
+  const globalLayout = globalControllerLayout();
+  if (globalLayout.hiddenInStates !== true) {
+    const hiddenGlobals = new Set(state?.hiddenGlobals || []);
+    for (const element of globalLayout.elements || []) {
+      if (isDynamicControllerArtInstance(element) && !hiddenGlobals.has(element.id)) ids.add(element.id);
+    }
+  }
+  return ids;
+}
+
+function removeInactiveControllerArtInstances(activeIds) {
+  for (const element of Array.from(controllerPanel.querySelectorAll(".dynamic-controller-art-instance[data-layout-element-id]"))) {
+    if (!activeIds.has(element.dataset.layoutElementId)) {
+      clearControllerArtInstanceRenderer(element.dataset.layoutElementId, element);
+      controllerLayoutGameObjectRegistry()?.remove(element.dataset.layoutElementId);
+      element.remove();
+    }
+  }
+}
+
+function getOrCreateControllerArtInstance(element) {
+  const id = String(element?.id || "");
+  if (!id || !controllerPanel) return null;
+  let host = controllerPanel.querySelector(`.dynamic-controller-art-instance[data-layout-element-id="${CSS.escape(id)}"]`);
+  if (!host) {
+    host = document.createElement("div");
+    host.className = "dynamic-controller-art-instance controller-widget-art-host";
+    host.dataset.layoutElementId = id;
+    controllerPanel.appendChild(host);
+  }
+  return host;
+}
+
+function renderControllerArtInstance(element, host) {
+  const composition = artComposition(element.artCompositionId);
+  const artRuntime = window.PartyGameArtObject;
+  if (!host) return false;
+  if (!composition || !artRuntime) {
+    clearControllerArtInstanceRenderer(element.id, host);
+    host.dataset.controllerLayoutArtMissing = "true";
+    return false;
+  }
+  delete host.dataset.controllerLayoutArtMissing;
+  let renderer = controllerArtInstanceRenderers.get(element.id);
+  if (!renderer) {
+    const layer = document.createElement("div");
+    layer.className = "controller-widget-art-layer";
+    host.replaceChildren(layer);
+    renderer = new artRuntime.ArtObjectTreeRenderer({
+      host: layer,
+      document,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
+      visualAnimation: window.PartyGameVisualObject
+    });
+    controllerArtInstanceRenderers.set(element.id, renderer);
+  }
+  renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, { instant: true });
+  return true;
+}
+
+function clearControllerArtInstanceRenderer(elementId, host = null) {
+  const renderer = controllerArtInstanceRenderers.get(elementId);
+  if (renderer) renderer.clear({ instant: true });
+  controllerArtInstanceRenderers.delete(elementId);
+  if (host) host.replaceChildren();
 }
 
 function stageLayoutStateForPhase(phase) {
