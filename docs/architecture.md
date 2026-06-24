@@ -136,6 +136,9 @@ concepts into focused modules.
 
 - Game-authored data stays in JSON data files or GitHub-backed tool storage.
 - Runtime code can change without overwriting tool-authored game data.
+- Art Manager compositions carry a `surface` field (`stage` by default, `controller`
+  reserved for controller-specific art) so future editor tabs can share the same
+  composition schema rather than maintaining separate art systems.
 - New flow action metadata and shared action shaping behavior belongs in
   `shared/flow-action-registry.js`.
 - New server behavior should avoid growing `server.js` when it can live in a focused module.

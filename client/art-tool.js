@@ -27,6 +27,7 @@ function serializeArtCompositionsForSave(source = artCompositions) {
     id: composition.id,
     name: composition.name || "Art Asset",
     description: composition.description || "",
+    surface: normalizeArtCompositionSurface(composition.surface),
     isCustom: Boolean(composition.isCustom),
     canvas: {
       width: Number(composition.canvas?.width || 1),
@@ -34,6 +35,10 @@ function serializeArtCompositionsForSave(source = artCompositions) {
     },
     components: (composition.components || []).map(serializeArtComponentForSave)
   }));
+}
+
+function normalizeArtCompositionSurface(surface) {
+  return surface === "controller" ? "controller" : "stage";
 }
 
 function serializeArtComponentForSave(component) {
@@ -971,6 +976,7 @@ function createArtAssetComposition(kind = "shape") {
     id: createSecureArtId("art"),
     name: `${artKindLabel(kind)} Art`,
     description: "Editable art asset.",
+    surface: "stage",
     canvas: { width: 560, height: 230 },
     components: [root]
   };

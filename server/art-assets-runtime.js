@@ -237,11 +237,16 @@ function createArtAssetsRuntime({
       id: composition.id,
       name: cleanText(override?.name, composition.name || "Art Asset"),
       description: cleanText(override?.description, composition.description || "Editable art asset.", 240),
+      surface: normalizeCompositionSurface(override?.surface || composition.surface),
       isCustom: Boolean(composition.isCustom || override?.isCustom),
       canvas,
       components,
       updatedAt: override?.updatedAt || null
     };
+  }
+
+  function normalizeCompositionSurface(surface) {
+    return surface === "controller" ? "controller" : "stage";
   }
 
   function migrateGeneratedStageCodePanelDefaults(compositionId, components = []) {
@@ -433,6 +438,7 @@ function createArtAssetsRuntime({
         id,
         name: cleanText(composition?.name, "Art Asset"),
         description: cleanText(composition?.description, "Editable art asset.", 240),
+        surface: normalizeCompositionSurface(composition?.surface),
         isCustom: true,
         canvas: composition?.canvas || { width: 560, height: 230 },
         components: []
@@ -508,6 +514,7 @@ function createArtAssetsRuntime({
         id: safeCompositionId,
         name: cleanText(incoming?.name, "Art Asset"),
         description: cleanText(incoming?.description, "Editable art asset.", 240),
+        surface: normalizeCompositionSurface(incoming?.surface),
         isCustom: true,
         canvas: incoming?.canvas || { width: 560, height: 230 },
         components: []
@@ -538,6 +545,7 @@ function createArtAssetsRuntime({
       id: safeCompositionId,
       name: cleanText(incoming?.name, savedDefinition?.name || "Art Asset"),
       description: cleanText(incoming?.description, savedDefinition?.description || "Editable art asset.", 240),
+      surface: normalizeCompositionSurface(incoming?.surface || savedDefinition?.surface),
       isCustom: true,
       canvas: incoming?.canvas || savedDefinition?.canvas || { width: 560, height: 230 },
       components: []
@@ -550,6 +558,7 @@ function createArtAssetsRuntime({
     manifest.compositions[definition.id] = {
       name: normalized.name,
       description: normalized.description,
+      surface: normalized.surface,
       isCustom: normalized.isCustom,
       canvas: normalized.canvas,
       components: normalized.components,
