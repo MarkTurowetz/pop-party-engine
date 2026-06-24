@@ -82,7 +82,11 @@ function renderLayoutArtInstance(element, host, options = {}) {
     });
     options.renderers.set(rendererKey, renderer);
   }
-  renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, { instant: true });
+  renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, {
+    defaultAnimation: "on",
+    instant: true,
+    respectDefaultAnimationState: false
+  });
   return true;
 }
 

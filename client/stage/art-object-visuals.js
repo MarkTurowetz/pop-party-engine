@@ -230,6 +230,8 @@
 
     render(components = [], canvas, options = {}) {
       if (!this.host) return;
+      const defaultAnimation = options.defaultAnimation || "on";
+      const respectDefaultAnimationState = options.respectDefaultAnimationState !== false;
       const counts = new Map();
       const keyedComponents = (components || []).map((component, index) => ({
         component,
@@ -250,7 +252,12 @@
             layer: { index, total: (components || []).length }
           });
           this.views.set(key, view);
-          view.play(component.defaultAnimationState || options.defaultAnimation || "on", { instant: options.instant !== false });
+          view.play(
+            respectDefaultAnimationState
+              ? component.defaultAnimationState || defaultAnimation
+              : defaultAnimation,
+            { instant: options.instant !== false }
+          );
         } else {
           view.update(component, canvas, { index, total: (components || []).length });
         }

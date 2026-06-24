@@ -153,6 +153,9 @@ concepts into focused modules.
 - Placed layout entities should be registered through the shared registration helper
   in `client/layout-runtime.js` so stage and controller GameObjects carry the same
   `isArt`, `isDynamic`, `isGlobal`, and `visibilityKey` semantics.
+- Layout prefab instances should let the placed layout entity own park/appear/disappear.
+  Their internal art tree is rendered into a ready `on` state by layout runtime so a
+  parked source-root component does not make `Set Art Asset Shown` appear an empty host.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same
   composition schema rather than maintaining separate art systems.
