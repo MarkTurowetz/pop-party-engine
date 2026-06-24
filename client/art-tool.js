@@ -832,6 +832,7 @@ async function stageArtComponentImageFile(component, file) {
     const dataUrl = await readArtComponentImageDataUrl(file);
     pushArtHistory();
     target.imageDataUrl = dataUrl;
+    target.imageAssetId = "";
     target.imageName = file.name || "Uploaded image";
     target.imageMimeType = file.type;
     target.imageObjectFit = artComponentSchema.normalizeImageObjectFit(target.imageObjectFit);
@@ -846,11 +847,13 @@ async function stageArtComponentImageFile(component, file) {
 
 function clearArtComponentImage(component) {
   const target = currentArtComponentForImageUpdate(component);
-  if (!target?.imageDataUrl) return;
+  if (!target?.imageDataUrl && !target?.imageAssetId) return;
   pushArtHistory();
   target.imageDataUrl = "";
+  target.imageAssetId = "";
   target.imageName = "";
   target.imageMimeType = "";
+  target.imageTint = "";
   target.imageObjectFit = "cover";
   artFileName.textContent = "Image mask cleared";
   renderSelectedArtComposition();

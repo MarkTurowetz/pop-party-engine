@@ -992,6 +992,7 @@ async function saveControllerLayouts() {
 async function setupLayoutTool(mode = "stage") {
   layoutToolMode = mode === "controller" ? "controller" : "stage";
   layoutScreen.classList.remove("hidden");
+  await loadArtAssets().catch(() => {});
   if (layoutToolInitialized) {
     if (!activeLayoutSavedSnapshot()) {
       await loadLayoutToolData().catch((error) => {

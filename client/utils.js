@@ -286,13 +286,16 @@ function avatarComponentImageSource(component) {
 function avatarCompositionComponentMarkup(component, canvas) {
   const imageSource = avatarComponentImageSource(component);
   const style = avatarComponentStyle(component, canvas);
+  const kind = window.PartyGameArtComponentSchema?.normalizeComponentKind?.(component?.kind) || component?.kind || "shape";
+  const shapeStyle = window.PartyGameArtComponentSchema?.normalizeShapeStyle?.(component?.shapeStyle, kind) || component?.shapeStyle || "rounded";
+  const classes = `avatar-art-component is-${kind} is-style-${shapeStyle}${imageSource ? " has-image-mask" : ""}${component.imageTint === "currentColor" && imageSource ? " has-tinted-image-mask" : ""}`;
   if (component.imageTint === "currentColor" && imageSource) {
-    return `<span class="avatar-art-component avatar-art-mask" style="${style};--avatar-mask-url:${cssUrl(imageSource)}"></span>`;
+    return `<span class="${classes}" style="${style};--avatar-mask-url:${cssUrl(imageSource)}"><span class="avatar-art-mask-image"></span></span>`;
   }
   if (imageSource) {
-    return `<img class="avatar-art-component avatar-art-image" alt="" draggable="false" src="${imageSource}" style="${style}">`;
+    return `<span class="${classes}" style="${style}"><img class="avatar-art-image" alt="" draggable="false" src="${imageSource}"></span>`;
   }
-  return `<span class="avatar-art-component" style="${style}"></span>`;
+  return `<span class="${classes}" style="${style}"></span>`;
 }
 
 function playerAvatarArt(shape) {

@@ -1442,9 +1442,12 @@
       display: block;
       transform-origin: center;
       pointer-events: none;
+      box-sizing: border-box;
     }
 
-    .avatar-art-mask {
+    .avatar-art-mask-image {
+      position: absolute;
+      inset: 0;
       background: currentColor;
       -webkit-mask: var(--avatar-mask-url) center / var(--avatar-component-fit, contain) no-repeat;
       mask: var(--avatar-mask-url) center / var(--avatar-component-fit, contain) no-repeat;
@@ -1452,10 +1455,12 @@
     }
 
     .avatar-art-image {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: var(--avatar-component-fit, contain);
-      object-position: center;
+      object-position: center center;
       display: block;
     }
 

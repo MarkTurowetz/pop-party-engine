@@ -415,6 +415,78 @@ const defaultArtCompositions = [
         fontColor: "#17131f"
       }
     ]
+  },
+  {
+    id: "join-qr-code",
+    name: "Join QR Code",
+    description: "Editable QR join card art used by the lobby layout.",
+    canvas: { width: 260, height: 300 },
+    components: [
+      {
+        id: "qr-card",
+        name: "QR Card",
+        kind: "shape",
+        x: 130,
+        y: 150,
+        width: 240,
+        height: 280,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "rounded",
+        fillColor: "#fffdf3",
+        borderColor: "#17131f",
+        borderWidth: 5,
+        borderRadius: 18
+      },
+      {
+        id: "qr-placeholder",
+        name: "QR Placeholder",
+        kind: "shape",
+        x: 130,
+        y: 118,
+        width: 162,
+        height: 162,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "rectangle",
+        fillColor: "#ffffff",
+        borderColor: "#17131f",
+        borderWidth: 3,
+        borderRadius: 8
+      },
+      {
+        id: "qr-label",
+        name: "QR Label",
+        kind: "text",
+        x: 130,
+        y: 225,
+        width: 180,
+        height: 34,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "SCAN TO JOIN",
+        fontSize: 24,
+        fontColor: "#17131f"
+      },
+      {
+        id: "qr-url",
+        name: "QR URL",
+        kind: "text",
+        x: 130,
+        y: 258,
+        width: 190,
+        height: 40,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "controller link",
+        fontSize: 14,
+        fontColor: "#17131f"
+      }
+    ]
   }
 ];
 
