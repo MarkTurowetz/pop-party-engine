@@ -33,6 +33,16 @@ function publicTextAction(action, base, context, publicType) {
   };
 }
 
+function normalizeLayoutTargetScope(value) {
+  const scope = String(value || "").toLowerCase();
+  return ["global", "moment"].includes(scope) ? scope : "";
+}
+
+function normalizeLayoutTargetSurface(value) {
+  const surface = String(value || "").toLowerCase();
+  return ["stage", "controller"].includes(surface) ? surface : "stage";
+}
+
 function identityAction(publicType) {
   return {
     canCompleteFromStage: true,
@@ -521,9 +531,8 @@ const flowActionDefinitions = [
     normalize: (action, base, context) => ({
       ...base,
       targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
-      targetLayoutScope: ["global", "moment"].includes(String(action?.targetLayoutScope || "").toLowerCase())
-        ? String(action.targetLayoutScope).toLowerCase()
-        : "",
+      targetLayoutScope: normalizeLayoutTargetScope(action?.targetLayoutScope),
+      targetLayoutSurface: normalizeLayoutTargetSurface(action?.targetLayoutSurface),
       isShown: action?.isShown !== false,
       instant: action?.instant === true
     }),
@@ -531,9 +540,8 @@ const flowActionDefinitions = [
       ...base,
       type: "setArtAssetShown",
       targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
-      targetLayoutScope: ["global", "moment"].includes(String(action.targetLayoutScope || "").toLowerCase())
-        ? String(action.targetLayoutScope).toLowerCase()
-        : "",
+      targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
+      targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
       isShown: action.isShown !== false,
       instant: action.instant === true
     })

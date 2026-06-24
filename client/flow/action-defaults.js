@@ -78,7 +78,10 @@
         action.lineIndex = Math.max(0, Math.floor(Number(action.lineIndex || 0)));
       }
       if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown" || value === "setArtAssetShown") action.isShown = action.isShown !== false;
-      if (value === "setArtAssetShown") action.targetLayoutElementId = action.targetLayoutElementId || "";
+      if (value === "setArtAssetShown") {
+        action.targetLayoutElementId = action.targetLayoutElementId || "";
+        action.targetLayoutSurface = action.targetLayoutSurface || "stage";
+      }
       if (value === "setPlayerAnswersShown" || value === "showPoints") action.playerFilter = action.playerFilter || (value === "showPoints" ? "correct" : "all");
       if (value === "showPoints") action.points = Math.max(0, Math.floor(Number(action.points || 0)));
       if (value === "setTimerShown") action.isShown = action.isShown !== false;
