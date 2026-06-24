@@ -3,6 +3,13 @@ function activeLayoutData() {
 }
 
 let layoutArtCatalogRefreshPromise = null;
+let baseLayoutObjectCatalogCacheKey = "";
+let baseLayoutObjectCatalogCache = null;
+
+function invalidateBaseLayoutObjectCatalog() {
+  baseLayoutObjectCatalogCacheKey = "";
+  baseLayoutObjectCatalogCache = null;
+}
 
 function setActiveLayoutData(layouts) {
   if (layoutToolMode === "controller") {
@@ -35,6 +42,7 @@ function activeGlobalLayout() {
 async function loadLayoutToolData() {
   const result = await getJson(activeLayoutEndpoint());
   setActiveLayoutData(result.layouts || activeLayoutData());
+  invalidateBaseLayoutObjectCatalog();
   setActiveLayoutSavedSnapshot(JSON.stringify(serializeStageLayoutsForSave(result.savedLayouts || result.layouts || activeLayoutData())));
   getLayoutHistoryManager().clear();
   updateLayoutStorageStatus(result.storage);
@@ -203,6 +211,21 @@ function baseLayoutObjectCatalog() {
   const catalogArtCompositions = typeof mergeArtCompositionDrafts === "function"
     ? mergeArtCompositionDrafts(artCompositions || [])
     : artCompositions || [];
+  const cacheKey = [
+    layoutToolMode,
+    (catalogArtCompositions || [])
+      .map((composition) => [
+        composition.id,
+        composition.name,
+        layoutArtCompositionSurface(composition),
+        Number(composition.canvas?.width || 0),
+        Number(composition.canvas?.height || 0)
+      ].join(":"))
+      .join("|")
+  ].join("::");
+  if (baseLayoutObjectCatalogCache && baseLayoutObjectCatalogCacheKey === cacheKey) {
+    return baseLayoutObjectCatalogCache;
+  }
   const artCompositionIds = new Set((catalogArtCompositions || []).map((composition) => composition.id));
   const artSurface = layoutToolMode === "controller" ? "controller" : "stage";
   const artPrefabObjects = (catalogArtCompositions || [])
@@ -218,7 +241,8 @@ function baseLayoutObjectCatalog() {
       instanced: true
     }));
   if (layoutToolMode === "controller") {
-    return [
+    baseLayoutObjectCatalogCacheKey = cacheKey;
+    baseLayoutObjectCatalogCache = [
       { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", width: 330, height: 86 },
       { id: "stageCodeField", name: "Stage Code Field", selector: "#stageCodeField", kind: "art", width: 320, height: 96 },
       { id: "playerNameField", name: "Player Name Field", selector: "#playerNameField", kind: "art", width: 320, height: 96 },
@@ -240,6 +264,7 @@ function baseLayoutObjectCatalog() {
       { id: "controllerTextDone", name: "Text Done Message", selector: "#controllerTextDone", kind: "text", width: 330, height: 150 },
       ...artPrefabObjects
     ];
+    return baseLayoutObjectCatalogCache;
   }
   const legacyStageObjects = [
     { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "art", width: 1080, height: 150 },
@@ -259,10 +284,12 @@ function baseLayoutObjectCatalog() {
     { id: "roundIntroText", name: "Round Intro Text Field", selector: "#roundIntroText", kind: "text", width: 1080, height: 170 },
     { id: "roundIntroInfoText", name: "Round Intro Info Text Field", selector: "#roundIntroInfoText", kind: "text", width: 900, height: 110 }
   ].filter((item) => !stageLayoutCatalogCompositionId(item.id, artCompositionIds));
-  return [
+  baseLayoutObjectCatalogCacheKey = cacheKey;
+  baseLayoutObjectCatalogCache = [
     ...artPrefabObjects,
     ...legacyStageObjects
   ];
+  return baseLayoutObjectCatalogCache;
 }
 
 function layoutArtCompositionSurface(composition) {
@@ -294,10 +321,12 @@ async function refreshLayoutArtCatalog() {
   if (layoutToolMode !== "stage") return;
   const localChanges = layoutUnsavedArtCompositions(artCompositions || []);
   await loadArtAssets().catch(() => {});
+  invalidateBaseLayoutObjectCatalog();
   if (!localChanges.length) return;
   const byId = new Map((artCompositions || []).map((composition) => [composition.id, composition]));
   for (const composition of localChanges) byId.set(composition.id, composition);
   artCompositions = [...byId.values()];
+  invalidateBaseLayoutObjectCatalog();
 }
 
 function refreshLayoutArtCatalogInBackground(options = {}) {
@@ -1156,6 +1185,7 @@ function renderLayoutObjectOptions() {
 
 function handleLayoutArtAssetsChanged() {
   if (layoutToolMode !== "stage" || layoutScreen.classList.contains("hidden")) return;
+  invalidateBaseLayoutObjectCatalog();
   if (!layoutObjectPicker.classList.contains("hidden")) renderLayoutObjectOptions();
   renderLayoutPreview();
   refreshLayoutArtCatalogInBackground({ renderPicker: true, renderPreview: true });
