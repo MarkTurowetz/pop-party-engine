@@ -1019,6 +1019,17 @@ function renderLayoutFields() {
   layoutEditorFields.appendChild(layoutNumberField("Rotation", element.rotation || 0, (value) => updateLayoutNumber("rotation", value)));
   layoutEditorFields.appendChild(layoutNumberField("Width", element.width, (value) => updateLayoutNumber("width", Math.max(24, value))));
   layoutEditorFields.appendChild(layoutNumberField("Height", element.height, (value) => updateLayoutNumber("height", Math.max(24, value))));
+  if (elements.length === 1) {
+    layoutEditorFields.appendChild(layoutSelectField("Default Animation State", element.defaultAnimationState || "", [
+      { id: "", name: "Default" },
+      { id: "park", name: "Park" },
+      { id: "on", name: "On" },
+      { id: "off", name: "Off" },
+      { id: "appear", name: "Appear" },
+      { id: "disappear", name: "Disappear" },
+      { id: "update", name: "Update" }
+    ], (value) => updateLayoutTextValue(element, "defaultAnimationState", value)));
+  }
   if (elements.length === 1 && element.kind === "text") {
     layoutEditorFields.appendChild(layoutTextAreaField("Default Text", layoutDefaultText(element), (value) => updateLayoutTextValue(element, "defaultText", value)));
     layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutTextValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText === true));
@@ -1064,6 +1075,23 @@ function layoutToggleField(label, value, onChange) {
   input.innerHTML = `<option value="false">False</option><option value="true">True</option>`;
   input.value = value ? "true" : "false";
   input.addEventListener("change", () => onChange(input.value === "true"));
+  field.appendChild(input);
+  return field;
+}
+
+function layoutSelectField(label, value, options, onChange) {
+  const field = document.createElement("label");
+  field.className = "layout-number-field layout-text-field";
+  field.textContent = label;
+  const input = document.createElement("select");
+  for (const option of options || []) {
+    const node = document.createElement("option");
+    node.value = option.id;
+    node.textContent = option.name;
+    input.appendChild(node);
+  }
+  input.value = String(value || "");
+  input.addEventListener("change", () => onChange(input.value));
   field.appendChild(input);
   return field;
 }
