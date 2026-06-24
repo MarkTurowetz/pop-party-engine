@@ -150,6 +150,9 @@ concepts into focused modules.
 - Placed layout art targets are resolved through the shared layout target resolver
   in `client/layout-runtime.js`. Stage and controller surfaces should plug into that
   resolver rather than building separate visibility/action lookup paths.
+- Placed layout entities should be registered through the shared registration helper
+  in `client/layout-runtime.js` so stage and controller GameObjects carry the same
+  `isArt`, `isDynamic`, `isGlobal`, and `visibilityKey` semantics.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same
   composition schema rather than maintaining separate art systems.
