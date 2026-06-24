@@ -5,9 +5,10 @@ let controllerLayoutGameObjects = null;
 let currentControllerLayoutStateId = "";
 
 function createLayoutGameObjectRegistry(visibilityOverrides, visualOptions = {}) {
-  const registry = window.PartyGameGameObject?.GameObjectRegistry || window.PartyGameStageGameObject?.StageGameObjectRegistry;
-  if (!registry) return null;
-  return new registry({ visibilityOverrides, visualOptions });
+  const gameObjects = window.PartyGameGameObject || window.PartyGameStageGameObject;
+  return typeof gameObjects?.createRegistry === "function"
+    ? gameObjects.createRegistry({ visibilityOverrides, visualOptions })
+    : null;
 }
 
 function stageLayoutGameObjectRegistry() {
