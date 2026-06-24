@@ -258,6 +258,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -280,6 +281,7 @@
           "defaultAnimationState": "on",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
+          "fillCss": "",
           "borderColor": "transparent",
           "borderWidth": 0,
           "borderRadius": 0,
@@ -290,7 +292,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-24T01:35:04.082Z"
+      "updatedAt": "2026-06-24T04:03:18.854Z"
     },
     "player-avatar-raptor": {
       "name": "Raptor Avatar",
