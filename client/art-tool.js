@@ -950,6 +950,7 @@ function createArtAssetComposition(kind = "shape") {
   renderSelectedArtComposition();
   renderArtList();
   persistArtCollapseState();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -977,6 +978,7 @@ function createArtChildObject(kind = "shape") {
   renderSelectedArtComposition();
   renderArtList();
   persistArtCollapseState();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 

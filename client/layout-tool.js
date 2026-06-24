@@ -160,6 +160,7 @@ function isActiveLayoutDirty() {
 }
 
 function baseLayoutObjectCatalog() {
+  const artCompositionIds = new Set((artCompositions || []).map((composition) => composition.id));
   const artPrefabObjects = layoutToolMode === "stage"
     ? (artCompositions || []).map((composition) => ({
       id: `art-${composition.id}`,
@@ -195,8 +196,7 @@ function baseLayoutObjectCatalog() {
       { id: "controllerTextDone", name: "Text Done Message", selector: "#controllerTextDone", kind: "text", width: 330, height: 150 }
     ];
   }
-  return [
-    ...artPrefabObjects,
+  const legacyStageObjects = [
     { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "art", width: 1080, height: 150 },
     { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", width: 620, height: 220 },
     { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", width: 260, height: 300 },
@@ -213,7 +213,17 @@ function baseLayoutObjectCatalog() {
     { id: "stagePromptText", name: "Prompt Text Field", selector: "#stagePromptText", kind: "text", width: 1180, height: 150 },
     { id: "roundIntroText", name: "Round Intro Text Field", selector: "#roundIntroText", kind: "text", width: 1080, height: 170 },
     { id: "roundIntroInfoText", name: "Round Intro Info Text Field", selector: "#roundIntroInfoText", kind: "text", width: 900, height: 110 }
+  ].filter((item) => !stageLayoutCatalogCompositionId(item.id, artCompositionIds));
+  return [
+    ...artPrefabObjects,
+    ...legacyStageObjects
   ];
+}
+
+function stageLayoutCatalogCompositionId(elementId, compositionIds = new Set()) {
+  const definition = window.PartyGameStageWidgetBindings?.definitionForLayoutElement?.(elementId);
+  const compositionId = definition?.compositionId || "";
+  return compositionId && compositionIds.has(compositionId) ? compositionId : "";
 }
 
 function layoutObjectCatalog() {
@@ -230,10 +240,39 @@ function layoutObjectMatches(query) {
   const catalog = layoutObjectCatalog();
   if (!query) return catalog;
   return catalog
-    .map((item) => ({ item, score: fuzzyScore(`${item.name} ${item.id} ${item.kind} ${item.selector}`, query) }))
+    .map((item) => ({ item, score: layoutObjectFuzzyScore(item, query) }))
     .filter((entry) => entry.score >= 0)
     .sort((a, b) => a.score - b.score || a.item.name.localeCompare(b.item.name))
     .map((entry) => entry.item);
+}
+
+function layoutObjectFuzzyScore(item, query) {
+  const cleanQuery = String(query || "").trim().toLowerCase();
+  if (!cleanQuery) return 0;
+  const name = String(item?.name || "").toLowerCase();
+  const id = String(item?.id || "").toLowerCase();
+  const kind = String(item?.kind || "").toLowerCase();
+  const selector = String(item?.selector || "").toLowerCase();
+  const haystack = `${name} ${id} ${kind} ${selector}`;
+  const score = simpleLayoutFuzzyScore(haystack, cleanQuery);
+  if (score < 0) return -1;
+  if (name === cleanQuery) return score - 200;
+  if (name.startsWith(cleanQuery)) return score - 150;
+  if (name.split(/\s+/).some((word) => word.startsWith(cleanQuery))) return score - 110;
+  return score;
+}
+
+function simpleLayoutFuzzyScore(text, query) {
+  let score = 0;
+  let textIndex = 0;
+  const haystack = String(text || "").toLowerCase();
+  for (const character of String(query || "").toLowerCase()) {
+    const foundIndex = haystack.indexOf(character, textIndex);
+    if (foundIndex < 0) return -1;
+    score += foundIndex - textIndex;
+    textIndex = foundIndex + 1;
+  }
+  return score + Math.abs(haystack.length - String(query || "").length) * 0.01;
 }
 
 function makeLayoutObject(item) {
@@ -1012,6 +1051,12 @@ function renderLayoutObjectOptions() {
   }
 }
 
+function handleLayoutArtAssetsChanged() {
+  if (layoutToolMode !== "stage" || layoutScreen.classList.contains("hidden")) return;
+  if (!layoutObjectPicker.classList.contains("hidden")) renderLayoutObjectOptions();
+  renderLayoutPreview();
+}
+
 function addLayoutObject(item) {
   const group = layoutGroup(selectedLayoutStateId);
   if (!group) return;
@@ -1101,6 +1146,7 @@ async function setupLayoutTool(mode = "stage") {
   });
   (layoutStagePreview.parentElement || layoutStagePreview).addEventListener("pointerdown", startLayoutMarquee);
   document.addEventListener("click", handleLayoutDocumentClick);
+  listenForArtAssetsChanged(handleLayoutArtAssetsChanged);
   revertLayoutButton.addEventListener("click", revertStageLayouts);
   window.addEventListener("keydown", handleLayoutHotkeys);
   window.addEventListener("resize", () => {

@@ -200,6 +200,7 @@ function notifyArtAssetsChanged() {
   } catch (error) {
     // Local storage can be unavailable in privacy modes; BroadcastChannel may still work.
   }
+  window.dispatchEvent(new CustomEvent("partyTemplate:artAssetsChanged", { detail: { updatedAt } }));
   if (!("BroadcastChannel" in window)) return;
   try {
     const channel = new BroadcastChannel(artAssetsChangedChannelName);
@@ -212,6 +213,7 @@ function notifyArtAssetsChanged() {
 
 function listenForArtAssetsChanged(callback) {
   if (typeof callback !== "function") return;
+  window.addEventListener("partyTemplate:artAssetsChanged", callback);
   window.addEventListener("storage", (event) => {
     if (event.key === artAssetsChangedStorageKey) callback();
   });
