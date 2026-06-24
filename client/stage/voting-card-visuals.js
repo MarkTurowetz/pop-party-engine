@@ -118,7 +118,7 @@
       if (!this.visualAnimation) return null;
       let visual = this.visualFallbacks.get(element);
       if (!visual || visual.element !== element) {
-        visual = this.visualAnimation.createCssVisualObject({
+        visual = this.visualAnimation.createLegacyCssVisualObject({
           element,
           ...options
         });

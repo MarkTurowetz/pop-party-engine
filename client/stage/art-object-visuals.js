@@ -101,7 +101,7 @@
       }
       if (!this.visualAnimation) return null;
       if (!this.visual || this.visual.element !== this.element) {
-        this.visual = this.visualAnimation.createCssVisualObject({
+        this.visual = this.visualAnimation.createLegacyCssVisualObject({
           element: this.element,
           hiddenClasses: [HIDDEN_CLASS],
           motionHiddenClasses: [HIDDEN_CLASS],

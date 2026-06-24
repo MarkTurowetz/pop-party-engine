@@ -226,6 +226,7 @@
     CssVisualObject,
     animationForVisibility,
     createCssVisualObject: (options) => new CssVisualObject(options),
+    createLegacyCssVisualObject: (options) => new CssVisualObject(options),
     instantAnimation
   };
 })(window);

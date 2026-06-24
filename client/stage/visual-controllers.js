@@ -58,7 +58,7 @@
       const gameObject = this.gameObjectFor(object);
       if (gameObject) return gameObject.createVisual();
       if (!object.visual || object.visual.element !== object.element) {
-        object.visual = this.visualAnimation.createCssVisualObject({
+        object.visual = this.visualAnimation.createLegacyCssVisualObject({
           element: object.element,
           hiddenClasses: ["text-hidden", "hidden"],
           motionHiddenClasses: ["text-hidden"],
@@ -166,7 +166,7 @@
       const gameObject = this.gameObject();
       if (gameObject) return gameObject.createVisual();
       if (!this.visual) {
-        this.visual = this.visualAnimation.createCssVisualObject({
+        this.visual = this.visualAnimation.createLegacyCssVisualObject({
           element: this.element,
           hiddenClasses: ["hidden"],
           motionHiddenClasses: ["hidden"],
@@ -310,7 +310,7 @@
       const gameObject = this.gameObjectFor(bubble);
       if (gameObject) return gameObject.createVisual();
       if (!bubble.playerAnswerBubbleVisual || bubble.playerAnswerBubbleVisual.element !== bubble) {
-        bubble.playerAnswerBubbleVisual = this.visualAnimation.createCssVisualObject({
+        bubble.playerAnswerBubbleVisual = this.visualAnimation.createLegacyCssVisualObject({
           element: bubble,
           hiddenClasses: ["is-hidden"],
           motionHiddenClasses: ["is-hidden"],

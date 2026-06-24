@@ -83,7 +83,7 @@
         return this.visual;
       }
       if (!this.visual) {
-        this.visual = this.visualAnimation.createCssVisualObject({
+        this.visual = this.visualAnimation.createLegacyCssVisualObject({
           element: this.element,
           ...this.visualOptions(),
           getVisible: () => this.isVisuallyPresent(),
