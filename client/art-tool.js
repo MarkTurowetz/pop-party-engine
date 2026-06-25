@@ -658,7 +658,7 @@ function measuredArtPreviewFontSize(node, label, text, fallbackSize) {
   measure.style.fontWeight = computed.fontWeight;
   measure.style.fontStyle = computed.fontStyle;
   measure.style.letterSpacing = computed.letterSpacing;
-  measure.style.lineHeight = computed.lineHeight;
+  measure.style.lineHeight = "0.82";
   measure.style.textTransform = computed.textTransform;
   measure.style.whiteSpace = "normal";
   measure.style.overflowWrap = "anywhere";
@@ -677,7 +677,8 @@ function measuredArtPreviewFontSize(node, label, text, fallbackSize) {
   }
   measure.remove();
   const fallback = Math.max(minSize, Number(fallbackSize || minSize));
-  return Math.max(low || fallback, Math.min(fallback, high));
+  const fitted = Math.max(low || fallback, Math.min(fallback, high));
+  return Math.max(minSize, Math.floor(fitted * 0.96));
 }
 
 function updateArtCompositionDeleteButton() {

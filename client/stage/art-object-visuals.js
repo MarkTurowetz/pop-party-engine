@@ -120,8 +120,18 @@
     const label = options.labelElement;
     if (label) {
       label.hidden = Boolean(imageSource);
-      label.textContent = labelText;
+      setLabelText(label, labelText);
     }
+  }
+
+  function setLabelText(label, labelText) {
+    let textNode = label.querySelector(":scope > .art-label-text");
+    if (!textNode) {
+      textNode = label.ownerDocument.createElement("span");
+      textNode.className = "art-label-text";
+      label.replaceChildren(textNode);
+    }
+    textNode.textContent = labelText;
   }
 
   function componentLayerIndex(index, siblingCount) {

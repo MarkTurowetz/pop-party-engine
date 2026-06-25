@@ -1225,9 +1225,19 @@
       place-items: center;
       padding: 4px;
       font-size: var(--component-font-size, 18px);
-      line-height: 0.95;
+      line-height: 0.82;
+      overflow: hidden;
       overflow-wrap: anywhere;
       pointer-events: none;
+    }
+
+    .art-runtime-object-label > .art-label-text,
+    .art-component-label > .art-label-text {
+      display: block;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      text-align: center;
+      transform: translateY(-0.08em);
     }
 
     .art-runtime-object-hidden,
@@ -2636,7 +2646,8 @@
       place-items: center;
       padding: 4px;
       font-size: var(--component-font-size, 18px);
-      line-height: 0.95;
+      line-height: 0.82;
+      overflow: hidden;
       pointer-events: none;
       overflow-wrap: anywhere;
     }
