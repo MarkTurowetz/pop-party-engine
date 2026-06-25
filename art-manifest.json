@@ -304,6 +304,7 @@
     "player-avatar-raptor": {
       "name": "Raptor Avatar",
       "description": "Editable player avatar art composed from a frame and masked dino image.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 100,
@@ -357,7 +358,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-24T04:03:20.409Z"
+      "updatedAt": "2026-06-25T01:23:44.558Z"
     },
     "player-avatar-bronto": {
       "name": "Bronto Avatar",
