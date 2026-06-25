@@ -19,10 +19,7 @@
     const config = normalizeOptions(options);
     const box = textBox(element, config);
     const textValue = applyTextTransform(String(text || "Text"), config.textTransform);
-    const maxSize = Math.min(
-      Number(config.maxSize || defaultOptions.maxSize),
-      Math.max(config.minSize, Math.floor(box.height / Math.max(0.1, config.lineHeight)))
-    );
+    const maxSize = Number(config.maxSize || defaultOptions.maxSize);
     const minSize = Number(config.minSize || defaultOptions.minSize);
 
     let best = null;
@@ -52,13 +49,16 @@
     const maxWidth = Math.max(0, ...metrics.map((metric) => metric.width));
     const inkAscent = Math.max(fontSize * 0.8, ...metrics.map((metric) => metric.ascent));
     const inkDescent = Math.max(fontSize * 0.25, ...metrics.map((metric) => metric.descent));
-    const inkHeight = (inkAscent + inkDescent) * 1.06;
-    const lineBoxHeight = Math.max(fontSize * config.lineHeight, inkHeight);
-    const height = lineBoxHeight * measuredLines.length;
+    const inkHeight = (inkAscent + inkDescent) * 1.08;
+    const lineGap = Math.max(fontSize * (config.lineHeight - 1), 0);
+    const lineBoxHeight = Math.max(inkHeight, fontSize * config.lineHeight);
+    const height = (inkHeight * measuredLines.length) + (lineGap * Math.max(0, measuredLines.length - 1));
     return {
       fontSize,
       height,
       lineBoxHeight,
+      inkHeight,
+      lineGap,
       lineHeight: config.lineHeight,
       lines: measuredLines,
       maxWidth,
@@ -192,6 +192,12 @@
     wrapper.style.setProperty("--text-fit-line-height", String(layout?.lineHeight || defaultOptions.lineHeight));
     if (Number.isFinite(Number(layout?.lineBoxHeight))) {
       wrapper.style.setProperty("--text-fit-line-box-height", `${Number(layout.lineBoxHeight)}px`);
+    }
+    if (Number.isFinite(Number(layout?.inkHeight))) {
+      wrapper.style.setProperty("--text-fit-ink-height", `${Number(layout.inkHeight)}px`);
+    }
+    if (Number.isFinite(Number(layout?.lineGap))) {
+      wrapper.style.setProperty("--text-fit-line-gap", `${Number(layout.lineGap)}px`);
     }
     wrapper.style.setProperty("--text-fit-baseline-shift", `${Number(layout?.baselineShift || 0)}px`);
     for (const line of lines) {

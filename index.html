@@ -1241,6 +1241,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: var(--text-fit-line-gap, 0px);
       width: 100%;
       height: 100%;
       box-sizing: border-box;
@@ -1253,9 +1254,9 @@
 
     .text-fit-line {
       display: block;
-      flex: 0 0 var(--text-fit-line-box-height, auto);
-      height: var(--text-fit-line-box-height, auto);
-      line-height: var(--text-fit-line-box-height, 1.15em);
+      flex: 0 0 var(--text-fit-ink-height, var(--text-fit-line-box-height, auto));
+      height: var(--text-fit-ink-height, var(--text-fit-line-box-height, auto));
+      line-height: var(--text-fit-ink-height, var(--text-fit-line-box-height, 1.15em));
       white-space: pre;
     }
 
