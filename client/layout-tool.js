@@ -753,35 +753,16 @@ function layoutPreviewContent(element) {
     return content;
   } else if (renderLayoutWidgetArtPreview(content, id)) {
     return content;
-  } else if (id === "stagecodepanel") {
-    content.innerHTML = `<div class="layout-preview-code-card"><span>Stage Code</span><strong>NUZ7</strong></div>`;
-  } else if (id === "stagejoinqr") {
-    content.innerHTML = `
-      <div class="layout-preview-qr-card">
-        <div class="layout-preview-qr-grid"></div>
-        <span>Scan To Join</span>
-      </div>
-    `;
+  } else if (renderStageWidgetFallbackPreview(content, element)) {
+    return content;
   } else if (id === "waitingstatus") {
     const pill = document.createElement("div");
     pill.className = "layout-preview-pill";
     pill.textContent = layoutDefaultText(element);
     applyLayoutPreviewTextStyle(pill, element);
     content.appendChild(pill);
-  } else if (id === "joinprompt") {
-    const pill = document.createElement("div");
-    pill.className = "layout-preview-pill layout-preview-join";
-    pill.textContent = layoutDefaultText(element);
-    applyLayoutPreviewTextStyle(pill, element);
-    content.appendChild(pill);
-  } else if (id === "startpopup") {
-    content.innerHTML = `<div class="layout-preview-countdown"><span>Starting in</span><strong>3</strong></div>`;
-  } else if (id === "craftingtimer") {
-    content.innerHTML = `<div class="layout-preview-countdown"><span>Timer</span><strong>30</strong></div>`;
   } else if (id === "playerlobby") {
     content.appendChild(layoutPreviewPlayers());
-  } else if (id === "stagecodebadge") {
-    content.innerHTML = `<div class="layout-preview-badge"><span>Stage</span><strong>NUZ7</strong></div>`;
   } else if (id === "stageintrotitle") {
     content.innerHTML = `<div class="layout-preview-title">Game Intro</div>`;
   } else if (id === "stagepresentationtext") {
@@ -792,8 +773,6 @@ function layoutPreviewContent(element) {
     content.appendChild(layoutPreviewTextNode(element, "Round One"));
   } else if (id === "roundintroinfotext") {
     content.appendChild(layoutPreviewTextNode(element, "Additional round info"));
-  } else if (id === "presentclickwidget") {
-    content.innerHTML = `<div class="click-symbol"><span class="click-pulse"></span><span class="click-cursor"></span></div>`;
   } else if (element.kind === "text") {
     content.appendChild(layoutPreviewTextNode(element, element.name));
   } else {
@@ -822,6 +801,49 @@ function renderLayoutArtCompositionPreview(content, element) {
 
 function renderLayoutWidgetArtPreview(content, elementId) {
   return getLayoutArtPreviewRenderer()?.renderWidgetArtPreview(content, elementId) === true;
+}
+
+function renderStageWidgetFallbackPreview(content, element) {
+  const id = String(element?.id || "").toLowerCase();
+  if (!window.PartyGameStageWidgetBindings?.definitionForLayoutElement?.(id)) return false;
+  if (id === "stagecodepanel") {
+    content.innerHTML = `<div class="layout-preview-code-card"><span>Stage Code</span><strong>NUZ7</strong></div>`;
+    return true;
+  }
+  if (id === "stagejoinqr") {
+    content.innerHTML = `
+      <div class="layout-preview-qr-card">
+        <div class="layout-preview-qr-grid"></div>
+        <span>Scan To Join</span>
+      </div>
+    `;
+    return true;
+  }
+  if (id === "joinprompt") {
+    const pill = document.createElement("div");
+    pill.className = "layout-preview-pill layout-preview-join";
+    pill.textContent = layoutDefaultText(element);
+    applyLayoutPreviewTextStyle(pill, element);
+    content.appendChild(pill);
+    return true;
+  }
+  if (id === "startpopup") {
+    content.innerHTML = `<div class="layout-preview-countdown"><span>Starting in</span><strong>3</strong></div>`;
+    return true;
+  }
+  if (id === "craftingtimer") {
+    content.innerHTML = `<div class="layout-preview-countdown"><span>Timer</span><strong>30</strong></div>`;
+    return true;
+  }
+  if (id === "stagecodebadge") {
+    content.innerHTML = `<div class="layout-preview-badge"><span>Stage</span><strong>NUZ7</strong></div>`;
+    return true;
+  }
+  if (id === "presentclickwidget") {
+    content.innerHTML = `<div class="click-symbol"><span class="click-pulse"></span><span class="click-cursor"></span></div>`;
+    return true;
+  }
+  return false;
 }
 
 function layoutDefaultText(element) {
