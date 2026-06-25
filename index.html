@@ -884,62 +884,8 @@
 
     .start-popup {
       position: absolute;
-      top: 52px;
-      left: 50%;
       z-index: 5;
-      display: grid;
-      align-content: center;
-      justify-items: center;
-      gap: 6px;
-      transform: translateX(-50%);
-      min-width: 520px;
-      padding: 20px 26px;
-      border: 5px solid var(--ink);
-      border-radius: 24px;
-      color: var(--ink);
-      background: var(--green);
-      box-shadow: var(--shadow);
-      text-align: center;
-      font-size: 54px;
-      line-height: 0.95;
-      font-weight: 1000;
-      container-type: inline-size;
-      animation: popIn 240ms cubic-bezier(0.19, 1, 0.22, 1);
-    }
-
-    .countdown-kicker {
-      font-size: 24px;
-      line-height: 0.9;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .countdown-number {
-      font-size: 94px;
-      line-height: 0.78;
-      letter-spacing: 0;
-      text-transform: uppercase;
-    }
-
-    .start-popup.is-go {
-      gap: 0;
-    }
-
-    .countdown-go {
-      max-width: 100%;
-      display: block;
-      font-size: clamp(28px, 16cqw, 64px);
-      line-height: 0.82;
-      letter-spacing: 0;
-      text-align: center;
-      text-transform: uppercase;
-      overflow-wrap: normal;
-      white-space: nowrap;
-    }
-
-    @keyframes popIn {
-      from { opacity: 0; transform: translateX(-50%) scale(0.7) rotate(-2deg); }
-      to { opacity: 1; transform: translateX(-50%) scale(1) rotate(0); }
+      overflow: visible;
     }
 
     .stage-footer {
@@ -4819,7 +4765,7 @@
 
   <section class="screen stage hidden" id="stageScreen" aria-label="Party Game Template stage">
     <div class="stage-board" id="stageBoard">
-      <div class="start-popup hidden" id="startPopup">Starting Game</div>
+      <div class="start-popup hidden" id="startPopup"></div>
       <div class="stage-code-badge hidden" id="stageCodeBadge"><span>Stage</span><strong>----</strong></div>
       <div class="crafting-timer hidden" id="craftingTimer" aria-label="Crafting timer"><span id="craftingTimerLabel">30</span></div>
       <div class="version-badge">v__APP_VERSION__</div>

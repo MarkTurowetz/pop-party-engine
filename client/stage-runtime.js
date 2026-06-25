@@ -550,7 +550,6 @@ function applyStageState(lobby) {
       const now = Date.now() + countdownClockOffset;
       const remainingMs = Math.max(0, (lobby.countdownEndsAt || now) - now);
       const seconds = Math.ceil(remainingMs / 1000);
-      startPopup.classList.toggle("is-go", seconds <= 0);
       renderStageWidgetBinding("countdownPopup", { seconds });
     };
     updateCountdown();
