@@ -548,17 +548,12 @@ function renderSelectedArtComposition(options = {}) {
   const canvas = composition.canvas || { width: 560, height: 230 };
   artPreviewArt.style.setProperty("--art-composition-aspect", `${Number(canvas.width || 1) / Math.max(1, Number(canvas.height || 1))}`);
   artPreviewArt.replaceChildren();
-  const previewBounds = artPreviewArt.getBoundingClientRect();
-  const previewFontScale = previewBounds.width > 0
-    ? previewBounds.width / Math.max(1, Number(canvas.width || 1))
-    : 1;
   for (const [index, component] of (composition.components || []).entries()) {
     artPreviewArt.appendChild(editableArtRenderer.createComponentNode({
       document,
       composition,
       component,
       canvas,
-      fontScale: previewFontScale,
       layerIndex: index,
       siblingCount: (composition.components || []).length,
       selectedIds: selectedArtComponentIds,
@@ -575,6 +570,7 @@ function renderSelectedArtComposition(options = {}) {
       appendTransformHandles: appendArtComponentTransformHandles
     }));
   }
+  applyMeasuredArtPreviewTextFit(composition);
   artFileName.textContent = isArtCompositionsDirty() ? "Component layout has unsaved changes" : "Component layout saved";
   artReplaceButton.disabled = true;
   artCancelButton.disabled = true;
@@ -584,6 +580,24 @@ function renderSelectedArtComposition(options = {}) {
   updateArtCompositionDeleteButton();
   if (options.renderEditor !== false) renderArtComponentEditor();
   updateArtCreateButtons();
+}
+
+function applyMeasuredArtPreviewTextFit(composition) {
+  const fitText = window.PartyGameTextFit?.fittedLayoutTextSize || window.fittedLayoutTextSize;
+  if (typeof fitText !== "function") return;
+  const componentsById = new Map(flattenArtComponents(composition?.components || []).map(({ component }) => [String(component.id || ""), component]));
+  const nodes = artPreviewArt.querySelectorAll(".art-composition-component.is-text");
+  for (const node of nodes) {
+    const component = componentsById.get(String(node.dataset.componentId || ""));
+    if (!component || component.autoFitText !== true) continue;
+    const label = node.querySelector(":scope > .art-component-label");
+    if (!label || label.hidden) continue;
+    const width = Number(node.clientWidth || node.getBoundingClientRect().width || component.width || 1);
+    const height = Number(node.clientHeight || node.getBoundingClientRect().height || component.height || 1);
+    const previewElement = { ...component, width, height };
+    const fontSize = fitText(previewElement, artComponentPreviewText(component), Number(component.fontSize || 16));
+    node.style.setProperty("--component-font-size", `${fontSize}px`);
+  }
 }
 
 function updateArtCompositionDeleteButton() {

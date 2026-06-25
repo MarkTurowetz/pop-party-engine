@@ -37,7 +37,6 @@
       baseClass: "art-composition-component",
       labelText: previewText(component),
       imageSource,
-      fontScale: Number(options.fontScale || 1),
       layerIndex,
       layerTotal: siblingCount,
       isRootContainer: artObjectRuntime?.isArtRootContainer?.(component, composition.components || []) === true,
