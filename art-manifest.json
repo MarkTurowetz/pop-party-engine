@@ -610,8 +610,8 @@
           "id": "panel-label",
           "name": "Panel Label",
           "kind": "text",
-          "x": 280.899,
-          "y": 26.51,
+          "x": 277.29,
+          "y": 33.988,
           "width": 420,
           "height": 34,
           "scale": 1,
@@ -641,7 +641,7 @@
           "borderRadius": 24
         }
       ],
-      "updatedAt": "2026-06-25T16:44:28.584Z"
+      "updatedAt": "2026-06-25T16:50:17.169Z"
     },
     "stage-code-widget": {
       "name": "Small Room Code Widget",
