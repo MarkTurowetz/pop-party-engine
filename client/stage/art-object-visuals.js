@@ -33,9 +33,8 @@
   function componentFontSize(component, labelText = componentSchema.componentLabel(component)) {
     const baseSize = Number(component?.fontSize || 16);
     if (component?.autoFitText !== true) return baseSize;
-    if (typeof global.fittedLayoutTextSize === "function") {
-      return global.fittedLayoutTextSize(component, labelText, baseSize);
-    }
+    const sharedFit = global.PartyGameTextFit?.fittedLayoutTextSize || global.fittedLayoutTextSize;
+    if (typeof sharedFit === "function") return sharedFit(component, labelText, baseSize);
     return fallbackFittedTextSize(component, labelText, baseSize);
   }
 

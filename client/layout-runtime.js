@@ -1070,6 +1070,12 @@ function fittedLayoutTextSize(element, text, fallbackSize) {
   return Math.max(minSize, Math.min(maxSize, Number(fallbackSize || 58)));
 }
 
+window.PartyGameTextFit = {
+  ...(window.PartyGameTextFit || {}),
+  fittedLayoutTextSize
+};
+window.fittedLayoutTextSize = fittedLayoutTextSize;
+
 function stageLayoutComputedFontSize(element, textOverride = "") {
   const baseSize = Number(element.fontSize || 58);
   if (!element.autoFitText) return baseSize;
