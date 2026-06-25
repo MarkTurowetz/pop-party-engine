@@ -548,12 +548,17 @@ function renderSelectedArtComposition(options = {}) {
   const canvas = composition.canvas || { width: 560, height: 230 };
   artPreviewArt.style.setProperty("--art-composition-aspect", `${Number(canvas.width || 1) / Math.max(1, Number(canvas.height || 1))}`);
   artPreviewArt.replaceChildren();
+  const previewBounds = artPreviewArt.getBoundingClientRect();
+  const previewFontScale = previewBounds.width > 0
+    ? previewBounds.width / Math.max(1, Number(canvas.width || 1))
+    : 1;
   for (const [index, component] of (composition.components || []).entries()) {
     artPreviewArt.appendChild(editableArtRenderer.createComponentNode({
       document,
       composition,
       component,
       canvas,
+      fontScale: previewFontScale,
       layerIndex: index,
       siblingCount: (composition.components || []).length,
       selectedIds: selectedArtComponentIds,

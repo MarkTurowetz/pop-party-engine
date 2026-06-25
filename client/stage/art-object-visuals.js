@@ -20,7 +20,10 @@
     element.style.height = `${Number(component.height || 1) / canvasHeight * 100}%`;
     element.style.setProperty("--component-scale", Number(component.scale || 1));
     element.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-    element.style.setProperty("--component-font-size", `${componentFontSize(component, labelText)}px`);
+    const fontScale = Number.isFinite(Number(options.fontScale)) && Number(options.fontScale) > 0
+      ? Number(options.fontScale)
+      : 1;
+    element.style.setProperty("--component-font-size", `${componentFontSize(component, labelText) * fontScale}px`);
     element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
     element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
     element.style.setProperty("--component-fill-css", componentSchema.normalizeFillCss(component.fillCss) || component.fillColor || "transparent");
