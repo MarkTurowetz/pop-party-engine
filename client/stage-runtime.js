@@ -337,59 +337,25 @@ function renderCraftingTimer(timer, options = {}) {
   return duration;
 }
 
-const stageWidgetBindings = {
-  stageCodePanel: {
-    compositionId: stageWidgetArtDefinition("stageCodePanel")?.compositionId,
-    host: () => stageCodeText.closest(".stage-code-panel"),
-    textOverrides: (context) => ({
-      "panel-code": context.stageCode || stageCodeText.textContent
-    })
-  },
-  stageCodeWidget: {
-    compositionId: stageWidgetArtDefinition("stageCodeWidget")?.compositionId,
-    host: () => stageCodeBadgeRoot,
-    textOverrides: (context) => ({
-      "badge-code": context.stageCode || stageCodeBadge.textContent
-    })
-  },
-  joinQr: {
-    compositionId: stageWidgetArtDefinition("joinQr")?.compositionId,
-    host: () => stageJoinQr,
-    textOverrides: (context) => ({
-      "qr-url": context.displayUrl || ""
-    }),
-    overlays: [
-      {
-        componentId: stageWidgetArtDefinition("joinQr")?.overlayComponentId,
-        element: () => stageJoinQrCanvas
-      }
-    ]
-  },
-  joinWidget: {
-    compositionId: stageWidgetArtDefinition("joinWidget")?.compositionId,
-    host: () => joinPrompt,
-    textOverrides: () => ({
-      "join-text": joinPrompt.textContent || "Join the Lobby at bit.ly/popcontroller"
-    })
-  },
-  countdownPopup: {
-    compositionId: stageWidgetArtDefinition("countdownPopup")?.compositionId,
-    host: () => startPopup,
-    textOverrides: (context) => ({
-      "popup-text": context.seconds > 0 ? `Starting in ${context.seconds}` : "Let's Go"
-    })
-  },
-  craftingTimer: {
-    compositionId: stageWidgetArtDefinition("craftingTimer")?.compositionId,
-    host: () => craftingTimer,
-    textOverrides: (context) => ({
-      "timer-value": context.label || craftingTimerLabel.textContent || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
-    })
-  },
-  presentationClickPrompt: {
-    compositionId: stageWidgetArtDefinition("presentationClickPrompt")?.compositionId,
-    host: () => presentClickWidget
-  }
+const stageWidgetHosts = {
+  stageCodePanel: () => stageCodeText.closest(".stage-code-panel"),
+  stageCodeWidget: () => stageCodeBadgeRoot,
+  joinQr: () => stageJoinQr,
+  joinWidget: () => joinPrompt,
+  countdownPopup: () => startPopup,
+  craftingTimer: () => craftingTimer,
+  presentationClickPrompt: () => presentClickWidget
+};
+
+const stageWidgetTextOverrides = {
+  stageCodePanel: (context) => ({ "panel-code": context.stageCode || stageCodeText.textContent }),
+  stageCodeWidget: (context) => ({ "badge-code": context.stageCode || stageCodeBadge.textContent }),
+  joinQr: (context) => ({ "qr-url": context.displayUrl || "" }),
+  joinWidget: () => ({ "join-text": joinPrompt.textContent || "Join the Lobby at bit.ly/popcontroller" }),
+  countdownPopup: (context) => ({ "popup-text": context.seconds > 0 ? `Starting in ${context.seconds}` : "Let's Go" }),
+  craftingTimer: (context) => ({
+    "timer-value": context.label || craftingTimerLabel.textContent || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
+  })
 };
 
 function stageWidgetArtDefinition(widgetId) {
@@ -397,7 +363,18 @@ function stageWidgetArtDefinition(widgetId) {
 }
 
 function renderStageWidgetBinding(bindingId, context = {}) {
-  const binding = stageWidgetBindings[bindingId];
+  const definition = stageWidgetArtDefinition(bindingId);
+  const binding = {
+    compositionId: definition?.compositionId,
+    host: stageWidgetHosts[bindingId],
+    textOverrides: stageWidgetTextOverrides[bindingId],
+    overlays: definition?.overlayComponentId ? [
+      {
+        componentId: definition.overlayComponentId,
+        element: () => stageJoinQrCanvas
+      }
+    ] : []
+  };
   if (!binding?.compositionId) return null;
   const host = binding.host?.(context);
   if (!host) return null;
