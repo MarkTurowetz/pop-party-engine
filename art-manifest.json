@@ -814,11 +814,12 @@
           "borderRadius": 20
         }
       ],
-      "updatedAt": "2026-06-25T16:42:13.995Z"
+      "updatedAt": "2026-06-25T01:23:57.401Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer",
       "description": "Editable timer art used during timed input moments.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 180,
@@ -860,7 +861,7 @@
           "borderRadius": 36
         }
       ],
-      "updatedAt": "2026-06-24T04:03:34.228Z"
+      "updatedAt": "2026-06-25T16:42:15.863Z"
     },
     "art-9275376d-b0af-4b38-a203-be848e7af9b8": {
       "name": "MArk",
