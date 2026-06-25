@@ -30,7 +30,10 @@
         gameObjectApi: options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject,
         visualAnimation: options.visualAnimation || global.PartyGameVisualObject
       });
-      renderer.render(components, composition.canvas || { width: 1, height: 1 }, { instant: true });
+      renderer.render(components, composition.canvas || { width: 1, height: 1 }, {
+        instant: true,
+        respectDefaultAnimationState: false
+      });
       return true;
     }
 
