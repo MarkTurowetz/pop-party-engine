@@ -220,6 +220,22 @@ function reloadStageArtAssets() {
   }).catch(() => {});
 }
 
+async function setStageLayoutGameObjectShownForAction(action) {
+  const first = setStageLayoutArtElementShownForAction(action, {
+    returnResult: true,
+    suppressMissingWarning: true
+  });
+  if (!first?.missing) return first?.duration || 0;
+
+  await Promise.all([
+    loadArtAssets().catch(() => artCompositions),
+    loadStageLayouts({ forceServer: true }).catch(() => stageLayouts)
+  ]);
+  if (currentStageState) applyStageLayoutForPhase(currentStageState.phase);
+  const retry = setStageLayoutArtElementShownForAction(action, { returnResult: true });
+  return retry?.duration || 0;
+}
+
 function runStageWipe(onCovered) {
   return stageWipeController()?.transition(onCovered) || 0;
 }
@@ -578,7 +594,7 @@ function getStageActionRunner() {
       playerAnswerBubbleAnimationRemaining,
       runStageWipe,
       setCraftingTimerShownForAction,
-      setStageLayoutArtElementShownForAction,
+      setStageLayoutArtElementShownForAction: setStageLayoutGameObjectShownForAction,
       setPlayerAnswerBubblesShown,
       setPlayersShownForAction,
       setStageWipeShownForAction,

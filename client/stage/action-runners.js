@@ -8,6 +8,17 @@
     }, Math.max(0, Number(delayMs || 0)));
   }
 
+  function completeAfterResult(action, runtime, result) {
+    if (!runtime.isPrimary) return;
+    if (result && typeof result.then === "function") {
+      result
+        .then((duration) => completeAfter(action, runtime, duration))
+        .catch(() => completeAfter(action, runtime, 0));
+      return;
+    }
+    completeAfter(action, runtime, result);
+  }
+
   const fallbackRunnerDefinitions = [
     { type: "doNothing", runner: "immediateComplete" },
     { type: "jumpNode", runner: "immediateComplete" },
@@ -98,7 +109,7 @@
         const duration = context.setStageLayoutArtElementShownForAction
           ? context.setStageLayoutArtElementShownForAction(action)
           : 0;
-        if (runtime.isPrimary) completeAfter(action, runtime, duration);
+        completeAfterResult(action, runtime, duration);
       },
       setTimerShown(action, runtime) {
         const duration = context.setCraftingTimerShownForAction

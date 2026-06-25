@@ -285,11 +285,13 @@ function createPlacedLayoutGameObjectTargetResolver(options = {}) {
     visibilityKeyForTarget(elementId, target = null, scope = "") {
       return options.visibilityKeyForTarget?.(elementId, target, scope) || "";
     },
-    setShownForAction(action) {
+    setShownForAction(action, showOptions = {}) {
       return setLayoutEntityShownForAction(action, {
         entityForElementId: resolver.entityForElementId,
         visibilityKeyForTarget: resolver.visibilityKeyForTarget,
-        visibilityOverrides: options.visibilityOverrides
+        visibilityOverrides: options.visibilityOverrides,
+        returnResult: showOptions.returnResult === true,
+        suppressMissingWarning: showOptions.suppressMissingWarning === true
       });
     },
     applyVisibilityOverride(entity) {
@@ -393,7 +395,10 @@ function layoutGameObjectMissingTargetReason(details = {}) {
 
 function setLayoutEntityShownForAction(action, options = {}) {
   const elementId = action?.targetLayoutElementId || "";
-  if (!elementId || !window.PartyGameVisualObject) return 0;
+  const result = (duration, missing = false, reason = "") => options.returnResult
+    ? { duration: Math.max(0, Number(duration || 0)), missing, reason }
+    : Math.max(0, Number(duration || 0));
+  if (!elementId || !window.PartyGameVisualObject) return result(0, true, "missing target id or visual runtime");
   const isShown = action.isShown !== false;
   const scope = ["global", "moment"].includes(String(action?.targetLayoutScope || "")) ? action.targetLayoutScope : "";
   const sourceArtAsset = typeof artComposition === "function" ? artComposition(elementId) : null;
@@ -410,20 +415,21 @@ function setLayoutEntityShownForAction(action, options = {}) {
   const visibilityKey = entity?.visibilityKey || options.visibilityKeyForTarget?.(elementId, target, scope);
   if (!target) {
     if (visibilityKey) options.visibilityOverrides?.set(visibilityKey, isShown);
-    warn(layoutGameObjectMissingTargetReason({
+    const reason = layoutGameObjectMissingTargetReason({
       elementId,
       isShown,
       scope,
       sourceArtAsset,
       visibilityKey
-    }));
-    return 0;
+    });
+    if (options.suppressMissingWarning !== true) warn(reason);
+    return result(0, true, reason);
   }
   if (visibilityKey) options.visibilityOverrides?.set(visibilityKey, isShown);
-  return playLayoutEntityVisibility(entity || options.entityForElementId?.(elementId, target, scope), isShown, {
+  return result(playLayoutEntityVisibility(entity || options.entityForElementId?.(elementId, target, scope), isShown, {
     instant: action.instant === true,
     warn
-  });
+  }));
 }
 
 function setLayoutGameObjectShownForAction(action, options = {}) {
@@ -893,7 +899,7 @@ function stageLayoutEntityForElementId(elementId, target = null, scope = "") {
   return stageLayoutArtTargets.entityForElementId(elementId, target, scope);
 }
 
-function setStageLayoutArtElementShownForAction(action) {
+function setStageLayoutArtElementShownForAction(action, options = {}) {
   const surface = String(action?.targetLayoutSurface || "stage").toLowerCase();
   if (surface !== "stage") {
     window.PartyGameStageDebugRuntime?.showArtAssetWarning?.({
@@ -902,9 +908,9 @@ function setStageLayoutArtElementShownForAction(action) {
       scope: action?.targetLayoutScope || "",
       reason: `target layout surface ${surface} is not handled by the stage runner`
     });
-    return 0;
+    return options.returnResult ? { duration: 0, missing: true, reason: `target layout surface ${surface} is not handled by the stage runner` } : 0;
   }
-  return stageLayoutArtTargets.setShownForAction(action);
+  return stageLayoutArtTargets.setShownForAction(action, options);
 }
 
 function stageLayoutTargetElement(element) {
