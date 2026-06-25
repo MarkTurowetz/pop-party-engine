@@ -605,6 +605,7 @@ function updateArtPreviewCanvasScale(composition = selectedArtComposition()) {
   const rect = artPreviewArt.getBoundingClientRect();
   const scale = Math.max(0.01, Math.min(rect.width / canvasWidth, rect.height / canvasHeight));
   previewCanvas.style.setProperty("--art-composition-canvas-scale", scale);
+  previewCanvas.style.setProperty("--art-composition-editor-scale", 1 / scale);
   return scale;
 }
 

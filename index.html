@@ -2575,7 +2575,7 @@
       box-sizing: border-box;
       transform: translate(-50%, -50%) rotate(var(--component-rotation, 0deg)) scale(var(--component-scale, 1));
       transform-origin: center;
-      border: 2px dashed rgba(23, 19, 31, 0.45);
+      border: calc(2px * var(--art-composition-editor-scale, 1)) dashed rgba(23, 19, 31, 0.45);
       color: var(--component-text-color, var(--ink));
       font-size: var(--component-font-size, 18px);
       font-weight: 1000;
@@ -2610,8 +2610,8 @@
     }
 
     .art-composition-component.is-image-drop-target {
-      outline: 5px solid var(--yellow);
-      box-shadow: 0 0 0 4px var(--ink);
+      outline: calc(5px * var(--art-composition-editor-scale, 1)) solid var(--yellow);
+      box-shadow: 0 0 0 calc(4px * var(--art-composition-editor-scale, 1)) var(--ink);
       z-index: 8;
     }
 
@@ -2664,8 +2664,8 @@
     }
 
     .art-composition-component.is-selected {
-      outline: 4px solid var(--cyan);
-      box-shadow: 0 0 0 4px rgba(23, 19, 31, 0.45);
+      outline: calc(4px * var(--art-composition-editor-scale, 1)) solid var(--cyan);
+      box-shadow: 0 0 0 calc(4px * var(--art-composition-editor-scale, 1)) rgba(23, 19, 31, 0.45);
       z-index: 4;
     }
 
@@ -2679,8 +2679,26 @@
     }
 
     .art-composition-component .layout-resize-handle {
-      right: -9px;
-      bottom: -9px;
+      right: calc(-9px * var(--art-composition-editor-scale, 1));
+      bottom: calc(-9px * var(--art-composition-editor-scale, 1));
+      width: calc(26px * var(--art-composition-editor-scale, 1));
+      height: calc(26px * var(--art-composition-editor-scale, 1));
+      border-width: calc(4px * var(--art-composition-editor-scale, 1));
+      border-radius: calc(9px * var(--art-composition-editor-scale, 1));
+      box-shadow: calc(3px * var(--art-composition-editor-scale, 1)) calc(3px * var(--art-composition-editor-scale, 1)) 0 rgba(23, 19, 31, 0.4);
+    }
+
+    .art-composition-component .layout-rotation-handle {
+      top: calc(-42px * var(--art-composition-editor-scale, 1));
+      width: calc(24px * var(--art-composition-editor-scale, 1));
+      height: calc(24px * var(--art-composition-editor-scale, 1));
+      border-width: calc(4px * var(--art-composition-editor-scale, 1));
+      box-shadow: calc(3px * var(--art-composition-editor-scale, 1)) calc(3px * var(--art-composition-editor-scale, 1)) 0 rgba(23, 19, 31, 0.4);
+    }
+
+    .art-composition-component .layout-rotation-handle::before {
+      width: calc(4px * var(--art-composition-editor-scale, 1));
+      height: calc(18px * var(--art-composition-editor-scale, 1));
     }
 
     .art-component-editor {
