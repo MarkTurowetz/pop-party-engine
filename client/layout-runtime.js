@@ -84,7 +84,10 @@ function renderLayoutArtInstance(element, host, options = {}) {
   }
   renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, {
     defaultAnimation: "on",
-    instant: true
+    instant: true,
+    // Placed layout prefab instances own park/appear/disappear at the host level.
+    // Their internal art tree must be ready to show so a parked source root does not render as an empty instance.
+    respectDefaultAnimationState: false
   });
   return renderer;
 }
