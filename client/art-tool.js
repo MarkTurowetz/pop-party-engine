@@ -571,6 +571,9 @@ function renderSelectedArtComposition(options = {}) {
     }));
   }
   applyMeasuredArtPreviewTextFit(composition);
+  requestAnimationFrame(() => {
+    if (selectedArtCompositionId === composition.id) applyMeasuredArtPreviewTextFit(composition);
+  });
   artFileName.textContent = isArtCompositionsDirty() ? "Component layout has unsaved changes" : "Component layout saved";
   artReplaceButton.disabled = true;
   artCancelButton.disabled = true;
@@ -585,14 +588,22 @@ function renderSelectedArtComposition(options = {}) {
 function applyMeasuredArtPreviewTextFit(composition) {
   const fitText = window.PartyGameTextFit?.fittedLayoutTextSize || window.fittedLayoutTextSize;
   const componentsById = new Map(flattenArtComponents(composition?.components || []).map(({ component }) => [String(component.id || ""), component]));
+  const canvasWidth = Math.max(1, Number(composition?.canvas?.width || 1));
+  const canvasHeight = Math.max(1, Number(composition?.canvas?.height || 1));
+  const previewRect = artPreviewArt.getBoundingClientRect();
+  const canvasScaleX = previewRect.width > 0 ? previewRect.width / canvasWidth : 1;
+  const canvasScaleY = previewRect.height > 0 ? previewRect.height / canvasHeight : canvasScaleX;
   const nodes = artPreviewArt.querySelectorAll(".art-composition-component.is-text");
   for (const node of nodes) {
     const component = componentsById.get(String(node.dataset.componentId || ""));
     if (!component || component.autoFitText !== true) continue;
     const label = node.querySelector(":scope > .art-component-label");
     if (!label || label.hidden) continue;
-    const width = Number(node.clientWidth || node.getBoundingClientRect().width || component.width || 1);
-    const height = Number(node.clientHeight || node.getBoundingClientRect().height || component.height || 1);
+    const nodeRect = node.getBoundingClientRect();
+    const fallbackWidth = Number(component.width || 1) * canvasScaleX;
+    const fallbackHeight = Number(component.height || 1) * canvasScaleY;
+    const width = Number(node.clientWidth || nodeRect.width || fallbackWidth || component.width || 1);
+    const height = Number(node.clientHeight || nodeRect.height || fallbackHeight || component.height || 1);
     const previewElement = { ...component, width, height };
     const previewText = artComponentPreviewText(component);
     const estimatedSize = typeof fitText === "function"
