@@ -11,21 +11,23 @@
       elements.meta.textContent = "Reconnecting to lobby";
       hideViews();
       elements.introPresentButton.classList.add("hidden");
+      applyLayoutForPhase("lobby");
       elements.lobbyState.classList.remove("hidden");
       elements.startButton.classList.add("hidden");
     }
 
     function renderInGamePhase(me, phase) {
       hideViews();
+      applyLayoutForPhase(phase);
       elements.introState.classList.toggle("hidden", phase !== "intro");
       elements.introPresentButton.classList.toggle("hidden", !(me.isVip && phase === "intro"));
       elements.introPresentButton.disabled = !(me.isVip && phase === "intro");
-      applyLayoutForPhase(phase);
     }
 
     function renderLobby(lobby, me, phase) {
       hideViews();
       elements.introPresentButton.classList.add("hidden");
+      applyLayoutForPhase(phase);
       elements.lobbyState.classList.remove("hidden");
       elements.playerName.textContent = me.name;
       setAvatar(me);
@@ -35,7 +37,6 @@
       elements.startButton.textContent = phase === "starting" ? "Cancel" : "Start Game";
       elements.startButton.dataset.optionId = phase === "starting" ? "lobby.cancelStart" : "lobby.startGame";
       elements.startButton.disabled = !me.isVip;
-      applyLayoutForPhase(phase);
 
       if (!me.isVip || phase !== "starting") return null;
       const clockOffset = (lobby.serverNow || Date.now()) - Date.now();

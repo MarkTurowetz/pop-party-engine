@@ -39,6 +39,7 @@
       if (!isVoiceInput) voiceInput.stopRecognition();
       hideViews();
       setPhaseActionId(input.actionId);
+      applyLayoutForPhase(lobby.phase || "lobby");
       elements.state.classList.remove("hidden");
       elements.prompt.textContent = input.prompt || (isVoiceInput ? "Say your answer" : "Write your answer");
       elements.invalidBanner.textContent = "Your submission was invalid";
@@ -62,7 +63,6 @@
       elements.submitButton.disabled = elements.input.value.trim().length === 0;
       elements.submitButton.onclick = () => submitText(input.actionId);
       voiceInput.bindButton(input.actionId);
-      applyLayoutForPhase(lobby.phase || "lobby");
       setVisibility({ isDone, isVoiceInput, showInvalid });
       return true;
     }

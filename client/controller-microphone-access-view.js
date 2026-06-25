@@ -111,9 +111,9 @@
         return;
       }
       hideViews();
+      applyLayoutForPhase(lobby.phase || "lobby");
       waiting.state.classList.remove("hidden");
       waiting.message.textContent = message;
-      applyLayoutForPhase(lobby.phase || "lobby");
     }
 
     function render(lobby, me) {
@@ -126,6 +126,7 @@
       }
 
       hideViews();
+      applyLayoutForPhase(lobby.phase || "lobby");
       elements.state.classList.remove("hidden");
       elements.prompt.textContent = input.prompt || "Give microphone access to the game";
       elements.button.textContent = input.buttonLabel || "Yes";
@@ -151,7 +152,6 @@
             : "Could not open the microphone";
         }
       };
-      applyLayoutForPhase(lobby.phase || "lobby");
       return true;
     }
 

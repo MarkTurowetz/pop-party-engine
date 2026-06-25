@@ -12,6 +12,7 @@
       const input = me.input || lobby.input || null;
       if (!input) return false;
       hideViews();
+      applyLayoutForPhase(lobby.phase || "lobby");
       elements.state.classList.remove("hidden");
       elements.prompt.textContent = input.prompt || "Answer this question by tapping an answer";
       elements.grid.replaceChildren();
@@ -39,7 +40,6 @@
         elements.grid.appendChild(button);
       }
 
-      applyLayoutForPhase(lobby.phase || "lobby");
       return true;
     }
 

@@ -1037,8 +1037,8 @@ function fittedLayoutTextSize(element, text, fallbackSize) {
   const longestWord = Math.max(1, ...words.map((word) => word.length));
   const maxSize = Math.min(260, Math.max(8, availableHeight));
   const minSize = 8;
-  const averageGlyphWidth = 0.68;
-  const lineHeight = 1.08;
+  const averageGlyphWidth = 0.62;
+  const lineHeight = 1;
   const linesForSize = (size) => {
     const averageCharWidth = size * averageGlyphWidth;
     const maxCharsPerLine = Math.max(1, Math.floor(availableWidth / averageCharWidth));

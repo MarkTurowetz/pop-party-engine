@@ -227,6 +227,7 @@ function createArtAssetsRuntime({
     const components = normalizeCompositionComponents(composition.components || [], override?.components);
     migrateGeneratedStageCodePanelDefaults(composition.id, components);
     migrateGeneratedWidgetDefaults(composition.id, components);
+    migrateRemovedWidgetComponents(composition.id, components);
     migrateGeneratedWidgetLayerOrder(composition.id, components);
     const canvas = {
       width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
@@ -387,13 +388,17 @@ function createArtAssetsRuntime({
         label.fontSize = 20;
         label.autoFitText = false;
       }
-      const url = byId.get("qr-url");
-      if (url && url.fontSize === 14) {
-        url.y = 278;
-        url.width = 220;
-        url.height = 30;
-        url.fontSize = 12;
-      }
+    }
+  }
+
+  function migrateRemovedWidgetComponents(compositionId, components = []) {
+    const removedByComposition = {
+      "join-qr-code": new Set(["qr-url"])
+    };
+    const removedIds = removedByComposition[compositionId];
+    if (!removedIds?.size) return;
+    for (let index = components.length - 1; index >= 0; index -= 1) {
+      if (removedIds.has(components[index]?.id)) components.splice(index, 1);
     }
   }
 
@@ -404,7 +409,7 @@ function createArtAssetsRuntime({
       "join-widget": ["join-text", "join-pill"],
       "countdown-popup": ["popup-text", "popup-card"],
       "crafting-timer-widget": ["timer-value", "timer-ring"],
-      "join-qr-code": ["qr-url", "qr-label", "qr-placeholder", "qr-card"]
+      "join-qr-code": ["qr-label", "qr-placeholder", "qr-card"]
     };
     const preferredOrder = preferredOrders[compositionId];
     if (!preferredOrder?.length) return;

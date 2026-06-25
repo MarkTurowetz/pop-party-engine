@@ -32,8 +32,50 @@
 
   function componentFontSize(component, labelText = componentSchema.componentLabel(component)) {
     const baseSize = Number(component?.fontSize || 16);
-    if (component?.autoFitText !== true || typeof global.fittedLayoutTextSize !== "function") return baseSize;
-    return global.fittedLayoutTextSize(component, labelText, baseSize);
+    if (component?.autoFitText !== true) return baseSize;
+    if (typeof global.fittedLayoutTextSize === "function") {
+      return global.fittedLayoutTextSize(component, labelText, baseSize);
+    }
+    return fallbackFittedTextSize(component, labelText, baseSize);
+  }
+
+  function fallbackFittedTextSize(component, text, fallbackSize) {
+    const availableWidth = Math.max(8, Number(component?.width || 1));
+    const availableHeight = Math.max(8, Number(component?.height || 1) - 8);
+    const rawLines = String(text || "Text").split("\n");
+    const words = rawLines.flatMap((line) => line.split(/\s+/).filter(Boolean));
+    const longestWord = Math.max(1, ...words.map((word) => word.length));
+    const maxSize = Math.min(260, Math.max(8, availableHeight));
+    const minSize = 8;
+    const averageGlyphWidth = 0.62;
+    const lineHeight = 1;
+    const linesForSize = (size) => {
+      const averageCharWidth = size * averageGlyphWidth;
+      const maxCharsPerLine = Math.max(1, Math.floor(availableWidth / averageCharWidth));
+      return rawLines.reduce((total, rawLine) => {
+        const lineWords = rawLine.split(/\s+/).filter(Boolean);
+        if (!lineWords.length) return total + 1;
+        let lineCount = 1;
+        let currentLength = 0;
+        for (const word of lineWords) {
+          const wordLength = word.length;
+          if (currentLength === 0) {
+            currentLength = wordLength;
+          } else if (currentLength + 1 + wordLength <= maxCharsPerLine) {
+            currentLength += 1 + wordLength;
+          } else {
+            lineCount += 1;
+            currentLength = wordLength;
+          }
+        }
+        return total + lineCount;
+      }, 0);
+    };
+    for (let size = maxSize; size >= minSize; size -= 1) {
+      const wordFits = longestWord * size * averageGlyphWidth <= availableWidth * 0.98;
+      if (wordFits && linesForSize(size) * size * lineHeight <= availableHeight) return size;
+    }
+    return Math.max(minSize, Math.min(maxSize, Number(fallbackSize || 16)));
   }
 
   function componentImageSource(component) {

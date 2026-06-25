@@ -51,9 +51,9 @@
         return;
       }
       hideViews();
+      applyLayoutForPhase(lobby.phase || "lobby");
       introState.classList.remove("hidden");
       introMessage.textContent = "Waiting for the VIP to answer";
-      applyLayoutForPhase(lobby.phase || "lobby");
     }
 
     function resetUi() {

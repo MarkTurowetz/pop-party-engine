@@ -693,22 +693,6 @@ const defaultArtCompositions = [
     canvas: { width: 260, height: 300 },
     components: [
       {
-        id: "qr-url",
-        name: "QR URL",
-        kind: "text",
-        x: 130,
-        y: 278,
-        width: 220,
-        height: 30,
-        scale: 1,
-        rotation: 0,
-        defaultAnimationState: "on",
-        defaultText: "controller link",
-        fontSize: 12,
-        autoFitText: true,
-        fontColor: "#17131f"
-      },
-      {
         id: "qr-label",
         name: "QR Label",
         kind: "text",

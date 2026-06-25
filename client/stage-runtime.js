@@ -350,7 +350,6 @@ const stageWidgetHosts = {
 const stageWidgetTextOverrides = {
   stageCodePanel: (context) => ({ "panel-code": context.stageCode || stageCodeText.textContent }),
   stageCodeWidget: (context) => ({ "badge-code": context.stageCode || stageCodeBadge.textContent }),
-  joinQr: (context) => ({ "qr-url": context.displayUrl || "" }),
   joinWidget: () => ({ "join-text": joinPrompt.textContent || "Join the Lobby at bit.ly/popcontroller" }),
   countdownPopup: (context) => ({ "popup-text": context.seconds > 0 ? `Starting in ${context.seconds}` : "Let's Go" }),
   craftingTimer: (context) => ({
@@ -419,9 +418,7 @@ function renderStageJoinQr(stageCode, isVisible = true) {
   if (!isVisible || !normalizedCode) return;
   const joinUrl = controllerJoinUrlForStage(normalizedCode);
   stageJoinQrUrl.textContent = joinUrl.replace(/^https?:\/\//, "");
-  renderStageWidgetBinding("joinQr", {
-    displayUrl: stageJoinQrUrl.textContent
-  });
+  renderStageWidgetBinding("joinQr");
   if (renderedStageJoinQrUrl === joinUrl) return;
   renderedStageJoinQrUrl = joinUrl;
   try {

@@ -118,11 +118,14 @@
 
     setShown(isShown, options = {}) {
       if (!this.host) return 0;
+      const targetShown = isShown !== false;
+      const alreadyShown = !this.host.classList.contains("players-hidden");
+      const instant = options.instant === true || alreadyShown === targetShown;
       const gameObject = this.gameObjectForRoster(options);
-      if (gameObject) return gameObject.playVisibility(isShown !== false, { instant: options.instant === true });
-      this.host.classList.toggle("players-hidden", isShown === false);
-      this.host.classList.toggle("players-instant", options.instant === true);
-      return this.visibilityDuration(options);
+      if (gameObject) return gameObject.playVisibility(targetShown, { instant });
+      this.host.classList.toggle("players-hidden", !targetShown);
+      this.host.classList.toggle("players-instant", instant);
+      return this.visibilityDuration({ ...options, instant });
     }
 
     tileForPlayerId(playerId) {

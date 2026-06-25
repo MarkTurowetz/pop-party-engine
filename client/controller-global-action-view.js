@@ -49,6 +49,7 @@
     function renderConfig(config) {
       syncPendingAction(config);
       hideViews();
+      applyLayoutForPhase(config.layoutPhase || "lobby");
       elements.state.classList.remove("hidden");
       elements.message.textContent = config.message || "Waiting for the next instruction";
       elements.button.dataset.optionId = config.optionId || "global.action";
@@ -65,7 +66,6 @@
         elements.button.disabled = true;
         elements.button.textContent = config.buttonLabel || "Next";
       }
-      applyLayoutForPhase(config.layoutPhase || "lobby");
       return true;
     }
 
