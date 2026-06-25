@@ -1221,11 +1221,11 @@
     .art-runtime-object-label {
       position: absolute;
       inset: 0;
-      display: grid;
-      place-items: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 4px;
       font-size: var(--component-font-size, 18px);
-      line-height: 0.82;
       overflow: hidden;
       overflow-wrap: anywhere;
       pointer-events: none;
@@ -1233,11 +1233,25 @@
 
     .art-runtime-object-label > .art-label-text,
     .art-component-label > .art-label-text {
-      display: block;
+      display: contents;
+    }
+
+    .text-fit-lines {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       max-width: 100%;
-      overflow-wrap: anywhere;
+      max-height: 100%;
       text-align: center;
-      transform: translateY(-0.08em);
+      line-height: var(--text-fit-line-height, 0.9);
+      transform: translateY(var(--text-fit-baseline-shift, 0px));
+      white-space: pre;
+    }
+
+    .text-fit-line {
+      display: block;
+      white-space: pre;
     }
 
     .art-runtime-object-hidden,
@@ -2642,11 +2656,11 @@
     .art-component-label {
       position: absolute;
       inset: 0;
-      display: grid;
-      place-items: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 4px;
       font-size: var(--component-font-size, 18px);
-      line-height: 0.82;
       overflow: hidden;
       pointer-events: none;
       overflow-wrap: anywhere;

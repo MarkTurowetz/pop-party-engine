@@ -818,16 +818,25 @@ function layoutComputedFontSize(element) {
   return fittedLayoutTextSize(element, layoutDefaultText(element), baseSize);
 }
 
-function applyLayoutPreviewTextStyle(node, element) {
-  node.style.setProperty("--layout-text-font-size", `${layoutComputedFontSize(element)}px`);
+function layoutTextFit(element, text) {
+  const baseSize = Number(element.fontSize || 58);
+  if (!element.autoFitText || typeof window.PartyGameTextFit?.fitTextLayout !== "function") return null;
+  return window.PartyGameTextFit.fitTextLayout(element, text, baseSize);
+}
+
+function applyLayoutPreviewTextStyle(node, element, text = layoutDefaultText(element)) {
+  const layout = layoutTextFit(element, text);
+  node.style.setProperty("--layout-text-font-size", `${layout?.fontSize || layoutComputedFontSize(element)}px`);
   node.style.setProperty("--layout-text-color", normalizeUiColor(element.fontColor) || "#ffffff");
+  if (layout) window.PartyGameTextFit.renderTextElement?.(node, text, layout);
 }
 
 function layoutPreviewTextNode(element, fallbackText) {
   const node = document.createElement("div");
   node.className = "layout-preview-presentation";
-  applyLayoutPreviewTextStyle(node, element);
-  node.textContent = element.defaultText !== undefined && String(element.defaultText).length ? String(element.defaultText) : fallbackText;
+  const text = element.defaultText !== undefined && String(element.defaultText).length ? String(element.defaultText) : fallbackText;
+  applyLayoutPreviewTextStyle(node, element, text);
+  if (!element.autoFitText) node.textContent = text;
   return node;
 }
 
@@ -1063,7 +1072,11 @@ function updateLayoutPreviewTextStyle(element) {
   const node = layoutStagePreview.querySelector(`.layout-preview-element[data-element-id="${CSS.escape(element.id)}"]`);
   if (!node) return;
   const textNode = node.querySelector(".layout-preview-presentation, .layout-preview-pill");
-  if (textNode) applyLayoutPreviewTextStyle(textNode, element);
+  if (textNode) {
+    const hasRenderedFitText = Boolean(textNode.querySelector(":scope > .text-fit-lines"));
+    const text = (hasRenderedFitText ? textNode.dataset.textFitSource : textNode.textContent.trim()) || layoutDefaultText(element);
+    applyLayoutPreviewTextStyle(textNode, element, text);
+  }
 }
 
 function updateLayoutNumber(key, value) {

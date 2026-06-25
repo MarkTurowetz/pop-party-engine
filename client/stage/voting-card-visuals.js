@@ -358,8 +358,10 @@
 
     componentFontSize(component, textOverride = "") {
       const baseSize = Number(component?.fontSize || 16);
-      if (component?.autoFitText !== true || typeof global.fittedLayoutTextSize !== "function") return baseSize;
-      return global.fittedLayoutTextSize(component, textOverride || component.defaultText || component.name || "", baseSize);
+      if (component?.autoFitText !== true) return baseSize;
+      const fitText = global.PartyGameTextFit?.fitTextLayout;
+      if (typeof fitText !== "function") return baseSize;
+      return fitText(component, textOverride || component.defaultText || component.name || "", baseSize).fontSize;
     }
 
     remove(options = {}) {

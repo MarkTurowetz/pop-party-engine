@@ -23,7 +23,9 @@
     const fontScale = Number.isFinite(Number(options.fontScale)) && Number(options.fontScale) > 0
       ? Number(options.fontScale)
       : 1;
-    element.style.setProperty("--component-font-size", `${componentFontSize(component, labelText) * fontScale}px`);
+    const textLayout = componentTextLayout(component, labelText);
+    element.__partyGameTextLayout = textLayout;
+    element.style.setProperty("--component-font-size", `${textLayout.fontSize * fontScale}px`);
     element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
     element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
     element.style.setProperty("--component-fill-css", componentSchema.normalizeFillCss(component.fillCss) || component.fillColor || "transparent");
@@ -34,11 +36,19 @@
   }
 
   function componentFontSize(component, labelText = componentSchema.componentLabel(component)) {
+    return componentTextLayout(component, labelText).fontSize;
+  }
+
+  function componentTextLayout(component, labelText = componentSchema.componentLabel(component)) {
     const baseSize = Number(component?.fontSize || 16);
-    if (component?.autoFitText !== true) return baseSize;
-    const sharedFit = global.PartyGameTextFit?.measureFittedTextSize || global.PartyGameTextFit?.fittedLayoutTextSize || global.fittedLayoutTextSize;
-    if (typeof sharedFit === "function") return sharedFit(component, labelText, baseSize);
-    return Math.max(8, Number(baseSize || 16));
+    const sharedFit = global.PartyGameTextFit?.fitTextLayout;
+    if (component?.autoFitText === true && typeof sharedFit === "function") return sharedFit(component, labelText, baseSize);
+    return {
+      fontSize: Math.max(8, baseSize),
+      lineHeight: global.PartyGameTextFit?.constants?.lineHeight || 0.9,
+      lines: String(labelText || "").split("\n"),
+      baselineShift: 0
+    };
   }
 
   function componentImageSource(component) {
@@ -81,18 +91,22 @@
     const label = options.labelElement;
     if (label) {
       label.hidden = Boolean(imageSource);
-      setLabelText(label, labelText);
+      setLabelText(label, labelText, element.__partyGameTextLayout || null);
     }
   }
 
-  function setLabelText(label, labelText) {
+  function setLabelText(label, labelText, textLayout = null) {
     let textNode = label.querySelector(":scope > .art-label-text");
     if (!textNode) {
       textNode = label.ownerDocument.createElement("span");
       textNode.className = "art-label-text";
       label.replaceChildren(textNode);
     }
-    textNode.textContent = labelText;
+    if (global.PartyGameTextFit?.renderTextElement) {
+      global.PartyGameTextFit.renderTextElement(textNode, labelText, textLayout);
+    } else {
+      textNode.textContent = labelText;
+    }
   }
 
   function componentLayerIndex(index, siblingCount) {

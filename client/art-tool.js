@@ -610,7 +610,8 @@ function updateArtPreviewCanvasScale(composition = selectedArtComposition()) {
 }
 
 function applyMeasuredArtPreviewTextFit(composition) {
-  const fitText = window.PartyGameTextFit?.fittedLayoutTextSize || window.fittedLayoutTextSize;
+  const fitTextLayout = window.PartyGameTextFit?.fitTextLayout;
+  const renderTextElement = window.PartyGameTextFit?.renderTextElement;
   const componentsById = new Map(flattenArtComponents(composition?.components || []).map(({ component }) => [String(component.id || ""), component]));
   const previewCanvas = currentArtPreviewCanvas();
   const nodes = previewCanvas.querySelectorAll(".art-composition-component.is-text");
@@ -620,66 +621,16 @@ function applyMeasuredArtPreviewTextFit(composition) {
     if (label) label.style.fontSize = "";
     if (!component || component.autoFitText !== true) continue;
     if (!label || label.hidden) continue;
-    const nodeRect = node.getBoundingClientRect();
-    const canvasScale = updateArtPreviewCanvasScale(composition);
-    const fallbackWidth = Number(component.width || 1) * canvasScale;
-    const fallbackHeight = Number(component.height || 1) * canvasScale;
-    const width = Number(node.clientWidth || nodeRect.width || fallbackWidth || component.width || 1);
-    const height = Number(node.clientHeight || nodeRect.height || fallbackHeight || component.height || 1);
-    const previewElement = { ...component, width, height };
     const previewText = artComponentPreviewText(component);
-    const estimatedSize = typeof fitText === "function"
-      ? fitText(previewElement, previewText, Number(component.fontSize || 16))
-      : Number(component.fontSize || 16);
-    const fontSize = measuredArtPreviewFontSize(node, label, previewText, estimatedSize);
-    node.style.setProperty("--component-font-size", `${fontSize}px`);
-    label.style.fontSize = `${fontSize}px`;
+    if (typeof fitTextLayout !== "function") continue;
+    const computed = window.getComputedStyle(label);
+    const layout = fitTextLayout(component, previewText, Number(component.fontSize || 16), {
+      computedStyle: computed
+    });
+    node.style.setProperty("--component-font-size", `${layout.fontSize}px`);
+    label.style.fontSize = `${layout.fontSize}px`;
+    renderTextElement?.(label.querySelector(":scope > .art-label-text") || label, previewText, layout);
   }
-}
-
-function measuredArtPreviewFontSize(node, label, text, fallbackSize) {
-  if (!node || !label || !document.body) return Number(fallbackSize || 16);
-  const nodeRect = node.getBoundingClientRect();
-  const rect = label.getBoundingClientRect();
-  const availableWidth = Math.max(8, Number(node.clientWidth || label.clientWidth || nodeRect.width || rect.width || 1));
-  const availableHeight = Math.max(8, Number(node.clientHeight || label.clientHeight || nodeRect.height || rect.height || 1));
-  const computed = window.getComputedStyle(label);
-  const measure = document.createElement("div");
-  measure.textContent = text || "Text";
-  measure.style.position = "fixed";
-  measure.style.left = "-10000px";
-  measure.style.top = "-10000px";
-  measure.style.visibility = "hidden";
-  measure.style.pointerEvents = "none";
-  measure.style.boxSizing = "border-box";
-  measure.style.width = `${availableWidth}px`;
-  measure.style.padding = computed.padding;
-  measure.style.fontFamily = computed.fontFamily;
-  measure.style.fontWeight = computed.fontWeight;
-  measure.style.fontStyle = computed.fontStyle;
-  measure.style.letterSpacing = computed.letterSpacing;
-  measure.style.lineHeight = String(window.PartyGameTextFit?.constants?.lineHeight || 0.82);
-  measure.style.textTransform = computed.textTransform;
-  measure.style.whiteSpace = "normal";
-  measure.style.overflowWrap = "anywhere";
-  measure.style.wordBreak = computed.wordBreak;
-  document.body.appendChild(measure);
-
-  const minSize = 8;
-  let low = minSize;
-  let high = Math.min(260, Math.max(minSize, Math.ceil(availableHeight * 2)));
-  while (low < high) {
-    const mid = Math.ceil((low + high) / 2);
-    measure.style.fontSize = `${mid}px`;
-    const fits = measure.scrollWidth <= availableWidth + 1 && measure.scrollHeight <= availableHeight + 1;
-    if (fits) low = mid;
-    else high = mid - 1;
-  }
-  measure.remove();
-  const fallback = Math.max(minSize, Number(fallbackSize || minSize));
-  const fitted = Math.max(low || fallback, Math.min(fallback, high));
-  const safetyScale = Number(window.PartyGameTextFit?.constants?.safetyScale || 0.96);
-  return Math.max(minSize, Math.floor(fitted * safetyScale));
 }
 
 function updateArtCompositionDeleteButton() {
