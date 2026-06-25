@@ -661,6 +661,7 @@
     "stage-code-widget": {
       "name": "Small Room Code Widget",
       "description": "Editable small global stage-code badge.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 170,
@@ -718,7 +719,7 @@
           "borderRadius": 14
         }
       ],
-      "updatedAt": "2026-06-24T04:03:29.499Z"
+      "updatedAt": "2026-06-25T01:23:54.026Z"
     },
     "join-widget": {
       "name": "Join Widget",
