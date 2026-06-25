@@ -576,15 +576,6 @@
       text-transform: uppercase;
     }
 
-    .stage-join-qr-url {
-      max-width: 100%;
-      overflow-wrap: anywhere;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 1000;
-      line-height: 1.1;
-    }
-
     .stage-status {
       min-height: 52px;
       display: inline-flex;
@@ -4792,7 +4783,6 @@
       <section class="stage-join-qr hidden" id="stageJoinQr" aria-label="Controller QR code">
         <canvas id="stageJoinQrCanvas" width="220" height="220"></canvas>
         <div class="stage-join-qr-label">Scan To Join</div>
-        <div class="stage-join-qr-url" id="stageJoinQrUrl"></div>
       </section>
       <section class="voting-card-layer hidden" id="votingCardLayer" aria-label="Anonymous answer cards"></section>
       <main class="stage-intro-content hidden" id="stageIntroContent">
@@ -5297,7 +5287,6 @@
     const stageCodeBadge = document.querySelector("#stageCodeBadge strong");
     const stageJoinQr = document.querySelector("#stageJoinQr");
     const stageJoinQrCanvas = document.querySelector("#stageJoinQrCanvas");
-    const stageJoinQrUrl = document.querySelector("#stageJoinQrUrl");
     const craftingTimer = document.querySelector("#craftingTimer");
     const craftingTimerLabel = document.querySelector("#craftingTimerLabel");
     const stageDebugAction = document.querySelector("#stageDebugAction");

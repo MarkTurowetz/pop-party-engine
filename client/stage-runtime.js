@@ -447,7 +447,7 @@ function controllerJoinUrlForStage(stageCode) {
 }
 
 function renderStageJoinQr(stageCode, isVisible = true) {
-  if (!stageJoinQr || !stageJoinQrCanvas || !stageJoinQrUrl) return;
+  if (!stageJoinQr || !stageJoinQrCanvas) return;
   const normalizedCode = normalizeStageCode(stageCode);
   const shouldShow = isVisible && Boolean(normalizedCode);
   if (!shouldShow) {
@@ -455,7 +455,6 @@ function renderStageJoinQr(stageCode, isVisible = true) {
     return;
   }
   const joinUrl = controllerJoinUrlForStage(normalizedCode);
-  stageJoinQrUrl.textContent = joinUrl.replace(/^https?:\/\//, "");
   renderStageWidgetBinding("joinQr");
   setStageWidgetGameObjectShown("joinQr", true);
   if (renderedStageJoinQrUrl === joinUrl) return;
@@ -467,7 +466,7 @@ function renderStageJoinQr(stageCode, isVisible = true) {
       size: 220
     });
   } catch (error) {
-    stageJoinQrUrl.textContent = joinUrl;
+    renderedStageJoinQrUrl = "";
   }
 }
 
