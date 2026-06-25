@@ -120,7 +120,11 @@
       if (!this.host) return 0;
       const targetShown = isShown !== false;
       const alreadyShown = !this.host.classList.contains("players-hidden");
-      const instant = options.instant === true || alreadyShown === targetShown;
+      if (alreadyShown === targetShown) {
+        this.host.dataset.visualVisible = targetShown ? "true" : "false";
+        return 0;
+      }
+      const instant = options.instant === true;
       const gameObject = this.gameObjectForRoster(options);
       if (gameObject) return gameObject.playVisibility(targetShown, { instant });
       this.host.classList.toggle("players-hidden", !targetShown);
