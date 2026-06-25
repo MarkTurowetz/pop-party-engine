@@ -6,11 +6,11 @@
     fontStyle: "normal",
     fontWeight: "1000",
     lineHeight: 1,
-    safetyScale: 0.9,
+    safetyScale: 0.96,
     minSize: 6,
     maxSize: 260,
-    widthSafety: 0.94,
-    verticalSafety: 0.9
+    widthSafety: 0.96,
+    verticalSafety: 0.96
   };
 
   let measureContext = null;
@@ -52,7 +52,7 @@
     const maxWidth = Math.max(0, ...metrics.map((metric) => metric.width));
     const inkAscent = Math.max(fontSize * 0.8, ...metrics.map((metric) => metric.ascent));
     const inkDescent = Math.max(fontSize * 0.25, ...metrics.map((metric) => metric.descent));
-    const inkHeight = (inkAscent + inkDescent) * 1.08;
+    const inkHeight = (inkAscent + inkDescent) * 1.06;
     const lineBoxHeight = Math.max(fontSize * config.lineHeight, inkHeight);
     const height = lineBoxHeight * measuredLines.length;
     return {
@@ -122,8 +122,7 @@
   function layoutFits(layout, box, config) {
     if (layout.maxWidth > box.width * config.widthSafety) return false;
     if (layout.height > box.height * config.verticalSafety) return false;
-    if (!config.measureElement) return true;
-    return domLayoutFits(config.measureElement, layout, box, config);
+    return true;
   }
 
   function textBox(element, config) {
@@ -144,8 +143,7 @@
       fontWeight: String(options.fontWeight || computed?.fontWeight || defaultOptions.fontWeight),
       lineHeight: normalizeLineHeight(options.lineHeight || computed?.lineHeight, defaultOptions.lineHeight),
       padding: options.padding || computedPadding(computed),
-      textTransform: options.textTransform || computed?.textTransform || "none",
-      measureElement: options.measureElement || null
+      textTransform: options.textTransform || computed?.textTransform || "none"
     };
   }
 
@@ -181,39 +179,6 @@
     if (!documentRef?.createElement) return null;
     measureContext = documentRef.createElement("canvas").getContext("2d");
     return measureContext;
-  }
-
-  function domLayoutFits(measureElement, layout, box, config) {
-    const documentRef = measureElement?.ownerDocument || global.document;
-    if (!documentRef?.createElement || !documentRef.body) return true;
-    const measurer = documentRef.createElement("span");
-    measurer.className = "text-fit-lines text-fit-measurer";
-    measurer.style.position = "fixed";
-    measurer.style.left = "-100000px";
-    measurer.style.top = "-100000px";
-    measurer.style.visibility = "hidden";
-    measurer.style.pointerEvents = "none";
-    measurer.style.width = `${box.width}px`;
-    measurer.style.height = "auto";
-    measurer.style.fontFamily = config.fontFamily;
-    measurer.style.fontStyle = config.fontStyle;
-    measurer.style.fontWeight = config.fontWeight;
-    measurer.style.fontSize = `${layout.fontSize}px`;
-    measurer.style.setProperty("--text-fit-line-height", String(layout.lineHeight || defaultOptions.lineHeight));
-    measurer.style.setProperty("--text-fit-line-box-height", `${layout.lineBoxHeight}px`);
-    measurer.style.setProperty("--text-fit-baseline-shift", "0px");
-    for (const line of layout.lines || [""]) {
-      const lineElement = documentRef.createElement("span");
-      lineElement.className = "text-fit-line";
-      lineElement.textContent = line;
-      measurer.appendChild(lineElement);
-    }
-    documentRef.body.appendChild(measurer);
-    const measuredWidth = measurer.scrollWidth;
-    const measuredHeight = measurer.scrollHeight;
-    measurer.remove();
-    return measuredWidth <= Math.ceil(box.width * config.widthSafety)
-      && measuredHeight <= Math.ceil(box.height * config.verticalSafety);
   }
 
   function renderTextElement(target, text, layout = null) {
