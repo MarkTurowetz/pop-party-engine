@@ -598,16 +598,17 @@ function applyMeasuredArtPreviewTextFit(composition) {
     const estimatedSize = typeof fitText === "function"
       ? fitText(previewElement, previewText, Number(component.fontSize || 16))
       : Number(component.fontSize || 16);
-    const fontSize = measuredArtPreviewFontSize(label, previewText, estimatedSize);
+    const fontSize = measuredArtPreviewFontSize(node, label, previewText, estimatedSize);
     node.style.setProperty("--component-font-size", `${fontSize}px`);
   }
 }
 
-function measuredArtPreviewFontSize(label, text, fallbackSize) {
-  if (!label || !document.body) return Number(fallbackSize || 16);
+function measuredArtPreviewFontSize(node, label, text, fallbackSize) {
+  if (!node || !label || !document.body) return Number(fallbackSize || 16);
+  const nodeRect = node.getBoundingClientRect();
   const rect = label.getBoundingClientRect();
-  const availableWidth = Math.max(8, Number(label.clientWidth || rect.width || 1));
-  const availableHeight = Math.max(8, Number(label.clientHeight || rect.height || 1));
+  const availableWidth = Math.max(8, Number(node.clientWidth || label.clientWidth || nodeRect.width || rect.width || 1));
+  const availableHeight = Math.max(8, Number(node.clientHeight || label.clientHeight || nodeRect.height || rect.height || 1));
   const computed = window.getComputedStyle(label);
   const measure = document.createElement("div");
   measure.textContent = text || "Text";
@@ -641,7 +642,8 @@ function measuredArtPreviewFontSize(label, text, fallbackSize) {
     else high = mid - 1;
   }
   measure.remove();
-  return low || Number(fallbackSize || minSize);
+  const fallback = Math.max(minSize, Number(fallbackSize || minSize));
+  return Math.max(low || fallback, Math.min(fallback, high));
 }
 
 function updateArtCompositionDeleteButton() {
