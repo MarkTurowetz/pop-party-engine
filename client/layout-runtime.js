@@ -284,7 +284,7 @@ function createPlacedLayoutArtTargetResolver(options = {}) {
       return options.visibilityKeyForTarget?.(elementId, target, scope) || "";
     },
     setShownForAction(action) {
-      return setLayoutArtElementShownForAction(action, {
+      return setLayoutEntityShownForAction(action, {
         entityForElementId: resolver.entityForElementId,
         visibilityKeyForTarget: resolver.visibilityKeyForTarget,
         visibilityOverrides: options.visibilityOverrides
@@ -389,7 +389,7 @@ function layoutArtMissingTargetReason(details = {}) {
   return `no placed layout entity found for ${details.elementId || "unknown target"}${scopeText}`;
 }
 
-function setLayoutArtElementShownForAction(action, options = {}) {
+function setLayoutEntityShownForAction(action, options = {}) {
   const elementId = action?.targetLayoutElementId || "";
   if (!elementId || !window.PartyGameVisualObject) return 0;
   const isShown = action.isShown !== false;
@@ -421,6 +421,10 @@ function setLayoutArtElementShownForAction(action, options = {}) {
     instant: action.instant === true,
     warn
   });
+}
+
+function setLayoutArtElementShownForAction(action, options = {}) {
+  return setLayoutEntityShownForAction(action, options);
 }
 
 async function loadStageLayouts({ forceServer = false } = {}) {
