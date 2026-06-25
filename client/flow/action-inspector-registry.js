@@ -314,6 +314,7 @@
         const match = String(value || "").match(/^(global|moment):(.+)$/);
         action.targetLayoutScope = match ? match[1] : "";
         action.targetLayoutElementId = match ? match[2] : value || "";
+        action.targetLayoutSurface = "stage";
         handlers.change();
       }));
       controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Art Asset Visible" });
