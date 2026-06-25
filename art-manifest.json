@@ -490,6 +490,22 @@
       },
       "components": [
         {
+          "id": "qr-url",
+          "name": "QR URL",
+          "kind": "text",
+          "x": 130,
+          "y": 278,
+          "width": 220,
+          "height": 30,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "controller link",
+          "fontSize": 12,
+          "autoFitText": true,
+          "fontColor": "#17131f"
+        },
+        {
           "id": "qr-label",
           "name": "QR Label",
           "kind": "text",
@@ -542,7 +558,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-25T16:42:19.175Z"
+      "updatedAt": "2026-06-25T01:24:00.461Z"
     },
     "presentation-click-prompt": {
       "name": "Presentation Click Prompt",
@@ -902,7 +918,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-25T01:24:03.177Z"
+      "updatedAt": "2026-06-25T16:42:21.029Z"
     },
     "waiting-status-widget": {
       "name": "Waiting Status",
