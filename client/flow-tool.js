@@ -984,23 +984,27 @@ function controllerLayoutOptions(selectedLayoutId = "") {
 function flowArtAssetLayoutElements(state) {
   const stateId = state?.id || selectedFlowStateId || "";
   const layout = (stageLayouts.states || []).find((item) => item.id === stateId);
-  const momentElements = (layout?.elements || [])
-    .filter((element) => element.kind === "art" && element.artCompositionId)
-    .map((element) => ({ ...element, targetLayoutScope: "moment" }));
+  const momentElements = flowPlacedArtElementsForLayoutGroup(layout, "moment");
   const momentIds = new Set(momentElements.map((element) => element.id));
   const globalLayout = stageLayouts.global || {};
   const hiddenGlobals = new Set(layout?.hiddenGlobals || []);
   const globalElements = globalLayout.hiddenInStates === true
     ? []
-    : (globalLayout.elements || [])
-      .filter((element) => element.kind === "art" && element.artCompositionId)
-      .filter((element) => !hiddenGlobals.has(element.id))
-      .filter((element) => !momentIds.has(element.id))
-      .map((element) => ({ ...element, targetLayoutScope: "global" }));
+    : flowPlacedArtElementsForLayoutGroup(globalLayout, "global", { hiddenIds: hiddenGlobals, excludeIds: momentIds });
   return [
     ...momentElements,
     ...globalElements
   ];
+}
+
+function flowPlacedArtElementsForLayoutGroup(group, scope, options = {}) {
+  const hiddenIds = options.hiddenIds || new Set();
+  const excludeIds = options.excludeIds || new Set();
+  return (group?.elements || [])
+    .filter((element) => element.kind === "art" && element.artCompositionId)
+    .filter((element) => !hiddenIds.has(element.id))
+    .filter((element) => !excludeIds.has(element.id))
+    .map((element) => ({ ...element, targetLayoutScope: scope }));
 }
 
 function flowArtAssetTargetLabel(element) {
