@@ -818,6 +818,7 @@
     "crafting-timer-widget": {
       "name": "Crafting Timer",
       "description": "Editable timer art used during timed input moments.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 180,
@@ -859,7 +860,7 @@
           "borderRadius": 36
         }
       ],
-      "updatedAt": "2026-06-24T04:03:34.228Z"
+      "updatedAt": "2026-06-25T01:23:58.988Z"
     }
   },
   "deletedCompositionIds": []
