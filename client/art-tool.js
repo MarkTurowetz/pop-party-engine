@@ -575,6 +575,7 @@ function artComponentLayerIndex(index, siblingCount) {
 function artComponentPreviewNode(composition, component, canvas, layerIndex = 0, siblingCount = 1) {
   const node = document.createElement("div");
   node.className = `art-composition-component is-${artComponentSchema.normalizeComponentKind(component.kind)} is-style-${artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind)}`;
+  node.classList.toggle("is-art-root-container", artComponentIsRootContainer(component, composition));
   node.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
   node.classList.toggle("has-image-mask", artComponentHasImageMask(component));
   node.classList.toggle("has-tinted-image-mask", artComponentHasImageMask(component) && component.imageTint === "currentColor");
@@ -653,6 +654,13 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
     });
   }
   return node;
+}
+
+function artComponentIsRootContainer(component, composition) {
+  if (!component || artComponentSchema.normalizeComponentKind(component.kind) !== "container") return false;
+  const rootComponents = Array.isArray(composition?.components) ? composition.components : [];
+  if (rootComponents.length !== 1 || rootComponents[0] !== component) return false;
+  return String(component.name || "").trim().toLowerCase() === "art root" || String(component.id || "").startsWith("root-");
 }
 
 function artComponentComputedFontSize(component) {
@@ -1021,6 +1029,7 @@ function createArtAssetComposition(kind = "shape") {
   root.fillColor = "transparent";
   root.borderColor = "transparent";
   root.borderWidth = 0;
+  root.borderRadius = 0;
   root.children = [defaultArtObject(kind, { width: root.width, height: root.height })];
   const composition = {
     id: createSecureArtId("art"),

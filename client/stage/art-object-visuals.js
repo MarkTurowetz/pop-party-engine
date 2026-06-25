@@ -49,6 +49,13 @@
     return count > 0 ? `${baseKey}::${count}` : baseKey;
   }
 
+  function isArtRootContainer(component, parentComponents) {
+    if (!component || componentSchema.normalizeComponentKind(component.kind) !== "container") return false;
+    const siblings = Array.isArray(parentComponents) ? parentComponents : [];
+    if (siblings.length !== 1 || siblings[0] !== component) return false;
+    return String(component.name || "").trim().toLowerCase() === "art root" || String(component.id || "").startsWith("root-");
+  }
+
   class ArtObjectView {
     constructor(options = {}) {
       this.document = options.document || global.document;
@@ -119,6 +126,7 @@
       const kind = componentSchema.normalizeComponentKind(this.component.kind);
       const wasVisible = this.visual ? this.isVisible() : true;
       this.element.className = `${RUNTIME_CLASS} is-${kind} is-style-${componentSchema.normalizeShapeStyle(this.component.shapeStyle, kind)}`;
+      this.element.classList.toggle("is-art-root-container", Boolean(layer.isRootContainer));
       this.element.dataset.artComponentId = this.component.id || "";
       if (!wasVisible) this.element.classList.add(HIDDEN_CLASS);
       this.element.style.zIndex = String(componentLayerIndex(layer.index, layer.total));
@@ -166,7 +174,7 @@
           this.children.set(key, view);
           view.play(child.defaultAnimationState || "on", { instant: true });
         } else {
-          view.update(child, childCanvas, { index, total: (children || []).length });
+          view.update(child, childCanvas, { index, total: (children || []).length, isRootContainer: false });
         }
         this.element.appendChild(view.element);
       }
@@ -249,7 +257,7 @@
             instanceId: `${this.instanceId}/${key}`,
             component,
             canvas,
-            layer: { index, total: (components || []).length }
+            layer: { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) }
           });
           this.views.set(key, view);
           view.play(
@@ -259,7 +267,7 @@
             { instant: options.instant !== false }
           );
         } else {
-          view.update(component, canvas, { index, total: (components || []).length });
+          view.update(component, canvas, { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) });
         }
         this.host.appendChild(view.element);
       }

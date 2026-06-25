@@ -113,23 +113,61 @@ function updateCustomConstant(index, patch, { captureHistory = true, render = fa
   const customConstants = [...(gameConstants.customConstants || [])];
   if (!customConstants[index]) return;
   if (captureHistory) pushConstantsHistory();
+  const previousTarget = customConstantTargetId(customConstants[index]);
   customConstants[index] = { ...customConstants[index], ...patch };
+  if (selectedGameConstantId === previousTarget) selectedGameConstantId = customConstantTargetId(customConstants[index]);
   commitGameConstants({ ...gameConstants, customConstants }, { captureHistory: false, render });
+}
+
+function customConstantTargetId(constant) {
+  return `constant:${String(constant?.id || "").trim()}`;
+}
+
+function selectedCustomConstantIndex() {
+  if (!String(selectedGameConstantId || "").startsWith("constant:")) return -1;
+  const id = selectedGameConstantId.slice("constant:".length);
+  return (gameConstants.customConstants || []).findIndex((constant) => constant.id === id);
+}
+
+function renderCustomConstantNavList() {
+  if (!customConstantNavList) return;
+  const customConstants = Array.isArray(gameConstants.customConstants) ? gameConstants.customConstants : [];
+  customConstantNavList.replaceChildren();
+  customConstants.forEach((constant) => {
+    const button = document.createElement("button");
+    button.className = "flow-state-header";
+    button.type = "button";
+    button.dataset.constantTarget = customConstantTargetId(constant);
+    button.classList.toggle("is-selected", selectedGameConstantId === button.dataset.constantTarget);
+    const label = document.createElement("span");
+    const name = document.createElement("strong");
+    name.textContent = constant.name || constant.id;
+    const help = document.createElement("span");
+    help.textContent = `${constant.type || "int"} / ${constant.id}`;
+    label.append(name, help);
+    button.appendChild(label);
+    button.addEventListener("click", () => {
+      selectedGameConstantId = button.dataset.constantTarget;
+      renderConstantsTool();
+    });
+    customConstantNavList.appendChild(button);
+  });
 }
 
 function renderCustomConstantList() {
   if (!customConstantList) return;
   const customConstants = Array.isArray(gameConstants.customConstants) ? gameConstants.customConstants : [];
-  if (customConstantCount) customConstantCount.textContent = `${customConstants.length} ${customConstants.length === 1 ? "constant" : "constants"}`;
   customConstantList.replaceChildren();
   if (!customConstants.length) {
     const note = document.createElement("p");
     note.className = "flow-empty-note";
-    note.textContent = "No custom constants yet.";
+    note.textContent = "No created constants yet.";
     customConstantList.appendChild(note);
     return;
   }
-  customConstants.forEach((constant, index) => {
+  const selectedIndex = selectedCustomConstantIndex();
+  const constantsToRender = selectedIndex >= 0 ? [[customConstants[selectedIndex], selectedIndex]] : customConstants.map((constant, index) => [constant, index]);
+  constantsToRender.forEach(([constant, index]) => {
     const row = document.createElement("div");
     row.className = "custom-constant-row";
 
@@ -198,9 +236,13 @@ function renderCustomConstantList() {
     remove.className = "secondary-button";
     remove.textContent = "Remove";
     remove.addEventListener("click", () => {
+      const nextConstants = gameConstants.customConstants.filter((_, constantIndex) => constantIndex !== index);
+      selectedGameConstantId = nextConstants[Math.min(index, nextConstants.length - 1)]
+        ? customConstantTargetId(nextConstants[Math.min(index, nextConstants.length - 1)])
+        : "gameTitle";
       commitGameConstants({
         ...gameConstants,
-        customConstants: gameConstants.customConstants.filter((_, constantIndex) => constantIndex !== index)
+        customConstants: nextConstants
       }, { render: true });
     });
 
@@ -212,14 +254,20 @@ function renderCustomConstantList() {
 function renderConstantsTool() {
   gameConstants = normalizeClientGameConstants(gameConstants);
   const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
+  if (selectedGameConstantId === "customConstants") {
+    selectedGameConstantId = gameConstants.customConstants?.[0]
+      ? customConstantTargetId(gameConstants.customConstants[0])
+      : "gameTitle";
+  }
+  if (selectedGameConstantId.startsWith("constant:") && selectedCustomConstantIndex() < 0) selectedGameConstantId = "gameTitle";
   document.querySelectorAll("[data-constant-target]").forEach((button) => {
     button.classList.toggle("is-selected", button.dataset.constantTarget === selectedGameConstantId);
   });
   document.querySelectorAll("[data-constant-detail]").forEach((detail) => {
-    detail.classList.toggle("hidden", detail.dataset.constantDetail !== selectedGameConstantId);
+    const isCustomDetail = detail.dataset.constantDetail === "customConstants" && selectedGameConstantId.startsWith("constant:");
+    detail.classList.toggle("hidden", detail.dataset.constantDetail !== selectedGameConstantId && !isCustomDetail);
   });
   addPlayerColorButton?.classList.toggle("hidden", selectedGameConstantId !== "playerColors");
-  addCustomConstantButton?.classList.toggle("hidden", selectedGameConstantId !== "customConstants");
   if (gameTitleInput) gameTitleInput.value = gameConstants.gameTitle;
   if (craftingTimerDurationInput) {
     craftingTimerDurationInput.value = String(Math.max(1, Number(gameConstants.craftingTimerDuration || 30)));
@@ -273,6 +321,7 @@ function renderConstantsTool() {
     playerColorList.appendChild(row);
   });
   renderCustomConstantList();
+  renderCustomConstantNavList();
   updateGlobalSaveButton();
 }
 
@@ -299,7 +348,7 @@ function addCustomConstant() {
     index += 1;
     id = `customConstant${index}`;
   }
-  selectedGameConstantId = "customConstants";
+  selectedGameConstantId = customConstantTargetId({ id });
   commitGameConstants({
     ...gameConstants,
     customConstants: [
