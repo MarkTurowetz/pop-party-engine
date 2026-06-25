@@ -499,15 +499,17 @@ function applyStageState(lobby) {
   if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
   applyStageLayoutForPhase(phase);
   renderStageWidgetBinding("stageCodePanel", { stageCode: lobby.stageCode || stageCodeText.textContent });
+  setStageWidgetGameObjectShown("stageCodePanel", isLobbyPhase, { instant: true });
   renderStageWidgetBinding("stageCodeWidget", { stageCode: lobby.stageCode || stageCodeBadge.textContent });
   setStageWidgetGameObjectShown("stageCodeWidget", !isLobbyPhase, { instant: true, scope: "global" });
   renderStageJoinQr(lobby.stageCode || stageCodeText.textContent, isLobbyPhase);
   window.clearInterval(stageCountdownTimer);
   setStageWidgetGameObjectShown("countdownPopup", false, { instant: true });
-  stageMain.classList.toggle("hidden", !isLobbyPhase);
+  stageMain.classList.remove("hidden");
   stageFooter.classList.remove("hidden");
   stageIntroContent.classList.remove("hidden");
   stageIntroTitle.textContent = "GAME INTRO";
+  setStageLayoutElementGameObjectShown("stageTitle", stageTitleElement, isLobbyPhase, { instant: true });
   setStageLayoutElementGameObjectShown("stageIntroTitle", stageIntroTitle, phase === "intro", { instant: true });
   renderStageWidgetBinding("presentationClickPrompt");
   setStageWidgetGameObjectShown("presentationClickPrompt", action?.type === "present" && action?.timing?.mode !== "S+", {
