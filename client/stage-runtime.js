@@ -458,11 +458,11 @@ function setStageWaitingStatus(message, isVisible = true) {
   if (!waitingStatus) return;
   const cleanMessage = String(message || "");
   waitingStatus.dataset.statusText = cleanMessage;
-  waitingStatus.classList.toggle("hidden", !isVisible || !cleanMessage);
   if (!waitingStatus.classList.contains("has-stage-widget-art")) {
     waitingStatus.textContent = cleanMessage;
   }
   renderStageWidgetBinding("waitingStatus", { text: cleanMessage });
+  setStageWidgetGameObjectShown("waitingStatus", isVisible && Boolean(cleanMessage));
 }
 
 function applyStageState(lobby) {
