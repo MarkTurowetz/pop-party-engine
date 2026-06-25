@@ -1009,7 +1009,7 @@ function flowPlacedArtElementsForLayoutGroup(group, scope, options = {}) {
 
 function flowArtAssetTargetLabel(element) {
   const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
-  const name = String(element?.name || element?.id || "Art Asset");
+  const name = String(element?.name || element?.id || "Game Object");
   const id = String(element?.id || "");
   const idSuffix = id && id.toLowerCase() !== name.toLowerCase() ? ` (${id})` : "";
   return `${scope === "global" ? "Global: " : ""}${name}${idSuffix}`;
@@ -1029,7 +1029,7 @@ function flowArtAssetTargetParts(value, fallbackScope = "") {
 
 function flowArtAssetTargetOptions(state, selectedElementId = "") {
   const selectedParts = flowArtAssetTargetParts(selectedElementId);
-  const options = [{ id: "", name: "No Art Asset" }];
+  const options = [{ id: "", name: "No Game Object" }];
   for (const element of flowArtAssetLayoutElements(state)) {
     options.push({ id: flowArtAssetTargetValue(element), name: flowArtAssetTargetLabel(element) });
   }
@@ -1041,7 +1041,7 @@ function flowArtAssetTargetOptions(state, selectedElementId = "") {
 }
 
 function flowArtAssetTargetName(elementId, targetLayoutScope = "") {
-  if (!elementId) return "No Art Asset";
+  if (!elementId) return "No Game Object";
   const scope = ["global", "moment"].includes(String(targetLayoutScope || "")) ? targetLayoutScope : "";
   const selectedState = (stageLayouts.states || []).find((state) => state.id === selectedFlowStateId);
   const momentElement = (selectedState?.elements || []).find((item) => item.id === elementId);

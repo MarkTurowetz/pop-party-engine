@@ -62,10 +62,10 @@
 
     showArtAssetWarning(details = {}) {
       if (!this.alertElement) return;
-      const name = details.name || details.elementId || "Unknown Art Asset";
+      const name = details.name || details.elementId || "Unknown Game Object";
       const scope = details.scope ? ` / ${details.scope}` : "";
       const reason = details.reason || "target unavailable";
-      this.alertElement.textContent = `Art Asset Warning: ${name}${scope} / ${reason}`;
+      this.alertElement.textContent = `Game Object Warning: ${name}${scope} / ${reason}`;
       this.alertElement.classList.remove("hidden");
     }
   }

@@ -155,11 +155,11 @@ concepts into focused modules.
   `isArt`, `isDynamic`, `isGlobal`, and `visibilityKey` semantics.
 - Layout prefab instances should let the placed layout entity own park/appear/disappear.
   Their internal art tree is rendered into a ready `on` state by layout runtime so a
-  parked source-root component does not make `Set Art Asset Shown` appear an empty host.
+  parked source-root component does not make `Set Game Object Shown` appear an empty host.
 - Dynamic layout art entities should carry their `ArtObjectTreeRenderer` on the same
   registered GameObject entity that owns the placed instance host.
 - Layout art entities opt into syncing that renderer to `on` before a show animation,
-  so `Set Art Asset Shown` can reliably reveal prefab instances without changing the
+  so `Set Game Object Shown` can reliably reveal prefab instances without changing the
   default behavior of unrelated GameObjects.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same

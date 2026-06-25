@@ -77,8 +77,8 @@
         action.playMode = action.playMode || "random";
         action.lineIndex = Math.max(0, Math.floor(Number(action.lineIndex || 0)));
       }
-      if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown" || value === "setArtAssetShown") action.isShown = action.isShown !== false;
-      if (value === "setArtAssetShown") {
+      if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown" || value === "setGameObjectShown" || value === "setArtAssetShown") action.isShown = action.isShown !== false;
+      if (value === "setGameObjectShown" || value === "setArtAssetShown") {
         action.targetLayoutElementId = action.targetLayoutElementId || "";
         action.targetLayoutSurface = action.targetLayoutSurface || "stage";
       }

@@ -104,7 +104,7 @@
         controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Player Answers Visible" });
         controls?.appendPlayerFilterControls(target, action, handlers.change);
       }
-      if (action.type === "setArtAssetShown") appendArtAssetShownControls(target, state, action, controls, handlers);
+      if (action.type === "setGameObjectShown" || action.type === "setArtAssetShown") appendGameObjectShownControls(target, state, action, controls, handlers);
       if (action.type === "revealPlayerAnswerCorrectness") {
         target.appendChild(context.readOnlyFlowNote("Compares stored player trivia answers to the current prompt and marks answer bubbles green or red."));
       }
@@ -305,20 +305,20 @@
         : "Jump Nodes immediately move to the selected action in this moment. They do not use timing or draggable exit dots."));
     }
 
-    function appendArtAssetShownControls(target, state, action, controls, handlers) {
+    function appendGameObjectShownControls(target, state, action, controls, handlers) {
       const selectedTarget = action.targetLayoutElementId
         ? `${action.targetLayoutScope || "moment"}:${action.targetLayoutElementId}`
         : "";
-      const options = context.artAssetTargetOptions?.(state, selectedTarget) || [{ id: "", name: "No Art Asset" }];
-      target.appendChild(context.flowSelect("Art Asset", selectedTarget, options, (value) => {
+      const options = context.artAssetTargetOptions?.(state, selectedTarget) || [{ id: "", name: "No Game Object" }];
+      target.appendChild(context.flowSelect("Game Object", selectedTarget, options, (value) => {
         const match = String(value || "").match(/^(global|moment):(.+)$/);
         action.targetLayoutScope = match ? match[1] : "";
         action.targetLayoutElementId = match ? match[2] : value || "";
         action.targetLayoutSurface = "stage";
         handlers.change();
       }));
-      controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Art Asset Visible" });
-      target.appendChild(context.readOnlyFlowNote("Targets a placed art asset instance in the current moment or global layout. Source art assets must be added to a layout before this action can show them."));
+      controls?.appendVisibilityControls(target, action, handlers.controlChange, { visibleLabel: "Game Object Visible" });
+      target.appendChild(context.readOnlyFlowNote("Targets a placed game object instance in the current moment or global layout. Source art assets must be added to a layout before this action can show them."));
     }
 
     function appendPlayHostAudioControls(target, action, controls, handlers) {

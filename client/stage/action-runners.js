@@ -26,7 +26,8 @@
     { type: "displayText", runner: "displayText" },
     { type: "setPlayersShown", runner: "setPlayersShown" },
     { type: "setPlayerAnswersShown", runner: "setPlayerAnswersShown" },
-    { type: "setArtAssetShown", runner: "setArtAssetShown" },
+    { type: "setGameObjectShown", runner: "setGameObjectShown" },
+    { type: "setArtAssetShown", runner: "setGameObjectShown" },
     { type: "revealPlayerAnswerCorrectness", runner: "delayedComplete", delayMs: 250 },
     { type: "showPoints", runner: "delayedComplete", delayMs: 1500 },
     { type: "givePendingPoints", runner: "serverEffect" },
@@ -93,7 +94,7 @@
         if (!runtime.isPrimary) runtime.applyEffect(action);
         if (runtime.isPrimary) completeAfter(action, runtime, duration);
       },
-      setArtAssetShown(action, runtime) {
+      setGameObjectShown(action, runtime) {
         const duration = context.setStageLayoutArtElementShownForAction
           ? context.setStageLayoutArtElementShownForAction(action)
           : 0;

@@ -28,9 +28,9 @@
       this.id = options.id || options.element?.id || this.id || "";
       this.element = options.element || this.element;
       this.target = options.target || this.target;
-      this.isArt = options.isArt === true;
-      this.isDynamic = options.isDynamic === true;
-      this.isGlobal = options.isGlobal === true;
+      if (options.isArt !== undefined) this.isArt = options.isArt === true;
+      if (options.isDynamic !== undefined) this.isDynamic = options.isDynamic === true;
+      if (options.isGlobal !== undefined) this.isGlobal = options.isGlobal === true;
       this.visibilityKey = options.visibilityKey || this.visibilityKey || this.id;
       if (options.defaultAnimationState !== undefined || options.element?.defaultAnimationState !== undefined) {
         this.defaultAnimationState = String(options.defaultAnimationState ?? options.element?.defaultAnimationState ?? "");

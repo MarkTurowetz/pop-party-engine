@@ -522,12 +522,12 @@ const flowActionDefinitions = [
     }
   },
   {
-    id: "setArtAssetShown",
-    name: "Set Art Asset Shown",
+    id: "setGameObjectShown",
+    name: "Set Game Object Shown",
     category: "standard",
     canCompleteFromStage: true,
-    stageActionType: "setArtAssetShown",
-    stageRunner: "setArtAssetShown",
+    stageActionType: "setGameObjectShown",
+    stageRunner: "setGameObjectShown",
     normalize: (action, base, context) => ({
       ...base,
       targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
@@ -538,7 +538,34 @@ const flowActionDefinitions = [
     }),
     toPublic: (action, base, context) => ({
       ...base,
-      type: "setArtAssetShown",
+      type: "setGameObjectShown",
+      targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
+      targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
+      targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
+      isShown: action.isShown !== false,
+      instant: action.instant === true
+    })
+  },
+  {
+    id: "setArtAssetShown",
+    name: "Set Art Asset Shown (Deprecated)",
+    category: "standard",
+    canCompleteFromStage: true,
+    deprecated: true,
+    stageActionType: "setArtAssetShown",
+    stageRunner: "setGameObjectShown",
+    normalize: (action, base, context) => ({
+      ...base,
+      type: "setGameObjectShown",
+      targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
+      targetLayoutScope: normalizeLayoutTargetScope(action?.targetLayoutScope),
+      targetLayoutSurface: normalizeLayoutTargetSurface(action?.targetLayoutSurface),
+      isShown: action?.isShown !== false,
+      instant: action?.instant === true
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "setGameObjectShown",
       targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
       targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
       targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
