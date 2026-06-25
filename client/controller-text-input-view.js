@@ -8,6 +8,7 @@
     getVoiceInput,
     hideViews,
     setPhaseActionId,
+    showView,
     submitText
   }) {
     function setInputLimit(limit) {
@@ -40,7 +41,7 @@
       hideViews();
       setPhaseActionId(input.actionId);
       applyLayoutForPhase(lobby.phase || "lobby");
-      elements.state.classList.remove("hidden");
+      showView("textInput");
       elements.prompt.textContent = input.prompt || (isVoiceInput ? "Say your answer" : "Write your answer");
       elements.invalidBanner.textContent = "Your submission was invalid";
       elements.input.placeholder = input.placeholder || "Answer here";

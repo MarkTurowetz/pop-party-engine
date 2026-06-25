@@ -10,6 +10,7 @@
     introState,
     previewText,
     renderGlobalMessage,
+    showView,
     status,
     submitText
   }) {
@@ -52,7 +53,7 @@
       }
       hideViews();
       applyLayoutForPhase(lobby.phase || "lobby");
-      introState.classList.remove("hidden");
+      showView("intro");
       introMessage.textContent = "Waiting for the VIP to answer";
     }
 

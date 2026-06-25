@@ -1,5 +1,17 @@
 const controllerModules = window.createControllerModuleCache();
 
+function getControllerViewState() {
+  return controllerModules.get("viewState", () => window.createControllerViewState({
+      choice: controllerChoiceState,
+      globalAction: controllerGlobalActionState,
+      intro: controllerIntroState,
+      join: joinState,
+      lobby: controllerLobbyState,
+      microphoneAccess: controllerMicAccessState,
+      textInput: controllerTextState
+    }));
+}
+
 function getControllerAvatarView() {
   return controllerModules.get("avatarView", () => window.createControllerAvatarView({
       avatarClass,
@@ -38,6 +50,7 @@ function getControllerVoiceInput() {
       introState: controllerIntroState,
       previewText: previewControllerText,
       renderGlobalMessage: renderControllerGlobalMessage,
+      showView: (viewId) => getControllerViewState().show(viewId),
       status: controllerVoiceStatus,
       submitText: submitControllerText
     }));
@@ -55,6 +68,7 @@ function getControllerMicrophoneAccessView() {
       grantAccess: grantControllerMicrophoneAccess,
       hideViews: hideControllerViews,
       renderGlobalMessage: renderControllerGlobalMessage,
+      showView: (viewId) => getControllerViewState().show(viewId),
       waiting: {
         message: controllerIntroMessage,
         state: controllerIntroState
@@ -73,6 +87,7 @@ function getControllerChoiceInputView() {
         state: controllerChoiceState
       },
       hideViews: hideControllerViews,
+      showView: (viewId) => getControllerViewState().show(viewId),
       submitChoice: submitControllerChoice
     }));
 }
@@ -86,7 +101,8 @@ function getControllerGlobalActionView() {
         message: controllerGlobalActionMessage,
         state: controllerGlobalActionState
       },
-      hideViews: hideControllerViews
+      hideViews: hideControllerViews,
+      showView: (viewId) => getControllerViewState().show(viewId)
     }));
 }
 
@@ -122,6 +138,7 @@ function getControllerHeartbeatRuntime() {
       hideViews: hideControllerViews,
       renderState: renderControllerState,
       sendHeartbeat: () => getControllerSubmitApi().heartbeat(),
+      showView: (viewId) => getControllerViewState().show(viewId),
       setControllerState: (value) => {
         controllerState = value;
       }
@@ -140,6 +157,7 @@ function getControllerLobbyView() {
         startButton: startGameButton
       },
       hideViews: hideControllerViews,
+      showView: (viewId) => getControllerViewState().show(viewId),
       setAvatar: setControllerAvatar
     }));
 }
@@ -160,6 +178,7 @@ function getControllerTextInputView() {
       },
       getVoiceInput: getControllerVoiceInput,
       hideViews: hideControllerViews,
+      showView: (viewId) => getControllerViewState().show(viewId),
       setPhaseActionId: (actionId) => {
         controllerState.phaseActionId = actionId;
       },
@@ -183,6 +202,7 @@ function getControllerSessionRuntime() {
       getControllerState: () => controllerState,
       heartbeatRuntime: getControllerHeartbeatRuntime(),
       renderState: renderControllerState,
+      showView: (viewId) => getControllerViewState().show(viewId),
       setControllerState: (value) => {
         controllerState = value;
       },
@@ -222,14 +242,8 @@ async function closeAvatarPicker({ commit = true } = {}) {
 }
 
 function hideControllerViews() {
-  joinState.classList.add("hidden");
-  controllerLobbyState.classList.add("hidden");
-  controllerIntroState.classList.add("hidden");
-  controllerGlobalActionState.classList.add("hidden");
+  getControllerViewState().hideAll();
   controllerGlobalActionButton.classList.add("hidden");
-  controllerChoiceState.classList.add("hidden");
-  controllerMicAccessState.classList.add("hidden");
-  controllerTextState.classList.add("hidden");
   introPresentButton.classList.add("hidden");
 }
 

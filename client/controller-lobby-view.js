@@ -5,21 +5,22 @@
     applyLayoutForPhase,
     elements,
     hideViews,
-    setAvatar
+    setAvatar,
+    showView
   }) {
     function renderMissingPlayer() {
       elements.meta.textContent = "Reconnecting to lobby";
       hideViews();
       elements.introPresentButton.classList.add("hidden");
       applyLayoutForPhase("lobby");
-      elements.lobbyState.classList.remove("hidden");
+      showView("lobby");
       elements.startButton.classList.add("hidden");
     }
 
     function renderInGamePhase(me, phase) {
       hideViews();
       applyLayoutForPhase(phase);
-      elements.introState.classList.toggle("hidden", phase !== "intro");
+      if (phase === "intro") showView("intro");
       elements.introPresentButton.classList.toggle("hidden", !(me.isVip && phase === "intro"));
       elements.introPresentButton.disabled = !(me.isVip && phase === "intro");
     }
@@ -28,7 +29,7 @@
       hideViews();
       elements.introPresentButton.classList.add("hidden");
       applyLayoutForPhase(phase);
-      elements.lobbyState.classList.remove("hidden");
+      showView("lobby");
       elements.playerName.textContent = me.name;
       setAvatar(me);
       elements.meta.textContent = me.isVip ? "VIP Player" : "Waiting for the VIP";

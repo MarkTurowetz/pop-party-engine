@@ -9,7 +9,8 @@
     hideViews,
     renderState,
     sendHeartbeat,
-    setControllerState
+    setControllerState,
+    showView
   }) {
     let timer = null;
 
@@ -30,7 +31,7 @@
           setControllerState(null);
           closeAvatarPicker({ commit: false });
           hideViews();
-          elements.joinState.classList.remove("hidden");
+          showView("join");
           applyLayoutForPhase("join");
           elements.joinButton.disabled = false;
           return;

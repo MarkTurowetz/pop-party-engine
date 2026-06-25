@@ -7,6 +7,7 @@
     grantAccess,
     hideViews,
     renderGlobalMessage,
+    showView,
     waiting
   }) {
     const pendingAutoGrantActionIds = new Set();
@@ -112,7 +113,7 @@
       }
       hideViews();
       applyLayoutForPhase(lobby.phase || "lobby");
-      waiting.state.classList.remove("hidden");
+      showView("intro");
       waiting.message.textContent = message;
     }
 
@@ -127,7 +128,7 @@
 
       hideViews();
       applyLayoutForPhase(lobby.phase || "lobby");
-      elements.state.classList.remove("hidden");
+      showView("microphoneAccess");
       elements.prompt.textContent = input.prompt || "Give microphone access to the game";
       elements.button.textContent = input.buttonLabel || "Yes";
       elements.button.disabled = false;

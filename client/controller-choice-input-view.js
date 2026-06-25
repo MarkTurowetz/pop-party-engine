@@ -6,6 +6,7 @@
     bindPress,
     elements,
     hideViews,
+    showView,
     submitChoice
   }) {
     function render(lobby, me) {
@@ -13,7 +14,7 @@
       if (!input) return false;
       hideViews();
       applyLayoutForPhase(lobby.phase || "lobby");
-      elements.state.classList.remove("hidden");
+      showView("choice");
       elements.prompt.textContent = input.prompt || "Answer this question by tapping an answer";
       elements.grid.replaceChildren();
 

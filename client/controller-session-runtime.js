@@ -8,7 +8,8 @@
     renderState,
     setControllerState,
     setLocalValue,
-    setSessionValue
+    setSessionValue,
+    showView
   }) {
     function enterLobby(stageCode, playerId, lobby, player) {
       setControllerState({ stageCode, playerId, player });
@@ -17,7 +18,7 @@
       setSessionValue("partyTemplateStageCode", stageCode);
       setLocalValue("partyTemplateStageCode", stageCode);
       elements.joinState.classList.add("hidden");
-      elements.lobbyState.classList.remove("hidden");
+      showView("lobby");
       renderState(lobby);
       heartbeatRuntime.start();
     }

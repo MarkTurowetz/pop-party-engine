@@ -5,7 +5,8 @@
     advanceStageClick,
     applyLayoutForPhase,
     elements,
-    hideViews
+    hideViews,
+    showView
   }) {
     let pendingKey = "";
 
@@ -50,7 +51,7 @@
       syncPendingAction(config);
       hideViews();
       applyLayoutForPhase(config.layoutPhase || "lobby");
-      elements.state.classList.remove("hidden");
+      showView("globalAction");
       elements.message.textContent = config.message || "Waiting for the next instruction";
       elements.button.dataset.optionId = config.optionId || "global.action";
       elements.button.dataset.actionId = config.actionId || "";
