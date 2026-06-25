@@ -548,8 +548,14 @@ function renderSelectedArtComposition(options = {}) {
   const canvas = composition.canvas || { width: 560, height: 230 };
   artPreviewArt.style.setProperty("--art-composition-aspect", `${Number(canvas.width || 1) / Math.max(1, Number(canvas.height || 1))}`);
   artPreviewArt.replaceChildren();
+  const previewCanvas = document.createElement("div");
+  previewCanvas.className = "art-composition-canvas";
+  previewCanvas.style.width = `${Math.max(1, Number(canvas.width || 1))}px`;
+  previewCanvas.style.height = `${Math.max(1, Number(canvas.height || 1))}px`;
+  artPreviewArt.appendChild(previewCanvas);
+  updateArtPreviewCanvasScale(composition);
   for (const [index, component] of (composition.components || []).entries()) {
-    artPreviewArt.appendChild(editableArtRenderer.createComponentNode({
+    previewCanvas.appendChild(editableArtRenderer.createComponentNode({
       document,
       composition,
       component,
@@ -572,7 +578,9 @@ function renderSelectedArtComposition(options = {}) {
   }
   applyMeasuredArtPreviewTextFit(composition);
   requestAnimationFrame(() => {
-    if (selectedArtCompositionId === composition.id) applyMeasuredArtPreviewTextFit(composition);
+    if (selectedArtCompositionId !== composition.id) return;
+    updateArtPreviewCanvasScale(composition);
+    applyMeasuredArtPreviewTextFit(composition);
   });
   artFileName.textContent = isArtCompositionsDirty() ? "Component layout has unsaved changes" : "Component layout saved";
   artReplaceButton.disabled = true;
@@ -585,15 +593,26 @@ function renderSelectedArtComposition(options = {}) {
   updateArtCreateButtons();
 }
 
+function currentArtPreviewCanvas() {
+  return artPreviewArt.querySelector(".art-composition-canvas") || artPreviewArt;
+}
+
+function updateArtPreviewCanvasScale(composition = selectedArtComposition()) {
+  const previewCanvas = currentArtPreviewCanvas();
+  if (!composition || previewCanvas === artPreviewArt) return 1;
+  const canvasWidth = Math.max(1, Number(composition.canvas?.width || 1));
+  const canvasHeight = Math.max(1, Number(composition.canvas?.height || 1));
+  const rect = artPreviewArt.getBoundingClientRect();
+  const scale = Math.max(0.01, Math.min(rect.width / canvasWidth, rect.height / canvasHeight));
+  previewCanvas.style.setProperty("--art-composition-canvas-scale", scale);
+  return scale;
+}
+
 function applyMeasuredArtPreviewTextFit(composition) {
   const fitText = window.PartyGameTextFit?.fittedLayoutTextSize || window.fittedLayoutTextSize;
   const componentsById = new Map(flattenArtComponents(composition?.components || []).map(({ component }) => [String(component.id || ""), component]));
-  const canvasWidth = Math.max(1, Number(composition?.canvas?.width || 1));
-  const canvasHeight = Math.max(1, Number(composition?.canvas?.height || 1));
-  const previewRect = artPreviewArt.getBoundingClientRect();
-  const canvasScaleX = previewRect.width > 0 ? previewRect.width / canvasWidth : 1;
-  const canvasScaleY = previewRect.height > 0 ? previewRect.height / canvasHeight : canvasScaleX;
-  const nodes = artPreviewArt.querySelectorAll(".art-composition-component.is-text");
+  const previewCanvas = currentArtPreviewCanvas();
+  const nodes = previewCanvas.querySelectorAll(".art-composition-component.is-text");
   for (const node of nodes) {
     const component = componentsById.get(String(node.dataset.componentId || ""));
     const label = node.querySelector(":scope > .art-component-label");
@@ -601,8 +620,9 @@ function applyMeasuredArtPreviewTextFit(composition) {
     if (!component || component.autoFitText !== true) continue;
     if (!label || label.hidden) continue;
     const nodeRect = node.getBoundingClientRect();
-    const fallbackWidth = Number(component.width || 1) * canvasScaleX;
-    const fallbackHeight = Number(component.height || 1) * canvasScaleY;
+    const canvasScale = updateArtPreviewCanvasScale(composition);
+    const fallbackWidth = Number(component.width || 1) * canvasScale;
+    const fallbackHeight = Number(component.height || 1) * canvasScale;
     const width = Number(node.clientWidth || nodeRect.width || fallbackWidth || component.width || 1);
     const height = Number(node.clientHeight || nodeRect.height || fallbackHeight || component.height || 1);
     const previewElement = { ...component, width, height };
@@ -700,8 +720,7 @@ function artComponentPreviewText(component) {
 function artCompositionPreviewScale() {
   const composition = selectedArtComposition();
   if (!composition) return 1;
-  const rect = artPreviewArt.getBoundingClientRect();
-  return rect.width / Math.max(1, Number(composition.canvas?.width || 1));
+  return updateArtPreviewCanvasScale(composition);
 }
 
 function startArtSelectionMarquee(event) {
@@ -710,7 +729,7 @@ function startArtSelectionMarquee(event) {
   const baseSelection = additiveSelection ? new Set(selectedArtComponentIds) : new Set();
   return window.PartyGameToolAffordances?.startSelectionMarquee(event, {
     root: artPreviewStage,
-    itemRoot: artPreviewArt,
+    itemRoot: currentArtPreviewCanvas(),
     marqueeRoot: artPreviewStage,
     className: "art-selection-marquee",
     itemSelector: ".art-composition-component",
