@@ -416,6 +416,7 @@ function setLayoutEntityShownForAction(action, options = {}) {
     }));
     return 0;
   }
+  if (visibilityKey) options.visibilityOverrides?.set(visibilityKey, isShown);
   return playLayoutEntityVisibility(entity || options.entityForElementId?.(elementId, target, scope), isShown, {
     instant: action.instant === true,
     warn
