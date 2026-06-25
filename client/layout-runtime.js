@@ -282,7 +282,7 @@ function controllerLayoutComputedFontSize(element, textOverride = "") {
 
 function applyControllerLayoutTextProperties(target, element) {
   const fontColor = normalizeUiColor(element.fontColor) || "#17131f";
-  const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines"));
+  const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
   const text = (hasRenderedFitText ? target.dataset.textFitSource : target.textContent.trim()) || layoutDefaultText(element);
   const baseSize = Number(element.fontSize || 42);
   const layout = element.autoFitText && typeof window.PartyGameTextFit?.fitTextLayout === "function"
@@ -673,7 +673,7 @@ function stageLayoutComputedFontSize(element, textOverride = "") {
 
 function applyStageLayoutTextProperties(target, element) {
   const fontColor = normalizeUiColor(element.fontColor) || "#ffffff";
-  const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines"));
+  const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
   const text = (hasRenderedFitText ? target.dataset.textFitSource : target.textContent.trim()) || stageLayoutTextDefault(element);
   const baseSize = Number(element.fontSize || 58);
   const layout = element.autoFitText && typeof window.PartyGameTextFit?.fitTextLayout === "function"

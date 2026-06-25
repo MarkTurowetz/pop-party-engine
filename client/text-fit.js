@@ -12,6 +12,7 @@
     widthSafety: 0.96,
     verticalSafety: 0.96
   };
+  const svgNamespace = "http://www.w3.org/2000/svg";
 
   let measureContext = null;
 
@@ -55,6 +56,9 @@
     const height = (inkHeight * measuredLines.length) + (lineGap * Math.max(0, measuredLines.length - 1));
     return {
       fontSize,
+      fontFamily: config.fontFamily,
+      fontStyle: config.fontStyle,
+      fontWeight: config.fontWeight,
       height,
       lineBoxHeight,
       inkHeight,
@@ -186,27 +190,49 @@
     const documentRef = target.ownerDocument || global.document;
     if (target.dataset) target.dataset.textFitSource = String(text || "");
     target.setAttribute?.("aria-label", String(text || ""));
+    if (!layout) {
+      target.textContent = String(text || "");
+      return;
+    }
     const lines = Array.isArray(layout?.lines) && layout.lines.length ? layout.lines : String(text || "").split("\n");
-    const wrapper = documentRef.createElement("span");
-    wrapper.className = "text-fit-lines";
-    wrapper.style.setProperty("--text-fit-line-height", String(layout?.lineHeight || defaultOptions.lineHeight));
-    if (Number.isFinite(Number(layout?.lineBoxHeight))) {
-      wrapper.style.setProperty("--text-fit-line-box-height", `${Number(layout.lineBoxHeight)}px`);
-    }
-    if (Number.isFinite(Number(layout?.inkHeight))) {
-      wrapper.style.setProperty("--text-fit-ink-height", `${Number(layout.inkHeight)}px`);
-    }
-    if (Number.isFinite(Number(layout?.lineGap))) {
-      wrapper.style.setProperty("--text-fit-line-gap", `${Number(layout.lineGap)}px`);
-    }
-    wrapper.style.setProperty("--text-fit-baseline-shift", `${Number(layout?.baselineShift || 0)}px`);
-    for (const line of lines) {
-      const lineElement = documentRef.createElement("span");
-      lineElement.className = "text-fit-line";
+    const fontSize = finiteNumber(layout?.fontSize, defaultOptions.minSize);
+    const lineAdvance = finiteNumber(layout?.inkHeight, fontSize) + finiteNumber(layout?.lineGap, 0);
+    const firstLineDy = -lineAdvance * Math.max(0, lines.length - 1) / 2;
+    const svg = documentRef.createElementNS(svgNamespace, "svg");
+    svg.classList.add("text-fit-svg");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("aria-hidden", "true");
+
+    const textElement = documentRef.createElementNS(svgNamespace, "text");
+    textElement.classList.add("text-fit-svg-text");
+    textElement.setAttribute("x", "50%");
+    textElement.setAttribute("y", "50%");
+    textElement.setAttribute("text-anchor", "middle");
+    textElement.setAttribute("dominant-baseline", "middle");
+    textElement.setAttribute("alignment-baseline", "middle");
+    textElement.setAttribute("fill", "currentColor");
+    textElement.setAttribute("font-size", `${fontSize}px`);
+    textElement.setAttribute("font-family", layout?.fontFamily || defaultOptions.fontFamily);
+    textElement.setAttribute("font-style", layout?.fontStyle || defaultOptions.fontStyle);
+    textElement.setAttribute("font-weight", String(layout?.fontWeight || defaultOptions.fontWeight));
+
+    lines.forEach((line, index) => {
+      const lineElement = documentRef.createElementNS(svgNamespace, "tspan");
+      lineElement.setAttribute("x", "50%");
+      lineElement.setAttribute("dy", `${index === 0 ? firstLineDy : lineAdvance}px`);
       lineElement.textContent = line;
-      wrapper.appendChild(lineElement);
-    }
-    target.replaceChildren(wrapper);
+      textElement.appendChild(lineElement);
+    });
+    svg.appendChild(textElement);
+    target.replaceChildren(svg);
+  }
+
+  function finiteNumber(value, fallback) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+    return fallback;
   }
 
   global.PartyGameTextFit = {
