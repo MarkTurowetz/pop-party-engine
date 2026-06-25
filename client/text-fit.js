@@ -5,12 +5,12 @@
     fontFamily: 'ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif',
     fontStyle: "normal",
     fontWeight: "1000",
-    lineHeight: 0.9,
-    safetyScale: 0.98,
+    lineHeight: 1,
+    safetyScale: 0.9,
     minSize: 6,
     maxSize: 260,
-    widthSafety: 0.99,
-    verticalSafety: 0.99
+    widthSafety: 0.94,
+    verticalSafety: 0.9
   };
 
   let measureContext = null;
@@ -18,7 +18,7 @@
   function fitTextLayout(element, text, fallbackSize, options = {}) {
     const config = normalizeOptions(options);
     const box = textBox(element, config);
-    const textValue = String(text || "Text");
+    const textValue = applyTextTransform(String(text || "Text"), config.textTransform);
     const maxSize = Math.min(
       Number(config.maxSize || defaultOptions.maxSize),
       Math.max(config.minSize, Math.floor(box.height / Math.max(0.1, config.lineHeight)))
@@ -50,11 +50,11 @@
     const measuredLines = lines.length ? lines : [""];
     const metrics = measuredLines.map((line) => measureLine(line || " ", fontSize, config));
     const maxWidth = Math.max(0, ...metrics.map((metric) => metric.width));
-    const inkAscent = Math.max(fontSize * 0.75, ...metrics.map((metric) => metric.ascent));
-    const inkDescent = Math.max(fontSize * 0.2, ...metrics.map((metric) => metric.descent));
-    const lineBoxHeight = Math.max(fontSize * config.lineHeight, inkAscent + inkDescent);
+    const inkAscent = Math.max(fontSize * 0.8, ...metrics.map((metric) => metric.ascent));
+    const inkDescent = Math.max(fontSize * 0.25, ...metrics.map((metric) => metric.descent));
+    const inkHeight = (inkAscent + inkDescent) * 1.08;
+    const lineBoxHeight = Math.max(fontSize * config.lineHeight, inkHeight);
     const height = lineBoxHeight * measuredLines.length;
-    const inkCenterOffset = ((inkDescent - inkAscent) / 2) + (lineBoxHeight * 0.18);
     return {
       fontSize,
       height,
@@ -62,7 +62,7 @@
       lineHeight: config.lineHeight,
       lines: measuredLines,
       maxWidth,
-      baselineShift: Math.round(inkCenterOffset * 1000) / 1000
+      baselineShift: 0
     };
   }
 
@@ -120,8 +120,10 @@
   }
 
   function layoutFits(layout, box, config) {
-    return layout.maxWidth <= box.width * config.widthSafety
-      && layout.height <= box.height * config.verticalSafety;
+    if (layout.maxWidth > box.width * config.widthSafety) return false;
+    if (layout.height > box.height * config.verticalSafety) return false;
+    if (!config.measureElement) return true;
+    return domLayoutFits(config.measureElement, layout, box, config);
   }
 
   function textBox(element, config) {
@@ -140,7 +142,10 @@
       fontFamily: options.fontFamily || computed?.fontFamily || defaultOptions.fontFamily,
       fontStyle: options.fontStyle || computed?.fontStyle || defaultOptions.fontStyle,
       fontWeight: String(options.fontWeight || computed?.fontWeight || defaultOptions.fontWeight),
-      lineHeight: normalizeLineHeight(options.lineHeight || computed?.lineHeight, defaultOptions.lineHeight)
+      lineHeight: normalizeLineHeight(options.lineHeight || computed?.lineHeight, defaultOptions.lineHeight),
+      padding: options.padding || computedPadding(computed),
+      textTransform: options.textTransform || computed?.textTransform || "none",
+      measureElement: options.measureElement || null
     };
   }
 
@@ -154,12 +159,61 @@
     return `${config.fontStyle || "normal"} ${config.fontWeight || "1000"} ${fontSize}px ${config.fontFamily || defaultOptions.fontFamily}`;
   }
 
+  function computedPadding(computed) {
+    if (!computed) return { x: 0, y: 0 };
+    const left = Number.parseFloat(computed.paddingLeft) || 0;
+    const right = Number.parseFloat(computed.paddingRight) || 0;
+    const top = Number.parseFloat(computed.paddingTop) || 0;
+    const bottom = Number.parseFloat(computed.paddingBottom) || 0;
+    return { x: left + right, y: top + bottom };
+  }
+
+  function applyTextTransform(text, transform) {
+    if (transform === "uppercase") return text.toUpperCase();
+    if (transform === "lowercase") return text.toLowerCase();
+    if (transform === "capitalize") return text.replace(/\b\p{L}/gu, (match) => match.toUpperCase());
+    return text;
+  }
+
   function canvasContext() {
     if (measureContext) return measureContext;
     const documentRef = global.document;
     if (!documentRef?.createElement) return null;
     measureContext = documentRef.createElement("canvas").getContext("2d");
     return measureContext;
+  }
+
+  function domLayoutFits(measureElement, layout, box, config) {
+    const documentRef = measureElement?.ownerDocument || global.document;
+    if (!documentRef?.createElement || !documentRef.body) return true;
+    const measurer = documentRef.createElement("span");
+    measurer.className = "text-fit-lines text-fit-measurer";
+    measurer.style.position = "fixed";
+    measurer.style.left = "-100000px";
+    measurer.style.top = "-100000px";
+    measurer.style.visibility = "hidden";
+    measurer.style.pointerEvents = "none";
+    measurer.style.width = `${box.width}px`;
+    measurer.style.height = "auto";
+    measurer.style.fontFamily = config.fontFamily;
+    measurer.style.fontStyle = config.fontStyle;
+    measurer.style.fontWeight = config.fontWeight;
+    measurer.style.fontSize = `${layout.fontSize}px`;
+    measurer.style.setProperty("--text-fit-line-height", String(layout.lineHeight || defaultOptions.lineHeight));
+    measurer.style.setProperty("--text-fit-line-box-height", `${layout.lineBoxHeight}px`);
+    measurer.style.setProperty("--text-fit-baseline-shift", "0px");
+    for (const line of layout.lines || [""]) {
+      const lineElement = documentRef.createElement("span");
+      lineElement.className = "text-fit-line";
+      lineElement.textContent = line;
+      measurer.appendChild(lineElement);
+    }
+    documentRef.body.appendChild(measurer);
+    const measuredWidth = measurer.scrollWidth;
+    const measuredHeight = measurer.scrollHeight;
+    measurer.remove();
+    return measuredWidth <= Math.ceil(box.width * config.widthSafety)
+      && measuredHeight <= Math.ceil(box.height * config.verticalSafety);
   }
 
   function renderTextElement(target, text, layout = null) {
@@ -171,6 +225,9 @@
     const wrapper = documentRef.createElement("span");
     wrapper.className = "text-fit-lines";
     wrapper.style.setProperty("--text-fit-line-height", String(layout?.lineHeight || defaultOptions.lineHeight));
+    if (Number.isFinite(Number(layout?.lineBoxHeight))) {
+      wrapper.style.setProperty("--text-fit-line-box-height", `${Number(layout.lineBoxHeight)}px`);
+    }
     wrapper.style.setProperty("--text-fit-baseline-shift", `${Number(layout?.baselineShift || 0)}px`);
     for (const line of lines) {
       const lineElement = documentRef.createElement("span");

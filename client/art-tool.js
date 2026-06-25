@@ -625,7 +625,8 @@ function applyMeasuredArtPreviewTextFit(composition) {
     if (typeof fitTextLayout !== "function") continue;
     const computed = window.getComputedStyle(label);
     const layout = fitTextLayout(component, previewText, Number(component.fontSize || 16), {
-      computedStyle: computed
+      computedStyle: computed,
+      measureElement: label
     });
     node.style.setProperty("--component-font-size", `${layout.fontSize}px`);
     label.style.fontSize = `${layout.fontSize}px`;
