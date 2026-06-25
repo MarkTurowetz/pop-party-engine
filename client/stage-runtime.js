@@ -388,20 +388,26 @@ function setStageWidgetGameObjectShown(bindingId, isShown, options = {}) {
   const definition = stageWidgetArtDefinition(bindingId);
   const elementId = definition?.layoutElementId || "";
   const host = stageWidgetHosts[bindingId]?.(options.context || {}) || null;
-  if (host) host.classList.remove("hidden");
+  const shown = isShown !== false;
+  if (host && shown) host.classList.remove("hidden");
   if (!elementId || typeof setStageLayoutGameObjectShownForAction !== "function") {
-    if (host) host.classList.toggle("hidden", isShown === false);
+    if (host) host.classList.toggle("hidden", !shown);
     return 0;
   }
-  return setStageLayoutGameObjectShownForAction({
+  const result = setStageLayoutGameObjectShownForAction({
     targetLayoutElementId: elementId,
     targetLayoutScope: options.scope || "moment",
     targetLayoutSurface: "stage",
-    isShown: isShown !== false,
+    isShown: shown,
     instant: options.instant === true
   }, {
+    returnResult: true,
     suppressMissingWarning: true
   });
+  if (host && result?.missing) {
+    host.classList.add("hidden");
+  }
+  return Number(result?.duration || 0);
 }
 
 function registerRenderedStageWidgetEntity(definition, host, renderResult) {
@@ -436,11 +442,15 @@ function controllerJoinUrlForStage(stageCode) {
 function renderStageJoinQr(stageCode, isVisible = true) {
   if (!stageJoinQr || !stageJoinQrCanvas || !stageJoinQrUrl) return;
   const normalizedCode = normalizeStageCode(stageCode);
-  stageJoinQr.classList.toggle("hidden", !isVisible || !normalizedCode);
-  if (!isVisible || !normalizedCode) return;
+  const shouldShow = isVisible && Boolean(normalizedCode);
+  if (!shouldShow) {
+    setStageWidgetGameObjectShown("joinQr", false);
+    return;
+  }
   const joinUrl = controllerJoinUrlForStage(normalizedCode);
   stageJoinQrUrl.textContent = joinUrl.replace(/^https?:\/\//, "");
   renderStageWidgetBinding("joinQr");
+  setStageWidgetGameObjectShown("joinQr", true);
   if (renderedStageJoinQrUrl === joinUrl) return;
   renderedStageJoinQrUrl = joinUrl;
   try {
@@ -491,8 +501,10 @@ function applyStageState(lobby) {
   stageFooter.classList.remove("hidden");
   stageIntroContent.classList.toggle("hidden", phase !== "intro");
   stageIntroTitle.textContent = "GAME INTRO";
-  presentClickWidget.classList.toggle("hidden", !(action?.type === "present" && action?.timing?.mode !== "S+"));
   renderStageWidgetBinding("presentationClickPrompt");
+  setStageWidgetGameObjectShown("presentationClickPrompt", action?.type === "present" && action?.timing?.mode !== "S+", {
+    scope: "global"
+  });
   clearStageDecisionDebug(lobby);
   renderStagePlayers(players);
   setPlayersShown(lobby.playersShown !== false);
@@ -517,8 +529,8 @@ function applyStageState(lobby) {
   }
 
   const vip = players.find((player) => player.isVip);
-  joinPrompt.classList.toggle("hidden", !isLobbyPhase);
   renderStageWidgetBinding("joinWidget");
+  setStageWidgetGameObjectShown("joinWidget", isLobbyPhase);
   setStageWaitingStatus(vip ? `Waiting for ${vip.name} to start the game` : "", phase !== "intro" && players.length > 0);
 
   if (phase === "starting") {
