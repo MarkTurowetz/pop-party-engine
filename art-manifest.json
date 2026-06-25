@@ -363,6 +363,7 @@
     "player-avatar-bronto": {
       "name": "Bronto Avatar",
       "description": "Editable player avatar art composed from a frame and masked dino image.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 100,
@@ -416,7 +417,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-24T04:03:21.963Z"
+      "updatedAt": "2026-06-25T01:23:46.035Z"
     },
     "player-avatar-ankylo": {
       "name": "Ankylo Avatar",
