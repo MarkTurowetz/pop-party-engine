@@ -596,8 +596,9 @@ function applyMeasuredArtPreviewTextFit(composition) {
   const nodes = artPreviewArt.querySelectorAll(".art-composition-component.is-text");
   for (const node of nodes) {
     const component = componentsById.get(String(node.dataset.componentId || ""));
-    if (!component || component.autoFitText !== true) continue;
     const label = node.querySelector(":scope > .art-component-label");
+    if (label) label.style.fontSize = "";
+    if (!component || component.autoFitText !== true) continue;
     if (!label || label.hidden) continue;
     const nodeRect = node.getBoundingClientRect();
     const fallbackWidth = Number(component.width || 1) * canvasScaleX;
@@ -611,6 +612,7 @@ function applyMeasuredArtPreviewTextFit(composition) {
       : Number(component.fontSize || 16);
     const fontSize = measuredArtPreviewFontSize(node, label, previewText, estimatedSize);
     node.style.setProperty("--component-font-size", `${fontSize}px`);
+    label.style.fontSize = `${fontSize}px`;
   }
 }
 
