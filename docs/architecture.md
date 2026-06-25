@@ -147,7 +147,9 @@ concepts into focused modules.
   instances of those prefabs. Runtime visibility actions should target the layout
   instance identity (`targetLayoutScope` plus `targetLayoutElementId`), not the
   source art composition id.
-- Placed layout art targets are resolved through the shared layout target resolver
+- `Set Game Object Shown` targets placed layout game objects by instance identity,
+  including prefab art instances, text fields, and selector-backed widgets.
+- Placed layout game object targets are resolved through the shared layout target resolver
   in `client/layout-runtime.js`. Stage and controller surfaces should plug into that
   resolver rather than building separate visibility/action lookup paths.
 - Placed layout entities should be registered through the shared registration helper
