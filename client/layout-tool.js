@@ -268,7 +268,7 @@ function baseLayoutObjectCatalog() {
     return baseLayoutObjectCatalogCache;
   }
   const legacyStageObjects = [
-    { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "art", width: 1080, height: 150 },
+    { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "text", width: 1080, height: 150, defaultText: "Party Game Template" },
     { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", width: 620, height: 220 },
     { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", width: 260, height: 300 },
     { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "text", width: 740, height: 90 },

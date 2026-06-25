@@ -60,7 +60,7 @@ function createLayoutNormalizationRuntime({
   function normalizeLayoutElementKind(kind, selector) {
     const cleanKind = String(kind || "").trim().toLowerCase();
     if (cleanKind === "text") return "text";
-    return /waitingstatus|joinprompt|stage(?:presentation|prompt)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
+    return /waitingstatus|joinprompt|stage-title|stage(?:presentation|prompt|intro)|roundintro.*text/i.test(String(selector || "")) ? "text" : "art";
   }
 
   function normalizeLayoutDefaultAnimationState(value) {

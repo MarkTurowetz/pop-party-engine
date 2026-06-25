@@ -178,7 +178,7 @@ const defaultStageLayouts = {
       hiddenGlobals: ["stagecodebadge"],
       elements: [
         { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", kind: "art", artCompositionId: "countdown-popup", x: 960, y: 130, width: 700, height: 130, scale: 1 },
-        { id: "stageTitle", name: "Header", selector: ".stage-title", x: 960, y: 190, width: 1080, height: 150, scale: 1 },
+        { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "text", x: 960, y: 190, width: 1080, height: 150, scale: 1, defaultText: "Party Game Template", fontSize: 92, autoFitText: true, fontColor: "#ffffff" },
         { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", artCompositionId: "stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
         { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", artCompositionId: "join-qr-code", x: 1510, y: 420, width: 260, height: 300, scale: 1 },
         { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", x: 960, y: 575, width: 700, height: 82, scale: 1 },
