@@ -37,6 +37,8 @@ function createLayoutNormalizationRuntime({
     const widgetArtCompositionId = stageLayoutWidgetArtCompositionId(id);
     const kind = widgetArtCompositionId ? "art" : normalizeLayoutElementKind(element.kind, selector);
     const artCompositionId = normalizeFlowId(element.artCompositionId, "") || widgetArtCompositionId;
+    const defaultAnimationState = normalizeLayoutDefaultAnimationState(element.defaultAnimationState)
+      || (id === "startpopup" ? "park" : "");
     return {
       id,
       name: cleanFlowText(element.name, element.id || fallbackId),
@@ -49,7 +51,7 @@ function createLayoutNormalizationRuntime({
       height,
       scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10),
       rotation: normalizeLayoutNumber(element.rotation, 0, -3600, 3600),
-      defaultAnimationState: normalizeLayoutDefaultAnimationState(element.defaultAnimationState),
+      defaultAnimationState,
       defaultText: kind === "text" ? cleanLayoutText(element.defaultText) : "",
       fontSize: kind === "text" ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
       autoFitText: kind === "text" ? element.autoFitText === true : false,

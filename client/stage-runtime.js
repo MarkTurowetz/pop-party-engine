@@ -384,6 +384,26 @@ function renderStageWidgetBinding(bindingId, context = {}) {
   return result;
 }
 
+function setStageWidgetGameObjectShown(bindingId, isShown, options = {}) {
+  const definition = stageWidgetArtDefinition(bindingId);
+  const elementId = definition?.layoutElementId || "";
+  const host = stageWidgetHosts[bindingId]?.(options.context || {}) || null;
+  if (host) host.classList.remove("hidden");
+  if (!elementId || typeof setStageLayoutGameObjectShownForAction !== "function") {
+    if (host) host.classList.toggle("hidden", isShown === false);
+    return 0;
+  }
+  return setStageLayoutGameObjectShownForAction({
+    targetLayoutElementId: elementId,
+    targetLayoutScope: "moment",
+    targetLayoutSurface: "stage",
+    isShown: isShown !== false,
+    instant: options.instant === true
+  }, {
+    suppressMissingWarning: true
+  });
+}
+
 function registerRenderedStageWidgetEntity(definition, host, renderResult) {
   const elementId = definition?.layoutElementId || host?.dataset?.stageLayoutElementId || "";
   const renderer = renderResult?.renderer || null;
@@ -466,7 +486,7 @@ function applyStageState(lobby) {
   renderStageWidgetBinding("stageCodeWidget", { stageCode: lobby.stageCode || stageCodeBadge.textContent });
   renderStageJoinQr(lobby.stageCode || stageCodeText.textContent, isLobbyPhase);
   window.clearInterval(stageCountdownTimer);
-  startPopup.classList.add("hidden");
+  setStageWidgetGameObjectShown("countdownPopup", false, { instant: true });
   stageMain.classList.toggle("hidden", !isLobbyPhase);
   stageFooter.classList.remove("hidden");
   stageIntroContent.classList.toggle("hidden", phase !== "intro");
@@ -513,6 +533,7 @@ function applyStageState(lobby) {
       renderStageWidgetBinding("countdownPopup", { seconds });
     };
     updateCountdown();
+    setStageWidgetGameObjectShown("countdownPopup", true);
     stageCountdownTimer = window.setInterval(updateCountdown, 100);
   }
 
