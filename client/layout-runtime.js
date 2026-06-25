@@ -84,8 +84,7 @@ function renderLayoutArtInstance(element, host, options = {}) {
   }
   renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, {
     defaultAnimation: "on",
-    instant: true,
-    respectDefaultAnimationState: false
+    instant: true
   });
   return renderer;
 }
