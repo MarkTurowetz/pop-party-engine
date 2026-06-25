@@ -80,7 +80,10 @@
       if (action.type === "displayText" || action.type === "text") return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}" / ${timingText}${instantText}`;
       if (action.type === "setPlayersShown") return `${action.isShown === false ? "Hide" : "Show"} players / ${timingText}${instantText}`;
       if (action.type === "setPlayerAnswersShown") return `${action.isShown === false ? "Hide" : "Show"} ${action.playerFilter || "all"} player answers / ${timingText}${instantText}`;
-      if (action.type === "setGameObjectShown" || action.type === "setArtAssetShown") return `${action.isShown === false ? "Hide" : "Show"} ${context.artAssetTargetName?.(action.targetLayoutElementId, action.targetLayoutScope) || "game object"} / ${timingText}${instantText}`;
+      if (action.type === "setGameObjectShown" || action.type === "setArtAssetShown") {
+        const targetName = (context.gameObjectTargetName || context.artAssetTargetName)?.(action.targetLayoutElementId, action.targetLayoutScope);
+        return `${action.isShown === false ? "Hide" : "Show"} ${targetName || "game object"} / ${timingText}${instantText}`;
+      }
       if (action.type === "revealPlayerAnswerCorrectness") return `Reveal answer correctness / ${timingText}`;
       if (action.type === "showPoints") return `Show points for ${action.playerFilter || "correct"} players / ${timingText}`;
       if (action.type === "givePendingPoints") return `Bank pending points / ${timingText}`;

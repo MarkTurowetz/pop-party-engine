@@ -289,7 +289,7 @@ function getFlowActionSummaryRuntime() {
       ensureActionTiming,
       flowStateName,
       flowTargetActionName,
-      artAssetTargetName: flowArtAssetTargetName,
+      gameObjectTargetName: flowGameObjectTargetName,
       hostAudioDisplayName,
       textTargetName,
       transitionName: (transitionId) => flowTransitions.find((item) => item.id === transitionId)?.name || transitionId
@@ -629,7 +629,7 @@ function getFlowActionInspectorRegistry() {
       flowTrueFalseOptions,
       gameStates: () => gameFlow.states || [],
       getFlowActionControlGroups,
-      artAssetTargetOptions: flowArtAssetTargetOptions,
+      gameObjectTargetOptions: flowGameObjectTargetOptions,
       readOnlyFlowNote,
       refreshActionNameFromType,
       roundOptions,
@@ -981,7 +981,7 @@ function controllerLayoutOptions(selectedLayoutId = "") {
   return options;
 }
 
-function flowArtAssetLayoutElements(state) {
+function flowGameObjectLayoutElements(state) {
   const stateId = state?.id || selectedFlowStateId || "";
   const layout = (stageLayouts.states || []).find((item) => item.id === stateId);
   const momentElements = flowPlacedGameObjectElementsForLayoutGroup(layout, "moment");
@@ -1007,7 +1007,7 @@ function flowPlacedGameObjectElementsForLayoutGroup(group, scope, options = {}) 
     .map((element) => ({ ...element, targetLayoutScope: scope }));
 }
 
-function flowArtAssetTargetLabel(element) {
+function flowGameObjectTargetLabel(element) {
   const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
   const name = String(element?.name || element?.id || "Game Object");
   const id = String(element?.id || "");
@@ -1015,23 +1015,23 @@ function flowArtAssetTargetLabel(element) {
   return `${scope === "global" ? "Global: " : ""}${name}${idSuffix}`;
 }
 
-function flowArtAssetTargetValue(element) {
+function flowGameObjectTargetValue(element) {
   const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
   return `${scope}:${element.id || ""}`;
 }
 
-function flowArtAssetTargetParts(value, fallbackScope = "") {
+function flowGameObjectTargetParts(value, fallbackScope = "") {
   const text = String(value || "");
   const match = text.match(/^(global|moment):(.+)$/);
   if (match) return { scope: match[1], id: match[2] };
   return { scope: fallbackScope || "", id: text };
 }
 
-function flowArtAssetTargetOptions(state, selectedElementId = "") {
-  const selectedParts = flowArtAssetTargetParts(selectedElementId);
+function flowGameObjectTargetOptions(state, selectedElementId = "") {
+  const selectedParts = flowGameObjectTargetParts(selectedElementId);
   const options = [{ id: "", name: "No Game Object" }];
-  for (const element of flowArtAssetLayoutElements(state)) {
-    options.push({ id: flowArtAssetTargetValue(element), name: flowArtAssetTargetLabel(element) });
+  for (const element of flowGameObjectLayoutElements(state)) {
+    options.push({ id: flowGameObjectTargetValue(element), name: flowGameObjectTargetLabel(element) });
   }
   const selectedValue = selectedParts.id ? `${selectedParts.scope || "moment"}:${selectedParts.id}` : "";
   if (selectedParts.id && !options.some((option) => option.id === selectedValue)) {
@@ -1040,19 +1040,19 @@ function flowArtAssetTargetOptions(state, selectedElementId = "") {
   return options;
 }
 
-function flowArtAssetTargetName(elementId, targetLayoutScope = "") {
+function flowGameObjectTargetName(elementId, targetLayoutScope = "") {
   if (!elementId) return "No Game Object";
   const scope = ["global", "moment"].includes(String(targetLayoutScope || "")) ? targetLayoutScope : "";
   const selectedState = (stageLayouts.states || []).find((state) => state.id === selectedFlowStateId);
   const momentElement = (selectedState?.elements || []).find((item) => item.id === elementId);
   const globalElement = (stageLayouts.global?.elements || []).find((item) => item.id === elementId);
-  if (scope === "moment" && momentElement) return flowArtAssetTargetLabel({ ...momentElement, targetLayoutScope: "moment" });
-  if (scope === "global" && globalElement) return flowArtAssetTargetLabel({ ...globalElement, targetLayoutScope: "global" });
-  if (momentElement) return flowArtAssetTargetLabel({ ...momentElement, targetLayoutScope: "moment" });
-  if (globalElement) return flowArtAssetTargetLabel({ ...globalElement, targetLayoutScope: "global" });
+  if (scope === "moment" && momentElement) return flowGameObjectTargetLabel({ ...momentElement, targetLayoutScope: "moment" });
+  if (scope === "global" && globalElement) return flowGameObjectTargetLabel({ ...globalElement, targetLayoutScope: "global" });
+  if (momentElement) return flowGameObjectTargetLabel({ ...momentElement, targetLayoutScope: "moment" });
+  if (globalElement) return flowGameObjectTargetLabel({ ...globalElement, targetLayoutScope: "global" });
   for (const state of stageLayouts.states || []) {
     const element = (state.elements || []).find((item) => item.id === elementId);
-    if (element) return flowArtAssetTargetLabel({ ...element, targetLayoutScope: "moment" });
+    if (element) return flowGameObjectTargetLabel({ ...element, targetLayoutScope: "moment" });
   }
   return elementId;
 }

@@ -309,7 +309,7 @@
       const selectedTarget = action.targetLayoutElementId
         ? `${action.targetLayoutScope || "moment"}:${action.targetLayoutElementId}`
         : "";
-      const options = context.artAssetTargetOptions?.(state, selectedTarget) || [{ id: "", name: "No Game Object" }];
+      const options = (context.gameObjectTargetOptions || context.artAssetTargetOptions)?.(state, selectedTarget) || [{ id: "", name: "No Game Object" }];
       target.appendChild(context.flowSelect("Game Object", selectedTarget, options, (value) => {
         const match = String(value || "").match(/^(global|moment):(.+)$/);
         action.targetLayoutScope = match ? match[1] : "";

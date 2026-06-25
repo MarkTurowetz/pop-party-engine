@@ -60,13 +60,17 @@
       this.alertElement.classList.remove("hidden");
     }
 
-    showArtAssetWarning(details = {}) {
+    showGameObjectWarning(details = {}) {
       if (!this.alertElement) return;
       const name = details.name || details.elementId || "Unknown Game Object";
       const scope = details.scope ? ` / ${details.scope}` : "";
       const reason = details.reason || "target unavailable";
       this.alertElement.textContent = `Game Object Warning: ${name}${scope} / ${reason}`;
       this.alertElement.classList.remove("hidden");
+    }
+
+    showArtAssetWarning(details = {}) {
+      this.showGameObjectWarning(details);
     }
   }
 

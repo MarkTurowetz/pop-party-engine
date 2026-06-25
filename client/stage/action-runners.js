@@ -106,8 +106,10 @@
         if (runtime.isPrimary) completeAfter(action, runtime, duration);
       },
       setGameObjectShown(action, runtime) {
-        const duration = context.setStageLayoutArtElementShownForAction
-          ? context.setStageLayoutArtElementShownForAction(action)
+        const duration = context.setStageLayoutGameObjectShownForAction
+          ? context.setStageLayoutGameObjectShownForAction(action)
+          : context.setStageLayoutArtElementShownForAction
+            ? context.setStageLayoutArtElementShownForAction(action)
           : 0;
         completeAfterResult(action, runtime, duration);
       },

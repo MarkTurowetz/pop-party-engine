@@ -1,4 +1,4 @@
-const stageLayoutArtVisibilityOverrides = new Map();
+const stageLayoutGameObjectVisibilityOverrides = new Map();
 let stageLayoutGameObjects = null;
 const controllerLayoutVisibilityOverrides = new Map();
 let controllerLayoutGameObjects = null;
@@ -14,7 +14,7 @@ function createLayoutGameObjectRegistry(visibilityOverrides, visualOptions = {})
 function stageLayoutGameObjectRegistry() {
   if (stageLayoutGameObjects) return stageLayoutGameObjects;
   stageLayoutGameObjects = createLayoutGameObjectRegistry(
-    stageLayoutArtVisibilityOverrides,
+    stageLayoutGameObjectVisibilityOverrides,
     {
       hiddenClasses: ["stage-layout-visual-hidden"],
       motionHiddenClasses: ["stage-layout-visual-hidden"],
@@ -221,7 +221,7 @@ function layoutEntityForElementId(elementId, target = null, options = {}) {
     element: null,
     id: elementId,
     registryKey: resolvedRegistryKey,
-    isArt: options.isArtTarget?.(resolvedTarget) === true,
+    isArt: options.isGameObjectArtTarget?.(resolvedTarget) === true,
     isDynamic: options.isDynamicTarget?.(resolvedTarget) === true,
     isGlobal: options.isGlobalTarget?.(resolvedTarget) === true,
     target: resolvedTarget,
@@ -277,7 +277,7 @@ function createPlacedLayoutGameObjectTargetResolver(options = {}) {
         visibilityKeyForTarget: resolver.visibilityKeyForTarget,
         registryKeyFor: options.registryKeyFor,
         scope,
-        isArtTarget: options.isArtTarget,
+        isGameObjectArtTarget: options.isGameObjectArtTarget,
         isDynamicTarget: options.isDynamicTarget,
         isGlobalTarget: options.isGlobalTarget
       });
@@ -403,12 +403,17 @@ function setLayoutEntityShownForAction(action, options = {}) {
   const scope = ["global", "moment"].includes(String(action?.targetLayoutScope || "")) ? action.targetLayoutScope : "";
   const sourceArtAsset = typeof artComposition === "function" ? artComposition(elementId) : null;
   const warn = (reason) => {
-    window.PartyGameStageDebugRuntime?.showArtAssetWarning?.({
+    const warning = {
       elementId,
       name: action?.name || action?.actionName || "",
       scope,
       reason
-    });
+    };
+    if (typeof window.PartyGameStageDebugRuntime?.showGameObjectWarning === "function") {
+      window.PartyGameStageDebugRuntime.showGameObjectWarning(warning);
+    } else {
+      window.PartyGameStageDebugRuntime?.showArtAssetWarning?.(warning);
+    }
   };
   const entity = options.entityForElementId?.(elementId, null, scope);
   const target = entity?.target || null;
@@ -621,7 +626,7 @@ function controllerLayoutElementVisibilityKey(elementId, target = null, scope = 
   });
 }
 
-const controllerLayoutArtTargets = createPlacedLayoutGameObjectTargetResolver({
+const controllerLayoutGameObjectTargets = createPlacedLayoutGameObjectTargetResolver({
   registry: controllerLayoutGameObjectRegistry,
   targetByElementId: controllerLayoutTargetByElementId,
   visibilityKeyForTarget: controllerLayoutElementVisibilityKey,
@@ -629,21 +634,29 @@ const controllerLayoutArtTargets = createPlacedLayoutGameObjectTargetResolver({
   visibilityOverrides: controllerLayoutVisibilityOverrides,
   hiddenClass: "controller-layout-visual-hidden",
   exitingClass: "controller-layout-visual-exiting",
-  isArtTarget: (resolvedTarget) => resolvedTarget.classList.contains("dynamic-controller-art-instance"),
+  isGameObjectArtTarget: (resolvedTarget) => resolvedTarget.classList.contains("dynamic-controller-art-instance"),
   isDynamicTarget: (resolvedTarget) => resolvedTarget.classList.contains("dynamic-controller-art-instance"),
   isGlobalTarget: (resolvedTarget) => resolvedTarget.classList.contains("controller-global-layout-target")
 });
 
 function controllerLayoutEntityForElementId(elementId, target = null, scope = "") {
-  return controllerLayoutArtTargets.entityForElementId(elementId, target, scope);
+  return controllerLayoutGameObjectTargets.entityForElementId(elementId, target, scope);
+}
+
+function setControllerLayoutGameObjectShownForAction(action) {
+  return controllerLayoutGameObjectTargets.setShownForAction(action);
 }
 
 function setControllerLayoutArtElementShownForAction(action) {
-  return controllerLayoutArtTargets.setShownForAction(action);
+  return setControllerLayoutGameObjectShownForAction(action);
+}
+
+function applyControllerLayoutGameObjectVisibilityOverride(entity) {
+  controllerLayoutGameObjectTargets.applyVisibilityOverride(entity);
 }
 
 function applyControllerLayoutArtVisibilityOverride(entity) {
-  controllerLayoutArtTargets.applyVisibilityOverride(entity);
+  applyControllerLayoutGameObjectVisibilityOverride(entity);
 }
 
 function controllerLayoutComputedFontSize(element, textOverride = "") {
@@ -840,14 +853,18 @@ function applyStageElementLayout(element, isGlobal) {
 
 const registerStageLayoutEntity = createPlacedLayoutEntityRegistrar({
   registry: stageLayoutGameObjectRegistry,
-  registryKeyFor: (id, globalTarget) => stageLayoutArtVisibilityKey(id, globalTarget),
-  visibilityKeyFor: stageLayoutArtVisibilityKey,
+  registryKeyFor: (id, globalTarget) => stageLayoutGameObjectVisibilityKey(id, globalTarget),
+  visibilityKeyFor: stageLayoutGameObjectVisibilityKey,
   isArt: (layoutElement) => layoutElement?.kind === "art" && Boolean(layoutElement?.artCompositionId),
   isDynamic: isDynamicStageArtInstance
 });
 
+function applyStageLayoutGameObjectVisibilityOverride(entity) {
+  stageLayoutGameObjectTargets.applyVisibilityOverride(entity);
+}
+
 function applyStageLayoutArtVisibilityOverride(entity) {
-  stageLayoutArtTargets.applyVisibilityOverride(entity);
+  applyStageLayoutGameObjectVisibilityOverride(entity);
 }
 
 function stageLayoutTargetByElementId(elementId, scope = "") {
@@ -867,50 +884,59 @@ function stageLayoutElementVisibilityKey(elementId, target = null, scope = "") {
     scope,
     currentElements: () => stageLayoutState(currentStageLayoutStateId)?.elements || [],
     globalElements: () => globalStageLayout().elements || [],
-    keyFor: stageLayoutArtVisibilityKey
+    keyFor: stageLayoutGameObjectVisibilityKey
   });
 }
 
-function stageLayoutArtVisibilityKey(elementId, isGlobal = false) {
+function stageLayoutGameObjectVisibilityKey(elementId, isGlobal = false) {
   if (!elementId) return "";
   return `${isGlobal ? "global" : currentStageLayoutStateId || "moment"}:${elementId}`;
 }
 
 function stageLayoutRegistryKeyForElement(elementId, scope = "", target = null) {
-  if (scope === "global") return stageLayoutArtVisibilityKey(elementId, true);
-  if (scope === "moment") return stageLayoutArtVisibilityKey(elementId, false);
-  return stageLayoutArtVisibilityKey(elementId, target?.classList?.contains("stage-global-layout-target") === true);
+  if (scope === "global") return stageLayoutGameObjectVisibilityKey(elementId, true);
+  if (scope === "moment") return stageLayoutGameObjectVisibilityKey(elementId, false);
+  return stageLayoutGameObjectVisibilityKey(elementId, target?.classList?.contains("stage-global-layout-target") === true);
 }
 
-const stageLayoutArtTargets = createPlacedLayoutGameObjectTargetResolver({
+const stageLayoutGameObjectTargets = createPlacedLayoutGameObjectTargetResolver({
   registry: stageLayoutGameObjectRegistry,
   targetByElementId: stageLayoutTargetByElementId,
   visibilityKeyForTarget: stageLayoutElementVisibilityKey,
   registryKeyFor: stageLayoutRegistryKeyForElement,
-  visibilityOverrides: stageLayoutArtVisibilityOverrides,
+  visibilityOverrides: stageLayoutGameObjectVisibilityOverrides,
   hiddenClass: "stage-layout-visual-hidden",
   exitingClass: "stage-layout-visual-exiting",
-  isArtTarget: (resolvedTarget) => Boolean(resolvedTarget.dataset.stageLayoutArtCompositionId),
+  isGameObjectArtTarget: (resolvedTarget) => Boolean(resolvedTarget.dataset.stageLayoutArtCompositionId),
   isDynamicTarget: (resolvedTarget) => resolvedTarget.classList.contains("dynamic-stage-art-instance"),
   isGlobalTarget: (resolvedTarget) => resolvedTarget.classList.contains("stage-global-layout-target")
 });
 
 function stageLayoutEntityForElementId(elementId, target = null, scope = "") {
-  return stageLayoutArtTargets.entityForElementId(elementId, target, scope);
+  return stageLayoutGameObjectTargets.entityForElementId(elementId, target, scope);
 }
 
-function setStageLayoutArtElementShownForAction(action, options = {}) {
+function setStageLayoutGameObjectShownForAction(action, options = {}) {
   const surface = String(action?.targetLayoutSurface || "stage").toLowerCase();
   if (surface !== "stage") {
-    window.PartyGameStageDebugRuntime?.showArtAssetWarning?.({
+    const warning = {
       elementId: action?.targetLayoutElementId || "",
       name: action?.name || action?.actionName || "",
       scope: action?.targetLayoutScope || "",
       reason: `target layout surface ${surface} is not handled by the stage runner`
-    });
+    };
+    if (typeof window.PartyGameStageDebugRuntime?.showGameObjectWarning === "function") {
+      window.PartyGameStageDebugRuntime.showGameObjectWarning(warning);
+    } else {
+      window.PartyGameStageDebugRuntime?.showArtAssetWarning?.(warning);
+    }
     return options.returnResult ? { duration: 0, missing: true, reason: `target layout surface ${surface} is not handled by the stage runner` } : 0;
   }
-  return stageLayoutArtTargets.setShownForAction(action, options);
+  return stageLayoutGameObjectTargets.setShownForAction(action, options);
+}
+
+function setStageLayoutArtElementShownForAction(action, options = {}) {
+  return setStageLayoutGameObjectShownForAction(action, options);
 }
 
 function stageLayoutTargetElement(element) {

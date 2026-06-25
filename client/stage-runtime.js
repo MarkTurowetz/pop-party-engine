@@ -99,7 +99,8 @@ function stageDebugPanel() {
 }
 
 window.PartyGameStageDebugRuntime = {
-  showArtAssetWarning: (details) => stageDebugPanel()?.showArtAssetWarning(details)
+  showGameObjectWarning: (details) => stageDebugPanel()?.showGameObjectWarning(details),
+  showArtAssetWarning: (details) => stageDebugPanel()?.showGameObjectWarning(details)
 };
 
 function stageWipeController() {
@@ -221,9 +222,10 @@ function reloadStageArtAssets() {
 }
 
 async function setStageLayoutGameObjectShownForAction(action) {
-  const first = setStageLayoutArtElementShownForAction(action, {
-    returnResult: true,
-    suppressMissingWarning: true
+  const showGameObject = window.setStageLayoutGameObjectShownForAction || setStageLayoutArtElementShownForAction;
+  const first = showGameObject(action, {
+      returnResult: true,
+      suppressMissingWarning: true
   });
   if (!first?.missing) return first?.duration || 0;
 
@@ -232,7 +234,7 @@ async function setStageLayoutGameObjectShownForAction(action) {
     loadStageLayouts({ forceServer: true }).catch(() => stageLayouts)
   ]);
   if (currentStageState) applyStageLayoutForPhase(currentStageState.phase);
-  const retry = setStageLayoutArtElementShownForAction(action, { returnResult: true });
+  const retry = showGameObject(action, { returnResult: true });
   return retry?.duration || 0;
 }
 
@@ -594,7 +596,7 @@ function getStageActionRunner() {
       playerAnswerBubbleAnimationRemaining,
       runStageWipe,
       setCraftingTimerShownForAction,
-      setStageLayoutArtElementShownForAction: setStageLayoutGameObjectShownForAction,
+      setStageLayoutGameObjectShownForAction,
       setPlayerAnswerBubblesShown,
       setPlayersShownForAction,
       setStageWipeShownForAction,
