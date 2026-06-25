@@ -5,7 +5,7 @@
     fontFamily: 'ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif',
     fontStyle: "normal",
     fontWeight: "1000",
-    lineHeight: 1,
+    lineHeight: 1.15,
     safetyScale: 0.96,
     minSize: 6,
     maxSize: 260,
