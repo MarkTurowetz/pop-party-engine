@@ -40,6 +40,46 @@
     return componentSchema.componentImageMaskDataUrl(component) || global.artAssetUrl?.(component?.imageAssetId) || "";
   }
 
+  function syncComponentElement(options = {}) {
+    const element = options.element;
+    const component = options.component || {};
+    if (!element) return;
+    const kind = componentSchema.normalizeComponentKind(component.kind);
+    const baseClass = options.baseClass || RUNTIME_CLASS;
+    const labelText = Object.prototype.hasOwnProperty.call(options, "labelText")
+      ? String(options.labelText || "")
+      : componentSchema.componentLabel(component);
+    const imageSource = Object.prototype.hasOwnProperty.call(options, "imageSource")
+      ? String(options.imageSource || "")
+      : componentImageSource(component);
+    element.className = `${baseClass} is-${kind} is-style-${componentSchema.normalizeShapeStyle(component.shapeStyle, kind)}`;
+    element.classList.toggle("is-art-root-container", Boolean(options.isRootContainer));
+    element.classList.toggle("is-selected", Boolean(options.isSelected));
+    element.classList.toggle("has-image-mask", Boolean(imageSource));
+    element.classList.toggle("has-tinted-image-mask", Boolean(imageSource && component.imageTint === "currentColor"));
+    element.dataset.artComponentId = component.id || "";
+    element.dataset.componentId = component.id || "";
+    element.style.zIndex = String(componentLayerIndex(options.layerIndex, options.layerTotal));
+    if (imageSource) element.style.setProperty("--component-mask-url", `url('${String(imageSource).replaceAll("'", "%27")}')`);
+    else element.style.removeProperty("--component-mask-url");
+    applyComponentLayout(element, component, options.canvas, { labelText });
+
+    const image = options.imageElement;
+    if (image) {
+      image.hidden = !imageSource;
+      if (imageSource) {
+        if (image.getAttribute("src") !== imageSource) image.src = imageSource;
+      } else {
+        image.removeAttribute("src");
+      }
+    }
+    const label = options.labelElement;
+    if (label) {
+      label.hidden = Boolean(imageSource);
+      label.textContent = labelText;
+    }
+  }
+
   function componentLayerIndex(index, siblingCount) {
     return Math.max(1, Number(siblingCount || 1) - Number(index || 0));
   }
@@ -126,27 +166,19 @@
 
     update(component, canvas, layer = {}) {
       this.component = component || {};
-      const kind = componentSchema.normalizeComponentKind(this.component.kind);
       const wasVisible = this.visual ? this.isVisible() : true;
-      this.element.className = `${RUNTIME_CLASS} is-${kind} is-style-${componentSchema.normalizeShapeStyle(this.component.shapeStyle, kind)}`;
-      this.element.classList.toggle("is-art-root-container", Boolean(layer.isRootContainer));
-      this.element.dataset.artComponentId = this.component.id || "";
       if (!wasVisible) this.element.classList.add(HIDDEN_CLASS);
-      this.element.style.zIndex = String(componentLayerIndex(layer.index, layer.total));
-      const imageSource = componentImageSource(this.component);
-      this.element.classList.toggle("has-image-mask", Boolean(imageSource));
-      this.element.classList.toggle("has-tinted-image-mask", Boolean(imageSource && this.component.imageTint === "currentColor"));
-      this.image.hidden = !imageSource;
-      this.label.hidden = Boolean(imageSource);
-      if (imageSource) {
-        if (this.image.getAttribute("src") !== imageSource) this.image.src = imageSource;
-        this.element.style.setProperty("--component-mask-url", `url('${String(imageSource).replaceAll("'", "%27")}')`);
-      } else {
-        this.image.removeAttribute("src");
-        this.element.style.removeProperty("--component-mask-url");
-      }
-      this.label.textContent = componentSchema.componentLabel(this.component);
-      applyComponentLayout(this.element, this.component, canvas);
+      syncComponentElement({
+        element: this.element,
+        imageElement: this.image,
+        labelElement: this.label,
+        component: this.component,
+        canvas,
+        layerIndex: layer.index,
+        layerTotal: layer.total,
+        isRootContainer: layer.isRootContainer
+      });
+      if (!wasVisible) this.element.classList.add(HIDDEN_CLASS);
       this.renderChildren(this.component.children || []);
     }
 
@@ -303,6 +335,7 @@
     ArtObjectTreeRenderer,
     ArtObjectView,
     applyComponentLayout,
-    isArtRootContainer
+    isArtRootContainer,
+    syncComponentElement
   };
 })(window);
