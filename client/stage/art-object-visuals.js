@@ -164,7 +164,7 @@
             layer: { index, total: (children || []).length }
           });
           this.children.set(key, view);
-          view.on({ instant: true });
+          view.play(child.defaultAnimationState || "on", { instant: true });
         } else {
           view.update(child, childCanvas, { index, total: (children || []).length });
         }
