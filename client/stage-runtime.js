@@ -395,7 +395,7 @@ function setStageWidgetGameObjectShown(bindingId, isShown, options = {}) {
   }
   return setStageLayoutGameObjectShownForAction({
     targetLayoutElementId: elementId,
-    targetLayoutScope: "moment",
+    targetLayoutScope: options.scope || "moment",
     targetLayoutSurface: "stage",
     isShown: isShown !== false,
     instant: options.instant === true
@@ -480,10 +480,10 @@ function applyStageState(lobby) {
   stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
   const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
   if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
-  stageCodeBadgeRoot.classList.toggle("hidden", isLobbyPhase);
   applyStageLayoutForPhase(phase);
   renderStageWidgetBinding("stageCodePanel", { stageCode: lobby.stageCode || stageCodeText.textContent });
   renderStageWidgetBinding("stageCodeWidget", { stageCode: lobby.stageCode || stageCodeBadge.textContent });
+  setStageWidgetGameObjectShown("stageCodeWidget", !isLobbyPhase, { instant: true, scope: "global" });
   renderStageJoinQr(lobby.stageCode || stageCodeText.textContent, isLobbyPhase);
   window.clearInterval(stageCountdownTimer);
   setStageWidgetGameObjectShown("countdownPopup", false, { instant: true });
