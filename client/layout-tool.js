@@ -5,6 +5,7 @@ function activeLayoutData() {
 let layoutArtCatalogRefreshPromise = null;
 let baseLayoutObjectCatalogCacheKey = "";
 let baseLayoutObjectCatalogCache = null;
+let layoutArtPreviewRenderer = null;
 
 function invalidateBaseLayoutObjectCatalog() {
   baseLayoutObjectCatalogCacheKey = "";
@@ -801,52 +802,26 @@ function layoutPreviewContent(element) {
   return content;
 }
 
+function getLayoutArtPreviewRenderer() {
+  if (!layoutArtPreviewRenderer) {
+    layoutArtPreviewRenderer = window.PartyGameLayoutArtPreviewRenderer?.create?.({
+      document,
+      artComposition,
+      artRuntime: window.PartyGameArtObject,
+      widgetBindings: window.PartyGameStageWidgetBindings,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
+      visualAnimation: window.PartyGameVisualObject
+    });
+  }
+  return layoutArtPreviewRenderer;
+}
+
 function renderLayoutArtCompositionPreview(content, element) {
-  const compositionId = element?.artCompositionId || "";
-  if (!compositionId) return false;
-  return renderLayoutArtComposition(content, compositionId, {}, element?.id || compositionId);
+  return getLayoutArtPreviewRenderer()?.renderArtCompositionPreview(content, element) === true;
 }
 
 function renderLayoutWidgetArtPreview(content, elementId) {
-  const binding = layoutWidgetArtPreviewBinding(elementId);
-  return binding ? renderLayoutArtComposition(content, binding.compositionId, binding.textOverrides || {}) : false;
-}
-
-function renderLayoutArtComposition(content, compositionId, textOverrides = {}, instanceKey = compositionId) {
-  const composition = artComposition(compositionId);
-  const artRuntime = window.PartyGameArtObject;
-  if (!content || !composition || !artRuntime) return false;
-  content.classList.add("is-art-composition-preview");
-  const components = (composition.components || []).map((component) => layoutWidgetArtPreviewComponent(component, textOverrides));
-  const renderer = new artRuntime.ArtObjectTreeRenderer({
-    host: content,
-    document,
-    instanceId: `layout-preview:${instanceKey || compositionId}`,
-    gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
-    visualAnimation: window.PartyGameVisualObject
-  });
-  renderer.render(components, composition.canvas || { width: 1, height: 1 }, { instant: true });
-  return true;
-}
-
-function layoutWidgetArtPreviewComponent(component, textOverrides = {}) {
-  const clone = {
-    ...component,
-    children: (component.children || []).map((child) => layoutWidgetArtPreviewComponent(child, textOverrides))
-  };
-  if (Object.prototype.hasOwnProperty.call(textOverrides, clone.id)) {
-    clone.defaultText = String(textOverrides[clone.id] ?? "");
-  }
-  return clone;
-}
-
-function layoutWidgetArtPreviewBinding(elementId) {
-  const definition = window.PartyGameStageWidgetBindings?.definitionForLayoutElement?.(elementId);
-  if (!definition) return null;
-  return {
-    compositionId: definition.compositionId,
-    textOverrides: window.PartyGameStageWidgetBindings?.previewTextOverrides?.(elementId) || {}
-  };
+  return getLayoutArtPreviewRenderer()?.renderWidgetArtPreview(content, elementId) === true;
 }
 
 function layoutDefaultText(element) {
