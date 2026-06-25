@@ -581,20 +581,9 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
   node.classList.toggle("has-tinted-image-mask", artComponentHasImageMask(component) && component.imageTint === "currentColor");
   node.dataset.componentId = component.id;
   node.style.zIndex = String(artComponentLayerIndex(layerIndex, siblingCount));
-  node.style.left = `${Number(component.x || 0) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
-  node.style.top = `${Number(component.y || 0) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
-  node.style.width = `${Number(component.width || 1) / Math.max(1, Number(canvas.width || 1)) * 100}%`;
-  node.style.height = `${Number(component.height || 1) / Math.max(1, Number(canvas.height || 1)) * 100}%`;
-  node.style.setProperty("--component-scale", Number(component.scale || 1));
-  node.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-  node.style.setProperty("--component-font-size", `${artComponentComputedFontSize(component)}px`);
-  node.style.setProperty("--component-text-color", component.fontColor || "#17131f");
-  node.style.setProperty("--component-fill-color", component.fillColor || "transparent");
-  node.style.setProperty("--component-fill-css", artComponentSchema.normalizeFillCss(component.fillCss) || component.fillColor || "transparent");
-  node.style.setProperty("--component-border-color", component.borderColor || "transparent");
-  node.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
-  node.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
-  node.style.setProperty("--component-image-fit", artComponentSchema.normalizeImageObjectFit(component.imageObjectFit));
+  window.PartyGameArtObject?.applyComponentLayout?.(node, component, canvas, {
+    labelText: artComponentPreviewText(component)
+  });
   const imageSource = artComponentImageSource(component);
   if (imageSource) node.style.setProperty("--component-mask-url", cssUrl(imageSource));
   else node.style.removeProperty("--component-mask-url");
@@ -657,16 +646,7 @@ function artComponentPreviewNode(composition, component, canvas, layerIndex = 0,
 }
 
 function artComponentIsRootContainer(component, composition) {
-  if (!component || artComponentSchema.normalizeComponentKind(component.kind) !== "container") return false;
-  const rootComponents = Array.isArray(composition?.components) ? composition.components : [];
-  if (rootComponents.length !== 1 || rootComponents[0] !== component) return false;
-  return String(component.name || "").trim().toLowerCase() === "art root" || String(component.id || "").startsWith("root-");
-}
-
-function artComponentComputedFontSize(component) {
-  const baseSize = Number(component?.fontSize || 16);
-  if (component?.autoFitText !== true || typeof fittedLayoutTextSize !== "function") return baseSize;
-  return fittedLayoutTextSize(component, artComponentPreviewText(component), baseSize);
+  return window.PartyGameArtObject?.isArtRootContainer?.(component, composition?.components || []) === true;
 }
 
 function artComponentPreviewText(component) {

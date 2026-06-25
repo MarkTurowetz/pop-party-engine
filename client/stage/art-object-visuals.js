@@ -7,17 +7,20 @@
   const componentSchema = global.PartyGameArtComponentSchema;
   let artTreeInstanceCounter = 1;
 
-  function applyComponentLayout(element, component, canvas) {
+  function applyComponentLayout(element, component, canvas, options = {}) {
     if (!element || !component) return;
     const canvasWidth = Math.max(1, Number(canvas?.width || 1));
     const canvasHeight = Math.max(1, Number(canvas?.height || 1));
+    const labelText = Object.prototype.hasOwnProperty.call(options, "labelText")
+      ? String(options.labelText || "")
+      : componentSchema.componentLabel(component);
     element.style.left = `${Number(component.x || 0) / canvasWidth * 100}%`;
     element.style.top = `${Number(component.y || 0) / canvasHeight * 100}%`;
     element.style.width = `${Number(component.width || 1) / canvasWidth * 100}%`;
     element.style.height = `${Number(component.height || 1) / canvasHeight * 100}%`;
     element.style.setProperty("--component-scale", Number(component.scale || 1));
     element.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-    element.style.setProperty("--component-font-size", `${componentFontSize(component)}px`);
+    element.style.setProperty("--component-font-size", `${componentFontSize(component, labelText)}px`);
     element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
     element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
     element.style.setProperty("--component-fill-css", componentSchema.normalizeFillCss(component.fillCss) || component.fillColor || "transparent");
@@ -27,10 +30,10 @@
     element.style.setProperty("--component-image-fit", componentSchema.normalizeImageObjectFit(component.imageObjectFit));
   }
 
-  function componentFontSize(component) {
+  function componentFontSize(component, labelText = componentSchema.componentLabel(component)) {
     const baseSize = Number(component?.fontSize || 16);
     if (component?.autoFitText !== true || typeof global.fittedLayoutTextSize !== "function") return baseSize;
-    return global.fittedLayoutTextSize(component, componentSchema.componentLabel(component), baseSize);
+    return global.fittedLayoutTextSize(component, labelText, baseSize);
   }
 
   function componentImageSource(component) {
@@ -299,6 +302,7 @@
   global.PartyGameArtObject = {
     ArtObjectTreeRenderer,
     ArtObjectView,
-    applyComponentLayout
+    applyComponentLayout,
+    isArtRootContainer
   };
 })(window);
