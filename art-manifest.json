@@ -724,6 +724,7 @@
     "join-widget": {
       "name": "Join Widget",
       "description": "Editable lobby instruction text.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 740,
@@ -765,7 +766,7 @@
           "borderRadius": 999
         }
       ],
-      "updatedAt": "2026-06-24T04:03:31.152Z"
+      "updatedAt": "2026-06-25T01:23:55.827Z"
     },
     "countdown-popup": {
       "name": "Countdown Popup",
