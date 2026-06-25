@@ -319,7 +319,7 @@ function resetStageObjects() {
   playerRosterRenderer()?.clearPointPopupIds();
   clearVotingCardVisuals({ instant: true });
   initStageTextObjects();
-  presentClickWidget.classList.add("hidden");
+  setStageWidgetGameObjectShown("presentationClickPrompt", false, { instant: true, scope: "global" });
 }
 
 function setStageTextObject(target, options = {}) {
@@ -546,7 +546,6 @@ function applyStageState(lobby) {
   if (phase === "starting") {
     countdownClockOffset = (lobby.serverNow || Date.now()) - Date.now();
     setStageWaitingStatus("Tap CANCEL to stop", true);
-    startPopup.classList.remove("hidden");
     const updateCountdown = () => {
       const now = Date.now() + countdownClockOffset;
       const remainingMs = Math.max(0, (lobby.countdownEndsAt || now) - now);
