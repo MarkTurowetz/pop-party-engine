@@ -771,6 +771,7 @@
     "countdown-popup": {
       "name": "Countdown Popup",
       "description": "Editable popup shown while the lobby countdown is running.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 700,
@@ -812,7 +813,7 @@
           "borderRadius": 20
         }
       ],
-      "updatedAt": "2026-06-24T04:03:32.677Z"
+      "updatedAt": "2026-06-25T01:23:57.401Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer",
