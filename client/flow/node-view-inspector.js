@@ -96,7 +96,7 @@
       inspector.append(title, summary);
       inspector.appendChild(context.readOnlyFlowNote?.(`${context.actionCategoryName?.(action) || "Standard"} / ${context.actionTypeMeta?.(action.type)?.name || action.type}`));
       appendActionPropertyControls(inspector, state, actionRef, {
-        includeSubActionButton: !actionRef.isSubAction && action.type !== "decision" && action.type !== "jumpNode"
+        includeSubActionButton: !actionRef.isSubAction && !["decision", "jumpNode", "labelNode", "codeNode"].includes(action.type)
       });
       inspector.appendChild(editInListButton());
     }

@@ -203,6 +203,53 @@ const flowActionDefinitions = [
     stageRunner: "immediateComplete"
   },
   {
+    id: "labelNode",
+    name: "Label Node",
+    category: "standard",
+    canCompleteFromStage: true,
+    primaryOnly: true,
+    stageActionType: "labelNode",
+    stageRunner: "immediateComplete",
+    normalize: (action, base, context) => ({
+      ...base,
+      labelText: context.cleanFlowText(action?.labelText || action?.text, "Flow note"),
+      timing: { mode: "E+", seconds: 0 },
+      subActions: []
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "labelNode",
+      labelText: context.cleanFlowText(action.labelText || action.text, "Flow note"),
+      timing: { mode: "E+", seconds: 0 },
+      subActions: []
+    })
+  },
+  {
+    id: "codeNode",
+    name: "Code Node",
+    category: "standard",
+    canCompleteFromStage: true,
+    primaryOnly: true,
+    stageActionType: "codeNode",
+    stageRunner: "serverEffect",
+    normalize: (action, base, context) => ({
+      ...base,
+      code: context.cleanFlowText(action?.code, "g.example = true"),
+      timing: { mode: "E+", seconds: 0 },
+      subActions: []
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "codeNode",
+      code: context.cleanFlowText(action.code, "g.example = true"),
+      timing: { mode: "E+", seconds: 0 },
+      subActions: []
+    }),
+    applyRoomEffect: (room, action, context) => {
+      context.applyDynamicGameStateCode?.(room, action.code || "");
+    }
+  },
+  {
     id: "jumpNode",
     name: "Jump Node",
     category: "standard",
@@ -405,6 +452,7 @@ const flowActionDefinitions = [
       }
       room.currentRound = 0;
       room.flowVariables = {};
+      room.G = {};
       room.pendingPointPopups = [];
       room.pendingPointPopupNonce = 0;
       room.playerAnswerRecords = {};

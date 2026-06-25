@@ -90,7 +90,9 @@ function createDecisionRuntime({
       displayedPlayerAnswers: room.displayedPlayerAnswers,
       playerAnswerRecords: room.playerAnswerRecords,
       playerAnswerGroups: room.playerAnswerGroups,
-      flowVariables: room.flowVariables
+      flowVariables: room.flowVariables,
+      G: room.G || {},
+      g: room.G || {}
     };
     const pathParts = key.split(".").filter(Boolean);
     const first = pathParts.shift();

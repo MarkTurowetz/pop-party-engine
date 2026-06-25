@@ -391,6 +391,8 @@ function flowNodeExitDefinitions(action) {
       targetKind: "action"
     }));
   }
+  if (action.type === "labelNode") return [{ label: "Next", field: "nextTargetActionId" }];
+  if (action.type === "codeNode") return [{ label: "Next", field: "nextTargetActionId" }];
   if (action.type === "voteOnAnswersInput") {
     const config = globalThis.PartyChoiceInputActions?.choiceInputActionConfig?.(action.type) || {};
     return [
@@ -497,7 +499,7 @@ function optimizeCurrentFlowMoment() {
   const startY = 70;
   const rowGap = 120;
   const columnGap = 360;
-  const nodeWidthFor = (action) => action.type === "decision" ? 320 : 260;
+  const nodeWidthFor = (action) => action.type === "decision" || action.type === "codeNode" || action.type === "labelNode" ? 320 : 260;
   pushFlowHistory();
   state.startNodePosition = { x: Math.round(centerX - 85), y: startY };
   const sortedRows = Array.from(rows.keys()).sort((a, b) => a - b);

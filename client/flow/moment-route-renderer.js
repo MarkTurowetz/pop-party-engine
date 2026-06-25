@@ -52,15 +52,21 @@
         const branches = isDecision ? routeDecisionBranches(routeNode) : [];
         const missingBranchTarget = branches.some((branch) => !routeBranchTarget(branch) || context.isNoFlowTarget?.(routeBranchTarget(branch)));
         const targetName = routeNode.targetStateId ? context.flowStateName?.(routeNode.targetStateId) : "No target";
+        const isLabelNode = routeNode.type === "labelNode";
+        const isCodeNode = routeNode.type === "codeNode";
         const node = context.createFlowNode?.({
           id: routeNode.id,
-          title: routeNode.name || (isDecision ? "Decision" : isAction ? "Action" : "Moment Entry"),
+          title: isLabelNode
+            ? (routeNode.labelText || routeNode.name || "Flow note")
+            : routeNode.name || (isDecision ? "Decision" : isAction ? "Action" : "Moment Entry"),
           subtitle: isDecision
             ? `Decision / ${context.decisionVariableName?.(routeNode.variable) || routeNode.variable || ""}`
             : isAction
-              ? `${context.actionCategoryName?.(routeNode) || "Standard"} / ${context.actionTypeMeta?.(routeNode.type)?.name || routeNode.type}`
+              ? isCodeNode
+                ? (routeNode.code || "g.example = true")
+                : `${context.actionCategoryName?.(routeNode) || "Standard"} / ${context.actionTypeMeta?.(routeNode.type)?.name || routeNode.type}`
               : `Moment Entry -> ${targetName}`,
-          timing: isOrdinaryAction ? context.actionTimingLabel?.(routeNode, false) || "" : "",
+          timing: isOrdinaryAction && !isLabelNode && !isCodeNode ? context.actionTimingLabel?.(routeNode, false) || "" : "",
           valueBadge: isDecision
             ? (missingBranchTarget ? { text: "Needs Target", className: "is-warning" } : null)
             : isAction

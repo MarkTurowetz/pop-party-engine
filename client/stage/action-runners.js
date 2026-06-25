@@ -21,6 +21,8 @@
 
   const fallbackRunnerDefinitions = [
     { type: "doNothing", runner: "immediateComplete" },
+    { type: "labelNode", runner: "immediateComplete" },
+    { type: "codeNode", runner: "serverEffect" },
     { type: "jumpNode", runner: "immediateComplete" },
     { type: "playAudio", runner: "playAudio" },
     { type: "playHostAudio", runner: "playAudio" },

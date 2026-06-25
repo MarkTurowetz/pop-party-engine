@@ -77,6 +77,16 @@
         action.playMode = action.playMode || "random";
         action.lineIndex = Math.max(0, Math.floor(Number(action.lineIndex || 0)));
       }
+      if (value === "labelNode") {
+        action.labelText = action.labelText || action.text || "Flow note";
+        action.timing = { mode: "E+", seconds: 0 };
+        action.subActions = [];
+      }
+      if (value === "codeNode") {
+        action.code = action.code || "g.example = true";
+        action.timing = { mode: "E+", seconds: 0 };
+        action.subActions = [];
+      }
       if (value === "presentText" || value === "displayText" || value === "text" || value === "setPlayersShown" || value === "setPlayerAnswersShown" || value === "setGameObjectShown" || value === "setArtAssetShown") action.isShown = action.isShown !== false;
       if (value === "setGameObjectShown" || value === "setArtAssetShown") {
         action.targetLayoutElementId = action.targetLayoutElementId || "";
@@ -106,7 +116,7 @@
       if (value === "transition") action.transition = action.transition || "horizontalWipe";
       if (value === "transitionState") action.targetState = action.targetState || "intro";
       if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = action.textTarget || "presentation";
-      if (value !== "jumpNode") context.ensureActionTiming?.(action, isSubAction);
+      if (value !== "jumpNode" && value !== "labelNode" && value !== "codeNode") context.ensureActionTiming?.(action, isSubAction);
     }
 
     return { applyActionTypeDefaults };

@@ -127,6 +127,7 @@ function createRoomPhaseRuntime({
     room.playerAnswersShown = true;
     room.playerAnswersVisibleFilter = "all";
     room.flowVariables = {};
+    room.G = {};
     clearPlayerAnswerData(room);
     room.pendingPointPopups = [];
     room.currentRound = 1;

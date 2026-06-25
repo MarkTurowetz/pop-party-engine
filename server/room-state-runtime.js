@@ -29,6 +29,7 @@ function createDefaultRoom(stageCode) {
     hiddenPlayerAnswerIds: new Set(),
     currentRound: 1,
     flowVariables: {},
+    G: {},
     playerAnswerRecords: {},
     playerAnswerGroups: { correct: [], wrong: [], all: [] },
     storedPlayerAnswers: {},

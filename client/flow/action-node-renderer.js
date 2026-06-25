@@ -5,6 +5,8 @@
     function flowNodeClassForAction(action) {
       if (action.type === "decision") return "is-decision";
       if (action.type === "jumpNode") return "is-jump";
+      if (action.type === "labelNode") return "is-label";
+      if (action.type === "codeNode") return "is-code";
       if (context.actionTypeMeta?.(action.type)?.category === "input") return "is-input";
       if (action.type === "transition" || action.type === "transitionState") return "is-transition";
       return "is-standard";
@@ -91,15 +93,19 @@
     function renderActionNode(state, action, index, jumpTargetIds) {
       const fallback = context.defaultNodePosition?.(index, 3, 340, 70, 360, 230) || { x: 340, y: 70 };
       const { x, y } = context.savedNodePosition?.(action, fallback) || fallback;
+      const isLabelNode = action.type === "labelNode";
+      const isCodeNode = action.type === "codeNode";
       const node = context.createFlowNode?.({
         id: action.id,
-        title: action.name || `Action ${index + 1}`,
-        subtitle: `${context.actionCategoryName?.(action) || "Standard"} / ${context.actionTypeMeta?.(action.type)?.name || action.type}`,
-        timing: action.type === "decision" || action.type === "jumpNode" ? "" : context.actionTimingLabel?.(action, false) || "",
+        title: isLabelNode ? (action.labelText || action.name || "Flow note") : action.name || `Action ${index + 1}`,
+        subtitle: isCodeNode
+          ? (action.code || "g.example = true")
+          : `${context.actionCategoryName?.(action) || "Standard"} / ${context.actionTypeMeta?.(action.type)?.name || action.type}`,
+        timing: action.type === "decision" || action.type === "jumpNode" || isLabelNode || isCodeNode ? "" : context.actionTimingLabel?.(action, false) || "",
         valueBadge: context.actionValueBadge?.(action),
         x,
         y,
-        width: action.type === "decision" ? 320 : 260,
+        width: action.type === "decision" || isLabelNode || isCodeNode ? 320 : 260,
         height: 134,
         className: flowNodeClassForAction(action),
         selected: context.actionNodeIsSelected?.(action),

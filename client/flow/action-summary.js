@@ -13,6 +13,8 @@
           ? "⚠ Jump target required"
           : `Jump -> ${context.flowTargetActionName(action.jumpTargetActionId)}`;
       }
+      if (action.type === "labelNode") return action.labelText || "Flow note";
+      if (action.type === "codeNode") return action.code || "g.example = true";
       const timing = context.ensureActionTiming(action, isSubAction);
       const timingText = `${timing.mode} ${Number(timing.seconds || 0).toFixed(1)}s`;
       const targetText = action.textTarget ? context.textTargetName(action.textTarget) : "⚠ No Field";
@@ -103,7 +105,7 @@
     }
 
     function actionTimingLabel(action, isSubAction = false) {
-      if (action?.type === "jumpNode") return "";
+      if (action?.type === "jumpNode" || action?.type === "labelNode" || action?.type === "codeNode") return "";
       const timing = context.ensureActionTiming(action, isSubAction);
       return `${timing.mode} ${Number(timing.seconds || 0).toFixed(2)}s`;
     }
@@ -115,6 +117,8 @@
           ? { text: "⚠ Target", className: "is-warning" }
           : { text: "Jump", className: "is-jump" };
       }
+      if (action.type === "labelNode") return { text: "Label", className: "is-label" };
+      if (action.type === "codeNode") return { text: "Code", className: "is-code" };
       const visibilityActionTypes = new Set([
         "displayText",
         "presentText",

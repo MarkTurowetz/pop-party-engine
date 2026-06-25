@@ -94,6 +94,8 @@
       if (action.type === "doNothing") {
         target.appendChild(context.readOnlyFlowNote("This action intentionally has no effect. Use its timing to create a pause or delayed branch."));
       }
+      if (action.type === "labelNode") appendLabelNodeControls(target, action, handlers);
+      if (action.type === "codeNode") appendCodeNodeControls(target, action, handlers);
       if (action.type === "jumpNode") appendJumpNodeControls(target, state, action, handlers);
       if (action.type === "playAudio") appendPlayAudioControls(target, action, handlers.change);
       if (action.type === "playHostAudio") appendPlayHostAudioControls(target, action, controls, handlers);
@@ -350,6 +352,22 @@
       target.appendChild(context.readOnlyFlowNote("Stores an array of { playerId, text, optionIndex, ... } objects into a flow variable for use in decisions and moment-specific actions."));
     }
 
+    function appendLabelNodeControls(target, action, handlers) {
+      target.appendChild(context.flowTextarea("Label Text", action.labelText || "Flow note", (value) => {
+        action.labelText = value || "Flow note";
+        handlers.softChange();
+      }));
+      target.appendChild(context.readOnlyFlowNote("Label Nodes are notes for the flowchart. If runtime reaches one, it immediately continues to its Next Action."));
+    }
+
+    function appendCodeNodeControls(target, action, handlers) {
+      target.appendChild(context.flowTextarea("Code", action.code || "g.example = true", (value) => {
+        action.code = value || "";
+        handlers.softChange();
+      }));
+      target.appendChild(context.readOnlyFlowNote("Code Nodes write dynamic values onto G. Supported statements look like g.perSetOfPlayers.hasSeenTutorial = true; or g = {}; Decisions can branch on G paths."));
+    }
+
     function appendDecisionActionControls(target, state, action, handlers) {
       const targetField = handlers.decisionTargetField || "targetActionId";
       context.appendDecisionControls(target, state, action, handlers.decisionChange, {
@@ -407,7 +425,7 @@
     }
 
     function appendTimingControls(target, actionRef, action, change) {
-      if (action.type === "jumpNode") return;
+      if (action.type === "jumpNode" || action.type === "labelNode" || action.type === "codeNode") return;
       const waitsForFlowEvent = context.actionTypeMeta(action.type).category === "input"
         || (action.type === "transitionState" && action.trigger === "onCountdownComplete");
       const isInputAction = waitsForFlowEvent && !actionRef.isSubAction;

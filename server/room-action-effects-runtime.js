@@ -1,6 +1,7 @@
 "use strict";
 
 const { createFlowActionRegistry } = require("../shared/flow-action-registry");
+const { applyDynamicGameStateCode } = require("./dynamic-game-state-runtime");
 
 function resolveStoredAnswerRound(room, roundSpec) {
   if (!roundSpec || roundSpec === "current") return room.currentRound || 1;
@@ -51,7 +52,8 @@ function createRoomActionEffectsRuntime({
     setCraftingTimerShown,
     setVotingCardsShown,
     startCraftingTimer,
-    storeRandomTriviaPrompt
+    storeRandomTriviaPrompt,
+    applyDynamicGameStateCode
   });
 
   function applyRoomActionEffects(room, action) {

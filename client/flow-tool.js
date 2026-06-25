@@ -63,6 +63,8 @@ function actionNodeIsSelected(action) {
 function flowNodeClassForAction(action) {
   if (action.type === "decision") return "is-decision";
   if (action.type === "jumpNode") return "is-jump";
+  if (action.type === "labelNode") return "is-label";
+  if (action.type === "codeNode") return "is-code";
   if (actionTypeMeta(action.type).category === "input") return "is-input";
   if (action.type === "transition" || action.type === "transitionState") return "is-transition";
   return "is-standard";
