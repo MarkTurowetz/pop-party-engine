@@ -3,6 +3,7 @@
     "voting-card": {
       "name": "Voting Card",
       "description": "Composed from a current card, answer text, author heading, voter container, vote count, and voter widgets.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 560,
@@ -122,7 +123,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-24T04:03:25.026Z"
+      "updatedAt": "2026-06-25T01:23:49.366Z"
     },
     "player-avatar-rex": {
       "name": "Rex Avatar",
