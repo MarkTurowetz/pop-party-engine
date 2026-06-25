@@ -342,6 +342,7 @@ const stageWidgetHosts = {
   stageCodeWidget: () => stageCodeBadgeRoot,
   joinQr: () => stageJoinQr,
   joinWidget: () => joinPrompt,
+  waitingStatus: () => waitingStatus,
   countdownPopup: () => startPopup,
   craftingTimer: () => craftingTimer,
   presentationClickPrompt: () => presentClickWidget
@@ -351,6 +352,7 @@ const stageWidgetTextOverrides = {
   stageCodePanel: (context) => ({ "panel-code": context.stageCode || stageCodeText.textContent }),
   stageCodeWidget: (context) => ({ "badge-code": context.stageCode || stageCodeBadge.textContent }),
   joinWidget: () => ({ "join-text": joinPrompt.textContent || "Join the Lobby at bit.ly/popcontroller" }),
+  waitingStatus: (context) => ({ "status-text": context.text || waitingStatus.dataset.statusText || "" }),
   countdownPopup: (context) => ({ "popup-text": context.seconds > 0 ? `Starting in ${context.seconds}` : "Let's Go" }),
   craftingTimer: (context) => ({
     "timer-value": context.label || craftingTimerLabel.textContent || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
@@ -432,6 +434,17 @@ function renderStageJoinQr(stageCode, isVisible = true) {
   }
 }
 
+function setStageWaitingStatus(message, isVisible = true) {
+  if (!waitingStatus) return;
+  const cleanMessage = String(message || "");
+  waitingStatus.dataset.statusText = cleanMessage;
+  waitingStatus.classList.toggle("hidden", !isVisible || !cleanMessage);
+  if (!waitingStatus.classList.contains("has-stage-widget-art")) {
+    waitingStatus.textContent = cleanMessage;
+  }
+  renderStageWidgetBinding("waitingStatus", { text: cleanMessage });
+}
+
 function applyStageState(lobby) {
   const wasPaused = isStagePaused;
   currentStageState = lobby;
@@ -486,13 +499,11 @@ function applyStageState(lobby) {
   const vip = players.find((player) => player.isVip);
   joinPrompt.classList.toggle("hidden", !isLobbyPhase);
   renderStageWidgetBinding("joinWidget");
-  waitingStatus.classList.toggle("hidden", phase === "intro" || players.length === 0);
-  waitingStatus.textContent = vip ? `Waiting for ${vip.name} to start the game` : "";
+  setStageWaitingStatus(vip ? `Waiting for ${vip.name} to start the game` : "", phase !== "intro" && players.length > 0);
 
   if (phase === "starting") {
     countdownClockOffset = (lobby.serverNow || Date.now()) - Date.now();
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = "Tap CANCEL to stop";
+    setStageWaitingStatus("Tap CANCEL to stop", true);
     startPopup.classList.remove("hidden");
     const updateCountdown = () => {
       const now = Date.now() + countdownClockOffset;
@@ -606,8 +617,7 @@ async function pollLobby(stageCode) {
     const result = await getJson(`/api/stage/${stageCode}/lobby`);
     renderStageLobby(result.lobby);
   } catch (error) {
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = "Reconnecting to lobby";
+    setStageWaitingStatus("Reconnecting to lobby", true);
   }
 }
 
@@ -661,8 +671,7 @@ async function completeFlowAction(source = "callback", actionId = currentStageSt
       pausedCompletionRequest = { source, actionId };
       return;
     }
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = error.message;
+    setStageWaitingStatus(error.message, true);
   }
 }
 
@@ -673,8 +682,7 @@ async function applyFlowActionEffect(actionId) {
     const result = await postJson("/api/action-effect", { stageCode, actionId });
     if (result.lobby) renderStageLobby(result.lobby);
   } catch (error) {
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = error.message;
+    setStageWaitingStatus(error.message, true);
   }
 }
 
@@ -712,8 +720,7 @@ async function applyRuntimeTestMessage(message) {
     });
     if (result.lobby) renderStageLobby(result.lobby);
   } catch (error) {
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = error.message;
+    setStageWaitingStatus(error.message, true);
   }
 }
 
@@ -760,8 +767,7 @@ async function requestStagePaused(isPaused) {
     });
     if (result.lobby) renderStageLobby(result.lobby);
   } catch (error) {
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = error.message;
+    setStageWaitingStatus(error.message, true);
   }
 }
 
@@ -775,15 +781,13 @@ async function quitStageToLobby() {
     });
     if (result.lobby) renderStageLobby(result.lobby);
   } catch (error) {
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = error.message;
+    setStageWaitingStatus(error.message, true);
   }
 }
 
 function subscribeToStage(stageCode) {
   if (!canUseServer) {
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = "Open through the server to host a lobby";
+    setStageWaitingStatus("Open through the server to host a lobby", true);
     return;
   }
 
@@ -801,8 +805,7 @@ function subscribeToStage(stageCode) {
     reloadStageArtAssets();
   });
   stream.addEventListener("error", () => {
-    waitingStatus.classList.remove("hidden");
-    waitingStatus.textContent = "Reconnecting to lobby";
+    setStageWaitingStatus("Reconnecting to lobby", true);
   });
 }
 

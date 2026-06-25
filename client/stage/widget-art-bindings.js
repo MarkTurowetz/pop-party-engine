@@ -23,6 +23,11 @@
       layoutElementId: "joinprompt",
       previewTextOverrides: { "join-text": "Join the Lobby at bit.ly/popcontroller" }
     },
+    waitingStatus: {
+      compositionId: "waiting-status-widget",
+      layoutElementId: "waitingstatus",
+      previewTextOverrides: { "status-text": "Waiting for Ava to start the game" }
+    },
     countdownPopup: {
       compositionId: "countdown-popup",
       layoutElementId: "startpopup",

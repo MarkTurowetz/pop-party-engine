@@ -271,7 +271,7 @@ function baseLayoutObjectCatalog() {
     { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "text", width: 1080, height: 150, defaultText: "Party Game Template" },
     { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", width: 620, height: 220 },
     { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", width: 260, height: 300 },
-    { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "text", width: 740, height: 90 },
+    { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "art", artCompositionId: "waiting-status-widget", width: 700, height: 82 },
     { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", kind: "text", width: 900, height: 86 },
     { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", kind: "art", width: 260, height: 260 },
     { id: "craftingTimer", name: "Crafting Timer", selector: "#craftingTimer", kind: "art", width: 190, height: 190 },
@@ -753,12 +753,6 @@ function layoutPreviewContent(element) {
     return content;
   } else if (renderLayoutWidgetArtPreview(content, id)) {
     return content;
-  } else if (id === "waitingstatus") {
-    const pill = document.createElement("div");
-    pill.className = "layout-preview-pill";
-    pill.textContent = layoutDefaultText(element);
-    applyLayoutPreviewTextStyle(pill, element);
-    content.appendChild(pill);
   } else if (id === "playerlobby") {
     content.appendChild(layoutPreviewPlayers());
   } else if (id === "stageintrotitle") {

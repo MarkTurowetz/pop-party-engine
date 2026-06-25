@@ -181,7 +181,7 @@ const defaultStageLayouts = {
         { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "text", x: 960, y: 190, width: 1080, height: 150, scale: 1, defaultText: "Party Game Template", fontSize: 92, autoFitText: true, fontColor: "#ffffff" },
         { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", artCompositionId: "stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
         { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", artCompositionId: "join-qr-code", x: 1510, y: 420, width: 260, height: 300, scale: 1 },
-        { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", x: 960, y: 575, width: 700, height: 82, scale: 1 },
+        { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "art", artCompositionId: "waiting-status-widget", x: 960, y: 575, width: 700, height: 82, scale: 1 },
         { id: "joinPrompt", name: "Join Prompt", selector: "#joinPrompt", kind: "art", artCompositionId: "join-widget", x: 960, y: 650, width: 740, height: 76, scale: 1 }
       ]
     },
@@ -597,6 +597,47 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         shapeStyle: "pill",
         fillColor: "#fff6d8",
+        borderColor: "#17131f",
+        borderWidth: 4,
+        borderRadius: 999
+      }
+    ]
+  },
+  {
+    id: "waiting-status-widget",
+    name: "Waiting Status",
+    description: "Editable lobby status pill.",
+    canvas: { width: 700, height: 82 },
+    components: [
+      {
+        id: "status-text",
+        name: "Status Text",
+        kind: "text",
+        x: 350,
+        y: 41,
+        width: 640,
+        height: 48,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "Waiting for Ava to start the game",
+        fontSize: 30,
+        autoFitText: true,
+        fontColor: "#17131f"
+      },
+      {
+        id: "status-pill",
+        name: "Status Pill",
+        kind: "shape",
+        x: 350,
+        y: 41,
+        width: 700,
+        height: 76,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "pill",
+        fillColor: "#fffdf4",
         borderColor: "#17131f",
         borderWidth: 4,
         borderRadius: 999

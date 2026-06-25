@@ -2,6 +2,7 @@ const layoutWidgetArtCompositionIds = Object.freeze({
   stagecodepanel: "stage-code-panel",
   stagecodebadge: "stage-code-widget",
   stagejoinqr: "join-qr-code",
+  waitingstatus: "waiting-status-widget",
   joinprompt: "join-widget",
   startpopup: "countdown-popup",
   craftingtimer: "crafting-timer-widget",

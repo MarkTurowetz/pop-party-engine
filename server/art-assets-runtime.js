@@ -407,6 +407,7 @@ function createArtAssetsRuntime({
       "stage-code-panel": ["panel-code", "panel-label", "panel-card"],
       "stage-code-widget": ["badge-code", "badge-label", "badge-card"],
       "join-widget": ["join-text", "join-pill"],
+      "waiting-status-widget": ["status-text", "status-pill"],
       "countdown-popup": ["popup-text", "popup-card"],
       "crafting-timer-widget": ["timer-value", "timer-ring"],
       "join-qr-code": ["qr-label", "qr-placeholder", "qr-card"]
