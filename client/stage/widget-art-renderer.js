@@ -43,7 +43,7 @@
       return clone;
     }
 
-    function render(host, compositionId, textOverrides = {}, renderOptions = {}) {
+    function renderResult(host, compositionId, textOverrides = {}, renderOptions = {}) {
       const composition = getComposition(compositionId);
       const artRuntime = global.PartyGameArtObject;
       if (!host || !composition || !artRuntime) return null;
@@ -72,7 +72,11 @@
         // the widget internals after the host appears.
         respectDefaultAnimationState: false
       });
-      return composition;
+      return { composition, renderer };
+    }
+
+    function render(host, compositionId, textOverrides = {}, renderOptions = {}) {
+      return renderResult(host, compositionId, textOverrides, renderOptions)?.composition || null;
     }
 
     function componentById(composition, componentId) {
@@ -101,12 +105,12 @@
       const textOverrides = typeof binding.textOverrides === "function"
         ? binding.textOverrides(context)
         : binding.textOverrides || {};
-      const composition = render(host, binding.compositionId, textOverrides, binding.options || {});
+      const result = renderResult(host, binding.compositionId, textOverrides, binding.options || {});
       for (const overlay of binding.overlays || []) {
         const element = typeof overlay.element === "function" ? overlay.element(context) : overlay.element;
-        positionOverlay(host, composition, overlay.componentId, element);
+        positionOverlay(host, result?.composition, overlay.componentId, element);
       }
-      return composition;
+      return result;
     }
 
     return { render, renderBound, positionOverlay };

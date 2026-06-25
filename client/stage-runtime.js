@@ -378,7 +378,20 @@ function renderStageWidgetBinding(bindingId, context = {}) {
   if (!binding?.compositionId) return null;
   const host = binding.host?.(context);
   if (!host) return null;
-  return stageWidgetArtRenderer()?.renderBound(host, binding, context) || null;
+  const result = stageWidgetArtRenderer()?.renderBound(host, binding, context) || null;
+  registerRenderedStageWidgetEntity(definition, host, result);
+  return result;
+}
+
+function registerRenderedStageWidgetEntity(definition, host, renderResult) {
+  const elementId = definition?.layoutElementId || host?.dataset?.stageLayoutElementId || "";
+  const renderer = renderResult?.renderer || null;
+  if (!elementId || !renderer || typeof stageLayoutEntityForElementId !== "function") return;
+  const entity = stageLayoutEntityForElementId(elementId, host);
+  entity?.update?.({
+    artRenderer: renderer,
+    syncArtRendererOnShow: true
+  });
 }
 
 function renderStageActionDebug(lobby) {
@@ -438,6 +451,7 @@ function applyStageState(lobby) {
   const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
   if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
   stageCodeBadgeRoot.classList.toggle("hidden", isLobbyPhase);
+  applyStageLayoutForPhase(phase);
   renderStageWidgetBinding("stageCodePanel", { stageCode: lobby.stageCode || stageCodeText.textContent });
   renderStageWidgetBinding("stageCodeWidget", { stageCode: lobby.stageCode || stageCodeBadge.textContent });
   renderStageJoinQr(lobby.stageCode || stageCodeText.textContent, isLobbyPhase);
@@ -497,7 +511,6 @@ function applyStageState(lobby) {
   if (phase === "lobby" && lobby.lobbyFlowActive !== true) {
     resetStageObjects();
   }
-  applyStageLayoutForPhase(phase);
 }
 
 function renderStageLobby(lobby) {
