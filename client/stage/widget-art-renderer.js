@@ -64,7 +64,14 @@
         renderers.set(key, renderer);
       }
       const components = (composition.components || []).map((component) => cloneComponent(component, textOverrides));
-      renderer.render(components, composition.canvas || { width: 1, height: 1 }, { instant: renderOptions.instant !== false });
+      renderer.render(components, composition.canvas || { width: 1, height: 1 }, {
+        defaultAnimation: "on",
+        instant: renderOptions.instant !== false,
+        // Selector-backed stage widgets are placed layout objects. Their host
+        // owns visibility, so the source prefab's parked root should not hide
+        // the widget internals after the host appears.
+        respectDefaultAnimationState: false
+      });
       return composition;
     }
 
