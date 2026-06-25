@@ -584,7 +584,6 @@ function renderSelectedArtComposition(options = {}) {
 
 function applyMeasuredArtPreviewTextFit(composition) {
   const fitText = window.PartyGameTextFit?.fittedLayoutTextSize || window.fittedLayoutTextSize;
-  if (typeof fitText !== "function") return;
   const componentsById = new Map(flattenArtComponents(composition?.components || []).map(({ component }) => [String(component.id || ""), component]));
   const nodes = artPreviewArt.querySelectorAll(".art-composition-component.is-text");
   for (const node of nodes) {
@@ -595,9 +594,54 @@ function applyMeasuredArtPreviewTextFit(composition) {
     const width = Number(node.clientWidth || node.getBoundingClientRect().width || component.width || 1);
     const height = Number(node.clientHeight || node.getBoundingClientRect().height || component.height || 1);
     const previewElement = { ...component, width, height };
-    const fontSize = fitText(previewElement, artComponentPreviewText(component), Number(component.fontSize || 16));
+    const previewText = artComponentPreviewText(component);
+    const estimatedSize = typeof fitText === "function"
+      ? fitText(previewElement, previewText, Number(component.fontSize || 16))
+      : Number(component.fontSize || 16);
+    const fontSize = measuredArtPreviewFontSize(label, previewText, estimatedSize);
     node.style.setProperty("--component-font-size", `${fontSize}px`);
   }
+}
+
+function measuredArtPreviewFontSize(label, text, fallbackSize) {
+  if (!label || !document.body) return Number(fallbackSize || 16);
+  const rect = label.getBoundingClientRect();
+  const availableWidth = Math.max(8, Number(label.clientWidth || rect.width || 1));
+  const availableHeight = Math.max(8, Number(label.clientHeight || rect.height || 1));
+  const computed = window.getComputedStyle(label);
+  const measure = document.createElement("div");
+  measure.textContent = text || "Text";
+  measure.style.position = "fixed";
+  measure.style.left = "-10000px";
+  measure.style.top = "-10000px";
+  measure.style.visibility = "hidden";
+  measure.style.pointerEvents = "none";
+  measure.style.boxSizing = "border-box";
+  measure.style.width = `${availableWidth}px`;
+  measure.style.padding = computed.padding;
+  measure.style.fontFamily = computed.fontFamily;
+  measure.style.fontWeight = computed.fontWeight;
+  measure.style.fontStyle = computed.fontStyle;
+  measure.style.letterSpacing = computed.letterSpacing;
+  measure.style.lineHeight = computed.lineHeight;
+  measure.style.textTransform = computed.textTransform;
+  measure.style.whiteSpace = "normal";
+  measure.style.overflowWrap = "anywhere";
+  measure.style.wordBreak = computed.wordBreak;
+  document.body.appendChild(measure);
+
+  const minSize = 8;
+  let low = minSize;
+  let high = Math.min(260, Math.max(minSize, Math.ceil(availableHeight * 2)));
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    measure.style.fontSize = `${mid}px`;
+    const fits = measure.scrollWidth <= availableWidth + 1 && measure.scrollHeight <= availableHeight + 1;
+    if (fits) low = mid;
+    else high = mid - 1;
+  }
+  measure.remove();
+  return low || Number(fallbackSize || minSize);
 }
 
 function updateArtCompositionDeleteButton() {
