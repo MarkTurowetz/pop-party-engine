@@ -17,6 +17,7 @@ const artComponentTree = window.PartyGameArtComponentTree;
 const artToolUi = window.PartyGameArtToolUi;
 const artSidebarRendererRuntime = window.PartyGameArtSidebarRenderer;
 const artComponentEditorRuntime = window.PartyGameArtComponentEditor;
+const editableArtRenderer = window.PartyGameEditableArtRenderer;
 const artShapeStyles = artComponentSchema.shapeStyleOptions;
 const artComponentImageAccept = artComponentSchema.imageAccept;
 const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt"];
@@ -548,7 +549,26 @@ function renderSelectedArtComposition(options = {}) {
   artPreviewArt.style.setProperty("--art-composition-aspect", `${Number(canvas.width || 1) / Math.max(1, Number(canvas.height || 1))}`);
   artPreviewArt.replaceChildren();
   for (const [index, component] of (composition.components || []).entries()) {
-    artPreviewArt.appendChild(artComponentPreviewNode(composition, component, canvas, index, (composition.components || []).length));
+    artPreviewArt.appendChild(editableArtRenderer.createComponentNode({
+      document,
+      composition,
+      component,
+      canvas,
+      layerIndex: index,
+      siblingCount: (composition.components || []).length,
+      selectedIds: selectedArtComponentIds,
+      primaryId: selectedArtComponentId,
+      previewText: artComponentPreviewText,
+      imageSource: artComponentImageSource,
+      supportsImageMask: artComponentSupportsImageMask,
+      eventHasFiles: artDragEventHasFiles,
+      onPointerDown: startArtComponentDrag,
+      onImageDrop: (event, targetComponent) => {
+        selectArtComponent(composition.id, targetComponent.id);
+        stageArtComponentImageFile(targetComponent, event.dataTransfer?.files?.[0]);
+      },
+      appendTransformHandles: appendArtComponentTransformHandles
+    }));
   }
   artFileName.textContent = isArtCompositionsDirty() ? "Component layout has unsaved changes" : "Component layout saved";
   artReplaceButton.disabled = true;
@@ -568,85 +588,23 @@ function updateArtCompositionDeleteButton() {
   artDeleteCompositionButton.disabled = !hasComposition;
 }
 
-function artComponentLayerIndex(index, siblingCount) {
-  return Math.max(1, Number(siblingCount || 1) - Number(index || 0));
-}
-
-function artComponentPreviewNode(composition, component, canvas, layerIndex = 0, siblingCount = 1) {
-  const node = document.createElement("div");
-  node.className = `art-composition-component is-${artComponentSchema.normalizeComponentKind(component.kind)} is-style-${artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind)}`;
-  node.classList.toggle("is-art-root-container", artComponentIsRootContainer(component, composition));
-  node.classList.toggle("is-selected", selectedArtComponentIds.has(component.id));
-  node.classList.toggle("has-image-mask", artComponentHasImageMask(component));
-  node.classList.toggle("has-tinted-image-mask", artComponentHasImageMask(component) && component.imageTint === "currentColor");
-  node.dataset.componentId = component.id;
-  node.style.zIndex = String(artComponentLayerIndex(layerIndex, siblingCount));
-  window.PartyGameArtObject?.applyComponentLayout?.(node, component, canvas, {
-    labelText: artComponentPreviewText(component)
+function appendArtComponentTransformHandles(node, component, options = {}) {
+  window.PartyGameToolAffordances.appendTransformHandles(node, {
+    primary: options.primary === true,
+    onResize: (event) => startArtComponentScale(event, component),
+    rotationOrigins: () => selectedArtComponents().map((item) => ({ id: item.id, rotation: Number(item.rotation || 0) })),
+    onRotateStart: pushArtHistory,
+    onRotate: (items) => {
+      const byId = new Map(items.map((item) => [item.id, item.rotation]));
+      for (const item of selectedArtComponents()) {
+        item.rotation = Number(Number(byId.get(item.id) || 0).toFixed(3));
+      }
+      renderSelectedArtComposition({ renderEditor: false });
+      renderArtList();
+      updateGlobalSaveButton();
+    },
+    onRotateEnd: () => renderSelectedArtComposition()
   });
-  const imageSource = artComponentImageSource(component);
-  if (imageSource) node.style.setProperty("--component-mask-url", cssUrl(imageSource));
-  else node.style.removeProperty("--component-mask-url");
-  node.addEventListener("pointerdown", (event) => startArtComponentDrag(event, component));
-  if (artComponentSupportsImageMask(component)) {
-    node.addEventListener("dragover", (event) => {
-      if (!artDragEventHasFiles(event)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      node.classList.add("is-image-drop-target");
-    });
-    node.addEventListener("dragleave", (event) => {
-      if (!node.contains(event.relatedTarget)) node.classList.remove("is-image-drop-target");
-    });
-    node.addEventListener("drop", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      node.classList.remove("is-image-drop-target");
-      selectArtComponent(composition.id, component.id);
-      stageArtComponentImageFile(component, event.dataTransfer?.files?.[0]);
-    });
-  }
-  if (imageSource) {
-    const image = component.imageTint === "currentColor" ? document.createElement("span") : document.createElement("img");
-    image.className = "art-component-mask-image";
-    if (image.tagName === "IMG") {
-      image.alt = "";
-      image.draggable = false;
-      image.src = imageSource;
-    }
-    node.appendChild(image);
-  }
-  const label = document.createElement("span");
-  label.className = "art-component-label";
-  label.textContent = artComponentPreviewText(component);
-  node.appendChild(label);
-  const childCanvas = { width: Number(component.width || 1), height: Number(component.height || 1) };
-  for (const [childIndex, child] of (component.children || []).entries()) {
-    node.appendChild(artComponentPreviewNode(composition, child, childCanvas, childIndex, (component.children || []).length));
-  }
-  if (selectedArtComponentIds.has(component.id)) {
-    window.PartyGameToolAffordances.appendTransformHandles(node, {
-      primary: component.id === selectedArtComponentId,
-      onResize: (event) => startArtComponentScale(event, component),
-      rotationOrigins: () => selectedArtComponents().map((item) => ({ id: item.id, rotation: Number(item.rotation || 0) })),
-      onRotateStart: pushArtHistory,
-      onRotate: (items) => {
-        const byId = new Map(items.map((item) => [item.id, item.rotation]));
-        for (const item of selectedArtComponents()) {
-          item.rotation = Number(Number(byId.get(item.id) || 0).toFixed(3));
-        }
-        renderSelectedArtComposition({ renderEditor: false });
-        renderArtList();
-        updateGlobalSaveButton();
-      },
-      onRotateEnd: () => renderSelectedArtComposition()
-    });
-  }
-  return node;
-}
-
-function artComponentIsRootContainer(component, composition) {
-  return window.PartyGameArtObject?.isArtRootContainer?.(component, composition?.components || []) === true;
 }
 
 function artComponentPreviewText(component) {
