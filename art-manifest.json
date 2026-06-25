@@ -598,6 +598,7 @@
     "stage-code-panel": {
       "name": "Stage Code Panel",
       "description": "Editable lobby card that displays the current stage code.",
+      "surface": "stage",
       "isCustom": false,
       "canvas": {
         "width": 560,
@@ -655,7 +656,7 @@
           "borderRadius": 24
         }
       ],
-      "updatedAt": "2026-06-24T04:03:27.932Z"
+      "updatedAt": "2026-06-25T01:23:52.318Z"
     },
     "stage-code-widget": {
       "name": "Small Room Code Widget",
