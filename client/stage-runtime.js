@@ -384,10 +384,7 @@ function renderStageWidgetBinding(bindingId, context = {}) {
   return result;
 }
 
-function setStageWidgetGameObjectShown(bindingId, isShown, options = {}) {
-  const definition = stageWidgetArtDefinition(bindingId);
-  const elementId = definition?.layoutElementId || "";
-  const host = stageWidgetHosts[bindingId]?.(options.context || {}) || null;
+function setStageLayoutElementGameObjectShown(elementId, host, isShown, options = {}) {
   const shown = isShown !== false;
   if (host && shown) host.classList.remove("hidden");
   if (!elementId || typeof setStageLayoutGameObjectShownForAction !== "function") {
@@ -408,6 +405,16 @@ function setStageWidgetGameObjectShown(bindingId, isShown, options = {}) {
     host.classList.add("hidden");
   }
   return Number(result?.duration || 0);
+}
+
+function setStageWidgetGameObjectShown(bindingId, isShown, options = {}) {
+  const definition = stageWidgetArtDefinition(bindingId);
+  return setStageLayoutElementGameObjectShown(
+    definition?.layoutElementId || "",
+    stageWidgetHosts[bindingId]?.(options.context || {}) || null,
+    isShown,
+    options
+  );
 }
 
 function registerRenderedStageWidgetEntity(definition, host, renderResult) {
@@ -499,8 +506,9 @@ function applyStageState(lobby) {
   setStageWidgetGameObjectShown("countdownPopup", false, { instant: true });
   stageMain.classList.toggle("hidden", !isLobbyPhase);
   stageFooter.classList.remove("hidden");
-  stageIntroContent.classList.toggle("hidden", phase !== "intro");
+  stageIntroContent.classList.remove("hidden");
   stageIntroTitle.textContent = "GAME INTRO";
+  setStageLayoutElementGameObjectShown("stageIntroTitle", stageIntroTitle, phase === "intro", { instant: true });
   renderStageWidgetBinding("presentationClickPrompt");
   setStageWidgetGameObjectShown("presentationClickPrompt", action?.type === "present" && action?.timing?.mode !== "S+", {
     scope: "global"
