@@ -221,8 +221,9 @@ function reloadStageArtAssets() {
   }).catch(() => {});
 }
 
-async function setStageLayoutGameObjectShownForAction(action) {
+async function setStageLayoutGameObjectShownForStageAction(action) {
   const showGameObject = window.setStageLayoutGameObjectShownForAction || setStageLayoutArtElementShownForAction;
+  if (typeof showGameObject !== "function") return 0;
   const first = showGameObject(action, {
       returnResult: true,
       suppressMissingWarning: true
@@ -596,7 +597,7 @@ function getStageActionRunner() {
       playerAnswerBubbleAnimationRemaining,
       runStageWipe,
       setCraftingTimerShownForAction,
-      setStageLayoutGameObjectShownForAction,
+      setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction,
       setPlayerAnswerBubblesShown,
       setPlayersShownForAction,
       setStageWipeShownForAction,
