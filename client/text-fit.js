@@ -83,6 +83,10 @@
   function renderGameText(target, config = {}) {
     if (!target) return null;
     const text = String(config.text ?? "");
+    if (config.layout) {
+      renderTextElement(target, text, config.layout);
+      return config.layout;
+    }
     const element = config.element || null;
     const spec = config.spec || null;
     const options = config.options || {};
@@ -321,49 +325,59 @@
     }
     const lines = Array.isArray(layout?.lines) && layout.lines.length ? layout.lines : textValue.split("\n");
     const fontSize = finiteNumber(layout?.fontSize, defaultOptions.minSize);
-    const boxWidth = Math.max(1, finiteNumber(layout?.boxWidth, target.clientWidth || 1));
-    const boxHeight = Math.max(1, finiteNumber(layout?.boxHeight, target.clientHeight || 1));
-    const targetWidth = Math.max(1, finiteNumber(layout?.targetWidth, boxWidth));
-    const targetHeight = Math.max(1, finiteNumber(layout?.targetHeight, boxHeight));
     const offsetX = finiteNumber(layout?.offsetX, 0);
     const offsetY = finiteNumber(layout?.offsetY, 0);
-    const totalHeight = finiteNumber(layout?.height, fontSize);
+    const boxWidth = Math.max(1, finiteNumber(layout?.boxWidth, target.clientWidth || 1));
+    const boxHeight = Math.max(1, finiteNumber(layout?.boxHeight, target.clientHeight || 1));
     const lineBoxHeight = finiteNumber(layout?.lineBoxHeight, fontSize);
-    const lineAdvance = lineBoxHeight + finiteNumber(layout?.lineGap, 0);
-    const textCenterX = offsetX + (boxWidth / 2);
-    const firstLineCenter = offsetY + ((boxHeight - totalHeight) / 2) + (lineBoxHeight / 2);
-    const svg = documentRef.createElementNS(svgNamespace, "svg");
-    svg.classList.add("text-fit-svg");
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "100%");
-    svg.setAttribute("viewBox", `0 0 ${targetWidth} ${targetHeight}`);
-    svg.setAttribute("preserveAspectRatio", "none");
-    svg.setAttribute("focusable", "false");
-    svg.setAttribute("aria-hidden", "true");
+    const lineGap = finiteNumber(layout?.lineGap, 0);
+    const lineHeightPx = Math.max(1, lineBoxHeight);
 
-    const textElement = documentRef.createElementNS(svgNamespace, "text");
-    textElement.classList.add("text-fit-svg-text");
-    textElement.setAttribute("x", `${textCenterX}`);
-    textElement.setAttribute("text-anchor", "middle");
-    textElement.setAttribute("dominant-baseline", "central");
-    textElement.setAttribute("alignment-baseline", "central");
-    textElement.setAttribute("fill", "currentColor");
-    textElement.setAttribute("font-size", `${fontSize}px`);
-    textElement.setAttribute("font-family", layout?.fontFamily || defaultOptions.fontFamily);
-    textElement.setAttribute("font-style", layout?.fontStyle || defaultOptions.fontStyle);
-    textElement.setAttribute("font-weight", String(layout?.fontWeight || defaultOptions.fontWeight));
-
-    lines.forEach((line, index) => {
-      const lineElement = documentRef.createElementNS(svgNamespace, "tspan");
-      lineElement.setAttribute("x", `${textCenterX}`);
-      lineElement.setAttribute("y", `${firstLineCenter + (lineAdvance * index)}`);
-      lineElement.setAttribute("dominant-baseline", "central");
-      lineElement.setAttribute("alignment-baseline", "central");
-      lineElement.textContent = line;
-      textElement.appendChild(lineElement);
+    const wrapper = documentRef.createElement("span");
+    wrapper.className = "text-fit-box";
+    wrapper.setAttribute("aria-hidden", "true");
+    Object.assign(wrapper.style, {
+      position: "absolute",
+      left: `${offsetX}px`,
+      top: `${offsetY}px`,
+      width: `${boxWidth}px`,
+      height: `${boxHeight}px`,
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: `${lineGap}px`,
+      overflow: "hidden",
+      pointerEvents: "none",
+      textAlign: "center",
+      boxSizing: "border-box",
+      fontFamily: layout?.fontFamily || defaultOptions.fontFamily,
+      fontStyle: layout?.fontStyle || defaultOptions.fontStyle,
+      fontWeight: String(layout?.fontWeight || defaultOptions.fontWeight),
+      fontSize: `${fontSize}px`,
+      lineHeight: `${lineHeightPx}px`,
+      color: "currentColor",
+      whiteSpace: "pre"
     });
-    svg.appendChild(textElement);
-    target.replaceChildren(svg);
+
+    lines.forEach((line) => {
+      const lineElement = documentRef.createElement("span");
+      lineElement.className = "text-fit-line";
+      Object.assign(lineElement.style, {
+        display: "block",
+        width: "100%",
+        height: `${lineHeightPx}px`,
+        lineHeight: `${lineHeightPx}px`,
+        overflow: "hidden",
+        textAlign: "center",
+        whiteSpace: "pre"
+      });
+      lineElement.textContent = line;
+      wrapper.appendChild(lineElement);
+    });
+
+    target.style.position = target.style.position || "relative";
+    target.replaceChildren(wrapper);
   }
 
   function finiteNumber(value, fallback) {

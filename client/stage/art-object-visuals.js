@@ -122,16 +122,7 @@
     if (global.PartyGameTextFit?.renderGameText) {
       global.PartyGameTextFit.renderGameText(textNode, {
         text: labelText,
-        element: {
-          width: textLayout?.targetWidth || textLayout?.boxWidth || textNode.clientWidth || 1,
-          height: textLayout?.targetHeight || textLayout?.boxHeight || textNode.clientHeight || 1,
-          fontSize: textLayout?.fontSize || 16,
-          autoFitText: false
-        },
-        fallbackSize: textLayout?.fontSize || 16,
-        options: {
-          autoFit: false
-        }
+        layout: textLayout
       });
     } else {
       textNode.textContent = labelText;

@@ -1249,20 +1249,25 @@
       min-height: 0;
     }
 
+    .text-fit-box,
     .text-fit-lines {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: var(--text-fit-line-gap, 0px);
-      width: 100%;
-      height: 100%;
       box-sizing: border-box;
       text-align: center;
-      line-height: var(--text-fit-line-height, 1.15);
-      transform: translateY(var(--text-fit-baseline-shift, 0px));
       white-space: pre;
       overflow: hidden;
+      pointer-events: none;
+    }
+
+    .text-fit-lines {
+      width: 100%;
+      height: 100%;
+      line-height: var(--text-fit-line-height, 1.15);
+      transform: translateY(var(--text-fit-baseline-shift, 0px));
     }
 
     .text-fit-line {
