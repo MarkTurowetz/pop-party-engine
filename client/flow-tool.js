@@ -845,6 +845,8 @@ function flowTargetActionName(actionId) {
 }
 
 function decisionVariableName(variable) {
+  const helper = window.PartyGameFlowDecision?.decisionVariableName;
+  if (helper) return helper(variable);
   if (variable === "activePlayerCount") return "Active Player Count";
   if (variable === "currentRound") return "Current Round";
   if (variable === "numSequentialGames") return "Sequential Games";
@@ -858,10 +860,14 @@ function decisionVariableName(variable) {
 }
 
 function makeDecisionBranchId(type = "branch") {
+  const helper = window.PartyGameFlowDecision?.makeDecisionBranchId;
+  if (helper) return helper(type);
   return `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 function ensureDecisionBranches(action, options = {}) {
+  const helper = window.PartyGameFlowDecision?.ensureDecisionBranches;
+  if (helper) return helper(action, options);
   if (!action) return [];
   const targetField = options.targetField || "targetActionId";
   const trueTargetField = options.trueTargetField || "trueTargetActionId";
@@ -904,10 +910,14 @@ function ensureDecisionBranches(action, options = {}) {
 }
 
 function decisionBranchById(action, branchId, options = {}) {
+  const helper = window.PartyGameFlowDecision?.decisionBranchById;
+  if (helper) return helper(action, branchId, options);
   return ensureDecisionBranches(action, options).find((branch) => branch.id === branchId);
 }
 
 function decisionBranchName(branch, index = 0) {
+  const helper = window.PartyGameFlowDecision?.decisionBranchName;
+  if (helper) return helper(branch, index);
   if (!branch) return "Branch";
   if (branch.type === "noMatch") return "No Match";
   if (branch.type === "code") return `Code ${index + 1}`;
@@ -915,6 +925,8 @@ function decisionBranchName(branch, index = 0) {
 }
 
 function decisionBranchWireLabel(branch, index = 0) {
+  const helper = window.PartyGameFlowDecision?.decisionBranchWireLabel;
+  if (helper) return helper(branch, index);
   if (!branch) return "";
   if (branch.type === "code") return branch.code || decisionBranchName(branch, index);
   if (branch.type === "hit") return String(branch.value || decisionBranchName(branch, index));

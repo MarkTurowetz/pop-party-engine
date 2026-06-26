@@ -441,6 +441,26 @@ The selector module also owns layout game-object target helpers now:
 These helpers take `stageLayouts` and `selectedFlowStateId` explicitly so they
 can be tested without reaching into the legacy Flow Tool globals.
 
+## Flow Tool Decision Helper Extraction
+
+Decision-branch model helpers now live in TypeScript:
+
+```txt
+client/tools/flow/flowDecision.ts
+client/tools/flow/flowDecisionAdapter.ts
+client/tools/flow/flowDecision.test.ts
+```
+
+The extracted helpers cover:
+
+- decision variable display labels.
+- decision branch id generation.
+- legacy branch normalization into hit/code/no-match rows.
+- branch lookup, display names, and wire labels.
+
+Vite Flow entries install `window.PartyGameFlowDecision` before loading the
+legacy scripts. The legacy functions keep inline fallbacks for classic routes.
+
 ## Flow Tool Action Factory Extraction
 
 Default Flow action creation has moved into a typed module:
