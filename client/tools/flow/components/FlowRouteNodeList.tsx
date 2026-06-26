@@ -1,6 +1,7 @@
 import type { FlowRouteNode } from "../../../types/game-data";
 
 export interface FlowRouteNodeListProps {
+  onSelectRouteNode?: (routeNodeId: string) => void;
   routeNodes: FlowRouteNode[];
   selectedRouteNodeId?: string;
 }
@@ -13,7 +14,7 @@ function routeNodeType(node: FlowRouteNode): string {
   return String(node.routeNodeType || "momentEntry");
 }
 
-export function FlowRouteNodeList({ routeNodes, selectedRouteNodeId = "" }: FlowRouteNodeListProps) {
+export function FlowRouteNodeList({ onSelectRouteNode, routeNodes, selectedRouteNodeId = "" }: FlowRouteNodeListProps) {
   return (
     <ol data-flow-react-component="route-node-list">
       {routeNodes.map((node, index) => {
@@ -25,7 +26,9 @@ export function FlowRouteNodeList({ routeNodes, selectedRouteNodeId = "" }: Flow
             data-route-node-type={routeNodeType(node)}
             key={id}
           >
-            {routeNodeLabel(node)}
+            <button type="button" onClick={() => onSelectRouteNode?.(id)}>
+              {routeNodeLabel(node)}
+            </button>
           </li>
         );
       })}

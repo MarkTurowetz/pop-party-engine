@@ -2,6 +2,7 @@ import type { FlowAction } from "../../../types/game-data";
 
 export interface FlowActionListProps {
   actions: FlowAction[];
+  onSelectAction?: (actionId: string) => void;
   selectedActionId?: string;
 }
 
@@ -9,7 +10,7 @@ function actionLabel(action: FlowAction): string {
   return action.name || action.id;
 }
 
-export function FlowActionList({ actions, selectedActionId = "" }: FlowActionListProps) {
+export function FlowActionList({ actions, onSelectAction, selectedActionId = "" }: FlowActionListProps) {
   return (
     <ol data-flow-react-component="action-list">
       {actions.map((action) => (
@@ -19,8 +20,10 @@ export function FlowActionList({ actions, selectedActionId = "" }: FlowActionLis
           data-action-type={action.type}
           key={action.id}
         >
-          <span>{actionLabel(action)}</span>
-          <span data-sub-action-count>{action.subActions?.length || 0}</span>
+          <button type="button" onClick={() => onSelectAction?.(action.id)}>
+            <span>{actionLabel(action)}</span>
+            <span data-sub-action-count>{action.subActions?.length || 0}</span>
+          </button>
         </li>
       ))}
     </ol>

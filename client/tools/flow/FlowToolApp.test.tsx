@@ -68,6 +68,8 @@ describe("FlowToolApp shell", () => {
     expect(renders).toHaveLength(1);
     shell?.update({ states: [], routeNodes: [] });
     expect(renders).toHaveLength(2);
+    shell?.setHandlers({ selectState: () => undefined });
+    expect(renders).toHaveLength(3);
     shell?.unmount();
   });
 });

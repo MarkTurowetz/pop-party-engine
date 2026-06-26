@@ -620,6 +620,9 @@ The React bridge also receives the legacy toolbar state through a hidden
 current list/node view mode.
 Appending `?reactFlowPreview=1` exposes the React bridge in the Flow screen for
 manual comparison while leaving the default production path on the legacy UI.
+The preview state/action/route-node lists now call back into legacy selection
+handlers, so preview clicks exercise the same selection lifecycle as the current
+visible Flow tool.
 
 ## Tool Context And Flow API Bridge
 

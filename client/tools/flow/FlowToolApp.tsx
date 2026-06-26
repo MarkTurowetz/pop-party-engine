@@ -5,6 +5,7 @@ import { FlowActionList } from "./components/FlowActionList";
 import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
 import { FlowStateList } from "./components/FlowStateList";
 import { FlowToolbar } from "./components/FlowToolbar";
+import type { FlowToolReactShellHandlers } from "./mountFlowToolApp";
 
 export interface FlowToolAppProps {
   canAddAction?: boolean;
@@ -13,6 +14,7 @@ export interface FlowToolAppProps {
   flowNodeDepth?: string;
   flowViewMode?: string;
   flow?: GameFlow | null;
+  handlers?: FlowToolReactShellHandlers;
   selectedActionId?: string;
   selectedRouteNodeId?: string;
   selectedStateId?: string;
@@ -27,6 +29,7 @@ export function FlowToolApp({
   flow = null,
   flowNodeDepth = "actions",
   flowViewMode = "list",
+  handlers = {},
   selectedActionId = "",
   selectedRouteNodeId = "",
   selectedStateId = "",
@@ -57,9 +60,21 @@ export function FlowToolApp({
         flowNodeDepth={flowNodeDepth}
         flowViewMode={flowViewMode}
       />
-      <FlowStateList selectedStateId={selectedState?.id || selectedStateId} states={flow?.states || []} />
-      <FlowActionList actions={selectedState?.actions || []} selectedActionId={selectedActionId} />
-      <FlowRouteNodeList routeNodes={flow?.routeNodes || []} selectedRouteNodeId={selectedRouteNodeId} />
+      <FlowStateList
+        onSelectState={handlers.selectState}
+        selectedStateId={selectedState?.id || selectedStateId}
+        states={flow?.states || []}
+      />
+      <FlowActionList
+        actions={selectedState?.actions || []}
+        onSelectAction={handlers.selectAction}
+        selectedActionId={selectedActionId}
+      />
+      <FlowRouteNodeList
+        onSelectRouteNode={handlers.selectRouteNode}
+        routeNodes={flow?.routeNodes || []}
+        selectedRouteNodeId={selectedRouteNodeId}
+      />
       <ActionInspector
         action={selectedActionRef?.action || null}
         isBranch={selectedActionRef?.isBranch || false}

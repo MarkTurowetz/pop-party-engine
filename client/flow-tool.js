@@ -1382,6 +1382,22 @@ function renderFlowActions() {
   }
 }
 
+function installFlowReactShellHandlers() {
+  window.PartyGameFlowReactShell?.setHandlers?.({
+    selectAction: (actionId) => {
+      selectFlowAction(actionId);
+      renderFlowTool();
+    },
+    selectRouteNode: (routeNodeId) => {
+      selectFlowRouteNode(routeNodeId);
+      renderFlowTool();
+    },
+    selectState: (stateId) => {
+      selectFlowMomentFromList(stateId, { metaKey: false, ctrlKey: false, shiftKey: false });
+    }
+  });
+}
+
 function setFlowViewMode(mode) {
   flowViewMode = mode === "node" ? "node" : "list";
   setLocalValue("partyTemplate.flowViewMode", flowViewMode);
@@ -2176,6 +2192,7 @@ async function setupFlowTool() {
   flowScreen.classList.remove("hidden");
   if (flowToolInitialized) return;
   flowToolInitialized = true;
+  installFlowReactShellHandlers();
   addStateButton.addEventListener("click", addFlowState);
   addActionButton.addEventListener("click", addFlowAction);
   deleteFlowItemButton.addEventListener("click", deleteFlowItem);

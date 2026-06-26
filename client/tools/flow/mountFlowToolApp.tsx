@@ -4,8 +4,15 @@ import { FlowToolApp } from "./FlowToolApp";
 
 export interface FlowToolReactShell {
   root: Root;
+  setHandlers: (handlers: FlowToolReactShellHandlers) => void;
   update: (flow?: GameFlow | null, selection?: FlowToolReactShellSelection) => void;
   unmount: () => void;
+}
+
+export interface FlowToolReactShellHandlers {
+  selectAction?: (actionId: string) => void;
+  selectRouteNode?: (routeNodeId: string) => void;
+  selectState?: (stateId: string) => void;
 }
 
 export interface FlowToolReactShellSelection {
@@ -42,7 +49,12 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
   (targetDocument.querySelector?.("#flowScreen") || targetDocument.body).appendChild(host);
   const root = (options.createRoot || createRoot)(host);
   const surface = options.surface || "flow";
+  let handlers: FlowToolReactShellHandlers = {};
+  let lastFlow: GameFlow | null = options.flow || null;
+  let lastSelection: FlowToolReactShellSelection = {};
   const update = (flow: GameFlow | null = null, selection: FlowToolReactShellSelection = {}) => {
+    lastFlow = flow;
+    lastSelection = selection;
     root.render(
       <FlowToolApp
         canAddAction={selection.canAddAction || false}
@@ -51,6 +63,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
         flowNodeDepth={selection.flowNodeDepth || "actions"}
         flowViewMode={selection.flowViewMode || "list"}
         flow={flow}
+        handlers={handlers}
         selectedActionId={selection.selectedActionId || ""}
         selectedRouteNodeId={selection.selectedRouteNodeId || ""}
         selectedStateId={selection.selectedStateId || ""}
@@ -61,6 +74,10 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
   };
   const shell = {
     root: root as Root,
+    setHandlers: (nextHandlers: FlowToolReactShellHandlers) => {
+      handlers = { ...handlers, ...nextHandlers };
+      update(lastFlow, lastSelection);
+    },
     update,
     unmount: () => {
       root.unmount();
