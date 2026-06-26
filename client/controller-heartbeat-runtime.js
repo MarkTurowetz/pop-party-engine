@@ -16,7 +16,7 @@
     const writeText = typeof setText === "function"
       ? setText
       : (target, value) => {
-        if (target) target.textContent = String(value ?? "");
+        window.PartyGameControllerText?.setText(target, value);
       };
 
     let timer = null;

@@ -19,7 +19,7 @@
     const writeText = typeof setText === "function"
       ? setText
       : (target, value) => {
-        if (target) target.textContent = String(value ?? "");
+        window.PartyGameControllerText?.setText(target, value);
       };
     const writeButtonText = typeof setButtonText === "function"
       ? setButtonText

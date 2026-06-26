@@ -17,7 +17,7 @@
     const writeButtonText = typeof setButtonText === "function"
       ? setButtonText
       : (target, value) => {
-        if (target) target.textContent = String(value ?? "");
+        window.PartyGameControllerText?.setButtonText(target, value);
       };
 
     function showJoinError(error) {
