@@ -86,6 +86,13 @@
     }
 
     function createMomentEntryNode(selectedStateId = "") {
+      const helper = window.PartyGameFlowRouteGraph?.createMomentEntryNode;
+      if (helper) {
+        return helper(gameFlow(), selectedStateId, {
+          defaultNodePosition: context.defaultNodePosition,
+          flowState: context.flowState
+        });
+      }
       const nodes = routeNodes();
       const nextNumber = nodes.length + 1;
       const targetStateId = context.flowState?.(selectedStateId)?.id || gameFlow().states?.[0]?.id || "";
@@ -99,6 +106,12 @@
     }
 
     function createRouteActionNode(point = null) {
+      const helper = window.PartyGameFlowRouteGraph?.createRouteActionNode;
+      if (helper) {
+        return helper(gameFlow(), point, {
+          defaultNodePosition: context.defaultNodePosition
+        });
+      }
       const nodes = routeNodes();
       const nextNumber = nodes.filter((node) => node.routeNodeType === "action").length + 1;
       return {
@@ -170,6 +183,15 @@
     }
 
     function clearTargetReferences(targetIds) {
+      const helper = window.PartyGameFlowRouteGraph?.clearFlowRouteTargetReferences;
+      if (helper) {
+        helper(gameFlow(), targetIds, {
+          ensureDecisionBranches: context.ensureDecisionBranches,
+          isRouteDecisionNode,
+          routeBranchTargetField: routeBranchTargetField()
+        });
+        return;
+      }
       const targetSet = new Set((Array.isArray(targetIds) ? targetIds : [targetIds]).filter(Boolean));
       if (!targetSet.size) return;
       for (const state of gameFlow().states || []) {

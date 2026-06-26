@@ -583,3 +583,25 @@ inline in the legacy Flow editor:
 History capture, form controls, rerendering, and publish behavior remain in the
 legacy Flow Tool. This keeps the current UI stable while giving the later React
 editor store explicit mutation commands to call.
+
+## Flow Tool Route Graph Model Extraction
+
+The route graph now has a typed model helper module:
+
+```txt
+client/tools/flow/flowRouteGraph.ts
+client/tools/flow/flowRouteGraphAdapter.ts
+client/tools/flow/flowRouteGraph.test.ts
+```
+
+The extracted helpers cover:
+
+- moment-entry node creation.
+- route-action node creation.
+- clearing Flow state, route node, decision-branch, and route-action target
+  references when a target is deleted.
+
+Vite Flow entries install `window.PartyGameFlowRouteGraph` before loading the
+legacy graph scripts. The legacy `moment-route-graph.js` still owns graph
+queries, target option labels, serialization, and rendering-facing behavior, but
+delegates the pure model mutations to the typed helper when available.
