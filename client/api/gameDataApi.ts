@@ -4,6 +4,7 @@ import { createFlowApi, type FlowApi } from "./flowApi";
 import { createApiClient, type ApiClient, type ApiClientOptions } from "./http";
 import { createHostAudioApi, type HostAudioApi } from "./hostAudioApi";
 import { createLayoutApi, type LayoutApi } from "./layoutApi";
+import { validateHealthResponse } from "./validators";
 import type { HealthResponse } from "../types/game-data";
 
 export interface GameDataApi {
@@ -20,7 +21,7 @@ export function createGameDataApi(options: ApiClientOptions = {}): GameDataApi {
   const client = createApiClient(options);
   return {
     client,
-    health: () => client.getJson<HealthResponse>("/api/health"),
+    health: async () => validateHealthResponse(await client.getJson<unknown>("/api/health")),
     flow: createFlowApi(client),
     layout: createLayoutApi(client),
     art: createArtApi(client),

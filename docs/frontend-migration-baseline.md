@@ -262,3 +262,38 @@ tools/flow/layout/art/constants/host-audio -> createToolAppContext
 
 This is intentionally additive. Legacy browser scripts still use the current
 global helpers while future migrated entries can use typed API/context imports.
+
+## Phase 4 JSON Boundary Validation Start
+
+The typed client API layer now validates core response shapes before returning
+data to migrated entries:
+
+```txt
+client/api/validators.ts
+client/api/validators.test.ts
+```
+
+Validated read boundaries:
+
+```txt
+/api/health
+/api/game-flow
+/api/stage-layouts
+/api/controller-layouts
+/api/art-assets
+/api/game-constants
+/api/host-audios
+```
+
+Vitest has been added as the unit-test runner, and `npm run check` now runs:
+
+```txt
+tsc --noEmit
+vitest run
+node checks/check-text-rendering.js
+node checks/smoke-routes.js
+```
+
+This is still dependency-light validation rather than a final schema system.
+The validators are intentionally structural and focused on catching malformed
+API boundaries before migrated tools consume them.

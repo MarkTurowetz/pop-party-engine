@@ -1,4 +1,5 @@
 import type { ApiClient } from "./http";
+import { validateGameFlowResponse } from "./validators";
 import type { GameFlow, GameFlowResponse, JsonObject } from "../types/game-data";
 
 export interface FlowApi {
@@ -9,8 +10,8 @@ export interface FlowApi {
 
 export function createFlowApi(client: ApiClient): FlowApi {
   return {
-    loadGameFlow: () => client.getJson<GameFlowResponse>("/api/game-flow"),
-    saveGameFlow: (flow) => client.postJson<GameFlowResponse>("/api/game-flow", { flow }),
+    loadGameFlow: async () => validateGameFlowResponse(await client.getJson<unknown>("/api/game-flow")),
+    saveGameFlow: async (flow) => validateGameFlowResponse(await client.postJson<unknown>("/api/game-flow", { flow })),
     saveToolDraft: (message) => client.postJson<JsonObject, JsonObject>("/api/tool-drafts", message)
   };
 }

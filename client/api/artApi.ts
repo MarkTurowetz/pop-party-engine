@@ -1,4 +1,5 @@
 import type { ApiClient } from "./http";
+import { validateArtAssetsResponse } from "./validators";
 import type { ArtAssetsResponse, ArtComposition, JsonObject } from "../types/game-data";
 
 export interface ArtApi {
@@ -9,7 +10,7 @@ export interface ArtApi {
 
 export function createArtApi(client: ApiClient): ArtApi {
   return {
-    loadArtAssets: () => client.getJson<ArtAssetsResponse>("/api/art-assets"),
+    loadArtAssets: async () => validateArtAssetsResponse(await client.getJson<unknown>("/api/art-assets")),
     saveArtComposition: (compositionId, composition) => (
       client.postJson<JsonObject>(`/api/art-compositions/${encodeURIComponent(compositionId)}`, { composition })
     ),
