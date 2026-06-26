@@ -4,6 +4,7 @@ import { createFlowPreviewModel } from "./flowPreviewModel";
 import { ActionInspector } from "./components/ActionInspector";
 import { FlowActionList } from "./components/FlowActionList";
 import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
+import { FlowRouteInspector } from "./components/FlowRouteInspector";
 import { FlowStateList } from "./components/FlowStateList";
 import { FlowToolbar } from "./components/FlowToolbar";
 import type { FlowToolReactShellHandlers } from "./mountFlowToolApp";
@@ -45,7 +46,12 @@ export function FlowToolApp({
   previewMode = "overlay",
   visible = false
 }: FlowToolAppProps) {
-  const model = createFlowPreviewModel(flow, { selectedActionId, selectedStateId });
+  const model = createFlowPreviewModel(flow, {
+    selectedActionId,
+    selectedRouteBranchId,
+    selectedRouteNodeId,
+    selectedStateId
+  });
 
   return (
     <section
@@ -106,14 +112,22 @@ export function FlowToolApp({
         selectedRouteBranchId={selectedRouteBranchId}
         selectedRouteNodeId={selectedRouteNodeId}
       />
-      <ActionInspector
-        action={model.actionRef?.action || null}
-        actionTypes={flowActionTypes}
-        isBranch={model.actionRef?.isBranch || false}
-        isSubAction={model.actionRef?.isSubAction || false}
-        parentAction={model.actionRef?.parentAction || null}
-        state={model.actionRef?.state || model.selectedState}
-      />
+      {model.selectedRouteNode ? (
+        <FlowRouteInspector
+          actionTypes={flowActionTypes}
+          branch={model.selectedRouteBranch}
+          node={model.selectedRouteNode}
+        />
+      ) : (
+        <ActionInspector
+          action={model.actionRef?.action || null}
+          actionTypes={flowActionTypes}
+          isBranch={model.actionRef?.isBranch || false}
+          isSubAction={model.actionRef?.isSubAction || false}
+          parentAction={model.actionRef?.parentAction || null}
+          state={model.actionRef?.state || model.selectedState}
+        />
+      )}
     </section>
   );
 }

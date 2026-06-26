@@ -39,4 +39,17 @@ describe("Flow preview model", () => {
     expect(model.actionRef?.parentAction?.id).toBe("parent");
     expect(model.actionRef?.isBranch).toBe(true);
   });
+
+  it("finds selected route node and branch refs", () => {
+    const model = createFlowPreviewModel({
+      ...flowFixture(),
+      routeNodes: [{ id: "route", branches: [{ id: "branch-a", type: "hit", value: "A" }] }]
+    }, {
+      selectedRouteBranchId: "branch-a",
+      selectedRouteNodeId: "route"
+    });
+
+    expect(model.selectedRouteNode?.id).toBe("route");
+    expect(model.selectedRouteBranch?.id).toBe("branch-a");
+  });
 });
