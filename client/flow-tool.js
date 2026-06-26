@@ -1566,10 +1566,12 @@ function moveFlowState(draggedStateId, targetStateId, placeAfter = false) {
   const toIndex = gameFlow.states.findIndex((state) => state.id === targetStateId);
   if (fromIndex < 0 || toIndex < 0) return;
   pushFlowHistory();
-  const [state] = gameFlow.states.splice(fromIndex, 1);
-  const targetIndexAfterRemoval = gameFlow.states.findIndex((item) => item.id === targetStateId);
-  const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
-  gameFlow.states.splice(adjustedIndex, 0, state);
+  window.PartyGameFlowMutations?.moveFlowState?.(gameFlow, draggedStateId, targetStateId, placeAfter) || (() => {
+    const [state] = gameFlow.states.splice(fromIndex, 1);
+    const targetIndexAfterRemoval = gameFlow.states.findIndex((item) => item.id === targetStateId);
+    const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+    gameFlow.states.splice(adjustedIndex, 0, state);
+  })();
   selectedFlowStateId = draggedStateId;
   clearFlowActionSelection();
   expandFlowStateInList(draggedStateId);
@@ -1583,10 +1585,12 @@ function moveFlowAction(stateId, draggedActionId, targetActionId, placeAfter = f
   const toIndex = state.actions.findIndex((action) => action.id === targetActionId);
   if (fromIndex < 0 || toIndex < 0) return;
   pushFlowHistory();
-  const [action] = state.actions.splice(fromIndex, 1);
-  const targetIndexAfterRemoval = state.actions.findIndex((item) => item.id === targetActionId);
-  const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
-  state.actions.splice(adjustedIndex, 0, action);
+  window.PartyGameFlowMutations?.moveFlowActionInState?.(state, draggedActionId, targetActionId, placeAfter) || (() => {
+    const [action] = state.actions.splice(fromIndex, 1);
+    const targetIndexAfterRemoval = state.actions.findIndex((item) => item.id === targetActionId);
+    const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+    state.actions.splice(adjustedIndex, 0, action);
+  })();
   selectedFlowStateId = stateId;
   setFlowActionSelection([draggedActionId]);
   renderFlowTool();
@@ -1600,10 +1604,12 @@ function moveFlowSubAction(stateId, parentActionId, draggedActionId, targetActio
   const toIndex = subActions.findIndex((action) => action.id === targetActionId);
   if (fromIndex < 0 || toIndex < 0) return;
   pushFlowHistory();
-  const [action] = subActions.splice(fromIndex, 1);
-  const targetIndexAfterRemoval = subActions.findIndex((item) => item.id === targetActionId);
-  const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
-  subActions.splice(adjustedIndex, 0, action);
+  window.PartyGameFlowMutations?.moveFlowSubAction?.(parentAction, draggedActionId, targetActionId, placeAfter) || (() => {
+    const [action] = subActions.splice(fromIndex, 1);
+    const targetIndexAfterRemoval = subActions.findIndex((item) => item.id === targetActionId);
+    const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+    subActions.splice(adjustedIndex, 0, action);
+  })();
   selectedFlowStateId = stateId;
   setFlowActionSelection([draggedActionId]);
   renderFlowTool();

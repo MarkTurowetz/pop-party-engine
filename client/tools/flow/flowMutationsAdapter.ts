@@ -5,6 +5,9 @@ import {
   createDefaultFlowState,
   flattenedFlowActionIds,
   flowStateIdsForDelete,
+  moveFlowActionInState,
+  moveFlowState,
+  moveFlowSubAction,
   removeFlowRouteBranch,
   removeFlowRouteNode,
   removeFlowStates,
@@ -15,6 +18,7 @@ import {
   type AddFlowSubActionResult,
   type FlowActionBranchOptions,
   type FlowStateIdsForDeleteOptions,
+  type MoveFlowItemResult,
   type RemoveFlowRouteBranchOptions,
   type RemoveFlowRouteBranchResult,
   type RemoveFlowRouteNodeResult,
@@ -30,6 +34,9 @@ export interface PartyGameFlowMutations {
   createDefaultFlowState: (nextNumber: number) => FlowState;
   flattenedFlowActionIds: (actions?: FlowAction[], options?: FlowActionBranchOptions, output?: string[]) => string[];
   flowStateIdsForDelete: (flow: Partial<GameFlow> | null | undefined, options?: FlowStateIdsForDeleteOptions) => string[];
+  moveFlowActionInState: (state: Partial<FlowState> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter?: boolean) => MoveFlowItemResult<FlowAction>;
+  moveFlowState: (flow: Partial<GameFlow>, draggedStateId: string, targetStateId: string, placeAfter?: boolean) => MoveFlowItemResult<FlowState>;
+  moveFlowSubAction: (parentAction: Partial<FlowAction> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter?: boolean) => MoveFlowItemResult<FlowAction>;
   removeFlowRouteBranch: (node: FlowRouteNode | null | undefined, branchId: string, options?: RemoveFlowRouteBranchOptions) => RemoveFlowRouteBranchResult;
   removeFlowRouteNode: (flow: Partial<GameFlow>, nodeId: string, nodes?: FlowRouteNode[]) => RemoveFlowRouteNodeResult;
   removeFlowStates: (flow: Partial<GameFlow>, stateIds: Iterable<string>) => RemoveFlowStatesResult;
@@ -51,6 +58,9 @@ export function installFlowMutationsAdapter(target: Window = window): PartyGameF
     createDefaultFlowState,
     flattenedFlowActionIds,
     flowStateIdsForDelete,
+    moveFlowActionInState,
+    moveFlowState,
+    moveFlowSubAction,
     removeFlowRouteBranch,
     removeFlowRouteNode,
     removeFlowStates,

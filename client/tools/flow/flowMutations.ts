@@ -22,6 +22,13 @@ export interface RemoveSelectedFlowActionsResult {
   removedIds: string[];
 }
 
+export interface MoveFlowItemResult<TItem> {
+  moved: boolean;
+  item: TItem | null;
+  fromIndex: number;
+  toIndex: number;
+}
+
 export interface FlowActionBranchOptions {
   ensureDecisionBranches?: (action: FlowAction) => FlowAction[];
 }
@@ -60,6 +67,28 @@ export interface RemoveFlowRouteNodeResult {
 type FlowRouteNodeWithBranches = FlowRouteNode & {
   branches?: FlowAction[];
 };
+
+function moveItemById<TItem extends { id?: string }>(
+  items: TItem[] = [],
+  draggedId: string,
+  targetId: string,
+  placeAfter = false
+): MoveFlowItemResult<TItem> {
+  if (!draggedId || !targetId || draggedId === targetId) {
+    return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
+  }
+  const fromIndex = items.findIndex((item) => item.id === draggedId);
+  const originalTargetIndex = items.findIndex((item) => item.id === targetId);
+  if (fromIndex < 0 || originalTargetIndex < 0) {
+    return { moved: false, item: null, fromIndex, toIndex: originalTargetIndex };
+  }
+
+  const [item] = items.splice(fromIndex, 1);
+  const targetIndexAfterRemoval = items.findIndex((entry) => entry.id === targetId);
+  const toIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+  items.splice(toIndex, 0, item);
+  return { moved: true, item, fromIndex, toIndex };
+}
 
 export function createDefaultFlowState(nextNumber: number): FlowState {
   return {
@@ -136,6 +165,21 @@ export function removeSelectedFlowActionsFromList(actions: FlowAction[] = [], se
     return true;
   });
   return { actions: filteredActions, removedIds };
+}
+
+export function moveFlowState(flow: Partial<GameFlow>, draggedStateId: string, targetStateId: string, placeAfter = false): MoveFlowItemResult<FlowState> {
+  if (!Array.isArray(flow.states)) flow.states = [];
+  return moveItemById(flow.states, draggedStateId, targetStateId, placeAfter);
+}
+
+export function moveFlowActionInState(state: Partial<FlowState> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter = false): MoveFlowItemResult<FlowAction> {
+  if (!state || !Array.isArray(state.actions)) return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
+  return moveItemById(state.actions, draggedActionId, targetActionId, placeAfter);
+}
+
+export function moveFlowSubAction(parentAction: Partial<FlowAction> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter = false): MoveFlowItemResult<FlowAction> {
+  if (!parentAction || !Array.isArray(parentAction.subActions)) return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
+  return moveItemById(parentAction.subActions, draggedActionId, targetActionId, placeAfter);
 }
 
 export function flowStateIdsForDelete(flow: Partial<GameFlow> | null | undefined, options: FlowStateIdsForDeleteOptions = {}): string[] {

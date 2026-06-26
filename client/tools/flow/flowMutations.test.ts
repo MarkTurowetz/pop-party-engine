@@ -6,6 +6,9 @@ import {
   createDefaultFlowState,
   flattenedFlowActionIds,
   flowStateIdsForDelete,
+  moveFlowActionInState,
+  moveFlowState,
+  moveFlowSubAction,
   removeFlowRouteBranch,
   removeFlowRouteNode,
   removeFlowStates,
@@ -129,6 +132,77 @@ describe("Flow mutations", () => {
     expect(result.actions.map((action) => action.id)).toEqual(["keep-parent", "decision"]);
     expect(result.actions[0]?.subActions?.map((action) => action.id)).toEqual(["sub-b"]);
     expect(result.actions[1]?.branches?.map((action) => action.id)).toEqual(["branch-a"]);
+  });
+
+  it("moves flow states before and after target states", () => {
+    const flow: GameFlow = {
+      states: [
+        { id: "lobby", actions: [] },
+        { id: "one", actions: [] },
+        { id: "two", actions: [] },
+        { id: "three", actions: [] }
+      ]
+    };
+
+    expect(moveFlowState(flow, "three", "one")).toMatchObject({
+      moved: true,
+      fromIndex: 3,
+      toIndex: 1
+    });
+    expect(flow.states.map((state) => state.id)).toEqual(["lobby", "three", "one", "two"]);
+
+    expect(moveFlowState(flow, "three", "two", true)).toMatchObject({
+      moved: true,
+      fromIndex: 1,
+      toIndex: 3
+    });
+    expect(flow.states.map((state) => state.id)).toEqual(["lobby", "one", "two", "three"]);
+  });
+
+  it("moves top-level actions and leaves invalid moves unchanged", () => {
+    const state = {
+      id: "intro",
+      actions: [
+        { id: "a", type: "presentText" },
+        { id: "b", type: "presentText" },
+        { id: "c", type: "presentText" }
+      ]
+    };
+
+    expect(moveFlowActionInState(state, "a", "c", true)).toMatchObject({
+      moved: true,
+      fromIndex: 0,
+      toIndex: 2
+    });
+    expect(state.actions.map((action) => action.id)).toEqual(["b", "c", "a"]);
+
+    expect(moveFlowActionInState(state, "missing", "b")).toEqual({
+      moved: false,
+      item: null,
+      fromIndex: -1,
+      toIndex: 0
+    });
+    expect(state.actions.map((action) => action.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("moves sub-actions within a parent action", () => {
+    const parentAction: FlowAction = {
+      id: "parent",
+      type: "presentText",
+      subActions: [
+        { id: "sub-a", type: "setPlayersShown" },
+        { id: "sub-b", type: "setPlayersShown" },
+        { id: "sub-c", type: "setPlayersShown" }
+      ]
+    };
+
+    expect(moveFlowSubAction(parentAction, "sub-c", "sub-a")).toMatchObject({
+      moved: true,
+      fromIndex: 2,
+      toIndex: 0
+    });
+    expect(parentAction.subActions?.map((action) => action.id)).toEqual(["sub-c", "sub-a", "sub-b"]);
+    expect(moveFlowSubAction(parentAction, "sub-a", "sub-a").moved).toBe(false);
   });
 
   it("resolves selected flow state ids for delete with legacy protected-state rules", () => {

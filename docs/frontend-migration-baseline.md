@@ -556,3 +556,17 @@ The Flow API wrapper also has separate validation for the smaller save response
 returned by `POST /api/game-flow`, so migrated code validates the server's
 actual read and save contracts instead of assuming both endpoints return the
 same payload shape.
+
+## Flow Tool Reorder Mutation Extraction
+
+The mutation module now owns the pure drag/drop reorder operations for Flow
+lists:
+
+- move Flow states before or after a target state.
+- move top-level actions within a state.
+- move sub-actions within their parent action.
+
+The legacy Flow Tool still owns drag event parsing, history snapshots, selection
+updates, collapsed-state behavior, and rerendering. Vite mode delegates the
+splice/reorder work through `window.PartyGameFlowMutations`; classic routes keep
+inline fallbacks.
