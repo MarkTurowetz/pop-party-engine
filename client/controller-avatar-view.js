@@ -24,6 +24,21 @@
       : (target, value) => {
         if (target) target.textContent = String(value ?? "");
       };
+    function writeTextBox(target, value, spec = {}) {
+      if (!target) return;
+      if (typeof window.PartyGameTextFit?.renderTextBox === "function") {
+        window.PartyGameTextFit.renderTextBox(target, value, {
+          width: spec.width || 90,
+          height: spec.height || 18,
+          fontSize: spec.fontSize || 11,
+          fontColor: spec.fontColor || "#17131f",
+          autoFitText: spec.autoFitText !== false,
+          applySize: spec.applySize !== false
+        });
+        return;
+      }
+      writeText(target, value);
+    }
     let pendingShape = "";
     let pickerOpen = false;
 
@@ -59,7 +74,7 @@
           <span class="avatar-choice-icon">${avatarArt(composite.species)}</span>
           <span class="avatar-choice-label"></span>
         `;
-        button.querySelector(".avatar-choice-label").textContent = avatarLabel(composite.species);
+        writeTextBox(button.querySelector(".avatar-choice-label"), avatarLabel(composite.species));
         button.addEventListener("click", (event) => {
           event.stopPropagation();
           pendingShape = composite.species;

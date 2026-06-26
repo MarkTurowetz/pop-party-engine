@@ -6,6 +6,7 @@
     applyLayoutForPhase,
     elements,
     hideViews,
+    setButtonText,
     setText,
     showView
   }) {
@@ -14,6 +15,9 @@
       : (target, value) => {
         if (target) target.textContent = String(value ?? "");
       };
+    const writeButtonText = typeof setButtonText === "function"
+      ? setButtonText
+      : writeText;
 
     let pendingKey = "";
 
@@ -32,9 +36,13 @@
 
     function setButtonPending(config, isPending) {
       elements.button.disabled = isPending;
-      elements.button.textContent = isPending
+      writeButtonText(elements.button, isPending
         ? config.pendingLabel || "Working"
-        : config.buttonLabel || "Next";
+        : config.buttonLabel || "Next", {
+        width: 260,
+        height: 64,
+        fontSize: 24
+      });
     }
 
     function bindButton(config) {
@@ -72,7 +80,11 @@
         if (config.enabled === true && typeof config.run === "function") bindButton(config);
       } else {
         elements.button.disabled = true;
-        elements.button.textContent = config.buttonLabel || "Next";
+        writeButtonText(elements.button, config.buttonLabel || "Next", {
+          width: 260,
+          height: 64,
+          fontSize: 24
+        });
       }
       return true;
     }

@@ -5,6 +5,7 @@
     applyLayoutForPhase,
     elements,
     hideViews,
+    setButtonText,
     setText,
     setAvatar,
     showView
@@ -14,6 +15,9 @@
       : (target, value) => {
         if (target) target.textContent = String(value ?? "");
       };
+    const writeButtonText = typeof setButtonText === "function"
+      ? setButtonText
+      : writeText;
 
     function renderMissingPlayer() {
       writeText(elements.meta, "Reconnecting to lobby");
@@ -42,7 +46,11 @@
       writeText(elements.meta, me.isVip ? "VIP Player" : "Waiting for the VIP");
       elements.startButton.classList.toggle("hidden", !me.isVip);
       elements.startButton.classList.toggle("danger-button", phase === "starting");
-      elements.startButton.textContent = phase === "starting" ? "Cancel" : "Start Game";
+      writeButtonText(elements.startButton, phase === "starting" ? "Cancel" : "Start Game", {
+        width: 260,
+        height: 64,
+        fontSize: 24
+      });
       elements.startButton.dataset.optionId = phase === "starting" ? "lobby.cancelStart" : "lobby.startGame";
       elements.startButton.disabled = !me.isVip;
 

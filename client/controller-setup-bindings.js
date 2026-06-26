@@ -8,16 +8,31 @@
     joinController,
     normalizeStageCode,
     removeSessionValue,
+    setButtonText,
     setLocalValue,
     setDismissedInvalidKey,
     shouldAutoJoin,
     updateJoinButton
   }) {
+    const writeButtonText = typeof setButtonText === "function"
+      ? setButtonText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     function showJoinError(error) {
       elements.joinButton.disabled = false;
-      elements.joinButton.textContent = error.message;
+      writeButtonText(elements.joinButton, error.message, {
+        width: 260,
+        height: 64,
+        fontSize: 22
+      });
       window.setTimeout(() => {
-        elements.joinButton.textContent = "Join";
+        writeButtonText(elements.joinButton, "Join", {
+          width: 260,
+          height: 64,
+          fontSize: 24
+        });
         updateJoinButton();
       }, 1800);
     }
@@ -50,7 +65,11 @@
       });
 
       if (shouldAutoJoin() && normalizeStageCode(elements.stageCodeInput.value) && elements.playerNameInput.value.trim()) {
-        elements.joinButton.textContent = "Joining";
+        writeButtonText(elements.joinButton, "Joining", {
+          width: 260,
+          height: 64,
+          fontSize: 24
+        });
         joinController(normalizeStageCode(elements.stageCodeInput.value), elements.playerNameInput.value.trim()).catch(showJoinError);
       }
     }

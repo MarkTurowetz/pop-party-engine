@@ -9,6 +9,35 @@ function setControllerText(target, value) {
   target.textContent = String(value ?? "");
 }
 
+function setControllerButtonText(target, value, spec = {}) {
+  if (!target) return;
+  const text = String(value ?? "");
+  const rect = target.getBoundingClientRect?.() || {};
+  const textSpec = {
+    width: Number(spec.width || rect.width || 240),
+    height: Number(spec.height || rect.height || 58),
+    fontSize: Number(spec.fontSize || 24),
+    fontColor: spec.fontColor || "currentColor",
+    autoFitText: spec.autoFitText !== false,
+    applySize: false
+  };
+  if (typeof window.PartyGameTextFit?.renderTextBox === "function") {
+    window.PartyGameTextFit.renderTextBox(target, text, textSpec, spec.options || {});
+    return;
+  }
+  target.textContent = text;
+}
+
+function initializeControllerButtonText() {
+  setControllerButtonText(joinButton, "Join", { width: 260, height: 64, fontSize: 24 });
+  setControllerButtonText(startGameButton, "Start Game", { width: 260, height: 64, fontSize: 24 });
+  setControllerButtonText(introPresentButton, "Present HI THERE", { width: 300, height: 64, fontSize: 24 });
+  setControllerButtonText(controllerGlobalActionButton, "Next", { width: 260, height: 64, fontSize: 24 });
+  setControllerButtonText(controllerMicAccessButton, "Yes", { width: 260, height: 64, fontSize: 24 });
+  setControllerButtonText(controllerTextSubmitButton, "Submit", { width: 260, height: 64, fontSize: 24 });
+  setControllerButtonText(controllerVoiceButton, "Hold To Record", { width: 300, height: 64, fontSize: 24 });
+}
+
 function getControllerViewState() {
   return controllerModules.get("viewState", () => window.createControllerViewState({
       choice: controllerChoiceState,
@@ -39,6 +68,7 @@ function getControllerAvatarView() {
       getControllerState: () => controllerState,
       playerAvatarArt,
       renderState: renderControllerState,
+      setButtonText: setControllerButtonText,
       setControllerPlayer: (player) => {
         controllerState.player = player;
       },
@@ -60,6 +90,7 @@ function getControllerVoiceInput() {
       introState: controllerIntroState,
       previewText: previewControllerText,
       renderGlobalMessage: renderControllerGlobalMessage,
+      setButtonText: setControllerButtonText,
       setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId),
       status: controllerVoiceStatus,
@@ -80,6 +111,7 @@ function getControllerMicrophoneAccessView() {
       hideViews: hideControllerViews,
       renderGlobalMessage: renderControllerGlobalMessage,
       setText: setControllerText,
+      setButtonText: setControllerButtonText,
       showView: (viewId) => getControllerViewState().show(viewId),
       waiting: {
         message: controllerIntroMessage,
@@ -99,6 +131,7 @@ function getControllerChoiceInputView() {
         state: controllerChoiceState
       },
       hideViews: hideControllerViews,
+      setButtonText: setControllerButtonText,
       setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId),
       submitChoice: submitControllerChoice
@@ -115,6 +148,7 @@ function getControllerGlobalActionView() {
         state: controllerGlobalActionState
       },
       hideViews: hideControllerViews,
+      setButtonText: setControllerButtonText,
       setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId)
     }));
@@ -361,6 +395,7 @@ function setupController() {
   stageCodeInput.value = getStageCodeFromUrl() || normalizeStageCode(getSessionValue("partyTemplateStageCode") || getLocalValue("partyTemplateStageCode"));
   playerNameInput.value = getPlayerNameFromUrl() || getSessionValue("partyTemplatePlayerName") || getLocalValue("partyTemplatePlayerName") || "";
   updateJoinButton();
+  initializeControllerButtonText();
   applyControllerLayoutForPhase("join");
 
   const setupBindings = window.createControllerSetupBindings({
@@ -378,6 +413,7 @@ function setupController() {
     joinController,
     normalizeStageCode,
     removeSessionValue,
+    setButtonText: setControllerButtonText,
     setLocalValue,
     setDismissedInvalidKey: (value) => {
       dismissedTextInvalidKey = value;
@@ -406,6 +442,7 @@ function setupController() {
     openAvatarPicker,
     origin,
     renderState: renderControllerState,
+    setButtonText: setControllerButtonText,
     setMetaText: (value) => {
       setControllerText(controllerMeta, value);
     }

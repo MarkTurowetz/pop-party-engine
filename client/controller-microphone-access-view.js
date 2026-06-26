@@ -7,6 +7,7 @@
     grantAccess,
     hideViews,
     renderGlobalMessage,
+    setButtonText,
     setText,
     showView,
     waiting
@@ -16,6 +17,9 @@
       : (target, value) => {
         if (target) target.textContent = String(value ?? "");
       };
+    const writeButtonText = typeof setButtonText === "function"
+      ? setButtonText
+      : writeText;
 
     const pendingAutoGrantActionIds = new Set();
     const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
@@ -137,7 +141,11 @@
       applyLayoutForPhase(lobby.phase || "lobby");
       showView("microphoneAccess");
       writeText(elements.prompt, input.prompt || "Give microphone access to the game");
-      elements.button.textContent = input.buttonLabel || "Yes";
+      writeButtonText(elements.button, input.buttonLabel || "Yes", {
+        width: 260,
+        height: 64,
+        fontSize: 24
+      });
       elements.button.disabled = false;
       writeText(elements.status, "Chrome will ask for microphone permission");
       autoGrantIfReady(input, alreadyGranted);

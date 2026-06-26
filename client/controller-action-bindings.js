@@ -11,8 +11,15 @@
     openAvatarPicker,
     origin,
     renderState,
+    setButtonText,
     setMetaText
   }) {
+    const writeButtonText = typeof setButtonText === "function"
+      ? setButtonText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     function bindStartButton() {
       elements.startButton.addEventListener("click", async () => {
         const state = getControllerState();
@@ -47,9 +54,17 @@
           const result = await getSubmitApi().presentIntro({ startToken: state.startToken });
           if (result.lobby) renderState(result.lobby);
         } catch (error) {
-          elements.introPresentButton.textContent = error.message;
+          writeButtonText(elements.introPresentButton, error.message, {
+            width: 300,
+            height: 64,
+            fontSize: 22
+          });
           window.setTimeout(() => {
-            elements.introPresentButton.textContent = "Present HI THERE";
+            writeButtonText(elements.introPresentButton, "Present HI THERE", {
+              width: 300,
+              height: 64,
+              fontSize: 24
+            });
           }, 1800);
         } finally {
           elements.introPresentButton.disabled = false;

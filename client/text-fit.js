@@ -72,8 +72,10 @@
       autoFitText: spec.autoFitText !== false
     };
     if (target.dataset) target.dataset.textFitSource = textValue;
-    target.style.width = `${width}px`;
-    target.style.height = `${height}px`;
+    if (spec.applySize !== false) {
+      target.style.width = `${width}px`;
+      target.style.height = `${height}px`;
+    }
     if (spec.fontColor) target.style.color = spec.fontColor;
     return renderAutoTextElement(target, element, textValue, element.fontSize, options);
   }

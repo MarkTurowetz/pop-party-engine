@@ -6,6 +6,7 @@
     bindPress,
     elements,
     hideViews,
+    setButtonText,
     setText,
     showView,
     submitChoice
@@ -15,6 +16,9 @@
       : (target, value) => {
         if (target) target.textContent = String(value ?? "");
       };
+    const writeButtonText = typeof setButtonText === "function"
+      ? setButtonText
+      : writeText;
 
     function render(lobby, me) {
       const input = me.input || lobby.input || null;
@@ -41,7 +45,11 @@
         button.dataset.controllerOption = "";
         button.dataset.optionId = `choice.${option.index}`;
         button.classList.toggle("is-selected", Number(option.index) === selectedIndex);
-        button.textContent = option.label || option.text || `Option ${Number(option.index) + 1}`;
+        writeButtonText(button, option.label || option.text || `Option ${Number(option.index) + 1}`, {
+          width: 320,
+          height: 72,
+          fontSize: 24
+        });
         button.disabled = isDone;
         button.addEventListener("click", () => submitChoice(input.actionId, Number(option.index), option.cardId || ""));
         bindPress(button);

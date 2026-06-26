@@ -10,6 +10,7 @@
     introState,
     previewText,
     renderGlobalMessage,
+    setButtonText,
     setText,
     showView,
     status,
@@ -20,18 +21,29 @@
       : (target, value) => {
         if (target) target.textContent = String(value ?? "");
       };
+    const writeButtonText = typeof setButtonText === "function"
+      ? setButtonText
+      : writeText;
 
     let lifecycle = null;
     const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
 
     function setButtonState(isBusy) {
       if (!isBusy) {
-        button.textContent = "Hold To Record";
+        writeButtonText(button, "Hold To Record", {
+          width: 300,
+          height: 64,
+          fontSize: 24
+        });
         button.disabled = false;
         return;
       }
       button.disabled = true;
-      button.textContent = "Processing";
+      writeButtonText(button, "Processing", {
+        width: 300,
+        height: 64,
+        fontSize: 24
+      });
     }
 
     function getLifecycle() {
@@ -65,7 +77,11 @@
     }
 
     function resetUi() {
-      button.textContent = "Hold To Record";
+      writeButtonText(button, "Hold To Record", {
+        width: 300,
+        height: 64,
+        fontSize: 24
+      });
       button.disabled = false;
       writeText(status, "Hold to record");
     }
@@ -110,7 +126,11 @@
         return;
       }
       if (getLifecycle().begin(actionId)) {
-        button.textContent = "Release To Send";
+        writeButtonText(button, "Release To Send", {
+          width: 300,
+          height: 64,
+          fontSize: 24
+        });
         button.disabled = false;
       }
     }
@@ -118,7 +138,11 @@
     function finishRecording(actionId) {
       if (getLifecycle().release(actionId)) {
         button.disabled = true;
-        button.textContent = "Processing";
+        writeButtonText(button, "Processing", {
+          width: 300,
+          height: 64,
+          fontSize: 24
+        });
       }
     }
 
