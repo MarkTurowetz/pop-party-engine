@@ -599,6 +599,12 @@ Audio API wrappers. Save wrappers validate the smaller `POST` payloads returned
 by the server instead of requiring draft/read-only fields such as `savedLayouts`
 or `hasLocalDraft`.
 
+Art mutation wrappers now validate their server contracts too:
+
+- saving a composition returns `{ ok, composition }`.
+- deleting a composition returns `{ ok, compositions }`.
+- replacing an art asset returns `{ ok, asset }`.
+
 ## Flow Tool Reorder Mutation Extraction
 
 The mutation module now owns the pure drag/drop reorder operations for Flow

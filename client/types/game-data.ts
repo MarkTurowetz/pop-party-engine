@@ -189,6 +189,21 @@ export interface ArtAssetsResponse {
   compositions: ArtComposition[];
 }
 
+export interface ArtCompositionSaveResponse {
+  ok: true;
+  composition: ArtComposition;
+}
+
+export interface ArtCompositionDeleteResponse {
+  ok: true;
+  compositions: ArtComposition[];
+}
+
+export interface ArtAssetReplaceResponse {
+  ok: true;
+  asset: ArtAsset;
+}
+
 export interface HealthResponse {
   ok: true;
   rooms: number;

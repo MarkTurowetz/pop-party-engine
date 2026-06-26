@@ -1,5 +1,8 @@
 import type {
+  ArtAssetReplaceResponse,
   ArtAssetsResponse,
+  ArtCompositionDeleteResponse,
+  ArtCompositionSaveResponse,
   GameConstantsResponse,
   GameConstantsSaveResponse,
   GameFlowResponse,
@@ -217,4 +220,27 @@ export function validateArtAssetsResponse(value: unknown, endpoint = "/api/art-a
     assertArtComposition(composition, endpoint, `compositions[${index}]`);
   });
   return value as ArtAssetsResponse;
+}
+
+export function validateArtCompositionSaveResponse(value: unknown, endpoint = "/api/art-compositions/:id"): ArtCompositionSaveResponse {
+  const response = assertRecord(value, endpoint, "response");
+  assertOk(response, endpoint);
+  assertArtComposition(response.composition, endpoint, "composition");
+  return value as ArtCompositionSaveResponse;
+}
+
+export function validateArtCompositionDeleteResponse(value: unknown, endpoint = "/api/art-compositions/:id"): ArtCompositionDeleteResponse {
+  const response = assertRecord(value, endpoint, "response");
+  assertOk(response, endpoint);
+  assertArray(response.compositions, endpoint, "compositions").forEach((composition, index) => {
+    assertArtComposition(composition, endpoint, `compositions[${index}]`);
+  });
+  return value as ArtCompositionDeleteResponse;
+}
+
+export function validateArtAssetReplaceResponse(value: unknown, endpoint = "/api/art-assets/:id"): ArtAssetReplaceResponse {
+  const response = assertRecord(value, endpoint, "response");
+  assertOk(response, endpoint);
+  assertArtAsset(response.asset, endpoint, "asset");
+  return value as ArtAssetReplaceResponse;
 }

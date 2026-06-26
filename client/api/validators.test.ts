@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { createGameDataApi } from "./gameDataApi";
 import {
   ApiValidationError,
+  validateArtAssetReplaceResponse,
+  validateArtCompositionDeleteResponse,
+  validateArtCompositionSaveResponse,
   validateGameConstantsSaveResponse,
   validateGameFlowResponse,
   validateGameFlowSaveResponse,
@@ -10,6 +13,9 @@ import {
   validateLayoutSaveResponse
 } from "./validators";
 import type {
+  ArtAssetReplaceResponse,
+  ArtCompositionDeleteResponse,
+  ArtCompositionSaveResponse,
   GameConstantsSaveResponse,
   GameFlowResponse,
   GameFlowSaveResponse,
@@ -120,6 +126,47 @@ function hostAudiosSaveResponse(overrides: Partial<HostAudiosSaveResponse> = {})
   };
 }
 
+function artComposition() {
+  return {
+    id: "badge",
+    name: "Badge",
+    description: "A badge",
+    surface: "stage",
+    canvas: { width: 560, height: 230 },
+    components: []
+  };
+}
+
+function artCompositionSaveResponse(overrides: Partial<ArtCompositionSaveResponse> = {}): ArtCompositionSaveResponse {
+  return {
+    ok: true,
+    composition: artComposition(),
+    ...overrides
+  };
+}
+
+function artCompositionDeleteResponse(overrides: Partial<ArtCompositionDeleteResponse> = {}): ArtCompositionDeleteResponse {
+  return {
+    ok: true,
+    compositions: [artComposition()],
+    ...overrides
+  };
+}
+
+function artAssetReplaceResponse(overrides: Partial<ArtAssetReplaceResponse> = {}): ArtAssetReplaceResponse {
+  return {
+    ok: true,
+    asset: {
+      id: "logo",
+      name: "Logo",
+      currentUrl: "/art/custom/logo.png",
+      defaultUrl: "/art/default/logo.png",
+      hasCustom: true
+    },
+    ...overrides
+  };
+}
+
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
@@ -149,6 +196,12 @@ describe("API validators", () => {
     expect(validateLayoutSaveResponse<StageLayoutCollection>(layoutsSaveResponse(), "/api/stage-layouts").layouts.canvas.width).toBe(1920);
     expect(validateGameConstantsSaveResponse(constantsSaveResponse()).constants.playerColors).toEqual([]);
     expect(validateHostAudiosSaveResponse(hostAudiosSaveResponse()).hostAudios.hostAudios).toEqual([]);
+  });
+
+  it("accepts art mutation responses", () => {
+    expect(validateArtCompositionSaveResponse(artCompositionSaveResponse()).composition.id).toBe("badge");
+    expect(validateArtCompositionDeleteResponse(artCompositionDeleteResponse()).compositions[0].id).toBe("badge");
+    expect(validateArtAssetReplaceResponse(artAssetReplaceResponse()).asset.id).toBe("logo");
   });
 
   it("rejects layout responses with malformed canvas dimensions", () => {
@@ -212,5 +265,19 @@ describe("Game data API", () => {
     await expect(api.layout.saveStageLayouts(layoutsSaveResponse().layouts)).resolves.toMatchObject({ ok: true, layouts: { states: [{ id: "lobby" }] } });
     await expect(api.constants.saveGameConstants({ playerColors: [] })).resolves.toMatchObject({ ok: true, constants: { playerColors: [] } });
     await expect(api.hostAudio.saveHostAudios({ hostAudios: [] })).resolves.toMatchObject({ ok: true, hostAudios: { hostAudios: [] } });
+  });
+
+  it("validates art mutation payloads for migrated APIs", async () => {
+    const fetchImpl = vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === "/api/art-compositions/badge" && init?.method === "DELETE") return jsonResponse(artCompositionDeleteResponse());
+      if (path === "/api/art-compositions/badge") return jsonResponse(artCompositionSaveResponse());
+      if (path === "/api/art-assets/logo") return jsonResponse(artAssetReplaceResponse());
+      return jsonResponse({});
+    });
+    const api = createGameDataApi({ fetchImpl: fetchImpl as unknown as typeof fetch });
+
+    await expect(api.art.saveArtComposition("badge", artComposition())).resolves.toMatchObject({ ok: true, composition: { id: "badge" } });
+    await expect(api.art.deleteArtComposition("badge")).resolves.toMatchObject({ ok: true, compositions: [{ id: "badge" }] });
+    await expect(api.art.replaceArtAsset("logo", { dataUrl: "data:image/png;base64,AAAA" })).resolves.toMatchObject({ ok: true, asset: { id: "logo" } });
   });
 });
