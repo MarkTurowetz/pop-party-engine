@@ -523,3 +523,18 @@ mode:
 Vite adapters when they are present, while classic routes keep inline fallbacks.
 The history snapshot helper uses the same compatible save shape as the Flow save
 serializer, including route-node serialization through the legacy graph helper.
+
+## Flow Tool Delete Mutation Extraction
+
+The mutation module now owns the pure model pieces behind Flow deletes:
+
+- protected-state delete filtering.
+- state removal with next-selection calculation.
+- layout state pruning for deleted Flow states.
+- route branch removal with `noMatch` branch protection.
+- route-node removal from the current moment graph list.
+
+The legacy Flow Tool still owns history timing, UI selection, graph target
+cleanup, rendering, and layout-tool refreshes. Vite mode delegates the data
+mutations through `window.PartyGameFlowMutations`; classic routes keep inline
+fallbacks for the same behavior.

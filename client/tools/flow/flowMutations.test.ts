@@ -5,6 +5,11 @@ import {
   addFlowState,
   createDefaultFlowState,
   flattenedFlowActionIds,
+  flowStateIdsForDelete,
+  removeFlowRouteBranch,
+  removeFlowRouteNode,
+  removeFlowStates,
+  removeLayoutState,
   removeSelectedFlowActionsFromList
 } from "./flowMutations";
 import { installFlowMutationsAdapter } from "./flowMutationsAdapter";
@@ -124,5 +129,97 @@ describe("Flow mutations", () => {
     expect(result.actions.map((action) => action.id)).toEqual(["keep-parent", "decision"]);
     expect(result.actions[0]?.subActions?.map((action) => action.id)).toEqual(["sub-b"]);
     expect(result.actions[1]?.branches?.map((action) => action.id)).toEqual(["branch-a"]);
+  });
+
+  it("resolves selected flow state ids for delete with legacy protected-state rules", () => {
+    const flow: GameFlow = {
+      states: [
+        { id: "lobby", actions: [] },
+        { id: "intro", actions: [] },
+        { id: "round-one", actions: [] },
+        { id: "round-two", actions: [] }
+      ]
+    };
+
+    expect(flowStateIdsForDelete(flow, {
+      flowNodeDepth: "moments",
+      selectedFlowActionIds: ["round-one", "missing"],
+      selectedFlowStateId: "intro"
+    })).toEqual(["round-one"]);
+    expect(flowStateIdsForDelete(flow, {
+      flowNodeDepth: "actions",
+      selectedFlowActionIds: ["round-one"],
+      selectedFlowStateId: "round-two"
+    })).toEqual(["round-two"]);
+  });
+
+  it("removes flow states and returns the next legacy selection id", () => {
+    const flow: GameFlow = {
+      states: [
+        { id: "lobby", actions: [] },
+        { id: "round-one", actions: [] },
+        { id: "round-two", actions: [] },
+        { id: "round-three", actions: [] }
+      ]
+    };
+
+    const result = removeFlowStates(flow, ["round-two"]);
+
+    expect(result).toEqual({ removedIds: ["round-two"], firstDeletedIndex: 2, nextStateId: "round-three" });
+    expect(flow.states.map((state) => state.id)).toEqual(["lobby", "round-one", "round-three"]);
+  });
+
+  it("removes layout states without changing unrelated layout data", () => {
+    const layouts = {
+      canvas: { width: 1920, height: 1080 },
+      global: { id: "global", elements: [] },
+      states: [
+        { id: "round-one", elements: [] },
+        { id: "round-two", elements: [] }
+      ]
+    };
+
+    expect(removeLayoutState(layouts, "round-one")).toBe(true);
+    expect(removeLayoutState(layouts, "missing")).toBe(false);
+    expect(layouts.states.map((state) => state.id)).toEqual(["round-two"]);
+  });
+
+  it("removes route branches and blocks no-match branches", () => {
+    const routeNode = {
+      id: "route-a",
+      branches: [
+        { id: "hit", type: "branch" },
+        { id: "no-match", type: "noMatch" }
+      ]
+    };
+
+    expect(removeFlowRouteBranch(routeNode, "no-match")).toEqual({
+      removed: false,
+      blocked: true,
+      branchMissing: false,
+      branchId: "no-match"
+    });
+    expect(removeFlowRouteBranch(routeNode, "hit")).toEqual({
+      removed: true,
+      blocked: false,
+      branchMissing: false,
+      branchId: "hit"
+    });
+    expect(routeNode.branches.map((branch) => branch.id)).toEqual(["no-match"]);
+    expect(removeFlowRouteBranch(routeNode, "missing").branchMissing).toBe(true);
+  });
+
+  it("removes route nodes from the provided route graph list", () => {
+    const flow: GameFlow = {
+      states: [],
+      routeNodes: [
+        { id: "route-a" },
+        { id: "route-b" }
+      ]
+    };
+
+    expect(removeFlowRouteNode(flow, "route-a")).toEqual({ removed: true, nodeId: "route-a" });
+    expect(flow.routeNodes?.map((node) => node.id)).toEqual(["route-b"]);
+    expect(removeFlowRouteNode(flow, "missing")).toEqual({ removed: false, nodeId: "missing" });
   });
 });

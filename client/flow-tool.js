@@ -1860,6 +1860,8 @@ function serializeFlowActionForSave(action) {
 }
 
 function removeLayoutState(layouts, stateId) {
+  const helper = window.PartyGameFlowMutations?.removeLayoutState;
+  if (helper) return helper(layouts, stateId);
   if (!layouts?.states?.length) return false;
   const beforeCount = layouts.states.length;
   layouts.states = layouts.states.filter((state) => state.id !== stateId);
@@ -1944,6 +1946,15 @@ function deleteSelectedFlowActions() {
 }
 
 function flowStateIdsForDelete() {
+  const helper = window.PartyGameFlowMutations?.flowStateIdsForDelete;
+  if (helper) {
+    return helper(gameFlow, {
+      flowNodeDepth,
+      selectedFlowActionId,
+      selectedFlowActionIds,
+      selectedFlowStateId
+    });
+  }
   const ids = new Set();
   if (flowNodeDepth === "moments" && !selectedFlowActionId) {
     for (const id of selectedFlowActionIds) ids.add(id);
@@ -1955,16 +1966,23 @@ function flowStateIdsForDelete() {
 function deleteSelectedFlowStates() {
   const stateIds = flowStateIdsForDelete();
   if (!stateIds.length) return false;
-  const stateIdSet = new Set(stateIds);
-  const firstDeletedIndex = gameFlow.states.findIndex((state) => stateIdSet.has(state.id));
   pushFlowHistory();
-  gameFlow.states = gameFlow.states.filter((state) => !stateIdSet.has(state.id));
-  clearMomentGraphTargetReferences(stateIds);
-  for (const stateId of stateIds) removeDeletedFlowStateFromLayouts(stateId);
-  selectedFlowStateId = gameFlow.states[Math.min(firstDeletedIndex, gameFlow.states.length - 1)]?.id
-    || gameFlow.states[firstDeletedIndex - 1]?.id
-    || gameFlow.states[0]?.id
-    || "";
+  const result = window.PartyGameFlowMutations?.removeFlowStates?.(gameFlow, stateIds) || (() => {
+    const stateIdSet = new Set(stateIds);
+    const firstDeletedIndex = gameFlow.states.findIndex((state) => stateIdSet.has(state.id));
+    gameFlow.states = gameFlow.states.filter((state) => !stateIdSet.has(state.id));
+    return {
+      removedIds: stateIds,
+      firstDeletedIndex,
+      nextStateId: gameFlow.states[Math.min(firstDeletedIndex, gameFlow.states.length - 1)]?.id
+        || gameFlow.states[firstDeletedIndex - 1]?.id
+        || gameFlow.states[0]?.id
+        || ""
+    };
+  })();
+  clearMomentGraphTargetReferences(result.removedIds);
+  for (const stateId of result.removedIds) removeDeletedFlowStateFromLayouts(stateId);
+  selectedFlowStateId = result.nextStateId;
   clearFlowActionSelection();
   expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();
@@ -1990,15 +2008,23 @@ function deleteSelectedFlowRouteNode() {
     }
     if (branch.type === "noMatch") return true;
     pushFlowHistory();
-    routeNode.branches = ensureDecisionBranches(routeNode, { targetField }).filter((item) => item.id !== selectedFlowRouteBranchId);
-    ensureDecisionBranches(routeNode, { targetField });
+    const result = window.PartyGameFlowMutations?.removeFlowRouteBranch?.(routeNode, selectedFlowRouteBranchId, {
+      ensureDecisionBranches,
+      targetField
+    });
+    if (!result) {
+      routeNode.branches = ensureDecisionBranches(routeNode, { targetField }).filter((item) => item.id !== selectedFlowRouteBranchId);
+      ensureDecisionBranches(routeNode, { targetField });
+    }
     selectedFlowRouteBranchId = "";
     renderFlowTool();
     return true;
   }
   pushFlowHistory();
   clearMomentGraphTargetReferences(selectedFlowRouteNodeId);
-  gameFlow.routeNodes = nodes.filter((node) => node.id !== selectedFlowRouteNodeId);
+  window.PartyGameFlowMutations?.removeFlowRouteNode?.(gameFlow, selectedFlowRouteNodeId, nodes) || (() => {
+    gameFlow.routeNodes = nodes.filter((node) => node.id !== selectedFlowRouteNodeId);
+  })();
   clearFlowRouteNodeSelection();
   renderFlowTool();
   return true;

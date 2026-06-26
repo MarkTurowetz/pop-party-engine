@@ -1,4 +1,4 @@
-import type { FlowAction, FlowState, GameFlow } from "../../types/game-data";
+import type { FlowAction, FlowRouteNode, FlowState, GameFlow, StageLayoutCollection } from "../../types/game-data";
 import { createDefaultFlowAction } from "./flowActions";
 
 export interface AddFlowStateResult {
@@ -25,6 +25,41 @@ export interface RemoveSelectedFlowActionsResult {
 export interface FlowActionBranchOptions {
   ensureDecisionBranches?: (action: FlowAction) => FlowAction[];
 }
+
+export interface FlowStateIdsForDeleteOptions {
+  flowNodeDepth?: string;
+  selectedFlowActionId?: string;
+  selectedFlowActionIds?: Iterable<string>;
+  selectedFlowStateId?: string;
+  protectedStateIds?: Iterable<string>;
+}
+
+export interface RemoveFlowStatesResult {
+  removedIds: string[];
+  firstDeletedIndex: number;
+  nextStateId: string;
+}
+
+export interface RemoveFlowRouteBranchOptions {
+  ensureDecisionBranches?: (node: FlowRouteNode, options?: { targetField?: string }) => FlowAction[];
+  targetField?: string;
+}
+
+export interface RemoveFlowRouteBranchResult {
+  removed: boolean;
+  blocked: boolean;
+  branchMissing: boolean;
+  branchId: string;
+}
+
+export interface RemoveFlowRouteNodeResult {
+  removed: boolean;
+  nodeId: string;
+}
+
+type FlowRouteNodeWithBranches = FlowRouteNode & {
+  branches?: FlowAction[];
+};
 
 export function createDefaultFlowState(nextNumber: number): FlowState {
   return {
@@ -101,4 +136,64 @@ export function removeSelectedFlowActionsFromList(actions: FlowAction[] = [], se
     return true;
   });
   return { actions: filteredActions, removedIds };
+}
+
+export function flowStateIdsForDelete(flow: Partial<GameFlow> | null | undefined, options: FlowStateIdsForDeleteOptions = {}): string[] {
+  const ids = new Set<string>();
+  if (options.flowNodeDepth === "moments" && !options.selectedFlowActionId) {
+    for (const id of options.selectedFlowActionIds || []) ids.add(id);
+  }
+  if (options.selectedFlowStateId) ids.add(options.selectedFlowStateId);
+
+  const protectedIds = new Set(options.protectedStateIds || ["lobby", "intro"]);
+  const existingIds = new Set((flow?.states || []).map((state) => state.id));
+  return [...ids].filter((id) => id && !protectedIds.has(id) && existingIds.has(id));
+}
+
+export function removeFlowStates(flow: Partial<GameFlow>, stateIds: Iterable<string>): RemoveFlowStatesResult {
+  if (!Array.isArray(flow.states)) flow.states = [];
+  const stateIdSet = new Set(stateIds);
+  const firstDeletedIndex = flow.states.findIndex((state) => stateIdSet.has(state.id));
+  const removedIds = flow.states.filter((state) => stateIdSet.has(state.id)).map((state) => state.id);
+  if (!removedIds.length) {
+    return { removedIds: [], firstDeletedIndex: -1, nextStateId: "" };
+  }
+
+  flow.states = flow.states.filter((state) => !stateIdSet.has(state.id));
+  const nextStateId = flow.states[Math.min(firstDeletedIndex, flow.states.length - 1)]?.id
+    || flow.states[firstDeletedIndex - 1]?.id
+    || flow.states[0]?.id
+    || "";
+  return { removedIds, firstDeletedIndex, nextStateId };
+}
+
+export function removeLayoutState(layouts: Partial<StageLayoutCollection> | null | undefined, stateId: string): boolean {
+  if (!layouts?.states?.length) return false;
+  const beforeCount = layouts.states.length;
+  layouts.states = layouts.states.filter((state) => state.id !== stateId);
+  return layouts.states.length !== beforeCount;
+}
+
+export function removeFlowRouteBranch(
+  node: FlowRouteNode | null | undefined,
+  branchId: string,
+  options: RemoveFlowRouteBranchOptions = {}
+): RemoveFlowRouteBranchResult {
+  if (!node || !branchId) return { removed: false, blocked: false, branchMissing: true, branchId };
+  const routeNode = node as FlowRouteNodeWithBranches;
+  const branches = options.ensureDecisionBranches?.(routeNode, { targetField: options.targetField }) || routeNode.branches || [];
+  const branch = branches.find((item) => item.id === branchId);
+  if (!branch) return { removed: false, blocked: false, branchMissing: true, branchId };
+  if (branch.type === "noMatch") return { removed: false, blocked: true, branchMissing: false, branchId };
+
+  routeNode.branches = branches.filter((item) => item.id !== branchId);
+  options.ensureDecisionBranches?.(routeNode, { targetField: options.targetField });
+  return { removed: true, blocked: false, branchMissing: false, branchId };
+}
+
+export function removeFlowRouteNode(flow: Partial<GameFlow>, nodeId: string, nodes: FlowRouteNode[] = flow.routeNodes || []): RemoveFlowRouteNodeResult {
+  const node = nodes.find((item) => item.id === nodeId) || null;
+  if (!node) return { removed: false, nodeId };
+  flow.routeNodes = nodes.filter((item) => item.id !== nodeId);
+  return { removed: true, nodeId };
 }

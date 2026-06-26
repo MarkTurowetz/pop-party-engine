@@ -4,14 +4,24 @@ import {
   addFlowState,
   createDefaultFlowState,
   flattenedFlowActionIds,
+  flowStateIdsForDelete,
+  removeFlowRouteBranch,
+  removeFlowRouteNode,
+  removeFlowStates,
+  removeLayoutState,
   removeSelectedFlowActionsFromList,
   type AddFlowActionResult,
   type AddFlowStateResult,
   type AddFlowSubActionResult,
   type FlowActionBranchOptions,
+  type FlowStateIdsForDeleteOptions,
+  type RemoveFlowRouteBranchOptions,
+  type RemoveFlowRouteBranchResult,
+  type RemoveFlowRouteNodeResult,
+  type RemoveFlowStatesResult,
   type RemoveSelectedFlowActionsResult
 } from "./flowMutations";
-import type { FlowAction, FlowState, GameFlow } from "../../types/game-data";
+import type { FlowAction, FlowRouteNode, FlowState, GameFlow, StageLayoutCollection } from "../../types/game-data";
 
 export interface PartyGameFlowMutations {
   addDefaultFlowAction: (state: FlowState, selectedPrimaryActionId?: string) => AddFlowActionResult;
@@ -19,6 +29,11 @@ export interface PartyGameFlowMutations {
   addFlowState: (flow: Partial<GameFlow>, state?: FlowState) => AddFlowStateResult;
   createDefaultFlowState: (nextNumber: number) => FlowState;
   flattenedFlowActionIds: (actions?: FlowAction[], options?: FlowActionBranchOptions, output?: string[]) => string[];
+  flowStateIdsForDelete: (flow: Partial<GameFlow> | null | undefined, options?: FlowStateIdsForDeleteOptions) => string[];
+  removeFlowRouteBranch: (node: FlowRouteNode | null | undefined, branchId: string, options?: RemoveFlowRouteBranchOptions) => RemoveFlowRouteBranchResult;
+  removeFlowRouteNode: (flow: Partial<GameFlow>, nodeId: string, nodes?: FlowRouteNode[]) => RemoveFlowRouteNodeResult;
+  removeFlowStates: (flow: Partial<GameFlow>, stateIds: Iterable<string>) => RemoveFlowStatesResult;
+  removeLayoutState: (layouts: Partial<StageLayoutCollection> | null | undefined, stateId: string) => boolean;
   removeSelectedFlowActionsFromList: (actions: FlowAction[], selectedIds: Set<string>) => RemoveSelectedFlowActionsResult;
 }
 
@@ -35,6 +50,11 @@ export function installFlowMutationsAdapter(target: Window = window): PartyGameF
     addFlowState,
     createDefaultFlowState,
     flattenedFlowActionIds,
+    flowStateIdsForDelete,
+    removeFlowRouteBranch,
+    removeFlowRouteNode,
+    removeFlowStates,
+    removeLayoutState,
     removeSelectedFlowActionsFromList
   };
   target.PartyGameFlowMutations = adapter;
