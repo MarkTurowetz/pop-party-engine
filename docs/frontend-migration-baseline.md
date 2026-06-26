@@ -439,6 +439,11 @@ actions and sub-actions, including ID shape, timing mode, default text fields,
 and `subActions: []`. Vite Flow entries install `window.PartyGameFlowActions`
 before loading the legacy scripts; classic routes keep the inline fallback.
 
+The same action module now owns `ensureActionTiming`, including legacy timing
+normalization for standard actions, input actions, and sub-actions. `FlowTiming`
+accepts loose `seconds` values at the TypeScript boundary because the normalizer
+is responsible for coercing saved/browser data to non-negative numbers.
+
 ## Flow Tool Mutation Helper Extraction
 
 The first mutation-oriented Flow Tool slice now lives in TypeScript:

@@ -15,7 +15,7 @@ export interface ToolStorageStatus {
 
 export interface FlowTiming {
   mode?: string;
-  seconds?: number;
+  seconds?: number | string;
 }
 
 export interface FlowAction extends JsonObject {

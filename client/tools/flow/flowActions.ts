@@ -1,7 +1,12 @@
 import type { FlowAction } from "../../types/game-data";
+import type { FlowActionTypeMeta } from "./flowSelectors";
 
 export interface CreateDefaultFlowActionOptions {
   timestamp?: number;
+}
+
+export interface EnsureActionTimingOptions {
+  actionTypeMeta?: (type: string) => Pick<FlowActionTypeMeta, "category">;
 }
 
 export function createDefaultFlowAction(
@@ -22,4 +27,17 @@ export function createDefaultFlowAction(
     isShown: true,
     subActions: []
   };
+}
+
+export function ensureActionTiming(action: FlowAction, isSubAction = false, options: EnsureActionTimingOptions = {}) {
+  if (!action.timing) action.timing = { mode: "E+", seconds: 0 };
+  const isInputAction = options.actionTypeMeta?.(action.type)?.category === "input" && !isSubAction;
+  if (isSubAction) {
+    action.timing.mode = "S+";
+  } else {
+    action.timing.mode = action.timing.mode === "S+" && !isInputAction ? "S+" : "E+";
+  }
+  const seconds = Number(action.timing.seconds || 0);
+  action.timing.seconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+  return action.timing;
 }

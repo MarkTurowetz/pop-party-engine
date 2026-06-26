@@ -1669,6 +1669,8 @@ function flowInteger(label, value, onChange) {
 }
 
 function ensureActionTiming(action, isSubAction = false) {
+  const helper = window.PartyGameFlowActions?.ensureActionTiming;
+  if (helper) return helper(action, isSubAction, { actionTypeMeta });
   if (!action.timing) action.timing = { mode: "E+", seconds: 0 };
   const isInputAction = actionTypeMeta(action.type).category === "input" && !isSubAction;
   if (isSubAction) {

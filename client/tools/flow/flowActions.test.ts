@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createDefaultFlowAction } from "./flowActions";
+import { createDefaultFlowAction, ensureActionTiming } from "./flowActions";
 import { installFlowActionsAdapter } from "./flowActionsAdapter";
 
 describe("Flow actions", () => {
@@ -39,6 +39,18 @@ describe("Flow actions", () => {
 
     expect(target.PartyGameFlowActions).toBe(adapter);
     expect(adapter.createDefaultFlowAction("state", "Action", false, { timestamp: 1 }).id).toBe("state-action-1");
+    expect(adapter.ensureActionTiming({ id: "a", type: "presentText" })).toEqual({ mode: "E+", seconds: 0 });
     expect(setAttribute).toHaveBeenCalledWith("data-flow-actions-adapter", "module");
+  });
+
+  it("normalizes action timing with legacy input and sub-action rules", () => {
+    const standardAction = { id: "standard", type: "presentText", timing: { mode: "S+", seconds: "2" } };
+    const inputAction = { id: "input", type: "textInput", timing: { mode: "S+", seconds: -5 } };
+    const subAction = { id: "sub", type: "presentText", timing: { mode: "E+", seconds: "bad" } };
+    const actionTypeMeta = (type: string) => ({ category: type === "textInput" ? "input" : "standard" });
+
+    expect(ensureActionTiming(standardAction, false, { actionTypeMeta })).toEqual({ mode: "S+", seconds: 2 });
+    expect(ensureActionTiming(inputAction, false, { actionTypeMeta })).toEqual({ mode: "E+", seconds: 0 });
+    expect(ensureActionTiming(subAction, true, { actionTypeMeta })).toEqual({ mode: "S+", seconds: 0 });
   });
 });
