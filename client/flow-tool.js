@@ -1762,6 +1762,8 @@ function addFlowSubAction(actionRef) {
 }
 
 function createDefaultFlowAction(stateId, name, isSubAction) {
+  const factory = window.PartyGameFlowActions?.createDefaultFlowAction;
+  if (factory) return factory(stateId, name, isSubAction);
   return {
     id: `${stateId}-${isSubAction ? "sub-action" : "action"}-${Date.now().toString(36)}`,
     name,

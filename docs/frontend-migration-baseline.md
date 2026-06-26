@@ -423,3 +423,18 @@ Vite Flow entries install `window.PartyGameFlowSelectors` before loading the
 legacy scripts. The legacy functions still contain their original fallback
 logic, so classic routes continue to work without a build while Vite mode uses
 the typed selector module.
+
+## Flow Tool Action Factory Extraction
+
+Default Flow action creation has moved into a typed module:
+
+```txt
+client/tools/flow/flowActions.ts
+client/tools/flow/flowActionsAdapter.ts
+client/tools/flow/flowActions.test.ts
+```
+
+The extracted factory preserves the current legacy defaults for top-level
+actions and sub-actions, including ID shape, timing mode, default text fields,
+and `subActions: []`. Vite Flow entries install `window.PartyGameFlowActions`
+before loading the legacy scripts; classic routes keep the inline fallback.
