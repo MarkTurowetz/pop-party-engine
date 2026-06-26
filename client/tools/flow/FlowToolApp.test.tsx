@@ -12,6 +12,7 @@ describe("FlowToolApp shell", () => {
           states: [{ id: "intro", name: "Intro", actions: [] }],
           routeNodes: [{ id: "entry" }]
         }}
+        selectedStateId="intro"
       />
     );
 
@@ -19,6 +20,8 @@ describe("FlowToolApp shell", () => {
     expect(markup).toContain('data-state-count="1"');
     expect(markup).toContain('data-route-node-count="1"');
     expect(markup).toContain('data-surface="tools"');
+    expect(markup).toContain('data-flow-react-component="state-list"');
+    expect(markup).toContain('data-flow-react-component="action-list"');
     expect(markup).toContain("hidden");
   });
 

@@ -4,8 +4,13 @@ import { FlowToolApp } from "./FlowToolApp";
 
 export interface FlowToolReactShell {
   root: Root;
-  update: (flow?: GameFlow | null) => void;
+  update: (flow?: GameFlow | null, selection?: FlowToolReactShellSelection) => void;
   unmount: () => void;
+}
+
+export interface FlowToolReactShellSelection {
+  selectedActionId?: string;
+  selectedStateId?: string;
 }
 
 export interface MountFlowToolAppOptions {
@@ -29,8 +34,15 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
   targetDocument.body.appendChild(host);
   const root = (options.createRoot || createRoot)(host);
   const surface = options.surface || "flow";
-  const update = (flow: GameFlow | null = null) => {
-    root.render(<FlowToolApp flow={flow} surface={surface} />);
+  const update = (flow: GameFlow | null = null, selection: FlowToolReactShellSelection = {}) => {
+    root.render(
+      <FlowToolApp
+        flow={flow}
+        selectedActionId={selection.selectedActionId || ""}
+        selectedStateId={selection.selectedStateId || ""}
+        surface={surface}
+      />
+    );
   };
   const shell = {
     root: root as Root,

@@ -632,7 +632,10 @@ function pushFlowHistory() {
 
 function restoreFlowHistory(snapshot) {
   gameFlow = window.PartyGameFlowSerialization?.parseFlowHistorySnapshot?.(snapshot) || JSON.parse(snapshot);
-  window.PartyGameFlowReactShell?.update?.(gameFlow);
+  window.PartyGameFlowReactShell?.update?.(gameFlow, {
+    selectedActionId: selectedFlowActionId,
+    selectedStateId: selectedFlowStateId
+  });
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
   repairSelectedFlowRouteBranch();
   expandFlowStateInList(selectedFlowStateId);

@@ -603,6 +603,10 @@ Flow render and undo/redo restore paths push the current `gameFlow` into the
 hidden React shell, so future React panels can subscribe to live Flow data
 without owning the legacy render lifecycle yet.
 
+The hidden shell now renders framework-native `FlowStateList` and
+`FlowActionList` components from live Flow data and legacy selection ids. They
+remain hidden behind the bridge while the visible legacy sidebar stays in place.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
