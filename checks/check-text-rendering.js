@@ -90,4 +90,11 @@ if (Number(fixedSmall.fontSize) !== 12 || Number(fixedLarge.fontSize) !== 48) {
   process.exit(1);
 }
 
+const textFitSource = fs.readFileSync(path.join(repoRoot, "client/text-fit.js"), "utf8");
+if (!/createElementNS\(svgNamespace,\s*"svg"\)/.test(textFitSource) || !/dominant-baseline/.test(textFitSource)) {
+  console.error("Text rendering regression check failed:");
+  console.error("- shared text rendering must use SVG centered baselines, not HTML line-box baselines");
+  process.exit(1);
+}
+
 console.log("Text rendering regression check passed.");

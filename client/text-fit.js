@@ -332,52 +332,49 @@
     const lineBoxHeight = finiteNumber(layout?.lineBoxHeight, fontSize);
     const lineGap = finiteNumber(layout?.lineGap, 0);
     const lineHeightPx = Math.max(1, lineBoxHeight);
+    const contentHeight = (lineHeightPx * lines.length) + (lineGap * Math.max(0, lines.length - 1));
+    const firstLineCenterY = ((boxHeight - contentHeight) / 2) + (lineHeightPx / 2);
+    const fontFamily = layout?.fontFamily || defaultOptions.fontFamily;
+    const fontStyle = layout?.fontStyle || defaultOptions.fontStyle;
+    const fontWeight = String(layout?.fontWeight || defaultOptions.fontWeight);
 
-    const wrapper = documentRef.createElement("span");
-    wrapper.className = "text-fit-box";
-    wrapper.setAttribute("aria-hidden", "true");
-    Object.assign(wrapper.style, {
+    const svg = documentRef.createElementNS(svgNamespace, "svg");
+    svg.classList.add("text-fit-svg");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("viewBox", `0 0 ${boxWidth} ${boxHeight}`);
+    svg.setAttribute("width", String(boxWidth));
+    svg.setAttribute("height", String(boxHeight));
+    Object.assign(svg.style, {
       position: "absolute",
       left: `${offsetX}px`,
       top: `${offsetY}px`,
       width: `${boxWidth}px`,
       height: `${boxHeight}px`,
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      alignItems: "center",
-      gap: `${lineGap}px`,
+      display: "block",
       overflow: "hidden",
       pointerEvents: "none",
-      textAlign: "center",
-      boxSizing: "border-box",
-      fontFamily: layout?.fontFamily || defaultOptions.fontFamily,
-      fontStyle: layout?.fontStyle || defaultOptions.fontStyle,
-      fontWeight: String(layout?.fontWeight || defaultOptions.fontWeight),
-      fontSize: `${fontSize}px`,
-      lineHeight: `${lineHeightPx}px`,
-      color: "currentColor",
-      whiteSpace: "pre"
+      color: "currentColor"
     });
 
-    lines.forEach((line) => {
-      const lineElement = documentRef.createElement("span");
-      lineElement.className = "text-fit-line";
-      Object.assign(lineElement.style, {
-        display: "block",
-        width: "100%",
-        height: `${lineHeightPx}px`,
-        lineHeight: `${lineHeightPx}px`,
-        overflow: "hidden",
-        textAlign: "center",
-        whiteSpace: "pre"
-      });
-      lineElement.textContent = line;
-      wrapper.appendChild(lineElement);
+    lines.forEach((line, index) => {
+      const textElement = documentRef.createElementNS(svgNamespace, "text");
+      textElement.classList.add("text-fit-svg-text");
+      textElement.setAttribute("x", String(boxWidth / 2));
+      textElement.setAttribute("y", String(firstLineCenterY + (index * (lineHeightPx + lineGap))));
+      textElement.setAttribute("text-anchor", "middle");
+      textElement.setAttribute("dominant-baseline", "central");
+      textElement.setAttribute("alignment-baseline", "middle");
+      textElement.setAttribute("font-family", fontFamily);
+      textElement.setAttribute("font-style", fontStyle);
+      textElement.setAttribute("font-weight", fontWeight);
+      textElement.setAttribute("font-size", String(fontSize));
+      textElement.setAttribute("fill", "currentColor");
+      textElement.textContent = line;
+      svg.appendChild(textElement);
     });
 
     target.style.position = target.style.position || "relative";
-    target.replaceChildren(wrapper);
+    target.replaceChildren(svg);
   }
 
   function finiteNumber(value, fallback) {
