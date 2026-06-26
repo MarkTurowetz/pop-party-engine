@@ -10,4 +10,6 @@ export const flowToolContext = createToolAppContext({ surface: "flow" });
 installToolContextAdapter(flowToolContext);
 installFlowAdapters();
 
-void bootLegacySurface("flow");
+void bootLegacySurface("flow", {
+  excludeScripts: ["/client/flow/action-options.js"]
+});

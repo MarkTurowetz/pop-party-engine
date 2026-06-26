@@ -576,6 +576,11 @@ browser adapter list. This keeps `/flow` and `/tools` on the same adapter set,
 including selection, validation, route graph, serialization, selectors,
 mutations, decisions, and action defaults.
 
+Flow action option lists now have a typed source in
+`client/tools/flow/flowActionOptions.ts`. Vite Flow routes install that adapter
+and skip the matching legacy `/client/flow/action-options.js` script, while
+classic routes continue to load the original browser file.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:

@@ -2,6 +2,10 @@ import { legacyScriptsForRole, type LegacyScriptRole } from "./script-manifest";
 
 const appShellScript = "/client/app/legacy/app-shell.js";
 
+export interface BootLegacySurfaceOptions {
+  excludeScripts?: string[];
+}
+
 function loadClassicScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[data-legacy-src="${src}"]`);
@@ -25,8 +29,10 @@ function loadClassicScript(src: string): Promise<void> {
   });
 }
 
-export async function bootLegacySurface(role: LegacyScriptRole): Promise<void> {
+export async function bootLegacySurface(role: LegacyScriptRole, options: BootLegacySurfaceOptions = {}): Promise<void> {
+  const excludedScripts = new Set(options.excludeScripts || []);
   for (const script of legacyScriptsForRole(role)) {
+    if (excludedScripts.has(script)) continue;
     await loadClassicScript(script);
   }
   await loadClassicScript(appShellScript);
