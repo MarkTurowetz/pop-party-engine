@@ -609,6 +609,11 @@ The legacy Art Tool now uses `window.PartyGameToolContext.api.art` for asset
 load, composition save/delete, and asset replacement when the Vite context is
 available. Classic routes keep the raw `getJson`/`postJson`/`fetch` fallbacks.
 
+Layout, Constants, and Host Audio legacy tools now use the typed API context for
+their load/save paths in Vite mode as well. The raw HTTP helpers remain as
+classic-route fallbacks, and the shared layout runtime only probes the optional
+context when it exists.
+
 ## Flow Tool Reorder Mutation Extraction
 
 The mutation module now owns the pure drag/drop reorder operations for Flow

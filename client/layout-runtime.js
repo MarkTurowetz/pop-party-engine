@@ -62,7 +62,7 @@ async function loadStageLayouts({ forceServer = false } = {}) {
     return stageLayouts;
   }
   if (!canUseServer) return stageLayouts;
-  const result = await getJson("/api/stage-layouts");
+  const result = await (window.PartyGameToolContext?.api?.layout?.loadStageLayouts?.() || getJson("/api/stage-layouts"));
   stageLayouts = result.layouts || stageLayouts;
   return stageLayouts;
 }
@@ -73,7 +73,7 @@ async function loadControllerLayouts({ forceServer = false } = {}) {
     return controllerLayouts;
   }
   if (!canUseServer) return controllerLayouts;
-  const result = await getJson("/api/controller-layouts");
+  const result = await (window.PartyGameToolContext?.api?.layout?.loadControllerLayouts?.() || getJson("/api/controller-layouts"));
   controllerLayouts = result.layouts || controllerLayouts;
   return controllerLayouts;
 }

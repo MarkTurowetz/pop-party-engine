@@ -1,5 +1,5 @@
 async function loadGameConstants() {
-  const result = await getJson("/api/game-constants");
+  const result = await (window.PartyGameToolContext?.api?.constants?.loadGameConstants?.() || getJson("/api/game-constants"));
   gameConstants = normalizeClientGameConstants(result.constants);
   constantsSavedSnapshot = JSON.stringify(normalizeClientGameConstants(result.savedConstants || result.constants || gameConstants));
   if (typeof getConstantsHistoryManager === "function") getConstantsHistoryManager()?.clear();

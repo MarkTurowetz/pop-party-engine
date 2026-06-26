@@ -41,7 +41,10 @@ function activeGlobalLayout() {
 }
 
 async function loadLayoutToolData() {
-  const result = await getJson(activeLayoutEndpoint());
+  const api = window.PartyGameToolContext?.api?.layout;
+  const result = await (layoutToolMode === "controller"
+    ? api?.loadControllerLayouts?.()
+    : api?.loadStageLayouts?.()) || await getJson(activeLayoutEndpoint());
   setActiveLayoutData(result.layouts || activeLayoutData());
   invalidateBaseLayoutObjectCatalog();
   setActiveLayoutSavedSnapshot(JSON.stringify(serializeStageLayoutsForSave(result.savedLayouts || result.layouts || activeLayoutData())));
@@ -1228,7 +1231,8 @@ function revertStageLayouts() {
 }
 
 async function saveStageLayouts() {
-  const result = await postJson("/api/stage-layouts", { layouts: serializeStageLayoutsForSave(stageLayouts) });
+  const result = await (window.PartyGameToolContext?.api?.layout?.saveStageLayouts?.(serializeStageLayoutsForSave(stageLayouts))
+    || postJson("/api/stage-layouts", { layouts: serializeStageLayoutsForSave(stageLayouts) }));
   stageLayouts = result.layouts || stageLayouts;
   layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
   updateLayoutStorageStatus(result.storage);
@@ -1236,7 +1240,8 @@ async function saveStageLayouts() {
 }
 
 async function saveControllerLayouts() {
-  const result = await postJson("/api/controller-layouts", { layouts: serializeStageLayoutsForSave(controllerLayouts) });
+  const result = await (window.PartyGameToolContext?.api?.layout?.saveControllerLayouts?.(serializeStageLayoutsForSave(controllerLayouts))
+    || postJson("/api/controller-layouts", { layouts: serializeStageLayoutsForSave(controllerLayouts) }));
   controllerLayouts = result.layouts || controllerLayouts;
   controllerLayoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(controllerLayouts));
   updateLayoutStorageStatus(result.storage);

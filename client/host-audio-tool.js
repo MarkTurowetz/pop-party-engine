@@ -264,7 +264,7 @@ function updateHostAudioStorageStatus(storage) {
 }
 
 async function loadHostAudios({ silent = false } = {}) {
-  const result = await getJson("/api/host-audios");
+  const result = await (window.PartyGameToolContext?.api?.hostAudio?.loadHostAudios?.() || getJson("/api/host-audios"));
   clearHostAudioPreview({ render: false });
   hostAudios = normalizeClientHostAudios(result.hostAudios || {});
   hostAudiosSavedSnapshot = JSON.stringify(serializeHostAudiosForSave(result.savedHostAudios || result.hostAudios || hostAudios));
@@ -656,7 +656,8 @@ function renderHostAudioTool() {
 }
 
 async function saveHostAudios() {
-  const result = await postJson("/api/host-audios", { hostAudios: serializeHostAudiosForSave(hostAudios) });
+  const result = await (window.PartyGameToolContext?.api?.hostAudio?.saveHostAudios?.(serializeHostAudiosForSave(hostAudios))
+    || postJson("/api/host-audios", { hostAudios: serializeHostAudiosForSave(hostAudios) }));
   clearHostAudioPreview({ render: false });
   hostAudios = normalizeClientHostAudios(result.hostAudios || {});
   hostAudiosSavedSnapshot = JSON.stringify(serializeHostAudiosForSave(hostAudios));

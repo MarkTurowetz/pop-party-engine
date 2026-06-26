@@ -359,7 +359,8 @@ function addCustomConstant() {
 }
 
 async function saveGameConstants() {
-  const result = await postJson("/api/game-constants", { constants: gameConstants });
+  const result = await (window.PartyGameToolContext?.api?.constants?.saveGameConstants?.(gameConstants)
+    || postJson("/api/game-constants", { constants: gameConstants }));
   gameConstants = normalizeClientGameConstants(result.constants || gameConstants);
   constantsSavedSnapshot = JSON.stringify(gameConstants);
   updateConstantsStorageStatus(result.storage);
