@@ -365,9 +365,10 @@
       const text = hasTextOverride ? String(textOverride ?? "") : String(component?.defaultText || component?.name || "");
       const measuredLayout = global.PartyGameTextFit?.measuredTextLayout;
       if (typeof measuredLayout === "function") {
-        return measuredLayout(component, text, baseSize, {
+        const options = global.PartyGameTextFit?.textRenderOptions?.(component) || {
           autoFit: component?.autoFitText === true
-        });
+        };
+        return measuredLayout(component, text, baseSize, options);
       }
       return { fontSize: baseSize };
     }
@@ -377,11 +378,10 @@
       const hasTextOverride = arguments.length >= 3;
       const text = hasTextOverride ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
       const baseSize = Number(component?.fontSize || 16);
-      const layout = global.PartyGameTextFit?.renderMeasuredTextElement?.(target, component, text, baseSize, {
-        autoFit: component?.autoFitText === true
-      }) || this.componentTextLayout(component, text, true);
+      const layout = global.PartyGameTextFit?.renderAutoTextElement?.(target, component, text, baseSize)
+        || this.componentTextLayout(component, text, true);
       target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
-      if (!global.PartyGameTextFit?.renderMeasuredTextElement) {
+      if (!global.PartyGameTextFit?.renderAutoTextElement) {
         target.textContent = text;
       }
     }

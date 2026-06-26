@@ -273,7 +273,7 @@
       if (!this.label) return;
       const text = String(label ?? "");
       this.label.dataset.timerValue = text;
-      const renderedLayout = global.PartyGameTextFit?.renderMeasuredTextElement?.(this.label, {
+      const renderedLayout = global.PartyGameTextFit?.renderAutoTextElement?.(this.label, {
         width: 130,
         height: 86,
         fontSize: 74,
@@ -366,7 +366,7 @@
       bubble.classList.toggle("is-long", isLong);
       bubble.style.width = `${textWidth}px`;
       bubble.style.setProperty("--player-answer-text-height", `${textHeight}px`);
-      const renderedLayout = global.PartyGameTextFit?.renderMeasuredTextElement?.(textNode, textSpec, value, 28, {
+      const renderedLayout = global.PartyGameTextFit?.renderAutoTextElement?.(textNode, textSpec, value, 28, {
         autoFit: true,
         lineHeight: 1.02,
         maxSize: 28,

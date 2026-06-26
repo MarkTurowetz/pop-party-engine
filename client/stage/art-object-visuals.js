@@ -44,9 +44,10 @@
     const baseSize = Number(component?.fontSize || 16);
     const measuredLayout = global.PartyGameTextFit?.measuredTextLayout;
     if (typeof measuredLayout === "function") {
-      return measuredLayout(component, labelText, baseSize, {
+      const options = global.PartyGameTextFit?.textRenderOptions?.(component) || {
         autoFit: component?.autoFitText === true
-      });
+      };
+      return measuredLayout(component, labelText, baseSize, options);
     }
     const lineHeight = global.PartyGameTextFit?.constants?.lineHeight || 1.15;
     const fontSize = Math.max(8, baseSize);

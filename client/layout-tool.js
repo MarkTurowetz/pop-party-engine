@@ -822,19 +822,19 @@ function layoutTextFit(element, text) {
   const baseSize = Number(element.fontSize || 58);
   const measuredLayout = window.PartyGameTextFit?.measuredTextLayout;
   if (typeof measuredLayout !== "function") return null;
-  return measuredLayout(element, text, baseSize, {
+  const options = window.PartyGameTextFit?.textRenderOptions?.(element) || {
     autoFit: element.autoFitText === true
-  });
+  };
+  return measuredLayout(element, text, baseSize, options);
 }
 
 function applyLayoutPreviewTextStyle(node, element, text = layoutDefaultText(element)) {
   const baseSize = Number(element.fontSize || 58);
-  const layout = window.PartyGameTextFit?.renderMeasuredTextElement?.(node, element, text, baseSize, {
-    autoFit: element.autoFitText === true
-  }) || layoutTextFit(element, text);
+  const layout = window.PartyGameTextFit?.renderAutoTextElement?.(node, element, text, baseSize)
+    || layoutTextFit(element, text);
   node.style.setProperty("--layout-text-font-size", `${layout?.fontSize || layoutComputedFontSize(element)}px`);
   node.style.setProperty("--layout-text-color", normalizeUiColor(element.fontColor) || "#ffffff");
-  if (!window.PartyGameTextFit?.renderMeasuredTextElement && layout) window.PartyGameTextFit.renderTextElement?.(node, text, layout);
+  if (!window.PartyGameTextFit?.renderAutoTextElement && layout) window.PartyGameTextFit.renderTextElement?.(node, text, layout);
 }
 
 function layoutPreviewTextNode(element, fallbackText) {

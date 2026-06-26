@@ -286,9 +286,8 @@ function applyControllerLayoutTextProperties(target, element) {
   const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
   const text = (hasRenderedFitText ? target.dataset.textFitSource : target.textContent.trim()) || layoutDefaultText(element);
   const baseSize = Number(element.fontSize || 42);
-  const layout = typeof window.PartyGameTextFit?.measuredTextLayout === "function"
-    ? window.PartyGameTextFit.measuredTextLayout(element, text, baseSize, {
-      autoFit: element.autoFitText === true,
+  const layout = typeof window.PartyGameTextFit?.renderAutoTextElement === "function"
+    ? window.PartyGameTextFit.renderAutoTextElement(target, element, text, baseSize, {
       padding: textFieldPadding(element)
     })
     : null;
@@ -297,7 +296,6 @@ function applyControllerLayoutTextProperties(target, element) {
   target.style.setProperty("--controller-text-font-size", fontSize);
   target.style.setProperty("color", fontColor, "important");
   target.style.setProperty("font-size", fontSize, "important");
-  if (layout) window.PartyGameTextFit.renderTextElement?.(target, text, layout);
 }
 
 function controllerLayoutElementForTarget(target) {
@@ -703,9 +701,8 @@ function applyStageLayoutTextProperties(target, element) {
   const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
   const text = (hasRenderedFitText ? target.dataset.textFitSource : target.textContent.trim()) || stageLayoutTextDefault(element);
   const baseSize = Number(element.fontSize || 58);
-  const layout = typeof window.PartyGameTextFit?.measuredTextLayout === "function"
-    ? window.PartyGameTextFit.measuredTextLayout(element, text, baseSize, {
-      autoFit: element.autoFitText === true,
+  const layout = typeof window.PartyGameTextFit?.renderAutoTextElement === "function"
+    ? window.PartyGameTextFit.renderAutoTextElement(target, element, text, baseSize, {
       padding: textFieldPadding(element)
     })
     : null;
@@ -714,7 +711,6 @@ function applyStageLayoutTextProperties(target, element) {
   target.style.setProperty("font-size", fontSize, "important");
   target.style.setProperty("--stage-text-color", fontColor);
   target.style.setProperty("--stage-text-font-size", fontSize);
-  if (layout) window.PartyGameTextFit.renderTextElement?.(target, text, layout);
   if (!text.trim() && element.defaultText) {
     target.textContent = stageLayoutTextDefault(element);
   }

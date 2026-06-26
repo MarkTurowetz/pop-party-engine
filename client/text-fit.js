@@ -52,6 +52,20 @@
     return layout;
   }
 
+  function renderAutoTextElement(target, element, text, fallbackSize = null, options = {}) {
+    const baseSize = Number(fallbackSize ?? element?.fontSize ?? defaultOptions.maxSize);
+    const layout = measuredTextLayout(element, text, baseSize, textRenderOptions(element, options));
+    renderTextElement(target, text, layout);
+    return layout;
+  }
+
+  function textRenderOptions(element, options = {}) {
+    return {
+      ...options,
+      autoFit: options.autoFit ?? (element?.autoFitText === true)
+    };
+  }
+
   function fixedTextLayout(element, text, fontSize, options = {}) {
     const config = normalizeOptions(options);
     const box = textBox(element, config);
@@ -308,8 +322,10 @@
     measuredTextLayout,
     fittedLayoutTextSize,
     measureFittedTextSize: fittedLayoutTextSize,
+    renderAutoTextElement,
     renderTextElement,
-    renderMeasuredTextElement
+    renderMeasuredTextElement,
+    textRenderOptions
   };
   global.fittedLayoutTextSize = fittedLayoutTextSize;
 })(typeof window !== "undefined" ? window : globalThis);
