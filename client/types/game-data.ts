@@ -148,6 +148,12 @@ export interface LayoutResponse<TLayout extends StageLayoutCollection = StageLay
   storage: ToolStorageStatus;
 }
 
+export interface LayoutSaveResponse<TLayout extends StageLayoutCollection = StageLayoutCollection> {
+  ok: true;
+  layouts: TLayout;
+  storage: ToolStorageStatus;
+}
+
 export interface GameConstantsResponse {
   ok: true;
   constants: GameConstants;
@@ -156,11 +162,23 @@ export interface GameConstantsResponse {
   storage: ToolStorageStatus;
 }
 
+export interface GameConstantsSaveResponse {
+  ok: true;
+  constants: GameConstants;
+  storage: ToolStorageStatus;
+}
+
 export interface HostAudiosResponse {
   ok: true;
   hostAudios: HostAudios;
   savedHostAudios: HostAudios;
   hasLocalDraft: boolean;
+  storage: ToolStorageStatus;
+}
+
+export interface HostAudiosSaveResponse {
+  ok: true;
+  hostAudios: HostAudios;
   storage: ToolStorageStatus;
 }
 

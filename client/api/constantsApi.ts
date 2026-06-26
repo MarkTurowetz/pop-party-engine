@@ -1,15 +1,15 @@
 import type { ApiClient } from "./http";
-import { validateGameConstantsResponse } from "./validators";
-import type { GameConstants, GameConstantsResponse } from "../types/game-data";
+import { validateGameConstantsResponse, validateGameConstantsSaveResponse } from "./validators";
+import type { GameConstants, GameConstantsResponse, GameConstantsSaveResponse } from "../types/game-data";
 
 export interface ConstantsApi {
   loadGameConstants(): Promise<GameConstantsResponse>;
-  saveGameConstants(constants: GameConstants): Promise<GameConstantsResponse>;
+  saveGameConstants(constants: GameConstants): Promise<GameConstantsSaveResponse>;
 }
 
 export function createConstantsApi(client: ApiClient): ConstantsApi {
   return {
     loadGameConstants: async () => validateGameConstantsResponse(await client.getJson<unknown>("/api/game-constants")),
-    saveGameConstants: async (constants) => validateGameConstantsResponse(await client.postJson<unknown>("/api/game-constants", { constants }))
+    saveGameConstants: async (constants) => validateGameConstantsSaveResponse(await client.postJson<unknown>("/api/game-constants", { constants }))
   };
 }

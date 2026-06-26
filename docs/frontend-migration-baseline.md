@@ -557,6 +557,11 @@ returned by `POST /api/game-flow`, so migrated code validates the server's
 actual read and save contracts instead of assuming both endpoints return the
 same payload shape.
 
+The same read-vs-save response split now exists for Layout, Constants, and Host
+Audio API wrappers. Save wrappers validate the smaller `POST` payloads returned
+by the server instead of requiring draft/read-only fields such as `savedLayouts`
+or `hasLocalDraft`.
+
 ## Flow Tool Reorder Mutation Extraction
 
 The mutation module now owns the pure drag/drop reorder operations for Flow

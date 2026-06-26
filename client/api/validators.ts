@@ -1,11 +1,14 @@
 import type {
   ArtAssetsResponse,
   GameConstantsResponse,
+  GameConstantsSaveResponse,
   GameFlowResponse,
   GameFlowSaveResponse,
   HealthResponse,
   HostAudiosResponse,
-  LayoutResponse
+  HostAudiosSaveResponse,
+  LayoutResponse,
+  LayoutSaveResponse
 } from "../types/game-data";
 
 export class ApiValidationError extends Error {
@@ -161,6 +164,17 @@ export function validateLayoutResponse<TLayout extends LayoutResponse["layouts"]
   return value as LayoutResponse<TLayout>;
 }
 
+export function validateLayoutSaveResponse<TLayout extends LayoutSaveResponse["layouts"]>(
+  value: unknown,
+  endpoint: string
+): LayoutSaveResponse<TLayout> {
+  const response = assertRecord(value, endpoint, "response");
+  assertOk(response, endpoint);
+  assertLayoutCollection(response.layouts, endpoint, "layouts");
+  assertStorageStatus(response.storage, endpoint);
+  return value as LayoutSaveResponse<TLayout>;
+}
+
 export function validateGameConstantsResponse(value: unknown, endpoint = "/api/game-constants"): GameConstantsResponse {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
@@ -171,6 +185,14 @@ export function validateGameConstantsResponse(value: unknown, endpoint = "/api/g
   return value as GameConstantsResponse;
 }
 
+export function validateGameConstantsSaveResponse(value: unknown, endpoint = "/api/game-constants"): GameConstantsSaveResponse {
+  const response = assertRecord(value, endpoint, "response");
+  assertOk(response, endpoint);
+  assertConstants(response.constants, endpoint, "constants");
+  assertStorageStatus(response.storage, endpoint);
+  return value as GameConstantsSaveResponse;
+}
+
 export function validateHostAudiosResponse(value: unknown, endpoint = "/api/host-audios"): HostAudiosResponse {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
@@ -179,6 +201,14 @@ export function validateHostAudiosResponse(value: unknown, endpoint = "/api/host
   assertBoolean(response.hasLocalDraft, endpoint, "hasLocalDraft");
   assertStorageStatus(response.storage, endpoint);
   return value as HostAudiosResponse;
+}
+
+export function validateHostAudiosSaveResponse(value: unknown, endpoint = "/api/host-audios"): HostAudiosSaveResponse {
+  const response = assertRecord(value, endpoint, "response");
+  assertOk(response, endpoint);
+  assertHostAudios(response.hostAudios, endpoint, "hostAudios");
+  assertStorageStatus(response.storage, endpoint);
+  return value as HostAudiosSaveResponse;
 }
 
 export function validateArtAssetsResponse(value: unknown, endpoint = "/api/art-assets"): ArtAssetsResponse {
