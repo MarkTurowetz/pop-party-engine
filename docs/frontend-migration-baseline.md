@@ -632,6 +632,27 @@ labels match the current Flow Tool vocabulary instead of showing only raw action
 type ids. The read-only React inspector now shows action id, type name, kind,
 parent, state, and timing metadata for the selected action.
 
+Appending `?reactFlowPreview=replace` switches that same bridge into an opt-in
+replacement preview: the legacy Flow shell is hidden, and the React shell takes
+the available tool workspace. The default path remains unchanged, and
+`?reactFlowPreview=1` still provides the overlay comparison mode.
+
+The preview selection derivation now lives in `flowPreviewModel.ts`, keeping
+selected state, action, route-node, and route-branch lookup outside the React
+component tree. The React inspector now handles state-only selections and
+route-node selections in addition to action selections, giving the replacement
+preview a usable read-only detail panel for the major Flow editor selection
+types.
+
+## Frontend Boundary Checks
+
+`checks/check-frontend-boundaries.js` now runs as part of `npm run check`. It
+keeps the stage/controller Vite entries from importing editor tool modules and
+restricts new typed `window.PartyGame*` assignments to the documented temporary
+adapter files. This gives the migration a lightweight guardrail for the
+runtime-vs-tools dependency direction and prevents new permanent globals from
+quietly appearing in TypeScript code.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
