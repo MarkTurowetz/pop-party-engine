@@ -8,7 +8,27 @@ describe("ActionInspector", () => {
 
     expect(markup).toContain('data-flow-react-component="action-inspector"');
     expect(markup).toContain('data-empty="true"');
-    expect(markup).toContain("No action selected");
+    expect(markup).toContain("No state selected");
+  });
+
+  it("renders selected state metadata when no action is selected", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={null}
+        state={{
+          id: "intro",
+          name: "Intro",
+          actions: [{ id: "show", type: "presentText" }],
+          entryTargetActionId: "show",
+          nextStateTargetId: "round-one"
+        }}
+      />
+    );
+
+    expect(markup).toContain('data-state-id="intro"');
+    expect(markup).toContain("Intro");
+    expect(markup).toContain("State");
+    expect(markup).toContain("round-one");
   });
 
   it("renders selected action metadata", () => {

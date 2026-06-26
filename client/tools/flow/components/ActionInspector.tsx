@@ -25,11 +25,37 @@ function actionKind(isBranch: boolean, isSubAction: boolean): string {
 }
 
 export function ActionInspector({ action, actionTypes = [], isBranch = false, isSubAction = false, parentAction = null, state }: ActionInspectorProps) {
-  if (!action || !state) {
+  if (!state) {
     return (
       <section className="flow-react-panel flow-react-inspector" data-flow-react-component="action-inspector" data-empty="true">
         <h3>Inspector</h3>
-        No action selected
+        No state selected
+      </section>
+    );
+  }
+
+  if (!action) {
+    return (
+      <section
+        className="flow-react-panel flow-react-inspector"
+        data-empty="true"
+        data-flow-react-component="action-inspector"
+        data-state-id={state.id}
+      >
+        <h3>Inspector</h3>
+        <h2>{state.name || state.id}</h2>
+        <dl>
+          <dt>ID</dt>
+          <dd>{state.id}</dd>
+          <dt>Kind</dt>
+          <dd>State</dd>
+          <dt>Actions</dt>
+          <dd>{state.actions?.length || 0}</dd>
+          <dt>Entry</dt>
+          <dd>{String(state.entryTargetActionId || "Default")}</dd>
+          <dt>Next</dt>
+          <dd>{String(state.nextStateTargetId || "Default")}</dd>
+        </dl>
       </section>
     );
   }
