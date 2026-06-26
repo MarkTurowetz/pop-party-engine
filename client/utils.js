@@ -409,7 +409,7 @@ async function loadArtAssets() {
     applyArtAssets([]);
     return [];
   }
-  const result = await getJson("/api/art-assets");
+  const result = await (window.PartyGameToolContext?.api?.art?.loadArtAssets?.() || getJson("/api/art-assets"));
   applyArtAssets(result.assets || [], result.groups || [], result.compositions || []);
   return artAssets;
 }

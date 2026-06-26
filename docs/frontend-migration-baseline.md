@@ -605,6 +605,10 @@ Art mutation wrappers now validate their server contracts too:
 - deleting a composition returns `{ ok, compositions }`.
 - replacing an art asset returns `{ ok, asset }`.
 
+The legacy Art Tool now uses `window.PartyGameToolContext.api.art` for asset
+load, composition save/delete, and asset replacement when the Vite context is
+available. Classic routes keep the raw `getJson`/`postJson`/`fetch` fallbacks.
+
 ## Flow Tool Reorder Mutation Extraction
 
 The mutation module now owns the pure drag/drop reorder operations for Flow

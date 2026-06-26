@@ -1103,16 +1103,22 @@ async function saveArtCompositions() {
   const selectedId = selectedArtCompositionId;
   const deleteIds = pendingArtCompositionDeleteIds();
   for (const compositionId of deleteIds) {
-    const response = await fetch(`${origin}/api/art-compositions/${encodeURIComponent(compositionId)}`, { method: "DELETE" });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || result.ok === false) throw new Error(result.error || "Could not delete art asset");
+    const deleteArtComposition = window.PartyGameToolContext?.api?.art?.deleteArtComposition;
+    if (deleteArtComposition) {
+      await deleteArtComposition(compositionId);
+    } else {
+      const response = await fetch(`${origin}/api/art-compositions/${encodeURIComponent(compositionId)}`, { method: "DELETE" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok === false) throw new Error(result.error || "Could not delete art asset");
+    }
     clearArtCompositionPendingDelete(compositionId);
     forgetArtCompositionDraft(compositionId);
   }
   const savedCompositions = [];
   for (const composition of artCompositions) {
     if (isArtCompositionPendingDelete(composition.id)) continue;
-    const result = await postJson(`/api/art-compositions/${composition.id}`, { composition });
+    const result = await (window.PartyGameToolContext?.api?.art?.saveArtComposition?.(composition.id, composition)
+      || postJson(`/api/art-compositions/${composition.id}`, { composition }));
     savedCompositions.push(result.composition);
   }
   artCompositions = savedCompositions;
@@ -1202,7 +1208,8 @@ function stageReplacementFile(file) {
 async function saveArtReplacement() {
   if (!selectedArtAsset || !pendingArtReplacement) return;
   try {
-    const result = await postJson(`/api/art-assets/${selectedArtAsset.id}`, pendingArtReplacement);
+    const result = await (window.PartyGameToolContext?.api?.art?.replaceArtAsset?.(selectedArtAsset.id, pendingArtReplacement)
+      || postJson(`/api/art-assets/${selectedArtAsset.id}`, pendingArtReplacement));
     const updated = result.asset;
     artAssets = artAssets.map((asset) => asset.id === updated.id ? updated : asset);
     applyArtAssets(artAssets);
