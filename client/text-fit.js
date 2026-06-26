@@ -102,7 +102,7 @@
     const element = config.element || config.spec || null;
     const fallbackSize = Number(config.fallbackSize ?? element?.fontSize ?? defaultOptions.minSize);
     if (!element) return layoutTextAtSize(text, fallbackSize, 1, normalizeOptions(config.options || {}));
-    return measuredTextLayout(element, text, fallbackSize, config.options || {});
+    return measuredTextLayout(element, text, fallbackSize, textRenderOptions(element, config.options || {}));
   }
 
   function targetTextRenderOptions(target, element, options = {}) {

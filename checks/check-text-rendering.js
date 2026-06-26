@@ -66,4 +66,28 @@ if (failures.length) {
   process.exit(1);
 }
 
+const textFit = require(path.join(repoRoot, "client/text-fit.js"));
+const measure = globalThis.PartyGameTextFit?.measureGameText || textFit?.measureGameText;
+if (typeof measure !== "function") {
+  console.error("Text rendering regression check failed:");
+  console.error("- shared PartyGameTextFit.measureGameText was not registered");
+  process.exit(1);
+}
+
+const fixedSmall = measure({
+  text: "STAGE",
+  element: { width: 400, height: 80, fontSize: 12, autoFitText: false },
+  fallbackSize: 12
+});
+const fixedLarge = measure({
+  text: "STAGE",
+  element: { width: 400, height: 80, fontSize: 48, autoFitText: false },
+  fallbackSize: 48
+});
+if (Number(fixedSmall.fontSize) !== 12 || Number(fixedLarge.fontSize) !== 48) {
+  console.error("Text rendering regression check failed:");
+  console.error("- measureGameText must respect manual font size when autoFitText is false");
+  process.exit(1);
+}
+
 console.log("Text rendering regression check passed.");
