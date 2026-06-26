@@ -4,8 +4,14 @@ import { ActionInspector } from "./components/ActionInspector";
 import { FlowActionList } from "./components/FlowActionList";
 import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
 import { FlowStateList } from "./components/FlowStateList";
+import { FlowToolbar } from "./components/FlowToolbar";
 
 export interface FlowToolAppProps {
+  canAddAction?: boolean;
+  canDelete?: boolean;
+  canRevert?: boolean;
+  flowNodeDepth?: string;
+  flowViewMode?: string;
   flow?: GameFlow | null;
   selectedActionId?: string;
   selectedRouteNodeId?: string;
@@ -13,7 +19,18 @@ export interface FlowToolAppProps {
   surface?: string;
 }
 
-export function FlowToolApp({ flow = null, selectedActionId = "", selectedRouteNodeId = "", selectedStateId = "", surface = "flow" }: FlowToolAppProps) {
+export function FlowToolApp({
+  canAddAction = false,
+  canDelete = false,
+  canRevert = false,
+  flow = null,
+  flowNodeDepth = "actions",
+  flowViewMode = "list",
+  selectedActionId = "",
+  selectedRouteNodeId = "",
+  selectedStateId = "",
+  surface = "flow"
+}: FlowToolAppProps) {
   const selectedState = flow?.states?.find((state) => state.id === selectedStateId) || flow?.states?.[0] || null;
   const selectedActionRef = flow && selectedState
     ? findFlowActionRef(flow, selectedState.id, selectedActionId)
@@ -30,6 +47,13 @@ export function FlowToolApp({ flow = null, selectedActionId = "", selectedRouteN
       data-surface={surface}
       hidden
     >
+      <FlowToolbar
+        canAddAction={canAddAction}
+        canDelete={canDelete}
+        canRevert={canRevert}
+        flowNodeDepth={flowNodeDepth}
+        flowViewMode={flowViewMode}
+      />
       <FlowStateList selectedStateId={selectedState?.id || selectedStateId} states={flow?.states || []} />
       <FlowActionList actions={selectedState?.actions || []} selectedActionId={selectedActionId} />
       <FlowRouteNodeList routeNodes={flow?.routeNodes || []} selectedRouteNodeId={selectedRouteNodeId} />

@@ -633,6 +633,11 @@ function pushFlowHistory() {
 function restoreFlowHistory(snapshot) {
   gameFlow = window.PartyGameFlowSerialization?.parseFlowHistorySnapshot?.(snapshot) || JSON.parse(snapshot);
   window.PartyGameFlowReactShell?.update?.(gameFlow, {
+    canAddAction: flowViewMode === "node" && flowNodeDepth === "moments" ? true : Boolean(flowState(selectedFlowStateId)),
+    canDelete: Boolean(selectedFlowRouteNodeId || selectedFlowStateId),
+    canRevert: Boolean(flowSavedSnapshot && isFlowDirty()),
+    flowNodeDepth,
+    flowViewMode,
     selectedActionId: selectedFlowActionId,
     selectedRouteNodeId: selectedFlowRouteNodeId,
     selectedStateId: selectedFlowStateId

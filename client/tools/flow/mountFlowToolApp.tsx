@@ -9,6 +9,11 @@ export interface FlowToolReactShell {
 }
 
 export interface FlowToolReactShellSelection {
+  canAddAction?: boolean;
+  canDelete?: boolean;
+  canRevert?: boolean;
+  flowNodeDepth?: string;
+  flowViewMode?: string;
   selectedActionId?: string;
   selectedRouteNodeId?: string;
   selectedStateId?: string;
@@ -38,6 +43,11 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
   const update = (flow: GameFlow | null = null, selection: FlowToolReactShellSelection = {}) => {
     root.render(
       <FlowToolApp
+        canAddAction={selection.canAddAction || false}
+        canDelete={selection.canDelete || false}
+        canRevert={selection.canRevert || false}
+        flowNodeDepth={selection.flowNodeDepth || "actions"}
+        flowViewMode={selection.flowViewMode || "list"}
         flow={flow}
         selectedActionId={selection.selectedActionId || ""}
         selectedRouteNodeId={selection.selectedRouteNodeId || ""}

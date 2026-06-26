@@ -615,6 +615,10 @@ Moment-route graph data now feeds a hidden `FlowRouteNodeList` React component
 as well, carrying route node ids, types, and legacy route-node selection into
 the React shell.
 
+The React bridge also receives the legacy toolbar state through a hidden
+`FlowToolbar` component, mirroring add/delete/revert availability plus the
+current list/node view mode.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
