@@ -5,6 +5,13 @@ import {
   findFlowActionRef,
   findFlowState,
   flowActionTargetOptions,
+  flowGameObjectLayoutElements,
+  flowGameObjectTargetLabel,
+  flowGameObjectTargetName,
+  flowGameObjectTargetOptions,
+  flowGameObjectTargetParts,
+  flowGameObjectTargetValue,
+  flowPlacedGameObjectElementsForLayoutGroup,
   flowStateTargetOptions,
   makeFlowId,
   stateActionNameSet,
@@ -117,6 +124,69 @@ describe("Flow selectors", () => {
     ]);
   });
 
+  it("builds placed game-object layout elements with moment/global precedence", () => {
+    const stageLayouts = {
+      global: {
+        id: "global",
+        elements: [
+          { id: "shared", name: "Shared Global" },
+          { id: "global-only", name: "Global Only" },
+          { id: "hidden-global", name: "Hidden Global" }
+        ]
+      },
+      states: [
+        {
+          id: "intro",
+          elements: [{ id: "shared", name: "Moment Shared" }, { id: "moment-only", name: "Moment Only" }],
+          hiddenGlobals: ["hidden-global"]
+        }
+      ]
+    };
+
+    expect(flowGameObjectLayoutElements(stageLayouts, { id: "intro" }, "")).toEqual([
+      { id: "shared", name: "Moment Shared", targetLayoutScope: "moment" },
+      { id: "moment-only", name: "Moment Only", targetLayoutScope: "moment" },
+      { id: "global-only", name: "Global Only", targetLayoutScope: "global" }
+    ]);
+  });
+
+  it("supports game-object target labels, values, parts, options, and names", () => {
+    const stageLayouts = {
+      global: {
+        id: "global",
+        elements: [{ id: "score", name: "Score" }]
+      },
+      states: [
+        {
+          id: "intro",
+          elements: [{ id: "prompt", name: "Prompt" }]
+        },
+        {
+          id: "bonus",
+          elements: [{ id: "bonus-card", name: "Bonus Card" }]
+        }
+      ]
+    };
+
+    expect(flowPlacedGameObjectElementsForLayoutGroup(stageLayouts.global, "global")).toEqual([
+      { id: "score", name: "Score", targetLayoutScope: "global" }
+    ]);
+    expect(flowGameObjectTargetLabel({ id: "score", name: "Score", targetLayoutScope: "global" })).toBe("Global: Score");
+    expect(flowGameObjectTargetValue({ id: "prompt", targetLayoutScope: "moment" })).toBe("moment:prompt");
+    expect(flowGameObjectTargetParts("global:score")).toEqual({ scope: "global", id: "score" });
+    expect(flowGameObjectTargetParts("legacy-id", "moment")).toEqual({ scope: "moment", id: "legacy-id" });
+    expect(flowGameObjectTargetOptions(stageLayouts, { id: "intro" }, "", "global:missing")).toEqual([
+      { id: "", name: "No Game Object" },
+      { id: "moment:prompt", name: "Prompt" },
+      { id: "global:score", name: "Global: Score" },
+      { id: "global:missing", name: "missing" }
+    ]);
+    expect(flowGameObjectTargetName(stageLayouts, "intro", "prompt", "moment")).toBe("Prompt");
+    expect(flowGameObjectTargetName(stageLayouts, "intro", "score", "global")).toBe("Global: Score");
+    expect(flowGameObjectTargetName(stageLayouts, "intro", "bonus-card")).toBe("Bonus Card (bonus-card)");
+    expect(flowGameObjectTargetName(stageLayouts, "intro", "missing")).toBe("missing");
+  });
+
   it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
     const setAttribute = vi.fn();
     const target = {
@@ -134,6 +204,7 @@ describe("Flow selectors", () => {
       { id: "none", name: "None" },
       { id: "return", name: "Return To Moments" }
     ]);
+    expect(adapter.flowGameObjectTargetParts("moment:prompt")).toEqual({ scope: "moment", id: "prompt" });
     expect(setAttribute).toHaveBeenCalledWith("data-flow-selectors-adapter", "module");
   });
 });

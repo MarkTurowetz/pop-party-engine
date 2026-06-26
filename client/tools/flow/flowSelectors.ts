@@ -1,4 +1,4 @@
-import type { FlowAction, FlowState, GameFlow, JsonObject, StageLayoutCollection } from "../../types/game-data";
+import type { FlowAction, FlowState, GameFlow, JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
 
 export interface FlowActionRef {
   state: FlowState;
@@ -27,6 +27,25 @@ export interface FlowOption {
 export interface FlowStateTargetOptionsConfig {
   appendRouteTargets?: (options: FlowOption[]) => void;
 }
+
+export interface FlowGameObjectTargetParts {
+  scope: string;
+  id: string;
+}
+
+export interface FlowTargetLayoutElement extends LayoutElement {
+  targetLayoutScope?: string;
+}
+
+export interface FlowPlacedGameObjectOptions {
+  hiddenIds?: Set<string>;
+  excludeIds?: Set<string>;
+}
+
+type FlowLayoutStateWithVisibility = Partial<LayoutState> & {
+  hiddenGlobals?: string[];
+  hiddenInStates?: boolean;
+};
 
 export function findFlowState(flow: Partial<GameFlow> | null | undefined, stateId: string): FlowState | null {
   return (flow?.states || []).find((state) => state.id === stateId) || null;
@@ -133,4 +152,94 @@ export function controllerLayoutOptions(controllerLayouts: Partial<StageLayoutCo
     options.push({ id: selectedLayoutId, name: selectedLayoutId });
   }
   return options;
+}
+
+export function flowPlacedGameObjectElementsForLayoutGroup(group: Partial<LayoutState> | null | undefined, scope: string, options: FlowPlacedGameObjectOptions = {}): FlowTargetLayoutElement[] {
+  const hiddenIds = options.hiddenIds || new Set<string>();
+  const excludeIds = options.excludeIds || new Set<string>();
+  return (group?.elements || [])
+    .filter((element) => element?.id)
+    .filter((element) => !hiddenIds.has(element.id))
+    .filter((element) => !excludeIds.has(element.id))
+    .map((element) => ({ ...element, targetLayoutScope: scope }));
+}
+
+export function flowGameObjectLayoutElements(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  state: Partial<FlowState> | null | undefined,
+  selectedFlowStateId = ""
+): FlowTargetLayoutElement[] {
+  const stateId = state?.id || selectedFlowStateId || "";
+  const layout = (stageLayouts?.states || []).find((item) => item.id === stateId) as FlowLayoutStateWithVisibility | undefined;
+  const momentElements = flowPlacedGameObjectElementsForLayoutGroup(layout, "moment");
+  const momentIds = new Set(momentElements.map((element) => element.id));
+  const globalLayout = (stageLayouts?.global || {}) as FlowLayoutStateWithVisibility;
+  const hiddenGlobals = new Set(layout?.hiddenGlobals || []);
+  const globalElements = globalLayout.hiddenInStates === true
+    ? []
+    : flowPlacedGameObjectElementsForLayoutGroup(globalLayout, "global", { hiddenIds: hiddenGlobals, excludeIds: momentIds });
+  return [
+    ...momentElements,
+    ...globalElements
+  ];
+}
+
+export function flowGameObjectTargetLabel(element: Partial<FlowTargetLayoutElement> | null | undefined): string {
+  const scope = ["global", "moment"].includes(String(element?.targetLayoutScope || "")) ? element?.targetLayoutScope : "moment";
+  const name = String(element?.name || element?.id || "Game Object");
+  const id = String(element?.id || "");
+  const idSuffix = id && id.toLowerCase() !== name.toLowerCase() ? ` (${id})` : "";
+  return `${scope === "global" ? "Global: " : ""}${name}${idSuffix}`;
+}
+
+export function flowGameObjectTargetValue(element: Partial<FlowTargetLayoutElement>): string {
+  const scope = ["global", "moment"].includes(String(element?.targetLayoutScope || "")) ? element.targetLayoutScope : "moment";
+  return `${scope}:${element.id || ""}`;
+}
+
+export function flowGameObjectTargetParts(value: unknown, fallbackScope = ""): FlowGameObjectTargetParts {
+  const text = String(value || "");
+  const match = text.match(/^(global|moment):(.+)$/);
+  if (match) return { scope: match[1], id: match[2] };
+  return { scope: fallbackScope || "", id: text };
+}
+
+export function flowGameObjectTargetOptions(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  state: Partial<FlowState> | null | undefined,
+  selectedFlowStateId = "",
+  selectedElementId = ""
+): FlowOption[] {
+  const selectedParts = flowGameObjectTargetParts(selectedElementId);
+  const options = [{ id: "", name: "No Game Object" }];
+  for (const element of flowGameObjectLayoutElements(stageLayouts, state, selectedFlowStateId)) {
+    options.push({ id: flowGameObjectTargetValue(element), name: flowGameObjectTargetLabel(element) });
+  }
+  const selectedValue = selectedParts.id ? `${selectedParts.scope || "moment"}:${selectedParts.id}` : "";
+  if (selectedParts.id && !options.some((option) => option.id === selectedValue)) {
+    options.push({ id: selectedElementId, name: selectedParts.id });
+  }
+  return options;
+}
+
+export function flowGameObjectTargetName(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  selectedFlowStateId: string,
+  elementId: string,
+  targetLayoutScope = ""
+): string {
+  if (!elementId) return "No Game Object";
+  const scope = ["global", "moment"].includes(String(targetLayoutScope || "")) ? targetLayoutScope : "";
+  const selectedState = (stageLayouts?.states || []).find((state) => state.id === selectedFlowStateId);
+  const momentElement = (selectedState?.elements || []).find((item) => item.id === elementId);
+  const globalElement = (stageLayouts?.global?.elements || []).find((item) => item.id === elementId);
+  if (scope === "moment" && momentElement) return flowGameObjectTargetLabel({ ...momentElement, targetLayoutScope: "moment" });
+  if (scope === "global" && globalElement) return flowGameObjectTargetLabel({ ...globalElement, targetLayoutScope: "global" });
+  if (momentElement) return flowGameObjectTargetLabel({ ...momentElement, targetLayoutScope: "moment" });
+  if (globalElement) return flowGameObjectTargetLabel({ ...globalElement, targetLayoutScope: "global" });
+  for (const state of stageLayouts?.states || []) {
+    const element = (state.elements || []).find((item) => item.id === elementId);
+    if (element) return flowGameObjectTargetLabel({ ...element, targetLayoutScope: "moment" });
+  }
+  return elementId;
 }

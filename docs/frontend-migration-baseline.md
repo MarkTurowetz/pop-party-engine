@@ -431,8 +431,15 @@ inspectors:
 - next-moment state target options, with legacy route-target extension hook.
 - controller layout options.
 
-Layout game-object target options remain in the legacy Flow Tool for now because
-they depend on stage layout visibility and cross-layout lookup details.
+The selector module also owns layout game-object target helpers now:
+
+- placed layout element filtering for moment/global scopes.
+- target labels and serialized target values.
+- target option lists that preserve missing legacy selections.
+- target-name lookup across current moment, global layout, and other moments.
+
+These helpers take `stageLayouts` and `selectedFlowStateId` explicitly so they
+can be tested without reaching into the legacy Flow Tool globals.
 
 ## Flow Tool Action Factory Extraction
 

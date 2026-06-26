@@ -1006,6 +1006,8 @@ function controllerLayoutOptions(selectedLayoutId = "") {
 }
 
 function flowGameObjectLayoutElements(state) {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectLayoutElements;
+  if (helper) return helper(stageLayouts, state, selectedFlowStateId);
   const stateId = state?.id || selectedFlowStateId || "";
   const layout = (stageLayouts.states || []).find((item) => item.id === stateId);
   const momentElements = flowPlacedGameObjectElementsForLayoutGroup(layout, "moment");
@@ -1022,6 +1024,8 @@ function flowGameObjectLayoutElements(state) {
 }
 
 function flowPlacedGameObjectElementsForLayoutGroup(group, scope, options = {}) {
+  const helper = window.PartyGameFlowSelectors?.flowPlacedGameObjectElementsForLayoutGroup;
+  if (helper) return helper(group, scope, options);
   const hiddenIds = options.hiddenIds || new Set();
   const excludeIds = options.excludeIds || new Set();
   return (group?.elements || [])
@@ -1032,6 +1036,8 @@ function flowPlacedGameObjectElementsForLayoutGroup(group, scope, options = {}) 
 }
 
 function flowGameObjectTargetLabel(element) {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetLabel;
+  if (helper) return helper(element);
   const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
   const name = String(element?.name || element?.id || "Game Object");
   const id = String(element?.id || "");
@@ -1040,11 +1046,15 @@ function flowGameObjectTargetLabel(element) {
 }
 
 function flowGameObjectTargetValue(element) {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetValue;
+  if (helper) return helper(element);
   const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
   return `${scope}:${element.id || ""}`;
 }
 
 function flowGameObjectTargetParts(value, fallbackScope = "") {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetParts;
+  if (helper) return helper(value, fallbackScope);
   const text = String(value || "");
   const match = text.match(/^(global|moment):(.+)$/);
   if (match) return { scope: match[1], id: match[2] };
@@ -1052,6 +1062,8 @@ function flowGameObjectTargetParts(value, fallbackScope = "") {
 }
 
 function flowGameObjectTargetOptions(state, selectedElementId = "") {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetOptions;
+  if (helper) return helper(stageLayouts, state, selectedFlowStateId, selectedElementId);
   const selectedParts = flowGameObjectTargetParts(selectedElementId);
   const options = [{ id: "", name: "No Game Object" }];
   for (const element of flowGameObjectLayoutElements(state)) {
@@ -1065,6 +1077,8 @@ function flowGameObjectTargetOptions(state, selectedElementId = "") {
 }
 
 function flowGameObjectTargetName(elementId, targetLayoutScope = "") {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetName;
+  if (helper) return helper(stageLayouts, selectedFlowStateId, elementId, targetLayoutScope);
   if (!elementId) return "No Game Object";
   const scope = ["global", "moment"].includes(String(targetLayoutScope || "")) ? targetLayoutScope : "";
   const selectedState = (stageLayouts.states || []).find((state) => state.id === selectedFlowStateId);
