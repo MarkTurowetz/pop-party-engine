@@ -164,7 +164,9 @@
       element.style.height = `${Number(component.height || 1) / canvasHeight * 100}%`;
       element.style.setProperty("--component-scale", Number(component.scale || 1));
       element.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-      element.style.setProperty("--component-font-size", `${this.componentTextLayout(component, textOverride, arguments.length >= 4).fontSize}px`);
+      const labelText = arguments.length >= 4 ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
+      const fontSize = global.PartyGameArtObject?.componentFontSize?.(component, labelText) || Number(component.fontSize || 16);
+      element.style.setProperty("--component-font-size", `${fontSize}px`);
       element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
       element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
       element.style.setProperty("--component-border-color", component.borderColor || "transparent");
@@ -352,7 +354,8 @@
       badge.style.minHeight = `${Number(component.height || 32)}px`;
       badge.style.setProperty("--component-scale", Number(component.scale || 1));
       badge.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-      badge.style.setProperty("--component-font-size", `${this.componentTextLayout(component, "BEN").fontSize}px`);
+      const fontSize = global.PartyGameArtObject?.componentFontSize?.(component, "BEN") || Number(component.fontSize || 15);
+      badge.style.setProperty("--component-font-size", `${fontSize}px`);
       badge.style.setProperty("--component-text-color", component.fontColor || "#17131f");
       badge.style.setProperty("--component-fill-color", component.fillColor || "#fff8d6");
       badge.style.setProperty("--component-border-color", component.borderColor || "#17131f");
@@ -360,32 +363,14 @@
       badge.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 999)}px`);
     }
 
-    componentTextLayout(component, textOverride = "", hasTextOverride = false) {
-      const baseSize = Number(component?.fontSize || 16);
-      const text = hasTextOverride ? String(textOverride ?? "") : String(component?.defaultText || component?.name || "");
-      const measuredLayout = global.PartyGameTextFit?.measureGameText?.({
-        text,
-        element: component,
-        fallbackSize: baseSize
-      });
-      if (measuredLayout) return measuredLayout;
-      return { fontSize: baseSize };
-    }
-
     renderComponentText(target, component, textOverride = "") {
       if (!target || !component) return;
       const hasTextOverride = arguments.length >= 3;
       const text = hasTextOverride ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
-      const baseSize = Number(component?.fontSize || 16);
-      const layout = global.PartyGameTextFit?.renderGameText?.(target, {
-        text,
-        element: component,
-        fallbackSize: baseSize
-      })
-        || this.componentTextLayout(component, text, true);
-      target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
-      if (!global.PartyGameTextFit?.renderGameText) {
+      const layout = global.PartyGameArtObject?.renderComponentText?.(target, component, text);
+      if (!layout) {
         target.textContent = text;
+        target.style.setProperty("--component-font-size", `${Number(component?.fontSize || 16)}px`);
       }
     }
 

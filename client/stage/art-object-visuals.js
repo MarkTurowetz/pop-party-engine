@@ -129,6 +129,22 @@
     }
   }
 
+  function renderComponentText(target, component, labelText = componentSchema.componentLabel(component)) {
+    if (!target || !component) return null;
+    const text = String(labelText ?? "");
+    const layout = componentTextLayout(component, text);
+    if (global.PartyGameTextFit?.renderGameText) {
+      global.PartyGameTextFit.renderGameText(target, {
+        text,
+        layout
+      });
+    } else {
+      target.textContent = text;
+    }
+    target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
+    return layout;
+  }
+
   function componentLayerIndex(index, siblingCount) {
     return Math.max(1, Number(siblingCount || 1) - Number(index || 0));
   }
@@ -388,7 +404,10 @@
     ArtObjectTreeRenderer,
     ArtObjectView,
     applyComponentLayout,
+    componentFontSize,
+    componentTextLayout,
     isArtRootContainer,
+    renderComponentText,
     syncComponentElement
   };
 })(window);
