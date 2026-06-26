@@ -263,6 +263,11 @@ function uniqueActionNameForType(state, action) {
 
 function refreshActionNameFromType(state, action) {
   if (!state || !action) return;
+  const helper = window.PartyGameFlowMutations?.refreshFlowActionName;
+  if (helper) {
+    helper(state, action, { nameForAction: uniqueActionNameForType });
+    return;
+  }
   action.name = uniqueActionNameForType(state, action);
 }
 
@@ -1633,23 +1638,32 @@ function renderFlowEditor() {
     flowEditorTitle.textContent = state.name;
     flowEditorHelp.textContent = "Editing game state.";
     flowEditor.appendChild(flowField("State Name", state.name, (value) => {
-      state.name = value || state.name;
-      state.id = state.id === "lobby" || state.id === "intro" ? state.id : makeFlowId(state.name, state.id);
-      selectedFlowStateId = state.id;
-      expandFlowStateInList(state.id);
+      const result = window.PartyGameFlowMutations?.renameFlowState?.(state, value, { makeFlowId }) || (() => {
+        state.name = value || state.name;
+        state.id = state.id === "lobby" || state.id === "intro" ? state.id : makeFlowId(state.name, state.id);
+        return { newId: state.id };
+      })();
+      selectedFlowStateId = result.newId;
+      expandFlowStateInList(result.newId);
       renderFlowTool();
     }));
     flowEditor.appendChild(flowSelect("Next Moment", state.nextStateTargetId || "", flowStateTargetOptions(state.nextStateTargetId || "", state.id), (value) => {
-      state.nextStateTargetId = value;
+      window.PartyGameFlowMutations?.setFlowStateNextTarget?.(state, value) || (() => {
+        state.nextStateTargetId = value;
+      })();
       renderFlowListAndPublish();
     }));
     flowEditor.appendChild(flowSelect("Entry Action", state.entryTargetActionId || "", flowActionTargetOptions(state, state.entryTargetActionId || ""), (value) => {
-      state.entryTargetActionId = value;
+      window.PartyGameFlowMutations?.setFlowStateEntryTarget?.(state, value) || (() => {
+        state.entryTargetActionId = value;
+      })();
       renderFlowListAndPublish();
     }));
     const otherStates = gameFlow.states.filter((s) => s.id !== state.id).map((s) => ({ id: s.id, name: s.name }));
     flowEditor.appendChild(flowSelect("Voting Source", state.votingSourceStateId || "", [{ id: "", name: "— None —" }, ...otherStates], (value) => {
-      state.votingSourceStateId = value || undefined;
+      window.PartyGameFlowMutations?.setFlowStateVotingSource?.(state, value) || (() => {
+        state.votingSourceStateId = value || undefined;
+      })();
       renderFlowListAndPublish();
     }));
     flowEditor.appendChild(readOnlyFlowNote("Primary actions run from top to bottom. Input actions wait for input; standard actions can use S+ or E+ timing."));

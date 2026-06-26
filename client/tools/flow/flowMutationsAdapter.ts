@@ -8,17 +8,25 @@ import {
   moveFlowActionInState,
   moveFlowState,
   moveFlowSubAction,
+  refreshFlowActionName,
+  renameFlowState,
   removeFlowRouteBranch,
   removeFlowRouteNode,
   removeFlowStates,
   removeLayoutState,
   removeSelectedFlowActionsFromList,
+  setFlowStateEntryTarget,
+  setFlowStateNextTarget,
+  setFlowStateVotingSource,
   type AddFlowActionResult,
   type AddFlowStateResult,
   type AddFlowSubActionResult,
   type FlowActionBranchOptions,
   type FlowStateIdsForDeleteOptions,
   type MoveFlowItemResult,
+  type RefreshFlowActionNameOptions,
+  type RenameFlowStateOptions,
+  type RenameFlowStateResult,
   type RemoveFlowRouteBranchOptions,
   type RemoveFlowRouteBranchResult,
   type RemoveFlowRouteNodeResult,
@@ -37,11 +45,16 @@ export interface PartyGameFlowMutations {
   moveFlowActionInState: (state: Partial<FlowState> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter?: boolean) => MoveFlowItemResult<FlowAction>;
   moveFlowState: (flow: Partial<GameFlow>, draggedStateId: string, targetStateId: string, placeAfter?: boolean) => MoveFlowItemResult<FlowState>;
   moveFlowSubAction: (parentAction: Partial<FlowAction> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter?: boolean) => MoveFlowItemResult<FlowAction>;
+  refreshFlowActionName: (state: Partial<FlowState>, action: Partial<FlowAction>, options?: RefreshFlowActionNameOptions) => string;
+  renameFlowState: (state: Partial<FlowState>, nextName: string, options?: RenameFlowStateOptions) => RenameFlowStateResult;
   removeFlowRouteBranch: (node: FlowRouteNode | null | undefined, branchId: string, options?: RemoveFlowRouteBranchOptions) => RemoveFlowRouteBranchResult;
   removeFlowRouteNode: (flow: Partial<GameFlow>, nodeId: string, nodes?: FlowRouteNode[]) => RemoveFlowRouteNodeResult;
   removeFlowStates: (flow: Partial<GameFlow>, stateIds: Iterable<string>) => RemoveFlowStatesResult;
   removeLayoutState: (layouts: Partial<StageLayoutCollection> | null | undefined, stateId: string) => boolean;
   removeSelectedFlowActionsFromList: (actions: FlowAction[], selectedIds: Set<string>) => RemoveSelectedFlowActionsResult;
+  setFlowStateEntryTarget: (state: Partial<FlowState>, targetId: string) => void;
+  setFlowStateNextTarget: (state: Partial<FlowState>, targetId: string) => void;
+  setFlowStateVotingSource: (state: Partial<FlowState>, sourceStateId: string) => void;
 }
 
 declare global {
@@ -61,11 +74,16 @@ export function installFlowMutationsAdapter(target: Window = window): PartyGameF
     moveFlowActionInState,
     moveFlowState,
     moveFlowSubAction,
+    refreshFlowActionName,
+    renameFlowState,
     removeFlowRouteBranch,
     removeFlowRouteNode,
     removeFlowStates,
     removeLayoutState,
-    removeSelectedFlowActionsFromList
+    removeSelectedFlowActionsFromList,
+    setFlowStateEntryTarget,
+    setFlowStateNextTarget,
+    setFlowStateVotingSource
   };
   target.PartyGameFlowMutations = adapter;
   target.document?.documentElement?.setAttribute("data-flow-mutations-adapter", "module");

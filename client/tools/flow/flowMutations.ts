@@ -29,6 +29,21 @@ export interface MoveFlowItemResult<TItem> {
   toIndex: number;
 }
 
+export interface RenameFlowStateOptions {
+  makeFlowId?: (label: unknown, fallback: string) => string;
+  protectedStateIds?: Iterable<string>;
+}
+
+export interface RenameFlowStateResult {
+  oldId: string;
+  newId: string;
+  name: string;
+}
+
+export interface RefreshFlowActionNameOptions {
+  nameForAction?: (state: Partial<FlowState>, action: Partial<FlowAction>) => string;
+}
+
 export interface FlowActionBranchOptions {
   ensureDecisionBranches?: (action: FlowAction) => FlowAction[];
 }
@@ -180,6 +195,39 @@ export function moveFlowActionInState(state: Partial<FlowState> | null | undefin
 export function moveFlowSubAction(parentAction: Partial<FlowAction> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter = false): MoveFlowItemResult<FlowAction> {
   if (!parentAction || !Array.isArray(parentAction.subActions)) return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
   return moveItemById(parentAction.subActions, draggedActionId, targetActionId, placeAfter);
+}
+
+export function renameFlowState(state: Partial<FlowState>, nextName: string, options: RenameFlowStateOptions = {}): RenameFlowStateResult {
+  const oldId = String(state.id || "");
+  const name = nextName || String(state.name || "");
+  state.name = name;
+  const protectedIds = new Set(options.protectedStateIds || ["lobby", "intro"]);
+  if (!protectedIds.has(oldId)) {
+    state.id = options.makeFlowId?.(name, oldId) || oldId;
+  }
+  return {
+    oldId,
+    newId: String(state.id || ""),
+    name: String(state.name || "")
+  };
+}
+
+export function setFlowStateNextTarget(state: Partial<FlowState>, targetId: string): void {
+  state.nextStateTargetId = targetId;
+}
+
+export function setFlowStateEntryTarget(state: Partial<FlowState>, targetId: string): void {
+  state.entryTargetActionId = targetId;
+}
+
+export function setFlowStateVotingSource(state: Partial<FlowState>, sourceStateId: string): void {
+  state.votingSourceStateId = sourceStateId || undefined;
+}
+
+export function refreshFlowActionName(state: Partial<FlowState>, action: Partial<FlowAction>, options: RefreshFlowActionNameOptions = {}): string {
+  const nextName = options.nameForAction?.(state, action) || String(action.name || "");
+  action.name = nextName;
+  return nextName;
 }
 
 export function flowStateIdsForDelete(flow: Partial<GameFlow> | null | undefined, options: FlowStateIdsForDeleteOptions = {}): string[] {

@@ -9,14 +9,19 @@ import {
   moveFlowActionInState,
   moveFlowState,
   moveFlowSubAction,
+  refreshFlowActionName,
+  renameFlowState,
   removeFlowRouteBranch,
   removeFlowRouteNode,
   removeFlowStates,
   removeLayoutState,
-  removeSelectedFlowActionsFromList
+  removeSelectedFlowActionsFromList,
+  setFlowStateEntryTarget,
+  setFlowStateNextTarget,
+  setFlowStateVotingSource
 } from "./flowMutations";
 import { installFlowMutationsAdapter } from "./flowMutationsAdapter";
-import type { FlowAction, GameFlow } from "../../types/game-data";
+import type { FlowAction, FlowState, GameFlow } from "../../types/game-data";
 
 describe("Flow mutations", () => {
   it("creates and appends default flow states with legacy IDs and labels", () => {
@@ -203,6 +208,49 @@ describe("Flow mutations", () => {
     });
     expect(parentAction.subActions?.map((action) => action.id)).toEqual(["sub-c", "sub-a", "sub-b"]);
     expect(moveFlowSubAction(parentAction, "sub-a", "sub-a").moved).toBe(false);
+  });
+
+  it("renames states while preserving protected legacy ids", () => {
+    const makeFlowId = vi.fn((label: unknown, fallback: string) => String(label || fallback).toLowerCase().replace(/\s+/g, "-"));
+    const state = { id: "round-one", name: "Round One", actions: [] };
+
+    expect(renameFlowState(state, "Bonus Round", { makeFlowId })).toEqual({
+      oldId: "round-one",
+      newId: "bonus-round",
+      name: "Bonus Round"
+    });
+    expect(state).toMatchObject({ id: "bonus-round", name: "Bonus Round" });
+
+    const intro = { id: "intro", name: "Intro", actions: [] };
+    expect(renameFlowState(intro, "Opening", { makeFlowId })).toEqual({
+      oldId: "intro",
+      newId: "intro",
+      name: "Opening"
+    });
+  });
+
+  it("updates state editor targets with legacy empty-value behavior", () => {
+    const state: Partial<FlowState> = { id: "round-one", actions: [] };
+
+    setFlowStateNextTarget(state, "round-two");
+    setFlowStateEntryTarget(state, "start-action");
+    setFlowStateVotingSource(state, "lobby");
+    expect(state).toMatchObject({
+      nextStateTargetId: "round-two",
+      entryTargetActionId: "start-action",
+      votingSourceStateId: "lobby"
+    });
+
+    setFlowStateVotingSource(state, "");
+    expect(state.votingSourceStateId).toBeUndefined();
+  });
+
+  it("refreshes action names through a supplied type-name resolver", () => {
+    const state = { id: "intro", actions: [] };
+    const action = { id: "a", type: "presentText", name: "Old Name" };
+
+    expect(refreshFlowActionName(state, action, { nameForAction: () => "Present Text" })).toBe("Present Text");
+    expect(action.name).toBe("Present Text");
   });
 
   it("resolves selected flow state ids for delete with legacy protected-state rules", () => {

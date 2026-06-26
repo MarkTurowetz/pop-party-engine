@@ -570,3 +570,16 @@ The legacy Flow Tool still owns drag event parsing, history snapshots, selection
 updates, collapsed-state behavior, and rerendering. Vite mode delegates the
 splice/reorder work through `window.PartyGameFlowMutations`; classic routes keep
 inline fallbacks.
+
+## Flow Tool Editor Mutation Extraction
+
+The mutation module now also owns small editor commands that were previously
+inline in the legacy Flow editor:
+
+- rename Flow states while preserving protected legacy IDs.
+- update next-moment, entry-action, and voting-source fields.
+- refresh an action name through the existing action-type name resolver.
+
+History capture, form controls, rerendering, and publish behavior remain in the
+legacy Flow Tool. This keeps the current UI stable while giving the later React
+editor store explicit mutation commands to call.
