@@ -601,6 +601,7 @@ The extracted helpers cover:
 - route-node type names and target display names.
 - moment-entry and route-graph target option lists.
 - route target appending for state-next-target controls.
+- route-node save-shape serialization.
 - clearing Flow state, route node, decision-branch, and route-action target
   references when a target is deleted.
 

@@ -8,15 +8,17 @@ import {
   isFlowRouteDecisionNode,
   momentEntryTargetOptions,
   routeGraphTargetOptions,
+  serializeFlowRouteNodeForSave,
   type ClearFlowRouteTargetReferencesOptions,
   type CreateMomentEntryNodeOptions,
   type FlowRouteDisplayOptions,
   type FlowRouteOption,
   type FlowNodePosition,
   type FlowRouteGraphOptions,
-  type FlowRouteNodeModel
+  type FlowRouteNodeModel,
+  type SerializeFlowRouteNodeOptions
 } from "./flowRouteGraph";
-import type { GameFlow } from "../../types/game-data";
+import type { FlowRouteNode, GameFlow } from "../../types/game-data";
 
 export interface PartyGameFlowRouteGraph {
   appendFlowRouteTargets: (flow: Partial<GameFlow> | null | undefined, options: FlowRouteOption[], currentStateId?: string, display?: FlowRouteDisplayOptions) => FlowRouteOption[];
@@ -28,6 +30,7 @@ export interface PartyGameFlowRouteGraph {
   isFlowRouteDecisionNode: (node: Partial<FlowRouteNodeModel> | null | undefined) => boolean;
   momentEntryTargetOptions: (flow: Partial<GameFlow> | null | undefined, selectedStateId?: string) => FlowRouteOption[];
   routeGraphTargetOptions: (flow: Partial<GameFlow> | null | undefined, selectedTargetId?: string, currentNodeId?: string, options?: FlowRouteDisplayOptions) => FlowRouteOption[];
+  serializeFlowRouteNodeForSave: (node: Partial<FlowRouteNodeModel>, options?: SerializeFlowRouteNodeOptions) => FlowRouteNode;
 }
 
 declare global {
@@ -46,7 +49,8 @@ export function installFlowRouteGraphAdapter(target: Window = window): PartyGame
     flowRouteTargetName,
     isFlowRouteDecisionNode,
     momentEntryTargetOptions,
-    routeGraphTargetOptions
+    routeGraphTargetOptions,
+    serializeFlowRouteNodeForSave
   };
   target.PartyGameFlowRouteGraph = adapter;
   target.document?.documentElement?.setAttribute("data-flow-route-graph-adapter", "module");

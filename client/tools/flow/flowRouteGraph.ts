@@ -25,6 +25,11 @@ export interface ClearFlowRouteTargetReferencesOptions {
   routeBranchTargetField?: string;
 }
 
+export interface SerializeFlowRouteNodeOptions {
+  ensureDecisionBranches?: (node: FlowRouteNode, options?: { targetField?: string }) => FlowAction[];
+  routeBranchTargetField?: string;
+}
+
 export interface FlowRouteDisplayOptions {
   flowState?: (stateId: string) => Partial<FlowState> | null | undefined;
   isRouteDecisionNode?: (node: FlowRouteNode) => boolean;
@@ -45,6 +50,11 @@ export interface FlowRouteNodeModel extends FlowRouteNode {
   subActions?: FlowAction[];
   nextTargetNodeId?: string;
   branches?: FlowAction[];
+  variable?: string;
+  valueType?: string;
+  value?: string;
+  code?: string;
+  nextTargetActionId?: string;
 }
 
 type FlowRouteNodeWithBranches = FlowRouteNode & {
@@ -147,6 +157,59 @@ export function appendFlowRouteTargets(flow: Partial<GameFlow> | null | undefine
     options.push({ id: currentStateId, name: currentStateId });
   }
   return options;
+}
+
+function serializeRouteDecisionBranches(node: FlowRouteNode, options: SerializeFlowRouteNodeOptions = {}): FlowAction[] {
+  const targetField = options.routeBranchTargetField || "targetNodeId";
+  const routeNode = node as FlowRouteNodeWithBranches;
+  const branches = options.ensureDecisionBranches?.(routeNode, { targetField }) || routeNode.branches || [];
+  return branches.map((branch) => ({
+    id: branch.id,
+    type: branch.type,
+    value: branch.value || "",
+    code: branch.code || "",
+    [targetField]: branch[targetField] || ""
+  }));
+}
+
+export function serializeFlowRouteNodeForSave(node: Partial<FlowRouteNodeModel>, options: SerializeFlowRouteNodeOptions = {}): FlowRouteNode {
+  const base = {
+    id: node.id,
+    routeNodeType: node.routeNodeType || "momentEntry",
+    name: node.name || "Moment Entry",
+    nodePosition: node.nodePosition || null
+  };
+  if (node.routeNodeType === "decision") {
+    return {
+      ...base,
+      variable: node.variable || "activePlayerCount",
+      valueType: node.valueType || "int",
+      branches: serializeRouteDecisionBranches(node as FlowRouteNode, options)
+    };
+  }
+  if (node.routeNodeType === "action") {
+    const serialized = {
+      ...node,
+      ...base,
+      routeNodeType: "action",
+      type: node.type || "presentText",
+      timing: node.timing || { mode: "E+", seconds: 0 },
+      subActions: (node.subActions || []).map((subAction) => ({ ...subAction }))
+    } as FlowRouteNodeModel;
+    if (serialized.type === "decision") {
+      serialized.nextTargetNodeId = "";
+      serialized.variable = node.variable || "activePlayerCount";
+      serialized.valueType = node.valueType || "int";
+      serialized.branches = serializeRouteDecisionBranches(node as FlowRouteNode, options);
+      return serialized;
+    }
+    serialized.nextTargetNodeId = node.nextTargetNodeId || node.nextTargetActionId || "";
+    return serialized;
+  }
+  return {
+    ...base,
+    targetStateId: node.targetStateId || ""
+  };
 }
 
 export function clearFlowRouteTargetReferences(

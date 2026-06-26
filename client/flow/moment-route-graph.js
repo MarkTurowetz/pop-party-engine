@@ -143,6 +143,13 @@
     }
 
     function serializeRouteNode(node) {
+      const helper = window.PartyGameFlowRouteGraph?.serializeFlowRouteNodeForSave;
+      if (helper) {
+        return helper(node, {
+          ensureDecisionBranches: context.ensureDecisionBranches,
+          routeBranchTargetField: routeBranchTargetField()
+        });
+      }
       const base = {
         id: node.id,
         routeNodeType: node.routeNodeType || "momentEntry",

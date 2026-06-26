@@ -8,7 +8,8 @@ import {
   flowRouteTargetName,
   isFlowRouteDecisionNode,
   momentEntryTargetOptions,
-  routeGraphTargetOptions
+  routeGraphTargetOptions,
+  serializeFlowRouteNodeForSave
 } from "./flowRouteGraph";
 import { installFlowRouteGraphAdapter } from "./flowRouteGraphAdapter";
 import type { FlowAction, GameFlow } from "../../types/game-data";
@@ -145,6 +146,57 @@ describe("Flow route graph model helpers", () => {
     ]);
   });
 
+  it("serializes route nodes with legacy save defaults", () => {
+    expect(serializeFlowRouteNodeForSave({
+      id: "entry",
+      routeNodeType: "momentEntry",
+      name: "Entry",
+      targetStateId: "intro"
+    })).toEqual({
+      id: "entry",
+      routeNodeType: "momentEntry",
+      name: "Entry",
+      nodePosition: null,
+      targetStateId: "intro"
+    });
+
+    expect(serializeFlowRouteNodeForSave({
+      id: "route-action",
+      routeNodeType: "action",
+      name: "Route Action",
+      nextTargetActionId: "legacy-next",
+      subActions: [{ id: "sub", type: "setPlayersShown" }]
+    })).toEqual({
+      id: "route-action",
+      routeNodeType: "action",
+      name: "Route Action",
+      nodePosition: null,
+      type: "presentText",
+      timing: { mode: "E+", seconds: 0 },
+      subActions: [{ id: "sub", type: "setPlayersShown" }],
+      nextTargetActionId: "legacy-next",
+      nextTargetNodeId: "legacy-next"
+    });
+
+    expect(serializeFlowRouteNodeForSave({
+      id: "decision",
+      routeNodeType: "action",
+      type: "decision",
+      branches: [{ id: "hit", type: "branch", targetNodeId: "entry" }]
+    }, {
+      ensureDecisionBranches: (node) => (node.branches as FlowAction[]) || [],
+      routeBranchTargetField: "targetNodeId"
+    })).toMatchObject({
+      id: "decision",
+      routeNodeType: "action",
+      type: "decision",
+      nextTargetNodeId: "",
+      variable: "activePlayerCount",
+      valueType: "int",
+      branches: [{ id: "hit", type: "branch", value: "", code: "", targetNodeId: "entry" }]
+    });
+  });
+
   it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
     const setAttribute = vi.fn();
     const target = {
@@ -158,6 +210,7 @@ describe("Flow route graph model helpers", () => {
     expect(target.PartyGameFlowRouteGraph).toBe(adapter);
     expect(adapter.createRouteActionNode({ states: [] }, null, { idFactory: () => "route-action" }).id).toBe("route-action");
     expect(adapter.flowRouteTargetName({ states: [] }, "")).toBe("No Target");
+    expect(adapter.serializeFlowRouteNodeForSave({ id: "entry" }).routeNodeType).toBe("momentEntry");
     expect(setAttribute).toHaveBeenCalledWith("data-flow-route-graph-adapter", "module");
   });
 });
