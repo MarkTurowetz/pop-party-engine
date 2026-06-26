@@ -778,6 +778,16 @@
   display: none;
 }
 
+.flow-react-preview-replace .flow-shell {
+  display: none;
+}
+
+.flow-react-shell[data-preview-mode="replace"] {
+  position: static;
+  height: calc(100vh - clamp(32px, 6vw, 68px));
+  margin: 0;
+}
+
 .flow-react-header {
   grid-column: 1 / -1;
   display: flex;

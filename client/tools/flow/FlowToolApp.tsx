@@ -22,6 +22,7 @@ export interface FlowToolAppProps {
   selectedRouteNodeId?: string;
   selectedStateId?: string;
   surface?: string;
+  previewMode?: string;
   visible?: boolean;
 }
 
@@ -39,6 +40,7 @@ export function FlowToolApp({
   selectedRouteNodeId = "",
   selectedStateId = "",
   surface = "flow",
+  previewMode = "overlay",
   visible = false
 }: FlowToolAppProps) {
   const model = createFlowPreviewModel(flow, { selectedActionId, selectedStateId });
@@ -48,6 +50,7 @@ export function FlowToolApp({
       aria-hidden={visible ? "false" : "true"}
       className="flow-react-shell"
       data-flow-react-shell="legacy-bridge"
+      data-preview-mode={previewMode}
       data-route-node-count={model.routeNodeCount}
       data-state-count={model.stateCount}
       data-surface={surface}

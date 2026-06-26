@@ -38,6 +38,7 @@ export interface MountFlowToolAppOptions {
   createRoot?: (container: Element) => Pick<Root, "render" | "unmount">;
   document?: Document;
   flow?: GameFlow | null;
+  previewMode?: string;
   surface?: string;
   visible?: boolean;
 }
@@ -50,10 +51,15 @@ declare global {
 
 export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToolReactShell | null {
   const targetDocument = options.document || document;
-  const visible = options.visible ?? targetDocument.defaultView?.location?.search.includes("reactFlowPreview=1") ?? false;
+  const searchParams = new URLSearchParams(targetDocument.defaultView?.location?.search || "");
+  const previewParam = searchParams.get("reactFlowPreview") || "";
+  const visible = options.visible ?? Boolean(previewParam) ?? false;
+  const previewMode = options.previewMode || (previewParam === "replace" ? "replace" : "overlay");
   const host = targetDocument.createElement("div");
   host.id = "flowReactShell";
   host.hidden = !visible;
+  if (host.dataset) host.dataset.previewMode = previewMode;
+  targetDocument.body?.classList?.toggle("flow-react-preview-replace", visible && previewMode === "replace");
   (targetDocument.querySelector?.("#flowScreen") || targetDocument.body).appendChild(host);
   const root = (options.createRoot || createRoot)(host);
   const surface = options.surface || "flow";
@@ -77,6 +83,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
         selectedRouteBranchId={selection.selectedRouteBranchId || ""}
         selectedRouteNodeId={selection.selectedRouteNodeId || ""}
         selectedStateId={selection.selectedStateId || ""}
+        previewMode={previewMode}
         surface={surface}
         visible={visible}
       />
@@ -91,6 +98,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
     update,
     unmount: () => {
       root.unmount();
+      targetDocument.body?.classList?.remove("flow-react-preview-replace");
       host.remove();
     }
   };
