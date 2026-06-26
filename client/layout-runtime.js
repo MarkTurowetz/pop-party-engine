@@ -291,7 +291,7 @@ function applyControllerLayoutTextProperties(target, element) {
       element,
       fallbackSize: baseSize,
       options: {
-      padding: textFieldPadding(element)
+        padding: textFieldPadding(element)
       }
     })
     : null;
@@ -320,6 +320,16 @@ function setControllerLayoutText(target, value) {
   target.dataset.textFitSource = text;
   if (element?.kind === "text" && typeof window.PartyGameTextFit?.renderGameText === "function") {
     applyControllerLayoutTextProperties(target, element);
+  } else if (typeof window.PartyGameTextFit?.renderGameText === "function") {
+    window.PartyGameTextFit.renderGameText(target, {
+      text,
+      spec: {
+        width: target.clientWidth || target.offsetWidth || 1,
+        height: target.clientHeight || target.offsetHeight || 1,
+        fontSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 16,
+        autoFitText: false
+      }
+    });
   } else {
     target.textContent = text;
   }
@@ -716,7 +726,7 @@ function applyStageLayoutTextProperties(target, element) {
       element,
       fallbackSize: baseSize,
       options: {
-      padding: textFieldPadding(element)
+        padding: textFieldPadding(element)
       }
     })
     : null;
@@ -747,6 +757,16 @@ function setStageLayoutText(target, value) {
     applyStageLayoutTextProperties(target, element);
     const targetId = normalizeTextTargetId(element.id);
     if (targetId && stageTextObjects[targetId]) stageTextObjects[targetId].text = text;
+  } else if (typeof window.PartyGameTextFit?.renderGameText === "function") {
+    window.PartyGameTextFit.renderGameText(target, {
+      text,
+      spec: {
+        width: target.clientWidth || target.offsetWidth || 1,
+        height: target.clientHeight || target.offsetHeight || 1,
+        fontSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 16,
+        autoFitText: false
+      }
+    });
   } else {
     target.textContent = text;
   }
