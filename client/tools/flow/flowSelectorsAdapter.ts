@@ -11,7 +11,9 @@ import {
   flowGameObjectTargetParts,
   flowGameObjectTargetValue,
   flowPlacedGameObjectElementsForLayoutGroup,
+  flowStateName,
   flowStateTargetOptions,
+  flowTargetActionName,
   makeFlowId,
   stateActionNameSet,
   uniqueActionNameForType,
@@ -19,6 +21,7 @@ import {
   type FlowGameObjectTargetParts,
   type FlowOption,
   type FlowPlacedGameObjectOptions,
+  type FlowStateNameOptions,
   type FlowTargetLayoutElement,
   type FlowActionTypeMeta,
   type FlowStateTargetOptionsConfig,
@@ -39,7 +42,9 @@ export interface PartyGameFlowSelectors {
   flowGameObjectTargetParts: (value: unknown, fallbackScope?: string) => FlowGameObjectTargetParts;
   flowGameObjectTargetValue: (element: Partial<FlowTargetLayoutElement>) => string;
   flowPlacedGameObjectElementsForLayoutGroup: (group: Partial<LayoutState> | null | undefined, scope: string, options?: FlowPlacedGameObjectOptions) => FlowTargetLayoutElement[];
+  flowStateName: (flow: Partial<GameFlow> | null | undefined, stateId: string, options?: FlowStateNameOptions) => string;
   flowStateTargetOptions: (flow: Partial<GameFlow> | null | undefined, selectedStateId?: string, currentStateId?: string, config?: FlowStateTargetOptionsConfig) => FlowOption[];
+  flowTargetActionName: (state: Partial<FlowState> | null | undefined, actionId: string) => string;
   makeFlowId: (label: unknown, fallback: string) => string;
   stateActionNameSet: (state: Partial<FlowState> | null | undefined, excludeActionId?: string) => Set<string>;
   uniqueActionNameForType: (actionTypes: FlowActionTypeMeta[], state: Partial<FlowState> | null | undefined, action: Partial<FlowAction> | null | undefined) => string;
@@ -65,7 +70,9 @@ export function installFlowSelectorsAdapter(target: Window = window): PartyGameF
     flowGameObjectTargetParts,
     flowGameObjectTargetValue,
     flowPlacedGameObjectElementsForLayoutGroup,
+    flowStateName,
     flowStateTargetOptions,
+    flowTargetActionName,
     makeFlowId,
     stateActionNameSet,
     uniqueActionNameForType

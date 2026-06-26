@@ -509,3 +509,17 @@ The same module now also owns action-list delete helpers:
 State deletion, layout cleanup, route-node deletion, and render/selection side
 effects still remain in the legacy Flow Tool while the model layer is extracted
 incrementally.
+
+## Flow Tool Name And History Helper Extraction
+
+Two more small Flow Tool dependencies now route through typed modules in Vite
+mode:
+
+- state and action target display-name helpers live in the selector module.
+- undo/redo history snapshot creation and parsing live in the serialization
+  module.
+
+`client/flow-tool.js` and `client/flow-node-view.js` delegate to the temporary
+Vite adapters when they are present, while classic routes keep inline fallbacks.
+The history snapshot helper uses the same compatible save shape as the Flow save
+serializer, including route-node serialization through the legacy graph helper.

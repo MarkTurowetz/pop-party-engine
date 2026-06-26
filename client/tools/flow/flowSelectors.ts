@@ -28,6 +28,10 @@ export interface FlowStateTargetOptionsConfig {
   appendRouteTargets?: (options: FlowOption[]) => void;
 }
 
+export interface FlowStateNameOptions {
+  routeNodeName?: (stateId: string) => string | null | undefined;
+}
+
 export interface FlowGameObjectTargetParts {
   scope: string;
   id: string;
@@ -90,6 +94,18 @@ export function makeFlowId(label: unknown, fallback: string): string {
 
 export function actionTypeName(actionTypes: FlowActionTypeMeta[], type: string): string {
   return actionTypes.find((item) => item.id === type)?.name || type;
+}
+
+export function flowStateName(flow: Partial<GameFlow> | null | undefined, stateId: string, options: FlowStateNameOptions = {}): string {
+  return findFlowState(flow, stateId)?.name || options.routeNodeName?.(stateId) || stateId || "State";
+}
+
+export function flowTargetActionName(state: Partial<FlowState> | null | undefined, actionId: string): string {
+  if (!actionId) return "No Connection";
+  if (actionId === "none") return "None";
+  if (actionId === "return") return "Return";
+  const action = (state?.actions || []).find((item) => item.id === actionId);
+  return action?.name || "Next Action";
 }
 
 export function stateActionNameSet(state: Partial<FlowState> | null | undefined, excludeActionId = ""): Set<string> {

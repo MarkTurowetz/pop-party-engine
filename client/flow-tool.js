@@ -832,10 +832,18 @@ function getFlowNodeMarqueeController() {
 }
 
 function flowStateName(stateId) {
+  const helper = window.PartyGameFlowSelectors?.flowStateName;
+  if (helper) {
+    return helper(gameFlow, stateId, {
+      routeNodeName: (id) => flowRouteNode(id)?.name
+    });
+  }
   return flowState(stateId)?.name || flowRouteNode(stateId)?.name || stateId || "State";
 }
 
 function flowTargetActionName(actionId) {
+  const helper = window.PartyGameFlowSelectors?.flowTargetActionName;
+  if (helper) return helper(flowState(selectedFlowStateId), actionId);
   if (!actionId) return "No Connection";
   if (actionId === "none") return "None";
   if (actionId === "return") return "Return";

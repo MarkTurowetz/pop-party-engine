@@ -12,7 +12,9 @@ import {
   flowGameObjectTargetParts,
   flowGameObjectTargetValue,
   flowPlacedGameObjectElementsForLayoutGroup,
+  flowStateName,
   flowStateTargetOptions,
+  flowTargetActionName,
   makeFlowId,
   stateActionNameSet,
   uniqueActionNameForType
@@ -82,6 +84,19 @@ describe("Flow selectors", () => {
     expect([...stateActionNameSet(state)]).toContain("present text");
     expect(uniqueActionNameForType(actionTypes, state, { id: "new-action", type: "presentText" })).toBe("Present Text 1");
   });
+
+  it("builds state and action target display names with legacy fallbacks", () => {
+    expect(flowStateName(flow, "intro")).toBe("Intro");
+    expect(flowStateName(flow, "route-node", { routeNodeName: () => "Route Node" })).toBe("Route Node");
+    expect(flowStateName(flow, "missing")).toBe("missing");
+    expect(flowStateName(flow, "")).toBe("State");
+    expect(flowTargetActionName(flow.states[0], "")).toBe("No Connection");
+    expect(flowTargetActionName(flow.states[0], "none")).toBe("None");
+    expect(flowTargetActionName(flow.states[0], "return")).toBe("Return");
+    expect(flowTargetActionName(flow.states[0], "intro-present")).toBe("Present Text");
+    expect(flowTargetActionName(flow.states[0], "missing")).toBe("Next Action");
+  });
+
 
   it("builds action target options with selected missing action preservation", () => {
     expect(flowActionTargetOptions(flow.states[0], "missing-action")).toEqual([

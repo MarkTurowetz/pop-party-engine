@@ -21,3 +21,11 @@ export function serializeGameFlowForSave(flow: Partial<GameFlow> | null | undefi
     routeNodes: (flow?.routeNodes || []).map(serializeRouteNode)
   };
 }
+
+export function flowHistorySnapshot(flow: Partial<GameFlow> | null | undefined, options: FlowSerializationOptions = {}): string {
+  return JSON.stringify(serializeGameFlowForSave(flow, options));
+}
+
+export function parseFlowHistorySnapshot(snapshot: string): GameFlow {
+  return JSON.parse(snapshot) as GameFlow;
+}
