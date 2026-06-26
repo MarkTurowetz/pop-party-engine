@@ -400,3 +400,26 @@ Vite Flow entries install a temporary `window.PartyGameFlowSerialization`
 adapter before loading the legacy Flow Tool scripts. Classic routes keep the
 legacy fallback serializer in `client/flow-tool.js`, so default behavior remains
 unchanged while Vite mode starts using an explicit module boundary.
+
+## Flow Tool Selector Extraction
+
+The next Flow Tool model slice moved pure lookup/name helpers into TypeScript:
+
+```txt
+client/tools/flow/flowSelectors.ts
+client/tools/flow/flowSelectorsAdapter.ts
+client/tools/flow/flowSelectors.test.ts
+```
+
+The extracted selectors cover:
+
+- state lookup.
+- action, sub-action, and decision-branch lookup.
+- legacy Flow ID normalization.
+- action type display names.
+- duplicate-safe action naming.
+
+Vite Flow entries install `window.PartyGameFlowSelectors` before loading the
+legacy scripts. The legacy functions still contain their original fallback
+logic, so classic routes continue to work without a build while Vite mode uses
+the typed selector module.

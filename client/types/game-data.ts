@@ -24,6 +24,7 @@ export interface FlowAction extends JsonObject {
   type: string;
   timing?: FlowTiming;
   subActions?: FlowAction[];
+  branches?: FlowAction[];
 }
 
 export interface FlowState extends JsonObject {

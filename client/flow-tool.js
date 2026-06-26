@@ -1,4 +1,6 @@
 function flowState(stateId) {
+  const selector = window.PartyGameFlowSelectors?.findFlowState;
+  if (selector) return selector(gameFlow, stateId);
   return gameFlow.states.find((state) => state.id === stateId) || null;
 }
 
@@ -187,6 +189,8 @@ function expandFlowStateInList(stateId, { persist = true } = {}) {
 }
 
 function flowActionRef(stateId, actionId) {
+  const selector = window.PartyGameFlowSelectors?.findFlowActionRef;
+  if (selector) return selector(gameFlow, stateId, actionId, { ensureDecisionBranches });
   const state = flowState(stateId);
   if (!state || !actionId) return null;
   for (const action of state.actions) {
@@ -210,6 +214,8 @@ function flowActionRef(stateId, actionId) {
 }
 
 function makeFlowId(label, fallback) {
+  const selector = window.PartyGameFlowSelectors?.makeFlowId;
+  if (selector) return selector(label, fallback);
   return String(label || fallback)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -218,6 +224,8 @@ function makeFlowId(label, fallback) {
 }
 
 function actionTypeName(type) {
+  const selector = window.PartyGameFlowSelectors?.actionTypeName;
+  if (selector) return selector(flowActionTypes, type);
   return flowActionTypes.find((item) => item.id === type)?.name || type;
 }
 
@@ -230,6 +238,8 @@ function actionCategoryName(action) {
 }
 
 function stateActionNameSet(state, excludeActionId = "") {
+  const selector = window.PartyGameFlowSelectors?.stateActionNameSet;
+  if (selector) return selector(state, excludeActionId);
   const names = new Set();
   for (const action of state?.actions || []) {
     if (action.id !== excludeActionId && action.name) names.add(String(action.name).trim().toLowerCase());
@@ -241,6 +251,8 @@ function stateActionNameSet(state, excludeActionId = "") {
 }
 
 function uniqueActionNameForType(state, action) {
+  const selector = window.PartyGameFlowSelectors?.uniqueActionNameForType;
+  if (selector) return selector(flowActionTypes, state, action);
   const base = actionTypeName(action?.type || "") || "Action";
   const existing = stateActionNameSet(state, action?.id || "");
   if (!existing.has(base.toLowerCase())) return base;
