@@ -367,11 +367,7 @@
       if (!target || !component) return;
       const hasTextOverride = arguments.length >= 3;
       const text = hasTextOverride ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
-      const layout = global.PartyGameArtObject?.renderComponentText?.(target, component, text);
-      if (!layout) {
-        target.textContent = text;
-        target.style.setProperty("--component-font-size", `${Number(component?.fontSize || 16)}px`);
-      }
+      global.PartyGameArtObject?.renderComponentText?.(target, component, text);
     }
 
     remove(options = {}) {

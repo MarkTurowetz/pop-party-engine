@@ -286,7 +286,7 @@
       if (!this.label) return;
       const text = String(label ?? "");
       this.label.dataset.timerValue = text;
-      const renderedLayout = renderStageTextBox(this.label, text, {
+      renderStageTextBox(this.label, text, {
         width: 130,
         height: 86,
         fontSize: 74,
@@ -297,9 +297,6 @@
         minSize: 12,
         lineHeight: 0.9
       });
-      if (!renderedLayout) {
-        this.label.textContent = text;
-      }
     }
   }
 
@@ -388,9 +385,6 @@
         minSize: 12
       });
       bubble.style.setProperty("--player-answer-text-font-size", `${renderedLayout?.fontSize || 28}px`);
-      if (!renderedLayout) {
-        textNode.textContent = value;
-      }
     }
 
     ensureTextNode(bubble) {
