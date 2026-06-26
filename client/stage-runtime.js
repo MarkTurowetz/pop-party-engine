@@ -353,7 +353,7 @@ function stageCodeValue(fallback = "") {
   if (stateValue) return stateValue;
   const storedValue = String(stageCodeText?.dataset?.stageCodeValue || stageCodeBadge?.dataset?.stageCodeValue || "").trim();
   if (storedValue) return storedValue;
-  return normalizeStageCode(String(fallback || stageCodeText?.dataset?.textFitSource || stageCodeText?.textContent || ""));
+  return normalizeStageCode(String(fallback || "")) || "----";
 }
 
 function renderStageRuntimeTextBox(target, value, spec = {}, options = {}) {
@@ -398,7 +398,8 @@ function setStageCodeDisplays(stageCode) {
   if (!cleanCode) return;
   stageCodeText.dataset.stageCodeValue = cleanCode;
   stageCodeBadge.dataset.stageCodeValue = cleanCode;
-  if (!stageCodeText.classList.contains("has-stage-widget-art")) {
+  const panelHost = stageWidgetHosts.stageCodePanel?.();
+  if (!panelHost?.classList?.contains("has-stage-widget-art")) {
     if (typeof window.PartyGameLayoutText?.setStageText === "function") {
       window.PartyGameLayoutText.setStageText(stageCodeText, cleanCode);
     } else {
@@ -451,11 +452,11 @@ function setStageManagedText(target, value) {
 const stageWidgetTextOverrides = {
   stageCodePanel: (context) => ({ "panel-code": stageCodeValue(context.stageCode) }),
   stageCodeWidget: (context) => ({ "badge-code": stageCodeValue(context.stageCode) }),
-  joinWidget: () => ({ "join-text": joinPrompt.dataset.joinText || "Join the Lobby at bit.ly/popcontroller" }),
+  joinWidget: () => ({}),
   waitingStatus: (context) => ({ "status-text": context.text || waitingStatus.dataset.statusText || "" }),
   countdownPopup: (context) => ({ "popup-text": context.seconds > 0 ? `Starting in ${context.seconds}` : "Let's Go" }),
   craftingTimer: (context) => ({
-    "timer-value": context.label || craftingTimerLabel.dataset.timerValue || craftingTimerLabel.dataset.textFitSource || craftingTimerLabel.textContent || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
+    "timer-value": context.label || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
   })
 };
 
