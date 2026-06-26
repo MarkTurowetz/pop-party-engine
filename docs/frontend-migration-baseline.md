@@ -618,6 +618,8 @@ the React shell.
 The React bridge also receives the legacy toolbar state through a hidden
 `FlowToolbar` component, mirroring add/delete/revert availability plus the
 current list/node view mode.
+Appending `?reactFlowPreview=1` exposes the React bridge in the Flow screen for
+manual comparison while leaving the default production path on the legacy UI.
 
 ## Tool Context And Flow API Bridge
 

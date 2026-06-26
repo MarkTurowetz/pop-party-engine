@@ -13,6 +13,7 @@ describe("FlowToolApp shell", () => {
           routeNodes: [{ id: "entry" }]
         }}
         selectedStateId="intro"
+        visible={true}
       />
     );
 
@@ -25,7 +26,7 @@ describe("FlowToolApp shell", () => {
     expect(markup).toContain('data-flow-react-component="route-node-list"');
     expect(markup).toContain('data-flow-react-component="action-inspector"');
     expect(markup).toContain('data-flow-react-component="toolbar"');
-    expect(markup).toContain("hidden");
+    expect(markup).not.toContain(" hidden");
   });
 
   it("mounts an updateable browser shell", () => {
@@ -47,7 +48,8 @@ describe("FlowToolApp shell", () => {
         },
         setAttribute: (_name: string, _value: string) => undefined
       }),
-      defaultView
+      defaultView,
+      querySelector: () => null
     } as unknown as Document;
     const renders: unknown[] = [];
 

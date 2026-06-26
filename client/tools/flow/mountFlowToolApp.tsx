@@ -24,6 +24,7 @@ export interface MountFlowToolAppOptions {
   document?: Document;
   flow?: GameFlow | null;
   surface?: string;
+  visible?: boolean;
 }
 
 declare global {
@@ -34,10 +35,11 @@ declare global {
 
 export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToolReactShell | null {
   const targetDocument = options.document || document;
+  const visible = options.visible ?? targetDocument.defaultView?.location?.search.includes("reactFlowPreview=1") ?? false;
   const host = targetDocument.createElement("div");
   host.id = "flowReactShell";
-  host.hidden = true;
-  targetDocument.body.appendChild(host);
+  host.hidden = !visible;
+  (targetDocument.querySelector?.("#flowScreen") || targetDocument.body).appendChild(host);
   const root = (options.createRoot || createRoot)(host);
   const surface = options.surface || "flow";
   const update = (flow: GameFlow | null = null, selection: FlowToolReactShellSelection = {}) => {
@@ -53,6 +55,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
         selectedRouteNodeId={selection.selectedRouteNodeId || ""}
         selectedStateId={selection.selectedStateId || ""}
         surface={surface}
+        visible={visible}
       />
     );
   };

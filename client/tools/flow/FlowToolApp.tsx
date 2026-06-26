@@ -17,6 +17,7 @@ export interface FlowToolAppProps {
   selectedRouteNodeId?: string;
   selectedStateId?: string;
   surface?: string;
+  visible?: boolean;
 }
 
 export function FlowToolApp({
@@ -29,7 +30,8 @@ export function FlowToolApp({
   selectedActionId = "",
   selectedRouteNodeId = "",
   selectedStateId = "",
-  surface = "flow"
+  surface = "flow",
+  visible = false
 }: FlowToolAppProps) {
   const selectedState = flow?.states?.find((state) => state.id === selectedStateId) || flow?.states?.[0] || null;
   const selectedActionRef = flow && selectedState
@@ -40,12 +42,13 @@ export function FlowToolApp({
 
   return (
     <section
-      aria-hidden="true"
+      aria-hidden={visible ? "false" : "true"}
+      className="flow-react-shell"
       data-flow-react-shell="legacy-bridge"
       data-route-node-count={routeNodeCount}
       data-state-count={stateCount}
       data-surface={surface}
-      hidden
+      hidden={!visible}
     >
       <FlowToolbar
         canAddAction={canAddAction}
