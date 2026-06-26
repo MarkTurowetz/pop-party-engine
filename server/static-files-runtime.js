@@ -5,6 +5,7 @@ const legacyScriptManifest = require("../client/app/legacy/script-manifest.json"
 const APP_SHELL_SCRIPT = "/client/app/legacy/app-shell.js";
 const LEGACY_SCRIPT_BLOCK_PATTERN = /  <script src="\/shared\/color-utils\.js"><\/script>\n[\s\S]*?  <script src="\/client\/app\/legacy\/app-shell\.js"><\/script>/;
 const LEGACY_STYLESHEET_PATTERN = /  <link rel="stylesheet" href="\/client\/styles\/legacy-shell\.css">/;
+const BODY_OPEN = "<body>";
 const VITE_MANIFEST_FILE = path.join("dist", "client", ".vite", "manifest.json");
 const VITE_ENTRY_BY_ROLE = {
   stage: "client/app/entries/stage.ts",
@@ -131,6 +132,72 @@ function renderStylesheetLinks(stylesheets) {
     .join("\n");
 }
 
+const BLOCK_START = {
+  toolDashboardBar: "  <nav class=\"tool-dashboard-bar hidden\" id=\"toolDashboardBar\"",
+  unsafeChangesModal: "  <div class=\"unsafe-modal hidden\" id=\"unsafeChangesModal\"",
+  stageScreen: "  <section class=\"screen stage hidden\" id=\"stageScreen\"",
+  controllerScreen: "  <section class=\"screen controller hidden\" id=\"controllerScreen\"",
+  labScreen: "  <section class=\"screen lab hidden\" id=\"labScreen\"",
+  artScreen: "  <section class=\"screen art-tool hidden\" id=\"artScreen\"",
+  flowScreen: "  <section class=\"screen art-tool hidden\" id=\"flowScreen\"",
+  constantsScreen: "  <section class=\"screen art-tool hidden\" id=\"constantsScreen\"",
+  hostAudioScreen: "  <section class=\"screen art-tool hidden\" id=\"hostAudioScreen\"",
+  layoutScreen: "  <section class=\"screen art-tool hidden\" id=\"layoutScreen\""
+};
+
+function blockEndIndex(html, startIndex) {
+  const candidates = Object.values(BLOCK_START)
+    .map((marker) => html.indexOf(marker, startIndex + 1))
+    .filter((index) => index > startIndex);
+  const scriptIndex = html.search(LEGACY_SCRIPT_BLOCK_PATTERN);
+  if (scriptIndex > startIndex) candidates.push(scriptIndex);
+  return Math.min(...candidates);
+}
+
+function topLevelBlock(html, blockName) {
+  const marker = BLOCK_START[blockName];
+  const startIndex = html.indexOf(marker);
+  if (startIndex < 0) return "";
+  const endIndex = blockEndIndex(html, startIndex);
+  if (!Number.isFinite(endIndex) || endIndex <= startIndex) return "";
+  return html.slice(startIndex, endIndex).trimEnd();
+}
+
+function blockNamesForRole(role) {
+  if (role === "controller") return ["controllerScreen"];
+  if (role === "lab") return ["labScreen"];
+  if (role === "art") return ["artScreen"];
+  if (role === "flow") return ["flowScreen"];
+  if (role === "constants") return ["constantsScreen"];
+  if (role === "host-audio") return ["hostAudioScreen"];
+  if (role === "layout" || role === "controller-layout") return ["layoutScreen"];
+  if (role === "tools") {
+    return [
+      "toolDashboardBar",
+      "unsafeChangesModal",
+      "artScreen",
+      "flowScreen",
+      "constantsScreen",
+      "hostAudioScreen",
+      "layoutScreen"
+    ];
+  }
+  return ["stageScreen"];
+}
+
+function renderViteBody(html, role) {
+  const bodyIndex = html.indexOf(BODY_OPEN);
+  const scriptIndex = html.search(LEGACY_SCRIPT_BLOCK_PATTERN);
+  if (bodyIndex < 0 || scriptIndex < 0) return html;
+  const bodyOpenEnd = bodyIndex + BODY_OPEN.length;
+  const blocks = blockNamesForRole(role)
+    .map((blockName) => topLevelBlock(html, blockName))
+    .filter(Boolean)
+    .join("\n\n");
+  if (!blocks) return html;
+  return `${html.slice(0, bodyOpenEnd)}\n${blocks}\n\n${html.slice(scriptIndex)}`;
+}
+
 function createStaticFilesRuntime({
   appVersion,
   buildAssetsRoot,
@@ -150,9 +217,11 @@ function createStaticFilesRuntime({
       }
       const role = routeRoleForUrl(url);
       const stylesheetLinks = renderStylesheetLinks(stylesForRole(role));
-      const viteEntryScript = shouldUseViteEntry(url, useViteEntriesByDefault) ? viteEntryScriptForRole(root, role) : "";
+      const useViteEntry = shouldUseViteEntry(url, useViteEntriesByDefault);
+      const viteEntryScript = useViteEntry ? viteEntryScriptForRole(root, role) : "";
       const scriptTags = viteEntryScript || renderScriptTags(scriptsForRole(role));
-      const html = String(data)
+      const sourceHtml = useViteEntry ? renderViteBody(String(data), role) : String(data);
+      const html = sourceHtml
         .replace(LEGACY_STYLESHEET_PATTERN, stylesheetLinks)
         .replace(LEGACY_SCRIPT_BLOCK_PATTERN, scriptTags)
         .replaceAll("__APP_VERSION__", appVersion);

@@ -69,6 +69,14 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function assertIncludes(body, fragment, label) {
+  assert(body.includes(fragment), `${label} did not include ${fragment}`);
+}
+
+function assertExcludes(body, fragment, label) {
+  assert(!body.includes(fragment), `${label} unexpectedly included ${fragment}`);
+}
+
 function viteAssetPathFromManifest() {
   assert(fs.existsSync(manifestFile), "Vite manifest is missing; run npm run build:assets first");
   const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
@@ -143,25 +151,49 @@ async function main() {
       assert(viteStageShell.statusCode === 200, `/stage?vite=1 returned ${viteStageShell.statusCode}`);
       assert(viteStageShell.body.includes(`type="module" src="${stageEntry}"`), "/stage?vite=1 did not include the built stage entry");
       assert(!viteStageShell.body.includes("<script src=\"/client/stage-runtime.js\"></script>"), "/stage?vite=1 included classic stage scripts in the shell");
+      assertIncludes(viteStageShell.body, "id=\"stageScreen\"", "/stage?vite=1");
+      assertExcludes(viteStageShell.body, "id=\"controllerScreen\"", "/stage?vite=1");
+      assertExcludes(viteStageShell.body, "id=\"flowScreen\"", "/stage?vite=1");
+      assertExcludes(viteStageShell.body, "id=\"toolDashboardBar\"", "/stage?vite=1");
 
       const viteControllerShell = await request({ port, pathname: "/controller?vite=1" });
       assert(viteControllerShell.statusCode === 200, `/controller?vite=1 returned ${viteControllerShell.statusCode}`);
       assert(viteControllerShell.body.includes(`type="module" src="${controllerEntry}"`), "/controller?vite=1 did not include the built controller entry");
       assert(!viteControllerShell.body.includes("<script src=\"/client/controller.js\"></script>"), "/controller?vite=1 included classic controller scripts in the shell");
+      assertIncludes(viteControllerShell.body, "id=\"controllerScreen\"", "/controller?vite=1");
+      assertExcludes(viteControllerShell.body, "id=\"stageScreen\"", "/controller?vite=1");
+      assertExcludes(viteControllerShell.body, "id=\"flowScreen\"", "/controller?vite=1");
+      assertExcludes(viteControllerShell.body, "id=\"toolDashboardBar\"", "/controller?vite=1");
 
       const viteFlowShell = await request({ port, pathname: "/flow?vite=1" });
       assert(viteFlowShell.statusCode === 200, `/flow?vite=1 returned ${viteFlowShell.statusCode}`);
       assert(viteFlowShell.body.includes(`type="module" src="${flowEntry}"`), "/flow?vite=1 did not include the built Flow Tool entry");
       assert(!viteFlowShell.body.includes("<script src=\"/client/flow-tool.js\"></script>"), "/flow?vite=1 included classic Flow Tool scripts in the shell");
+      assertIncludes(viteFlowShell.body, "id=\"flowScreen\"", "/flow?vite=1");
+      assertExcludes(viteFlowShell.body, "id=\"stageScreen\"", "/flow?vite=1");
+      assertExcludes(viteFlowShell.body, "id=\"controllerScreen\"", "/flow?vite=1");
+      assertExcludes(viteFlowShell.body, "id=\"toolDashboardBar\"", "/flow?vite=1");
 
       const viteToolsShell = await request({ port, pathname: "/tools?vite=1" });
       assert(viteToolsShell.statusCode === 200, `/tools?vite=1 returned ${viteToolsShell.statusCode}`);
       assert(viteToolsShell.body.includes(`type="module" src="${toolsEntry}"`), "/tools?vite=1 did not include the built tools entry");
       assert(!viteToolsShell.body.includes("<script src=\"/client/tool-dashboard.js\"></script>"), "/tools?vite=1 included classic dashboard scripts in the shell");
+      assertIncludes(viteToolsShell.body, "id=\"toolDashboardBar\"", "/tools?vite=1");
+      assertIncludes(viteToolsShell.body, "id=\"unsafeChangesModal\"", "/tools?vite=1");
+      assertIncludes(viteToolsShell.body, "id=\"artScreen\"", "/tools?vite=1");
+      assertIncludes(viteToolsShell.body, "id=\"flowScreen\"", "/tools?vite=1");
+      assertIncludes(viteToolsShell.body, "id=\"constantsScreen\"", "/tools?vite=1");
+      assertIncludes(viteToolsShell.body, "id=\"hostAudioScreen\"", "/tools?vite=1");
+      assertIncludes(viteToolsShell.body, "id=\"layoutScreen\"", "/tools?vite=1");
+      assertExcludes(viteToolsShell.body, "id=\"stageScreen\"", "/tools?vite=1");
+      assertExcludes(viteToolsShell.body, "id=\"controllerScreen\"", "/tools?vite=1");
 
       const legacyStageShell = await request({ port, pathname: "/stage" });
       assert(legacyStageShell.statusCode === 200, `/stage returned ${legacyStageShell.statusCode}`);
       assert(legacyStageShell.body.includes("<script src=\"/client/stage-runtime.js\"></script>"), "/stage did not preserve classic stage scripts by default");
+      assertIncludes(legacyStageShell.body, "id=\"stageScreen\"", "/stage");
+      assertIncludes(legacyStageShell.body, "id=\"controllerScreen\"", "/stage");
+      assertIncludes(legacyStageShell.body, "id=\"flowScreen\"", "/stage");
     });
 
     await withServer({ PARTY_GAME_USE_VITE_ENTRIES: "1" }, async (port) => {
@@ -169,6 +201,9 @@ async function main() {
       assert(stageShell.statusCode === 200, `/stage with PARTY_GAME_USE_VITE_ENTRIES=1 returned ${stageShell.statusCode}`);
       assert(stageShell.body.includes(`type="module" src="${stageEntry}"`), "PARTY_GAME_USE_VITE_ENTRIES=1 did not default /stage to the built entry");
       assert(!stageShell.body.includes("<script src=\"/client/stage-runtime.js\"></script>"), "PARTY_GAME_USE_VITE_ENTRIES=1 included classic stage scripts in the shell");
+      assertIncludes(stageShell.body, "id=\"stageScreen\"", "/stage with PARTY_GAME_USE_VITE_ENTRIES=1");
+      assertExcludes(stageShell.body, "id=\"controllerScreen\"", "/stage with PARTY_GAME_USE_VITE_ENTRIES=1");
+      assertExcludes(stageShell.body, "id=\"flowScreen\"", "/stage with PARTY_GAME_USE_VITE_ENTRIES=1");
     });
 
     console.log("Vite build asset smoke checks passed.");

@@ -360,3 +360,21 @@ Browser audit with `PARTY_GAME_USE_VITE_ENTRIES=1`:
 /flow        built Flow Tool entry, 46 legacy scripts loaded by bridge, 0 fresh console errors
 /tools       built tools entry, 86 legacy scripts loaded by bridge, 0 fresh console errors
 ```
+
+## Vite Route Shell Trimming
+
+Vite mode now renders route-specific body markup while classic mode keeps the
+full shared `index.html` body. This keeps the production-safe default unchanged
+and gives migrated entries a smaller DOM boundary:
+
+```txt
+/stage?vite=1       stage screen only
+/controller?vite=1  controller screen only
+/flow?vite=1        Flow Tool screen only
+/tools?vite=1       dashboard nav + tool screens
+```
+
+The same trimming applies when `PARTY_GAME_USE_VITE_ENTRIES=1` is enabled.
+`checks/check-vite-assets.js` verifies both the built Vite entry script and the
+expected route shell contents, including that legacy `/stage` still carries the
+full shared body by default.
