@@ -1226,7 +1226,8 @@ function publishRuntimeLocalClear() {
   };
   runtimeTestChannel?.postMessage(message);
   if (canUseServer) {
-    postJson("/api/tool-drafts", message).catch(() => {});
+    const saveToolDraft = window.PartyGameToolContext?.api?.flow?.saveToolDraft;
+    (saveToolDraft ? saveToolDraft(message) : postJson("/api/tool-drafts", message)).catch(() => {});
   }
   updateGlobalSaveButton();
 }
@@ -1245,7 +1246,7 @@ window.addEventListener("beforeunload", () => {
 });
 
 async function loadGameFlow() {
-  const result = await getJson("/api/game-flow");
+  const result = await (window.PartyGameToolContext?.api?.flow?.loadGameFlow?.() || getJson("/api/game-flow"));
   gameFlow = result.flow || { states: [] };
   flowActionTypes = result.availableActionTypes || [];
   flowTransitions = result.availableTransitions || [];
@@ -2046,7 +2047,8 @@ function deleteFlowItem() {
 }
 
 async function saveGameFlow() {
-  const result = await postJson("/api/game-flow", { flow: serializeGameFlowForSave(gameFlow) });
+  const flowForSave = serializeGameFlowForSave(gameFlow);
+  const result = await (window.PartyGameToolContext?.api?.flow?.saveGameFlow?.(flowForSave) || postJson("/api/game-flow", { flow: flowForSave }));
   gameFlow = result.flow;
   flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
   updateFlowStorageStatus(result.storage);

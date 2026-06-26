@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGameDataApi } from "./gameDataApi";
-import { ApiValidationError, validateGameFlowResponse, validateLayoutResponse } from "./validators";
-import type { GameFlowResponse, LayoutResponse, StageLayoutCollection } from "../types/game-data";
+import { ApiValidationError, validateGameFlowResponse, validateGameFlowSaveResponse, validateLayoutResponse } from "./validators";
+import type { GameFlowResponse, GameFlowSaveResponse, LayoutResponse, StageLayoutCollection } from "../types/game-data";
 
 function storage() {
   return {
@@ -33,6 +33,25 @@ function flowResponse(overrides: Partial<GameFlowResponse> = {}): GameFlowRespon
     storage: storage(),
     availableActionTypes: [],
     availableTransitions: [],
+    ...overrides
+  };
+}
+
+function flowSaveResponse(overrides: Partial<GameFlowSaveResponse> = {}): GameFlowSaveResponse {
+  const flow = {
+    states: [
+      {
+        id: "lobby",
+        name: "Lobby",
+        actions: []
+      }
+    ]
+  };
+  return {
+    ok: true,
+    flow,
+    runtimeFlow: flow,
+    storage: storage(),
     ...overrides
   };
 }
@@ -70,6 +89,10 @@ describe("API validators", () => {
     expect(() => validateGameFlowResponse(invalid)).toThrow(ApiValidationError);
   });
 
+  it("accepts the smaller game flow save response", () => {
+    expect(validateGameFlowSaveResponse(flowSaveResponse()).flow.states[0]?.id).toBe("lobby");
+  });
+
   it("accepts valid layout responses", () => {
     expect(validateLayoutResponse<StageLayoutCollection>(layoutsResponse(), "/api/stage-layouts").layouts.canvas.width).toBe(1920);
   });
@@ -103,5 +126,23 @@ describe("Game data API", () => {
     const api = createGameDataApi({ fetchImpl });
 
     await expect(api.flow.loadGameFlow()).rejects.toThrow(ApiValidationError);
+  });
+
+  it("validates data saved through the API wrapper", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(flowSaveResponse()));
+    const api = createGameDataApi({ fetchImpl });
+
+    await expect(api.flow.saveGameFlow({ states: [] })).resolves.toMatchObject({
+      ok: true,
+      flow: { states: [{ id: "lobby" }] }
+    });
+    expect(fetchImpl).toHaveBeenCalledWith("/api/game-flow", {
+      body: JSON.stringify({ flow: { states: [] } }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      method: "POST"
+    });
   });
 });

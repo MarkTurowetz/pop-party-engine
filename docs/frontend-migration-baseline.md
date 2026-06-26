@@ -538,3 +538,21 @@ The legacy Flow Tool still owns history timing, UI selection, graph target
 cleanup, rendering, and layout-tool refreshes. Vite mode delegates the data
 mutations through `window.PartyGameFlowMutations`; classic routes keep inline
 fallbacks for the same behavior.
+
+## Tool Context And Flow API Bridge
+
+Vite tool entries now install the explicit tool app context for legacy scripts:
+
+```txt
+client/app/context/toolContextAdapter.ts
+```
+
+`/flow` and `/tools` expose `window.PartyGameToolContext` before booting the
+legacy scripts. Flow Tool load, save, and local-draft publishing use the typed
+Flow API wrapper from that context when available, while classic routes keep the
+raw `getJson`/`postJson` fallback path.
+
+The Flow API wrapper also has separate validation for the smaller save response
+returned by `POST /api/game-flow`, so migrated code validates the server's
+actual read and save contracts instead of assuming both endpoints return the
+same payload shape.

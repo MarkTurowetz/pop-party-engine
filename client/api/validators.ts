@@ -2,6 +2,7 @@ import type {
   ArtAssetsResponse,
   GameConstantsResponse,
   GameFlowResponse,
+  GameFlowSaveResponse,
   HealthResponse,
   HostAudiosResponse,
   LayoutResponse
@@ -136,6 +137,15 @@ export function validateGameFlowResponse(value: unknown, endpoint = "/api/game-f
   assertArray(response.availableActionTypes, endpoint, "availableActionTypes");
   assertArray(response.availableTransitions, endpoint, "availableTransitions");
   return value as GameFlowResponse;
+}
+
+export function validateGameFlowSaveResponse(value: unknown, endpoint = "/api/game-flow"): GameFlowSaveResponse {
+  const response = assertRecord(value, endpoint, "response");
+  assertOk(response, endpoint);
+  assertFlow(response.flow, endpoint, "flow");
+  assertFlow(response.runtimeFlow, endpoint, "runtimeFlow");
+  assertStorageStatus(response.storage, endpoint);
+  return value as GameFlowSaveResponse;
 }
 
 export function validateLayoutResponse<TLayout extends LayoutResponse["layouts"]>(

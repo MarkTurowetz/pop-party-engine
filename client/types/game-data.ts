@@ -133,6 +133,13 @@ export interface GameFlowResponse {
   availableTransitions: JsonObject[];
 }
 
+export interface GameFlowSaveResponse {
+  ok: true;
+  flow: GameFlow;
+  runtimeFlow: GameFlow;
+  storage: ToolStorageStatus;
+}
+
 export interface LayoutResponse<TLayout extends StageLayoutCollection = StageLayoutCollection> {
   ok: true;
   layouts: TLayout;
