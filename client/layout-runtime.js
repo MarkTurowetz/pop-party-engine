@@ -277,7 +277,8 @@ function applyControllerLayoutArtVisibilityOverride(entity) {
 function controllerLayoutComputedFontSize(element, textOverride = "") {
   const baseSize = Number(element.fontSize || 42);
   if (!element.autoFitText) return baseSize;
-  return fittedLayoutTextSize(element, textOverride || layoutDefaultText(element) || String(element.name || "Text"), baseSize);
+  const text = arguments.length >= 2 ? String(textOverride ?? "") : layoutDefaultText(element);
+  return fittedLayoutTextSize(element, text, baseSize);
 }
 
 function applyControllerLayoutTextProperties(target, element) {
@@ -671,7 +672,8 @@ window.fittedLayoutTextSize = fittedLayoutTextSize;
 function stageLayoutComputedFontSize(element, textOverride = "") {
   const baseSize = Number(element.fontSize || 58);
   if (!element.autoFitText) return baseSize;
-  return fittedLayoutTextSize(element, textOverride || stageLayoutTextDefault(element) || String(element.name || "Text"), baseSize);
+  const text = arguments.length >= 2 ? String(textOverride ?? "") : stageLayoutTextDefault(element);
+  return fittedLayoutTextSize(element, text, baseSize);
 }
 
 function applyStageLayoutTextProperties(target, element) {

@@ -809,7 +809,7 @@ function layoutDefaultText(element) {
   if (id === "controllerplayername") return "Ava";
   if (id === "controllermeta") return "VIP Player";
   if (id === "controllerintromessage") return "Welcome to the Game";
-  return String(element?.name || "Text");
+  return String(element?.name || "");
 }
 
 function layoutComputedFontSize(element) {

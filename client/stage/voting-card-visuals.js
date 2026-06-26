@@ -132,7 +132,7 @@
 
     sync(cardData, options = {}) {
       this.element.dataset.cardIndex = String(cardData.index ?? "");
-      this.answerElement.textContent = cardData.text || "";
+      this.answerText = cardData.text || "";
       this.cardElement.classList.toggle("is-winner", cardData.isWinner === true);
       this.cardElement.classList.toggle("is-loser", cardData.isLoser === true);
       this.syncAuthor(cardData);
@@ -154,7 +154,7 @@
       return (this.composition()?.components || []).filter((component) => !KNOWN_COMPONENT_IDS.has(component.id));
     }
 
-    applyComponentLayout(element, component, canvas) {
+    applyComponentLayout(element, component, canvas, textOverride = undefined) {
       if (!element || !component) return;
       const canvasWidth = Math.max(1, Number(canvas?.width || 1));
       const canvasHeight = Math.max(1, Number(canvas?.height || 1));
@@ -164,7 +164,7 @@
       element.style.height = `${Number(component.height || 1) / canvasHeight * 100}%`;
       element.style.setProperty("--component-scale", Number(component.scale || 1));
       element.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-      element.style.setProperty("--component-font-size", `${this.componentFontSize(component)}px`);
+      element.style.setProperty("--component-font-size", `${this.componentTextLayout(component, textOverride, arguments.length >= 4).fontSize}px`);
       element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
       element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
       element.style.setProperty("--component-border-color", component.borderColor || "transparent");
@@ -179,10 +179,13 @@
       this.element.style.width = `${Number(canvas.width || 560)}px`;
       this.element.style.height = `${Number(canvas.height || 230)}px`;
       this.applyComponentLayout(this.cardElement, this.component("current-card"), canvas);
-      this.applyComponentLayout(this.answerElement, this.component("answer-text"), canvas);
-      this.applyComponentLayout(this.authorElement, this.component("author-heading"), canvas);
+      this.applyComponentLayout(this.answerElement, this.component("answer-text"), canvas, this.answerText);
+      this.renderComponentText(this.answerElement, this.component("answer-text"), this.answerText);
+      this.applyComponentLayout(this.authorElement, this.component("author-heading"), canvas, this.authorText);
+      this.renderComponentText(this.authorElement, this.component("author-heading"), this.authorText);
       this.applyComponentLayout(this.votersElement, this.component("voter-container"), canvas);
-      this.applyComponentLayout(this.voteBadgeElement, this.component("vote-count", "vote-widget"), canvas);
+      this.applyComponentLayout(this.voteBadgeElement, this.component("vote-count", "vote-widget"), canvas, this.voteCountText);
+      this.renderComponentText(this.voteBadgeElement, this.component("vote-count", "vote-widget"), this.voteCountText);
       this.renderRootArtObjects(canvas);
       this.renderComponentChildren("current-card", this.cardElement);
       this.renderComponentChildren("answer-text", this.answerElement);
@@ -229,7 +232,7 @@
     }
 
     syncAuthor(cardData) {
-      this.authorElement.textContent = cardData.authorName || "";
+      this.authorText = cardData.authorName || "";
       if (cardData.authorsRevealed === true) {
         this.authorVisual.play("appear");
       } else {
@@ -246,7 +249,8 @@
       const count = Math.max(0, Math.floor(Number(visibleVoteCount || 0)));
       const wasVisible = this.voteCountVisual?.isVisible?.() === true;
       this.visibleVoteCount = count;
-      this.voteBadgeElement.textContent = count > 0 ? String(count) : "";
+      this.voteCountText = count > 0 ? String(count) : "";
+      this.renderComponentText(this.voteBadgeElement, this.component("vote-count", "vote-widget"), this.voteCountText);
       this.renderComponentChildren("vote-count", this.voteBadgeElement);
       if (count > 0) {
         this.voteCountVisual?.play(wasVisible ? "update" : "appear");
@@ -338,7 +342,7 @@
       avatarElement.className = `voting-card-voter-avatar ${this.avatarClass(voter.avatar?.shape)}`;
       avatarElement.style.setProperty("--avatar-color", voter.avatar?.color || "#22d3ee");
       avatarElement.innerHTML = this.playerAvatarArt(voter.avatar?.shape);
-      badge.querySelector(".voting-card-voter-name").textContent = voter.name || "Player";
+      this.renderComponentText(badge.querySelector(".voting-card-voter-name"), this.component("vote-widget"), voter.name || "Player");
     }
 
     applyVoteWidgetStyle(badge) {
@@ -348,7 +352,7 @@
       badge.style.minHeight = `${Number(component.height || 32)}px`;
       badge.style.setProperty("--component-scale", Number(component.scale || 1));
       badge.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-      badge.style.setProperty("--component-font-size", `${this.componentFontSize(component, "BEN")}px`);
+      badge.style.setProperty("--component-font-size", `${this.componentTextLayout(component, "BEN").fontSize}px`);
       badge.style.setProperty("--component-text-color", component.fontColor || "#17131f");
       badge.style.setProperty("--component-fill-color", component.fillColor || "#fff8d6");
       badge.style.setProperty("--component-border-color", component.borderColor || "#17131f");
@@ -356,12 +360,29 @@
       badge.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 999)}px`);
     }
 
-    componentFontSize(component, textOverride = "") {
+    componentTextLayout(component, textOverride = "", hasTextOverride = false) {
       const baseSize = Number(component?.fontSize || 16);
-      if (component?.autoFitText !== true) return baseSize;
-      const fitText = global.PartyGameTextFit?.fitTextLayout;
-      if (typeof fitText !== "function") return baseSize;
-      return fitText(component, textOverride || component.defaultText || component.name || "", baseSize).fontSize;
+      const text = hasTextOverride ? String(textOverride ?? "") : String(component?.defaultText || component?.name || "");
+      const measuredLayout = global.PartyGameTextFit?.measuredTextLayout;
+      if (typeof measuredLayout === "function") {
+        return measuredLayout(component, text, baseSize, {
+          autoFit: component?.autoFitText === true
+        });
+      }
+      return { fontSize: baseSize };
+    }
+
+    renderComponentText(target, component, textOverride = "") {
+      if (!target || !component) return;
+      const hasTextOverride = arguments.length >= 3;
+      const text = hasTextOverride ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
+      const layout = this.componentTextLayout(component, text, true);
+      target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
+      if (global.PartyGameTextFit?.renderTextElement) {
+        global.PartyGameTextFit.renderTextElement(target, text, layout);
+      } else {
+        target.textContent = text;
+      }
     }
 
     remove(options = {}) {

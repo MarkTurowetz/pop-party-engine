@@ -34,7 +34,7 @@
 
     const layout = best || layoutTextAtSize(textValue, Math.max(minSize, Number(fallbackSize || minSize)), box.width, config);
     const safeSize = Math.max(minSize, Math.floor(layout.fontSize * config.safetyScale));
-    return layoutTextAtSize(textValue, safeSize, box.width, config);
+    return withTextBox(layoutTextAtSize(textValue, safeSize, box.width, config), box);
   }
 
   function fittedLayoutTextSize(element, text, fallbackSize, options = {}) {
@@ -57,7 +57,7 @@
     const box = textBox(element, config);
     const textValue = applyTextTransform(String(text ?? ""), config.textTransform);
     const size = Math.max(Number(config.minSize || defaultOptions.minSize), Number(fontSize || config.minSize || defaultOptions.minSize));
-    return layoutTextAtSize(textValue, size, box.width, config);
+    return withTextBox(layoutTextAtSize(textValue, size, box.width, config), box);
   }
 
   function layoutTextAtSize(text, fontSize, availableWidth, config) {
@@ -89,6 +89,14 @@
       ascent: inkAscent,
       descent: inkDescent,
       baselineShift: (inkAscent - inkDescent) / 2
+    };
+  }
+
+  function withTextBox(layout, box) {
+    return {
+      ...layout,
+      boxWidth: Math.max(1, Number(box?.width || 1)),
+      boxHeight: Math.max(1, Number(box?.height || 1))
     };
   }
 
@@ -212,27 +220,33 @@
   function renderTextElement(target, text, layout = null) {
     if (!target) return;
     const documentRef = target.ownerDocument || global.document;
-    if (target.dataset) target.dataset.textFitSource = String(text || "");
-    target.setAttribute?.("aria-label", String(text || ""));
+    const textValue = String(text ?? "");
+    if (target.dataset) target.dataset.textFitSource = textValue;
+    target.setAttribute?.("aria-label", textValue);
     if (!layout) {
-      target.textContent = String(text || "");
+      target.textContent = textValue;
       return;
     }
-    const lines = Array.isArray(layout?.lines) && layout.lines.length ? layout.lines : String(text || "").split("\n");
+    const lines = Array.isArray(layout?.lines) && layout.lines.length ? layout.lines : textValue.split("\n");
     const fontSize = finiteNumber(layout?.fontSize, defaultOptions.minSize);
+    const boxWidth = Math.max(1, finiteNumber(layout?.boxWidth, target.clientWidth || 1));
+    const boxHeight = Math.max(1, finiteNumber(layout?.boxHeight, target.clientHeight || 1));
+    const ascent = finiteNumber(layout?.ascent, fontSize * 0.75);
+    const totalHeight = finiteNumber(layout?.height, fontSize);
     const lineAdvance = finiteNumber(layout?.inkHeight, fontSize) + finiteNumber(layout?.lineGap, 0);
-    const firstLineDy = -lineAdvance * Math.max(0, lines.length - 1) / 2;
+    const firstBaseline = ((boxHeight - totalHeight) / 2) + ascent;
     const svg = documentRef.createElementNS(svgNamespace, "svg");
     svg.classList.add("text-fit-svg");
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
+    svg.setAttribute("viewBox", `0 0 ${boxWidth} ${boxHeight}`);
+    svg.setAttribute("preserveAspectRatio", "none");
     svg.setAttribute("focusable", "false");
     svg.setAttribute("aria-hidden", "true");
 
     const textElement = documentRef.createElementNS(svgNamespace, "text");
     textElement.classList.add("text-fit-svg-text");
-    textElement.setAttribute("x", "50%");
-    textElement.setAttribute("y", "50%");
+    textElement.setAttribute("x", `${boxWidth / 2}`);
     textElement.setAttribute("text-anchor", "middle");
     textElement.setAttribute("dominant-baseline", "alphabetic");
     textElement.setAttribute("alignment-baseline", "alphabetic");
@@ -244,8 +258,8 @@
 
     lines.forEach((line, index) => {
       const lineElement = documentRef.createElementNS(svgNamespace, "tspan");
-      lineElement.setAttribute("x", "50%");
-      lineElement.setAttribute("dy", `${index === 0 ? firstLineDy + finiteNumber(layout?.baselineShift, 0) : lineAdvance}px`);
+      lineElement.setAttribute("x", `${boxWidth / 2}`);
+      lineElement.setAttribute("y", `${firstBaseline + (lineAdvance * index)}`);
       lineElement.textContent = line;
       textElement.appendChild(lineElement);
     });

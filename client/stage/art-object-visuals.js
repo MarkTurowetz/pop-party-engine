@@ -41,17 +41,24 @@
 
   function componentTextLayout(component, labelText = componentSchema.componentLabel(component)) {
     const baseSize = Number(component?.fontSize || 16);
-    const sharedFit = global.PartyGameTextFit?.fitTextLayout;
-    if (component?.autoFitText === true && typeof sharedFit === "function") return sharedFit(component, labelText, baseSize);
-    const fixedFit = global.PartyGameTextFit?.fixedTextLayout;
-    if (typeof fixedFit === "function") return fixedFit(component, labelText, baseSize);
+    const measuredLayout = global.PartyGameTextFit?.measuredTextLayout;
+    if (typeof measuredLayout === "function") {
+      return measuredLayout(component, labelText, baseSize, {
+        autoFit: component?.autoFitText === true
+      });
+    }
     const lineHeight = global.PartyGameTextFit?.constants?.lineHeight || 1.15;
+    const fontSize = Math.max(8, baseSize);
     return {
-      fontSize: Math.max(8, baseSize),
+      fontSize,
       lineHeight,
-      lineBoxHeight: Math.max(8, baseSize) * lineHeight,
-      lines: String(labelText || "").split("\n"),
-      baselineShift: 0
+      lineBoxHeight: fontSize * lineHeight,
+      inkHeight: fontSize * 0.9,
+      lineGap: Math.max(fontSize * (lineHeight - 1), 0),
+      lines: String(labelText ?? "").split("\n"),
+      baselineShift: 0,
+      boxWidth: Math.max(1, Number(component?.width || 1)),
+      boxHeight: Math.max(1, Number(component?.height || 1))
     };
   }
 
