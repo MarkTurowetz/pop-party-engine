@@ -3090,6 +3090,12 @@ body.tool-dashboard-mode .layout-shell {
   min-width: 0;
 }
 
+.flow-react-sub-list {
+  margin-top: 7px;
+  padding-left: 14px;
+  border-left: 4px solid rgba(23, 19, 31, 0.18);
+}
+
 .flow-react-list button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -3105,6 +3111,11 @@ body.tool-dashboard-mode .layout-shell {
   font-weight: 1000;
   text-align: left;
   cursor: pointer;
+}
+
+.flow-react-sub-list button {
+  border-style: dashed;
+  background: #fff;
 }
 
 .flow-react-list button:hover,

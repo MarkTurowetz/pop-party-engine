@@ -35,6 +35,8 @@ describe("Flow React list components", () => {
     expect(markup).toContain('data-flow-react-component="action-list"');
     expect(markup).toContain('data-action-id="show"');
     expect(markup).toContain('data-action-type="presentText"');
+    expect(markup).toContain('data-parent-action-id="show"');
+    expect(markup).toContain('data-is-sub-action="true"');
     expect(markup).toContain('aria-current="true"');
     expect(markup).toContain(">1</span>");
   });
