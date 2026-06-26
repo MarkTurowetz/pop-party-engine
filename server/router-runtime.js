@@ -43,6 +43,7 @@ function createRouterRuntime({
   sendLocalDraft,
   sendStageLayouts,
   serveArtFile,
+  serveBuildAsset,
   serveClientFile,
   serveIndex,
   serveSharedFile,
@@ -173,6 +174,16 @@ function createRouterRuntime({
     const clientFileMatch = url.pathname.match(/^\/client\/(.+)$/i);
     if (req.method === "GET" && clientFileMatch) {
       serveClientFile(res, clientFileMatch[1]);
+      return;
+    }
+
+    const buildAssetMatch = url.pathname.match(/^\/assets\/([^/]+)$/i);
+    if (req.method === "GET" && buildAssetMatch) {
+      serveBuildAsset(res, buildAssetMatch[1]);
+      return;
+    }
+    if (req.method === "GET" && url.pathname.startsWith("/assets/")) {
+      sendJson(res, 404, { ok: false, error: "Build asset file not found" });
       return;
     }
 

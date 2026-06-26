@@ -297,3 +297,24 @@ node checks/smoke-routes.js
 This is still dependency-light validation rather than a final schema system.
 The validators are intentionally structural and focused on catching malformed
 API boundaries before migrated tools consume them.
+
+## Vite Build Asset Serving
+
+The Node server can now serve Vite build output without switching legacy routes
+over to bundled entries yet:
+
+```txt
+vite build -> dist/client/assets/*
+/assets/<file> -> dist/client/assets/<file>
+```
+
+The `/assets/*` route is intentionally narrow:
+
+- It serves only single-file asset names emitted inside `dist/client/assets`.
+- Malformed nested asset paths return `404` instead of falling through to the
+  app shell.
+- Existing `/client/*`, `/shared/*`, `/art/*`, `/stage`, `/controller`, and tool
+  routes keep their current behavior.
+
+`npm run check` now builds Vite assets and runs `checks/check-vite-assets.js` to
+confirm the server can serve an emitted chunk.

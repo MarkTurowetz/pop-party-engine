@@ -99,6 +99,7 @@ function renderStylesheetLinks(stylesheets) {
 
 function createStaticFilesRuntime({
   appVersion,
+  buildAssetsRoot,
   clientRoot,
   contentTypeForFile,
   indexFile,
@@ -158,11 +159,16 @@ function createStaticFilesRuntime({
     serveStaticFile(res, requestPath, clientRoot, "Client");
   }
 
+  function serveBuildAsset(res, requestPath) {
+    serveStaticFile(res, requestPath, buildAssetsRoot, "Build asset");
+  }
+
   function serveSharedFile(res, requestPath) {
     serveStaticFile(res, requestPath, sharedRoot, "Shared");
   }
 
   return {
+    serveBuildAsset,
     serveClientFile,
     serveIndex,
     serveSharedFile
