@@ -273,7 +273,7 @@
       if (!this.label) return;
       const text = String(label ?? "");
       this.label.dataset.timerValue = text;
-      const layout = global.PartyGameTextFit?.measuredTextLayout?.({
+      const renderedLayout = global.PartyGameTextFit?.renderMeasuredTextElement?.(this.label, {
         width: 130,
         height: 86,
         fontSize: 74,
@@ -284,9 +284,7 @@
         minSize: 12,
         lineHeight: 0.9
       });
-      if (layout && global.PartyGameTextFit?.renderTextElement) {
-        global.PartyGameTextFit.renderTextElement(this.label, text, layout);
-      } else {
+      if (!renderedLayout) {
         this.label.textContent = text;
       }
     }
@@ -364,20 +362,18 @@
         fontSize: 28,
         autoFitText: true
       };
-      const textLayout = global.PartyGameTextFit?.measuredTextLayout?.(textSpec, value, 28, {
+      const textNode = this.ensureTextNode(bubble);
+      bubble.classList.toggle("is-long", isLong);
+      bubble.style.width = `${textWidth}px`;
+      bubble.style.setProperty("--player-answer-text-height", `${textHeight}px`);
+      const renderedLayout = global.PartyGameTextFit?.renderMeasuredTextElement?.(textNode, textSpec, value, 28, {
         autoFit: true,
         lineHeight: 1.02,
         maxSize: 28,
         minSize: 12
       });
-      const textNode = this.ensureTextNode(bubble);
-      bubble.classList.toggle("is-long", isLong);
-      bubble.style.width = `${textWidth}px`;
-      bubble.style.setProperty("--player-answer-text-height", `${textHeight}px`);
-      bubble.style.setProperty("--player-answer-text-font-size", `${textLayout?.fontSize || 28}px`);
-      if (textLayout && global.PartyGameTextFit?.renderTextElement) {
-        global.PartyGameTextFit.renderTextElement(textNode, value, textLayout);
-      } else {
+      bubble.style.setProperty("--player-answer-text-font-size", `${renderedLayout?.fontSize || 28}px`);
+      if (!renderedLayout) {
         textNode.textContent = value;
       }
     }

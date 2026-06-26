@@ -376,11 +376,12 @@
       if (!target || !component) return;
       const hasTextOverride = arguments.length >= 3;
       const text = hasTextOverride ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
-      const layout = this.componentTextLayout(component, text, true);
+      const baseSize = Number(component?.fontSize || 16);
+      const layout = global.PartyGameTextFit?.renderMeasuredTextElement?.(target, component, text, baseSize, {
+        autoFit: component?.autoFitText === true
+      }) || this.componentTextLayout(component, text, true);
       target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
-      if (global.PartyGameTextFit?.renderTextElement) {
-        global.PartyGameTextFit.renderTextElement(target, text, layout);
-      } else {
+      if (!global.PartyGameTextFit?.renderMeasuredTextElement) {
         target.textContent = text;
       }
     }

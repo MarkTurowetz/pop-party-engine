@@ -828,10 +828,13 @@ function layoutTextFit(element, text) {
 }
 
 function applyLayoutPreviewTextStyle(node, element, text = layoutDefaultText(element)) {
-  const layout = layoutTextFit(element, text);
+  const baseSize = Number(element.fontSize || 58);
+  const layout = window.PartyGameTextFit?.renderMeasuredTextElement?.(node, element, text, baseSize, {
+    autoFit: element.autoFitText === true
+  }) || layoutTextFit(element, text);
   node.style.setProperty("--layout-text-font-size", `${layout?.fontSize || layoutComputedFontSize(element)}px`);
   node.style.setProperty("--layout-text-color", normalizeUiColor(element.fontColor) || "#ffffff");
-  if (layout) window.PartyGameTextFit.renderTextElement?.(node, text, layout);
+  if (!window.PartyGameTextFit?.renderMeasuredTextElement && layout) window.PartyGameTextFit.renderTextElement?.(node, text, layout);
 }
 
 function layoutPreviewTextNode(element, fallbackText) {
