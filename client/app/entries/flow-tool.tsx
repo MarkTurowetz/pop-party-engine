@@ -6,6 +6,7 @@ import { installFlowActionsAdapter } from "../../tools/flow/flowActionsAdapter";
 import { installFlowDecisionAdapter } from "../../tools/flow/flowDecisionAdapter";
 import { installFlowMutationsAdapter } from "../../tools/flow/flowMutationsAdapter";
 import { installFlowRouteGraphAdapter } from "../../tools/flow/flowRouteGraphAdapter";
+import { installFlowSelectionAdapter } from "../../tools/flow/flowSelectionAdapter";
 import { installFlowSerializationAdapter } from "../../tools/flow/flowSerializationAdapter";
 import { installFlowSelectorsAdapter } from "../../tools/flow/flowSelectorsAdapter";
 
@@ -17,6 +18,7 @@ installFlowActionsAdapter();
 installFlowDecisionAdapter();
 installFlowMutationsAdapter();
 installFlowRouteGraphAdapter();
+installFlowSelectionAdapter();
 installFlowSerializationAdapter();
 installFlowSelectorsAdapter();
 

@@ -12,7 +12,7 @@ function flowAction(stateId, actionId) {
   return flowActionRef(stateId, actionId)?.action || null;
 }
 
-function setFlowActionSelection(ids) {
+function flowActionSelectionValidIds() {
   const state = flowState(selectedFlowStateId);
   const validIds = new Set();
   if (flowViewMode === "node" && flowNodeDepth === "actions") {
@@ -26,34 +26,64 @@ function setFlowActionSelection(ids) {
       for (const branch of ensureDecisionBranches(action)) validIds.add(branch.id);
     }
   }
-  const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
-  selectedFlowActionIds = new Set(nextIds);
-  selectedFlowActionId = nextIds[nextIds.length - 1] || "";
-  selectedFlowRouteNodeId = "";
-  selectedFlowRouteBranchId = "";
+  return validIds;
+}
+
+function setFlowActionSelection(ids) {
+  const validIds = flowActionSelectionValidIds();
+  const selection = window.PartyGameFlowSelection?.setFlowActionSelectionState?.(ids, validIds) || (() => {
+    const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
+    return {
+      selectedFlowActionIds: new Set(nextIds),
+      selectedFlowActionId: nextIds[nextIds.length - 1] || "",
+      selectedFlowRouteNodeId: "",
+      selectedFlowRouteBranchId: ""
+    };
+  })();
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowActionId = selection.selectedFlowActionId;
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
 }
 
 function clearFlowActionSelection() {
-  selectedFlowActionIds = new Set();
-  selectedFlowActionId = "";
+  const selection = window.PartyGameFlowSelection?.clearFlowActionSelectionState?.() || {
+    selectedFlowActionIds: new Set(),
+    selectedFlowActionId: ""
+  };
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowActionId = selection.selectedFlowActionId;
 }
 
 function selectFlowAction(actionId, options = {}) {
+  const selection = window.PartyGameFlowSelection?.selectFlowActionState?.({
+    selectedFlowActionIds,
+    selectedFlowActionId,
+    selectedFlowRouteNodeId,
+    selectedFlowRouteBranchId
+  }, actionId, options, flowActionSelectionValidIds());
+  if (selection) {
+    selectedFlowActionIds = selection.selectedFlowActionIds;
+    selectedFlowActionId = selection.selectedFlowActionId;
+    selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+    selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
+    return;
+  }
   if (options.additive) {
     const nextIds = new Set(selectedFlowActionIds);
-    if (nextIds.has(actionId)) {
-      nextIds.delete(actionId);
-    } else {
-      nextIds.add(actionId);
-    }
+    if (nextIds.has(actionId)) nextIds.delete(actionId);
+    else nextIds.add(actionId);
     setFlowActionSelection([...nextIds]);
-  } else {
-    setFlowActionSelection([actionId]);
+    return;
   }
+  setFlowActionSelection([actionId]);
 }
 
 function flowActionIsSelected(actionId) {
-  return selectedFlowActionIds.has(actionId) || selectedFlowActionId === actionId;
+  return window.PartyGameFlowSelection?.flowActionIsSelected?.({
+    selectedFlowActionIds,
+    selectedFlowActionId
+  }, actionId) || selectedFlowActionIds.has(actionId) || selectedFlowActionId === actionId;
 }
 
 function actionNodeIsSelected(action) {
@@ -126,48 +156,90 @@ function repairSelectedFlowRouteBranch() {
 }
 
 function selectFlowRouteNode(routeNodeId) {
-  selectedFlowRouteNodeId = flowRouteNode(routeNodeId)?.id || "";
-  selectedFlowRouteBranchId = "";
+  const selection = window.PartyGameFlowSelection?.setFlowRouteNodeSelectionState?.(flowRouteNode(routeNodeId)?.id || "") || {
+    selectedFlowRouteNodeId: flowRouteNode(routeNodeId)?.id || "",
+    selectedFlowRouteBranchId: "",
+    selectedFlowActionIds: new Set(),
+    selectedFlowActionId: ""
+  };
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
   clearFlowActionSelection();
-  selectedFlowActionIds = new Set();
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowActionId = selection.selectedFlowActionId;
 }
 
 function selectFlowRouteBranch(routeNodeId, branchId) {
   const routeNode = flowRouteNode(routeNodeId);
   const branch = routeNode ? decisionBranchById(routeNode, branchId, { targetField: flowRouteBranchTargetField() }) : null;
-  selectedFlowRouteNodeId = branch ? routeNode.id : "";
-  selectedFlowRouteBranchId = branch?.id || "";
+  const selection = window.PartyGameFlowSelection?.setFlowRouteBranchSelectionState?.(branch ? routeNode.id : "", branch?.id || "") || {
+    selectedFlowRouteNodeId: branch ? routeNode.id : "",
+    selectedFlowRouteBranchId: branch?.id || "",
+    selectedFlowActionIds: new Set(),
+    selectedFlowActionId: ""
+  };
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
   clearFlowActionSelection();
-  selectedFlowActionIds = new Set();
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowActionId = selection.selectedFlowActionId;
 }
 
 function clearFlowRouteNodeSelection() {
-  selectedFlowRouteNodeId = "";
-  selectedFlowRouteBranchId = "";
+  const selection = window.PartyGameFlowSelection?.clearFlowRouteNodeSelectionState?.() || {
+    selectedFlowRouteNodeId: "",
+    selectedFlowRouteBranchId: ""
+  };
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
 }
 
 function setFlowMomentSelection(ids, { expandInList = true } = {}) {
   const validIds = new Set((gameFlow.states || []).map((state) => state.id));
-  const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
-  selectedFlowActionIds = new Set(nextIds);
-  selectedFlowStateId = nextIds[nextIds.length - 1] || "";
-  selectedFlowActionId = "";
-  clearFlowRouteNodeSelection();
+  const selection = window.PartyGameFlowSelection?.setFlowMomentSelectionState?.(ids, validIds) || (() => {
+    const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
+    return {
+      selectedFlowActionIds: new Set(nextIds),
+      selectedFlowStateId: nextIds[nextIds.length - 1] || "",
+      selectedFlowActionId: "",
+      selectedFlowRouteNodeId: "",
+      selectedFlowRouteBranchId: ""
+    };
+  })();
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowStateId = selection.selectedFlowStateId;
+  selectedFlowActionId = selection.selectedFlowActionId;
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
   if (expandInList) expandFlowStateInList(selectedFlowStateId);
 }
 
 function selectFlowMoment(stateId, options = {}) {
+  const validIds = new Set((gameFlow.states || []).map((state) => state.id));
+  const selection = window.PartyGameFlowSelection?.selectFlowMomentState?.({
+    selectedFlowActionIds: options.additive ? new Set(selectedFlowMomentStates().map((state) => state.id)) : selectedFlowActionIds,
+    selectedFlowActionId,
+    selectedFlowStateId,
+    selectedFlowRouteNodeId,
+    selectedFlowRouteBranchId
+  }, stateId, options, validIds);
+  if (selection) {
+    selectedFlowActionIds = selection.selectedFlowActionIds;
+    selectedFlowStateId = selection.selectedFlowStateId;
+    selectedFlowActionId = selection.selectedFlowActionId;
+    selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+    selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
+    if (options.expandInList !== false) expandFlowStateInList(selectedFlowStateId);
+    return;
+  }
   if (options.additive) {
     const currentIds = new Set(selectedFlowMomentStates().map((state) => state.id));
-    if (currentIds.has(stateId)) {
-      currentIds.delete(stateId);
-    } else {
-      currentIds.add(stateId);
-    }
+    if (currentIds.has(stateId)) currentIds.delete(stateId);
+    else currentIds.add(stateId);
     setFlowMomentSelection([...currentIds], options);
-  } else {
-    setFlowMomentSelection([stateId], options);
+    return;
   }
+  setFlowMomentSelection([stateId], options);
 }
 
 function selectFlowMomentFromList(stateId, event) {

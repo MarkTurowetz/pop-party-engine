@@ -539,6 +539,14 @@ cleanup, rendering, and layout-tool refreshes. Vite mode delegates the data
 mutations through `window.PartyGameFlowMutations`; classic routes keep inline
 fallbacks for the same behavior.
 
+## Flow Selection Extraction
+
+The first pass of Flow selection state now lives in
+`client/tools/flow/flowSelection.ts`, with a browser adapter installed by the
+Flow entrypoint. The legacy Flow tool delegates action, moment, route node, and
+route branch selection normalization to the typed helper while keeping the
+existing global state and render lifecycle intact.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
