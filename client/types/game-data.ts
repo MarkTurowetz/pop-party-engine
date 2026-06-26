@@ -23,6 +23,7 @@ export interface FlowAction extends JsonObject {
   name?: string;
   type: string;
   timing?: FlowTiming;
+  subActions?: FlowAction[];
 }
 
 export interface FlowState extends JsonObject {
@@ -31,8 +32,13 @@ export interface FlowState extends JsonObject {
   actions: FlowAction[];
 }
 
+export interface FlowRouteNode extends JsonObject {
+  id?: string;
+}
+
 export interface GameFlow extends JsonObject {
   states: FlowState[];
+  routeNodes?: FlowRouteNode[];
 }
 
 export interface LayoutElement extends JsonObject {

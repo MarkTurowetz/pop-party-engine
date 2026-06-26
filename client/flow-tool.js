@@ -1764,6 +1764,10 @@ function createDefaultFlowAction(stateId, name, isSubAction) {
 }
 
 function serializeGameFlowForSave(flow) {
+  const serializer = window.PartyGameFlowSerialization?.serializeGameFlowForSave;
+  if (serializer) {
+    return serializer(flow, { serializeRouteNode: serializeFlowRouteNodeForSave });
+  }
   return {
     states: (flow.states || []).map((state) => ({
       ...state,

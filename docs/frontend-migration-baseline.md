@@ -378,3 +378,25 @@ The same trimming applies when `PARTY_GAME_USE_VITE_ENTRIES=1` is enabled.
 `checks/check-vite-assets.js` verifies both the built Vite entry script and the
 expected route shell contents, including that legacy `/stage` still carries the
 full shared body by default.
+
+## Flow Tool Serialization Extraction
+
+The Flow Tool migration has started with save-shape serialization, not UI
+rewrites:
+
+```txt
+client/tools/flow/flowSerialization.ts
+client/tools/flow/flowSerializationAdapter.ts
+client/tools/flow/flowSerialization.test.ts
+```
+
+The TypeScript serializer preserves the current compatible saved shape:
+
+- states are serialized with recursively serialized actions.
+- each action gets a `subActions` array, matching legacy output.
+- route nodes are delegated to the existing moment-route graph serializer.
+
+Vite Flow entries install a temporary `window.PartyGameFlowSerialization`
+adapter before loading the legacy Flow Tool scripts. Classic routes keep the
+legacy fallback serializer in `client/flow-tool.js`, so default behavior remains
+unchanged while Vite mode starts using an explicit module boundary.

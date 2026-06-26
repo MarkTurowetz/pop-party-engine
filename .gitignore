@@ -6,8 +6,8 @@ node_modules/
 dist/
 outputs/
 tmp/
-scripts/
-tools/
+/scripts/
+/tools/
 game-flow.json
 game-flow.backups/
 game-constants.json
