@@ -284,7 +284,7 @@ function controllerLayoutComputedFontSize(element, textOverride = "") {
 function applyControllerLayoutTextProperties(target, element) {
   const fontColor = normalizeUiColor(element.fontColor) || "#17131f";
   const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
-  const text = (hasRenderedFitText ? target.dataset.textFitSource : target.textContent.trim()) || layoutDefaultText(element);
+  const text = (target.dataset.textFitSource || (hasRenderedFitText ? "" : target.textContent.trim())) || layoutDefaultText(element);
   const baseSize = Number(element.fontSize || 42);
   const layout = typeof window.PartyGameTextFit?.renderAutoTextElement === "function"
     ? window.PartyGameTextFit.renderAutoTextElement(target, element, text, baseSize, {
@@ -314,9 +314,10 @@ function setControllerLayoutText(target, value) {
   const text = String(value ?? "");
   const element = controllerLayoutElementForTarget(target);
   target.dataset.textFitSource = text;
-  target.textContent = text;
   if (element?.kind === "text" && typeof window.PartyGameTextFit?.measuredTextLayout === "function") {
     applyControllerLayoutTextProperties(target, element);
+  } else {
+    target.textContent = text;
   }
 }
 
@@ -699,7 +700,7 @@ function stageLayoutComputedFontSize(element, textOverride = "") {
 function applyStageLayoutTextProperties(target, element) {
   const fontColor = normalizeUiColor(element.fontColor) || "#ffffff";
   const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
-  const text = (hasRenderedFitText ? target.dataset.textFitSource : target.textContent.trim()) || stageLayoutTextDefault(element);
+  const text = (target.dataset.textFitSource || (hasRenderedFitText ? "" : target.textContent.trim())) || stageLayoutTextDefault(element);
   const baseSize = Number(element.fontSize || 58);
   const layout = typeof window.PartyGameTextFit?.renderAutoTextElement === "function"
     ? window.PartyGameTextFit.renderAutoTextElement(target, element, text, baseSize, {
@@ -732,11 +733,12 @@ function setStageLayoutText(target, value) {
   const text = String(value ?? "");
   const element = stageLayoutElementForTarget(target);
   target.dataset.textFitSource = text;
-  target.textContent = text;
   if (element?.kind === "text" && typeof window.PartyGameTextFit?.measuredTextLayout === "function") {
     applyStageLayoutTextProperties(target, element);
     const targetId = normalizeTextTargetId(element.id);
     if (targetId && stageTextObjects[targetId]) stageTextObjects[targetId].text = text;
+  } else {
+    target.textContent = text;
   }
 }
 

@@ -356,6 +356,39 @@ function stageCodeValue(fallback = "") {
   return normalizeStageCode(String(fallback || stageCodeText?.dataset?.textFitSource || stageCodeText?.textContent || ""));
 }
 
+function renderStageRuntimeTextBox(target, value, spec = {}, options = {}) {
+  if (!target) return null;
+  const text = String(value ?? "");
+  const width = Math.max(1, Number(spec.width || target.clientWidth || target.offsetWidth || 1));
+  const height = Math.max(1, Number(spec.height || target.clientHeight || target.offsetHeight || 1));
+  const fontSize = Math.max(1, Number(spec.fontSize || Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 24));
+  if (typeof window.PartyGameTextFit?.renderTextBox === "function") {
+    return window.PartyGameTextFit.renderTextBox(target, text, {
+      width,
+      height,
+      fontSize,
+      fontColor: spec.fontColor,
+      autoFitText: spec.autoFitText !== false,
+      applySize: spec.applySize === true
+    }, {
+      autoFit: spec.autoFitText !== false,
+      maxSize: Number(options.maxSize || fontSize),
+      minSize: Number(options.minSize || 6),
+      lineHeight: Number(options.lineHeight || 1.05),
+      ...options
+    });
+  }
+  target.textContent = text;
+  return null;
+}
+
+function setFallbackStageText(target, value, spec = {}, options = {}) {
+  if (!target) return;
+  const text = String(value ?? "");
+  target.dataset.textFitSource = text;
+  renderStageRuntimeTextBox(target, text, spec, options);
+}
+
 function setStageCodeDisplays(stageCode) {
   const cleanCode = normalizeStageCode(stageCode);
   if (!cleanCode) return;
@@ -365,13 +398,31 @@ function setStageCodeDisplays(stageCode) {
     if (typeof window.PartyGameLayoutText?.setStageText === "function") {
       window.PartyGameLayoutText.setStageText(stageCodeText, cleanCode);
     } else {
-      stageCodeText.textContent = cleanCode;
+      setFallbackStageText(stageCodeText, cleanCode, {
+        width: stageCodeText.clientWidth || 760,
+        height: stageCodeText.clientHeight || 140,
+        fontSize: 112,
+        autoFitText: true
+      }, {
+        maxSize: 112,
+        minSize: 18,
+        lineHeight: 0.92
+      });
     }
   }
   if (typeof window.PartyGameLayoutText?.setStageText === "function") {
     window.PartyGameLayoutText.setStageText(stageCodeBadge, cleanCode);
   } else {
-    stageCodeBadge.textContent = cleanCode;
+    setFallbackStageText(stageCodeBadge, cleanCode, {
+      width: stageCodeBadge.clientWidth || 190,
+      height: stageCodeBadge.clientHeight || 72,
+      fontSize: 48,
+      autoFitText: true
+    }, {
+      maxSize: 48,
+      minSize: 10,
+      lineHeight: 0.95
+    });
   }
 }
 
@@ -380,7 +431,16 @@ function setStageManagedText(target, value) {
   if (typeof window.PartyGameLayoutText?.setStageText === "function") {
     window.PartyGameLayoutText.setStageText(target, value);
   } else {
-    target.textContent = String(value ?? "");
+    setFallbackStageText(target, value, {
+      width: target.clientWidth || target.offsetWidth || 800,
+      height: target.clientHeight || target.offsetHeight || 120,
+      fontSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 54,
+      autoFitText: true
+    }, {
+      maxSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 54,
+      minSize: 8,
+      lineHeight: 1.02
+    });
   }
 }
 
@@ -514,7 +574,16 @@ function setStageWaitingStatus(message, isVisible = true) {
     if (typeof window.PartyGameLayoutText?.setStageText === "function") {
       window.PartyGameLayoutText.setStageText(waitingStatus, cleanMessage);
     } else {
-      waitingStatus.textContent = cleanMessage;
+      setFallbackStageText(waitingStatus, cleanMessage, {
+        width: waitingStatus.clientWidth || 440,
+        height: waitingStatus.clientHeight || 58,
+        fontSize: 26,
+        autoFitText: true
+      }, {
+        maxSize: 26,
+        minSize: 8,
+        lineHeight: 1
+      });
     }
   }
   renderStageWidgetBinding("waitingStatus", { text: cleanMessage });

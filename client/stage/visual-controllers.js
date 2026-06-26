@@ -5,6 +5,33 @@
     return element.classList.contains(hiddenClass) || element.classList.contains(parkedClass);
   }
 
+  function renderStageTextBox(target, text, spec = {}, options = {}) {
+    if (!target) return null;
+    const textValue = String(text ?? "");
+    const width = Number(spec.width || target.clientWidth || target.offsetWidth || 1);
+    const height = Number(spec.height || target.clientHeight || target.offsetHeight || 1);
+    const fontSize = Number(spec.fontSize || Number.parseFloat(global.getComputedStyle?.(target)?.fontSize) || 24);
+    const textSpec = {
+      width: Math.max(1, width),
+      height: Math.max(1, height),
+      fontSize: Math.max(1, fontSize),
+      autoFitText: spec.autoFitText !== false,
+      applySize: spec.applySize === true,
+      fontColor: spec.fontColor
+    };
+    if (typeof global.PartyGameTextFit?.renderTextBox === "function") {
+      return global.PartyGameTextFit.renderTextBox(target, textValue, textSpec, {
+        autoFit: textSpec.autoFitText,
+        maxSize: Number(options.maxSize || textSpec.fontSize),
+        minSize: Number(options.minSize || 6),
+        lineHeight: Number(options.lineHeight || 1.05),
+        ...options
+      });
+    }
+    target.textContent = textValue;
+    return null;
+  }
+
   class StageTextController {
     constructor(options = {}) {
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
@@ -110,7 +137,17 @@
         if (object.layoutElement && typeof global.PartyGameLayoutText?.setStageText === "function") {
           global.PartyGameLayoutText.setStageText(element, nextText);
         } else {
-          element.textContent = nextText;
+          renderStageTextBox(element, nextText, {
+            width: element.clientWidth || 980,
+            height: element.clientHeight || 132,
+            fontSize: Number.parseFloat(global.getComputedStyle?.(element)?.fontSize) || 58,
+            autoFitText: true,
+            applySize: false
+          }, {
+            maxSize: Number.parseFloat(global.getComputedStyle?.(element)?.fontSize) || 58,
+            minSize: 10,
+            lineHeight: 1.02
+          });
         }
       }
       if (object.layoutElement && typeof global.PartyGameLayoutText?.setStageText !== "function") {
@@ -273,13 +310,13 @@
       if (!this.label) return;
       const text = String(label ?? "");
       this.label.dataset.timerValue = text;
-      const renderedLayout = global.PartyGameTextFit?.renderAutoTextElement?.(this.label, {
+      const renderedLayout = renderStageTextBox(this.label, text, {
         width: 130,
         height: 86,
         fontSize: 74,
-        autoFitText: true
-      }, text, 74, {
-        autoFit: true,
+        autoFitText: true,
+        applySize: false
+      }, {
         maxSize: 74,
         minSize: 12,
         lineHeight: 0.9
@@ -366,8 +403,10 @@
       bubble.classList.toggle("is-long", isLong);
       bubble.style.width = `${textWidth}px`;
       bubble.style.setProperty("--player-answer-text-height", `${textHeight}px`);
-      const renderedLayout = global.PartyGameTextFit?.renderAutoTextElement?.(textNode, textSpec, value, 28, {
-        autoFit: true,
+      const renderedLayout = renderStageTextBox(textNode, value, {
+        ...textSpec,
+        applySize: false
+      }, {
         lineHeight: 1.02,
         maxSize: 28,
         minSize: 12
