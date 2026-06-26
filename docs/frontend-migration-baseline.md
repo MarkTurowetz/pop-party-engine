@@ -568,6 +568,14 @@ future React Flow shell. It combines cloned Flow snapshots, command execution,
 undo/redo metadata, typed selection helpers, and subscriptions without importing
 React or legacy DOM modules.
 
+## Flow Adapter Installer
+
+Flow entrypoints now call `installFlowAdapters()` from
+`client/tools/flow/installFlowAdapters.ts` instead of duplicating the temporary
+browser adapter list. This keeps `/flow` and `/tools` on the same adapter set,
+including selection, validation, route graph, serialization, selectors,
+mutations, decisions, and action defaults.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
