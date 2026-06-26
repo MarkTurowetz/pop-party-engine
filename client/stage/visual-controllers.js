@@ -250,7 +250,7 @@
         const progress = Math.max(0, Math.min(1, remainingMs / durationMs));
         this.element.style.setProperty("--timer-progress", progress.toFixed(4));
         const label = String(Math.ceil(remainingMs / 1000));
-        this.label.textContent = label;
+        this.renderLabel(label);
         this.onTick?.({ label, progress, timer: nextTimer });
       };
       const visibilityDuration = this.setVisible(true, { instant: options.instant === true });
@@ -259,6 +259,27 @@
         this.intervalId = global.setInterval(update, 100);
       }
       return visibilityDuration;
+    }
+
+    renderLabel(label) {
+      if (!this.label) return;
+      const text = String(label ?? "");
+      const layout = global.PartyGameTextFit?.measuredTextLayout?.({
+        width: 130,
+        height: 86,
+        fontSize: 74,
+        autoFitText: true
+      }, text, 74, {
+        autoFit: true,
+        maxSize: 74,
+        minSize: 12,
+        lineHeight: 0.9
+      });
+      if (layout && global.PartyGameTextFit?.renderTextElement) {
+        global.PartyGameTextFit.renderTextElement(this.label, text, layout);
+      } else {
+        this.label.textContent = text;
+      }
     }
   }
 
@@ -323,10 +344,43 @@
     }
 
     applyTextFit(bubble, text) {
-      const length = String(text || "").length;
-      const fontSize = length > 72 ? 14 : length > 52 ? 16 : length > 34 ? 19 : length > 22 ? 23 : 28;
-      bubble.style.fontSize = `${fontSize}px`;
-      bubble.classList.toggle("is-long", length > 14);
+      const value = String(text ?? "");
+      const length = value.length;
+      const isLong = length > 14;
+      const textWidth = isLong ? 234 : Math.max(72, Math.min(234, length * 18));
+      const textHeight = isLong ? 92 : 34;
+      const textSpec = {
+        width: textWidth,
+        height: textHeight,
+        fontSize: 28,
+        autoFitText: true
+      };
+      const textLayout = global.PartyGameTextFit?.measuredTextLayout?.(textSpec, value, 28, {
+        autoFit: true,
+        lineHeight: 1.02,
+        maxSize: 28,
+        minSize: 12
+      });
+      const textNode = this.ensureTextNode(bubble);
+      bubble.classList.toggle("is-long", isLong);
+      bubble.style.width = `${textWidth}px`;
+      bubble.style.setProperty("--player-answer-text-height", `${textHeight}px`);
+      bubble.style.setProperty("--player-answer-text-font-size", `${textLayout?.fontSize || 28}px`);
+      if (textLayout && global.PartyGameTextFit?.renderTextElement) {
+        global.PartyGameTextFit.renderTextElement(textNode, value, textLayout);
+      } else {
+        textNode.textContent = value;
+      }
+    }
+
+    ensureTextNode(bubble) {
+      let textNode = bubble.querySelector(":scope > .player-answer-bubble-text");
+      if (!textNode) {
+        textNode = this.document.createElement("span");
+        textNode.className = "player-answer-bubble-text";
+        bubble.replaceChildren(textNode);
+      }
+      return textNode;
     }
 
     removeBubble(bubble, options = {}) {
@@ -364,7 +418,6 @@
         tile.insertBefore(bubble, tile.firstChild);
       }
 
-      bubble.textContent = answerText;
       bubble.dataset.answerNonce = answerNonce;
       bubble.dataset.answerText = answerText;
       bubble.dataset.answerHidden = "false";
