@@ -11,5 +11,5 @@ installToolContextAdapter(flowToolContext);
 installFlowAdapters();
 
 void bootLegacySurface("flow", {
-  excludeScripts: ["/client/flow/action-defaults.js", "/client/flow/action-options.js"]
+  excludeScripts: ["/client/flow/action-defaults.js", "/client/flow/action-options.js", "/client/flow/action-summary.js"]
 });

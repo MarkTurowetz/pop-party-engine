@@ -1,5 +1,6 @@
 import { installFlowActionDefaultsAdapter, type PartyGameFlowActionDefaults } from "./flowActionDefaultsAdapter";
 import { installFlowActionOptionsAdapter, type PartyGameFlowActionOptions } from "./flowActionOptionsAdapter";
+import { installFlowActionSummaryAdapter, type PartyGameFlowActionSummary } from "./flowActionSummaryAdapter";
 import { installFlowActionsAdapter, type PartyGameFlowActions } from "./flowActionsAdapter";
 import { installFlowDecisionAdapter, type PartyGameFlowDecision } from "./flowDecisionAdapter";
 import { installFlowMutationsAdapter, type PartyGameFlowMutations } from "./flowMutationsAdapter";
@@ -11,6 +12,7 @@ import { installFlowSelectorsAdapter, type PartyGameFlowSelectors } from "./flow
 export interface InstalledFlowAdapters {
   actionDefaults: PartyGameFlowActionDefaults;
   actionOptions: PartyGameFlowActionOptions;
+  actionSummary: PartyGameFlowActionSummary;
   actions: PartyGameFlowActions;
   decision: PartyGameFlowDecision;
   mutations: PartyGameFlowMutations;
@@ -24,6 +26,7 @@ export function installFlowAdapters(target: Window = window): InstalledFlowAdapt
   const adapters = {
     actionDefaults: installFlowActionDefaultsAdapter(target),
     actionOptions: installFlowActionOptionsAdapter(target),
+    actionSummary: installFlowActionSummaryAdapter(target),
     actions: installFlowActionsAdapter(target),
     decision: installFlowDecisionAdapter(target),
     mutations: installFlowMutationsAdapter(target),

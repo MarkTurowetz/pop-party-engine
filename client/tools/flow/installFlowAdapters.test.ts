@@ -10,6 +10,7 @@ describe("Flow adapter installer", () => {
 
     expect(target.PartyGameFlowActionDefaults).toBe(adapters.actionDefaults);
     expect(target.PartyGameFlowActionOptions).toBe(adapters.actionOptions);
+    expect(target.PartyGameFlowActionSummary).toBe(adapters.actionSummary);
     expect(target.PartyGameFlowActions).toBe(adapters.actions);
     expect(target.PartyGameFlowDecision).toBe(adapters.decision);
     expect(target.PartyGameFlowMutations).toBe(adapters.mutations);

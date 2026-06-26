@@ -586,6 +586,11 @@ Flow action type defaulting now has the same treatment via
 and skip `/client/flow/action-defaults.js`, while classic routes keep loading
 the original file.
 
+Flow action row summaries and badges now live in
+`client/tools/flow/flowActionSummary.ts`. Vite Flow routes install the typed
+adapter and skip `/client/flow/action-summary.js`; classic routes keep the
+original browser script.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
