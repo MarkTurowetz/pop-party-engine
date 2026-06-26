@@ -33,6 +33,7 @@
       this.pointPopupIds = new Set();
       this.gameObject = null;
       this.tileGameObjects = new Map();
+      this.pointPopupGameObjects = new Map();
     }
 
     playerSignature(player) {
@@ -248,7 +249,8 @@
         if (!tile) continue;
         this.pointPopupIds.add(popup.id);
         const node = this.document.createElement("div");
-        node.className = "point-popup";
+        node.className = "point-popup point-popup-hidden";
+        node.dataset.pointPopupId = popup.id;
         renderStageTextBox(node, `+${Math.max(0, Math.floor(Number(popup.points || 0)))}`, {
           width: 120,
           height: 46,
@@ -256,8 +258,56 @@
           fontColor: "var(--yellow)"
         });
         tile.appendChild(node);
-        global.setTimeout(() => node.remove(), 1600);
+        this.playPointPopup(node, popup);
       }
+    }
+
+    playPointPopup(node, popup) {
+      if (!node || !popup?.id) return 0;
+      const id = String(popup.id);
+      const gameObject = createGameObject(this.gameObjectApi, {
+        id: `point-popup-${id}`,
+        target: node,
+        visibilityKey: `point-popup:${id}`,
+        visualOptions: {
+          hiddenClasses: ["point-popup-hidden"],
+          motionHiddenClasses: ["point-popup-hidden"],
+          instantClass: "point-popup-instant",
+          layoutHiddenClasses: ["point-popup-hidden"],
+          durations: {
+            appear: 1500,
+            disappear: 0
+          },
+          animationHandlers: {
+            appear: (api) => {
+              api.applyShownState();
+              api.removeClasses(["is-floating"]);
+              void api.element.offsetWidth;
+              api.addClasses(["is-floating"]);
+              api.schedule(1500, () => {
+                if (!api.tokenMatches()) return;
+                this.pointPopupGameObjects.delete(id);
+                api.element.remove();
+              });
+              return 1500;
+            }
+          },
+          transformOrigin: "center center"
+        },
+        getVisible: () => !node.classList.contains("point-popup-hidden"),
+        setVisible: (isVisible) => {
+          node.dataset.visualVisible = isVisible ? "true" : "false";
+        },
+        timerSink: this.timerSink
+      });
+      if (!gameObject) {
+        node.classList.remove("point-popup-hidden");
+        node.classList.add("is-floating");
+        global.setTimeout(() => node.remove(), 1600);
+        return 1500;
+      }
+      this.pointPopupGameObjects.set(id, gameObject);
+      return gameObject.playVisibility(true);
     }
 
     clearPointPopupIds() {
@@ -266,6 +316,7 @@
 
     clearPointPopups() {
       this.clearPointPopupIds();
+      this.pointPopupGameObjects.clear();
       this.host?.querySelectorAll(".point-popup").forEach((node) => node.remove());
     }
   }

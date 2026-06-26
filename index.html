@@ -1497,7 +1497,15 @@
       transform: translate(-50%, 16px) scale(0);
       opacity: 0;
       pointer-events: none;
+    }
+
+    .point-popup.is-floating {
       animation: pointPopupFloat 1500ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    }
+
+    .point-popup.point-popup-hidden {
+      opacity: 0;
+      transform: translate(-50%, 16px) scale(0);
     }
 
     @keyframes pointPopupFloat {
