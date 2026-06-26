@@ -43,6 +43,8 @@
     const baseSize = Number(component?.fontSize || 16);
     const sharedFit = global.PartyGameTextFit?.fitTextLayout;
     if (component?.autoFitText === true && typeof sharedFit === "function") return sharedFit(component, labelText, baseSize);
+    const fixedFit = global.PartyGameTextFit?.fixedTextLayout;
+    if (typeof fixedFit === "function") return fixedFit(component, labelText, baseSize);
     const lineHeight = global.PartyGameTextFit?.constants?.lineHeight || 1.15;
     return {
       fontSize: Math.max(8, baseSize),

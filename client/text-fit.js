@@ -41,6 +41,14 @@
     return fitTextLayout(element, text, fallbackSize, options).fontSize;
   }
 
+  function fixedTextLayout(element, text, fontSize, options = {}) {
+    const config = normalizeOptions(options);
+    const box = textBox(element, config);
+    const textValue = applyTextTransform(String(text || "Text"), config.textTransform);
+    const size = Math.max(Number(config.minSize || defaultOptions.minSize), Number(fontSize || config.minSize || defaultOptions.minSize));
+    return layoutTextAtSize(textValue, size, box.width, config);
+  }
+
   function layoutTextAtSize(text, fontSize, availableWidth, config) {
     const lines = String(text || "Text")
       .split("\n")
@@ -244,6 +252,7 @@
     ...(global.PartyGameTextFit || {}),
     constants: defaultOptions,
     fitTextLayout,
+    fixedTextLayout,
     fittedLayoutTextSize,
     measureFittedTextSize: fittedLayoutTextSize,
     renderTextElement
