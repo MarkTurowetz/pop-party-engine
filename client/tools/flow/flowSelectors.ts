@@ -1,4 +1,4 @@
-import type { FlowAction, FlowState, GameFlow, JsonObject } from "../../types/game-data";
+import type { FlowAction, FlowState, GameFlow, JsonObject, StageLayoutCollection } from "../../types/game-data";
 
 export interface FlowActionRef {
   state: FlowState;
@@ -17,6 +17,15 @@ export interface FlowActionTypeMeta extends JsonObject {
   id: string;
   name: string;
   category?: string;
+}
+
+export interface FlowOption {
+  id: string;
+  name: string;
+}
+
+export interface FlowStateTargetOptionsConfig {
+  appendRouteTargets?: (options: FlowOption[]) => void;
 }
 
 export function findFlowState(flow: Partial<GameFlow> | null | undefined, stateId: string): FlowState | null {
@@ -82,4 +91,46 @@ export function uniqueActionNameForType(actionTypes: FlowActionTypeMeta[], state
   let index = 1;
   while (existing.has(`${base} ${index}`.toLowerCase())) index += 1;
   return `${base} ${index}`;
+}
+
+export function flowActionTargetOptions(state: Partial<FlowState> | null | undefined, selectedActionId = ""): FlowOption[] {
+  const options = [
+    { id: "", name: "No Connection" },
+    { id: "none", name: "None" },
+    { id: "return", name: "Return To Moments" }
+  ];
+  for (const action of state?.actions || []) {
+    options.push({ id: action.id, name: action.name || action.id });
+  }
+  if (selectedActionId && !options.some((option) => option.id === selectedActionId)) {
+    options.push({ id: selectedActionId, name: selectedActionId });
+  }
+  return options;
+}
+
+export function flowStateTargetOptions(flow: Partial<GameFlow> | null | undefined, selectedStateId = "", currentStateId = "", config: FlowStateTargetOptionsConfig = {}): FlowOption[] {
+  const options = [
+    { id: "", name: "No Next Moment" },
+    { id: "none", name: "None / Halt" }
+  ];
+  for (const state of flow?.states || []) {
+    if (state.id === currentStateId) continue;
+    options.push({ id: state.id, name: state.name || state.id });
+  }
+  config.appendRouteTargets?.(options);
+  if (selectedStateId && !options.some((option) => option.id === selectedStateId)) {
+    options.push({ id: selectedStateId, name: selectedStateId });
+  }
+  return options;
+}
+
+export function controllerLayoutOptions(controllerLayouts: Partial<StageLayoutCollection> | null | undefined, selectedLayoutId = ""): FlowOption[] {
+  const options = [{ id: "", name: "Current Moment Default" }];
+  for (const state of controllerLayouts?.states || []) {
+    options.push({ id: state.id, name: state.name || state.id });
+  }
+  if (selectedLayoutId && !options.some((option) => option.id === selectedLayoutId)) {
+    options.push({ id: selectedLayoutId, name: selectedLayoutId });
+  }
+  return options;
 }

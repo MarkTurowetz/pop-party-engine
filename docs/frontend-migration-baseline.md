@@ -424,6 +424,16 @@ legacy scripts. The legacy functions still contain their original fallback
 logic, so classic routes continue to work without a build while Vite mode uses
 the typed selector module.
 
+The selector module now also owns small option-list builders used by Flow
+inspectors:
+
+- action target options.
+- next-moment state target options, with legacy route-target extension hook.
+- controller layout options.
+
+Layout game-object target options remain in the legacy Flow Tool for now because
+they depend on stage layout visibility and cross-layout lookup details.
+
 ## Flow Tool Action Factory Extraction
 
 Default Flow action creation has moved into a typed module:

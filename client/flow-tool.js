@@ -945,6 +945,8 @@ function decisionSummary(action, options = {}) {
 }
 
 function flowActionTargetOptions(state, selectedActionId = "") {
+  const helper = window.PartyGameFlowSelectors?.flowActionTargetOptions;
+  if (helper) return helper(state, selectedActionId);
   const options = [{ id: "", name: "No Connection" }, { id: "none", name: "None" }, { id: "return", name: "Return To Moments" }];
   for (const action of state?.actions || []) {
     options.push({ id: action.id, name: action.name || action.id });
@@ -956,6 +958,12 @@ function flowActionTargetOptions(state, selectedActionId = "") {
 }
 
 function flowStateTargetOptions(selectedStateId = "", currentStateId = "") {
+  const helper = window.PartyGameFlowSelectors?.flowStateTargetOptions;
+  if (helper) {
+    return helper(gameFlow, selectedStateId, currentStateId, {
+      appendRouteTargets: (options) => getFlowMomentRouteGraph()?.appendRouteTargets(options)
+    });
+  }
   const options = [{ id: "", name: "No Next Moment" }, { id: "none", name: "None / Halt" }];
   for (const state of gameFlow.states || []) {
     if (state.id === currentStateId) continue;
@@ -985,6 +993,8 @@ function defaultControllerLayoutId() {
 }
 
 function controllerLayoutOptions(selectedLayoutId = "") {
+  const helper = window.PartyGameFlowSelectors?.controllerLayoutOptions;
+  if (helper) return helper(controllerLayouts, selectedLayoutId);
   const options = [{ id: "", name: "Current Moment Default" }];
   for (const state of controllerLayouts.states || []) {
     options.push({ id: state.id, name: state.name || state.id });
