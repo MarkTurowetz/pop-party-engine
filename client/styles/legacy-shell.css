@@ -2946,6 +2946,207 @@ body.tool-dashboard-mode .layout-shell {
   min-height: 0;
 }
 
+.flow-react-shell {
+  position: fixed;
+  inset: clamp(12px, 2vw, 24px);
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr) minmax(180px, 0.8fr) minmax(240px, 1.2fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  padding: 14px;
+  border: 5px solid var(--ink);
+  border-radius: 18px;
+  color: var(--ink);
+  background: rgba(250, 247, 236, 0.98);
+  box-shadow: 10px 10px 0 rgba(23, 19, 31, 0.28);
+  z-index: 80;
+}
+
+.flow-react-shell[hidden] {
+  display: none;
+}
+
+.flow-react-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 4px solid var(--ink);
+}
+
+.flow-react-header p,
+.flow-react-panel h3,
+.flow-react-toolbar span {
+  margin: 0;
+  color: #5e5475;
+  font-size: 12px;
+  font-weight: 1000;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.flow-react-header h2 {
+  margin: 4px 0 0;
+  font-size: clamp(26px, 4vw, 44px);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.flow-react-header dl {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+
+.flow-react-header dl div {
+  min-width: 82px;
+  padding: 8px 10px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.2);
+}
+
+.flow-react-header dt {
+  color: #5e5475;
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.flow-react-header dd {
+  margin: 2px 0 0;
+  font-size: 24px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.flow-react-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flow-react-toolbar span {
+  padding: 7px 9px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.flow-react-toolbar span[data-enabled="true"] {
+  color: var(--ink);
+  background: var(--cyan);
+}
+
+.flow-react-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.2);
+  overflow: hidden;
+}
+
+.flow-react-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.flow-react-list li {
+  min-width: 0;
+}
+
+.flow-react-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--cream);
+  font-weight: 1000;
+  text-align: left;
+  cursor: pointer;
+}
+
+.flow-react-list button:hover,
+.flow-react-list li[aria-current="true"] button {
+  background: var(--cyan);
+}
+
+.flow-react-list span:first-child,
+.flow-react-list button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-react-list [data-action-count],
+.flow-react-list [data-sub-action-count] {
+  min-width: 26px;
+  padding: 3px 6px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  text-align: center;
+}
+
+.flow-react-inspector {
+  align-content: start;
+  grid-template-rows: auto auto;
+  overflow: auto;
+}
+
+.flow-react-inspector h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.flow-react-inspector dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.flow-react-inspector dt {
+  color: #5e5475;
+  font-size: 12px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.flow-react-inspector dd {
+  min-width: 0;
+  margin: 0;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
 .flow-resizer {
   align-self: stretch;
   width: 12px;
@@ -4776,6 +4977,21 @@ body.is-resizing-flow {
 
   .flow-shell {
     grid-template-columns: 1fr;
+  }
+
+  .flow-react-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto repeat(4, minmax(180px, auto));
+    overflow: auto;
+  }
+
+  .flow-react-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .flow-react-header dl {
+    justify-content: flex-start;
   }
 
   .flow-resizer {

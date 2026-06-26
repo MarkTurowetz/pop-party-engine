@@ -16,7 +16,9 @@ function routeNodeType(node: FlowRouteNode): string {
 
 export function FlowRouteNodeList({ onSelectRouteNode, routeNodes, selectedRouteNodeId = "" }: FlowRouteNodeListProps) {
   return (
-    <ol data-flow-react-component="route-node-list">
+    <section className="flow-react-panel">
+      <h3>Routes</h3>
+      <ol className="flow-react-list" data-flow-react-component="route-node-list">
       {routeNodes.map((node, index) => {
         const id = String(node.id || `route-node-${index}`);
         return (
@@ -32,6 +34,7 @@ export function FlowRouteNodeList({ onSelectRouteNode, routeNodes, selectedRoute
           </li>
         );
       })}
-    </ol>
+      </ol>
+    </section>
   );
 }

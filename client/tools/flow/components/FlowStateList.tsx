@@ -8,7 +8,9 @@ export interface FlowStateListProps {
 
 export function FlowStateList({ onSelectState, selectedStateId = "", states }: FlowStateListProps) {
   return (
-    <ol data-flow-react-component="state-list">
+    <section className="flow-react-panel">
+      <h3>States</h3>
+      <ol className="flow-react-list" data-flow-react-component="state-list">
       {states.map((state) => (
         <li
           aria-current={state.id === selectedStateId ? "true" : undefined}
@@ -21,6 +23,7 @@ export function FlowStateList({ onSelectState, selectedStateId = "", states }: F
           </button>
         </li>
       ))}
-    </ol>
+      </ol>
+    </section>
   );
 }

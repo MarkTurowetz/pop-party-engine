@@ -12,7 +12,9 @@ function actionLabel(action: FlowAction): string {
 
 export function FlowActionList({ actions, onSelectAction, selectedActionId = "" }: FlowActionListProps) {
   return (
-    <ol data-flow-react-component="action-list">
+    <section className="flow-react-panel">
+      <h3>Actions</h3>
+      <ol className="flow-react-list" data-flow-react-component="action-list">
       {actions.map((action) => (
         <li
           aria-current={action.id === selectedActionId ? "true" : undefined}
@@ -26,6 +28,7 @@ export function FlowActionList({ actions, onSelectAction, selectedActionId = "" 
           </button>
         </li>
       ))}
-    </ol>
+      </ol>
+    </section>
   );
 }

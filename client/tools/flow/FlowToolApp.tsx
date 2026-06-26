@@ -53,6 +53,22 @@ export function FlowToolApp({
       data-surface={surface}
       hidden={!visible}
     >
+      <header className="flow-react-header">
+        <div>
+          <p>React Preview</p>
+          <h2>{selectedState?.name || selectedState?.id || "Game Flow"}</h2>
+        </div>
+        <dl>
+          <div>
+            <dt>States</dt>
+            <dd>{stateCount}</dd>
+          </div>
+          <div>
+            <dt>Routes</dt>
+            <dd>{routeNodeCount}</dd>
+          </div>
+        </dl>
+      </header>
       <FlowToolbar
         canAddAction={canAddAction}
         canDelete={canDelete}

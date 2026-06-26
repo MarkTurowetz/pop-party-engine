@@ -11,7 +11,8 @@ export interface ActionInspectorProps {
 export function ActionInspector({ action, isBranch = false, isSubAction = false, parentAction = null, state }: ActionInspectorProps) {
   if (!action || !state) {
     return (
-      <section data-flow-react-component="action-inspector" data-empty="true">
+      <section className="flow-react-panel flow-react-inspector" data-flow-react-component="action-inspector" data-empty="true">
+        <h3>Inspector</h3>
         No action selected
       </section>
     );
@@ -19,6 +20,7 @@ export function ActionInspector({ action, isBranch = false, isSubAction = false,
 
   return (
     <section
+      className="flow-react-panel flow-react-inspector"
       data-action-id={action.id}
       data-action-type={action.type}
       data-flow-react-component="action-inspector"
