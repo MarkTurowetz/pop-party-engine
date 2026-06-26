@@ -624,6 +624,14 @@ The preview state/action/route-node lists now call back into legacy selection
 handlers, so preview clicks exercise the same selection lifecycle as the current
 visible Flow tool.
 
+The opt-in preview now has a styled overlay shell for manual comparison. Its
+toolbar can trigger the legacy add-action, delete, revert, and list/node view
+handlers, while the action and route lists render nested sub-actions and route
+branches. Legacy action-type metadata is passed into the React shell so preview
+labels match the current Flow Tool vocabulary instead of showing only raw action
+type ids. The read-only React inspector now shows action id, type name, kind,
+parent, state, and timing metadata for the selected action.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
