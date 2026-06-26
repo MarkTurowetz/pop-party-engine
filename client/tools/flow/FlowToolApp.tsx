@@ -1,5 +1,6 @@
 import type { GameFlow } from "../../types/game-data";
-import { findFlowActionRef, type FlowActionTypeMeta } from "./flowSelectors";
+import type { FlowActionTypeMeta } from "./flowSelectors";
+import { createFlowPreviewModel } from "./flowPreviewModel";
 import { ActionInspector } from "./components/ActionInspector";
 import { FlowActionList } from "./components/FlowActionList";
 import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
@@ -40,36 +41,31 @@ export function FlowToolApp({
   surface = "flow",
   visible = false
 }: FlowToolAppProps) {
-  const selectedState = flow?.states?.find((state) => state.id === selectedStateId) || flow?.states?.[0] || null;
-  const selectedActionRef = flow && selectedState
-    ? findFlowActionRef(flow, selectedState.id, selectedActionId)
-    : null;
-  const stateCount = flow?.states?.length || 0;
-  const routeNodeCount = flow?.routeNodes?.length || 0;
+  const model = createFlowPreviewModel(flow, { selectedActionId, selectedStateId });
 
   return (
     <section
       aria-hidden={visible ? "false" : "true"}
       className="flow-react-shell"
       data-flow-react-shell="legacy-bridge"
-      data-route-node-count={routeNodeCount}
-      data-state-count={stateCount}
+      data-route-node-count={model.routeNodeCount}
+      data-state-count={model.stateCount}
       data-surface={surface}
       hidden={!visible}
     >
       <header className="flow-react-header">
         <div>
           <p>React Preview</p>
-          <h2>{selectedState?.name || selectedState?.id || "Game Flow"}</h2>
+          <h2>{model.selectedState?.name || model.selectedState?.id || "Game Flow"}</h2>
         </div>
         <dl>
           <div>
             <dt>States</dt>
-            <dd>{stateCount}</dd>
+            <dd>{model.stateCount}</dd>
           </div>
           <div>
             <dt>Routes</dt>
-            <dd>{routeNodeCount}</dd>
+            <dd>{model.routeNodeCount}</dd>
           </div>
         </dl>
       </header>
@@ -86,14 +82,14 @@ export function FlowToolApp({
       />
       <FlowStateList
         onSelectState={handlers.selectState}
-        selectedStateId={selectedState?.id || selectedStateId}
+        selectedStateId={model.selectedStateId}
         states={flow?.states || []}
       />
       <FlowActionList
-        actions={selectedState?.actions || []}
+        actions={model.selectedState?.actions || []}
         actionTypes={flowActionTypes}
         onSelectAction={handlers.selectAction}
-        selectedActionId={selectedActionId}
+        selectedActionId={model.selectedActionId}
       />
       <FlowRouteNodeList
         actionTypes={flowActionTypes}
@@ -104,12 +100,12 @@ export function FlowToolApp({
         selectedRouteNodeId={selectedRouteNodeId}
       />
       <ActionInspector
-        action={selectedActionRef?.action || null}
+        action={model.actionRef?.action || null}
         actionTypes={flowActionTypes}
-        isBranch={selectedActionRef?.isBranch || false}
-        isSubAction={selectedActionRef?.isSubAction || false}
-        parentAction={selectedActionRef?.parentAction || null}
-        state={selectedActionRef?.state || selectedState}
+        isBranch={model.actionRef?.isBranch || false}
+        isSubAction={model.actionRef?.isSubAction || false}
+        parentAction={model.actionRef?.parentAction || null}
+        state={model.actionRef?.state || model.selectedState}
       />
     </section>
   );
