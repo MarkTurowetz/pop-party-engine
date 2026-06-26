@@ -598,6 +598,11 @@ hidden `FlowToolApp` bridge shell before loading the legacy tool. The shell does
 not replace visible UI yet; it establishes the React entrypoint and rendering
 runtime for moving Flow panels over in later slices.
 
+The shell is exposed as `window.PartyGameFlowReactShell` in Vite mode. Legacy
+Flow render and undo/redo restore paths push the current `gameFlow` into the
+hidden React shell, so future React panels can subscribe to live Flow data
+without owning the legacy render lifecycle yet.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
