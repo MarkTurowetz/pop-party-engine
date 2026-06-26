@@ -607,6 +607,10 @@ The hidden shell now renders framework-native `FlowStateList` and
 `FlowActionList` components from live Flow data and legacy selection ids. They
 remain hidden behind the bridge while the visible legacy sidebar stays in place.
 
+It also includes a hidden read-only `ActionInspector` component wired to the
+same selected action lookup as the legacy editor, establishing the next React
+surface boundary without changing the visible inspector yet.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:

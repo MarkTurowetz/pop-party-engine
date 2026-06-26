@@ -22,6 +22,7 @@ describe("FlowToolApp shell", () => {
     expect(markup).toContain('data-surface="tools"');
     expect(markup).toContain('data-flow-react-component="state-list"');
     expect(markup).toContain('data-flow-react-component="action-list"');
+    expect(markup).toContain('data-flow-react-component="action-inspector"');
     expect(markup).toContain("hidden");
   });
 
