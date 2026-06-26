@@ -658,6 +658,8 @@ before the existing build-info step. This keeps future branch/main deploys from
 serving Vite route shells without a matching `dist/client/.vite/manifest.json`.
 It now also sets `PARTY_GAME_USE_VITE_ENTRIES=1`, so Render deploys use the
 Vite entry bridges by default after this branch is deployed.
+The Vite asset smoke check covers that default for `/stage`, `/flow`, and
+`/tools` in addition to the explicit `?vite=1` route probes.
 
 ## Flow Tool Reorder Mutation Extraction
 

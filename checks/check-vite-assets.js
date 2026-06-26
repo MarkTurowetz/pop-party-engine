@@ -204,6 +204,20 @@ async function main() {
       assertIncludes(stageShell.body, "id=\"stageScreen\"", "/stage with PARTY_GAME_USE_VITE_ENTRIES=1");
       assertExcludes(stageShell.body, "id=\"controllerScreen\"", "/stage with PARTY_GAME_USE_VITE_ENTRIES=1");
       assertExcludes(stageShell.body, "id=\"flowScreen\"", "/stage with PARTY_GAME_USE_VITE_ENTRIES=1");
+
+      const flowShell = await request({ port, pathname: "/flow" });
+      assert(flowShell.statusCode === 200, `/flow with PARTY_GAME_USE_VITE_ENTRIES=1 returned ${flowShell.statusCode}`);
+      assert(flowShell.body.includes(`type="module" src="${flowEntry}"`), "PARTY_GAME_USE_VITE_ENTRIES=1 did not default /flow to the built entry");
+      assert(!flowShell.body.includes("<script src=\"/client/flow-tool.js\"></script>"), "PARTY_GAME_USE_VITE_ENTRIES=1 included classic Flow Tool scripts in the shell");
+      assertIncludes(flowShell.body, "id=\"flowScreen\"", "/flow with PARTY_GAME_USE_VITE_ENTRIES=1");
+      assertExcludes(flowShell.body, "id=\"stageScreen\"", "/flow with PARTY_GAME_USE_VITE_ENTRIES=1");
+
+      const toolsShell = await request({ port, pathname: "/tools" });
+      assert(toolsShell.statusCode === 200, `/tools with PARTY_GAME_USE_VITE_ENTRIES=1 returned ${toolsShell.statusCode}`);
+      assert(toolsShell.body.includes(`type="module" src="${toolsEntry}"`), "PARTY_GAME_USE_VITE_ENTRIES=1 did not default /tools to the built entry");
+      assert(!toolsShell.body.includes("<script src=\"/client/tool-dashboard.js\"></script>"), "PARTY_GAME_USE_VITE_ENTRIES=1 included classic tool dashboard scripts in the shell");
+      assertIncludes(toolsShell.body, "id=\"toolDashboardBar\"", "/tools with PARTY_GAME_USE_VITE_ENTRIES=1");
+      assertIncludes(toolsShell.body, "id=\"flowScreen\"", "/tools with PARTY_GAME_USE_VITE_ENTRIES=1");
     });
 
     console.log("Vite build asset smoke checks passed.");
