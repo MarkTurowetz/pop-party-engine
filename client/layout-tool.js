@@ -1081,8 +1081,7 @@ function updateLayoutPreviewTextStyle(element) {
   if (!node) return;
   const textNode = node.querySelector(".layout-preview-presentation, .layout-preview-pill");
   if (textNode) {
-    const hasRenderedFitText = Boolean(textNode.querySelector(":scope > .text-fit-box, :scope > .text-fit-lines, :scope > .text-fit-svg"));
-    const text = (hasRenderedFitText ? textNode.dataset.textFitSource : textNode.textContent.trim()) || layoutDefaultText(element);
+    const text = textNode.dataset.textFitSource || layoutDefaultText(element);
     applyLayoutPreviewTextStyle(textNode, element, text);
   }
 }
