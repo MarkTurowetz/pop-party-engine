@@ -6,17 +6,7 @@
   }
 
   function renderStageTextBox(target, text, spec = {}) {
-    if (!target) return;
-    const textValue = String(text ?? "");
-    if (typeof global.PartyGameTextFit?.renderGameText === "function") {
-      global.PartyGameTextFit.renderGameText(target, {
-        text: textValue,
-        spec,
-        options: spec.options || {}
-      });
-    } else {
-      target.textContent = textValue;
-    }
+    return global.PartyGameStageTextRenderer?.renderStageTextBox?.(target, text, spec, spec.options || {}) || null;
   }
 
   class PlayerRosterRenderer {
