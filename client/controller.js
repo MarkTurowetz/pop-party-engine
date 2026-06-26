@@ -21,8 +21,12 @@ function setControllerButtonText(target, value, spec = {}) {
     autoFitText: spec.autoFitText !== false,
     applySize: false
   };
-  if (typeof window.PartyGameTextFit?.renderTextBox === "function") {
-    window.PartyGameTextFit.renderTextBox(target, text, textSpec, spec.options || {});
+  if (typeof window.PartyGameTextFit?.renderGameText === "function") {
+    window.PartyGameTextFit.renderGameText(target, {
+      text,
+      spec: textSpec,
+      options: spec.options || {}
+    });
     return;
   }
   target.textContent = text;

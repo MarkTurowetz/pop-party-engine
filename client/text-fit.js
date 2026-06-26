@@ -80,6 +80,19 @@
     return renderAutoTextElement(target, element, textValue, element.fontSize, options);
   }
 
+  function renderGameText(target, config = {}) {
+    if (!target) return null;
+    const text = String(config.text ?? "");
+    const element = config.element || null;
+    const spec = config.spec || null;
+    const options = config.options || {};
+    if (element) {
+      const fallbackSize = Number(config.fallbackSize ?? element.fontSize ?? defaultOptions.minSize);
+      return renderAutoTextElement(target, element, text, fallbackSize, options);
+    }
+    return renderTextBox(target, text, spec || {}, options);
+  }
+
   function targetTextRenderOptions(target, element, options = {}) {
     const computedStyle = options.computedStyle || computedStyleFor(target);
     return textRenderOptions(element, computedStyle ? { ...options, computedStyle } : options);
@@ -360,6 +373,7 @@
     fittedLayoutTextSize,
     measureFittedTextSize: fittedLayoutTextSize,
     renderAutoTextElement,
+    renderGameText,
     renderTextBox,
     renderTextElement,
     renderMeasuredTextElement,

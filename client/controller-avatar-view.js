@@ -26,14 +26,17 @@
       };
     function writeTextBox(target, value, spec = {}) {
       if (!target) return;
-      if (typeof window.PartyGameTextFit?.renderTextBox === "function") {
-        window.PartyGameTextFit.renderTextBox(target, value, {
+      if (typeof window.PartyGameTextFit?.renderGameText === "function") {
+        window.PartyGameTextFit.renderGameText(target, {
+          text: value,
+          spec: {
           width: spec.width || 90,
           height: spec.height || 18,
           fontSize: spec.fontSize || 11,
           fontColor: spec.fontColor || "#17131f",
           autoFitText: spec.autoFitText !== false,
           applySize: spec.applySize !== false
+          }
         });
         return;
       }

@@ -830,7 +830,11 @@ function layoutTextFit(element, text) {
 
 function applyLayoutPreviewTextStyle(node, element, text = layoutDefaultText(element)) {
   const baseSize = Number(element.fontSize || 58);
-  const layout = window.PartyGameTextFit?.renderAutoTextElement?.(node, element, text, baseSize)
+  const layout = window.PartyGameTextFit?.renderGameText?.(node, {
+    text,
+    element,
+    fallbackSize: baseSize
+  })
     || layoutTextFit(element, text);
   node.style.setProperty("--layout-text-font-size", `${layout?.fontSize || layoutComputedFontSize(element)}px`);
   node.style.setProperty("--layout-text-color", normalizeUiColor(element.fontColor) || "#ffffff");

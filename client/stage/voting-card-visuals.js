@@ -378,10 +378,14 @@
       const hasTextOverride = arguments.length >= 3;
       const text = hasTextOverride ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
       const baseSize = Number(component?.fontSize || 16);
-      const layout = global.PartyGameTextFit?.renderAutoTextElement?.(target, component, text, baseSize)
+      const layout = global.PartyGameTextFit?.renderGameText?.(target, {
+        text,
+        element: component,
+        fallbackSize: baseSize
+      })
         || this.componentTextLayout(component, text, true);
       target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
-      if (!global.PartyGameTextFit?.renderAutoTextElement) {
+      if (!global.PartyGameTextFit?.renderGameText) {
         target.textContent = text;
       }
     }

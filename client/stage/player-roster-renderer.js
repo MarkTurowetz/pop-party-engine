@@ -8,8 +8,12 @@
   function renderStageTextBox(target, text, spec = {}) {
     if (!target) return;
     const textValue = String(text ?? "");
-    if (typeof global.PartyGameTextFit?.renderTextBox === "function") {
-      global.PartyGameTextFit.renderTextBox(target, textValue, spec, spec.options || {});
+    if (typeof global.PartyGameTextFit?.renderGameText === "function") {
+      global.PartyGameTextFit.renderGameText(target, {
+        text: textValue,
+        spec,
+        options: spec.options || {}
+      });
     } else {
       target.textContent = textValue;
     }

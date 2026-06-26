@@ -19,13 +19,17 @@
       applySize: spec.applySize === true,
       fontColor: spec.fontColor
     };
-    if (typeof global.PartyGameTextFit?.renderTextBox === "function") {
-      return global.PartyGameTextFit.renderTextBox(target, textValue, textSpec, {
+    if (typeof global.PartyGameTextFit?.renderGameText === "function") {
+      return global.PartyGameTextFit.renderGameText(target, {
+        text: textValue,
+        spec: textSpec,
+        options: {
         autoFit: textSpec.autoFitText,
         maxSize: Number(options.maxSize || textSpec.fontSize),
         minSize: Number(options.minSize || 6),
         lineHeight: Number(options.lineHeight || 1.05),
         ...options
+        }
       });
     }
     target.textContent = textValue;

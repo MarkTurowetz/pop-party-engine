@@ -286,9 +286,14 @@ function applyControllerLayoutTextProperties(target, element) {
   const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
   const text = (target.dataset.textFitSource || (hasRenderedFitText ? "" : target.textContent.trim())) || layoutDefaultText(element);
   const baseSize = Number(element.fontSize || 42);
-  const layout = typeof window.PartyGameTextFit?.renderAutoTextElement === "function"
-    ? window.PartyGameTextFit.renderAutoTextElement(target, element, text, baseSize, {
+  const layout = typeof window.PartyGameTextFit?.renderGameText === "function"
+    ? window.PartyGameTextFit.renderGameText(target, {
+      text,
+      element,
+      fallbackSize: baseSize,
+      options: {
       padding: textFieldPadding(element)
+      }
     })
     : null;
   const fontSize = `${layout?.fontSize || controllerLayoutComputedFontSize(element, text)}px`;
@@ -314,7 +319,7 @@ function setControllerLayoutText(target, value) {
   const text = String(value ?? "");
   const element = controllerLayoutElementForTarget(target);
   target.dataset.textFitSource = text;
-  if (element?.kind === "text" && typeof window.PartyGameTextFit?.measuredTextLayout === "function") {
+  if (element?.kind === "text" && typeof window.PartyGameTextFit?.renderGameText === "function") {
     applyControllerLayoutTextProperties(target, element);
   } else {
     target.textContent = text;
@@ -702,9 +707,14 @@ function applyStageLayoutTextProperties(target, element) {
   const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
   const text = (target.dataset.textFitSource || (hasRenderedFitText ? "" : target.textContent.trim())) || stageLayoutTextDefault(element);
   const baseSize = Number(element.fontSize || 58);
-  const layout = typeof window.PartyGameTextFit?.renderAutoTextElement === "function"
-    ? window.PartyGameTextFit.renderAutoTextElement(target, element, text, baseSize, {
+  const layout = typeof window.PartyGameTextFit?.renderGameText === "function"
+    ? window.PartyGameTextFit.renderGameText(target, {
+      text,
+      element,
+      fallbackSize: baseSize,
+      options: {
       padding: textFieldPadding(element)
+      }
     })
     : null;
   const fontSize = `${layout?.fontSize || stageLayoutComputedFontSize(element, text)}px`;
@@ -733,7 +743,7 @@ function setStageLayoutText(target, value) {
   const text = String(value ?? "");
   const element = stageLayoutElementForTarget(target);
   target.dataset.textFitSource = text;
-  if (element?.kind === "text" && typeof window.PartyGameTextFit?.measuredTextLayout === "function") {
+  if (element?.kind === "text" && typeof window.PartyGameTextFit?.renderGameText === "function") {
     applyStageLayoutTextProperties(target, element);
     const targetId = normalizeTextTargetId(element.id);
     if (targetId && stageTextObjects[targetId]) stageTextObjects[targetId].text = text;
