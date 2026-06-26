@@ -47,16 +47,21 @@
   }
 
   function renderMeasuredTextElement(target, element, text, fallbackSize, options = {}) {
-    const layout = measuredTextLayout(element, text, fallbackSize, options);
+    const layout = measuredTextLayout(element, text, fallbackSize, targetTextRenderOptions(target, element, options));
     renderTextElement(target, text, layout);
     return layout;
   }
 
   function renderAutoTextElement(target, element, text, fallbackSize = null, options = {}) {
     const baseSize = Number(fallbackSize ?? element?.fontSize ?? defaultOptions.maxSize);
-    const layout = measuredTextLayout(element, text, baseSize, textRenderOptions(element, options));
+    const layout = measuredTextLayout(element, text, baseSize, targetTextRenderOptions(target, element, options));
     renderTextElement(target, text, layout);
     return layout;
+  }
+
+  function targetTextRenderOptions(target, element, options = {}) {
+    const computedStyle = options.computedStyle || computedStyleFor(target);
+    return textRenderOptions(element, computedStyle ? { ...options, computedStyle } : options);
   }
 
   function textRenderOptions(element, options = {}) {
@@ -85,8 +90,8 @@
     const inkDescent = Math.max(1, ...metrics.map((metric) => metric.descent));
     const inkHeight = inkAscent + inkDescent;
     const lineGap = Math.max(fontSize * (config.lineHeight - 1), 0);
-    const lineBoxHeight = inkHeight;
-    const height = (inkHeight * measuredLines.length) + (lineGap * Math.max(0, measuredLines.length - 1));
+    const lineBoxHeight = Math.max(fontSize, inkHeight);
+    const height = (lineBoxHeight * measuredLines.length) + (lineGap * Math.max(0, measuredLines.length - 1));
     return {
       fontSize,
       fontFamily: config.fontFamily,
@@ -226,6 +231,15 @@
     return { left, right, top, bottom };
   }
 
+  function computedStyleFor(target) {
+    if (!target || typeof global.getComputedStyle !== "function") return null;
+    try {
+      return global.getComputedStyle(target);
+    } catch (error) {
+      return null;
+    }
+  }
+
   function normalizePadding(padding) {
     if (!padding) return { left: 0, right: 0, top: 0, bottom: 0 };
     const x = Number(padding.x || 0);
@@ -271,11 +285,11 @@
     const targetHeight = Math.max(1, finiteNumber(layout?.targetHeight, boxHeight));
     const offsetX = finiteNumber(layout?.offsetX, 0);
     const offsetY = finiteNumber(layout?.offsetY, 0);
-    const ascent = finiteNumber(layout?.ascent, fontSize * 0.75);
     const totalHeight = finiteNumber(layout?.height, fontSize);
-    const lineAdvance = finiteNumber(layout?.inkHeight, fontSize) + finiteNumber(layout?.lineGap, 0);
+    const lineBoxHeight = finiteNumber(layout?.lineBoxHeight, fontSize);
+    const lineAdvance = lineBoxHeight + finiteNumber(layout?.lineGap, 0);
     const textCenterX = offsetX + (boxWidth / 2);
-    const firstBaseline = offsetY + ((boxHeight - totalHeight) / 2) + ascent;
+    const firstLineCenter = offsetY + ((boxHeight - totalHeight) / 2) + (lineBoxHeight / 2);
     const svg = documentRef.createElementNS(svgNamespace, "svg");
     svg.classList.add("text-fit-svg");
     svg.setAttribute("width", "100%");
@@ -289,8 +303,8 @@
     textElement.classList.add("text-fit-svg-text");
     textElement.setAttribute("x", `${textCenterX}`);
     textElement.setAttribute("text-anchor", "middle");
-    textElement.setAttribute("dominant-baseline", "alphabetic");
-    textElement.setAttribute("alignment-baseline", "alphabetic");
+    textElement.setAttribute("dominant-baseline", "central");
+    textElement.setAttribute("alignment-baseline", "central");
     textElement.setAttribute("fill", "currentColor");
     textElement.setAttribute("font-size", `${fontSize}px`);
     textElement.setAttribute("font-family", layout?.fontFamily || defaultOptions.fontFamily);
@@ -300,7 +314,9 @@
     lines.forEach((line, index) => {
       const lineElement = documentRef.createElementNS(svgNamespace, "tspan");
       lineElement.setAttribute("x", `${textCenterX}`);
-      lineElement.setAttribute("y", `${firstBaseline + (lineAdvance * index)}`);
+      lineElement.setAttribute("y", `${firstLineCenter + (lineAdvance * index)}`);
+      lineElement.setAttribute("dominant-baseline", "central");
+      lineElement.setAttribute("alignment-baseline", "central");
       lineElement.textContent = line;
       textElement.appendChild(lineElement);
     });
@@ -325,6 +341,7 @@
     renderAutoTextElement,
     renderTextElement,
     renderMeasuredTextElement,
+    targetTextRenderOptions,
     textRenderOptions
   };
   global.fittedLayoutTextSize = fittedLayoutTextSize;
