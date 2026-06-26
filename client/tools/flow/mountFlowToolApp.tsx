@@ -14,6 +14,7 @@ export interface FlowToolReactShellHandlers {
   deleteSelection?: () => void;
   revert?: () => void;
   selectAction?: (actionId: string) => void;
+  selectRouteBranch?: (routeNodeId: string, branchId: string) => void;
   selectRouteNode?: (routeNodeId: string) => void;
   selectState?: (stateId: string) => void;
   setViewMode?: (mode: "list" | "node") => void;
@@ -26,6 +27,7 @@ export interface FlowToolReactShellSelection {
   flowNodeDepth?: string;
   flowViewMode?: string;
   selectedActionId?: string;
+  selectedRouteBranchId?: string;
   selectedRouteNodeId?: string;
   selectedStateId?: string;
 }
@@ -69,6 +71,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
         flow={flow}
         handlers={handlers}
         selectedActionId={selection.selectedActionId || ""}
+        selectedRouteBranchId={selection.selectedRouteBranchId || ""}
         selectedRouteNodeId={selection.selectedRouteNodeId || ""}
         selectedStateId={selection.selectedStateId || ""}
         surface={surface}

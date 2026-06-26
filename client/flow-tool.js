@@ -1357,6 +1357,7 @@ function renderFlowTool() {
     flowNodeDepth,
     flowViewMode,
     selectedActionId: selectedFlowActionId,
+    selectedRouteBranchId: selectedFlowRouteBranchId,
     selectedRouteNodeId: selectedFlowRouteNodeId,
     selectedStateId: selectedFlowStateId
   });
@@ -1395,6 +1396,10 @@ function installFlowReactShellHandlers() {
     },
     selectAction: (actionId) => {
       selectFlowAction(actionId);
+      renderFlowTool();
+    },
+    selectRouteBranch: (routeNodeId, branchId) => {
+      selectFlowRouteBranch(routeNodeId, branchId);
       renderFlowTool();
     },
     selectRouteNode: (routeNodeId) => {

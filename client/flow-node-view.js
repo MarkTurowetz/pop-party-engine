@@ -639,6 +639,7 @@ function restoreFlowHistory(snapshot) {
     flowNodeDepth,
     flowViewMode,
     selectedActionId: selectedFlowActionId,
+    selectedRouteBranchId: selectedFlowRouteBranchId,
     selectedRouteNodeId: selectedFlowRouteNodeId,
     selectedStateId: selectedFlowStateId
   });

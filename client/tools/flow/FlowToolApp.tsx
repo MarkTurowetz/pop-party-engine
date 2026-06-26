@@ -16,6 +16,7 @@ export interface FlowToolAppProps {
   flow?: GameFlow | null;
   handlers?: FlowToolReactShellHandlers;
   selectedActionId?: string;
+  selectedRouteBranchId?: string;
   selectedRouteNodeId?: string;
   selectedStateId?: string;
   surface?: string;
@@ -31,6 +32,7 @@ export function FlowToolApp({
   flowViewMode = "list",
   handlers = {},
   selectedActionId = "",
+  selectedRouteBranchId = "",
   selectedRouteNodeId = "",
   selectedStateId = "",
   surface = "flow",
@@ -91,8 +93,10 @@ export function FlowToolApp({
         selectedActionId={selectedActionId}
       />
       <FlowRouteNodeList
+        onSelectRouteBranch={handlers.selectRouteBranch}
         onSelectRouteNode={handlers.selectRouteNode}
         routeNodes={flow?.routeNodes || []}
+        selectedRouteBranchId={selectedRouteBranchId}
         selectedRouteNodeId={selectedRouteNodeId}
       />
       <ActionInspector
