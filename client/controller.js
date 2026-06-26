@@ -1,25 +1,19 @@
 const controllerModules = window.createControllerModuleCache();
 
-function setControllerText(target, value) {
-  if (!target) return;
-  if (typeof window.PartyGameLayoutText?.setControllerText === "function") {
-    window.PartyGameLayoutText.setControllerText(target, value);
-    return;
-  }
-  target.textContent = String(value ?? "");
-}
-
-function setControllerButtonText(target, value, spec = {}) {
+function renderControllerText(target, value, spec = {}) {
   if (!target) return;
   const text = String(value ?? "");
   const rect = target.getBoundingClientRect?.() || {};
+  const computed = typeof window.getComputedStyle === "function"
+    ? window.getComputedStyle(target)
+    : null;
   const textSpec = {
-    width: Number(spec.width || rect.width || 240),
-    height: Number(spec.height || rect.height || 58),
-    fontSize: Number(spec.fontSize || 24),
-    fontColor: spec.fontColor || "currentColor",
+    width: Number(spec.width || rect.width || target.clientWidth || 240),
+    height: Number(spec.height || rect.height || target.clientHeight || 58),
+    fontSize: Number(spec.fontSize || Number.parseFloat(computed?.fontSize) || 24),
+    fontColor: spec.fontColor || computed?.color || "currentColor",
     autoFitText: spec.autoFitText !== false,
-    applySize: false
+    applySize: spec.applySize === true
   };
   if (typeof window.PartyGameTextFit?.renderGameText === "function") {
     window.PartyGameTextFit.renderGameText(target, {
@@ -30,6 +24,23 @@ function setControllerButtonText(target, value, spec = {}) {
     return;
   }
   target.textContent = text;
+}
+
+function setControllerText(target, value) {
+  if (!target) return;
+  if (typeof window.PartyGameLayoutText?.setControllerText === "function") {
+    window.PartyGameLayoutText.setControllerText(target, value);
+    return;
+  }
+  renderControllerText(target, value);
+}
+
+function setControllerButtonText(target, value, spec = {}) {
+  if (!target) return;
+  renderControllerText(target, value, {
+    ...spec,
+    applySize: false
+  });
 }
 
 function initializeControllerButtonText() {
