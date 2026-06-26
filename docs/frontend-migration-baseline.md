@@ -656,6 +656,8 @@ context when it exists.
 The Render blueprint now uses `npm run build`, which runs the Vite asset build
 before the existing build-info step. This keeps future branch/main deploys from
 serving Vite route shells without a matching `dist/client/.vite/manifest.json`.
+It now also sets `PARTY_GAME_USE_VITE_ENTRIES=1`, so Render deploys use the
+Vite entry bridges by default after this branch is deployed.
 
 ## Flow Tool Reorder Mutation Extraction
 

@@ -9,6 +9,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22
+      - key: PARTY_GAME_USE_VITE_ENTRIES
+        value: 1
       - key: GAME_FLOW_STORAGE
         value: github
       - key: GAME_FLOW_GITHUB_REPO
