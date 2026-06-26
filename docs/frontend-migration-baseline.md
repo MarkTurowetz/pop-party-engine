@@ -318,3 +318,45 @@ The `/assets/*` route is intentionally narrow:
 
 `npm run check` now builds Vite assets and runs `checks/check-vite-assets.js` to
 confirm the server can serve an emitted chunk.
+
+## Opt-In Vite Route Boot
+
+Vite entries can now boot the existing legacy routes:
+
+```txt
+client/app/legacy/loadLegacySurface.ts
+```
+
+The bridge keeps current behavior by default:
+
+```txt
+/stage       -> classic route-specific script tags
+/controller  -> classic route-specific script tags
+/flow        -> classic route-specific script tags
+/tools       -> classic route-specific script tags
+```
+
+Opt-in Vite boot is available in two ways:
+
+```txt
+/stage?vite=1
+/controller?vite=1
+/flow?vite=1
+/tools?vite=1
+
+PARTY_GAME_USE_VITE_ENTRIES=1 node server.js
+```
+
+In Vite mode, the server emits one built module entry from the Vite manifest.
+That module then loads the legacy scripts sequentially and runs the same
+`client/app/legacy/app-shell.js` boot layer. This gives the migration a real
+module-entry path while preserving the current legacy runtime.
+
+Browser audit with `PARTY_GAME_USE_VITE_ENTRIES=1`:
+
+```txt
+/stage       built stage entry, 27 legacy scripts loaded by bridge, 0 fresh console errors
+/controller  built controller entry, 33 legacy scripts loaded by bridge, 0 fresh console errors
+/flow        built Flow Tool entry, 46 legacy scripts loaded by bridge, 0 fresh console errors
+/tools       built tools entry, 86 legacy scripts loaded by bridge, 0 fresh console errors
+```

@@ -5,6 +5,19 @@ const legacyScriptManifest = require("../client/app/legacy/script-manifest.json"
 const APP_SHELL_SCRIPT = "/client/app/legacy/app-shell.js";
 const LEGACY_SCRIPT_BLOCK_PATTERN = /  <script src="\/shared\/color-utils\.js"><\/script>\n[\s\S]*?  <script src="\/client\/app\/legacy\/app-shell\.js"><\/script>/;
 const LEGACY_STYLESHEET_PATTERN = /  <link rel="stylesheet" href="\/client\/styles\/legacy-shell\.css">/;
+const VITE_MANIFEST_FILE = path.join("dist", "client", ".vite", "manifest.json");
+const VITE_ENTRY_BY_ROLE = {
+  stage: "client/app/entries/stage.ts",
+  controller: "client/app/entries/controller.ts",
+  tools: "client/app/entries/tools.tsx",
+  flow: "client/app/entries/flow-tool.tsx",
+  constants: "client/app/entries/constants-tool.tsx",
+  "host-audio": "client/app/entries/host-audio-tool.tsx",
+  layout: "client/app/entries/layout-tool.tsx",
+  "controller-layout": "client/app/entries/layout-tool.tsx",
+  art: "client/app/entries/art-tool.tsx",
+  lab: "client/app/entries/art-tool.tsx"
+};
 const LEGACY_CSS = {
   base: "/client/styles/legacy/base.css",
   stageRuntime: "/client/styles/legacy/stage-runtime.css",
@@ -79,6 +92,27 @@ function renderScriptTags(scripts) {
     .join("\n");
 }
 
+function shouldUseViteEntry(url, useViteEntriesByDefault = false) {
+  return useViteEntriesByDefault || url?.searchParams?.get("vite") === "1";
+}
+
+function viteManifest(root) {
+  const manifestPath = path.join(root, VITE_MANIFEST_FILE);
+  try {
+    return JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  } catch (error) {
+    return null;
+  }
+}
+
+function viteEntryScriptForRole(root, role) {
+  const manifest = viteManifest(root);
+  const manifestKey = VITE_ENTRY_BY_ROLE[role] || VITE_ENTRY_BY_ROLE.stage;
+  const file = manifest?.[manifestKey]?.file;
+  if (typeof file !== "string" || !file.startsWith("assets/")) return "";
+  return `  <script type="module" src="/${file}"></script>`;
+}
+
 function stylesForRole(role) {
   const runtimeStyles = [LEGACY_CSS.base, LEGACY_CSS.stageRuntime, LEGACY_CSS.responsive];
   const controllerStyles = [LEGACY_CSS.base, LEGACY_CSS.stageRuntime, LEGACY_CSS.controllerRuntime, LEGACY_CSS.responsive];
@@ -103,8 +137,10 @@ function createStaticFilesRuntime({
   clientRoot,
   contentTypeForFile,
   indexFile,
+  root,
   sendJson,
-  sharedRoot
+  sharedRoot,
+  useViteEntriesByDefault = false
 }) {
   function serveIndex(res, url = null) {
     fs.readFile(indexFile, (error, data) => {
@@ -114,7 +150,8 @@ function createStaticFilesRuntime({
       }
       const role = routeRoleForUrl(url);
       const stylesheetLinks = renderStylesheetLinks(stylesForRole(role));
-      const scriptTags = renderScriptTags(scriptsForRole(role));
+      const viteEntryScript = shouldUseViteEntry(url, useViteEntriesByDefault) ? viteEntryScriptForRole(root, role) : "";
+      const scriptTags = viteEntryScript || renderScriptTags(scriptsForRole(role));
       const html = String(data)
         .replace(LEGACY_STYLESHEET_PATTERN, stylesheetLinks)
         .replace(LEGACY_SCRIPT_BLOCK_PATTERN, scriptTags)

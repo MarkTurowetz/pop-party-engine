@@ -77,8 +77,15 @@ function viteAssetPathFromManifest() {
   return `/${assetFile}`;
 }
 
-async function main() {
-  const assetPath = viteAssetPathFromManifest();
+function viteEntryPathFromManifest(entryKey) {
+  assert(fs.existsSync(manifestFile), "Vite manifest is missing; run npm run build:assets first");
+  const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+  const assetFile = manifest?.[entryKey]?.file || "";
+  assert(assetFile.startsWith("assets/"), `Vite manifest did not include ${entryKey}`);
+  return `/${assetFile}`;
+}
+
+async function withServer(extraEnv, callback) {
   const port = await findOpenPort();
   const child = spawn(process.execPath, ["server.js"], {
     cwd: repoRoot,
@@ -88,7 +95,8 @@ async function main() {
       PORT: String(port),
       GAME_FLOW_STORAGE: "local",
       GAME_FLOW_GITHUB_TOKEN: "",
-      GITHUB_TOKEN: ""
+      GITHUB_TOKEN: "",
+      ...extraEnv
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -104,24 +112,72 @@ async function main() {
 
   try {
     await waitForServer(port, child);
+    await callback(port);
+  } catch (error) {
+    error.serverStdout = stdout.trim();
+    error.serverStderr = stderr.trim();
+    throw error;
+  } finally {
+    child.kill("SIGTERM");
+    await new Promise((resolve) => child.once("exit", resolve));
+  }
+}
 
-    const asset = await request({ port, pathname: assetPath });
-    assert(asset.statusCode === 200, `${assetPath} returned ${asset.statusCode}`);
-    assert(String(asset.headers["content-type"] || "").includes("javascript"), `${assetPath} did not return JavaScript`);
+async function main() {
+  const assetPath = viteAssetPathFromManifest();
+  const stageEntry = viteEntryPathFromManifest("client/app/entries/stage.ts");
+  const controllerEntry = viteEntryPathFromManifest("client/app/entries/controller.ts");
+  const flowEntry = viteEntryPathFromManifest("client/app/entries/flow-tool.tsx");
+  const toolsEntry = viteEntryPathFromManifest("client/app/entries/tools.tsx");
 
-    const traversal = await request({ port, pathname: "/assets/%252e%252e/server.js" });
-    assert(traversal.statusCode === 404, "Build asset route allowed path traversal");
+  try {
+    await withServer({}, async (port) => {
+      const asset = await request({ port, pathname: assetPath });
+      assert(asset.statusCode === 200, `${assetPath} returned ${asset.statusCode}`);
+      assert(String(asset.headers["content-type"] || "").includes("javascript"), `${assetPath} did not return JavaScript`);
+
+      const traversal = await request({ port, pathname: "/assets/%252e%252e/server.js" });
+      assert(traversal.statusCode === 404, "Build asset route allowed path traversal");
+
+      const viteStageShell = await request({ port, pathname: "/stage?vite=1" });
+      assert(viteStageShell.statusCode === 200, `/stage?vite=1 returned ${viteStageShell.statusCode}`);
+      assert(viteStageShell.body.includes(`type="module" src="${stageEntry}"`), "/stage?vite=1 did not include the built stage entry");
+      assert(!viteStageShell.body.includes("<script src=\"/client/stage-runtime.js\"></script>"), "/stage?vite=1 included classic stage scripts in the shell");
+
+      const viteControllerShell = await request({ port, pathname: "/controller?vite=1" });
+      assert(viteControllerShell.statusCode === 200, `/controller?vite=1 returned ${viteControllerShell.statusCode}`);
+      assert(viteControllerShell.body.includes(`type="module" src="${controllerEntry}"`), "/controller?vite=1 did not include the built controller entry");
+      assert(!viteControllerShell.body.includes("<script src=\"/client/controller.js\"></script>"), "/controller?vite=1 included classic controller scripts in the shell");
+
+      const viteFlowShell = await request({ port, pathname: "/flow?vite=1" });
+      assert(viteFlowShell.statusCode === 200, `/flow?vite=1 returned ${viteFlowShell.statusCode}`);
+      assert(viteFlowShell.body.includes(`type="module" src="${flowEntry}"`), "/flow?vite=1 did not include the built Flow Tool entry");
+      assert(!viteFlowShell.body.includes("<script src=\"/client/flow-tool.js\"></script>"), "/flow?vite=1 included classic Flow Tool scripts in the shell");
+
+      const viteToolsShell = await request({ port, pathname: "/tools?vite=1" });
+      assert(viteToolsShell.statusCode === 200, `/tools?vite=1 returned ${viteToolsShell.statusCode}`);
+      assert(viteToolsShell.body.includes(`type="module" src="${toolsEntry}"`), "/tools?vite=1 did not include the built tools entry");
+      assert(!viteToolsShell.body.includes("<script src=\"/client/tool-dashboard.js\"></script>"), "/tools?vite=1 included classic dashboard scripts in the shell");
+
+      const legacyStageShell = await request({ port, pathname: "/stage" });
+      assert(legacyStageShell.statusCode === 200, `/stage returned ${legacyStageShell.statusCode}`);
+      assert(legacyStageShell.body.includes("<script src=\"/client/stage-runtime.js\"></script>"), "/stage did not preserve classic stage scripts by default");
+    });
+
+    await withServer({ PARTY_GAME_USE_VITE_ENTRIES: "1" }, async (port) => {
+      const stageShell = await request({ port, pathname: "/stage" });
+      assert(stageShell.statusCode === 200, `/stage with PARTY_GAME_USE_VITE_ENTRIES=1 returned ${stageShell.statusCode}`);
+      assert(stageShell.body.includes(`type="module" src="${stageEntry}"`), "PARTY_GAME_USE_VITE_ENTRIES=1 did not default /stage to the built entry");
+      assert(!stageShell.body.includes("<script src=\"/client/stage-runtime.js\"></script>"), "PARTY_GAME_USE_VITE_ENTRIES=1 included classic stage scripts in the shell");
+    });
 
     console.log("Vite build asset smoke checks passed.");
   } catch (error) {
     console.error("Vite build asset smoke checks failed:");
     console.error(`- ${error.message}`);
-    if (stdout.trim()) console.error(`\nserver stdout:\n${stdout.trim()}`);
-    if (stderr.trim()) console.error(`\nserver stderr:\n${stderr.trim()}`);
+    if (error.serverStdout) console.error(`\nserver stdout:\n${error.serverStdout}`);
+    if (error.serverStderr) console.error(`\nserver stderr:\n${error.serverStderr}`);
     process.exitCode = 1;
-  } finally {
-    child.kill("SIGTERM");
-    await new Promise((resolve) => child.once("exit", resolve));
   }
 }
 

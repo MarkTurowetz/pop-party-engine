@@ -104,6 +104,7 @@ const {
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
+const USE_VITE_ENTRIES = process.env.PARTY_GAME_USE_VITE_ENTRIES === "1";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const CLIENT_ROOT = path.join(ROOT, "client");
@@ -471,8 +472,10 @@ const {
   clientRoot: CLIENT_ROOT,
   contentTypeForFile,
   indexFile: INDEX_FILE,
+  root: ROOT,
   sendJson,
-  sharedRoot: SHARED_ROOT
+  sharedRoot: SHARED_ROOT,
+  useViteEntriesByDefault: USE_VITE_ENTRIES
 });
 
 const {
