@@ -561,6 +561,13 @@ future Flow editor state. Commands mutate cloned Flow models, validate the
 result, and keep undo/redo snapshots bounded without depending on DOM globals or
 the legacy tool history manager.
 
+## Flow Store Groundwork
+
+`client/tools/flow/flowStore.ts` adds a small framework-neutral store for the
+future React Flow shell. It combines cloned Flow snapshots, command execution,
+undo/redo metadata, typed selection helpers, and subscriptions without importing
+React or legacy DOM modules.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
