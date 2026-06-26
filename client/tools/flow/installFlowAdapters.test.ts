@@ -8,6 +8,7 @@ describe("Flow adapter installer", () => {
 
     const adapters = installFlowAdapters(target);
 
+    expect(target.PartyGameFlowActionDefaults).toBe(adapters.actionDefaults);
     expect(target.PartyGameFlowActionOptions).toBe(adapters.actionOptions);
     expect(target.PartyGameFlowActions).toBe(adapters.actions);
     expect(target.PartyGameFlowDecision).toBe(adapters.decision);

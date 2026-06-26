@@ -581,6 +581,11 @@ Flow action option lists now have a typed source in
 and skip the matching legacy `/client/flow/action-options.js` script, while
 classic routes continue to load the original browser file.
 
+Flow action type defaulting now has the same treatment via
+`client/tools/flow/flowActionDefaults.ts`; Vite Flow routes install the adapter
+and skip `/client/flow/action-defaults.js`, while classic routes keep loading
+the original file.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
