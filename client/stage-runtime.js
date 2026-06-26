@@ -348,14 +348,33 @@ const stageWidgetHosts = {
   presentationClickPrompt: () => presentClickWidget
 };
 
+function stageCodeValue(fallback = "") {
+  const stateValue = String(currentStageState?.stageCode || "").trim();
+  if (stateValue) return stateValue;
+  const storedValue = String(stageCodeText?.dataset?.stageCodeValue || stageCodeBadge?.dataset?.stageCodeValue || "").trim();
+  if (storedValue) return storedValue;
+  return normalizeStageCode(String(fallback || stageCodeText?.dataset?.textFitSource || stageCodeText?.textContent || ""));
+}
+
+function setStageCodeDisplays(stageCode) {
+  const cleanCode = normalizeStageCode(stageCode);
+  if (!cleanCode) return;
+  stageCodeText.dataset.stageCodeValue = cleanCode;
+  stageCodeBadge.dataset.stageCodeValue = cleanCode;
+  if (!stageCodeText.classList.contains("has-stage-widget-art")) {
+    stageCodeText.textContent = cleanCode;
+  }
+  stageCodeBadge.textContent = cleanCode;
+}
+
 const stageWidgetTextOverrides = {
-  stageCodePanel: (context) => ({ "panel-code": context.stageCode || stageCodeText.textContent }),
-  stageCodeWidget: (context) => ({ "badge-code": context.stageCode || stageCodeBadge.textContent }),
+  stageCodePanel: (context) => ({ "panel-code": stageCodeValue(context.stageCode) }),
+  stageCodeWidget: (context) => ({ "badge-code": stageCodeValue(context.stageCode) }),
   joinWidget: () => ({ "join-text": joinPrompt.dataset.joinText || "Join the Lobby at bit.ly/popcontroller" }),
   waitingStatus: (context) => ({ "status-text": context.text || waitingStatus.dataset.statusText || "" }),
   countdownPopup: (context) => ({ "popup-text": context.seconds > 0 ? `Starting in ${context.seconds}` : "Let's Go" }),
   craftingTimer: (context) => ({
-    "timer-value": context.label || craftingTimerLabel.textContent || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
+    "timer-value": context.label || craftingTimerLabel.dataset.timerValue || craftingTimerLabel.dataset.textFitSource || craftingTimerLabel.textContent || String(Math.ceil(Number(context.timer?.remainingMs || context.timer?.durationMs || 30000) / 1000))
   })
 };
 
@@ -493,15 +512,13 @@ function applyStageState(lobby) {
   renderStageActionDebug(lobby);
   const stageTitleElement = document.querySelector(".stage-title");
   if (stageTitleElement) stageTitleElement.textContent = liveGameTitle;
-  stageCodeText.textContent = lobby.stageCode || stageCodeText.textContent;
-  const stageCodeBadgeValue = stageCodeBadge.querySelector("strong");
-  if (stageCodeBadgeValue) stageCodeBadgeValue.textContent = lobby.stageCode || stageCodeBadgeValue.textContent;
+  setStageCodeDisplays(lobby.stageCode || stageCodeValue());
   applyStageLayoutForPhase(phase);
-  renderStageWidgetBinding("stageCodePanel", { stageCode: lobby.stageCode || stageCodeText.textContent });
+  renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode) });
   setStageWidgetGameObjectShown("stageCodePanel", isLobbyPhase, { instant: true });
-  renderStageWidgetBinding("stageCodeWidget", { stageCode: lobby.stageCode || stageCodeBadge.textContent });
+  renderStageWidgetBinding("stageCodeWidget", { stageCode: stageCodeValue(lobby.stageCode) });
   setStageWidgetGameObjectShown("stageCodeWidget", !isLobbyPhase, { instant: true, scope: "global" });
-  renderStageJoinQr(lobby.stageCode || stageCodeText.textContent, isLobbyPhase);
+  renderStageJoinQr(stageCodeValue(lobby.stageCode), isLobbyPhase);
   window.clearInterval(stageCountdownTimer);
   setStageWidgetGameObjectShown("countdownPopup", false, { instant: true });
   stageMain.classList.remove("hidden");
@@ -727,7 +744,7 @@ async function applyFlowActionEffect(actionId) {
 }
 
 function currentStageCodeForRuntimeTest() {
-  return currentStageState?.stageCode || normalizeStageCode(stageCodeText.textContent);
+  return stageCodeValue();
 }
 
 async function applyRuntimeTestMessage(message) {
@@ -858,8 +875,7 @@ function setupStage() {
     if (currentStageState) applyStageLayoutForPhase(currentStageState.phase);
   }).catch(() => {});
   const stageCode = getOrCreateStageCode();
-  stageCodeText.textContent = stageCode;
-  stageCodeBadge.textContent = stageCode;
+  setStageCodeDisplays(stageCode);
   renderStageJoinQr(stageCode, true);
   clearRuntimeTestConfigForStage(stageCode);
   runtimeTestChannel?.addEventListener("message", (event) => {

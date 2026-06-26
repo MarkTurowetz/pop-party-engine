@@ -9,6 +9,7 @@
 
   function applyComponentLayout(element, component, canvas, options = {}) {
     if (!element || !component) return;
+    const kind = componentSchema.normalizeComponentKind(component.kind);
     const canvasWidth = Math.max(1, Number(canvas?.width || 1));
     const canvasHeight = Math.max(1, Number(canvas?.height || 1));
     const labelText = Object.prototype.hasOwnProperty.call(options, "labelText")
@@ -23,9 +24,9 @@
     const fontScale = Number.isFinite(Number(options.fontScale)) && Number(options.fontScale) > 0
       ? Number(options.fontScale)
       : 1;
-    const textLayout = componentTextLayout(component, labelText);
+    const textLayout = isTextBearingComponentKind(kind) ? componentTextLayout(component, labelText) : null;
     element.__partyGameTextLayout = textLayout;
-    element.style.setProperty("--component-font-size", `${textLayout.fontSize * fontScale}px`);
+    element.style.setProperty("--component-font-size", `${(textLayout?.fontSize || Number(component.fontSize || 16)) * fontScale}px`);
     element.style.setProperty("--component-text-color", component.fontColor || "#17131f");
     element.style.setProperty("--component-fill-color", component.fillColor || "transparent");
     element.style.setProperty("--component-fill-css", componentSchema.normalizeFillCss(component.fillCss) || component.fillColor || "transparent");
@@ -101,7 +102,7 @@
     }
     const label = options.labelElement;
     if (label) {
-      const hasLabelText = Boolean(String(labelText || "").trim());
+      const hasLabelText = isTextBearingComponentKind(kind) && Boolean(String(labelText || "").trim());
       label.hidden = Boolean(imageSource) || !hasLabelText;
       if (hasLabelText) {
         setLabelText(label, labelText, element.__partyGameTextLayout || null);
@@ -127,6 +128,10 @@
 
   function componentLayerIndex(index, siblingCount) {
     return Math.max(1, Number(siblingCount || 1) - Number(index || 0));
+  }
+
+  function isTextBearingComponentKind(kind) {
+    return kind === "text" || kind === "badge";
   }
 
   function artComponentViewKey(component, index, counts) {

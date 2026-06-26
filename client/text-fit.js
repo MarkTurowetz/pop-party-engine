@@ -96,7 +96,11 @@
     return {
       ...layout,
       boxWidth: Math.max(1, Number(box?.width || 1)),
-      boxHeight: Math.max(1, Number(box?.height || 1))
+      boxHeight: Math.max(1, Number(box?.height || 1)),
+      targetWidth: Math.max(1, Number(box?.targetWidth || box?.width || 1)),
+      targetHeight: Math.max(1, Number(box?.targetHeight || box?.height || 1)),
+      offsetX: Math.max(0, Number(box?.offsetX || 0)),
+      offsetY: Math.max(0, Number(box?.offsetY || 0))
     };
   }
 
@@ -162,10 +166,16 @@
   }
 
   function textBox(element, config) {
-    const padding = config.padding || { x: 0, y: 0 };
+    const padding = normalizePadding(config.padding);
+    const targetWidth = Math.max(1, Number(element?.width || 1));
+    const targetHeight = Math.max(1, Number(element?.height || 1));
     return {
-      width: Math.max(config.minSize, Number(element?.width || 1) - Number(padding.x || 0)),
-      height: Math.max(config.minSize, Number(element?.height || 1) - Number(padding.y || 0))
+      width: Math.max(config.minSize, targetWidth - padding.left - padding.right),
+      height: Math.max(config.minSize, targetHeight - padding.top - padding.bottom),
+      targetWidth,
+      targetHeight,
+      offsetX: padding.left,
+      offsetY: padding.top
     };
   }
 
@@ -199,7 +209,19 @@
     const right = Number.parseFloat(computed.paddingRight) || 0;
     const top = Number.parseFloat(computed.paddingTop) || 0;
     const bottom = Number.parseFloat(computed.paddingBottom) || 0;
-    return { x: left + right, y: top + bottom };
+    return { left, right, top, bottom };
+  }
+
+  function normalizePadding(padding) {
+    if (!padding) return { left: 0, right: 0, top: 0, bottom: 0 };
+    const x = Number(padding.x || 0);
+    const y = Number(padding.y || 0);
+    return {
+      left: Math.max(0, Number(padding.left ?? x / 2) || 0),
+      right: Math.max(0, Number(padding.right ?? x / 2) || 0),
+      top: Math.max(0, Number(padding.top ?? y / 2) || 0),
+      bottom: Math.max(0, Number(padding.bottom ?? y / 2) || 0)
+    };
   }
 
   function applyTextTransform(text, transform) {
@@ -231,22 +253,27 @@
     const fontSize = finiteNumber(layout?.fontSize, defaultOptions.minSize);
     const boxWidth = Math.max(1, finiteNumber(layout?.boxWidth, target.clientWidth || 1));
     const boxHeight = Math.max(1, finiteNumber(layout?.boxHeight, target.clientHeight || 1));
+    const targetWidth = Math.max(1, finiteNumber(layout?.targetWidth, boxWidth));
+    const targetHeight = Math.max(1, finiteNumber(layout?.targetHeight, boxHeight));
+    const offsetX = finiteNumber(layout?.offsetX, 0);
+    const offsetY = finiteNumber(layout?.offsetY, 0);
     const ascent = finiteNumber(layout?.ascent, fontSize * 0.75);
     const totalHeight = finiteNumber(layout?.height, fontSize);
     const lineAdvance = finiteNumber(layout?.inkHeight, fontSize) + finiteNumber(layout?.lineGap, 0);
-    const firstBaseline = ((boxHeight - totalHeight) / 2) + ascent;
+    const textCenterX = offsetX + (boxWidth / 2);
+    const firstBaseline = offsetY + ((boxHeight - totalHeight) / 2) + ascent;
     const svg = documentRef.createElementNS(svgNamespace, "svg");
     svg.classList.add("text-fit-svg");
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
-    svg.setAttribute("viewBox", `0 0 ${boxWidth} ${boxHeight}`);
+    svg.setAttribute("viewBox", `0 0 ${targetWidth} ${targetHeight}`);
     svg.setAttribute("preserveAspectRatio", "none");
     svg.setAttribute("focusable", "false");
     svg.setAttribute("aria-hidden", "true");
 
     const textElement = documentRef.createElementNS(svgNamespace, "text");
     textElement.classList.add("text-fit-svg-text");
-    textElement.setAttribute("x", `${boxWidth / 2}`);
+    textElement.setAttribute("x", `${textCenterX}`);
     textElement.setAttribute("text-anchor", "middle");
     textElement.setAttribute("dominant-baseline", "alphabetic");
     textElement.setAttribute("alignment-baseline", "alphabetic");
@@ -258,7 +285,7 @@
 
     lines.forEach((line, index) => {
       const lineElement = documentRef.createElementNS(svgNamespace, "tspan");
-      lineElement.setAttribute("x", `${boxWidth / 2}`);
+      lineElement.setAttribute("x", `${textCenterX}`);
       lineElement.setAttribute("y", `${firstBaseline + (lineAdvance * index)}`);
       lineElement.textContent = line;
       textElement.appendChild(lineElement);

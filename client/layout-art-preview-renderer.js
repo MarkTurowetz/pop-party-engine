@@ -6,7 +6,8 @@
       ...component,
       children: (component.children || []).map((child) => cloneComponentWithTextOverrides(child, textOverrides))
     };
-    if (Object.prototype.hasOwnProperty.call(textOverrides, clone.id)) {
+    const kind = global.PartyGameArtComponentSchema?.normalizeComponentKind?.(clone.kind) || clone.kind;
+    if ((kind === "text" || kind === "badge") && Object.prototype.hasOwnProperty.call(textOverrides, clone.id)) {
       clone.defaultText = String(textOverrides[clone.id] ?? "");
     }
     return clone;

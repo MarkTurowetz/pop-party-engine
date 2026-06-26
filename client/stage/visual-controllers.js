@@ -264,6 +264,7 @@
     renderLabel(label) {
       if (!this.label) return;
       const text = String(label ?? "");
+      this.label.dataset.timerValue = text;
       const layout = global.PartyGameTextFit?.measuredTextLayout?.({
         width: 130,
         height: 86,
