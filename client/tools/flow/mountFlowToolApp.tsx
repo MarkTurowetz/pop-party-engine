@@ -12,6 +12,7 @@ export interface FlowToolReactShell {
 
 export interface FlowToolReactShellHandlers {
   addAction?: () => void;
+  addState?: () => void;
   deleteSelection?: () => void;
   revert?: () => void;
   selectAction?: (actionId: string) => void;
@@ -23,6 +24,7 @@ export interface FlowToolReactShellHandlers {
 
 export interface FlowToolReactShellSelection {
   canAddAction?: boolean;
+  canAddState?: boolean;
   canDelete?: boolean;
   canRevert?: boolean;
   flowActionTypes?: FlowActionTypeMeta[];
@@ -72,6 +74,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
     root.render(
       <FlowToolApp
         canAddAction={selection.canAddAction || false}
+        canAddState={selection.canAddState ?? true}
         canDelete={selection.canDelete || false}
         canRevert={selection.canRevert || false}
         flowActionTypes={selection.flowActionTypes || []}

@@ -7,6 +7,7 @@ describe("FlowToolbar", () => {
     const markup = renderToStaticMarkup(
       <FlowToolbar
         canAddAction={true}
+        canAddState={true}
         canDelete={false}
         canRevert={true}
         flowNodeDepth="moments"
@@ -16,6 +17,7 @@ describe("FlowToolbar", () => {
 
     expect(markup).toContain('data-flow-react-component="toolbar"');
     expect(markup).toContain('data-can-add-action="true"');
+    expect(markup).toContain('data-can-add-state="true"');
     expect(markup).toContain('data-can-delete="false"');
     expect(markup).toContain('data-can-revert="true"');
     expect(markup).toContain('data-flow-node-depth="moments"');

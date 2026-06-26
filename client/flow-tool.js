@@ -1352,6 +1352,7 @@ function updateFlowStorageStatus(storage) {
 function renderFlowTool() {
   window.PartyGameFlowReactShell?.update?.(gameFlow, {
     canAddAction: flowViewMode === "node" && flowNodeDepth === "moments" ? true : Boolean(flowState(selectedFlowStateId)),
+    canAddState: true,
     canDelete: Boolean(selectedFlowRouteNodeId || selectedFlowStateId),
     canRevert: Boolean(flowSavedSnapshot && isFlowDirty()),
     flowActionTypes,
@@ -1388,6 +1389,9 @@ function installFlowReactShellHandlers() {
   window.PartyGameFlowReactShell?.setHandlers?.({
     addAction: () => {
       addFlowAction();
+    },
+    addState: () => {
+      addFlowState();
     },
     deleteSelection: () => {
       deleteFlowItem();

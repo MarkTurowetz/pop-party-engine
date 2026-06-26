@@ -10,6 +10,7 @@ import type { FlowToolReactShellHandlers } from "./mountFlowToolApp";
 
 export interface FlowToolAppProps {
   canAddAction?: boolean;
+  canAddState?: boolean;
   canDelete?: boolean;
   canRevert?: boolean;
   flowActionTypes?: FlowActionTypeMeta[];
@@ -28,6 +29,7 @@ export interface FlowToolAppProps {
 
 export function FlowToolApp({
   canAddAction = false,
+  canAddState = true,
   canDelete = false,
   canRevert = false,
   flowActionTypes = [],
@@ -74,11 +76,13 @@ export function FlowToolApp({
       </header>
       <FlowToolbar
         canAddAction={canAddAction}
+        canAddState={canAddState}
         canDelete={canDelete}
         canRevert={canRevert}
         flowNodeDepth={flowNodeDepth}
         flowViewMode={flowViewMode}
         onAddAction={handlers.addAction}
+        onAddState={handlers.addState}
         onDeleteSelection={handlers.deleteSelection}
         onRevert={handlers.revert}
         onSetViewMode={handlers.setViewMode}
