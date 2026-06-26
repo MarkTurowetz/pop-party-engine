@@ -3,9 +3,13 @@ import {
   addDefaultFlowSubAction,
   addFlowState,
   createDefaultFlowState,
+  flattenedFlowActionIds,
+  removeSelectedFlowActionsFromList,
   type AddFlowActionResult,
   type AddFlowStateResult,
-  type AddFlowSubActionResult
+  type AddFlowSubActionResult,
+  type FlowActionBranchOptions,
+  type RemoveSelectedFlowActionsResult
 } from "./flowMutations";
 import type { FlowAction, FlowState, GameFlow } from "../../types/game-data";
 
@@ -14,6 +18,8 @@ export interface PartyGameFlowMutations {
   addDefaultFlowSubAction: (parentAction: FlowAction, selectedSubActionId?: string, stateId?: string) => AddFlowSubActionResult;
   addFlowState: (flow: Partial<GameFlow>, state?: FlowState) => AddFlowStateResult;
   createDefaultFlowState: (nextNumber: number) => FlowState;
+  flattenedFlowActionIds: (actions?: FlowAction[], options?: FlowActionBranchOptions, output?: string[]) => string[];
+  removeSelectedFlowActionsFromList: (actions: FlowAction[], selectedIds: Set<string>) => RemoveSelectedFlowActionsResult;
 }
 
 declare global {
@@ -27,7 +33,9 @@ export function installFlowMutationsAdapter(target: Window = window): PartyGameF
     addDefaultFlowAction,
     addDefaultFlowSubAction,
     addFlowState,
-    createDefaultFlowState
+    createDefaultFlowState,
+    flattenedFlowActionIds,
+    removeSelectedFlowActionsFromList
   };
   target.PartyGameFlowMutations = adapter;
   target.document?.documentElement?.setAttribute("data-flow-mutations-adapter", "module");

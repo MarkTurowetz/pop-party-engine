@@ -1835,6 +1835,8 @@ function clearMomentGraphTargetReferences(targetIds) {
 }
 
 function flattenedFlowActionIds(actions = [], output = []) {
+  const helper = window.PartyGameFlowMutations?.flattenedFlowActionIds;
+  if (helper) return helper(actions, { ensureDecisionBranches }, output);
   for (const action of actions || []) {
     output.push(action.id);
     for (const subAction of action.subActions || []) output.push(subAction.id);
@@ -1846,6 +1848,12 @@ function flattenedFlowActionIds(actions = [], output = []) {
 }
 
 function removeSelectedFlowActionsFromList(actions = [], selectedIds, removedIds = []) {
+  const helper = window.PartyGameFlowMutations?.removeSelectedFlowActionsFromList;
+  if (helper) {
+    const result = helper(actions, selectedIds);
+    removedIds.push(...result.removedIds);
+    return result.actions;
+  }
   return (actions || []).filter((action) => {
     if (selectedIds.has(action.id)) {
       removedIds.push(action.id);

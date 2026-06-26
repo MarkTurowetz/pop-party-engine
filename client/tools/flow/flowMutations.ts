@@ -17,6 +17,15 @@ export interface AddFlowSubActionResult {
   index: number;
 }
 
+export interface RemoveSelectedFlowActionsResult {
+  actions: FlowAction[];
+  removedIds: string[];
+}
+
+export interface FlowActionBranchOptions {
+  ensureDecisionBranches?: (action: FlowAction) => FlowAction[];
+}
+
 export function createDefaultFlowState(nextNumber: number): FlowState {
   return {
     id: `state-${nextNumber}`,
@@ -54,4 +63,42 @@ export function addDefaultFlowSubAction(parentAction: FlowAction, selectedSubAct
   const index = selectedIndex >= 0 ? selectedIndex + 1 : parentAction.subActions.length;
   parentAction.subActions.splice(index, 0, action);
   return { action, parentAction, index };
+}
+
+export function flattenedFlowActionIds(actions: FlowAction[] = [], options: FlowActionBranchOptions = {}, output: string[] = []): string[] {
+  for (const action of actions || []) {
+    output.push(action.id);
+    for (const subAction of action.subActions || []) output.push(subAction.id);
+    if (action.type === "decision") {
+      const branches = options.ensureDecisionBranches?.(action) || action.branches || [];
+      for (const branch of branches) output.push(branch.id);
+    }
+  }
+  return output;
+}
+
+export function removeSelectedFlowActionsFromList(actions: FlowAction[] = [], selectedIds: Set<string>): RemoveSelectedFlowActionsResult {
+  const removedIds: string[] = [];
+  const filteredActions = (actions || []).filter((action) => {
+    if (selectedIds.has(action.id)) {
+      removedIds.push(action.id);
+      return false;
+    }
+    if (Array.isArray(action.subActions)) {
+      action.subActions = action.subActions.filter((subAction) => {
+        if (!selectedIds.has(subAction.id)) return true;
+        removedIds.push(subAction.id);
+        return false;
+      });
+    }
+    if (action.type === "decision" && Array.isArray(action.branches)) {
+      action.branches = action.branches.filter((branch) => {
+        if (!selectedIds.has(branch.id)) return true;
+        removedIds.push(branch.id);
+        return false;
+      });
+    }
+    return true;
+  });
+  return { actions: filteredActions, removedIds };
 }

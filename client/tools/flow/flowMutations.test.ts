@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { addDefaultFlowAction, addDefaultFlowSubAction, addFlowState, createDefaultFlowState } from "./flowMutations";
+import {
+  addDefaultFlowAction,
+  addDefaultFlowSubAction,
+  addFlowState,
+  createDefaultFlowState,
+  flattenedFlowActionIds,
+  removeSelectedFlowActionsFromList
+} from "./flowMutations";
 import { installFlowMutationsAdapter } from "./flowMutationsAdapter";
 import type { FlowAction, GameFlow } from "../../types/game-data";
 
@@ -73,5 +80,49 @@ describe("Flow mutations", () => {
     expect(target.PartyGameFlowMutations).toBe(adapter);
     expect(adapter.createDefaultFlowState(2).id).toBe("state-2");
     expect(setAttribute).toHaveBeenCalledWith("data-flow-mutations-adapter", "module");
+  });
+
+  it("flattens top-level, sub-action, and decision branch IDs", () => {
+    const decision: FlowAction = {
+      id: "decision",
+      type: "decision",
+      branches: [{ id: "branch-a", type: "branch" }]
+    };
+    const actions: FlowAction[] = [
+      { id: "present", type: "presentText", subActions: [{ id: "sub-a", type: "setPlayersShown" }] },
+      decision
+    ];
+
+    expect(flattenedFlowActionIds(actions)).toEqual(["present", "sub-a", "decision", "branch-a"]);
+    expect(flattenedFlowActionIds([decision], { ensureDecisionBranches: () => [{ id: "branch-b", type: "branch" }] })).toEqual(["decision", "branch-b"]);
+  });
+
+  it("removes selected top-level, sub-action, and branch IDs from action lists", () => {
+    const actions: FlowAction[] = [
+      { id: "remove-me", type: "presentText" },
+      {
+        id: "keep-parent",
+        type: "presentText",
+        subActions: [
+          { id: "sub-a", type: "setPlayersShown" },
+          { id: "sub-b", type: "setPlayersShown" }
+        ]
+      },
+      {
+        id: "decision",
+        type: "decision",
+        branches: [
+          { id: "branch-a", type: "branch" },
+          { id: "branch-b", type: "branch" }
+        ]
+      }
+    ];
+
+    const result = removeSelectedFlowActionsFromList(actions, new Set(["remove-me", "sub-a", "branch-b"]));
+
+    expect(result.removedIds).toEqual(["remove-me", "sub-a", "branch-b"]);
+    expect(result.actions.map((action) => action.id)).toEqual(["keep-parent", "decision"]);
+    expect(result.actions[0]?.subActions?.map((action) => action.id)).toEqual(["sub-b"]);
+    expect(result.actions[1]?.branches?.map((action) => action.id)).toEqual(["branch-a"]);
   });
 });

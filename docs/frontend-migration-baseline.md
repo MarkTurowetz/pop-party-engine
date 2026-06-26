@@ -458,3 +458,12 @@ This covers additive model changes only:
 The legacy UI still owns history, selection, collapsed state, rendering, and
 save behavior. Vite Flow entries install `window.PartyGameFlowMutations`; classic
 routes keep inline fallbacks so the default no-build route remains compatible.
+
+The same module now also owns action-list delete helpers:
+
+- flatten top-level action, sub-action, and decision branch ids.
+- remove selected top-level actions, sub-actions, and decision branches.
+
+State deletion, layout cleanup, route-node deletion, and render/selection side
+effects still remain in the legacy Flow Tool while the model layer is extracted
+incrementally.
