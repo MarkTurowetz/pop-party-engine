@@ -614,6 +614,10 @@ their load/save paths in Vite mode as well. The raw HTTP helpers remain as
 classic-route fallbacks, and the shared layout runtime only probes the optional
 context when it exists.
 
+The Render blueprint now uses `npm run build`, which runs the Vite asset build
+before the existing build-info step. This keeps future branch/main deploys from
+serving Vite route shells without a matching `dist/client/.vite/manifest.json`.
+
 ## Flow Tool Reorder Mutation Extraction
 
 The mutation module now owns the pure drag/drop reorder operations for Flow

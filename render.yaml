@@ -3,7 +3,7 @@ services:
     name: party-game-template
     runtime: node
     plan: free
-    buildCommand: npm run build-info
+    buildCommand: npm run build
     startCommand: node server.js
     healthCheckPath: /api/health
     envVars:
