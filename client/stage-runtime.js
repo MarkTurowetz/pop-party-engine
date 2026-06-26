@@ -375,7 +375,6 @@ function renderStageRuntimeTextBox(target, value, spec = {}, options = {}) {
       },
       options: {
       autoFit: spec.autoFitText !== false,
-      maxSize: Number(options.maxSize || fontSize),
       minSize: Number(options.minSize || 6),
       lineHeight: Number(options.lineHeight || 1.05),
       ...options
@@ -442,7 +441,6 @@ function setStageManagedText(target, value) {
       fontSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 54,
       autoFitText: true
     }, {
-      maxSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 54,
       minSize: 8,
       lineHeight: 1.02
     });

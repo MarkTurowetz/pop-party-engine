@@ -25,7 +25,6 @@
         spec: textSpec,
         options: {
         autoFit: textSpec.autoFitText,
-        maxSize: Number(options.maxSize || textSpec.fontSize),
         minSize: Number(options.minSize || 6),
         lineHeight: Number(options.lineHeight || 1.05),
         ...options
@@ -148,7 +147,6 @@
             autoFitText: true,
             applySize: false
           }, {
-            maxSize: Number.parseFloat(global.getComputedStyle?.(element)?.fontSize) || 58,
             minSize: 10,
             lineHeight: 1.02
           });
