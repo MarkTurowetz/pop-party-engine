@@ -5,6 +5,16 @@
     return typeof gameObjectApi?.create === "function" ? gameObjectApi.create(options) : null;
   }
 
+  function renderStageTextBox(target, text, spec = {}) {
+    if (!target) return;
+    const textValue = String(text ?? "");
+    if (typeof global.PartyGameTextFit?.renderTextBox === "function") {
+      global.PartyGameTextFit.renderTextBox(target, textValue, spec, spec.options || {});
+    } else {
+      target.textContent = textValue;
+    }
+  }
+
   class PlayerRosterRenderer {
     constructor(options = {}) {
       this.host = options.host;
@@ -38,9 +48,20 @@
       tile.innerHTML = `
         <div class="player-avatar ${this.avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${this.playerAvatarArt(player.avatar?.shape)}</div>
         <div class="player-name"></div>
-        ${player.isVip ? '<div class="vip-badge">VIP</div>' : ""}
+        ${player.isVip ? '<div class="vip-badge"></div>' : ""}
       `;
-      tile.querySelector(".player-name").textContent = player.name;
+      renderStageTextBox(tile.querySelector(".player-name"), player.name, {
+        width: 118,
+        height: 34,
+        fontSize: 17,
+        fontColor: "#17131f"
+      });
+      renderStageTextBox(tile.querySelector(".vip-badge"), player.isVip ? "VIP" : "", {
+        width: 44,
+        height: 22,
+        fontSize: 11,
+        fontColor: "#17131f"
+      });
       this.syncAnswerBubble(tile, player, { instant: true });
       return tile;
     }
@@ -145,7 +166,12 @@
         this.pointPopupIds.add(popup.id);
         const node = this.document.createElement("div");
         node.className = "point-popup";
-        node.textContent = `+${Math.max(0, Math.floor(Number(popup.points || 0)))}`;
+        renderStageTextBox(node, `+${Math.max(0, Math.floor(Number(popup.points || 0)))}`, {
+          width: 120,
+          height: 46,
+          fontSize: 34,
+          fontColor: "var(--yellow)"
+        });
         tile.appendChild(node);
         global.setTimeout(() => node.remove(), 1600);
       }

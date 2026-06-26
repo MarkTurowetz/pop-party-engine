@@ -42,6 +42,7 @@ function getControllerAvatarView() {
       setControllerPlayer: (player) => {
         controllerState.player = player;
       },
+      setText: setControllerText,
       setMetaText: (value) => {
         setControllerText(controllerMeta, value);
       },

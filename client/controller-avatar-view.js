@@ -12,18 +12,24 @@
     playerAvatarArt,
     renderState,
     setControllerPlayer,
+    setText,
     setMetaText,
     updateAvatar
   }) {
     const avatarArt = typeof playerAvatarArt === "function"
       ? playerAvatarArt
       : (shape) => `${avatarFrameImage()}${dinoIcon(shape)}`;
+    const writeText = typeof setText === "function"
+      ? setText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
     let pendingShape = "";
     let pickerOpen = false;
 
     function setBanner(player) {
       if (!player || !elements.banner) return;
-      elements.bannerName.textContent = player.name || "Player";
+      writeText(elements.bannerName, player.name || "Player");
       elements.bannerAvatar.className = `player-avatar ${avatarClass(player.avatar?.shape)}`;
       elements.bannerAvatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
       elements.bannerAvatar.innerHTML = avatarArt(player.avatar?.shape);

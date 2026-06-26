@@ -59,6 +59,25 @@
     return layout;
   }
 
+  function renderTextBox(target, text, spec = {}, options = {}) {
+    if (!target) return null;
+    const textValue = String(text ?? "");
+    const width = Math.max(1, Number(spec.width || target.clientWidth || 1));
+    const height = Math.max(1, Number(spec.height || target.clientHeight || 1));
+    const element = {
+      ...spec,
+      width,
+      height,
+      fontSize: Number(spec.fontSize || defaultOptions.minSize),
+      autoFitText: spec.autoFitText !== false
+    };
+    if (target.dataset) target.dataset.textFitSource = textValue;
+    target.style.width = `${width}px`;
+    target.style.height = `${height}px`;
+    if (spec.fontColor) target.style.color = spec.fontColor;
+    return renderAutoTextElement(target, element, textValue, element.fontSize, options);
+  }
+
   function targetTextRenderOptions(target, element, options = {}) {
     const computedStyle = options.computedStyle || computedStyleFor(target);
     return textRenderOptions(element, computedStyle ? { ...options, computedStyle } : options);
@@ -339,6 +358,7 @@
     fittedLayoutTextSize,
     measureFittedTextSize: fittedLayoutTextSize,
     renderAutoTextElement,
+    renderTextBox,
     renderTextElement,
     renderMeasuredTextElement,
     targetTextRenderOptions,
