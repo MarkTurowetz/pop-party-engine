@@ -1,5 +1,10 @@
 import type { FlowAction, FlowRouteNode, FlowState, FlowTiming, GameFlow } from "../../types/game-data";
 
+export interface FlowRouteOption {
+  id: string;
+  name: string;
+}
+
 export interface FlowNodePosition {
   x: number;
   y: number;
@@ -18,6 +23,11 @@ export interface ClearFlowRouteTargetReferencesOptions {
   ensureDecisionBranches?: (node: FlowRouteNode, options?: { targetField?: string }) => FlowAction[];
   isRouteDecisionNode?: (node: FlowRouteNode) => boolean;
   routeBranchTargetField?: string;
+}
+
+export interface FlowRouteDisplayOptions {
+  flowState?: (stateId: string) => Partial<FlowState> | null | undefined;
+  isRouteDecisionNode?: (node: FlowRouteNode) => boolean;
 }
 
 export interface FlowRouteNodeModel extends FlowRouteNode {
@@ -81,6 +91,62 @@ export function createRouteActionNode(flow: Partial<GameFlow> | null | undefined
     nextTargetNodeId: "",
     nodePosition: point || options.defaultNodePosition?.(nextNumber - 1, 2, 860, 600, 360, 220) || null
   };
+}
+
+export function isFlowRouteDecisionNode(node: Partial<FlowRouteNodeModel> | null | undefined): boolean {
+  return node?.routeNodeType === "decision" || (node?.routeNodeType === "action" && node?.type === "decision");
+}
+
+export function flowRouteNodeTypeName(node: Partial<FlowRouteNodeModel> | null | undefined, options: FlowRouteDisplayOptions = {}): string {
+  if (options.isRouteDecisionNode?.(node as FlowRouteNode) || isFlowRouteDecisionNode(node)) return "Decision";
+  if (node?.routeNodeType === "action") return "Action";
+  return "Moment Entry";
+}
+
+export function flowRouteTargetName(flow: Partial<GameFlow> | null | undefined, targetId: string, options: FlowRouteDisplayOptions = {}): string {
+  if (!targetId) return "No Target";
+  if (String(targetId).toLowerCase() === "none") return "None";
+  const state = options.flowState?.(targetId) || (flow?.states || []).find((item) => item.id === targetId);
+  if (state) return state.name || state.id || targetId;
+  const node = routeNodes(flow).find((item) => item.id === targetId) as FlowRouteNodeModel | undefined;
+  if (node) return node.name || node.id;
+  return targetId;
+}
+
+export function momentEntryTargetOptions(flow: Partial<GameFlow> | null | undefined, selectedStateId = ""): FlowRouteOption[] {
+  const options: FlowRouteOption[] = [{ id: "", name: "No Target" }];
+  for (const state of flow?.states || []) {
+    options.push({ id: state.id, name: state.name || state.id });
+  }
+  if (selectedStateId && !options.some((option) => option.id === selectedStateId)) {
+    options.push({ id: selectedStateId, name: selectedStateId });
+  }
+  return options;
+}
+
+export function routeGraphTargetOptions(flow: Partial<GameFlow> | null | undefined, selectedTargetId = "", currentNodeId = "", options: FlowRouteDisplayOptions = {}): FlowRouteOption[] {
+  const targetOptions: FlowRouteOption[] = [{ id: "", name: "No Target" }, { id: "none", name: "None / Halt" }];
+  for (const state of flow?.states || []) {
+    targetOptions.push({ id: state.id, name: `Moment: ${state.name || state.id}` });
+  }
+  for (const node of routeNodes(flow) as FlowRouteNodeModel[]) {
+    if (node.id === currentNodeId) continue;
+    targetOptions.push({ id: node.id, name: `${flowRouteNodeTypeName(node, options)}: ${node.name || node.id}` });
+  }
+  if (selectedTargetId && !targetOptions.some((option) => option.id === selectedTargetId)) {
+    targetOptions.push({ id: selectedTargetId, name: selectedTargetId });
+  }
+  return targetOptions;
+}
+
+export function appendFlowRouteTargets(flow: Partial<GameFlow> | null | undefined, options: FlowRouteOption[], currentStateId = "", display: FlowRouteDisplayOptions = {}): FlowRouteOption[] {
+  for (const node of routeNodes(flow) as FlowRouteNodeModel[]) {
+    options.push({ id: node.id, name: `${flowRouteNodeTypeName(node, display)}: ${node.name || node.id}` });
+  }
+  if (currentStateId && !options.some((option) => option.id === currentStateId)) {
+    options.push({ id: currentStateId, name: currentStateId });
+  }
+  return options;
 }
 
 export function clearFlowRouteTargetReferences(

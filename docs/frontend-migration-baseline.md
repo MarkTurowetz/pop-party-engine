@@ -598,10 +598,13 @@ The extracted helpers cover:
 
 - moment-entry node creation.
 - route-action node creation.
+- route-node type names and target display names.
+- moment-entry and route-graph target option lists.
+- route target appending for state-next-target controls.
 - clearing Flow state, route node, decision-branch, and route-action target
   references when a target is deleted.
 
 Vite Flow entries install `window.PartyGameFlowRouteGraph` before loading the
 legacy graph scripts. The legacy `moment-route-graph.js` still owns graph
-queries, target option labels, serialization, and rendering-facing behavior, but
-delegates the pure model mutations to the typed helper when available.
+queries, serialization, and rendering-facing behavior, but delegates pure model
+and selector work to the typed helper when available.

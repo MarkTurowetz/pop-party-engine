@@ -28,11 +28,15 @@
     }
 
     function isRouteDecisionNode(node) {
+      const helper = window.PartyGameFlowRouteGraph?.isFlowRouteDecisionNode;
+      if (helper) return helper(node);
       if (routeNodeTypes?.isDecision) return routeNodeTypes.isDecision(node);
       return node?.routeNodeType === "decision" || (node?.routeNodeType === "action" && node?.type === "decision");
     }
 
     function routeNodeTypeName(node) {
+      const helper = window.PartyGameFlowRouteGraph?.flowRouteNodeTypeName;
+      if (helper) return helper(node, { isRouteDecisionNode });
       if (routeNodeTypes?.name) return routeNodeTypes.name(node);
       if (isRouteDecisionNode(node)) return "Decision";
       if (node?.routeNodeType === "action") return "Action";
@@ -40,6 +44,8 @@
     }
 
     function targetName(targetId) {
+      const helper = window.PartyGameFlowRouteGraph?.flowRouteTargetName;
+      if (helper) return helper(gameFlow(), targetId, { flowState: context.flowState });
       if (!targetId) return "No Target";
       if (String(targetId).toLowerCase() === "none") return "None";
       const state = context.flowState?.(targetId);
@@ -50,6 +56,8 @@
     }
 
     function momentEntryTargetOptions(selectedStateId = "") {
+      const helper = window.PartyGameFlowRouteGraph?.momentEntryTargetOptions;
+      if (helper) return helper(gameFlow(), selectedStateId);
       const options = [{ id: "", name: "No Target" }];
       for (const state of gameFlow().states || []) {
         options.push({ id: state.id, name: state.name || state.id });
@@ -61,6 +69,8 @@
     }
 
     function graphTargetOptions(selectedTargetId = "", currentNodeId = "") {
+      const helper = window.PartyGameFlowRouteGraph?.routeGraphTargetOptions;
+      if (helper) return helper(gameFlow(), selectedTargetId, currentNodeId, { isRouteDecisionNode });
       const options = [{ id: "", name: "No Target" }, { id: "none", name: "None / Halt" }];
       for (const state of gameFlow().states || []) {
         options.push({ id: state.id, name: `Moment: ${state.name || state.id}` });
@@ -76,6 +86,8 @@
     }
 
     function appendRouteTargets(options, currentStateId = "") {
+      const helper = window.PartyGameFlowRouteGraph?.appendFlowRouteTargets;
+      if (helper) return helper(gameFlow(), options, currentStateId, { isRouteDecisionNode });
       for (const node of routeNodes()) {
         options.push({ id: node.id, name: `${routeNodeTypeName(node)}: ${node.name || node.id}` });
       }

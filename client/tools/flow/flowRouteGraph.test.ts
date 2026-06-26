@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { clearFlowRouteTargetReferences, createMomentEntryNode, createRouteActionNode } from "./flowRouteGraph";
+import {
+  appendFlowRouteTargets,
+  clearFlowRouteTargetReferences,
+  createMomentEntryNode,
+  createRouteActionNode,
+  flowRouteNodeTypeName,
+  flowRouteTargetName,
+  isFlowRouteDecisionNode,
+  momentEntryTargetOptions,
+  routeGraphTargetOptions
+} from "./flowRouteGraph";
 import { installFlowRouteGraphAdapter } from "./flowRouteGraphAdapter";
 import type { FlowAction, GameFlow } from "../../types/game-data";
 
@@ -88,6 +98,53 @@ describe("Flow route graph model helpers", () => {
     expect(flow.routeNodes?.[2]?.nextTargetNodeId).toBe("");
   });
 
+  it("builds route target names and options with legacy fallbacks", () => {
+    const flow: GameFlow = {
+      states: [
+        { id: "intro", name: "Intro", actions: [] },
+        { id: "round-one", name: "Round One", actions: [] }
+      ],
+      routeNodes: [
+        { id: "entry", routeNodeType: "momentEntry", name: "Entry" },
+        { id: "action", routeNodeType: "action", name: "Route Action" },
+        { id: "decision", routeNodeType: "action", type: "decision", name: "Route Decision" }
+      ]
+    };
+
+    expect(isFlowRouteDecisionNode(flow.routeNodes?.[2])).toBe(true);
+    expect(flowRouteNodeTypeName(flow.routeNodes?.[0])).toBe("Moment Entry");
+    expect(flowRouteNodeTypeName(flow.routeNodes?.[1])).toBe("Action");
+    expect(flowRouteNodeTypeName(flow.routeNodes?.[2])).toBe("Decision");
+    expect(flowRouteTargetName(flow, "")).toBe("No Target");
+    expect(flowRouteTargetName(flow, "none")).toBe("None");
+    expect(flowRouteTargetName(flow, "round-one")).toBe("Round One");
+    expect(flowRouteTargetName(flow, "action")).toBe("Route Action");
+    expect(flowRouteTargetName(flow, "missing")).toBe("missing");
+
+    expect(momentEntryTargetOptions(flow, "legacy")).toEqual([
+      { id: "", name: "No Target" },
+      { id: "intro", name: "Intro" },
+      { id: "round-one", name: "Round One" },
+      { id: "legacy", name: "legacy" }
+    ]);
+    expect(routeGraphTargetOptions(flow, "legacy", "action")).toEqual([
+      { id: "", name: "No Target" },
+      { id: "none", name: "None / Halt" },
+      { id: "intro", name: "Moment: Intro" },
+      { id: "round-one", name: "Moment: Round One" },
+      { id: "entry", name: "Moment Entry: Entry" },
+      { id: "decision", name: "Decision: Route Decision" },
+      { id: "legacy", name: "legacy" }
+    ]);
+    expect(appendFlowRouteTargets(flow, [{ id: "", name: "No Next Moment" }], "legacy")).toEqual([
+      { id: "", name: "No Next Moment" },
+      { id: "entry", name: "Moment Entry: Entry" },
+      { id: "action", name: "Action: Route Action" },
+      { id: "decision", name: "Decision: Route Decision" },
+      { id: "legacy", name: "legacy" }
+    ]);
+  });
+
   it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
     const setAttribute = vi.fn();
     const target = {
@@ -100,6 +157,7 @@ describe("Flow route graph model helpers", () => {
 
     expect(target.PartyGameFlowRouteGraph).toBe(adapter);
     expect(adapter.createRouteActionNode({ states: [] }, null, { idFactory: () => "route-action" }).id).toBe("route-action");
+    expect(adapter.flowRouteTargetName({ states: [] }, "")).toBe("No Target");
     expect(setAttribute).toHaveBeenCalledWith("data-flow-route-graph-adapter", "module");
   });
 });
