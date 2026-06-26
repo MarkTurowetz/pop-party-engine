@@ -642,7 +642,8 @@ function artComponentPreviewText(component) {
   if (component.id === "voter-container") return "";
   if (component.id === "vote-count") return "0 votes";
   if (component.id === "vote-widget") return "BEN";
-  return component.defaultText || component.name;
+  if (kind === "text" || kind === "badge") return String(component.defaultText ?? "");
+  return "";
 }
 
 function artCompositionPreviewScale() {
@@ -959,7 +960,7 @@ function defaultArtObject(kind, bounds = {}) {
     children: []
   };
   if (cleanKind === "text") {
-    component.defaultText = "Text";
+    component.defaultText = "";
     component.fontSize = 24;
     component.autoFitText = true;
     component.fontColor = "#17131f";

@@ -97,4 +97,13 @@ if (!/createElementNS\(svgNamespace,\s*"svg"\)/.test(textFitSource) || !/dominan
   process.exit(1);
 }
 
+const artSchema = require(path.join(repoRoot, "shared/art-component-schema.js"));
+const unnamedLabel = globalThis.PartyGameArtComponentSchema?.componentLabel?.({ kind: "text", name: "Text" })
+  || artSchema?.componentLabel?.({ kind: "text", name: "Text" });
+if (unnamedLabel !== "") {
+  console.error("Text rendering regression check failed:");
+  console.error("- art component names must not render as visible text without an explicit defaultText");
+  process.exit(1);
+}
+
 console.log("Text rendering regression check passed.");

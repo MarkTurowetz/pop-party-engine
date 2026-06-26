@@ -71,7 +71,11 @@ function componentImageMaskDataUrl(component) {
 
 function componentLabel(component) {
   const kind = componentKindFrom(component);
-  if (kind === "text" || kind === "badge") return String(component?.defaultText || component?.name || "");
+  if (kind === "text" || kind === "badge") {
+    return component?.defaultText === undefined || component?.defaultText === null
+      ? ""
+      : String(component.defaultText);
+  }
   return "";
 }
 
