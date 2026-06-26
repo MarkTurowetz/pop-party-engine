@@ -22,12 +22,23 @@
       return layer;
     }
 
-    function hideLegacyTextNodes(host) {
+    function hideLegacyWidgetContent(host, keepElements = []) {
       const textNodeType = global.Node?.TEXT_NODE || 3;
+      const elementNodeType = global.Node?.ELEMENT_NODE || 1;
+      const keep = new Set((keepElements || []).filter(Boolean));
+      for (const element of keep) {
+        element.hidden = false;
+        delete element.dataset.stageWidgetLegacyHidden;
+      }
       for (const node of Array.from(host?.childNodes || [])) {
         if (node === widgetLayer(host)) continue;
+        if (keep.has(node)) continue;
         if (node.nodeType === textNodeType && String(node.nodeValue || "").trim()) {
           node.nodeValue = "";
+        }
+        if (node.nodeType === elementNodeType) {
+          node.hidden = true;
+          node.dataset.stageWidgetLegacyHidden = "true";
         }
       }
     }
@@ -51,7 +62,7 @@
       host.classList.add("stage-widget-art-host", "has-stage-widget-art");
       const layer = widgetLayer(host);
       if (!layer) return null;
-      hideLegacyTextNodes(host);
+      hideLegacyWidgetContent(host, renderOptions.keepElements || []);
       const key = rendererKey(host, compositionId);
       let renderer = renderers.get(key);
       if (!renderer) {
@@ -106,7 +117,13 @@
       const textOverrides = typeof binding.textOverrides === "function"
         ? binding.textOverrides(context)
         : binding.textOverrides || {};
-      const result = renderResult(host, binding.compositionId, textOverrides, binding.options || {});
+      const overlayElements = (binding.overlays || [])
+        .map((overlay) => (typeof overlay.element === "function" ? overlay.element(context) : overlay.element))
+        .filter(Boolean);
+      const result = renderResult(host, binding.compositionId, textOverrides, {
+        ...(binding.options || {}),
+        keepElements: overlayElements
+      });
       for (const overlay of binding.overlays || []) {
         const element = typeof overlay.element === "function" ? overlay.element(context) : overlay.element;
         positionOverlay(host, result?.composition, overlay.componentId, element);

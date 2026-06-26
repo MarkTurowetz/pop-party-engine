@@ -375,6 +375,15 @@ function setStageCodeDisplays(stageCode) {
   }
 }
 
+function setStageManagedText(target, value) {
+  if (!target) return;
+  if (typeof window.PartyGameLayoutText?.setStageText === "function") {
+    window.PartyGameLayoutText.setStageText(target, value);
+  } else {
+    target.textContent = String(value ?? "");
+  }
+}
+
 const stageWidgetTextOverrides = {
   stageCodePanel: (context) => ({ "panel-code": stageCodeValue(context.stageCode) }),
   stageCodeWidget: (context) => ({ "badge-code": stageCodeValue(context.stageCode) }),
@@ -523,9 +532,9 @@ function applyStageState(lobby) {
   document.title = liveGameTitle;
   renderStageActionDebug(lobby);
   const stageTitleElement = document.querySelector(".stage-title");
-  if (stageTitleElement) stageTitleElement.textContent = liveGameTitle;
   setStageCodeDisplays(lobby.stageCode || stageCodeValue());
   applyStageLayoutForPhase(phase);
+  setStageManagedText(stageTitleElement, liveGameTitle);
   renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode) });
   setStageWidgetGameObjectShown("stageCodePanel", isLobbyPhase, { instant: true });
   renderStageWidgetBinding("stageCodeWidget", { stageCode: stageCodeValue(lobby.stageCode) });
@@ -536,7 +545,7 @@ function applyStageState(lobby) {
   stageMain.classList.remove("hidden");
   stageFooter.classList.remove("hidden");
   stageIntroContent.classList.remove("hidden");
-  stageIntroTitle.textContent = "GAME INTRO";
+  setStageManagedText(stageIntroTitle, "GAME INTRO");
   setStageLayoutElementGameObjectShown("stageTitle", stageTitleElement, isLobbyPhase, { instant: true });
   setStageLayoutElementGameObjectShown("stageIntroTitle", stageIntroTitle, phase === "intro", { instant: true });
   renderStageWidgetBinding("presentationClickPrompt");
