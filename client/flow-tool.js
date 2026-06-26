@@ -1690,10 +1690,14 @@ function readOnlyFlowNote(text) {
 }
 
 function addFlowState() {
-  const nextNumber = gameFlow.states.length + 1;
-  const state = { id: `state-${nextNumber}`, name: `New Game State ${nextNumber}`, actions: [] };
   pushFlowHistory();
-  gameFlow.states.push(state);
+  const result = window.PartyGameFlowMutations?.addFlowState?.(gameFlow);
+  const state = result?.state || (() => {
+    const nextNumber = gameFlow.states.length + 1;
+    const fallbackState = { id: `state-${nextNumber}`, name: `New Game State ${nextNumber}`, actions: [] };
+    gameFlow.states.push(fallbackState);
+    return fallbackState;
+  })();
   selectedFlowStateId = state.id;
   clearFlowRouteNodeSelection();
   clearFlowActionSelection();
@@ -1708,14 +1712,17 @@ function addFlowAction() {
   }
   const state = flowState(selectedFlowStateId);
   if (!state) return;
-  const nextNumber = state.actions.length + 1;
-  const action = createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
   const selectedRef = flowActionRef(selectedFlowStateId, selectedFlowActionId);
   const selectedPrimaryId = selectedRef?.parentAction?.id || selectedFlowActionId;
-  const selectedIndex = state.actions.findIndex((item) => item.id === selectedPrimaryId);
-  const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
   pushFlowHistory();
-  state.actions.splice(insertIndex, 0, action);
+  const action = window.PartyGameFlowMutations?.addDefaultFlowAction?.(state, selectedPrimaryId)?.action || (() => {
+    const nextNumber = state.actions.length + 1;
+    const fallbackAction = createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
+    const selectedIndex = state.actions.findIndex((item) => item.id === selectedPrimaryId);
+    const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
+    state.actions.splice(insertIndex, 0, fallbackAction);
+    return fallbackAction;
+  })();
   setFlowActionSelection([action.id]);
   renderFlowTool();
 }
@@ -1748,14 +1755,18 @@ function addFlowSubAction(actionRef) {
   const parentAction = actionRef.isSubAction ? actionRef.parentAction : actionRef.action;
   if (!parentAction) return;
   if (!Array.isArray(parentAction.subActions)) parentAction.subActions = [];
-  const nextNumber = parentAction.subActions.length + 1;
-  const subAction = createDefaultFlowAction(selectedFlowStateId, `Sub-Action ${nextNumber}`, true);
-  const selectedIndex = actionRef.isSubAction
-    ? parentAction.subActions.findIndex((item) => item.id === actionRef.action.id)
-    : -1;
-  const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : parentAction.subActions.length;
   pushFlowHistory();
-  parentAction.subActions.splice(insertIndex, 0, subAction);
+  const selectedSubActionId = actionRef.isSubAction ? actionRef.action.id : "";
+  const subAction = window.PartyGameFlowMutations?.addDefaultFlowSubAction?.(parentAction, selectedSubActionId, selectedFlowStateId)?.action || (() => {
+    const nextNumber = parentAction.subActions.length + 1;
+    const fallbackAction = createDefaultFlowAction(selectedFlowStateId, `Sub-Action ${nextNumber}`, true);
+    const selectedIndex = selectedSubActionId
+      ? parentAction.subActions.findIndex((item) => item.id === selectedSubActionId)
+      : -1;
+    const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : parentAction.subActions.length;
+    parentAction.subActions.splice(insertIndex, 0, fallbackAction);
+    return fallbackAction;
+  })();
   collapsedFlowActions.delete(parentAction.id);
   setFlowActionSelection([subAction.id]);
   renderFlowTool();

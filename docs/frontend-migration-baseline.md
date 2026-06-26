@@ -438,3 +438,23 @@ The extracted factory preserves the current legacy defaults for top-level
 actions and sub-actions, including ID shape, timing mode, default text fields,
 and `subActions: []`. Vite Flow entries install `window.PartyGameFlowActions`
 before loading the legacy scripts; classic routes keep the inline fallback.
+
+## Flow Tool Mutation Helper Extraction
+
+The first mutation-oriented Flow Tool slice now lives in TypeScript:
+
+```txt
+client/tools/flow/flowMutations.ts
+client/tools/flow/flowMutationsAdapter.ts
+client/tools/flow/flowMutations.test.ts
+```
+
+This covers additive model changes only:
+
+- create and append default game states.
+- insert default top-level actions after the selected primary action.
+- insert default sub-actions after the selected sub-action.
+
+The legacy UI still owns history, selection, collapsed state, rendering, and
+save behavior. Vite Flow entries install `window.PartyGameFlowMutations`; classic
+routes keep inline fallbacks so the default no-build route remains compatible.
