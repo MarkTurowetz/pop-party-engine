@@ -4,10 +4,19 @@
   "private": true,
   "description": "Server-backed toolkit for building stage and controller party games.",
   "scripts": {
+    "build": "vite build && npm run build-info",
     "build-info": "node build-version.js",
+    "check": "npm run typecheck && npm run check-text-rendering && npm run smoke:routes",
     "check-text-rendering": "node checks/check-text-rendering.js",
     "start": "node server.js",
     "dev": "node server.js",
-    "sync-game-data": "node sync-game-data.js"
+    "smoke:routes": "node checks/smoke-routes.js",
+    "sync-game-data": "node sync-game-data.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0"
   }
 }

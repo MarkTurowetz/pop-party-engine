@@ -1,0 +1,26 @@
+import manifest from "./script-manifest.json";
+
+export type LegacyScriptRole = "stage" | "controller" | "tools" | "flow" | "layout" | "art" | "constants" | "host-audio";
+
+const allToolScripts = [
+  ...manifest.artTool,
+  ...manifest.hostAudioTool,
+  ...manifest.flowTool,
+  ...manifest.constantsTool,
+  ...manifest.layoutTool
+];
+
+const roleScripts: Record<LegacyScriptRole, string[]> = {
+  stage: [...manifest.sharedFoundation, ...manifest.stageRuntime],
+  controller: [...manifest.sharedFoundation, ...manifest.controllerRuntime],
+  tools: [...manifest.sharedFoundation, ...manifest.stageRuntime, ...manifest.controllerRuntime, ...manifest.toolFoundation, ...allToolScripts],
+  flow: [...manifest.sharedFoundation, ...manifest.toolFoundation, ...manifest.flowTool],
+  layout: [...manifest.sharedFoundation, ...manifest.stageRuntime, ...manifest.toolFoundation, ...manifest.layoutTool],
+  art: [...manifest.sharedFoundation, ...manifest.stageRuntime, ...manifest.toolFoundation, ...manifest.artTool],
+  constants: [...manifest.sharedFoundation, ...manifest.toolFoundation, ...manifest.constantsTool],
+  "host-audio": [...manifest.sharedFoundation, ...manifest.toolFoundation, ...manifest.hostAudioTool]
+};
+
+export function legacyScriptsForRole(role: LegacyScriptRole): string[] {
+  return [...roleScripts[role]];
+}

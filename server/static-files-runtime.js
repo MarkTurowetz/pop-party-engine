@@ -1,5 +1,101 @@
 const fs = require("fs");
 const path = require("path");
+const legacyScriptManifest = require("../client/app/legacy/script-manifest.json");
+
+const APP_SHELL_SCRIPT = "/client/app/legacy/app-shell.js";
+const LEGACY_SCRIPT_BLOCK_PATTERN = /  <script src="\/shared\/color-utils\.js"><\/script>\n[\s\S]*?  <script src="\/client\/app\/legacy\/app-shell\.js"><\/script>/;
+const LEGACY_STYLESHEET_PATTERN = /  <link rel="stylesheet" href="\/client\/styles\/legacy-shell\.css">/;
+const LEGACY_CSS = {
+  base: "/client/styles/legacy/base.css",
+  stageRuntime: "/client/styles/legacy/stage-runtime.css",
+  controllerRuntime: "/client/styles/legacy/controller-runtime.css",
+  tools: "/client/styles/legacy/tools.css",
+  responsive: "/client/styles/legacy/responsive.css"
+};
+const PATH_ROLES = {
+  "/stage": "stage",
+  "/s": "stage",
+  "/controller": "controller",
+  "/c": "controller",
+  "/lab": "lab",
+  "/l": "lab",
+  "/art": "art",
+  "/a": "art",
+  "/flow": "flow",
+  "/f": "flow",
+  "/constants": "constants",
+  "/const": "constants",
+  "/host-audio": "host-audio",
+  "/host-audios": "host-audio",
+  "/audio": "host-audio",
+  "/layout": "layout",
+  "/layouts": "layout",
+  "/controller-layout": "controller-layout",
+  "/controller-layouts": "controller-layout",
+  "/tools": "tools",
+  "/tool": "tools"
+};
+const REQUESTED_ROLES = new Set(["controller", "lab", "art", "flow", "constants", "host-audio", "layout", "controller-layout", "tools"]);
+
+function routeRoleForUrl(url) {
+  const requestedRole = url?.searchParams?.get("role");
+  if (REQUESTED_ROLES.has(requestedRole)) return requestedRole;
+  const pathname = String(url?.pathname || "").toLowerCase();
+  return PATH_ROLES[pathname] || "stage";
+}
+
+function scriptsForRole(role) {
+  const {
+    sharedFoundation,
+    stageRuntime,
+    controllerRuntime,
+    toolFoundation,
+    artTool,
+    hostAudioTool,
+    flowTool,
+    constantsTool,
+    layoutTool
+  } = legacyScriptManifest;
+  const allToolScripts = [
+    ...artTool,
+    ...hostAudioTool,
+    ...flowTool,
+    ...constantsTool,
+    ...layoutTool
+  ];
+  if (role === "controller") return [...sharedFoundation, ...controllerRuntime];
+  if (role === "lab" || role === "art") return [...sharedFoundation, ...stageRuntime, ...toolFoundation, ...artTool];
+  if (role === "flow") return [...sharedFoundation, ...toolFoundation, ...flowTool];
+  if (role === "constants") return [...sharedFoundation, ...toolFoundation, ...constantsTool];
+  if (role === "host-audio") return [...sharedFoundation, ...toolFoundation, ...hostAudioTool];
+  if (role === "layout" || role === "controller-layout") return [...sharedFoundation, ...stageRuntime, ...toolFoundation, ...layoutTool];
+  if (role === "tools") return [...sharedFoundation, ...stageRuntime, ...controllerRuntime, ...toolFoundation, ...allToolScripts];
+  return [...sharedFoundation, ...stageRuntime];
+}
+
+function renderScriptTags(scripts) {
+  return [...scripts, APP_SHELL_SCRIPT]
+    .map((script) => `  <script src="${script}"></script>`)
+    .join("\n");
+}
+
+function stylesForRole(role) {
+  const runtimeStyles = [LEGACY_CSS.base, LEGACY_CSS.stageRuntime, LEGACY_CSS.responsive];
+  const controllerStyles = [LEGACY_CSS.base, LEGACY_CSS.stageRuntime, LEGACY_CSS.controllerRuntime, LEGACY_CSS.responsive];
+  const toolStyles = [LEGACY_CSS.base, LEGACY_CSS.tools, LEGACY_CSS.responsive];
+  const stageToolStyles = [LEGACY_CSS.base, LEGACY_CSS.stageRuntime, LEGACY_CSS.tools, LEGACY_CSS.responsive];
+  if (role === "controller") return controllerStyles;
+  if (role === "lab" || role === "art" || role === "layout" || role === "controller-layout") return stageToolStyles;
+  if (role === "flow" || role === "constants" || role === "host-audio") return toolStyles;
+  if (role === "tools") return [LEGACY_CSS.base, LEGACY_CSS.stageRuntime, LEGACY_CSS.controllerRuntime, LEGACY_CSS.tools, LEGACY_CSS.responsive];
+  return runtimeStyles;
+}
+
+function renderStylesheetLinks(stylesheets) {
+  return stylesheets
+    .map((stylesheet) => `  <link rel="stylesheet" href="${stylesheet}">`)
+    .join("\n");
+}
 
 function createStaticFilesRuntime({
   appVersion,
@@ -9,13 +105,19 @@ function createStaticFilesRuntime({
   sendJson,
   sharedRoot
 }) {
-  function serveIndex(res) {
+  function serveIndex(res, url = null) {
     fs.readFile(indexFile, (error, data) => {
       if (error) {
         sendJson(res, 500, { ok: false, error: "Could not read index.html" });
         return;
       }
-      const html = String(data).replaceAll("__APP_VERSION__", appVersion);
+      const role = routeRoleForUrl(url);
+      const stylesheetLinks = renderStylesheetLinks(stylesForRole(role));
+      const scriptTags = renderScriptTags(scriptsForRole(role));
+      const html = String(data)
+        .replace(LEGACY_STYLESHEET_PATTERN, stylesheetLinks)
+        .replace(LEGACY_SCRIPT_BLOCK_PATTERN, scriptTags)
+        .replaceAll("__APP_VERSION__", appVersion);
       res.writeHead(200, {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Length": Buffer.byteLength(html)

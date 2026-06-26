@@ -1182,7 +1182,10 @@ function renderFlowListAndPublish() {
 }
 
 window.addEventListener("beforeunload", () => {
-  if (isFlowDirty() || isLayoutDirty() || isControllerLayoutDirty() || isHostAudiosDirty()) publishRuntimeLocalClear();
+  const layoutDirty = typeof isLayoutDirty === "function" && isLayoutDirty();
+  const controllerLayoutDirty = typeof isControllerLayoutDirty === "function" && isControllerLayoutDirty();
+  const hostAudiosDirty = typeof isHostAudiosDirty === "function" && isHostAudiosDirty();
+  if (isFlowDirty() || layoutDirty || controllerLayoutDirty || hostAudiosDirty) publishRuntimeLocalClear();
 });
 
 async function loadGameFlow() {

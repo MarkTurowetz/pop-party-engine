@@ -286,7 +286,7 @@ function createRouterRuntime({
     }
 
     if (req.method === "GET" || req.method === "HEAD") {
-      serveIndex(res);
+      serveIndex(res, url);
       return;
     }
 

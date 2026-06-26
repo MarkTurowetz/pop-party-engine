@@ -274,6 +274,23 @@ function applyControllerLayoutArtVisibilityOverride(entity) {
   applyControllerLayoutGameObjectVisibilityOverride(entity);
 }
 
+function layoutDefaultText(element) {
+  const id = String(element?.id || "").toLowerCase();
+  const existing = element?.defaultText;
+  if (existing !== undefined && existing !== null && String(existing).length) return String(existing);
+  if (id === "waitingstatus") return "Waiting for Ava to start the game";
+  if (id === "joinprompt") return "Join the Lobby at bit.ly/popcontroller";
+  if (id === "stagepresentationtext") return "This is test number 1";
+  if (id === "stageprompttext") return "Prompt Text";
+  if (id === "roundintrotext") return "Round One";
+  if (id === "roundintroinfotext") return "Additional round info";
+  if (id === "jointitle") return "Join Lobby";
+  if (id === "controllerplayername") return "Ava";
+  if (id === "controllermeta") return "VIP Player";
+  if (id === "controllerintromessage") return "Welcome to the Game";
+  return String(element?.name || "");
+}
+
 function controllerLayoutComputedFontSize(element, textOverride = "") {
   const baseSize = Number(element.fontSize || 42);
   if (!element.autoFitText) return baseSize;

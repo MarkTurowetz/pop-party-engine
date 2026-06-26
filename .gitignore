@@ -2,6 +2,8 @@
 Character Reference/
 __pycache__/
 .swift-module-cache/
+node_modules/
+dist/
 outputs/
 tmp/
 scripts/
