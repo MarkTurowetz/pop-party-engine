@@ -5,6 +5,7 @@
   "description": "Server-backed toolkit for building stage and controller party games.",
   "scripts": {
     "build-info": "node build-version.js",
+    "check-text-rendering": "node checks/check-text-rendering.js",
     "start": "node server.js",
     "dev": "node server.js",
     "sync-game-data": "node sync-game-data.js"
