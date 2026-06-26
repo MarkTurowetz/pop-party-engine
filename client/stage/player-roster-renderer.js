@@ -32,6 +32,7 @@
       this.syncAnswerBubble = typeof options.syncAnswerBubble === "function" ? options.syncAnswerBubble : () => 0;
       this.pointPopupIds = new Set();
       this.gameObject = null;
+      this.tileGameObjects = new Map();
     }
 
     playerSignature(player) {
@@ -49,25 +50,95 @@
       tile.dataset.playerId = player.id;
       tile.dataset.signature = signature;
       tile.style.setProperty("--player-index", playerIndex);
-      tile.innerHTML = `
-        <div class="player-avatar ${this.avatarClass(player.avatar?.shape)}" style="--avatar-color:${player.avatar?.color || "#22d3ee"}">${this.playerAvatarArt(player.avatar?.shape)}</div>
-        <div class="player-name"></div>
-        ${player.isVip ? '<div class="vip-badge"></div>' : ""}
-      `;
-      renderStageTextBox(tile.querySelector(".player-name"), player.name, {
+      tile.append(
+        this.createAvatarNode(player),
+        this.createNameNode(player)
+      );
+      if (player.isVip) tile.appendChild(this.createVipNode());
+      this.syncTileGameObject(tile, player);
+      this.syncTileText(tile, player);
+      this.syncAnswerBubble(tile, player, { instant: true });
+      return tile;
+    }
+
+    createAvatarNode(player) {
+      const avatar = this.document.createElement("div");
+      avatar.className = `player-avatar ${this.avatarClass(player.avatar?.shape)}`.trim();
+      avatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
+      avatar.dataset.playerPart = "avatar";
+      avatar.innerHTML = this.playerAvatarArt(player.avatar?.shape);
+      return avatar;
+    }
+
+    createNameNode(player) {
+      const name = this.document.createElement("div");
+      name.className = "player-name";
+      name.dataset.playerPart = "name";
+      renderStageTextBox(name, player.name, {
         width: 118,
         height: 34,
         fontSize: 17,
         fontColor: "#17131f"
       });
-      renderStageTextBox(tile.querySelector(".vip-badge"), player.isVip ? "VIP" : "", {
+      return name;
+    }
+
+    createVipNode() {
+      const badge = this.document.createElement("div");
+      badge.className = "vip-badge";
+      badge.dataset.playerPart = "vip-badge";
+      renderStageTextBox(badge, "VIP", {
         width: 44,
         height: 22,
         fontSize: 11,
         fontColor: "#17131f"
       });
-      this.syncAnswerBubble(tile, player, { instant: true });
-      return tile;
+      return badge;
+    }
+
+    syncTileText(tile, player) {
+      renderStageTextBox(tile?.querySelector(":scope > .player-name"), player.name, {
+        width: 118,
+        height: 34,
+        fontSize: 17,
+        fontColor: "#17131f"
+      });
+      const vipBadge = tile?.querySelector(":scope > .vip-badge");
+      if (vipBadge) {
+        renderStageTextBox(vipBadge, player.isVip ? "VIP" : "", {
+          width: 44,
+          height: 22,
+          fontSize: 11,
+          fontColor: "#17131f"
+        });
+      }
+    }
+
+    syncTileGameObject(tile, player) {
+      if (!tile || typeof this.gameObjectApi?.create !== "function") return null;
+      const playerId = String(player?.id || tile.dataset.playerId || "");
+      if (!playerId) return null;
+      const options = {
+        id: `player-tile-${playerId}`,
+        target: tile,
+        visibilityKey: `player:${playerId}`,
+        visualOptions: {
+          hiddenClasses: ["player-tile-hidden"],
+          motionHiddenClasses: ["player-tile-hidden"],
+          instantClass: "players-instant",
+          layoutHiddenClasses: ["player-tile-hidden"],
+          transformOrigin: "center center"
+        },
+        getVisible: () => !tile.classList.contains("player-tile-hidden"),
+        setVisible: (isVisible) => {
+          tile.dataset.visualVisible = isVisible ? "true" : "false";
+        },
+        timerSink: this.timerSink
+      };
+      const existing = this.tileGameObjects.get(playerId);
+      const gameObject = existing?.target === tile ? existing.update(options) : createGameObject(this.gameObjectApi, options);
+      if (gameObject) this.tileGameObjects.set(playerId, gameObject);
+      return gameObject;
     }
 
     existingTilesByPlayerId() {
@@ -87,8 +158,10 @@
           : this.createTile(player, playerIndex, signature);
         tile.classList.toggle("needs-input", player.needsInput === true);
         tile.style.setProperty("--player-index", playerIndex);
+        this.syncTileGameObject(tile, player);
         if (existing && existing !== tile) {
           if (existing === cursor) cursor = existing.nextElementSibling;
+          this.tileGameObjects.delete(String(player.id || ""));
           existing.remove();
         }
         const isNewTile = tile !== existing;
@@ -97,10 +170,16 @@
         } else {
           this.host.insertBefore(tile, cursor);
         }
-        if (!isNewTile) this.syncAnswerBubble(tile, player);
+        if (!isNewTile) {
+          this.syncTileText(tile, player);
+          this.syncAnswerBubble(tile, player);
+        }
       });
       Array.from(this.host.querySelectorAll(".player-tile[data-player-id]")).forEach((tile) => {
-        if (!desiredIds.has(tile.dataset.playerId)) tile.remove();
+        if (!desiredIds.has(tile.dataset.playerId)) {
+          this.tileGameObjects.delete(String(tile.dataset.playerId || ""));
+          tile.remove();
+        }
       });
     }
 
