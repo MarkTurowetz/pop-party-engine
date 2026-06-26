@@ -75,6 +75,10 @@ export function FlowToolApp({
         canRevert={canRevert}
         flowNodeDepth={flowNodeDepth}
         flowViewMode={flowViewMode}
+        onAddAction={handlers.addAction}
+        onDeleteSelection={handlers.deleteSelection}
+        onRevert={handlers.revert}
+        onSetViewMode={handlers.setViewMode}
       />
       <FlowStateList
         onSelectState={handlers.selectState}

@@ -10,9 +10,13 @@ export interface FlowToolReactShell {
 }
 
 export interface FlowToolReactShellHandlers {
+  addAction?: () => void;
+  deleteSelection?: () => void;
+  revert?: () => void;
   selectAction?: (actionId: string) => void;
   selectRouteNode?: (routeNodeId: string) => void;
   selectState?: (stateId: string) => void;
+  setViewMode?: (mode: "list" | "node") => void;
 }
 
 export interface FlowToolReactShellSelection {

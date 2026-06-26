@@ -4,6 +4,10 @@ export interface FlowToolbarProps {
   canRevert?: boolean;
   flowNodeDepth?: string;
   flowViewMode?: string;
+  onAddAction?: () => void;
+  onDeleteSelection?: () => void;
+  onRevert?: () => void;
+  onSetViewMode?: (mode: "list" | "node") => void;
 }
 
 export function FlowToolbar({
@@ -11,7 +15,11 @@ export function FlowToolbar({
   canDelete = false,
   canRevert = false,
   flowNodeDepth = "actions",
-  flowViewMode = "list"
+  flowViewMode = "list",
+  onAddAction,
+  onDeleteSelection,
+  onRevert,
+  onSetViewMode
 }: FlowToolbarProps) {
   return (
     <div
@@ -23,10 +31,23 @@ export function FlowToolbar({
       data-flow-react-component="toolbar"
       data-flow-view-mode={flowViewMode}
     >
-      <span data-enabled={canAddAction ? "true" : "false"}>Add</span>
-      <span data-enabled={canDelete ? "true" : "false"}>Delete</span>
-      <span data-enabled={canRevert ? "true" : "false"}>Revert</span>
-      <span>{flowViewMode}</span>
+      <button type="button" disabled={!canAddAction} onClick={onAddAction}>Add Action</button>
+      <button type="button" disabled={!canDelete} onClick={onDeleteSelection}>Delete</button>
+      <button type="button" disabled={!canRevert} onClick={onRevert}>Revert</button>
+      <button
+        aria-pressed={flowViewMode !== "node"}
+        type="button"
+        onClick={() => onSetViewMode?.("list")}
+      >
+        List
+      </button>
+      <button
+        aria-pressed={flowViewMode === "node"}
+        type="button"
+        onClick={() => onSetViewMode?.("node")}
+      >
+        Node
+      </button>
       <span>{flowNodeDepth}</span>
     </div>
   );

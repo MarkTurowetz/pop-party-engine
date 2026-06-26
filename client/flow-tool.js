@@ -1384,6 +1384,15 @@ function renderFlowActions() {
 
 function installFlowReactShellHandlers() {
   window.PartyGameFlowReactShell?.setHandlers?.({
+    addAction: () => {
+      addFlowAction();
+    },
+    deleteSelection: () => {
+      deleteFlowItem();
+    },
+    revert: () => {
+      revertGameFlow();
+    },
     selectAction: (actionId) => {
       selectFlowAction(actionId);
       renderFlowTool();
@@ -1394,6 +1403,9 @@ function installFlowReactShellHandlers() {
     },
     selectState: (stateId) => {
       selectFlowMomentFromList(stateId, { metaKey: false, ctrlKey: false, shiftKey: false });
+    },
+    setViewMode: (mode) => {
+      setFlowViewMode(mode);
     }
   });
 }

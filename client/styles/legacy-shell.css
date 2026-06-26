@@ -2979,6 +2979,7 @@ body.tool-dashboard-mode .layout-shell {
 
 .flow-react-header p,
 .flow-react-panel h3,
+.flow-react-toolbar button,
 .flow-react-toolbar span {
   margin: 0;
   color: #5e5475;
@@ -3040,7 +3041,23 @@ body.tool-dashboard-mode .layout-shell {
   background: #fff;
 }
 
-.flow-react-toolbar span[data-enabled="true"] {
+.flow-react-toolbar button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 3px solid var(--ink);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.2);
+  cursor: pointer;
+}
+
+.flow-react-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.flow-react-toolbar button[aria-pressed="true"],
+.flow-react-toolbar button:not(:disabled):hover {
   color: var(--ink);
   background: var(--cyan);
 }
