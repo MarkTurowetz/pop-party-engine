@@ -1352,6 +1352,7 @@ function updateFlowStorageStatus(storage) {
 function renderFlowTool() {
   window.PartyGameFlowReactShell?.update?.(gameFlow, {
     selectedActionId: selectedFlowActionId,
+    selectedRouteNodeId: selectedFlowRouteNodeId,
     selectedStateId: selectedFlowStateId
   });
   renderFlowList();

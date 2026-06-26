@@ -611,6 +611,10 @@ It also includes a hidden read-only `ActionInspector` component wired to the
 same selected action lookup as the legacy editor, establishing the next React
 surface boundary without changing the visible inspector yet.
 
+Moment-route graph data now feeds a hidden `FlowRouteNodeList` React component
+as well, carrying route node ids, types, and legacy route-node selection into
+the React shell.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:

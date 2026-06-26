@@ -634,6 +634,7 @@ function restoreFlowHistory(snapshot) {
   gameFlow = window.PartyGameFlowSerialization?.parseFlowHistorySnapshot?.(snapshot) || JSON.parse(snapshot);
   window.PartyGameFlowReactShell?.update?.(gameFlow, {
     selectedActionId: selectedFlowActionId,
+    selectedRouteNodeId: selectedFlowRouteNodeId,
     selectedStateId: selectedFlowStateId
   });
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";

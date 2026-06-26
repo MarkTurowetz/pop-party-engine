@@ -10,6 +10,7 @@ export interface FlowToolReactShell {
 
 export interface FlowToolReactShellSelection {
   selectedActionId?: string;
+  selectedRouteNodeId?: string;
   selectedStateId?: string;
 }
 
@@ -39,6 +40,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
       <FlowToolApp
         flow={flow}
         selectedActionId={selection.selectedActionId || ""}
+        selectedRouteNodeId={selection.selectedRouteNodeId || ""}
         selectedStateId={selection.selectedStateId || ""}
         surface={surface}
       />
