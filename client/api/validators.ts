@@ -10,6 +10,7 @@ import type {
   LayoutResponse,
   LayoutSaveResponse
 } from "../types/game-data";
+import { collectFlowValidationIssues } from "../tools/flow/flowValidation";
 
 export class ApiValidationError extends Error {
   readonly endpoint: string;
@@ -67,14 +68,8 @@ function assertStorageStatus(value: unknown, endpoint: string, label = "storage"
 }
 
 function assertFlow(value: unknown, endpoint: string, label: string): void {
-  const flow = assertRecord(value, endpoint, label);
-  const states = assertArray(flow.states, endpoint, `${label}.states`);
-  states.forEach((state, stateIndex) => {
-    const stateLabel = `${label}.states[${stateIndex}]`;
-    const flowState = assertRecord(state, endpoint, stateLabel);
-    assertString(flowState.id, endpoint, `${stateLabel}.id`);
-    assertArray(flowState.actions, endpoint, `${stateLabel}.actions`);
-  });
+  const issue = collectFlowValidationIssues(value, label)[0];
+  if (issue) throw new ApiValidationError(endpoint, `${issue.path} ${issue.message}`);
 }
 
 function assertLayoutCollection(value: unknown, endpoint: string, label: string): void {

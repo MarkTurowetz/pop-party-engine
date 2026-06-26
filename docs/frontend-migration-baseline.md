@@ -547,6 +547,13 @@ Flow entrypoint. The legacy Flow tool delegates action, moment, route node, and
 route branch selection normalization to the typed helper while keeping the
 existing global state and render lifecycle intact.
 
+## Flow Validation Extraction
+
+Flow model shape checks now live in `client/tools/flow/flowValidation.ts`.
+The typed API validators call this helper for read and save responses, so Flow
+validation can be reused by future store/command code without coupling it to
+HTTP response details.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
