@@ -554,6 +554,13 @@ The typed API validators call this helper for read and save responses, so Flow
 validation can be reused by future store/command code without coupling it to
 HTTP response details.
 
+## Flow Command History Groundwork
+
+`client/tools/flow/flowCommands.ts` introduces the command-history shape for
+future Flow editor state. Commands mutate cloned Flow models, validate the
+result, and keep undo/redo snapshots bounded without depending on DOM globals or
+the legacy tool history manager.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
