@@ -363,13 +363,12 @@
     componentTextLayout(component, textOverride = "", hasTextOverride = false) {
       const baseSize = Number(component?.fontSize || 16);
       const text = hasTextOverride ? String(textOverride ?? "") : String(component?.defaultText || component?.name || "");
-      const measuredLayout = global.PartyGameTextFit?.measuredTextLayout;
-      if (typeof measuredLayout === "function") {
-        const options = global.PartyGameTextFit?.textRenderOptions?.(component) || {
-          autoFit: component?.autoFitText === true
-        };
-        return measuredLayout(component, text, baseSize, options);
-      }
+      const measuredLayout = global.PartyGameTextFit?.measureGameText?.({
+        text,
+        element: component,
+        fallbackSize: baseSize
+      });
+      if (measuredLayout) return measuredLayout;
       return { fontSize: baseSize };
     }
 

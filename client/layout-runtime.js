@@ -680,11 +680,16 @@ function textFieldPadding(element) {
 }
 
 function fittedLayoutTextSize(element, text, fallbackSize) {
-  const sharedFit = window.PartyGameTextFit?.measureFittedTextSize;
-  if (typeof sharedFit === "function") {
-    return sharedFit(element, text, fallbackSize || 58, {
+  const layout = window.PartyGameTextFit?.measureGameText?.({
+    text,
+    element,
+    fallbackSize: fallbackSize || 58,
+    options: {
       padding: textFieldPadding(element)
-    });
+    }
+  });
+  if (layout) {
+    return Number(layout.fontSize || fallbackSize || 58);
   }
   return Math.max(8, Number(fallbackSize || 58));
 }

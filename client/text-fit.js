@@ -93,6 +93,14 @@
     return renderTextBox(target, text, spec || {}, options);
   }
 
+  function measureGameText(config = {}) {
+    const text = String(config.text ?? "");
+    const element = config.element || config.spec || null;
+    const fallbackSize = Number(config.fallbackSize ?? element?.fontSize ?? defaultOptions.minSize);
+    if (!element) return layoutTextAtSize(text, fallbackSize, 1, normalizeOptions(config.options || {}));
+    return measuredTextLayout(element, text, fallbackSize, config.options || {});
+  }
+
   function targetTextRenderOptions(target, element, options = {}) {
     const computedStyle = options.computedStyle || computedStyleFor(target);
     return textRenderOptions(element, computedStyle ? { ...options, computedStyle } : options);
@@ -371,6 +379,7 @@
     fixedTextLayout,
     measuredTextLayout,
     fittedLayoutTextSize,
+    measureGameText,
     measureFittedTextSize: fittedLayoutTextSize,
     renderAutoTextElement,
     renderGameText,

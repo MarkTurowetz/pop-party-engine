@@ -42,13 +42,12 @@
 
   function componentTextLayout(component, labelText = componentSchema.componentLabel(component)) {
     const baseSize = Number(component?.fontSize || 16);
-    const measuredLayout = global.PartyGameTextFit?.measuredTextLayout;
-    if (typeof measuredLayout === "function") {
-      const options = global.PartyGameTextFit?.textRenderOptions?.(component) || {
-        autoFit: component?.autoFitText === true
-      };
-      return measuredLayout(component, labelText, baseSize, options);
-    }
+    const measuredLayout = global.PartyGameTextFit?.measureGameText?.({
+      text: labelText,
+      element: component,
+      fallbackSize: baseSize
+    });
+    if (measuredLayout) return measuredLayout;
     const lineHeight = global.PartyGameTextFit?.constants?.lineHeight || 1.15;
     const fontSize = Math.max(8, baseSize);
     return {

@@ -820,12 +820,11 @@ function layoutComputedFontSize(element) {
 
 function layoutTextFit(element, text) {
   const baseSize = Number(element.fontSize || 58);
-  const measuredLayout = window.PartyGameTextFit?.measuredTextLayout;
-  if (typeof measuredLayout !== "function") return null;
-  const options = window.PartyGameTextFit?.textRenderOptions?.(element) || {
-    autoFit: element.autoFitText === true
-  };
-  return measuredLayout(element, text, baseSize, options);
+  return window.PartyGameTextFit?.measureGameText?.({
+    text,
+    element,
+    fallbackSize: baseSize
+  }) || null;
 }
 
 function applyLayoutPreviewTextStyle(node, element, text = layoutDefaultText(element)) {
@@ -838,7 +837,7 @@ function applyLayoutPreviewTextStyle(node, element, text = layoutDefaultText(ele
     || layoutTextFit(element, text);
   node.style.setProperty("--layout-text-font-size", `${layout?.fontSize || layoutComputedFontSize(element)}px`);
   node.style.setProperty("--layout-text-color", normalizeUiColor(element.fontColor) || "#ffffff");
-  if (!window.PartyGameTextFit?.renderAutoTextElement && layout) window.PartyGameTextFit.renderTextElement?.(node, text, layout);
+  if (!window.PartyGameTextFit?.renderGameText && layout) window.PartyGameTextFit.renderTextElement?.(node, text, layout);
 }
 
 function layoutPreviewTextNode(element, fallbackText) {
