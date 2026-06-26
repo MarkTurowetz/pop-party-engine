@@ -576,11 +576,9 @@ function renderSelectedArtComposition(options = {}) {
       appendTransformHandles: appendArtComponentTransformHandles
     }));
   }
-  applyMeasuredArtPreviewTextFit(composition);
   requestAnimationFrame(() => {
     if (selectedArtCompositionId !== composition.id) return;
     updateArtPreviewCanvasScale(composition);
-    applyMeasuredArtPreviewTextFit(composition);
   });
   artFileName.textContent = isArtCompositionsDirty() ? "Component layout has unsaved changes" : "Component layout saved";
   artReplaceButton.disabled = true;
@@ -607,30 +605,6 @@ function updateArtPreviewCanvasScale(composition = selectedArtComposition()) {
   previewCanvas.style.setProperty("--art-composition-canvas-scale", scale);
   previewCanvas.style.setProperty("--art-composition-editor-scale", 1 / scale);
   return scale;
-}
-
-function applyMeasuredArtPreviewTextFit(composition) {
-  const fitTextLayout = window.PartyGameTextFit?.fitTextLayout;
-  const renderTextElement = window.PartyGameTextFit?.renderTextElement;
-  const componentsById = new Map(flattenArtComponents(composition?.components || []).map(({ component }) => [String(component.id || ""), component]));
-  const previewCanvas = currentArtPreviewCanvas();
-  const nodes = previewCanvas.querySelectorAll(".art-composition-component.is-text");
-  for (const node of nodes) {
-    const component = componentsById.get(String(node.dataset.componentId || ""));
-    const label = node.querySelector(":scope > .art-component-label");
-    if (label) label.style.fontSize = "";
-    if (!component || component.autoFitText !== true) continue;
-    if (!label || label.hidden) continue;
-    const previewText = artComponentPreviewText(component);
-    if (typeof fitTextLayout !== "function") continue;
-    const computed = window.getComputedStyle(label);
-    const layout = fitTextLayout(component, previewText, Number(component.fontSize || 16), {
-      computedStyle: computed
-    });
-    node.style.setProperty("--component-font-size", `${layout.fontSize}px`);
-    label.style.fontSize = `${layout.fontSize}px`;
-    renderTextElement?.(label.querySelector(":scope > .art-label-text") || label, previewText, layout);
-  }
 }
 
 function updateArtCompositionDeleteButton() {

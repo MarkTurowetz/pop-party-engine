@@ -285,8 +285,11 @@ function applyControllerLayoutTextProperties(target, element) {
   const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
   const text = (hasRenderedFitText ? target.dataset.textFitSource : target.textContent.trim()) || layoutDefaultText(element);
   const baseSize = Number(element.fontSize || 42);
-  const layout = element.autoFitText && typeof window.PartyGameTextFit?.fitTextLayout === "function"
-    ? window.PartyGameTextFit.fitTextLayout(element, text, baseSize, { padding: textFieldPadding(element) })
+  const layout = typeof window.PartyGameTextFit?.measuredTextLayout === "function"
+    ? window.PartyGameTextFit.measuredTextLayout(element, text, baseSize, {
+      autoFit: element.autoFitText === true,
+      padding: textFieldPadding(element)
+    })
     : null;
   const fontSize = `${layout?.fontSize || controllerLayoutComputedFontSize(element, text)}px`;
   target.style.setProperty("--controller-text-color", fontColor);
@@ -676,8 +679,11 @@ function applyStageLayoutTextProperties(target, element) {
   const hasRenderedFitText = Boolean(target.querySelector(":scope > .text-fit-lines, :scope > .text-fit-svg"));
   const text = (hasRenderedFitText ? target.dataset.textFitSource : target.textContent.trim()) || stageLayoutTextDefault(element);
   const baseSize = Number(element.fontSize || 58);
-  const layout = element.autoFitText && typeof window.PartyGameTextFit?.fitTextLayout === "function"
-    ? window.PartyGameTextFit.fitTextLayout(element, text, baseSize, { padding: textFieldPadding(element) })
+  const layout = typeof window.PartyGameTextFit?.measuredTextLayout === "function"
+    ? window.PartyGameTextFit.measuredTextLayout(element, text, baseSize, {
+      autoFit: element.autoFitText === true,
+      padding: textFieldPadding(element)
+    })
     : null;
   const fontSize = `${layout?.fontSize || stageLayoutComputedFontSize(element, text)}px`;
   target.style.setProperty("color", fontColor, "important");

@@ -19,7 +19,7 @@
   function fitTextLayout(element, text, fallbackSize, options = {}) {
     const config = normalizeOptions(options);
     const box = textBox(element, config);
-    const textValue = applyTextTransform(String(text || "Text"), config.textTransform);
+    const textValue = applyTextTransform(String(text ?? ""), config.textTransform);
     const maxSize = Number(config.maxSize || defaultOptions.maxSize);
     const minSize = Number(config.minSize || defaultOptions.minSize);
 
@@ -39,6 +39,17 @@
 
   function fittedLayoutTextSize(element, text, fallbackSize, options = {}) {
     return fitTextLayout(element, text, fallbackSize, options).fontSize;
+  }
+
+  function measuredTextLayout(element, text, fallbackSize, options = {}) {
+    if (options.autoFit === false) return fixedTextLayout(element, text, fallbackSize, options);
+    return fitTextLayout(element, text, fallbackSize, options);
+  }
+
+  function renderMeasuredTextElement(target, element, text, fallbackSize, options = {}) {
+    const layout = measuredTextLayout(element, text, fallbackSize, options);
+    renderTextElement(target, text, layout);
+    return layout;
   }
 
   function fixedTextLayout(element, text, fontSize, options = {}) {
@@ -253,9 +264,11 @@
     constants: defaultOptions,
     fitTextLayout,
     fixedTextLayout,
+    measuredTextLayout,
     fittedLayoutTextSize,
     measureFittedTextSize: fittedLayoutTextSize,
-    renderTextElement
+    renderTextElement,
+    renderMeasuredTextElement
   };
   global.fittedLayoutTextSize = fittedLayoutTextSize;
 })(typeof window !== "undefined" ? window : globalThis);
