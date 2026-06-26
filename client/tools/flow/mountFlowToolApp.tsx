@@ -1,5 +1,6 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { GameFlow } from "../../types/game-data";
+import type { FlowActionTypeMeta } from "./flowSelectors";
 import { FlowToolApp } from "./FlowToolApp";
 
 export interface FlowToolReactShell {
@@ -24,6 +25,7 @@ export interface FlowToolReactShellSelection {
   canAddAction?: boolean;
   canDelete?: boolean;
   canRevert?: boolean;
+  flowActionTypes?: FlowActionTypeMeta[];
   flowNodeDepth?: string;
   flowViewMode?: string;
   selectedActionId?: string;
@@ -66,6 +68,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
         canAddAction={selection.canAddAction || false}
         canDelete={selection.canDelete || false}
         canRevert={selection.canRevert || false}
+        flowActionTypes={selection.flowActionTypes || []}
         flowNodeDepth={selection.flowNodeDepth || "actions"}
         flowViewMode={selection.flowViewMode || "list"}
         flow={flow}

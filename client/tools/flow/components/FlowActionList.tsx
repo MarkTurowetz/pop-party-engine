@@ -1,7 +1,9 @@
 import type { FlowAction } from "../../../types/game-data";
+import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
 
 export interface FlowActionListProps {
   actions: FlowAction[];
+  actionTypes?: FlowActionTypeMeta[];
   onSelectAction?: (actionId: string) => void;
   selectedActionId?: string;
 }
@@ -10,12 +12,13 @@ function actionLabel(action: FlowAction): string {
   return action.name || action.id;
 }
 
-function actionTypeLabel(action: FlowAction): string {
-  return action.type || "action";
+function actionTypeLabel(action: FlowAction, actionTypes: FlowActionTypeMeta[]): string {
+  return actionTypeName(actionTypes, action.type) || action.type || "action";
 }
 
 interface FlowActionItemProps {
   action: FlowAction;
+  actionTypes: FlowActionTypeMeta[];
   isSubAction?: boolean;
   onSelectAction?: (actionId: string) => void;
   parentActionId?: string;
@@ -24,6 +27,7 @@ interface FlowActionItemProps {
 
 function FlowActionItem({
   action,
+  actionTypes,
   isSubAction = false,
   onSelectAction,
   parentActionId = "",
@@ -41,7 +45,7 @@ function FlowActionItem({
       <button type="button" onClick={() => onSelectAction?.(action.id)}>
         <span>
           <strong>{isSubAction ? `Sub: ${actionLabel(action)}` : actionLabel(action)}</strong>
-          <small>{actionTypeLabel(action)}</small>
+          <small>{actionTypeLabel(action, actionTypes)}</small>
         </span>
         <span data-sub-action-count>{subActions.length}</span>
       </button>
@@ -50,6 +54,7 @@ function FlowActionItem({
           {subActions.map((subAction) => (
             <FlowActionItem
               action={subAction}
+              actionTypes={actionTypes}
               isSubAction={true}
               key={subAction.id}
               onSelectAction={onSelectAction}
@@ -63,7 +68,7 @@ function FlowActionItem({
   );
 }
 
-export function FlowActionList({ actions, onSelectAction, selectedActionId = "" }: FlowActionListProps) {
+export function FlowActionList({ actions, actionTypes = [], onSelectAction, selectedActionId = "" }: FlowActionListProps) {
   return (
     <section className="flow-react-panel">
       <h3>Actions</h3>
@@ -71,6 +76,7 @@ export function FlowActionList({ actions, onSelectAction, selectedActionId = "" 
         {actions.map((action) => (
           <FlowActionItem
             action={action}
+            actionTypes={actionTypes}
             key={action.id}
             onSelectAction={onSelectAction}
             selectedActionId={selectedActionId}

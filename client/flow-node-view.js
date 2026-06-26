@@ -636,6 +636,7 @@ function restoreFlowHistory(snapshot) {
     canAddAction: flowViewMode === "node" && flowNodeDepth === "moments" ? true : Boolean(flowState(selectedFlowStateId)),
     canDelete: Boolean(selectedFlowRouteNodeId || selectedFlowStateId),
     canRevert: Boolean(flowSavedSnapshot && isFlowDirty()),
+    flowActionTypes,
     flowNodeDepth,
     flowViewMode,
     selectedActionId: selectedFlowActionId,

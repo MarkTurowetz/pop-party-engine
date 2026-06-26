@@ -1,5 +1,5 @@
 import type { GameFlow } from "../../types/game-data";
-import { findFlowActionRef } from "./flowSelectors";
+import { findFlowActionRef, type FlowActionTypeMeta } from "./flowSelectors";
 import { ActionInspector } from "./components/ActionInspector";
 import { FlowActionList } from "./components/FlowActionList";
 import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
@@ -11,6 +11,7 @@ export interface FlowToolAppProps {
   canAddAction?: boolean;
   canDelete?: boolean;
   canRevert?: boolean;
+  flowActionTypes?: FlowActionTypeMeta[];
   flowNodeDepth?: string;
   flowViewMode?: string;
   flow?: GameFlow | null;
@@ -27,6 +28,7 @@ export function FlowToolApp({
   canAddAction = false,
   canDelete = false,
   canRevert = false,
+  flowActionTypes = [],
   flow = null,
   flowNodeDepth = "actions",
   flowViewMode = "list",
@@ -89,10 +91,12 @@ export function FlowToolApp({
       />
       <FlowActionList
         actions={selectedState?.actions || []}
+        actionTypes={flowActionTypes}
         onSelectAction={handlers.selectAction}
         selectedActionId={selectedActionId}
       />
       <FlowRouteNodeList
+        actionTypes={flowActionTypes}
         onSelectRouteBranch={handlers.selectRouteBranch}
         onSelectRouteNode={handlers.selectRouteNode}
         routeNodes={flow?.routeNodes || []}
@@ -101,6 +105,7 @@ export function FlowToolApp({
       />
       <ActionInspector
         action={selectedActionRef?.action || null}
+        actionTypes={flowActionTypes}
         isBranch={selectedActionRef?.isBranch || false}
         isSubAction={selectedActionRef?.isSubAction || false}
         parentAction={selectedActionRef?.parentAction || null}

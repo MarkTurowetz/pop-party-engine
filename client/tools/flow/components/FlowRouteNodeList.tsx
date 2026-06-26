@@ -1,6 +1,8 @@
 import type { FlowAction, FlowRouteNode } from "../../../types/game-data";
+import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
 
 export interface FlowRouteNodeListProps {
+  actionTypes?: FlowActionTypeMeta[];
   onSelectRouteBranch?: (routeNodeId: string, branchId: string) => void;
   onSelectRouteNode?: (routeNodeId: string) => void;
   routeNodes: FlowRouteNode[];
@@ -12,7 +14,10 @@ function routeNodeLabel(node: FlowRouteNode): string {
   return String(node.name || node.id || "Route Node");
 }
 
-function routeNodeType(node: FlowRouteNode): string {
+function routeNodeType(node: FlowRouteNode, actionTypes: FlowActionTypeMeta[]): string {
+  if (node.routeNodeType === "action" && typeof node.type === "string") {
+    return actionTypeName(actionTypes, node.type) || node.type;
+  }
   return String(node.routeNodeType || "momentEntry");
 }
 
@@ -27,6 +32,7 @@ function routeBranchLabel(branch: FlowAction, index: number): string {
 }
 
 export function FlowRouteNodeList({
+  actionTypes = [],
   onSelectRouteBranch,
   onSelectRouteNode,
   routeNodes,
@@ -43,11 +49,14 @@ export function FlowRouteNodeList({
           <li
             aria-current={id === selectedRouteNodeId ? "true" : undefined}
             data-route-node-id={id}
-            data-route-node-type={routeNodeType(node)}
+            data-route-node-type={String(node.routeNodeType || "momentEntry")}
             key={id}
           >
             <button type="button" onClick={() => onSelectRouteNode?.(id)}>
-              {routeNodeLabel(node)}
+              <span>
+                <strong>{routeNodeLabel(node)}</strong>
+                <small>{routeNodeType(node, actionTypes)}</small>
+              </span>
             </button>
             {routeNodeBranches(node).length ? (
               <ol className="flow-react-list flow-react-sub-list">

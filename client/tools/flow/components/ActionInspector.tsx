@@ -1,7 +1,9 @@
 import type { FlowAction, FlowState } from "../../../types/game-data";
+import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
 
 export interface ActionInspectorProps {
   action: FlowAction | null;
+  actionTypes?: FlowActionTypeMeta[];
   isBranch?: boolean;
   isSubAction?: boolean;
   parentAction?: FlowAction | null;
@@ -22,7 +24,7 @@ function actionKind(isBranch: boolean, isSubAction: boolean): string {
   return "Action";
 }
 
-export function ActionInspector({ action, isBranch = false, isSubAction = false, parentAction = null, state }: ActionInspectorProps) {
+export function ActionInspector({ action, actionTypes = [], isBranch = false, isSubAction = false, parentAction = null, state }: ActionInspectorProps) {
   if (!action || !state) {
     return (
       <section className="flow-react-panel flow-react-inspector" data-flow-react-component="action-inspector" data-empty="true">
@@ -48,7 +50,7 @@ export function ActionInspector({ action, isBranch = false, isSubAction = false,
         <dt>ID</dt>
         <dd>{action.id}</dd>
         <dt>Type</dt>
-        <dd>{action.type}</dd>
+        <dd>{actionTypeName(actionTypes, action.type) || action.type}</dd>
         <dt>Kind</dt>
         <dd>{actionKind(isBranch, isSubAction)}</dd>
         <dt>State</dt>

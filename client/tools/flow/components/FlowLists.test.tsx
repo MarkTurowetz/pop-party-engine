@@ -24,6 +24,7 @@ describe("Flow React list components", () => {
   it("renders actions with type metadata and sub-action counts", () => {
     const markup = renderToStaticMarkup(
       <FlowActionList
+        actionTypes={[{ id: "presentText", name: "Present Text" }, { id: "displayText", name: "Display Text" }]}
         selectedActionId="show"
         actions={[
           { id: "show", name: "Show Title", type: "presentText", subActions: [{ id: "sub", type: "displayText" }] },
@@ -38,6 +39,8 @@ describe("Flow React list components", () => {
     expect(markup).toContain('data-parent-action-id="show"');
     expect(markup).toContain('data-is-sub-action="true"');
     expect(markup).toContain('aria-current="true"');
+    expect(markup).toContain("Present Text");
+    expect(markup).toContain("Display Text");
     expect(markup).toContain(">1</span>");
   });
 });
