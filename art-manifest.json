@@ -657,16 +657,16 @@
           "id": "badge-code",
           "name": "Badge Code",
           "kind": "text",
-          "x": 85,
-          "y": 50,
+          "x": 85.178,
+          "y": 50.97,
           "width": 140,
           "height": 32,
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
           "defaultText": "NUZ7",
-          "fontSize": 32,
-          "autoFitText": false,
+          "fontSize": 15,
+          "autoFitText": true,
           "fontColor": "#17131f"
         },
         {
@@ -682,7 +682,7 @@
           "defaultAnimationState": "on",
           "defaultText": "STAGE",
           "fontSize": 10,
-          "autoFitText": false,
+          "autoFitText": true,
           "fontColor": "#17131f"
         },
         {
@@ -704,7 +704,7 @@
           "borderRadius": 14
         }
       ],
-      "updatedAt": "2026-06-25T16:50:19.077Z"
+      "updatedAt": "2026-06-26T08:23:41.957Z"
     },
     "join-widget": {
       "name": "Join Widget",
