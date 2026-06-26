@@ -8,6 +8,20 @@ export interface ActionInspectorProps {
   state: FlowState | null;
 }
 
+function actionTimingLabel(action: FlowAction): string {
+  const timing = action.timing;
+  if (!timing) return "default";
+  const mode = typeof timing.mode === "string" && timing.mode ? timing.mode : "E+";
+  const seconds = Number(timing.seconds ?? 0);
+  return `${mode} ${Number.isFinite(seconds) ? seconds.toFixed(2) : "0.00"}s`;
+}
+
+function actionKind(isBranch: boolean, isSubAction: boolean): string {
+  if (isBranch) return "Decision branch";
+  if (isSubAction) return "Sub-action";
+  return "Action";
+}
+
 export function ActionInspector({ action, isBranch = false, isSubAction = false, parentAction = null, state }: ActionInspectorProps) {
   if (!action || !state) {
     return (
@@ -31,10 +45,18 @@ export function ActionInspector({ action, isBranch = false, isSubAction = false,
     >
       <h2>{action.name || action.id}</h2>
       <dl>
+        <dt>ID</dt>
+        <dd>{action.id}</dd>
         <dt>Type</dt>
         <dd>{action.type}</dd>
+        <dt>Kind</dt>
+        <dd>{actionKind(isBranch, isSubAction)}</dd>
         <dt>State</dt>
         <dd>{state.name || state.id}</dd>
+        <dt>Parent</dt>
+        <dd>{parentAction?.name || parentAction?.id || "None"}</dd>
+        <dt>Timing</dt>
+        <dd>{actionTimingLabel(action)}</dd>
       </dl>
     </section>
   );

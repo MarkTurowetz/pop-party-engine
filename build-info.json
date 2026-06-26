@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.601",
+  "version": "1.0.17.602",
   "baseVersion": "1.0.17",
-  "buildNumber": 601,
-  "commit": "172f12e",
+  "buildNumber": 602,
+  "commit": "5fefe67",
   "branch": "codex/frontend-migration-foundation",
-  "generatedAt": "2026-06-26T23:43:41.929Z"
+  "generatedAt": "2026-06-26T23:45:32.358Z"
 }

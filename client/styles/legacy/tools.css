@@ -942,6 +942,22 @@
   white-space: nowrap;
 }
 
+.flow-react-list strong,
+.flow-react-list small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-react-list small {
+  margin-top: 3px;
+  color: #5e5475;
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
 .flow-react-list [data-action-count],
 .flow-react-list [data-sub-action-count] {
   min-width: 26px;

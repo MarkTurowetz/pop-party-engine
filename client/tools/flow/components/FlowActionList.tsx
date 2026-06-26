@@ -10,6 +10,10 @@ function actionLabel(action: FlowAction): string {
   return action.name || action.id;
 }
 
+function actionTypeLabel(action: FlowAction): string {
+  return action.type || "action";
+}
+
 interface FlowActionItemProps {
   action: FlowAction;
   isSubAction?: boolean;
@@ -35,7 +39,10 @@ function FlowActionItem({
       data-parent-action-id={parentActionId}
     >
       <button type="button" onClick={() => onSelectAction?.(action.id)}>
-        <span>{isSubAction ? `Sub: ${actionLabel(action)}` : actionLabel(action)}</span>
+        <span>
+          <strong>{isSubAction ? `Sub: ${actionLabel(action)}` : actionLabel(action)}</strong>
+          <small>{actionTypeLabel(action)}</small>
+        </span>
         <span data-sub-action-count>{subActions.length}</span>
       </button>
       {subActions.length ? (

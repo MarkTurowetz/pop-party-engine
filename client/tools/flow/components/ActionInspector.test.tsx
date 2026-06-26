@@ -14,9 +14,9 @@ describe("ActionInspector", () => {
   it("renders selected action metadata", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector
-        action={{ id: "show-title", name: "Show Title", type: "presentText" }}
+        action={{ id: "show-title", name: "Show Title", type: "presentText", timing: { mode: "E+", seconds: 1.5 } }}
         isSubAction={true}
-        parentAction={{ id: "parent", type: "decision" }}
+        parentAction={{ id: "parent", name: "Parent", type: "decision" }}
         state={{ id: "intro", name: "Intro", actions: [] }}
       />
     );
@@ -26,5 +26,8 @@ describe("ActionInspector", () => {
     expect(markup).toContain('data-is-sub-action="true"');
     expect(markup).toContain('data-parent-action-id="parent"');
     expect(markup).toContain("Show Title");
+    expect(markup).toContain("Sub-action");
+    expect(markup).toContain("Parent");
+    expect(markup).toContain("E+ 1.50s");
   });
 });
