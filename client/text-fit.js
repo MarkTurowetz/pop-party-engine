@@ -48,11 +48,11 @@
     const measuredLines = lines.length ? lines : [""];
     const metrics = measuredLines.map((line) => measureLine(line || " ", fontSize, config));
     const maxWidth = Math.max(0, ...metrics.map((metric) => metric.width));
-    const inkAscent = Math.max(fontSize * 0.8, ...metrics.map((metric) => metric.ascent));
-    const inkDescent = Math.max(fontSize * 0.25, ...metrics.map((metric) => metric.descent));
-    const inkHeight = (inkAscent + inkDescent) * 1.08;
+    const inkAscent = Math.max(1, ...metrics.map((metric) => metric.ascent));
+    const inkDescent = Math.max(1, ...metrics.map((metric) => metric.descent));
+    const inkHeight = inkAscent + inkDescent;
     const lineGap = Math.max(fontSize * (config.lineHeight - 1), 0);
-    const lineBoxHeight = Math.max(inkHeight, fontSize * config.lineHeight);
+    const lineBoxHeight = inkHeight;
     const height = (inkHeight * measuredLines.length) + (lineGap * Math.max(0, measuredLines.length - 1));
     return {
       fontSize,
@@ -65,8 +65,11 @@
       lineGap,
       lineHeight: config.lineHeight,
       lines: measuredLines,
+      metrics,
       maxWidth,
-      baselineShift: 0
+      ascent: inkAscent,
+      descent: inkDescent,
+      baselineShift: (inkAscent - inkDescent) / 2
     };
   }
 
@@ -116,10 +119,12 @@
     }
     context.font = fontString(fontSize, config);
     const metrics = context.measureText(String(line || ""));
+    const measuredAscent = Number(metrics.actualBoundingBoxAscent);
+    const measuredDescent = Number(metrics.actualBoundingBoxDescent);
     return {
       width: metrics.width || 0,
-      ascent: metrics.actualBoundingBoxAscent || fontSize * 0.75,
-      descent: metrics.actualBoundingBoxDescent || fontSize * 0.2
+      ascent: Number.isFinite(measuredAscent) && measuredAscent > 0 ? measuredAscent : fontSize * 0.72,
+      descent: Number.isFinite(measuredDescent) && measuredDescent > 0 ? measuredDescent : fontSize * 0.18
     };
   }
 
@@ -210,8 +215,8 @@
     textElement.setAttribute("x", "50%");
     textElement.setAttribute("y", "50%");
     textElement.setAttribute("text-anchor", "middle");
-    textElement.setAttribute("dominant-baseline", "middle");
-    textElement.setAttribute("alignment-baseline", "middle");
+    textElement.setAttribute("dominant-baseline", "alphabetic");
+    textElement.setAttribute("alignment-baseline", "alphabetic");
     textElement.setAttribute("fill", "currentColor");
     textElement.setAttribute("font-size", `${fontSize}px`);
     textElement.setAttribute("font-family", layout?.fontFamily || defaultOptions.fontFamily);
@@ -221,7 +226,7 @@
     lines.forEach((line, index) => {
       const lineElement = documentRef.createElementNS(svgNamespace, "tspan");
       lineElement.setAttribute("x", "50%");
-      lineElement.setAttribute("dy", `${index === 0 ? firstLineDy : lineAdvance}px`);
+      lineElement.setAttribute("dy", `${index === 0 ? firstLineDy + finiteNumber(layout?.baselineShift, 0) : lineAdvance}px`);
       lineElement.textContent = line;
       textElement.appendChild(lineElement);
     });
