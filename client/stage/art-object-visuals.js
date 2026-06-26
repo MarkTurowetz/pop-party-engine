@@ -94,8 +94,13 @@
     }
     const label = options.labelElement;
     if (label) {
-      label.hidden = Boolean(imageSource);
-      setLabelText(label, labelText, element.__partyGameTextLayout || null);
+      const hasLabelText = Boolean(String(labelText || "").trim());
+      label.hidden = Boolean(imageSource) || !hasLabelText;
+      if (hasLabelText) {
+        setLabelText(label, labelText, element.__partyGameTextLayout || null);
+      } else {
+        label.replaceChildren();
+      }
     }
   }
 
