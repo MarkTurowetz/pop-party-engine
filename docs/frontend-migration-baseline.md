@@ -591,6 +591,13 @@ Flow action row summaries and badges now live in
 adapter and skip `/client/flow/action-summary.js`; classic routes keep the
 original browser script.
 
+## Flow React Shell
+
+React is now available for editor migration work, and Vite Flow entries mount a
+hidden `FlowToolApp` bridge shell before loading the legacy tool. The shell does
+not replace visible UI yet; it establishes the React entrypoint and rendering
+runtime for moving Flow panels over in later slices.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
