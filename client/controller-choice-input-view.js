@@ -6,16 +6,23 @@
     bindPress,
     elements,
     hideViews,
+    setText,
     showView,
     submitChoice
   }) {
+    const writeText = typeof setText === "function"
+      ? setText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     function render(lobby, me) {
       const input = me.input || lobby.input || null;
       if (!input) return false;
       hideViews();
       applyLayoutForPhase(lobby.phase || "lobby");
       showView("choice");
-      elements.prompt.textContent = input.prompt || "Answer this question by tapping an answer";
+      writeText(elements.prompt, input.prompt || "Answer this question by tapping an answer");
       elements.grid.replaceChildren();
 
       const selectedIndex = Number.isFinite(Number(me.answer?.optionIndex)) ? Number(me.answer.optionIndex) : -1;
@@ -23,7 +30,7 @@
       elements.done.classList.toggle("hidden", !isDone);
       elements.grid.classList.toggle("hidden", isDone);
       if (isDone) {
-        elements.done.textContent = `You chose: ${me.answer?.text || ""}`;
+        writeText(elements.done, `You chose: ${me.answer?.text || ""}`);
       }
 
       const visibleOptions = (input.options || []).filter((option) => input.type !== "vote" || option.authorPlayerId !== me.id);

@@ -7,9 +7,16 @@
     grantAccess,
     hideViews,
     renderGlobalMessage,
+    setText,
     showView,
     waiting
   }) {
+    const writeText = typeof setText === "function"
+      ? setText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     const pendingAutoGrantActionIds = new Set();
     const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
 
@@ -83,7 +90,7 @@
 
     function reportGranted(input) {
       return Promise.resolve(grantAccess(input.actionId)).catch((error) => {
-        elements.status.textContent = error.message || "Could not confirm microphone access";
+        writeText(elements.status, error.message || "Could not confirm microphone access");
       }).finally(() => {
         pendingAutoGrantActionIds.delete(input.actionId);
       });
@@ -99,7 +106,7 @@
         }
         rememberAccessGranted();
         elements.button.disabled = true;
-        elements.status.textContent = "Microphone ready";
+        writeText(elements.status, "Microphone ready");
         reportGranted(input);
       }).catch(() => {
         pendingAutoGrantActionIds.delete(input.actionId);
@@ -114,7 +121,7 @@
       hideViews();
       applyLayoutForPhase(lobby.phase || "lobby");
       showView("intro");
-      waiting.message.textContent = message;
+      writeText(waiting.message, message);
     }
 
     function render(lobby, me) {
@@ -129,28 +136,28 @@
       hideViews();
       applyLayoutForPhase(lobby.phase || "lobby");
       showView("microphoneAccess");
-      elements.prompt.textContent = input.prompt || "Give microphone access to the game";
+      writeText(elements.prompt, input.prompt || "Give microphone access to the game");
       elements.button.textContent = input.buttonLabel || "Yes";
       elements.button.disabled = false;
-      elements.status.textContent = "Chrome will ask for microphone permission";
+      writeText(elements.status, "Chrome will ask for microphone permission");
       autoGrantIfReady(input, alreadyGranted);
       elements.button.onclick = async () => {
         if (!navigator.mediaDevices?.getUserMedia) {
-          elements.status.textContent = "Microphone permission is not available in this browser";
+          writeText(elements.status, "Microphone permission is not available in this browser");
           elements.button.disabled = true;
           return;
         }
         elements.button.disabled = true;
-        elements.status.textContent = "Opening microphone permission";
+        writeText(elements.status, "Opening microphone permission");
         try {
           await requestMicrophoneAccess();
-          elements.status.textContent = "Microphone ready";
+          writeText(elements.status, "Microphone ready");
           await grantAccess(input.actionId);
         } catch (error) {
           elements.button.disabled = false;
-          elements.status.textContent = error?.name === "NotAllowedError"
+          writeText(elements.status, error?.name === "NotAllowedError"
             ? "Microphone access was blocked"
-            : "Could not open the microphone";
+            : "Could not open the microphone");
         }
       };
       return true;

@@ -7,10 +7,17 @@
     elements,
     getVoiceInput,
     hideViews,
+    setText,
     setPhaseActionId,
     showView,
     submitText
   }) {
+    const writeText = typeof setText === "function"
+      ? setText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     function setInputLimit(limit) {
       if (limit > 0) {
         elements.input.maxLength = limit;
@@ -42,8 +49,8 @@
       setPhaseActionId(input.actionId);
       applyLayoutForPhase(lobby.phase || "lobby");
       showView("textInput");
-      elements.prompt.textContent = input.prompt || (isVoiceInput ? "Say your answer" : "Write your answer");
-      elements.invalidBanner.textContent = "Your submission was invalid";
+      writeText(elements.prompt, input.prompt || (isVoiceInput ? "Say your answer" : "Write your answer"));
+      writeText(elements.invalidBanner, "Your submission was invalid");
       elements.input.placeholder = input.placeholder || "Answer here";
       setInputLimit(Number(input.characterLimit || 0));
 
@@ -54,7 +61,7 @@
       setVisibility({ isDone, isVoiceInput, showInvalid });
 
       if (isDone) {
-        elements.done.textContent = isVoiceInput ? `You said: ${me.answer?.text || ""}` : `You wrote: ${me.answer?.text || ""}`;
+        writeText(elements.done, isVoiceInput ? `You said: ${me.answer?.text || ""}` : `You wrote: ${me.answer?.text || ""}`);
       } else if (showInvalid) {
         elements.input.value = "";
       } else if (isVoiceInput && !voiceInput.isListening()) {

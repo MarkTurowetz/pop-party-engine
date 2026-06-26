@@ -5,11 +5,18 @@
     applyLayoutForPhase,
     elements,
     hideViews,
+    setText,
     setAvatar,
     showView
   }) {
+    const writeText = typeof setText === "function"
+      ? setText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     function renderMissingPlayer() {
-      elements.meta.textContent = "Reconnecting to lobby";
+      writeText(elements.meta, "Reconnecting to lobby");
       hideViews();
       elements.introPresentButton.classList.add("hidden");
       applyLayoutForPhase("lobby");
@@ -30,9 +37,9 @@
       elements.introPresentButton.classList.add("hidden");
       applyLayoutForPhase(phase);
       showView("lobby");
-      elements.playerName.textContent = me.name;
+      writeText(elements.playerName, me.name);
       setAvatar(me);
-      elements.meta.textContent = me.isVip ? "VIP Player" : "Waiting for the VIP";
+      writeText(elements.meta, me.isVip ? "VIP Player" : "Waiting for the VIP");
       elements.startButton.classList.toggle("hidden", !me.isVip);
       elements.startButton.classList.toggle("danger-button", phase === "starting");
       elements.startButton.textContent = phase === "starting" ? "Cancel" : "Start Game";

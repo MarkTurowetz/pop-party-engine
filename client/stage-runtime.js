@@ -362,9 +362,17 @@ function setStageCodeDisplays(stageCode) {
   stageCodeText.dataset.stageCodeValue = cleanCode;
   stageCodeBadge.dataset.stageCodeValue = cleanCode;
   if (!stageCodeText.classList.contains("has-stage-widget-art")) {
-    stageCodeText.textContent = cleanCode;
+    if (typeof window.PartyGameLayoutText?.setStageText === "function") {
+      window.PartyGameLayoutText.setStageText(stageCodeText, cleanCode);
+    } else {
+      stageCodeText.textContent = cleanCode;
+    }
   }
-  stageCodeBadge.textContent = cleanCode;
+  if (typeof window.PartyGameLayoutText?.setStageText === "function") {
+    window.PartyGameLayoutText.setStageText(stageCodeBadge, cleanCode);
+  } else {
+    stageCodeBadge.textContent = cleanCode;
+  }
 }
 
 const stageWidgetTextOverrides = {
@@ -494,7 +502,11 @@ function setStageWaitingStatus(message, isVisible = true) {
   const cleanMessage = String(message || "");
   waitingStatus.dataset.statusText = cleanMessage;
   if (!waitingStatus.classList.contains("has-stage-widget-art")) {
-    waitingStatus.textContent = cleanMessage;
+    if (typeof window.PartyGameLayoutText?.setStageText === "function") {
+      window.PartyGameLayoutText.setStageText(waitingStatus, cleanMessage);
+    } else {
+      waitingStatus.textContent = cleanMessage;
+    }
   }
   renderStageWidgetBinding("waitingStatus", { text: cleanMessage });
   setStageWidgetGameObjectShown("waitingStatus", isVisible && Boolean(cleanMessage));

@@ -6,8 +6,15 @@
     applyLayoutForPhase,
     elements,
     hideViews,
+    setText,
     showView
   }) {
+    const writeText = typeof setText === "function"
+      ? setText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     let pendingKey = "";
 
     function isPresentClickAction(lobby) {
@@ -39,7 +46,7 @@
         try {
           await config.run();
         } catch (error) {
-          elements.message.textContent = error.message || "Could not advance";
+          writeText(elements.message, error.message || "Could not advance");
         } finally {
           if (pendingKey === key) pendingKey = "";
           setButtonPending(config, false);
@@ -52,7 +59,7 @@
       hideViews();
       applyLayoutForPhase(config.layoutPhase || "lobby");
       showView("globalAction");
-      elements.message.textContent = config.message || "Waiting for the next instruction";
+      writeText(elements.message, config.message || "Waiting for the next instruction");
       elements.button.dataset.optionId = config.optionId || "global.action";
       elements.button.dataset.actionId = config.actionId || "";
       elements.button.dataset.eventType = config.eventType || "";

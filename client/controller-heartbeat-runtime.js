@@ -9,9 +9,16 @@
     hideViews,
     renderState,
     sendHeartbeat,
+    setText,
     setControllerState,
     showView
   }) {
+    const writeText = typeof setText === "function"
+      ? setText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     let timer = null;
 
     function stop() {
@@ -36,7 +43,7 @@
           elements.joinButton.disabled = false;
           return;
         }
-        elements.meta.textContent = "Reconnecting to lobby";
+        writeText(elements.meta, "Reconnecting to lobby");
       }
     }
 

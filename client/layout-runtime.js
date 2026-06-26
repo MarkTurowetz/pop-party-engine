@@ -300,6 +300,28 @@ function applyControllerLayoutTextProperties(target, element) {
   if (layout) window.PartyGameTextFit.renderTextElement?.(target, text, layout);
 }
 
+function controllerLayoutElementForTarget(target) {
+  if (!target) return null;
+  const elementId = target.dataset?.controllerLayoutElementId || "";
+  if (!elementId) return null;
+  const stateElements = controllerLayoutState(currentControllerLayoutStateId)?.elements || [];
+  const globalElements = globalControllerLayout().elements || [];
+  return stateElements.find((element) => element.id === elementId)
+    || globalElements.find((element) => element.id === elementId)
+    || null;
+}
+
+function setControllerLayoutText(target, value) {
+  if (!target) return;
+  const text = String(value ?? "");
+  const element = controllerLayoutElementForTarget(target);
+  target.dataset.textFitSource = text;
+  target.textContent = text;
+  if (element?.kind === "text" && typeof window.PartyGameTextFit?.measuredTextLayout === "function") {
+    applyControllerLayoutTextProperties(target, element);
+  }
+}
+
 function controllerLayoutTargetElement(element) {
   if (isDynamicControllerArtInstance(element)) return getOrCreateControllerArtInstance(element);
   const target = controllerPanel.querySelector(element.selector);
@@ -697,3 +719,33 @@ function applyStageLayoutTextProperties(target, element) {
     target.textContent = stageLayoutTextDefault(element);
   }
 }
+
+function stageLayoutElementForTarget(target) {
+  if (!target) return null;
+  const elementId = target.dataset?.stageLayoutElementId || "";
+  if (!elementId) return null;
+  const stateElements = stageLayoutState(currentStageLayoutStateId)?.elements || [];
+  const globalElements = globalStageLayout().elements || [];
+  return stateElements.find((element) => element.id === elementId)
+    || globalElements.find((element) => element.id === elementId)
+    || null;
+}
+
+function setStageLayoutText(target, value) {
+  if (!target) return;
+  const text = String(value ?? "");
+  const element = stageLayoutElementForTarget(target);
+  target.dataset.textFitSource = text;
+  target.textContent = text;
+  if (element?.kind === "text" && typeof window.PartyGameTextFit?.measuredTextLayout === "function") {
+    applyStageLayoutTextProperties(target, element);
+    const targetId = normalizeTextTargetId(element.id);
+    if (targetId && stageTextObjects[targetId]) stageTextObjects[targetId].text = text;
+  }
+}
+
+window.PartyGameLayoutText = {
+  ...(window.PartyGameLayoutText || {}),
+  setControllerText: setControllerLayoutText,
+  setStageText: setStageLayoutText
+};

@@ -106,8 +106,16 @@
       const nextText = options.text ?? object.text ?? "";
       const isShown = options.isShown !== false;
       const instant = options.instant === true;
-      if (nextText || isShown) element.textContent = nextText;
-      if (object.layoutElement) this.applyTextProperties(element, object.layoutElement);
+      if (nextText || isShown) {
+        if (object.layoutElement && typeof global.PartyGameLayoutText?.setStageText === "function") {
+          global.PartyGameLayoutText.setStageText(element, nextText);
+        } else {
+          element.textContent = nextText;
+        }
+      }
+      if (object.layoutElement && typeof global.PartyGameLayoutText?.setStageText !== "function") {
+        this.applyTextProperties(element, object.layoutElement);
+      }
       element.classList.toggle("is-long", nextText.length > 62);
       element.classList.toggle("is-extra-long", nextText.length > 104);
       object.text = nextText;

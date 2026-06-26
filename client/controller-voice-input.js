@@ -10,10 +10,17 @@
     introState,
     previewText,
     renderGlobalMessage,
+    setText,
     showView,
     status,
     submitText
   }) {
+    const writeText = typeof setText === "function"
+      ? setText
+      : (target, value) => {
+        if (target) target.textContent = String(value ?? "");
+      };
+
     let lifecycle = null;
     const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
 
@@ -36,7 +43,7 @@
             button.disabled = false;
           },
           onStatus: (message) => {
-            status.textContent = message;
+            writeText(status, message);
           },
           previewText,
           submitText
@@ -54,13 +61,13 @@
       hideViews();
       applyLayoutForPhase(lobby.phase || "lobby");
       showView("intro");
-      introMessage.textContent = "Waiting for the VIP to answer";
+      writeText(introMessage, "Waiting for the VIP to answer");
     }
 
     function resetUi() {
       button.textContent = "Hold To Record";
       button.disabled = false;
-      status.textContent = "Hold to record";
+      writeText(status, "Hold to record");
     }
 
     function hasRememberedMicrophoneAccess() {
@@ -98,7 +105,7 @@
 
     async function beginRecording(actionId) {
       if (!(await canRecordWithMicrophone())) {
-        status.textContent = "Give microphone access first";
+        writeText(status, "Give microphone access first");
         button.disabled = false;
         return;
       }

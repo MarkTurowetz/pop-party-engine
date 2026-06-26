@@ -1,5 +1,14 @@
 const controllerModules = window.createControllerModuleCache();
 
+function setControllerText(target, value) {
+  if (!target) return;
+  if (typeof window.PartyGameLayoutText?.setControllerText === "function") {
+    window.PartyGameLayoutText.setControllerText(target, value);
+    return;
+  }
+  target.textContent = String(value ?? "");
+}
+
 function getControllerViewState() {
   return controllerModules.get("viewState", () => window.createControllerViewState({
       choice: controllerChoiceState,
@@ -34,7 +43,7 @@ function getControllerAvatarView() {
         controllerState.player = player;
       },
       setMetaText: (value) => {
-        controllerMeta.textContent = value;
+        setControllerText(controllerMeta, value);
       },
       updateAvatar: (shape) => getControllerSubmitApi().updateAvatar(shape)
     }));
@@ -50,6 +59,7 @@ function getControllerVoiceInput() {
       introState: controllerIntroState,
       previewText: previewControllerText,
       renderGlobalMessage: renderControllerGlobalMessage,
+      setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId),
       status: controllerVoiceStatus,
       submitText: submitControllerText
@@ -68,6 +78,7 @@ function getControllerMicrophoneAccessView() {
       grantAccess: grantControllerMicrophoneAccess,
       hideViews: hideControllerViews,
       renderGlobalMessage: renderControllerGlobalMessage,
+      setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId),
       waiting: {
         message: controllerIntroMessage,
@@ -87,6 +98,7 @@ function getControllerChoiceInputView() {
         state: controllerChoiceState
       },
       hideViews: hideControllerViews,
+      setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId),
       submitChoice: submitControllerChoice
     }));
@@ -102,6 +114,7 @@ function getControllerGlobalActionView() {
         state: controllerGlobalActionState
       },
       hideViews: hideControllerViews,
+      setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId)
     }));
 }
@@ -138,6 +151,7 @@ function getControllerHeartbeatRuntime() {
       hideViews: hideControllerViews,
       renderState: renderControllerState,
       sendHeartbeat: () => getControllerSubmitApi().heartbeat(),
+      setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId),
       setControllerState: (value) => {
         controllerState = value;
@@ -157,6 +171,7 @@ function getControllerLobbyView() {
         startButton: startGameButton
       },
       hideViews: hideControllerViews,
+      setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId),
       setAvatar: setControllerAvatar
     }));
@@ -178,6 +193,7 @@ function getControllerTextInputView() {
       },
       getVoiceInput: getControllerVoiceInput,
       hideViews: hideControllerViews,
+      setText: setControllerText,
       showView: (viewId) => getControllerViewState().show(viewId),
       setPhaseActionId: (actionId) => {
         controllerState.phaseActionId = actionId;
@@ -253,7 +269,7 @@ async function submitControllerChoice(actionId, optionIndex, cardId = "") {
     const result = await getControllerSubmitApi().submitChoice(actionId, optionIndex, cardId);
     if (result.lobby) renderControllerState(result.lobby);
   } catch (error) {
-    controllerChoicePrompt.textContent = error.message;
+    setControllerText(controllerChoicePrompt, error.message);
   }
 }
 
@@ -267,12 +283,12 @@ async function submitControllerText(actionId, textOverride = null) {
     const result = await getControllerSubmitApi().submitText(actionId, text);
     if (result.lobby) renderControllerState(result.lobby);
   } catch (error) {
-    controllerInvalidBanner.textContent = error.message;
+    setControllerText(controllerInvalidBanner, error.message);
     controllerInvalidBanner.classList.remove("hidden");
     controllerTextInput.value = "";
     controllerTextSubmitButton.disabled = true;
     controllerVoiceButton.disabled = false;
-    controllerVoiceStatus.textContent = error.message;
+    setControllerText(controllerVoiceStatus, error.message);
   }
 }
 
@@ -289,7 +305,7 @@ async function previewControllerText(actionId, text = "T") {
     const result = await getControllerSubmitApi().previewText(actionId, text);
     if (result?.lobby) renderControllerState(result.lobby);
   } catch (error) {
-    controllerVoiceStatus.textContent = error.message;
+    setControllerText(controllerVoiceStatus, error.message);
   }
 }
 
@@ -390,7 +406,7 @@ function setupController() {
     origin,
     renderState: renderControllerState,
     setMetaText: (value) => {
-      controllerMeta.textContent = value;
+      setControllerText(controllerMeta, value);
     }
   }).bindAll();
 }
