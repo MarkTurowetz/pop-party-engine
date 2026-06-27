@@ -893,6 +893,35 @@
         }
       ],
       "updatedAt": "2026-06-27T07:31:16.956Z"
+    },
+    "layout-text-field": {
+      "name": "Layout Text Field",
+      "description": "Transparent single-text art asset used for stage and controller layout text.",
+      "surface": "stage",
+      "isCustom": false,
+      "canvas": {
+        "width": 1000,
+        "height": 240
+      },
+      "components": [
+        {
+          "id": "text",
+          "name": "Text",
+          "kind": "text",
+          "x": 500,
+          "y": 120,
+          "width": 1000,
+          "height": 240,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "TEXT",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontColor": "#ffffff"
+        }
+      ],
+      "updatedAt": "2026-06-27T08:58:10.351Z"
     }
   },
   "deletedCompositionIds": []
