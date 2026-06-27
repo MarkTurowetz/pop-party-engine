@@ -184,6 +184,11 @@
     return kind === "text" || kind === "badge";
   }
 
+  function referencedCompositionFor(component, resolver) {
+    if (componentSchema.normalizeComponentKind(component?.kind) !== "reference") return null;
+    return typeof resolver === "function" ? resolver(component.artCompositionId) : null;
+  }
+
   function artComponentViewKey(component, index, counts) {
     const rawId = String(component?.id || "").trim();
     const baseKey = rawId || `component-${Number(index || 0)}`;
@@ -205,6 +210,7 @@
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
       this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.instanceId = String(options.instanceId || "");
+      this.getComposition = typeof options.getComposition === "function" ? options.getComposition : global.artComposition;
       this.component = null;
       this.children = new Map();
       this.element = this.document.createElement("div");
@@ -283,12 +289,14 @@
     }
 
     renderChildren(children) {
-      const childCanvas = {
+      const referencedComposition = referencedCompositionFor(this.component, this.getComposition);
+      const childCanvas = referencedComposition?.canvas || {
         width: Number(this.component?.width || 1),
         height: Number(this.component?.height || 1)
       };
+      const renderChildren = referencedComposition?.components || children || [];
       const counts = new Map();
-      const keyedChildren = (children || []).map((child, index) => ({
+      const keyedChildren = renderChildren.map((child, index) => ({
         child,
         index,
         key: artComponentViewKey(child, index, counts)
@@ -301,15 +309,16 @@
             document: this.document,
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
+            getComposition: this.getComposition,
             instanceId: `${this.instanceId}/${key}`,
             component: child,
             canvas: childCanvas,
-            layer: { index, total: (children || []).length }
+            layer: { index, total: renderChildren.length }
           });
           this.children.set(key, view);
           view.play(child.defaultAnimationState || "on", { instant: true });
         } else {
-          view.update(child, childCanvas, { index, total: (children || []).length, isRootContainer: false });
+          view.update(child, childCanvas, { index, total: renderChildren.length, isRootContainer: false });
         }
         this.element.appendChild(view.element);
       }
@@ -368,6 +377,7 @@
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
       this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.instanceId = String(options.instanceId || `art-tree:${artTreeInstanceCounter++}`);
+      this.getComposition = typeof options.getComposition === "function" ? options.getComposition : global.artComposition;
       this.views = new Map();
     }
 
@@ -389,6 +399,7 @@
             document: this.document,
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
+            getComposition: this.getComposition,
             instanceId: `${this.instanceId}/${key}`,
             component,
             canvas,

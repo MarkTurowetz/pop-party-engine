@@ -76,6 +76,7 @@ function serializeArtComponentForSave(component) {
     imageMimeType: artComponentSupportsImageMask(component) ? component.imageMimeType || "" : "",
     imageObjectFit: artComponentSupportsImageMask(component) ? artComponentSchema.normalizeImageObjectFit(component.imageObjectFit) : "cover",
     imageTint: artComponentSupportsImageMask(component) ? component.imageTint || "" : "",
+    artCompositionId: component.kind === "reference" ? component.artCompositionId || "" : "",
     children: (component.children || []).map(serializeArtComponentForSave)
   };
 }
@@ -724,6 +725,7 @@ function renderSelectedArtComposition(options = {}) {
       primaryId: selectedArtComponentId,
       previewText: artComponentPreviewText,
       imageSource: artComponentImageSource,
+      getComposition: artComposition,
       supportsImageMask: artComponentSupportsImageMask,
       eventHasFiles: artDragEventHasFiles,
       onPointerDown: startArtComponentDrag,

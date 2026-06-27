@@ -13,6 +13,7 @@
     const primaryId = String(options.primaryId || "");
     const previewText = typeof options.previewText === "function" ? options.previewText : () => componentSchema.componentLabel(component);
     const imageSourceFor = typeof options.imageSource === "function" ? options.imageSource : () => "";
+    const getComposition = typeof options.getComposition === "function" ? options.getComposition : () => null;
     const supportsImageMask = typeof options.supportsImageMask === "function" ? options.supportsImageMask : componentSchema.componentSupportsImageMask;
     const eventHasFiles = typeof options.eventHasFiles === "function" ? options.eventHasFiles : () => false;
 
@@ -65,14 +66,18 @@
       });
     }
 
-    const childCanvas = { width: Number(component.width || 1), height: Number(component.height || 1) };
-    for (const [childIndex, child] of (component.children || []).entries()) {
+    const referencedComposition = componentSchema.componentKindFrom(component) === "reference"
+      ? getComposition(component.artCompositionId)
+      : null;
+    const childCanvas = referencedComposition?.canvas || { width: Number(component.width || 1), height: Number(component.height || 1) };
+    const childComponents = referencedComposition?.components || component.children || [];
+    for (const [childIndex, child] of childComponents.entries()) {
       node.appendChild(createComponentNode({
         ...options,
         component: child,
         canvas: childCanvas,
         layerIndex: childIndex,
-        siblingCount: (component.children || []).length
+        siblingCount: childComponents.length
       }));
     }
 

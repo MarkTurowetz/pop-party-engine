@@ -179,6 +179,9 @@ function createArtAssetsRuntime({
       rotation: cleanNumber(source.rotation, Number(base.rotation || 0), -3600, 3600),
       defaultAnimationState: cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24)
     };
+    if (kind === "reference") {
+      normalized.artCompositionId = cleanId(source.artCompositionId, base.artCompositionId || "");
+    }
     if (kind === "text" || kind === "badge") {
       normalized.defaultText = cleanText(source.defaultText, base.defaultText || "", 500);
       normalized.fontSize = cleanNumber(source.fontSize, Number(base.fontSize || 16), 6, 240);

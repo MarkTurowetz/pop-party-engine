@@ -380,8 +380,8 @@ function defaultPlayerObjectComposition(species, label, assetId) {
     components: [
       {
         id: "answer-bubble",
-        name: "Answer Bubble",
-        kind: "container",
+        name: "Answer Bubble Slot",
+        kind: "reference",
         x: 150,
         y: 96,
         width: 300,
@@ -389,12 +389,7 @@ function defaultPlayerObjectComposition(species, label, assetId) {
         scale: 1,
         rotation: 0,
         defaultAnimationState: "park",
-        shapeStyle: "rectangle",
-        fillColor: "transparent",
-        borderColor: "transparent",
-        borderWidth: 0,
-        borderRadius: 0,
-        children: playerAnswerBubbleComponents()
+        artCompositionId: "player-answer-bubble"
       },
       {
         id: "avatar",
@@ -652,6 +647,13 @@ const defaultArtCompositions = [
   defaultPlayerAvatarComposition("raptor", "Raptor", "avatar-raptor"),
   defaultPlayerAvatarComposition("bronto", "Bronto", "avatar-bronto"),
   defaultPlayerAvatarComposition("ankylo", "Ankylo", "avatar-ankylo"),
+  {
+    id: "player-answer-bubble",
+    name: "Player Answer Bubble",
+    description: "Shared editable answer bubble art used by every player object.",
+    canvas: { width: 300, height: 180 },
+    components: playerAnswerBubbleComponents()
+  },
   defaultPlayerObjectComposition("rex", "Rex", "avatar-rex"),
   defaultPlayerObjectComposition("stego", "Stego", "avatar-stego"),
   defaultPlayerObjectComposition("trike", "Trike", "avatar-trike"),

@@ -167,6 +167,9 @@
         fields.appendChild(toggleField("Auto Fit Text", component.autoFitText !== false, (value) => options.onUpdateComponentValue?.("autoFitText", value)));
         fields.appendChild(colorField("Font Color", component.fontColor || "#17131f", (value, fieldOptions) => options.onUpdateComponentValue?.("fontColor", value, fieldOptions)));
       }
+      if (component.kind === "reference") {
+        fields.appendChild(textField("Art Composition", component.artCompositionId || "", (value) => options.onUpdateComponentValue?.("artCompositionId", value)));
+      }
       if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {
         fields.appendChild(selectField("Shape", component.shapeStyle || "rounded", options.shapeStyles || [], (value) => options.onUpdateShapeStyle?.(value)));
         fields.appendChild(colorField("Fill", component.fillColor === "transparent" ? "#fff8d6" : component.fillColor || "#fff8d6", (value, fieldOptions) => options.onUpdateComponentValue?.("fillColor", value, fieldOptions)));

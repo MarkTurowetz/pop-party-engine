@@ -1,6 +1,6 @@
 "use strict";
 
-const componentKinds = ["text", "shape", "container", "badge"];
+const componentKinds = ["text", "shape", "container", "badge", "reference"];
 const creatableComponentKinds = ["text", "shape", "container"];
 const shapeStyleOptions = [
   { value: "rounded", label: "Rounded" },
@@ -40,6 +40,7 @@ function componentKindLabel(kind) {
   if (cleanKind === "text") return "Text";
   if (cleanKind === "container") return "Container";
   if (cleanKind === "badge") return "Badge";
+  if (cleanKind === "reference") return "Reference";
   return "Shape";
 }
 
