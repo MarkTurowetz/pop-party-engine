@@ -615,7 +615,7 @@ function applyStageState(lobby) {
   renderStageActionDebug(lobby);
   setStageCodeDisplays(lobby.stageCode || stageCodeValue());
   applyStageLayoutForPhase(phase);
-  hideFlowStageTextArtForPhase(phase);
+  hideFlowStageTextArtForPhase(phase, action);
   setStageManagedText("stageTitle", liveGameTitle);
   renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode) });
   setStageWidgetGameObjectShown("stageCodePanel", isLobbyPhase, { instant: true });
@@ -681,12 +681,16 @@ function applyStageState(lobby) {
   }
 }
 
-function hideFlowStageTextArtForPhase(phase) {
+function hideFlowStageTextArtForPhase(phase, action = null) {
   const state = typeof stageLayoutStateForPhase === "function" ? stageLayoutStateForPhase(phase) : null;
+  const activeTarget = action && ["present", "presentText", "displayText"].includes(action.type) && action.isShown !== false
+    ? normalizeTextTargetId(action.textTarget || "presentation")
+    : "";
   for (const element of state?.elements || []) {
     const id = normalizeTextTargetId(element.id);
     if (!id || element.artCompositionId !== "layout-text-field") continue;
     if (id === "stagetitle" || id === "stageintrotitle") continue;
+    if (id === activeTarget) continue;
     setStageLayoutElementGameObjectShown(id, null, false, { instant: true });
   }
 }

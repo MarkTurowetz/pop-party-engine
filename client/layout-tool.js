@@ -410,10 +410,11 @@ function makeLayoutObject(item) {
   const canvas = activeLayoutData().canvas || (layoutToolMode === "controller" ? { width: 390, height: 844 } : { width: 1920, height: 1080 });
   const isPrefabInstance = Boolean(item.artCompositionId);
   const isTextArt = item.artCompositionId === "layout-text-field";
+  const shouldKeepCatalogId = isTextArt && !item.instanced;
   return {
-    id: isPrefabInstance ? uniqueLayoutElementId(item.artCompositionId || item.id) : item.id,
+    id: isPrefabInstance && !shouldKeepCatalogId ? uniqueLayoutElementId(item.artCompositionId || item.id) : item.id,
     name: item.name,
-    selector: isPrefabInstance ? "" : item.selector,
+    selector: isPrefabInstance || shouldKeepCatalogId ? "" : item.selector,
     kind: item.kind || "art",
     artCompositionId: item.artCompositionId || "",
     x: Math.round(canvas.width / 2),
