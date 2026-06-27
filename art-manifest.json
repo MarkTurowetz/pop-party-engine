@@ -921,7 +921,7 @@
           "fontColor": "#ffffff"
         }
       ],
-      "updatedAt": "2026-06-27T09:04:08.698Z"
+      "updatedAt": "2026-06-27T18:07:50.192Z"
     },
     "controller-primary-button": {
       "name": "Controller Primary Button",
@@ -968,7 +968,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T18:07:48.780Z"
+      "updatedAt": "2026-06-27T18:07:58.914Z"
     },
     "controller-text-input-field": {
       "name": "Controller Text Input Field",
@@ -1015,7 +1015,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T18:07:51.481Z"
+      "updatedAt": "2026-06-27T18:08:00.478Z"
     },
     "controller-stage-code-field": {
       "name": "Controller Stage Code Field",
@@ -1078,7 +1078,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T18:07:53.075Z"
+      "updatedAt": "2026-06-27T09:04:13.578Z"
     },
     "controller-player-name-field": {
       "name": "Controller Player Name Field",
@@ -1141,7 +1141,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T09:04:15.107Z"
+      "updatedAt": "2026-06-27T18:08:03.660Z"
     },
     "controller-player-banner": {
       "name": "Controller Player Banner",
@@ -1188,7 +1188,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T18:07:56.478Z"
+      "updatedAt": "2026-06-27T09:04:16.592Z"
     },
     "controller-avatar-button": {
       "name": "Controller Avatar Button",
