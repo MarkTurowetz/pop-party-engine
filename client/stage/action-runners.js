@@ -136,17 +136,12 @@
         completeAfter(action, runtime, duration);
       },
       displayText(action, runtime) {
-        context.setStageTextObject(action.textTarget || "presentation", {
+        const duration = context.setStageTextObject(action.textTarget || "presentation", {
           text: action.text || "",
           isShown: action.isShown !== false,
-          instant: action.instant === true,
-          complete: runtime.isPrimary && action.type === "displayText"
-            ? () => {
-                if (!runtime.isCurrent()) return;
-                runtime.complete(action);
-              }
-            : null
+          instant: action.instant === true
         });
+        if (runtime.isPrimary && action.type === "displayText") completeAfterResult(action, runtime, duration);
       },
       transition(action, runtime) {
         if (!runtime.isPrimary) context.runStageWipe(() => {});
