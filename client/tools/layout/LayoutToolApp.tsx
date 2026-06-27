@@ -6,7 +6,13 @@ export interface LayoutToolSelection {
   selectedStateId?: string;
 }
 
+export interface LayoutToolHandlers {
+  selectElement?: (elementId: string) => void;
+  selectState?: (stateId: string) => void;
+}
+
 export interface LayoutToolAppProps extends LayoutToolSelection {
+  handlers?: LayoutToolHandlers;
   layouts?: StageLayoutCollection | null;
   surface?: string;
   visible?: boolean;
@@ -27,6 +33,7 @@ function selectedElements(group: LayoutState | null, selectedElementIds: string[
 }
 
 export function LayoutToolApp({
+  handlers = {},
   layouts = null,
   mode = "stage",
   selectedElementIds = [],
@@ -70,7 +77,7 @@ export function LayoutToolApp({
         <ol className="flow-react-list" data-layout-react-component="group-list">
           {groups.map((item) => (
             <li aria-current={item.id === group?.id ? "true" : undefined} data-layout-group-id={item.id} key={item.id}>
-              <button type="button">
+              <button type="button" onClick={() => handlers.selectState?.(item.id)}>
                 <span>
                   <strong>{item.name || item.id}</strong>
                   <small>{item.id}</small>
@@ -86,7 +93,7 @@ export function LayoutToolApp({
         <ol className="flow-react-list" data-layout-react-component="element-list">
           {(group?.elements || []).map((element) => (
             <li aria-current={selectedElementIds.includes(element.id) ? "true" : undefined} data-layout-element-id={element.id} key={element.id}>
-              <button type="button">
+              <button type="button" onClick={() => handlers.selectElement?.(element.id)}>
                 <span>
                   <strong>{element.name || element.id}</strong>
                   <small>{element.kind || element.selector || "object"}</small>

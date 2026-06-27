@@ -1,9 +1,10 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { StageLayoutCollection } from "../../types/game-data";
-import { LayoutToolApp, type LayoutToolSelection } from "./LayoutToolApp";
+import { LayoutToolApp, type LayoutToolHandlers, type LayoutToolSelection } from "./LayoutToolApp";
 
 export interface LayoutToolReactShell {
   root: Root;
+  setHandlers: (handlers: LayoutToolHandlers) => void;
   update: (layouts?: StageLayoutCollection | null, selection?: LayoutToolSelection) => void;
   unmount: () => void;
 }
@@ -31,10 +32,16 @@ export function mountLayoutToolApp(options: MountLayoutToolAppOptions = {}): Lay
   (targetDocument.querySelector?.("#layoutScreen") || targetDocument.body).appendChild(host);
   const root = (options.createRoot || createRoot)(host);
   const surface = options.surface || "layout";
+  let handlers: LayoutToolHandlers = {};
+  let lastLayouts: StageLayoutCollection | null = options.layouts || null;
+  let lastSelection: LayoutToolSelection = {};
 
   const update = (layouts: StageLayoutCollection | null = null, selection: LayoutToolSelection = {}) => {
+    lastLayouts = layouts;
+    lastSelection = selection;
     root.render(
       <LayoutToolApp
+        handlers={handlers}
         layouts={layouts}
         mode={selection.mode || "stage"}
         selectedElementIds={selection.selectedElementIds || []}
@@ -46,6 +53,10 @@ export function mountLayoutToolApp(options: MountLayoutToolAppOptions = {}): Lay
   };
   const shell = {
     root: root as Root,
+    setHandlers: (nextHandlers: LayoutToolHandlers) => {
+      handlers = { ...handlers, ...nextHandlers };
+      update(lastLayouts, lastSelection);
+    },
     update,
     unmount: () => {
       root.unmount();

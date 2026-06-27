@@ -525,6 +525,20 @@ function renderLayoutTool() {
   updateGlobalSaveButton();
 }
 
+function installLayoutReactShellHandlers() {
+  window.PartyGameLayoutReactShell?.setHandlers?.({
+    selectElement: (elementId) => {
+      setLayoutSelection(elementId);
+      renderLayoutTool();
+    },
+    selectState: (stateId) => {
+      selectedLayoutStateId = layoutGroup(stateId)?.id || "global";
+      setLayoutSelection(layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
+      renderLayoutTool();
+    }
+  });
+}
+
 function renderLayoutActions() {
   const hasSelection = selectedEditableLayoutElements().length > 0 || selectedLayoutStateId === "global" && selectedLayoutElements().length > 0;
   for (const button of [removeLayoutObjectButton, layoutPreviewRemoveObjectButton]) {
@@ -1267,6 +1281,7 @@ async function setupLayoutTool(mode = "stage") {
     return;
   }
   layoutToolInitialized = true;
+  installLayoutReactShellHandlers();
   addLayoutObjectButton.addEventListener("click", openLayoutObjectPicker);
   layoutPreviewAddObjectButton.addEventListener("click", openLayoutObjectPicker);
   removeLayoutObjectButton.addEventListener("click", removeSelectedLayoutObject);
