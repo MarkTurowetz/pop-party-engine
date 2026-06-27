@@ -1548,8 +1548,8 @@
       ],
       "updatedAt": "2026-06-27T19:12:00.280Z"
     },
-    "player-object-trike": {
-      "name": "Trike Player Object",
+    "player-object-raptor": {
+      "name": "Raptor Player Object",
       "description": "Editable player object composed from the answer bubble and avatar art.",
       "surface": "stage",
       "isCustom": false,
@@ -1606,8 +1606,8 @@
               "borderColor": "transparent",
               "borderWidth": 0,
               "borderRadius": 0,
-              "imageAssetId": "avatar-trike",
-              "imageName": "avatar-trike",
+              "imageAssetId": "avatar-raptor",
+              "imageName": "avatar-raptor",
               "imageMimeType": "",
               "imageObjectFit": "contain",
               "imageTint": "currentColor"
@@ -1638,7 +1638,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T19:12:01.996Z"
+      "updatedAt": "2026-06-27T19:12:03.575Z"
     }
   },
   "deletedCompositionIds": [],
