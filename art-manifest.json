@@ -300,7 +300,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:01:47.598Z"
+      "updatedAt": "2026-06-27T21:12:55.678Z"
     },
     "player-avatar-raptor": {
       "name": "Raptor Avatar",
@@ -359,7 +359,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:12:57.409Z"
+      "updatedAt": "2026-06-27T18:08:31.604Z"
     },
     "player-avatar-bronto": {
       "name": "Bronto Avatar",
@@ -477,7 +477,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:13:01.710Z"
+      "updatedAt": "2026-06-27T21:01:55.681Z"
     },
     "join-qr-code": {
       "name": "Join QR Code",
@@ -921,7 +921,7 @@
           "fontColor": "#ffffff"
         }
       ],
-      "updatedAt": "2026-06-27T21:01:24.697Z"
+      "updatedAt": "2026-06-27T21:12:59.231Z"
     },
     "controller-primary-button": {
       "name": "Controller Primary Button",
@@ -968,7 +968,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:12:21.188Z"
+      "updatedAt": "2026-06-27T21:13:04.385Z"
     },
     "controller-text-input-field": {
       "name": "Controller Text Input Field",
@@ -1078,7 +1078,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:12:26.690Z"
+      "updatedAt": "2026-06-27T21:13:07.530Z"
     },
     "controller-player-name-field": {
       "name": "Controller Player Name Field",
