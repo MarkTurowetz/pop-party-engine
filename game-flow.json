@@ -13,7 +13,7 @@
       },
       "returnNodePosition": {
         "x": 705,
-        "y": 1276
+        "y": 1530
       },
       "entryTargetActionId": "lobby-action-mqojohry",
       "nextStateTargetId": "intro",
@@ -30,7 +30,7 @@
           "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
             "x": 670,
-            "y": 768
+            "y": 1022
           },
           "subActions": [],
           "trigger": "onCountdownComplete",
@@ -70,7 +70,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 670,
-            "y": 1022
+            "y": 1276
           },
           "nextTargetActionId": "return"
         },
@@ -90,6 +90,25 @@
           "nodePosition": {
             "x": 670,
             "y": 514
+          },
+          "nextTargetActionId": "lobby-action-mqw4vt62"
+        },
+        {
+          "id": "lobby-action-mqw4vt62",
+          "name": "Display Text",
+          "type": "displayText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Party Game Template",
+          "textTarget": "stagetitle",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
           },
           "nextTargetActionId": "lobby-countdown-complete"
         }
