@@ -75,6 +75,53 @@ function createArtAssetsRuntime({
     return text.slice(0, maxLength);
   }
 
+  function normalizeOrganizationItemKey(value) {
+    const text = String(value || "").trim().toLowerCase();
+    const match = text.match(/^(asset|composition):([a-z0-9][a-z0-9_-]{0,79})$/);
+    return match ? `${match[1]}:${match[2]}` : "";
+  }
+
+  function normalizeArtOrganization(source = {}) {
+    const result = {};
+    for (const surface of ["stage", "controller"]) {
+      const incoming = source?.[surface] && typeof source[surface] === "object" ? source[surface] : {};
+      const folders = [];
+      const seenFolders = new Set();
+      for (const folder of Array.isArray(incoming.folders) ? incoming.folders : []) {
+        const id = cleanId(folder?.id);
+        if (!id || seenFolders.has(id)) continue;
+        folders.push({ id, name: cleanText(folder?.name, "Folder", 80) || "Folder" });
+        seenFolders.add(id);
+      }
+      const folderIds = new Set(folders.map((folder) => folder.id));
+      const order = [];
+      const seenOrder = new Set();
+      for (const rawKey of Array.isArray(incoming.order) ? incoming.order : []) {
+        const rawText = String(rawKey || "").trim().toLowerCase();
+        const key = normalizeOrganizationItemKey(rawText) || (rawText.startsWith("folder:") ? `folder:${cleanId(rawText.slice(7))}` : "");
+        if (!key || seenOrder.has(key)) continue;
+        if (key.startsWith("folder:") && !folderIds.has(key.slice(7))) continue;
+        order.push(key);
+        seenOrder.add(key);
+      }
+      const folderItems = {};
+      const incomingFolderItems = incoming.folderItems && typeof incoming.folderItems === "object" ? incoming.folderItems : {};
+      for (const folderId of folderIds) {
+        const items = [];
+        const seenItems = new Set();
+        for (const rawKey of Array.isArray(incomingFolderItems[folderId]) ? incomingFolderItems[folderId] : []) {
+          const key = normalizeOrganizationItemKey(rawKey);
+          if (!key || seenItems.has(key)) continue;
+          items.push(key);
+          seenItems.add(key);
+        }
+        folderItems[folderId] = items;
+      }
+      result[surface] = { folders, order, folderItems };
+    }
+    return result;
+  }
+
   function cleanImageName(value, fallback = "Uploaded image") {
     return cleanText(path.basename(String(value || fallback)), fallback, 180);
   }
@@ -501,8 +548,24 @@ function createArtAssetsRuntime({
       ok: true,
       groups: artGroups,
       assets: artAssets.map((asset) => publicArtAsset(asset, manifest)),
-      compositions: allPublicArtCompositions(manifest)
+      compositions: allPublicArtCompositions(manifest),
+      organization: normalizeArtOrganization(manifest.organization)
     });
+  }
+
+  async function handleSaveArtOrganization(req, res) {
+    let payload;
+    try {
+      payload = await readJson(req, 1024 * 1024);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+      return;
+    }
+    const manifest = await loadArtManifest();
+    manifest.organization = normalizeArtOrganization(payload.organization || payload);
+    const savedManifest = await saveArtManifest(manifest);
+    onArtAssetsChanged({ type: "organization", updatedAt: new Date().toISOString() });
+    sendJson(res, 200, { ok: true, organization: normalizeArtOrganization(savedManifest.organization) });
   }
 
   function normalizeArtCompositionsDraft(source = []) {
@@ -677,9 +740,11 @@ function createArtAssetsRuntime({
 
   return {
     handleDeleteArtComposition,
+    handleSaveArtOrganization,
     handleSaveArtComposition,
     handleReplaceArtAsset,
     normalizeArtCompositionsDraft,
+    normalizeArtOrganization,
     publicArtAsset,
     publicArtComposition,
     readArtManifest,

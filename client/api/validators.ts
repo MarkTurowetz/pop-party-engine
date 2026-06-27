@@ -3,6 +3,7 @@ import type {
   ArtAssetsResponse,
   ArtCompositionDeleteResponse,
   ArtCompositionSaveResponse,
+  ArtOrganizationSaveResponse,
   GameConstantsResponse,
   GameConstantsSaveResponse,
   GameFlowResponse,
@@ -219,7 +220,15 @@ export function validateArtAssetsResponse(value: unknown, endpoint = "/api/art-a
   assertArray(response.compositions, endpoint, "compositions").forEach((composition, index) => {
     assertArtComposition(composition, endpoint, `compositions[${index}]`);
   });
+  if (response.organization !== undefined) assertRecord(response.organization, endpoint, "organization");
   return value as ArtAssetsResponse;
+}
+
+export function validateArtOrganizationSaveResponse(value: unknown, endpoint = "/api/art-organization"): ArtOrganizationSaveResponse {
+  const response = assertRecord(value, endpoint, "response");
+  assertOk(response, endpoint);
+  assertRecord(response.organization, endpoint, "organization");
+  return value as ArtOrganizationSaveResponse;
 }
 
 export function validateArtCompositionSaveResponse(value: unknown, endpoint = "/api/art-compositions/:id"): ArtCompositionSaveResponse {

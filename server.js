@@ -438,6 +438,7 @@ const {
 
 const {
   handleDeleteArtComposition,
+  handleSaveArtOrganization,
   handleSaveArtComposition,
   handleReplaceArtAsset,
   normalizeArtCompositionsDraft,
@@ -1135,6 +1136,7 @@ const {
   handleQuitToLobby,
   handleDeleteArtComposition,
   handleReplaceArtAsset,
+  handleSaveArtOrganization,
   handleSaveArtComposition,
   handleSaveControllerLayouts,
   handleSaveGameConstants,

@@ -191,6 +191,29 @@
   box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.25);
 }
 
+.art-folder-title {
+  cursor: grab;
+}
+
+.art-folder-title.is-folder-drop {
+  background: var(--cyan);
+  box-shadow: 0 0 0 4px var(--blue), 3px 3px 0 rgba(23, 19, 31, 0.25);
+}
+
+.art-folder-rename {
+  margin-left: auto;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
 .art-group-children {
   display: grid;
   gap: 7px;

@@ -122,6 +122,17 @@ export interface ArtComposition extends JsonObject {
   components: ArtComponent[];
 }
 
+export interface ArtOrganizationSurface extends JsonObject {
+  folders: Array<{ id: string; name: string }>;
+  order: string[];
+  folderItems: Record<string, string[]>;
+}
+
+export interface ArtOrganization extends JsonObject {
+  stage: ArtOrganizationSurface;
+  controller: ArtOrganizationSurface;
+}
+
 export interface GameFlowResponse {
   ok: true;
   flow: GameFlow;
@@ -187,6 +198,12 @@ export interface ArtAssetsResponse {
   groups: JsonObject[];
   assets: ArtAsset[];
   compositions: ArtComposition[];
+  organization?: ArtOrganization;
+}
+
+export interface ArtOrganizationSaveResponse {
+  ok: true;
+  organization: ArtOrganization;
 }
 
 export interface ArtCompositionSaveResponse {

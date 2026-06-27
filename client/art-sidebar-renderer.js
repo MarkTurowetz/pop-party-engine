@@ -52,9 +52,27 @@
       return slot;
     }
 
-    function createCompositionButton(data, composition) {
+    function bindOrganizerRow(row, key) {
+      if (!key) return row;
+      affordances?.bindSortableRow(row, {
+        itemId: key,
+        dragType: "application/x-party-art-organizer",
+        ignoreSelector: ".disclosure-button, .art-folder-rename, input, textarea, button, select, a",
+        getDraggedId: () => options.getDraggedOrganizerKey?.() || "",
+        canDrop: (draggedKey, targetKey) => {
+          if (!draggedKey || !targetKey || draggedKey === targetKey) return false;
+          return !(targetKey.startsWith("folder:") && !draggedKey.startsWith("folder:"));
+        },
+        onDragStart: (dragKey) => options.onOrganizerDragStart?.(dragKey),
+        onReorder: (draggedKey, targetKey, placeAfter) => options.onReorderOrganizerItem?.(draggedKey, targetKey, placeAfter),
+        onDragEnd: () => options.onOrganizerDragEnd?.()
+      });
+      return row;
+    }
+
+    function createCompositionButton(data, composition, organizerKey = "") {
       const isVotingCard = composition.id === "voting-card";
-      return ui.createSidebarRow({
+      const row = ui.createSidebarRow({
         className: "art-item is-composite has-disclosure",
         selected: data.selectedArtCompositionId === composition.id && !data.selectedArtComponentId,
         leadingNodes: [
@@ -65,6 +83,7 @@
         summary: "Editable art asset",
         onActivate: () => options.onSelectArtComposition?.(composition.id)
       });
+      return bindOrganizerRow(row, organizerKey);
     }
 
     function createComponentButton(data, composition, component) {
@@ -113,10 +132,10 @@
       return wrapper;
     }
 
-    function createCompositionBlock(data, composition) {
+    function createCompositionBlock(data, composition, organizerKey = "") {
       const wrapper = documentRef.createElement("div");
       wrapper.className = "art-group";
-      wrapper.appendChild(createCompositionButton(data, composition));
+      wrapper.appendChild(createCompositionButton(data, composition, organizerKey));
       const children = documentRef.createElement("div");
       children.className = "art-composite-children";
       if (!data.collapsedArtComposites.has(composition.id)) {
@@ -142,7 +161,7 @@
       });
     }
 
-    function createArtItemButton(data, asset, label = asset.name) {
+    function createArtItemButton(data, asset, label = asset.name, organizerKey = "") {
       const image = documentRef.createElement("img");
       image.alt = "";
       image.src = asset.currentUrl;
@@ -156,7 +175,7 @@
         onActivate: () => options.onSelectArtAsset?.(asset.id)
       });
       button.classList.toggle("is-shared", Boolean(asset.sharedBy?.length));
-      return button;
+      return bindOrganizerRow(button, organizerKey);
     }
 
     function createCompositeBlock(data, composite) {
@@ -213,6 +232,132 @@
       }
     }
 
+    function organizerSurface(data) {
+      return data.selectedArtSurface === "controller" ? "controller" : "stage";
+    }
+
+    function organizerState(data) {
+      const organization = data.artOrganization?.[organizerSurface(data)] || {};
+      return {
+        folders: Array.isArray(organization.folders) ? organization.folders : [],
+        order: Array.isArray(organization.order) ? organization.order : [],
+        folderItems: organization.folderItems && typeof organization.folderItems === "object" ? organization.folderItems : {}
+      };
+    }
+
+    function hasOrganizerData(data) {
+      const organization = organizerState(data);
+      return Boolean(organization.folders.length || organization.order.length || Object.values(organization.folderItems).some((items) => Array.isArray(items) && items.length));
+    }
+
+    function organizerEntries(data) {
+      const entries = new Map();
+      for (const composition of data.artCompositions || []) {
+        entries.set(`composition:${composition.id}`, { key: `composition:${composition.id}`, type: "composition", value: composition });
+      }
+      for (const asset of data.artAssets || []) {
+        if (asset.parent && ["player-avatar", "presentation-click-prompt"].includes(asset.parent)) continue;
+        entries.set(`asset:${asset.id}`, { key: `asset:${asset.id}`, type: "asset", value: asset });
+      }
+      return entries;
+    }
+
+    function renderOrganizerEntry(data, entry) {
+      if (!entry) return null;
+      if (entry.type === "composition") return createCompositionBlock(data, entry.value, entry.key);
+      if (entry.type === "asset") {
+        const wrapper = documentRef.createElement("section");
+        wrapper.className = "art-group";
+        wrapper.appendChild(createArtItemButton(data, entry.value, entry.value.name, entry.key));
+        return wrapper;
+      }
+      return null;
+    }
+
+    function createFolderBlock(data, folder, entries, itemKeys = []) {
+      const collapseId = `art-folder:${organizerSurface(data)}:${folder.id}`;
+      const wrapper = documentRef.createElement("section");
+      wrapper.className = "art-group art-folder";
+      const title = documentRef.createElement("div");
+      title.className = "art-group-title art-folder-title";
+      title.appendChild(createDisclosureButton(
+        collapseId,
+        data.collapsedArtSections,
+        options.onCollapseChange,
+        () => options.onToggleCollapsedIds?.(data.collapsedArtSections, [collapseId])
+      ));
+      const label = documentRef.createElement("span");
+      label.textContent = folder.name || "Folder";
+      title.appendChild(label);
+      const rename = documentRef.createElement("button");
+      rename.type = "button";
+      rename.className = "art-folder-rename";
+      rename.textContent = "Rename";
+      rename.addEventListener("click", (event) => {
+        event.stopPropagation();
+        options.onRenameFolder?.(folder.id);
+      });
+      title.appendChild(rename);
+      bindOrganizerRow(title, `folder:${folder.id}`);
+      title.addEventListener("dragover", (event) => {
+        const draggedKey = options.getDraggedOrganizerKey?.() || "";
+        if (!draggedKey || draggedKey.startsWith("folder:")) return;
+        event.preventDefault();
+        title.classList.add("is-folder-drop");
+      });
+      title.addEventListener("dragleave", () => title.classList.remove("is-folder-drop"));
+      title.addEventListener("drop", (event) => {
+        const draggedKey = options.getDraggedOrganizerKey?.() || "";
+        if (!draggedKey || draggedKey.startsWith("folder:")) return;
+        event.preventDefault();
+        title.classList.remove("is-folder-drop");
+        options.onMoveOrganizerItemToFolder?.(draggedKey, folder.id);
+      });
+      wrapper.appendChild(title);
+      const children = documentRef.createElement("div");
+      children.className = "art-group-children art-folder-children";
+      if (!data.collapsedArtSections.has(collapseId)) {
+        for (const key of itemKeys) {
+          const node = renderOrganizerEntry(data, entries.get(key));
+          if (node) children.appendChild(node);
+        }
+      }
+      wrapper.appendChild(children);
+      return wrapper;
+    }
+
+    function renderOrganizedSurface(target, data) {
+      const organization = organizerState(data);
+      const entries = organizerEntries(data);
+      const folderById = new Map(organization.folders.map((folder) => [folder.id, folder]));
+      const assigned = new Set();
+      const topKeys = [];
+      for (const folder of organization.folders) {
+        for (const key of organization.folderItems?.[folder.id] || []) if (entries.has(key)) assigned.add(key);
+      }
+      for (const key of organization.order || []) {
+        if (key.startsWith("folder:") && folderById.has(key.slice(7))) topKeys.push(key);
+        else if (entries.has(key)) topKeys.push(key);
+      }
+      for (const folder of organization.folders) {
+        const key = `folder:${folder.id}`;
+        if (!topKeys.includes(key)) topKeys.push(key);
+      }
+      for (const key of entries.keys()) {
+        if (!topKeys.includes(key) && !assigned.has(key)) topKeys.push(key);
+      }
+      for (const key of topKeys) {
+        if (key.startsWith("folder:")) {
+          const folderId = key.slice(7);
+          const folder = folderById.get(folderId);
+          if (folder) target.appendChild(createFolderBlock(data, folder, entries, (organization.folderItems?.[folderId] || []).filter((itemKey) => entries.has(itemKey))));
+          continue;
+        }
+        const node = renderOrganizerEntry(data, entries.get(key));
+        if (node) target.appendChild(node);
+      }
+    }
+
     function appendEmptyState(target, data) {
       if ((data.artCompositions || []).length || (data.artAssets || []).length) return;
       const empty = documentRef.createElement("div");
@@ -227,16 +372,20 @@
       if (!target) return;
       const data = state();
       target.replaceChildren();
-      if (data.selectedArtSurface === "controller") renderFlatCompositions(target, data);
-      else renderStageCompositions(target, data);
-      const looseAssets = (data.artAssets || []).filter((asset) => {
-        return !asset.parent || !["player-avatar", "presentation-click-prompt"].includes(asset.parent);
-      });
-      for (const asset of looseAssets) {
-        const wrapper = documentRef.createElement("section");
-        wrapper.className = "art-group";
-        wrapper.appendChild(createArtItemButton(data, asset));
-        target.appendChild(wrapper);
+      const isOrganized = hasOrganizerData(data);
+      if (isOrganized) renderOrganizedSurface(target, data);
+      else {
+        if (data.selectedArtSurface === "controller") renderFlatCompositions(target, data);
+        else renderStageCompositions(target, data);
+        const looseAssets = (data.artAssets || []).filter((asset) => {
+          return !asset.parent || !["player-avatar", "presentation-click-prompt"].includes(asset.parent);
+        });
+        for (const asset of looseAssets) {
+          const wrapper = documentRef.createElement("section");
+          wrapper.className = "art-group";
+          wrapper.appendChild(createArtItemButton(data, asset));
+          target.appendChild(wrapper);
+        }
       }
       appendEmptyState(target, data);
     }

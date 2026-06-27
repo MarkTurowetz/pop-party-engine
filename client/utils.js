@@ -394,10 +394,28 @@ function artComposition(compositionId) {
   return (artCompositions || []).find((composition) => composition.id === compositionId) || null;
 }
 
-function applyArtAssets(assets, groups = artGroups, compositions = artCompositions) {
+function normalizeLoadedArtOrganization(organization = artOrganization) {
+  const blankSurface = () => ({ folders: [], order: [], folderItems: {} });
+  const normalized = { stage: blankSurface(), controller: blankSurface() };
+  for (const surface of ["stage", "controller"]) {
+    const incoming = organization?.[surface] || {};
+    normalized[surface] = {
+      folders: Array.isArray(incoming.folders) ? incoming.folders.map((folder) => ({
+        id: String(folder.id || ""),
+        name: String(folder.name || "Folder")
+      })).filter((folder) => folder.id) : [],
+      order: Array.isArray(incoming.order) ? incoming.order.map(String).filter(Boolean) : [],
+      folderItems: incoming.folderItems && typeof incoming.folderItems === "object" ? { ...incoming.folderItems } : {}
+    };
+  }
+  return normalized;
+}
+
+function applyArtAssets(assets, groups = artGroups, compositions = artCompositions, organization = artOrganization) {
   artAssets = assets || [];
   artGroups = groups || [];
   artCompositions = mergeArtCompositionDrafts(compositions || []);
+  artOrganization = normalizeLoadedArtOrganization(organization);
   for (const asset of artAssets) {
     artAssetUrls.set(asset.id, asset.currentUrl);
   }
@@ -410,7 +428,7 @@ async function loadArtAssets() {
     return [];
   }
   const result = await (window.PartyGameToolContext?.api?.art?.loadArtAssets?.() || getJson("/api/art-assets"));
-  applyArtAssets(result.assets || [], result.groups || [], result.compositions || []);
+  applyArtAssets(result.assets || [], result.groups || [], result.compositions || [], result.organization);
   return artAssets;
 }
 

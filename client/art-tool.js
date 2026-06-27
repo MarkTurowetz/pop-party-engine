@@ -11,6 +11,7 @@ let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
 let selectedArtSurface = "stage";
 let draggedArtComponentId = "";
+let draggedArtOrganizerKey = "";
 let artCreateKindMenu = null;
 const artComponentSchema = window.PartyGameArtComponentSchema;
 const artComponentTree = window.PartyGameArtComponentTree;
@@ -174,6 +175,136 @@ function artSurfaceLabel(surface = selectedArtSurface) {
   return normalizeArtCompositionSurface(surface) === "controller" ? "Controller Art" : "Stage Art";
 }
 
+function artOrganizationSurface(surface = selectedArtSurface) {
+  const normalized = normalizeArtCompositionSurface(surface);
+  artOrganization[normalized] = artOrganization[normalized] || { folders: [], order: [], folderItems: {} };
+  artOrganization[normalized].folders = Array.isArray(artOrganization[normalized].folders) ? artOrganization[normalized].folders : [];
+  artOrganization[normalized].order = Array.isArray(artOrganization[normalized].order) ? artOrganization[normalized].order : [];
+  artOrganization[normalized].folderItems = artOrganization[normalized].folderItems && typeof artOrganization[normalized].folderItems === "object" ? artOrganization[normalized].folderItems : {};
+  return artOrganization[normalized];
+}
+
+function artOrganizerItemKey(item) {
+  if (!item) return "";
+  if (item.currentUrl !== undefined) return `asset:${item.id}`;
+  return `composition:${item.id}`;
+}
+
+function artOrganizerFolderKey(folderId) {
+  return `folder:${folderId}`;
+}
+
+function artOrganizerSurfaceItems(surface = selectedArtSurface) {
+  const isStageSurface = normalizeArtCompositionSurface(surface) === "stage";
+  const compositions = (artCompositions || []).filter((composition) => (
+    isSharedArtComposition(composition)
+    || normalizeArtCompositionSurface(composition.surface) === normalizeArtCompositionSurface(surface)
+  ));
+  const items = compositions.map((composition) => ({ key: artOrganizerItemKey(composition), type: "composition", item: composition }));
+  if (isStageSurface) {
+    for (const asset of artAssets || []) {
+      if (asset.parent && ["player-avatar", "presentation-click-prompt"].includes(asset.parent)) continue;
+      items.push({ key: artOrganizerItemKey(asset), type: "asset", item: asset });
+    }
+  }
+  return items;
+}
+
+function cleanArtOrganizationForSave() {
+  const cleaned = { stage: { folders: [], order: [], folderItems: {} }, controller: { folders: [], order: [], folderItems: {} } };
+  for (const surface of ["stage", "controller"]) {
+    const state = artOrganizationSurface(surface);
+    const validItems = new Set(artOrganizerSurfaceItems(surface).map((entry) => entry.key));
+    const validFolders = new Set();
+    cleaned[surface].folders = state.folders.map((folder) => ({
+      id: String(folder.id || ""),
+      name: String(folder.name || "Folder").trim() || "Folder"
+    })).filter((folder) => {
+      if (!folder.id || validFolders.has(folder.id)) return false;
+      validFolders.add(folder.id);
+      return true;
+    });
+    const validTopKeys = new Set([...validItems, ...cleaned[surface].folders.map((folder) => artOrganizerFolderKey(folder.id))]);
+    cleaned[surface].order = [...new Set(state.order || [])].filter((key) => validTopKeys.has(key));
+    for (const folder of cleaned[surface].folders) {
+      cleaned[surface].folderItems[folder.id] = [...new Set(state.folderItems?.[folder.id] || [])].filter((key) => validItems.has(key));
+    }
+  }
+  return cleaned;
+}
+
+async function saveArtOrganization() {
+  artOrganization = cleanArtOrganizationForSave();
+  const result = await (window.PartyGameToolContext?.api?.art?.saveArtOrganization?.(artOrganization)
+    || postJson("/api/art-organization", { organization: artOrganization }));
+  artOrganization = normalizeLoadedArtOrganization(result.organization || artOrganization);
+  renderArtList();
+}
+
+function createArtFolder() {
+  const name = window.prompt("Folder name", "New Folder");
+  if (name === null) return;
+  const cleanName = String(name || "").trim() || "New Folder";
+  const state = artOrganizationSurface();
+  const id = createSecureArtId("folder");
+  state.folders.push({ id, name: cleanName });
+  state.order.push(artOrganizerFolderKey(id));
+  state.folderItems[id] = [];
+  collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${id}`);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function renameArtFolder(folderId) {
+  const state = artOrganizationSurface();
+  const folder = state.folders.find((item) => item.id === folderId);
+  if (!folder) return;
+  const name = window.prompt("Folder name", folder.name || "Folder");
+  if (name === null) return;
+  folder.name = String(name || "").trim() || "Folder";
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function removeOrganizerKeyFromSurface(state, key) {
+  state.order = (state.order || []).filter((item) => item !== key);
+  for (const folderId of Object.keys(state.folderItems || {})) {
+    state.folderItems[folderId] = (state.folderItems[folderId] || []).filter((item) => item !== key);
+  }
+}
+
+function reorderArtOrganizerItem(draggedKey, targetKey, placeAfter = false) {
+  if (!draggedKey || !targetKey || draggedKey === targetKey) return;
+  const state = artOrganizationSurface();
+  const targetFolderId = Object.keys(state.folderItems || {}).find((folderId) => (state.folderItems[folderId] || []).includes(targetKey));
+  removeOrganizerKeyFromSurface(state, draggedKey);
+  const list = targetFolderId ? state.folderItems[targetFolderId] : state.order;
+  const targetIndex = list.indexOf(targetKey);
+  list.splice(Math.max(0, targetIndex + (placeAfter ? 1 : 0)), 0, draggedKey);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function moveArtOrganizerItemToFolder(draggedKey, folderId) {
+  if (!draggedKey || draggedKey.startsWith("folder:")) return;
+  const state = artOrganizationSurface();
+  if (!state.folders.some((folder) => folder.id === folderId)) return;
+  removeOrganizerKeyFromSurface(state, draggedKey);
+  state.folderItems[folderId] = state.folderItems[folderId] || [];
+  state.folderItems[folderId].push(draggedKey);
+  collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${folderId}`);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
 function selectedArtComponents() {
   const composition = selectedArtComposition();
   return flattenArtComponents(composition?.components || []).filter(({ component }) => selectedArtComponentIds.has(component.id)).map(({ component }) => component);
@@ -279,6 +410,7 @@ function artSidebarState() {
     artAssets: isStageSurface ? artAssets : [],
     avatarComposites: isStageSurface ? avatarComposites : [],
     artCompositions: visibleArtCompositions(),
+    artOrganization,
     selectedArtSurface,
     artSectionCollapseIds,
     collapsedArtSections,
@@ -318,6 +450,17 @@ function getArtSidebarRenderer() {
       onSelectArtComposite: selectArtComposite,
       onSelectArtComposition: selectArtComposition,
       onSelectArtComponent: selectArtComponent,
+      onCreateFolder: createArtFolder,
+      onRenameFolder: renameArtFolder,
+      onOrganizerDragStart: (key) => {
+        draggedArtOrganizerKey = key;
+      },
+      onOrganizerDragEnd: () => {
+        draggedArtOrganizerKey = "";
+      },
+      getDraggedOrganizerKey: () => draggedArtOrganizerKey,
+      onReorderOrganizerItem: reorderArtOrganizerItem,
+      onMoveOrganizerItemToFolder: moveArtOrganizerItemToFolder,
       getDraggedComponentId: () => draggedArtComponentId,
       canReorderArtComponent,
       onComponentDragStart: handleArtComponentSidebarDragStart,
@@ -1254,6 +1397,7 @@ async function setupArtTool() {
   artCancelButton.addEventListener("click", cancelArtReplacement);
   artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition));
   artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject));
+  artCreateFolderButton?.addEventListener("click", createArtFolder);
   artDeleteCompositionButton?.addEventListener("click", () => deleteSelectedArtComposition());
   for (const tab of artSurfaceTabs || []) {
     tab.addEventListener("click", () => selectArtSurface(tab.dataset.artSurface));

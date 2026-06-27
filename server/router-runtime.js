@@ -21,6 +21,7 @@ function createRouterRuntime({
   handleQuitToLobby,
   handleDeleteArtComposition,
   handleReplaceArtAsset,
+  handleSaveArtOrganization,
   handleSaveArtComposition,
   handleSaveControllerLayouts,
   handleSaveGameConstants,
@@ -63,6 +64,13 @@ function createRouterRuntime({
 
     if (req.method === "GET" && url.pathname === "/api/art-assets") {
       sendArtAssetList(res).catch((error) => {
+        sendJson(res, 500, { ok: false, error: error.message });
+      });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/art-organization") {
+      handleSaveArtOrganization(req, res).catch((error) => {
         sendJson(res, 500, { ok: false, error: error.message });
       });
       return;
