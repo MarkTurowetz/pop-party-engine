@@ -1219,7 +1219,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:13:17.246Z"
+      "updatedAt": "2026-06-27T21:01:37.480Z"
     },
     "controller-choice-option": {
       "name": "Controller Choice Option",
@@ -1266,7 +1266,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:13:28.030Z"
+      "updatedAt": "2026-06-27T21:12:39.695Z"
     },
     "controller-invalid-banner": {
       "name": "Controller Invalid Banner",
@@ -1546,7 +1546,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T19:12:00.280Z"
+      "updatedAt": "2026-06-27T21:13:22.855Z"
     },
     "player-object-raptor": {
       "name": "Raptor Player Object",
@@ -1887,7 +1887,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:02:03.068Z"
+      "updatedAt": "2026-06-27T21:13:26.340Z"
     },
     "player-object-bronto": {
       "name": "Bronto Player Object",
@@ -1980,6 +1980,51 @@
         }
       ],
       "updatedAt": "2026-06-27T21:02:07.967Z"
+    },
+    "player-point-popup": {
+      "name": "Player Point Popup",
+      "description": "Shared editable scoring popup art spawned when points are shown.",
+      "surface": "stage",
+      "isCustom": false,
+      "canvas": {
+        "width": 154,
+        "height": 64
+      },
+      "components": [
+        {
+          "id": "point-text",
+          "name": "Point Text",
+          "kind": "text",
+          "x": 75,
+          "y": 30,
+          "width": 150,
+          "height": 60,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "+200",
+          "fontSize": 34,
+          "autoFitText": false,
+          "fontColor": "#ffe256"
+        },
+        {
+          "id": "point-shadow",
+          "name": "Point Shadow",
+          "kind": "text",
+          "x": 79,
+          "y": 34,
+          "width": 150,
+          "height": 60,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "+200",
+          "fontSize": 34,
+          "autoFitText": false,
+          "fontColor": "#17131f"
+        }
+      ],
+      "updatedAt": "2026-06-27T21:13:18.766Z"
     }
   },
   "deletedCompositionIds": [],
