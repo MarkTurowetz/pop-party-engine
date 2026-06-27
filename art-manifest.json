@@ -123,7 +123,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-27T21:13:43.336Z"
+      "updatedAt": "2026-06-27T21:02:13.039Z"
     },
     "player-avatar-rex": {
       "name": "Rex Avatar",
@@ -300,7 +300,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:12:55.678Z"
+      "updatedAt": "2026-06-27T21:13:41.758Z"
     },
     "player-avatar-raptor": {
       "name": "Raptor Avatar",
@@ -359,7 +359,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T18:08:31.604Z"
+      "updatedAt": "2026-06-27T21:13:47.040Z"
     },
     "player-avatar-bronto": {
       "name": "Bronto Avatar",
@@ -477,7 +477,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:01:55.681Z"
+      "updatedAt": "2026-06-27T21:13:50.155Z"
     },
     "join-qr-code": {
       "name": "Join QR Code",
@@ -641,7 +641,7 @@
           "borderRadius": 24
         }
       ],
-      "updatedAt": "2026-06-27T21:13:54.471Z"
+      "updatedAt": "2026-06-27T21:02:17.410Z"
     },
     "stage-code-widget": {
       "name": "Small Room Code Widget",
@@ -704,7 +704,7 @@
           "borderRadius": 14
         }
       ],
-      "updatedAt": "2026-06-27T21:13:58.672Z"
+      "updatedAt": "2026-06-27T21:02:19.051Z"
     },
     "join-widget": {
       "name": "Join Widget",
@@ -1795,7 +1795,7 @@
           "fontColor": "#17131f"
         }
       ],
-      "updatedAt": "2026-06-27T21:01:57.768Z"
+      "updatedAt": "2026-06-27T21:13:57.143Z"
     },
     "player-object-trike": {
       "name": "Trike Player Object",
