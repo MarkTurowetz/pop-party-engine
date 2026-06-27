@@ -241,7 +241,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T18:08:16.867Z"
+      "updatedAt": "2026-06-27T09:04:24.796Z"
     },
     "player-avatar-trike": {
       "name": "Trike Avatar",
@@ -1219,7 +1219,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T18:08:07.080Z"
+      "updatedAt": "2026-06-27T18:08:11.466Z"
     },
     "controller-choice-option": {
       "name": "Controller Choice Option",
@@ -1266,7 +1266,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T18:08:10.273Z"
+      "updatedAt": "2026-06-27T09:04:19.848Z"
     },
     "controller-invalid-banner": {
       "name": "Controller Invalid Banner",
@@ -1313,7 +1313,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-27T18:08:13.875Z"
+      "updatedAt": "2026-06-27T09:04:21.397Z"
     }
   },
   "deletedCompositionIds": []
