@@ -300,7 +300,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:12:55.678Z"
+      "updatedAt": "2026-06-27T21:01:47.598Z"
     },
     "player-avatar-raptor": {
       "name": "Raptor Avatar",
@@ -359,7 +359,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T18:08:31.604Z"
+      "updatedAt": "2026-06-27T21:12:57.409Z"
     },
     "player-avatar-bronto": {
       "name": "Bronto Avatar",
@@ -477,7 +477,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:01:55.681Z"
+      "updatedAt": "2026-06-27T21:13:01.710Z"
     },
     "join-qr-code": {
       "name": "Join QR Code",
@@ -921,7 +921,7 @@
           "fontColor": "#ffffff"
         }
       ],
-      "updatedAt": "2026-06-27T21:12:59.231Z"
+      "updatedAt": "2026-06-27T21:01:24.697Z"
     },
     "controller-primary-button": {
       "name": "Controller Primary Button",
@@ -968,7 +968,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:13:04.385Z"
+      "updatedAt": "2026-06-27T21:12:21.188Z"
     },
     "controller-text-input-field": {
       "name": "Controller Text Input Field",
@@ -1015,7 +1015,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:13:05.909Z"
+      "updatedAt": "2026-06-27T21:12:23.978Z"
     },
     "controller-stage-code-field": {
       "name": "Controller Stage Code Field",
