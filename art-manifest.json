@@ -759,23 +759,23 @@
       "surface": "stage",
       "isCustom": false,
       "canvas": {
-        "width": 700,
-        "height": 130
+        "width": 200,
+        "height": 200
       },
       "components": [
         {
           "id": "popup-text",
           "name": "Popup Text",
           "kind": "text",
-          "x": 350,
-          "y": 65,
+          "x": 100,
+          "y": 100,
           "width": 200,
           "height": 200,
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
           "defaultText": "Starting Game",
-          "fontSize": 54,
+          "fontSize": 32,
           "autoFitText": true,
           "fontColor": "#17131f"
         },
@@ -783,8 +783,8 @@
           "id": "popup-card",
           "name": "Popup Card",
           "kind": "shape",
-          "x": 350,
-          "y": 65,
+          "x": 100,
+          "y": 100,
           "width": 200,
           "height": 200,
           "scale": 1,
@@ -798,7 +798,7 @@
           "borderRadius": 20
         }
       ],
-      "updatedAt": "2026-06-27T08:58:46.579Z"
+      "updatedAt": "2026-06-27T09:04:42.922Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer",
