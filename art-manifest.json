@@ -1422,7 +1422,8 @@
           "composition:stage-code-widget"
         ],
         "folder-3a090594-0d6c-406e-a758-05842b36ad51": [
-          "composition:voting-card"
+          "composition:voting-card",
+          "composition:crafting-timer-widget"
         ]
       }
     },
