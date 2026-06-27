@@ -1142,6 +1142,53 @@
         }
       ],
       "updatedAt": "2026-06-27T08:58:16.894Z"
+    },
+    "controller-player-banner": {
+      "name": "Controller Player Banner",
+      "description": "Editable controller top player banner art.",
+      "surface": "controller",
+      "isCustom": false,
+      "canvas": {
+        "width": 338,
+        "height": 78
+      },
+      "components": [
+        {
+          "id": "banner-name",
+          "name": "Banner Name",
+          "kind": "text",
+          "x": 190,
+          "y": 39,
+          "width": 220,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "PLAYER",
+          "fontSize": 30,
+          "autoFitText": false,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "banner-card",
+          "name": "Banner Card",
+          "kind": "shape",
+          "x": 169,
+          "y": 39,
+          "width": 338,
+          "height": 78,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 18
+        }
+      ],
+      "updatedAt": "2026-06-27T08:58:18.553Z"
     }
   },
   "deletedCompositionIds": []
