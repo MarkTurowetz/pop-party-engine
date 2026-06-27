@@ -93,35 +93,29 @@ if (implicitFitField.autoFitText !== true || explicitManualField.autoFitText !==
   process.exit(1);
 }
 
-const fixedSmall = measure({
-  text: "STAGE",
-  element: { width: 400, height: 80, fontSize: 12, autoFitText: false },
-  fallbackSize: 12
-});
-const fixedLarge = measure({
-  text: "STAGE",
-  element: { width: 400, height: 80, fontSize: 48, autoFitText: false },
-  fallbackSize: 48
-});
-if (Number(fixedSmall.fontSize) !== 12 || Number(fixedLarge.fontSize) !== 48) {
+const fixedSmall = measure({ text: "STAGE", element: { width: 400, height: 80, fontSize: 12, autoFitText: true }, fallbackSize: 12 });
+const fixedLarge = measure({ text: "STAGE", element: { width: 400, height: 80, fontSize: 48, autoFitText: true }, fallbackSize: 48 });
+const multiline = measure({ text: "ONE\nTWO\nTHREE", element: { width: 80, height: 24, fontSize: 36, autoFitText: true }, fallbackSize: 36 });
+if (Number(fixedSmall.fontSize) !== 12 || Number(fixedLarge.fontSize) !== 48 || Number(multiline.fontSize) !== 36) {
   console.error("Text rendering regression check failed:");
-  console.error("- measureGameText must respect manual font size when autoFitText is false");
+  console.error("- text rendering must use manual font size and ignore auto-fit shrinking");
   process.exit(1);
 }
 
 const textFitSource = fs.readFileSync(path.join(repoRoot, "client/text-fit.js"), "utf8");
-if (!/createElementNS\(svgNamespace,\s*"svg"\)/.test(textFitSource) || !/dominant-baseline/.test(textFitSource)) {
+if (/createElementNS/.test(textFitSource) || /dominant-baseline/.test(textFitSource) || /measureText/.test(textFitSource)) {
   console.error("Text rendering regression check failed:");
-  console.error("- shared text rendering must use SVG centered baselines, not HTML line-box baselines");
+  console.error("- plain text mode must not use SVG or canvas text measurement");
   process.exit(1);
 }
-if (!/setAttribute\("viewBox", `0 0 \$\{targetWidth\} \$\{targetHeight\}`\)/.test(textFitSource)
-  || !/svg\.setAttribute\("width", "100%"\)/.test(textFitSource)
-  || !/svg\.setAttribute\("height", "100%"\)/.test(textFitSource)
-  || !/left: "0"/.test(textFitSource)
-  || !/width: "100%"/.test(textFitSource)) {
+if (!/display: "flex"/.test(textFitSource)
+  || !/alignItems: "center"/.test(textFitSource)
+  || !/justifyContent: "center"/.test(textFitSource)
+  || !/overflow: "hidden"/.test(textFitSource)
+  || !/whiteSpace: "pre-wrap"/.test(textFitSource)
+  || !/target\.textContent = textValue/.test(textFitSource)) {
   console.error("Text rendering regression check failed:");
-  console.error("- shared SVG text rendering must fill the target box with a target-sized viewBox");
+  console.error("- plain text mode must render centered clipped HTML text");
   process.exit(1);
 }
 

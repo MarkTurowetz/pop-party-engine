@@ -5,97 +5,10 @@
     fontFamily: 'ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif',
     fontStyle: "normal",
     fontWeight: "1000",
-    lineHeight: 1.15,
-    safetyScale: 0.96,
+    lineHeight: 1,
     minSize: 6,
-    maxSize: 260,
-    widthSafety: 0.96,
-    verticalSafety: 0.96
+    maxSize: 260
   };
-  const svgNamespace = "http://www.w3.org/2000/svg";
-
-  let measureContext = null;
-
-  function fitTextLayout(element, text, fallbackSize, options = {}) {
-    const config = normalizeOptions(options);
-    const box = textBox(element, config);
-    const textValue = applyTextTransform(String(text ?? ""), config.textTransform);
-    const maxSize = Number(config.maxSize || defaultOptions.maxSize);
-    const minSize = Number(config.minSize || defaultOptions.minSize);
-
-    let best = null;
-    for (let size = maxSize; size >= minSize; size -= 1) {
-      const layout = layoutTextAtSize(textValue, size, box.width, config);
-      if (layoutFits(layout, box, config)) {
-        best = layout;
-        break;
-      }
-    }
-
-    const layout = best || layoutTextAtSize(textValue, Math.max(minSize, Number(fallbackSize || minSize)), box.width, config);
-    const safeSize = Math.max(minSize, Math.floor(layout.fontSize * config.safetyScale));
-    return withTextBox(layoutTextAtSize(textValue, safeSize, box.width, config), box);
-  }
-
-  function fittedLayoutTextSize(element, text, fallbackSize, options = {}) {
-    return fitTextLayout(element, text, fallbackSize, options).fontSize;
-  }
-
-  function measuredTextLayout(element, text, fallbackSize, options = {}) {
-    if (options.autoFit === false) return fixedTextLayout(element, text, fallbackSize, options);
-    return fitTextLayout(element, text, fallbackSize, options);
-  }
-
-  function renderMeasuredTextElement(target, element, text, fallbackSize, options = {}) {
-    const layout = measuredTextLayout(element, text, fallbackSize, targetTextRenderOptions(target, element, options));
-    renderTextElement(target, text, layout);
-    return layout;
-  }
-
-  function renderAutoTextElement(target, element, text, fallbackSize = null, options = {}) {
-    const baseSize = Number(fallbackSize ?? element?.fontSize ?? defaultOptions.maxSize);
-    const layout = measuredTextLayout(element, text, baseSize, targetTextRenderOptions(target, element, options));
-    renderTextElement(target, text, layout);
-    return layout;
-  }
-
-  function renderTextBox(target, text, spec = {}, options = {}) {
-    if (!target) return null;
-    const textValue = String(text ?? "");
-    const width = Math.max(1, Number(spec.width || target.clientWidth || 1));
-    const height = Math.max(1, Number(spec.height || target.clientHeight || 1));
-    const element = {
-      ...spec,
-      width,
-      height,
-      fontSize: Number(spec.fontSize || defaultOptions.minSize),
-      autoFitText: spec.autoFitText !== false
-    };
-    if (target.dataset) target.dataset.textFitSource = textValue;
-    if (spec.applySize !== false) {
-      target.style.width = `${width}px`;
-      target.style.height = `${height}px`;
-    }
-    if (spec.fontColor) target.style.color = spec.fontColor;
-    return renderAutoTextElement(target, element, textValue, element.fontSize, options);
-  }
-
-  function renderGameText(target, config = {}) {
-    if (!target) return null;
-    const text = String(config.text ?? "");
-    if (config.layout) {
-      renderTextElement(target, text, config.layout);
-      return config.layout;
-    }
-    const element = config.element || null;
-    const spec = config.spec || null;
-    const options = config.options || {};
-    if (element) {
-      const fallbackSize = Number(config.fallbackSize ?? element.fontSize ?? defaultOptions.minSize);
-      return renderAutoTextElement(target, element, text, fallbackSize, options);
-    }
-    return renderTextBox(target, text, spec || {}, options);
-  }
 
   function normalizeTextFieldElement(element = {}, defaults = {}) {
     const source = element && typeof element === "object" ? element : {};
@@ -108,7 +21,7 @@
       ...source,
       kind: "text",
       defaultText: String(source.defaultText ?? fallback.defaultText ?? ""),
-      fontSize: Math.max(1, Number(source.fontSize ?? fallback.fontSize ?? fontFallback) || fontFallback),
+      fontSize: positiveNumber(source.fontSize ?? fallback.fontSize, fontFallback),
       autoFitText: source.autoFitText !== false && fallback.autoFitText !== false,
       fontColor: String(source.fontColor || fallback.fontColor || colorFallback)
     };
@@ -130,205 +43,141 @@
     const text = hasRuntimeText
       ? resolveLayoutTextSource(target, textElement, options.text, options)
       : resolveLayoutTextSource(target, textElement, undefined, { ...options, useRuntimeText: false });
-    const fontColor = options.fontColor || textElement.fontColor;
-    if (fontColor) target.style.setProperty("color", fontColor, "important");
-    return renderGameText(target, {
-      text,
-      element: textElement,
-      fallbackSize: Number(options.fallbackSize ?? textElement.fontSize),
-      options: options.renderOptions || options.options || {}
-    });
+    return renderPlainTextBox(target, text, textElement, options.renderOptions || options.options || {});
   }
 
   function renderRuntimeText(target, text, spec = {}, options = {}) {
-    return renderGameText(target, {
-      text: String(text ?? ""),
-      spec: {
-        ...spec,
-        autoFitText: spec.autoFitText !== false
-      },
-      options
+    return renderPlainTextBox(target, String(text ?? ""), spec, options);
+  }
+
+  function renderGameText(target, config = {}) {
+    if (!target) return null;
+    const text = String(config.text ?? "");
+    const element = config.element || config.spec || config.layout || {};
+    return renderPlainTextBox(target, text, {
+      ...element,
+      fontSize: config.fallbackSize ?? element.fontSize
+    }, config.options || {});
+  }
+
+  function renderTextBox(target, text, spec = {}, options = {}) {
+    if (!target) return null;
+    const width = Math.max(1, Number(spec.width || target.clientWidth || target.offsetWidth || 1));
+    const height = Math.max(1, Number(spec.height || target.clientHeight || target.offsetHeight || 1));
+    if (spec.applySize !== false) {
+      target.style.width = `${width}px`;
+      target.style.height = `${height}px`;
+    }
+    return renderPlainTextBox(target, String(text ?? ""), { ...spec, width, height }, options);
+  }
+
+  function renderAutoTextElement(target, element, text, fallbackSize = null, options = {}) {
+    return renderPlainTextBox(target, String(text ?? ""), {
+      ...element,
+      fontSize: fallbackSize ?? element?.fontSize
+    }, options);
+  }
+
+  function renderMeasuredTextElement(target, element, text, fallbackSize, options = {}) {
+    return renderAutoTextElement(target, element, text, fallbackSize, options);
+  }
+
+  function renderTextElement(target, text, layout = null) {
+    return renderPlainTextBox(target, String(text ?? ""), layout || {}, {});
+  }
+
+  function renderPlainTextBox(target, text, spec = {}, options = {}) {
+    if (!target) return null;
+    const computed = computedStyleFor(target);
+    const fontSize = positiveNumber(spec.fontSize, positiveNumber(computed?.fontSize, defaultOptions.minSize));
+    const lineHeight = normalizeLineHeight(options.lineHeight || spec.lineHeight || computed?.lineHeight, defaultOptions.lineHeight);
+    const fontColor = spec.fontColor || options.fontColor || computed?.color || "";
+    const fontFamily = options.fontFamily || spec.fontFamily || computed?.fontFamily || defaultOptions.fontFamily;
+    const fontStyle = options.fontStyle || spec.fontStyle || computed?.fontStyle || defaultOptions.fontStyle;
+    const fontWeight = String(options.fontWeight || spec.fontWeight || computed?.fontWeight || defaultOptions.fontWeight);
+    const textValue = applyTextTransform(String(text ?? ""), options.textTransform || computed?.textTransform || "none");
+
+    if (target.dataset) target.dataset.textFitSource = String(text ?? "");
+    target.setAttribute?.("aria-label", String(text ?? ""));
+    if (fontColor) target.style.setProperty("color", fontColor, "important");
+    Object.assign(target.style, {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      textAlign: "center",
+      whiteSpace: "pre-wrap",
+      overflowWrap: "anywhere",
+      wordBreak: "break-word",
+      lineHeight: String(lineHeight),
+      fontSize: `${fontSize}px`,
+      fontFamily,
+      fontStyle,
+      fontWeight
     });
+    target.textContent = textValue;
+    return fixedTextLayout(spec, textValue, fontSize, { ...options, lineHeight, fontFamily, fontStyle, fontWeight });
   }
 
   function measureGameText(config = {}) {
     const text = String(config.text ?? "");
-    const element = config.element || config.spec || null;
-    const fallbackSize = Number(config.fallbackSize ?? element?.fontSize ?? defaultOptions.minSize);
-    if (!element) return layoutTextAtSize(text, fallbackSize, 1, normalizeOptions(config.options || {}));
-    return measuredTextLayout(element, text, fallbackSize, textRenderOptions(element, config.options || {}));
+    const element = config.element || config.spec || {};
+    const fallbackSize = Number(config.fallbackSize ?? element.fontSize ?? defaultOptions.minSize);
+    return fixedTextLayout(element, text, fallbackSize, config.options || {});
+  }
+
+  function fitTextLayout(element, text, fallbackSize, options = {}) {
+    return fixedTextLayout(element, text, fallbackSize, options);
+  }
+
+  function measuredTextLayout(element, text, fallbackSize, options = {}) {
+    return fixedTextLayout(element, text, fallbackSize, options);
+  }
+
+  function fittedLayoutTextSize(element, text, fallbackSize) {
+    return positiveNumber(fallbackSize ?? element?.fontSize, defaultOptions.minSize);
+  }
+
+  function fixedTextLayout(element, text, fontSize, options = {}) {
+    const size = positiveNumber(fontSize, positiveNumber(element?.fontSize, defaultOptions.minSize));
+    const width = Math.max(1, Number(element?.width || 1));
+    const height = Math.max(1, Number(element?.height || 1));
+    const lineHeight = normalizeLineHeight(options.lineHeight, defaultOptions.lineHeight);
+    const lines = String(text ?? "").split("\n");
+    return {
+      fontSize: size,
+      fontFamily: options.fontFamily || defaultOptions.fontFamily,
+      fontStyle: options.fontStyle || defaultOptions.fontStyle,
+      fontWeight: String(options.fontWeight || defaultOptions.fontWeight),
+      height,
+      lineBoxHeight: size * lineHeight,
+      inkHeight: size,
+      lineGap: 0,
+      lineHeight,
+      lines,
+      metrics: lines.map((line) => ({ width: String(line || "").length * size * 0.62, ascent: size * 0.75, descent: size * 0.25 })),
+      maxWidth: Math.max(0, ...lines.map((line) => String(line || "").length * size * 0.62)),
+      ascent: size * 0.75,
+      descent: size * 0.25,
+      baselineShift: 0,
+      boxWidth: width,
+      boxHeight: height,
+      targetWidth: width,
+      targetHeight: height,
+      offsetX: 0,
+      offsetY: 0
+    };
   }
 
   function targetTextRenderOptions(target, element, options = {}) {
-    const computedStyle = options.computedStyle || computedStyleFor(target);
-    return textRenderOptions(element, computedStyle ? { ...options, computedStyle } : options);
+    return textRenderOptions(element, options);
   }
 
   function textRenderOptions(element, options = {}) {
     return {
       ...options,
-      autoFit: options.autoFit ?? (element?.autoFitText !== false)
+      autoFit: false
     };
-  }
-
-  function fixedTextLayout(element, text, fontSize, options = {}) {
-    const config = normalizeOptions(options);
-    const box = textBox(element, config);
-    const textValue = applyTextTransform(String(text ?? ""), config.textTransform);
-    const size = Math.max(Number(config.minSize || defaultOptions.minSize), Number(fontSize || config.minSize || defaultOptions.minSize));
-    return withTextBox(layoutTextAtSize(textValue, size, box.width, config), box);
-  }
-
-  function layoutTextAtSize(text, fontSize, availableWidth, config) {
-    const lines = String(text ?? "")
-      .split("\n")
-      .flatMap((paragraph) => wrapMeasuredLine(paragraph, fontSize, availableWidth, config));
-    const measuredLines = lines.length ? lines : [""];
-    const metrics = measuredLines.map((line) => measureLine(line || " ", fontSize, config));
-    const maxWidth = Math.max(0, ...metrics.map((metric) => metric.width));
-    const inkAscent = Math.max(1, ...metrics.map((metric) => metric.ascent));
-    const inkDescent = Math.max(1, ...metrics.map((metric) => metric.descent));
-    const inkHeight = inkAscent + inkDescent;
-    const lineGap = Math.max(fontSize * (config.lineHeight - 1), 0);
-    const lineBoxHeight = Math.max(fontSize, inkHeight);
-    const height = (lineBoxHeight * measuredLines.length) + (lineGap * Math.max(0, measuredLines.length - 1));
-    return {
-      fontSize,
-      fontFamily: config.fontFamily,
-      fontStyle: config.fontStyle,
-      fontWeight: config.fontWeight,
-      height,
-      lineBoxHeight,
-      inkHeight,
-      lineGap,
-      lineHeight: config.lineHeight,
-      lines: measuredLines,
-      metrics,
-      maxWidth,
-      ascent: inkAscent,
-      descent: inkDescent,
-      baselineShift: (inkAscent - inkDescent) / 2
-    };
-  }
-
-  function withTextBox(layout, box) {
-    return {
-      ...layout,
-      boxWidth: Math.max(1, Number(box?.width || 1)),
-      boxHeight: Math.max(1, Number(box?.height || 1)),
-      targetWidth: Math.max(1, Number(box?.targetWidth || box?.width || 1)),
-      targetHeight: Math.max(1, Number(box?.targetHeight || box?.height || 1)),
-      offsetX: Math.max(0, Number(box?.offsetX || 0)),
-      offsetY: Math.max(0, Number(box?.offsetY || 0))
-    };
-  }
-
-  function wrapMeasuredLine(line, fontSize, availableWidth, config) {
-    const raw = String(line || "");
-    if (!raw.trim()) return [""];
-    const words = raw.trim().split(/\s+/).filter(Boolean);
-    const lines = [];
-    let current = "";
-    for (const word of words) {
-      if (!current) {
-        current = fitWord(word, fontSize, availableWidth, config, lines);
-        continue;
-      }
-      const candidate = `${current} ${word}`;
-      if (measureLine(candidate, fontSize, config).width <= availableWidth * config.widthSafety) {
-        current = candidate;
-      } else {
-        lines.push(current);
-        current = fitWord(word, fontSize, availableWidth, config, lines);
-      }
-    }
-    if (current) lines.push(current);
-    return lines;
-  }
-
-  function fitWord(word, fontSize, availableWidth, config, lines) {
-    if (measureLine(word, fontSize, config).width <= availableWidth * config.widthSafety) return word;
-    let current = "";
-    for (const char of Array.from(word)) {
-      const candidate = `${current}${char}`;
-      if (!current || measureLine(candidate, fontSize, config).width <= availableWidth * config.widthSafety) {
-        current = candidate;
-      } else {
-        lines.push(current);
-        current = char;
-      }
-    }
-    return current;
-  }
-
-  function measureLine(line, fontSize, config) {
-    const context = canvasContext();
-    if (!context) {
-      const width = String(line || "").length * fontSize * 0.62;
-      return { width, ascent: fontSize * 0.75, descent: fontSize * 0.2 };
-    }
-    context.font = fontString(fontSize, config);
-    const metrics = context.measureText(String(line || ""));
-    const measuredAscent = Number(metrics.actualBoundingBoxAscent);
-    const measuredDescent = Number(metrics.actualBoundingBoxDescent);
-    return {
-      width: metrics.width || 0,
-      ascent: Number.isFinite(measuredAscent) && measuredAscent > 0 ? measuredAscent : fontSize * 0.72,
-      descent: Number.isFinite(measuredDescent) && measuredDescent > 0 ? measuredDescent : fontSize * 0.18
-    };
-  }
-
-  function layoutFits(layout, box, config) {
-    if (layout.maxWidth > box.width * config.widthSafety) return false;
-    if (layout.height > box.height * config.verticalSafety) return false;
-    return true;
-  }
-
-  function textBox(element, config) {
-    const padding = normalizePadding(config.padding);
-    const targetWidth = Math.max(1, Number(element?.width || 1));
-    const targetHeight = Math.max(1, Number(element?.height || 1));
-    return {
-      width: Math.max(config.minSize, targetWidth - padding.left - padding.right),
-      height: Math.max(config.minSize, targetHeight - padding.top - padding.bottom),
-      targetWidth,
-      targetHeight,
-      offsetX: padding.left,
-      offsetY: padding.top
-    };
-  }
-
-  function normalizeOptions(options = {}) {
-    const computed = options.computedStyle || null;
-    return {
-      ...defaultOptions,
-      ...options,
-      fontFamily: options.fontFamily || computed?.fontFamily || defaultOptions.fontFamily,
-      fontStyle: options.fontStyle || computed?.fontStyle || defaultOptions.fontStyle,
-      fontWeight: String(options.fontWeight || computed?.fontWeight || defaultOptions.fontWeight),
-      lineHeight: normalizeLineHeight(options.lineHeight || computed?.lineHeight, defaultOptions.lineHeight),
-      padding: options.padding || computedPadding(computed),
-      textTransform: options.textTransform || computed?.textTransform || "none"
-    };
-  }
-
-  function normalizeLineHeight(value, fallback) {
-    const parsed = Number.parseFloat(value);
-    if (Number.isFinite(parsed) && parsed > 0 && parsed < 4) return parsed;
-    return fallback;
-  }
-
-  function fontString(fontSize, config) {
-    return `${config.fontStyle || "normal"} ${config.fontWeight || "1000"} ${fontSize}px ${config.fontFamily || defaultOptions.fontFamily}`;
-  }
-
-  function computedPadding(computed) {
-    if (!computed) return { x: 0, y: 0 };
-    const left = Number.parseFloat(computed.paddingLeft) || 0;
-    const right = Number.parseFloat(computed.paddingRight) || 0;
-    const top = Number.parseFloat(computed.paddingTop) || 0;
-    const bottom = Number.parseFloat(computed.paddingBottom) || 0;
-    return { left, right, top, bottom };
   }
 
   function computedStyleFor(target) {
@@ -340,16 +189,16 @@
     }
   }
 
-  function normalizePadding(padding) {
-    if (!padding) return { left: 0, right: 0, top: 0, bottom: 0 };
-    const x = Number(padding.x || 0);
-    const y = Number(padding.y || 0);
-    return {
-      left: Math.max(0, Number(padding.left ?? x / 2) || 0),
-      right: Math.max(0, Number(padding.right ?? x / 2) || 0),
-      top: Math.max(0, Number(padding.top ?? y / 2) || 0),
-      bottom: Math.max(0, Number(padding.bottom ?? y / 2) || 0)
-    };
+  function normalizeLineHeight(value, fallback) {
+    if (value === "normal") return fallback;
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed) && parsed > 0 && parsed < 4) return parsed;
+    return fallback;
+  }
+
+  function positiveNumber(value, fallback) {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
   }
 
   function applyTextTransform(text, transform) {
@@ -357,87 +206,6 @@
     if (transform === "lowercase") return text.toLowerCase();
     if (transform === "capitalize") return text.replace(/\b\p{L}/gu, (match) => match.toUpperCase());
     return text;
-  }
-
-  function canvasContext() {
-    if (measureContext) return measureContext;
-    const documentRef = global.document;
-    if (!documentRef?.createElement) return null;
-    measureContext = documentRef.createElement("canvas").getContext("2d");
-    return measureContext;
-  }
-
-  function renderTextElement(target, text, layout = null) {
-    if (!target) return;
-    const documentRef = target.ownerDocument || global.document;
-    const textValue = String(text ?? "");
-    if (target.dataset) target.dataset.textFitSource = textValue;
-    target.setAttribute?.("aria-label", textValue);
-    if (!layout) {
-      target.textContent = textValue;
-      return;
-    }
-    const lines = Array.isArray(layout?.lines) && layout.lines.length ? layout.lines : textValue.split("\n");
-    const fontSize = finiteNumber(layout?.fontSize, defaultOptions.minSize);
-    const offsetX = finiteNumber(layout?.offsetX, 0);
-    const offsetY = finiteNumber(layout?.offsetY, 0);
-    const boxWidth = Math.max(1, finiteNumber(layout?.boxWidth, target.clientWidth || 1));
-    const boxHeight = Math.max(1, finiteNumber(layout?.boxHeight, target.clientHeight || 1));
-    const targetWidth = Math.max(1, finiteNumber(layout?.targetWidth, boxWidth));
-    const targetHeight = Math.max(1, finiteNumber(layout?.targetHeight, boxHeight));
-    const lineBoxHeight = finiteNumber(layout?.lineBoxHeight, fontSize);
-    const lineGap = finiteNumber(layout?.lineGap, 0);
-    const lineHeightPx = Math.max(1, lineBoxHeight);
-    const contentHeight = (lineHeightPx * lines.length) + (lineGap * Math.max(0, lines.length - 1));
-    const firstLineCenterY = ((boxHeight - contentHeight) / 2) + (lineHeightPx / 2);
-    const fontFamily = layout?.fontFamily || defaultOptions.fontFamily;
-    const fontStyle = layout?.fontStyle || defaultOptions.fontStyle;
-    const fontWeight = String(layout?.fontWeight || defaultOptions.fontWeight);
-
-    const svg = documentRef.createElementNS(svgNamespace, "svg");
-    svg.classList.add("text-fit-svg");
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("viewBox", `0 0 ${targetWidth} ${targetHeight}`);
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "100%");
-    Object.assign(svg.style, {
-      position: "absolute",
-      left: "0",
-      top: "0",
-      width: "100%",
-      height: "100%",
-      display: "block",
-      overflow: "hidden",
-      pointerEvents: "none",
-      color: "currentColor"
-    });
-
-    lines.forEach((line, index) => {
-      const textElement = documentRef.createElementNS(svgNamespace, "text");
-      textElement.classList.add("text-fit-svg-text");
-      textElement.setAttribute("x", String(offsetX + (boxWidth / 2)));
-      textElement.setAttribute("y", String(offsetY + firstLineCenterY + (index * (lineHeightPx + lineGap))));
-      textElement.setAttribute("text-anchor", "middle");
-      textElement.setAttribute("dominant-baseline", "central");
-      textElement.setAttribute("alignment-baseline", "middle");
-      textElement.setAttribute("font-family", fontFamily);
-      textElement.setAttribute("font-style", fontStyle);
-      textElement.setAttribute("font-weight", fontWeight);
-      textElement.setAttribute("font-size", String(fontSize));
-      textElement.setAttribute("fill", "currentColor");
-      textElement.textContent = line;
-      svg.appendChild(textElement);
-    });
-
-    const targetPosition = target.style.position || computedStyleFor(target)?.position || "";
-    if (!targetPosition || targetPosition === "static") target.style.position = "relative";
-    target.replaceChildren(svg);
-  }
-
-  function finiteNumber(value, fallback) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-    return fallback;
   }
 
   global.PartyGameTextFit = {
@@ -457,6 +225,7 @@
     renderTextBox,
     renderTextElement,
     renderMeasuredTextElement,
+    renderPlainTextBox,
     resolveLayoutTextSource,
     targetTextRenderOptions,
     textRenderOptions
