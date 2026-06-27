@@ -1314,6 +1314,55 @@
         }
       ],
       "updatedAt": "2026-06-27T18:08:13.875Z"
+    },
+    "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c": {
+      "name": "Prompt Text Field",
+      "description": "Editable art asset.",
+      "surface": "stage",
+      "isCustom": true,
+      "canvas": {
+        "width": 1000,
+        "height": 80
+      },
+      "components": [
+        {
+          "id": "root-ed35100e-6eef-4cde-a6d9-2320f3697956",
+          "name": "Art Root",
+          "kind": "container",
+          "x": 500,
+          "y": 40,
+          "width": 1000,
+          "height": 80,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "",
+          "shapeStyle": "rectangle",
+          "fillColor": "transparent",
+          "fillCss": "",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0,
+          "children": [
+            {
+              "id": "text-d148279c-855e-427b-bb40-651dde7cd7bc",
+              "name": "Text",
+              "kind": "text",
+              "x": 500,
+              "y": 40,
+              "width": 1000,
+              "height": 80,
+              "scale": 1,
+              "rotation": 0,
+              "defaultAnimationState": "",
+              "defaultText": "This is the Prompt Text",
+              "fontSize": 24,
+              "autoFitText": true,
+              "fontColor": "#ffffff"
+            }
+          ]
+        }
+      ],
+      "updatedAt": "2026-06-27T18:09:08.531Z"
     }
   },
   "deletedCompositionIds": []
