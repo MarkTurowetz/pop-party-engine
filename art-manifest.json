@@ -494,14 +494,14 @@
           "name": "QR Label",
           "kind": "text",
           "x": 130,
-          "y": 248,
-          "width": 220,
-          "height": 24,
+          "y": 258,
+          "width": 260,
+          "height": 60,
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
           "defaultText": "SCAN TO JOIN",
-          "fontSize": 20,
+          "fontSize": 30,
           "autoFitText": false,
           "fontColor": "#17131f"
         },
@@ -542,7 +542,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-26T08:23:51.924Z"
+      "updatedAt": "2026-06-27T07:31:22.653Z"
     },
     "presentation-click-prompt": {
       "name": "Presentation Click Prompt",
