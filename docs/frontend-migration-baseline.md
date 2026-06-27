@@ -653,6 +653,25 @@ adapter files. This gives the migration a lightweight guardrail for the
 runtime-vs-tools dependency direction and prevents new permanent globals from
 quietly appearing in TypeScript code.
 
+## Layout React Shell
+
+The Layout Tool now has the same kind of hidden React bridge foundation as the
+Flow Tool:
+
+```txt
+client/tools/layout/LayoutToolApp.tsx
+client/tools/layout/mountLayoutToolApp.tsx
+```
+
+The Vite `/layout` and `/tools` entries mount `window.PartyGameLayoutReactShell`
+before booting the legacy Layout Tool. The legacy `renderLayoutTool()` path
+pushes the active layout collection, mode, selected layout group, and selected
+element ids into that shell. The default UI remains the legacy editor, while
+`?reactLayoutPreview=1` exposes a read-only React preview with layout group,
+element list, selected-element count, mode, and canvas metadata. This starts the
+Layout Tool migration without changing saved layout JSON or runtime layout
+rendering behavior.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
