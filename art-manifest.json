@@ -1421,7 +1421,9 @@
           "composition:presentation-click-prompt",
           "composition:stage-code-widget"
         ],
-        "folder-3a090594-0d6c-406e-a758-05842b36ad51": []
+        "folder-3a090594-0d6c-406e-a758-05842b36ad51": [
+          "composition:voting-card"
+        ]
       }
     },
     "controller": {
