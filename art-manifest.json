@@ -665,7 +665,7 @@
           "rotation": 0,
           "defaultAnimationState": "on",
           "defaultText": "NUZ7",
-          "fontSize": 15,
+          "fontSize": 32,
           "autoFitText": true,
           "fontColor": "#17131f"
         },
@@ -704,7 +704,7 @@
           "borderRadius": 14
         }
       ],
-      "updatedAt": "2026-06-26T08:23:41.957Z"
+      "updatedAt": "2026-06-27T07:31:13.909Z"
     },
     "join-widget": {
       "name": "Join Widget",
