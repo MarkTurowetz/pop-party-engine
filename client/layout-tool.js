@@ -649,7 +649,8 @@ function renderLayoutElements() {
     button.classList.toggle("is-selected", selectedLayoutElementIds.has(element.id));
     button.innerHTML = `<span><strong></strong><span></span></span>`;
     button.querySelector("strong").textContent = element.name;
-    button.querySelector("span span").textContent = `${Math.round(element.x)}, ${Math.round(element.y)} / ${Number(element.scale || 1).toFixed(2)}x`;
+    const sourceLabel = layoutElementPrefabName(element);
+    button.querySelector("span span").textContent = `${sourceLabel ? `${sourceLabel} / ` : ""}${Math.round(element.x)}, ${Math.round(element.y)} / ${Number(element.scale || 1).toFixed(2)}x`;
     const actions = document.createElement("span");
     actions.className = "layout-row-actions";
     const pill = document.createElement("span");
@@ -662,6 +663,11 @@ function renderLayoutElements() {
     layoutElementList.appendChild(button);
   }
   layoutElementList.scrollTop = scrollTop;
+}
+
+function layoutElementPrefabName(element) {
+  if (!element?.artCompositionId) return "";
+  return artComposition(element.artCompositionId)?.name || element.artCompositionId;
 }
 
 function layoutPreviewScale() {
@@ -1005,6 +1011,10 @@ function renderLayoutFields() {
     layoutEditorFields.appendChild(layoutToggleField("Hidden In This Moment", hidden, (value) => updateLayoutGlobalHidden(element.id, value)));
     return;
   }
+  layoutEditorFields.appendChild(layoutTextField("Name", element.name || element.id, (value) => updateLayoutElementValue(element, "name", value || element.id)));
+  if (element.artCompositionId) {
+    layoutEditorFields.appendChild(layoutStaticField("Prefab", layoutElementPrefabName(element)));
+  }
   layoutEditorFields.appendChild(layoutNumberField("X", element.x, (value) => updateLayoutNumber("x", value)));
   layoutEditorFields.appendChild(layoutNumberField("Y", element.y, (value) => updateLayoutNumber("y", value)));
   layoutEditorFields.appendChild(layoutNumberField("Scale", element.scale, (value) => updateLayoutNumber("scale", Math.max(0.1, value)), 0.05));
@@ -1044,6 +1054,30 @@ function layoutNumberField(label, value, onChange, step = 1, extraClass = "", di
     const next = Number(input.value);
     onChange(Number.isFinite(next) ? next : Number(value || 0));
   });
+  field.appendChild(input);
+  return field;
+}
+
+function layoutTextField(label, value, onChange) {
+  const field = document.createElement("label");
+  field.className = "layout-number-field layout-text-field";
+  field.textContent = label;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = value || "";
+  input.addEventListener("change", () => onChange(input.value));
+  field.appendChild(input);
+  return field;
+}
+
+function layoutStaticField(label, value) {
+  const field = document.createElement("label");
+  field.className = "layout-number-field layout-text-field is-disabled";
+  field.textContent = label;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = value || "";
+  input.disabled = true;
   field.appendChild(input);
   return field;
 }

@@ -977,6 +977,18 @@ function updateArtComponentValue(key, value, options = {}) {
   if (component[key] === nextValue) return;
   if (options.captureHistory !== false) pushArtHistory();
   component[key] = nextValue;
+  if (component.kind === "reference" && key === "artCompositionId") {
+    const referenced = artComposition(nextValue);
+    if (referenced) {
+      component.name = referenced.name || "Prefab Reference";
+      component.width = Math.max(1, Number(referenced.canvas?.width || component.width || 1));
+      component.height = Math.max(1, Number(referenced.canvas?.height || component.height || 1));
+      component.scale = 1;
+      component.rotation = 0;
+    } else {
+      component.name = "Prefab Reference";
+    }
+  }
   renderSelectedArtComposition({ renderEditor: options.colorCommit !== true && options.previewOnly !== true });
   renderArtList();
   rememberArtCompositionDrafts();
@@ -1001,11 +1013,15 @@ function updateArtCompositionCanvas(key, value, options = {}) {
   const composition = selectedArtComposition();
   if (!composition) return;
   composition.canvas = composition.canvas || { width: 560, height: 230 };
+  const previousCanvas = {
+    width: Number(composition.canvas.width || 1),
+    height: Number(composition.canvas.height || 1)
+  };
   const nextValue = Number(Number(value || 1).toFixed(3));
   if (composition.canvas[key] === nextValue) return;
   if (options.captureHistory !== false) pushArtHistory();
   composition.canvas[key] = nextValue;
-  syncSimpleTextArtToCanvas(composition);
+  syncSimpleArtToCanvas(composition, previousCanvas);
   renderSelectedArtComposition();
   rememberArtCompositionDrafts();
   notifyArtAssetsChanged();
@@ -1156,38 +1172,53 @@ function defaultArtObject(kind, bounds = {}, options = {}) {
   return component;
 }
 
-function isSimpleTextArtComposition(composition) {
+function simpleCanvasSyncedChild(composition) {
   const root = composition?.components?.[0];
   const child = root?.children?.[0];
-  return Boolean(
+  if (!(
     composition
     && (composition.components || []).length === 1
     && root?.kind === "container"
     && String(root.name || "") === "Art Root"
     && (root.children || []).length === 1
-    && child?.kind === "text"
+    && ["text", "shape"].includes(child?.kind)
+  )) return null;
+  return { root, child };
+}
+
+function dimensionsMatchCanvas(component, canvas) {
+  return Boolean(
+    component
+    && Number(component.x || 0) === Number(canvas.width || 0) / 2
+    && Number(component.y || 0) === Number(canvas.height || 0) / 2
+    && Number(component.width || 0) === Number(canvas.width || 0)
+    && Number(component.height || 0) === Number(canvas.height || 0)
   );
 }
 
-function syncSimpleTextArtToCanvas(composition) {
-  if (!isSimpleTextArtComposition(composition)) return;
+function syncSimpleArtToCanvas(composition, previousCanvas = null) {
+  const parts = simpleCanvasSyncedChild(composition);
+  if (!parts) return;
+  const shouldSync = !previousCanvas || (
+    dimensionsMatchCanvas(parts.root, previousCanvas)
+    && dimensionsMatchCanvas(parts.child, previousCanvas)
+  );
+  if (!shouldSync) return;
   const canvasWidth = Math.max(1, Number(composition.canvas?.width || 1));
   const canvasHeight = Math.max(1, Number(composition.canvas?.height || 1));
-  const root = composition.components[0];
-  const text = root.children[0];
-  Object.assign(root, {
+  Object.assign(parts.root, {
     x: canvasWidth / 2,
     y: canvasHeight / 2,
     width: canvasWidth,
     height: canvasHeight
   });
-  Object.assign(text, {
+  Object.assign(parts.child, {
     x: canvasWidth / 2,
     y: canvasHeight / 2,
     width: canvasWidth,
-    height: canvasHeight,
-    autoFitText: false
+    height: canvasHeight
   });
+  if (parts.child.kind === "text") parts.child.autoFitText = false;
 }
 
 function createArtAssetComposition(kind = "shape") {
@@ -1199,14 +1230,14 @@ function createArtAssetComposition(kind = "shape") {
   root.name = "Art Root";
   root.x = canvas.width / 2;
   root.y = canvas.height / 2;
-  root.width = kind === "text" ? canvas.width : 520;
-  root.height = kind === "text" ? canvas.height : 190;
+  root.width = kind === "text" || kind === "shape" ? canvas.width : 520;
+  root.height = kind === "text" || kind === "shape" ? canvas.height : 190;
   root.fillColor = "transparent";
   root.borderColor = "transparent";
   root.borderWidth = 0;
   root.borderRadius = 0;
   root.children = [defaultArtObject(kind, { width: root.width, height: root.height })];
-  if (kind === "text") {
+  if (kind === "text" || kind === "shape") {
     root.children[0].x = canvas.width / 2;
     root.children[0].y = canvas.height / 2;
     root.children[0].width = canvas.width;

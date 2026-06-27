@@ -2230,7 +2230,7 @@ body.tool-dashboard-mode .layout-shell {
 
 .art-create-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
 }
@@ -2252,9 +2252,10 @@ body.tool-dashboard-mode .layout-shell {
 
 .art-create-controls .secondary-button {
   min-height: 40px;
-  padding: 0 10px;
-  font-size: 12px;
-  white-space: nowrap;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 1.05;
+  white-space: normal;
 }
 
 .art-surface-tabs {
