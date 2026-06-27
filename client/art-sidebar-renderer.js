@@ -214,6 +214,11 @@
           if (String(composition.id || "").startsWith("player-avatar-")) children.appendChild(createCompositionBlock(data, composition));
         }
       });
+      appendSection(target, data, "Player Objects", "player-objects", (children) => {
+        for (const composition of data.artCompositions || []) {
+          if (String(composition.id || "").startsWith("player-object-")) children.appendChild(createCompositionBlock(data, composition));
+        }
+      });
       appendSection(target, data, "Presentation Click Prompt", "presentation-click-prompt", (children) => {
         for (const composition of data.artCompositions || []) {
           if (composition.id === "presentation-click-prompt") children.appendChild(createCompositionBlock(data, composition));
@@ -221,6 +226,7 @@
       });
       for (const composition of data.artCompositions || []) {
         if (String(composition.id || "").startsWith("player-avatar-")) continue;
+        if (String(composition.id || "").startsWith("player-object-")) continue;
         if (composition.id === "presentation-click-prompt") continue;
         target.appendChild(createCompositionBlock(data, composition));
       }

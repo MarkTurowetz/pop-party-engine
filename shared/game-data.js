@@ -261,6 +261,7 @@ const artAssets = [
 
 const artGroups = [
   { id: "player-avatar", name: "Player Avatar", description: "Composed from the shared avatar frame plus one dinosaur silhouette." },
+  { id: "player-object", name: "Player Object", description: "Composed player display object with avatar art and the answer speech bubble." },
   { id: "presentation-click-prompt", name: "Presentation Click Prompt", description: "Standalone cursor art; it does not use the avatar frame." },
   { id: "voting-card", name: "Voting Card", description: "Composed answer card art used by voting moments." }
 ];
@@ -310,6 +311,148 @@ function defaultPlayerAvatarComposition(species, label, assetId) {
         borderRadius: 0,
         imageAssetId: "avatar-frame",
         imageObjectFit: "contain"
+      }
+    ]
+  };
+}
+
+function playerAnswerBubbleComponents() {
+  return [
+    {
+      id: "answer-bubble-tail",
+      name: "Answer Bubble Tail",
+      kind: "shape",
+      x: 150,
+      y: 165,
+      width: 24,
+      height: 24,
+      scale: 1,
+      rotation: 45,
+      defaultAnimationState: "park",
+      shapeStyle: "rectangle",
+      fillColor: "#fffdf4",
+      borderColor: "#17131f",
+      borderWidth: 3,
+      borderRadius: 3
+    },
+    {
+      id: "answer-bubble-card",
+      name: "Answer Bubble Card",
+      kind: "shape",
+      x: 150,
+      y: 92,
+      width: 270,
+      height: 128,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "park",
+      shapeStyle: "rounded",
+      fillColor: "#fffdf4",
+      borderColor: "#17131f",
+      borderWidth: 3,
+      borderRadius: 18
+    },
+    {
+      id: "answer-text",
+      name: "Answer Text",
+      kind: "text",
+      x: 150,
+      y: 92,
+      width: 226,
+      height: 78,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "park",
+      defaultText: "ANSWER",
+      fontSize: 28,
+      autoFitText: false,
+      fontColor: "#17131f"
+    }
+  ];
+}
+
+function defaultPlayerObjectComposition(species, label, assetId) {
+  return {
+    id: `player-object-${species}`,
+    name: `${label} Player Object`,
+    description: "Editable player object composed from the answer bubble and avatar art.",
+    canvas: { width: 300, height: 300 },
+    components: [
+      {
+        id: "answer-bubble",
+        name: "Answer Bubble",
+        kind: "container",
+        x: 150,
+        y: 96,
+        width: 300,
+        height: 180,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "park",
+        shapeStyle: "rectangle",
+        fillColor: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        borderRadius: 0,
+        children: playerAnswerBubbleComponents()
+      },
+      {
+        id: "avatar",
+        name: "Player Avatar",
+        kind: "container",
+        x: 150,
+        y: 234,
+        width: 100,
+        height: 100,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "rectangle",
+        fillColor: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        borderRadius: 0,
+        children: [
+          {
+            id: "dino-mask",
+            name: "Dino Image Mask",
+            kind: "shape",
+            x: 50,
+            y: 50,
+            width: 70,
+            height: 70,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "on",
+            shapeStyle: "rectangle",
+            fillColor: "currentColor",
+            borderColor: "transparent",
+            borderWidth: 0,
+            borderRadius: 0,
+            imageAssetId: assetId,
+            imageObjectFit: "contain",
+            imageTint: "currentColor"
+          },
+          {
+            id: "avatar-frame",
+            name: "Avatar Frame",
+            kind: "shape",
+            x: 50,
+            y: 50,
+            width: 100,
+            height: 100,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "on",
+            shapeStyle: "rectangle",
+            fillColor: "transparent",
+            borderColor: "transparent",
+            borderWidth: 0,
+            borderRadius: 0,
+            imageAssetId: "avatar-frame",
+            imageObjectFit: "contain"
+          }
+        ]
       }
     ]
   };
@@ -509,6 +652,12 @@ const defaultArtCompositions = [
   defaultPlayerAvatarComposition("raptor", "Raptor", "avatar-raptor"),
   defaultPlayerAvatarComposition("bronto", "Bronto", "avatar-bronto"),
   defaultPlayerAvatarComposition("ankylo", "Ankylo", "avatar-ankylo"),
+  defaultPlayerObjectComposition("rex", "Rex", "avatar-rex"),
+  defaultPlayerObjectComposition("stego", "Stego", "avatar-stego"),
+  defaultPlayerObjectComposition("trike", "Trike", "avatar-trike"),
+  defaultPlayerObjectComposition("raptor", "Raptor", "avatar-raptor"),
+  defaultPlayerObjectComposition("bronto", "Bronto", "avatar-bronto"),
+  defaultPlayerObjectComposition("ankylo", "Ankylo", "avatar-ankylo"),
   {
     id: "voting-card",
     name: "Voting Card",

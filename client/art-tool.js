@@ -21,7 +21,7 @@ const artComponentEditorRuntime = window.PartyGameArtComponentEditor;
 const editableArtRenderer = window.PartyGameEditableArtRenderer;
 const artShapeStyles = artComponentSchema.shapeStyleOptions;
 const artComponentImageAccept = artComponentSchema.imageAccept;
-const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt"];
+const artSectionCollapseIds = ["player-avatars", "player-objects", "presentation-click-prompt"];
 let artSidebarRenderer = null;
 let artComponentEditorRenderer = null;
 
@@ -995,7 +995,10 @@ function updateArtCompositionCanvas(key, value, options = {}) {
   if (composition.canvas[key] === nextValue) return;
   if (options.captureHistory !== false) pushArtHistory();
   composition.canvas[key] = nextValue;
+  syncSimpleTextArtToCanvas(composition);
   renderSelectedArtComposition();
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -1118,9 +1121,9 @@ function defaultArtObject(kind, bounds = {}) {
     children: []
   };
   if (cleanKind === "text") {
-    component.defaultText = "";
-    component.fontSize = 24;
-    component.autoFitText = true;
+    component.defaultText = "TEXT";
+    component.fontSize = 48;
+    component.autoFitText = false;
     component.fontColor = "#17131f";
   } else if (cleanKind === "container") {
     component.shapeStyle = "rectangle";
@@ -1138,27 +1141,68 @@ function defaultArtObject(kind, bounds = {}) {
   return component;
 }
 
+function isSimpleTextArtComposition(composition) {
+  const root = composition?.components?.[0];
+  const child = root?.children?.[0];
+  return Boolean(
+    composition
+    && (composition.components || []).length === 1
+    && root?.kind === "container"
+    && String(root.name || "") === "Art Root"
+    && (root.children || []).length === 1
+    && child?.kind === "text"
+  );
+}
+
+function syncSimpleTextArtToCanvas(composition) {
+  if (!isSimpleTextArtComposition(composition)) return;
+  const canvasWidth = Math.max(1, Number(composition.canvas?.width || 1));
+  const canvasHeight = Math.max(1, Number(composition.canvas?.height || 1));
+  const root = composition.components[0];
+  const text = root.children[0];
+  Object.assign(root, {
+    x: canvasWidth / 2,
+    y: canvasHeight / 2,
+    width: canvasWidth,
+    height: canvasHeight
+  });
+  Object.assign(text, {
+    x: canvasWidth / 2,
+    y: canvasHeight / 2,
+    width: canvasWidth,
+    height: canvasHeight,
+    autoFitText: false
+  });
+}
+
 function createArtAssetComposition(kind = "shape") {
   kind = normalizeArtCreateKind(kind);
   pushArtHistory();
-  const root = defaultArtObject("container", { width: 560, height: 230 });
+  const canvas = kind === "text" ? { width: 500, height: 100 } : { width: 560, height: 230 };
+  const root = defaultArtObject("container", canvas);
   root.id = createSecureArtId("root");
   root.name = "Art Root";
-  root.x = 280;
-  root.y = 115;
-  root.width = 520;
-  root.height = 190;
+  root.x = canvas.width / 2;
+  root.y = canvas.height / 2;
+  root.width = kind === "text" ? canvas.width : 520;
+  root.height = kind === "text" ? canvas.height : 190;
   root.fillColor = "transparent";
   root.borderColor = "transparent";
   root.borderWidth = 0;
   root.borderRadius = 0;
   root.children = [defaultArtObject(kind, { width: root.width, height: root.height })];
+  if (kind === "text") {
+    root.children[0].x = canvas.width / 2;
+    root.children[0].y = canvas.height / 2;
+    root.children[0].width = canvas.width;
+    root.children[0].height = canvas.height;
+  }
   const composition = {
     id: createSecureArtId("art"),
     name: `${artKindLabel(kind)} Art`,
     description: "Editable art asset.",
     surface: selectedArtSurface,
-    canvas: { width: 560, height: 230 },
+    canvas,
     components: [root]
   };
   artCompositions = [...artCompositions, composition];
