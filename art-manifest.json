@@ -1384,13 +1384,18 @@
         {
           "id": "folder-bff56326-48c1-48ac-9938-abac6bed9fa7",
           "name": "Global Assets"
+        },
+        {
+          "id": "folder-3a090594-0d6c-406e-a758-05842b36ad51",
+          "name": "Crafting Assetes"
         }
       ],
       "order": [
         "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed",
         "folder:folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb",
         "folder:folder-b5fd5048-989e-4076-917e-f37779efddbb",
-        "folder:folder-bff56326-48c1-48ac-9938-abac6bed9fa7"
+        "folder:folder-bff56326-48c1-48ac-9938-abac6bed9fa7",
+        "folder:folder-3a090594-0d6c-406e-a758-05842b36ad51"
       ],
       "folderItems": {
         "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed": [
@@ -1415,7 +1420,8 @@
         "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": [
           "composition:presentation-click-prompt",
           "composition:stage-code-widget"
-        ]
+        ],
+        "folder-3a090594-0d6c-406e-a758-05842b36ad51": []
       }
     },
     "controller": {
