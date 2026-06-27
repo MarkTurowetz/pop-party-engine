@@ -845,7 +845,7 @@
           "borderRadius": 36
         }
       ],
-      "updatedAt": "2026-06-27T19:12:22.758Z"
+      "updatedAt": "2026-06-27T21:14:14.492Z"
     },
     "waiting-status-widget": {
       "name": "Waiting Status",
@@ -892,7 +892,7 @@
           "borderRadius": 999
         }
       ],
-      "updatedAt": "2026-06-27T19:12:19.651Z"
+      "updatedAt": "2026-06-27T21:14:04.524Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
@@ -1362,7 +1362,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:14:20.738Z"
+      "updatedAt": "2026-06-27T21:02:31.942Z"
     },
     "player-object-rex": {
       "name": "Rex Player Object",
@@ -1454,7 +1454,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:14:07.255Z"
+      "updatedAt": "2026-06-27T21:01:59.534Z"
     },
     "player-object-stego": {
       "name": "Stego Player Object",
@@ -1638,7 +1638,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T19:12:03.575Z"
+      "updatedAt": "2026-06-27T21:14:18.831Z"
     },
     "player-object-ankylo": {
       "name": "Ankylo Player Object",
@@ -1730,7 +1730,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T19:12:07.932Z"
+      "updatedAt": "2026-06-27T21:14:24.249Z"
     },
     "player-answer-bubble": {
       "name": "Player Answer Bubble",
@@ -1887,7 +1887,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:14:11.376Z"
+      "updatedAt": "2026-06-27T21:13:26.340Z"
     },
     "player-object-bronto": {
       "name": "Bronto Player Object",
@@ -2024,7 +2024,7 @@
           "fontColor": "#17131f"
         }
       ],
-      "updatedAt": "2026-06-27T21:14:02.971Z"
+      "updatedAt": "2026-06-27T21:13:18.766Z"
     }
   },
   "deletedCompositionIds": [],
