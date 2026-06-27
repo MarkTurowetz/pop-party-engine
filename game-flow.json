@@ -153,7 +153,7 @@
         },
         {
           "id": "intro-action-mqw4c168",
-          "name": "Game Action 4",
+          "name": "Present Text",
           "type": "presentText",
           "timing": {
             "mode": "E+",
