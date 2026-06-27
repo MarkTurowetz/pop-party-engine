@@ -324,6 +324,14 @@ function getArtSidebarRenderer() {
 }
 
 function renderArtList() {
+  window.PartyGameArtReactShell?.update?.({
+    assets: artAssets,
+    compositions: visibleArtCompositions(),
+    selectedAssetId: selectedArtAsset?.id || "",
+    selectedComponentIds: [...selectedArtComponentIds],
+    selectedCompositionId: selectedArtCompositionId,
+    selectedSurface: selectedArtSurface
+  });
   renderArtSurfaceTabs();
   getArtSidebarRenderer().render(artAssetList);
   updateArtCreateButtons();

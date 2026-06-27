@@ -22,6 +22,7 @@ const allowedTypedGlobalAdapters = new Set([
   "client/tools/flow/flowSelectionAdapter.ts",
   "client/tools/flow/flowSelectorsAdapter.ts",
   "client/tools/flow/flowSerializationAdapter.ts",
+  "client/tools/art/mountArtToolApp.tsx",
   "client/tools/constants/mountConstantsToolApp.tsx",
   "client/tools/flow/mountFlowToolApp.tsx",
   "client/tools/host-audio/mountHostAudioToolApp.tsx",
