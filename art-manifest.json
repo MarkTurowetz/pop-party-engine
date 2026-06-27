@@ -1640,8 +1640,8 @@
       ],
       "updatedAt": "2026-06-27T19:12:03.575Z"
     },
-    "player-object-bronto": {
-      "name": "Bronto Player Object",
+    "player-object-ankylo": {
+      "name": "Ankylo Player Object",
       "description": "Editable player object composed from the answer bubble and avatar art.",
       "surface": "stage",
       "isCustom": false,
@@ -1698,8 +1698,8 @@
               "borderColor": "transparent",
               "borderWidth": 0,
               "borderRadius": 0,
-              "imageAssetId": "avatar-bronto",
-              "imageName": "avatar-bronto",
+              "imageAssetId": "avatar-ankylo",
+              "imageName": "avatar-ankylo",
               "imageMimeType": "",
               "imageObjectFit": "contain",
               "imageTint": "currentColor"
@@ -1730,7 +1730,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T19:12:06.251Z"
+      "updatedAt": "2026-06-27T19:12:07.932Z"
     }
   },
   "deletedCompositionIds": [],
