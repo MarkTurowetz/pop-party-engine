@@ -313,11 +313,14 @@ function resetStageObjects() {
   setStageWidgetGameObjectShown("presentationClickPrompt", false, { instant: true, scope: "global" });
 }
 
+function isPresentedTextAction(action) {
+  return action && ["present", "presentText"].includes(action.type);
+}
+
 function setStageTextObject(target, options = {}) {
   const targetId = normalizeTextTargetId(target);
-  const text = options.text ?? "";
-  if (typeof window.PartyGameLayoutText?.setStageText === "function") {
-    window.PartyGameLayoutText.setStageText(targetId, text);
+  if (Object.prototype.hasOwnProperty.call(options, "text") && typeof window.PartyGameLayoutText?.setStageText === "function") {
+    window.PartyGameLayoutText.setStageText(targetId, options.text ?? "");
   }
   if (typeof setStageLayoutGameObjectShownForAction === "function") {
     const result = setStageLayoutGameObjectShownForAction({
@@ -634,7 +637,7 @@ function applyStageState(lobby) {
   setStageLayoutElementGameObjectShown("stageTitle", null, isLobbyPhase, { instant: true });
   setStageLayoutElementGameObjectShown("stageIntroTitle", null, phase === "intro", { instant: true });
   renderStageWidgetBinding("presentationClickPrompt");
-  setStageWidgetGameObjectShown("presentationClickPrompt", action?.type === "present" && action?.timing?.mode !== "S+", {
+  setStageWidgetGameObjectShown("presentationClickPrompt", isPresentedTextAction(action) && action?.timing?.mode !== "S+", {
     scope: "global"
   });
   clearStageDecisionDebug(lobby);
@@ -812,7 +815,7 @@ async function emitStageInputEvent(eventType, actionId = currentStageState?.acti
 async function handleStageScreenClick() {
   if (isStagePaused) return;
   if (presentationAdvancePending) return;
-  if (currentStageState?.action?.type !== "present") return;
+  if (!isPresentedTextAction(currentStageState?.action)) return;
   presentationAdvancePending = true;
   const action = currentStageState.action;
   const target = action.textTarget || "presentation";

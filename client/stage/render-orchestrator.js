@@ -7,6 +7,10 @@
     return `${phase}:${action.id || action.index || ""}:${action.type || ""}`;
   }
 
+  function isPresentedTextAction(action) {
+    return action && ["present", "presentText"].includes(action.type);
+  }
+
   class StageRenderOrchestrator {
     constructor(options = {}) {
       this.options = options;
@@ -41,10 +45,10 @@
 
       this.renderedPhase = nextPhase;
       if (isNewAction) options.prepareNewStageAction?.(lobby, actionKey);
-      if (isNewAction && previousAction?.type === "present") {
+      if (isNewAction && isPresentedTextAction(previousAction)) {
         const previousTarget = previousAction.textTarget || "presentation";
         const nextTarget = nextAction?.textTarget || "presentation";
-        if (nextAction?.type !== "present" || nextTarget !== previousTarget) {
+        if (!isPresentedTextAction(nextAction) || nextTarget !== previousTarget) {
           options.setStageTextObject?.(previousTarget, {
             isShown: false,
             instant: previousAction.instant === true
