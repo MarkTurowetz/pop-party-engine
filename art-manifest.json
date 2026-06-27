@@ -1387,7 +1387,6 @@
         }
       ],
       "order": [
-        "composition:stage-code-widget",
         "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed",
         "folder:folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb",
         "folder:folder-b5fd5048-989e-4076-917e-f37779efddbb",
@@ -1414,7 +1413,8 @@
           "composition:join-qr-code"
         ],
         "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": [
-          "composition:presentation-click-prompt"
+          "composition:presentation-click-prompt",
+          "composition:stage-code-widget"
         ]
       }
     },
