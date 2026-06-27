@@ -137,6 +137,15 @@ if (!/autoFitText: false/.test(layoutNormalizerSource)
   process.exit(1);
 }
 
+const stageLayoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/stage-layout-normalization-runtime.js"), "utf8");
+const controllerLayoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/controller-layout-normalization-runtime.js"), "utf8");
+if (/mergeMissingDefaultElements/.test(stageLayoutNormalizerSource)
+  || /mergeMissingDefaultElements/.test(controllerLayoutNormalizerSource)) {
+  console.error("Text rendering regression check failed:");
+  console.error("- layout normalization must not resurrect deleted default layout elements");
+  process.exit(1);
+}
+
 const artObjectSource = fs.readFileSync(path.join(repoRoot, "client/stage/art-object-visuals.js"), "utf8");
 if (/querySelector\(":scope > \.art-label-text"\)/.test(artObjectSource)
   || !/renderLayoutTextField\(label,\s*textElement,\s*\{/.test(artObjectSource)
