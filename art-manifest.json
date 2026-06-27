@@ -1188,7 +1188,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T18:08:08.800Z"
+      "updatedAt": "2026-06-27T18:07:56.478Z"
     },
     "controller-avatar-button": {
       "name": "Controller Avatar Button",
@@ -1219,7 +1219,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T09:04:18.195Z"
+      "updatedAt": "2026-06-27T18:08:07.080Z"
     },
     "controller-choice-option": {
       "name": "Controller Choice Option",
@@ -1266,7 +1266,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T09:04:19.848Z"
+      "updatedAt": "2026-06-27T18:08:10.273Z"
     },
     "controller-invalid-banner": {
       "name": "Controller Invalid Banner",
