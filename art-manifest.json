@@ -1387,6 +1387,7 @@
         }
       ],
       "order": [
+        "composition:presentation-click-prompt",
         "composition:stage-code-widget",
         "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed",
         "folder:folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb",
