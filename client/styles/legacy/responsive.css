@@ -42,6 +42,12 @@
     overflow: auto;
   }
 
+  .layout-react-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto repeat(3, minmax(180px, auto));
+    overflow: auto;
+  }
+
   .flow-react-header {
     align-items: start;
     flex-direction: column;

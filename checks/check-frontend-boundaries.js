@@ -22,7 +22,8 @@ const allowedTypedGlobalAdapters = new Set([
   "client/tools/flow/flowSelectionAdapter.ts",
   "client/tools/flow/flowSelectorsAdapter.ts",
   "client/tools/flow/flowSerializationAdapter.ts",
-  "client/tools/flow/mountFlowToolApp.tsx"
+  "client/tools/flow/mountFlowToolApp.tsx",
+  "client/tools/layout/mountLayoutToolApp.tsx"
 ]);
 
 function read(relativePath) {

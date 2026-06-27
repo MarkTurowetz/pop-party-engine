@@ -505,6 +505,11 @@ function fitLayoutStagePreview() {
 }
 
 function renderLayoutTool() {
+  window.PartyGameLayoutReactShell?.update?.(activeLayoutData(), {
+    mode: layoutToolMode,
+    selectedElementIds: [...selectedLayoutElementIds],
+    selectedStateId: selectedLayoutStateId
+  });
   if (layoutToolTitle) layoutToolTitle.textContent = layoutToolMode === "controller" ? "Controller Layouts" : "Stage Layouts";
   if (layoutToolDescription) {
     layoutToolDescription.textContent = layoutToolMode === "controller"
