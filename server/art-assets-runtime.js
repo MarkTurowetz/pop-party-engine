@@ -81,6 +81,26 @@ function createArtAssetsRuntime({
     return match ? `${match[1]}:${match[2]}` : "";
   }
 
+  function normalizeOrganizationKey(value, folderIds = new Set()) {
+    const text = String(value || "").trim().toLowerCase();
+    const itemKey = normalizeOrganizationItemKey(text);
+    if (itemKey) return itemKey;
+    if (!text.startsWith("folder:")) return "";
+    const folderId = cleanId(text.slice(7));
+    return folderId && folderIds.has(folderId) ? `folder:${folderId}` : "";
+  }
+
+  function folderContainsFolder(folderItems, folderId, descendantId, visited = new Set()) {
+    if (!folderId || !descendantId || visited.has(folderId)) return false;
+    visited.add(folderId);
+    for (const key of folderItems[folderId] || []) {
+      if (!String(key).startsWith("folder:")) continue;
+      const childId = String(key).slice(7);
+      if (childId === descendantId || folderContainsFolder(folderItems, childId, descendantId, visited)) return true;
+    }
+    return false;
+  }
+
   function normalizeArtOrganization(source = {}) {
     const result = {};
     for (const surface of ["stage", "controller"]) {
@@ -97,10 +117,8 @@ function createArtAssetsRuntime({
       const order = [];
       const seenOrder = new Set();
       for (const rawKey of Array.isArray(incoming.order) ? incoming.order : []) {
-        const rawText = String(rawKey || "").trim().toLowerCase();
-        const key = normalizeOrganizationItemKey(rawText) || (rawText.startsWith("folder:") ? `folder:${cleanId(rawText.slice(7))}` : "");
+        const key = normalizeOrganizationKey(rawKey, folderIds);
         if (!key || seenOrder.has(key)) continue;
-        if (key.startsWith("folder:") && !folderIds.has(key.slice(7))) continue;
         order.push(key);
         seenOrder.add(key);
       }
@@ -110,12 +128,19 @@ function createArtAssetsRuntime({
         const items = [];
         const seenItems = new Set();
         for (const rawKey of Array.isArray(incomingFolderItems[folderId]) ? incomingFolderItems[folderId] : []) {
-          const key = normalizeOrganizationItemKey(rawKey);
+          const key = normalizeOrganizationKey(rawKey, folderIds);
           if (!key || seenItems.has(key)) continue;
+          if (key === `folder:${folderId}`) continue;
           items.push(key);
           seenItems.add(key);
         }
         folderItems[folderId] = items;
+      }
+      for (const folderId of folderIds) {
+        folderItems[folderId] = (folderItems[folderId] || []).filter((key) => {
+          if (!String(key).startsWith("folder:")) return true;
+          return !folderContainsFolder(folderItems, String(key).slice(7), folderId);
+        });
       }
       result[surface] = { folders, order, folderItems };
     }

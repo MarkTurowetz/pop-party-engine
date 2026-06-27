@@ -197,6 +197,10 @@ function artOrganizerFolderKey(folderId) {
   return `folder:${folderId}`;
 }
 
+function artOrganizerFolderIdFromKey(key) {
+  return String(key || "").startsWith("folder:") ? String(key).slice(7) : "";
+}
+
 function artOrganizerSurfaceItems(surface = selectedArtSurface) {
   const isStageSurface = normalizeArtCompositionSurface(surface) === "stage";
   const compositions = (artCompositions || []).filter((composition) => (
@@ -227,10 +231,21 @@ function cleanArtOrganizationForSave() {
       validFolders.add(folder.id);
       return true;
     });
-    const validTopKeys = new Set([...validItems, ...cleaned[surface].folders.map((folder) => artOrganizerFolderKey(folder.id))]);
+    const validFolderKeys = new Set(cleaned[surface].folders.map((folder) => artOrganizerFolderKey(folder.id)));
+    const validTopKeys = new Set([...validItems, ...validFolderKeys]);
     cleaned[surface].order = [...new Set(state.order || [])].filter((key) => validTopKeys.has(key));
     for (const folder of cleaned[surface].folders) {
-      cleaned[surface].folderItems[folder.id] = [...new Set(state.folderItems?.[folder.id] || [])].filter((key) => validItems.has(key));
+      cleaned[surface].folderItems[folder.id] = [...new Set(state.folderItems?.[folder.id] || [])].filter((key) => {
+        if (validItems.has(key)) return true;
+        if (!validFolderKeys.has(key)) return false;
+        return artOrganizerFolderIdFromKey(key) !== folder.id;
+      });
+    }
+    for (const folder of cleaned[surface].folders) {
+      cleaned[surface].folderItems[folder.id] = cleaned[surface].folderItems[folder.id].filter((key) => {
+        const nestedFolderId = artOrganizerFolderIdFromKey(key);
+        return !nestedFolderId || !artOrganizerFolderContainsFolder(cleaned[surface], nestedFolderId, folder.id);
+      });
     }
   }
   return cleaned;
@@ -244,14 +259,20 @@ async function saveArtOrganization() {
   renderArtList();
 }
 
-function createArtFolder() {
+function createArtFolder(parentFolderId = "") {
   const name = window.prompt("Folder name", "New Folder");
   if (name === null) return;
   const cleanName = String(name || "").trim() || "New Folder";
   const state = artOrganizationSurface();
   const id = createSecureArtId("folder");
   state.folders.push({ id, name: cleanName });
-  state.order.push(artOrganizerFolderKey(id));
+  if (parentFolderId && state.folders.some((folder) => folder.id === parentFolderId)) {
+    state.folderItems[parentFolderId] = state.folderItems[parentFolderId] || [];
+    state.folderItems[parentFolderId].push(artOrganizerFolderKey(id));
+    collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${parentFolderId}`);
+  } else {
+    state.order.push(artOrganizerFolderKey(id));
+  }
   state.folderItems[id] = [];
   collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${id}`);
   renderArtList();
@@ -280,8 +301,35 @@ function removeOrganizerKeyFromSurface(state, key) {
   }
 }
 
+function artOrganizerFolderContainsFolder(state, folderId, descendantId, visited = new Set()) {
+  if (!folderId || !descendantId || visited.has(folderId)) return false;
+  visited.add(folderId);
+  for (const key of state.folderItems?.[folderId] || []) {
+    const childFolderId = artOrganizerFolderIdFromKey(key);
+    if (!childFolderId) continue;
+    if (childFolderId === descendantId || artOrganizerFolderContainsFolder(state, childFolderId, descendantId, visited)) return true;
+  }
+  return false;
+}
+
+function canMoveArtOrganizerItemToFolder(draggedKey, folderId) {
+  const state = artOrganizationSurface();
+  if (!draggedKey || !folderId) return false;
+  if (!state.folders.some((folder) => folder.id === folderId)) return false;
+  const draggedFolderId = artOrganizerFolderIdFromKey(draggedKey);
+  if (!draggedFolderId) return true;
+  if (draggedFolderId === folderId) return false;
+  return !artOrganizerFolderContainsFolder(state, draggedFolderId, folderId);
+}
+
+function canReorderArtOrganizerItem(draggedKey, targetKey) {
+  if (!draggedKey || !targetKey || draggedKey === targetKey) return false;
+  const targetFolderId = artOrganizerFolderIdFromKey(targetKey);
+  return !targetFolderId || canMoveArtOrganizerItemToFolder(draggedKey, targetFolderId);
+}
+
 function reorderArtOrganizerItem(draggedKey, targetKey, placeAfter = false) {
-  if (!draggedKey || !targetKey || draggedKey === targetKey) return;
+  if (!canReorderArtOrganizerItem(draggedKey, targetKey)) return;
   const state = artOrganizationSurface();
   const targetFolderId = Object.keys(state.folderItems || {}).find((folderId) => (state.folderItems[folderId] || []).includes(targetKey));
   removeOrganizerKeyFromSurface(state, draggedKey);
@@ -295,9 +343,8 @@ function reorderArtOrganizerItem(draggedKey, targetKey, placeAfter = false) {
 }
 
 function moveArtOrganizerItemToFolder(draggedKey, folderId) {
-  if (!draggedKey || draggedKey.startsWith("folder:")) return;
+  if (!canMoveArtOrganizerItemToFolder(draggedKey, folderId)) return;
   const state = artOrganizationSurface();
-  if (!state.folders.some((folder) => folder.id === folderId)) return;
   removeOrganizerKeyFromSurface(state, draggedKey);
   state.folderItems[folderId] = state.folderItems[folderId] || [];
   state.folderItems[folderId].push(draggedKey);
@@ -464,6 +511,8 @@ function getArtSidebarRenderer() {
         draggedArtOrganizerKey = "";
       },
       getDraggedOrganizerKey: () => draggedArtOrganizerKey,
+      canReorderOrganizerItem: canReorderArtOrganizerItem,
+      canMoveOrganizerItemToFolder: canMoveArtOrganizerItemToFolder,
       onReorderOrganizerItem: reorderArtOrganizerItem,
       onMoveOrganizerItemToFolder: moveArtOrganizerItemToFolder,
       getDraggedComponentId: () => draggedArtComponentId,

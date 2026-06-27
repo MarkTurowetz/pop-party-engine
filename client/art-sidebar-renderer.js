@@ -57,12 +57,9 @@
       affordances?.bindSortableRow(row, {
         itemId: key,
         dragType: "application/x-party-art-organizer",
-        ignoreSelector: ".disclosure-button, .art-folder-rename, input, textarea, button, select, a",
+        ignoreSelector: ".disclosure-button, .art-folder-create, .art-folder-rename, input, textarea, button, select, a",
         getDraggedId: () => options.getDraggedOrganizerKey?.() || "",
-        canDrop: (draggedKey, targetKey) => {
-          if (!draggedKey || !targetKey || draggedKey === targetKey) return false;
-          return !(targetKey.startsWith("folder:") && !draggedKey.startsWith("folder:"));
-        },
+        canDrop: (draggedKey, targetKey) => options.canReorderOrganizerItem?.(draggedKey, targetKey) !== false,
         onDragStart: (dragKey) => options.onOrganizerDragStart?.(dragKey),
         onReorder: (draggedKey, targetKey, placeAfter) => options.onReorderOrganizerItem?.(draggedKey, targetKey, placeAfter),
         onDragEnd: () => options.onOrganizerDragEnd?.()
@@ -286,10 +283,11 @@
       return null;
     }
 
-    function createFolderBlock(data, folder, entries, itemKeys = []) {
+    function createFolderBlock(data, folder, entries, folderById, organization, itemKeys = [], path = new Set()) {
       const collapseId = `art-folder:${organizerSurface(data)}:${folder.id}`;
       const wrapper = documentRef.createElement("section");
       wrapper.className = "art-group art-folder";
+      wrapper.style.setProperty("--art-folder-depth", String(path.size));
       const title = documentRef.createElement("div");
       title.className = "art-group-title art-folder-title";
       title.appendChild(createDisclosureButton(
@@ -301,6 +299,15 @@
       const label = documentRef.createElement("span");
       label.textContent = folder.name || "Folder";
       title.appendChild(label);
+      const createNested = documentRef.createElement("button");
+      createNested.type = "button";
+      createNested.className = "art-folder-create";
+      createNested.textContent = "+ Folder";
+      createNested.addEventListener("click", (event) => {
+        event.stopPropagation();
+        options.onCreateFolder?.(folder.id);
+      });
+      title.appendChild(createNested);
       const rename = documentRef.createElement("button");
       rename.type = "button";
       rename.className = "art-folder-rename";
@@ -313,14 +320,14 @@
       bindOrganizerRow(title, `folder:${folder.id}`);
       title.addEventListener("dragover", (event) => {
         const draggedKey = options.getDraggedOrganizerKey?.() || "";
-        if (!draggedKey || draggedKey.startsWith("folder:")) return;
+        if (!draggedKey || options.canMoveOrganizerItemToFolder?.(draggedKey, folder.id) === false) return;
         event.preventDefault();
         title.classList.add("is-folder-drop");
       });
       title.addEventListener("dragleave", () => title.classList.remove("is-folder-drop"));
       title.addEventListener("drop", (event) => {
         const draggedKey = options.getDraggedOrganizerKey?.() || "";
-        if (!draggedKey || draggedKey.startsWith("folder:")) return;
+        if (!draggedKey || options.canMoveOrganizerItemToFolder?.(draggedKey, folder.id) === false) return;
         event.preventDefault();
         title.classList.remove("is-folder-drop");
         options.onMoveOrganizerItemToFolder?.(draggedKey, folder.id);
@@ -330,12 +337,36 @@
       children.className = "art-group-children art-folder-children";
       if (!data.collapsedArtSections.has(collapseId)) {
         for (const key of itemKeys) {
-          const node = renderOrganizerEntry(data, entries.get(key));
+          let node = null;
+          if (key.startsWith("folder:")) {
+            const nestedFolderId = key.slice(7);
+            const nestedFolder = folderById.get(nestedFolderId);
+            if (nestedFolder && nestedFolderId !== folder.id && !path.has(nestedFolderId)) {
+              node = createFolderBlock(
+                data,
+                nestedFolder,
+                entries,
+                folderById,
+                organization,
+                folderItemKeys(organization, entries, folderById, nestedFolderId),
+                new Set([...path, folder.id])
+              );
+            }
+          } else {
+            node = renderOrganizerEntry(data, entries.get(key));
+          }
           if (node) children.appendChild(node);
         }
       }
       wrapper.appendChild(children);
       return wrapper;
+    }
+
+    function folderItemKeys(organization, entries, folderById, folderId) {
+      return (organization.folderItems?.[folderId] || []).filter((itemKey) => {
+        if (entries.has(itemKey)) return true;
+        return itemKey.startsWith("folder:") && folderById.has(itemKey.slice(7));
+      });
     }
 
     function renderOrganizedSurface(target, data) {
@@ -345,9 +376,10 @@
       const assigned = new Set();
       const topKeys = [];
       for (const folder of organization.folders) {
-        for (const key of organization.folderItems?.[folder.id] || []) if (entries.has(key)) assigned.add(key);
+        for (const key of folderItemKeys(organization, entries, folderById, folder.id)) assigned.add(key);
       }
       for (const key of organization.order || []) {
+        if (assigned.has(key)) continue;
         if (key.startsWith("folder:") && folderById.has(key.slice(7))) topKeys.push(key);
         else if (entries.has(key)) topKeys.push(key);
       }
@@ -362,7 +394,7 @@
         if (key.startsWith("folder:")) {
           const folderId = key.slice(7);
           const folder = folderById.get(folderId);
-          if (folder) target.appendChild(createFolderBlock(data, folder, entries, (organization.folderItems?.[folderId] || []).filter((itemKey) => entries.has(itemKey))));
+          if (folder) target.appendChild(createFolderBlock(data, folder, entries, folderById, organization, folderItemKeys(organization, entries, folderById, folderId)));
           continue;
         }
         const node = renderOrganizerEntry(data, entries.get(key));
