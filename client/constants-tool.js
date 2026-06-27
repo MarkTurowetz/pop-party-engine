@@ -253,6 +253,9 @@ function renderCustomConstantList() {
 
 function renderConstantsTool() {
   gameConstants = normalizeClientGameConstants(gameConstants);
+  window.PartyGameConstantsReactShell?.update?.(gameConstants, {
+    selectedConstantId: selectedGameConstantId
+  });
   const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
   if (selectedGameConstantId === "customConstants") {
     selectedGameConstantId = gameConstants.customConstants?.[0]
