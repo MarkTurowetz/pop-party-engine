@@ -347,7 +347,7 @@ function textTargetOptionsForFlowState(stateId, selectedTarget = "") {
   const seen = new Set();
   const options = [];
   const addElement = (element) => {
-    if (!element || element.kind !== "text") return;
+    if (!element || (element.kind !== "text" && element.artCompositionId !== "layout-text-field")) return;
     const id = normalizeTextTargetId(element.id);
     if (!id || seen.has(id)) return;
     seen.add(id);

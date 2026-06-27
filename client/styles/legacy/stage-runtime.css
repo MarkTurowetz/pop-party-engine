@@ -54,10 +54,6 @@
   transition: scale 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease;
 }
 
-.stage-layout-target.stage-text-object {
-  color: var(--stage-text-color, #fff);
-  font-size: var(--stage-text-font-size, 58px);
-}
 
 .stage-code-panel.stage-layout-target {
   --stage-layout-tilt: -1deg;
@@ -510,51 +506,6 @@
   text-shadow: 4px 4px 0 #000;
 }
 
-.stage-text-object {
-  transition: transform 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms cubic-bezier(0.19, 1, 0.22, 1);
-  will-change: transform, opacity;
-}
-
-.stage-text-object.stage-layout-target {
-  transition: scale 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms cubic-bezier(0.19, 1, 0.22, 1);
-  will-change: scale, opacity;
-}
-
-.stage-text-object.text-hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.stage-presentation-text.text-hidden {
-  transform: scale(0);
-}
-
-.stage-prompt-text.text-hidden {
-  transform: translateX(-50%) scale(0);
-}
-
-.round-intro-text.text-hidden,
-.round-intro-info-text.text-hidden {
-  transform: translate(-50%, -50%) scale(0);
-}
-
-.stage-presentation-text.text-update {
-  animation: textUpdatePop 200ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.stage-prompt-text.text-update {
-  animation: promptTextUpdatePop 200ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.round-intro-text.text-update,
-.round-intro-info-text.text-update {
-  animation: roundTextUpdatePop 200ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.stage-text-object.text-instant {
-  transition-duration: 0ms !important;
-  animation: none !important;
-}
 
 @keyframes textUpdatePop {
   from { transform: scale(1.2); }

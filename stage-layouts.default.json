@@ -67,12 +67,17 @@
         {
           "id": "stageTitle",
           "name": "Header",
-          "selector": ".stage-title",
           "x": 960,
           "y": 190,
           "width": 1080,
           "height": 150,
-          "scale": 1
+          "scale": 1,
+          "kind": "art",
+          "artCompositionId": "layout-text-field",
+          "autoFitText": false,
+          "defaultText": "Header",
+          "fontColor": "#ffffff",
+          "fontSize": 58
         },
         {
           "id": "stageCodePanel",
@@ -129,18 +134,22 @@
         {
           "id": "stageIntroTitle",
           "name": "Intro Header",
-          "selector": "#stageIntroTitle",
           "x": 960,
           "y": 235,
           "width": 1060,
           "height": 130,
-          "scale": 1
+          "scale": 1,
+          "kind": "art",
+          "artCompositionId": "layout-text-field",
+          "autoFitText": false,
+          "defaultText": "Intro Header",
+          "fontColor": "#ffffff",
+          "fontSize": 58
         },
         {
           "id": "stagePresentationText",
           "name": "Presentation Text",
-          "selector": "#stagePresentationText",
-          "kind": "text",
+          "kind": "art",
           "x": 960,
           "y": 460,
           "width": 980,
@@ -148,14 +157,14 @@
           "scale": 1,
           "defaultText": "",
           "fontSize": 58,
-          "autoFitText": true,
-          "fontColor": "#ffffff"
+          "autoFitText": false,
+          "fontColor": "#ffffff",
+          "artCompositionId": "layout-text-field"
         },
         {
           "id": "stagePromptText",
           "name": "Prompt Text",
-          "selector": "#stagePromptText",
-          "kind": "text",
+          "kind": "art",
           "x": 960,
           "y": 760,
           "width": 860,
@@ -163,8 +172,9 @@
           "scale": 1,
           "defaultText": "Prompt Text",
           "fontSize": 58,
-          "autoFitText": true,
-          "fontColor": "#ffffff"
+          "autoFitText": false,
+          "fontColor": "#ffffff",
+          "artCompositionId": "layout-text-field"
         }
       ]
     }

@@ -8,6 +8,7 @@
     getVoiceInput,
     hideViews,
     setText,
+    setTextShown,
     setPhaseActionId,
     showView,
     submitText
@@ -17,6 +18,9 @@
       : (target, value) => {
         window.PartyGameControllerText?.setText(target, value);
       };
+    const showText = typeof setTextShown === "function"
+      ? setTextShown
+      : (target, isShown) => target?.classList?.toggle("hidden", !isShown);
 
     function setInputLimit(limit) {
       if (limit > 0) {
@@ -27,11 +31,11 @@
     }
 
     function setVisibility({ isDone, isVoiceInput, showInvalid }) {
-      elements.done.classList.toggle("hidden", !isDone);
+      showText(elements.done, isDone, { instant: true });
       elements.input.classList.toggle("hidden", isDone || isVoiceInput);
       elements.submitButton.classList.toggle("hidden", isDone || isVoiceInput);
       elements.voiceButton.classList.toggle("hidden", isDone || !isVoiceInput);
-      elements.voiceStatus.classList.toggle("hidden", isDone || !isVoiceInput);
+      showText(elements.voiceStatus, !isDone && isVoiceInput, { instant: true });
       elements.invalidBanner.classList.toggle("hidden", !showInvalid || isDone);
     }
 

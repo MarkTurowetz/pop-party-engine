@@ -101,23 +101,6 @@
   }
 }
 
-.controller-layout-text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--controller-text-color, var(--ink));
-  font-family: inherit;
-  font-size: var(--controller-text-font-size, 42px);
-  font-weight: 1000;
-  line-height: 0.98;
-  text-align: center;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-
-.controller-layout-hidden {
-  display: none !important;
-}
 
 .join-form {
   display: grid;

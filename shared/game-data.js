@@ -178,7 +178,7 @@ const defaultStageLayouts = {
       hiddenGlobals: ["stagecodebadge"],
       elements: [
         { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", kind: "art", artCompositionId: "countdown-popup", x: 960, y: 130, width: 700, height: 130, scale: 1, defaultAnimationState: "park" },
-        { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "text", x: 960, y: 190, width: 1080, height: 150, scale: 1, defaultText: "Party Game Template", fontSize: 92, autoFitText: true, fontColor: "#ffffff" },
+        { id: "stageTitle", name: "Header", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 190, width: 1080, height: 150, scale: 1, defaultText: "Party Game Template", fontSize: 92, autoFitText: false, fontColor: "#ffffff" },
         { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", artCompositionId: "stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
         { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", artCompositionId: "join-qr-code", x: 1510, y: 420, width: 260, height: 300, scale: 1 },
         { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "art", artCompositionId: "waiting-status-widget", x: 960, y: 575, width: 700, height: 82, scale: 1 },
@@ -189,9 +189,9 @@ const defaultStageLayouts = {
       id: "intro",
       name: "Game Intro",
       elements: [
-        { id: "stageIntroTitle", name: "Intro Header", selector: "#stageIntroTitle", x: 960, y: 235, width: 1060, height: 130, scale: 1 },
-        { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", kind: "text", x: 960, y: 460, width: 980, height: 240, scale: 1, defaultText: "", fontSize: 58, autoFitText: true, fontColor: "#ffffff" },
-        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", kind: "text", x: 960, y: 760, width: 860, height: 120, scale: 1, defaultText: "Prompt Text", fontSize: 58, autoFitText: true, fontColor: "#ffffff" }
+        { id: "stageIntroTitle", name: "Intro Header", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 235, width: 1060, height: 130, scale: 1, defaultText: "GAME INTRO", fontSize: 96, autoFitText: false, fontColor: "#ffffff" },
+        { id: "stagePresentationText", name: "Presentation Text", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 460, width: 980, height: 240, scale: 1, defaultText: "", fontSize: 58, autoFitText: false, fontColor: "#ffffff" },
+        { id: "stagePromptText", name: "Prompt Text", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 760, width: 860, height: 120, scale: 1, defaultText: "Prompt Text", fontSize: 58, autoFitText: false, fontColor: "#ffffff" }
       ]
     }
   ]
@@ -213,7 +213,7 @@ const defaultControllerLayouts = {
       name: "Join Controller",
       hiddenGlobals: ["controllerplayerbanner"],
       elements: [
-        { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", x: 195, y: 112, width: 330, height: 86, scale: 1, defaultText: "Join Lobby", fontSize: 54, autoFitText: true, fontColor: "#17131f" },
+        { id: "joinTitle", name: "Join Title", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 112, width: 330, height: 86, scale: 1, defaultText: "Join Lobby", fontSize: 54, autoFitText: false, fontColor: "#17131f" },
         { id: "stageCodeField", name: "Stage Code Field", selector: "#stageCodeField", x: 195, y: 255, width: 320, height: 96, scale: 1 },
         { id: "playerNameField", name: "Player Name Field", selector: "#playerNameField", x: 195, y: 375, width: 320, height: 96, scale: 1 },
         { id: "joinButton", name: "Join Button", selector: "#joinButton", x: 195, y: 505, width: 260, height: 78, scale: 1 }
@@ -225,8 +225,8 @@ const defaultControllerLayouts = {
       hiddenGlobals: ["controllerplayerbanner"],
       elements: [
         { id: "controllerAvatar", name: "Player Avatar", selector: "#controllerAvatar", x: 195, y: 150, width: 104, height: 104, scale: 1 },
-        { id: "controllerPlayerName", name: "Player Name", selector: "#controllerPlayerName", kind: "text", x: 195, y: 290, width: 330, height: 80, scale: 1, defaultText: "Player", fontSize: 66, autoFitText: true, fontColor: "#17131f" },
-        { id: "controllerMeta", name: "Controller Status", selector: "#controllerMeta", kind: "text", x: 195, y: 382, width: 330, height: 48, scale: 1, defaultText: "Waiting in lobby", fontSize: 28, autoFitText: true, fontColor: "#6b5a80" },
+        { id: "controllerPlayerName", name: "Player Name", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 290, width: 330, height: 80, scale: 1, defaultText: "Player", fontSize: 66, autoFitText: false, fontColor: "#17131f" },
+        { id: "controllerMeta", name: "Controller Status", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 382, width: 330, height: 48, scale: 1, defaultText: "Waiting in lobby", fontSize: 28, autoFitText: false, fontColor: "#6b5a80" },
         { id: "startGameButton", name: "Start Game Button", selector: "#startGameButton", x: 195, y: 508, width: 260, height: 78, scale: 1 }
       ]
     },
@@ -234,7 +234,7 @@ const defaultControllerLayouts = {
       id: "intro",
       name: "Game Intro Controller",
       elements: [
-        { id: "controllerIntroMessage", name: "Intro Message", selector: "#controllerIntroMessage", kind: "text", x: 195, y: 250, width: 330, height: 120, scale: 1, defaultText: "Welcome to the Game", fontSize: 44, autoFitText: true, fontColor: "#17131f" },
+        { id: "controllerIntroMessage", name: "Intro Message", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 250, width: 330, height: 120, scale: 1, defaultText: "Welcome to the Game", fontSize: 44, autoFitText: false, fontColor: "#17131f" },
         { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", x: 195, y: 450, width: 300, height: 78, scale: 1 }
       ]
     }
@@ -316,6 +316,30 @@ function defaultPlayerAvatarComposition(species, label, assetId) {
 }
 
 const defaultArtCompositions = [
+  {
+    id: "layout-text-field",
+    name: "Layout Text Field",
+    description: "Transparent single-text art asset used for stage and controller layout text.",
+    canvas: { width: 1000, height: 240 },
+    components: [
+      {
+        id: "text",
+        name: "Text",
+        kind: "text",
+        x: 500,
+        y: 120,
+        width: 1000,
+        height: 240,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "TEXT",
+        fontSize: 58,
+        autoFitText: false,
+        fontColor: "#ffffff"
+      }
+    ]
+  },
   defaultPlayerAvatarComposition("rex", "Rex", "avatar-rex"),
   defaultPlayerAvatarComposition("stego", "Stego", "avatar-stego"),
   defaultPlayerAvatarComposition("trike", "Trike", "avatar-trike"),

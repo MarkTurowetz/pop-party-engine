@@ -8,6 +8,7 @@
     hideViews,
     setButtonText,
     setText,
+    setTextShown,
     showView,
     submitChoice
   }) {
@@ -19,6 +20,9 @@
     const writeButtonText = typeof setButtonText === "function"
       ? setButtonText
       : writeText;
+    const showText = typeof setTextShown === "function"
+      ? setTextShown
+      : (target, isShown) => target?.classList?.toggle("hidden", !isShown);
 
     function render(lobby, me) {
       const input = me.input || lobby.input || null;
@@ -31,7 +35,7 @@
 
       const selectedIndex = Number.isFinite(Number(me.answer?.optionIndex)) ? Number(me.answer.optionIndex) : -1;
       const isDone = input.mode === "submitOnce" && me.answer?.done === true;
-      elements.done.classList.toggle("hidden", !isDone);
+      showText(elements.done, isDone, { instant: true });
       elements.grid.classList.toggle("hidden", isDone);
       if (isDone) {
         writeText(elements.done, `You chose: ${me.answer?.text || ""}`);

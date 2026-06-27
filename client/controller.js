@@ -9,6 +9,15 @@ function setControllerText(target, value) {
   window.PartyGameControllerText?.setText(target, value);
 }
 
+function setControllerTextShown(target, isShown, options = {}) {
+  if (!target) return;
+  if (typeof target === "string" && typeof window.PartyGameLayoutText?.setControllerTextShown === "function") {
+    window.PartyGameLayoutText.setControllerTextShown(target, isShown, options);
+    return;
+  }
+  target.classList?.toggle("hidden", isShown === false);
+}
+
 function setControllerButtonText(target, value, spec = {}) {
   if (!target) return;
   window.PartyGameControllerText?.setButtonText(target, value, spec);
@@ -78,6 +87,7 @@ function getControllerVoiceInput() {
       renderGlobalMessage: renderControllerGlobalMessage,
       setButtonText: setControllerButtonText,
       setText: setControllerText,
+      setTextShown: setControllerTextShown,
       showView: (viewId) => getControllerViewState().show(viewId),
       status: controllerVoiceStatus,
       submitText: submitControllerText
@@ -97,6 +107,7 @@ function getControllerMicrophoneAccessView() {
       hideViews: hideControllerViews,
       renderGlobalMessage: renderControllerGlobalMessage,
       setText: setControllerText,
+      setTextShown: setControllerTextShown,
       setButtonText: setControllerButtonText,
       showView: (viewId) => getControllerViewState().show(viewId),
       waiting: {
@@ -119,6 +130,7 @@ function getControllerChoiceInputView() {
       hideViews: hideControllerViews,
       setButtonText: setControllerButtonText,
       setText: setControllerText,
+      setTextShown: setControllerTextShown,
       showView: (viewId) => getControllerViewState().show(viewId),
       submitChoice: submitControllerChoice
     }));
@@ -136,6 +148,7 @@ function getControllerGlobalActionView() {
       hideViews: hideControllerViews,
       setButtonText: setControllerButtonText,
       setText: setControllerText,
+      setTextShown: setControllerTextShown,
       showView: (viewId) => getControllerViewState().show(viewId)
     }));
 }
@@ -173,6 +186,7 @@ function getControllerHeartbeatRuntime() {
       renderState: renderControllerState,
       sendHeartbeat: () => getControllerSubmitApi().heartbeat(),
       setText: setControllerText,
+      setTextShown: setControllerTextShown,
       showView: (viewId) => getControllerViewState().show(viewId),
       setControllerState: (value) => {
         controllerState = value;

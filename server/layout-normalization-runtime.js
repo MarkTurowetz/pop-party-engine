@@ -1,6 +1,11 @@
 const {
   stageLayoutWidgetArtCompositionId
 } = require("../shared/stage-layout-art-widgets");
+const {
+  isLayoutTextArtElementId,
+  isLayoutTextArtSelector,
+  layoutTextArtCompositionId
+} = require("../shared/layout-text-art");
 
 function createLayoutNormalizationRuntime({
   cleanFlowText,
@@ -35,14 +40,16 @@ function createLayoutNormalizationRuntime({
     const height = normalizeLayoutNumber(element.height, 100, 24, 4000);
     const selector = cleanLayoutSelector(element.selector);
     const widgetArtCompositionId = stageLayoutWidgetArtCompositionId(id);
-    const kind = widgetArtCompositionId ? "art" : normalizeLayoutElementKind(element.kind, selector);
-    const artCompositionId = normalizeFlowId(element.artCompositionId, "") || widgetArtCompositionId;
+    const shouldPromoteTextToArt = isLayoutTextArtElementId(id) || isLayoutTextArtSelector(selector);
+    const kind = widgetArtCompositionId || shouldPromoteTextToArt ? "art" : normalizeLayoutElementKind(element.kind, selector);
+    const artCompositionId = normalizeFlowId(element.artCompositionId, "") || widgetArtCompositionId || (shouldPromoteTextToArt ? layoutTextArtCompositionId : "");
+    const textDefaultsEnabled = kind === "text" || shouldPromoteTextToArt;
     const defaultAnimationState = normalizeLayoutDefaultAnimationState(element.defaultAnimationState)
       || (id === "startpopup" ? "park" : "");
     return {
       id,
       name: cleanFlowText(element.name, element.id || fallbackId),
-      selector,
+      selector: shouldPromoteTextToArt ? "" : selector,
       kind,
       artCompositionId: kind === "art" ? artCompositionId : "",
       x: normalizeLayoutNumber(element.x, defaultCanvas.width / 2, -5000, 15000),
@@ -52,10 +59,10 @@ function createLayoutNormalizationRuntime({
       scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10),
       rotation: normalizeLayoutNumber(element.rotation, 0, -3600, 3600),
       defaultAnimationState,
-      defaultText: kind === "text" ? cleanLayoutText(element.defaultText) : "",
-      fontSize: kind === "text" ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
-      autoFitText: kind === "text" ? element.autoFitText !== false : false,
-      fontColor: kind === "text" ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
+      defaultText: textDefaultsEnabled ? cleanLayoutText(element.defaultText) : "",
+      fontSize: textDefaultsEnabled ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
+      autoFitText: false,
+      fontColor: textDefaultsEnabled ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
     };
   }
 

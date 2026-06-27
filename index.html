@@ -50,7 +50,6 @@
         <div class="wipe-line"></div>
       </div>
       <main class="stage-main">
-        <h1 class="stage-title">Party Game Template</h1>
         <section class="stage-code-panel" aria-label="Stage code">
           <div class="stage-code-label">Stage Code</div>
           <div class="stage-code" id="stageCodeText">----</div>
@@ -62,13 +61,7 @@
         <div class="stage-join-qr-label">Scan To Join</div>
       </section>
       <section class="voting-card-layer hidden" id="votingCardLayer" aria-label="Anonymous answer cards"></section>
-      <main class="stage-intro-content hidden" id="stageIntroContent">
-        <h1 class="stage-intro-title" id="stageIntroTitle">GAME INTRO</h1>
-        <div class="stage-presentation-text stage-text-object text-hidden hidden" id="stagePresentationText"></div>
-      </main>
-      <div class="stage-prompt-text stage-text-object text-hidden hidden" id="stagePromptText"></div>
-      <div class="round-intro-text stage-text-object text-hidden hidden" id="roundIntroText"></div>
-      <div class="round-intro-info-text stage-text-object text-hidden hidden" id="roundIntroInfoText"></div>
+      <main class="stage-intro-content hidden" id="stageIntroContent"></main>
       <div class="click-widget hidden" id="presentClickWidget" aria-hidden="true">
         <div class="click-symbol">
           <span class="click-pulse"></span>
@@ -97,7 +90,6 @@
         <div class="controller-player-banner-name" id="controllerPlayerBannerName">Player</div>
       </div>
       <div id="joinState">
-        <h1 id="joinTitle" class="controller-layout-text">Join Lobby</h1>
         <form class="join-form" id="joinForm">
           <label class="field-label" id="stageCodeField">
             Stage Code
@@ -113,8 +105,6 @@
 
       <div class="controller-lobby hidden" id="controllerLobbyState" data-controller-view="lobby">
         <button class="controller-avatar" id="controllerAvatar" type="button" aria-label="Choose avatar"></button>
-        <h1 class="controller-player-name controller-layout-text" id="controllerPlayerName">Player</h1>
-        <div class="controller-meta controller-layout-text" id="controllerMeta">Waiting in lobby</div>
         <button class="primary-button hidden" id="startGameButton" type="button" data-controller-option data-option-id="lobby.startGame">Start Game</button>
         <div class="avatar-picker hidden" id="avatarPicker" aria-label="Choose dinosaur avatar">
           <div class="avatar-picker-panel">
@@ -125,35 +115,26 @@
       </div>
 
       <div class="controller-lobby hidden" id="controllerIntroState" data-controller-view="intro">
-        <h1 class="controller-player-name controller-layout-text" id="controllerIntroMessage">Welcome to the Game</h1>
         <button class="primary-button hidden" id="introPresentButton" type="button" data-controller-option data-option-id="intro.presentHi">Present HI THERE</button>
       </div>
 
       <div class="controller-lobby hidden" id="controllerGlobalActionState" data-controller-view="global-action">
-        <h1 class="controller-player-name controller-layout-text" id="controllerGlobalActionMessage">Waiting for the next instruction</h1>
         <button class="primary-button hidden" id="controllerGlobalActionButton" type="button" data-controller-option data-option-id="global.next">Next</button>
       </div>
 
       <div class="controller-choice-state hidden" id="controllerChoiceState" data-controller-view="choice">
-        <div class="controller-choice-prompt controller-layout-text" id="controllerChoicePrompt">Answer this question by tapping an answer</div>
         <div class="controller-choice-grid" id="controllerChoiceGrid"></div>
-        <div class="controller-choice-done hidden" id="controllerChoiceDone">You chose:</div>
       </div>
 
       <div class="controller-choice-state hidden" id="controllerMicAccessState" data-controller-view="microphone-access">
-        <div class="controller-choice-prompt controller-layout-text" id="controllerMicAccessPrompt">Give microphone access to the game</div>
         <button class="primary-button controller-submit-button" id="controllerMicAccessButton" type="button" data-controller-option data-option-id="microphoneAccess.grant">Yes</button>
-        <div class="controller-voice-status" id="controllerMicAccessStatus">Chrome will ask for microphone permission</div>
       </div>
 
       <div class="controller-text-state hidden" id="controllerTextState" data-controller-view="text-input">
-        <div class="controller-text-prompt controller-layout-text" id="controllerTextPrompt">Write your answer</div>
         <div class="controller-invalid-banner hidden" id="controllerInvalidBanner">Your submission was invalid</div>
         <textarea class="controller-text-input" id="controllerTextInput" autocomplete="off" placeholder="Answer here"></textarea>
         <button class="primary-button controller-submit-button" id="controllerTextSubmitButton" type="button" disabled data-controller-option data-option-id="text.submit">Submit</button>
         <button class="primary-button controller-submit-button controller-mic-button hidden" id="controllerVoiceButton" type="button" data-controller-option data-option-id="voice.record">Start Recording</button>
-        <div class="controller-voice-status hidden" id="controllerVoiceStatus">Tap to record</div>
-        <div class="controller-choice-done hidden" id="controllerTextDone">You wrote:</div>
       </div>
     </div>
   </section>

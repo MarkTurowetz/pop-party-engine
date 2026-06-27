@@ -1,6 +1,9 @@
 const {
   stageLayoutWidgetArtCompositionId
 } = require("../shared/stage-layout-art-widgets");
+const {
+  layoutTextArtCompositionId
+} = require("../shared/layout-text-art");
 
 function createStageLayoutStateRuntime({
   flowStateHasActionType,
@@ -14,8 +17,8 @@ function createStageLayoutStateRuntime({
         id: flowState.id,
         name: flowState.name || "Round Intro",
         elements: [
-          { id: "roundIntroText", name: "Round Intro Text Field", selector: "#roundIntroText", kind: "text", x: 960, y: 430, width: 1100, height: 180, scale: 1 },
-          { id: "roundIntroInfoText", name: "Round Intro Info Text Field", selector: "#roundIntroInfoText", kind: "text", x: 960, y: 610, width: 980, height: 105, scale: 1 }
+          { id: "roundIntroText", name: "Round Intro Text Field", kind: "art", artCompositionId: layoutTextArtCompositionId, x: 960, y: 430, width: 1100, height: 180, scale: 1, defaultText: "Round One", fontSize: 58, autoFitText: false, fontColor: "#ffffff" },
+          { id: "roundIntroInfoText", name: "Round Intro Info Text Field", kind: "art", artCompositionId: layoutTextArtCompositionId, x: 960, y: 610, width: 980, height: 105, scale: 1, defaultText: "Additional round info", fontSize: 42, autoFitText: false, fontColor: "#ffffff" }
         ]
       };
     }
@@ -24,13 +27,17 @@ function createStageLayoutStateRuntime({
       {
         id: textElementId,
         name: `${flowState.name || "Moment"} Text Field`,
-        selector: `#${textElementId}`,
-        kind: "text",
+        kind: "art",
+        artCompositionId: layoutTextArtCompositionId,
         x: 960,
         y: 460,
         width: 980,
         height: 240,
-        scale: 1
+        scale: 1,
+        defaultText: "",
+        fontSize: 58,
+        autoFitText: false,
+        fontColor: "#ffffff"
       }
     ];
     if (isCraftingStateId(flowState.id) || flowStateHasActionType(flowState, "setTimerShown") || flowStateHasActionType(flowState, "startCraftingTimer")) {

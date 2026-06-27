@@ -29,6 +29,67 @@ function normalizeTextTargetId(value) {
   return normalized;
 }
 
+const layoutTextArtCompositionId = "layout-text-field";
+const layoutTextArtComponentId = "text";
+const legacyLayoutTextElementIds = new Set([
+  "stagetitle",
+  "stageintrotitle",
+  "stagepresentationtext",
+  "stageprompttext",
+  "roundintrotext",
+  "roundintroinfotext",
+  "jointitle",
+  "controllerplayername",
+  "controllermeta",
+  "controllerintromessage",
+  "controllerglobalactionmessage",
+  "controllerchoiceprompt",
+  "controllerchoicedone",
+  "controllermicaccessprompt",
+  "controllermicaccessstatus",
+  "controllertextprompt",
+  "controllervoicestatus",
+  "controllertextdone"
+]);
+
+function compactLayoutTextId(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function isLayoutTextArtElement(element) {
+  const id = compactLayoutTextId(element?.id);
+  return element?.artCompositionId === layoutTextArtCompositionId
+    || legacyLayoutTextElementIds.has(id)
+    || id.endsWith("momenttext")
+    || id.endsWith("controllertext");
+}
+
+function layoutTextArtRenderOptions(element, textOverride = undefined) {
+  const text = textOverride === undefined ? layoutTextDefault(element) : String(textOverride ?? "");
+  return {
+    textOverrides: { [layoutTextArtComponentId]: text },
+    textStyle: {
+      componentId: layoutTextArtComponentId,
+      fontSize: Number(element?.fontSize || 58),
+      fontColor: normalizeUiColor(element?.fontColor) || "#ffffff"
+    }
+  };
+}
+
+function layoutTextDefault(element) {
+  const id = normalizeTextTargetId(element?.id);
+  if (element?.defaultText !== undefined && String(element.defaultText).length) return String(element.defaultText);
+  if (id === "roundintrotext") return "Round One";
+  if (id === "roundintroinfotext") return "Additional round info";
+  if (id === "stageprompttext") return "Prompt Text";
+  if (id === "stagepresentationtext") return "";
+  return String(element?.name || "");
+}
+
 function createLayoutGameObjectRegistry(visibilityOverrides, visualOptions = {}) {
   const gameObjects = window.PartyGameGameObject || window.PartyGameStageGameObject;
   return typeof gameObjects?.createRegistry === "function"
@@ -201,10 +262,14 @@ function applyControllerElementLayout(element, isGlobal = false) {
   target.dataset.controllerLayoutVisibilityKey = entity.visibilityKey || "";
   applyLayoutElementBoxStyles(target, element, "controller");
   if (element.kind === "text") {
-    target.classList.add("controller-layout-text");
     applyControllerLayoutTextProperties(target, element);
   } else if (isDynamicControllerArtInstance(element)) {
-    attachRenderedLayoutArtEntity(entity, () => renderControllerArtInstance(element, target, entity.visibilityKey));
+    attachRenderedLayoutArtEntity(entity, () => renderControllerArtInstance(
+      element,
+      target,
+      entity.visibilityKey,
+      isLayoutTextArtElement(element) ? layoutTextArtRenderOptions(element, target.dataset.textFitSource) : {}
+    ));
   }
   applyControllerLayoutArtVisibilityOverride(entity);
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "controller-layout-transition-suppressed");
@@ -349,6 +414,17 @@ function controllerLayoutElementForTarget(target) {
 
 function setControllerLayoutText(target, value) {
   if (!target) return;
+  if (typeof target === "string") {
+    const elementId = normalizeTextTargetId(target);
+    const host = controllerLayoutTargetByElementId(elementId, "controller") || controllerLayoutTargetByElementId(elementId);
+    const element = controllerLayoutElementForId(elementId);
+    if (!host || !element) return;
+    host.dataset.textFitSource = String(value ?? "");
+    if (isLayoutTextArtElement(element)) {
+      renderControllerArtInstance(element, host, host.dataset.controllerLayoutVisibilityKey || controllerLayoutVisibilityKey(element.id), layoutTextArtRenderOptions(element, value));
+    }
+    return;
+  }
   const text = String(value ?? "");
   const element = controllerLayoutElementForTarget(target);
   target.dataset.textFitSource = text;
@@ -366,6 +442,26 @@ function setControllerLayoutText(target, value) {
   }
 }
 
+function controllerLayoutElementForId(elementId) {
+  const normalized = normalizeTextTargetId(elementId);
+  const stateElements = controllerLayoutState(currentControllerLayoutStateId)?.elements || [];
+  const globalElements = globalControllerLayout().elements || [];
+  return stateElements.find((element) => normalizeTextTargetId(element.id) === normalized)
+    || globalElements.find((element) => normalizeTextTargetId(element.id) === normalized)
+    || null;
+}
+
+function setControllerLayoutTextShown(elementId, isShown, options = {}) {
+  if (!elementId) return 0;
+  return setControllerLayoutGameObjectShownForAction({
+    targetLayoutElementId: normalizeTextTargetId(elementId),
+    targetLayoutScope: "controller",
+    targetLayoutSurface: "controller",
+    isShown: isShown !== false,
+    instant: options.instant === true
+  }) || 0;
+}
+
 function controllerLayoutTargetElement(element) {
   if (isDynamicControllerArtInstance(element)) return getOrCreateControllerArtInstance(element);
   const target = controllerPanel.querySelector(element.selector);
@@ -375,7 +471,7 @@ function controllerLayoutTargetElement(element) {
   if (!dynamic) {
     dynamic = document.createElement("div");
     dynamic.id = id;
-    dynamic.className = "controller-dynamic-text controller-layout-text";
+    dynamic.className = "controller-dynamic-text";
     controllerPanel.appendChild(dynamic);
   }
   return dynamic;
@@ -407,8 +503,8 @@ function getOrCreateControllerArtInstance(element) {
   return controllerDynamicArtInstances.getOrCreate(element);
 }
 
-function renderControllerArtInstance(element, host, rendererKey = "") {
-  return controllerDynamicArtInstances.render(element, host, rendererKey);
+function renderControllerArtInstance(element, host, rendererKey = "", renderOptions = {}) {
+  return controllerDynamicArtInstances.render(element, host, rendererKey, renderOptions);
 }
 
 function clearControllerArtInstanceRenderer(elementId, host = null) {
@@ -535,7 +631,12 @@ function applyStageElementLayout(element, isGlobal) {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
   } else if (isDynamicStageArtInstance(element)) {
-    attachRenderedLayoutArtEntity(entity, () => renderStageArtInstance(element, target, entity.visibilityKey));
+    attachRenderedLayoutArtEntity(entity, () => renderStageArtInstance(
+      element,
+      target,
+      entity.visibilityKey,
+      isLayoutTextArtElement(element) ? layoutTextArtRenderOptions(element, target.dataset.textFitSource) : {}
+    ));
   }
   applyStageLayoutArtVisibilityOverride(entity);
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "stage-layout-transition-suppressed");
@@ -649,8 +750,8 @@ function getOrCreateStageArtInstance(element) {
   return stageDynamicArtInstances.getOrCreate(element);
 }
 
-function renderStageArtInstance(element, host, rendererKey = "") {
-  return stageDynamicArtInstances.render(element, host, rendererKey);
+function renderStageArtInstance(element, host, rendererKey = "", renderOptions = {}) {
+  return stageDynamicArtInstances.render(element, host, rendererKey, renderOptions);
 }
 
 function clearStageArtInstanceRenderer(elementId, host = null) {
@@ -667,7 +768,7 @@ function getOrCreateDynamicStageTextElement(id) {
   if (element) return element;
   element = document.createElement("div");
   element.id = id;
-  element.className = "stage-presentation-text stage-text-object text-hidden hidden";
+  element.className = "stage-dynamic-text text-hidden hidden";
   stageBoard.appendChild(element);
   return element;
 }
@@ -788,6 +889,19 @@ function stageLayoutElementForTarget(target) {
 
 function setStageLayoutText(target, value) {
   if (!target) return;
+  if (typeof target === "string") {
+    const elementId = normalizeTextTargetId(target);
+    const host = stageLayoutTargetByElementId(elementId, "moment") || stageLayoutTargetByElementId(elementId);
+    const element = stageLayoutElementForId(elementId);
+    if (!host || !element) return;
+    host.dataset.textFitSource = String(value ?? "");
+    if (isLayoutTextArtElement(element)) {
+      renderStageArtInstance(element, host, host.dataset.stageLayoutVisibilityKey || stageLayoutGameObjectVisibilityKey(element.id), layoutTextArtRenderOptions(element, value));
+      const targetId = normalizeTextTargetId(element.id);
+      if (targetId && stageTextObjects[targetId]) stageTextObjects[targetId].text = String(value ?? "");
+    }
+    return;
+  }
   const text = String(value ?? "");
   const element = stageLayoutElementForTarget(target);
   target.dataset.textFitSource = text;
@@ -807,8 +921,18 @@ function setStageLayoutText(target, value) {
   }
 }
 
+function stageLayoutElementForId(elementId) {
+  const normalized = normalizeTextTargetId(elementId);
+  const stateElements = stageLayoutState(currentStageLayoutStateId)?.elements || [];
+  const globalElements = globalStageLayout().elements || [];
+  return stateElements.find((element) => normalizeTextTargetId(element.id) === normalized)
+    || globalElements.find((element) => normalizeTextTargetId(element.id) === normalized)
+    || null;
+}
+
 window.PartyGameLayoutText = {
   ...(window.PartyGameLayoutText || {}),
   setControllerText: setControllerLayoutText,
+  setControllerTextShown: setControllerLayoutTextShown,
   setStageText: setStageLayoutText
 };
