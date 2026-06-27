@@ -1078,7 +1078,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T20:27:07.556Z"
+      "updatedAt": "2026-06-27T21:12:26.690Z"
     },
     "controller-player-name-field": {
       "name": "Controller Player Name Field",
@@ -1188,7 +1188,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:01:35.590Z"
+      "updatedAt": "2026-06-27T21:12:34.327Z"
     },
     "controller-avatar-button": {
       "name": "Controller Avatar Button",
@@ -1266,7 +1266,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:01:39.084Z"
+      "updatedAt": "2026-06-27T21:12:39.695Z"
     },
     "controller-invalid-banner": {
       "name": "Controller Invalid Banner",
@@ -2048,7 +2048,8 @@
           "composition:crafting-timer-widget"
         ],
         "folder-fc45b1fa-922d-4073-a707-9b4995172227": [
-          "composition:player-answer-bubble"
+          "composition:player-answer-bubble",
+          "composition:player-point-popup"
         ]
       }
     },
