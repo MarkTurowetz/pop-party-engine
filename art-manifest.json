@@ -1372,16 +1372,22 @@
         {
           "id": "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed",
           "name": "TextObjects"
+        },
+        {
+          "id": "folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb",
+          "name": "Player Avatars"
         }
       ],
       "order": [
-        "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed"
+        "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed",
+        "folder:folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb"
       ],
       "folderItems": {
         "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed": [
           "composition:layout-text-field",
           "composition:art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c"
-        ]
+        ],
+        "folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb": []
       }
     },
     "controller": {
