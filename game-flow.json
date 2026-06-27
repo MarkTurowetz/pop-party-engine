@@ -170,28 +170,6 @@
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "intro-action-mqsthwku"
-        },
-        {
-          "id": "intro-action-mqsthwku",
-          "name": "Set Game Object Shown",
-          "type": "setGameObjectShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 5
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 1119,
-            "y": 426
-          },
-          "targetLayoutElementId": "art-9275376d-b0af-4b38-a203-be848e7af9b8-instanc",
-          "targetLayoutSurface": "stage",
-          "targetLayoutScope": "moment",
           "nextTargetActionId": "intro-present-1"
         }
       ]
