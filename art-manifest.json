@@ -182,7 +182,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T18:08:25.736Z"
+      "updatedAt": "2026-06-27T21:12:49.064Z"
     },
     "player-avatar-stego": {
       "name": "Stego Avatar",
@@ -1313,7 +1313,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-27T21:12:42.539Z"
+      "updatedAt": "2026-06-27T21:01:40.785Z"
     },
     "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c": {
       "name": "Prompt Text Field",
@@ -2048,7 +2048,8 @@
           "composition:crafting-timer-widget"
         ],
         "folder-fc45b1fa-922d-4073-a707-9b4995172227": [
-          "composition:player-answer-bubble"
+          "composition:player-answer-bubble",
+          "composition:player-point-popup"
         ]
       }
     },
