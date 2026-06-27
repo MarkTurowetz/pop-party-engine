@@ -1400,7 +1400,9 @@
           "composition:player-avatar-bronto",
           "composition:player-avatar-ankylo"
         ],
-        "folder-b5fd5048-989e-4076-917e-f37779efddbb": []
+        "folder-b5fd5048-989e-4076-917e-f37779efddbb": [
+          "composition:stage-code-panel"
+        ]
       }
     },
     "controller": {
