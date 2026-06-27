@@ -1546,7 +1546,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:02:01.183Z"
+      "updatedAt": "2026-06-27T19:12:00.280Z"
     },
     "player-object-raptor": {
       "name": "Raptor Player Object",
@@ -1796,6 +1796,98 @@
         }
       ],
       "updatedAt": "2026-06-27T21:01:57.768Z"
+    },
+    "player-object-trike": {
+      "name": "Trike Player Object",
+      "description": "Editable player object composed from the answer bubble and avatar art.",
+      "surface": "stage",
+      "isCustom": false,
+      "canvas": {
+        "width": 300,
+        "height": 300
+      },
+      "components": [
+        {
+          "id": "answer-bubble",
+          "name": "Answer Bubble Slot",
+          "kind": "reference",
+          "x": 150,
+          "y": 96,
+          "width": 300,
+          "height": 180,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "park",
+          "artCompositionId": "player-answer-bubble"
+        },
+        {
+          "id": "avatar",
+          "name": "Player Avatar",
+          "kind": "container",
+          "x": 150,
+          "y": 234,
+          "width": 100,
+          "height": 100,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rectangle",
+          "fillColor": "transparent",
+          "fillCss": "",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0,
+          "children": [
+            {
+              "id": "dino-mask",
+              "name": "Dino Image Mask",
+              "kind": "shape",
+              "x": 50,
+              "y": 50,
+              "width": 70,
+              "height": 70,
+              "scale": 1,
+              "rotation": 0,
+              "defaultAnimationState": "on",
+              "shapeStyle": "rectangle",
+              "fillColor": "currentColor",
+              "fillCss": "",
+              "borderColor": "transparent",
+              "borderWidth": 0,
+              "borderRadius": 0,
+              "imageAssetId": "avatar-trike",
+              "imageName": "avatar-trike",
+              "imageMimeType": "",
+              "imageObjectFit": "contain",
+              "imageTint": "currentColor"
+            },
+            {
+              "id": "avatar-frame",
+              "name": "Avatar Frame",
+              "kind": "shape",
+              "x": 50,
+              "y": 50,
+              "width": 100,
+              "height": 100,
+              "scale": 1,
+              "rotation": 0,
+              "defaultAnimationState": "on",
+              "shapeStyle": "rectangle",
+              "fillColor": "transparent",
+              "fillCss": "",
+              "borderColor": "transparent",
+              "borderWidth": 0,
+              "borderRadius": 0,
+              "imageAssetId": "avatar-frame",
+              "imageName": "avatar-frame",
+              "imageMimeType": "",
+              "imageObjectFit": "contain",
+              "imageTint": ""
+            }
+          ]
+        }
+      ],
+      "updatedAt": "2026-06-27T21:02:03.068Z"
     }
   },
   "deletedCompositionIds": [],
