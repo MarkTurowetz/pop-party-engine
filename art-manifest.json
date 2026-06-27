@@ -1365,5 +1365,26 @@
       "updatedAt": "2026-06-27T18:09:17.858Z"
     }
   },
-  "deletedCompositionIds": []
+  "deletedCompositionIds": [],
+  "organization": {
+    "stage": {
+      "folders": [
+        {
+          "id": "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed",
+          "name": "TextObjects"
+        }
+      ],
+      "order": [
+        "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed"
+      ],
+      "folderItems": {
+        "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed": []
+      }
+    },
+    "controller": {
+      "folders": [],
+      "order": [],
+      "folderItems": {}
+    }
+  }
 }
