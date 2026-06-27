@@ -6,6 +6,7 @@ import { mountFlowToolApp } from "../../tools/flow/mountFlowToolApp";
 import { installFlowAdapters } from "../../tools/flow/installFlowAdapters";
 import { mountLayoutToolApp } from "../../tools/layout/mountLayoutToolApp";
 import { mountConstantsToolApp } from "../../tools/constants/mountConstantsToolApp";
+import { mountHostAudioToolApp } from "../../tools/host-audio/mountHostAudioToolApp";
 
 export const legacyToolsScripts = legacyScriptsForRole("tools");
 export const toolsContext = createToolAppContext({ surface: "tools" });
@@ -15,6 +16,7 @@ installFlowAdapters();
 mountFlowToolApp({ surface: toolsContext.surface });
 mountLayoutToolApp({ surface: toolsContext.surface });
 mountConstantsToolApp({ surface: toolsContext.surface });
+mountHostAudioToolApp({ surface: toolsContext.surface });
 
 void bootLegacySurface("tools", {
   excludeScripts: ["/client/flow/action-defaults.js", "/client/flow/action-options.js", "/client/flow/action-summary.js"]

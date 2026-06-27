@@ -650,6 +650,10 @@ function renderHostAudioEditor() {
 }
 
 function renderHostAudioTool() {
+  window.PartyGameHostAudioReactShell?.update?.(hostAudios, {
+    selectedHostAudioId,
+    selectedLineId: selectedHostAudioLineId
+  });
   renderHostAudioList();
   renderHostAudioEditor();
   if (revertHostAudiosButton) revertHostAudiosButton.disabled = !isHostAudiosDirty();

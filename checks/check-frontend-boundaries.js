@@ -24,6 +24,7 @@ const allowedTypedGlobalAdapters = new Set([
   "client/tools/flow/flowSerializationAdapter.ts",
   "client/tools/constants/mountConstantsToolApp.tsx",
   "client/tools/flow/mountFlowToolApp.tsx",
+  "client/tools/host-audio/mountHostAudioToolApp.tsx",
   "client/tools/layout/mountLayoutToolApp.tsx"
 ]);
 
