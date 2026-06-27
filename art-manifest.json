@@ -1391,7 +1391,8 @@
           "composition:player-avatar-rex",
           "composition:player-avatar-stego",
           "composition:player-avatar-trike",
-          "composition:player-avatar-raptor"
+          "composition:player-avatar-raptor",
+          "composition:player-avatar-bronto"
         ]
       }
     },
