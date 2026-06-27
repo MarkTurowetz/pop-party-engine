@@ -1267,6 +1267,53 @@
         }
       ],
       "updatedAt": "2026-06-27T08:58:22.006Z"
+    },
+    "controller-invalid-banner": {
+      "name": "Controller Invalid Banner",
+      "description": "Editable controller invalid submission banner art.",
+      "surface": "controller",
+      "isCustom": false,
+      "canvas": {
+        "width": 330,
+        "height": 64
+      },
+      "components": [
+        {
+          "id": "invalid-text",
+          "name": "Invalid Text",
+          "kind": "text",
+          "x": 165,
+          "y": 32,
+          "width": 290,
+          "height": 34,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "Your submission was invalid",
+          "fontSize": 20,
+          "autoFitText": false,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "invalid-card",
+          "name": "Invalid Card",
+          "kind": "shape",
+          "x": 165,
+          "y": 32,
+          "width": 330,
+          "height": 64,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "#ff9e2c",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 16
+        }
+      ],
+      "updatedAt": "2026-06-27T08:58:23.856Z"
     }
   },
   "deletedCompositionIds": []
