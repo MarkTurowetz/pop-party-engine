@@ -695,6 +695,22 @@ selected constant id, and core timing/points metadata. This gives the smaller
 form-heavy Constants Tool the same bridge pattern now established for Flow and
 Layout.
 
+## Host Audio React Shell
+
+The Host Audio Tool now has the same hidden bridge treatment:
+
+```txt
+client/tools/host-audio/HostAudioToolApp.tsx
+client/tools/host-audio/mountHostAudioToolApp.tsx
+```
+
+The Vite `/host-audio` and `/tools` entries mount
+`window.PartyGameHostAudioReactShell`, and the legacy `renderHostAudioTool()`
+path pushes the normalized host-audio collection plus selected set/line ids into
+it. The default editor remains unchanged, while `?reactHostAudioPreview=1`
+exposes a read-only React preview for host-audio sets, lines, selected line URL,
+and aggregate counts.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
