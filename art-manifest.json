@@ -798,7 +798,7 @@
           "borderRadius": 20
         }
       ],
-      "updatedAt": "2026-06-27T07:31:18.617Z"
+      "updatedAt": "2026-06-25T16:50:25.215Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer",
@@ -822,7 +822,7 @@
           "rotation": 0,
           "defaultAnimationState": "on",
           "defaultText": "30",
-          "fontSize": 74,
+          "fontSize": 60,
           "autoFitText": false,
           "fontColor": "#17131f"
         },
@@ -845,7 +845,7 @@
           "borderRadius": 36
         }
       ],
-      "updatedAt": "2026-06-26T08:23:49.002Z"
+      "updatedAt": "2026-06-27T07:31:20.100Z"
     },
     "waiting-status-widget": {
       "name": "Waiting Status",
