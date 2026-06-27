@@ -146,7 +146,7 @@ async function main() {
     assertShell(await request({ port, pathname: "/flow" }), "Flow Tool shell", "flowScreen", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/tools.css"],
       forbiddenStyles: ["/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css"],
-      expectedScripts: ["/client/flow-tool.js"],
+      expectedScripts: ["/client/host-audio-tool.js", "/client/flow-tool.js"],
       forbiddenScripts: ["/client/stage-runtime.js", "/client/controller.js"]
     });
 

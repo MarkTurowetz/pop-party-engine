@@ -79,7 +79,7 @@ function scriptsForRole(role) {
   ];
   if (role === "controller") return [...sharedFoundation, ...controllerRuntime];
   if (role === "lab" || role === "art") return [...sharedFoundation, ...stageRuntime, ...toolFoundation, ...artTool];
-  if (role === "flow") return [...sharedFoundation, ...toolFoundation, ...flowTool];
+  if (role === "flow") return [...sharedFoundation, ...toolFoundation, ...hostAudioTool, ...flowTool];
   if (role === "constants") return [...sharedFoundation, ...toolFoundation, ...constantsTool];
   if (role === "host-audio") return [...sharedFoundation, ...toolFoundation, ...hostAudioTool];
   if (role === "layout" || role === "controller-layout") return [...sharedFoundation, ...stageRuntime, ...toolFoundation, ...layoutTool];
