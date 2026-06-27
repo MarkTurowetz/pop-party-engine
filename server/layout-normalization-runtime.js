@@ -54,7 +54,7 @@ function createLayoutNormalizationRuntime({
       defaultAnimationState,
       defaultText: kind === "text" ? cleanLayoutText(element.defaultText) : "",
       fontSize: kind === "text" ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
-      autoFitText: kind === "text" ? element.autoFitText === true : false,
+      autoFitText: kind === "text" ? element.autoFitText !== false : false,
       fontColor: kind === "text" ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
     };
   }

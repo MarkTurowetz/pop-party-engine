@@ -103,7 +103,7 @@ function serializeLayoutGroup(group) {
       defaultAnimationState: String(element.defaultAnimationState || ""),
       defaultText: element.kind === "text" ? String(element.defaultText ?? layoutDefaultText(element)) : "",
       fontSize: element.kind === "text" ? Number(Number(element.fontSize || 58).toFixed(3)) : 58,
-      autoFitText: element.kind === "text" ? element.autoFitText === true : false,
+      autoFitText: element.kind === "text" ? element.autoFitText !== false : false,
       fontColor: element.kind === "text" ? normalizeUiColor(element.fontColor) || "#ffffff" : "#ffffff"
     }))
   };
@@ -424,7 +424,7 @@ function makeLayoutObject(item) {
     defaultAnimationState: isPrefabInstance ? "park" : "",
     defaultText: item.kind === "text" ? layoutDefaultText(item) : "",
     fontSize: item.kind === "text" ? 58 : 58,
-    autoFitText: false,
+    autoFitText: item.kind === "text",
     fontColor: item.kind === "text" ? (layoutToolMode === "controller" ? "#17131f" : "#ffffff") : "#ffffff"
   };
 }
@@ -836,7 +836,7 @@ function layoutDefaultText(element) {
 
 function layoutComputedFontSize(element) {
   const baseSize = Number(element.fontSize || 58);
-  if (!element.autoFitText) return baseSize;
+  if (element.autoFitText === false) return baseSize;
   return fittedLayoutTextSize(element, layoutDefaultText(element), baseSize);
 }
 
@@ -851,9 +851,14 @@ function layoutTextFit(element, text) {
 
 function applyLayoutPreviewTextStyle(node, element, text = layoutDefaultText(element)) {
   const baseSize = Number(element.fontSize || 58);
-  const layout = window.PartyGameTextFit?.renderGameText?.(node, {
+  const layout = window.PartyGameTextFit?.renderLayoutTextField?.(node, element, {
     text,
-    element,
+    defaults: {
+      surface: layoutToolMode === "controller" ? "controller" : "stage",
+      defaultText: layoutDefaultText(element),
+      fontSize: baseSize,
+      fontColor: normalizeUiColor(element.fontColor) || "#ffffff"
+    },
     fallbackSize: baseSize
   })
     || layoutTextFit(element, text);
@@ -1017,8 +1022,8 @@ function renderLayoutFields() {
   }
   if (elements.length === 1 && element.kind === "text") {
     layoutEditorFields.appendChild(layoutTextAreaField("Default Text", layoutDefaultText(element), (value) => updateLayoutElementValue(element, "defaultText", value)));
-    layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutElementValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText === true));
-    layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText === true, (value) => updateLayoutElementValue(element, "autoFitText", value)));
+    layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutElementValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText !== false));
+    layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText !== false, (value) => updateLayoutElementValue(element, "autoFitText", value)));
     layoutEditorFields.appendChild(layoutColorField("Font Color", normalizeUiColor(element.fontColor) || "#ffffff", (value, options) => updateLayoutElementValue(element, "fontColor", value, options)));
   }
 }
@@ -1103,7 +1108,7 @@ function updateLayoutPreviewTextStyle(element) {
   if (!node) return;
   const textNode = node.querySelector(".layout-preview-presentation, .layout-preview-pill");
   if (textNode) {
-    const text = textNode.dataset.textFitSource || layoutDefaultText(element);
+    const text = textNode.dataset.textFitSource ?? layoutDefaultText(element);
     applyLayoutPreviewTextStyle(textNode, element, text);
   }
 }

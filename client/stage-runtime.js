@@ -353,23 +353,19 @@ function renderStageRuntimeTextBox(target, value, spec = {}, options = {}) {
   const width = Math.max(1, Number(spec.width || target.clientWidth || target.offsetWidth || 1));
   const height = Math.max(1, Number(spec.height || target.clientHeight || target.offsetHeight || 1));
   const fontSize = Math.max(1, Number(spec.fontSize || Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 24));
-  if (typeof window.PartyGameTextFit?.renderGameText === "function") {
-    return window.PartyGameTextFit.renderGameText(target, {
-      text,
-      spec: {
+  if (typeof window.PartyGameTextFit?.renderRuntimeText === "function") {
+    return window.PartyGameTextFit.renderRuntimeText(target, text, {
       width,
       height,
       fontSize,
       fontColor: spec.fontColor,
       autoFitText: spec.autoFitText !== false,
       applySize: spec.applySize === true
-      },
-      options: {
+    }, {
       autoFit: spec.autoFitText !== false,
       minSize: Number(options.minSize || 6),
       lineHeight: Number(options.lineHeight || 1.05),
       ...options
-      }
     });
   }
   target.textContent = text;

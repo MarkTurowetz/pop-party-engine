@@ -97,6 +97,60 @@
     return renderTextBox(target, text, spec || {}, options);
   }
 
+  function normalizeTextFieldElement(element = {}, defaults = {}) {
+    const source = element && typeof element === "object" ? element : {};
+    const fallback = defaults && typeof defaults === "object" ? defaults : {};
+    const surface = String(source.surface || fallback.surface || "stage");
+    const fontFallback = surface === "controller" ? 42 : 58;
+    const colorFallback = surface === "controller" ? "#17131f" : "#ffffff";
+    return {
+      ...fallback,
+      ...source,
+      kind: "text",
+      defaultText: String(source.defaultText ?? fallback.defaultText ?? ""),
+      fontSize: Math.max(1, Number(source.fontSize ?? fallback.fontSize ?? fontFallback) || fontFallback),
+      autoFitText: source.autoFitText !== false && fallback.autoFitText !== false,
+      fontColor: String(source.fontColor || fallback.fontColor || colorFallback)
+    };
+  }
+
+  function resolveLayoutTextSource(target, element, runtimeText, options = {}) {
+    if (Object.prototype.hasOwnProperty.call(options, "text")) return String(options.text ?? "");
+    if (options.useRuntimeText !== false && arguments.length >= 3) return String(runtimeText ?? "");
+    const datasetSource = target?.dataset?.textFitSource;
+    if (datasetSource !== undefined) return String(datasetSource);
+    if (options.existingText !== undefined) return String(options.existingText ?? "");
+    return String(element?.defaultText ?? "");
+  }
+
+  function renderLayoutTextField(target, element, options = {}) {
+    if (!target) return null;
+    const textElement = normalizeTextFieldElement(element, options.defaults || {});
+    const hasRuntimeText = Object.prototype.hasOwnProperty.call(options, "text");
+    const text = hasRuntimeText
+      ? resolveLayoutTextSource(target, textElement, options.text, options)
+      : resolveLayoutTextSource(target, textElement, undefined, { ...options, useRuntimeText: false });
+    const fontColor = options.fontColor || textElement.fontColor;
+    if (fontColor) target.style.setProperty("color", fontColor, "important");
+    return renderGameText(target, {
+      text,
+      element: textElement,
+      fallbackSize: Number(options.fallbackSize ?? textElement.fontSize),
+      options: options.renderOptions || options.options || {}
+    });
+  }
+
+  function renderRuntimeText(target, text, spec = {}, options = {}) {
+    return renderGameText(target, {
+      text: String(text ?? ""),
+      spec: {
+        ...spec,
+        autoFitText: spec.autoFitText !== false
+      },
+      options
+    });
+  }
+
   function measureGameText(config = {}) {
     const text = String(config.text ?? "");
     const element = config.element || config.spec || null;
@@ -113,7 +167,7 @@
   function textRenderOptions(element, options = {}) {
     return {
       ...options,
-      autoFit: options.autoFit ?? (element?.autoFitText === true)
+      autoFit: options.autoFit ?? (element?.autoFitText !== false)
     };
   }
 
@@ -329,6 +383,8 @@
     const offsetY = finiteNumber(layout?.offsetY, 0);
     const boxWidth = Math.max(1, finiteNumber(layout?.boxWidth, target.clientWidth || 1));
     const boxHeight = Math.max(1, finiteNumber(layout?.boxHeight, target.clientHeight || 1));
+    const targetWidth = Math.max(1, finiteNumber(layout?.targetWidth, boxWidth));
+    const targetHeight = Math.max(1, finiteNumber(layout?.targetHeight, boxHeight));
     const lineBoxHeight = finiteNumber(layout?.lineBoxHeight, fontSize);
     const lineGap = finiteNumber(layout?.lineGap, 0);
     const lineHeightPx = Math.max(1, lineBoxHeight);
@@ -341,15 +397,15 @@
     const svg = documentRef.createElementNS(svgNamespace, "svg");
     svg.classList.add("text-fit-svg");
     svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("viewBox", `0 0 ${boxWidth} ${boxHeight}`);
-    svg.setAttribute("width", String(boxWidth));
-    svg.setAttribute("height", String(boxHeight));
+    svg.setAttribute("viewBox", `0 0 ${targetWidth} ${targetHeight}`);
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
     Object.assign(svg.style, {
       position: "absolute",
-      left: `${offsetX}px`,
-      top: `${offsetY}px`,
-      width: `${boxWidth}px`,
-      height: `${boxHeight}px`,
+      left: "0",
+      top: "0",
+      width: "100%",
+      height: "100%",
       display: "block",
       overflow: "hidden",
       pointerEvents: "none",
@@ -359,8 +415,8 @@
     lines.forEach((line, index) => {
       const textElement = documentRef.createElementNS(svgNamespace, "text");
       textElement.classList.add("text-fit-svg-text");
-      textElement.setAttribute("x", String(boxWidth / 2));
-      textElement.setAttribute("y", String(firstLineCenterY + (index * (lineHeightPx + lineGap))));
+      textElement.setAttribute("x", String(offsetX + (boxWidth / 2)));
+      textElement.setAttribute("y", String(offsetY + firstLineCenterY + (index * (lineHeightPx + lineGap))));
       textElement.setAttribute("text-anchor", "middle");
       textElement.setAttribute("dominant-baseline", "central");
       textElement.setAttribute("alignment-baseline", "middle");
@@ -373,7 +429,8 @@
       svg.appendChild(textElement);
     });
 
-    target.style.position = target.style.position || "relative";
+    const targetPosition = target.style.position || computedStyleFor(target)?.position || "";
+    if (!targetPosition || targetPosition === "static") target.style.position = "relative";
     target.replaceChildren(svg);
   }
 
@@ -392,11 +449,15 @@
     fittedLayoutTextSize,
     measureGameText,
     measureFittedTextSize: fittedLayoutTextSize,
+    normalizeTextFieldElement,
+    renderLayoutTextField,
     renderAutoTextElement,
     renderGameText,
+    renderRuntimeText,
     renderTextBox,
     renderTextElement,
     renderMeasuredTextElement,
+    resolveLayoutTextSource,
     targetTextRenderOptions,
     textRenderOptions
   };

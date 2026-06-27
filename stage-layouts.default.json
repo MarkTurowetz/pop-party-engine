@@ -145,7 +145,11 @@
           "y": 460,
           "width": 980,
           "height": 240,
-          "scale": 1
+          "scale": 1,
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": true,
+          "fontColor": "#ffffff"
         },
         {
           "id": "stagePromptText",
@@ -156,7 +160,11 @@
           "y": 760,
           "width": 860,
           "height": 120,
-          "scale": 1
+          "scale": 1,
+          "defaultText": "Prompt Text",
+          "fontSize": 58,
+          "autoFitText": true,
+          "fontColor": "#ffffff"
         }
       ]
     }

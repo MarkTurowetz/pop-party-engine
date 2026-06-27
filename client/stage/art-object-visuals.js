@@ -105,40 +105,47 @@
       const hasLabelText = isTextBearingComponentKind(kind) && Boolean(String(labelText || "").trim());
       label.hidden = Boolean(imageSource) || !hasLabelText;
       if (hasLabelText) {
-        setLabelText(label, labelText, element.__partyGameTextLayout || null);
+        setLabelText(label, component, labelText);
       } else {
         label.replaceChildren();
       }
     }
   }
 
-  function setLabelText(label, labelText, textLayout = null) {
-    let textNode = label.querySelector(":scope > .art-label-text");
-    if (!textNode) {
-      textNode = label.ownerDocument.createElement("span");
-      textNode.className = "art-label-text";
-      label.replaceChildren(textNode);
-    }
-    if (global.PartyGameTextFit?.renderGameText) {
-      global.PartyGameTextFit.renderGameText(textNode, {
+  function setLabelText(label, component, labelText) {
+    if (global.PartyGameTextFit?.renderLayoutTextField) {
+      const baseSize = Number(component?.fontSize || 16);
+      const layout = global.PartyGameTextFit.renderLayoutTextField(label, component, {
         text: labelText,
-        layout: textLayout
+        defaults: {
+          defaultText: componentSchema.componentLabel(component),
+          fontSize: baseSize,
+          fontColor: component?.fontColor || "#17131f"
+        },
+        fallbackSize: baseSize
       });
+      label.style.setProperty("--component-font-size", `${layout?.fontSize || baseSize}px`);
     } else {
-      textNode.textContent = labelText;
+      label.textContent = labelText;
     }
   }
 
   function renderComponentText(target, component, labelText = componentSchema.componentLabel(component)) {
     if (!target || !component) return null;
     const text = String(labelText ?? "");
-    const layout = componentTextLayout(component, text);
-    if (global.PartyGameTextFit?.renderGameText) {
-      global.PartyGameTextFit.renderGameText(target, {
+    const baseSize = Number(component?.fontSize || 16);
+    const layout = global.PartyGameTextFit?.renderLayoutTextField
+      ? global.PartyGameTextFit.renderLayoutTextField(target, component, {
         text,
-        layout
-      });
-    } else {
+        defaults: {
+          defaultText: componentSchema.componentLabel(component),
+          fontSize: baseSize,
+          fontColor: component?.fontColor || "#17131f"
+        },
+        fallbackSize: baseSize
+      })
+      : componentTextLayout(component, text);
+    if (!global.PartyGameTextFit?.renderLayoutTextField) {
       target.textContent = text;
     }
     target.style.setProperty("--component-font-size", `${layout.fontSize}px`);

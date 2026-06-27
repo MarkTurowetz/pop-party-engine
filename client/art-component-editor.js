@@ -164,7 +164,7 @@
       if (component.kind === "text" || component.kind === "badge") {
         fields.appendChild(textField("Text", component.defaultText || "", (value) => options.onUpdateComponentValue?.("defaultText", value)));
         fields.appendChild(numberField("Font Size", component.fontSize || 16, (value) => options.onUpdateComponentValue?.("fontSize", Math.max(6, value))));
-        fields.appendChild(toggleField("Auto Fit Text", component.autoFitText === true, (value) => options.onUpdateComponentValue?.("autoFitText", value)));
+        fields.appendChild(toggleField("Auto Fit Text", component.autoFitText !== false, (value) => options.onUpdateComponentValue?.("autoFitText", value)));
         fields.appendChild(colorField("Font Color", component.fontColor || "#17131f", (value, fieldOptions) => options.onUpdateComponentValue?.("fontColor", value, fieldOptions)));
       }
       if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {

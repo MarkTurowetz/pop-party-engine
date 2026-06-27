@@ -135,7 +135,7 @@ function createArtAssetsRuntime({
     if (kind === "text" || kind === "badge") {
       normalized.defaultText = cleanText(source.defaultText, base.defaultText || "", 500);
       normalized.fontSize = cleanNumber(source.fontSize, Number(base.fontSize || 16), 6, 240);
-      normalized.autoFitText = source.autoFitText === true || (source.autoFitText !== false && base.autoFitText === true);
+      normalized.autoFitText = source.autoFitText !== false && base.autoFitText !== false;
       normalized.fontColor = cleanColor(source.fontColor, base.fontColor || "#17131f");
     }
     if (kind === "shape" || kind === "container" || kind === "badge") {
@@ -274,7 +274,6 @@ function createArtAssetsRuntime({
       label.height = 34;
       label.defaultText = "STAGE CODE";
       label.fontSize = 22;
-      label.autoFitText = false;
     }
     const code = byId.get("panel-code");
     if (code
@@ -284,7 +283,6 @@ function createArtAssetsRuntime({
       code.width = 500;
       code.height = 105;
       code.fontSize = 112;
-      code.autoFitText = false;
     }
   }
 
@@ -316,7 +314,6 @@ function createArtAssetsRuntime({
         label.width = 130;
         label.height = 14;
         label.fontSize = 10;
-        label.autoFitText = false;
       }
       const code = byId.get("badge-code");
       if (code && code.fontSize === 42 && code.autoFitText === true) {
@@ -325,7 +322,6 @@ function createArtAssetsRuntime({
         code.width = 140;
         code.height = 32;
         code.fontSize = 32;
-        code.autoFitText = false;
       }
     }
     if (compositionId === "join-widget") {
@@ -363,7 +359,6 @@ function createArtAssetsRuntime({
         value.width = 130;
         value.height = 82;
         value.fontSize = 74;
-        value.autoFitText = false;
       }
     }
     if (compositionId === "join-qr-code") {
@@ -386,7 +381,6 @@ function createArtAssetsRuntime({
         label.width = 220;
         label.height = 24;
         label.fontSize = 20;
-        label.autoFitText = false;
       }
     }
   }

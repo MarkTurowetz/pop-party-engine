@@ -57,7 +57,7 @@ function serializeArtComponentForSave(component) {
     defaultAnimationState: component.defaultAnimationState || "",
     defaultText: component.defaultText || "",
     fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
-    autoFitText: component.autoFitText === true,
+    autoFitText: (component.kind === "text" || component.kind === "badge") ? component.autoFitText !== false : false,
     fontColor: component.fontColor || "#17131f",
     shapeStyle: artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind),
     fillColor: component.fillColor || "transparent",

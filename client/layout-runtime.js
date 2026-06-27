@@ -18,12 +18,15 @@ const {
 } = window.PartyGameLayoutGameObjects;
 
 function normalizeTextTargetId(value) {
-  return String(value || "")
+  const normalized = String(value || "")
     .trim()
     .replace(/^#/, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+  if (normalized === "presentation") return "stagepresentationtext";
+  if (normalized === "prompt") return "stageprompttext";
+  return normalized;
 }
 
 function createLayoutGameObjectRegistry(visibilityOverrides, visualOptions = {}) {
@@ -302,21 +305,26 @@ function layoutDefaultText(element) {
 
 function controllerLayoutComputedFontSize(element, textOverride = "") {
   const baseSize = Number(element.fontSize || 42);
-  if (!element.autoFitText) return baseSize;
+  if (element.autoFitText === false) return baseSize;
   const text = arguments.length >= 2 ? String(textOverride ?? "") : layoutDefaultText(element);
   return fittedLayoutTextSize(element, text, baseSize);
 }
 
 function applyControllerLayoutTextProperties(target, element) {
   const fontColor = normalizeUiColor(element.fontColor) || "#17131f";
-  const text = target.dataset.textFitSource || layoutDefaultText(element);
+  const text = target.dataset.textFitSource ?? layoutDefaultText(element);
   const baseSize = Number(element.fontSize || 42);
-  const layout = typeof window.PartyGameTextFit?.renderGameText === "function"
-    ? window.PartyGameTextFit.renderGameText(target, {
+  const layout = typeof window.PartyGameTextFit?.renderLayoutTextField === "function"
+    ? window.PartyGameTextFit.renderLayoutTextField(target, element, {
       text,
-      element,
+      defaults: {
+        surface: "controller",
+        defaultText: layoutDefaultText(element),
+        fontSize: baseSize,
+        fontColor
+      },
       fallbackSize: baseSize,
-      options: {
+      renderOptions: {
         padding: textFieldPadding(element)
       }
     })
@@ -344,17 +352,14 @@ function setControllerLayoutText(target, value) {
   const text = String(value ?? "");
   const element = controllerLayoutElementForTarget(target);
   target.dataset.textFitSource = text;
-  if (element?.kind === "text" && typeof window.PartyGameTextFit?.renderGameText === "function") {
+  if (element?.kind === "text" && typeof window.PartyGameTextFit?.renderLayoutTextField === "function") {
     applyControllerLayoutTextProperties(target, element);
-  } else if (typeof window.PartyGameTextFit?.renderGameText === "function") {
-    window.PartyGameTextFit.renderGameText(target, {
-      text,
-      spec: {
-        width: target.clientWidth || target.offsetWidth || 1,
-        height: target.clientHeight || target.offsetHeight || 1,
-        fontSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 16,
-        autoFitText: false
-      }
+  } else if (typeof window.PartyGameTextFit?.renderRuntimeText === "function") {
+    window.PartyGameTextFit.renderRuntimeText(target, text, {
+      width: target.clientWidth || target.offsetWidth || 1,
+      height: target.clientHeight || target.offsetHeight || 1,
+      fontSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 16,
+      autoFitText: false
     });
   } else {
     target.textContent = text;
@@ -371,7 +376,6 @@ function controllerLayoutTargetElement(element) {
     dynamic = document.createElement("div");
     dynamic.id = id;
     dynamic.className = "controller-dynamic-text controller-layout-text";
-    dynamic.textContent = layoutDefaultText(element);
     controllerPanel.appendChild(dynamic);
   }
   return dynamic;
@@ -673,6 +677,9 @@ function registerStageLayoutTextTarget(layoutElement, targetElement, isGlobal = 
   if (!targetId || !targetElement) return;
   const existing = stageTextObjects[targetId];
   const isExistingTarget = existing?.element === targetElement;
+  const text = isExistingTarget
+    ? existing.text
+    : targetElement.dataset?.textFitSource ?? stageLayoutTextDefault(layoutElement);
   stageTextObjects[targetId] = {
     element: targetElement,
     layoutElement,
@@ -680,7 +687,7 @@ function registerStageLayoutTextTarget(layoutElement, targetElement, isGlobal = 
     visible: isExistingTarget
       ? existing.visible
       : targetElement.dataset.visualVisible === "true",
-    text: isExistingTarget ? existing.text : targetElement.textContent || ""
+    text
   };
 }
 
@@ -737,21 +744,26 @@ window.fittedLayoutTextSize = fittedLayoutTextSize;
 
 function stageLayoutComputedFontSize(element, textOverride = "") {
   const baseSize = Number(element.fontSize || 58);
-  if (!element.autoFitText) return baseSize;
+  if (element.autoFitText === false) return baseSize;
   const text = arguments.length >= 2 ? String(textOverride ?? "") : stageLayoutTextDefault(element);
   return fittedLayoutTextSize(element, text, baseSize);
 }
 
 function applyStageLayoutTextProperties(target, element) {
   const fontColor = normalizeUiColor(element.fontColor) || "#ffffff";
-  const text = target.dataset.textFitSource || stageLayoutTextDefault(element);
+  const text = target.dataset.textFitSource ?? stageLayoutTextDefault(element);
   const baseSize = Number(element.fontSize || 58);
-  const layout = typeof window.PartyGameTextFit?.renderGameText === "function"
-    ? window.PartyGameTextFit.renderGameText(target, {
+  const layout = typeof window.PartyGameTextFit?.renderLayoutTextField === "function"
+    ? window.PartyGameTextFit.renderLayoutTextField(target, element, {
       text,
-      element,
+      defaults: {
+        surface: "stage",
+        defaultText: stageLayoutTextDefault(element),
+        fontSize: baseSize,
+        fontColor
+      },
       fallbackSize: baseSize,
-      options: {
+      renderOptions: {
         padding: textFieldPadding(element)
       }
     })
@@ -779,19 +791,16 @@ function setStageLayoutText(target, value) {
   const text = String(value ?? "");
   const element = stageLayoutElementForTarget(target);
   target.dataset.textFitSource = text;
-  if (element?.kind === "text" && typeof window.PartyGameTextFit?.renderGameText === "function") {
+  if (element?.kind === "text" && typeof window.PartyGameTextFit?.renderLayoutTextField === "function") {
     applyStageLayoutTextProperties(target, element);
     const targetId = normalizeTextTargetId(element.id);
     if (targetId && stageTextObjects[targetId]) stageTextObjects[targetId].text = text;
-  } else if (typeof window.PartyGameTextFit?.renderGameText === "function") {
-    window.PartyGameTextFit.renderGameText(target, {
-      text,
-      spec: {
-        width: target.clientWidth || target.offsetWidth || 1,
-        height: target.clientHeight || target.offsetHeight || 1,
-        fontSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 16,
-        autoFitText: false
-      }
+  } else if (typeof window.PartyGameTextFit?.renderRuntimeText === "function") {
+    window.PartyGameTextFit.renderRuntimeText(target, text, {
+      width: target.clientWidth || target.offsetWidth || 1,
+      height: target.clientHeight || target.offsetHeight || 1,
+      fontSize: Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 16,
+      autoFitText: false
     });
   } else {
     target.textContent = text;

@@ -190,8 +190,8 @@ const defaultStageLayouts = {
       name: "Game Intro",
       elements: [
         { id: "stageIntroTitle", name: "Intro Header", selector: "#stageIntroTitle", x: 960, y: 235, width: 1060, height: 130, scale: 1 },
-        { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", kind: "text", x: 960, y: 460, width: 980, height: 240, scale: 1 },
-        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", kind: "text", x: 960, y: 760, width: 860, height: 120, scale: 1 }
+        { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", kind: "text", x: 960, y: 460, width: 980, height: 240, scale: 1, defaultText: "", fontSize: 58, autoFitText: true, fontColor: "#ffffff" },
+        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", kind: "text", x: 960, y: 760, width: 860, height: 120, scale: 1, defaultText: "Prompt Text", fontSize: 58, autoFitText: true, fontColor: "#ffffff" }
       ]
     }
   ]
@@ -467,7 +467,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "NUZ7",
         fontSize: 112,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -483,7 +483,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "STAGE CODE",
         fontSize: 22,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -524,7 +524,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "NUZ7",
         fontSize: 32,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -540,7 +540,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "STAGE",
         fontSize: 10,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -704,7 +704,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "30",
         fontSize: 74,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -746,7 +746,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "SCAN TO JOIN",
         fontSize: 20,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
