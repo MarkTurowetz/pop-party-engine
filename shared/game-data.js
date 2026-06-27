@@ -261,7 +261,7 @@ const artAssets = [
 
 const artGroups = [
   { id: "player-avatar", name: "Player Avatar", description: "Composed from the shared avatar frame plus one dinosaur silhouette." },
-  { id: "player-object", name: "Player Object", description: "Composed player display object with avatar art and the answer speech bubble." },
+  { id: "player-object", name: "Player Object", description: "Composed player display object with shared player overlay prefabs." },
   { id: "presentation-click-prompt", name: "Presentation Click Prompt", description: "Standalone cursor art; it does not use the avatar frame." },
   { id: "voting-card", name: "Voting Card", description: "Composed answer card art used by voting moments." }
 ];
@@ -365,6 +365,43 @@ function playerAnswerBubbleComponents() {
       defaultAnimationState: "park",
       defaultText: "ANSWER",
       fontSize: 28,
+      autoFitText: false,
+      fontColor: "#17131f"
+    }
+  ];
+}
+
+function playerPointPopupComponents() {
+  return [
+    {
+      id: "point-text",
+      name: "Point Text",
+      kind: "text",
+      x: 75,
+      y: 30,
+      width: 130,
+      height: 52,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      defaultText: "+200",
+      fontSize: 34,
+      autoFitText: false,
+      fontColor: "#ffe256"
+    },
+    {
+      id: "point-shadow",
+      name: "Point Shadow",
+      kind: "text",
+      x: 79,
+      y: 34,
+      width: 130,
+      height: 52,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      defaultText: "+200",
+      fontSize: 34,
       autoFitText: false,
       fontColor: "#17131f"
     }
@@ -653,6 +690,13 @@ const defaultArtCompositions = [
     description: "Shared editable answer bubble art used by every player object.",
     canvas: { width: 300, height: 180 },
     components: playerAnswerBubbleComponents()
+  },
+  {
+    id: "player-point-popup",
+    name: "Player Point Popup",
+    description: "Shared editable scoring popup art spawned when points are shown.",
+    canvas: { width: 150, height: 60 },
+    components: playerPointPopupComponents()
   },
   defaultPlayerObjectComposition("rex", "Rex", "avatar-rex"),
   defaultPlayerObjectComposition("stego", "Stego", "avatar-stego"),
