@@ -142,9 +142,11 @@ if (!/autoFitText: kind === "text" \? element\.autoFitText !== false : false/.te
 
 const artObjectSource = fs.readFileSync(path.join(repoRoot, "client/stage/art-object-visuals.js"), "utf8");
 if (/querySelector\(":scope > \.art-label-text"\)/.test(artObjectSource)
-  || !/renderLayoutTextField\(label,\s*component,\s*\{/.test(artObjectSource)) {
+  || !/renderLayoutTextField\(label,\s*textElement,\s*\{/.test(artObjectSource)
+  || !/function renderedArtTextElement/.test(artObjectSource)
+  || !/target\?\.clientWidth/.test(artObjectSource)) {
   console.error("Text rendering regression check failed:");
-  console.error("- art text must render into the full art label box through the canonical text field renderer");
+  console.error("- art text must render into the full rendered label box through the canonical text field renderer");
   process.exit(1);
 }
 

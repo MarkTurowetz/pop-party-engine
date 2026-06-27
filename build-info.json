@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.624",
+  "version": "1.0.17.625",
   "baseVersion": "1.0.17",
-  "buildNumber": 624,
-  "commit": "341842f",
+  "buildNumber": 625,
+  "commit": "ddbc648",
   "branch": "codex/frontend-migration-foundation",
-  "generatedAt": "2026-06-27T07:07:11.737Z"
+  "generatedAt": "2026-06-27T07:12:58.463Z"
 }

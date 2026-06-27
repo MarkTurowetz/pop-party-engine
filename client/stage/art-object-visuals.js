@@ -114,8 +114,9 @@
 
   function setLabelText(label, component, labelText) {
     if (global.PartyGameTextFit?.renderLayoutTextField) {
-      const baseSize = Number(component?.fontSize || 16);
-      const layout = global.PartyGameTextFit.renderLayoutTextField(label, component, {
+      const textElement = renderedArtTextElement(label, component);
+      const baseSize = Number(textElement.fontSize || 16);
+      const layout = global.PartyGameTextFit.renderLayoutTextField(label, textElement, {
         text: labelText,
         defaults: {
           defaultText: componentSchema.componentLabel(component),
@@ -133,9 +134,10 @@
   function renderComponentText(target, component, labelText = componentSchema.componentLabel(component)) {
     if (!target || !component) return null;
     const text = String(labelText ?? "");
-    const baseSize = Number(component?.fontSize || 16);
+    const textElement = renderedArtTextElement(target, component);
+    const baseSize = Number(textElement.fontSize || 16);
     const layout = global.PartyGameTextFit?.renderLayoutTextField
-      ? global.PartyGameTextFit.renderLayoutTextField(target, component, {
+      ? global.PartyGameTextFit.renderLayoutTextField(target, textElement, {
         text,
         defaults: {
           defaultText: componentSchema.componentLabel(component),
@@ -150,6 +152,28 @@
     }
     target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
     return layout;
+  }
+
+  function renderedArtTextElement(target, component = {}) {
+    const width = renderedBoxSize(target, "width", component.width);
+    const height = renderedBoxSize(target, "height", component.height);
+    return {
+      ...component,
+      width,
+      height,
+      autoFitText: component.autoFitText !== false
+    };
+  }
+
+  function renderedBoxSize(target, dimension, fallback) {
+    const clientValue = dimension === "width" ? target?.clientWidth : target?.clientHeight;
+    if (Number(clientValue) > 0) return Number(clientValue);
+    const offsetValue = dimension === "width" ? target?.offsetWidth : target?.offsetHeight;
+    if (Number(offsetValue) > 0) return Number(offsetValue);
+    const rect = target?.getBoundingClientRect?.();
+    const rectValue = rect ? Number(rect[dimension]) : 0;
+    if (rectValue > 0) return rectValue;
+    return Math.max(1, Number(fallback || 1));
   }
 
   function componentLayerIndex(index, siblingCount) {
