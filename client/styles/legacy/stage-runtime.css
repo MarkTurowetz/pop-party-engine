@@ -1220,6 +1220,25 @@
   transform: translateX(-50%) rotate(45deg);
 }
 
+.player-answer-bubble.has-prefab-art {
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  filter: none;
+  overflow: visible;
+}
+
+.player-answer-bubble.has-prefab-art::after {
+  display: none;
+}
+
+.player-answer-bubble.has-prefab-art > .art-runtime-object {
+  text-shadow: none;
+}
+
 .player-answer-bubble.is-correct {
   background: #60d394;
 }
@@ -1261,6 +1280,15 @@
 .point-popup.point-popup-hidden {
   opacity: 0;
   transform: translate(-50%, 16px) scale(0);
+}
+
+.point-popup.has-prefab-art {
+  color: inherit;
+  text-shadow: none;
+}
+
+.point-popup.has-prefab-art > .art-runtime-object {
+  text-shadow: none;
 }
 
 @keyframes pointPopupFloat {
@@ -1423,4 +1451,3 @@
   font-weight: 1000;
   text-transform: uppercase;
 }
-

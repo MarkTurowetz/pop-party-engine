@@ -61,8 +61,10 @@ function playerAnswerBubbleController() {
   if (!playerAnswerBubbleControllerInstance && stageVisualControllers()) {
     playerAnswerBubbleControllerInstance = stageVisualControllers().createPlayerAnswerBubbleController({
       visualAnimation,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
       host: playerLobby,
-      document
+      document,
+      getComposition: artComposition
     });
   }
   return playerAnswerBubbleControllerInstance;
@@ -79,7 +81,8 @@ function playerRosterRenderer() {
       avatarFrameImage,
       dinoIcon,
       playerAvatarArt,
-      syncAnswerBubble: syncPlayerAnswerBubble
+      syncAnswerBubble: syncPlayerAnswerBubble,
+      getComposition: artComposition
     });
   }
   return playerRosterRendererInstance;

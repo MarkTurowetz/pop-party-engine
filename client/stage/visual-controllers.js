@@ -306,6 +306,8 @@
       this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.host = options.host;
       this.document = options.document || global.document;
+      this.getComposition = typeof options.getComposition === "function" ? options.getComposition : global.artComposition;
+      this.artRenderers = new WeakMap();
       this.renderedShown = true;
       this.animationEndsAt = 0;
     }
@@ -360,7 +362,64 @@
       return this.visualFor(bubble)?.play(animation, options) || 0;
     }
 
-    applyTextFit(bubble, text) {
+    clonePrefabComponent(component, overrides = {}) {
+      const clone = {
+        ...component,
+        children: (component.children || []).map((child) => this.clonePrefabComponent(child, overrides))
+      };
+      const text = overrides.text?.[clone.id];
+      if (text !== undefined && (clone.kind === "text" || clone.kind === "badge")) clone.defaultText = String(text ?? "");
+      if (overrides.props?.[clone.id]) Object.assign(clone, overrides.props[clone.id]);
+      return clone;
+    }
+
+    renderBubblePrefab(bubble, text, displayedAnswer = {}) {
+      const composition = this.getComposition?.("player-answer-bubble");
+      const artRuntime = global.PartyGameArtObject;
+      if (!bubble || !composition || !artRuntime?.ArtObjectTreeRenderer) return false;
+      bubble.classList.add("has-prefab-art");
+      bubble.querySelector(":scope > .player-answer-bubble-text")?.remove();
+      const canvas = composition.canvas || { width: 300, height: 180 };
+      bubble.style.width = `${Math.max(1, Number(canvas.width || 1))}px`;
+      bubble.style.height = `${Math.max(1, Number(canvas.height || 1))}px`;
+      const fillColor = displayedAnswer?.correct === true
+        ? "#60d394"
+        : displayedAnswer?.correct === false
+          ? "#d7d3c7"
+          : "";
+      const textColor = displayedAnswer?.correct === false ? "rgba(23, 19, 31, 0.68)" : "";
+      const props = {};
+      if (fillColor) {
+        props["answer-bubble-card"] = { fillColor };
+        props["answer-bubble-tail"] = { fillColor };
+      }
+      if (textColor) props["answer-text"] = { fontColor: textColor };
+      const components = (composition.components || []).map((component) => this.clonePrefabComponent(component, {
+        text: { "answer-text": text },
+        props
+      }));
+      let renderer = this.artRenderers.get(bubble);
+      if (!renderer) {
+        renderer = new artRuntime.ArtObjectTreeRenderer({
+          host: bubble,
+          document: this.document,
+          instanceId: `answer-bubble:${bubble.dataset.answerNonce || Math.random().toString(36).slice(2)}`,
+          gameObjectApi: this.gameObjectApi,
+          visualAnimation: this.visualAnimation,
+          getComposition: this.getComposition
+        });
+        this.artRenderers.set(bubble, renderer);
+      }
+      renderer.render(components, canvas, {
+        defaultAnimation: "on",
+        instant: true,
+        respectDefaultAnimationState: false
+      });
+      return true;
+    }
+
+    applyTextFit(bubble, text, displayedAnswer = {}) {
+      if (this.renderBubblePrefab(bubble, text, displayedAnswer)) return;
       const value = String(text ?? "");
       const length = value.length;
       const isLong = length > 14;
@@ -437,7 +496,7 @@
       bubble.dataset.answerHidden = "false";
       bubble.classList.toggle("is-correct", displayedAnswer?.correct === true);
       bubble.classList.toggle("is-wrong", displayedAnswer?.correct === false);
-      this.applyTextFit(bubble, answerText);
+      this.applyTextFit(bubble, answerText, displayedAnswer);
 
       if (this.renderedShown === false) {
         return this.play(bubble, "park", { instant: true });
