@@ -969,6 +969,53 @@
         }
       ],
       "updatedAt": "2026-06-27T08:58:11.885Z"
+    },
+    "controller-text-input-field": {
+      "name": "Controller Text Input Field",
+      "description": "Editable controller text-entry field art.",
+      "surface": "controller",
+      "isCustom": false,
+      "canvas": {
+        "width": 330,
+        "height": 128
+      },
+      "components": [
+        {
+          "id": "placeholder-text",
+          "name": "Placeholder Text",
+          "kind": "text",
+          "x": 165,
+          "y": 64,
+          "width": 284,
+          "height": 58,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "Answer here",
+          "fontSize": 24,
+          "autoFitText": false,
+          "fontColor": "#6b5a80"
+        },
+        {
+          "id": "input-card",
+          "name": "Input Card",
+          "kind": "shape",
+          "x": 165,
+          "y": 64,
+          "width": 330,
+          "height": 128,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 18
+        }
+      ],
+      "updatedAt": "2026-06-27T08:58:13.564Z"
     }
   },
   "deletedCompositionIds": []
