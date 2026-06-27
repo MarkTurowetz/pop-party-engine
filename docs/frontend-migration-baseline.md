@@ -677,6 +677,24 @@ legacy tool. Preview clicks on layout groups and elements update the same legacy
 selection state and rerender path as the current editor, matching the Flow Tool
 bridge pattern while keeping all save/edit behavior in the legacy surface.
 
+## Constants React Shell
+
+The Constants Tool now has a hidden React bridge mounted by the Vite
+`/constants` and `/tools` entries:
+
+```txt
+client/tools/constants/ConstantsToolApp.tsx
+client/tools/constants/mountConstantsToolApp.tsx
+```
+
+The legacy `renderConstantsTool()` path pushes the normalized constants object
+and current selected constant id into `window.PartyGameConstantsReactShell`.
+The default editor remains unchanged, while `?reactConstantsPreview=1` exposes a
+read-only React preview with title, player-color count, custom-constant count,
+selected constant id, and core timing/points metadata. This gives the smaller
+form-heavy Constants Tool the same bridge pattern now established for Flow and
+Layout.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
