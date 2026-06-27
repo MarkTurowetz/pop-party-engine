@@ -1380,12 +1380,17 @@
         {
           "id": "folder-b5fd5048-989e-4076-917e-f37779efddbb",
           "name": "Lobby Widgets"
+        },
+        {
+          "id": "folder-bff56326-48c1-48ac-9938-abac6bed9fa7",
+          "name": "Global Assets"
         }
       ],
       "order": [
         "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed",
         "folder:folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb",
-        "folder:folder-b5fd5048-989e-4076-917e-f37779efddbb"
+        "folder:folder-b5fd5048-989e-4076-917e-f37779efddbb",
+        "folder:folder-bff56326-48c1-48ac-9938-abac6bed9fa7"
       ],
       "folderItems": {
         "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed": [
@@ -1406,7 +1411,8 @@
           "composition:waiting-status-widget",
           "composition:countdown-popup",
           "composition:join-qr-code"
-        ]
+        ],
+        "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": []
       }
     },
     "controller": {
