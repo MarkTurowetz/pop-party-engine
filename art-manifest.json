@@ -1016,6 +1016,69 @@
         }
       ],
       "updatedAt": "2026-06-27T08:58:13.564Z"
+    },
+    "controller-stage-code-field": {
+      "name": "Controller Stage Code Field",
+      "description": "Editable controller stage-code entry field art.",
+      "surface": "controller",
+      "isCustom": false,
+      "canvas": {
+        "width": 320,
+        "height": 96
+      },
+      "components": [
+        {
+          "id": "field-label",
+          "name": "Field Label",
+          "kind": "text",
+          "x": 160,
+          "y": 18,
+          "width": 260,
+          "height": 22,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "STAGE CODE",
+          "fontSize": 16,
+          "autoFitText": false,
+          "fontColor": "#6b5a80"
+        },
+        {
+          "id": "field-value",
+          "name": "Field Value",
+          "kind": "text",
+          "x": 160,
+          "y": 56,
+          "width": 260,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "ABCD",
+          "fontSize": 34,
+          "autoFitText": false,
+          "fontColor": "#17131f"
+        },
+        {
+          "id": "field-card",
+          "name": "Field Card",
+          "kind": "shape",
+          "x": 160,
+          "y": 48,
+          "width": 320,
+          "height": 96,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 18
+        }
+      ],
+      "updatedAt": "2026-06-27T08:58:15.215Z"
     }
   },
   "deletedCompositionIds": []
