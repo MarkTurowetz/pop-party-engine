@@ -1188,7 +1188,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:01:35.590Z"
+      "updatedAt": "2026-06-27T21:12:34.327Z"
     },
     "controller-avatar-button": {
       "name": "Controller Avatar Button",
@@ -2048,8 +2048,7 @@
           "composition:crafting-timer-widget"
         ],
         "folder-fc45b1fa-922d-4073-a707-9b4995172227": [
-          "composition:player-answer-bubble",
-          "composition:player-point-popup"
+          "composition:player-answer-bubble"
         ]
       }
     },
