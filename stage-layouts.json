@@ -333,19 +333,19 @@
           "fontColor": "#ffffff"
         },
         {
-          "id": "stageprompttext",
+          "id": "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c-instanc",
           "name": "Prompt Text Field",
           "selector": "",
           "kind": "art",
-          "artCompositionId": "layout-text-field",
+          "artCompositionId": "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c",
           "x": 960,
           "y": 990,
-          "width": 1180,
+          "width": 1000,
           "height": 80,
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "park",
-          "defaultText": "Prompt Text",
+          "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
           "fontColor": "#ffffff"
