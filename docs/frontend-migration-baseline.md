@@ -672,6 +672,11 @@ element list, selected-element count, mode, and canvas metadata. This starts the
 Layout Tool migration without changing saved layout JSON or runtime layout
 rendering behavior.
 
+The hidden Layout React bridge now also accepts selection handlers from the
+legacy tool. Preview clicks on layout groups and elements update the same legacy
+selection state and rerender path as the current editor, matching the Flow Tool
+bridge pattern while keeping all save/edit behavior in the legacy surface.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
