@@ -1078,7 +1078,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:12:26.690Z"
+      "updatedAt": "2026-06-27T20:27:07.556Z"
     },
     "controller-player-name-field": {
       "name": "Controller Player Name Field",
@@ -2005,6 +2005,10 @@
         {
           "id": "folder-3a090594-0d6c-406e-a758-05842b36ad51",
           "name": "Crafting Assets"
+        },
+        {
+          "id": "folder-fc45b1fa-922d-4073-a707-9b4995172227",
+          "name": "Prefabs"
         }
       ],
       "order": [
@@ -2012,7 +2016,8 @@
         "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed",
         "folder:folder-b5fd5048-989e-4076-917e-f37779efddbb",
         "folder:folder-3a090594-0d6c-406e-a758-05842b36ad51",
-        "folder:folder-bff56326-48c1-48ac-9938-abac6bed9fa7"
+        "folder:folder-bff56326-48c1-48ac-9938-abac6bed9fa7",
+        "folder:folder-fc45b1fa-922d-4073-a707-9b4995172227"
       ],
       "folderItems": {
         "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed": [
@@ -2041,7 +2046,8 @@
         "folder-3a090594-0d6c-406e-a758-05842b36ad51": [
           "composition:voting-card",
           "composition:crafting-timer-widget"
-        ]
+        ],
+        "folder-fc45b1fa-922d-4073-a707-9b4995172227": []
       }
     },
     "controller": {
