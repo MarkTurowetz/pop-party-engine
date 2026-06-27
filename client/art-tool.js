@@ -371,6 +371,8 @@ function reorderArtComponent(draggedComponentId, targetComponentId, placeAfter =
   renderSelectedArtComposition();
   renderArtList();
   artFileName.textContent = "Layer order updated";
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
