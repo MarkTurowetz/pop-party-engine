@@ -82,8 +82,10 @@ function serializeArtComponentForSave(component) {
 }
 
 function isArtCompositionsDirty() {
+  const changedIds = typeof changedArtCompositionIdList === "function" ? changedArtCompositionIdList() : [];
   return artCompositionsSavedSnapshot && (
-    JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot
+    changedIds.length > 0
+    || JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot
     || artCompositionsPendingDeleteCount() > 0
   );
 }
@@ -1353,6 +1355,10 @@ async function saveArtCompositions() {
   if (!artCompositions.length && artCompositionsPendingDeleteCount() <= 0) return;
   const selectedId = selectedArtCompositionId;
   const deleteIds = pendingArtCompositionDeleteIds();
+  const changedIds = new Set(typeof changedArtCompositionIdList === "function" ? changedArtCompositionIdList() : []);
+  const snapshotChanged = artCompositionsSavedSnapshot
+    && JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot;
+  const shouldSaveAll = changedIds.size === 0 && snapshotChanged;
   for (const compositionId of deleteIds) {
     const deleteArtComposition = window.PartyGameToolContext?.api?.art?.deleteArtComposition;
     if (deleteArtComposition) {
@@ -1368,11 +1374,15 @@ async function saveArtCompositions() {
   const savedCompositions = [];
   for (const composition of artCompositions) {
     if (isArtCompositionPendingDelete(composition.id)) continue;
+    if (!shouldSaveAll && !changedIds.has(composition.id)) continue;
     const result = await (window.PartyGameToolContext?.api?.art?.saveArtComposition?.(composition.id, composition)
       || postJson(`/api/art-compositions/${composition.id}`, { composition }));
     savedCompositions.push(result.composition);
   }
-  artCompositions = savedCompositions;
+  const savedCompositionsById = new Map(savedCompositions.map((composition) => [composition.id, composition]));
+  artCompositions = artCompositions
+    .filter((composition) => !isArtCompositionPendingDelete(composition.id))
+    .map((composition) => savedCompositionsById.get(composition.id) || composition);
   artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
   clearArtCompositionDrafts();
   notifyArtAssetsChanged();

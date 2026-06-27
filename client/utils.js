@@ -193,6 +193,7 @@ const artAssetsChangedStorageKey = "partyTemplate.artAssetsChangedAt";
 const artAssetsChangedChannelName = "partyTemplate.artAssetsChanged";
 const artAssetsChangedChannels = [];
 const artCompositionDrafts = new Map();
+const changedArtCompositionIds = new Set();
 const pendingDeletedArtCompositionIds = new Set();
 
 function cloneArtCompositionDraft(composition) {
@@ -208,15 +209,24 @@ function rememberArtCompositionDrafts(compositions = artCompositions) {
     if (!composition?.id) continue;
     if (pendingDeletedArtCompositionIds.has(composition.id)) continue;
     artCompositionDrafts.set(composition.id, cloneArtCompositionDraft(composition));
+    changedArtCompositionIds.add(composition.id);
   }
 }
 
 function forgetArtCompositionDraft(compositionId) {
   artCompositionDrafts.delete(compositionId);
+  changedArtCompositionIds.delete(compositionId);
 }
 
 function clearArtCompositionDrafts() {
   artCompositionDrafts.clear();
+  changedArtCompositionIds.clear();
+}
+
+function changedArtCompositionIdList() {
+  return [...changedArtCompositionIds].filter((compositionId) => {
+    return !pendingDeletedArtCompositionIds.has(compositionId);
+  });
 }
 
 function markArtCompositionPendingDelete(compositionId) {
