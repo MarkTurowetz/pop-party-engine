@@ -207,6 +207,9 @@ function createArtAssetsRuntime({
     if (kind === "reference") {
       normalized.artCompositionId = cleanId(source.artCompositionId, base.artCompositionId || "");
     }
+    if (kind === "container") {
+      normalized.childDistribution = artComponentSchema.normalizeContainerDistribution(source.childDistribution || base.childDistribution);
+    }
     if (kind === "text" || kind === "badge") {
       normalized.defaultText = cleanText(source.defaultText, base.defaultText || "", 500);
       normalized.fontSize = cleanNumber(source.fontSize, Number(base.fontSize || 16), 6, 240);

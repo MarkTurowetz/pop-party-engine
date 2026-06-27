@@ -206,6 +206,33 @@
     return String(component.name || "").trim().toLowerCase() === "art root" || String(component.id || "").startsWith("root-");
   }
 
+  function cloneArtComponentTree(component) {
+    return {
+      ...component,
+      children: (component.children || []).map(cloneArtComponentTree)
+    };
+  }
+
+  function distributedContainerChildren(component, children = []) {
+    if (componentSchema.normalizeComponentKind(component?.kind) !== "container") return children || [];
+    const distribution = componentSchema.normalizeContainerDistribution?.(component.childDistribution) || "none";
+    if (distribution === "none" || !Array.isArray(children) || children.length === 0) return children || [];
+    const width = Math.max(1, Number(component.width || 1));
+    const height = Math.max(1, Number(component.height || 1));
+    const count = children.length;
+    return children.map((child, index) => {
+      const clone = cloneArtComponentTree(child);
+      if (distribution === "horizontal") {
+        clone.x = width * ((index + 1) / (count + 1));
+        clone.y = height / 2;
+      } else if (distribution === "vertical") {
+        clone.x = width / 2;
+        clone.y = height * ((index + 1) / (count + 1));
+      }
+      return clone;
+    });
+  }
+
   class ArtObjectView {
     constructor(options = {}) {
       this.document = options.document || global.document;
@@ -298,7 +325,7 @@
         width: Number(this.component?.width || 1),
         height: Number(this.component?.height || 1)
       };
-      const renderChildren = referencedComposition?.components || children || [];
+      const renderChildren = referencedComposition?.components || distributedContainerChildren(this.component, children || []);
       const childReferencePath = referencedComposition ? new Set([...this.referencePath, referencedId]) : this.referencePath;
       const counts = new Map();
       const keyedChildren = renderChildren.map((child, index) => ({

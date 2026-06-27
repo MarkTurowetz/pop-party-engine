@@ -60,6 +60,7 @@ function serializeArtComponentForSave(component) {
     scale: Number(Number(component.scale || 1).toFixed(3)),
     rotation: Number(Number(component.rotation || 0).toFixed(3)),
     defaultAnimationState: component.defaultAnimationState || "",
+    childDistribution: component.kind === "container" ? artComponentSchema.normalizeContainerDistribution(component.childDistribution) : "none",
     defaultText: component.defaultText || "",
     fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
     autoFitText: (component.kind === "text" || component.kind === "badge") ? component.autoFitText !== false : false,
@@ -969,6 +970,7 @@ function getArtComponentEditorRenderer() {
       componentTree: artComponentTree,
       artKindLabel,
       shapeStyles: artShapeStyles,
+      containerDistributionOptions: artComponentSchema.containerDistributionOptions,
       imageAccept: artComponentImageAccept,
       normalizeUiColor,
       onPushHistory: pushArtHistory,
@@ -1208,6 +1210,7 @@ function defaultArtObject(kind, bounds = {}, options = {}) {
     component.name = "Prefab Reference";
     component.artCompositionId = "";
   } else if (cleanKind === "container") {
+    component.childDistribution = "none";
     component.shapeStyle = "rectangle";
     component.fillColor = "transparent";
     component.borderColor = "#17131f";

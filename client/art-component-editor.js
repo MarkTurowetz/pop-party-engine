@@ -175,6 +175,9 @@
           fields.appendChild(textField("Prefab", component.artCompositionId || "", (value) => options.onUpdateComponentValue?.("artCompositionId", value)));
         }
       }
+      if (component.kind === "container") {
+        fields.appendChild(selectField("Child Distribution", component.childDistribution || "none", options.containerDistributionOptions || [], (value) => options.onUpdateComponentValue?.("childDistribution", value)));
+      }
       if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {
         fields.appendChild(selectField("Shape", component.shapeStyle || "rounded", options.shapeStyles || [], (value) => options.onUpdateShapeStyle?.(value)));
         fields.appendChild(colorField("Fill", component.fillColor === "transparent" ? "#fff8d6" : component.fillColor || "#fff8d6", (value, fieldOptions) => options.onUpdateComponentValue?.("fillColor", value, fieldOptions)));

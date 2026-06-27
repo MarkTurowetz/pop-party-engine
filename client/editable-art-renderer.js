@@ -2,6 +2,32 @@
   const componentSchema = global.PartyGameArtComponentSchema;
   const artObjectRuntime = global.PartyGameArtObject;
 
+  function cloneComponentTree(component) {
+    return {
+      ...component,
+      children: (component.children || []).map(cloneComponentTree)
+    };
+  }
+
+  function distributedContainerChildren(component, children = []) {
+    if (componentSchema.componentKindFrom(component) !== "container") return children || [];
+    const distribution = componentSchema.normalizeContainerDistribution?.(component.childDistribution) || "none";
+    if (distribution === "none" || !Array.isArray(children) || children.length === 0) return children || [];
+    const width = Math.max(1, Number(component.width || 1));
+    const height = Math.max(1, Number(component.height || 1));
+    return children.map((child, index) => {
+      const clone = cloneComponentTree(child);
+      if (distribution === "horizontal") {
+        clone.x = width * ((index + 1) / (children.length + 1));
+        clone.y = height / 2;
+      } else if (distribution === "vertical") {
+        clone.x = width / 2;
+        clone.y = height * ((index + 1) / (children.length + 1));
+      }
+      return clone;
+    });
+  }
+
   function createComponentNode(options = {}) {
     const documentRef = options.document || global.document;
     const composition = options.composition || {};
@@ -72,7 +98,7 @@
       ? getComposition(referencedId)
       : null;
     const childCanvas = referencedComposition?.canvas || { width: Number(component.width || 1), height: Number(component.height || 1) };
-    const childComponents = referencedComposition?.components || component.children || [];
+    const childComponents = referencedComposition?.components || distributedContainerChildren(component, component.children || []);
     const childReferencePath = referencedComposition ? new Set([...referencePath, referencedId]) : referencePath;
     for (const [childIndex, child] of childComponents.entries()) {
       node.appendChild(createComponentNode({

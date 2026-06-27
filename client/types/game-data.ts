@@ -107,6 +107,7 @@ export interface ArtComponent extends JsonObject {
   id: string;
   name?: string;
   kind: string;
+  childDistribution?: "none" | "horizontal" | "vertical" | string;
   children?: ArtComponent[];
 }
 

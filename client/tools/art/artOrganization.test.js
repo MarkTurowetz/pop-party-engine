@@ -62,3 +62,43 @@ describe("art organization folders", () => {
     expect(aContainsB && bContainsA).toBe(false);
   });
 });
+
+describe("art container distribution", () => {
+  it("normalizes child distribution on container components", () => {
+    const runtime = createRuntime();
+    const [composition] = runtime.normalizeArtCompositionsDraft([
+      {
+        id: "test-composition",
+        name: "Test Composition",
+        canvas: { width: 400, height: 200 },
+        components: [
+          {
+            id: "row",
+            name: "Row",
+            kind: "container",
+            childDistribution: "horizontal",
+            x: 200,
+            y: 100,
+            width: 300,
+            height: 120,
+            children: []
+          },
+          {
+            id: "bad-row",
+            name: "Bad Row",
+            kind: "container",
+            childDistribution: "diagonal",
+            x: 200,
+            y: 100,
+            width: 300,
+            height: 120,
+            children: []
+          }
+        ]
+      }
+    ]);
+
+    expect(composition.components[0].childDistribution).toBe("horizontal");
+    expect(composition.components[1].childDistribution).toBe("none");
+  });
+});

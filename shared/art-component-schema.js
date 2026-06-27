@@ -11,6 +11,12 @@ const shapeStyleOptions = [
 const shapeStyleValues = shapeStyleOptions.map((option) => option.value);
 const imageMimeTypes = ["image/png", "image/svg+xml", "image/jpeg", "image/webp"];
 const imageObjectFits = ["cover", "contain", "fill"];
+const containerDistributionOptions = [
+  { value: "none", label: "None" },
+  { value: "horizontal", label: "Horizontal Distribution" },
+  { value: "vertical", label: "Vertical Distribution" }
+];
+const containerDistributionValues = containerDistributionOptions.map((option) => option.value);
 const componentImageMaxBytes = 5 * 1024 * 1024;
 const imageAccept = imageMimeTypes.join(",");
 const fillCssMaxLength = 240;
@@ -85,6 +91,11 @@ function normalizeImageObjectFit(value) {
   return imageObjectFits.includes(fit) ? fit : "cover";
 }
 
+function normalizeContainerDistribution(value) {
+  const distribution = normalizeValue(value || "none");
+  return containerDistributionValues.includes(distribution) ? distribution : "none";
+}
+
 function isSupportedImageMimeType(mimeType) {
   return imageMimeTypes.includes(String(mimeType || "").trim().toLowerCase());
 }
@@ -130,6 +141,8 @@ const exportedSchema = {
   componentLabel,
   componentSupportsImageMask,
   componentSupportsShapeStyle,
+  containerDistributionOptions,
+  containerDistributionValues,
   creatableComponentKinds,
   defaultShapeStyle,
   imageAccept,
@@ -138,6 +151,7 @@ const exportedSchema = {
   imageObjectFits,
   isSupportedImageMimeType,
   normalizeComponentKind,
+  normalizeContainerDistribution,
   normalizeCreatableComponentKind,
   normalizeFillCss,
   normalizeImageObjectFit,
