@@ -23,7 +23,7 @@
           "defaultAnimationState": "",
           "defaultText": "ANSWER TEXT",
           "fontSize": 32,
-          "autoFitText": false,
+          "autoFitText": true,
           "fontColor": "#17131f"
         },
         {
@@ -123,7 +123,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-27T07:31:08.530Z"
+      "updatedAt": "2026-06-25T16:50:12.678Z"
     },
     "player-avatar-rex": {
       "name": "Rex Avatar",
@@ -578,7 +578,7 @@
           "imageTint": "currentColor"
         }
       ],
-      "updatedAt": "2026-06-26T08:23:37.265Z"
+      "updatedAt": "2026-06-27T07:31:09.998Z"
     },
     "stage-code-panel": {
       "name": "Stage Code Panel",
