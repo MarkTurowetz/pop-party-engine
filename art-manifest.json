@@ -182,7 +182,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T09:04:23.197Z"
+      "updatedAt": "2026-06-27T18:08:25.736Z"
     },
     "player-avatar-stego": {
       "name": "Stego Avatar",
@@ -241,7 +241,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T09:04:24.796Z"
+      "updatedAt": "2026-06-27T18:08:28.383Z"
     },
     "player-avatar-trike": {
       "name": "Trike Avatar",
@@ -359,7 +359,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T18:08:22.687Z"
+      "updatedAt": "2026-06-27T18:08:31.604Z"
     },
     "player-avatar-bronto": {
       "name": "Bronto Avatar",
@@ -418,7 +418,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T09:04:30.106Z"
+      "updatedAt": "2026-06-27T18:08:37.186Z"
     },
     "player-avatar-ankylo": {
       "name": "Ankylo Avatar",
@@ -1219,7 +1219,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T18:08:11.466Z"
+      "updatedAt": "2026-06-27T18:08:07.080Z"
     },
     "controller-choice-option": {
       "name": "Controller Choice Option",
@@ -1266,7 +1266,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T09:04:19.848Z"
+      "updatedAt": "2026-06-27T18:08:20.752Z"
     },
     "controller-invalid-banner": {
       "name": "Controller Invalid Banner",
@@ -1313,7 +1313,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-27T09:04:21.397Z"
+      "updatedAt": "2026-06-27T18:08:13.875Z"
     }
   },
   "deletedCompositionIds": []
