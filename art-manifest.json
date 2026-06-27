@@ -300,7 +300,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:01:47.598Z"
+      "updatedAt": "2026-06-27T21:12:55.678Z"
     },
     "player-avatar-raptor": {
       "name": "Raptor Avatar",
@@ -359,7 +359,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:12:57.409Z"
+      "updatedAt": "2026-06-27T18:08:31.604Z"
     },
     "player-avatar-bronto": {
       "name": "Bronto Avatar",
@@ -477,7 +477,7 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:13:01.710Z"
+      "updatedAt": "2026-06-27T21:01:55.681Z"
     },
     "join-qr-code": {
       "name": "Join QR Code",
@@ -921,7 +921,7 @@
           "fontColor": "#ffffff"
         }
       ],
-      "updatedAt": "2026-06-27T21:01:24.697Z"
+      "updatedAt": "2026-06-27T21:12:59.231Z"
     },
     "controller-primary-button": {
       "name": "Controller Primary Button",
@@ -968,7 +968,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:12:21.188Z"
+      "updatedAt": "2026-06-27T21:13:04.385Z"
     },
     "controller-text-input-field": {
       "name": "Controller Text Input Field",
@@ -1078,7 +1078,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:12:26.690Z"
+      "updatedAt": "2026-06-27T21:13:07.530Z"
     },
     "controller-player-name-field": {
       "name": "Controller Player Name Field",
@@ -1188,7 +1188,7 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:12:34.327Z"
+      "updatedAt": "2026-06-27T21:13:14.582Z"
     },
     "controller-avatar-button": {
       "name": "Controller Avatar Button",
@@ -1795,7 +1795,7 @@
           "fontColor": "#17131f"
         }
       ],
-      "updatedAt": "2026-06-27T21:13:11.269Z"
+      "updatedAt": "2026-06-27T21:01:57.768Z"
     },
     "player-object-trike": {
       "name": "Trike Player Object",
@@ -1980,6 +1980,51 @@
         }
       ],
       "updatedAt": "2026-06-27T21:02:07.967Z"
+    },
+    "player-point-popup": {
+      "name": "Player Point Popup",
+      "description": "Shared editable scoring popup art spawned when points are shown.",
+      "surface": "stage",
+      "isCustom": false,
+      "canvas": {
+        "width": 154,
+        "height": 64
+      },
+      "components": [
+        {
+          "id": "point-text",
+          "name": "Point Text",
+          "kind": "text",
+          "x": 75,
+          "y": 30,
+          "width": 150,
+          "height": 60,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "+200",
+          "fontSize": 34,
+          "autoFitText": false,
+          "fontColor": "#ffe256"
+        },
+        {
+          "id": "point-shadow",
+          "name": "Point Shadow",
+          "kind": "text",
+          "x": 79,
+          "y": 34,
+          "width": 150,
+          "height": 60,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "on",
+          "defaultText": "+200",
+          "fontSize": 34,
+          "autoFitText": false,
+          "fontColor": "#17131f"
+        }
+      ],
+      "updatedAt": "2026-06-27T21:13:18.766Z"
     }
   },
   "deletedCompositionIds": [],
