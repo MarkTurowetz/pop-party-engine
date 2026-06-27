@@ -243,24 +243,6 @@
           "fontSize": 58,
           "autoFitText": false,
           "fontColor": "#ffffff"
-        },
-        {
-          "id": "stagepresentationtext",
-          "name": "Presentation Text",
-          "selector": "",
-          "kind": "art",
-          "artCompositionId": "layout-text-field",
-          "x": 960,
-          "y": 460,
-          "width": 980,
-          "height": 240,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "",
-          "defaultText": "",
-          "fontSize": 58,
-          "autoFitText": false,
-          "fontColor": "#ffffff"
         }
       ]
     },
