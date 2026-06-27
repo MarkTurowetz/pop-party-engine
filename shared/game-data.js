@@ -315,6 +315,56 @@ function defaultPlayerAvatarComposition(species, label, assetId) {
   };
 }
 
+function controllerShapeComponent(id, name, width, height, overrides = {}) {
+  return {
+    id,
+    name,
+    kind: "shape",
+    x: width / 2,
+    y: height / 2,
+    width,
+    height,
+    scale: 1,
+    rotation: 0,
+    defaultAnimationState: "on",
+    shapeStyle: overrides.shapeStyle || "rounded",
+    fillColor: overrides.fillColor || "#fffdf4",
+    borderColor: overrides.borderColor || "#17131f",
+    borderWidth: overrides.borderWidth ?? 4,
+    borderRadius: overrides.borderRadius ?? 18
+  };
+}
+
+function controllerTextComponent(id, name, text, x, y, width, height, fontSize = 24, fontColor = "#17131f") {
+  return {
+    id,
+    name,
+    kind: "text",
+    x,
+    y,
+    width,
+    height,
+    scale: 1,
+    rotation: 0,
+    defaultAnimationState: "on",
+    defaultText: text,
+    fontSize,
+    autoFitText: false,
+    fontColor
+  };
+}
+
+function defaultControllerComposition(id, name, description, canvas, components) {
+  return {
+    id,
+    name,
+    surface: "controller",
+    description,
+    canvas,
+    components
+  };
+}
+
 const defaultArtCompositions = [
   {
     id: "layout-text-field",
@@ -340,6 +390,119 @@ const defaultArtCompositions = [
       }
     ]
   },
+  defaultControllerComposition(
+    "controller-primary-button",
+    "Controller Primary Button",
+    "Editable controller button art used by join, start, present, next, submit, and microphone buttons.",
+    { width: 300, height: 78 },
+    [
+      controllerTextComponent("button-text", "Button Text", "BUTTON", 150, 39, 250, 44, 24),
+      controllerShapeComponent("button-card", "Button Card", 300, 78, {
+        fillColor: "#22d3ee",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-text-input-field",
+    "Controller Text Input Field",
+    "Editable controller text-entry field art.",
+    { width: 330, height: 128 },
+    [
+      controllerTextComponent("placeholder-text", "Placeholder Text", "Answer here", 165, 64, 284, 58, 24, "#6b5a80"),
+      controllerShapeComponent("input-card", "Input Card", 330, 128, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-stage-code-field",
+    "Controller Stage Code Field",
+    "Editable controller stage-code entry field art.",
+    { width: 320, height: 96 },
+    [
+      controllerTextComponent("field-label", "Field Label", "STAGE CODE", 160, 18, 260, 22, 16, "#6b5a80"),
+      controllerTextComponent("field-value", "Field Value", "ABCD", 160, 56, 260, 42, 34),
+      controllerShapeComponent("field-card", "Field Card", 320, 96, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-player-name-field",
+    "Controller Player Name Field",
+    "Editable controller player-name entry field art.",
+    { width: 320, height: 96 },
+    [
+      controllerTextComponent("field-label", "Field Label", "PLAYER NAME", 160, 18, 260, 22, 16, "#6b5a80"),
+      controllerTextComponent("field-value", "Field Value", "Your name", 160, 56, 260, 42, 30),
+      controllerShapeComponent("field-card", "Field Card", 320, 96, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-player-banner",
+    "Controller Player Banner",
+    "Editable controller top player banner art.",
+    { width: 338, height: 78 },
+    [
+      controllerTextComponent("banner-name", "Banner Name", "PLAYER", 190, 39, 220, 42, 30),
+      controllerShapeComponent("banner-card", "Banner Card", 338, 78, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-avatar-button",
+    "Controller Avatar Button",
+    "Editable controller avatar button background art.",
+    { width: 104, height: 104 },
+    [
+      controllerShapeComponent("avatar-card", "Avatar Card", 104, 104, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-choice-option",
+    "Controller Choice Option",
+    "Editable controller multiple-choice option button art.",
+    { width: 320, height: 72 },
+    [
+      controllerTextComponent("option-text", "Option Text", "Option", 160, 36, 280, 40, 24),
+      controllerShapeComponent("option-card", "Option Card", 320, 72, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-invalid-banner",
+    "Controller Invalid Banner",
+    "Editable controller invalid submission banner art.",
+    { width: 330, height: 64 },
+    [
+      controllerTextComponent("invalid-text", "Invalid Text", "Your submission was invalid", 165, 32, 290, 34, 20, "#17131f"),
+      controllerShapeComponent("invalid-card", "Invalid Card", 330, 64, {
+        fillColor: "#ff9e2c",
+        borderWidth: 4,
+        borderRadius: 16
+      })
+    ]
+  ),
   defaultPlayerAvatarComposition("rex", "Rex", "avatar-rex"),
   defaultPlayerAvatarComposition("stego", "Stego", "avatar-stego"),
   defaultPlayerAvatarComposition("trike", "Trike", "avatar-trike"),

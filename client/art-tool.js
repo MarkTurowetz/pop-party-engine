@@ -43,6 +43,10 @@ function normalizeArtCompositionSurface(surface) {
   return surface === "controller" ? "controller" : "stage";
 }
 
+function isSharedArtComposition(composition) {
+  return composition?.surface === "shared" || composition?.id === "layout-text-field";
+}
+
 function serializeArtComponentForSave(component) {
   return {
     id: component.id,
@@ -160,7 +164,10 @@ function selectedArtComposition() {
 }
 
 function visibleArtCompositions() {
-  return (artCompositions || []).filter((composition) => normalizeArtCompositionSurface(composition.surface) === selectedArtSurface);
+  return (artCompositions || []).filter((composition) => (
+    isSharedArtComposition(composition)
+    || normalizeArtCompositionSurface(composition.surface) === selectedArtSurface
+  ));
 }
 
 function artSurfaceLabel(surface = selectedArtSurface) {

@@ -24,8 +24,13 @@ function normalizeTextTargetId(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  if (normalized === "presentation") return "stagepresentationtext";
-  if (normalized === "prompt") return "stageprompttext";
+  const compact = normalized.replace(/-/g, "");
+  if (compact === "presentation") return "stagepresentationtext";
+  if (compact === "prompt") return "stageprompttext";
+  if (compact === "stagepresentationtext") return "stagepresentationtext";
+  if (compact === "stageprompttext") return "stageprompttext";
+  if (compact === "roundintrotext") return "roundintrotext";
+  if (compact === "roundintroinfotext") return "roundintroinfotext";
   return normalized;
 }
 

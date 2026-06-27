@@ -121,7 +121,9 @@ if (!/display: "flex"/.test(textFitSource)
 
 const layoutRuntimeSource = fs.readFileSync(path.join(repoRoot, "client/layout-runtime.js"), "utf8");
 if (!/normalized === "presentation"\) return "stagepresentationtext"/.test(layoutRuntimeSource)
-  || !/normalized === "prompt"\) return "stageprompttext"/.test(layoutRuntimeSource)) {
+  && !/compact === "presentation"\) return "stagepresentationtext"/.test(layoutRuntimeSource)
+  || (!/normalized === "prompt"\) return "stageprompttext"/.test(layoutRuntimeSource)
+    && !/compact === "prompt"\) return "stageprompttext"/.test(layoutRuntimeSource))) {
   console.error("Text rendering regression check failed:");
   console.error("- legacy flow text targets must resolve to canonical stage layout text ids");
   process.exit(1);
