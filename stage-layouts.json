@@ -340,13 +340,13 @@
           "artCompositionId": "layout-text-field",
           "x": 960,
           "y": 990,
-          "width": 1600,
-          "height": 50,
+          "width": 1180,
+          "height": 80,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "",
+          "defaultAnimationState": "park",
           "defaultText": "Prompt Text",
-          "fontSize": 22,
+          "fontSize": 58,
           "autoFitText": false,
           "fontColor": "#ffffff"
         }
