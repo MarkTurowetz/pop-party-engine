@@ -711,6 +711,24 @@ it. The default editor remains unchanged, while `?reactHostAudioPreview=1`
 exposes a read-only React preview for host-audio sets, lines, selected line URL,
 and aggregate counts.
 
+## Art React Shell
+
+The Art Manager now has a hidden React bridge mounted by the Vite `/art` and
+`/tools` entries:
+
+```txt
+client/tools/art/ArtToolApp.tsx
+client/tools/art/mountArtToolApp.tsx
+```
+
+The legacy `renderArtList()` path pushes visible art compositions, art assets,
+selected asset/composition/component ids, and the selected surface into
+`window.PartyGameArtReactShell`. The default editor remains unchanged, while
+`?reactArtPreview=1` exposes a read-only React preview with asset counts,
+composition counts, selected composition/component metadata, and component tree
+totals. With this bridge in place, every current authoring tool has a Vite/React
+mount point and live legacy-state feed.
+
 ## Tool Context And Flow API Bridge
 
 Vite tool entries now install the explicit tool app context for legacy scripts:
