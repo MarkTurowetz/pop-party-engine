@@ -1378,7 +1378,9 @@
         "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed"
       ],
       "folderItems": {
-        "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed": []
+        "folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed": [
+          "composition:art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c"
+        ]
       }
     },
     "controller": {
