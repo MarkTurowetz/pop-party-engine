@@ -114,27 +114,6 @@
       "nextStateTargetId": "round-intro-game-state",
       "actions": [
         {
-          "id": "intro-present-1",
-          "name": "Present Intro Text",
-          "type": "presentText",
-          "category": "input",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "nextTargetActionId": "intro-action-mqprim01",
-          "nodePosition": {
-            "x": 670,
-            "y": 514
-          },
-          "subActions": [],
-          "text": "This is the Game Intro State",
-          "textTarget": "layout-text-field-instance-1",
-          "isShown": true,
-          "instant": false,
-          "stageClickTargetActionId": "intro-action-mqprim01"
-        },
-        {
           "id": "intro-action-mqprim01",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
@@ -170,7 +149,26 @@
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "intro-present-1"
+          "nextTargetActionId": "intro-action-mqw4c168"
+        },
+        {
+          "id": "intro-action-mqw4c168",
+          "name": "Game Action 4",
+          "type": "presentText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "This is the Game Intro State",
+          "textTarget": "layout-text-field-instance-1",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "stageClickTargetActionId": "intro-action-mqprim01"
         }
       ]
     },
