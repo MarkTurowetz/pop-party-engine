@@ -943,7 +943,13 @@ function renderArtComponentEditor() {
   getArtComponentEditorRenderer().render(artComponentEditor, {
     composition,
     selectedComponentIds: selectedArtComponentIds,
-    selectedComponent: selectedEditableArtComponent()
+    selectedComponent: selectedEditableArtComponent(),
+    artCompositionChoices: [
+      { value: "", label: "Choose prefab" },
+      ...visibleArtCompositions()
+        .filter((item) => item.id !== composition.id)
+        .map((item) => ({ value: item.id, label: item.name || item.id }))
+    ]
   });
 }
 
@@ -1097,7 +1103,9 @@ function clearArtComponentImage(component) {
   updateGlobalSaveButton();
 }
 
-function normalizeArtCreateKind(value) {
+function normalizeArtCreateKind(value, options = {}) {
+  const kind = String(value || "").trim().toLowerCase();
+  if (options.allowReference && kind === "reference") return "reference";
   return artComponentSchema.normalizeCreatableComponentKind(value);
 }
 
@@ -1108,10 +1116,10 @@ function createSecureArtId(prefix = "art") {
   return `${prefix}-${String(randomId).replace(/[^a-z0-9-]/gi, "").toLowerCase()}`;
 }
 
-function defaultArtObject(kind, bounds = {}) {
-  const cleanKind = normalizeArtCreateKind(kind);
-  const width = cleanKind === "text" ? 220 : cleanKind === "container" ? 320 : 180;
-  const height = cleanKind === "text" ? 60 : cleanKind === "container" ? 140 : 96;
+function defaultArtObject(kind, bounds = {}, options = {}) {
+  const cleanKind = normalizeArtCreateKind(kind, { allowReference: options.allowReference });
+  const width = cleanKind === "text" ? 220 : cleanKind === "container" || cleanKind === "reference" ? 320 : 180;
+  const height = cleanKind === "text" ? 60 : cleanKind === "container" || cleanKind === "reference" ? 140 : 96;
   const component = {
     id: createSecureArtId(cleanKind),
     name: artKindLabel(cleanKind),
@@ -1129,6 +1137,9 @@ function defaultArtObject(kind, bounds = {}) {
     component.fontSize = 48;
     component.autoFitText = false;
     component.fontColor = "#17131f";
+  } else if (cleanKind === "reference") {
+    component.name = "Prefab Reference";
+    component.artCompositionId = "";
   } else if (cleanKind === "container") {
     component.shapeStyle = "rectangle";
     component.fillColor = "transparent";
@@ -1228,13 +1239,13 @@ function createArtAssetComposition(kind = "shape") {
 function createArtChildObject(kind = "shape") {
   const composition = selectedArtComposition();
   if (!composition) return;
-  kind = normalizeArtCreateKind(kind);
+  kind = normalizeArtCreateKind(kind, { allowReference: true });
   pushArtHistory();
   const parent = selectedEditableArtComponent();
   const bounds = parent
     ? { width: Number(parent.width || 1), height: Number(parent.height || 1) }
     : { width: Number(composition.canvas?.width || 560), height: Number(composition.canvas?.height || 230) };
-  const child = defaultArtObject(kind, bounds);
+  const child = defaultArtObject(kind, bounds, { allowReference: true });
   if (parent) {
     parent.children = Array.isArray(parent.children) ? parent.children : [];
     parent.children.push(child);
@@ -1264,21 +1275,24 @@ function closeArtCreateKindMenu() {
   artCreateKindMenu = null;
 }
 
-function artCreateKindChoices() {
-  return [
-    { kind: "text", label: "Text" },
-    { kind: "shape", label: "Shape" },
-    { kind: "container", label: "Container" }
+function artCreateKindChoices(options = {}) {
+  const noun = options.prefab ? " Prefab" : "";
+  const choices = [
+    { kind: "text", label: `Text${noun}` },
+    { kind: "shape", label: `Shape${noun}` },
+    { kind: "container", label: `Container${noun}` }
   ];
+  if (options.allowReference) choices.push({ kind: "reference", label: "Prefab Reference" });
+  return choices;
 }
 
-function openArtCreateKindMenu(anchor, onChoose) {
+function openArtCreateKindMenu(anchor, onChoose, options = {}) {
   if (!anchor) return;
   closeArtCreateKindMenu();
   const menu = document.createElement("div");
   menu.className = "art-create-kind-menu";
   menu.setAttribute("role", "menu");
-  for (const choice of artCreateKindChoices()) {
+  for (const choice of artCreateKindChoices(options)) {
     const button = document.createElement("button");
     button.type = "button";
     button.setAttribute("role", "menuitem");
@@ -1443,8 +1457,8 @@ async function setupArtTool() {
   artToolInitialized = true;
   artReplaceButton.addEventListener("click", () => artFileInput.click());
   artCancelButton.addEventListener("click", cancelArtReplacement);
-  artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition));
-  artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject));
+  artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition, { prefab: true }));
+  artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject, { allowReference: true }));
   artCreateFolderButton?.addEventListener("click", createArtFolder);
   artDeleteCompositionButton?.addEventListener("click", () => deleteSelectedArtComposition());
   for (const tab of artSurfaceTabs || []) {

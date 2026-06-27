@@ -152,7 +152,7 @@
       return list;
     }
 
-    function appendComponentFields(fields, component) {
+    function appendComponentFields(fields, component, data = {}) {
       const kindLabel = options.artKindLabel?.(component.kind) || "Art";
       fields.appendChild(textField("Name", component.name || kindLabel, (value) => options.onUpdateComponentValue?.("name", value || kindLabel)));
       fields.appendChild(numberField("X", component.x, (value) => options.onUpdateComponentNumber?.("x", value)));
@@ -168,7 +168,12 @@
         fields.appendChild(colorField("Font Color", component.fontColor || "#17131f", (value, fieldOptions) => options.onUpdateComponentValue?.("fontColor", value, fieldOptions)));
       }
       if (component.kind === "reference") {
-        fields.appendChild(textField("Art Composition", component.artCompositionId || "", (value) => options.onUpdateComponentValue?.("artCompositionId", value)));
+        const choices = data.artCompositionChoices || options.artCompositionChoices || [];
+        if (choices.length) {
+          fields.appendChild(selectField("Prefab", component.artCompositionId || "", choices, (value) => options.onUpdateComponentValue?.("artCompositionId", value)));
+        } else {
+          fields.appendChild(textField("Prefab", component.artCompositionId || "", (value) => options.onUpdateComponentValue?.("artCompositionId", value)));
+        }
       }
       if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {
         fields.appendChild(selectField("Shape", component.shapeStyle || "rounded", options.shapeStyles || [], (value) => options.onUpdateShapeStyle?.(value)));
@@ -196,7 +201,7 @@
       target.replaceChildren();
       const fields = documentRef.createElement("div");
       fields.className = "art-component-fields";
-      if (data.selectedComponent) appendComponentFields(fields, data.selectedComponent);
+      if (data.selectedComponent) appendComponentFields(fields, data.selectedComponent, data);
       else appendCompositionFields(fields, composition);
       target.append(renderComponentList(composition, selectedIds), fields);
     }

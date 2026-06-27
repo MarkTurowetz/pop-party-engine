@@ -14,6 +14,7 @@
     const previewText = typeof options.previewText === "function" ? options.previewText : () => componentSchema.componentLabel(component);
     const imageSourceFor = typeof options.imageSource === "function" ? options.imageSource : () => "";
     const getComposition = typeof options.getComposition === "function" ? options.getComposition : () => null;
+    const referencePath = options.referencePath instanceof Set ? options.referencePath : new Set();
     const supportsImageMask = typeof options.supportsImageMask === "function" ? options.supportsImageMask : componentSchema.componentSupportsImageMask;
     const eventHasFiles = typeof options.eventHasFiles === "function" ? options.eventHasFiles : () => false;
 
@@ -66,18 +67,21 @@
       });
     }
 
-    const referencedComposition = componentSchema.componentKindFrom(component) === "reference"
-      ? getComposition(component.artCompositionId)
+    const referencedId = componentSchema.componentKindFrom(component) === "reference" ? String(component.artCompositionId || "") : "";
+    const referencedComposition = referencedId && !referencePath.has(referencedId)
+      ? getComposition(referencedId)
       : null;
     const childCanvas = referencedComposition?.canvas || { width: Number(component.width || 1), height: Number(component.height || 1) };
     const childComponents = referencedComposition?.components || component.children || [];
+    const childReferencePath = referencedComposition ? new Set([...referencePath, referencedId]) : referencePath;
     for (const [childIndex, child] of childComponents.entries()) {
       node.appendChild(createComponentNode({
         ...options,
         component: child,
         canvas: childCanvas,
         layerIndex: childIndex,
-        siblingCount: childComponents.length
+        siblingCount: childComponents.length,
+        referencePath: childReferencePath
       }));
     }
 

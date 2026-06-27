@@ -184,9 +184,11 @@
     return kind === "text" || kind === "badge";
   }
 
-  function referencedCompositionFor(component, resolver) {
+  function referencedCompositionFor(component, resolver, referencePath = new Set()) {
     if (componentSchema.normalizeComponentKind(component?.kind) !== "reference") return null;
-    return typeof resolver === "function" ? resolver(component.artCompositionId) : null;
+    const compositionId = String(component.artCompositionId || "");
+    if (!compositionId || referencePath.has(compositionId)) return null;
+    return typeof resolver === "function" ? resolver(compositionId) : null;
   }
 
   function artComponentViewKey(component, index, counts) {
@@ -211,6 +213,7 @@
       this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.instanceId = String(options.instanceId || "");
       this.getComposition = typeof options.getComposition === "function" ? options.getComposition : global.artComposition;
+      this.referencePath = options.referencePath instanceof Set ? options.referencePath : new Set();
       this.component = null;
       this.children = new Map();
       this.element = this.document.createElement("div");
@@ -289,12 +292,14 @@
     }
 
     renderChildren(children) {
-      const referencedComposition = referencedCompositionFor(this.component, this.getComposition);
+      const referencedId = componentSchema.normalizeComponentKind(this.component?.kind) === "reference" ? String(this.component.artCompositionId || "") : "";
+      const referencedComposition = referencedCompositionFor(this.component, this.getComposition, this.referencePath);
       const childCanvas = referencedComposition?.canvas || {
         width: Number(this.component?.width || 1),
         height: Number(this.component?.height || 1)
       };
       const renderChildren = referencedComposition?.components || children || [];
+      const childReferencePath = referencedComposition ? new Set([...this.referencePath, referencedId]) : this.referencePath;
       const counts = new Map();
       const keyedChildren = renderChildren.map((child, index) => ({
         child,
@@ -310,6 +315,7 @@
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
             getComposition: this.getComposition,
+            referencePath: childReferencePath,
             instanceId: `${this.instanceId}/${key}`,
             component: child,
             canvas: childCanvas,
