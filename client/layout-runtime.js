@@ -17,6 +17,15 @@ const {
   layoutTargetByElementId
 } = window.PartyGameLayoutGameObjects;
 
+function normalizeTextTargetId(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function createLayoutGameObjectRegistry(visibilityOverrides, visualOptions = {}) {
   const gameObjects = window.PartyGameGameObject || window.PartyGameStageGameObject;
   return typeof gameObjects?.createRegistry === "function"

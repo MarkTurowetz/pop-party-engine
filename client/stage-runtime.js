@@ -251,15 +251,6 @@ function initStageTextObjects() {
   stageTextController()?.init();
 }
 
-function normalizeTextTargetId(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^#/, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function clearStageObjectTimers() {
   for (const timerId of subActionTimers) window.clearTimeout(timerId);
   for (const timerId of textObjectTimers) window.clearTimeout(timerId);
