@@ -1404,7 +1404,8 @@
           "composition:stage-code-panel",
           "composition:join-widget",
           "composition:waiting-status-widget",
-          "composition:countdown-popup"
+          "composition:countdown-popup",
+          "composition:join-qr-code"
         ]
       }
     },
