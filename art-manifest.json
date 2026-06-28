@@ -2065,6 +2065,10 @@
         {
           "id": "folder-b44c7441-4209-415b-87ff-4aaf25716ad2",
           "name": "Generics"
+        },
+        {
+          "id": "folder-696076ef-74ae-443d-b537-3b3b8a774ee8",
+          "name": "Text"
         }
       ],
       "order": [
@@ -2108,8 +2112,10 @@
           "composition:player-answer-bubble"
         ],
         "folder-b44c7441-4209-415b-87ff-4aaf25716ad2": [
-          "folder:folder-fc45b1fa-922d-4073-a707-9b4995172227"
-        ]
+          "folder:folder-fc45b1fa-922d-4073-a707-9b4995172227",
+          "folder:folder-696076ef-74ae-443d-b537-3b3b8a774ee8"
+        ],
+        "folder-696076ef-74ae-443d-b537-3b3b8a774ee8": []
       }
     },
     "controller": {
