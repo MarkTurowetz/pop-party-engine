@@ -1203,6 +1203,20 @@
   background: #60d394;
 }
 
+.player-answer-bubble.has-prefab-art.is-correct,
+.player-answer-bubble.has-prefab-art.is-wrong {
+  background: transparent !important;
+  color: var(--ink);
+  filter: none;
+  box-shadow: none;
+}
+
+.player-answer-bubble.has-prefab-art.is-correct::after,
+.player-answer-bubble.has-prefab-art.is-wrong::after {
+  display: none;
+  background: transparent;
+}
+
 .point-popup {
   position: absolute;
   left: 50%;
