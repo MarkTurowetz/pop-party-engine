@@ -1583,6 +1583,7 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
+          "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -1639,7 +1640,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:14:18.831Z"
+      "updatedAt": "2026-06-28T00:01:22.846Z"
     },
     "player-object-ankylo": {
       "name": "Ankylo Player Object",
