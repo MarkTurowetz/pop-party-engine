@@ -11,7 +11,7 @@
       if (value === "presentText") {
         action.text = action.text || "Presented text";
         if (!("textTarget" in action)) action.textTarget = "";
-        action.stageClickTargetActionId = action.stageClickTargetActionId || action.nextTargetActionId || action.nextTargetNodeId || "";
+        action.stageClickTargetActionId = action.stageClickTargetActionId || "";
       }
       const choiceInputConfig = globalThis.PartyChoiceInputActions?.choiceInputActionConfig?.(value);
       if (value === "multipleChoiceInput") {
@@ -47,7 +47,7 @@
         action.prompt = action.prompt || microphoneAccessConfig.prompt;
         action.buttonLabel = action.buttonLabel || microphoneAccessConfig.buttonLabel;
         action.microphoneAccessMode = globalThis.PartyMicrophoneAccessActions?.normalizeMicrophoneAccessMode?.(action.microphoneAccessMode || microphoneAccessConfig.mode) || "vip";
-        action.microphoneAccessGrantedTargetActionId = action.microphoneAccessGrantedTargetActionId || action.answersSubmittedTargetActionId || "";
+        action.microphoneAccessGrantedTargetActionId = action.microphoneAccessGrantedTargetActionId || "";
       }
       if (value === "setVotingCardsShown") {
         action.isShown = action.isShown !== false;

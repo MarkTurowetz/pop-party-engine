@@ -401,7 +401,7 @@ function flowNodeExitDefinitions(action) {
     ];
   }
   if (action.type === "presentText") {
-    return [{ label: "Screen Click", field: "stageClickTargetActionId", fallbackField: "nextTargetActionId" }];
+    return [{ label: "Screen Click", field: "stageClickTargetActionId" }];
   }
   if (action.type === "requestMicrophoneAccessInput") {
     return [{ label: "Access Granted", field: "microphoneAccessGrantedTargetActionId" }];

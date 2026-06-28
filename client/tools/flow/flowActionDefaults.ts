@@ -43,7 +43,7 @@ export function createActionDefaults(context: FlowActionDefaultsContext = {}): F
     if (value === "presentText") {
       action.text = text(action.text, "Presented text");
       if (!("textTarget" in action)) action.textTarget = "";
-      action.stageClickTargetActionId = text(action.stageClickTargetActionId, text(action.nextTargetActionId, text(action.nextTargetNodeId)));
+      action.stageClickTargetActionId = text(action.stageClickTargetActionId);
     }
     const choiceInputConfig = globals.PartyChoiceInputActions?.choiceInputActionConfig?.(value);
     if (value === "multipleChoiceInput") {
@@ -77,7 +77,7 @@ export function createActionDefaults(context: FlowActionDefaultsContext = {}): F
       action.prompt = text(action.prompt, text(microphoneAccessConfig.prompt));
       action.buttonLabel = text(action.buttonLabel, text(microphoneAccessConfig.buttonLabel));
       action.microphoneAccessMode = globals.PartyMicrophoneAccessActions?.normalizeMicrophoneAccessMode?.(action.microphoneAccessMode || microphoneAccessConfig.mode) || "vip";
-      action.microphoneAccessGrantedTargetActionId = text(action.microphoneAccessGrantedTargetActionId, text(action.answersSubmittedTargetActionId));
+      action.microphoneAccessGrantedTargetActionId = text(action.microphoneAccessGrantedTargetActionId);
     }
     if (value === "setVotingCardsShown") {
       action.isShown = action.isShown !== false;

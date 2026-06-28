@@ -93,11 +93,11 @@ const flowActionDefinitions = [
     stageRunner: "displayText",
     normalize: (action, base, context) => ({
       ...normalizeTextAction(action, base, context, "Presented text"),
-      stageClickTargetActionId: context.flowActionTarget(action?.stageClickTargetActionId || action?.nextTargetActionId)
+      stageClickTargetActionId: context.flowActionTarget(action?.stageClickTargetActionId)
     }),
     toPublic: (action, base, context) => ({
       ...publicTextAction(action, base, context, "present"),
-      stageClickTargetActionId: action.stageClickTargetActionId || action.nextTargetActionId || ""
+      stageClickTargetActionId: action.stageClickTargetActionId || ""
     })
   },
   {
@@ -180,7 +180,7 @@ const flowActionDefinitions = [
         prompt: context.cleanFlowText(action?.prompt, config.prompt || "Give microphone access to the game"),
         buttonLabel: context.cleanFlowText(action?.buttonLabel, config.buttonLabel || "Yes"),
         microphoneAccessMode: microphoneAccessActions?.normalizeMicrophoneAccessMode?.(action?.microphoneAccessMode) || "vip",
-        microphoneAccessGrantedTargetActionId: context.flowActionTarget(action?.microphoneAccessGrantedTargetActionId || action?.answersSubmittedTargetActionId)
+        microphoneAccessGrantedTargetActionId: context.flowActionTarget(action?.microphoneAccessGrantedTargetActionId)
       };
     },
     toPublic: (action, base, context) => {
@@ -191,7 +191,7 @@ const flowActionDefinitions = [
         prompt: action.prompt || config.prompt || "Give microphone access to the game",
         buttonLabel: action.buttonLabel || config.buttonLabel || "Yes",
         microphoneAccessMode: microphoneAccessActions?.normalizeMicrophoneAccessMode?.(action.microphoneAccessMode) || "vip",
-        microphoneAccessGrantedTargetActionId: context.flowActionTarget(action.microphoneAccessGrantedTargetActionId || action.answersSubmittedTargetActionId)
+        microphoneAccessGrantedTargetActionId: context.flowActionTarget(action.microphoneAccessGrantedTargetActionId)
       };
     }
   },

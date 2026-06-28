@@ -90,12 +90,11 @@ function createInputStateRuntime({ activePlayers }) {
 
   function flowEventTargetForAction(action, eventType) {
     if (!action) return "";
-    // Fall back to nextTargetActionId so flows where only "Next" was wired still work.
-    if (eventType === "timerEnd") return action.timerEndTargetActionId || action.nextTargetActionId || "";
-    if (eventType === "allPlayersSubmitted") return action.answersSubmittedTargetActionId || action.nextTargetActionId || "";
-    if (eventType === "stageClick") return action.stageClickTargetActionId || action.nextTargetActionId || "";
+    if (eventType === "timerEnd") return action.timerEndTargetActionId || "";
+    if (eventType === "allPlayersSubmitted") return action.answersSubmittedTargetActionId || "";
+    if (eventType === "stageClick") return action.stageClickTargetActionId || "";
     if (eventType === "countdownComplete") return action.nextTargetActionId || "";
-    if (eventType === "microphoneAccessGranted") return action.microphoneAccessGrantedTargetActionId || action.nextTargetActionId || "";
+    if (eventType === "microphoneAccessGranted") return action.microphoneAccessGrantedTargetActionId || "";
     return "";
   }
 

@@ -259,7 +259,7 @@
     }
 
     function appendStageClickExitControls(target, state, action, handlers) {
-      const selectedTarget = action.stageClickTargetActionId || action.nextTargetActionId || action.nextTargetNodeId || "";
+      const selectedTarget = action.stageClickTargetActionId || "";
       target.appendChild(context.flowSelect("On Screen Click", selectedTarget, handlers.targetOptions(state, action, selectedTarget), (value) => {
         action.stageClickTargetActionId = value;
         handlers.change();

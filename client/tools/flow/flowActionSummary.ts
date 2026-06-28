@@ -69,7 +69,7 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
     const instantText = action.instant ? " / Instant" : "";
 
     if (action.type === "presentText") {
-      const eventText = ` / click: ${targetActionName(action.stageClickTargetActionId || action.nextTargetActionId)}`;
+      const eventText = ` / click: ${targetActionName(action.stageClickTargetActionId)}`;
       return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${text(action.text)}"${eventText} / ${timingText}${instantText}`;
     }
     if (action.type === "multipleChoiceInput") {

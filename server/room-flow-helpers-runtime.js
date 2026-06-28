@@ -71,6 +71,17 @@ function createRoomFlowHelpersRuntime({
     return action?.nextTargetActionId || "";
   }
 
+  function markNoAction(room, action, haltReason = "No Action") {
+    room.lastDecisionTrace = {
+      actionId: action?.id || "",
+      actionName: action?.name || "",
+      selectedTarget: "none",
+      haltReason,
+      activePlayerCount: activePlayers(room).length,
+      evaluatedAt: Date.now()
+    };
+  }
+
   function advanceRoomAfterAction(room, action) {
     if (action?.routeNodeType === "action" || room.routeActionSession?.currentNodeId === action?.id) {
       advanceRoomFromRouteAction(room, action);
@@ -87,18 +98,10 @@ function createRoomFlowHelpersRuntime({
       room.actionIndex = targetIndex;
       return;
     }
-    if (target) return;
-    room.lastDecisionTrace = {
-      actionId: action?.id || "",
-      actionName: action?.name || "",
-      selectedTarget: "none",
-      haltReason: "No Matching Branch",
-      activePlayerCount: activePlayers(room).length,
-      evaluatedAt: Date.now()
-    };
+    markNoAction(room, action, target ? "Missing Target" : "No Action");
   }
 
-  function jumpToAction(room, actionId, fallbackIndex = room.actionIndex + 1) {
+  function jumpToAction(room, actionId, sourceAction = currentRoomAction(room)) {
     if (room.routeActionSession?.currentNodeId) {
       room.presentedAction = null;
       clearActiveInputFlowEvent(room);
@@ -117,12 +120,16 @@ function createRoomFlowHelpersRuntime({
     room.presentedAction = null;
     clearActiveInputFlowEvent(room);
     clearAppliedActionEffects(room);
-    room.actionIndex = targetIndex >= 0 ? targetIndex : fallbackIndex;
+    if (targetIndex >= 0) {
+      room.actionIndex = targetIndex;
+      return true;
+    }
+    markNoAction(room, sourceAction, actionId ? "Missing Target" : "No Action");
+    return false;
   }
 
   function emitInputFlowEvent(room, eventType) {
     clearAnswersSubmittedAdvanceTimer(room);
-    const fallbackIndex = room.actionIndex + 1;
     const currentAction = currentRoomAction(room);
     const target = flowEventTargetForAction(currentAction, eventType);
     const eventKey = `${currentAction?.id || "none"}:${eventType}`;
@@ -152,7 +159,7 @@ function createRoomFlowHelpersRuntime({
       enterGamePhase(room, currentAction.targetState || "intro");
       return true;
     }
-    jumpToAction(room, target, fallbackIndex);
+    jumpToAction(room, target, currentAction);
     broadcastLobby(room);
     return true;
   }

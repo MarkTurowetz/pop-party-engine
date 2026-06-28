@@ -20,7 +20,7 @@
       const targetText = action.textTarget ? context.textTargetName(action.textTarget) : "⚠ No Field";
       const instantText = action.instant ? " / Instant" : "";
       if (action.type === "presentText") {
-        const eventText = ` / click: ${context.flowTargetActionName(action.stageClickTargetActionId || action.nextTargetActionId)}`;
+        const eventText = ` / click: ${context.flowTargetActionName(action.stageClickTargetActionId)}`;
         return `${action.isShown === false ? "Hide" : "Show"} ${targetText}: "${action.text || ""}"${eventText} / ${timingText}${instantText}`;
       }
       if (action.type === "multipleChoiceInput") {
