@@ -1926,6 +1926,7 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
+          "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -1982,7 +1983,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:13:33.340Z"
+      "updatedAt": "2026-06-28T00:01:24.577Z"
     },
     "player-point-popup": {
       "name": "Player Point Popup",
