@@ -112,6 +112,82 @@
     }, { capture: true });
   }
 
+  function setupHorizontalPanelResizer(options = {}) {
+    const shell = options.shell;
+    const handle = options.handle;
+    if (!shell || !handle || handle.dataset.panelResizerBound === "true") return null;
+    handle.dataset.panelResizerBound = "true";
+    const cssProperty = options.cssProperty || "--tool-sidebar-width";
+    const storageKey = options.storageKey || "";
+    const minWidth = Number(options.minWidth || 260);
+    const minMainWidth = Number(options.minMainWidth || 420);
+    const maxWidth = Number(options.maxWidth || 900);
+    const resizingClass = options.resizingClass || "is-resizing-tool-panel";
+    const readStoredWidth = () => {
+      if (!storageKey) return 0;
+      try {
+        return Number(localStorage.getItem(storageKey) || 0);
+      } catch (error) {
+        return 0;
+      }
+    };
+    const writeStoredWidth = (width) => {
+      if (!storageKey) return;
+      try {
+        localStorage.setItem(storageKey, String(Math.round(width)));
+      } catch (error) {
+        // Tool resizing is still useful even if browser storage is unavailable.
+      }
+    };
+    const removeStoredWidth = () => {
+      if (!storageKey) return;
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (error) {
+        // Ignore storage cleanup failures.
+      }
+    };
+    const storedWidth = readStoredWidth();
+    if (Number.isFinite(storedWidth) && storedWidth > 0) {
+      shell.style.setProperty(cssProperty, `${storedWidth}px`);
+    }
+    handle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      handle.setPointerCapture?.(event.pointerId);
+      document.body.classList.add(resizingClass);
+      const shellRect = shell.getBoundingClientRect();
+      const move = (moveEvent) => {
+        const shellWidth = shellRect.width;
+        const upperBound = Math.max(minWidth, Math.min(maxWidth, shellWidth - minMainWidth));
+        const nextWidth = Math.max(minWidth, Math.min(upperBound, moveEvent.clientX - shellRect.left));
+        shell.style.setProperty(cssProperty, `${nextWidth}px`);
+        writeStoredWidth(nextWidth);
+        options.onResize?.(nextWidth, moveEvent);
+      };
+      const stop = (stopEvent) => {
+        document.body.classList.remove(resizingClass);
+        try {
+          handle.releasePointerCapture?.(stopEvent.pointerId);
+        } catch (error) {
+          // Pointer capture may already be released by the browser.
+        }
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", stop);
+        window.removeEventListener("pointercancel", stop);
+        options.onEnd?.(stopEvent);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", stop, { once: true });
+      window.addEventListener("pointercancel", stop, { once: true });
+    });
+    return {
+      reset() {
+        shell.style.removeProperty(cssProperty);
+        removeStoredWidth();
+      }
+    };
+  }
+
   function handleToolDeleteHotkey(event, options = {}) {
     if (event.key !== "Delete" && event.key !== "Backspace") return false;
     if (event.metaKey || event.ctrlKey || event.altKey) return false;
@@ -557,6 +633,7 @@
     rectsIntersect,
     scaledValueFromPointer,
     setMembershipForIds,
+    setupHorizontalPanelResizer,
     startPointerDrag,
     startSelectionMarquee,
     targetIsTextEditingControl,

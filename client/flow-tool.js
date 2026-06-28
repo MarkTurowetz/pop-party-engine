@@ -1445,36 +1445,16 @@ function updateFlowViewMode() {
 }
 
 
-function loadFlowColumnWidth() {
-  const storedWidth = Number(getLocalValue("partyTemplate.flowListWidth") || 0);
-  if (Number.isFinite(storedWidth) && storedWidth > 0) {
-    flowShell.style.setProperty("--flow-list-width", `${storedWidth}px`);
-  }
-}
-
 function setupFlowResizer() {
-  if (!flowShell || !flowResizer) return;
-  loadFlowColumnWidth();
-  flowResizer.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    flowResizer.setPointerCapture(event.pointerId);
-    document.body.classList.add("is-resizing-flow");
-    const shellRect = flowShell.getBoundingClientRect();
-    const move = (moveEvent) => {
-      const shellWidth = shellRect.width;
-      const nextWidth = Math.max(320, Math.min(shellWidth - 420, moveEvent.clientX - shellRect.left));
-      flowShell.style.setProperty("--flow-list-width", `${nextWidth}px`);
-      setLocalValue("partyTemplate.flowListWidth", String(Math.round(nextWidth)));
-    };
-    const stop = () => {
-      document.body.classList.remove("is-resizing-flow");
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop, { once: true });
-    window.addEventListener("pointercancel", stop, { once: true });
+  window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+    shell: flowShell,
+    handle: flowResizer,
+    cssProperty: "--flow-list-width",
+    storageKey: "partyTemplate.flowListWidth",
+    minWidth: 320,
+    minMainWidth: 420,
+    maxWidth: 900,
+    resizingClass: "is-resizing-flow"
   });
 }
 

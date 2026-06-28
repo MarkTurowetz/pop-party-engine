@@ -60,8 +60,8 @@
 
 .art-shell {
   display: grid;
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
-  gap: clamp(14px, 2vw, 24px);
+  grid-template-columns: minmax(260px, var(--art-list-width, 360px)) 12px minmax(0, 1fr);
+  gap: clamp(8px, 1vw, 14px);
   height: calc(100vh - clamp(32px, 6vw, 68px));
   min-height: 0;
 }
@@ -1076,7 +1076,7 @@
   overflow-wrap: anywhere;
 }
 
-.flow-resizer {
+.tool-panel-resizer {
   align-self: stretch;
   width: 12px;
   border: 0;
@@ -1087,10 +1087,12 @@
   touch-action: none;
 }
 
-.flow-resizer:active {
+.tool-panel-resizer:active {
   background: var(--blue);
 }
 
+body.is-resizing-tool-panel,
+body.is-resizing-art,
 body.is-resizing-flow {
   cursor: col-resize;
   user-select: none;

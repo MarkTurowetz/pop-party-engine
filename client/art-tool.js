@@ -1584,10 +1584,24 @@ function cancelArtReplacement() {
   updateGlobalSaveButton();
 }
 
+function setupArtResizer() {
+  window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+    shell: artShell,
+    handle: artResizer,
+    cssProperty: "--art-list-width",
+    storageKey: "partyTemplate.artListWidth",
+    minWidth: 260,
+    minMainWidth: 520,
+    maxWidth: 640,
+    resizingClass: "is-resizing-art"
+  });
+}
+
 async function setupArtTool() {
   artScreen.classList.remove("hidden");
   if (artToolInitialized) return;
   artToolInitialized = true;
+  setupArtResizer();
   artReplaceButton.addEventListener("click", () => artFileInput.click());
   artCancelButton.addEventListener("click", cancelArtReplacement);
   artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition, { prefab: true }));
