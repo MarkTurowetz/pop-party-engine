@@ -997,12 +997,7 @@ body.tool-dashboard-mode .layout-shell {
 .voting-card-voters {
   position: absolute;
   z-index: 5;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: center;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  display: block;
   min-height: 0;
   box-sizing: border-box;
   overflow: visible;
@@ -1020,64 +1015,14 @@ body.tool-dashboard-mode .layout-shell {
   transition: opacity 300ms ease, scale 300ms ease;
 }
 
-.voting-card-voter-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  background: var(--paper);
-  font-size: var(--component-font-size, 15px);
-  font-weight: 800;
-  color: var(--component-text-color, var(--ink));
-  opacity: 1;
-  rotate: var(--component-rotation, 0deg);
-  scale: var(--component-scale, 1);
-  transform: none;
-  transform-origin: center;
-  transition: opacity 200ms ease, scale 200ms cubic-bezier(0.19, 1, 0.22, 1);
-  background: var(--component-fill-color, var(--paper));
-  border-color: var(--component-border-color, var(--ink));
-  border-width: var(--component-border-width, 2px);
-  border-radius: var(--component-border-radius, 999px);
-}
-
-.voting-card-vote-hidden {
-  opacity: 0;
-  scale: 0;
-  pointer-events: none;
-}
-
 .voting-card-instant,
-.voting-card-widget-instant,
-.voting-card-vote-instant {
+.voting-card-widget-instant {
   transition-duration: 0ms !important;
   animation: none !important;
 }
 
-.voting-card-voter-avatar {
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  position: relative;
-  flex: 0 0 auto;
-  color: var(--avatar-color);
-}
-
-.voting-card-voter-avatar .dino-icon {
-  filter: drop-shadow(1px 1px 0 rgba(23, 19, 31, 0.45));
-}
-
-.voting-card-voter-name {
-  max-width: 12ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .voting-card-component-children,
+.voting-card-voter-art-host,
 .voting-card-art-objects {
   position: absolute;
   inset: 0;

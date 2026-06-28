@@ -761,6 +761,7 @@ const defaultArtCompositions = [
         width: 500,
         height: 48,
         scale: 1,
+        childDistribution: "horizontal",
         fillColor: "transparent",
         borderColor: "transparent",
         borderWidth: 0,

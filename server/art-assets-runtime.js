@@ -307,6 +307,7 @@ function createArtAssetsRuntime({
     migrateGeneratedWidgetDefaults(composition.id, components);
     migrateRemovedWidgetComponents(composition.id, components);
     migrateGeneratedWidgetLayerOrder(composition.id, components);
+    migrateVotingCardVoterContainerDefaults(composition.id, components);
     const canvas = {
       width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
       height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
@@ -322,6 +323,13 @@ function createArtAssetsRuntime({
       components,
       updatedAt: override?.updatedAt || null
     };
+  }
+
+  function migrateVotingCardVoterContainerDefaults(compositionId, components) {
+    if (compositionId !== "voting-card" || !Array.isArray(components)) return;
+    const voterContainer = components.find((component) => component?.id === "voter-container");
+    if (!voterContainer || voterContainer.childDistribution === "vertical") return;
+    voterContainer.childDistribution = "horizontal";
   }
 
   function normalizeCompositionSurface(surface) {
