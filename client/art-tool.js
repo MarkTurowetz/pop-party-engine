@@ -10,6 +10,8 @@ let selectedArtCompositionId = "";
 let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
 let selectedArtOrganizerKeys = new Set();
+let selectedArtNodeKeys = new Set();
+let primaryArtNodeKey = "";
 let selectedArtSurface = "stage";
 let draggedArtComponentId = "";
 let draggedArtOrganizerKey = "";
@@ -132,6 +134,9 @@ function restoreArtCompositionHistory(snapshot) {
   const validIds = allArtComponentIds(composition);
   selectedArtComponentIds = new Set(preferredComponentIds.filter((id) => validIds.has(id)));
   selectedArtComponentId = [...selectedArtComponentIds].pop() || "";
+  selectedArtNodeKeys = new Set(selectedArtComponentId ? [artComponentNodeKey(composition?.id || "", selectedArtComponentId)] : (selectedArtCompositionId ? [`composition:${selectedArtCompositionId}`] : []));
+  primaryArtNodeKey = selectedArtComponentId ? artComponentNodeKey(composition?.id || "", selectedArtComponentId) : selectedArtCompositionId ? `composition:${selectedArtCompositionId}` : "";
+  syncLegacyArtSelectionFromNodes();
   if (composition) {
     selectedArtAsset = null;
     selectedArtComposite = null;
@@ -204,6 +209,120 @@ function artOrganizerFolderIdFromKey(key) {
   return String(key || "").startsWith("folder:") ? String(key).slice(7) : "";
 }
 
+function artComponentNodeKey(compositionId, componentId) {
+  return `component:${compositionId}:${componentId}`;
+}
+
+function parseArtNodeKey(key) {
+  const value = String(key || "");
+  const [kind, ...parts] = value.split(":");
+  if (kind === "component") {
+    return { kind, compositionId: parts[0] || "", id: parts.slice(1).join(":") };
+  }
+  return { kind, id: parts.join(":") };
+}
+
+function isArtOrganizerNodeKey(key) {
+  return String(key || "").startsWith("composition:")
+    || String(key || "").startsWith("asset:")
+    || String(key || "").startsWith("folder:");
+}
+
+function artNodeExists(key) {
+  const node = parseArtNodeKey(key);
+  if (node.kind === "composition") return Boolean(artComposition(node.id));
+  if (node.kind === "asset") return Boolean((artAssets || []).some((asset) => asset.id === node.id));
+  if (node.kind === "folder") return artOrganizationSurface().folders.some((folder) => folder.id === node.id);
+  if (node.kind === "component") return Boolean(findArtComponent(artComposition(node.compositionId), node.id));
+  return false;
+}
+
+function setArtNodeSelection(keys, primaryKey = "") {
+  const validKeys = [...new Set(keys || [])].filter(artNodeExists);
+  selectedArtNodeKeys = new Set(validKeys);
+  primaryArtNodeKey = primaryKey && selectedArtNodeKeys.has(primaryKey)
+    ? primaryKey
+    : validKeys[validKeys.length - 1] || "";
+  syncLegacyArtSelectionFromNodes();
+}
+
+function selectedComponentNodeIdsForComposition(compositionId) {
+  const ids = [];
+  for (const key of selectedArtNodeKeys) {
+    const node = parseArtNodeKey(key);
+    if (node.kind === "component" && node.compositionId === compositionId) ids.push(node.id);
+  }
+  return ids;
+}
+
+function syncLegacyArtSelectionFromNodes() {
+  selectedArtOrganizerKeys = new Set([...selectedArtNodeKeys].filter(isArtOrganizerNodeKey));
+  const node = parseArtNodeKey(primaryArtNodeKey);
+  if (node.kind === "asset") {
+    selectedArtAsset = artAssets.find((asset) => asset.id === node.id) || null;
+    selectedArtComposite = null;
+    selectedArtCompositionId = "";
+    selectedArtComponentId = "";
+    selectedArtComponentIds = new Set();
+    return;
+  }
+  if (node.kind === "composition" && artComposition(node.id)) {
+    selectedArtAsset = null;
+    selectedArtComposite = null;
+    selectedArtCompositionId = node.id;
+    selectedArtComponentIds = new Set(selectedComponentNodeIdsForComposition(node.id));
+    selectedArtComponentId = "";
+    return;
+  }
+  if (node.kind === "component" && artComposition(node.compositionId)) {
+    selectedArtAsset = null;
+    selectedArtComposite = null;
+    selectedArtCompositionId = node.compositionId;
+    const componentIds = selectedComponentNodeIdsForComposition(node.compositionId);
+    selectedArtComponentIds = new Set(componentIds);
+    selectedArtComponentId = componentIds.includes(node.id) ? node.id : componentIds[componentIds.length - 1] || "";
+    return;
+  }
+  selectedArtOrganizerKeys = new Set([...selectedArtNodeKeys].filter(isArtOrganizerNodeKey));
+}
+
+function renderPrimaryArtNodeSelection() {
+  const node = parseArtNodeKey(primaryArtNodeKey);
+  pendingArtReplacement = null;
+  if (node.kind === "asset" && selectedArtAsset) {
+    hideArtComponentEditor();
+    artPreviewTitle.textContent = selectedArtAsset.name;
+    renderArtPreviewMeta(selectedArtAsset);
+    renderSelectedArtPreview(selectedArtAsset.currentUrl);
+    artFileName.textContent = selectedArtAsset.hasCustom ? `Current: ${selectedArtAsset.fileName}` : "Using default art";
+    artReplaceButton.disabled = false;
+    artCancelButton.disabled = true;
+    updateArtCompositionDeleteButton();
+    artFileInput.value = "";
+    updateArtCreateButtons();
+    updateGlobalSaveButton();
+    return;
+  }
+  if ((node.kind === "composition" || node.kind === "component") && selectedArtComposition()) {
+    renderSelectedArtComposition();
+    updateGlobalSaveButton();
+    return;
+  }
+  renderArtList();
+  updateArtCreateButtons();
+  updateGlobalSaveButton();
+}
+
+function selectArtNode(key, options = {}) {
+  if (!artNodeExists(key)) return;
+  const nextKeys = new Set(options.additive ? selectedArtNodeKeys : []);
+  if (options.additive && nextKeys.has(key)) nextKeys.delete(key);
+  else nextKeys.add(key);
+  setArtNodeSelection(nextKeys, nextKeys.has(key) ? key : [...nextKeys].pop() || "");
+  renderPrimaryArtNodeSelection();
+  renderArtList();
+}
+
 function artOrganizerKeyExists(state, key) {
   if (!key) return false;
   const folderId = artOrganizerFolderIdFromKey(key);
@@ -256,30 +375,11 @@ function artOrganizerDragKeys(draggedKey) {
 }
 
 function setArtOrganizerSelection(keys) {
-  const state = artOrganizationSurface();
-  selectedArtOrganizerKeys = new Set((keys || []).filter((key) => artOrganizerKeyExists(state, key)));
+  setArtNodeSelection([...(keys || [])].filter(isArtOrganizerNodeKey), [...(keys || [])].filter(isArtOrganizerNodeKey).pop() || "");
 }
 
 function selectArtOrganizerItem(key, options = {}) {
-  const state = artOrganizationSurface();
-  if (!artOrganizerKeyExists(state, key)) return;
-  const nextKeys = new Set(options.additive ? selectedArtOrganizerKeys : []);
-  if (options.additive && nextKeys.has(key)) nextKeys.delete(key);
-  else nextKeys.add(key);
-  setArtOrganizerSelection(nextKeys);
-  if (key.startsWith("composition:")) {
-    const selection = new Set(selectedArtOrganizerKeys);
-    selectArtComposition(key.slice("composition:".length));
-    selectedArtOrganizerKeys = selection;
-    renderArtList();
-  } else if (key.startsWith("asset:")) {
-    const selection = new Set(selectedArtOrganizerKeys);
-    selectArtAsset(key.slice("asset:".length));
-    selectedArtOrganizerKeys = selection;
-    renderArtList();
-  } else {
-    renderArtList();
-  }
+  selectArtNode(key, options);
 }
 
 function artOrganizerSurfaceItems(surface = selectedArtSurface) {
@@ -586,7 +686,7 @@ function reorderArtComponent(draggedComponentId, targetComponentId, placeAfter =
   const adjustedTargetIndex = siblings.findIndex((item) => item.id === targetComponentId);
   const insertIndex = adjustedTargetIndex + (placeAfter ? 1 : 0);
   siblings.splice(Math.max(0, Math.min(siblings.length, insertIndex)), 0, component);
-  setArtComponentSelection([component.id]);
+  setArtNodeSelection([artComponentNodeKey(composition.id, component.id)], artComponentNodeKey(composition.id, component.id));
   renderSelectedArtComposition();
   renderArtList();
   artFileName.textContent = "Layer order updated";
@@ -643,7 +743,9 @@ function artSidebarState() {
     selectedArtCompositionId,
     selectedArtComponentId,
     selectedArtComponentIds,
-    selectedArtOrganizerKeys
+    selectedArtOrganizerKeys,
+    selectedArtNodeKeys,
+    primaryArtNodeKey
   };
 }
 
@@ -653,7 +755,7 @@ function handleArtComponentSidebarDragStart(compositionId, componentId, row) {
   selectedArtComposite = null;
   selectedArtCompositionId = compositionId;
   if (!selectedArtComponentIds.has(componentId)) {
-    setArtComponentSelection([componentId]);
+    setArtNodeSelection([artComponentNodeKey(compositionId, componentId)], artComponentNodeKey(compositionId, componentId));
     row.classList.add("is-selected");
     renderArtComponentEditor();
     renderSelectedArtComposition();
@@ -675,6 +777,7 @@ function getArtSidebarRenderer() {
       onSelectArtComposition: selectArtComposition,
       onSelectArtComponent: selectArtComponent,
       onSelectOrganizerItem: selectArtOrganizerItem,
+      onSelectArtNode: selectArtNode,
       onCreateFolder: createArtFolder,
       onRenameFolder: renameArtFolder,
       onDeleteFolder: deleteArtFolder,
@@ -743,6 +846,9 @@ function selectArtSurface(surface) {
     : visible[0]?.id || "";
   selectedArtComponentId = "";
   selectedArtComponentIds = new Set();
+  selectedArtNodeKeys = new Set();
+  primaryArtNodeKey = "";
+  selectedArtOrganizerKeys = new Set();
   pendingArtReplacement = null;
   if (selectedArtCompositionId) {
     renderSelectedArtComposition();
@@ -768,7 +874,8 @@ function compositePreviewMarkup(composite) {
 }
 
 function selectArtAsset(assetId) {
-  selectedArtOrganizerKeys = new Set();
+  const assetKey = `asset:${assetId}`;
+  if (artNodeExists(assetKey)) setArtNodeSelection([assetKey], assetKey);
   selectedArtAsset = artAssets.find((asset) => asset.id === assetId) || artAssets[0] || null;
   selectedArtComposite = null;
   selectedArtCompositionId = "";
@@ -812,6 +919,8 @@ function renderSelectedArtPreview(sourceUrl) {
 }
 
 function selectArtComposite(compositeId) {
+  selectedArtNodeKeys = new Set();
+  primaryArtNodeKey = "";
   selectedArtOrganizerKeys = new Set();
   selectedArtComposite = avatarComposites.find((composite) => composite.id === compositeId) || avatarComposites[0] || null;
   selectedArtAsset = null;
@@ -841,7 +950,8 @@ function selectArtComposite(compositeId) {
 function selectArtComposition(compositionId) {
   const composition = artComposition(compositionId);
   if (!composition) return;
-  selectedArtOrganizerKeys = new Set();
+  const compositionKey = `composition:${composition.id}`;
+  setArtNodeSelection([compositionKey], compositionKey);
   selectedArtAsset = null;
   selectedArtComposite = null;
   selectedArtCompositionId = composition.id;
@@ -857,16 +967,14 @@ function selectArtComposition(compositionId) {
 function selectArtComponent(compositionId, componentId, options = {}) {
   const composition = artComposition(compositionId);
   if (!composition) return;
-  selectedArtOrganizerKeys = new Set();
+  const componentKey = artComponentNodeKey(composition.id, componentId);
+  const nextKeys = new Set(options.additive ? selectedArtNodeKeys : []);
+  if (options.additive && nextKeys.has(componentKey)) nextKeys.delete(componentKey);
+  else nextKeys.add(componentKey);
+  setArtNodeSelection(nextKeys, nextKeys.has(componentKey) ? componentKey : [...nextKeys].pop() || "");
   selectedArtAsset = null;
   selectedArtComposite = null;
   selectedArtCompositionId = composition.id;
-  const validIds = allArtComponentIds(composition);
-  if (options.additive) {
-    setArtComponentSelection(PartyGameToolAffordances.toggleSelectionId(selectedArtComponentIds, componentId, validIds));
-  } else {
-    setArtComponentSelection(validIds.has(componentId) ? [componentId] : []);
-  }
   renderSelectedArtComposition();
   renderArtList();
   updateArtCreateButtons();
@@ -883,6 +991,10 @@ function setArtComponentSelection(componentIds) {
   const selection = PartyGameToolAffordances.normalizeSelection(componentIds, validIds);
   selectedArtComponentIds = selection.idSet;
   selectedArtComponentId = selection.primaryId;
+  const nonComponentKeys = [...selectedArtNodeKeys].filter((key) => parseArtNodeKey(key).kind !== "component");
+  const componentKeys = selection.ids.map((id) => artComponentNodeKey(composition.id, id));
+  selectedArtNodeKeys = new Set([...nonComponentKeys, ...componentKeys]);
+  primaryArtNodeKey = selectedArtComponentId ? artComponentNodeKey(composition.id, selectedArtComponentId) : primaryArtNodeKey;
 }
 
 function renderArtSelectionOnly() {
@@ -1084,8 +1196,7 @@ function startArtComponentDrag(event, component) {
     return;
   }
   if (!selectedArtComponentIds.has(component.id)) {
-    selectedArtComponentIds = new Set([component.id]);
-    selectedArtComponentId = component.id;
+    setArtNodeSelection([artComponentNodeKey(selectedArtCompositionId, component.id)], artComponentNodeKey(selectedArtCompositionId, component.id));
     renderArtList();
   }
   const scale = artCompositionPreviewScale();
@@ -1119,8 +1230,7 @@ function startArtComponentScale(event, component) {
   event.preventDefault();
   event.stopPropagation();
   if (!selectedArtComponentIds.has(component.id)) {
-    selectedArtComponentIds = new Set([component.id]);
-    selectedArtComponentId = component.id;
+    setArtNodeSelection([artComponentNodeKey(selectedArtCompositionId, component.id)], artComponentNodeKey(selectedArtCompositionId, component.id));
   }
   const scaling = selectedArtComponents();
   const origins = new Map(scaling.map((item) => [item.id, Number(item.scale || 1)]));
@@ -1494,8 +1604,7 @@ function createArtAssetComposition(kind = "shape") {
   selectedArtAsset = null;
   selectedArtComposite = null;
   selectedArtCompositionId = composition.id;
-  selectedArtComponentIds = new Set([root.children[0].id]);
-  selectedArtComponentId = root.children[0].id;
+  setArtNodeSelection([artComponentNodeKey(composition.id, root.children[0].id)], artComponentNodeKey(composition.id, root.children[0].id));
   pendingArtReplacement = null;
   renderSelectedArtComposition();
   renderArtList();
@@ -1524,8 +1633,7 @@ function createArtChildObject(kind = "shape") {
     composition.components.push(child);
     collapsedArtComposites.delete(composition.id);
   }
-  selectedArtComponentIds = new Set([child.id]);
-  selectedArtComponentId = child.id;
+  setArtNodeSelection([artComponentNodeKey(composition.id, child.id)], artComponentNodeKey(composition.id, child.id));
   renderSelectedArtComposition();
   renderArtList();
   persistArtCollapseState();
@@ -1648,6 +1756,9 @@ async function deleteSelectedArtComposition() {
     selectedArtCompositionId = "";
     selectedArtComponentId = "";
     selectedArtComponentIds = new Set();
+    selectedArtNodeKeys = new Set();
+    primaryArtNodeKey = "";
+    selectedArtOrganizerKeys = new Set();
     hideArtComponentEditor();
     artPreviewTitle.textContent = "No Art Assets";
     artPreviewMeta.textContent = "Create an art asset to begin.";
