@@ -1743,22 +1743,6 @@
       },
       "components": [
         {
-          "id": "answer-text",
-          "name": "Answer Text",
-          "kind": "text",
-          "x": 150,
-          "y": 92,
-          "width": 226,
-          "height": 78,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "park",
-          "defaultText": "ANSWER",
-          "fontSize": 28,
-          "autoFitText": false,
-          "fontColor": "#17131f"
-        },
-        {
           "id": "answer-bubble-tail",
           "name": "Answer Bubble Tail",
           "kind": "shape",
@@ -1793,9 +1777,25 @@
           "borderColor": "#17131f",
           "borderWidth": 3,
           "borderRadius": 18
+        },
+        {
+          "id": "answer-text",
+          "name": "Answer Text",
+          "kind": "text",
+          "x": 150,
+          "y": 92,
+          "width": 226,
+          "height": 78,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "park",
+          "defaultText": "ANSWER",
+          "fontSize": 28,
+          "autoFitText": false,
+          "fontColor": "#17131f"
         }
       ],
-      "updatedAt": "2026-06-28T00:01:08.916Z"
+      "updatedAt": "2026-06-27T21:13:57.143Z"
     },
     "player-object-trike": {
       "name": "Trike Player Object",
@@ -2024,7 +2024,7 @@
           "fontColor": "#17131f"
         }
       ],
-      "updatedAt": "2026-06-27T21:13:18.766Z"
+      "updatedAt": "2026-06-28T00:01:10.632Z"
     }
   },
   "deletedCompositionIds": [],
