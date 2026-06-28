@@ -53,7 +53,7 @@
       return slot;
     }
 
-    function bindOrganizerRow(row, key) {
+    function bindArtNodeRow(row, key) {
       if (!key) return row;
       row.addEventListener("click", (event) => {
         const control = event.target.closest(organizerControlSelector);
@@ -65,13 +65,13 @@
       if (searchQuery(state())) return row;
       affordances?.bindSortableRow(row, {
         itemId: key,
-        dragType: "application/x-party-art-organizer",
+        dragType: "application/x-party-art-node",
         ignoreSelector: organizerControlSelector,
-        getDraggedId: () => options.getDraggedOrganizerKey?.() || "",
-        canDrop: (draggedKey, targetKey) => options.canReorderOrganizerItem?.(draggedKey, targetKey) !== false,
-        onDragStart: (dragKey) => options.onOrganizerDragStart?.(dragKey),
-        onReorder: (draggedKey, targetKey, placeAfter) => options.onReorderOrganizerItem?.(draggedKey, targetKey, placeAfter),
-        onDragEnd: () => options.onOrganizerDragEnd?.()
+        getDraggedId: () => options.getDraggedArtNodeKey?.() || "",
+        canDrop: (draggedKey, targetKey) => options.canDropArtNode?.(draggedKey, targetKey) !== false,
+        onDragStart: (dragKey) => options.onArtNodeDragStart?.(dragKey),
+        onReorder: (draggedKey, targetKey, placeAfter) => options.onReorderArtNode?.(draggedKey, targetKey, placeAfter),
+        onDragEnd: () => options.onArtNodeDragEnd?.()
       });
       return row;
     }
@@ -176,7 +176,7 @@
           else options.onSelectArtComposition?.(composition.id);
         }
       });
-      return bindOrganizerRow(row, organizerKey);
+      return bindArtNodeRow(row, selectionKey);
     }
 
     function createComponentButton(data, composition, component) {
@@ -196,17 +196,7 @@
         })
       });
       row.title = "Drag to reorder layers. Top of list is frontmost.";
-      affordances?.bindSortableRow(row, {
-        itemId: component.id,
-        dragType: "application/x-party-art-component",
-        ignoreSelector: ".disclosure-button, input, textarea, button, select, a",
-        getDraggedId: () => options.getDraggedComponentId?.() || "",
-        canDrop: (draggedId, targetId) => Boolean(options.canReorderArtComponent?.(draggedId, targetId)),
-        onDragStart: (componentId) => options.onComponentDragStart?.(composition.id, componentId, row),
-        onReorder: (draggedId, targetId, placeAfter) => options.onReorderArtComponent?.(draggedId, targetId, placeAfter),
-        onDragEnd: () => options.onComponentDragEnd?.()
-      });
-      return row;
+      return bindArtNodeRow(row, selectionKey);
     }
 
     function createComponentBranch(data, composition, component, depth = 0, forceShowAll = false) {
@@ -279,7 +269,7 @@
         }
       });
       button.classList.toggle("is-shared", Boolean(asset.sharedBy?.length));
-      return bindOrganizerRow(button, organizerKey);
+      return bindArtNodeRow(button, selectionKey);
     }
 
     function createCompositeBlock(data, composite) {
@@ -468,20 +458,20 @@
         options.onDeleteFolder?.(folder.id);
       });
       title.appendChild(deleteButton);
-      bindOrganizerRow(title, folderKey);
+      bindArtNodeRow(title, folderKey);
       title.addEventListener("dragover", (event) => {
-        const draggedKey = options.getDraggedOrganizerKey?.() || "";
-        if (!draggedKey || options.canMoveOrganizerItemToFolder?.(draggedKey, folder.id) === false) return;
+        const draggedKey = options.getDraggedArtNodeKey?.() || "";
+        if (!draggedKey || options.canMoveArtNodeToFolder?.(draggedKey, folder.id) === false) return;
         event.preventDefault();
         title.classList.add("is-folder-drop");
       });
       title.addEventListener("dragleave", () => title.classList.remove("is-folder-drop"));
       title.addEventListener("drop", (event) => {
-        const draggedKey = options.getDraggedOrganizerKey?.() || "";
-        if (!draggedKey || options.canMoveOrganizerItemToFolder?.(draggedKey, folder.id) === false) return;
+        const draggedKey = options.getDraggedArtNodeKey?.() || "";
+        if (!draggedKey || options.canMoveArtNodeToFolder?.(draggedKey, folder.id) === false) return;
         event.preventDefault();
         title.classList.remove("is-folder-drop");
-        options.onMoveOrganizerItemToFolder?.(draggedKey, folder.id);
+        options.onMoveArtNodeToFolder?.(draggedKey, folder.id);
       });
       wrapper.appendChild(title);
       const children = documentRef.createElement("div");
