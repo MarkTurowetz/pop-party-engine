@@ -1,4 +1,6 @@
 function flowState(stateId) {
+  const selector = window.PartyGameFlowSelectors?.findFlowState;
+  if (selector) return selector(gameFlow, stateId);
   return gameFlow.states.find((state) => state.id === stateId) || null;
 }
 
@@ -10,7 +12,7 @@ function flowAction(stateId, actionId) {
   return flowActionRef(stateId, actionId)?.action || null;
 }
 
-function setFlowActionSelection(ids) {
+function flowActionSelectionValidIds() {
   const state = flowState(selectedFlowStateId);
   const validIds = new Set();
   if (flowViewMode === "node" && flowNodeDepth === "actions") {
@@ -24,34 +26,64 @@ function setFlowActionSelection(ids) {
       for (const branch of ensureDecisionBranches(action)) validIds.add(branch.id);
     }
   }
-  const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
-  selectedFlowActionIds = new Set(nextIds);
-  selectedFlowActionId = nextIds[nextIds.length - 1] || "";
-  selectedFlowRouteNodeId = "";
-  selectedFlowRouteBranchId = "";
+  return validIds;
+}
+
+function setFlowActionSelection(ids) {
+  const validIds = flowActionSelectionValidIds();
+  const selection = window.PartyGameFlowSelection?.setFlowActionSelectionState?.(ids, validIds) || (() => {
+    const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
+    return {
+      selectedFlowActionIds: new Set(nextIds),
+      selectedFlowActionId: nextIds[nextIds.length - 1] || "",
+      selectedFlowRouteNodeId: "",
+      selectedFlowRouteBranchId: ""
+    };
+  })();
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowActionId = selection.selectedFlowActionId;
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
 }
 
 function clearFlowActionSelection() {
-  selectedFlowActionIds = new Set();
-  selectedFlowActionId = "";
+  const selection = window.PartyGameFlowSelection?.clearFlowActionSelectionState?.() || {
+    selectedFlowActionIds: new Set(),
+    selectedFlowActionId: ""
+  };
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowActionId = selection.selectedFlowActionId;
 }
 
 function selectFlowAction(actionId, options = {}) {
+  const selection = window.PartyGameFlowSelection?.selectFlowActionState?.({
+    selectedFlowActionIds,
+    selectedFlowActionId,
+    selectedFlowRouteNodeId,
+    selectedFlowRouteBranchId
+  }, actionId, options, flowActionSelectionValidIds());
+  if (selection) {
+    selectedFlowActionIds = selection.selectedFlowActionIds;
+    selectedFlowActionId = selection.selectedFlowActionId;
+    selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+    selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
+    return;
+  }
   if (options.additive) {
     const nextIds = new Set(selectedFlowActionIds);
-    if (nextIds.has(actionId)) {
-      nextIds.delete(actionId);
-    } else {
-      nextIds.add(actionId);
-    }
+    if (nextIds.has(actionId)) nextIds.delete(actionId);
+    else nextIds.add(actionId);
     setFlowActionSelection([...nextIds]);
-  } else {
-    setFlowActionSelection([actionId]);
+    return;
   }
+  setFlowActionSelection([actionId]);
 }
 
 function flowActionIsSelected(actionId) {
-  return selectedFlowActionIds.has(actionId) || selectedFlowActionId === actionId;
+  return window.PartyGameFlowSelection?.flowActionIsSelected?.({
+    selectedFlowActionIds,
+    selectedFlowActionId
+  }, actionId) || selectedFlowActionIds.has(actionId) || selectedFlowActionId === actionId;
 }
 
 function actionNodeIsSelected(action) {
@@ -124,48 +156,90 @@ function repairSelectedFlowRouteBranch() {
 }
 
 function selectFlowRouteNode(routeNodeId) {
-  selectedFlowRouteNodeId = flowRouteNode(routeNodeId)?.id || "";
-  selectedFlowRouteBranchId = "";
+  const selection = window.PartyGameFlowSelection?.setFlowRouteNodeSelectionState?.(flowRouteNode(routeNodeId)?.id || "") || {
+    selectedFlowRouteNodeId: flowRouteNode(routeNodeId)?.id || "",
+    selectedFlowRouteBranchId: "",
+    selectedFlowActionIds: new Set(),
+    selectedFlowActionId: ""
+  };
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
   clearFlowActionSelection();
-  selectedFlowActionIds = new Set();
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowActionId = selection.selectedFlowActionId;
 }
 
 function selectFlowRouteBranch(routeNodeId, branchId) {
   const routeNode = flowRouteNode(routeNodeId);
   const branch = routeNode ? decisionBranchById(routeNode, branchId, { targetField: flowRouteBranchTargetField() }) : null;
-  selectedFlowRouteNodeId = branch ? routeNode.id : "";
-  selectedFlowRouteBranchId = branch?.id || "";
+  const selection = window.PartyGameFlowSelection?.setFlowRouteBranchSelectionState?.(branch ? routeNode.id : "", branch?.id || "") || {
+    selectedFlowRouteNodeId: branch ? routeNode.id : "",
+    selectedFlowRouteBranchId: branch?.id || "",
+    selectedFlowActionIds: new Set(),
+    selectedFlowActionId: ""
+  };
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
   clearFlowActionSelection();
-  selectedFlowActionIds = new Set();
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowActionId = selection.selectedFlowActionId;
 }
 
 function clearFlowRouteNodeSelection() {
-  selectedFlowRouteNodeId = "";
-  selectedFlowRouteBranchId = "";
+  const selection = window.PartyGameFlowSelection?.clearFlowRouteNodeSelectionState?.() || {
+    selectedFlowRouteNodeId: "",
+    selectedFlowRouteBranchId: ""
+  };
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
 }
 
 function setFlowMomentSelection(ids, { expandInList = true } = {}) {
   const validIds = new Set((gameFlow.states || []).map((state) => state.id));
-  const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
-  selectedFlowActionIds = new Set(nextIds);
-  selectedFlowStateId = nextIds[nextIds.length - 1] || "";
-  selectedFlowActionId = "";
-  clearFlowRouteNodeSelection();
+  const selection = window.PartyGameFlowSelection?.setFlowMomentSelectionState?.(ids, validIds) || (() => {
+    const nextIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => validIds.has(id));
+    return {
+      selectedFlowActionIds: new Set(nextIds),
+      selectedFlowStateId: nextIds[nextIds.length - 1] || "",
+      selectedFlowActionId: "",
+      selectedFlowRouteNodeId: "",
+      selectedFlowRouteBranchId: ""
+    };
+  })();
+  selectedFlowActionIds = selection.selectedFlowActionIds;
+  selectedFlowStateId = selection.selectedFlowStateId;
+  selectedFlowActionId = selection.selectedFlowActionId;
+  selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+  selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
   if (expandInList) expandFlowStateInList(selectedFlowStateId);
 }
 
 function selectFlowMoment(stateId, options = {}) {
+  const validIds = new Set((gameFlow.states || []).map((state) => state.id));
+  const selection = window.PartyGameFlowSelection?.selectFlowMomentState?.({
+    selectedFlowActionIds: options.additive ? new Set(selectedFlowMomentStates().map((state) => state.id)) : selectedFlowActionIds,
+    selectedFlowActionId,
+    selectedFlowStateId,
+    selectedFlowRouteNodeId,
+    selectedFlowRouteBranchId
+  }, stateId, options, validIds);
+  if (selection) {
+    selectedFlowActionIds = selection.selectedFlowActionIds;
+    selectedFlowStateId = selection.selectedFlowStateId;
+    selectedFlowActionId = selection.selectedFlowActionId;
+    selectedFlowRouteNodeId = selection.selectedFlowRouteNodeId;
+    selectedFlowRouteBranchId = selection.selectedFlowRouteBranchId;
+    if (options.expandInList !== false) expandFlowStateInList(selectedFlowStateId);
+    return;
+  }
   if (options.additive) {
     const currentIds = new Set(selectedFlowMomentStates().map((state) => state.id));
-    if (currentIds.has(stateId)) {
-      currentIds.delete(stateId);
-    } else {
-      currentIds.add(stateId);
-    }
+    if (currentIds.has(stateId)) currentIds.delete(stateId);
+    else currentIds.add(stateId);
     setFlowMomentSelection([...currentIds], options);
-  } else {
-    setFlowMomentSelection([stateId], options);
+    return;
   }
+  setFlowMomentSelection([stateId], options);
 }
 
 function selectFlowMomentFromList(stateId, event) {
@@ -187,6 +261,8 @@ function expandFlowStateInList(stateId, { persist = true } = {}) {
 }
 
 function flowActionRef(stateId, actionId) {
+  const selector = window.PartyGameFlowSelectors?.findFlowActionRef;
+  if (selector) return selector(gameFlow, stateId, actionId, { ensureDecisionBranches });
   const state = flowState(stateId);
   if (!state || !actionId) return null;
   for (const action of state.actions) {
@@ -210,6 +286,8 @@ function flowActionRef(stateId, actionId) {
 }
 
 function makeFlowId(label, fallback) {
+  const selector = window.PartyGameFlowSelectors?.makeFlowId;
+  if (selector) return selector(label, fallback);
   return String(label || fallback)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -218,6 +296,8 @@ function makeFlowId(label, fallback) {
 }
 
 function actionTypeName(type) {
+  const selector = window.PartyGameFlowSelectors?.actionTypeName;
+  if (selector) return selector(flowActionTypes, type);
   return flowActionTypes.find((item) => item.id === type)?.name || type;
 }
 
@@ -230,6 +310,8 @@ function actionCategoryName(action) {
 }
 
 function stateActionNameSet(state, excludeActionId = "") {
+  const selector = window.PartyGameFlowSelectors?.stateActionNameSet;
+  if (selector) return selector(state, excludeActionId);
   const names = new Set();
   for (const action of state?.actions || []) {
     if (action.id !== excludeActionId && action.name) names.add(String(action.name).trim().toLowerCase());
@@ -241,6 +323,8 @@ function stateActionNameSet(state, excludeActionId = "") {
 }
 
 function uniqueActionNameForType(state, action) {
+  const selector = window.PartyGameFlowSelectors?.uniqueActionNameForType;
+  if (selector) return selector(flowActionTypes, state, action);
   const base = actionTypeName(action?.type || "") || "Action";
   const existing = stateActionNameSet(state, action?.id || "");
   if (!existing.has(base.toLowerCase())) return base;
@@ -251,6 +335,11 @@ function uniqueActionNameForType(state, action) {
 
 function refreshActionNameFromType(state, action) {
   if (!state || !action) return;
+  const helper = window.PartyGameFlowMutations?.refreshFlowActionName;
+  if (helper) {
+    helper(state, action, { nameForAction: uniqueActionNameForType });
+    return;
+  }
   action.name = uniqueActionNameForType(state, action);
 }
 
@@ -258,7 +347,7 @@ function textTargetOptionsForFlowState(stateId, selectedTarget = "") {
   const seen = new Set();
   const options = [];
   const addElement = (element) => {
-    if (!element || element.kind !== "text") return;
+    if (!element || (element.kind !== "text" && element.artCompositionId !== "layout-text-field")) return;
     const id = normalizeTextTargetId(element.id);
     if (!id || seen.has(id)) return;
     seen.add(id);
@@ -820,10 +909,18 @@ function getFlowNodeMarqueeController() {
 }
 
 function flowStateName(stateId) {
+  const helper = window.PartyGameFlowSelectors?.flowStateName;
+  if (helper) {
+    return helper(gameFlow, stateId, {
+      routeNodeName: (id) => flowRouteNode(id)?.name
+    });
+  }
   return flowState(stateId)?.name || flowRouteNode(stateId)?.name || stateId || "State";
 }
 
 function flowTargetActionName(actionId) {
+  const helper = window.PartyGameFlowSelectors?.flowTargetActionName;
+  if (helper) return helper(flowState(selectedFlowStateId), actionId);
   if (!actionId) return "No Connection";
   if (actionId === "none") return "None";
   if (actionId === "return") return "Return";
@@ -833,6 +930,8 @@ function flowTargetActionName(actionId) {
 }
 
 function decisionVariableName(variable) {
+  const helper = window.PartyGameFlowDecision?.decisionVariableName;
+  if (helper) return helper(variable);
   if (variable === "activePlayerCount") return "Active Player Count";
   if (variable === "currentRound") return "Current Round";
   if (variable === "numSequentialGames") return "Sequential Games";
@@ -846,10 +945,14 @@ function decisionVariableName(variable) {
 }
 
 function makeDecisionBranchId(type = "branch") {
+  const helper = window.PartyGameFlowDecision?.makeDecisionBranchId;
+  if (helper) return helper(type);
   return `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 function ensureDecisionBranches(action, options = {}) {
+  const helper = window.PartyGameFlowDecision?.ensureDecisionBranches;
+  if (helper) return helper(action, options);
   if (!action) return [];
   const targetField = options.targetField || "targetActionId";
   const trueTargetField = options.trueTargetField || "trueTargetActionId";
@@ -892,10 +995,14 @@ function ensureDecisionBranches(action, options = {}) {
 }
 
 function decisionBranchById(action, branchId, options = {}) {
+  const helper = window.PartyGameFlowDecision?.decisionBranchById;
+  if (helper) return helper(action, branchId, options);
   return ensureDecisionBranches(action, options).find((branch) => branch.id === branchId);
 }
 
 function decisionBranchName(branch, index = 0) {
+  const helper = window.PartyGameFlowDecision?.decisionBranchName;
+  if (helper) return helper(branch, index);
   if (!branch) return "Branch";
   if (branch.type === "noMatch") return "No Match";
   if (branch.type === "code") return `Code ${index + 1}`;
@@ -903,6 +1010,8 @@ function decisionBranchName(branch, index = 0) {
 }
 
 function decisionBranchWireLabel(branch, index = 0) {
+  const helper = window.PartyGameFlowDecision?.decisionBranchWireLabel;
+  if (helper) return helper(branch, index);
   if (!branch) return "";
   if (branch.type === "code") return branch.code || decisionBranchName(branch, index);
   if (branch.type === "hit") return String(branch.value || decisionBranchName(branch, index));
@@ -933,6 +1042,8 @@ function decisionSummary(action, options = {}) {
 }
 
 function flowActionTargetOptions(state, selectedActionId = "") {
+  const helper = window.PartyGameFlowSelectors?.flowActionTargetOptions;
+  if (helper) return helper(state, selectedActionId);
   const options = [{ id: "", name: "No Connection" }, { id: "none", name: "None" }, { id: "return", name: "Return To Moments" }];
   for (const action of state?.actions || []) {
     options.push({ id: action.id, name: action.name || action.id });
@@ -944,6 +1055,12 @@ function flowActionTargetOptions(state, selectedActionId = "") {
 }
 
 function flowStateTargetOptions(selectedStateId = "", currentStateId = "") {
+  const helper = window.PartyGameFlowSelectors?.flowStateTargetOptions;
+  if (helper) {
+    return helper(gameFlow, selectedStateId, currentStateId, {
+      appendRouteTargets: (options) => getFlowMomentRouteGraph()?.appendRouteTargets(options)
+    });
+  }
   const options = [{ id: "", name: "No Next Moment" }, { id: "none", name: "None / Halt" }];
   for (const state of gameFlow.states || []) {
     if (state.id === currentStateId) continue;
@@ -973,6 +1090,8 @@ function defaultControllerLayoutId() {
 }
 
 function controllerLayoutOptions(selectedLayoutId = "") {
+  const helper = window.PartyGameFlowSelectors?.controllerLayoutOptions;
+  if (helper) return helper(controllerLayouts, selectedLayoutId);
   const options = [{ id: "", name: "Current Moment Default" }];
   for (const state of controllerLayouts.states || []) {
     options.push({ id: state.id, name: state.name || state.id });
@@ -984,6 +1103,8 @@ function controllerLayoutOptions(selectedLayoutId = "") {
 }
 
 function flowGameObjectLayoutElements(state) {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectLayoutElements;
+  if (helper) return helper(stageLayouts, state, selectedFlowStateId);
   const stateId = state?.id || selectedFlowStateId || "";
   const layout = (stageLayouts.states || []).find((item) => item.id === stateId);
   const momentElements = flowPlacedGameObjectElementsForLayoutGroup(layout, "moment");
@@ -1000,6 +1121,8 @@ function flowGameObjectLayoutElements(state) {
 }
 
 function flowPlacedGameObjectElementsForLayoutGroup(group, scope, options = {}) {
+  const helper = window.PartyGameFlowSelectors?.flowPlacedGameObjectElementsForLayoutGroup;
+  if (helper) return helper(group, scope, options);
   const hiddenIds = options.hiddenIds || new Set();
   const excludeIds = options.excludeIds || new Set();
   return (group?.elements || [])
@@ -1010,6 +1133,8 @@ function flowPlacedGameObjectElementsForLayoutGroup(group, scope, options = {}) 
 }
 
 function flowGameObjectTargetLabel(element) {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetLabel;
+  if (helper) return helper(element);
   const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
   const name = String(element?.name || element?.id || "Game Object");
   const id = String(element?.id || "");
@@ -1018,11 +1143,15 @@ function flowGameObjectTargetLabel(element) {
 }
 
 function flowGameObjectTargetValue(element) {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetValue;
+  if (helper) return helper(element);
   const scope = ["global", "moment"].includes(element?.targetLayoutScope) ? element.targetLayoutScope : "moment";
   return `${scope}:${element.id || ""}`;
 }
 
 function flowGameObjectTargetParts(value, fallbackScope = "") {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetParts;
+  if (helper) return helper(value, fallbackScope);
   const text = String(value || "");
   const match = text.match(/^(global|moment):(.+)$/);
   if (match) return { scope: match[1], id: match[2] };
@@ -1030,6 +1159,8 @@ function flowGameObjectTargetParts(value, fallbackScope = "") {
 }
 
 function flowGameObjectTargetOptions(state, selectedElementId = "") {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetOptions;
+  if (helper) return helper(stageLayouts, state, selectedFlowStateId, selectedElementId);
   const selectedParts = flowGameObjectTargetParts(selectedElementId);
   const options = [{ id: "", name: "No Game Object" }];
   for (const element of flowGameObjectLayoutElements(state)) {
@@ -1043,6 +1174,8 @@ function flowGameObjectTargetOptions(state, selectedElementId = "") {
 }
 
 function flowGameObjectTargetName(elementId, targetLayoutScope = "") {
+  const helper = window.PartyGameFlowSelectors?.flowGameObjectTargetName;
+  if (helper) return helper(stageLayouts, selectedFlowStateId, elementId, targetLayoutScope);
   if (!elementId) return "No Game Object";
   const scope = ["global", "moment"].includes(String(targetLayoutScope || "")) ? targetLayoutScope : "";
   const selectedState = (stageLayouts.states || []).find((state) => state.id === selectedFlowStateId);
@@ -1170,7 +1303,8 @@ function publishRuntimeLocalClear() {
   };
   runtimeTestChannel?.postMessage(message);
   if (canUseServer) {
-    postJson("/api/tool-drafts", message).catch(() => {});
+    const saveToolDraft = window.PartyGameToolContext?.api?.flow?.saveToolDraft;
+    (saveToolDraft ? saveToolDraft(message) : postJson("/api/tool-drafts", message)).catch(() => {});
   }
   updateGlobalSaveButton();
 }
@@ -1182,11 +1316,14 @@ function renderFlowListAndPublish() {
 }
 
 window.addEventListener("beforeunload", () => {
-  if (isFlowDirty() || isLayoutDirty() || isControllerLayoutDirty() || isHostAudiosDirty()) publishRuntimeLocalClear();
+  const layoutDirty = typeof isLayoutDirty === "function" && isLayoutDirty();
+  const controllerLayoutDirty = typeof isControllerLayoutDirty === "function" && isControllerLayoutDirty();
+  const hostAudiosDirty = typeof isHostAudiosDirty === "function" && isHostAudiosDirty();
+  if (isFlowDirty() || layoutDirty || controllerLayoutDirty || hostAudiosDirty) publishRuntimeLocalClear();
 });
 
 async function loadGameFlow() {
-  const result = await getJson("/api/game-flow");
+  const result = await (window.PartyGameToolContext?.api?.flow?.loadGameFlow?.() || getJson("/api/game-flow"));
   gameFlow = result.flow || { states: [] };
   flowActionTypes = result.availableActionTypes || [];
   flowTransitions = result.availableTransitions || [];
@@ -1213,6 +1350,19 @@ function updateFlowStorageStatus(storage) {
 }
 
 function renderFlowTool() {
+  window.PartyGameFlowReactShell?.update?.(gameFlow, {
+    canAddAction: flowViewMode === "node" && flowNodeDepth === "moments" ? true : Boolean(flowState(selectedFlowStateId)),
+    canAddState: true,
+    canDelete: Boolean(selectedFlowRouteNodeId || selectedFlowStateId),
+    canRevert: Boolean(flowSavedSnapshot && isFlowDirty()),
+    flowActionTypes,
+    flowNodeDepth,
+    flowViewMode,
+    selectedActionId: selectedFlowActionId,
+    selectedRouteBranchId: selectedFlowRouteBranchId,
+    selectedRouteNodeId: selectedFlowRouteNodeId,
+    selectedStateId: selectedFlowStateId
+  });
   renderFlowList();
   renderFlowEditor();
   renderFlowNodeView();
@@ -1233,6 +1383,41 @@ function renderFlowActions() {
     addActionButton.textContent = "Add Action";
     addActionButton.disabled = flowViewMode === "node" && flowNodeDepth === "moments" ? false : !flowState(selectedFlowStateId);
   }
+}
+
+function installFlowReactShellHandlers() {
+  window.PartyGameFlowReactShell?.setHandlers?.({
+    addAction: () => {
+      addFlowAction();
+    },
+    addState: () => {
+      addFlowState();
+    },
+    deleteSelection: () => {
+      deleteFlowItem();
+    },
+    revert: () => {
+      revertGameFlow();
+    },
+    selectAction: (actionId) => {
+      selectFlowAction(actionId);
+      renderFlowTool();
+    },
+    selectRouteBranch: (routeNodeId, branchId) => {
+      selectFlowRouteBranch(routeNodeId, branchId);
+      renderFlowTool();
+    },
+    selectRouteNode: (routeNodeId) => {
+      selectFlowRouteNode(routeNodeId);
+      renderFlowTool();
+    },
+    selectState: (stateId) => {
+      selectFlowMomentFromList(stateId, { metaKey: false, ctrlKey: false, shiftKey: false });
+    },
+    setViewMode: (mode) => {
+      setFlowViewMode(mode);
+    }
+  });
 }
 
 function setFlowViewMode(mode) {
@@ -1260,36 +1445,16 @@ function updateFlowViewMode() {
 }
 
 
-function loadFlowColumnWidth() {
-  const storedWidth = Number(getLocalValue("partyTemplate.flowListWidth") || 0);
-  if (Number.isFinite(storedWidth) && storedWidth > 0) {
-    flowShell.style.setProperty("--flow-list-width", `${storedWidth}px`);
-  }
-}
-
 function setupFlowResizer() {
-  if (!flowShell || !flowResizer) return;
-  loadFlowColumnWidth();
-  flowResizer.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    flowResizer.setPointerCapture(event.pointerId);
-    document.body.classList.add("is-resizing-flow");
-    const shellRect = flowShell.getBoundingClientRect();
-    const move = (moveEvent) => {
-      const shellWidth = shellRect.width;
-      const nextWidth = Math.max(320, Math.min(shellWidth - 420, moveEvent.clientX - shellRect.left));
-      flowShell.style.setProperty("--flow-list-width", `${nextWidth}px`);
-      setLocalValue("partyTemplate.flowListWidth", String(Math.round(nextWidth)));
-    };
-    const stop = () => {
-      document.body.classList.remove("is-resizing-flow");
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop, { once: true });
-    window.addEventListener("pointercancel", stop, { once: true });
+  window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+    shell: flowShell,
+    handle: flowResizer,
+    cssProperty: "--flow-list-width",
+    storageKey: "partyTemplate.flowListWidth",
+    minWidth: 320,
+    minMainWidth: 420,
+    maxWidth: 900,
+    resizingClass: "is-resizing-flow"
   });
 }
 
@@ -1506,10 +1671,12 @@ function moveFlowState(draggedStateId, targetStateId, placeAfter = false) {
   const toIndex = gameFlow.states.findIndex((state) => state.id === targetStateId);
   if (fromIndex < 0 || toIndex < 0) return;
   pushFlowHistory();
-  const [state] = gameFlow.states.splice(fromIndex, 1);
-  const targetIndexAfterRemoval = gameFlow.states.findIndex((item) => item.id === targetStateId);
-  const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
-  gameFlow.states.splice(adjustedIndex, 0, state);
+  window.PartyGameFlowMutations?.moveFlowState?.(gameFlow, draggedStateId, targetStateId, placeAfter) || (() => {
+    const [state] = gameFlow.states.splice(fromIndex, 1);
+    const targetIndexAfterRemoval = gameFlow.states.findIndex((item) => item.id === targetStateId);
+    const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+    gameFlow.states.splice(adjustedIndex, 0, state);
+  })();
   selectedFlowStateId = draggedStateId;
   clearFlowActionSelection();
   expandFlowStateInList(draggedStateId);
@@ -1523,10 +1690,12 @@ function moveFlowAction(stateId, draggedActionId, targetActionId, placeAfter = f
   const toIndex = state.actions.findIndex((action) => action.id === targetActionId);
   if (fromIndex < 0 || toIndex < 0) return;
   pushFlowHistory();
-  const [action] = state.actions.splice(fromIndex, 1);
-  const targetIndexAfterRemoval = state.actions.findIndex((item) => item.id === targetActionId);
-  const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
-  state.actions.splice(adjustedIndex, 0, action);
+  window.PartyGameFlowMutations?.moveFlowActionInState?.(state, draggedActionId, targetActionId, placeAfter) || (() => {
+    const [action] = state.actions.splice(fromIndex, 1);
+    const targetIndexAfterRemoval = state.actions.findIndex((item) => item.id === targetActionId);
+    const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+    state.actions.splice(adjustedIndex, 0, action);
+  })();
   selectedFlowStateId = stateId;
   setFlowActionSelection([draggedActionId]);
   renderFlowTool();
@@ -1540,10 +1709,12 @@ function moveFlowSubAction(stateId, parentActionId, draggedActionId, targetActio
   const toIndex = subActions.findIndex((action) => action.id === targetActionId);
   if (fromIndex < 0 || toIndex < 0) return;
   pushFlowHistory();
-  const [action] = subActions.splice(fromIndex, 1);
-  const targetIndexAfterRemoval = subActions.findIndex((item) => item.id === targetActionId);
-  const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
-  subActions.splice(adjustedIndex, 0, action);
+  window.PartyGameFlowMutations?.moveFlowSubAction?.(parentAction, draggedActionId, targetActionId, placeAfter) || (() => {
+    const [action] = subActions.splice(fromIndex, 1);
+    const targetIndexAfterRemoval = subActions.findIndex((item) => item.id === targetActionId);
+    const adjustedIndex = targetIndexAfterRemoval + (placeAfter ? 1 : 0);
+    subActions.splice(adjustedIndex, 0, action);
+  })();
   selectedFlowStateId = stateId;
   setFlowActionSelection([draggedActionId]);
   renderFlowTool();
@@ -1567,23 +1738,32 @@ function renderFlowEditor() {
     flowEditorTitle.textContent = state.name;
     flowEditorHelp.textContent = "Editing game state.";
     flowEditor.appendChild(flowField("State Name", state.name, (value) => {
-      state.name = value || state.name;
-      state.id = state.id === "lobby" || state.id === "intro" ? state.id : makeFlowId(state.name, state.id);
-      selectedFlowStateId = state.id;
-      expandFlowStateInList(state.id);
+      const result = window.PartyGameFlowMutations?.renameFlowState?.(state, value, { makeFlowId }) || (() => {
+        state.name = value || state.name;
+        state.id = state.id === "lobby" || state.id === "intro" ? state.id : makeFlowId(state.name, state.id);
+        return { newId: state.id };
+      })();
+      selectedFlowStateId = result.newId;
+      expandFlowStateInList(result.newId);
       renderFlowTool();
     }));
     flowEditor.appendChild(flowSelect("Next Moment", state.nextStateTargetId || "", flowStateTargetOptions(state.nextStateTargetId || "", state.id), (value) => {
-      state.nextStateTargetId = value;
+      window.PartyGameFlowMutations?.setFlowStateNextTarget?.(state, value) || (() => {
+        state.nextStateTargetId = value;
+      })();
       renderFlowListAndPublish();
     }));
     flowEditor.appendChild(flowSelect("Entry Action", state.entryTargetActionId || "", flowActionTargetOptions(state, state.entryTargetActionId || ""), (value) => {
-      state.entryTargetActionId = value;
+      window.PartyGameFlowMutations?.setFlowStateEntryTarget?.(state, value) || (() => {
+        state.entryTargetActionId = value;
+      })();
       renderFlowListAndPublish();
     }));
     const otherStates = gameFlow.states.filter((s) => s.id !== state.id).map((s) => ({ id: s.id, name: s.name }));
     flowEditor.appendChild(flowSelect("Voting Source", state.votingSourceStateId || "", [{ id: "", name: "— None —" }, ...otherStates], (value) => {
-      state.votingSourceStateId = value || undefined;
+      window.PartyGameFlowMutations?.setFlowStateVotingSource?.(state, value) || (() => {
+        state.votingSourceStateId = value || undefined;
+      })();
       renderFlowListAndPublish();
     }));
     flowEditor.appendChild(readOnlyFlowNote("Primary actions run from top to bottom. Input actions wait for input; standard actions can use S+ or E+ timing."));
@@ -1654,6 +1834,8 @@ function flowInteger(label, value, onChange) {
 }
 
 function ensureActionTiming(action, isSubAction = false) {
+  const helper = window.PartyGameFlowActions?.ensureActionTiming;
+  if (helper) return helper(action, isSubAction, { actionTypeMeta });
   if (!action.timing) action.timing = { mode: "E+", seconds: 0 };
   const isInputAction = actionTypeMeta(action.type).category === "input" && !isSubAction;
   if (isSubAction) {
@@ -1675,10 +1857,14 @@ function readOnlyFlowNote(text) {
 }
 
 function addFlowState() {
-  const nextNumber = gameFlow.states.length + 1;
-  const state = { id: `state-${nextNumber}`, name: `New Game State ${nextNumber}`, actions: [] };
   pushFlowHistory();
-  gameFlow.states.push(state);
+  const result = window.PartyGameFlowMutations?.addFlowState?.(gameFlow);
+  const state = result?.state || (() => {
+    const nextNumber = gameFlow.states.length + 1;
+    const fallbackState = { id: `state-${nextNumber}`, name: `New Game State ${nextNumber}`, actions: [] };
+    gameFlow.states.push(fallbackState);
+    return fallbackState;
+  })();
   selectedFlowStateId = state.id;
   clearFlowRouteNodeSelection();
   clearFlowActionSelection();
@@ -1693,14 +1879,17 @@ function addFlowAction() {
   }
   const state = flowState(selectedFlowStateId);
   if (!state) return;
-  const nextNumber = state.actions.length + 1;
-  const action = createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
   const selectedRef = flowActionRef(selectedFlowStateId, selectedFlowActionId);
   const selectedPrimaryId = selectedRef?.parentAction?.id || selectedFlowActionId;
-  const selectedIndex = state.actions.findIndex((item) => item.id === selectedPrimaryId);
-  const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
   pushFlowHistory();
-  state.actions.splice(insertIndex, 0, action);
+  const action = window.PartyGameFlowMutations?.addDefaultFlowAction?.(state, selectedPrimaryId)?.action || (() => {
+    const nextNumber = state.actions.length + 1;
+    const fallbackAction = createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
+    const selectedIndex = state.actions.findIndex((item) => item.id === selectedPrimaryId);
+    const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
+    state.actions.splice(insertIndex, 0, fallbackAction);
+    return fallbackAction;
+  })();
   setFlowActionSelection([action.id]);
   renderFlowTool();
 }
@@ -1733,20 +1922,26 @@ function addFlowSubAction(actionRef) {
   const parentAction = actionRef.isSubAction ? actionRef.parentAction : actionRef.action;
   if (!parentAction) return;
   if (!Array.isArray(parentAction.subActions)) parentAction.subActions = [];
-  const nextNumber = parentAction.subActions.length + 1;
-  const subAction = createDefaultFlowAction(selectedFlowStateId, `Sub-Action ${nextNumber}`, true);
-  const selectedIndex = actionRef.isSubAction
-    ? parentAction.subActions.findIndex((item) => item.id === actionRef.action.id)
-    : -1;
-  const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : parentAction.subActions.length;
   pushFlowHistory();
-  parentAction.subActions.splice(insertIndex, 0, subAction);
+  const selectedSubActionId = actionRef.isSubAction ? actionRef.action.id : "";
+  const subAction = window.PartyGameFlowMutations?.addDefaultFlowSubAction?.(parentAction, selectedSubActionId, selectedFlowStateId)?.action || (() => {
+    const nextNumber = parentAction.subActions.length + 1;
+    const fallbackAction = createDefaultFlowAction(selectedFlowStateId, `Sub-Action ${nextNumber}`, true);
+    const selectedIndex = selectedSubActionId
+      ? parentAction.subActions.findIndex((item) => item.id === selectedSubActionId)
+      : -1;
+    const insertIndex = selectedIndex >= 0 ? selectedIndex + 1 : parentAction.subActions.length;
+    parentAction.subActions.splice(insertIndex, 0, fallbackAction);
+    return fallbackAction;
+  })();
   collapsedFlowActions.delete(parentAction.id);
   setFlowActionSelection([subAction.id]);
   renderFlowTool();
 }
 
 function createDefaultFlowAction(stateId, name, isSubAction) {
+  const factory = window.PartyGameFlowActions?.createDefaultFlowAction;
+  if (factory) return factory(stateId, name, isSubAction);
   return {
     id: `${stateId}-${isSubAction ? "sub-action" : "action"}-${Date.now().toString(36)}`,
     name,
@@ -1761,6 +1956,10 @@ function createDefaultFlowAction(stateId, name, isSubAction) {
 }
 
 function serializeGameFlowForSave(flow) {
+  const serializer = window.PartyGameFlowSerialization?.serializeGameFlowForSave;
+  if (serializer) {
+    return serializer(flow, { serializeRouteNode: serializeFlowRouteNodeForSave });
+  }
   return {
     states: (flow.states || []).map((state) => ({
       ...state,
@@ -1782,6 +1981,8 @@ function serializeFlowActionForSave(action) {
 }
 
 function removeLayoutState(layouts, stateId) {
+  const helper = window.PartyGameFlowMutations?.removeLayoutState;
+  if (helper) return helper(layouts, stateId);
   if (!layouts?.states?.length) return false;
   const beforeCount = layouts.states.length;
   layouts.states = layouts.states.filter((state) => state.id !== stateId);
@@ -1803,6 +2004,8 @@ function clearMomentGraphTargetReferences(targetIds) {
 }
 
 function flattenedFlowActionIds(actions = [], output = []) {
+  const helper = window.PartyGameFlowMutations?.flattenedFlowActionIds;
+  if (helper) return helper(actions, { ensureDecisionBranches }, output);
   for (const action of actions || []) {
     output.push(action.id);
     for (const subAction of action.subActions || []) output.push(subAction.id);
@@ -1814,6 +2017,12 @@ function flattenedFlowActionIds(actions = [], output = []) {
 }
 
 function removeSelectedFlowActionsFromList(actions = [], selectedIds, removedIds = []) {
+  const helper = window.PartyGameFlowMutations?.removeSelectedFlowActionsFromList;
+  if (helper) {
+    const result = helper(actions, selectedIds);
+    removedIds.push(...result.removedIds);
+    return result.actions;
+  }
   return (actions || []).filter((action) => {
     if (selectedIds.has(action.id)) {
       removedIds.push(action.id);
@@ -1858,6 +2067,15 @@ function deleteSelectedFlowActions() {
 }
 
 function flowStateIdsForDelete() {
+  const helper = window.PartyGameFlowMutations?.flowStateIdsForDelete;
+  if (helper) {
+    return helper(gameFlow, {
+      flowNodeDepth,
+      selectedFlowActionId,
+      selectedFlowActionIds,
+      selectedFlowStateId
+    });
+  }
   const ids = new Set();
   if (flowNodeDepth === "moments" && !selectedFlowActionId) {
     for (const id of selectedFlowActionIds) ids.add(id);
@@ -1869,16 +2087,23 @@ function flowStateIdsForDelete() {
 function deleteSelectedFlowStates() {
   const stateIds = flowStateIdsForDelete();
   if (!stateIds.length) return false;
-  const stateIdSet = new Set(stateIds);
-  const firstDeletedIndex = gameFlow.states.findIndex((state) => stateIdSet.has(state.id));
   pushFlowHistory();
-  gameFlow.states = gameFlow.states.filter((state) => !stateIdSet.has(state.id));
-  clearMomentGraphTargetReferences(stateIds);
-  for (const stateId of stateIds) removeDeletedFlowStateFromLayouts(stateId);
-  selectedFlowStateId = gameFlow.states[Math.min(firstDeletedIndex, gameFlow.states.length - 1)]?.id
-    || gameFlow.states[firstDeletedIndex - 1]?.id
-    || gameFlow.states[0]?.id
-    || "";
+  const result = window.PartyGameFlowMutations?.removeFlowStates?.(gameFlow, stateIds) || (() => {
+    const stateIdSet = new Set(stateIds);
+    const firstDeletedIndex = gameFlow.states.findIndex((state) => stateIdSet.has(state.id));
+    gameFlow.states = gameFlow.states.filter((state) => !stateIdSet.has(state.id));
+    return {
+      removedIds: stateIds,
+      firstDeletedIndex,
+      nextStateId: gameFlow.states[Math.min(firstDeletedIndex, gameFlow.states.length - 1)]?.id
+        || gameFlow.states[firstDeletedIndex - 1]?.id
+        || gameFlow.states[0]?.id
+        || ""
+    };
+  })();
+  clearMomentGraphTargetReferences(result.removedIds);
+  for (const stateId of result.removedIds) removeDeletedFlowStateFromLayouts(stateId);
+  selectedFlowStateId = result.nextStateId;
   clearFlowActionSelection();
   expandFlowStateInList(selectedFlowStateId);
   renderFlowTool();
@@ -1904,15 +2129,23 @@ function deleteSelectedFlowRouteNode() {
     }
     if (branch.type === "noMatch") return true;
     pushFlowHistory();
-    routeNode.branches = ensureDecisionBranches(routeNode, { targetField }).filter((item) => item.id !== selectedFlowRouteBranchId);
-    ensureDecisionBranches(routeNode, { targetField });
+    const result = window.PartyGameFlowMutations?.removeFlowRouteBranch?.(routeNode, selectedFlowRouteBranchId, {
+      ensureDecisionBranches,
+      targetField
+    });
+    if (!result) {
+      routeNode.branches = ensureDecisionBranches(routeNode, { targetField }).filter((item) => item.id !== selectedFlowRouteBranchId);
+      ensureDecisionBranches(routeNode, { targetField });
+    }
     selectedFlowRouteBranchId = "";
     renderFlowTool();
     return true;
   }
   pushFlowHistory();
   clearMomentGraphTargetReferences(selectedFlowRouteNodeId);
-  gameFlow.routeNodes = nodes.filter((node) => node.id !== selectedFlowRouteNodeId);
+  window.PartyGameFlowMutations?.removeFlowRouteNode?.(gameFlow, selectedFlowRouteNodeId, nodes) || (() => {
+    gameFlow.routeNodes = nodes.filter((node) => node.id !== selectedFlowRouteNodeId);
+  })();
   clearFlowRouteNodeSelection();
   renderFlowTool();
   return true;
@@ -1934,7 +2167,8 @@ function deleteFlowItem() {
 }
 
 async function saveGameFlow() {
-  const result = await postJson("/api/game-flow", { flow: serializeGameFlowForSave(gameFlow) });
+  const flowForSave = serializeGameFlowForSave(gameFlow);
+  const result = await (window.PartyGameToolContext?.api?.flow?.saveGameFlow?.(flowForSave) || postJson("/api/game-flow", { flow: flowForSave }));
   gameFlow = result.flow;
   flowSavedSnapshot = JSON.stringify(serializeGameFlowForSave(gameFlow));
   updateFlowStorageStatus(result.storage);
@@ -1960,6 +2194,7 @@ async function setupFlowTool() {
   flowScreen.classList.remove("hidden");
   if (flowToolInitialized) return;
   flowToolInitialized = true;
+  installFlowReactShellHandlers();
   addStateButton.addEventListener("click", addFlowState);
   addActionButton.addEventListener("click", addFlowAction);
   deleteFlowItemButton.addEventListener("click", deleteFlowItem);

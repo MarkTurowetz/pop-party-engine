@@ -253,6 +253,9 @@ function renderCustomConstantList() {
 
 function renderConstantsTool() {
   gameConstants = normalizeClientGameConstants(gameConstants);
+  window.PartyGameConstantsReactShell?.update?.(gameConstants, {
+    selectedConstantId: selectedGameConstantId
+  });
   const colors = Array.isArray(gameConstants.playerColors) ? gameConstants.playerColors : [];
   if (selectedGameConstantId === "customConstants") {
     selectedGameConstantId = gameConstants.customConstants?.[0]
@@ -359,17 +362,32 @@ function addCustomConstant() {
 }
 
 async function saveGameConstants() {
-  const result = await postJson("/api/game-constants", { constants: gameConstants });
+  const result = await (window.PartyGameToolContext?.api?.constants?.saveGameConstants?.(gameConstants)
+    || postJson("/api/game-constants", { constants: gameConstants }));
   gameConstants = normalizeClientGameConstants(result.constants || gameConstants);
   constantsSavedSnapshot = JSON.stringify(gameConstants);
   updateConstantsStorageStatus(result.storage);
   renderConstantsTool();
 }
 
+function setupConstantsResizer() {
+  window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+    shell: constantsShell,
+    handle: constantsResizer,
+    cssProperty: "--constants-list-width",
+    storageKey: "partyTemplate.constantsListWidth",
+    minWidth: 260,
+    minMainWidth: 420,
+    maxWidth: 640,
+    resizingClass: "is-resizing-constants"
+  });
+}
+
 async function setupConstantsTool() {
   constantsScreen.classList.remove("hidden");
   if (constantsToolInitialized) return;
   constantsToolInitialized = true;
+  setupConstantsResizer();
   document.querySelectorAll("[data-constant-target]").forEach((button) => {
     button.addEventListener("click", () => {
       selectedGameConstantId = button.dataset.constantTarget || "gameTitle";

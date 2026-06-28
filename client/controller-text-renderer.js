@@ -19,12 +19,8 @@
   function setText(target, value, spec = {}) {
     if (!target) return;
     const text = String(value ?? "");
-    if (typeof global.PartyGameTextFit?.renderGameText === "function") {
-      global.PartyGameTextFit.renderGameText(target, {
-        text,
-        spec: measureTarget(target, spec),
-        options: spec.options || {}
-      });
+    if (typeof global.PartyGameTextFit?.renderRuntimeText === "function") {
+      global.PartyGameTextFit.renderRuntimeText(target, text, measureTarget(target, spec), spec.options || {});
       return;
     }
     target.textContent = text;

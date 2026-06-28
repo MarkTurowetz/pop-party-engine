@@ -104,9 +104,11 @@ const {
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
+const USE_VITE_ENTRIES = process.env.PARTY_GAME_USE_VITE_ENTRIES === "1";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const CLIENT_ROOT = path.join(ROOT, "client");
+const BUILD_ASSETS_ROOT = path.join(ROOT, "dist", "client", "assets");
 const SHARED_ROOT = path.join(ROOT, "shared");
 const DEFAULT_GAME_FLOW_FILE = path.join(ROOT, "game-flow.default.json");
 const GAME_FLOW_FILE = path.resolve(ROOT, process.env.GAME_FLOW_FILE || "game-flow.json");
@@ -436,6 +438,7 @@ const {
 
 const {
   handleDeleteArtComposition,
+  handleSaveArtOrganization,
   handleSaveArtComposition,
   handleReplaceArtAsset,
   normalizeArtCompositionsDraft,
@@ -460,16 +463,20 @@ const {
 });
 
 const {
+  serveBuildAsset,
   serveClientFile,
   serveIndex,
   serveSharedFile
 } = createStaticFilesRuntime({
   appVersion: APP_VERSION,
+  buildAssetsRoot: BUILD_ASSETS_ROOT,
   clientRoot: CLIENT_ROOT,
   contentTypeForFile,
   indexFile: INDEX_FILE,
+  root: ROOT,
   sendJson,
-  sharedRoot: SHARED_ROOT
+  sharedRoot: SHARED_ROOT,
+  useViteEntriesByDefault: USE_VITE_ENTRIES
 });
 
 const {
@@ -1129,6 +1136,7 @@ const {
   handleQuitToLobby,
   handleDeleteArtComposition,
   handleReplaceArtAsset,
+  handleSaveArtOrganization,
   handleSaveArtComposition,
   handleSaveControllerLayouts,
   handleSaveGameConstants,
@@ -1151,6 +1159,7 @@ const {
   sendLocalDraft,
   sendStageLayouts,
   serveArtFile,
+  serveBuildAsset,
   serveClientFile,
   serveIndex,
   serveSharedFile,

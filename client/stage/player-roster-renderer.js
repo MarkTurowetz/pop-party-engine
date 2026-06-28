@@ -20,10 +20,12 @@
       this.dinoIcon = typeof options.dinoIcon === "function" ? options.dinoIcon : () => "";
       this.playerAvatarArt = typeof options.playerAvatarArt === "function" ? options.playerAvatarArt : (shape) => `${this.avatarFrameImage()}${this.dinoIcon(shape)}`;
       this.syncAnswerBubble = typeof options.syncAnswerBubble === "function" ? options.syncAnswerBubble : () => 0;
+      this.getComposition = typeof options.getComposition === "function" ? options.getComposition : global.artComposition;
       this.pointPopupIds = new Set();
       this.gameObject = null;
       this.tileGameObjects = new Map();
       this.pointPopupGameObjects = new Map();
+      this.pointPopupRenderers = new WeakMap();
     }
 
     playerSignature(player) {
@@ -241,15 +243,64 @@
         const node = this.document.createElement("div");
         node.className = "point-popup point-popup-hidden";
         node.dataset.pointPopupId = popup.id;
-        renderStageTextBox(node, `+${Math.max(0, Math.floor(Number(popup.points || 0)))}`, {
+        this.renderPointPopupPrefab(node, popup);
+        tile.appendChild(node);
+        this.playPointPopup(node, popup);
+      }
+    }
+
+    clonePrefabComponent(component, overrides = {}) {
+      const clone = {
+        ...component,
+        children: (component.children || []).map((child) => this.clonePrefabComponent(child, overrides))
+      };
+      const text = overrides.text?.[clone.id];
+      if (text !== undefined && (clone.kind === "text" || clone.kind === "badge")) clone.defaultText = String(text ?? "");
+      if (overrides.props?.[clone.id]) Object.assign(clone, overrides.props[clone.id]);
+      return clone;
+    }
+
+    renderPointPopupPrefab(node, popup) {
+      const text = `+${Math.max(0, Math.floor(Number(popup?.points || 0)))}`;
+      const composition = this.getComposition?.("player-point-popup");
+      const artRuntime = global.PartyGameArtObject;
+      if (!node || !composition || !artRuntime?.ArtObjectTreeRenderer) {
+        renderStageTextBox(node, text, {
           width: 120,
           height: 46,
           fontSize: 34,
           fontColor: "var(--yellow)"
         });
-        tile.appendChild(node);
-        this.playPointPopup(node, popup);
+        return false;
       }
+      node.classList.add("has-prefab-art");
+      const canvas = composition.canvas || { width: 150, height: 60 };
+      node.style.width = `${Math.max(1, Number(canvas.width || 1))}px`;
+      node.style.height = `${Math.max(1, Number(canvas.height || 1))}px`;
+      const components = (composition.components || []).map((component) => this.clonePrefabComponent(component, {
+        text: {
+          "point-text": text,
+          "point-shadow": text
+        }
+      }));
+      let renderer = this.pointPopupRenderers.get(node);
+      if (!renderer) {
+        renderer = new artRuntime.ArtObjectTreeRenderer({
+          host: node,
+          document: this.document,
+          instanceId: `point-popup:${popup?.id || Math.random().toString(36).slice(2)}`,
+          gameObjectApi: this.gameObjectApi,
+          visualAnimation: global.PartyGameVisualObject,
+          getComposition: this.getComposition
+        });
+        this.pointPopupRenderers.set(node, renderer);
+      }
+      renderer.render(components, canvas, {
+        defaultAnimation: "on",
+        instant: true,
+        respectDefaultAnimationState: false
+      });
+      return true;
     }
 
     playPointPopup(node, popup) {

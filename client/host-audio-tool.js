@@ -264,7 +264,7 @@ function updateHostAudioStorageStatus(storage) {
 }
 
 async function loadHostAudios({ silent = false } = {}) {
-  const result = await getJson("/api/host-audios");
+  const result = await (window.PartyGameToolContext?.api?.hostAudio?.loadHostAudios?.() || getJson("/api/host-audios"));
   clearHostAudioPreview({ render: false });
   hostAudios = normalizeClientHostAudios(result.hostAudios || {});
   hostAudiosSavedSnapshot = JSON.stringify(serializeHostAudiosForSave(result.savedHostAudios || result.hostAudios || hostAudios));
@@ -650,13 +650,18 @@ function renderHostAudioEditor() {
 }
 
 function renderHostAudioTool() {
+  window.PartyGameHostAudioReactShell?.update?.(hostAudios, {
+    selectedHostAudioId,
+    selectedLineId: selectedHostAudioLineId
+  });
   renderHostAudioList();
   renderHostAudioEditor();
   if (revertHostAudiosButton) revertHostAudiosButton.disabled = !isHostAudiosDirty();
 }
 
 async function saveHostAudios() {
-  const result = await postJson("/api/host-audios", { hostAudios: serializeHostAudiosForSave(hostAudios) });
+  const result = await (window.PartyGameToolContext?.api?.hostAudio?.saveHostAudios?.(serializeHostAudiosForSave(hostAudios))
+    || postJson("/api/host-audios", { hostAudios: serializeHostAudiosForSave(hostAudios) }));
   clearHostAudioPreview({ render: false });
   hostAudios = normalizeClientHostAudios(result.hostAudios || {});
   hostAudiosSavedSnapshot = JSON.stringify(serializeHostAudiosForSave(hostAudios));
@@ -687,6 +692,16 @@ async function setupHostAudioTool() {
   }
   if (!hostAudioToolInitialized) {
     hostAudioToolInitialized = true;
+    window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+      shell: hostAudioShell,
+      handle: hostAudioResizer,
+      cssProperty: "--host-audio-list-width",
+      storageKey: "partyTemplate.hostAudioListWidth",
+      minWidth: 260,
+      minMainWidth: 420,
+      maxWidth: 640,
+      resizingClass: "is-resizing-host-audio"
+    });
     addHostAudioButton.addEventListener("click", addHostAudio);
     addHostAudioLineButton.addEventListener("click", addHostAudioLine);
     deleteHostAudioButton.addEventListener("click", deleteSelectedHostAudio);

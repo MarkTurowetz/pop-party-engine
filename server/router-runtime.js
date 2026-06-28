@@ -21,6 +21,7 @@ function createRouterRuntime({
   handleQuitToLobby,
   handleDeleteArtComposition,
   handleReplaceArtAsset,
+  handleSaveArtOrganization,
   handleSaveArtComposition,
   handleSaveControllerLayouts,
   handleSaveGameConstants,
@@ -43,6 +44,7 @@ function createRouterRuntime({
   sendLocalDraft,
   sendStageLayouts,
   serveArtFile,
+  serveBuildAsset,
   serveClientFile,
   serveIndex,
   serveSharedFile,
@@ -62,6 +64,13 @@ function createRouterRuntime({
 
     if (req.method === "GET" && url.pathname === "/api/art-assets") {
       sendArtAssetList(res).catch((error) => {
+        sendJson(res, 500, { ok: false, error: error.message });
+      });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/art-organization") {
+      handleSaveArtOrganization(req, res).catch((error) => {
         sendJson(res, 500, { ok: false, error: error.message });
       });
       return;
@@ -176,6 +185,16 @@ function createRouterRuntime({
       return;
     }
 
+    const buildAssetMatch = url.pathname.match(/^\/assets\/([^/]+)$/i);
+    if (req.method === "GET" && buildAssetMatch) {
+      serveBuildAsset(res, buildAssetMatch[1]);
+      return;
+    }
+    if (req.method === "GET" && url.pathname.startsWith("/assets/")) {
+      sendJson(res, 404, { ok: false, error: "Build asset file not found" });
+      return;
+    }
+
     const sharedFileMatch = url.pathname.match(/^\/shared\/(.+)$/i);
     if (req.method === "GET" && sharedFileMatch) {
       serveSharedFile(res, sharedFileMatch[1]);
@@ -286,7 +305,7 @@ function createRouterRuntime({
     }
 
     if (req.method === "GET" || req.method === "HEAD") {
-      serveIndex(res);
+      serveIndex(res, url);
       return;
     }
 

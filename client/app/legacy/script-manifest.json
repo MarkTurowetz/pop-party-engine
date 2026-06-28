@@ -1,0 +1,105 @@
+{
+  "sharedFoundation": [
+    "/shared/color-utils.js",
+    "/shared/game-constants-schema.js",
+    "/client/utils.js",
+    "/client/stage/visual-object.js",
+    "/client/stage/game-object.js",
+    "/client/text-fit.js",
+    "/client/stage/stage-text-renderer.js",
+    "/client/layout-game-object-runtime.js",
+    "/client/layout-runtime.js",
+    "/shared/text-answer-action-config.js",
+    "/shared/microphone-access-action-config.js",
+    "/shared/choice-input-action-config.js",
+    "/shared/flow-action-registry.js",
+    "/shared/art-component-schema.js"
+  ],
+  "stageRuntime": [
+    "/client/stage/action-runners.js",
+    "/client/stage/wipe-controller.js",
+    "/client/stage/visual-controllers.js",
+    "/client/stage/player-roster-renderer.js",
+    "/client/stage/debug-panel.js",
+    "/client/stage/art-object-visuals.js",
+    "/client/stage/widget-art-bindings.js",
+    "/client/stage/widget-art-renderer.js",
+    "/client/stage/voting-card-visuals.js",
+    "/client/stage/render-orchestrator.js",
+    "/client/qr-code.js",
+    "/client/stage-runtime.js"
+  ],
+  "controllerRuntime": [
+    "/client/controller-module-cache.js",
+    "/client/controller-text-renderer.js",
+    "/client/controller-view-state.js",
+    "/client/controller-avatar-view.js",
+    "/client/controller-microphone-access-view.js",
+    "/client/controller-recording-lifecycle.js",
+    "/client/controller-voice-input.js",
+    "/client/controller-choice-input-view.js",
+    "/client/controller-text-input-view.js",
+    "/client/controller-lobby-view.js",
+    "/client/controller-global-action-view.js",
+    "/client/controller-state-runtime.js",
+    "/client/controller-submit-api.js",
+    "/client/controller-setup-bindings.js",
+    "/client/controller-heartbeat-runtime.js",
+    "/client/controller-session-runtime.js",
+    "/client/controller-action-bindings.js",
+    "/client/controller.js"
+  ],
+  "toolFoundation": [
+    "/client/tool-affordances.js",
+    "/client/color-control.js",
+    "/client/tool-dashboard.js",
+    "/client/tool-history.js"
+  ],
+  "artTool": [
+    "/client/art-component-tree.js",
+    "/client/art-tool-ui.js",
+    "/client/art-sidebar-renderer.js",
+    "/client/art-component-editor.js",
+    "/client/editable-art-renderer.js",
+    "/client/art-tool.js"
+  ],
+  "hostAudioTool": [
+    "/client/host-audio-tool.js"
+  ],
+  "flowTool": [
+    "/client/flow/action-options.js",
+    "/client/flow/action-summary.js",
+    "/client/flow/action-defaults.js",
+    "/client/flow/form-controls.js",
+    "/client/flow/decision-controls.js",
+    "/client/flow/action-control-groups.js",
+    "/client/flow/action-inspector-registry.js",
+    "/client/flow/node-view-wires.js",
+    "/client/flow/node-wire-planner.js",
+    "/client/flow/node-view-minimap.js",
+    "/client/flow/node-graph-schema.js",
+    "/client/flow/node-branch-descriptors.js",
+    "/client/flow/moment-route-node-types.js",
+    "/client/flow/node-view-ports.js",
+    "/client/flow/node-view-child-sort.js",
+    "/client/flow/node-connection-planner.js",
+    "/client/flow/node-view-connections.js",
+    "/client/flow/node-view-drag.js",
+    "/client/flow/node-view-marquee.js",
+    "/client/flow/node-view-inspector.js",
+    "/client/flow/moment-route-graph.js",
+    "/client/flow/moment-route-renderer.js",
+    "/client/flow/moment-route-wires.js",
+    "/client/flow/action-node-renderer.js",
+    "/client/flow/action-node-wires.js",
+    "/client/flow-node-view.js",
+    "/client/flow-tool.js"
+  ],
+  "constantsTool": [
+    "/client/constants-tool.js"
+  ],
+  "layoutTool": [
+    "/client/layout-art-preview-renderer.js",
+    "/client/layout-tool.js"
+  ]
+}

@@ -21,8 +21,7 @@
       {
         "id": "controllerGlobalActionMessage",
         "name": "Global Action Message",
-        "selector": "#controllerGlobalActionMessage",
-        "kind": "text",
+        "kind": "art",
         "x": 195,
         "y": 255,
         "width": 330,
@@ -30,8 +29,9 @@
         "scale": 1,
         "defaultText": "Tap Next to continue",
         "fontSize": 42,
-        "autoFitText": true,
-        "fontColor": "#17131f"
+        "autoFitText": false,
+        "fontColor": "#17131f",
+        "artCompositionId": "layout-text-field"
       },
       {
         "id": "controllerGlobalActionButton",
@@ -58,8 +58,7 @@
         {
           "id": "joinTitle",
           "name": "Join Title",
-          "selector": "#joinTitle",
-          "kind": "text",
+          "kind": "art",
           "x": 195,
           "y": 112,
           "width": 330,
@@ -67,8 +66,9 @@
           "scale": 1,
           "defaultText": "Join Lobby",
           "fontSize": 54,
-          "autoFitText": true,
-          "fontColor": "#17131f"
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "artCompositionId": "layout-text-field"
         },
         {
           "id": "stageCodeField",
@@ -124,8 +124,7 @@
         {
           "id": "controllerPlayerName",
           "name": "Player Name",
-          "selector": "#controllerPlayerName",
-          "kind": "text",
+          "kind": "art",
           "x": 195,
           "y": 290,
           "width": 330,
@@ -133,14 +132,14 @@
           "scale": 1,
           "defaultText": "Player",
           "fontSize": 66,
-          "autoFitText": true,
-          "fontColor": "#17131f"
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "artCompositionId": "layout-text-field"
         },
         {
           "id": "controllerMeta",
           "name": "Controller Status",
-          "selector": "#controllerMeta",
-          "kind": "text",
+          "kind": "art",
           "x": 195,
           "y": 382,
           "width": 330,
@@ -148,8 +147,9 @@
           "scale": 1,
           "defaultText": "Waiting in lobby",
           "fontSize": 28,
-          "autoFitText": true,
-          "fontColor": "#6b5a80"
+          "autoFitText": false,
+          "fontColor": "#6b5a80",
+          "artCompositionId": "layout-text-field"
         },
         {
           "id": "startGameButton",
@@ -170,8 +170,7 @@
         {
           "id": "controllerIntroMessage",
           "name": "Intro Message",
-          "selector": "#controllerIntroMessage",
-          "kind": "text",
+          "kind": "art",
           "x": 195,
           "y": 250,
           "width": 330,
@@ -179,8 +178,9 @@
           "scale": 1,
           "defaultText": "Welcome to the Game",
           "fontSize": 44,
-          "autoFitText": true,
-          "fontColor": "#17131f"
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "artCompositionId": "layout-text-field"
         },
         {
           "id": "introPresentButton",

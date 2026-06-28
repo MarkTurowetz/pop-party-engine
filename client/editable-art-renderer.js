@@ -2,6 +2,32 @@
   const componentSchema = global.PartyGameArtComponentSchema;
   const artObjectRuntime = global.PartyGameArtObject;
 
+  function cloneComponentTree(component) {
+    return {
+      ...component,
+      children: (component.children || []).map(cloneComponentTree)
+    };
+  }
+
+  function distributedContainerChildren(component, children = []) {
+    if (componentSchema.componentKindFrom(component) !== "container") return children || [];
+    const distribution = componentSchema.normalizeContainerDistribution?.(component.childDistribution) || "none";
+    if (distribution === "none" || !Array.isArray(children) || children.length === 0) return children || [];
+    const width = Math.max(1, Number(component.width || 1));
+    const height = Math.max(1, Number(component.height || 1));
+    return children.map((child, index) => {
+      const clone = cloneComponentTree(child);
+      if (distribution === "horizontal") {
+        clone.x = width * ((index + 1) / (children.length + 1));
+        clone.y = height / 2;
+      } else if (distribution === "vertical") {
+        clone.x = width / 2;
+        clone.y = height * ((index + 1) / (children.length + 1));
+      }
+      return clone;
+    });
+  }
+
   function createComponentNode(options = {}) {
     const documentRef = options.document || global.document;
     const composition = options.composition || {};
@@ -13,6 +39,8 @@
     const primaryId = String(options.primaryId || "");
     const previewText = typeof options.previewText === "function" ? options.previewText : () => componentSchema.componentLabel(component);
     const imageSourceFor = typeof options.imageSource === "function" ? options.imageSource : () => "";
+    const getComposition = typeof options.getComposition === "function" ? options.getComposition : () => null;
+    const referencePath = options.referencePath instanceof Set ? options.referencePath : new Set();
     const supportsImageMask = typeof options.supportsImageMask === "function" ? options.supportsImageMask : componentSchema.componentSupportsImageMask;
     const eventHasFiles = typeof options.eventHasFiles === "function" ? options.eventHasFiles : () => false;
 
@@ -65,14 +93,21 @@
       });
     }
 
-    const childCanvas = { width: Number(component.width || 1), height: Number(component.height || 1) };
-    for (const [childIndex, child] of (component.children || []).entries()) {
+    const referencedId = componentSchema.componentKindFrom(component) === "reference" ? String(component.artCompositionId || "") : "";
+    const referencedComposition = referencedId && !referencePath.has(referencedId)
+      ? getComposition(referencedId)
+      : null;
+    const childCanvas = referencedComposition?.canvas || { width: Number(component.width || 1), height: Number(component.height || 1) };
+    const childComponents = referencedComposition?.components || distributedContainerChildren(component, component.children || []);
+    const childReferencePath = referencedComposition ? new Set([...referencePath, referencedId]) : referencePath;
+    for (const [childIndex, child] of childComponents.entries()) {
       node.appendChild(createComponentNode({
         ...options,
         component: child,
         canvas: childCanvas,
         layerIndex: childIndex,
-        siblingCount: (component.children || []).length
+        siblingCount: childComponents.length,
+        referencePath: childReferencePath
       }));
     }
 

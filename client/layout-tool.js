@@ -41,7 +41,10 @@ function activeGlobalLayout() {
 }
 
 async function loadLayoutToolData() {
-  const result = await getJson(activeLayoutEndpoint());
+  const api = window.PartyGameToolContext?.api?.layout;
+  const result = await (layoutToolMode === "controller"
+    ? api?.loadControllerLayouts?.()
+    : api?.loadStageLayouts?.()) || await getJson(activeLayoutEndpoint());
   setActiveLayoutData(result.layouts || activeLayoutData());
   invalidateBaseLayoutObjectCatalog();
   setActiveLayoutSavedSnapshot(JSON.stringify(serializeStageLayoutsForSave(result.savedLayouts || result.layouts || activeLayoutData())));
@@ -98,10 +101,10 @@ function serializeLayoutGroup(group) {
       scale: Number(Number(element.scale || 1).toFixed(3)),
       rotation: Number(Number(element.rotation || 0).toFixed(3)),
       defaultAnimationState: String(element.defaultAnimationState || ""),
-      defaultText: element.kind === "text" ? String(element.defaultText ?? layoutDefaultText(element)) : "",
-      fontSize: element.kind === "text" ? Number(Number(element.fontSize || 58).toFixed(3)) : 58,
-      autoFitText: element.kind === "text" ? element.autoFitText === true : false,
-      fontColor: element.kind === "text" ? normalizeUiColor(element.fontColor) || "#ffffff" : "#ffffff"
+      defaultText: element.kind === "text" || element.artCompositionId === "layout-text-field" ? String(element.defaultText ?? layoutDefaultText(element)) : "",
+      fontSize: element.kind === "text" || element.artCompositionId === "layout-text-field" ? Number(Number(element.fontSize || 58).toFixed(3)) : 58,
+      autoFitText: false,
+      fontColor: element.kind === "text" || element.artCompositionId === "layout-text-field" ? normalizeUiColor(element.fontColor) || "#ffffff" : "#ffffff"
     }))
   };
 }
@@ -244,31 +247,31 @@ function baseLayoutObjectCatalog() {
   if (layoutToolMode === "controller") {
     baseLayoutObjectCatalogCacheKey = cacheKey;
     baseLayoutObjectCatalogCache = [
-      { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", width: 330, height: 86 },
+      { id: "joinTitle", name: "Join Title", kind: "art", artCompositionId: "layout-text-field", width: 330, height: 86, defaultText: "Join Lobby" },
       { id: "stageCodeField", name: "Stage Code Field", selector: "#stageCodeField", kind: "art", width: 320, height: 96 },
       { id: "playerNameField", name: "Player Name Field", selector: "#playerNameField", kind: "art", width: 320, height: 96 },
       { id: "joinButton", name: "Join Button", selector: "#joinButton", kind: "art", width: 260, height: 78 },
       { id: "controllerAvatar", name: "Player Avatar", selector: "#controllerAvatar", kind: "art", width: 104, height: 104 },
-      { id: "controllerPlayerName", name: "Player Name", selector: "#controllerPlayerName", kind: "text", width: 330, height: 80 },
-      { id: "controllerMeta", name: "Controller Status", selector: "#controllerMeta", kind: "text", width: 330, height: 48 },
+      { id: "controllerPlayerName", name: "Player Name", kind: "art", artCompositionId: "layout-text-field", width: 330, height: 80, defaultText: "Player" },
+      { id: "controllerMeta", name: "Controller Status", kind: "art", artCompositionId: "layout-text-field", width: 330, height: 48, defaultText: "Waiting in lobby" },
       { id: "startGameButton", name: "Start Game Button", selector: "#startGameButton", kind: "art", width: 260, height: 78 },
       { id: "controllerPlayerBanner", name: "Player Banner", selector: "#controllerPlayerBanner", kind: "art", width: 338, height: 78 },
-      { id: "controllerIntroMessage", name: "Intro Message", selector: "#controllerIntroMessage", kind: "text", width: 330, height: 120 },
+      { id: "controllerIntroMessage", name: "Intro Message", kind: "art", artCompositionId: "layout-text-field", width: 330, height: 120, defaultText: "Welcome to the Game" },
       { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", kind: "art", width: 300, height: 78 },
-      { id: "controllerChoicePrompt", name: "Choice Prompt", selector: "#controllerChoicePrompt", kind: "text", width: 330, height: 120 },
+      { id: "controllerChoicePrompt", name: "Choice Prompt", kind: "art", artCompositionId: "layout-text-field", width: 330, height: 120, defaultText: "Answer this question by tapping an answer" },
       { id: "controllerChoiceGrid", name: "Choice Buttons", selector: "#controllerChoiceGrid", kind: "art", width: 330, height: 420 },
-      { id: "controllerChoiceDone", name: "Choice Done Text", selector: "#controllerChoiceDone", kind: "text", width: 330, height: 150 },
-      { id: "controllerTextPrompt", name: "Text Input Prompt", selector: "#controllerTextPrompt", kind: "text", width: 330, height: 92 },
+      { id: "controllerChoiceDone", name: "Choice Done Text", kind: "art", artCompositionId: "layout-text-field", width: 330, height: 150, defaultText: "You chose:" },
+      { id: "controllerTextPrompt", name: "Text Input Prompt", kind: "art", artCompositionId: "layout-text-field", width: 330, height: 92, defaultText: "Write your answer" },
       { id: "controllerInvalidBanner", name: "Invalid Submission Banner", selector: "#controllerInvalidBanner", kind: "art", width: 330, height: 64 },
       { id: "controllerTextInput", name: "Text Input Field", selector: "#controllerTextInput", kind: "art", width: 330, height: 128 },
       { id: "controllerTextSubmitButton", name: "Text Submit Button", selector: "#controllerTextSubmitButton", kind: "art", width: 300, height: 70 },
-      { id: "controllerTextDone", name: "Text Done Message", selector: "#controllerTextDone", kind: "text", width: 330, height: 150 },
+      { id: "controllerTextDone", name: "Text Done Message", kind: "art", artCompositionId: "layout-text-field", width: 330, height: 150, defaultText: "You wrote:" },
       ...artPrefabObjects
     ];
     return baseLayoutObjectCatalogCache;
   }
   const legacyStageObjects = [
-    { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "text", width: 1080, height: 150, defaultText: "Party Game Template" },
+    { id: "stageTitle", name: "Header", kind: "art", artCompositionId: "layout-text-field", width: 1080, height: 150, defaultText: "Party Game Template" },
     { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", artCompositionId: "stage-code-panel", width: 560, height: 190 },
     { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", artCompositionId: "join-qr-code", width: 260, height: 300 },
     { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "art", artCompositionId: "waiting-status-widget", width: 700, height: 82 },
@@ -279,11 +282,11 @@ function baseLayoutObjectCatalog() {
     { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", kind: "art", artCompositionId: "presentation-click-prompt", width: 92, height: 92 },
     { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", kind: "art", width: 1500, height: 180 },
     { id: "votingCardLayer", name: "Voting Cards", selector: "#votingCardLayer", kind: "art", width: 1420, height: 520 },
-    { id: "stageIntroTitle", name: "Game Intro Header", selector: "#stageIntroTitle", kind: "text", width: 840, height: 160 },
-    { id: "stagePresentationText", name: "Presentation Text Field", selector: "#stagePresentationText", kind: "text", width: 1180, height: 260 },
-    { id: "stagePromptText", name: "Prompt Text Field", selector: "#stagePromptText", kind: "text", width: 1180, height: 150 },
-    { id: "roundIntroText", name: "Round Intro Text Field", selector: "#roundIntroText", kind: "text", width: 1080, height: 170 },
-    { id: "roundIntroInfoText", name: "Round Intro Info Text Field", selector: "#roundIntroInfoText", kind: "text", width: 900, height: 110 }
+    { id: "stageIntroTitle", name: "Game Intro Header", kind: "art", artCompositionId: "layout-text-field", width: 840, height: 160, defaultText: "GAME INTRO" },
+    { id: "stagePresentationText", name: "Presentation Text Field", kind: "art", artCompositionId: "layout-text-field", width: 1180, height: 260, defaultText: "" },
+    { id: "stagePromptText", name: "Prompt Text Field", kind: "art", artCompositionId: "layout-text-field", width: 1180, height: 150, defaultText: "Prompt Text" },
+    { id: "roundIntroText", name: "Round Intro Text Field", kind: "art", artCompositionId: "layout-text-field", width: 1080, height: 170, defaultText: "Round One" },
+    { id: "roundIntroInfoText", name: "Round Intro Info Text Field", kind: "art", artCompositionId: "layout-text-field", width: 900, height: 110, defaultText: "Additional round info" }
   ].filter((item) => !stageLayoutCatalogCompositionId(item.id, artCompositionIds));
   baseLayoutObjectCatalogCacheKey = cacheKey;
   baseLayoutObjectCatalogCache = [
@@ -406,10 +409,12 @@ function simpleLayoutFuzzyScore(text, query) {
 function makeLayoutObject(item) {
   const canvas = activeLayoutData().canvas || (layoutToolMode === "controller" ? { width: 390, height: 844 } : { width: 1920, height: 1080 });
   const isPrefabInstance = Boolean(item.artCompositionId);
+  const isTextArt = item.artCompositionId === "layout-text-field";
+  const shouldKeepCatalogId = isTextArt && !item.instanced;
   return {
-    id: isPrefabInstance ? uniqueLayoutElementId(item.artCompositionId || item.id) : item.id,
+    id: isPrefabInstance && !shouldKeepCatalogId ? uniqueLayoutElementId(item.artCompositionId || item.id) : item.id,
     name: item.name,
-    selector: isPrefabInstance ? "" : item.selector,
+    selector: isPrefabInstance || shouldKeepCatalogId ? "" : item.selector,
     kind: item.kind || "art",
     artCompositionId: item.artCompositionId || "",
     x: Math.round(canvas.width / 2),
@@ -419,10 +424,10 @@ function makeLayoutObject(item) {
     scale: 1,
     rotation: 0,
     defaultAnimationState: isPrefabInstance ? "park" : "",
-    defaultText: item.kind === "text" ? layoutDefaultText(item) : "",
-    fontSize: item.kind === "text" ? 58 : 58,
+    defaultText: item.kind === "text" || isTextArt ? layoutDefaultText(item) : "",
+    fontSize: item.kind === "text" || isTextArt ? Number(item.fontSize || 58) : 58,
     autoFitText: false,
-    fontColor: item.kind === "text" ? (layoutToolMode === "controller" ? "#17131f" : "#ffffff") : "#ffffff"
+    fontColor: item.kind === "text" || isTextArt ? (item.fontColor || (layoutToolMode === "controller" ? "#17131f" : "#ffffff")) : "#ffffff"
   };
 }
 
@@ -502,6 +507,11 @@ function fitLayoutStagePreview() {
 }
 
 function renderLayoutTool() {
+  window.PartyGameLayoutReactShell?.update?.(activeLayoutData(), {
+    mode: layoutToolMode,
+    selectedElementIds: [...selectedLayoutElementIds],
+    selectedStateId: selectedLayoutStateId
+  });
   if (layoutToolTitle) layoutToolTitle.textContent = layoutToolMode === "controller" ? "Controller Layouts" : "Stage Layouts";
   if (layoutToolDescription) {
     layoutToolDescription.textContent = layoutToolMode === "controller"
@@ -515,6 +525,20 @@ function renderLayoutTool() {
   renderLayoutActions();
   publishRuntimeLocalChanges();
   updateGlobalSaveButton();
+}
+
+function installLayoutReactShellHandlers() {
+  window.PartyGameLayoutReactShell?.setHandlers?.({
+    selectElement: (elementId) => {
+      setLayoutSelection(elementId);
+      renderLayoutTool();
+    },
+    selectState: (stateId) => {
+      selectedLayoutStateId = layoutGroup(stateId)?.id || "global";
+      setLayoutSelection(layoutGroup(selectedLayoutStateId)?.elements?.[0]?.id || "");
+      renderLayoutTool();
+    }
+  });
 }
 
 function renderLayoutActions() {
@@ -625,7 +649,8 @@ function renderLayoutElements() {
     button.classList.toggle("is-selected", selectedLayoutElementIds.has(element.id));
     button.innerHTML = `<span><strong></strong><span></span></span>`;
     button.querySelector("strong").textContent = element.name;
-    button.querySelector("span span").textContent = `${Math.round(element.x)}, ${Math.round(element.y)} / ${Number(element.scale || 1).toFixed(2)}x`;
+    const sourceLabel = layoutElementPrefabName(element);
+    button.querySelector("span span").textContent = `${sourceLabel ? `${sourceLabel} / ` : ""}${Math.round(element.x)}, ${Math.round(element.y)} / ${Number(element.scale || 1).toFixed(2)}x`;
     const actions = document.createElement("span");
     actions.className = "layout-row-actions";
     const pill = document.createElement("span");
@@ -638,6 +663,11 @@ function renderLayoutElements() {
     layoutElementList.appendChild(button);
   }
   layoutElementList.scrollTop = scrollTop;
+}
+
+function layoutElementPrefabName(element) {
+  if (!element?.artCompositionId) return "";
+  return artComposition(element.artCompositionId)?.name || element.artCompositionId;
 }
 
 function layoutPreviewScale() {
@@ -814,7 +844,7 @@ function layoutDefaultText(element) {
 
 function layoutComputedFontSize(element) {
   const baseSize = Number(element.fontSize || 58);
-  if (!element.autoFitText) return baseSize;
+  if (element.autoFitText === false) return baseSize;
   return fittedLayoutTextSize(element, layoutDefaultText(element), baseSize);
 }
 
@@ -829,9 +859,14 @@ function layoutTextFit(element, text) {
 
 function applyLayoutPreviewTextStyle(node, element, text = layoutDefaultText(element)) {
   const baseSize = Number(element.fontSize || 58);
-  const layout = window.PartyGameTextFit?.renderGameText?.(node, {
+  const layout = window.PartyGameTextFit?.renderLayoutTextField?.(node, element, {
     text,
-    element,
+    defaults: {
+      surface: layoutToolMode === "controller" ? "controller" : "stage",
+      defaultText: layoutDefaultText(element),
+      fontSize: baseSize,
+      fontColor: normalizeUiColor(element.fontColor) || "#ffffff"
+    },
     fallbackSize: baseSize
   })
     || layoutTextFit(element, text);
@@ -976,6 +1011,10 @@ function renderLayoutFields() {
     layoutEditorFields.appendChild(layoutToggleField("Hidden In This Moment", hidden, (value) => updateLayoutGlobalHidden(element.id, value)));
     return;
   }
+  layoutEditorFields.appendChild(layoutTextField("Name", element.name || element.id, (value) => updateLayoutElementValue(element, "name", value || element.id)));
+  if (element.artCompositionId) {
+    layoutEditorFields.appendChild(layoutStaticField("Prefab", layoutElementPrefabName(element)));
+  }
   layoutEditorFields.appendChild(layoutNumberField("X", element.x, (value) => updateLayoutNumber("x", value)));
   layoutEditorFields.appendChild(layoutNumberField("Y", element.y, (value) => updateLayoutNumber("y", value)));
   layoutEditorFields.appendChild(layoutNumberField("Scale", element.scale, (value) => updateLayoutNumber("scale", Math.max(0.1, value)), 0.05));
@@ -995,8 +1034,8 @@ function renderLayoutFields() {
   }
   if (elements.length === 1 && element.kind === "text") {
     layoutEditorFields.appendChild(layoutTextAreaField("Default Text", layoutDefaultText(element), (value) => updateLayoutElementValue(element, "defaultText", value)));
-    layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutElementValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText === true));
-    layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText === true, (value) => updateLayoutElementValue(element, "autoFitText", value)));
+    layoutEditorFields.appendChild(layoutNumberField("Font Size", element.fontSize || 58, (value) => updateLayoutElementValue(element, "fontSize", Math.max(6, value)), 1, "layout-text-field", element.autoFitText !== false));
+    layoutEditorFields.appendChild(layoutToggleField("Auto Fit Text", element.autoFitText !== false, (value) => updateLayoutElementValue(element, "autoFitText", value)));
     layoutEditorFields.appendChild(layoutColorField("Font Color", normalizeUiColor(element.fontColor) || "#ffffff", (value, options) => updateLayoutElementValue(element, "fontColor", value, options)));
   }
 }
@@ -1015,6 +1054,30 @@ function layoutNumberField(label, value, onChange, step = 1, extraClass = "", di
     const next = Number(input.value);
     onChange(Number.isFinite(next) ? next : Number(value || 0));
   });
+  field.appendChild(input);
+  return field;
+}
+
+function layoutTextField(label, value, onChange) {
+  const field = document.createElement("label");
+  field.className = "layout-number-field layout-text-field";
+  field.textContent = label;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = value || "";
+  input.addEventListener("change", () => onChange(input.value));
+  field.appendChild(input);
+  return field;
+}
+
+function layoutStaticField(label, value) {
+  const field = document.createElement("label");
+  field.className = "layout-number-field layout-text-field is-disabled";
+  field.textContent = label;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = value || "";
+  input.disabled = true;
   field.appendChild(input);
   return field;
 }
@@ -1081,7 +1144,7 @@ function updateLayoutPreviewTextStyle(element) {
   if (!node) return;
   const textNode = node.querySelector(".layout-preview-presentation, .layout-preview-pill");
   if (textNode) {
-    const text = textNode.dataset.textFitSource || layoutDefaultText(element);
+    const text = textNode.dataset.textFitSource ?? layoutDefaultText(element);
     applyLayoutPreviewTextStyle(textNode, element, text);
   }
 }
@@ -1228,7 +1291,8 @@ function revertStageLayouts() {
 }
 
 async function saveStageLayouts() {
-  const result = await postJson("/api/stage-layouts", { layouts: serializeStageLayoutsForSave(stageLayouts) });
+  const result = await (window.PartyGameToolContext?.api?.layout?.saveStageLayouts?.(serializeStageLayoutsForSave(stageLayouts))
+    || postJson("/api/stage-layouts", { layouts: serializeStageLayoutsForSave(stageLayouts) }));
   stageLayouts = result.layouts || stageLayouts;
   layoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(stageLayouts));
   updateLayoutStorageStatus(result.storage);
@@ -1236,7 +1300,8 @@ async function saveStageLayouts() {
 }
 
 async function saveControllerLayouts() {
-  const result = await postJson("/api/controller-layouts", { layouts: serializeStageLayoutsForSave(controllerLayouts) });
+  const result = await (window.PartyGameToolContext?.api?.layout?.saveControllerLayouts?.(serializeStageLayoutsForSave(controllerLayouts))
+    || postJson("/api/controller-layouts", { layouts: serializeStageLayoutsForSave(controllerLayouts) }));
   controllerLayouts = result.layouts || controllerLayouts;
   controllerLayoutSavedSnapshot = JSON.stringify(serializeStageLayoutsForSave(controllerLayouts));
   updateLayoutStorageStatus(result.storage);
@@ -1257,6 +1322,18 @@ async function setupLayoutTool(mode = "stage") {
     return;
   }
   layoutToolInitialized = true;
+  installLayoutReactShellHandlers();
+  window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+    shell: layoutShell,
+    handle: layoutResizer,
+    cssProperty: "--layout-list-width",
+    storageKey: "partyTemplate.layoutListWidth",
+    minWidth: 300,
+    minMainWidth: 520,
+    maxWidth: 720,
+    resizingClass: "is-resizing-layout",
+    onResize: () => renderLayoutPreview()
+  });
   addLayoutObjectButton.addEventListener("click", openLayoutObjectPicker);
   layoutPreviewAddObjectButton.addEventListener("click", openLayoutObjectPicker);
   removeLayoutObjectButton.addEventListener("click", removeSelectedLayoutObject);

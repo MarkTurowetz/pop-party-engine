@@ -178,7 +178,7 @@ const defaultStageLayouts = {
       hiddenGlobals: ["stagecodebadge"],
       elements: [
         { id: "startPopup", name: "Countdown Popup", selector: "#startPopup", kind: "art", artCompositionId: "countdown-popup", x: 960, y: 130, width: 700, height: 130, scale: 1, defaultAnimationState: "park" },
-        { id: "stageTitle", name: "Header", selector: ".stage-title", kind: "text", x: 960, y: 190, width: 1080, height: 150, scale: 1, defaultText: "Party Game Template", fontSize: 92, autoFitText: true, fontColor: "#ffffff" },
+        { id: "stageTitle", name: "Header", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 190, width: 1080, height: 150, scale: 1, defaultText: "Party Game Template", fontSize: 92, autoFitText: false, fontColor: "#ffffff" },
         { id: "stageCodePanel", name: "Stage Code Panel", selector: ".stage-code-panel", kind: "art", artCompositionId: "stage-code-panel", x: 960, y: 390, width: 560, height: 190, scale: 1 },
         { id: "stageJoinQr", name: "Join QR Code", selector: "#stageJoinQr", kind: "art", artCompositionId: "join-qr-code", x: 1510, y: 420, width: 260, height: 300, scale: 1 },
         { id: "waitingStatus", name: "Waiting Status", selector: "#waitingStatus", kind: "art", artCompositionId: "waiting-status-widget", x: 960, y: 575, width: 700, height: 82, scale: 1 },
@@ -189,9 +189,9 @@ const defaultStageLayouts = {
       id: "intro",
       name: "Game Intro",
       elements: [
-        { id: "stageIntroTitle", name: "Intro Header", selector: "#stageIntroTitle", x: 960, y: 235, width: 1060, height: 130, scale: 1 },
-        { id: "stagePresentationText", name: "Presentation Text", selector: "#stagePresentationText", kind: "text", x: 960, y: 460, width: 980, height: 240, scale: 1 },
-        { id: "stagePromptText", name: "Prompt Text", selector: "#stagePromptText", kind: "text", x: 960, y: 760, width: 860, height: 120, scale: 1 }
+        { id: "stageIntroTitle", name: "Intro Header", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 235, width: 1060, height: 130, scale: 1, defaultText: "GAME INTRO", fontSize: 96, autoFitText: false, fontColor: "#ffffff" },
+        { id: "stagePresentationText", name: "Presentation Text", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 460, width: 980, height: 240, scale: 1, defaultText: "", fontSize: 58, autoFitText: false, fontColor: "#ffffff" },
+        { id: "stagePromptText", name: "Prompt Text", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 760, width: 860, height: 120, scale: 1, defaultText: "Prompt Text", fontSize: 58, autoFitText: false, fontColor: "#ffffff" }
       ]
     }
   ]
@@ -213,7 +213,7 @@ const defaultControllerLayouts = {
       name: "Join Controller",
       hiddenGlobals: ["controllerplayerbanner"],
       elements: [
-        { id: "joinTitle", name: "Join Title", selector: "#joinTitle", kind: "text", x: 195, y: 112, width: 330, height: 86, scale: 1, defaultText: "Join Lobby", fontSize: 54, autoFitText: true, fontColor: "#17131f" },
+        { id: "joinTitle", name: "Join Title", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 112, width: 330, height: 86, scale: 1, defaultText: "Join Lobby", fontSize: 54, autoFitText: false, fontColor: "#17131f" },
         { id: "stageCodeField", name: "Stage Code Field", selector: "#stageCodeField", x: 195, y: 255, width: 320, height: 96, scale: 1 },
         { id: "playerNameField", name: "Player Name Field", selector: "#playerNameField", x: 195, y: 375, width: 320, height: 96, scale: 1 },
         { id: "joinButton", name: "Join Button", selector: "#joinButton", x: 195, y: 505, width: 260, height: 78, scale: 1 }
@@ -225,8 +225,8 @@ const defaultControllerLayouts = {
       hiddenGlobals: ["controllerplayerbanner"],
       elements: [
         { id: "controllerAvatar", name: "Player Avatar", selector: "#controllerAvatar", x: 195, y: 150, width: 104, height: 104, scale: 1 },
-        { id: "controllerPlayerName", name: "Player Name", selector: "#controllerPlayerName", kind: "text", x: 195, y: 290, width: 330, height: 80, scale: 1, defaultText: "Player", fontSize: 66, autoFitText: true, fontColor: "#17131f" },
-        { id: "controllerMeta", name: "Controller Status", selector: "#controllerMeta", kind: "text", x: 195, y: 382, width: 330, height: 48, scale: 1, defaultText: "Waiting in lobby", fontSize: 28, autoFitText: true, fontColor: "#6b5a80" },
+        { id: "controllerPlayerName", name: "Player Name", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 290, width: 330, height: 80, scale: 1, defaultText: "Player", fontSize: 66, autoFitText: false, fontColor: "#17131f" },
+        { id: "controllerMeta", name: "Controller Status", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 382, width: 330, height: 48, scale: 1, defaultText: "Waiting in lobby", fontSize: 28, autoFitText: false, fontColor: "#6b5a80" },
         { id: "startGameButton", name: "Start Game Button", selector: "#startGameButton", x: 195, y: 508, width: 260, height: 78, scale: 1 }
       ]
     },
@@ -234,7 +234,7 @@ const defaultControllerLayouts = {
       id: "intro",
       name: "Game Intro Controller",
       elements: [
-        { id: "controllerIntroMessage", name: "Intro Message", selector: "#controllerIntroMessage", kind: "text", x: 195, y: 250, width: 330, height: 120, scale: 1, defaultText: "Welcome to the Game", fontSize: 44, autoFitText: true, fontColor: "#17131f" },
+        { id: "controllerIntroMessage", name: "Intro Message", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 250, width: 330, height: 120, scale: 1, defaultText: "Welcome to the Game", fontSize: 44, autoFitText: false, fontColor: "#17131f" },
         { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", x: 195, y: 450, width: 300, height: 78, scale: 1 }
       ]
     }
@@ -261,6 +261,7 @@ const artAssets = [
 
 const artGroups = [
   { id: "player-avatar", name: "Player Avatar", description: "Composed from the shared avatar frame plus one dinosaur silhouette." },
+  { id: "player-object", name: "Player Object", description: "Composed player display object with shared player overlay prefabs." },
   { id: "presentation-click-prompt", name: "Presentation Click Prompt", description: "Standalone cursor art; it does not use the avatar frame." },
   { id: "voting-card", name: "Voting Card", description: "Composed answer card art used by voting moments." }
 ];
@@ -315,13 +316,394 @@ function defaultPlayerAvatarComposition(species, label, assetId) {
   };
 }
 
+function playerAnswerBubbleComponents() {
+  return [
+    {
+      id: "answer-text",
+      name: "Answer Text",
+      kind: "text",
+      x: 150,
+      y: 92,
+      width: 226,
+      height: 78,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "park",
+      defaultText: "ANSWER",
+      fontSize: 28,
+      autoFitText: false,
+      fontColor: "#17131f"
+    },
+    {
+      id: "answer-bubble-tail",
+      name: "Answer Bubble Tail",
+      kind: "shape",
+      x: 150,
+      y: 165,
+      width: 24,
+      height: 24,
+      scale: 1,
+      rotation: 45,
+      defaultAnimationState: "park",
+      shapeStyle: "rectangle",
+      fillColor: "#fffdf4",
+      borderColor: "#17131f",
+      borderWidth: 3,
+      borderRadius: 3
+    },
+    {
+      id: "answer-bubble-card",
+      name: "Answer Bubble Card",
+      kind: "shape",
+      x: 150,
+      y: 92,
+      width: 270,
+      height: 128,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "park",
+      shapeStyle: "rounded",
+      fillColor: "#fffdf4",
+      borderColor: "#17131f",
+      borderWidth: 3,
+      borderRadius: 18
+    }
+  ];
+}
+
+function playerPointPopupComponents() {
+  return [
+    {
+      id: "point-text",
+      name: "Point Text",
+      kind: "text",
+      x: 75,
+      y: 30,
+      width: 130,
+      height: 52,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      defaultText: "+200",
+      fontSize: 34,
+      autoFitText: false,
+      fontColor: "#ffe256"
+    },
+    {
+      id: "point-shadow",
+      name: "Point Shadow",
+      kind: "text",
+      x: 79,
+      y: 34,
+      width: 130,
+      height: 52,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      defaultText: "+200",
+      fontSize: 34,
+      autoFitText: false,
+      fontColor: "#17131f"
+    }
+  ];
+}
+
+function defaultPlayerObjectComposition(species, label, assetId) {
+  return {
+    id: `player-object-${species}`,
+    name: `${label} Player Object`,
+    description: "Editable player object composed from the answer bubble and avatar art.",
+    canvas: { width: 300, height: 300 },
+    components: [
+      {
+        id: "answer-bubble",
+        name: "Answer Bubble Slot",
+        kind: "reference",
+        x: 150,
+        y: 96,
+        width: 300,
+        height: 180,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "park",
+        artCompositionId: "player-answer-bubble"
+      },
+      {
+        id: "avatar",
+        name: "Player Avatar",
+        kind: "container",
+        x: 150,
+        y: 234,
+        width: 100,
+        height: 100,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        shapeStyle: "rectangle",
+        fillColor: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        borderRadius: 0,
+        children: [
+          {
+            id: "dino-mask",
+            name: "Dino Image Mask",
+            kind: "shape",
+            x: 50,
+            y: 50,
+            width: 70,
+            height: 70,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "on",
+            shapeStyle: "rectangle",
+            fillColor: "currentColor",
+            borderColor: "transparent",
+            borderWidth: 0,
+            borderRadius: 0,
+            imageAssetId: assetId,
+            imageObjectFit: "contain",
+            imageTint: "currentColor"
+          },
+          {
+            id: "avatar-frame",
+            name: "Avatar Frame",
+            kind: "shape",
+            x: 50,
+            y: 50,
+            width: 100,
+            height: 100,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "on",
+            shapeStyle: "rectangle",
+            fillColor: "transparent",
+            borderColor: "transparent",
+            borderWidth: 0,
+            borderRadius: 0,
+            imageAssetId: "avatar-frame",
+            imageObjectFit: "contain"
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function controllerShapeComponent(id, name, width, height, overrides = {}) {
+  return {
+    id,
+    name,
+    kind: "shape",
+    x: width / 2,
+    y: height / 2,
+    width,
+    height,
+    scale: 1,
+    rotation: 0,
+    defaultAnimationState: "on",
+    shapeStyle: overrides.shapeStyle || "rounded",
+    fillColor: overrides.fillColor || "#fffdf4",
+    borderColor: overrides.borderColor || "#17131f",
+    borderWidth: overrides.borderWidth ?? 4,
+    borderRadius: overrides.borderRadius ?? 18
+  };
+}
+
+function controllerTextComponent(id, name, text, x, y, width, height, fontSize = 24, fontColor = "#17131f") {
+  return {
+    id,
+    name,
+    kind: "text",
+    x,
+    y,
+    width,
+    height,
+    scale: 1,
+    rotation: 0,
+    defaultAnimationState: "on",
+    defaultText: text,
+    fontSize,
+    autoFitText: false,
+    fontColor
+  };
+}
+
+function defaultControllerComposition(id, name, description, canvas, components) {
+  return {
+    id,
+    name,
+    surface: "controller",
+    description,
+    canvas,
+    components
+  };
+}
+
 const defaultArtCompositions = [
+  {
+    id: "layout-text-field",
+    name: "Layout Text Field",
+    description: "Transparent single-text art asset used for stage and controller layout text.",
+    canvas: { width: 1000, height: 240 },
+    components: [
+      {
+        id: "text",
+        name: "Text",
+        kind: "text",
+        x: 500,
+        y: 120,
+        width: 1000,
+        height: 240,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        defaultText: "TEXT",
+        fontSize: 58,
+        autoFitText: false,
+        fontColor: "#ffffff"
+      }
+    ]
+  },
+  defaultControllerComposition(
+    "controller-primary-button",
+    "Controller Primary Button",
+    "Editable controller button art used by join, start, present, next, submit, and microphone buttons.",
+    { width: 300, height: 78 },
+    [
+      controllerTextComponent("button-text", "Button Text", "BUTTON", 150, 39, 250, 44, 24),
+      controllerShapeComponent("button-card", "Button Card", 300, 78, {
+        fillColor: "#22d3ee",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-text-input-field",
+    "Controller Text Input Field",
+    "Editable controller text-entry field art.",
+    { width: 330, height: 128 },
+    [
+      controllerTextComponent("placeholder-text", "Placeholder Text", "Answer here", 165, 64, 284, 58, 24, "#6b5a80"),
+      controllerShapeComponent("input-card", "Input Card", 330, 128, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-stage-code-field",
+    "Controller Stage Code Field",
+    "Editable controller stage-code entry field art.",
+    { width: 320, height: 96 },
+    [
+      controllerTextComponent("field-label", "Field Label", "STAGE CODE", 160, 18, 260, 22, 16, "#6b5a80"),
+      controllerTextComponent("field-value", "Field Value", "ABCD", 160, 56, 260, 42, 34),
+      controllerShapeComponent("field-card", "Field Card", 320, 96, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-player-name-field",
+    "Controller Player Name Field",
+    "Editable controller player-name entry field art.",
+    { width: 320, height: 96 },
+    [
+      controllerTextComponent("field-label", "Field Label", "PLAYER NAME", 160, 18, 260, 22, 16, "#6b5a80"),
+      controllerTextComponent("field-value", "Field Value", "Your name", 160, 56, 260, 42, 30),
+      controllerShapeComponent("field-card", "Field Card", 320, 96, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-player-banner",
+    "Controller Player Banner",
+    "Editable controller top player banner art.",
+    { width: 338, height: 78 },
+    [
+      controllerTextComponent("banner-name", "Banner Name", "PLAYER", 190, 39, 220, 42, 30),
+      controllerShapeComponent("banner-card", "Banner Card", 338, 78, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-avatar-button",
+    "Controller Avatar Button",
+    "Editable controller avatar button background art.",
+    { width: 104, height: 104 },
+    [
+      controllerShapeComponent("avatar-card", "Avatar Card", 104, 104, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-choice-option",
+    "Controller Choice Option",
+    "Editable controller multiple-choice option button art.",
+    { width: 320, height: 72 },
+    [
+      controllerTextComponent("option-text", "Option Text", "Option", 160, 36, 280, 40, 24),
+      controllerShapeComponent("option-card", "Option Card", 320, 72, {
+        fillColor: "#fffdf4",
+        borderWidth: 4,
+        borderRadius: 18
+      })
+    ]
+  ),
+  defaultControllerComposition(
+    "controller-invalid-banner",
+    "Controller Invalid Banner",
+    "Editable controller invalid submission banner art.",
+    { width: 330, height: 64 },
+    [
+      controllerTextComponent("invalid-text", "Invalid Text", "Your submission was invalid", 165, 32, 290, 34, 20, "#17131f"),
+      controllerShapeComponent("invalid-card", "Invalid Card", 330, 64, {
+        fillColor: "#ff9e2c",
+        borderWidth: 4,
+        borderRadius: 16
+      })
+    ]
+  ),
   defaultPlayerAvatarComposition("rex", "Rex", "avatar-rex"),
   defaultPlayerAvatarComposition("stego", "Stego", "avatar-stego"),
   defaultPlayerAvatarComposition("trike", "Trike", "avatar-trike"),
   defaultPlayerAvatarComposition("raptor", "Raptor", "avatar-raptor"),
   defaultPlayerAvatarComposition("bronto", "Bronto", "avatar-bronto"),
   defaultPlayerAvatarComposition("ankylo", "Ankylo", "avatar-ankylo"),
+  {
+    id: "player-answer-bubble",
+    name: "Player Answer Bubble",
+    description: "Shared editable answer bubble art used by every player object.",
+    canvas: { width: 300, height: 180 },
+    components: playerAnswerBubbleComponents()
+  },
+  {
+    id: "player-point-popup",
+    name: "Player Point Popup",
+    description: "Shared editable scoring popup art spawned when points are shown.",
+    canvas: { width: 150, height: 60 },
+    components: playerPointPopupComponents()
+  },
+  defaultPlayerObjectComposition("rex", "Rex", "avatar-rex"),
+  defaultPlayerObjectComposition("stego", "Stego", "avatar-stego"),
+  defaultPlayerObjectComposition("trike", "Trike", "avatar-trike"),
+  defaultPlayerObjectComposition("raptor", "Raptor", "avatar-raptor"),
+  defaultPlayerObjectComposition("bronto", "Bronto", "avatar-bronto"),
+  defaultPlayerObjectComposition("ankylo", "Ankylo", "avatar-ankylo"),
   {
     id: "voting-card",
     name: "Voting Card",
@@ -379,6 +761,7 @@ const defaultArtCompositions = [
         width: 500,
         height: 48,
         scale: 1,
+        childDistribution: "horizontal",
         fillColor: "transparent",
         borderColor: "transparent",
         borderWidth: 0,
@@ -467,7 +850,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "NUZ7",
         fontSize: 112,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -483,7 +866,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "STAGE CODE",
         fontSize: 22,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -524,7 +907,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "NUZ7",
         fontSize: 32,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -540,7 +923,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "STAGE",
         fontSize: 10,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -704,7 +1087,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "30",
         fontSize: 74,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {
@@ -746,7 +1129,7 @@ const defaultArtCompositions = [
         defaultAnimationState: "on",
         defaultText: "SCAN TO JOIN",
         fontSize: 20,
-        autoFitText: false,
+        autoFitText: true,
         fontColor: "#17131f"
       },
       {

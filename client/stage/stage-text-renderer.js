@@ -16,17 +16,13 @@
       applySize: spec.applySize === true,
       fontColor: spec.fontColor
     };
-    if (typeof global.PartyGameTextFit?.renderGameText === "function") {
-      return global.PartyGameTextFit.renderGameText(target, {
-        text: textValue,
-        spec: textSpec,
-        options: {
+    if (typeof global.PartyGameTextFit?.renderRuntimeText === "function") {
+      return global.PartyGameTextFit.renderRuntimeText(target, textValue, textSpec, {
           autoFit: textSpec.autoFitText,
           minSize: Number(options.minSize || spec.minSize || 6),
           lineHeight: Number(options.lineHeight || spec.lineHeight || 1.05),
           ...(spec.options || {}),
           ...options
-        }
       });
     }
     target.textContent = textValue;

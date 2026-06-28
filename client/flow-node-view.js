@@ -610,6 +610,8 @@ function renderFlowNodeInspector() {
 }
 
 function flowHistorySnapshot() {
+  const helper = window.PartyGameFlowSerialization?.flowHistorySnapshot;
+  if (helper) return helper(gameFlow, { serializeRouteNode: serializeFlowRouteNodeForSave });
   return JSON.stringify(serializeGameFlowForSave(gameFlow));
 }
 
@@ -629,7 +631,20 @@ function pushFlowHistory() {
 }
 
 function restoreFlowHistory(snapshot) {
-  gameFlow = JSON.parse(snapshot);
+  gameFlow = window.PartyGameFlowSerialization?.parseFlowHistorySnapshot?.(snapshot) || JSON.parse(snapshot);
+  window.PartyGameFlowReactShell?.update?.(gameFlow, {
+    canAddAction: flowViewMode === "node" && flowNodeDepth === "moments" ? true : Boolean(flowState(selectedFlowStateId)),
+    canAddState: true,
+    canDelete: Boolean(selectedFlowRouteNodeId || selectedFlowStateId),
+    canRevert: Boolean(flowSavedSnapshot && isFlowDirty()),
+    flowActionTypes,
+    flowNodeDepth,
+    flowViewMode,
+    selectedActionId: selectedFlowActionId,
+    selectedRouteBranchId: selectedFlowRouteBranchId,
+    selectedRouteNodeId: selectedFlowRouteNodeId,
+    selectedStateId: selectedFlowStateId
+  });
   selectedFlowStateId = flowState(selectedFlowStateId)?.id || gameFlow.states[0]?.id || "";
   repairSelectedFlowRouteBranch();
   expandFlowStateInList(selectedFlowStateId);

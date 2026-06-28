@@ -43,6 +43,10 @@ const disallowedPatterns = [
   {
     pattern: /dataset\.textFitSource[^;\n]*textContent/,
     message: "Never derive textFitSource from rendered textContent."
+  },
+  {
+    pattern: /targetElement\.textContent/,
+    message: "Do not read rendered SVG DOM text back into stage layout text state."
   }
 ];
 
@@ -74,26 +78,95 @@ if (typeof measure !== "function") {
   process.exit(1);
 }
 
-const fixedSmall = measure({
-  text: "STAGE",
-  element: { width: 400, height: 80, fontSize: 12, autoFitText: false },
-  fallbackSize: 12
-});
-const fixedLarge = measure({
-  text: "STAGE",
-  element: { width: 400, height: 80, fontSize: 48, autoFitText: false },
-  fallbackSize: 48
-});
-if (Number(fixedSmall.fontSize) !== 12 || Number(fixedLarge.fontSize) !== 48) {
+const normalizeTextField = globalThis.PartyGameTextFit?.normalizeTextFieldElement;
+if (typeof normalizeTextField !== "function") {
   console.error("Text rendering regression check failed:");
-  console.error("- measureGameText must respect manual font size when autoFitText is false");
+  console.error("- shared PartyGameTextFit.normalizeTextFieldElement was not registered");
+  process.exit(1);
+}
+
+const implicitFitField = normalizeTextField({ kind: "text", width: 400, height: 80 });
+const explicitManualField = normalizeTextField({ kind: "text", width: 400, height: 80, autoFitText: false, fontSize: 48 });
+if (implicitFitField.autoFitText !== true || explicitManualField.autoFitText !== false) {
+  console.error("Text rendering regression check failed:");
+  console.error("- layout text fields must auto-fit unless autoFitText is explicitly false");
+  process.exit(1);
+}
+
+const fixedSmall = measure({ text: "STAGE", element: { width: 400, height: 80, fontSize: 12, autoFitText: true }, fallbackSize: 12 });
+const fixedLarge = measure({ text: "STAGE", element: { width: 400, height: 80, fontSize: 48, autoFitText: true }, fallbackSize: 48 });
+const multiline = measure({ text: "ONE\nTWO\nTHREE", element: { width: 80, height: 24, fontSize: 36, autoFitText: true }, fallbackSize: 36 });
+if (Number(fixedSmall.fontSize) !== 12 || Number(fixedLarge.fontSize) !== 48 || Number(multiline.fontSize) !== 36) {
+  console.error("Text rendering regression check failed:");
+  console.error("- text rendering must use manual font size and ignore auto-fit shrinking");
   process.exit(1);
 }
 
 const textFitSource = fs.readFileSync(path.join(repoRoot, "client/text-fit.js"), "utf8");
-if (!/createElementNS\(svgNamespace,\s*"svg"\)/.test(textFitSource) || !/dominant-baseline/.test(textFitSource)) {
+if (/createElementNS/.test(textFitSource) || /dominant-baseline/.test(textFitSource) || /measureText/.test(textFitSource)) {
   console.error("Text rendering regression check failed:");
-  console.error("- shared text rendering must use SVG centered baselines, not HTML line-box baselines");
+  console.error("- plain text mode must not use SVG or canvas text measurement");
+  process.exit(1);
+}
+if (!/display: "flex"/.test(textFitSource)
+  || !/alignItems: "center"/.test(textFitSource)
+  || !/justifyContent: "center"/.test(textFitSource)
+  || !/overflow: "hidden"/.test(textFitSource)
+  || !/whiteSpace: "pre-wrap"/.test(textFitSource)
+  || !/target\.textContent = textValue/.test(textFitSource)) {
+  console.error("Text rendering regression check failed:");
+  console.error("- plain text mode must render centered clipped HTML text");
+  process.exit(1);
+}
+
+const layoutRuntimeSource = fs.readFileSync(path.join(repoRoot, "client/layout-runtime.js"), "utf8");
+if (!/normalized === "presentation"\) return "stagepresentationtext"/.test(layoutRuntimeSource)
+  && !/compact === "presentation"\) return "stagepresentationtext"/.test(layoutRuntimeSource)
+  || (!/normalized === "prompt"\) return "stageprompttext"/.test(layoutRuntimeSource)
+    && !/compact === "prompt"\) return "stageprompttext"/.test(layoutRuntimeSource))) {
+  console.error("Text rendering regression check failed:");
+  console.error("- legacy flow text targets must resolve to canonical stage layout text ids");
+  process.exit(1);
+}
+
+const layoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/layout-normalization-runtime.js"), "utf8");
+if (!/autoFitText: false/.test(layoutNormalizerSource)
+  || !/layoutTextArtCompositionId/.test(layoutNormalizerSource)) {
+  console.error("Text rendering regression check failed:");
+  console.error("- server layout normalization must promote legacy layout text to fixed-size text art");
+  process.exit(1);
+}
+
+const stageLayoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/stage-layout-normalization-runtime.js"), "utf8");
+const controllerLayoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/controller-layout-normalization-runtime.js"), "utf8");
+if (/mergeMissingDefaultElements/.test(stageLayoutNormalizerSource)
+  || /mergeMissingDefaultElements/.test(controllerLayoutNormalizerSource)) {
+  console.error("Text rendering regression check failed:");
+  console.error("- layout normalization must not resurrect deleted default layout elements");
+  process.exit(1);
+}
+
+const artObjectSource = fs.readFileSync(path.join(repoRoot, "client/stage/art-object-visuals.js"), "utf8");
+if (/querySelector\(":scope > \.art-label-text"\)/.test(artObjectSource)
+  || !/renderLayoutTextField\(label,\s*textElement,\s*\{/.test(artObjectSource)
+  || !/function renderedArtTextElement/.test(artObjectSource)
+  || !/target\?\.clientWidth/.test(artObjectSource)) {
+  console.error("Text rendering regression check failed:");
+  console.error("- art text must render into the full rendered label box through the canonical text field renderer");
+  process.exit(1);
+}
+
+const artToolSource = fs.readFileSync(path.join(repoRoot, "client/art-tool.js"), "utf8");
+if (!/component\.autoFitText !== false/.test(artToolSource)) {
+  console.error("Text rendering regression check failed:");
+  console.error("- Art Manager text auto-fit must default to true unless explicitly false");
+  process.exit(1);
+}
+
+const artNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/art-assets-runtime.js"), "utf8");
+if (!/normalized\.autoFitText = source\.autoFitText !== false && base\.autoFitText !== false/.test(artNormalizerSource)) {
+  console.error("Text rendering regression check failed:");
+  console.error("- server art normalization must default missing text autoFitText to true");
   process.exit(1);
 }
 

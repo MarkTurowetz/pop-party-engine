@@ -40,7 +40,8 @@
       });
       options.renderers.set(rendererKey, renderer);
     }
-    renderer.render(composition.components || [], composition.canvas || { width: 1, height: 1 }, {
+    const components = (composition.components || []).map((component) => cloneLayoutArtComponent(component, options));
+    renderer.render(components, composition.canvas || { width: 1, height: 1 }, {
       defaultAnimation: "on",
       instant: true,
       // Placed layout prefab instances own park/appear/disappear at the host level.
@@ -48,6 +49,24 @@
       respectDefaultAnimationState: false
     });
     return renderer;
+  }
+
+  function cloneLayoutArtComponent(component, options = {}) {
+    const clone = {
+      ...component,
+      children: (component.children || []).map((child) => cloneLayoutArtComponent(child, options))
+    };
+    const textOverrides = options.textOverrides || {};
+    const kind = String(clone.kind || "").toLowerCase();
+    if ((kind === "text" || kind === "badge") && Object.prototype.hasOwnProperty.call(textOverrides, clone.id)) {
+      clone.defaultText = String(textOverrides[clone.id] ?? "");
+    }
+    if ((kind === "text" || kind === "badge") && options.textStyle && clone.id === options.textStyle.componentId) {
+      clone.fontSize = options.textStyle.fontSize;
+      clone.fontColor = options.textStyle.fontColor;
+      clone.autoFitText = false;
+    }
+    return clone;
   }
 
   function clearLayoutArtInstanceRenderer(renderers, elementId, host = null) {
@@ -76,13 +95,14 @@
       getOrCreate(element) {
         return getOrCreateLayoutArtInstance(element, root(), options.selector, options.className);
       },
-      render(element, host, rendererKey = "") {
+      render(element, host, rendererKey = "", renderOptions = {}) {
         return renderLayoutArtInstance(element, host, {
           renderers,
           rendererKey,
           layerClassName: options.layerClassName,
           missingDatasetKey: options.missingDatasetKey,
-          clearRenderer: api.clear
+          clearRenderer: api.clear,
+          ...renderOptions
         });
       },
       clear(elementId, host = null) {

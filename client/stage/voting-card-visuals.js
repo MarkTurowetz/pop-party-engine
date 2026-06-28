@@ -6,7 +6,7 @@
       { id: "current-card", x: 280, y: 96, width: 520, height: 118, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 5, borderRadius: 16 },
       { id: "answer-text", x: 280, y: 96, width: 420, height: 78, scale: 1, fontSize: 32, fontColor: "#17131f" },
       { id: "author-heading", x: 280, y: 22, width: 340, height: 28, scale: 1, fontSize: 15, fontColor: "#6b5a80" },
-      { id: "voter-container", x: 278, y: 188, width: 500, height: 48, scale: 1, fillColor: "transparent", borderColor: "transparent", borderWidth: 0, borderRadius: 0 },
+      { id: "voter-container", x: 278, y: 188, width: 500, height: 48, scale: 1, childDistribution: "horizontal", fillColor: "transparent", borderColor: "transparent", borderWidth: 0, borderRadius: 0 },
       { id: "vote-count", x: 72, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" },
       { id: "vote-widget", x: 280, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" }
     ]
@@ -27,14 +27,16 @@
     return group;
   }
 
-  function createVoterBadge(documentRef) {
-    const badge = documentRef.createElement("span");
-    badge.className = "voting-card-voter-badge voting-card-vote-hidden";
-    badge.innerHTML = `
-      <span class="voting-card-voter-avatar"></span>
-      <span class="voting-card-voter-name"></span>
-    `;
-    return badge;
+  function cloneComponentTree(component) {
+    return {
+      ...(component || {}),
+      children: Array.isArray(component?.children) ? component.children.map(cloneComponentTree) : []
+    };
+  }
+
+  function safeComponentId(value, fallback) {
+    const clean = String(value || "").trim().replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+    return clean || fallback;
   }
 
   class VotingCardView {
@@ -60,6 +62,8 @@
       this.artObjectRuntime = global.PartyGameArtObject || null;
       this.rootArtRenderer = this.createArtTreeRenderer(this.artObjectsElement);
       this.componentChildRenderers = new Map();
+      this.voterArtRenderer = null;
+      this.currentVisibleVoters = [];
       this.voteRevealKey = "";
       this.voteRevealBadgeCount = 0;
       this.voteRevealTimers = [];
@@ -136,8 +140,8 @@
       this.cardElement.classList.toggle("is-winner", cardData.isWinner === true);
       this.cardElement.classList.toggle("is-loser", cardData.isLoser === true);
       this.syncAuthor(cardData);
-      this.syncVoters(cardData, options);
       this.applyComposition();
+      this.syncVoters(cardData, options);
       this.groupVisual.play("on");
     }
 
@@ -192,8 +196,8 @@
       this.renderComponentChildren("current-card", this.cardElement);
       this.renderComponentChildren("answer-text", this.answerElement);
       this.renderComponentChildren("author-heading", this.authorElement);
-      this.renderComponentChildren("voter-container", this.votersElement);
       this.renderComponentChildren("vote-count", this.voteBadgeElement);
+      this.renderVoterArt(this.currentVisibleVoters, { instant: true, syncCount: false });
     }
 
     ensureChildHost(parentElement, componentId) {
@@ -204,6 +208,16 @@
         host.className = "voting-card-component-children";
         host.dataset.componentId = componentId;
         parentElement.appendChild(host);
+      }
+      return host;
+    }
+
+    ensureVoterArtHost() {
+      let host = this.votersElement.querySelector(":scope > .voting-card-voter-art-host");
+      if (!host) {
+        host = this.document.createElement("div");
+        host.className = "voting-card-voter-art-host";
+        this.votersElement.appendChild(host);
       }
       return host;
     }
@@ -261,106 +275,105 @@
       }
     }
 
-    revealVoterBadge(badge, visibleVoteCount) {
-      this.createVisual(badge, {
-        hiddenClasses: ["voting-card-vote-hidden"],
-        motionHiddenClasses: ["voting-card-vote-hidden"],
-        instantClass: "voting-card-vote-instant"
-      }, `voter:${badge.dataset.voterId || ""}`)?.play("appear");
-      this.syncVoteCount(visibleVoteCount);
+    voterArtRoot(voters = []) {
+      const container = this.component("voter-container");
+      const widget = this.component("vote-widget");
+      if (!container || !widget) return null;
+      const width = Math.max(1, Number(container.width || 1));
+      const height = Math.max(1, Number(container.height || 1));
+      const children = voters.map((voter, index) => {
+        const voterId = safeComponentId(voter?.id, `voter-${index}`);
+        const clone = cloneComponentTree(widget);
+        clone.id = `vote-widget-${voterId}`;
+        clone.name = voter?.name ? `Vote Widget ${voter.name}` : `Vote Widget ${index + 1}`;
+        clone.defaultText = voter?.name || "Player";
+        clone.x = width / 2;
+        clone.y = height / 2;
+        clone.defaultAnimationState = "appear";
+        return clone;
+      });
+      const distribution = container.childDistribution === "vertical" ? "vertical" : "horizontal";
+      return {
+        ...cloneComponentTree(container),
+        id: "voter-container-runtime",
+        name: "Runtime Voter Container",
+        x: width / 2,
+        y: height / 2,
+        width,
+        height,
+        scale: 1,
+        rotation: 0,
+        fillColor: "transparent",
+        borderColor: "transparent",
+        borderWidth: 0,
+        borderRadius: 0,
+        childDistribution: distribution,
+        children
+      };
+    }
+
+    renderVoterArt(voters = [], options = {}) {
+      this.currentVisibleVoters = Array.isArray(voters) ? voters : [];
+      const host = this.ensureVoterArtHost();
+      if (!host) return;
+      if (!this.voterArtRenderer || this.voterArtRenderer.host !== host) {
+        this.voterArtRenderer = this.createArtTreeRenderer(host);
+      }
+      const container = this.component("voter-container");
+      const root = this.voterArtRoot(this.currentVisibleVoters);
+      if (!this.voterArtRenderer || !container || !root) {
+        this.syncVoteCount(0);
+        return;
+      }
+      this.voterArtRenderer.render([root], {
+        width: Math.max(1, Number(container.width || 1)),
+        height: Math.max(1, Number(container.height || 1))
+      }, {
+        defaultAnimation: "appear",
+        instant: options.instant === true
+      });
+      if (options.syncCount !== false) this.syncVoteCount(this.currentVisibleVoters.length);
     }
 
     syncVoters(cardData, options = {}) {
       const voters = cardData.votesRevealed === true ? (cardData.voters || []) : [];
-      const desiredIds = new Set(voters.map((voter, index) => voter.id || `voter-${index}`));
-      const existing = new Map(Array.from(this.votersElement.querySelectorAll(".voting-card-voter-badge")).map((badge) => [badge.dataset.voterId, badge]));
-      const badges = [];
-      let cursor = this.votersElement.firstElementChild;
-      voters.forEach((voter, index) => {
-        const voterId = voter.id || `voter-${index}`;
-        let badge = existing.get(voterId);
-        if (!badge) {
-          badge = createVoterBadge(this.document);
-          badge.dataset.voterId = voterId;
-        }
-        this.updateVoterBadge(badge, voter, index);
-        if (badge === cursor) {
-          cursor = cursor.nextElementSibling;
-        } else {
-          this.votersElement.insertBefore(badge, cursor);
-        }
-        badges.push(badge);
-      });
-      for (const badge of Array.from(this.votersElement.querySelectorAll(".voting-card-voter-badge"))) {
-        if (!desiredIds.has(badge.dataset.voterId || "")) badge.remove();
-      }
       if (cardData.votesRevealed === true) {
         this.votersVisual.play("on");
-        this.scheduleVoteReveal(badges, options);
+        this.scheduleVoteReveal(voters, options);
       } else {
         this.clearVoteRevealTimers();
         this.voteRevealKey = "";
         this.voteRevealBadgeCount = 0;
+        this.renderVoterArt([], { instant: true });
+        this.voterArtRenderer?.clear({ instant: true });
         this.syncVoteCount(0);
         this.votersVisual.play("park", { instant: true });
       }
     }
 
-    scheduleVoteReveal(badges, options = {}) {
+    scheduleVoteReveal(voters, options = {}) {
       const revealKey = options.voteRevealKey || "instant";
       const staggerMs = Math.max(0, Number(options.voteRevealStaggerMs || 0));
-      if (revealKey === this.voteRevealKey && badges.length === this.voteRevealBadgeCount) return;
+      const voterKey = `${revealKey}:${voters.map((voter, index) => voter?.id || `voter-${index}`).join("|")}`;
+      if (voterKey === this.voteRevealKey && voters.length === this.voteRevealBadgeCount) return;
       this.clearVoteRevealTimers();
-      this.voteRevealKey = revealKey;
-      this.voteRevealBadgeCount = badges.length;
-      this.syncVoteCount(0);
-      badges.forEach((badge) => {
-        this.createVisual(badge, {
-          hiddenClasses: ["voting-card-vote-hidden"],
-          motionHiddenClasses: ["voting-card-vote-hidden"],
-          instantClass: "voting-card-vote-instant"
-        }, `voter:${badge.dataset.voterId || ""}`)?.play("park", { instant: true });
-      });
-      if (!badges.length) return;
-      badges.forEach((badge, index) => {
+      this.voteRevealKey = voterKey;
+      this.voteRevealBadgeCount = voters.length;
+      this.renderVoterArt([], { instant: true });
+      if (!voters.length) return;
+      voters.forEach((voter, index) => {
         const visibleVoteCount = index + 1;
         const delayMs = staggerMs > 0 ? visibleVoteCount * staggerMs : 0;
         if (delayMs === 0) {
-          this.revealVoterBadge(badge, visibleVoteCount);
+          this.renderVoterArt(voters.slice(0, visibleVoteCount), { instant: options.instant === true });
           return;
         }
         const timerId = global.setTimeout(() => {
-          if (this.voteRevealKey !== revealKey) return;
-          this.revealVoterBadge(badge, visibleVoteCount);
+          if (this.voteRevealKey !== voterKey) return;
+          this.renderVoterArt(voters.slice(0, visibleVoteCount), { instant: false });
         }, delayMs);
         this.voteRevealTimers.push(timerId);
       });
-    }
-
-    updateVoterBadge(badge, voter, index) {
-      badge.style.transitionDelay = "0ms";
-      this.applyVoteWidgetStyle(badge);
-      const avatarElement = badge.querySelector(".voting-card-voter-avatar");
-      avatarElement.className = `voting-card-voter-avatar ${this.avatarClass(voter.avatar?.shape)}`;
-      avatarElement.style.setProperty("--avatar-color", voter.avatar?.color || "#22d3ee");
-      avatarElement.innerHTML = this.playerAvatarArt(voter.avatar?.shape);
-      this.renderComponentText(badge.querySelector(".voting-card-voter-name"), this.component("vote-widget"), voter.name || "Player");
-    }
-
-    applyVoteWidgetStyle(badge) {
-      const component = this.component("vote-widget");
-      if (!component) return;
-      badge.style.width = `${Number(component.width || 112)}px`;
-      badge.style.minHeight = `${Number(component.height || 32)}px`;
-      badge.style.setProperty("--component-scale", Number(component.scale || 1));
-      badge.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-      const fontSize = global.PartyGameArtObject?.componentFontSize?.(component, "BEN") || Number(component.fontSize || 15);
-      badge.style.setProperty("--component-font-size", `${fontSize}px`);
-      badge.style.setProperty("--component-text-color", component.fontColor || "#17131f");
-      badge.style.setProperty("--component-fill-color", component.fillColor || "#fff8d6");
-      badge.style.setProperty("--component-border-color", component.borderColor || "#17131f");
-      badge.style.setProperty("--component-border-width", `${Number(component.borderWidth || 2)}px`);
-      badge.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 999)}px`);
     }
 
     renderComponentText(target, component, textOverride = "") {
@@ -373,6 +386,7 @@
     remove(options = {}) {
       this.clearVoteRevealTimers();
       this.rootArtRenderer?.clear({ instant: options.instant === true });
+      this.voterArtRenderer?.clear({ instant: options.instant === true });
       for (const renderer of this.componentChildRenderers.values()) {
         renderer.clear({ instant: options.instant === true });
       }

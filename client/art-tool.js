@@ -11,7 +11,9 @@ let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
 let selectedArtSurface = "stage";
 let draggedArtComponentId = "";
+let draggedArtOrganizerKey = "";
 let artCreateKindMenu = null;
+let artAssetSearchQuery = "";
 const artComponentSchema = window.PartyGameArtComponentSchema;
 const artComponentTree = window.PartyGameArtComponentTree;
 const artToolUi = window.PartyGameArtToolUi;
@@ -20,7 +22,7 @@ const artComponentEditorRuntime = window.PartyGameArtComponentEditor;
 const editableArtRenderer = window.PartyGameEditableArtRenderer;
 const artShapeStyles = artComponentSchema.shapeStyleOptions;
 const artComponentImageAccept = artComponentSchema.imageAccept;
-const artSectionCollapseIds = ["player-avatars", "presentation-click-prompt"];
+const artSectionCollapseIds = ["player-avatars", "player-objects", "presentation-click-prompt"];
 let artSidebarRenderer = null;
 let artComponentEditorRenderer = null;
 
@@ -43,6 +45,10 @@ function normalizeArtCompositionSurface(surface) {
   return surface === "controller" ? "controller" : "stage";
 }
 
+function isSharedArtComposition(composition) {
+  return composition?.surface === "shared" || composition?.id === "layout-text-field";
+}
+
 function serializeArtComponentForSave(component) {
   return {
     id: component.id,
@@ -55,9 +61,10 @@ function serializeArtComponentForSave(component) {
     scale: Number(Number(component.scale || 1).toFixed(3)),
     rotation: Number(Number(component.rotation || 0).toFixed(3)),
     defaultAnimationState: component.defaultAnimationState || "",
+    childDistribution: component.kind === "container" ? artComponentSchema.normalizeContainerDistribution(component.childDistribution) : "none",
     defaultText: component.defaultText || "",
     fontSize: Number(Number(component.fontSize || 16).toFixed(3)),
-    autoFitText: component.autoFitText === true,
+    autoFitText: (component.kind === "text" || component.kind === "badge") ? component.autoFitText !== false : false,
     fontColor: component.fontColor || "#17131f",
     shapeStyle: artComponentSchema.normalizeShapeStyle(component.shapeStyle, component.kind),
     fillColor: component.fillColor || "transparent",
@@ -71,13 +78,16 @@ function serializeArtComponentForSave(component) {
     imageMimeType: artComponentSupportsImageMask(component) ? component.imageMimeType || "" : "",
     imageObjectFit: artComponentSupportsImageMask(component) ? artComponentSchema.normalizeImageObjectFit(component.imageObjectFit) : "cover",
     imageTint: artComponentSupportsImageMask(component) ? component.imageTint || "" : "",
+    artCompositionId: component.kind === "reference" ? component.artCompositionId || "" : "",
     children: (component.children || []).map(serializeArtComponentForSave)
   };
 }
 
 function isArtCompositionsDirty() {
+  const changedIds = typeof changedArtCompositionIdList === "function" ? changedArtCompositionIdList() : [];
   return artCompositionsSavedSnapshot && (
-    JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot
+    changedIds.length > 0
+    || JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot
     || artCompositionsPendingDeleteCount() > 0
   );
 }
@@ -160,11 +170,230 @@ function selectedArtComposition() {
 }
 
 function visibleArtCompositions() {
-  return (artCompositions || []).filter((composition) => normalizeArtCompositionSurface(composition.surface) === selectedArtSurface);
+  return (artCompositions || []).filter((composition) => (
+    isSharedArtComposition(composition)
+    || normalizeArtCompositionSurface(composition.surface) === selectedArtSurface
+  ));
 }
 
 function artSurfaceLabel(surface = selectedArtSurface) {
   return normalizeArtCompositionSurface(surface) === "controller" ? "Controller Art" : "Stage Art";
+}
+
+function artOrganizationSurface(surface = selectedArtSurface) {
+  const normalized = normalizeArtCompositionSurface(surface);
+  artOrganization[normalized] = artOrganization[normalized] || { folders: [], order: [], folderItems: {} };
+  artOrganization[normalized].folders = Array.isArray(artOrganization[normalized].folders) ? artOrganization[normalized].folders : [];
+  artOrganization[normalized].order = Array.isArray(artOrganization[normalized].order) ? artOrganization[normalized].order : [];
+  artOrganization[normalized].folderItems = artOrganization[normalized].folderItems && typeof artOrganization[normalized].folderItems === "object" ? artOrganization[normalized].folderItems : {};
+  return artOrganization[normalized];
+}
+
+function artOrganizerItemKey(item) {
+  if (!item) return "";
+  if (item.currentUrl !== undefined) return `asset:${item.id}`;
+  return `composition:${item.id}`;
+}
+
+function artOrganizerFolderKey(folderId) {
+  return `folder:${folderId}`;
+}
+
+function artOrganizerFolderIdFromKey(key) {
+  return String(key || "").startsWith("folder:") ? String(key).slice(7) : "";
+}
+
+function artOrganizerSurfaceItems(surface = selectedArtSurface) {
+  const isStageSurface = normalizeArtCompositionSurface(surface) === "stage";
+  const compositions = (artCompositions || []).filter((composition) => (
+    isSharedArtComposition(composition)
+    || normalizeArtCompositionSurface(composition.surface) === normalizeArtCompositionSurface(surface)
+  ));
+  const items = compositions.map((composition) => ({ key: artOrganizerItemKey(composition), type: "composition", item: composition }));
+  if (isStageSurface) {
+    for (const asset of artAssets || []) {
+      if (asset.parent && ["player-avatar", "presentation-click-prompt"].includes(asset.parent)) continue;
+      items.push({ key: artOrganizerItemKey(asset), type: "asset", item: asset });
+    }
+  }
+  return items;
+}
+
+function cleanArtOrganizationForSave() {
+  const cleaned = { stage: { folders: [], order: [], folderItems: {} }, controller: { folders: [], order: [], folderItems: {} } };
+  for (const surface of ["stage", "controller"]) {
+    const state = artOrganizationSurface(surface);
+    const validItems = new Set(artOrganizerSurfaceItems(surface).map((entry) => entry.key));
+    const validFolders = new Set();
+    cleaned[surface].folders = state.folders.map((folder) => ({
+      id: String(folder.id || ""),
+      name: String(folder.name || "Folder").trim() || "Folder"
+    })).filter((folder) => {
+      if (!folder.id || validFolders.has(folder.id)) return false;
+      validFolders.add(folder.id);
+      return true;
+    });
+    const validFolderKeys = new Set(cleaned[surface].folders.map((folder) => artOrganizerFolderKey(folder.id)));
+    const validTopKeys = new Set([...validItems, ...validFolderKeys]);
+    cleaned[surface].order = [...new Set(state.order || [])].filter((key) => validTopKeys.has(key));
+    for (const folder of cleaned[surface].folders) {
+      cleaned[surface].folderItems[folder.id] = [...new Set(state.folderItems?.[folder.id] || [])].filter((key) => {
+        if (validItems.has(key)) return true;
+        if (!validFolderKeys.has(key)) return false;
+        return artOrganizerFolderIdFromKey(key) !== folder.id;
+      });
+    }
+    for (const folder of cleaned[surface].folders) {
+      cleaned[surface].folderItems[folder.id] = cleaned[surface].folderItems[folder.id].filter((key) => {
+        const nestedFolderId = artOrganizerFolderIdFromKey(key);
+        return !nestedFolderId || !artOrganizerFolderContainsFolder(cleaned[surface], nestedFolderId, folder.id);
+      });
+    }
+    const assignedKeys = new Set();
+    for (const folder of cleaned[surface].folders) {
+      const uniqueItems = [];
+      for (const key of cleaned[surface].folderItems[folder.id] || []) {
+        if (assignedKeys.has(key)) continue;
+        assignedKeys.add(key);
+        uniqueItems.push(key);
+      }
+      cleaned[surface].folderItems[folder.id] = uniqueItems;
+    }
+    cleaned[surface].order = cleaned[surface].order.filter((key) => !assignedKeys.has(key));
+  }
+  return cleaned;
+}
+
+async function saveArtOrganization() {
+  artOrganization = cleanArtOrganizationForSave();
+  const result = await (window.PartyGameToolContext?.api?.art?.saveArtOrganization?.(artOrganization)
+    || postJson("/api/art-organization", { organization: artOrganization }));
+  artOrganization = normalizeLoadedArtOrganization(result.organization || artOrganization);
+  renderArtList();
+}
+
+function createArtFolder(parentFolderId = "") {
+  const name = window.prompt("Folder name", "New Folder");
+  if (name === null) return;
+  const cleanName = String(name || "").trim() || "New Folder";
+  const state = artOrganizationSurface();
+  const id = createSecureArtId("folder");
+  state.folders.push({ id, name: cleanName });
+  if (parentFolderId && state.folders.some((folder) => folder.id === parentFolderId)) {
+    state.folderItems[parentFolderId] = state.folderItems[parentFolderId] || [];
+    state.folderItems[parentFolderId].push(artOrganizerFolderKey(id));
+    collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${parentFolderId}`);
+  } else {
+    state.order.push(artOrganizerFolderKey(id));
+  }
+  state.folderItems[id] = [];
+  collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${id}`);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function renameArtFolder(folderId) {
+  const state = artOrganizationSurface();
+  const folder = state.folders.find((item) => item.id === folderId);
+  if (!folder) return;
+  const name = window.prompt("Folder name", folder.name || "Folder");
+  if (name === null) return;
+  folder.name = String(name || "").trim() || "Folder";
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function deleteArtFolder(folderId) {
+  const state = artOrganizationSurface();
+  const folder = state.folders.find((item) => item.id === folderId);
+  if (!folder) return;
+  const confirmed = window.confirm(`Delete folder "${folder.name || "Folder"}"? Its contents will move up one level.`);
+  if (!confirmed) return;
+  const folderKey = artOrganizerFolderKey(folderId);
+  const contents = [...new Set(state.folderItems?.[folderId] || [])].filter((key) => key !== folderKey);
+  const parentFolderId = Object.keys(state.folderItems || {}).find((candidateId) => (
+    candidateId !== folderId && (state.folderItems[candidateId] || []).includes(folderKey)
+  ));
+  const originalDestination = parentFolderId ? state.folderItems[parentFolderId] : state.order;
+  const index = Math.max(0, originalDestination.indexOf(folderKey));
+  removeOrganizerKeyFromSurface(state, folderKey);
+  state.folders = (state.folders || []).filter((item) => item.id !== folderId);
+  delete state.folderItems[folderId];
+  const destination = parentFolderId ? (state.folderItems[parentFolderId] = state.folderItems[parentFolderId] || []) : state.order;
+  const insertItems = contents.filter((key) => {
+    const nestedFolderId = artOrganizerFolderIdFromKey(key);
+    return !nestedFolderId || state.folders.some((item) => item.id === nestedFolderId);
+  });
+  destination.splice(index, 0, ...insertItems);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function removeOrganizerKeyFromSurface(state, key) {
+  state.order = (state.order || []).filter((item) => item !== key);
+  for (const folderId of Object.keys(state.folderItems || {})) {
+    state.folderItems[folderId] = (state.folderItems[folderId] || []).filter((item) => item !== key);
+  }
+}
+
+function artOrganizerFolderContainsFolder(state, folderId, descendantId, visited = new Set()) {
+  if (!folderId || !descendantId || visited.has(folderId)) return false;
+  visited.add(folderId);
+  for (const key of state.folderItems?.[folderId] || []) {
+    const childFolderId = artOrganizerFolderIdFromKey(key);
+    if (!childFolderId) continue;
+    if (childFolderId === descendantId || artOrganizerFolderContainsFolder(state, childFolderId, descendantId, visited)) return true;
+  }
+  return false;
+}
+
+function canMoveArtOrganizerItemToFolder(draggedKey, folderId) {
+  const state = artOrganizationSurface();
+  if (!draggedKey || !folderId) return false;
+  if (!state.folders.some((folder) => folder.id === folderId)) return false;
+  const draggedFolderId = artOrganizerFolderIdFromKey(draggedKey);
+  if (!draggedFolderId) return true;
+  if (draggedFolderId === folderId) return false;
+  return !artOrganizerFolderContainsFolder(state, draggedFolderId, folderId);
+}
+
+function canReorderArtOrganizerItem(draggedKey, targetKey) {
+  if (!draggedKey || !targetKey || draggedKey === targetKey) return false;
+  const targetFolderId = artOrganizerFolderIdFromKey(targetKey);
+  return !targetFolderId || canMoveArtOrganizerItemToFolder(draggedKey, targetFolderId);
+}
+
+function reorderArtOrganizerItem(draggedKey, targetKey, placeAfter = false) {
+  if (!canReorderArtOrganizerItem(draggedKey, targetKey)) return;
+  const state = artOrganizationSurface();
+  const targetFolderId = Object.keys(state.folderItems || {}).find((folderId) => (state.folderItems[folderId] || []).includes(targetKey));
+  removeOrganizerKeyFromSurface(state, draggedKey);
+  const list = targetFolderId ? state.folderItems[targetFolderId] : state.order;
+  const targetIndex = list.indexOf(targetKey);
+  list.splice(Math.max(0, targetIndex + (placeAfter ? 1 : 0)), 0, draggedKey);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function moveArtOrganizerItemToFolder(draggedKey, folderId) {
+  if (!canMoveArtOrganizerItemToFolder(draggedKey, folderId)) return;
+  const state = artOrganizationSurface();
+  removeOrganizerKeyFromSurface(state, draggedKey);
+  state.folderItems[folderId] = state.folderItems[folderId] || [];
+  state.folderItems[folderId].push(draggedKey);
+  collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${folderId}`);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
 }
 
 function selectedArtComponents() {
@@ -232,6 +461,8 @@ function reorderArtComponent(draggedComponentId, targetComponentId, placeAfter =
   renderSelectedArtComposition();
   renderArtList();
   artFileName.textContent = "Layer order updated";
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -272,10 +503,12 @@ function artSidebarState() {
     artAssets: isStageSurface ? artAssets : [],
     avatarComposites: isStageSurface ? avatarComposites : [],
     artCompositions: visibleArtCompositions(),
+    artOrganization,
     selectedArtSurface,
     artSectionCollapseIds,
     collapsedArtSections,
     collapsedArtComposites,
+    artSearchQuery: artAssetSearchQuery,
     selectedArtAsset,
     selectedArtComposite,
     selectedArtCompositionId,
@@ -311,6 +544,21 @@ function getArtSidebarRenderer() {
       onSelectArtComposite: selectArtComposite,
       onSelectArtComposition: selectArtComposition,
       onSelectArtComponent: selectArtComponent,
+      onCreateFolder: createArtFolder,
+      onRenameFolder: renameArtFolder,
+      onDeleteFolder: deleteArtFolder,
+      onOrganizerDragStart: (key) => {
+        if (artAssetSearchQuery.trim()) return;
+        draggedArtOrganizerKey = key;
+      },
+      onOrganizerDragEnd: () => {
+        draggedArtOrganizerKey = "";
+      },
+      getDraggedOrganizerKey: () => draggedArtOrganizerKey,
+      canReorderOrganizerItem: (draggedKey, targetKey) => !artAssetSearchQuery.trim() && canReorderArtOrganizerItem(draggedKey, targetKey),
+      canMoveOrganizerItemToFolder: (draggedKey, folderId) => !artAssetSearchQuery.trim() && canMoveArtOrganizerItemToFolder(draggedKey, folderId),
+      onReorderOrganizerItem: reorderArtOrganizerItem,
+      onMoveOrganizerItemToFolder: moveArtOrganizerItemToFolder,
       getDraggedComponentId: () => draggedArtComponentId,
       canReorderArtComponent,
       onComponentDragStart: handleArtComponentSidebarDragStart,
@@ -324,9 +572,22 @@ function getArtSidebarRenderer() {
 }
 
 function renderArtList() {
+  window.PartyGameArtReactShell?.update?.({
+    assets: artAssets,
+    compositions: visibleArtCompositions(),
+    selectedAssetId: selectedArtAsset?.id || "",
+    selectedComponentIds: [...selectedArtComponentIds],
+    selectedCompositionId: selectedArtCompositionId,
+    selectedSurface: selectedArtSurface
+  });
   renderArtSurfaceTabs();
   getArtSidebarRenderer().render(artAssetList);
   updateArtCreateButtons();
+}
+
+function updateArtSearchQuery(value) {
+  artAssetSearchQuery = String(value || "");
+  renderArtList();
 }
 
 function renderArtSurfaceTabs() {
@@ -566,6 +827,7 @@ function renderSelectedArtComposition(options = {}) {
       primaryId: selectedArtComponentId,
       previewText: artComponentPreviewText,
       imageSource: artComponentImageSource,
+      getComposition: artComposition,
       supportsImageMask: artComponentSupportsImageMask,
       eventHasFiles: artDragEventHasFiles,
       onPointerDown: startArtComponentDrag,
@@ -756,6 +1018,7 @@ function getArtComponentEditorRenderer() {
       componentTree: artComponentTree,
       artKindLabel,
       shapeStyles: artShapeStyles,
+      containerDistributionOptions: artComponentSchema.containerDistributionOptions,
       imageAccept: artComponentImageAccept,
       normalizeUiColor,
       onPushHistory: pushArtHistory,
@@ -781,7 +1044,13 @@ function renderArtComponentEditor() {
   getArtComponentEditorRenderer().render(artComponentEditor, {
     composition,
     selectedComponentIds: selectedArtComponentIds,
-    selectedComponent: selectedEditableArtComponent()
+    selectedComponent: selectedEditableArtComponent(),
+    artCompositionChoices: [
+      { value: "", label: "Choose prefab" },
+      ...visibleArtCompositions()
+        .filter((item) => item.id !== composition.id)
+        .map((item) => ({ value: item.id, label: item.name || item.id }))
+    ]
   });
 }
 
@@ -809,6 +1078,18 @@ function updateArtComponentValue(key, value, options = {}) {
   if (component[key] === nextValue) return;
   if (options.captureHistory !== false) pushArtHistory();
   component[key] = nextValue;
+  if (component.kind === "reference" && key === "artCompositionId") {
+    const referenced = artComposition(nextValue);
+    if (referenced) {
+      component.name = referenced.name || "Prefab Reference";
+      component.width = Math.max(1, Number(referenced.canvas?.width || component.width || 1));
+      component.height = Math.max(1, Number(referenced.canvas?.height || component.height || 1));
+      component.scale = 1;
+      component.rotation = 0;
+    } else {
+      component.name = "Prefab Reference";
+    }
+  }
   renderSelectedArtComposition({ renderEditor: options.colorCommit !== true && options.previewOnly !== true });
   renderArtList();
   rememberArtCompositionDrafts();
@@ -833,11 +1114,18 @@ function updateArtCompositionCanvas(key, value, options = {}) {
   const composition = selectedArtComposition();
   if (!composition) return;
   composition.canvas = composition.canvas || { width: 560, height: 230 };
+  const previousCanvas = {
+    width: Number(composition.canvas.width || 1),
+    height: Number(composition.canvas.height || 1)
+  };
   const nextValue = Number(Number(value || 1).toFixed(3));
   if (composition.canvas[key] === nextValue) return;
   if (options.captureHistory !== false) pushArtHistory();
   composition.canvas[key] = nextValue;
+  syncSimpleArtToCanvas(composition, previousCanvas);
   renderSelectedArtComposition();
+  rememberArtCompositionDrafts();
+  notifyArtAssetsChanged();
   updateGlobalSaveButton();
 }
 
@@ -932,7 +1220,9 @@ function clearArtComponentImage(component) {
   updateGlobalSaveButton();
 }
 
-function normalizeArtCreateKind(value) {
+function normalizeArtCreateKind(value, options = {}) {
+  const kind = String(value || "").trim().toLowerCase();
+  if (options.allowReference && kind === "reference") return "reference";
   return artComponentSchema.normalizeCreatableComponentKind(value);
 }
 
@@ -943,10 +1233,10 @@ function createSecureArtId(prefix = "art") {
   return `${prefix}-${String(randomId).replace(/[^a-z0-9-]/gi, "").toLowerCase()}`;
 }
 
-function defaultArtObject(kind, bounds = {}) {
-  const cleanKind = normalizeArtCreateKind(kind);
-  const width = cleanKind === "text" ? 220 : cleanKind === "container" ? 320 : 180;
-  const height = cleanKind === "text" ? 60 : cleanKind === "container" ? 140 : 96;
+function defaultArtObject(kind, bounds = {}, options = {}) {
+  const cleanKind = normalizeArtCreateKind(kind, { allowReference: options.allowReference });
+  const width = cleanKind === "text" ? 220 : cleanKind === "container" || cleanKind === "reference" ? 320 : 180;
+  const height = cleanKind === "text" ? 60 : cleanKind === "container" || cleanKind === "reference" ? 140 : 96;
   const component = {
     id: createSecureArtId(cleanKind),
     name: artKindLabel(cleanKind),
@@ -960,11 +1250,15 @@ function defaultArtObject(kind, bounds = {}) {
     children: []
   };
   if (cleanKind === "text") {
-    component.defaultText = "";
-    component.fontSize = 24;
-    component.autoFitText = true;
+    component.defaultText = "TEXT";
+    component.fontSize = 48;
+    component.autoFitText = false;
     component.fontColor = "#17131f";
+  } else if (cleanKind === "reference") {
+    component.name = "Prefab Reference";
+    component.artCompositionId = "";
   } else if (cleanKind === "container") {
+    component.childDistribution = "none";
     component.shapeStyle = "rectangle";
     component.fillColor = "transparent";
     component.borderColor = "#17131f";
@@ -980,27 +1274,83 @@ function defaultArtObject(kind, bounds = {}) {
   return component;
 }
 
+function simpleCanvasSyncedChild(composition) {
+  const root = composition?.components?.[0];
+  const child = root?.children?.[0];
+  if (!(
+    composition
+    && (composition.components || []).length === 1
+    && root?.kind === "container"
+    && String(root.name || "") === "Art Root"
+    && (root.children || []).length === 1
+    && ["text", "shape"].includes(child?.kind)
+  )) return null;
+  return { root, child };
+}
+
+function dimensionsMatchCanvas(component, canvas) {
+  return Boolean(
+    component
+    && Number(component.x || 0) === Number(canvas.width || 0) / 2
+    && Number(component.y || 0) === Number(canvas.height || 0) / 2
+    && Number(component.width || 0) === Number(canvas.width || 0)
+    && Number(component.height || 0) === Number(canvas.height || 0)
+  );
+}
+
+function syncSimpleArtToCanvas(composition, previousCanvas = null) {
+  const parts = simpleCanvasSyncedChild(composition);
+  if (!parts) return;
+  const shouldSync = !previousCanvas || (
+    dimensionsMatchCanvas(parts.root, previousCanvas)
+    && dimensionsMatchCanvas(parts.child, previousCanvas)
+  );
+  if (!shouldSync) return;
+  const canvasWidth = Math.max(1, Number(composition.canvas?.width || 1));
+  const canvasHeight = Math.max(1, Number(composition.canvas?.height || 1));
+  Object.assign(parts.root, {
+    x: canvasWidth / 2,
+    y: canvasHeight / 2,
+    width: canvasWidth,
+    height: canvasHeight
+  });
+  Object.assign(parts.child, {
+    x: canvasWidth / 2,
+    y: canvasHeight / 2,
+    width: canvasWidth,
+    height: canvasHeight
+  });
+  if (parts.child.kind === "text") parts.child.autoFitText = false;
+}
+
 function createArtAssetComposition(kind = "shape") {
   kind = normalizeArtCreateKind(kind);
   pushArtHistory();
-  const root = defaultArtObject("container", { width: 560, height: 230 });
+  const canvas = kind === "text" ? { width: 500, height: 100 } : { width: 560, height: 230 };
+  const root = defaultArtObject("container", canvas);
   root.id = createSecureArtId("root");
   root.name = "Art Root";
-  root.x = 280;
-  root.y = 115;
-  root.width = 520;
-  root.height = 190;
+  root.x = canvas.width / 2;
+  root.y = canvas.height / 2;
+  root.width = kind === "text" || kind === "shape" ? canvas.width : 520;
+  root.height = kind === "text" || kind === "shape" ? canvas.height : 190;
   root.fillColor = "transparent";
   root.borderColor = "transparent";
   root.borderWidth = 0;
   root.borderRadius = 0;
   root.children = [defaultArtObject(kind, { width: root.width, height: root.height })];
+  if (kind === "text" || kind === "shape") {
+    root.children[0].x = canvas.width / 2;
+    root.children[0].y = canvas.height / 2;
+    root.children[0].width = canvas.width;
+    root.children[0].height = canvas.height;
+  }
   const composition = {
     id: createSecureArtId("art"),
     name: `${artKindLabel(kind)} Art`,
     description: "Editable art asset.",
     surface: selectedArtSurface,
-    canvas: { width: 560, height: 230 },
+    canvas,
     components: [root]
   };
   artCompositions = [...artCompositions, composition];
@@ -1022,13 +1372,13 @@ function createArtAssetComposition(kind = "shape") {
 function createArtChildObject(kind = "shape") {
   const composition = selectedArtComposition();
   if (!composition) return;
-  kind = normalizeArtCreateKind(kind);
+  kind = normalizeArtCreateKind(kind, { allowReference: true });
   pushArtHistory();
   const parent = selectedEditableArtComponent();
   const bounds = parent
     ? { width: Number(parent.width || 1), height: Number(parent.height || 1) }
     : { width: Number(composition.canvas?.width || 560), height: Number(composition.canvas?.height || 230) };
-  const child = defaultArtObject(kind, bounds);
+  const child = defaultArtObject(kind, bounds, { allowReference: true });
   if (parent) {
     parent.children = Array.isArray(parent.children) ? parent.children : [];
     parent.children.push(child);
@@ -1058,21 +1408,24 @@ function closeArtCreateKindMenu() {
   artCreateKindMenu = null;
 }
 
-function artCreateKindChoices() {
-  return [
-    { kind: "text", label: "Text" },
-    { kind: "shape", label: "Shape" },
-    { kind: "container", label: "Container" }
+function artCreateKindChoices(options = {}) {
+  const noun = options.prefab ? " Prefab" : "";
+  const choices = [
+    { kind: "text", label: `Text${noun}` },
+    { kind: "shape", label: `Shape${noun}` },
+    { kind: "container", label: `Container${noun}` }
   ];
+  if (options.allowReference) choices.push({ kind: "reference", label: "Prefab Reference" });
+  return choices;
 }
 
-function openArtCreateKindMenu(anchor, onChoose) {
+function openArtCreateKindMenu(anchor, onChoose, options = {}) {
   if (!anchor) return;
   closeArtCreateKindMenu();
   const menu = document.createElement("div");
   menu.className = "art-create-kind-menu";
   menu.setAttribute("role", "menu");
-  for (const choice of artCreateKindChoices()) {
+  for (const choice of artCreateKindChoices(options)) {
     const button = document.createElement("button");
     button.type = "button";
     button.setAttribute("role", "menuitem");
@@ -1102,20 +1455,34 @@ async function saveArtCompositions() {
   if (!artCompositions.length && artCompositionsPendingDeleteCount() <= 0) return;
   const selectedId = selectedArtCompositionId;
   const deleteIds = pendingArtCompositionDeleteIds();
+  const changedIds = new Set(typeof changedArtCompositionIdList === "function" ? changedArtCompositionIdList() : []);
+  const snapshotChanged = artCompositionsSavedSnapshot
+    && JSON.stringify(serializeArtCompositionsForSave(artCompositions)) !== artCompositionsSavedSnapshot;
+  const shouldSaveAll = changedIds.size === 0 && snapshotChanged;
   for (const compositionId of deleteIds) {
-    const response = await fetch(`${origin}/api/art-compositions/${encodeURIComponent(compositionId)}`, { method: "DELETE" });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || result.ok === false) throw new Error(result.error || "Could not delete art asset");
+    const deleteArtComposition = window.PartyGameToolContext?.api?.art?.deleteArtComposition;
+    if (deleteArtComposition) {
+      await deleteArtComposition(compositionId);
+    } else {
+      const response = await fetch(`${origin}/api/art-compositions/${encodeURIComponent(compositionId)}`, { method: "DELETE" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.ok === false) throw new Error(result.error || "Could not delete art asset");
+    }
     clearArtCompositionPendingDelete(compositionId);
     forgetArtCompositionDraft(compositionId);
   }
   const savedCompositions = [];
   for (const composition of artCompositions) {
     if (isArtCompositionPendingDelete(composition.id)) continue;
-    const result = await postJson(`/api/art-compositions/${composition.id}`, { composition });
+    if (!shouldSaveAll && !changedIds.has(composition.id)) continue;
+    const result = await (window.PartyGameToolContext?.api?.art?.saveArtComposition?.(composition.id, composition)
+      || postJson(`/api/art-compositions/${composition.id}`, { composition }));
     savedCompositions.push(result.composition);
   }
-  artCompositions = savedCompositions;
+  const savedCompositionsById = new Map(savedCompositions.map((composition) => [composition.id, composition]));
+  artCompositions = artCompositions
+    .filter((composition) => !isArtCompositionPendingDelete(composition.id))
+    .map((composition) => savedCompositionsById.get(composition.id) || composition);
   artCompositionsSavedSnapshot = JSON.stringify(serializeArtCompositionsForSave(artCompositions));
   clearArtCompositionDrafts();
   notifyArtAssetsChanged();
@@ -1202,7 +1569,8 @@ function stageReplacementFile(file) {
 async function saveArtReplacement() {
   if (!selectedArtAsset || !pendingArtReplacement) return;
   try {
-    const result = await postJson(`/api/art-assets/${selectedArtAsset.id}`, pendingArtReplacement);
+    const result = await (window.PartyGameToolContext?.api?.art?.replaceArtAsset?.(selectedArtAsset.id, pendingArtReplacement)
+      || postJson(`/api/art-assets/${selectedArtAsset.id}`, pendingArtReplacement));
     const updated = result.asset;
     artAssets = artAssets.map((asset) => asset.id === updated.id ? updated : asset);
     applyArtAssets(artAssets);
@@ -1224,14 +1592,30 @@ function cancelArtReplacement() {
   updateGlobalSaveButton();
 }
 
+function setupArtResizer() {
+  window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+    shell: artShell,
+    handle: artResizer,
+    cssProperty: "--art-list-width",
+    storageKey: "partyTemplate.artListWidth",
+    minWidth: 260,
+    minMainWidth: 520,
+    maxWidth: 640,
+    resizingClass: "is-resizing-art"
+  });
+}
+
 async function setupArtTool() {
   artScreen.classList.remove("hidden");
   if (artToolInitialized) return;
   artToolInitialized = true;
+  setupArtResizer();
   artReplaceButton.addEventListener("click", () => artFileInput.click());
   artCancelButton.addEventListener("click", cancelArtReplacement);
-  artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition));
-  artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject));
+  artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition, { prefab: true }));
+  artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject, { allowReference: true }));
+  artCreateFolderButton?.addEventListener("click", createArtFolder);
+  artAssetSearchInput?.addEventListener("input", () => updateArtSearchQuery(artAssetSearchInput.value));
   artDeleteCompositionButton?.addEventListener("click", () => deleteSelectedArtComposition());
   for (const tab of artSurfaceTabs || []) {
     tab.addEventListener("click", () => selectArtSurface(tab.dataset.artSurface));

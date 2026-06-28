@@ -75,6 +75,91 @@ function createArtAssetsRuntime({
     return text.slice(0, maxLength);
   }
 
+  function normalizeOrganizationItemKey(value) {
+    const text = String(value || "").trim().toLowerCase();
+    const match = text.match(/^(asset|composition):([a-z0-9][a-z0-9_-]{0,79})$/);
+    return match ? `${match[1]}:${match[2]}` : "";
+  }
+
+  function normalizeOrganizationKey(value, folderIds = new Set()) {
+    const text = String(value || "").trim().toLowerCase();
+    const itemKey = normalizeOrganizationItemKey(text);
+    if (itemKey) return itemKey;
+    if (!text.startsWith("folder:")) return "";
+    const folderId = cleanId(text.slice(7));
+    return folderId && folderIds.has(folderId) ? `folder:${folderId}` : "";
+  }
+
+  function folderContainsFolder(folderItems, folderId, descendantId, visited = new Set()) {
+    if (!folderId || !descendantId || visited.has(folderId)) return false;
+    visited.add(folderId);
+    for (const key of folderItems[folderId] || []) {
+      if (!String(key).startsWith("folder:")) continue;
+      const childId = String(key).slice(7);
+      if (childId === descendantId || folderContainsFolder(folderItems, childId, descendantId, visited)) return true;
+    }
+    return false;
+  }
+
+  function normalizeArtOrganization(source = {}) {
+    const result = {};
+    for (const surface of ["stage", "controller"]) {
+      const incoming = source?.[surface] && typeof source[surface] === "object" ? source[surface] : {};
+      const folders = [];
+      const seenFolders = new Set();
+      for (const folder of Array.isArray(incoming.folders) ? incoming.folders : []) {
+        const id = cleanId(folder?.id);
+        if (!id || seenFolders.has(id)) continue;
+        folders.push({ id, name: cleanText(folder?.name, "Folder", 80) || "Folder" });
+        seenFolders.add(id);
+      }
+      const folderIds = new Set(folders.map((folder) => folder.id));
+      const order = [];
+      const seenOrder = new Set();
+      for (const rawKey of Array.isArray(incoming.order) ? incoming.order : []) {
+        const key = normalizeOrganizationKey(rawKey, folderIds);
+        if (!key || seenOrder.has(key)) continue;
+        order.push(key);
+        seenOrder.add(key);
+      }
+      const folderItems = {};
+      const incomingFolderItems = incoming.folderItems && typeof incoming.folderItems === "object" ? incoming.folderItems : {};
+      for (const folderId of folderIds) {
+        const items = [];
+        const seenItems = new Set();
+        for (const rawKey of Array.isArray(incomingFolderItems[folderId]) ? incomingFolderItems[folderId] : []) {
+          const key = normalizeOrganizationKey(rawKey, folderIds);
+          if (!key || seenItems.has(key)) continue;
+          if (key === `folder:${folderId}`) continue;
+          items.push(key);
+          seenItems.add(key);
+        }
+        folderItems[folderId] = items;
+      }
+      for (const folderId of folderIds) {
+        folderItems[folderId] = (folderItems[folderId] || []).filter((key) => {
+          if (!String(key).startsWith("folder:")) return true;
+          return !folderContainsFolder(folderItems, String(key).slice(7), folderId);
+        });
+      }
+      const assignedKeys = new Set();
+      for (const folderId of folderIds) {
+        const uniqueItems = [];
+        for (const key of folderItems[folderId] || []) {
+          if (assignedKeys.has(key)) continue;
+          assignedKeys.add(key);
+          uniqueItems.push(key);
+        }
+        folderItems[folderId] = uniqueItems;
+      }
+      for (let index = order.length - 1; index >= 0; index -= 1) {
+        if (assignedKeys.has(order[index])) order.splice(index, 1);
+      }
+      result[surface] = { folders, order, folderItems };
+    }
+    return result;
+  }
+
   function cleanImageName(value, fallback = "Uploaded image") {
     return cleanText(path.basename(String(value || fallback)), fallback, 180);
   }
@@ -132,10 +217,16 @@ function createArtAssetsRuntime({
       rotation: cleanNumber(source.rotation, Number(base.rotation || 0), -3600, 3600),
       defaultAnimationState: cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24)
     };
+    if (kind === "reference") {
+      normalized.artCompositionId = cleanId(source.artCompositionId, base.artCompositionId || "");
+    }
+    if (kind === "container") {
+      normalized.childDistribution = artComponentSchema.normalizeContainerDistribution(source.childDistribution || base.childDistribution);
+    }
     if (kind === "text" || kind === "badge") {
       normalized.defaultText = cleanText(source.defaultText, base.defaultText || "", 500);
       normalized.fontSize = cleanNumber(source.fontSize, Number(base.fontSize || 16), 6, 240);
-      normalized.autoFitText = source.autoFitText === true || (source.autoFitText !== false && base.autoFitText === true);
+      normalized.autoFitText = source.autoFitText !== false && base.autoFitText !== false;
       normalized.fontColor = cleanColor(source.fontColor, base.fontColor || "#17131f");
     }
     if (kind === "shape" || kind === "container" || kind === "badge") {
@@ -166,15 +257,6 @@ function createArtAssetsRuntime({
       if (normalizedChild && !seenChildren.has(normalizedChild.id)) {
         children.push(normalizedChild);
         seenChildren.add(normalizedChild.id);
-      }
-    }
-    if (Array.isArray(source.children)) {
-      for (const fallbackChild of fallbackChildren.values()) {
-        const normalizedChild = normalizeComponent(fallbackChild, fallbackChild);
-        if (normalizedChild && !seenChildren.has(normalizedChild.id)) {
-          children.push(normalizedChild);
-          seenChildren.add(normalizedChild.id);
-        }
       }
     }
     if (children.length) {
@@ -229,6 +311,8 @@ function createArtAssetsRuntime({
     migrateGeneratedWidgetDefaults(composition.id, components);
     migrateRemovedWidgetComponents(composition.id, components);
     migrateGeneratedWidgetLayerOrder(composition.id, components);
+    migrateVotingCardVoterContainerDefaults(composition.id, components);
+    migratePlayerAnswerBubbleLayerOrder(composition.id, components);
     const canvas = {
       width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
       height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
@@ -244,6 +328,23 @@ function createArtAssetsRuntime({
       components,
       updatedAt: override?.updatedAt || null
     };
+  }
+
+  function migrateVotingCardVoterContainerDefaults(compositionId, components) {
+    if (compositionId !== "voting-card" || !Array.isArray(components)) return;
+    const voterContainer = components.find((component) => component?.id === "voter-container");
+    if (!voterContainer || voterContainer.childDistribution === "vertical") return;
+    voterContainer.childDistribution = "horizontal";
+  }
+
+  function migratePlayerAnswerBubbleLayerOrder(compositionId, components = []) {
+    if (compositionId !== "player-answer-bubble") return;
+    const legacyOrder = ["answer-bubble-tail", "answer-bubble-card", "answer-text"];
+    const componentIds = components.map((component) => component.id);
+    if (componentIds.length !== legacyOrder.length) return;
+    if (!legacyOrder.every((id, index) => componentIds[index] === id)) return;
+    const byId = new Map(components.map((component) => [component.id, component]));
+    components.splice(0, components.length, byId.get("answer-text"), byId.get("answer-bubble-card"), byId.get("answer-bubble-tail"));
   }
 
   function normalizeCompositionSurface(surface) {
@@ -274,7 +375,6 @@ function createArtAssetsRuntime({
       label.height = 34;
       label.defaultText = "STAGE CODE";
       label.fontSize = 22;
-      label.autoFitText = false;
     }
     const code = byId.get("panel-code");
     if (code
@@ -284,7 +384,6 @@ function createArtAssetsRuntime({
       code.width = 500;
       code.height = 105;
       code.fontSize = 112;
-      code.autoFitText = false;
     }
   }
 
@@ -316,7 +415,6 @@ function createArtAssetsRuntime({
         label.width = 130;
         label.height = 14;
         label.fontSize = 10;
-        label.autoFitText = false;
       }
       const code = byId.get("badge-code");
       if (code && code.fontSize === 42 && code.autoFitText === true) {
@@ -325,7 +423,6 @@ function createArtAssetsRuntime({
         code.width = 140;
         code.height = 32;
         code.fontSize = 32;
-        code.autoFitText = false;
       }
     }
     if (compositionId === "join-widget") {
@@ -363,7 +460,6 @@ function createArtAssetsRuntime({
         value.width = 130;
         value.height = 82;
         value.fontSize = 74;
-        value.autoFitText = false;
       }
     }
     if (compositionId === "join-qr-code") {
@@ -386,7 +482,6 @@ function createArtAssetsRuntime({
         label.width = 220;
         label.height = 24;
         label.fontSize = 20;
-        label.autoFitText = false;
       }
     }
   }
@@ -507,8 +602,24 @@ function createArtAssetsRuntime({
       ok: true,
       groups: artGroups,
       assets: artAssets.map((asset) => publicArtAsset(asset, manifest)),
-      compositions: allPublicArtCompositions(manifest)
+      compositions: allPublicArtCompositions(manifest),
+      organization: normalizeArtOrganization(manifest.organization)
     });
+  }
+
+  async function handleSaveArtOrganization(req, res) {
+    let payload;
+    try {
+      payload = await readJson(req, 1024 * 1024);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+      return;
+    }
+    const manifest = await loadArtManifest();
+    manifest.organization = normalizeArtOrganization(payload.organization || payload);
+    const savedManifest = await saveArtManifest(manifest);
+    onArtAssetsChanged({ type: "organization", updatedAt: new Date().toISOString() });
+    sendJson(res, 200, { ok: true, organization: normalizeArtOrganization(savedManifest.organization) });
   }
 
   function normalizeArtCompositionsDraft(source = []) {
@@ -683,9 +794,11 @@ function createArtAssetsRuntime({
 
   return {
     handleDeleteArtComposition,
+    handleSaveArtOrganization,
     handleSaveArtComposition,
     handleReplaceArtAsset,
     normalizeArtCompositionsDraft,
+    normalizeArtOrganization,
     publicArtAsset,
     publicArtComposition,
     readArtManifest,

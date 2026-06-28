@@ -105,44 +105,75 @@
       const hasLabelText = isTextBearingComponentKind(kind) && Boolean(String(labelText || "").trim());
       label.hidden = Boolean(imageSource) || !hasLabelText;
       if (hasLabelText) {
-        setLabelText(label, labelText, element.__partyGameTextLayout || null);
+        setLabelText(label, component, labelText);
       } else {
         label.replaceChildren();
       }
     }
   }
 
-  function setLabelText(label, labelText, textLayout = null) {
-    let textNode = label.querySelector(":scope > .art-label-text");
-    if (!textNode) {
-      textNode = label.ownerDocument.createElement("span");
-      textNode.className = "art-label-text";
-      label.replaceChildren(textNode);
-    }
-    if (global.PartyGameTextFit?.renderGameText) {
-      global.PartyGameTextFit.renderGameText(textNode, {
+  function setLabelText(label, component, labelText) {
+    if (global.PartyGameTextFit?.renderLayoutTextField) {
+      const textElement = renderedArtTextElement(label, component);
+      const baseSize = Number(textElement.fontSize || 16);
+      const layout = global.PartyGameTextFit.renderLayoutTextField(label, textElement, {
         text: labelText,
-        layout: textLayout
+        defaults: {
+          defaultText: componentSchema.componentLabel(component),
+          fontSize: baseSize,
+          fontColor: component?.fontColor || "#17131f"
+        },
+        fallbackSize: baseSize
       });
+      label.style.setProperty("--component-font-size", `${layout?.fontSize || baseSize}px`);
     } else {
-      textNode.textContent = labelText;
+      label.textContent = labelText;
     }
   }
 
   function renderComponentText(target, component, labelText = componentSchema.componentLabel(component)) {
     if (!target || !component) return null;
     const text = String(labelText ?? "");
-    const layout = componentTextLayout(component, text);
-    if (global.PartyGameTextFit?.renderGameText) {
-      global.PartyGameTextFit.renderGameText(target, {
+    const textElement = renderedArtTextElement(target, component);
+    const baseSize = Number(textElement.fontSize || 16);
+    const layout = global.PartyGameTextFit?.renderLayoutTextField
+      ? global.PartyGameTextFit.renderLayoutTextField(target, textElement, {
         text,
-        layout
-      });
-    } else {
+        defaults: {
+          defaultText: componentSchema.componentLabel(component),
+          fontSize: baseSize,
+          fontColor: component?.fontColor || "#17131f"
+        },
+        fallbackSize: baseSize
+      })
+      : componentTextLayout(component, text);
+    if (!global.PartyGameTextFit?.renderLayoutTextField) {
       target.textContent = text;
     }
     target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
     return layout;
+  }
+
+  function renderedArtTextElement(target, component = {}) {
+    const width = renderedBoxSize(target, "width", component.width);
+    const height = renderedBoxSize(target, "height", component.height);
+    return {
+      ...component,
+      width,
+      height,
+      autoFitText: component.autoFitText !== false
+    };
+  }
+
+  function renderedBoxSize(target, dimension, fallback) {
+    const clientValue = dimension === "width" ? target?.clientWidth : target?.clientHeight;
+    if (Number(clientValue) > 0) return Number(clientValue);
+    const offsetValue = dimension === "width" ? target?.offsetWidth : target?.offsetHeight;
+    if (Number(offsetValue) > 0) return Number(offsetValue);
+    const rect = target?.getBoundingClientRect?.();
+    const rectValue = rect ? Number(rect[dimension]) : 0;
+    if (rectValue > 0) return rectValue;
+    return Math.max(1, Number(fallback || 1));
   }
 
   function componentLayerIndex(index, siblingCount) {
@@ -151,6 +182,13 @@
 
   function isTextBearingComponentKind(kind) {
     return kind === "text" || kind === "badge";
+  }
+
+  function referencedCompositionFor(component, resolver, referencePath = new Set()) {
+    if (componentSchema.normalizeComponentKind(component?.kind) !== "reference") return null;
+    const compositionId = String(component.artCompositionId || "");
+    if (!compositionId || referencePath.has(compositionId)) return null;
+    return typeof resolver === "function" ? resolver(compositionId) : null;
   }
 
   function artComponentViewKey(component, index, counts) {
@@ -168,12 +206,41 @@
     return String(component.name || "").trim().toLowerCase() === "art root" || String(component.id || "").startsWith("root-");
   }
 
+  function cloneArtComponentTree(component) {
+    return {
+      ...component,
+      children: (component.children || []).map(cloneArtComponentTree)
+    };
+  }
+
+  function distributedContainerChildren(component, children = []) {
+    if (componentSchema.normalizeComponentKind(component?.kind) !== "container") return children || [];
+    const distribution = componentSchema.normalizeContainerDistribution?.(component.childDistribution) || "none";
+    if (distribution === "none" || !Array.isArray(children) || children.length === 0) return children || [];
+    const width = Math.max(1, Number(component.width || 1));
+    const height = Math.max(1, Number(component.height || 1));
+    const count = children.length;
+    return children.map((child, index) => {
+      const clone = cloneArtComponentTree(child);
+      if (distribution === "horizontal") {
+        clone.x = width * ((index + 1) / (count + 1));
+        clone.y = height / 2;
+      } else if (distribution === "vertical") {
+        clone.x = width / 2;
+        clone.y = height * ((index + 1) / (count + 1));
+      }
+      return clone;
+    });
+  }
+
   class ArtObjectView {
     constructor(options = {}) {
       this.document = options.document || global.document;
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
       this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.instanceId = String(options.instanceId || "");
+      this.getComposition = typeof options.getComposition === "function" ? options.getComposition : global.artComposition;
+      this.referencePath = options.referencePath instanceof Set ? options.referencePath : new Set();
       this.component = null;
       this.children = new Map();
       this.element = this.document.createElement("div");
@@ -252,12 +319,16 @@
     }
 
     renderChildren(children) {
-      const childCanvas = {
+      const referencedId = componentSchema.normalizeComponentKind(this.component?.kind) === "reference" ? String(this.component.artCompositionId || "") : "";
+      const referencedComposition = referencedCompositionFor(this.component, this.getComposition, this.referencePath);
+      const childCanvas = referencedComposition?.canvas || {
         width: Number(this.component?.width || 1),
         height: Number(this.component?.height || 1)
       };
+      const renderChildren = referencedComposition?.components || distributedContainerChildren(this.component, children || []);
+      const childReferencePath = referencedComposition ? new Set([...this.referencePath, referencedId]) : this.referencePath;
       const counts = new Map();
-      const keyedChildren = (children || []).map((child, index) => ({
+      const keyedChildren = renderChildren.map((child, index) => ({
         child,
         index,
         key: artComponentViewKey(child, index, counts)
@@ -270,15 +341,17 @@
             document: this.document,
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
+            getComposition: this.getComposition,
+            referencePath: childReferencePath,
             instanceId: `${this.instanceId}/${key}`,
             component: child,
             canvas: childCanvas,
-            layer: { index, total: (children || []).length }
+            layer: { index, total: renderChildren.length }
           });
           this.children.set(key, view);
           view.play(child.defaultAnimationState || "on", { instant: true });
         } else {
-          view.update(child, childCanvas, { index, total: (children || []).length, isRootContainer: false });
+          view.update(child, childCanvas, { index, total: renderChildren.length, isRootContainer: false });
         }
         this.element.appendChild(view.element);
       }
@@ -337,6 +410,7 @@
       this.visualAnimation = options.visualAnimation || global.PartyGameVisualObject;
       this.gameObjectApi = options.gameObjectApi || global.PartyGameGameObject || global.PartyGameStageGameObject;
       this.instanceId = String(options.instanceId || `art-tree:${artTreeInstanceCounter++}`);
+      this.getComposition = typeof options.getComposition === "function" ? options.getComposition : global.artComposition;
       this.views = new Map();
     }
 
@@ -358,6 +432,7 @@
             document: this.document,
             visualAnimation: this.visualAnimation,
             gameObjectApi: this.gameObjectApi,
+            getComposition: this.getComposition,
             instanceId: `${this.instanceId}/${key}`,
             component,
             canvas,

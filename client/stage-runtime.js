@@ -27,11 +27,8 @@ function stageTextController() {
   if (!stageTextControllerInstance && stageVisualControllers()) {
     stageTextControllerInstance = stageVisualControllers().createStageTextController({
       visualAnimation,
-      queryTextElements: () => Array.from(stageBoard.querySelectorAll(".stage-text-object[id]")),
-      defaultElements: {
-        presentation: stagePresentationText,
-        prompt: stagePromptText
-      },
+      queryTextElements: () => [],
+      defaultElements: {},
       normalizeTextTargetId,
       applyTextProperties: applyStageLayoutTextProperties,
       timerSink: (timerId) => textObjectTimers.push(timerId),
@@ -64,8 +61,10 @@ function playerAnswerBubbleController() {
   if (!playerAnswerBubbleControllerInstance && stageVisualControllers()) {
     playerAnswerBubbleControllerInstance = stageVisualControllers().createPlayerAnswerBubbleController({
       visualAnimation,
+      gameObjectApi: window.PartyGameGameObject || window.PartyGameStageGameObject,
       host: playerLobby,
-      document
+      document,
+      getComposition: artComposition
     });
   }
   return playerAnswerBubbleControllerInstance;
@@ -82,7 +81,8 @@ function playerRosterRenderer() {
       avatarFrameImage,
       dinoIcon,
       playerAvatarArt,
-      syncAnswerBubble: syncPlayerAnswerBubble
+      syncAnswerBubble: syncPlayerAnswerBubble,
+      getComposition: artComposition
     });
   }
   return playerRosterRendererInstance;
@@ -251,15 +251,6 @@ function initStageTextObjects() {
   stageTextController()?.init();
 }
 
-function normalizeTextTargetId(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^#/, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function clearStageObjectTimers() {
   for (const timerId of subActionTimers) window.clearTimeout(timerId);
   for (const timerId of textObjectTimers) window.clearTimeout(timerId);
@@ -268,8 +259,15 @@ function clearStageObjectTimers() {
 }
 
 function clearStageActionTimers() {
+  window.clearTimeout(actionTimingTimer);
+  actionTimingTimer = null;
   for (const timerId of subActionTimers) window.clearTimeout(timerId);
   subActionTimers = [];
+}
+
+function clearStageCountdownTimer() {
+  window.clearInterval(stageCountdownTimer);
+  stageCountdownTimer = null;
 }
 
 function clearStageAudioPlayers() {
@@ -310,8 +308,11 @@ function syncStageWipeShown(lobby) {
   });
 }
 
-function resetStageObjects() {
+function resetStageObjects(options = {}) {
   clearStageObjectTimers();
+  if (options.clearActionTimers === true) clearStageActionTimers();
+  if (options.clearCountdownTimer === true) clearStageCountdownTimer();
+  if (options.resetWipe === true) cancelStageWipe();
   clearStageAudioPlayers();
   craftingTimerController()?.reset();
   setPlayersShown(true, { instant: false });
@@ -322,7 +323,38 @@ function resetStageObjects() {
   setStageWidgetGameObjectShown("presentationClickPrompt", false, { instant: true, scope: "global" });
 }
 
+function hardResetStageToLobby() {
+  pausedCompletionRequest = null;
+  presentationAdvancePending = false;
+  resetStageObjects({
+    clearActionTimers: true,
+    clearCountdownTimer: true,
+    resetWipe: true
+  });
+}
+
+function isPresentedTextAction(action) {
+  return action && ["present", "presentText"].includes(action.type);
+}
+
 function setStageTextObject(target, options = {}) {
+  const targetId = normalizeTextTargetId(target);
+  if (Object.prototype.hasOwnProperty.call(options, "text") && typeof window.PartyGameLayoutText?.setStageText === "function") {
+    window.PartyGameLayoutText.setStageText(targetId, options.text ?? "");
+  }
+  if (typeof setStageLayoutGameObjectShownForAction === "function") {
+    const result = setStageLayoutGameObjectShownForAction({
+      targetLayoutElementId: targetId,
+      targetLayoutScope: "moment",
+      targetLayoutSurface: "stage",
+      isShown: options.isShown !== false,
+      instant: options.instant === true
+    }, {
+      returnResult: true,
+      suppressMissingWarning: true
+    });
+    return Number(result?.duration || 0);
+  }
   return stageTextController()?.set(target, options) || 0;
 }
 
@@ -362,23 +394,19 @@ function renderStageRuntimeTextBox(target, value, spec = {}, options = {}) {
   const width = Math.max(1, Number(spec.width || target.clientWidth || target.offsetWidth || 1));
   const height = Math.max(1, Number(spec.height || target.clientHeight || target.offsetHeight || 1));
   const fontSize = Math.max(1, Number(spec.fontSize || Number.parseFloat(window.getComputedStyle?.(target)?.fontSize) || 24));
-  if (typeof window.PartyGameTextFit?.renderGameText === "function") {
-    return window.PartyGameTextFit.renderGameText(target, {
-      text,
-      spec: {
+  if (typeof window.PartyGameTextFit?.renderRuntimeText === "function") {
+    return window.PartyGameTextFit.renderRuntimeText(target, text, {
       width,
       height,
       fontSize,
       fontColor: spec.fontColor,
       autoFitText: spec.autoFitText !== false,
       applySize: spec.applySize === true
-      },
-      options: {
+    }, {
       autoFit: spec.autoFitText !== false,
       minSize: Number(options.minSize || 6),
       lineHeight: Number(options.lineHeight || 1.05),
       ...options
-      }
     });
   }
   target.textContent = text;
@@ -432,6 +460,10 @@ function setStageCodeDisplays(stageCode) {
 
 function setStageManagedText(target, value) {
   if (!target) return;
+  if (typeof target === "string") {
+    window.PartyGameLayoutText?.setStageText?.(target, value);
+    return;
+  }
   if (typeof window.PartyGameLayoutText?.setStageText === "function") {
     window.PartyGameLayoutText.setStageText(target, value);
   } else {
@@ -485,13 +517,17 @@ function renderStageWidgetBinding(bindingId, context = {}) {
 
 function setStageLayoutElementGameObjectShown(elementId, host, isShown, options = {}) {
   const shown = isShown !== false;
+  const targetElementId = normalizeTextTargetId(elementId);
   if (host && shown) host.classList.remove("hidden");
-  if (!elementId || typeof setStageLayoutGameObjectShownForAction !== "function") {
+  if (host && !shown && options.instant === true && !host.classList.contains("stage-layout-target")) {
+    host.classList.add("hidden");
+  }
+  if (!targetElementId || typeof setStageLayoutGameObjectShownForAction !== "function") {
     if (host) host.classList.toggle("hidden", !shown);
     return 0;
   }
   const result = setStageLayoutGameObjectShownForAction({
-    targetLayoutElementId: elementId,
+    targetLayoutElementId: targetElementId,
     targetLayoutScope: options.scope || "moment",
     targetLayoutSurface: "stage",
     isShown: shown,
@@ -603,10 +639,10 @@ function applyStageState(lobby) {
   const liveGameTitle = lobby.gameTitle || gameConstants.gameTitle || "Party Game Template";
   document.title = liveGameTitle;
   renderStageActionDebug(lobby);
-  const stageTitleElement = document.querySelector(".stage-title");
   setStageCodeDisplays(lobby.stageCode || stageCodeValue());
   applyStageLayoutForPhase(phase);
-  setStageManagedText(stageTitleElement, liveGameTitle);
+  hideFlowStageTextArtForPhase(phase, action);
+  setStageManagedText("stageTitle", liveGameTitle);
   renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode) });
   setStageWidgetGameObjectShown("stageCodePanel", isLobbyPhase, { instant: true });
   renderStageWidgetBinding("stageCodeWidget", { stageCode: stageCodeValue(lobby.stageCode) });
@@ -617,11 +653,11 @@ function applyStageState(lobby) {
   stageMain.classList.remove("hidden");
   stageFooter.classList.remove("hidden");
   stageIntroContent.classList.remove("hidden");
-  setStageManagedText(stageIntroTitle, "GAME INTRO");
-  setStageLayoutElementGameObjectShown("stageTitle", stageTitleElement, isLobbyPhase, { instant: true });
-  setStageLayoutElementGameObjectShown("stageIntroTitle", stageIntroTitle, phase === "intro", { instant: true });
+  setStageManagedText("stageIntroTitle", "GAME INTRO");
+  setStageLayoutElementGameObjectShown("stageTitle", null, isLobbyPhase, { instant: true });
+  setStageLayoutElementGameObjectShown("stageIntroTitle", null, phase === "intro", { instant: true });
   renderStageWidgetBinding("presentationClickPrompt");
-  setStageWidgetGameObjectShown("presentationClickPrompt", action?.type === "present" && action?.timing?.mode !== "S+", {
+  setStageWidgetGameObjectShown("presentationClickPrompt", isPresentedTextAction(action) && action?.timing?.mode !== "S+", {
     scope: "global"
   });
   clearStageDecisionDebug(lobby);
@@ -667,7 +703,21 @@ function applyStageState(lobby) {
   }
 
   if (phase === "lobby" && lobby.lobbyFlowActive !== true) {
-    resetStageObjects();
+    hardResetStageToLobby();
+  }
+}
+
+function hideFlowStageTextArtForPhase(phase, action = null) {
+  const state = typeof stageLayoutStateForPhase === "function" ? stageLayoutStateForPhase(phase) : null;
+  const activeTarget = action && ["present", "presentText", "displayText"].includes(action.type) && action.isShown !== false
+    ? normalizeTextTargetId(action.textTarget || "presentation")
+    : "";
+  for (const element of state?.elements || []) {
+    const id = normalizeTextTargetId(element.id);
+    if (!id || element.artCompositionId !== "layout-text-field") continue;
+    if (id === "stagetitle" || id === "stageintrotitle") continue;
+    if (id === activeTarget) continue;
+    setStageLayoutElementGameObjectShown(id, null, false, { instant: true });
   }
 }
 
@@ -785,7 +835,7 @@ async function emitStageInputEvent(eventType, actionId = currentStageState?.acti
 async function handleStageScreenClick() {
   if (isStagePaused) return;
   if (presentationAdvancePending) return;
-  if (currentStageState?.action?.type !== "present") return;
+  if (!isPresentedTextAction(currentStageState?.action)) return;
   presentationAdvancePending = true;
   const action = currentStageState.action;
   const target = action.textTarget || "presentation";
@@ -923,7 +973,7 @@ async function requestStagePaused(isPaused) {
 
 async function quitStageToLobby() {
   if (!currentStageState?.stageCode) return;
-  resetStageObjects();
+  hardResetStageToLobby();
   setStagePaused(false, { localOnly: true });
   try {
     const result = await postJson("/api/quit-to-lobby", {

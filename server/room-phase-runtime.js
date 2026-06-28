@@ -142,6 +142,7 @@ function createRoomPhaseRuntime({
 
   function quitRoomToLobby(room) {
     enterLobbyPhase(room);
+    room.wipeShown = false;
     for (const player of room.players.values()) {
       player.active = false;
       player.kickedFromGame = true;

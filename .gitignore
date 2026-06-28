@@ -2,10 +2,12 @@
 Character Reference/
 __pycache__/
 .swift-module-cache/
+node_modules/
+dist/
 outputs/
 tmp/
-scripts/
-tools/
+/scripts/
+/tools/
 game-flow.json
 game-flow.backups/
 game-constants.json

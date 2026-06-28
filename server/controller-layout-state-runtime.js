@@ -1,3 +1,7 @@
+const {
+  layoutTextArtCompositionId
+} = require("../shared/layout-text-art");
+
 function createControllerLayoutStateRuntime({
   flowStateHasActionType,
   isCraftingStateId,
@@ -16,8 +20,8 @@ function createControllerLayoutStateRuntime({
           {
             id: "controllerMicAccessPrompt",
             name: "Microphone Access Prompt",
-            selector: "#controllerMicAccessPrompt",
-            kind: "text",
+            kind: "art",
+            artCompositionId: layoutTextArtCompositionId,
             x: 195,
             y: 190,
             width: 330,
@@ -25,7 +29,7 @@ function createControllerLayoutStateRuntime({
             scale: 1,
             defaultText: "Give microphone access to the game",
             fontSize: 34,
-            autoFitText: true,
+            autoFitText: false,
             fontColor: "#17131f"
           },
           {
@@ -42,8 +46,8 @@ function createControllerLayoutStateRuntime({
           {
             id: "controllerMicAccessStatus",
             name: "Microphone Access Status",
-            selector: "#controllerMicAccessStatus",
-            kind: "text",
+            kind: "art",
+            artCompositionId: layoutTextArtCompositionId,
             x: 195,
             y: 540,
             width: 330,
@@ -51,7 +55,7 @@ function createControllerLayoutStateRuntime({
             scale: 1,
             defaultText: "Chrome will ask for microphone permission",
             fontSize: 22,
-            autoFitText: true,
+            autoFitText: false,
             fontColor: "#17131f"
           }
         );
@@ -61,8 +65,8 @@ function createControllerLayoutStateRuntime({
           {
             id: "controllerChoicePrompt",
             name: "Choice Prompt",
-            selector: "#controllerChoicePrompt",
-            kind: "text",
+            kind: "art",
+            artCompositionId: layoutTextArtCompositionId,
             x: 195,
             y: 180,
             width: 330,
@@ -70,7 +74,7 @@ function createControllerLayoutStateRuntime({
             scale: 1,
             defaultText: "Answer this question by tapping an answer",
             fontSize: 32,
-            autoFitText: true,
+            autoFitText: false,
             fontColor: "#17131f"
           },
           {
@@ -87,8 +91,8 @@ function createControllerLayoutStateRuntime({
           {
             id: "controllerChoiceDone",
             name: "Choice Done Text",
-            selector: "#controllerChoiceDone",
-            kind: "text",
+            kind: "art",
+            artCompositionId: layoutTextArtCompositionId,
             x: 195,
             y: 420,
             width: 330,
@@ -96,7 +100,7 @@ function createControllerLayoutStateRuntime({
             scale: 1,
             defaultText: "You chose:",
             fontSize: 34,
-            autoFitText: true,
+            autoFitText: false,
             fontColor: "#17131f"
           }
         );
@@ -106,8 +110,8 @@ function createControllerLayoutStateRuntime({
           {
             id: "controllerTextPrompt",
             name: "Text Input Prompt",
-            selector: "#controllerTextPrompt",
-            kind: "text",
+            kind: "art",
+            artCompositionId: layoutTextArtCompositionId,
             x: 195,
             y: 170,
             width: 330,
@@ -115,7 +119,7 @@ function createControllerLayoutStateRuntime({
             scale: 1,
             defaultText: "Write your answer",
             fontSize: 32,
-            autoFitText: true,
+            autoFitText: false,
             fontColor: "#17131f"
           },
           {
@@ -165,8 +169,8 @@ function createControllerLayoutStateRuntime({
           {
             id: "controllerVoiceStatus",
             name: "Voice Status",
-            selector: "#controllerVoiceStatus",
-            kind: "text",
+            kind: "art",
+            artCompositionId: layoutTextArtCompositionId,
             x: 195,
             y: 510,
             width: 330,
@@ -174,14 +178,14 @@ function createControllerLayoutStateRuntime({
             scale: 1,
             defaultText: "Tap to record",
             fontSize: 22,
-            autoFitText: true,
+            autoFitText: false,
             fontColor: "#17131f"
           },
           {
             id: "controllerTextDone",
             name: "Text Done Message",
-            selector: "#controllerTextDone",
-            kind: "text",
+            kind: "art",
+            artCompositionId: layoutTextArtCompositionId,
             x: 195,
             y: 410,
             width: 330,
@@ -189,7 +193,7 @@ function createControllerLayoutStateRuntime({
             scale: 1,
             defaultText: "You wrote:",
             fontSize: 34,
-            autoFitText: true,
+            autoFitText: false,
             fontColor: "#17131f"
           }
         );
@@ -208,8 +212,8 @@ function createControllerLayoutStateRuntime({
         {
           id: textElementId,
           name: `${flowState.name || "Controller"} Text Field`,
-          selector: `#${textElementId}`,
-          kind: "text",
+          kind: "art",
+          artCompositionId: layoutTextArtCompositionId,
           x: 195,
           y: 250,
           width: 330,
@@ -217,7 +221,7 @@ function createControllerLayoutStateRuntime({
           scale: 1,
           defaultText: flowState.name || "Controller View",
           fontSize: 42,
-          autoFitText: true,
+          autoFitText: false,
           fontColor: "#17131f"
         }
       ]

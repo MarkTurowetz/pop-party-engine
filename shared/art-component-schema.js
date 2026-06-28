@@ -1,6 +1,6 @@
 "use strict";
 
-const componentKinds = ["text", "shape", "container", "badge"];
+const componentKinds = ["text", "shape", "container", "badge", "reference"];
 const creatableComponentKinds = ["text", "shape", "container"];
 const shapeStyleOptions = [
   { value: "rounded", label: "Rounded" },
@@ -11,6 +11,12 @@ const shapeStyleOptions = [
 const shapeStyleValues = shapeStyleOptions.map((option) => option.value);
 const imageMimeTypes = ["image/png", "image/svg+xml", "image/jpeg", "image/webp"];
 const imageObjectFits = ["cover", "contain", "fill"];
+const containerDistributionOptions = [
+  { value: "none", label: "None" },
+  { value: "horizontal", label: "Horizontal Distribution" },
+  { value: "vertical", label: "Vertical Distribution" }
+];
+const containerDistributionValues = containerDistributionOptions.map((option) => option.value);
 const componentImageMaxBytes = 5 * 1024 * 1024;
 const imageAccept = imageMimeTypes.join(",");
 const fillCssMaxLength = 240;
@@ -40,6 +46,7 @@ function componentKindLabel(kind) {
   if (cleanKind === "text") return "Text";
   if (cleanKind === "container") return "Container";
   if (cleanKind === "badge") return "Badge";
+  if (cleanKind === "reference") return "Reference";
   return "Shape";
 }
 
@@ -82,6 +89,11 @@ function componentLabel(component) {
 function normalizeImageObjectFit(value) {
   const fit = normalizeValue(value || "cover");
   return imageObjectFits.includes(fit) ? fit : "cover";
+}
+
+function normalizeContainerDistribution(value) {
+  const distribution = normalizeValue(value || "none");
+  return containerDistributionValues.includes(distribution) ? distribution : "none";
 }
 
 function isSupportedImageMimeType(mimeType) {
@@ -129,6 +141,8 @@ const exportedSchema = {
   componentLabel,
   componentSupportsImageMask,
   componentSupportsShapeStyle,
+  containerDistributionOptions,
+  containerDistributionValues,
   creatableComponentKinds,
   defaultShapeStyle,
   imageAccept,
@@ -137,6 +151,7 @@ const exportedSchema = {
   imageObjectFits,
   isSupportedImageMimeType,
   normalizeComponentKind,
+  normalizeContainerDistribution,
   normalizeCreatableComponentKind,
   normalizeFillCss,
   normalizeImageObjectFit,
