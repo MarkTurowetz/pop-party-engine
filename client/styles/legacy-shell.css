@@ -2245,6 +2245,37 @@ body.tool-dashboard-mode .layout-shell {
   white-space: normal;
 }
 
+.art-search-control {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  color: #5e5475;
+  font-size: 10px;
+  font-weight: 1000;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.art-search-control input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 1000;
+  text-transform: none;
+  box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.22);
+}
+
+.art-search-control input:focus {
+  outline: 3px solid var(--cyan);
+  outline-offset: 2px;
+}
+
 .art-surface-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;

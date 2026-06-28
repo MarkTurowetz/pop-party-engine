@@ -13,6 +13,7 @@ let selectedArtSurface = "stage";
 let draggedArtComponentId = "";
 let draggedArtOrganizerKey = "";
 let artCreateKindMenu = null;
+let artAssetSearchQuery = "";
 const artComponentSchema = window.PartyGameArtComponentSchema;
 const artComponentTree = window.PartyGameArtComponentTree;
 const artToolUi = window.PartyGameArtToolUi;
@@ -507,6 +508,7 @@ function artSidebarState() {
     artSectionCollapseIds,
     collapsedArtSections,
     collapsedArtComposites,
+    artSearchQuery: artAssetSearchQuery,
     selectedArtAsset,
     selectedArtComposite,
     selectedArtCompositionId,
@@ -546,14 +548,15 @@ function getArtSidebarRenderer() {
       onRenameFolder: renameArtFolder,
       onDeleteFolder: deleteArtFolder,
       onOrganizerDragStart: (key) => {
+        if (artAssetSearchQuery.trim()) return;
         draggedArtOrganizerKey = key;
       },
       onOrganizerDragEnd: () => {
         draggedArtOrganizerKey = "";
       },
       getDraggedOrganizerKey: () => draggedArtOrganizerKey,
-      canReorderOrganizerItem: canReorderArtOrganizerItem,
-      canMoveOrganizerItemToFolder: canMoveArtOrganizerItemToFolder,
+      canReorderOrganizerItem: (draggedKey, targetKey) => !artAssetSearchQuery.trim() && canReorderArtOrganizerItem(draggedKey, targetKey),
+      canMoveOrganizerItemToFolder: (draggedKey, folderId) => !artAssetSearchQuery.trim() && canMoveArtOrganizerItemToFolder(draggedKey, folderId),
       onReorderOrganizerItem: reorderArtOrganizerItem,
       onMoveOrganizerItemToFolder: moveArtOrganizerItemToFolder,
       getDraggedComponentId: () => draggedArtComponentId,
@@ -580,6 +583,11 @@ function renderArtList() {
   renderArtSurfaceTabs();
   getArtSidebarRenderer().render(artAssetList);
   updateArtCreateButtons();
+}
+
+function updateArtSearchQuery(value) {
+  artAssetSearchQuery = String(value || "");
+  renderArtList();
 }
 
 function renderArtSurfaceTabs() {
@@ -1607,6 +1615,7 @@ async function setupArtTool() {
   artCreateButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtAssetComposition, { prefab: true }));
   artCreateChildButton.addEventListener("click", (event) => openArtCreateKindMenu(event.currentTarget, createArtChildObject, { allowReference: true }));
   artCreateFolderButton?.addEventListener("click", createArtFolder);
+  artAssetSearchInput?.addEventListener("input", () => updateArtSearchQuery(artAssetSearchInput.value));
   artDeleteCompositionButton?.addEventListener("click", () => deleteSelectedArtComposition());
   for (const tab of artSurfaceTabs || []) {
     tab.addEventListener("click", () => selectArtSurface(tab.dataset.artSurface));

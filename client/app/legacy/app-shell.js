@@ -124,6 +124,7 @@ const artDeleteCompositionButton = document.querySelector("#artDeleteComposition
 const artCreateButton = document.querySelector("#artCreateButton");
 const artCreateChildButton = document.querySelector("#artCreateChildButton");
 const artCreateFolderButton = document.querySelector("#artCreateFolderButton");
+const artAssetSearchInput = document.querySelector("#artAssetSearchInput");
 const flowShell = document.querySelector(".flow-shell");
 const flowResizer = document.querySelector("#flowResizer");
 const flowList = document.querySelector("#flowList");
