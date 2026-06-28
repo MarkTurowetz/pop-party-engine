@@ -2073,6 +2073,8 @@
         "folder:folder-b5fd5048-989e-4076-917e-f37779efddbb",
         "folder:folder-3a090594-0d6c-406e-a758-05842b36ad51",
         "folder:folder-bff56326-48c1-48ac-9938-abac6bed9fa7",
+        "composition:presentation-click-prompt",
+        "composition:stage-code-widget",
         "folder:folder-b44c7441-4209-415b-87ff-4aaf25716ad2"
       ],
       "folderItems": {
@@ -2095,10 +2097,7 @@
           "composition:countdown-popup",
           "composition:join-qr-code"
         ],
-        "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": [
-          "composition:presentation-click-prompt",
-          "composition:stage-code-widget"
-        ],
+        "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": [],
         "folder-3a090594-0d6c-406e-a758-05842b36ad51": [
           "composition:voting-card",
           "composition:crafting-timer-widget"
