@@ -2095,11 +2095,10 @@
           "composition:countdown-popup",
           "composition:join-qr-code"
         ],
-        "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": [
-          "composition:presentation-click-prompt",
-          "composition:stage-code-widget"
-        ],
+        "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": [],
         "folder-3a090594-0d6c-406e-a758-05842b36ad51": [
+          "composition:presentation-click-prompt",
+          "composition:stage-code-widget",
           "composition:voting-card",
           "composition:crafting-timer-widget"
         ],
