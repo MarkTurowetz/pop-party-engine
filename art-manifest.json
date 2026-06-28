@@ -1676,6 +1676,7 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
+          "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -1732,7 +1733,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:14:24.249Z"
+      "updatedAt": "2026-06-28T00:01:26.139Z"
     },
     "player-answer-bubble": {
       "name": "Player Answer Bubble",
