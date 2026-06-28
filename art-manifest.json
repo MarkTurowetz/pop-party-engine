@@ -1398,7 +1398,6 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
-          "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -1455,7 +1454,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-28T00:01:13.822Z"
+      "updatedAt": "2026-06-27T21:01:59.534Z"
     },
     "player-object-stego": {
       "name": "Stego Player Object",
@@ -1491,6 +1490,7 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "on",
+          "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -1547,7 +1547,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T21:13:22.855Z"
+      "updatedAt": "2026-06-28T00:01:15.665Z"
     },
     "player-object-raptor": {
       "name": "Raptor Player Object",
