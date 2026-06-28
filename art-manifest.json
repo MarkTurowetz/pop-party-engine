@@ -2103,10 +2103,11 @@
           "composition:voting-card",
           "composition:crafting-timer-widget"
         ],
-        "folder-fc45b1fa-922d-4073-a707-9b4995172227": [],
-        "folder-b44c7441-4209-415b-87ff-4aaf25716ad2": [
-          "folder:folder-fc45b1fa-922d-4073-a707-9b4995172227",
+        "folder-fc45b1fa-922d-4073-a707-9b4995172227": [
           "composition:player-answer-bubble"
+        ],
+        "folder-b44c7441-4209-415b-87ff-4aaf25716ad2": [
+          "folder:folder-fc45b1fa-922d-4073-a707-9b4995172227"
         ]
       }
     },
