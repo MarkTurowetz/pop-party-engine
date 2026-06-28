@@ -319,6 +319,22 @@ function defaultPlayerAvatarComposition(species, label, assetId) {
 function playerAnswerBubbleComponents() {
   return [
     {
+      id: "answer-text",
+      name: "Answer Text",
+      kind: "text",
+      x: 150,
+      y: 92,
+      width: 226,
+      height: 78,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "park",
+      defaultText: "ANSWER",
+      fontSize: 28,
+      autoFitText: false,
+      fontColor: "#17131f"
+    },
+    {
       id: "answer-bubble-tail",
       name: "Answer Bubble Tail",
       kind: "shape",
@@ -351,22 +367,6 @@ function playerAnswerBubbleComponents() {
       borderColor: "#17131f",
       borderWidth: 3,
       borderRadius: 18
-    },
-    {
-      id: "answer-text",
-      name: "Answer Text",
-      kind: "text",
-      x: 150,
-      y: 92,
-      width: 226,
-      height: 78,
-      scale: 1,
-      rotation: 0,
-      defaultAnimationState: "park",
-      defaultText: "ANSWER",
-      fontSize: 28,
-      autoFitText: false,
-      fontColor: "#17131f"
     }
   ];
 }

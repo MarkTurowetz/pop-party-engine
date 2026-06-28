@@ -312,6 +312,7 @@ function createArtAssetsRuntime({
     migrateRemovedWidgetComponents(composition.id, components);
     migrateGeneratedWidgetLayerOrder(composition.id, components);
     migrateVotingCardVoterContainerDefaults(composition.id, components);
+    migratePlayerAnswerBubbleLayerOrder(composition.id, components);
     const canvas = {
       width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
       height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
@@ -334,6 +335,16 @@ function createArtAssetsRuntime({
     const voterContainer = components.find((component) => component?.id === "voter-container");
     if (!voterContainer || voterContainer.childDistribution === "vertical") return;
     voterContainer.childDistribution = "horizontal";
+  }
+
+  function migratePlayerAnswerBubbleLayerOrder(compositionId, components = []) {
+    if (compositionId !== "player-answer-bubble") return;
+    const legacyOrder = ["answer-bubble-tail", "answer-bubble-card", "answer-text"];
+    const componentIds = components.map((component) => component.id);
+    if (componentIds.length !== legacyOrder.length) return;
+    if (!legacyOrder.every((id, index) => componentIds[index] === id)) return;
+    const byId = new Map(components.map((component) => [component.id, component]));
+    components.splice(0, components.length, byId.get("answer-text"), byId.get("answer-bubble-card"), byId.get("answer-bubble-tail"));
   }
 
   function normalizeCompositionSurface(surface) {

@@ -136,6 +136,42 @@ describe("art composition child persistence", () => {
   });
 });
 
+describe("legacy art composition migrations", () => {
+  it("puts player answer bubble text above its card and tail", () => {
+    const runtime = createRuntime({
+      artCompositions: [
+        {
+          id: "player-answer-bubble",
+          name: "Player Answer Bubble",
+          canvas: { width: 300, height: 180 },
+          components: [
+            { id: "answer-bubble-tail", name: "Answer Bubble Tail", kind: "shape", x: 150, y: 165, width: 24, height: 24 },
+            { id: "answer-bubble-card", name: "Answer Bubble Card", kind: "shape", x: 150, y: 92, width: 270, height: 128 },
+            { id: "answer-text", name: "Answer Text", kind: "text", x: 150, y: 92, width: 226, height: 78 }
+          ]
+        }
+      ]
+    });
+
+    const [composition] = runtime.normalizeArtCompositionsDraft([
+      {
+        id: "player-answer-bubble",
+        components: [
+          { id: "answer-bubble-tail", name: "Answer Bubble Tail", kind: "shape", x: 150, y: 165, width: 24, height: 24 },
+          { id: "answer-bubble-card", name: "Answer Bubble Card", kind: "shape", x: 150, y: 92, width: 270, height: 128 },
+          { id: "answer-text", name: "Answer Text", kind: "text", x: 150, y: 92, width: 226, height: 78 }
+        ]
+      }
+    ]);
+
+    expect(composition.components.map((component) => component.id)).toEqual([
+      "answer-text",
+      "answer-bubble-card",
+      "answer-bubble-tail"
+    ]);
+  });
+});
+
 describe("art container distribution", () => {
   it("normalizes child distribution on container components", () => {
     const runtime = createRuntime();
