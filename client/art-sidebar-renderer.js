@@ -20,6 +20,7 @@
     const affordances = options.affordances || global.PartyGameToolAffordances;
     const createDisclosureButton = options.createDisclosureButton || global.createDisclosureButton;
     const state = () => options.getState?.() || {};
+    const organizerControlSelector = ".disclosure-button, .art-folder-create, .art-folder-rename, .art-folder-delete, input, textarea, button, select, a";
 
     function createGroupTitle(data, label, collapseId) {
       const title = documentRef.createElement("div");
@@ -55,10 +56,17 @@
     function bindOrganizerRow(row, key) {
       if (!key) return row;
       if (searchQuery(state())) return row;
+      row.addEventListener("click", (event) => {
+        const control = event.target.closest(organizerControlSelector);
+        if (control && control !== row) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        options.onSelectOrganizerItem?.(key, organizerSelectionOptions(event));
+      }, true);
       affordances?.bindSortableRow(row, {
         itemId: key,
         dragType: "application/x-party-art-organizer",
-        ignoreSelector: ".disclosure-button, .art-folder-create, .art-folder-rename, .art-folder-delete, input, textarea, button, select, a",
+        ignoreSelector: organizerControlSelector,
         getDraggedId: () => options.getDraggedOrganizerKey?.() || "",
         canDrop: (draggedKey, targetKey) => options.canReorderOrganizerItem?.(draggedKey, targetKey) !== false,
         onDragStart: (dragKey) => options.onOrganizerDragStart?.(dragKey),
@@ -141,6 +149,10 @@
     function folderMatchesSearch(folder, query) {
       if (!query) return true;
       return fuzzyTextMatches(searchableFields(folder?.name, folder?.id), query);
+    }
+
+    function artFolderCollapseIds(data, organization) {
+      return (organization.folders || []).map((folder) => `art-folder:${organizerSurface(data)}:${folder.id}`);
     }
 
     function createCompositionButton(data, composition, organizerKey = "") {
@@ -418,7 +430,7 @@
         collapseId,
         data.collapsedArtSections,
         options.onCollapseChange,
-        () => options.onToggleCollapsedIds?.(data.collapsedArtSections, [collapseId])
+        () => options.onToggleCollapsedIds?.(data.collapsedArtSections, artFolderCollapseIds(data, organization))
       ));
       const label = documentRef.createElement("span");
       label.textContent = folder.name || "Folder";
@@ -450,10 +462,6 @@
         options.onDeleteFolder?.(folder.id);
       });
       title.appendChild(deleteButton);
-      title.addEventListener("click", (event) => {
-        if (event.target.closest(".disclosure-button, .art-folder-create, .art-folder-rename, .art-folder-delete, input, textarea, button, select, a")) return;
-        options.onSelectOrganizerItem?.(folderKey, organizerSelectionOptions(event));
-      });
       bindOrganizerRow(title, folderKey);
       title.addEventListener("dragover", (event) => {
         const draggedKey = options.getDraggedOrganizerKey?.() || "";
