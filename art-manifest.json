@@ -796,10 +796,10 @@
           "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 5,
-          "borderRadius": 999
+          "borderRadius": 20
         }
       ],
-      "updatedAt": "2026-06-28T01:29:14.840Z"
+      "updatedAt": "2026-06-28T00:01:45.505Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer",
@@ -846,7 +846,7 @@
           "borderRadius": 36
         }
       ],
-      "updatedAt": "2026-06-27T21:14:14.492Z"
+      "updatedAt": "2026-06-28T01:29:16.556Z"
     },
     "waiting-status-widget": {
       "name": "Waiting Status",
