@@ -692,6 +692,16 @@ async function setupHostAudioTool() {
   }
   if (!hostAudioToolInitialized) {
     hostAudioToolInitialized = true;
+    window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+      shell: hostAudioShell,
+      handle: hostAudioResizer,
+      cssProperty: "--host-audio-list-width",
+      storageKey: "partyTemplate.hostAudioListWidth",
+      minWidth: 260,
+      minMainWidth: 420,
+      maxWidth: 640,
+      resizingClass: "is-resizing-host-audio"
+    });
     addHostAudioButton.addEventListener("click", addHostAudio);
     addHostAudioLineButton.addEventListener("click", addHostAudioLine);
     deleteHostAudioButton.addEventListener("click", deleteSelectedHostAudio);

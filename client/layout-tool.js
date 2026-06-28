@@ -1323,6 +1323,17 @@ async function setupLayoutTool(mode = "stage") {
   }
   layoutToolInitialized = true;
   installLayoutReactShellHandlers();
+  window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+    shell: layoutShell,
+    handle: layoutResizer,
+    cssProperty: "--layout-list-width",
+    storageKey: "partyTemplate.layoutListWidth",
+    minWidth: 300,
+    minMainWidth: 520,
+    maxWidth: 720,
+    resizingClass: "is-resizing-layout",
+    onResize: () => renderLayoutPreview()
+  });
   addLayoutObjectButton.addEventListener("click", openLayoutObjectPicker);
   layoutPreviewAddObjectButton.addEventListener("click", openLayoutObjectPicker);
   removeLayoutObjectButton.addEventListener("click", removeSelectedLayoutObject);

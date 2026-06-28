@@ -154,6 +154,7 @@
     handle.addEventListener("pointerdown", (event) => {
       event.preventDefault();
       handle.setPointerCapture?.(event.pointerId);
+      document.body.classList.add("is-resizing-tool-panel");
       document.body.classList.add(resizingClass);
       const shellRect = shell.getBoundingClientRect();
       const move = (moveEvent) => {
@@ -165,6 +166,7 @@
         options.onResize?.(nextWidth, moveEvent);
       };
       const stop = (stopEvent) => {
+        document.body.classList.remove("is-resizing-tool-panel");
         document.body.classList.remove(resizingClass);
         try {
           handle.releasePointerCapture?.(stopEvent.pointerId);

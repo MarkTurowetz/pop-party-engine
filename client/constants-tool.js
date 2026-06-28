@@ -370,10 +370,24 @@ async function saveGameConstants() {
   renderConstantsTool();
 }
 
+function setupConstantsResizer() {
+  window.PartyGameToolAffordances?.setupHorizontalPanelResizer?.({
+    shell: constantsShell,
+    handle: constantsResizer,
+    cssProperty: "--constants-list-width",
+    storageKey: "partyTemplate.constantsListWidth",
+    minWidth: 260,
+    minMainWidth: 420,
+    maxWidth: 640,
+    resizingClass: "is-resizing-constants"
+  });
+}
+
 async function setupConstantsTool() {
   constantsScreen.classList.remove("hidden");
   if (constantsToolInitialized) return;
   constantsToolInitialized = true;
+  setupConstantsResizer();
   document.querySelectorAll("[data-constant-target]").forEach((button) => {
     button.addEventListener("click", () => {
       selectedGameConstantId = button.dataset.constantTarget || "gameTitle";

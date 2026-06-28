@@ -1891,7 +1891,7 @@ body.is-resizing-flow {
 }
 
 .constants-shell {
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, var(--constants-list-width, 360px)) 12px minmax(0, 1fr);
 }
 
 .constants-shell > main.flow-panel {
@@ -1967,8 +1967,8 @@ body.is-resizing-flow {
 
 .layout-shell {
   display: grid;
-  grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
-  gap: clamp(14px, 2vw, 24px);
+  grid-template-columns: minmax(300px, var(--layout-list-width, 390px)) 12px minmax(0, 1fr);
+  gap: clamp(8px, 1vw, 14px);
   height: calc(100vh - clamp(32px, 6vw, 68px));
   min-height: 0;
 }
@@ -2679,7 +2679,7 @@ body.is-resizing-flow {
 }
 
 .host-audio-shell {
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, var(--host-audio-list-width, 360px)) 12px minmax(0, 1fr);
 }
 
 .host-audio-shell .flow-panel {
