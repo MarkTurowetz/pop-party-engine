@@ -1,8 +1,6 @@
 (function () {
   "use strict";
 
-  const customDecisionVariableId = "__custom_variable_path__";
-
   function createDecisionControls(context) {
     function baseDecisionVariableOptions() {
       const currentConstants = typeof context.gameConstants === "function" ? context.gameConstants() : {};
@@ -33,6 +31,9 @@
         { id: "overrideFirstGameOfSession", name: "Override First Game of Session" },
         { id: "craftingTimerDuration", name: "Crafting Timer Duration" },
         { id: "startGameCountdownDuration", name: "Start Game Countdown Duration" },
+        { id: "G", name: "G Variables" },
+        { id: "g", name: "g Variables" },
+        { id: "flowVariables", name: "Flow Variables" },
         { id: "players.length", name: "Players.length" },
         { id: "choiceInputAnswers.count", name: "Choice Answers.count" },
         { id: "textInputAnswers.count", name: "Text Answers.count" },
@@ -40,15 +41,8 @@
       ];
     }
 
-    function isKnownDecisionVariable(variable) {
-      return baseDecisionVariableOptions().some((option) => option.id === variable);
-    }
-
     function decisionVariableOptions() {
-      return [
-        ...baseDecisionVariableOptions(),
-        { id: customDecisionVariableId, name: "Custom Variable Path" }
-      ];
+      return baseDecisionVariableOptions();
     }
 
     function decisionTargetField(options = {}) {
@@ -174,23 +168,11 @@
     function appendDecisionControls(target, state, action, rerender, options = {}) {
       context.ensureDecisionBranches(action, options);
       const variable = action.variable || "activePlayerCount";
-      const usesCustomVariable = action.variableMode === "custom" || !isKnownDecisionVariable(variable);
-      target.appendChild(context.flowVariableSearch("Variable", usesCustomVariable ? customDecisionVariableId : variable, decisionVariableOptions(), (value) => {
-        if (value === customDecisionVariableId) {
-          action.variableMode = "custom";
-        } else {
-          delete action.variableMode;
-          action.variable = value;
-        }
+      target.appendChild(context.flowVariableSearch("Variable", variable, decisionVariableOptions(), (value) => {
+        delete action.variableMode;
+        action.variable = String(value || "").trim() || "activePlayerCount";
         rerender();
       }));
-      if (usesCustomVariable) {
-        target.appendChild(context.flowField("Custom Variable Path", isKnownDecisionVariable(variable) ? "" : variable, (value) => {
-          action.variableMode = "custom";
-          action.variable = value.trim();
-          rerender(false);
-        }));
-      }
       target.appendChild(context.flowSelect("Value Type", action.valueType || "int", [
         { id: "int", name: "Int" },
         { id: "float", name: "Float" },

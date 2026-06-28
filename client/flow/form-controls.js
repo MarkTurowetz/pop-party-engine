@@ -101,6 +101,7 @@
       emptyText,
       detailText,
       searchText,
+      allowCustomValue = false,
       onChange
     }) {
       const field = document.createElement("label");
@@ -116,7 +117,8 @@
       const staticOptions = Array.isArray(options) ? options : [];
       const optionSource = typeof optionsForSearch === "function" ? optionsForSearch : () => staticOptions;
       const current = currentOption || staticOptions.find((option) => option.id === value) || null;
-      input.value = current?.name || "";
+      input.value = current?.name || (allowCustomValue ? String(value || "") : "");
+      let committedValue = String(value || "");
 
       const hideMenu = () => window.setTimeout(() => menu.classList.add("hidden"), 120);
       const chooseOption = (option) => {
@@ -125,6 +127,26 @@
         if (option.id !== value) {
           captureHistory();
           onChange(option.id);
+        }
+      };
+      const exactOptionForValue = (rawValue) => {
+        const normalized = String(rawValue || "").trim().toLowerCase();
+        if (!normalized) return null;
+        return optionSource().find((option) => (
+          String(option.id || "").toLowerCase() === normalized
+          || String(option.name || "").toLowerCase() === normalized
+        )) || null;
+      };
+      const commitCustomValue = () => {
+        if (!allowCustomValue) return;
+        const rawValue = input.value.trim();
+        const exact = exactOptionForValue(rawValue);
+        const nextValue = exact?.id || rawValue;
+        if (exact) input.value = exact.name;
+        if (nextValue !== committedValue) {
+          committedValue = nextValue;
+          captureHistory();
+          onChange(nextValue);
         }
       };
       const renderOptions = () => {
@@ -155,7 +177,11 @@
 
       input.addEventListener("focus", renderOptions);
       input.addEventListener("input", renderOptions);
-      input.addEventListener("blur", hideMenu);
+      input.addEventListener("change", commitCustomValue);
+      input.addEventListener("blur", () => {
+        commitCustomValue();
+        hideMenu();
+      });
       input.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
           menu.classList.add("hidden");
@@ -165,6 +191,7 @@
           event.preventDefault();
           const first = fuzzyOptionMatches(optionSource(), input.value.trim().toLowerCase(), searchText)[0];
           if (first) chooseOption(first);
+          else commitCustomValue();
         }
       });
 
@@ -182,6 +209,7 @@
         emptyText: "No matching variables",
         detailText: (option) => option.id,
         searchText: (option) => `${option.name} ${option.id}`,
+        allowCustomValue: true,
         onChange
       });
     }
