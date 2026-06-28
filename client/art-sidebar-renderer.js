@@ -68,6 +68,14 @@
       return row;
     }
 
+    function isOrganizerSelected(data, key) {
+      return Boolean(key && data.selectedArtOrganizerKeys?.has?.(key));
+    }
+
+    function organizerSelectionOptions(event) {
+      return { additive: Boolean(event?.metaKey || event?.ctrlKey) };
+    }
+
     function normalizeSearchText(value) {
       return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     }
@@ -139,14 +147,17 @@
       const isVotingCard = composition.id === "voting-card";
       const row = ui.createSidebarRow({
         className: "art-item is-composite has-disclosure",
-        selected: data.selectedArtCompositionId === composition.id && !data.selectedArtComponentId,
+        selected: isOrganizerSelected(data, organizerKey) || (data.selectedArtCompositionId === composition.id && !data.selectedArtComponentId),
         leadingNodes: [
           createDisclosureSlot(data, composition.id),
           ui.createThumb("art-thumb art-composite-thumb", isVotingCard ? '<span class="art-voting-card-thumb"></span>' : "")
         ],
         title: composition.name,
         summary: "Editable art asset",
-        onActivate: () => options.onSelectArtComposition?.(composition.id)
+        onActivate: (event) => {
+          if (organizerKey) options.onSelectOrganizerItem?.(organizerKey, organizerSelectionOptions(event));
+          else options.onSelectArtComposition?.(composition.id);
+        }
       });
       return bindOrganizerRow(row, organizerKey);
     }
@@ -239,12 +250,15 @@
       image.src = asset.currentUrl;
       const button = ui.createSidebarRow({
         className: "art-item",
-        selected: data.selectedArtAsset?.id === asset.id,
+        selected: isOrganizerSelected(data, organizerKey) || data.selectedArtAsset?.id === asset.id,
         dataset: { assetId: asset.id },
         leadingNodes: [ui.createThumb("art-thumb", image)],
         title: label,
         summary: `${asset.sharedBy?.length ? "Shared / " : ""}${asset.hasCustom ? "Custom" : "Default"}`,
-        onActivate: () => options.onSelectArtAsset?.(asset.id)
+        onActivate: (event) => {
+          if (organizerKey) options.onSelectOrganizerItem?.(organizerKey, organizerSelectionOptions(event));
+          else options.onSelectArtAsset?.(asset.id);
+        }
       });
       button.classList.toggle("is-shared", Boolean(asset.sharedBy?.length));
       return bindOrganizerRow(button, organizerKey);
@@ -396,8 +410,10 @@
       const wrapper = documentRef.createElement("section");
       wrapper.className = "art-group art-folder";
       wrapper.style.setProperty("--art-folder-depth", String(path.size));
+      const folderKey = `folder:${folder.id}`;
       const title = documentRef.createElement("div");
       title.className = "art-group-title art-folder-title";
+      title.classList.toggle("is-selected", isOrganizerSelected(data, folderKey));
       title.appendChild(createDisclosureButton(
         collapseId,
         data.collapsedArtSections,
@@ -434,7 +450,11 @@
         options.onDeleteFolder?.(folder.id);
       });
       title.appendChild(deleteButton);
-      bindOrganizerRow(title, `folder:${folder.id}`);
+      title.addEventListener("click", (event) => {
+        if (event.target.closest(".disclosure-button, .art-folder-create, .art-folder-rename, .art-folder-delete, input, textarea, button, select, a")) return;
+        options.onSelectOrganizerItem?.(folderKey, organizerSelectionOptions(event));
+      });
+      bindOrganizerRow(title, folderKey);
       title.addEventListener("dragover", (event) => {
         const draggedKey = options.getDraggedOrganizerKey?.() || "";
         if (!draggedKey || options.canMoveOrganizerItemToFolder?.(draggedKey, folder.id) === false) return;

@@ -9,6 +9,7 @@ function setupLab() {
 let selectedArtCompositionId = "";
 let selectedArtComponentId = "";
 let selectedArtComponentIds = new Set();
+let selectedArtOrganizerKeys = new Set();
 let selectedArtSurface = "stage";
 let draggedArtComponentId = "";
 let draggedArtOrganizerKey = "";
@@ -203,6 +204,84 @@ function artOrganizerFolderIdFromKey(key) {
   return String(key || "").startsWith("folder:") ? String(key).slice(7) : "";
 }
 
+function artOrganizerKeyExists(state, key) {
+  if (!key) return false;
+  const folderId = artOrganizerFolderIdFromKey(key);
+  if (folderId) return state.folders.some((folder) => folder.id === folderId);
+  return artOrganizerSurfaceItems().some((entry) => entry.key === key);
+}
+
+function artOrganizerParentFolderId(state, key) {
+  return Object.keys(state.folderItems || {}).find((folderId) => (state.folderItems[folderId] || []).includes(key)) || "";
+}
+
+function artOrganizerKeyContainsKey(state, parentKey, childKey, visited = new Set()) {
+  const parentFolderId = artOrganizerFolderIdFromKey(parentKey);
+  if (!parentFolderId || !childKey || visited.has(parentFolderId)) return false;
+  visited.add(parentFolderId);
+  for (const key of state.folderItems?.[parentFolderId] || []) {
+    if (key === childKey) return true;
+    if (artOrganizerKeyContainsKey(state, key, childKey, visited)) return true;
+  }
+  return false;
+}
+
+function orderedArtOrganizerKeys(keys, state = artOrganizationSurface()) {
+  const wanted = new Set((keys || []).filter((key) => artOrganizerKeyExists(state, key)));
+  const ordered = [];
+  const visitList = (list = []) => {
+    for (const key of list) {
+      if (wanted.has(key) && !ordered.includes(key)) ordered.push(key);
+      const folderId = artOrganizerFolderIdFromKey(key);
+      if (folderId) visitList(state.folderItems?.[folderId] || []);
+    }
+  };
+  visitList(state.order || []);
+  for (const folder of state.folders || []) visitList(state.folderItems?.[folder.id] || []);
+  for (const key of wanted) {
+    if (!ordered.includes(key)) ordered.push(key);
+  }
+  return ordered;
+}
+
+function artOrganizerDragKeys(draggedKey) {
+  if (!draggedKey) return [];
+  const state = artOrganizationSurface();
+  const selectedKeys = [...selectedArtOrganizerKeys].filter((key) => artOrganizerKeyExists(state, key));
+  if (selectedKeys.includes(draggedKey)) {
+    const orderedKeys = orderedArtOrganizerKeys(selectedKeys, state);
+    return orderedKeys.filter((key) => !orderedKeys.some((candidate) => candidate !== key && artOrganizerKeyContainsKey(state, candidate, key)));
+  }
+  return artOrganizerKeyExists(state, draggedKey) ? [draggedKey] : [];
+}
+
+function setArtOrganizerSelection(keys) {
+  const state = artOrganizationSurface();
+  selectedArtOrganizerKeys = new Set((keys || []).filter((key) => artOrganizerKeyExists(state, key)));
+}
+
+function selectArtOrganizerItem(key, options = {}) {
+  const state = artOrganizationSurface();
+  if (!artOrganizerKeyExists(state, key)) return;
+  const nextKeys = new Set(options.additive ? selectedArtOrganizerKeys : []);
+  if (options.additive && nextKeys.has(key)) nextKeys.delete(key);
+  else nextKeys.add(key);
+  setArtOrganizerSelection(nextKeys);
+  if (key.startsWith("composition:")) {
+    const selection = new Set(selectedArtOrganizerKeys);
+    selectArtComposition(key.slice("composition:".length));
+    selectedArtOrganizerKeys = selection;
+    renderArtList();
+  } else if (key.startsWith("asset:")) {
+    const selection = new Set(selectedArtOrganizerKeys);
+    selectArtAsset(key.slice("asset:".length));
+    selectedArtOrganizerKeys = selection;
+    renderArtList();
+  } else {
+    renderArtList();
+  }
+}
+
 function artOrganizerSurfaceItems(surface = selectedArtSurface) {
   const isStageSurface = normalizeArtCompositionSurface(surface) === "stage";
   const compositions = (artCompositions || []).filter((composition) => (
@@ -363,10 +442,29 @@ function canMoveArtOrganizerItemToFolder(draggedKey, folderId) {
   return !artOrganizerFolderContainsFolder(state, draggedFolderId, folderId);
 }
 
+function canMoveArtOrganizerItemsToFolder(draggedKey, folderId) {
+  const state = artOrganizationSurface();
+  const draggedKeys = artOrganizerDragKeys(draggedKey);
+  if (!draggedKeys.length || !folderId || !state.folders.some((folder) => folder.id === folderId)) return false;
+  const targetFolderKey = artOrganizerFolderKey(folderId);
+  if (draggedKeys.includes(targetFolderKey)) return false;
+  return draggedKeys.every((key) => canMoveArtOrganizerItemToFolder(key, folderId));
+}
+
 function canReorderArtOrganizerItem(draggedKey, targetKey) {
   if (!draggedKey || !targetKey || draggedKey === targetKey) return false;
   const targetFolderId = artOrganizerFolderIdFromKey(targetKey);
   return !targetFolderId || canMoveArtOrganizerItemToFolder(draggedKey, targetFolderId);
+}
+
+function canReorderArtOrganizerItems(draggedKey, targetKey) {
+  const state = artOrganizationSurface();
+  const draggedKeys = artOrganizerDragKeys(draggedKey);
+  if (!draggedKeys.length || !targetKey || draggedKeys.includes(targetKey)) return false;
+  if (draggedKeys.some((key) => artOrganizerKeyContainsKey(state, key, targetKey))) return false;
+  const targetParentFolderId = artOrganizerParentFolderId(state, targetKey);
+  if (!targetParentFolderId) return draggedKeys.every((key) => artOrganizerKeyExists(state, key));
+  return draggedKeys.every((key) => canMoveArtOrganizerItemToFolder(key, targetParentFolderId));
 }
 
 function reorderArtOrganizerItem(draggedKey, targetKey, placeAfter = false) {
@@ -383,6 +481,22 @@ function reorderArtOrganizerItem(draggedKey, targetKey, placeAfter = false) {
   });
 }
 
+function reorderArtOrganizerItems(draggedKey, targetKey, placeAfter = false) {
+  if (!canReorderArtOrganizerItems(draggedKey, targetKey)) return;
+  const state = artOrganizationSurface();
+  const draggedKeys = artOrganizerDragKeys(draggedKey);
+  const targetFolderId = artOrganizerParentFolderId(state, targetKey);
+  for (const key of draggedKeys) removeOrganizerKeyFromSurface(state, key);
+  const list = targetFolderId ? state.folderItems[targetFolderId] : state.order;
+  const targetIndex = list.indexOf(targetKey);
+  list.splice(Math.max(0, targetIndex + (placeAfter ? 1 : 0)), 0, ...draggedKeys);
+  setArtOrganizerSelection(draggedKeys);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
 function moveArtOrganizerItemToFolder(draggedKey, folderId) {
   if (!canMoveArtOrganizerItemToFolder(draggedKey, folderId)) return;
   const state = artOrganizationSurface();
@@ -390,6 +504,21 @@ function moveArtOrganizerItemToFolder(draggedKey, folderId) {
   state.folderItems[folderId] = state.folderItems[folderId] || [];
   state.folderItems[folderId].push(draggedKey);
   collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${folderId}`);
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function moveArtOrganizerItemsToFolder(draggedKey, folderId) {
+  if (!canMoveArtOrganizerItemsToFolder(draggedKey, folderId)) return;
+  const state = artOrganizationSurface();
+  const draggedKeys = artOrganizerDragKeys(draggedKey);
+  for (const key of draggedKeys) removeOrganizerKeyFromSurface(state, key);
+  state.folderItems[folderId] = state.folderItems[folderId] || [];
+  state.folderItems[folderId].push(...draggedKeys);
+  collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${folderId}`);
+  setArtOrganizerSelection(draggedKeys);
   renderArtList();
   saveArtOrganization().catch((error) => {
     artFileName.textContent = error.message;
@@ -513,7 +642,8 @@ function artSidebarState() {
     selectedArtComposite,
     selectedArtCompositionId,
     selectedArtComponentId,
-    selectedArtComponentIds
+    selectedArtComponentIds,
+    selectedArtOrganizerKeys
   };
 }
 
@@ -544,21 +674,23 @@ function getArtSidebarRenderer() {
       onSelectArtComposite: selectArtComposite,
       onSelectArtComposition: selectArtComposition,
       onSelectArtComponent: selectArtComponent,
+      onSelectOrganizerItem: selectArtOrganizerItem,
       onCreateFolder: createArtFolder,
       onRenameFolder: renameArtFolder,
       onDeleteFolder: deleteArtFolder,
       onOrganizerDragStart: (key) => {
         if (artAssetSearchQuery.trim()) return;
+        if (!selectedArtOrganizerKeys.has(key)) setArtOrganizerSelection([key]);
         draggedArtOrganizerKey = key;
       },
       onOrganizerDragEnd: () => {
         draggedArtOrganizerKey = "";
       },
       getDraggedOrganizerKey: () => draggedArtOrganizerKey,
-      canReorderOrganizerItem: (draggedKey, targetKey) => !artAssetSearchQuery.trim() && canReorderArtOrganizerItem(draggedKey, targetKey),
-      canMoveOrganizerItemToFolder: (draggedKey, folderId) => !artAssetSearchQuery.trim() && canMoveArtOrganizerItemToFolder(draggedKey, folderId),
-      onReorderOrganizerItem: reorderArtOrganizerItem,
-      onMoveOrganizerItemToFolder: moveArtOrganizerItemToFolder,
+      canReorderOrganizerItem: (draggedKey, targetKey) => !artAssetSearchQuery.trim() && canReorderArtOrganizerItems(draggedKey, targetKey),
+      canMoveOrganizerItemToFolder: (draggedKey, folderId) => !artAssetSearchQuery.trim() && canMoveArtOrganizerItemsToFolder(draggedKey, folderId),
+      onReorderOrganizerItem: reorderArtOrganizerItems,
+      onMoveOrganizerItemToFolder: moveArtOrganizerItemsToFolder,
       getDraggedComponentId: () => draggedArtComponentId,
       canReorderArtComponent,
       onComponentDragStart: handleArtComponentSidebarDragStart,
@@ -636,6 +768,7 @@ function compositePreviewMarkup(composite) {
 }
 
 function selectArtAsset(assetId) {
+  selectedArtOrganizerKeys = new Set();
   selectedArtAsset = artAssets.find((asset) => asset.id === assetId) || artAssets[0] || null;
   selectedArtComposite = null;
   selectedArtCompositionId = "";
@@ -679,6 +812,7 @@ function renderSelectedArtPreview(sourceUrl) {
 }
 
 function selectArtComposite(compositeId) {
+  selectedArtOrganizerKeys = new Set();
   selectedArtComposite = avatarComposites.find((composite) => composite.id === compositeId) || avatarComposites[0] || null;
   selectedArtAsset = null;
   selectedArtCompositionId = "";
@@ -707,6 +841,7 @@ function selectArtComposite(compositeId) {
 function selectArtComposition(compositionId) {
   const composition = artComposition(compositionId);
   if (!composition) return;
+  selectedArtOrganizerKeys = new Set();
   selectedArtAsset = null;
   selectedArtComposite = null;
   selectedArtCompositionId = composition.id;
@@ -722,6 +857,7 @@ function selectArtComposition(compositionId) {
 function selectArtComponent(compositionId, componentId, options = {}) {
   const composition = artComposition(compositionId);
   if (!composition) return;
+  selectedArtOrganizerKeys = new Set();
   selectedArtAsset = null;
   selectedArtComposite = null;
   selectedArtCompositionId = composition.id;

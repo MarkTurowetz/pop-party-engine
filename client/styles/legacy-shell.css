@@ -2338,6 +2338,12 @@ body.tool-dashboard-mode .layout-shell {
   margin-left: calc(var(--art-folder-depth, 0) * 10px);
 }
 
+.art-folder-title.is-selected {
+  background: var(--cyan);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(23, 19, 31, 0.25);
+}
+
 .art-folder-title.is-folder-drop {
   background: var(--cyan);
   box-shadow: 0 0 0 4px var(--blue), 3px 3px 0 rgba(23, 19, 31, 0.25);
