@@ -53,7 +53,7 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "childDistribution": "horizontal",
+          "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -124,7 +124,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-28T01:29:01.127Z"
+      "updatedAt": "2026-06-28T00:01:28.051Z"
     },
     "player-avatar-rex": {
       "name": "Rex Avatar",
@@ -579,7 +579,7 @@
           "imageTint": "currentColor"
         }
       ],
-      "updatedAt": "2026-06-27T21:14:30.536Z"
+      "updatedAt": "2026-06-28T01:29:03.081Z"
     },
     "stage-code-panel": {
       "name": "Stage Code Panel",
