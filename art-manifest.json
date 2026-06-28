@@ -579,7 +579,7 @@
           "imageTint": "currentColor"
         }
       ],
-      "updatedAt": "2026-06-28T00:01:34.330Z"
+      "updatedAt": "2026-06-27T21:14:30.536Z"
     },
     "stage-code-panel": {
       "name": "Stage Code Panel",
@@ -642,7 +642,7 @@
           "borderRadius": 24
         }
       ],
-      "updatedAt": "2026-06-27T21:14:33.333Z"
+      "updatedAt": "2026-06-28T00:01:35.899Z"
     },
     "stage-code-widget": {
       "name": "Small Room Code Widget",
