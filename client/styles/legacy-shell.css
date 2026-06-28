@@ -2299,7 +2299,8 @@ body.tool-dashboard-mode .layout-shell {
 }
 
 .art-folder-create,
-.art-folder-rename {
+.art-folder-rename,
+.art-folder-delete {
   margin-left: auto;
   min-height: 26px;
   padding: 0 8px;
@@ -2319,6 +2320,14 @@ body.tool-dashboard-mode .layout-shell {
 
 .art-folder-create + .art-folder-rename {
   margin-left: 0;
+}
+
+.art-folder-rename + .art-folder-delete {
+  margin-left: 0;
+}
+
+.art-folder-delete {
+  background: #ffe0e0;
 }
 
 .art-group-children {

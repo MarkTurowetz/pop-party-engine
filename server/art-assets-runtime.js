@@ -142,6 +142,19 @@ function createArtAssetsRuntime({
           return !folderContainsFolder(folderItems, String(key).slice(7), folderId);
         });
       }
+      const assignedKeys = new Set();
+      for (const folderId of folderIds) {
+        const uniqueItems = [];
+        for (const key of folderItems[folderId] || []) {
+          if (assignedKeys.has(key)) continue;
+          assignedKeys.add(key);
+          uniqueItems.push(key);
+        }
+        folderItems[folderId] = uniqueItems;
+      }
+      for (let index = order.length - 1; index >= 0; index -= 1) {
+        if (assignedKeys.has(order[index])) order.splice(index, 1);
+      }
       result[surface] = { folders, order, folderItems };
     }
     return result;
@@ -244,15 +257,6 @@ function createArtAssetsRuntime({
       if (normalizedChild && !seenChildren.has(normalizedChild.id)) {
         children.push(normalizedChild);
         seenChildren.add(normalizedChild.id);
-      }
-    }
-    if (Array.isArray(source.children)) {
-      for (const fallbackChild of fallbackChildren.values()) {
-        const normalizedChild = normalizeComponent(fallbackChild, fallbackChild);
-        if (normalizedChild && !seenChildren.has(normalizedChild.id)) {
-          children.push(normalizedChild);
-          seenChildren.add(normalizedChild.id);
-        }
       }
     }
     if (children.length) {

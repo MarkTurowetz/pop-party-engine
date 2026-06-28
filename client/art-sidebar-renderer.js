@@ -57,7 +57,7 @@
       affordances?.bindSortableRow(row, {
         itemId: key,
         dragType: "application/x-party-art-organizer",
-        ignoreSelector: ".disclosure-button, .art-folder-create, .art-folder-rename, input, textarea, button, select, a",
+        ignoreSelector: ".disclosure-button, .art-folder-create, .art-folder-rename, .art-folder-delete, input, textarea, button, select, a",
         getDraggedId: () => options.getDraggedOrganizerKey?.() || "",
         canDrop: (draggedKey, targetKey) => options.canReorderOrganizerItem?.(draggedKey, targetKey) !== false,
         onDragStart: (dragKey) => options.onOrganizerDragStart?.(dragKey),
@@ -317,6 +317,15 @@
         options.onRenameFolder?.(folder.id);
       });
       title.appendChild(rename);
+      const deleteButton = documentRef.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "art-folder-delete";
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        options.onDeleteFolder?.(folder.id);
+      });
+      title.appendChild(deleteButton);
       bindOrganizerRow(title, `folder:${folder.id}`);
       title.addEventListener("dragover", (event) => {
         const draggedKey = options.getDraggedOrganizerKey?.() || "";
@@ -385,7 +394,7 @@
       }
       for (const folder of organization.folders) {
         const key = `folder:${folder.id}`;
-        if (!topKeys.includes(key)) topKeys.push(key);
+        if (!topKeys.includes(key) && !assigned.has(key)) topKeys.push(key);
       }
       for (const key of entries.keys()) {
         if (!topKeys.includes(key) && !assigned.has(key)) topKeys.push(key);

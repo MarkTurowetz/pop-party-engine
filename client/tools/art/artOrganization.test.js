@@ -4,9 +4,10 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const { createArtAssetsRuntime } = require("../../../server/art-assets-runtime");
 
-function createRuntime() {
+function createRuntime(options = {}) {
   return createArtAssetsRuntime({
     acceptedArtTypes: [],
+    artCompositions: options.artCompositions || [],
     artAssets: [],
     artGroups: [],
     artRoot: "/tmp/party-game-art-test",
@@ -60,6 +61,78 @@ describe("art organization folders", () => {
     const aContainsB = normalized.stage.folderItems.a.includes("folder:b");
     const bContainsA = normalized.stage.folderItems.b.includes("folder:a");
     expect(aContainsB && bContainsA).toBe(false);
+  });
+
+  it("keeps each organized asset or folder in only one place", () => {
+    const runtime = createRuntime();
+    const normalized = runtime.normalizeArtOrganization({
+      stage: {
+        folders: [
+          { id: "generics", name: "Generics" },
+          { id: "prefabs", name: "Prefabs" }
+        ],
+        order: ["folder:generics", "folder:prefabs", "composition:player-answer-bubble"],
+        folderItems: {
+          generics: ["folder:prefabs"],
+          prefabs: ["composition:player-answer-bubble"]
+        }
+      }
+    });
+
+    expect(normalized.stage.order).toEqual(["folder:generics"]);
+    expect(normalized.stage.folderItems.generics).toEqual(["folder:prefabs"]);
+    expect(normalized.stage.folderItems.prefabs).toEqual(["composition:player-answer-bubble"]);
+  });
+});
+
+describe("art composition child persistence", () => {
+  it("treats saved component children as authoritative", () => {
+    const runtime = createRuntime({
+      artCompositions: [
+        {
+          id: "saved-children",
+          name: "Saved Children",
+          canvas: { width: 100, height: 100 },
+          components: [
+            {
+              id: "root",
+              name: "Root",
+              kind: "container",
+              x: 50,
+              y: 50,
+              width: 100,
+              height: 100,
+              children: [
+                { id: "card", name: "Card", kind: "shape", x: 50, y: 50, width: 80, height: 80 },
+                { id: "text", name: "Text", kind: "text", x: 50, y: 50, width: 80, height: 30 }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    const [composition] = runtime.normalizeArtCompositionsDraft([
+      {
+        id: "saved-children",
+        components: [
+          {
+            id: "root",
+            name: "Root",
+            kind: "container",
+            x: 50,
+            y: 50,
+            width: 100,
+            height: 100,
+            children: [
+              { id: "text", name: "Text", kind: "text", x: 50, y: 50, width: 80, height: 30 }
+            ]
+          }
+        ]
+      }
+    ]);
+
+    expect(composition.components[0].children.map((child) => child.id)).toEqual(["text"]);
   });
 });
 

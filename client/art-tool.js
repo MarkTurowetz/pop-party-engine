@@ -248,6 +248,17 @@ function cleanArtOrganizationForSave() {
         return !nestedFolderId || !artOrganizerFolderContainsFolder(cleaned[surface], nestedFolderId, folder.id);
       });
     }
+    const assignedKeys = new Set();
+    for (const folder of cleaned[surface].folders) {
+      const uniqueItems = [];
+      for (const key of cleaned[surface].folderItems[folder.id] || []) {
+        if (assignedKeys.has(key)) continue;
+        assignedKeys.add(key);
+        uniqueItems.push(key);
+      }
+      cleaned[surface].folderItems[folder.id] = uniqueItems;
+    }
+    cleaned[surface].order = cleaned[surface].order.filter((key) => !assignedKeys.has(key));
   }
   return cleaned;
 }
@@ -289,6 +300,34 @@ function renameArtFolder(folderId) {
   const name = window.prompt("Folder name", folder.name || "Folder");
   if (name === null) return;
   folder.name = String(name || "").trim() || "Folder";
+  renderArtList();
+  saveArtOrganization().catch((error) => {
+    artFileName.textContent = error.message;
+  });
+}
+
+function deleteArtFolder(folderId) {
+  const state = artOrganizationSurface();
+  const folder = state.folders.find((item) => item.id === folderId);
+  if (!folder) return;
+  const confirmed = window.confirm(`Delete folder "${folder.name || "Folder"}"? Its contents will move up one level.`);
+  if (!confirmed) return;
+  const folderKey = artOrganizerFolderKey(folderId);
+  const contents = [...new Set(state.folderItems?.[folderId] || [])].filter((key) => key !== folderKey);
+  const parentFolderId = Object.keys(state.folderItems || {}).find((candidateId) => (
+    candidateId !== folderId && (state.folderItems[candidateId] || []).includes(folderKey)
+  ));
+  const originalDestination = parentFolderId ? state.folderItems[parentFolderId] : state.order;
+  const index = Math.max(0, originalDestination.indexOf(folderKey));
+  removeOrganizerKeyFromSurface(state, folderKey);
+  state.folders = (state.folders || []).filter((item) => item.id !== folderId);
+  delete state.folderItems[folderId];
+  const destination = parentFolderId ? (state.folderItems[parentFolderId] = state.folderItems[parentFolderId] || []) : state.order;
+  const insertItems = contents.filter((key) => {
+    const nestedFolderId = artOrganizerFolderIdFromKey(key);
+    return !nestedFolderId || state.folders.some((item) => item.id === nestedFolderId);
+  });
+  destination.splice(index, 0, ...insertItems);
   renderArtList();
   saveArtOrganization().catch((error) => {
     artFileName.textContent = error.message;
@@ -505,6 +544,7 @@ function getArtSidebarRenderer() {
       onSelectArtComponent: selectArtComponent,
       onCreateFolder: createArtFolder,
       onRenameFolder: renameArtFolder,
+      onDeleteFolder: deleteArtFolder,
       onOrganizerDragStart: (key) => {
         draggedArtOrganizerKey = key;
       },
