@@ -171,8 +171,8 @@ function handleArtHotkeys(event) {
     onRedo: redoArtCompositionChange
   })) return;
   window.PartyGameToolAffordances?.handleToolDeleteHotkey(event, {
-    canDelete: () => selectedArtComponentIds.size > 0,
-    onDelete: deleteSelectedArtComponents
+    canDelete: () => selectedArtNodeKeys.size > 0 && [...selectedArtNodeKeys].some(canDeleteArtNode),
+    onDelete: deleteSelectedArtNodes
   });
 }
 
@@ -631,13 +631,10 @@ function renameArtFolder(folderId) {
   stageArtOrganizationChange("Renamed folder");
 }
 
-function deleteArtFolder(folderId) {
+function deleteArtFolderFromOrganization(folderId) {
   const state = artOrganizationSurface();
   const folder = state.folders.find((item) => item.id === folderId);
-  if (!folder) return;
-  const confirmed = window.confirm(`Delete folder "${folder.name || "Folder"}"? Its contents will move up one level.`);
-  if (!confirmed) return;
-  pushArtHistory();
+  if (!folder) return false;
   const folderKey = artOrganizerFolderKey(folderId);
   const contents = [...new Set(state.folderItems?.[folderId] || [])].filter((key) => key !== folderKey);
   const parentFolderId = Object.keys(state.folderItems || {}).find((candidateId) => (
@@ -654,6 +651,20 @@ function deleteArtFolder(folderId) {
     return !nestedFolderId || state.folders.some((item) => item.id === nestedFolderId);
   });
   destination.splice(index, 0, ...insertItems);
+  selectedArtNodeKeys.delete(folderKey);
+  selectedArtOrganizerKeys.delete(folderKey);
+  if (primaryArtNodeKey === folderKey) primaryArtNodeKey = [...selectedArtNodeKeys].pop() || "";
+  return true;
+}
+
+function deleteArtFolder(folderId) {
+  const state = artOrganizationSurface();
+  const folder = state.folders.find((item) => item.id === folderId);
+  if (!folder) return;
+  const confirmed = window.confirm(`Delete folder "${folder.name || "Folder"}"? Its contents will move up one level.`);
+  if (!confirmed) return;
+  pushArtHistory();
+  deleteArtFolderFromOrganization(folderId);
   stageArtOrganizationChange("Deleted folder");
 }
 
@@ -1104,25 +1115,103 @@ function removeSelectedArtComponentsFromList(components = [], selectedIds, remov
   });
 }
 
-function deleteSelectedArtComponents() {
-  const composition = selectedArtComposition();
-  const selectedIds = new Set(selectedArtComponentIds);
-  if (!composition || !selectedIds.size) return;
-  const beforeComponents = flattenArtComponents(composition.components || []).map(({ component }) => component.id);
-  const firstDeletedIndex = beforeComponents.findIndex((id) => selectedIds.has(id));
-  if (firstDeletedIndex < 0) return;
-  const removedIds = [];
-  pushArtHistory();
-  composition.components = removeSelectedArtComponentsFromList(composition.components || [], selectedIds, removedIds);
-  const afterComponents = flattenArtComponents(composition.components || []).map(({ component }) => component.id);
-  const nextId = afterComponents[Math.min(firstDeletedIndex, afterComponents.length - 1)] || afterComponents[firstDeletedIndex - 1] || "";
-  setArtComponentSelection(nextId ? [nextId] : []);
-  renderSelectedArtComposition();
+function canDeleteArtNode(key) {
+  const node = parseArtNodeKey(key);
+  if (node.kind === "folder") return artNodeExists(key);
+  if (node.kind === "composition") return Boolean(artComposition(node.id));
+  if (node.kind === "component") return Boolean(findArtComponent(artComposition(node.compositionId), node.id));
+  return false;
+}
+
+function deleteComponentNodesByComposition(componentKeys = []) {
+  const grouped = new Map();
+  for (const key of componentKeys) {
+    const node = parseArtNodeKey(key);
+    if (node.kind !== "component") continue;
+    const ids = grouped.get(node.compositionId) || new Set();
+    ids.add(node.id);
+    grouped.set(node.compositionId, ids);
+  }
+  let removedCount = 0;
+  for (const [compositionId, selectedIds] of grouped.entries()) {
+    const composition = artComposition(compositionId);
+    if (!composition) continue;
+    const removedIds = [];
+    composition.components = removeSelectedArtComponentsFromList(composition.components || [], selectedIds, removedIds);
+    removedCount += removedIds.length;
+    for (const id of removedIds) selectedArtNodeKeys.delete(artComponentNodeKey(compositionId, id));
+  }
+  return removedCount;
+}
+
+function deleteCompositionNode(compositionId) {
+  const composition = artComposition(compositionId);
+  if (!composition) return false;
+  markArtCompositionPendingDelete(compositionId);
+  artCompositions = artCompositions.filter((item) => item.id !== compositionId);
+  if (typeof removeArtCompositionLayoutInstances === "function") removeArtCompositionLayoutInstances(compositionId);
+  selectedArtNodeKeys.delete(`composition:${compositionId}`);
+  for (const key of [...selectedArtNodeKeys]) {
+    const node = parseArtNodeKey(key);
+    if (node.kind === "component" && node.compositionId === compositionId) selectedArtNodeKeys.delete(key);
+  }
+  return true;
+}
+
+function selectFallbackArtNode() {
+  const preferred = [...selectedArtNodeKeys].filter(artNodeExists).pop();
+  if (preferred) {
+    setArtNodeSelection([...selectedArtNodeKeys].filter(artNodeExists), preferred);
+    renderPrimaryArtNodeSelection();
+    return;
+  }
+  const nextComposition = visibleArtCompositions()[0] || artCompositions[0] || null;
+  if (nextComposition) {
+    selectArtComposition(nextComposition.id);
+    return;
+  }
+  selectedArtCompositionId = "";
+  selectedArtComponentId = "";
+  selectedArtComponentIds = new Set();
+  selectedArtNodeKeys = new Set();
+  primaryArtNodeKey = "";
+  selectedArtOrganizerKeys = new Set();
+  hideArtComponentEditor();
+  artPreviewTitle.textContent = "No Art Assets";
+  artPreviewMeta.textContent = "Create an art asset to begin.";
+  artPreviewArt.className = "art-preview-art";
+  artPreviewArt.replaceChildren();
   renderArtList();
-  artFileName.textContent = removedIds.length === 1 ? "Deleted 1 component" : `Deleted ${removedIds.length} components`;
-  rememberArtCompositionDrafts();
+  updateArtCreateButtons();
+}
+
+function deleteSelectedArtNodes() {
+  const keys = [...selectedArtNodeKeys].filter(canDeleteArtNode);
+  if (!keys.length) return;
+  const folderKeys = keys.filter((key) => parseArtNodeKey(key).kind === "folder");
+  if (folderKeys.length) {
+    const confirmed = window.confirm(`Delete ${folderKeys.length} folder${folderKeys.length === 1 ? "" : "s"}? Contents will move up one level.`);
+    if (!confirmed) return;
+  }
+  pushArtHistory();
+  let folderCount = 0;
+  let compositionCount = 0;
+  for (const key of folderKeys) {
+    if (deleteArtFolderFromOrganization(parseArtNodeKey(key).id)) folderCount += 1;
+  }
+  for (const key of keys.filter((item) => parseArtNodeKey(item).kind === "composition")) {
+    if (deleteCompositionNode(parseArtNodeKey(key).id)) compositionCount += 1;
+  }
+  const componentCount = deleteComponentNodesByComposition(keys);
   notifyArtAssetsChanged();
-  updateGlobalSaveButton();
+  selectFallbackArtNode();
+  rememberArtCompositionDrafts();
+  stageArtOrganizationChange("Deleted selected art nodes");
+  const parts = [];
+  if (folderCount) parts.push(`${folderCount} folder${folderCount === 1 ? "" : "s"}`);
+  if (compositionCount) parts.push(`${compositionCount} art asset${compositionCount === 1 ? "" : "s"}`);
+  if (componentCount) parts.push(`${componentCount} component${componentCount === 1 ? "" : "s"}`);
+  artFileName.textContent = `Deleted ${parts.join(", ")}. Save All to keep this change.`;
 }
 
 function hideArtComponentEditor() {
