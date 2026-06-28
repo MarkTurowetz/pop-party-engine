@@ -95,10 +95,15 @@ function isArtCompositionsDirty() {
   );
 }
 
+function isArtOrganizationDirty() {
+  return Boolean(artOrganizationSavedSnapshot) && JSON.stringify(cleanArtOrganizationForSave()) !== artOrganizationSavedSnapshot;
+}
+
 function artCompositionHistorySnapshot() {
   return JSON.stringify({
     compositions: serializeArtCompositionsForSave(artCompositions),
-    pendingDeleteIds: pendingArtCompositionDeleteIds()
+    pendingDeleteIds: pendingArtCompositionDeleteIds(),
+    organization: cleanArtOrganizationForSave()
   });
 }
 
@@ -127,6 +132,7 @@ function restoreArtCompositionHistory(snapshot) {
     markArtCompositionPendingDelete(compositionId);
   }
   artCompositions = snapshotCompositions.filter((composition) => !isArtCompositionPendingDelete(composition.id));
+  if (parsed?.organization) artOrganization = normalizeLoadedArtOrganization(parsed.organization);
   selectedArtCompositionId = preferredCompositionId && artComposition(preferredCompositionId)
     ? preferredCompositionId
     : artCompositions[0]?.id || "";
@@ -448,13 +454,24 @@ async function saveArtOrganization() {
   const result = await (window.PartyGameToolContext?.api?.art?.saveArtOrganization?.(artOrganization)
     || postJson("/api/art-organization", { organization: artOrganization }));
   artOrganization = normalizeLoadedArtOrganization(result.organization || artOrganization);
+  artOrganizationSavedSnapshot = JSON.stringify(artOrganization);
+  artFileName.textContent = "Art asset organization saved";
   renderArtList();
+  updateGlobalSaveButton();
+}
+
+function stageArtOrganizationChange(message = "Art asset organization changed") {
+  artOrganization = cleanArtOrganizationForSave();
+  renderArtList();
+  artFileName.textContent = `${message}. Save All to keep this change.`;
+  updateGlobalSaveButton();
 }
 
 function createArtFolder(parentFolderId = "") {
   const name = window.prompt("Folder name", "New Folder");
   if (name === null) return;
   const cleanName = String(name || "").trim() || "New Folder";
+  pushArtHistory();
   const state = artOrganizationSurface();
   const id = createSecureArtId("folder");
   state.folders.push({ id, name: cleanName });
@@ -467,10 +484,7 @@ function createArtFolder(parentFolderId = "") {
   }
   state.folderItems[id] = [];
   collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${id}`);
-  renderArtList();
-  saveArtOrganization().catch((error) => {
-    artFileName.textContent = error.message;
-  });
+  stageArtOrganizationChange("Created folder");
 }
 
 function renameArtFolder(folderId) {
@@ -479,11 +493,9 @@ function renameArtFolder(folderId) {
   if (!folder) return;
   const name = window.prompt("Folder name", folder.name || "Folder");
   if (name === null) return;
+  pushArtHistory();
   folder.name = String(name || "").trim() || "Folder";
-  renderArtList();
-  saveArtOrganization().catch((error) => {
-    artFileName.textContent = error.message;
-  });
+  stageArtOrganizationChange("Renamed folder");
 }
 
 function deleteArtFolder(folderId) {
@@ -492,6 +504,7 @@ function deleteArtFolder(folderId) {
   if (!folder) return;
   const confirmed = window.confirm(`Delete folder "${folder.name || "Folder"}"? Its contents will move up one level.`);
   if (!confirmed) return;
+  pushArtHistory();
   const folderKey = artOrganizerFolderKey(folderId);
   const contents = [...new Set(state.folderItems?.[folderId] || [])].filter((key) => key !== folderKey);
   const parentFolderId = Object.keys(state.folderItems || {}).find((candidateId) => (
@@ -508,10 +521,7 @@ function deleteArtFolder(folderId) {
     return !nestedFolderId || state.folders.some((item) => item.id === nestedFolderId);
   });
   destination.splice(index, 0, ...insertItems);
-  renderArtList();
-  saveArtOrganization().catch((error) => {
-    artFileName.textContent = error.message;
-  });
+  stageArtOrganizationChange("Deleted folder");
 }
 
 function removeOrganizerKeyFromSurface(state, key) {
@@ -569,20 +579,19 @@ function canReorderArtOrganizerItems(draggedKey, targetKey) {
 
 function reorderArtOrganizerItem(draggedKey, targetKey, placeAfter = false) {
   if (!canReorderArtOrganizerItem(draggedKey, targetKey)) return;
+  pushArtHistory();
   const state = artOrganizationSurface();
   const targetFolderId = Object.keys(state.folderItems || {}).find((folderId) => (state.folderItems[folderId] || []).includes(targetKey));
   removeOrganizerKeyFromSurface(state, draggedKey);
   const list = targetFolderId ? state.folderItems[targetFolderId] : state.order;
   const targetIndex = list.indexOf(targetKey);
   list.splice(Math.max(0, targetIndex + (placeAfter ? 1 : 0)), 0, draggedKey);
-  renderArtList();
-  saveArtOrganization().catch((error) => {
-    artFileName.textContent = error.message;
-  });
+  stageArtOrganizationChange("Reordered art asset");
 }
 
 function reorderArtOrganizerItems(draggedKey, targetKey, placeAfter = false) {
   if (!canReorderArtOrganizerItems(draggedKey, targetKey)) return;
+  pushArtHistory();
   const state = artOrganizationSurface();
   const draggedKeys = artOrganizerDragKeys(draggedKey);
   const targetFolderId = artOrganizerParentFolderId(state, targetKey);
@@ -591,27 +600,23 @@ function reorderArtOrganizerItems(draggedKey, targetKey, placeAfter = false) {
   const targetIndex = list.indexOf(targetKey);
   list.splice(Math.max(0, targetIndex + (placeAfter ? 1 : 0)), 0, ...draggedKeys);
   setArtOrganizerSelection(draggedKeys);
-  renderArtList();
-  saveArtOrganization().catch((error) => {
-    artFileName.textContent = error.message;
-  });
+  stageArtOrganizationChange("Reordered art assets");
 }
 
 function moveArtOrganizerItemToFolder(draggedKey, folderId) {
   if (!canMoveArtOrganizerItemToFolder(draggedKey, folderId)) return;
+  pushArtHistory();
   const state = artOrganizationSurface();
   removeOrganizerKeyFromSurface(state, draggedKey);
   state.folderItems[folderId] = state.folderItems[folderId] || [];
   state.folderItems[folderId].push(draggedKey);
   collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${folderId}`);
-  renderArtList();
-  saveArtOrganization().catch((error) => {
-    artFileName.textContent = error.message;
-  });
+  stageArtOrganizationChange("Moved art asset into folder");
 }
 
 function moveArtOrganizerItemsToFolder(draggedKey, folderId) {
   if (!canMoveArtOrganizerItemsToFolder(draggedKey, folderId)) return;
+  pushArtHistory();
   const state = artOrganizationSurface();
   const draggedKeys = artOrganizerDragKeys(draggedKey);
   for (const key of draggedKeys) removeOrganizerKeyFromSurface(state, key);
@@ -619,10 +624,7 @@ function moveArtOrganizerItemsToFolder(draggedKey, folderId) {
   state.folderItems[folderId].push(...draggedKeys);
   collapsedArtSections.delete(`art-folder:${selectedArtSurface}:${folderId}`);
   setArtOrganizerSelection(draggedKeys);
-  renderArtList();
-  saveArtOrganization().catch((error) => {
-    artFileName.textContent = error.message;
-  });
+  stageArtOrganizationChange("Moved art assets into folder");
 }
 
 function selectedArtComponents() {

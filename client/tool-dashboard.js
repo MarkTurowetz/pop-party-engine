@@ -36,10 +36,11 @@ const TOOL_DEFINITIONS = [
     id: "art",
     label: "Art Manager",
     screen: () => artScreen,
-    isDirty: () => Boolean(pendingArtReplacement) || isArtCompositionsDirty(),
+    isDirty: () => Boolean(pendingArtReplacement) || isArtCompositionsDirty() || isArtOrganizationDirty(),
     save: async () => {
       if (pendingArtReplacement) await saveArtReplacement();
       if (isArtCompositionsDirty()) await saveArtCompositions();
+      if (isArtOrganizationDirty()) await saveArtOrganization();
     },
     setup: () => setupArtTool()
   },

@@ -223,6 +223,7 @@ let artGroups = [];
 let artCompositions = [];
 let artOrganization = { stage: { folders: [], order: [], folderItems: {} }, controller: { folders: [], order: [], folderItems: {} } };
 let artCompositionsSavedSnapshot = "";
+let artOrganizationSavedSnapshot = "";
 let selectedArtAsset = null;
 let selectedArtComposite = null;
 let pendingArtReplacement = null;

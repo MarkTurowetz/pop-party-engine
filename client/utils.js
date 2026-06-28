@@ -426,6 +426,7 @@ function applyArtAssets(assets, groups = artGroups, compositions = artCompositio
   artGroups = groups || [];
   artCompositions = mergeArtCompositionDrafts(compositions || []);
   artOrganization = normalizeLoadedArtOrganization(organization);
+  artOrganizationSavedSnapshot = JSON.stringify(artOrganization);
   for (const asset of artAssets) {
     artAssetUrls.set(asset.id, asset.currentUrl);
   }
