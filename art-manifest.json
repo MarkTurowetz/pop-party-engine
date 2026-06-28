@@ -53,7 +53,7 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "childDistribution": "none",
+          "childDistribution": "horizontal",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -124,7 +124,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-28T00:01:28.051Z"
+      "updatedAt": "2026-06-28T01:29:01.127Z"
     },
     "player-avatar-rex": {
       "name": "Rex Avatar",
