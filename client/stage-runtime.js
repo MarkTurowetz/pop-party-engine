@@ -259,8 +259,15 @@ function clearStageObjectTimers() {
 }
 
 function clearStageActionTimers() {
+  window.clearTimeout(actionTimingTimer);
+  actionTimingTimer = null;
   for (const timerId of subActionTimers) window.clearTimeout(timerId);
   subActionTimers = [];
+}
+
+function clearStageCountdownTimer() {
+  window.clearInterval(stageCountdownTimer);
+  stageCountdownTimer = null;
 }
 
 function clearStageAudioPlayers() {
@@ -301,8 +308,11 @@ function syncStageWipeShown(lobby) {
   });
 }
 
-function resetStageObjects() {
+function resetStageObjects(options = {}) {
   clearStageObjectTimers();
+  if (options.clearActionTimers === true) clearStageActionTimers();
+  if (options.clearCountdownTimer === true) clearStageCountdownTimer();
+  if (options.resetWipe === true) cancelStageWipe();
   clearStageAudioPlayers();
   craftingTimerController()?.reset();
   setPlayersShown(true, { instant: false });
@@ -311,6 +321,16 @@ function resetStageObjects() {
   clearVotingCardVisuals({ instant: true });
   initStageTextObjects();
   setStageWidgetGameObjectShown("presentationClickPrompt", false, { instant: true, scope: "global" });
+}
+
+function hardResetStageToLobby() {
+  pausedCompletionRequest = null;
+  presentationAdvancePending = false;
+  resetStageObjects({
+    clearActionTimers: true,
+    clearCountdownTimer: true,
+    resetWipe: true
+  });
 }
 
 function isPresentedTextAction(action) {
@@ -683,7 +703,7 @@ function applyStageState(lobby) {
   }
 
   if (phase === "lobby" && lobby.lobbyFlowActive !== true) {
-    resetStageObjects();
+    hardResetStageToLobby();
   }
 }
 
@@ -953,7 +973,7 @@ async function requestStagePaused(isPaused) {
 
 async function quitStageToLobby() {
   if (!currentStageState?.stageCode) return;
-  resetStageObjects();
+  hardResetStageToLobby();
   setStagePaused(false, { localOnly: true });
   try {
     const result = await postJson("/api/quit-to-lobby", {
