@@ -90,6 +90,53 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
     null
   );
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; rotation?: number } | null>(
+    null
+  );
+
+  const beginResize = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    const originW = Number(get(component, "width") || 1);
+    const originH = Number(get(component, "height") || 1);
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let next = { width: originW, height: originH };
+    const move = (e: PointerEvent) => {
+      next = { width: Math.max(4, originW + (e.clientX - startX)), height: Math.max(4, originH + (e.clientY - startY)) };
+      setLiveTransform({ id: component.id, width: next.width, height: next.height });
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      setLiveTransform(null);
+      controller.updateComponent(component.id, { width: next.width, height: next.height } as Partial<ArtComponent>);
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  };
+
+  const beginRotate = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    const box = (event.currentTarget.closest("[data-art-canvas-component]") as HTMLElement)?.getBoundingClientRect();
+    if (!box) return;
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    let rotation = Number(get(component, "rotation") || 0);
+    const move = (e: PointerEvent) => {
+      rotation = Number(((Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI + 90).toFixed(1));
+      setLiveTransform({ id: component.id, rotation });
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      setLiveTransform(null);
+      controller.updateComponent(component.id, { rotation } as Partial<ArtComponent>);
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  };
 
   const visible = compositions.filter((composition) => (composition.surface || "stage") === surface);
   const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
@@ -133,10 +180,11 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
 
   const renderComponent = (component: ArtComponent): ReactElement => {
     const livePos = live?.id === component.id ? live : null;
+    const liveTx = liveTransform?.id === component.id ? liveTransform : null;
     const x = livePos ? livePos.x : Number(get(component, "x") || 0);
     const y = livePos ? livePos.y : Number(get(component, "y") || 0);
-    const width = Number(get(component, "width") || 1);
-    const height = Number(get(component, "height") || 1);
+    const width = liveTx?.width ?? Number(get(component, "width") || 1);
+    const height = liveTx?.height ?? Number(get(component, "height") || 1);
     const kind = component.kind;
     const isTextual = kind === "text" || kind === "badge";
     const fillCss = String(get(component, "fillCss") || "");
@@ -144,7 +192,7 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
     const borderColor = String(get(component, "borderColor") || "transparent");
     const borderWidth = Number(get(component, "borderWidth") || 0);
     const scale = Number(get(component, "scale") || 1);
-    const rotation = Number(get(component, "rotation") || 0);
+    const rotation = liveTx?.rotation ?? Number(get(component, "rotation") || 0);
     const imageUrl = componentSupportsImageMask(component) ? String(get(component, "imageDataUrl") || "") : "";
     const objectFit = String(get(component, "imageObjectFit") || "cover");
     const selected = selectedComponentIds.has(component.id);
@@ -190,6 +238,40 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
       >
         {isTextual ? <span>{String(get(component, "defaultText") || "")}</span> : null}
         {component.children?.map((child) => renderComponent(child))}
+        {selected ? (
+          <>
+            <div
+              data-art-resize-handle={component.id}
+              onPointerDown={(event) => beginResize(component, event)}
+              style={{
+                position: "absolute",
+                right: -6,
+                bottom: -6,
+                width: 12,
+                height: 12,
+                background: "#22d3ee",
+                border: "1px solid #17131f",
+                cursor: "nwse-resize"
+              }}
+            />
+            <div
+              data-art-rotate-handle={component.id}
+              onPointerDown={(event) => beginRotate(component, event)}
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: -22,
+                width: 12,
+                height: 12,
+                marginLeft: -6,
+                borderRadius: "50%",
+                background: "#ffe156",
+                border: "1px solid #17131f",
+                cursor: "grab"
+              }}
+            />
+          </>
+        ) : null}
       </div>
     );
   };
@@ -301,7 +383,7 @@ function ArtComponentInspector({
       <input
         type="number"
         step={step}
-        key={`${component.id}-${key}`}
+        key={`${component.id}-${key}-${String(get(component, key) ?? "")}`}
         defaultValue={String(get(component, key) ?? 0)}
         data-art-component-field={key}
         onBlur={(event) => commit({ [key]: Number(event.target.value) } as Partial<ArtComponent>)}
