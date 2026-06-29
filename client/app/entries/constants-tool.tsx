@@ -1,11 +1,7 @@
-import { legacyScriptsForRole } from "../legacy/script-manifest";
 import { createToolAppContext } from "../context/createToolAppContext";
-import { bootLegacySurface } from "../legacy/loadLegacySurface";
-import { mountConstantsToolApp } from "../../tools/constants/mountConstantsToolApp";
+import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor";
 
-export const legacyConstantsToolScripts = legacyScriptsForRole("constants");
+// The /constants route is now React-only: no legacy scripts, no bridge.
 export const constantsToolContext = createToolAppContext({ surface: "constants" });
 
-mountConstantsToolApp({ surface: constantsToolContext.surface });
-
-void bootLegacySurface("constants");
+void mountConstantsEditor({ api: constantsToolContext.api.constants, surface: constantsToolContext.surface });
