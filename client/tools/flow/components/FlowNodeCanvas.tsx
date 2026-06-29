@@ -1,5 +1,106 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject
+} from "react";
 import type { FlowGraphConnection, FlowGraphNode, FlowNodeExit } from "../flowNodeGraph";
+
+const MINIMAP_W = 200;
+const MINIMAP_H = 130;
+
+interface ViewportRect {
+  scrollLeft: number;
+  scrollTop: number;
+  clientW: number;
+  clientH: number;
+}
+
+function FlowNodeMinimap({
+  nodes,
+  worldWidth,
+  worldHeight,
+  zoom,
+  viewport,
+  stageRef
+}: {
+  nodes: FlowGraphNode[];
+  worldWidth: number;
+  worldHeight: number;
+  zoom: number;
+  viewport: ViewportRect;
+  stageRef: RefObject<HTMLDivElement | null>;
+}) {
+  const scale = Math.min(MINIMAP_W / worldWidth, MINIMAP_H / worldHeight);
+  const mmW = worldWidth * scale;
+  const mmH = worldHeight * scale;
+  const viewX = (viewport.scrollLeft / zoom) * scale;
+  const viewY = (viewport.scrollTop / zoom) * scale;
+  const viewW = (viewport.clientW / zoom) * scale;
+  const viewH = (viewport.clientH / zoom) * scale;
+
+  const centerOn = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const worldX = (event.clientX - rect.left) / scale;
+    const worldY = (event.clientY - rect.top) / scale;
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.scrollLeft = Math.max(0, worldX * zoom - stage.clientWidth / 2);
+    stage.scrollTop = Math.max(0, worldY * zoom - stage.clientHeight / 2);
+  };
+
+  return (
+    <div
+      className="flow-node-minimap"
+      data-node-minimap
+      onClick={centerOn}
+      style={{
+        position: "absolute",
+        right: 10,
+        bottom: 10,
+        width: mmW,
+        height: mmH,
+        background: "rgba(20, 12, 46, 0.85)",
+        border: "2px solid currentColor",
+        borderRadius: 4,
+        overflow: "hidden",
+        zIndex: 5,
+        cursor: "pointer"
+      }}
+    >
+      {nodes.map((node) => (
+        <div
+          key={node.id}
+          data-minimap-node={node.id}
+          style={{
+            position: "absolute",
+            left: node.x * scale,
+            top: node.y * scale,
+            width: Math.max(2, node.width * scale),
+            height: Math.max(2, node.height * scale),
+            background: node.selected ? "#ffe156" : "rgba(255, 255, 255, 0.6)",
+            borderRadius: 1
+          }}
+        />
+      ))}
+      <div
+        data-minimap-viewport
+        style={{
+          position: "absolute",
+          left: viewX,
+          top: viewY,
+          width: viewW,
+          height: viewH,
+          border: "1px solid #fff",
+          background: "rgba(255, 255, 255, 0.14)",
+          pointerEvents: "none"
+        }}
+      />
+    </div>
+  );
+}
 
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 1;
@@ -135,6 +236,35 @@ export function FlowNodeCanvas({
   const zoomRef = useRef(1);
   useEffect(() => {
     zoomRef.current = zoom;
+  }, [zoom]);
+
+  // Track the stage viewport (scroll + client size) so the minimap can draw the
+  // visible-region indicator. Scroll doesn't re-render React, so we listen for it.
+  const [viewport, setViewport] = useState({ scrollLeft: 0, scrollTop: 0, clientW: 0, clientH: 0 });
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const update = () =>
+      setViewport({
+        scrollLeft: stage.scrollLeft,
+        scrollTop: stage.scrollTop,
+        clientW: stage.clientWidth,
+        clientH: stage.clientHeight
+      });
+    update();
+    stage.addEventListener("scroll", update, { passive: true });
+    return () => stage.removeEventListener("scroll", update);
+  }, []);
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (stage) {
+      setViewport({
+        scrollLeft: stage.scrollLeft,
+        scrollTop: stage.scrollTop,
+        clientW: stage.clientWidth,
+        clientH: stage.clientHeight
+      });
+    }
   }, [zoom]);
 
   // Non-passive wheel listener so we can preventDefault and zoom anchored at the cursor.
@@ -291,7 +421,14 @@ export function FlowNodeCanvas({
       className="flow-react-node-canvas"
       data-flow-react-component="node-canvas"
       data-node-depth={depth}
-      style={{ gridColumn: "1 / 4", minWidth: 0, display: "flex", flexDirection: "column", minHeight: 0 }}
+      style={{
+        gridColumn: "1 / 4",
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+        position: "relative"
+      }}
     >
       <header className="flow-node-canvas-bar">
         {depth === "actions" ? (
@@ -429,6 +566,9 @@ export function FlowNodeCanvas({
           </div>
         </div>
       </div>
+      {nodes.length ? (
+        <FlowNodeMinimap nodes={nodes} worldWidth={width} worldHeight={height} zoom={zoom} viewport={viewport} stageRef={stageRef} />
+      ) : null}
     </section>
   );
 }
