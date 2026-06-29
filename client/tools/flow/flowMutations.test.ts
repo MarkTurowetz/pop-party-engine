@@ -20,7 +20,6 @@ import {
   setFlowStateNextTarget,
   setFlowStateVotingSource
 } from "./flowMutations";
-import { installFlowMutationsAdapter } from "./flowMutationsAdapter";
 import type { FlowAction, FlowState, GameFlow } from "../../types/game-data";
 
 describe("Flow mutations", () => {
@@ -78,21 +77,6 @@ describe("Flow mutations", () => {
       subActions: []
     });
     expect(parentAction.subActions?.map((action) => action.id)).toEqual(["sub-a", result.action.id, "sub-b"]);
-  });
-
-  it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
-    const setAttribute = vi.fn();
-    const target = {
-      document: {
-        documentElement: { setAttribute }
-      }
-    } as unknown as Window;
-
-    const adapter = installFlowMutationsAdapter(target);
-
-    expect(target.PartyGameFlowMutations).toBe(adapter);
-    expect(adapter.createDefaultFlowState(2).id).toBe("state-2");
-    expect(setAttribute).toHaveBeenCalledWith("data-flow-mutations-adapter", "module");
   });
 
   it("flattens top-level, sub-action, and decision branch IDs", () => {

@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FlowEditorController } from "./flowEditorController";
 import type { FlowActionTypeMeta } from "./flowSelectors";
-import type { FlowToolReactShellHandlers } from "./mountFlowToolApp";
 import { useFlowEditor } from "./useFlowEditor";
-import { FlowToolApp } from "./FlowToolApp";
+import { FlowToolApp, type FlowToolReactShellHandlers } from "./FlowToolApp";
 import { FlowNodeCanvas } from "./components/FlowNodeCanvas";
 import {
   actionGraphConnections,

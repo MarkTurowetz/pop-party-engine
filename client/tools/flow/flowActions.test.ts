@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createDefaultFlowAction, ensureActionTiming } from "./flowActions";
-import { installFlowActionsAdapter } from "./flowActionsAdapter";
 
 describe("Flow actions", () => {
   it("creates a default top-level action matching the legacy shape", () => {
@@ -25,22 +24,6 @@ describe("Flow actions", () => {
       timing: { mode: "S+", seconds: 0 },
       subActions: []
     });
-  });
-
-  it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
-    const setAttribute = vi.fn();
-    const target = {
-      document: {
-        documentElement: { setAttribute }
-      }
-    } as unknown as Window;
-
-    const adapter = installFlowActionsAdapter(target);
-
-    expect(target.PartyGameFlowActions).toBe(adapter);
-    expect(adapter.createDefaultFlowAction("state", "Action", false, { timestamp: 1 }).id).toBe("state-action-1");
-    expect(adapter.ensureActionTiming({ id: "a", type: "presentText" })).toEqual({ mode: "E+", seconds: 0 });
-    expect(setAttribute).toHaveBeenCalledWith("data-flow-actions-adapter", "module");
   });
 
   it("normalizes action timing with legacy input and sub-action rules", () => {

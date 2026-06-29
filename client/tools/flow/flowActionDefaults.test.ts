@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { installFlowActionDefaultsAdapter } from "./flowActionDefaultsAdapter";
 import { createActionDefaults } from "./flowActionDefaults";
 import type { FlowAction } from "../../types/game-data";
 
@@ -49,13 +48,5 @@ describe("Flow action defaults", () => {
     defaults.applyActionTypeDefaults(action, "decision");
     expect(action).toMatchObject({ variable: "activePlayerCount", valueType: "int" });
     expect(ensureDecisionBranches).toHaveBeenCalledWith(action);
-  });
-
-  it("installs the browser adapter", () => {
-    const target = { document: { documentElement: { setAttribute: () => undefined } } } as unknown as Window;
-    const adapter = installFlowActionDefaultsAdapter(target);
-
-    expect(target.PartyGameFlowActionDefaults).toBe(adapter);
-    expect(adapter.createActionDefaults({}).applyActionTypeDefaults).toBeTypeOf("function");
   });
 });

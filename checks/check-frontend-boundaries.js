@@ -12,19 +12,10 @@ const runtimeEntryFiles = [
 
 const allowedTypedGlobalAdapters = new Set([
   "client/app/context/toolContextAdapter.ts",
-  "client/tools/flow/flowActionDefaultsAdapter.ts",
-  "client/tools/flow/flowActionOptionsAdapter.ts",
-  "client/tools/flow/flowActionsAdapter.ts",
-  "client/tools/flow/flowActionSummaryAdapter.ts",
-  "client/tools/flow/flowDecisionAdapter.ts",
-  "client/tools/flow/flowMutationsAdapter.ts",
-  "client/tools/flow/flowRouteGraphAdapter.ts",
-  "client/tools/flow/flowSelectionAdapter.ts",
-  "client/tools/flow/flowSelectorsAdapter.ts",
-  "client/tools/flow/flowSerializationAdapter.ts",
+  // Flow is fully React (no adapters). The remaining entries are the legacy bridges
+  // for the four tools not yet migrated (Phase 2).
   "client/tools/art/mountArtToolApp.tsx",
   "client/tools/constants/mountConstantsToolApp.tsx",
-  "client/tools/flow/mountFlowToolApp.tsx",
   "client/tools/host-audio/mountHostAudioToolApp.tsx",
   "client/tools/layout/mountLayoutToolApp.tsx"
 ]);

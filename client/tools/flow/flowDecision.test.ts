@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   decisionBranchById,
   decisionBranchName,
@@ -7,7 +7,6 @@ import {
   ensureDecisionBranches,
   makeDecisionBranchId
 } from "./flowDecision";
-import { installFlowDecisionAdapter } from "./flowDecisionAdapter";
 import type { FlowAction } from "../../types/game-data";
 
 describe("Flow decision helpers", () => {
@@ -97,20 +96,5 @@ describe("Flow decision helpers", () => {
     expect(decisionBranchWireLabel({ type: "hit", value: "yes" })).toBe("yes");
     expect(decisionBranchWireLabel({ type: "code", code: "x > 10" }, 1)).toBe("x > 10");
     expect(decisionBranchWireLabel({ type: "noMatch" })).toBe("No Match");
-  });
-
-  it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
-    const setAttribute = vi.fn();
-    const target = {
-      document: {
-        documentElement: { setAttribute }
-      }
-    } as unknown as Window;
-
-    const adapter = installFlowDecisionAdapter(target);
-
-    expect(target.PartyGameFlowDecision).toBe(adapter);
-    expect(adapter.decisionVariableName("numberOfRounds")).toBe("Number of Rounds");
-    expect(setAttribute).toHaveBeenCalledWith("data-flow-decision-adapter", "module");
   });
 });

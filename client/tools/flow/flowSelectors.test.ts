@@ -19,7 +19,6 @@ import {
   stateActionNameSet,
   uniqueActionNameForType
 } from "./flowSelectors";
-import { installFlowSelectorsAdapter } from "./flowSelectorsAdapter";
 import type { FlowAction, GameFlow } from "../../types/game-data";
 
 const flow: GameFlow = {
@@ -200,26 +199,5 @@ describe("Flow selectors", () => {
     expect(flowGameObjectTargetName(stageLayouts, "intro", "score", "global")).toBe("Global: Score");
     expect(flowGameObjectTargetName(stageLayouts, "intro", "bonus-card")).toBe("Bonus Card (bonus-card)");
     expect(flowGameObjectTargetName(stageLayouts, "intro", "missing")).toBe("missing");
-  });
-
-  it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
-    const setAttribute = vi.fn();
-    const target = {
-      document: {
-        documentElement: { setAttribute }
-      }
-    } as unknown as Window;
-
-    const adapter = installFlowSelectorsAdapter(target);
-
-    expect(target.PartyGameFlowSelectors).toBe(adapter);
-    expect(adapter.makeFlowId("Flow ID", "fallback")).toBe("flow-id");
-    expect(adapter.flowActionTargetOptions({ actions: [] })).toEqual([
-      { id: "", name: "No Connection" },
-      { id: "none", name: "None" },
-      { id: "return", name: "Return To Moments" }
-    ]);
-    expect(adapter.flowGameObjectTargetParts("moment:prompt")).toEqual({ scope: "moment", id: "prompt" });
-    expect(setAttribute).toHaveBeenCalledWith("data-flow-selectors-adapter", "module");
   });
 });

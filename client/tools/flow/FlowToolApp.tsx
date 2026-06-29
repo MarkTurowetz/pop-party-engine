@@ -4,6 +4,18 @@ import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowPreviewModel } from "./flowPreviewModel";
 import { ActionInspector, type ActionInspectorEditHandlers } from "./components/ActionInspector";
 
+export interface FlowToolReactShellHandlers {
+  addAction?: () => void;
+  addState?: () => void;
+  deleteSelection?: () => void;
+  revert?: () => void;
+  selectAction?: (actionId: string) => void;
+  selectRouteBranch?: (routeNodeId: string, branchId: string) => void;
+  selectRouteNode?: (routeNodeId: string) => void;
+  selectState?: (stateId: string) => void;
+  setViewMode?: (mode: "list" | "node") => void;
+}
+
 export interface FlowReorderHandlers {
   onReorderState?: (draggedStateId: string, targetStateId: string) => void;
   onReorderAction?: (draggedActionId: string, targetActionId: string) => void;
@@ -14,7 +26,6 @@ import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
 import { FlowRouteInspector } from "./components/FlowRouteInspector";
 import { FlowStateList } from "./components/FlowStateList";
 import { FlowToolbar } from "./components/FlowToolbar";
-import type { FlowToolReactShellHandlers } from "./mountFlowToolApp";
 
 export interface FlowToolAppProps {
   canAddAction?: boolean;

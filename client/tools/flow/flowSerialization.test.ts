@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { flowHistorySnapshot, parseFlowHistorySnapshot, serializeFlowActionForSave, serializeGameFlowForSave } from "./flowSerialization";
-import { installFlowSerializationAdapter } from "./flowSerializationAdapter";
 import type { FlowRouteNode, GameFlow } from "../../types/game-data";
 
 describe("Flow serialization", () => {
@@ -126,21 +125,5 @@ describe("Flow serialization", () => {
       states: [{ id: "lobby", actions: [{ id: "a", type: "presentText", subActions: [] }] }],
       routeNodes: []
     });
-  });
-
-  it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
-    const setAttribute = vi.fn();
-    const target = {
-      document: {
-        documentElement: { setAttribute }
-      }
-    } as unknown as Window;
-
-    const adapter = installFlowSerializationAdapter(target);
-
-    expect(target.PartyGameFlowSerialization).toBe(adapter);
-    expect(adapter.parseFlowHistorySnapshot(adapter.flowHistorySnapshot({ states: [] }))).toEqual({ states: [], routeNodes: [] });
-    expect(typeof adapter.serializeGameFlowForSave).toBe("function");
-    expect(setAttribute).toHaveBeenCalledWith("data-flow-serialization-adapter", "module");
   });
 });

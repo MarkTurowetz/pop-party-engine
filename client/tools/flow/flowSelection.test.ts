@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { installFlowSelectionAdapter } from "./flowSelectionAdapter";
 import {
   clearFlowActionSelectionState,
   flowActionIsSelected,
@@ -82,13 +81,5 @@ describe("Flow selection helpers", () => {
       selectedFlowRouteBranchId: "branch-1",
       selectedFlowActionId: ""
     });
-  });
-
-  it("installs the browser adapter", () => {
-    const target = { document: { documentElement: { setAttribute: () => undefined } } } as unknown as Window;
-    const adapter = installFlowSelectionAdapter(target);
-
-    expect(target.PartyGameFlowSelection).toBe(adapter);
-    expect(adapter.setFlowActionSelectionState(["action-1"], ["action-1"]).selectedFlowActionId).toBe("action-1");
   });
 });

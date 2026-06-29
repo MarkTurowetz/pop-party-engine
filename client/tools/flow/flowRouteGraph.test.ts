@@ -11,7 +11,6 @@ import {
   routeGraphTargetOptions,
   serializeFlowRouteNodeForSave
 } from "./flowRouteGraph";
-import { installFlowRouteGraphAdapter } from "./flowRouteGraphAdapter";
 import type { FlowAction, GameFlow } from "../../types/game-data";
 
 describe("Flow route graph model helpers", () => {
@@ -195,22 +194,5 @@ describe("Flow route graph model helpers", () => {
       valueType: "int",
       branches: [{ id: "hit", type: "branch", value: "", code: "", targetNodeId: "entry" }]
     });
-  });
-
-  it("installs a legacy compatibility adapter with a DOM-visible marker", () => {
-    const setAttribute = vi.fn();
-    const target = {
-      document: {
-        documentElement: { setAttribute }
-      }
-    } as unknown as Window;
-
-    const adapter = installFlowRouteGraphAdapter(target);
-
-    expect(target.PartyGameFlowRouteGraph).toBe(adapter);
-    expect(adapter.createRouteActionNode({ states: [] }, null, { idFactory: () => "route-action" }).id).toBe("route-action");
-    expect(adapter.flowRouteTargetName({ states: [] }, "")).toBe("No Target");
-    expect(adapter.serializeFlowRouteNodeForSave({ id: "entry" }).routeNodeType).toBe("momentEntry");
-    expect(setAttribute).toHaveBeenCalledWith("data-flow-route-graph-adapter", "module");
   });
 });

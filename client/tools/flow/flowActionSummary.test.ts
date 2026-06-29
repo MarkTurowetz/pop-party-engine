@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { installFlowActionSummaryAdapter } from "./flowActionSummaryAdapter";
 import { createActionSummary, type FlowActionSummaryContext } from "./flowActionSummary";
 import type { FlowAction } from "../../types/game-data";
 
@@ -48,13 +47,5 @@ describe("Flow action summary", () => {
     expect(runtime.actionSummary({ id: "branch", type: "decision", variable: "score" } as FlowAction)).toBe("score: hit: next");
     expect(runtime.actionSummary({ id: "audio", type: "playHostAudio", hostAudioId: "intro", playMode: "index", lineIndex: 2 } as FlowAction))
       .toBe("Play host audio: Audio intro / Index 2 / E+ 0.0s");
-  });
-
-  it("installs the browser adapter", () => {
-    const target = { document: { documentElement: { setAttribute: () => undefined } } } as unknown as Window;
-    const adapter = installFlowActionSummaryAdapter(target);
-
-    expect(target.PartyGameFlowActionSummary).toBe(adapter);
-    expect(adapter.createActionSummary(context()).actionValueBadge(null)).toBeNull();
   });
 });
