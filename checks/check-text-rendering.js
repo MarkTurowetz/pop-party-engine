@@ -16,7 +16,7 @@ const filesToCheck = [
   "client/controller-microphone-access-view.js",
   "client/controller-setup-bindings.js",
   "client/runtime/controllerTextInputView.ts",
-  "client/controller-voice-input.js",
+  "client/runtime/controllerVoiceInput.ts",
   "client/layout-runtime.js",
   "client/layout-tool.js",
   "client/stage-runtime.js",
