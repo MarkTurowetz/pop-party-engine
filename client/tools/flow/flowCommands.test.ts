@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
+  addFlowActionCommand,
   addFlowStateCommand,
+  addFlowSubActionCommand,
   createFlowCommandHistory,
+  moveFlowActionCommand,
   moveFlowStateCommand,
-  renameFlowStateCommand
+  moveFlowSubActionCommand,
+  removeFlowActionsCommand,
+  removeFlowRouteBranchCommand,
+  removeFlowRouteNodeCommand,
+  removeFlowStatesCommand,
+  renameFlowStateCommand,
+  setFlowStateEntryTargetCommand,
+  setFlowStateNextTargetCommand,
+  setFlowStateVotingSourceCommand
 } from "./flowCommands";
 import type { GameFlow } from "../../types/game-data";
 
@@ -12,6 +23,22 @@ function flowFixture(): GameFlow {
     states: [
       { id: "intro", name: "Intro", actions: [] },
       { id: "round-one", name: "Round One", actions: [] }
+    ],
+    routeNodes: []
+  };
+}
+
+function actionFlowFixture(): GameFlow {
+  return {
+    states: [
+      {
+        id: "round-one",
+        name: "Round One",
+        actions: [
+          { id: "act-1", name: "Action 1", type: "message", subActions: [{ id: "sub-1", name: "Sub 1", type: "message" }] },
+          { id: "act-2", name: "Action 2", type: "message" }
+        ]
+      }
     ],
     routeNodes: []
   };
@@ -70,5 +97,113 @@ describe("Flow command history", () => {
     expect(history.undoLabels()).toEqual(["Rename flow state"]);
     expect(history.undo()?.states[0].name).toBe("First");
     expect(history.undo()).toBeNull();
+  });
+});
+
+describe("Flow action commands", () => {
+  it("adds an action after the selected primary action", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(addFlowActionCommand("round-one", "act-1"));
+
+    expect(next.states[0].actions?.map((action) => action.id)).toEqual(["act-1", expect.any(String), "act-2"]);
+    expect(next.states[0].actions).toHaveLength(3);
+  });
+
+  it("adds a sub-action under a parent action", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(addFlowSubActionCommand("round-one", "act-1"));
+
+    expect(next.states[0].actions?.[0].subActions).toHaveLength(2);
+  });
+
+  it("moves an action within a state", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(moveFlowActionCommand("round-one", "act-2", "act-1", false));
+
+    expect(next.states[0].actions?.map((action) => action.id)).toEqual(["act-2", "act-1"]);
+  });
+
+  it("moves a sub-action within its parent", () => {
+    const flow = actionFlowFixture();
+    flow.states[0].actions![0].subActions!.push({ id: "sub-2", name: "Sub 2", type: "message" });
+    const history = createFlowCommandHistory(flow);
+
+    const next = history.execute(moveFlowSubActionCommand("round-one", "act-1", "sub-2", "sub-1", false));
+
+    expect(next.states[0].actions?.[0].subActions?.map((sub) => sub.id)).toEqual(["sub-2", "sub-1"]);
+  });
+
+  it("removes selected actions and their sub-actions", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(removeFlowActionsCommand("round-one", ["act-1"]));
+
+    expect(next.states[0].actions?.map((action) => action.id)).toEqual(["act-2"]);
+    expect(history.undo()?.states[0].actions).toHaveLength(2);
+  });
+});
+
+describe("Flow state target and delete commands", () => {
+  it("deletes flow states (honouring protected ids)", () => {
+    const history = createFlowCommandHistory(flowFixture());
+
+    const next = history.execute(removeFlowStatesCommand(["round-one"]));
+
+    expect(next.states.map((state) => state.id)).toEqual(["intro"]);
+  });
+
+  it("sets next, entry, and voting targets", () => {
+    const history = createFlowCommandHistory(flowFixture());
+
+    history.execute(setFlowStateNextTargetCommand("intro", "round-one"));
+    history.execute(setFlowStateEntryTargetCommand("intro", "act-1"));
+    const next = history.execute(setFlowStateVotingSourceCommand("intro", "round-one"));
+
+    expect(next.states[0].nextStateTargetId).toBe("round-one");
+    expect(next.states[0].entryTargetActionId).toBe("act-1");
+    expect(next.states[0].votingSourceStateId).toBe("round-one");
+  });
+});
+
+describe("Flow route commands", () => {
+  function routeFlowFixture(): GameFlow {
+    return {
+      states: [{ id: "round-one", name: "Round One", actions: [] }],
+      routeNodes: [
+        {
+          id: "node-1",
+          branches: [
+            { id: "branch-1", name: "Branch 1", type: "match" },
+            { id: "branch-default", name: "Default", type: "noMatch" }
+          ]
+        }
+      ]
+    } as GameFlow;
+  }
+
+  function branchIds(flow: GameFlow): string[] {
+    const node = flow.routeNodes?.[0] as { branches?: { id: string }[] } | undefined;
+    return (node?.branches || []).map((branch) => branch.id);
+  }
+
+  it("removes a match branch but blocks the noMatch branch", () => {
+    const history = createFlowCommandHistory(routeFlowFixture());
+
+    const removed = history.execute(removeFlowRouteBranchCommand("node-1", "branch-1"));
+    expect(branchIds(removed)).toEqual(["branch-default"]);
+
+    const blocked = history.execute(removeFlowRouteBranchCommand("node-1", "branch-default"));
+    expect(branchIds(blocked)).toEqual(["branch-default"]);
+  });
+
+  it("removes a route node", () => {
+    const history = createFlowCommandHistory(routeFlowFixture());
+
+    const next = history.execute(removeFlowRouteNodeCommand("node-1"));
+
+    expect(next.routeNodes).toEqual([]);
   });
 });

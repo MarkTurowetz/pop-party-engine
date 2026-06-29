@@ -1,6 +1,43 @@
-import type { FlowState, GameFlow } from "../../types/game-data";
-import { addFlowState, createDefaultFlowState, moveFlowState, renameFlowState, type RenameFlowStateOptions } from "./flowMutations";
+import type { FlowAction, FlowRouteNode, FlowState, GameFlow } from "../../types/game-data";
+import {
+  addDefaultFlowAction,
+  addDefaultFlowSubAction,
+  addFlowState,
+  createDefaultFlowState,
+  moveFlowActionInState,
+  moveFlowState,
+  moveFlowSubAction,
+  removeFlowRouteBranch,
+  removeFlowRouteNode,
+  removeFlowStates,
+  removeSelectedFlowActionsFromList,
+  renameFlowState,
+  setFlowStateEntryTarget,
+  setFlowStateNextTarget,
+  setFlowStateVotingSource,
+  type RemoveFlowRouteBranchOptions,
+  type RenameFlowStateOptions
+} from "./flowMutations";
 import { assertFlowModel } from "./flowValidation";
+
+function findFlowState(flow: GameFlow, stateId: string): FlowState | undefined {
+  return (flow.states || []).find((state) => state.id === stateId);
+}
+
+function findFlowAction(state: FlowState | undefined, actionId: string): FlowAction | undefined {
+  if (!state) return undefined;
+  for (const action of state.actions || []) {
+    if (action.id === actionId) return action;
+    for (const subAction of action.subActions || []) {
+      if (subAction.id === actionId) return subAction;
+    }
+  }
+  return undefined;
+}
+
+function findFlowRouteNode(flow: GameFlow, nodeId: string): FlowRouteNode | undefined {
+  return (flow.routeNodes || []).find((node) => node.id === nodeId);
+}
 
 export interface FlowCommand {
   id: string;
@@ -115,6 +152,142 @@ export function moveFlowStateCommand(draggedStateId: string, targetStateId: stri
     label: "Move flow state",
     apply: (flow) => {
       moveFlowState(flow, draggedStateId, targetStateId, placeAfter);
+    }
+  };
+}
+
+export function removeFlowStatesCommand(stateIds: Iterable<string>): FlowCommand {
+  const ids = [...stateIds];
+  return {
+    id: `remove-flow-states:${ids.join(",")}`,
+    label: ids.length > 1 ? "Delete flow states" : "Delete flow state",
+    apply: (flow) => {
+      removeFlowStates(flow, ids);
+    }
+  };
+}
+
+export function addFlowActionCommand(stateId: string, selectedPrimaryActionId = ""): FlowCommand {
+  return {
+    id: `add-flow-action:${stateId}`,
+    label: "Add flow action",
+    apply: (flow) => {
+      const state = findFlowState(flow, stateId);
+      if (state) addDefaultFlowAction(state, selectedPrimaryActionId);
+    }
+  };
+}
+
+export function addFlowSubActionCommand(stateId: string, parentActionId: string, selectedSubActionId = ""): FlowCommand {
+  return {
+    id: `add-flow-sub-action:${parentActionId}`,
+    label: "Add sub-action",
+    apply: (flow) => {
+      const parentAction = findFlowAction(findFlowState(flow, stateId), parentActionId);
+      if (parentAction) addDefaultFlowSubAction(parentAction, selectedSubActionId, stateId);
+    }
+  };
+}
+
+export function moveFlowActionCommand(
+  stateId: string,
+  draggedActionId: string,
+  targetActionId: string,
+  placeAfter = false
+): FlowCommand {
+  return {
+    id: `move-flow-action:${draggedActionId}`,
+    label: "Move flow action",
+    apply: (flow) => {
+      moveFlowActionInState(findFlowState(flow, stateId), draggedActionId, targetActionId, placeAfter);
+    }
+  };
+}
+
+export function moveFlowSubActionCommand(
+  stateId: string,
+  parentActionId: string,
+  draggedActionId: string,
+  targetActionId: string,
+  placeAfter = false
+): FlowCommand {
+  return {
+    id: `move-flow-sub-action:${draggedActionId}`,
+    label: "Move sub-action",
+    apply: (flow) => {
+      const parentAction = findFlowAction(findFlowState(flow, stateId), parentActionId);
+      moveFlowSubAction(parentAction, draggedActionId, targetActionId, placeAfter);
+    }
+  };
+}
+
+export function removeFlowActionsCommand(stateId: string, selectedIds: Iterable<string>): FlowCommand {
+  const ids = new Set(selectedIds);
+  return {
+    id: `remove-flow-actions:${[...ids].join(",")}`,
+    label: ids.size > 1 ? "Delete flow actions" : "Delete flow action",
+    apply: (flow) => {
+      const state = findFlowState(flow, stateId);
+      if (!state) return;
+      const result = removeSelectedFlowActionsFromList(state.actions || [], ids);
+      state.actions = result.actions;
+    }
+  };
+}
+
+export function setFlowStateNextTargetCommand(stateId: string, targetId: string): FlowCommand {
+  return {
+    id: `set-flow-state-next-target:${stateId}`,
+    label: "Set next state target",
+    apply: (flow) => {
+      const state = findFlowState(flow, stateId);
+      if (state) setFlowStateNextTarget(state, targetId);
+    }
+  };
+}
+
+export function setFlowStateEntryTargetCommand(stateId: string, targetId: string): FlowCommand {
+  return {
+    id: `set-flow-state-entry-target:${stateId}`,
+    label: "Set entry action target",
+    apply: (flow) => {
+      const state = findFlowState(flow, stateId);
+      if (state) setFlowStateEntryTarget(state, targetId);
+    }
+  };
+}
+
+export function setFlowStateVotingSourceCommand(stateId: string, sourceStateId: string): FlowCommand {
+  return {
+    id: `set-flow-state-voting-source:${stateId}`,
+    label: "Set voting source",
+    apply: (flow) => {
+      const state = findFlowState(flow, stateId);
+      if (state) setFlowStateVotingSource(state, sourceStateId);
+    }
+  };
+}
+
+export function removeFlowRouteBranchCommand(
+  nodeId: string,
+  branchId: string,
+  options: RemoveFlowRouteBranchOptions = {}
+): FlowCommand {
+  return {
+    id: `remove-flow-route-branch:${nodeId}:${branchId}`,
+    label: "Delete route branch",
+    apply: (flow) => {
+      removeFlowRouteBranch(findFlowRouteNode(flow, nodeId), branchId, options);
+    }
+  };
+}
+
+export function removeFlowRouteNodeCommand(nodeId: string): FlowCommand {
+  return {
+    id: `remove-flow-route-node:${nodeId}`,
+    label: "Delete route node",
+    apply: (flow) => {
+      removeFlowRouteNode(flow, nodeId);
     }
   };
 }
