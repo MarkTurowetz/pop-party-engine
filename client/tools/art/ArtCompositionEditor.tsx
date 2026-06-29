@@ -1,4 +1,10 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
+import {
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactElement
+} from "react";
 import type { ArtComponent } from "../../types/game-data";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import {
@@ -24,6 +30,14 @@ const SCALAR_FIELDS: { key: string; label: string }[] = [
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
+}
+
+/** Map a shape style + borderRadius to a CSS border-radius (matches legacy is-style-*). */
+function shapeBorderRadius(shapeStyle: string, borderRadius: number): string {
+  if (shapeStyle === "circle") return "50%";
+  if (shapeStyle === "pill") return "9999px";
+  if (shapeStyle === "rectangle") return "0";
+  return `${Math.max(borderRadius, 12)}px`;
 }
 
 function findComponent(components: ArtComponent[], id: string): ArtComponent | undefined {
@@ -123,33 +137,58 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
     const y = livePos ? livePos.y : Number(get(component, "y") || 0);
     const width = Number(get(component, "width") || 1);
     const height = Number(get(component, "height") || 1);
-    const fill = String(get(component, "fillColor") || "transparent");
-    const border = String(get(component, "borderColor") || "#17131f");
+    const kind = component.kind;
+    const isTextual = kind === "text" || kind === "badge";
+    const fillCss = String(get(component, "fillCss") || "");
+    const fillColor = String(get(component, "fillColor") || "transparent");
+    const borderColor = String(get(component, "borderColor") || "transparent");
+    const borderWidth = Number(get(component, "borderWidth") || 0);
+    const scale = Number(get(component, "scale") || 1);
+    const rotation = Number(get(component, "rotation") || 0);
+    const imageUrl = componentSupportsImageMask(component) ? String(get(component, "imageDataUrl") || "") : "";
+    const objectFit = String(get(component, "imageObjectFit") || "cover");
+    const selected = selectedComponentIds.has(component.id);
+
+    const style: CSSProperties = {
+      position: "absolute",
+      left: x - width / 2,
+      top: y - height / 2,
+      width,
+      height,
+      transform: `scale(${scale}) rotate(${rotation}deg)`,
+      transformOrigin: "center",
+      borderRadius: shapeBorderRadius(String(get(component, "shapeStyle") || "rounded"), Number(get(component, "borderRadius") || 0)),
+      background: imageUrl ? "transparent" : fillCss || (fillColor === "transparent" ? "rgba(255,255,255,0.06)" : fillColor),
+      backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
+      backgroundSize: imageUrl ? objectFit : undefined,
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+      border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "1px solid rgba(255,255,255,0.18)",
+      outline: selected ? "2px solid #22d3ee" : "none",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: String(get(component, "fontColor") || "#17131f"),
+      fontSize: isTextual ? Number(get(component, "fontSize") || 16) : 11,
+      overflow: "hidden",
+      boxSizing: "border-box"
+    };
+
     return (
       <div
         key={component.id}
         className="art-canvas-component"
         data-art-canvas-component={component.id}
-        aria-current={selectedComponentIds.has(component.id) ? "true" : undefined}
-        style={{
-          position: "absolute",
-          left: x - width / 2,
-          top: y - height / 2,
-          width,
-          height,
-          background: fill === "transparent" ? "rgba(255,255,255,0.06)" : fill,
-          border: `2px solid ${border === "transparent" ? "#888" : border}`,
-          outline: selectedComponentIds.has(component.id) ? "2px solid #22d3ee" : "none",
-          fontSize: 11,
-          overflow: "hidden"
-        }}
+        data-art-component-kind={kind}
+        aria-current={selected ? "true" : undefined}
+        style={style}
         onPointerDown={(event) => beginDrag(component, event)}
         onClick={(event) => {
           event.stopPropagation();
           controller.selectComponent(component.id, event.metaKey || event.ctrlKey || event.shiftKey);
         }}
       >
-        <span>{component.kind === "text" ? String(get(component, "defaultText") || component.name) : component.name}</span>
+        {isTextual ? <span>{String(get(component, "defaultText") || "")}</span> : null}
         {component.children?.map((child) => renderComponent(child))}
       </div>
     );
