@@ -13,7 +13,6 @@
   "stageRuntime": [
     "/client/stage/wipe-controller.js",
     "/client/stage/player-roster-renderer.js",
-    "/client/stage/widget-art-renderer.js",
     "/client/stage/voting-card-visuals.js",
     "/client/stage-runtime.js"
   ],

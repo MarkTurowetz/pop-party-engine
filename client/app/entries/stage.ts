@@ -15,6 +15,7 @@ import "../../runtime/stageRenderOrchestrator";
 import "../../runtime/stageActionRunners";
 import "../../runtime/stageArtObjectVisuals";
 import "../../runtime/stageVisualControllers";
+import "../../runtime/stageWidgetArtRenderer";
 
 export const legacyStageScripts = legacyScriptsForRole("stage");
 export const stageContext = createRuntimeContext({ surface: "stage" });

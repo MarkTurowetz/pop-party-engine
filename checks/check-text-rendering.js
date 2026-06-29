@@ -24,7 +24,7 @@ const filesToCheck = [
   "client/stage/player-roster-renderer.js",
   "client/runtime/stageVisualControllers.ts",
   "client/stage/voting-card-visuals.js",
-  "client/stage/widget-art-renderer.js"
+  "client/runtime/stageWidgetArtRenderer.ts"
 ];
 
 const disallowedPatterns = [
