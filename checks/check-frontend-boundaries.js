@@ -57,6 +57,11 @@ function checkTypedGlobalsStayInAdapters() {
   for (const file of files) {
     const rel = relative(file);
     if (allowedTypedGlobalAdapters.has(rel)) continue;
+    // client/runtime/ holds the Phase 3 strangler bridges: legacy runtime scripts
+    // (.js) are being ported to TS modules that keep their window.PartyGame* globals
+    // so the not-yet-ported legacy consumers still resolve them. These are deleted
+    // as their consumers move to direct imports.
+    if (rel.startsWith("client/runtime/")) continue;
     const source = fs.readFileSync(file, "utf8");
     if (/PartyGame[A-Za-z0-9_]*\s*=/.test(source)) offenders.push(rel);
   }

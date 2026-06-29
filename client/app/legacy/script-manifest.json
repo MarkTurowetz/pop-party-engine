@@ -5,7 +5,6 @@
     "/client/utils.js",
     "/client/stage/visual-object.js",
     "/client/stage/game-object.js",
-    "/client/text-fit.js",
     "/client/stage/stage-text-renderer.js",
     "/client/layout-game-object-runtime.js",
     "/client/layout-runtime.js",

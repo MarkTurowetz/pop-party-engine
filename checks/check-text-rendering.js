@@ -70,39 +70,10 @@ if (failures.length) {
   process.exit(1);
 }
 
-const textFit = require(path.join(repoRoot, "client/text-fit.js"));
-const measure = globalThis.PartyGameTextFit?.measureGameText || textFit?.measureGameText;
-if (typeof measure !== "function") {
-  console.error("Text rendering regression check failed:");
-  console.error("- shared PartyGameTextFit.measureGameText was not registered");
-  process.exit(1);
-}
-
-const normalizeTextField = globalThis.PartyGameTextFit?.normalizeTextFieldElement;
-if (typeof normalizeTextField !== "function") {
-  console.error("Text rendering regression check failed:");
-  console.error("- shared PartyGameTextFit.normalizeTextFieldElement was not registered");
-  process.exit(1);
-}
-
-const implicitFitField = normalizeTextField({ kind: "text", width: 400, height: 80 });
-const explicitManualField = normalizeTextField({ kind: "text", width: 400, height: 80, autoFitText: false, fontSize: 48 });
-if (implicitFitField.autoFitText !== true || explicitManualField.autoFitText !== false) {
-  console.error("Text rendering regression check failed:");
-  console.error("- layout text fields must auto-fit unless autoFitText is explicitly false");
-  process.exit(1);
-}
-
-const fixedSmall = measure({ text: "STAGE", element: { width: 400, height: 80, fontSize: 12, autoFitText: true }, fallbackSize: 12 });
-const fixedLarge = measure({ text: "STAGE", element: { width: 400, height: 80, fontSize: 48, autoFitText: true }, fallbackSize: 48 });
-const multiline = measure({ text: "ONE\nTWO\nTHREE", element: { width: 80, height: 24, fontSize: 36, autoFitText: true }, fallbackSize: 36 });
-if (Number(fixedSmall.fontSize) !== 12 || Number(fixedLarge.fontSize) !== 48 || Number(multiline.fontSize) !== 36) {
-  console.error("Text rendering regression check failed:");
-  console.error("- text rendering must use manual font size and ignore auto-fit shrinking");
-  process.exit(1);
-}
-
-const textFitSource = fs.readFileSync(path.join(repoRoot, "client/text-fit.js"), "utf8");
+// Behavioural assertions (measureGameText / normalizeTextFieldElement defaults and
+// fixed font sizing) live in client/runtime/textFit.test.ts now that text-fit is a
+// TS module. This node check keeps the source-shape guards below.
+const textFitSource = fs.readFileSync(path.join(repoRoot, "client/runtime/textFit.ts"), "utf8");
 if (/createElementNS/.test(textFitSource) || /dominant-baseline/.test(textFitSource) || /measureText/.test(textFitSource)) {
   console.error("Text rendering regression check failed:");
   console.error("- plain text mode must not use SVG or canvas text measurement");
