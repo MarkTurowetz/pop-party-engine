@@ -3,7 +3,6 @@
     "/shared/color-utils.js",
     "/shared/game-constants-schema.js",
     "/client/utils.js",
-    "/client/stage/stage-text-renderer.js",
     "/client/layout-game-object-runtime.js",
     "/client/layout-runtime.js",
     "/shared/text-answer-action-config.js",
