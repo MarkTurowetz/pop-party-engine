@@ -1,11 +1,7 @@
-import { legacyScriptsForRole } from "../legacy/script-manifest";
 import { createToolAppContext } from "../context/createToolAppContext";
-import { bootLegacySurface } from "../legacy/loadLegacySurface";
-import { mountHostAudioToolApp } from "../../tools/host-audio/mountHostAudioToolApp";
+import { mountHostAudioEditor } from "../../tools/host-audio/mountHostAudioEditor";
 
-export const legacyHostAudioToolScripts = legacyScriptsForRole("host-audio");
+// The /host-audio route is now React-only: no legacy scripts, no bridge.
 export const hostAudioToolContext = createToolAppContext({ surface: "host-audio" });
 
-mountHostAudioToolApp({ surface: hostAudioToolContext.surface });
-
-void bootLegacySurface("host-audio");
+void mountHostAudioEditor({ api: hostAudioToolContext.api.hostAudio, surface: hostAudioToolContext.surface });
