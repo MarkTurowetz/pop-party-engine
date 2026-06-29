@@ -18,6 +18,7 @@ import {
   type RemoveFlowRouteBranchOptions,
   type RenameFlowStateOptions
 } from "./flowMutations";
+import { ensureDecisionBranches, makeDecisionBranchId, type FlowDecisionBranch } from "./flowDecision";
 import { assertFlowModel } from "./flowValidation";
 
 function findFlowState(flow: GameFlow, stateId: string): FlowState | undefined {
@@ -234,6 +235,64 @@ export function setFlowActionFieldCommand(stateId: string, actionId: string, key
     apply: (flow) => {
       const action = findFlowAction(findFlowState(flow, stateId), actionId) as Record<string, unknown> | undefined;
       if (action) action[key] = value;
+    }
+  };
+}
+
+export function addDecisionBranchCommand(stateId: string, actionId: string): FlowCommand {
+  return {
+    id: `add-decision-branch:${actionId}`,
+    label: "Add decision branch",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      if (!action) return;
+      const branches = ensureDecisionBranches(action);
+      const noMatchIndex = branches.findIndex((branch) => branch.type === "noMatch");
+      const newBranch: FlowDecisionBranch = {
+        id: makeDecisionBranchId("branch"),
+        type: "hit",
+        value: "",
+        code: "x < 3",
+        targetActionId: ""
+      };
+      branches.splice(noMatchIndex >= 0 ? noMatchIndex : branches.length, 0, newBranch);
+      action.branches = branches as unknown as FlowAction["branches"];
+    }
+  };
+}
+
+export function removeDecisionBranchCommand(stateId: string, actionId: string, branchId: string): FlowCommand {
+  return {
+    id: `remove-decision-branch:${actionId}:${branchId}`,
+    label: "Delete decision branch",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      if (!action) return;
+      const branches = ensureDecisionBranches(action);
+      const branch = branches.find((item) => item.id === branchId);
+      if (!branch || branch.type === "noMatch") return;
+      action.branches = branches.filter((item) => item.id !== branchId) as unknown as FlowAction["branches"];
+    }
+  };
+}
+
+export function setDecisionBranchFieldCommand(
+  stateId: string,
+  actionId: string,
+  branchId: string,
+  key: string,
+  value: unknown
+): FlowCommand {
+  return {
+    id: `set-decision-branch-field:${actionId}:${branchId}:${key}`,
+    label: "Edit decision branch",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      if (!action) return;
+      const branches = ensureDecisionBranches(action);
+      const branch = branches.find((item) => item.id === branchId);
+      if (branch) (branch as Record<string, unknown>)[key] = value;
+      action.branches = branches as unknown as FlowAction["branches"];
     }
   };
 }

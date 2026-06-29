@@ -1,9 +1,12 @@
 import type { GameFlow } from "../../types/game-data";
 import type { FlowApi } from "../../api/flowApi";
 import {
+  addDecisionBranchCommand,
   addFlowActionCommand,
   addFlowStateCommand,
   addFlowSubActionCommand,
+  removeDecisionBranchCommand,
+  setDecisionBranchFieldCommand,
   moveFlowActionCommand,
   renameFlowActionCommand,
   moveFlowStateCommand,
@@ -93,6 +96,9 @@ export interface FlowEditorController {
   setActionType(stateId: string, actionId: string, type: string): void;
   setActionField(stateId: string, actionId: string, key: string, value: unknown): void;
   setActionTiming(stateId: string, actionId: string, timing: FlowActionTimingPatch): void;
+  addDecisionBranch(stateId: string, actionId: string): void;
+  removeDecisionBranch(stateId: string, actionId: string, branchId: string): void;
+  setDecisionBranchField(stateId: string, actionId: string, branchId: string, key: string, value: unknown): void;
   moveAction(stateId: string, draggedActionId: string, targetActionId: string, placeAfter?: boolean): void;
   moveSubAction(
     stateId: string,
@@ -219,6 +225,12 @@ export function createFlowEditorController(options: FlowEditorControllerOptions)
       commit(store.execute(setFlowActionFieldCommand(stateId, actionId, key, value))),
     setActionTiming: (stateId, actionId, timing) =>
       commit(store.execute(setFlowActionTimingCommand(stateId, actionId, timing))),
+    addDecisionBranch: (stateId, actionId) =>
+      commit(store.execute(addDecisionBranchCommand(stateId, actionId))),
+    removeDecisionBranch: (stateId, actionId, branchId) =>
+      commit(store.execute(removeDecisionBranchCommand(stateId, actionId, branchId))),
+    setDecisionBranchField: (stateId, actionId, branchId, key, value) =>
+      commit(store.execute(setDecisionBranchFieldCommand(stateId, actionId, branchId, key, value))),
     moveAction: (stateId, draggedActionId, targetActionId, placeAfter = false) =>
       commit(store.execute(moveFlowActionCommand(stateId, draggedActionId, targetActionId, placeAfter))),
     moveSubAction: (stateId, parentActionId, draggedActionId, targetActionId, placeAfter = false) =>

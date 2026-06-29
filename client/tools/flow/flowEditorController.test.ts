@@ -96,6 +96,38 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().snapshot.flow.states[1].actions[0].text).toBe("Hello world");
   });
 
+  it("adds, edits, and removes decision branches", () => {
+    const controller = createFlowEditorController({
+      initialFlow: flowFixture(),
+      api: fakeApi(),
+      actionTypes: [{ id: "decision", name: "Decision", category: "logic" }]
+    });
+    controller.setActionType("round-one", "act-1", "decision");
+
+    const branchesAfterSeed = () => controller.getState().snapshot.flow.states[1].actions[0].branches || [];
+    const seeded = branchesAfterSeed().length;
+    expect(seeded).toBeGreaterThanOrEqual(2); // at least a hit + noMatch
+
+    controller.addDecisionBranch("round-one", "act-1");
+    expect(branchesAfterSeed().length).toBe(seeded + 1);
+    // noMatch stays last
+    expect(branchesAfterSeed().at(-1)?.type).toBe("noMatch");
+
+    const editable = branchesAfterSeed().find((branch) => branch.type !== "noMatch");
+    controller.setDecisionBranchField("round-one", "act-1", String(editable?.id), "value", "7");
+    const updated = branchesAfterSeed().find((branch) => branch.id === editable?.id);
+    expect(updated?.value).toBe("7");
+
+    controller.removeDecisionBranch("round-one", "act-1", String(editable?.id));
+    expect(branchesAfterSeed().some((branch) => branch.id === editable?.id)).toBe(false);
+
+    // noMatch cannot be removed
+    const noMatch = branchesAfterSeed().find((branch) => branch.type === "noMatch");
+    const before = branchesAfterSeed().length;
+    controller.removeDecisionBranch("round-one", "act-1", String(noMatch?.id));
+    expect(branchesAfterSeed().length).toBe(before);
+  });
+
   it("undo returns to a clean snapshot", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 

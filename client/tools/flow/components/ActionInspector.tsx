@@ -1,6 +1,7 @@
 import type { FlowAction, FlowState } from "../../../types/game-data";
 import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
 import { ActionFieldControls } from "./ActionFieldControls";
+import { DecisionBranchControls, type DecisionBranchHandlers } from "./DecisionBranchControls";
 
 export interface InspectorTargetOption {
   id: string;
@@ -14,6 +15,7 @@ export interface ActionInspectorEditHandlers {
   onSetEntryTarget?: (targetId: string) => void;
   onSetActionField?: (key: string, value: unknown) => void;
   onSetActionTiming?: (timing: { mode?: string; seconds?: number }) => void;
+  decision?: DecisionBranchHandlers;
   actionTypeOptions?: InspectorTargetOption[];
   actionTargetOptions?: InspectorTargetOption[];
   nextTargetOptions?: InspectorTargetOption[];
@@ -232,6 +234,13 @@ export function ActionInspector({
           action={action}
           actionTargetOptions={edit.actionTargetOptions || []}
           onSetField={edit.onSetActionField}
+        />
+      ) : null}
+      {action.type === "decision" && edit?.decision ? (
+        <DecisionBranchControls
+          action={action}
+          actionTargetOptions={edit.actionTargetOptions || []}
+          handlers={edit.decision}
         />
       ) : null}
     </section>

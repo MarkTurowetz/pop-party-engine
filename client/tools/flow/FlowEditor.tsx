@@ -60,6 +60,18 @@ export function FlowEditor({
       onSetActionTiming: (timing: { mode?: string; seconds?: number }) => {
         if (selectedStateId && selectedActionId) controller.setActionTiming(selectedStateId, selectedActionId, timing);
       },
+      decision: {
+        onAddBranch: () => {
+          if (selectedStateId && selectedActionId) controller.addDecisionBranch(selectedStateId, selectedActionId);
+        },
+        onRemoveBranch: (branchId: string) => {
+          if (selectedStateId && selectedActionId) controller.removeDecisionBranch(selectedStateId, selectedActionId, branchId);
+        },
+        onSetBranchField: (branchId: string, key: string, value: unknown) => {
+          if (selectedStateId && selectedActionId)
+            controller.setDecisionBranchField(selectedStateId, selectedActionId, branchId, key, value);
+        }
+      },
       nextTargetOptions: states.map((state) => ({ id: state.id, label: state.name || state.id })),
       entryTargetOptions: (selectedState?.actions || []).map((action) => ({
         id: action.id,
