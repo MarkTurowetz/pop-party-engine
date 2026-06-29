@@ -19,7 +19,7 @@ const filesToCheck = [
   "client/runtime/controllerVoiceInput.ts",
   "client/runtime/layoutRuntime.ts",
   "client/layout-tool.js",
-  "client/stage-runtime.js",
+  "client/runtime/stageRuntime.ts",
   "client/runtime/stageArtObjectVisuals.ts",
   "client/runtime/stagePlayerRoster.ts",
   "client/runtime/stageVisualControllers.ts",

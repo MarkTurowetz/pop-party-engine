@@ -8,9 +8,7 @@
     "/shared/flow-action-registry.js",
     "/shared/art-component-schema.js"
   ],
-  "stageRuntime": [
-    "/client/stage-runtime.js"
-  ],
+  "stageRuntime": [],
   "controllerRuntime": [],
   "toolFoundation": [
     "/client/tool-affordances.js",

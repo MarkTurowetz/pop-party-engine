@@ -190,7 +190,7 @@ async function main() {
 
       const legacyStageShell = await request({ port, pathname: "/stage" });
       assert(legacyStageShell.statusCode === 200, `/stage returned ${legacyStageShell.statusCode}`);
-      assert(legacyStageShell.body.includes("<script src=\"/client/stage-runtime.js\"></script>"), "/stage did not preserve classic stage scripts by default");
+      assert(legacyStageShell.body.includes("<script src=\"/client/app/legacy/app-shell.js\"></script>"), "/stage did not preserve the classic shell bootstrap by default");
       assertIncludes(legacyStageShell.body, "id=\"stageScreen\"", "/stage");
       assertIncludes(legacyStageShell.body, "id=\"controllerScreen\"", "/stage");
       assertIncludes(legacyStageShell.body, "id=\"flowScreen\"", "/stage");

@@ -17,6 +17,7 @@ import "../../runtime/textFit";
 import "../../runtime/stageTextRenderer";
 // layoutRuntime re-assigns window.PartyGameTextFit and must load AFTER textFit.
 import "../../runtime/layoutRuntime";
+import "../../runtime/stageRuntime";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/qrCode";

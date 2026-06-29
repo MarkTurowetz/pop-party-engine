@@ -10,6 +10,8 @@ import "../../runtime/stageTextRenderer";
 // layoutRuntime re-assigns window.PartyGameTextFit (its own layout text-fit) and must
 // load AFTER textFit so its fittedLayoutTextSize wins, matching the legacy load order.
 import "../../runtime/layoutRuntime";
+// The stage orchestrator (defines setupStage, dispatched by app-shell) — loads last.
+import "../../runtime/stageRuntime";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/qrCode";
