@@ -92,6 +92,7 @@ export interface FlowEditorController {
 
   // Persistence
   replaceFlow(flow: GameFlow, options?: { markSaved?: boolean }): void;
+  revert(): void;
   save(): Promise<GameFlow | null>;
   publishDraft(): Promise<void>;
 }
@@ -198,6 +199,10 @@ export function createFlowEditorController(options: FlowEditorControllerOptions)
     replaceFlow: (flow, replaceOptions = {}) => {
       const snapshot = store.replaceFlow(flow);
       if (replaceOptions.markSaved !== false) savedSnapshot = savedSnapshotOf(snapshot.flow);
+      commit(snapshot);
+    },
+    revert: () => {
+      const snapshot = store.replaceFlow(JSON.parse(savedSnapshot) as GameFlow);
       commit(snapshot);
     },
     save: async () => {

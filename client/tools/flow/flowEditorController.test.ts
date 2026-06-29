@@ -85,6 +85,20 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().dirty).toBe(true);
   });
 
+  it("reverts to the last saved snapshot", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.addState();
+    controller.addState();
+    expect(controller.getState().snapshot.flow.states).toHaveLength(4);
+    expect(controller.getState().dirty).toBe(true);
+
+    controller.revert();
+
+    expect(controller.getState().snapshot.flow.states).toHaveLength(2);
+    expect(controller.getState().dirty).toBe(false);
+  });
+
   it("publishes a best-effort local draft", async () => {
     const api = fakeApi();
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api });
