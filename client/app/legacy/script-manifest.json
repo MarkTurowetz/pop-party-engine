@@ -67,9 +67,7 @@
     "/client/host-audio-tool.js"
   ],
   "flowTool": [],
-  "constantsTool": [
-    "/client/constants-tool.js"
-  ],
+  "constantsTool": [],
   "layoutTool": [
     "/client/layout-art-preview-renderer.js",
     "/client/layout-tool.js"
