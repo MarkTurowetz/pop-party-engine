@@ -144,6 +144,15 @@ export function FlowEditor({
         flowActionTypes={flowActionTypes}
         handlers={handlers}
         inspectorEdit={inspectorEdit}
+        reorder={{
+          onReorderState: (draggedId, targetId) => controller.moveState(draggedId, targetId),
+          onReorderAction: (draggedId, targetId) => {
+            if (selectedStateId) controller.moveAction(selectedStateId, draggedId, targetId);
+          },
+          onReorderSubAction: (parentId, draggedId, targetId) => {
+            if (selectedStateId) controller.moveSubAction(selectedStateId, parentId, draggedId, targetId);
+          }
+        }}
         previewMode={previewMode}
         selectedActionId={selectedActionId}
         selectedRouteBranchId={selection.selectedFlowRouteBranchId}

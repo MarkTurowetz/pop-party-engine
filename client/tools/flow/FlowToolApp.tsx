@@ -2,6 +2,12 @@ import type { GameFlow } from "../../types/game-data";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowPreviewModel } from "./flowPreviewModel";
 import { ActionInspector, type ActionInspectorEditHandlers } from "./components/ActionInspector";
+
+export interface FlowReorderHandlers {
+  onReorderState?: (draggedStateId: string, targetStateId: string) => void;
+  onReorderAction?: (draggedActionId: string, targetActionId: string) => void;
+  onReorderSubAction?: (parentActionId: string, draggedActionId: string, targetActionId: string) => void;
+}
 import { FlowActionList } from "./components/FlowActionList";
 import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
 import { FlowRouteInspector } from "./components/FlowRouteInspector";
@@ -20,6 +26,7 @@ export interface FlowToolAppProps {
   flow?: GameFlow | null;
   handlers?: FlowToolReactShellHandlers;
   inspectorEdit?: ActionInspectorEditHandlers;
+  reorder?: FlowReorderHandlers;
   selectedActionId?: string;
   selectedRouteBranchId?: string;
   selectedRouteNodeId?: string;
@@ -40,6 +47,7 @@ export function FlowToolApp({
   flowViewMode = "list",
   handlers = {},
   inspectorEdit,
+  reorder,
   selectedActionId = "",
   selectedRouteBranchId = "",
   selectedRouteNodeId = "",
@@ -97,6 +105,7 @@ export function FlowToolApp({
       />
       <FlowStateList
         onSelectState={handlers.selectState}
+        onReorderState={reorder?.onReorderState}
         selectedStateId={model.selectedStateId}
         states={flow?.states || []}
       />
@@ -104,6 +113,8 @@ export function FlowToolApp({
         actions={model.selectedState?.actions || []}
         actionTypes={flowActionTypes}
         onSelectAction={handlers.selectAction}
+        onReorderAction={reorder?.onReorderAction}
+        onReorderSubAction={reorder?.onReorderSubAction}
         selectedActionId={model.selectedActionId}
       />
       <FlowRouteNodeList
