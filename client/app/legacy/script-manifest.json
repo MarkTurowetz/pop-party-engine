@@ -28,8 +28,6 @@
     "/client/controller-microphone-access-view.js",
     "/client/controller-recording-lifecycle.js",
     "/client/controller-voice-input.js",
-    "/client/controller-choice-input-view.js",
-    "/client/controller-text-input-view.js",
     "/client/controller-lobby-view.js",
     "/client/controller-global-action-view.js",
     "/client/controller-state-runtime.js",

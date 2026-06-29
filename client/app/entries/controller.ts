@@ -13,6 +13,8 @@ import "../../runtime/controllerTextRenderer";
 import "../../runtime/controllerHeartbeatRuntime";
 import "../../runtime/controllerSubmitApi";
 import "../../runtime/controllerAvatarView";
+import "../../runtime/controllerChoiceInputView";
+import "../../runtime/controllerTextInputView";
 
 export const legacyControllerScripts = legacyScriptsForRole("controller");
 export const controllerContext = createRuntimeContext({ surface: "controller" });
