@@ -1,11 +1,7 @@
-import { legacyScriptsForRole } from "../legacy/script-manifest";
 import { createToolAppContext } from "../context/createToolAppContext";
-import { bootLegacySurface } from "../legacy/loadLegacySurface";
-import { mountArtToolApp } from "../../tools/art/mountArtToolApp";
+import { mountArtEditor } from "../../tools/art/mountArtEditor";
 
-export const legacyArtToolScripts = legacyScriptsForRole("art");
+// The /art route is now React-only: no legacy scripts, no bridge.
 export const artToolContext = createToolAppContext({ surface: "art" });
 
-mountArtToolApp({ surface: artToolContext.surface });
-
-void bootLegacySurface("art");
+void mountArtEditor({ api: artToolContext.api.art, surface: artToolContext.surface });
