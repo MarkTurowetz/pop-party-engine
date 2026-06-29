@@ -2,7 +2,6 @@
   "sharedFoundation": [
     "/shared/color-utils.js",
     "/shared/game-constants-schema.js",
-    "/client/layout-runtime.js",
     "/shared/text-answer-action-config.js",
     "/shared/microphone-access-action-config.js",
     "/shared/choice-input-action-config.js",

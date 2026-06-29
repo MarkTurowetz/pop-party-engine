@@ -17,7 +17,7 @@ const filesToCheck = [
   "client/runtime/controllerSetupBindings.ts",
   "client/runtime/controllerTextInputView.ts",
   "client/runtime/controllerVoiceInput.ts",
-  "client/layout-runtime.js",
+  "client/runtime/layoutRuntime.ts",
   "client/layout-tool.js",
   "client/stage-runtime.js",
   "client/runtime/stageArtObjectVisuals.ts",
@@ -90,7 +90,7 @@ if (!/display: "flex"/.test(textFitSource)
   process.exit(1);
 }
 
-const layoutRuntimeSource = fs.readFileSync(path.join(repoRoot, "client/layout-runtime.js"), "utf8");
+const layoutRuntimeSource = fs.readFileSync(path.join(repoRoot, "client/runtime/layoutRuntime.ts"), "utf8");
 if (!/normalized === "presentation"\) return "stagepresentationtext"/.test(layoutRuntimeSource)
   && !/compact === "presentation"\) return "stagepresentationtext"/.test(layoutRuntimeSource)
   || (!/normalized === "prompt"\) return "stageprompttext"/.test(layoutRuntimeSource)
