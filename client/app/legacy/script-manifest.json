@@ -23,9 +23,7 @@
     "/client/stage/render-orchestrator.js",
     "/client/stage-runtime.js"
   ],
-  "controllerRuntime": [
-    "/client/controller.js"
-  ],
+  "controllerRuntime": [],
   "toolFoundation": [
     "/client/tool-affordances.js",
     "/client/color-control.js",

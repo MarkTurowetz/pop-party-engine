@@ -34,6 +34,7 @@ import "../../runtime/controllerSessionRuntime";
 import "../../runtime/controllerStateRuntime";
 import "../../runtime/controllerSetupBindings";
 import "../../runtime/controllerActionBindings";
+import "../../runtime/controller";
 import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 import type { FlowEditorController } from "../../tools/flow/flowEditorController";
 import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor";

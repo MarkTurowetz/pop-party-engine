@@ -6,7 +6,7 @@ const path = require("path");
 const repoRoot = path.resolve(__dirname, "..");
 
 const filesToCheck = [
-  "client/controller.js",
+  "client/runtime/controller.ts",
   "client/runtime/controllerActionBindings.ts",
   "client/runtime/controllerAvatarView.ts",
   "client/runtime/controllerChoiceInputView.ts",

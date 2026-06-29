@@ -31,6 +31,29 @@ declare global {
     controllerScreen: HTMLElement;
     PartyGameArtComponentSchema?: ArtSchemaApi;
     publishRuntimeLocalChanges?: () => void;
+    // Utils helpers installed on window for legacy + TS consumers.
+    normalizeStageCode?: (value: unknown) => string;
+    getStageCodeFromUrl?: () => string;
+    getPlayerNameFromUrl?: () => string;
+    shouldAutoJoin?: () => boolean;
+    lockControllerViewport?: () => void;
+    bindButtonPress?: (button: HTMLElement) => void;
+    bindControllerButtonPressStates?: () => void;
+    getSessionValue?: (key: string) => string;
+    getLocalValue?: (key: string) => string;
+    setSessionValue?: (key: string, value: string) => void;
+    setLocalValue?: (key: string, value: string) => void;
+    removeSessionValue?: (key: string) => void;
+    getControllerPlayerId?: () => string;
+    avatarClass?: (shape?: string) => string;
+    avatarFrameImage?: () => string;
+    avatarLabel?: (shape?: string) => string;
+    dinoIcon?: (shape?: string) => string;
+    playerAvatarArt?: (shape?: string) => string;
+    listenForArtAssetsChanged?: (callback: () => void) => void;
+    loadArtAssets?: () => Promise<Dict[]>;
+    postJson?: (path: string, payload: unknown) => Promise<Dict>;
+    getJson?: (path: string) => Promise<Dict>;
   }
 }
 

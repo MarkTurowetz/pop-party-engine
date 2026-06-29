@@ -25,6 +25,7 @@ import "../../runtime/controllerSessionRuntime";
 import "../../runtime/controllerStateRuntime";
 import "../../runtime/controllerSetupBindings";
 import "../../runtime/controllerActionBindings";
+import "../../runtime/controller";
 
 export const legacyControllerScripts = legacyScriptsForRole("controller");
 export const controllerContext = createRuntimeContext({ surface: "controller" });

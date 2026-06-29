@@ -136,13 +136,13 @@ async function main() {
     assertShell(await request({ port, pathname: "/controller" }), "/controller", "controllerScreen", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css"],
       forbiddenStyles: ["/client/styles/legacy/tools.css"],
-      expectedScripts: ["/client/controller.js"],
-      forbiddenScripts: ["/client/stage-runtime.js", "/client/flow-tool.js"]
+      expectedScripts: ["/client/layout-runtime.js"],
+      forbiddenScripts: ["/client/stage-runtime.js", "/client/flow-tool.js", "/client/controller.js"]
     });
     assertShell(await request({ port, pathname: "/tools" }), "main tool shell", "toolDashboardBar", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css", "/client/styles/legacy/tools.css"],
-      expectedScripts: ["/client/stage-runtime.js", "/client/controller.js"],
-      forbiddenScripts: ["/client/flow-tool.js"]
+      expectedScripts: ["/client/stage-runtime.js"],
+      forbiddenScripts: ["/client/flow-tool.js", "/client/controller.js"]
     });
     assertShell(await request({ port, pathname: "/flow" }), "Flow Tool shell", "flowScreen", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/tools.css"],
