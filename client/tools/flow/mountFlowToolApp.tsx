@@ -55,7 +55,7 @@ export function mountFlowToolApp(options: MountFlowToolAppOptions = {}): FlowToo
   const targetDocument = options.document || document;
   const searchParams = new URLSearchParams(targetDocument.defaultView?.location?.search || "");
   const previewParam = searchParams.get("reactFlowPreview") || "";
-  const visible = options.visible ?? Boolean(previewParam) ?? false;
+  const visible = options.visible ?? Boolean(previewParam);
   const previewMode = options.previewMode || (previewParam === "replace" ? "replace" : "overlay");
   const host = targetDocument.createElement("div");
   host.id = "flowReactShell";
