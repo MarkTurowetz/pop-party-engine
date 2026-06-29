@@ -25,9 +25,7 @@
     "/client/stage-runtime.js"
   ],
   "controllerRuntime": [
-    "/client/controller-state-runtime.js",
     "/client/controller-setup-bindings.js",
-    "/client/controller-session-runtime.js",
     "/client/controller-action-bindings.js",
     "/client/controller.js"
   ],
