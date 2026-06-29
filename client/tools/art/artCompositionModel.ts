@@ -1,0 +1,87 @@
+import type { ArtComponent, ArtComposition } from "../../types/game-data";
+import {
+  componentKindLabel,
+  componentSupportsImageMask,
+  normalizeContainerDistribution,
+  normalizeFillCss,
+  normalizeImageObjectFit,
+  normalizeShapeStyle
+} from "./artComponentSchema";
+
+/**
+ * Typed port of serializeArtCompositionsForSave / serializeArtComponentForSave so
+ * the React composition editor saves byte-compatibly with the legacy art tool.
+ */
+function num(value: unknown, fallback = 0, precision = 3): number {
+  const n = Number((value as number) ?? fallback);
+  return Number(Number(Number.isFinite(n) ? n : fallback).toFixed(precision));
+}
+
+export function normalizeArtCompositionSurface(surface: unknown): string {
+  return surface === "controller" ? "controller" : "stage";
+}
+
+export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
+  const component = raw as Record<string, unknown>;
+  const kind = String(component.kind || "shape");
+  const supportsImage = componentSupportsImageMask(raw);
+  const isTextual = kind === "text" || kind === "badge";
+  return {
+    id: String(component.id || ""),
+    name: String(component.name || componentKindLabel(kind)),
+    kind,
+    x: num(component.x, 0),
+    y: num(component.y, 0),
+    width: num(component.width, 1),
+    height: num(component.height, 1),
+    scale: num(component.scale, 1),
+    rotation: num(component.rotation, 0),
+    defaultAnimationState: String(component.defaultAnimationState || ""),
+    childDistribution: kind === "container" ? normalizeContainerDistribution(component.childDistribution) : "none",
+    defaultText: String(component.defaultText || ""),
+    fontSize: num(component.fontSize, 16),
+    autoFitText: isTextual ? component.autoFitText !== false : false,
+    fontColor: String(component.fontColor || "#17131f"),
+    shapeStyle: normalizeShapeStyle(component.shapeStyle, kind),
+    fillColor: String(component.fillColor || "transparent"),
+    fillCss: normalizeFillCss(component.fillCss),
+    borderColor: String(component.borderColor || "transparent"),
+    borderWidth: num(component.borderWidth, 0),
+    borderRadius: num(component.borderRadius, 0),
+    imageDataUrl: supportsImage ? String(component.imageDataUrl || "") : "",
+    imageAssetId: supportsImage ? String(component.imageAssetId || "") : "",
+    imageName: supportsImage ? String(component.imageName || "") : "",
+    imageMimeType: supportsImage ? String(component.imageMimeType || "") : "",
+    imageObjectFit: supportsImage ? normalizeImageObjectFit(component.imageObjectFit) : "cover",
+    imageTint: supportsImage ? String(component.imageTint || "") : "",
+    artCompositionId: kind === "reference" ? String(component.artCompositionId || "") : "",
+    children: (Array.isArray(component.children) ? component.children : []).map((child) =>
+      serializeArtComponentForSave(child as ArtComponent)
+    )
+  } as ArtComponent;
+}
+
+export function serializeArtCompositionForSave(raw: ArtComposition): ArtComposition {
+  const composition = raw as Record<string, unknown>;
+  const canvas = (composition.canvas || {}) as Record<string, unknown>;
+  return {
+    id: String(composition.id || ""),
+    name: String(composition.name || "Art Asset"),
+    description: String(composition.description || ""),
+    surface: normalizeArtCompositionSurface(composition.surface),
+    isCustom: Boolean(composition.isCustom),
+    canvas: { width: Number(canvas.width || 1), height: Number(canvas.height || 1) },
+    components: (Array.isArray(composition.components) ? composition.components : []).map((component) =>
+      serializeArtComponentForSave(component as ArtComponent)
+    )
+  } as ArtComposition;
+}
+
+export function serializeArtCompositionsForSave(source: ArtComposition[] | null | undefined): ArtComposition[] {
+  return (source || []).map(serializeArtCompositionForSave);
+}
+
+/** Per-composition snapshot for dirty tracking (matches the legacy save shape). */
+export function artCompositionSnapshot(composition: ArtComposition): string {
+  return JSON.stringify(serializeArtCompositionForSave(composition));
+}
