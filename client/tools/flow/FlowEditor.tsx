@@ -54,8 +54,15 @@ export function FlowEditor({
       onSetEntryTarget: (targetId: string) => {
         if (selectedStateId) controller.setEntryTarget(selectedStateId, targetId);
       },
+      onSetActionField: (key: string, value: unknown) => {
+        if (selectedStateId && selectedActionId) controller.setActionField(selectedStateId, selectedActionId, key, value);
+      },
       nextTargetOptions: states.map((state) => ({ id: state.id, label: state.name || state.id })),
       entryTargetOptions: (selectedState?.actions || []).map((action) => ({
+        id: action.id,
+        label: action.name || action.id
+      })),
+      actionTargetOptions: (selectedState?.actions || []).map((action) => ({
         id: action.id,
         label: action.name || action.id
       }))

@@ -1,5 +1,6 @@
 import type { FlowAction, FlowState } from "../../../types/game-data";
 import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
+import { ActionFieldControls } from "./ActionFieldControls";
 
 export interface InspectorTargetOption {
   id: string;
@@ -11,7 +12,9 @@ export interface ActionInspectorEditHandlers {
   onSetActionType?: (type: string) => void;
   onSetNextTarget?: (targetId: string) => void;
   onSetEntryTarget?: (targetId: string) => void;
+  onSetActionField?: (key: string, value: unknown) => void;
   actionTypeOptions?: InspectorTargetOption[];
+  actionTargetOptions?: InspectorTargetOption[];
   nextTargetOptions?: InspectorTargetOption[];
   entryTargetOptions?: InspectorTargetOption[];
 }
@@ -189,6 +192,13 @@ export function ActionInspector({
         <dt>Timing</dt>
         <dd>{actionTimingLabel(action)}</dd>
       </dl>
+      {edit?.onSetActionField ? (
+        <ActionFieldControls
+          action={action}
+          actionTargetOptions={edit.actionTargetOptions || []}
+          onSetField={edit.onSetActionField}
+        />
+      ) : null}
     </section>
   );
 }

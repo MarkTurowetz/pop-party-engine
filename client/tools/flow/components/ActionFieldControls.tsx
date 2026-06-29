@@ -1,0 +1,136 @@
+import type { FlowAction } from "../../../types/game-data";
+import { actionFieldsForType, type FlowActionFieldDescriptor } from "../flowActionFieldSchema";
+import type { InspectorTargetOption } from "./ActionInspector";
+
+export interface ActionFieldControlsProps {
+  action: FlowAction;
+  actionTargetOptions: InspectorTargetOption[];
+  onSetField: (key: string, value: unknown) => void;
+}
+
+function rawValue(action: FlowAction, key: string): unknown {
+  return (action as Record<string, unknown>)[key];
+}
+
+function booleanValue(action: FlowAction, key: string): boolean {
+  const value = rawValue(action, key);
+  if (value === true) return true;
+  if (value === false) return false;
+  // isShown-style flags default visible; everything else defaults off (matches legacy).
+  return key === "isShown";
+}
+
+function FieldControl({
+  field,
+  action,
+  actionTargetOptions,
+  onSetField
+}: {
+  field: FlowActionFieldDescriptor;
+  action: FlowAction;
+  actionTargetOptions: InspectorTargetOption[];
+  onSetField: (key: string, value: unknown) => void;
+}) {
+  const fieldKey = `${action.id}:${field.key}`;
+  const commitText = (value: string) => onSetField(field.key, value);
+
+  if (field.control === "boolean") {
+    return (
+      <label className="flow-react-field" data-flow-react-field={field.key}>
+        <span>{field.label}</span>
+        <select
+          value={booleanValue(action, field.key) ? "true" : "false"}
+          data-flow-react-field-input={field.key}
+          onChange={(event) => onSetField(field.key, event.target.value === "true")}
+        >
+          <option value="true">True</option>
+          <option value="false">False</option>
+        </select>
+      </label>
+    );
+  }
+
+  if (field.control === "select" || field.control === "actionTarget") {
+    const options =
+      field.control === "actionTarget"
+        ? [{ id: "", name: "Default" }, ...actionTargetOptions.map((option) => ({ id: option.id, name: option.label }))]
+        : field.options || [];
+    return (
+      <label className="flow-react-field" data-flow-react-field={field.key}>
+        <span>{field.label}</span>
+        <select
+          value={String(rawValue(action, field.key) ?? "")}
+          data-flow-react-field-input={field.key}
+          onChange={(event) => onSetField(field.key, event.target.value)}
+        >
+          {options.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  if (field.control === "textarea") {
+    return (
+      <label className="flow-react-field" data-flow-react-field={field.key}>
+        <span>{field.label}</span>
+        <textarea
+          key={fieldKey}
+          defaultValue={String(rawValue(action, field.key) ?? "")}
+          data-flow-react-field-input={field.key}
+          onBlur={(event) => commitText(event.target.value)}
+        />
+      </label>
+    );
+  }
+
+  const isNumber = field.control === "number" || field.control === "integer";
+  return (
+    <label className="flow-react-field" data-flow-react-field={field.key}>
+      <span>{field.label}</span>
+      <input
+        type={isNumber ? "number" : "text"}
+        key={fieldKey}
+        min={field.min}
+        max={field.max}
+        defaultValue={String(rawValue(action, field.key) ?? (isNumber ? 0 : ""))}
+        data-flow-react-field-input={field.key}
+        onBlur={(event) => {
+          if (!isNumber) return commitText(event.target.value);
+          const numeric = Number(event.target.value);
+          const safe = Number.isFinite(numeric) ? numeric : 0;
+          onSetField(field.key, field.control === "integer" ? Math.floor(safe) : safe);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+        }}
+      />
+    </label>
+  );
+}
+
+/**
+ * Renders the scalar/enum/target inspector controls for the action's type, driven
+ * by {@link actionFieldsForType}. Each edit commits through `onSetField`, which the
+ * controller turns into an undoable command.
+ */
+export function ActionFieldControls({ action, actionTargetOptions, onSetField }: ActionFieldControlsProps) {
+  const fields = actionFieldsForType(action.type);
+  if (!fields.length) return null;
+  return (
+    <div className="flow-react-action-fields" data-flow-react-component="action-fields">
+      {fields.map((field) => (
+        <FieldControl
+          key={field.key}
+          field={field}
+          action={action}
+          actionTargetOptions={actionTargetOptions}
+          onSetField={onSetField}
+        />
+      ))}
+    </div>
+  );
+}
