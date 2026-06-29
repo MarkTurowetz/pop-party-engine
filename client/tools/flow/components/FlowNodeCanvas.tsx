@@ -1,5 +1,12 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { FlowGraphConnection, FlowGraphNode, FlowNodeExit } from "../flowNodeGraph";
+
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 1;
+
+function clampZoom(value: number): number {
+  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
+}
 
 export interface FlowNodeCanvasProps {
   nodes: FlowGraphNode[];
@@ -103,9 +110,41 @@ export function FlowNodeCanvas({
 }: FlowNodeCanvasProps) {
   const dragRef = useRef<DragState | null>(null);
   const [livePosition, setLivePosition] = useState<LivePosition | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const connectRef = useRef<ConnectState | null>(null);
   const [connectPreview, setConnectPreview] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  // Non-passive wheel listener so we can preventDefault and zoom anchored at the cursor.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const previous = zoomRef.current;
+      const next = clampZoom(previous * (event.deltaY < 0 ? 1.1 : 0.9));
+      if (next === previous) return;
+      const rect = stage.getBoundingClientRect();
+      const anchorX = event.clientX - rect.left;
+      const anchorY = event.clientY - rect.top;
+      const worldX = (stage.scrollLeft + anchorX) / previous;
+      const worldY = (stage.scrollTop + anchorY) / previous;
+      // Update the ref synchronously so rapid wheel events compound off the latest zoom.
+      zoomRef.current = next;
+      setZoom(next);
+      requestAnimationFrame(() => {
+        stage.scrollLeft = worldX * next - anchorX;
+        stage.scrollTop = worldY * next - anchorY;
+      });
+    };
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, []);
 
   const exitsByNode = new Map<string, FlowNodeExit[]>();
   for (const exit of exits) {
@@ -116,7 +155,8 @@ export function FlowNodeCanvas({
 
   const toWorldPoint = (clientX: number, clientY: number) => {
     const rect = worldRef.current?.getBoundingClientRect();
-    return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) };
+    const z = zoomRef.current || 1;
+    return { x: (clientX - (rect?.left ?? 0)) / z, y: (clientY - (rect?.top ?? 0)) / z };
   };
 
   const beginConnect = (
@@ -169,8 +209,9 @@ export function FlowNodeCanvas({
     const handleMove = (moveEvent: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      const dx = moveEvent.clientX - drag.startClientX;
-      const dy = moveEvent.clientY - drag.startClientY;
+      const z = zoomRef.current || 1;
+      const dx = (moveEvent.clientX - drag.startClientX) / z;
+      const dy = (moveEvent.clientY - drag.startClientY) / z;
       if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) drag.moved = true;
       setLivePosition({ nodeId: drag.nodeId, x: drag.originX + dx, y: drag.originY + dy });
     };
@@ -182,8 +223,9 @@ export function FlowNodeCanvas({
       dragRef.current = null;
       setLivePosition(null);
       if (drag && drag.moved) {
-        const dx = upEvent.clientX - drag.startClientX;
-        const dy = upEvent.clientY - drag.startClientY;
+        const z = zoomRef.current || 1;
+        const dx = (upEvent.clientX - drag.startClientX) / z;
+        const dy = (upEvent.clientY - drag.startClientY) / z;
         onMoveNode(drag.nodeId, Math.max(0, drag.originX + dx), Math.max(0, drag.originY + dy));
       }
     };
@@ -208,8 +250,30 @@ export function FlowNodeCanvas({
             : `Inside ${stateTitle || "moment"} — click nodes to edit; double-click Start/Return to go back.`}
         </span>
       </header>
-      <div className="flow-node-stage" data-node-stage>
-        <div className="flow-node-world" ref={worldRef} style={{ width, height, position: "relative" }}>
+      <div
+        className="flow-node-stage"
+        data-node-stage
+        ref={stageRef}
+        style={{ height: "min(70vh, 640px)", width: "100%", maxWidth: "100%", overflow: "auto" }}
+      >
+        <div
+          className="flow-node-graph"
+          data-node-zoom={zoom}
+          style={{ width: width * zoom, height: height * zoom, position: "relative" }}
+        >
+          <div
+            className="flow-node-world"
+            ref={worldRef}
+            style={{
+              width,
+              height,
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: `scale(${zoom})`,
+              transformOrigin: "0 0"
+            }}
+          >
           <svg
             className="flow-node-wires"
             data-node-wires
@@ -289,6 +353,7 @@ export function FlowNodeCanvas({
             </div>
             );
           })}
+          </div>
         </div>
       </div>
     </section>
