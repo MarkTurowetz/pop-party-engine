@@ -2,6 +2,8 @@ import { createRoot, type Root } from "react-dom/client";
 import type { ArtApi } from "../../api/artApi";
 import { createArtAssetsController, type ArtAssetsController } from "./artAssetsController";
 import { createArtCompositionsController, type ArtCompositionsController } from "./artCompositionsController";
+import { createArtOrganizationController, type ArtOrganizationController } from "./artOrganizationController";
+import { normalizeOrganization } from "./organizationModel";
 import { ArtEditor } from "./ArtEditor";
 
 export interface MountArtEditorOptions {
@@ -15,6 +17,7 @@ export interface MountArtEditorOptions {
 export interface MountedArtEditor {
   assetsController: ArtAssetsController;
   compositionsController: ArtCompositionsController;
+  organizationController: ArtOrganizationController;
   root: Root;
   unmount: () => void;
 }
@@ -25,6 +28,12 @@ export async function mountArtEditor(options: MountArtEditorOptions): Promise<Mo
   const assetsController = createArtAssetsController({ initialAssets: response.assets || [], api: options.api });
   const compositionsController = createArtCompositionsController({
     initialCompositions: response.compositions || [],
+    api: options.api
+  });
+  const organizationController = createArtOrganizationController({
+    initialOrganization: normalizeOrganization(response.organization),
+    compositions: response.compositions || [],
+    assets: response.assets || [],
     api: options.api
   });
 
@@ -44,12 +53,18 @@ export async function mountArtEditor(options: MountArtEditorOptions): Promise<Mo
 
   const root = createRoot(host);
   root.render(
-    <ArtEditor assetsController={assetsController} compositionsController={compositionsController} surface={options.surface} />
+    <ArtEditor
+      assetsController={assetsController}
+      compositionsController={compositionsController}
+      organizationController={organizationController}
+      surface={options.surface}
+    />
   );
 
   return {
     assetsController,
     compositionsController,
+    organizationController,
     root,
     unmount: () => {
       root.unmount();
