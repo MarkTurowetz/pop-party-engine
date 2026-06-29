@@ -36,7 +36,6 @@
     "/client/controller-state-runtime.js",
     "/client/controller-submit-api.js",
     "/client/controller-setup-bindings.js",
-    "/client/controller-heartbeat-runtime.js",
     "/client/controller-session-runtime.js",
     "/client/controller-action-bindings.js",
     "/client/controller.js"
