@@ -1,11 +1,7 @@
-import { legacyScriptsForRole } from "../legacy/script-manifest";
 import { createToolAppContext } from "../context/createToolAppContext";
-import { bootLegacySurface } from "../legacy/loadLegacySurface";
-import { mountLayoutToolApp } from "../../tools/layout/mountLayoutToolApp";
+import { mountLayoutEditor } from "../../tools/layout/mountLayoutEditor";
 
-export const legacyLayoutToolScripts = legacyScriptsForRole("layout");
+// The /layout route is now React-only: no legacy scripts, no bridge.
 export const layoutToolContext = createToolAppContext({ surface: "layout" });
 
-mountLayoutToolApp({ surface: layoutToolContext.surface });
-
-void bootLegacySurface("layout");
+void mountLayoutEditor({ api: layoutToolContext.api.layout, surface: layoutToolContext.surface });
