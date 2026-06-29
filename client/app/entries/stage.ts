@@ -18,6 +18,7 @@ import "../../runtime/stageVisualControllers";
 import "../../runtime/stageWidgetArtRenderer";
 import "../../runtime/stageWipeController";
 import "../../runtime/stagePlayerRoster";
+import "../../runtime/stageVotingCardVisuals";
 
 export const legacyStageScripts = legacyScriptsForRole("stage");
 export const stageContext = createRuntimeContext({ surface: "stage" });

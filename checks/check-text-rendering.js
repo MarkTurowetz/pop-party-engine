@@ -23,7 +23,7 @@ const filesToCheck = [
   "client/runtime/stageArtObjectVisuals.ts",
   "client/runtime/stagePlayerRoster.ts",
   "client/runtime/stageVisualControllers.ts",
-  "client/stage/voting-card-visuals.js",
+  "client/runtime/stageVotingCardVisuals.ts",
   "client/runtime/stageWidgetArtRenderer.ts"
 ];
 
