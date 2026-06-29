@@ -1,11 +1,12 @@
-import { legacyScriptsForRole, legacyFlowScripts } from "../legacy/script-manifest";
+import { legacyScriptsForRole, legacyFlowScripts, legacyConstantsScripts } from "../legacy/script-manifest";
 import { createToolAppContext } from "../context/createToolAppContext";
 import { installToolContextAdapter } from "../context/toolContextAdapter";
 import { bootLegacySurface } from "../legacy/loadLegacySurface";
 import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 import type { FlowEditorController } from "../../tools/flow/flowEditorController";
+import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor";
+import type { ConstantsController } from "../../tools/constants/constantsController";
 import { mountLayoutToolApp } from "../../tools/layout/mountLayoutToolApp";
-import { mountConstantsToolApp } from "../../tools/constants/mountConstantsToolApp";
 import { mountHostAudioToolApp } from "../../tools/host-audio/mountHostAudioToolApp";
 import { mountArtToolApp } from "../../tools/art/mountArtToolApp";
 
@@ -18,6 +19,12 @@ declare global {
     setupFlowTool?: () => void;
     saveGameFlow?: () => Promise<unknown>;
     isFlowDirty?: () => boolean;
+    // Constants dashboard hooks. isDirty inlines these two vars; we encode the
+    // React controller's dirty flag into them (non-empty gameConstants vs "{}").
+    setupConstantsTool?: () => void;
+    saveGameConstants?: () => Promise<unknown>;
+    gameConstants?: unknown;
+    constantsSavedSnapshot?: string;
   }
 }
 
@@ -39,12 +46,30 @@ window.setupFlowTool = () => {
 window.saveGameFlow = () => (flowController ? flowController.save() : Promise.resolve());
 window.isFlowDirty = () => (flowController ? flowController.getState().dirty : false);
 
+let constantsController: ConstantsController | null = null;
+void mountConstantsEditor({ api: toolsContext.api.constants, surface: toolsContext.surface, revealScreen: false }).then(
+  (mounted) => {
+    constantsController = mounted.controller;
+    const syncDirty = () => {
+      window.gameConstants = mounted.controller.getState().dirty ? { __dirty: true } : {};
+      window.constantsSavedSnapshot = "{}";
+    };
+    mounted.controller.subscribe(syncDirty);
+    syncDirty();
+  }
+);
+window.setupConstantsTool = () => {
+  document.querySelector("#constantsScreen")?.classList.remove("hidden");
+};
+window.saveGameConstants = () => (constantsController ? constantsController.save() : Promise.resolve());
+window.gameConstants = {};
+window.constantsSavedSnapshot = "{}";
+
 mountLayoutToolApp({ surface: toolsContext.surface });
-mountConstantsToolApp({ surface: toolsContext.surface });
 mountHostAudioToolApp({ surface: toolsContext.surface });
 mountArtToolApp({ surface: toolsContext.surface });
 
-// Load the other tools' legacy scripts, but none of the flow-tool scripts.
+// Load the other tools' legacy scripts, but none of the flow or constants scripts.
 void bootLegacySurface("tools", {
-  excludeScripts: legacyFlowScripts
+  excludeScripts: [...legacyFlowScripts, ...legacyConstantsScripts]
 });

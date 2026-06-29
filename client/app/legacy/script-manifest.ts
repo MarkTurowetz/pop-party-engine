@@ -27,3 +27,6 @@ export function legacyScriptsForRole(role: LegacyScriptRole): string[] {
 
 /** The legacy flow-tool scripts — excluded from the /tools boot now that flow is React. */
 export const legacyFlowScripts: string[] = [...manifest.flowTool];
+
+/** The legacy constants-tool scripts — excluded from /tools now that constants is React. */
+export const legacyConstantsScripts: string[] = [...manifest.constantsTool];
