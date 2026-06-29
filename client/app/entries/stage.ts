@@ -5,6 +5,7 @@ import { bootLegacySurface } from "../legacy/loadLegacySurface";
 // legacy scripts boot, so legacy consumers still resolve the globals.
 import "../../runtime/textFit";
 import "../../runtime/visualObject";
+import "../../runtime/gameObject";
 import "../../runtime/qrCode";
 
 export const legacyStageScripts = legacyScriptsForRole("stage");

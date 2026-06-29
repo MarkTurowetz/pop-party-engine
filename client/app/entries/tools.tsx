@@ -13,6 +13,7 @@ import { bootLegacySurface } from "../legacy/loadLegacySurface";
 // controller runtime scripts boot on /tools.
 import "../../runtime/textFit";
 import "../../runtime/visualObject";
+import "../../runtime/gameObject";
 import "../../runtime/qrCode";
 import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 import type { FlowEditorController } from "../../tools/flow/flowEditorController";
