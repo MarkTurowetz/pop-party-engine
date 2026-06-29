@@ -156,7 +156,7 @@ if (/querySelector\(":scope > \.art-label-text"\)/.test(artObjectSource)
   process.exit(1);
 }
 
-const artToolSource = fs.readFileSync(path.join(repoRoot, "client/art-tool.js"), "utf8");
+const artToolSource = fs.readFileSync(path.join(repoRoot, "client/tools/art/artCompositionModel.ts"), "utf8");
 if (!/component\.autoFitText !== false/.test(artToolSource)) {
   console.error("Text rendering regression check failed:");
   console.error("- Art Manager text auto-fit must default to true unless explicitly false");

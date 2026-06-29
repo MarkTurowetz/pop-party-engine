@@ -55,14 +55,7 @@
     "/client/tool-dashboard.js",
     "/client/tool-history.js"
   ],
-  "artTool": [
-    "/client/art-component-tree.js",
-    "/client/art-tool-ui.js",
-    "/client/art-sidebar-renderer.js",
-    "/client/art-component-editor.js",
-    "/client/editable-art-renderer.js",
-    "/client/art-tool.js"
-  ],
+  "artTool": [],
   "hostAudioTool": [],
   "flowTool": [],
   "constantsTool": [],

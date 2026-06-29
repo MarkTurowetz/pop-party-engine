@@ -12,9 +12,8 @@ const runtimeEntryFiles = [
 
 const allowedTypedGlobalAdapters = new Set([
   "client/app/context/toolContextAdapter.ts",
-  // Flow is fully React (no adapters). The remaining entries are the legacy bridges
-  // for the four tools not yet migrated (Phase 2).
-  "client/tools/art/mountArtToolApp.tsx",
+  // Flow, Constants, Host Audio, and Art are fully React (no adapters). Only the
+  // Layout tool still uses a legacy bridge mount (last Phase 2 migration).
   "client/tools/layout/mountLayoutToolApp.tsx"
 ]);
 

@@ -33,3 +33,6 @@ export const legacyConstantsScripts: string[] = [...manifest.constantsTool];
 
 /** The legacy host-audio-tool scripts — excluded from /tools now that host-audio is React. */
 export const legacyHostAudioScripts: string[] = [...manifest.hostAudioTool];
+
+/** The legacy art-tool scripts — excluded from /tools now that art is React. */
+export const legacyArtScripts: string[] = [...manifest.artTool];

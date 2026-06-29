@@ -2,7 +2,8 @@ import {
   legacyScriptsForRole,
   legacyFlowScripts,
   legacyConstantsScripts,
-  legacyHostAudioScripts
+  legacyHostAudioScripts,
+  legacyArtScripts
 } from "../legacy/script-manifest";
 import { createToolAppContext } from "../context/createToolAppContext";
 import { installToolContextAdapter } from "../context/toolContextAdapter";
@@ -13,8 +14,9 @@ import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor
 import type { ConstantsController } from "../../tools/constants/constantsController";
 import { mountHostAudioEditor } from "../../tools/host-audio/mountHostAudioEditor";
 import type { HostAudioController } from "../../tools/host-audio/hostAudioController";
+import { mountArtEditor } from "../../tools/art/mountArtEditor";
+import type { MountedArtEditor } from "../../tools/art/mountArtEditor";
 import { mountLayoutToolApp } from "../../tools/layout/mountLayoutToolApp";
-import { mountArtToolApp } from "../../tools/art/mountArtToolApp";
 
 // The legacy tool dashboard (tool-dashboard.js) drives the flow tab through three
 // global hooks that used to live in flow-tool.js. Flow is React now, so we shim
@@ -34,6 +36,13 @@ declare global {
     setupHostAudioTool?: () => void;
     saveHostAudios?: () => Promise<unknown>;
     isHostAudiosDirty?: () => boolean;
+    setupArtTool?: () => void;
+    pendingArtReplacement?: unknown;
+    isArtCompositionsDirty?: () => boolean;
+    isArtOrganizationDirty?: () => boolean;
+    saveArtReplacement?: () => Promise<unknown>;
+    saveArtCompositions?: () => Promise<unknown>;
+    saveArtOrganization?: () => Promise<unknown>;
   }
 }
 
@@ -86,10 +95,28 @@ window.setupHostAudioTool = () => {
 window.saveHostAudios = () => (hostAudioController ? hostAudioController.save() : Promise.resolve());
 window.isHostAudiosDirty = () => (hostAudioController ? hostAudioController.getState().dirty : false);
 
-mountLayoutToolApp({ surface: toolsContext.surface });
-mountArtToolApp({ surface: toolsContext.surface });
+let artEditor: MountedArtEditor | null = null;
+void mountArtEditor({ api: toolsContext.api.art, surface: toolsContext.surface, revealScreen: false }).then((mounted) => {
+  artEditor = mounted;
+  const syncReplacement = () => {
+    window.pendingArtReplacement = mounted.assetsController.getState().dirty ? { __dirty: true } : null;
+  };
+  mounted.assetsController.subscribe(syncReplacement);
+  syncReplacement();
+});
+window.setupArtTool = () => {
+  document.querySelector("#artScreen")?.classList.remove("hidden");
+};
+window.pendingArtReplacement = null;
+window.isArtCompositionsDirty = () => (artEditor ? artEditor.compositionsController.getState().dirty : false);
+window.isArtOrganizationDirty = () => (artEditor ? artEditor.organizationController.getState().dirty : false);
+window.saveArtReplacement = () => (artEditor ? artEditor.assetsController.save() : Promise.resolve());
+window.saveArtCompositions = () => (artEditor ? artEditor.compositionsController.save() : Promise.resolve());
+window.saveArtOrganization = () => (artEditor ? artEditor.organizationController.save() : Promise.resolve());
 
-// Load the other tools' legacy scripts, but none of the flow/constants/host-audio scripts.
+mountLayoutToolApp({ surface: toolsContext.surface });
+
+// Load the other tools' legacy scripts, but none of the flow/constants/host-audio/art scripts.
 void bootLegacySurface("tools", {
-  excludeScripts: [...legacyFlowScripts, ...legacyConstantsScripts, ...legacyHostAudioScripts]
+  excludeScripts: [...legacyFlowScripts, ...legacyConstantsScripts, ...legacyHostAudioScripts, ...legacyArtScripts]
 });
