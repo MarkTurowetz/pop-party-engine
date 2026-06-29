@@ -8,7 +8,7 @@ const repoRoot = path.resolve(__dirname, "..");
 const filesToCheck = [
   "client/controller.js",
   "client/controller-action-bindings.js",
-  "client/controller-avatar-view.js",
+  "client/runtime/controllerAvatarView.ts",
   "client/controller-choice-input-view.js",
   "client/controller-global-action-view.js",
   "client/runtime/controllerHeartbeatRuntime.ts",

@@ -21,6 +21,7 @@ import "../../runtime/controllerViewState";
 import "../../runtime/controllerTextRenderer";
 import "../../runtime/controllerHeartbeatRuntime";
 import "../../runtime/controllerSubmitApi";
+import "../../runtime/controllerAvatarView";
 import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 import type { FlowEditorController } from "../../tools/flow/flowEditorController";
 import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor";
