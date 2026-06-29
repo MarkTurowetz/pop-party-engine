@@ -11,6 +11,7 @@ import { installToolContextAdapter } from "../context/toolContextAdapter";
 import { bootLegacySurface } from "../legacy/loadLegacySurface";
 // Ported runtime modules install their window bridges before the legacy stage/
 // controller runtime scripts boot on /tools.
+import "../../runtime/utils";
 import "../../runtime/textFit";
 import "../../runtime/stageTextRenderer";
 import "../../runtime/visualObject";

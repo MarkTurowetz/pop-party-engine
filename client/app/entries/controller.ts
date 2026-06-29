@@ -3,6 +3,7 @@ import { createRuntimeContext } from "../context/createRuntimeContext";
 import { bootLegacySurface } from "../legacy/loadLegacySurface";
 // Ported runtime modules install their window bridges at import time, before the
 // legacy scripts boot, so legacy consumers still resolve the globals.
+import "../../runtime/utils";
 import "../../runtime/textFit";
 import "../../runtime/stageTextRenderer";
 import "../../runtime/visualObject";
