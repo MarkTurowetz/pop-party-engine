@@ -5,7 +5,13 @@ import type { FlowToolReactShellHandlers } from "./mountFlowToolApp";
 import { useFlowEditor } from "./useFlowEditor";
 import { FlowToolApp } from "./FlowToolApp";
 import { FlowNodeCanvas } from "./components/FlowNodeCanvas";
-import { actionGraphNodes, momentGraphNodes, type FlowNodeDepth } from "./flowNodeGraph";
+import {
+  actionGraphConnections,
+  actionGraphNodes,
+  momentGraphConnections,
+  momentGraphNodes,
+  type FlowNodeDepth
+} from "./flowNodeGraph";
 
 export interface FlowEditorProps {
   controller: FlowEditorController;
@@ -140,6 +146,9 @@ export function FlowEditor({
           nodeDepth === "moments"
             ? momentGraphNodes(flow, graphSelection)
             : actionGraphNodes(selectedState, graphSelection)
+        }
+        connections={
+          nodeDepth === "moments" ? momentGraphConnections(flow) : actionGraphConnections(selectedState)
         }
         onSelectNode={(nodeId) => {
           if (nodeDepth === "moments") controller.selectState(nodeId);

@@ -1,4 +1,5 @@
 import type { FlowAction, FlowState, GameFlow } from "../../types/game-data";
+import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
 
 /**
  * Typed model for the Flow node-graph canvas. Mirrors the legacy
@@ -34,6 +35,41 @@ export interface FlowGraphSelection {
   selectedActionId?: string;
   selectedActionIds?: Iterable<string>;
   selectedRouteNodeId?: string;
+}
+
+export interface FlowGraphConnection {
+  id: string;
+  from: string;
+  to: string;
+  label: string;
+}
+
+const EXIT_FIELDS: { field: string; label: string }[] = [
+  { field: "nextTargetActionId", label: "Next" },
+  { field: "stageClickTargetActionId", label: "Screen Click" },
+  { field: "timerEndTargetActionId", label: "Timer Ends" },
+  { field: "answersSubmittedTargetActionId", label: "Answers" },
+  { field: "microphoneAccessGrantedTargetActionId", label: "Access Granted" }
+];
+
+function isNoFlowTarget(value: string): boolean {
+  return !value || value === "none" || value === "noFlow";
+}
+
+function actionExitTargets(action: FlowAction): { to: string; label: string }[] {
+  if (action.type === "decision") {
+    return ensureDecisionBranches(action)
+      .map((branch, index) => ({ to: String(branch.targetActionId || ""), label: decisionBranchName(branch, index) }))
+      .filter((exit) => !isNoFlowTarget(exit.to));
+  }
+  if (action.type === "jumpNode") {
+    const target = String((action as Record<string, unknown>).jumpTargetActionId || "");
+    return isNoFlowTarget(target) ? [] : [{ to: target, label: "Jump" }];
+  }
+  const record = action as Record<string, unknown>;
+  return EXIT_FIELDS.map((exit) => ({ to: String(record[exit.field] || ""), label: exit.label })).filter(
+    (exit) => !isNoFlowTarget(exit.to)
+  );
 }
 
 export function defaultNodePosition(
@@ -187,4 +223,38 @@ export function actionGraphNodes(state: FlowState | null, selection: FlowGraphSe
   });
 
   return nodes;
+}
+
+/** Connections for the "moments" depth: state -> nextStateTargetId. */
+export function momentGraphConnections(flow: GameFlow | null): FlowGraphConnection[] {
+  const states = flow?.states || [];
+  const ids = new Set(states.map((state) => state.id));
+  const connections: FlowGraphConnection[] = [];
+  for (const state of states) {
+    const target = String(state.nextStateTargetId || "");
+    if (!isNoFlowTarget(target) && ids.has(target)) {
+      connections.push({ id: `${state.id}->${target}`, from: state.id, to: target, label: "Next" });
+    }
+  }
+  return connections;
+}
+
+/** Connections for the "actions" depth: start -> entry, action -> exit targets. */
+export function actionGraphConnections(state: FlowState | null): FlowGraphConnection[] {
+  if (!state) return [];
+  const nodeIds = new Set<string>(["start", "return", ...(state.actions || []).map((action) => action.id)]);
+  const connections: FlowGraphConnection[] = [];
+
+  const entry = String(state.entryTargetActionId || "");
+  if (!isNoFlowTarget(entry) && nodeIds.has(entry)) {
+    connections.push({ id: `start->${entry}`, from: "start", to: entry, label: "Entry" });
+  }
+
+  for (const action of state.actions || []) {
+    for (const exit of actionExitTargets(action)) {
+      if (!nodeIds.has(exit.to)) continue;
+      connections.push({ id: `${action.id}->${exit.to}:${exit.label}`, from: action.id, to: exit.to, label: exit.label });
+    }
+  }
+  return connections;
 }
