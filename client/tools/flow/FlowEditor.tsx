@@ -57,6 +57,9 @@ export function FlowEditor({
       onSetActionField: (key: string, value: unknown) => {
         if (selectedStateId && selectedActionId) controller.setActionField(selectedStateId, selectedActionId, key, value);
       },
+      onSetActionTiming: (timing: { mode?: string; seconds?: number }) => {
+        if (selectedStateId && selectedActionId) controller.setActionTiming(selectedStateId, selectedActionId, timing);
+      },
       nextTargetOptions: states.map((state) => ({ id: state.id, label: state.name || state.id })),
       entryTargetOptions: (selectedState?.actions || []).map((action) => ({
         id: action.id,

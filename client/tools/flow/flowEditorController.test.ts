@@ -78,6 +78,16 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().dirty).toBe(true);
   });
 
+  it("edits action timing (merging mode and seconds)", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.setActionTiming("round-one", "act-1", { mode: "S+" });
+    controller.setActionTiming("round-one", "act-1", { seconds: 2.5 });
+
+    const timing = controller.getState().snapshot.flow.states[1].actions[0].timing;
+    expect(timing).toEqual({ mode: "S+", seconds: 2.5 });
+  });
+
   it("sets an arbitrary action field", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 

@@ -13,6 +13,7 @@ export interface ActionInspectorEditHandlers {
   onSetNextTarget?: (targetId: string) => void;
   onSetEntryTarget?: (targetId: string) => void;
   onSetActionField?: (key: string, value: unknown) => void;
+  onSetActionTiming?: (timing: { mode?: string; seconds?: number }) => void;
   actionTypeOptions?: InspectorTargetOption[];
   actionTargetOptions?: InspectorTargetOption[];
   nextTargetOptions?: InspectorTargetOption[];
@@ -189,9 +190,43 @@ export function ActionInspector({
         <dd>{state.name || state.id}</dd>
         <dt>Parent</dt>
         <dd>{parentAction?.name || parentAction?.id || "None"}</dd>
-        <dt>Timing</dt>
-        <dd>{actionTimingLabel(action)}</dd>
+        {edit?.onSetActionTiming ? null : (
+          <>
+            <dt>Timing</dt>
+            <dd>{actionTimingLabel(action)}</dd>
+          </>
+        )}
       </dl>
+      {edit?.onSetActionTiming ? (
+        <div className="flow-react-action-timing" data-flow-react-component="action-timing">
+          <label className="flow-react-field" data-flow-react-field="timing-mode">
+            <span>Timing Mode</span>
+            <select
+              value={action.timing?.mode || "E+"}
+              data-flow-react-timing-mode
+              onChange={(event) => edit.onSetActionTiming?.({ mode: event.target.value })}
+            >
+              <option value="E+">E+ (after enter)</option>
+              <option value="S+">S+ (after start)</option>
+            </select>
+          </label>
+          <label className="flow-react-field" data-flow-react-field="timing-seconds">
+            <span>Timing Seconds</span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              key={`${action.id}-timing-seconds`}
+              defaultValue={String(Number(action.timing?.seconds ?? 0))}
+              data-flow-react-timing-seconds
+              onBlur={(event) => edit.onSetActionTiming?.({ seconds: Number(event.target.value) })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+              }}
+            />
+          </label>
+        </div>
+      ) : null}
       {edit?.onSetActionField ? (
         <ActionFieldControls
           action={action}

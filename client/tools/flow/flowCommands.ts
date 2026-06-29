@@ -206,6 +206,27 @@ export function setFlowActionTypeCommand(
   };
 }
 
+export interface FlowActionTimingPatch {
+  mode?: string;
+  seconds?: number;
+}
+
+export function setFlowActionTimingCommand(stateId: string, actionId: string, timing: FlowActionTimingPatch): FlowCommand {
+  return {
+    id: `set-flow-action-timing:${actionId}`,
+    label: "Edit action timing",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      if (!action) return;
+      const current = action.timing || { mode: "E+", seconds: 0 };
+      const mode = timing.mode ?? current.mode ?? "E+";
+      const secondsValue = timing.seconds ?? current.seconds ?? 0;
+      const seconds = Number.isFinite(Number(secondsValue)) ? Math.max(0, Number(secondsValue)) : 0;
+      action.timing = { ...current, mode, seconds };
+    }
+  };
+}
+
 export function setFlowActionFieldCommand(stateId: string, actionId: string, key: string, value: unknown): FlowCommand {
   return {
     id: `set-flow-action-field:${actionId}:${key}`,

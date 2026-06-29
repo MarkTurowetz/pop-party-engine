@@ -14,7 +14,9 @@ import {
   removeFlowStatesCommand,
   renameFlowStateCommand,
   setFlowActionFieldCommand,
+  setFlowActionTimingCommand,
   setFlowActionTypeCommand,
+  type FlowActionTimingPatch,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
   setFlowStateVotingSourceCommand
@@ -90,6 +92,7 @@ export interface FlowEditorController {
   renameAction(stateId: string, actionId: string, name: string): void;
   setActionType(stateId: string, actionId: string, type: string): void;
   setActionField(stateId: string, actionId: string, key: string, value: unknown): void;
+  setActionTiming(stateId: string, actionId: string, timing: FlowActionTimingPatch): void;
   moveAction(stateId: string, draggedActionId: string, targetActionId: string, placeAfter?: boolean): void;
   moveSubAction(
     stateId: string,
@@ -214,6 +217,8 @@ export function createFlowEditorController(options: FlowEditorControllerOptions)
       ),
     setActionField: (stateId, actionId, key, value) =>
       commit(store.execute(setFlowActionFieldCommand(stateId, actionId, key, value))),
+    setActionTiming: (stateId, actionId, timing) =>
+      commit(store.execute(setFlowActionTimingCommand(stateId, actionId, timing))),
     moveAction: (stateId, draggedActionId, targetActionId, placeAfter = false) =>
       commit(store.execute(moveFlowActionCommand(stateId, draggedActionId, targetActionId, placeAfter))),
     moveSubAction: (stateId, parentActionId, draggedActionId, targetActionId, placeAfter = false) =>
