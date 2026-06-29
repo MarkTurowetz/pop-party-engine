@@ -1,0 +1,97 @@
+import { describe, expect, it, vi } from "vitest";
+import { createFlowEditorController } from "./flowEditorController";
+import type { FlowApi } from "../../api/flowApi";
+import type { GameFlow, GameFlowSaveResponse } from "../../types/game-data";
+
+function flowFixture(): GameFlow {
+  return {
+    states: [
+      { id: "intro", name: "Intro", actions: [] },
+      { id: "round-one", name: "Round One", actions: [{ id: "act-1", name: "Action 1", type: "message" }] }
+    ],
+    routeNodes: []
+  };
+}
+
+function fakeApi(overrides: Partial<FlowApi> = {}): FlowApi {
+  return {
+    loadGameFlow: vi.fn(),
+    saveGameFlow: vi.fn(async (flow: GameFlow) => ({ ok: true, flow, runtimeFlow: flow, storage: {} }) as unknown as GameFlowSaveResponse),
+    saveToolDraft: vi.fn(async (message) => message),
+    ...overrides
+  } as FlowApi;
+}
+
+describe("createFlowEditorController", () => {
+  it("starts clean and selects the first state", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+    const state = controller.getState();
+
+    expect(state.dirty).toBe(false);
+    expect(state.snapshot.selection.selectedFlowStateId).toBe("intro");
+  });
+
+  it("marks dirty after an edit and notifies subscribers", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+    const listener = vi.fn();
+    controller.subscribe(listener);
+
+    controller.addState();
+
+    expect(listener).toHaveBeenCalled();
+    expect(controller.getState().dirty).toBe(true);
+    expect(controller.getState().snapshot.flow.states).toHaveLength(3);
+  });
+
+  it("undo returns to a clean snapshot", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.renameState("round-one", "Round 1");
+    expect(controller.getState().dirty).toBe(true);
+
+    controller.undo();
+    expect(controller.getState().dirty).toBe(false);
+    expect(controller.getState().snapshot.flow.states[1].name).toBe("Round One");
+  });
+
+  it("saves the serialized flow and clears dirty", async () => {
+    const api = fakeApi();
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api });
+
+    controller.addAction("intro");
+    expect(controller.getState().dirty).toBe(true);
+
+    const saved = await controller.save();
+
+    expect(api.saveGameFlow).toHaveBeenCalledTimes(1);
+    expect(saved?.states[0].actions).toHaveLength(1);
+    expect(controller.getState().dirty).toBe(false);
+    expect(controller.getState().saving).toBe(false);
+  });
+
+  it("surfaces a save error without clearing dirty", async () => {
+    const api = fakeApi({
+      saveGameFlow: vi.fn(async () => {
+        throw new Error("network down");
+      })
+    });
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api });
+    controller.addState();
+
+    const result = await controller.save();
+
+    expect(result).toBeNull();
+    expect(controller.getState().error).toBe("network down");
+    expect(controller.getState().dirty).toBe(true);
+  });
+
+  it("publishes a best-effort local draft", async () => {
+    const api = fakeApi();
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api });
+
+    await controller.publishDraft();
+
+    expect(api.saveToolDraft).toHaveBeenCalledTimes(1);
+    expect(controller.getState().hasLocalDraft).toBe(true);
+  });
+});
