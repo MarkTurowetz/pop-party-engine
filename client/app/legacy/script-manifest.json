@@ -26,7 +26,6 @@
   ],
   "controllerRuntime": [
     "/client/controller-microphone-access-view.js",
-    "/client/controller-recording-lifecycle.js",
     "/client/controller-voice-input.js",
     "/client/controller-lobby-view.js",
     "/client/controller-global-action-view.js",

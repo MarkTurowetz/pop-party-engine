@@ -15,6 +15,7 @@ import "../../runtime/controllerSubmitApi";
 import "../../runtime/controllerAvatarView";
 import "../../runtime/controllerChoiceInputView";
 import "../../runtime/controllerTextInputView";
+import "../../runtime/controllerRecordingLifecycle";
 
 export const legacyControllerScripts = legacyScriptsForRole("controller");
 export const controllerContext = createRuntimeContext({ surface: "controller" });
