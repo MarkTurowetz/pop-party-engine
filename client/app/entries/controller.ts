@@ -9,6 +9,7 @@ import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/controllerModuleCache";
 import "../../runtime/controllerViewState";
+import "../../runtime/controllerTextRenderer";
 
 export const legacyControllerScripts = legacyScriptsForRole("controller");
 export const controllerContext = createRuntimeContext({ surface: "controller" });
