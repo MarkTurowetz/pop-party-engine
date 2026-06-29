@@ -45,6 +45,7 @@ declare global {
     subActionTimers: number[];
     textObjectTimers: number[];
     stageAudioPlayers: Set<AudioEl>;
+    gameConstants: Dict;
     // app-shell DOM refs (used by the stage orchestrator).
     craftingTimer: El;
     craftingTimerLabel: El;
