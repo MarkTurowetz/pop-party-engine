@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { FlowEditorController } from "./flowEditorController";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import type { FlowToolReactShellHandlers } from "./mountFlowToolApp";
 import { useFlowEditor } from "./useFlowEditor";
 import { FlowToolApp } from "./FlowToolApp";
+import { FlowNodeCanvas } from "./components/FlowNodeCanvas";
+import { actionGraphNodes, momentGraphNodes, type FlowNodeDepth } from "./flowNodeGraph";
 
 export interface FlowEditorProps {
   controller: FlowEditorController;
@@ -32,6 +34,9 @@ export function FlowEditor({
   const selectedStateId = selection.selectedFlowStateId;
   const selectedActionId = selection.selectedFlowActionId;
   const selectedActionIds = selection.selectedFlowActionIds;
+
+  const [viewMode, setViewMode] = useState<"list" | "node">("list");
+  const [nodeDepth, setNodeDepth] = useState<FlowNodeDepth>("moments");
 
   const hasState = Boolean(selectedStateId);
   const hasActionSelection = Boolean(selectedActionId) || selectedActionIds.size > 0;
@@ -114,12 +119,39 @@ export function FlowEditor({
         controller.selectRouteBranch(routeNodeId, branchId),
       selectRouteNode: (routeNodeId: string) => controller.selectRouteNode(routeNodeId),
       selectState: (stateId: string) => controller.selectState(stateId),
-      setViewMode: () => {
-        /* node view is wired in a later step */
-      }
+      setViewMode: (mode: "list" | "node") => setViewMode(mode)
     }),
     [controller, selectedStateId, selectedActionId, selectedActionIds, selection.selectedFlowRouteNodeId]
   );
+
+  const selectedState = (flow.states || []).find((state) => state.id === selectedStateId) || null;
+  const graphSelection = {
+    selectedStateId,
+    selectedActionId,
+    selectedActionIds,
+    selectedRouteNodeId: selection.selectedFlowRouteNodeId
+  };
+  const nodeCanvas =
+    viewMode === "node" ? (
+      <FlowNodeCanvas
+        depth={nodeDepth}
+        stateTitle={selectedState?.name || selectedState?.id}
+        nodes={
+          nodeDepth === "moments"
+            ? momentGraphNodes(flow, graphSelection)
+            : actionGraphNodes(selectedState, graphSelection)
+        }
+        onSelectNode={(nodeId) => {
+          if (nodeDepth === "moments") controller.selectState(nodeId);
+          else controller.selectActions(nodeId);
+        }}
+        onEnterState={(stateId) => {
+          controller.selectState(stateId);
+          setNodeDepth("actions");
+        }}
+        onBackToMoments={() => setNodeDepth("moments")}
+      />
+    ) : null;
 
   return (
     <div className="flow-editor-root" data-flow-editor-dirty={dirty ? "true" : "false"}>
@@ -142,8 +174,10 @@ export function FlowEditor({
         canRevert={dirty}
         flow={flow}
         flowActionTypes={flowActionTypes}
+        flowViewMode={viewMode}
         handlers={handlers}
         inspectorEdit={inspectorEdit}
+        nodeCanvas={nodeCanvas}
         reorder={{
           onReorderState: (draggedId, targetId) => controller.moveState(draggedId, targetId),
           onReorderAction: (draggedId, targetId) => {

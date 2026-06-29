@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { GameFlow } from "../../types/game-data";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowPreviewModel } from "./flowPreviewModel";
@@ -26,6 +27,7 @@ export interface FlowToolAppProps {
   flow?: GameFlow | null;
   handlers?: FlowToolReactShellHandlers;
   inspectorEdit?: ActionInspectorEditHandlers;
+  nodeCanvas?: ReactNode;
   reorder?: FlowReorderHandlers;
   selectedActionId?: string;
   selectedRouteBranchId?: string;
@@ -47,6 +49,7 @@ export function FlowToolApp({
   flowViewMode = "list",
   handlers = {},
   inspectorEdit,
+  nodeCanvas,
   reorder,
   selectedActionId = "",
   selectedRouteBranchId = "",
@@ -103,28 +106,34 @@ export function FlowToolApp({
         onRevert={handlers.revert}
         onSetViewMode={handlers.setViewMode}
       />
-      <FlowStateList
-        onSelectState={handlers.selectState}
-        onReorderState={reorder?.onReorderState}
-        selectedStateId={model.selectedStateId}
-        states={flow?.states || []}
-      />
-      <FlowActionList
-        actions={model.selectedState?.actions || []}
-        actionTypes={flowActionTypes}
-        onSelectAction={handlers.selectAction}
-        onReorderAction={reorder?.onReorderAction}
-        onReorderSubAction={reorder?.onReorderSubAction}
-        selectedActionId={model.selectedActionId}
-      />
-      <FlowRouteNodeList
-        actionTypes={flowActionTypes}
-        onSelectRouteBranch={handlers.selectRouteBranch}
-        onSelectRouteNode={handlers.selectRouteNode}
-        routeNodes={flow?.routeNodes || []}
-        selectedRouteBranchId={selectedRouteBranchId}
-        selectedRouteNodeId={selectedRouteNodeId}
-      />
+      {flowViewMode === "node" && nodeCanvas ? (
+        nodeCanvas
+      ) : (
+        <>
+          <FlowStateList
+            onSelectState={handlers.selectState}
+            onReorderState={reorder?.onReorderState}
+            selectedStateId={model.selectedStateId}
+            states={flow?.states || []}
+          />
+          <FlowActionList
+            actions={model.selectedState?.actions || []}
+            actionTypes={flowActionTypes}
+            onSelectAction={handlers.selectAction}
+            onReorderAction={reorder?.onReorderAction}
+            onReorderSubAction={reorder?.onReorderSubAction}
+            selectedActionId={model.selectedActionId}
+          />
+          <FlowRouteNodeList
+            actionTypes={flowActionTypes}
+            onSelectRouteBranch={handlers.selectRouteBranch}
+            onSelectRouteNode={handlers.selectRouteNode}
+            routeNodes={flow?.routeNodes || []}
+            selectedRouteBranchId={selectedRouteBranchId}
+            selectedRouteNodeId={selectedRouteNodeId}
+          />
+        </>
+      )}
       {model.selectedRouteNode ? (
         <FlowRouteInspector
           actionTypes={flowActionTypes}
