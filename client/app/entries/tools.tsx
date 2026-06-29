@@ -18,6 +18,8 @@ import "../../runtime/stageTextRenderer";
 // layoutRuntime re-assigns window.PartyGameTextFit and must load AFTER textFit.
 import "../../runtime/layoutRuntime";
 import "../../runtime/stageRuntime";
+// The /tools dashboard tab router (defines setupToolDashboard, dispatched by app-shell).
+import "../../runtime/toolDashboard";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/qrCode";

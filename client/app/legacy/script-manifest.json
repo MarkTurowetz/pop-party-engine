@@ -10,12 +10,7 @@
   ],
   "stageRuntime": [],
   "controllerRuntime": [],
-  "toolFoundation": [
-    "/client/tool-affordances.js",
-    "/client/color-control.js",
-    "/client/tool-dashboard.js",
-    "/client/tool-history.js"
-  ],
+  "toolFoundation": [],
   "artTool": [],
   "hostAudioTool": [],
   "flowTool": [],
