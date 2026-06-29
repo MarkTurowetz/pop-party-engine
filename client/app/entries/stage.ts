@@ -4,6 +4,7 @@ import { bootLegacySurface } from "../legacy/loadLegacySurface";
 // Ported runtime modules install their window bridges at import time, before the
 // legacy scripts boot, so legacy consumers still resolve the globals.
 import "../../runtime/textFit";
+import "../../runtime/visualObject";
 import "../../runtime/qrCode";
 
 export const legacyStageScripts = legacyScriptsForRole("stage");
