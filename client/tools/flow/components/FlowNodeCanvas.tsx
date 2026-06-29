@@ -287,7 +287,12 @@ export function FlowNodeCanvas({
   const { width, height } = worldSize(nodes);
   const wires = buildWirePaths(nodes, connections);
   return (
-    <section className="flow-react-node-canvas" data-flow-react-component="node-canvas" data-node-depth={depth}>
+    <section
+      className="flow-react-node-canvas"
+      data-flow-react-component="node-canvas"
+      data-node-depth={depth}
+      style={{ gridColumn: "1 / 4", minWidth: 0, display: "flex", flexDirection: "column", minHeight: 0 }}
+    >
       <header className="flow-node-canvas-bar">
         {depth === "actions" ? (
           <button type="button" data-node-back onClick={() => onBackToMoments?.()}>
