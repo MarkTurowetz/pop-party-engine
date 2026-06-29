@@ -26,6 +26,7 @@ import "../../runtime/controllerChoiceInputView";
 import "../../runtime/controllerTextInputView";
 import "../../runtime/controllerRecordingLifecycle";
 import "../../runtime/controllerVoiceInput";
+import "../../runtime/controllerMicrophoneAccessView";
 import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 import type { FlowEditorController } from "../../tools/flow/flowEditorController";
 import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor";
