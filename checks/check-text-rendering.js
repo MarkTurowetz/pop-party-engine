@@ -21,7 +21,7 @@ const filesToCheck = [
   "client/layout-tool.js",
   "client/stage-runtime.js",
   "client/runtime/stageArtObjectVisuals.ts",
-  "client/stage/player-roster-renderer.js",
+  "client/runtime/stagePlayerRoster.ts",
   "client/runtime/stageVisualControllers.ts",
   "client/stage/voting-card-visuals.js",
   "client/runtime/stageWidgetArtRenderer.ts"

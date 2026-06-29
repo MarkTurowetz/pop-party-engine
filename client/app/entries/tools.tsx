@@ -25,6 +25,7 @@ import "../../runtime/stageArtObjectVisuals";
 import "../../runtime/stageVisualControllers";
 import "../../runtime/stageWidgetArtRenderer";
 import "../../runtime/stageWipeController";
+import "../../runtime/stagePlayerRoster";
 import "../../runtime/controllerModuleCache";
 import "../../runtime/controllerViewState";
 import "../../runtime/controllerTextRenderer";

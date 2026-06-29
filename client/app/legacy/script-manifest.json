@@ -11,7 +11,6 @@
     "/shared/art-component-schema.js"
   ],
   "stageRuntime": [
-    "/client/stage/player-roster-renderer.js",
     "/client/stage/voting-card-visuals.js",
     "/client/stage-runtime.js"
   ],
