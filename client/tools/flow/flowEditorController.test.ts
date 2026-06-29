@@ -43,6 +43,24 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().snapshot.flow.states).toHaveLength(3);
   });
 
+  it("selects a valid action (validating against flow action ids)", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.selectActions("act-1");
+
+    expect(controller.getState().snapshot.selection.selectedFlowActionId).toBe("act-1");
+  });
+
+  it("renames the selected action through the controller", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.renameAction("round-one", "act-1", "Edited");
+
+    const action = controller.getState().snapshot.flow.states[1].actions[0];
+    expect(action.name).toBe("Edited");
+    expect(controller.getState().dirty).toBe(true);
+  });
+
   it("undo returns to a clean snapshot", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 

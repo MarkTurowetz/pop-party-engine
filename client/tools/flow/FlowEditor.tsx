@@ -37,6 +37,27 @@ export function FlowEditor({
   const hasActionSelection = Boolean(selectedActionId) || selectedActionIds.size > 0;
   const hasRouteSelection = Boolean(selection.selectedFlowRouteNodeId);
 
+  const inspectorEdit = useMemo(() => {
+    const states = flow.states || [];
+    const selectedState = states.find((state) => state.id === selectedStateId);
+    return {
+      onRenameAction: (name: string) => {
+        if (selectedStateId && selectedActionId) controller.renameAction(selectedStateId, selectedActionId, name);
+      },
+      onSetNextTarget: (targetId: string) => {
+        if (selectedStateId) controller.setNextTarget(selectedStateId, targetId);
+      },
+      onSetEntryTarget: (targetId: string) => {
+        if (selectedStateId) controller.setEntryTarget(selectedStateId, targetId);
+      },
+      nextTargetOptions: states.map((state) => ({ id: state.id, label: state.name || state.id })),
+      entryTargetOptions: (selectedState?.actions || []).map((action) => ({
+        id: action.id,
+        label: action.name || action.id
+      }))
+    };
+  }, [controller, selectedStateId, selectedActionId, flow]);
+
   const handlers = useMemo<FlowToolReactShellHandlers>(
     () => ({
       addState: () => controller.addState(),
@@ -85,6 +106,7 @@ export function FlowEditor({
         flow={flow}
         flowActionTypes={flowActionTypes}
         handlers={handlers}
+        inspectorEdit={inspectorEdit}
         previewMode={previewMode}
         selectedActionId={selectedActionId}
         selectedRouteBranchId={selection.selectedFlowRouteBranchId}

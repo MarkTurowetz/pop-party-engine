@@ -1,7 +1,7 @@
 import type { GameFlow } from "../../types/game-data";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowPreviewModel } from "./flowPreviewModel";
-import { ActionInspector } from "./components/ActionInspector";
+import { ActionInspector, type ActionInspectorEditHandlers } from "./components/ActionInspector";
 import { FlowActionList } from "./components/FlowActionList";
 import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
 import { FlowRouteInspector } from "./components/FlowRouteInspector";
@@ -19,6 +19,7 @@ export interface FlowToolAppProps {
   flowViewMode?: string;
   flow?: GameFlow | null;
   handlers?: FlowToolReactShellHandlers;
+  inspectorEdit?: ActionInspectorEditHandlers;
   selectedActionId?: string;
   selectedRouteBranchId?: string;
   selectedRouteNodeId?: string;
@@ -38,6 +39,7 @@ export function FlowToolApp({
   flowNodeDepth = "actions",
   flowViewMode = "list",
   handlers = {},
+  inspectorEdit,
   selectedActionId = "",
   selectedRouteBranchId = "",
   selectedRouteNodeId = "",
@@ -122,6 +124,7 @@ export function FlowToolApp({
         <ActionInspector
           action={model.actionRef?.action || null}
           actionTypes={flowActionTypes}
+          edit={inspectorEdit}
           isBranch={model.actionRef?.isBranch || false}
           isSubAction={model.actionRef?.isSubAction || false}
           parentAction={model.actionRef?.parentAction || null}

@@ -5,6 +5,7 @@ import {
   addFlowStateCommand,
   addFlowSubActionCommand,
   moveFlowActionCommand,
+  renameFlowActionCommand,
   moveFlowStateCommand,
   moveFlowSubActionCommand,
   removeFlowActionsCommand,
@@ -19,7 +20,14 @@ import {
 import { createFlowStore, type FlowStore, type FlowStoreSnapshot } from "./flowStore";
 import { makeFlowId } from "./flowSelectors";
 import { serializeGameFlowForSave } from "./flowSerialization";
-import type { RemoveFlowRouteBranchOptions } from "./flowMutations";
+import { flattenedFlowActionIds, type RemoveFlowRouteBranchOptions } from "./flowMutations";
+
+/** All selectable action ids across the flow (primary, sub-actions, decision branches). */
+function allFlowActionIds(flow: GameFlow): string[] {
+  const ids: string[] = [];
+  for (const state of flow.states || []) flattenedFlowActionIds(state.actions || [], {}, ids);
+  return ids;
+}
 
 /**
  * Framework-agnostic controller that owns a writable Flow editing session.
@@ -72,6 +80,7 @@ export interface FlowEditorController {
   // Action edits
   addAction(stateId: string, selectedPrimaryActionId?: string): void;
   addSubAction(stateId: string, parentActionId: string, selectedSubActionId?: string): void;
+  renameAction(stateId: string, actionId: string, name: string): void;
   moveAction(stateId: string, draggedActionId: string, targetActionId: string, placeAfter?: boolean): void;
   moveSubAction(
     stateId: string,
@@ -156,7 +165,7 @@ export function createFlowEditorController(options: FlowEditorControllerOptions)
     },
 
     selectState: (stateId) => commit(store.selectMoments(stateId)),
-    selectActions: (ids) => commit(store.selectActions(ids, null)),
+    selectActions: (ids) => commit(store.selectActions(ids, allFlowActionIds(store.snapshot().flow))),
     selectRouteNode: (routeNodeId) => commit(store.selectRouteNode(routeNodeId)),
     selectRouteBranch: (routeNodeId, branchId) => commit(store.selectRouteBranch(routeNodeId, branchId)),
     clearActionSelection: () => commit(store.clearActionSelection()),
@@ -177,6 +186,8 @@ export function createFlowEditorController(options: FlowEditorControllerOptions)
       commit(store.execute(addFlowActionCommand(stateId, selectedPrimaryActionId))),
     addSubAction: (stateId, parentActionId, selectedSubActionId = "") =>
       commit(store.execute(addFlowSubActionCommand(stateId, parentActionId, selectedSubActionId))),
+    renameAction: (stateId, actionId, name) =>
+      commit(store.execute(renameFlowActionCommand(stateId, actionId, name))),
     moveAction: (stateId, draggedActionId, targetActionId, placeAfter = false) =>
       commit(store.execute(moveFlowActionCommand(stateId, draggedActionId, targetActionId, placeAfter))),
     moveSubAction: (stateId, parentActionId, draggedActionId, targetActionId, placeAfter = false) =>

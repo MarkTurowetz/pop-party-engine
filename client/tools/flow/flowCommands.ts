@@ -178,6 +178,17 @@ export function addFlowActionCommand(stateId: string, selectedPrimaryActionId = 
   };
 }
 
+export function renameFlowActionCommand(stateId: string, actionId: string, nextName: string): FlowCommand {
+  return {
+    id: `rename-flow-action:${actionId}`,
+    label: "Rename flow action",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      if (action) action.name = nextName;
+    }
+  };
+}
+
 export function addFlowSubActionCommand(stateId: string, parentActionId: string, selectedSubActionId = ""): FlowCommand {
   return {
     id: `add-flow-sub-action:${parentActionId}`,

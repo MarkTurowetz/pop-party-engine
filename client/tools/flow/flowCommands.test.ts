@@ -11,6 +11,7 @@ import {
   removeFlowRouteBranchCommand,
   removeFlowRouteNodeCommand,
   removeFlowStatesCommand,
+  renameFlowActionCommand,
   renameFlowStateCommand,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
@@ -108,6 +109,16 @@ describe("Flow action commands", () => {
 
     expect(next.states[0].actions?.map((action) => action.id)).toEqual(["act-1", expect.any(String), "act-2"]);
     expect(next.states[0].actions).toHaveLength(3);
+  });
+
+  it("renames an action (including nested sub-actions)", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(renameFlowActionCommand("round-one", "act-1", "Renamed"));
+    expect(next.states[0].actions?.[0].name).toBe("Renamed");
+
+    const sub = history.execute(renameFlowActionCommand("round-one", "sub-1", "Renamed Sub"));
+    expect(sub.states[0].actions?.[0].subActions?.[0].name).toBe("Renamed Sub");
   });
 
   it("adds a sub-action under a parent action", () => {

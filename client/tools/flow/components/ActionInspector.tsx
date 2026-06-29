@@ -1,9 +1,23 @@
 import type { FlowAction, FlowState } from "../../../types/game-data";
 import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
 
+export interface InspectorTargetOption {
+  id: string;
+  label: string;
+}
+
+export interface ActionInspectorEditHandlers {
+  onRenameAction?: (name: string) => void;
+  onSetNextTarget?: (targetId: string) => void;
+  onSetEntryTarget?: (targetId: string) => void;
+  nextTargetOptions?: InspectorTargetOption[];
+  entryTargetOptions?: InspectorTargetOption[];
+}
+
 export interface ActionInspectorProps {
   action: FlowAction | null;
   actionTypes?: FlowActionTypeMeta[];
+  edit?: ActionInspectorEditHandlers;
   isBranch?: boolean;
   isSubAction?: boolean;
   parentAction?: FlowAction | null;
@@ -24,7 +38,41 @@ function actionKind(isBranch: boolean, isSubAction: boolean): string {
   return "Action";
 }
 
-export function ActionInspector({ action, actionTypes = [], isBranch = false, isSubAction = false, parentAction = null, state }: ActionInspectorProps) {
+function TargetSelect({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  label: string;
+  value: string;
+  options: InspectorTargetOption[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flow-react-field" data-flow-react-field={label.toLowerCase()}>
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Default</option>
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+export function ActionInspector({
+  action,
+  actionTypes = [],
+  edit,
+  isBranch = false,
+  isSubAction = false,
+  parentAction = null,
+  state
+}: ActionInspectorProps) {
   if (!state) {
     return (
       <section className="flow-react-panel flow-react-inspector" data-flow-react-component="action-inspector" data-empty="true">
@@ -51,11 +99,33 @@ export function ActionInspector({ action, actionTypes = [], isBranch = false, is
           <dd>State</dd>
           <dt>Actions</dt>
           <dd>{state.actions?.length || 0}</dd>
-          <dt>Entry</dt>
-          <dd>{String(state.entryTargetActionId || "Default")}</dd>
-          <dt>Next</dt>
-          <dd>{String(state.nextStateTargetId || "Default")}</dd>
         </dl>
+        {edit?.onSetEntryTarget ? (
+          <TargetSelect
+            label="Entry"
+            value={String(state.entryTargetActionId || "")}
+            options={edit.entryTargetOptions || []}
+            onChange={edit.onSetEntryTarget}
+          />
+        ) : (
+          <dl>
+            <dt>Entry</dt>
+            <dd>{String(state.entryTargetActionId || "Default")}</dd>
+          </dl>
+        )}
+        {edit?.onSetNextTarget ? (
+          <TargetSelect
+            label="Next"
+            value={String(state.nextStateTargetId || "")}
+            options={edit.nextTargetOptions || []}
+            onChange={edit.onSetNextTarget}
+          />
+        ) : (
+          <dl>
+            <dt>Next</dt>
+            <dd>{String(state.nextStateTargetId || "Default")}</dd>
+          </dl>
+        )}
       </section>
     );
   }
@@ -72,6 +142,21 @@ export function ActionInspector({ action, actionTypes = [], isBranch = false, is
       data-state-id={state.id}
     >
       <h2>{action.name || action.id}</h2>
+      {edit?.onRenameAction ? (
+        <label className="flow-react-field" data-flow-react-field="name">
+          <span>Name</span>
+          <input
+            type="text"
+            key={action.id}
+            defaultValue={action.name || ""}
+            data-flow-react-action-name-input
+            onBlur={(event) => edit.onRenameAction?.(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+            }}
+          />
+        </label>
+      ) : null}
       <dl>
         <dt>ID</dt>
         <dd>{action.id}</dd>
