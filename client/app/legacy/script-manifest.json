@@ -25,7 +25,6 @@
     "/client/stage/widget-art-renderer.js",
     "/client/stage/voting-card-visuals.js",
     "/client/stage/render-orchestrator.js",
-    "/client/qr-code.js",
     "/client/stage-runtime.js"
   ],
   "controllerRuntime": [

@@ -12,6 +12,7 @@ import { bootLegacySurface } from "../legacy/loadLegacySurface";
 // Ported runtime modules install their window bridges before the legacy stage/
 // controller runtime scripts boot on /tools.
 import "../../runtime/textFit";
+import "../../runtime/qrCode";
 import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 import type { FlowEditorController } from "../../tools/flow/flowEditorController";
 import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor";
