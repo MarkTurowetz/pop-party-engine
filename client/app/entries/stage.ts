@@ -12,6 +12,7 @@ import "../../runtime/qrCode";
 import "../../runtime/stageDebugPanel";
 import "../../runtime/stageWidgetBindings";
 import "../../runtime/stageRenderOrchestrator";
+import "../../runtime/stageActionRunners";
 
 export const legacyStageScripts = legacyScriptsForRole("stage");
 export const stageContext = createRuntimeContext({ surface: "stage" });
