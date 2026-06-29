@@ -139,7 +139,8 @@ async function main() {
   const toolsEntry = viteEntryPathFromManifest("client/app/entries/tools.tsx");
 
   try {
-    await withServer({}, async (port) => {
+    // Vite entries are the default now; opt out to exercise the classic role-shell.
+    await withServer({ PARTY_GAME_USE_VITE_ENTRIES: "0" }, async (port) => {
       const asset = await request({ port, pathname: assetPath });
       assert(asset.statusCode === 200, `${assetPath} returned ${asset.statusCode}`);
       assert(String(asset.headers["content-type"] || "").includes("javascript"), `${assetPath} did not return JavaScript`);

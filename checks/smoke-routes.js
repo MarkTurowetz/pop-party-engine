@@ -106,7 +106,10 @@ async function main() {
       PORT: String(port),
       GAME_FLOW_STORAGE: "local",
       GAME_FLOW_GITHUB_TOKEN: "",
-      GITHUB_TOKEN: ""
+      GITHUB_TOKEN: "",
+      // These assertions validate the classic (non-Vite) role-shell structure, which
+      // is now opt-out. check-vite-assets covers the Vite-default shell.
+      PARTY_GAME_USE_VITE_ENTRIES: "0"
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
