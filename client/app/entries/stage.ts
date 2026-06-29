@@ -9,6 +9,9 @@ import "../../runtime/stageTextRenderer";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/qrCode";
+import "../../runtime/stageDebugPanel";
+import "../../runtime/stageWidgetBindings";
+import "../../runtime/stageRenderOrchestrator";
 
 export const legacyStageScripts = legacyScriptsForRole("stage");
 export const stageContext = createRuntimeContext({ surface: "stage" });
