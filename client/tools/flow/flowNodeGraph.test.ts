@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   actionGraphConnections,
   actionGraphNodes,
+  actionNodeExits,
   momentGraphConnections,
-  momentGraphNodes
+  momentGraphNodes,
+  momentNodeExits
 } from "./flowNodeGraph";
 import type { GameFlow } from "../../types/game-data";
 
@@ -67,6 +69,38 @@ describe("flowNodeGraph", () => {
       { id: "start->a1", from: "start", to: "a1", label: "Entry" },
       { id: "a1->a2:Next", from: "a1", to: "a2", label: "Next" },
       { id: "a2->return:Next", from: "a2", to: "return", label: "Next" }
+    ]);
+  });
+
+  it("exposes a Next exit per state in moments depth", () => {
+    const exits = momentNodeExits(flowFixture());
+    expect(exits.map((exit) => ({ node: exit.nodeId, kind: exit.kind, target: exit.currentTarget }))).toEqual([
+      { node: "intro", kind: "nextState", target: "round" },
+      { node: "round", kind: "nextState", target: "" }
+    ]);
+  });
+
+  it("exposes Start entry + per-type action exits in actions depth", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "s",
+          name: "S",
+          entryTargetActionId: "a1",
+          actions: [
+            { id: "a1", name: "A1", type: "presentText", stageClickTargetActionId: "a2" },
+            { id: "a2", name: "A2", type: "textSubmissionInput", timerEndTargetActionId: "return" }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+    const exits = actionNodeExits(flow.states[0], (type) => type === "textSubmissionInput");
+    expect(exits.map((exit) => `${exit.nodeId}:${exit.label}=${exit.currentTarget}`)).toEqual([
+      "start:Entry=a1",
+      "a1:Screen Click=a2",
+      "a2:Timer Ends=return",
+      "a2:Answers="
     ]);
   });
 });

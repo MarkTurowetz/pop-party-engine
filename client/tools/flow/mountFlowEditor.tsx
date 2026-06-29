@@ -45,7 +45,12 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
   const host = doc.createElement("div");
   host.id = "flowEditorRoot";
   doc.body?.classList?.add("flow-react-preview-replace");
-  (doc.querySelector("#flowScreen") || doc.body).appendChild(host);
+  // The legacy screen router (not booted in React-only mode) is what removes the
+  // `hidden` class from the active screen. Reveal the flow screen ourselves so the
+  // React editor is actually visible, not just present in the DOM.
+  const flowScreen = doc.querySelector("#flowScreen");
+  flowScreen?.classList.remove("hidden");
+  (flowScreen || doc.body).appendChild(host);
 
   const root = createRoot(host);
   root.render(<FlowEditor controller={controller} flowActionTypes={actionTypes} surface={options.surface} />);

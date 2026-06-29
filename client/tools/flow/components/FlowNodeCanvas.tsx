@@ -1,15 +1,26 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import type { FlowGraphConnection, FlowGraphNode } from "../flowNodeGraph";
+import type { FlowGraphConnection, FlowGraphNode, FlowNodeExit } from "../flowNodeGraph";
 
 export interface FlowNodeCanvasProps {
   nodes: FlowGraphNode[];
   connections?: FlowGraphConnection[];
+  exits?: FlowNodeExit[];
   depth: "moments" | "actions";
   stateTitle?: string;
   onSelectNode?: (nodeId: string, additive: boolean) => void;
   onEnterState?: (stateId: string) => void;
   onBackToMoments?: () => void;
   onMoveNode?: (nodeId: string, x: number, y: number) => void;
+  onConnect?: (exit: FlowNodeExit, targetNodeId: string) => void;
+}
+
+const PORT_TOP = 30;
+const PORT_GAP = 20;
+
+interface ConnectState {
+  exit: FlowNodeExit;
+  startX: number;
+  startY: number;
 }
 
 const DRAG_THRESHOLD = 3;
@@ -86,10 +97,63 @@ export function FlowNodeCanvas({
   onSelectNode,
   onEnterState,
   onBackToMoments,
-  onMoveNode
+  onMoveNode,
+  onConnect,
+  exits = []
 }: FlowNodeCanvasProps) {
   const dragRef = useRef<DragState | null>(null);
   const [livePosition, setLivePosition] = useState<LivePosition | null>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
+  const connectRef = useRef<ConnectState | null>(null);
+  const [connectPreview, setConnectPreview] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+
+  const exitsByNode = new Map<string, FlowNodeExit[]>();
+  for (const exit of exits) {
+    const list = exitsByNode.get(exit.nodeId) || [];
+    list.push(exit);
+    exitsByNode.set(exit.nodeId, list);
+  }
+
+  const toWorldPoint = (clientX: number, clientY: number) => {
+    const rect = worldRef.current?.getBoundingClientRect();
+    return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) };
+  };
+
+  const beginConnect = (
+    exit: FlowNodeExit,
+    node: FlowGraphNode,
+    portY: number,
+    event: ReactPointerEvent<HTMLButtonElement>
+  ) => {
+    if (event.button !== 0 || !onConnect) return;
+    event.stopPropagation();
+    const startX = node.x + node.width;
+    const startY = node.y + portY;
+    connectRef.current = { exit, startX, startY };
+    setConnectPreview({ x1: startX, y1: startY, x2: startX, y2: startY });
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      if (!connectRef.current) return;
+      const point = toWorldPoint(moveEvent.clientX, moveEvent.clientY);
+      setConnectPreview({ x1: startX, y1: startY, x2: point.x, y2: point.y });
+    };
+
+    const handleUp = (upEvent: PointerEvent) => {
+      document.removeEventListener("pointermove", handleMove);
+      document.removeEventListener("pointerup", handleUp);
+      const connect = connectRef.current;
+      connectRef.current = null;
+      setConnectPreview(null);
+      if (!connect) return;
+      const targetEl = document.elementFromPoint(upEvent.clientX, upEvent.clientY) as HTMLElement | null;
+      const targetNode = targetEl?.closest("[data-node-id]") as HTMLElement | null;
+      const targetId = targetNode?.getAttribute("data-node-id") || "";
+      if (targetId && targetId !== connect.exit.nodeId) onConnect(connect.exit, targetId);
+    };
+
+    document.addEventListener("pointermove", handleMove);
+    document.addEventListener("pointerup", handleUp);
+  };
 
   const beginDrag = (node: FlowGraphNode, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || !onMoveNode) return;
@@ -145,7 +209,7 @@ export function FlowNodeCanvas({
         </span>
       </header>
       <div className="flow-node-stage" data-node-stage>
-        <div className="flow-node-world" style={{ width, height, position: "relative" }}>
+        <div className="flow-node-world" ref={worldRef} style={{ width, height, position: "relative" }}>
           <svg
             className="flow-node-wires"
             data-node-wires
@@ -163,6 +227,17 @@ export function FlowNodeCanvas({
                 ) : null}
               </g>
             ))}
+            {connectPreview ? (
+              <path
+                data-connect-preview
+                d={`M ${connectPreview.x1} ${connectPreview.y1} L ${connectPreview.x2} ${connectPreview.y2}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                opacity={0.9}
+              />
+            ) : null}
           </svg>
           {nodes.map((node) => {
             const live = livePosition?.nodeId === node.id ? livePosition : null;
@@ -193,6 +268,24 @@ export function FlowNodeCanvas({
                 <span className="flow-node-subtitle">{node.subtitle}</span>
                 {node.timing ? <span className="flow-node-timing">{node.timing}</span> : null}
               </div>
+              {(exitsByNode.get(node.id) || []).map((exit, exitIndex) => {
+                const portY = PORT_TOP + exitIndex * PORT_GAP;
+                return (
+                  <button
+                    type="button"
+                    key={exit.id}
+                    className={`flow-node-port${exit.currentTarget ? " is-wired" : ""}`}
+                    data-port-id={exit.id}
+                    data-port-target={exit.currentTarget || ""}
+                    title={`${exit.label}${exit.currentTarget ? ` → ${exit.currentTarget}` : ""}`}
+                    style={{ position: "absolute", right: -8, top: portY - 6 }}
+                    onPointerDown={(event) => beginConnect(exit, node, portY, event)}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <span className="flow-node-port-label">{exit.label}</span>
+                  </button>
+                );
+              })}
             </div>
             );
           })}

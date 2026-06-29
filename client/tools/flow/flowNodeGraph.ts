@@ -44,6 +44,20 @@ export interface FlowGraphConnection {
   label: string;
 }
 
+/** A draggable output on a node that sets a target when wired to another node. */
+export interface FlowNodeExit {
+  id: string;
+  nodeId: string;
+  label: string;
+  /** "field" sets action[field]; "branch" sets a decision branch target; "entry"/"nextState" are state-level. */
+  kind: "field" | "branch" | "entry" | "nextState";
+  field?: string;
+  branchId?: string;
+  currentTarget: string;
+}
+
+export type IsInputType = (type: string) => boolean;
+
 const EXIT_FIELDS: { field: string; label: string }[] = [
   { field: "nextTargetActionId", label: "Next" },
   { field: "stageClickTargetActionId", label: "Screen Click" },
@@ -223,6 +237,99 @@ export function actionGraphNodes(state: FlowState | null, selection: FlowGraphSe
   });
 
   return nodes;
+}
+
+interface ExitDefinition {
+  label: string;
+  field?: string;
+  branchId?: string;
+}
+
+/** Faithful port of legacy `flowNodeExitDefinitions` — the outputs a node exposes. */
+function exitDefinitions(action: FlowAction, isInputType: IsInputType): ExitDefinition[] {
+  if (action.type === "decision") {
+    return ensureDecisionBranches(action).map((branch, index) => ({
+      label: decisionBranchName(branch, index),
+      branchId: branch.id
+    }));
+  }
+  if (action.type === "labelNode" || action.type === "codeNode") {
+    return [{ label: "Next", field: "nextTargetActionId" }];
+  }
+  if (action.type === "voteOnAnswersInput") {
+    return [
+      { label: "Timer Ends", field: "timerEndTargetActionId" },
+      { label: "Votes Submitted", field: "answersSubmittedTargetActionId" }
+    ];
+  }
+  if (action.type === "presentText") {
+    return [{ label: "Screen Click", field: "stageClickTargetActionId" }];
+  }
+  if (action.type === "requestMicrophoneAccessInput") {
+    return [{ label: "Access Granted", field: "microphoneAccessGrantedTargetActionId" }];
+  }
+  if (isInputType(action.type)) {
+    return [
+      { label: "Timer Ends", field: "timerEndTargetActionId" },
+      { label: "Answers", field: "answersSubmittedTargetActionId" }
+    ];
+  }
+  if (action.type === "transitionState") {
+    return [{ label: "Event Complete", field: "nextTargetActionId" }];
+  }
+  if (action.type === "jumpNode") return [];
+  return [{ label: "Next", field: "nextTargetActionId" }];
+}
+
+/** Output exits per node for the "actions" depth (Start entry + each action's exits). */
+export function actionNodeExits(state: FlowState | null, isInputType: IsInputType): FlowNodeExit[] {
+  if (!state) return [];
+  const exits: FlowNodeExit[] = [
+    {
+      id: "start:entry",
+      nodeId: "start",
+      label: "Entry",
+      kind: "entry",
+      currentTarget: String(state.entryTargetActionId || "")
+    }
+  ];
+  for (const action of state.actions || []) {
+    const record = action as Record<string, unknown>;
+    for (const def of exitDefinitions(action, isInputType)) {
+      if (def.branchId) {
+        const branch = ensureDecisionBranches(action).find((item) => item.id === def.branchId);
+        exits.push({
+          id: `${action.id}:${def.branchId}`,
+          nodeId: action.id,
+          label: def.label,
+          kind: "branch",
+          branchId: def.branchId,
+          currentTarget: String(branch?.targetActionId || "")
+        });
+      } else if (def.field) {
+        exits.push({
+          id: `${action.id}:${def.field}`,
+          nodeId: action.id,
+          label: def.label,
+          kind: "field",
+          field: def.field,
+          currentTarget: String(record[def.field] || "")
+        });
+      }
+    }
+  }
+  return exits;
+}
+
+/** Output exits per node for the "moments" depth (each state's Next). */
+export function momentNodeExits(flow: GameFlow | null): FlowNodeExit[] {
+  return (flow?.states || []).map((state) => ({
+    id: `${state.id}:next`,
+    nodeId: state.id,
+    label: "Next",
+    kind: "nextState",
+    currentTarget: String(state.nextStateTargetId || "")
+  }));
 }
 
 /** Connections for the "moments" depth: state -> nextStateTargetId. */

@@ -8,9 +8,12 @@ import { FlowNodeCanvas } from "./components/FlowNodeCanvas";
 import {
   actionGraphConnections,
   actionGraphNodes,
+  actionNodeExits,
   momentGraphConnections,
   momentGraphNodes,
-  type FlowNodeDepth
+  momentNodeExits,
+  type FlowNodeDepth,
+  type FlowNodeExit
 } from "./flowNodeGraph";
 
 export interface FlowEditorProps {
@@ -150,6 +153,22 @@ export function FlowEditor({
         connections={
           nodeDepth === "moments" ? momentGraphConnections(flow) : actionGraphConnections(selectedState)
         }
+        exits={
+          nodeDepth === "moments"
+            ? momentNodeExits(flow)
+            : actionNodeExits(
+                selectedState,
+                (type) => flowActionTypes.find((meta) => meta.id === type)?.category === "input"
+              )
+        }
+        onConnect={(exit: FlowNodeExit, targetNodeId: string) => {
+          if (exit.kind === "nextState") controller.setNextTarget(exit.nodeId, targetNodeId);
+          else if (exit.kind === "entry") controller.setEntryTarget(selectedStateId, targetNodeId);
+          else if (exit.kind === "field" && exit.field)
+            controller.setActionField(selectedStateId, exit.nodeId, exit.field, targetNodeId);
+          else if (exit.kind === "branch" && exit.branchId)
+            controller.setDecisionBranchField(selectedStateId, exit.nodeId, exit.branchId, "targetActionId", targetNodeId);
+        }}
         onSelectNode={(nodeId) => {
           if (nodeDepth === "moments") controller.selectState(nodeId);
           else controller.selectActions(nodeId);
