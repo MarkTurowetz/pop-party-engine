@@ -20,7 +20,7 @@ const filesToCheck = [
   "client/layout-runtime.js",
   "client/layout-tool.js",
   "client/stage-runtime.js",
-  "client/stage/art-object-visuals.js",
+  "client/runtime/stageArtObjectVisuals.ts",
   "client/stage/player-roster-renderer.js",
   "client/stage/visual-controllers.js",
   "client/stage/voting-card-visuals.js",
@@ -117,7 +117,7 @@ if (/mergeMissingDefaultElements/.test(stageLayoutNormalizerSource)
   process.exit(1);
 }
 
-const artObjectSource = fs.readFileSync(path.join(repoRoot, "client/stage/art-object-visuals.js"), "utf8");
+const artObjectSource = fs.readFileSync(path.join(repoRoot, "client/runtime/stageArtObjectVisuals.ts"), "utf8");
 if (/querySelector\(":scope > \.art-label-text"\)/.test(artObjectSource)
   || !/renderLayoutTextField\(label,\s*textElement,\s*\{/.test(artObjectSource)
   || !/function renderedArtTextElement/.test(artObjectSource)
