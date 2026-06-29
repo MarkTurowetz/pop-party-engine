@@ -7,6 +7,8 @@ import "../../runtime/textFit";
 import "../../runtime/stageTextRenderer";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
+import "../../runtime/controllerModuleCache";
+import "../../runtime/controllerViewState";
 
 export const legacyControllerScripts = legacyScriptsForRole("controller");
 export const controllerContext = createRuntimeContext({ surface: "controller" });

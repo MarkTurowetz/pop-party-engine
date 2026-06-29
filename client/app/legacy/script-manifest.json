@@ -25,9 +25,7 @@
     "/client/stage-runtime.js"
   ],
   "controllerRuntime": [
-    "/client/controller-module-cache.js",
     "/client/controller-text-renderer.js",
-    "/client/controller-view-state.js",
     "/client/controller-avatar-view.js",
     "/client/controller-microphone-access-view.js",
     "/client/controller-recording-lifecycle.js",

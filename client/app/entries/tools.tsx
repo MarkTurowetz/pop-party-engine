@@ -16,6 +16,8 @@ import "../../runtime/stageTextRenderer";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/qrCode";
+import "../../runtime/controllerModuleCache";
+import "../../runtime/controllerViewState";
 import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 import type { FlowEditorController } from "../../tools/flow/flowEditorController";
 import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor";
