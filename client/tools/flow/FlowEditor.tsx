@@ -44,6 +44,10 @@ export function FlowEditor({
       onRenameAction: (name: string) => {
         if (selectedStateId && selectedActionId) controller.renameAction(selectedStateId, selectedActionId, name);
       },
+      onSetActionType: (type: string) => {
+        if (selectedStateId && selectedActionId) controller.setActionType(selectedStateId, selectedActionId, type);
+      },
+      actionTypeOptions: flowActionTypes.map((meta) => ({ id: meta.id, label: meta.name || meta.id })),
       onSetNextTarget: (targetId: string) => {
         if (selectedStateId) controller.setNextTarget(selectedStateId, targetId);
       },
@@ -56,7 +60,7 @@ export function FlowEditor({
         label: action.name || action.id
       }))
     };
-  }, [controller, selectedStateId, selectedActionId, flow]);
+  }, [controller, selectedStateId, selectedActionId, flow, flowActionTypes]);
 
   const handlers = useMemo<FlowToolReactShellHandlers>(
     () => ({

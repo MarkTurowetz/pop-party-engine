@@ -8,8 +8,10 @@ export interface InspectorTargetOption {
 
 export interface ActionInspectorEditHandlers {
   onRenameAction?: (name: string) => void;
+  onSetActionType?: (type: string) => void;
   onSetNextTarget?: (targetId: string) => void;
   onSetEntryTarget?: (targetId: string) => void;
+  actionTypeOptions?: InspectorTargetOption[];
   nextTargetOptions?: InspectorTargetOption[];
   entryTargetOptions?: InspectorTargetOption[];
 }
@@ -155,6 +157,22 @@ export function ActionInspector({
               if (event.key === "Enter") (event.target as HTMLInputElement).blur();
             }}
           />
+        </label>
+      ) : null}
+      {edit?.onSetActionType && (edit.actionTypeOptions || []).length ? (
+        <label className="flow-react-field" data-flow-react-field="action-type">
+          <span>Action Type</span>
+          <select
+            value={action.type}
+            data-flow-react-action-type-select
+            onChange={(event) => edit.onSetActionType?.(event.target.value)}
+          >
+            {(edit.actionTypeOptions || []).map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
       ) : null}
       <dl>

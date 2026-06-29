@@ -61,6 +61,31 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().dirty).toBe(true);
   });
 
+  it("changes an action type and applies type defaults", () => {
+    const controller = createFlowEditorController({
+      initialFlow: flowFixture(),
+      api: fakeApi(),
+      actionTypes: [{ id: "decision", name: "Decision", category: "logic" }]
+    });
+
+    controller.setActionType("round-one", "act-1", "decision");
+
+    const action = controller.getState().snapshot.flow.states[1].actions[0];
+    expect(action.type).toBe("decision");
+    // decision defaults seed a variable + branches
+    expect(action.variable).toBe("activePlayerCount");
+    expect(Array.isArray(action.branches)).toBe(true);
+    expect(controller.getState().dirty).toBe(true);
+  });
+
+  it("sets an arbitrary action field", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.setActionField("round-one", "act-1", "text", "Hello world");
+
+    expect(controller.getState().snapshot.flow.states[1].actions[0].text).toBe("Hello world");
+  });
+
   it("undo returns to a clean snapshot", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 

@@ -24,16 +24,28 @@ function findFlowState(flow: GameFlow, stateId: string): FlowState | undefined {
   return (flow.states || []).find((state) => state.id === stateId);
 }
 
-function findFlowAction(state: FlowState | undefined, actionId: string): FlowAction | undefined {
-  if (!state) return undefined;
-  for (const action of state.actions || []) {
-    if (action.id === actionId) return action;
-    for (const subAction of action.subActions || []) {
-      if (subAction.id === actionId) return subAction;
+interface FlowActionContext {
+  action: FlowAction | undefined;
+  isSubAction: boolean;
+}
+
+function findFlowActionContext(state: FlowState | undefined, actionId: string): FlowActionContext {
+  if (state) {
+    for (const action of state.actions || []) {
+      if (action.id === actionId) return { action, isSubAction: false };
+      for (const subAction of action.subActions || []) {
+        if (subAction.id === actionId) return { action: subAction, isSubAction: true };
+      }
     }
   }
-  return undefined;
+  return { action: undefined, isSubAction: false };
 }
+
+function findFlowAction(state: FlowState | undefined, actionId: string): FlowAction | undefined {
+  return findFlowActionContext(state, actionId).action;
+}
+
+export type ApplyFlowActionType = (action: FlowAction, type: string, isSubAction: boolean) => void;
 
 function findFlowRouteNode(flow: GameFlow, nodeId: string): FlowRouteNode | undefined {
   return (flow.routeNodes || []).find((node) => node.id === nodeId);
@@ -174,6 +186,33 @@ export function addFlowActionCommand(stateId: string, selectedPrimaryActionId = 
     apply: (flow) => {
       const state = findFlowState(flow, stateId);
       if (state) addDefaultFlowAction(state, selectedPrimaryActionId);
+    }
+  };
+}
+
+export function setFlowActionTypeCommand(
+  stateId: string,
+  actionId: string,
+  type: string,
+  applyType: ApplyFlowActionType
+): FlowCommand {
+  return {
+    id: `set-flow-action-type:${actionId}`,
+    label: "Change action type",
+    apply: (flow) => {
+      const context = findFlowActionContext(findFlowState(flow, stateId), actionId);
+      if (context.action) applyType(context.action, type, context.isSubAction);
+    }
+  };
+}
+
+export function setFlowActionFieldCommand(stateId: string, actionId: string, key: string, value: unknown): FlowCommand {
+  return {
+    id: `set-flow-action-field:${actionId}:${key}`,
+    label: "Edit action field",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId) as Record<string, unknown> | undefined;
+      if (action) action[key] = value;
     }
   };
 }

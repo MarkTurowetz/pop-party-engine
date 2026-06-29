@@ -34,12 +34,13 @@ function toActionTypeMeta(values: unknown[]): FlowActionTypeMeta[] {
 export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<MountedFlowEditor> {
   const doc = options.document || document;
   const response = await options.api.loadGameFlow();
+  const actionTypes = toActionTypeMeta(response.availableActionTypes || []);
   const controller = createFlowEditorController({
     initialFlow: response.flow,
     api: options.api,
-    hasLocalDraft: response.hasLocalDraft
+    hasLocalDraft: response.hasLocalDraft,
+    actionTypes
   });
-  const actionTypes = toActionTypeMeta(response.availableActionTypes || []);
 
   const host = doc.createElement("div");
   host.id = "flowEditorRoot";

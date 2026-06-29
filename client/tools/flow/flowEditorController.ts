@@ -13,12 +13,17 @@ import {
   removeFlowRouteNodeCommand,
   removeFlowStatesCommand,
   renameFlowStateCommand,
+  setFlowActionFieldCommand,
+  setFlowActionTypeCommand,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
   setFlowStateVotingSourceCommand
 } from "./flowCommands";
 import { createFlowStore, type FlowStore, type FlowStoreSnapshot } from "./flowStore";
-import { makeFlowId } from "./flowSelectors";
+import { createActionDefaults } from "./flowActionDefaults";
+import { ensureActionTiming } from "./flowActions";
+import { ensureDecisionBranches } from "./flowDecision";
+import { makeFlowId, type FlowActionTypeMeta } from "./flowSelectors";
 import { serializeGameFlowForSave } from "./flowSerialization";
 import { flattenedFlowActionIds, type RemoveFlowRouteBranchOptions } from "./flowMutations";
 
@@ -52,6 +57,8 @@ export interface FlowEditorControllerOptions {
   initialFlow: GameFlow;
   api: FlowApi;
   hasLocalDraft?: boolean;
+  /** Action type metadata (id/name/category) used to apply type-change defaults + timing. */
+  actionTypes?: FlowActionTypeMeta[];
   /** Protected state ids whose ids are not regenerated on rename. */
   protectedStateIds?: Iterable<string>;
 }
@@ -81,6 +88,8 @@ export interface FlowEditorController {
   addAction(stateId: string, selectedPrimaryActionId?: string): void;
   addSubAction(stateId: string, parentActionId: string, selectedSubActionId?: string): void;
   renameAction(stateId: string, actionId: string, name: string): void;
+  setActionType(stateId: string, actionId: string, type: string): void;
+  setActionField(stateId: string, actionId: string, key: string, value: unknown): void;
   moveAction(stateId: string, draggedActionId: string, targetActionId: string, placeAfter?: boolean): void;
   moveSubAction(
     stateId: string,
@@ -113,6 +122,13 @@ function savedSnapshotOf(flow: GameFlow): string {
 export function createFlowEditorController(options: FlowEditorControllerOptions): FlowEditorController {
   const { api } = options;
   const protectedStateIds = options.protectedStateIds;
+  const actionTypes = options.actionTypes || [];
+  const actionTypeMeta = (type: string): Pick<FlowActionTypeMeta, "category"> =>
+    actionTypes.find((meta) => meta.id === type) || { category: "standard" };
+  const actionDefaults = createActionDefaults({
+    ensureActionTiming: (action, isSubAction) => ensureActionTiming(action, isSubAction, { actionTypeMeta }),
+    ensureDecisionBranches: (action) => ensureDecisionBranches(action)
+  });
   const store: FlowStore = createFlowStore(options.initialFlow, {
     selection: { selectedFlowStateId: options.initialFlow.states?.[0]?.id || "" }
   });
@@ -188,6 +204,16 @@ export function createFlowEditorController(options: FlowEditorControllerOptions)
       commit(store.execute(addFlowSubActionCommand(stateId, parentActionId, selectedSubActionId))),
     renameAction: (stateId, actionId, name) =>
       commit(store.execute(renameFlowActionCommand(stateId, actionId, name))),
+    setActionType: (stateId, actionId, type) =>
+      commit(
+        store.execute(
+          setFlowActionTypeCommand(stateId, actionId, type, (action, nextType, isSubAction) =>
+            actionDefaults.applyActionTypeDefaults(action, nextType, isSubAction)
+          )
+        )
+      ),
+    setActionField: (stateId, actionId, key, value) =>
+      commit(store.execute(setFlowActionFieldCommand(stateId, actionId, key, value))),
     moveAction: (stateId, draggedActionId, targetActionId, placeAfter = false) =>
       commit(store.execute(moveFlowActionCommand(stateId, draggedActionId, targetActionId, placeAfter))),
     moveSubAction: (stateId, parentActionId, draggedActionId, targetActionId, placeAfter = false) =>
