@@ -3,7 +3,8 @@ import {
   legacyFlowScripts,
   legacyConstantsScripts,
   legacyHostAudioScripts,
-  legacyArtScripts
+  legacyArtScripts,
+  legacyLayoutScripts
 } from "../legacy/script-manifest";
 import { createToolAppContext } from "../context/createToolAppContext";
 import { installToolContextAdapter } from "../context/toolContextAdapter";
@@ -16,7 +17,8 @@ import { mountHostAudioEditor } from "../../tools/host-audio/mountHostAudioEdito
 import type { HostAudioController } from "../../tools/host-audio/hostAudioController";
 import { mountArtEditor } from "../../tools/art/mountArtEditor";
 import type { MountedArtEditor } from "../../tools/art/mountArtEditor";
-import { mountLayoutToolApp } from "../../tools/layout/mountLayoutToolApp";
+import { mountLayoutEditor } from "../../tools/layout/mountLayoutEditor";
+import type { MountedLayoutEditor } from "../../tools/layout/mountLayoutEditor";
 
 // The legacy tool dashboard (tool-dashboard.js) drives the flow tab through three
 // global hooks that used to live in flow-tool.js. Flow is React now, so we shim
@@ -43,6 +45,11 @@ declare global {
     saveArtReplacement?: () => Promise<unknown>;
     saveArtCompositions?: () => Promise<unknown>;
     saveArtOrganization?: () => Promise<unknown>;
+    setupLayoutTool?: (mode?: string) => void;
+    isLayoutDirty?: () => boolean;
+    isControllerLayoutDirty?: () => boolean;
+    saveStageLayouts?: () => Promise<unknown>;
+    saveControllerLayouts?: () => Promise<unknown>;
   }
 }
 
@@ -114,9 +121,27 @@ window.saveArtReplacement = () => (artEditor ? artEditor.assetsController.save()
 window.saveArtCompositions = () => (artEditor ? artEditor.compositionsController.save() : Promise.resolve());
 window.saveArtOrganization = () => (artEditor ? artEditor.organizationController.save() : Promise.resolve());
 
-mountLayoutToolApp({ surface: toolsContext.surface });
+let layoutEditor: MountedLayoutEditor | null = null;
+void mountLayoutEditor({ api: toolsContext.api.layout, surface: toolsContext.surface, revealScreen: false }).then(
+  (mounted) => {
+    layoutEditor = mounted;
+  }
+);
+window.setupLayoutTool = () => {
+  document.querySelector("#layoutScreen")?.classList.remove("hidden");
+};
+window.isLayoutDirty = () => (layoutEditor ? layoutEditor.stageController.getState().dirty : false);
+window.isControllerLayoutDirty = () => (layoutEditor ? layoutEditor.controllerController.getState().dirty : false);
+window.saveStageLayouts = () => (layoutEditor ? layoutEditor.stageController.save() : Promise.resolve());
+window.saveControllerLayouts = () => (layoutEditor ? layoutEditor.controllerController.save() : Promise.resolve());
 
-// Load the other tools' legacy scripts, but none of the flow/constants/host-audio/art scripts.
+// All five tools are React now — exclude every tool's legacy scripts.
 void bootLegacySurface("tools", {
-  excludeScripts: [...legacyFlowScripts, ...legacyConstantsScripts, ...legacyHostAudioScripts, ...legacyArtScripts]
+  excludeScripts: [
+    ...legacyFlowScripts,
+    ...legacyConstantsScripts,
+    ...legacyHostAudioScripts,
+    ...legacyArtScripts,
+    ...legacyLayoutScripts
+  ]
 });

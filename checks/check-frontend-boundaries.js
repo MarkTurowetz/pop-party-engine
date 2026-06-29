@@ -11,10 +11,9 @@ const runtimeEntryFiles = [
 ];
 
 const allowedTypedGlobalAdapters = new Set([
-  "client/app/context/toolContextAdapter.ts",
-  // Flow, Constants, Host Audio, and Art are fully React (no adapters). Only the
-  // Layout tool still uses a legacy bridge mount (last Phase 2 migration).
-  "client/tools/layout/mountLayoutToolApp.tsx"
+  // All five authoring tools (Flow, Constants, Host Audio, Art, Layout) are fully
+  // React with no window.PartyGame* bridge. Only the tool context adapter remains.
+  "client/app/context/toolContextAdapter.ts"
 ]);
 
 function read(relativePath) {
