@@ -297,6 +297,53 @@ export function setDecisionBranchFieldCommand(
   };
 }
 
+function actionOptions(action: FlowAction): string[] {
+  const value = (action as Record<string, unknown>).options;
+  return Array.isArray(value) ? value.map((entry) => String(entry)) : [];
+}
+
+export function addActionOptionCommand(stateId: string, actionId: string): FlowCommand {
+  return {
+    id: `add-action-option:${actionId}`,
+    label: "Add option",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      if (!action) return;
+      const options = actionOptions(action);
+      options.push(String.fromCharCode(65 + options.length));
+      (action as Record<string, unknown>).options = options;
+    }
+  };
+}
+
+export function removeActionOptionCommand(stateId: string, actionId: string, index: number): FlowCommand {
+  return {
+    id: `remove-action-option:${actionId}:${index}`,
+    label: "Remove option",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      if (!action) return;
+      const options = actionOptions(action);
+      if (index >= 0 && index < options.length) options.splice(index, 1);
+      (action as Record<string, unknown>).options = options;
+    }
+  };
+}
+
+export function setActionOptionCommand(stateId: string, actionId: string, index: number, value: string): FlowCommand {
+  return {
+    id: `set-action-option:${actionId}:${index}`,
+    label: "Edit option",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      if (!action) return;
+      const options = actionOptions(action);
+      if (index >= 0 && index < options.length) options[index] = value;
+      (action as Record<string, unknown>).options = options;
+    }
+  };
+}
+
 export function renameFlowActionCommand(stateId: string, actionId: string, nextName: string): FlowCommand {
   return {
     id: `rename-flow-action:${actionId}`,

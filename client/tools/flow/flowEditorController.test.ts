@@ -128,6 +128,29 @@ describe("createFlowEditorController", () => {
     expect(branchesAfterSeed().length).toBe(before);
   });
 
+  it("edits a multiple-choice options array", () => {
+    const controller = createFlowEditorController({
+      initialFlow: flowFixture(),
+      api: fakeApi(),
+      actionTypes: [{ id: "multipleChoiceInput", name: "Multiple Choice", category: "input" }]
+    });
+    controller.setActionType("round-one", "act-1", "multipleChoiceInput");
+
+    const options = () => (controller.getState().snapshot.flow.states[1].actions[0] as { options?: string[] }).options || [];
+    const seeded = options().length; // defaults seed ["A","B","C","D"]
+    expect(seeded).toBe(4);
+
+    controller.addActionOption("round-one", "act-1");
+    expect(options().length).toBe(5);
+
+    controller.setActionOption("round-one", "act-1", 0, "First");
+    expect(options()[0]).toBe("First");
+
+    controller.removeActionOption("round-one", "act-1", 0);
+    expect(options()[0]).toBe("B");
+    expect(options().length).toBe(4);
+  });
+
   it("undo returns to a clean snapshot", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 

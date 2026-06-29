@@ -2,6 +2,7 @@ import type { FlowAction, FlowState } from "../../../types/game-data";
 import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
 import { ActionFieldControls } from "./ActionFieldControls";
 import { DecisionBranchControls, type DecisionBranchHandlers } from "./DecisionBranchControls";
+import { ActionOptionsControls, type ActionOptionsHandlers } from "./ActionOptionsControls";
 
 export interface InspectorTargetOption {
   id: string;
@@ -16,6 +17,7 @@ export interface ActionInspectorEditHandlers {
   onSetActionField?: (key: string, value: unknown) => void;
   onSetActionTiming?: (timing: { mode?: string; seconds?: number }) => void;
   decision?: DecisionBranchHandlers;
+  options?: ActionOptionsHandlers;
   actionTypeOptions?: InspectorTargetOption[];
   actionTargetOptions?: InspectorTargetOption[];
   nextTargetOptions?: InspectorTargetOption[];
@@ -242,6 +244,9 @@ export function ActionInspector({
           actionTargetOptions={edit.actionTargetOptions || []}
           handlers={edit.decision}
         />
+      ) : null}
+      {action.type === "multipleChoiceInput" && edit?.options ? (
+        <ActionOptionsControls action={action} handlers={edit.options} />
       ) : null}
     </section>
   );

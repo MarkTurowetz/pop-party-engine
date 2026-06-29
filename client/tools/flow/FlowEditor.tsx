@@ -72,6 +72,17 @@ export function FlowEditor({
             controller.setDecisionBranchField(selectedStateId, selectedActionId, branchId, key, value);
         }
       },
+      options: {
+        onAddOption: () => {
+          if (selectedStateId && selectedActionId) controller.addActionOption(selectedStateId, selectedActionId);
+        },
+        onRemoveOption: (index: number) => {
+          if (selectedStateId && selectedActionId) controller.removeActionOption(selectedStateId, selectedActionId, index);
+        },
+        onSetOption: (index: number, value: string) => {
+          if (selectedStateId && selectedActionId) controller.setActionOption(selectedStateId, selectedActionId, index, value);
+        }
+      },
       nextTargetOptions: states.map((state) => ({ id: state.id, label: state.name || state.id })),
       entryTargetOptions: (selectedState?.actions || []).map((action) => ({
         id: action.id,
