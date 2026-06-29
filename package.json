@@ -6,8 +6,10 @@
   "scripts": {
     "build": "vite build && npm run build-info",
     "build:assets": "vite build",
+    "build:shared": "tsc -p tsconfig.shared.json",
     "build-info": "node build-version.js",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build:assets && npm run smoke:build-assets && npm run check-text-rendering && npm run check:frontend-boundaries && npm run smoke:routes",
+    "check": "npm run check:shared-fresh && npm run typecheck && npm run lint && npm run test && npm run build:assets && npm run smoke:build-assets && npm run check-text-rendering && npm run check:frontend-boundaries && npm run smoke:routes",
+    "check:shared-fresh": "node checks/check-shared-fresh.js",
     "check:frontend-boundaries": "node checks/check-frontend-boundaries.js",
     "check-text-rendering": "node checks/check-text-rendering.js",
     "lint": "eslint \"client/**/*.{ts,tsx}\"",

@@ -1,0 +1,18 @@
+{
+  "comment": "Builds the dual-use shared/*.ts sources to committed CommonJS+global shared/*.js (npm run build:shared), emitting each .js next to its .ts. Separate from the client tsconfig because these need Node's `module` global and emit, where the client config is DOM-only + noEmit. The .js outputs are committed so a plain `node server.js` deploy needs no build step; check:shared-fresh guards them against drift.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020", "DOM"],
+    "types": ["node"],
+    "rootDir": "shared",
+    "strict": true,
+    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "removeComments": false,
+    "newLine": "lf",
+    "declaration": false,
+    "noEmitOnError": true
+  },
+  "include": ["shared/**/*.ts"]
+}
