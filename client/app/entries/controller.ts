@@ -11,6 +11,7 @@ import "../../runtime/controllerModuleCache";
 import "../../runtime/controllerViewState";
 import "../../runtime/controllerTextRenderer";
 import "../../runtime/controllerHeartbeatRuntime";
+import "../../runtime/controllerSubmitApi";
 
 export const legacyControllerScripts = legacyScriptsForRole("controller");
 export const controllerContext = createRuntimeContext({ surface: "controller" });
