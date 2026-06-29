@@ -10,7 +10,7 @@ const filesToCheck = [
   "client/controller-action-bindings.js",
   "client/runtime/controllerAvatarView.ts",
   "client/runtime/controllerChoiceInputView.ts",
-  "client/controller-global-action-view.js",
+  "client/runtime/controllerGlobalActionView.ts",
   "client/runtime/controllerHeartbeatRuntime.ts",
   "client/runtime/controllerLobbyView.ts",
   "client/runtime/controllerMicrophoneAccessView.ts",
