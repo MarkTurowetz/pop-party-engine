@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FlowEditorController } from "./flowEditorController";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import type { FlowToolReactShellHandlers } from "./mountFlowToolApp";
@@ -109,19 +109,50 @@ export function FlowEditor({
     };
   }, [controller, selectedStateId, selectedActionId, flow, flowActionTypes]);
 
+  const deleteSelection = useCallback(() => {
+    if (!selectedStateId) return;
+    if (selectedActionIds.size) controller.removeActions(selectedStateId, selectedActionIds);
+    else if (selectedActionId) controller.removeActions(selectedStateId, [selectedActionId]);
+    else if (selection.selectedFlowRouteNodeId) controller.removeRouteNode(selection.selectedFlowRouteNodeId);
+    else controller.removeStates([selectedStateId]);
+  }, [controller, selectedStateId, selectedActionId, selectedActionIds, selection.selectedFlowRouteNodeId]);
+
+  // Keyboard shortcuts: Cmd/Ctrl+Z undo, +Shift redo (or Cmd/Ctrl+Y), Delete/Backspace
+  // deletes the selection — but never while typing in a field.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable === true;
+      const meta = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      if (meta && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) controller.redo();
+        else controller.undo();
+        return;
+      }
+      if (meta && key === "y") {
+        event.preventDefault();
+        controller.redo();
+        return;
+      }
+      if (!typing && (event.key === "Delete" || event.key === "Backspace") && selectedStateId) {
+        event.preventDefault();
+        deleteSelection();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [controller, deleteSelection, selectedStateId]);
+
   const handlers = useMemo<FlowToolReactShellHandlers>(
     () => ({
       addState: () => controller.addState(),
       addAction: () => {
         if (selectedStateId) controller.addAction(selectedStateId, selectedActionId);
       },
-      deleteSelection: () => {
-        if (!selectedStateId) return;
-        if (selectedActionIds.size) controller.removeActions(selectedStateId, selectedActionIds);
-        else if (selectedActionId) controller.removeActions(selectedStateId, [selectedActionId]);
-        else if (selection.selectedFlowRouteNodeId) controller.removeRouteNode(selection.selectedFlowRouteNodeId);
-        else controller.removeStates([selectedStateId]);
-      },
+      deleteSelection,
       revert: () => controller.revert(),
       selectAction: (actionId: string) => controller.selectActions(actionId),
       selectRouteBranch: (routeNodeId: string, branchId: string) =>
@@ -130,7 +161,7 @@ export function FlowEditor({
       selectState: (stateId: string) => controller.selectState(stateId),
       setViewMode: (mode: "list" | "node") => setViewMode(mode)
     }),
-    [controller, selectedStateId, selectedActionId, selectedActionIds, selection.selectedFlowRouteNodeId]
+    [controller, deleteSelection, selectedStateId, selectedActionId]
   );
 
   const selectedState = (flow.states || []).find((state) => state.id === selectedStateId) || null;
