@@ -19,6 +19,22 @@ export interface FlowNodeCanvasProps {
   onBackToMoments?: () => void;
   onMoveNode?: (nodeId: string, x: number, y: number) => void;
   onConnect?: (exit: FlowNodeExit, targetNodeId: string) => void;
+  onSelectNodes?: (nodeIds: string[]) => void;
+}
+
+interface MarqueeRect {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+function rectsOverlap(node: FlowGraphNode, marquee: MarqueeRect): boolean {
+  const left = Math.min(marquee.x1, marquee.x2);
+  const right = Math.max(marquee.x1, marquee.x2);
+  const top = Math.min(marquee.y1, marquee.y2);
+  const bottom = Math.max(marquee.y1, marquee.y2);
+  return left < node.x + node.width && right > node.x && top < node.y + node.height && bottom > node.y;
 }
 
 const PORT_TOP = 30;
@@ -106,6 +122,7 @@ export function FlowNodeCanvas({
   onBackToMoments,
   onMoveNode,
   onConnect,
+  onSelectNodes,
   exits = []
 }: FlowNodeCanvasProps) {
   const dragRef = useRef<DragState | null>(null);
@@ -234,6 +251,39 @@ export function FlowNodeCanvas({
     document.addEventListener("pointerup", handleUp);
   };
 
+  const marqueeRef = useRef<{ startX: number; startY: number } | null>(null);
+  const [marquee, setMarquee] = useState<MarqueeRect | null>(null);
+
+  const beginMarquee = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !onSelectNodes) return;
+    if ((event.target as HTMLElement).closest("[data-node-id]")) return; // background only
+    const start = toWorldPoint(event.clientX, event.clientY);
+    marqueeRef.current = { startX: start.x, startY: start.y };
+    setMarquee({ x1: start.x, y1: start.y, x2: start.x, y2: start.y });
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      if (!marqueeRef.current) return;
+      const point = toWorldPoint(moveEvent.clientX, moveEvent.clientY);
+      setMarquee({ x1: marqueeRef.current.startX, y1: marqueeRef.current.startY, x2: point.x, y2: point.y });
+    };
+
+    const handleUp = (upEvent: PointerEvent) => {
+      document.removeEventListener("pointermove", handleMove);
+      document.removeEventListener("pointerup", handleUp);
+      const start2 = marqueeRef.current;
+      marqueeRef.current = null;
+      setMarquee(null);
+      if (!start2) return;
+      const end = toWorldPoint(upEvent.clientX, upEvent.clientY);
+      const rect = { x1: start2.startX, y1: start2.startY, x2: end.x, y2: end.y };
+      if (Math.abs(rect.x2 - rect.x1) < 5 && Math.abs(rect.y2 - rect.y1) < 5) return;
+      onSelectNodes(nodes.filter((node) => rectsOverlap(node, rect)).map((node) => node.id));
+    };
+
+    document.addEventListener("pointermove", handleMove);
+    document.addEventListener("pointerup", handleUp);
+  };
+
   const { width, height } = worldSize(nodes);
   const wires = buildWirePaths(nodes, connections);
   return (
@@ -273,7 +323,25 @@ export function FlowNodeCanvas({
               transform: `scale(${zoom})`,
               transformOrigin: "0 0"
             }}
+            onPointerDown={beginMarquee}
           >
+            {marquee ? (
+              <div
+                className="flow-node-marquee"
+                data-node-marquee
+                style={{
+                  position: "absolute",
+                  left: Math.min(marquee.x1, marquee.x2),
+                  top: Math.min(marquee.y1, marquee.y2),
+                  width: Math.abs(marquee.x2 - marquee.x1),
+                  height: Math.abs(marquee.y2 - marquee.y1),
+                  border: "2px dashed currentColor",
+                  background: "rgba(255,255,255,0.08)",
+                  pointerEvents: "none",
+                  zIndex: 2
+                }}
+              />
+            ) : null}
           <svg
             className="flow-node-wires"
             data-node-wires
