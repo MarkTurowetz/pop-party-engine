@@ -25,7 +25,6 @@
     "/client/stage-runtime.js"
   ],
   "controllerRuntime": [
-    "/client/controller-lobby-view.js",
     "/client/controller-global-action-view.js",
     "/client/controller-state-runtime.js",
     "/client/controller-setup-bindings.js",

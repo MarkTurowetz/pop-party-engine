@@ -18,6 +18,7 @@ import "../../runtime/controllerTextInputView";
 import "../../runtime/controllerRecordingLifecycle";
 import "../../runtime/controllerVoiceInput";
 import "../../runtime/controllerMicrophoneAccessView";
+import "../../runtime/controllerLobbyView";
 
 export const legacyControllerScripts = legacyScriptsForRole("controller");
 export const controllerContext = createRuntimeContext({ surface: "controller" });

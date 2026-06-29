@@ -12,7 +12,7 @@ const filesToCheck = [
   "client/runtime/controllerChoiceInputView.ts",
   "client/controller-global-action-view.js",
   "client/runtime/controllerHeartbeatRuntime.ts",
-  "client/controller-lobby-view.js",
+  "client/runtime/controllerLobbyView.ts",
   "client/runtime/controllerMicrophoneAccessView.ts",
   "client/controller-setup-bindings.js",
   "client/runtime/controllerTextInputView.ts",
