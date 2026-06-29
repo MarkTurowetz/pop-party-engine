@@ -8,6 +8,12 @@ export interface MountFlowEditorOptions {
   api: FlowApi;
   document?: Document;
   surface?: string;
+  /**
+   * Whether to reveal #flowScreen by removing its `hidden` class. True for the
+   * standalone /flow route (no legacy screen router). False on /tools, where the
+   * legacy tool router toggles screen visibility per tab.
+   */
+  revealScreen?: boolean;
 }
 
 export interface MountedFlowEditor {
@@ -44,12 +50,21 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
 
   const host = doc.createElement("div");
   host.id = "flowEditorRoot";
-  doc.body?.classList?.add("flow-react-preview-replace");
-  // The legacy screen router (not booted in React-only mode) is what removes the
-  // `hidden` class from the active screen. Reveal the flow screen ourselves so the
-  // React editor is actually visible, not just present in the DOM.
+  // The legacy screen router (not booted on the standalone /flow route) is what
+  // removes the `hidden` class from the active screen. Reveal the flow screen
+  // ourselves so the editor is visible — unless a router will manage it (/tools).
   const flowScreen = doc.querySelector("#flowScreen");
-  flowScreen?.classList.remove("hidden");
+  if (options.revealScreen !== false) {
+    doc.body?.classList?.add("flow-react-preview-replace");
+    flowScreen?.classList.remove("hidden");
+  }
+  // Hide the legacy flow markup that ships in #flowScreen so only the React editor
+  // shows (its dead controls would otherwise appear alongside ours, e.g. on /tools).
+  if (flowScreen) {
+    for (const child of Array.from(flowScreen.children)) {
+      if (child !== host) (child as HTMLElement).style.display = "none";
+    }
+  }
   (flowScreen || doc.body).appendChild(host);
 
   const root = createRoot(host);

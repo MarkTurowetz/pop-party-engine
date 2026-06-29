@@ -24,3 +24,6 @@ const roleScripts: Record<LegacyScriptRole, string[]> = {
 export function legacyScriptsForRole(role: LegacyScriptRole): string[] {
   return [...roleScripts[role]];
 }
+
+/** The legacy flow-tool scripts — excluded from the /tools boot now that flow is React. */
+export const legacyFlowScripts: string[] = [...manifest.flowTool];
