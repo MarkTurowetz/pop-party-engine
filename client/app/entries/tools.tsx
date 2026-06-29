@@ -22,6 +22,7 @@ import "../../runtime/stageWidgetBindings";
 import "../../runtime/stageRenderOrchestrator";
 import "../../runtime/stageActionRunners";
 import "../../runtime/stageArtObjectVisuals";
+import "../../runtime/stageVisualControllers";
 import "../../runtime/controllerModuleCache";
 import "../../runtime/controllerViewState";
 import "../../runtime/controllerTextRenderer";
