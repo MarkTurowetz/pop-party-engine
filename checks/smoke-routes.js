@@ -141,13 +141,14 @@ async function main() {
     });
     assertShell(await request({ port, pathname: "/tools" }), "main tool shell", "toolDashboardBar", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css", "/client/styles/legacy/tools.css"],
-      expectedScripts: ["/client/stage-runtime.js", "/client/controller.js", "/client/flow-tool.js"]
+      expectedScripts: ["/client/stage-runtime.js", "/client/controller.js"],
+      forbiddenScripts: ["/client/flow-tool.js"]
     });
     assertShell(await request({ port, pathname: "/flow" }), "Flow Tool shell", "flowScreen", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/tools.css"],
       forbiddenStyles: ["/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css"],
-      expectedScripts: ["/client/host-audio-tool.js", "/client/flow-tool.js"],
-      forbiddenScripts: ["/client/stage-runtime.js", "/client/controller.js"]
+      expectedScripts: ["/client/host-audio-tool.js"],
+      forbiddenScripts: ["/client/stage-runtime.js", "/client/controller.js", "/client/flow-tool.js"]
     });
 
     const gameFlow = await request({ port, pathname: "/api/game-flow", parseJson: true });

@@ -66,35 +66,7 @@
   "hostAudioTool": [
     "/client/host-audio-tool.js"
   ],
-  "flowTool": [
-    "/client/flow/action-options.js",
-    "/client/flow/action-summary.js",
-    "/client/flow/action-defaults.js",
-    "/client/flow/form-controls.js",
-    "/client/flow/decision-controls.js",
-    "/client/flow/action-control-groups.js",
-    "/client/flow/action-inspector-registry.js",
-    "/client/flow/node-view-wires.js",
-    "/client/flow/node-wire-planner.js",
-    "/client/flow/node-view-minimap.js",
-    "/client/flow/node-graph-schema.js",
-    "/client/flow/node-branch-descriptors.js",
-    "/client/flow/moment-route-node-types.js",
-    "/client/flow/node-view-ports.js",
-    "/client/flow/node-view-child-sort.js",
-    "/client/flow/node-connection-planner.js",
-    "/client/flow/node-view-connections.js",
-    "/client/flow/node-view-drag.js",
-    "/client/flow/node-view-marquee.js",
-    "/client/flow/node-view-inspector.js",
-    "/client/flow/moment-route-graph.js",
-    "/client/flow/moment-route-renderer.js",
-    "/client/flow/moment-route-wires.js",
-    "/client/flow/action-node-renderer.js",
-    "/client/flow/action-node-wires.js",
-    "/client/flow-node-view.js",
-    "/client/flow-tool.js"
-  ],
+  "flowTool": [],
   "constantsTool": [
     "/client/constants-tool.js"
   ],
