@@ -15,7 +15,6 @@ const allowedTypedGlobalAdapters = new Set([
   // Flow is fully React (no adapters). The remaining entries are the legacy bridges
   // for the four tools not yet migrated (Phase 2).
   "client/tools/art/mountArtToolApp.tsx",
-  "client/tools/host-audio/mountHostAudioToolApp.tsx",
   "client/tools/layout/mountLayoutToolApp.tsx"
 ]);
 

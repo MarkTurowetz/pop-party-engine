@@ -1,4 +1,9 @@
-import { legacyScriptsForRole, legacyFlowScripts, legacyConstantsScripts } from "../legacy/script-manifest";
+import {
+  legacyScriptsForRole,
+  legacyFlowScripts,
+  legacyConstantsScripts,
+  legacyHostAudioScripts
+} from "../legacy/script-manifest";
 import { createToolAppContext } from "../context/createToolAppContext";
 import { installToolContextAdapter } from "../context/toolContextAdapter";
 import { bootLegacySurface } from "../legacy/loadLegacySurface";
@@ -6,8 +11,9 @@ import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 import type { FlowEditorController } from "../../tools/flow/flowEditorController";
 import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor";
 import type { ConstantsController } from "../../tools/constants/constantsController";
+import { mountHostAudioEditor } from "../../tools/host-audio/mountHostAudioEditor";
+import type { HostAudioController } from "../../tools/host-audio/hostAudioController";
 import { mountLayoutToolApp } from "../../tools/layout/mountLayoutToolApp";
-import { mountHostAudioToolApp } from "../../tools/host-audio/mountHostAudioToolApp";
 import { mountArtToolApp } from "../../tools/art/mountArtToolApp";
 
 // The legacy tool dashboard (tool-dashboard.js) drives the flow tab through three
@@ -25,6 +31,9 @@ declare global {
     saveGameConstants?: () => Promise<unknown>;
     gameConstants?: unknown;
     constantsSavedSnapshot?: string;
+    setupHostAudioTool?: () => void;
+    saveHostAudios?: () => Promise<unknown>;
+    isHostAudiosDirty?: () => boolean;
   }
 }
 
@@ -65,11 +74,22 @@ window.saveGameConstants = () => (constantsController ? constantsController.save
 window.gameConstants = {};
 window.constantsSavedSnapshot = "{}";
 
+let hostAudioController: HostAudioController | null = null;
+void mountHostAudioEditor({ api: toolsContext.api.hostAudio, surface: toolsContext.surface, revealScreen: false }).then(
+  (mounted) => {
+    hostAudioController = mounted.controller;
+  }
+);
+window.setupHostAudioTool = () => {
+  document.querySelector("#hostAudioScreen")?.classList.remove("hidden");
+};
+window.saveHostAudios = () => (hostAudioController ? hostAudioController.save() : Promise.resolve());
+window.isHostAudiosDirty = () => (hostAudioController ? hostAudioController.getState().dirty : false);
+
 mountLayoutToolApp({ surface: toolsContext.surface });
-mountHostAudioToolApp({ surface: toolsContext.surface });
 mountArtToolApp({ surface: toolsContext.surface });
 
-// Load the other tools' legacy scripts, but none of the flow or constants scripts.
+// Load the other tools' legacy scripts, but none of the flow/constants/host-audio scripts.
 void bootLegacySurface("tools", {
-  excludeScripts: [...legacyFlowScripts, ...legacyConstantsScripts]
+  excludeScripts: [...legacyFlowScripts, ...legacyConstantsScripts, ...legacyHostAudioScripts]
 });

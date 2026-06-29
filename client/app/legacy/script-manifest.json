@@ -63,9 +63,7 @@
     "/client/editable-art-renderer.js",
     "/client/art-tool.js"
   ],
-  "hostAudioTool": [
-    "/client/host-audio-tool.js"
-  ],
+  "hostAudioTool": [],
   "flowTool": [],
   "constantsTool": [],
   "layoutTool": [

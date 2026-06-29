@@ -30,3 +30,6 @@ export const legacyFlowScripts: string[] = [...manifest.flowTool];
 
 /** The legacy constants-tool scripts — excluded from /tools now that constants is React. */
 export const legacyConstantsScripts: string[] = [...manifest.constantsTool];
+
+/** The legacy host-audio-tool scripts — excluded from /tools now that host-audio is React. */
+export const legacyHostAudioScripts: string[] = [...manifest.hostAudioTool];
