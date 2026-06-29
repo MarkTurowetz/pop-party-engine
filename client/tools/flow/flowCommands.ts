@@ -239,6 +239,35 @@ export function setFlowActionFieldCommand(stateId: string, actionId: string, key
   };
 }
 
+export function setFlowNodePositionCommand(
+  depth: "moments" | "actions",
+  stateId: string,
+  nodeId: string,
+  x: number,
+  y: number
+): FlowCommand {
+  const position = { x: Math.round(x), y: Math.round(y) };
+  return {
+    id: `set-flow-node-position:${depth}:${nodeId}`,
+    label: "Move node",
+    apply: (flow) => {
+      if (depth === "moments") {
+        const state = findFlowState(flow, nodeId);
+        if (state) (state as Record<string, unknown>).nodePosition = position;
+        return;
+      }
+      const state = findFlowState(flow, stateId);
+      if (!state) return;
+      if (nodeId === "start") (state as Record<string, unknown>).startNodePosition = position;
+      else if (nodeId === "return") (state as Record<string, unknown>).returnNodePosition = position;
+      else {
+        const action = findFlowAction(state, nodeId);
+        if (action) (action as Record<string, unknown>).nodePosition = position;
+      }
+    }
+  };
+}
+
 export function addDecisionBranchCommand(stateId: string, actionId: string): FlowCommand {
   return {
     id: `add-decision-branch:${actionId}`,

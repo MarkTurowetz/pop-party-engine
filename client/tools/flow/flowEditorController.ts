@@ -22,6 +22,7 @@ import {
   setFlowActionFieldCommand,
   setFlowActionTimingCommand,
   setFlowActionTypeCommand,
+  setFlowNodePositionCommand,
   type FlowActionTimingPatch,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
@@ -105,6 +106,7 @@ export interface FlowEditorController {
   addActionOption(stateId: string, actionId: string): void;
   removeActionOption(stateId: string, actionId: string, index: number): void;
   setActionOption(stateId: string, actionId: string, index: number, value: string): void;
+  setNodePosition(depth: "moments" | "actions", stateId: string, nodeId: string, x: number, y: number): void;
   moveAction(stateId: string, draggedActionId: string, targetActionId: string, placeAfter?: boolean): void;
   moveSubAction(
     stateId: string,
@@ -243,6 +245,8 @@ export function createFlowEditorController(options: FlowEditorControllerOptions)
       commit(store.execute(removeActionOptionCommand(stateId, actionId, index))),
     setActionOption: (stateId, actionId, index, value) =>
       commit(store.execute(setActionOptionCommand(stateId, actionId, index, value))),
+    setNodePosition: (depth, stateId, nodeId, x, y) =>
+      commit(store.execute(setFlowNodePositionCommand(depth, stateId, nodeId, x, y))),
     moveAction: (stateId, draggedActionId, targetActionId, placeAfter = false) =>
       commit(store.execute(moveFlowActionCommand(stateId, draggedActionId, targetActionId, placeAfter))),
     moveSubAction: (stateId, parentActionId, draggedActionId, targetActionId, placeAfter = false) =>

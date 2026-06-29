@@ -159,6 +159,7 @@ export function FlowEditor({
           setNodeDepth("actions");
         }}
         onBackToMoments={() => setNodeDepth("moments")}
+        onMoveNode={(nodeId, x, y) => controller.setNodePosition(nodeDepth, selectedStateId, nodeId, x, y)}
       />
     ) : null;
 

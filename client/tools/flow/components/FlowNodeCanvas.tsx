@@ -1,3 +1,4 @@
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { FlowGraphConnection, FlowGraphNode } from "../flowNodeGraph";
 
 export interface FlowNodeCanvasProps {
@@ -8,6 +9,24 @@ export interface FlowNodeCanvasProps {
   onSelectNode?: (nodeId: string, additive: boolean) => void;
   onEnterState?: (stateId: string) => void;
   onBackToMoments?: () => void;
+  onMoveNode?: (nodeId: string, x: number, y: number) => void;
+}
+
+const DRAG_THRESHOLD = 3;
+
+interface DragState {
+  nodeId: string;
+  originX: number;
+  originY: number;
+  startClientX: number;
+  startClientY: number;
+  moved: boolean;
+}
+
+interface LivePosition {
+  nodeId: string;
+  x: number;
+  y: number;
 }
 
 interface WirePath {
@@ -66,8 +85,49 @@ export function FlowNodeCanvas({
   stateTitle,
   onSelectNode,
   onEnterState,
-  onBackToMoments
+  onBackToMoments,
+  onMoveNode
 }: FlowNodeCanvasProps) {
+  const dragRef = useRef<DragState | null>(null);
+  const [livePosition, setLivePosition] = useState<LivePosition | null>(null);
+
+  const beginDrag = (node: FlowGraphNode, event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !onMoveNode) return;
+    dragRef.current = {
+      nodeId: node.id,
+      originX: node.x,
+      originY: node.y,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      moved: false
+    };
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const dx = moveEvent.clientX - drag.startClientX;
+      const dy = moveEvent.clientY - drag.startClientY;
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) drag.moved = true;
+      setLivePosition({ nodeId: drag.nodeId, x: drag.originX + dx, y: drag.originY + dy });
+    };
+
+    const handleUp = (upEvent: PointerEvent) => {
+      document.removeEventListener("pointermove", handleMove);
+      document.removeEventListener("pointerup", handleUp);
+      const drag = dragRef.current;
+      dragRef.current = null;
+      setLivePosition(null);
+      if (drag && drag.moved) {
+        const dx = upEvent.clientX - drag.startClientX;
+        const dy = upEvent.clientY - drag.startClientY;
+        onMoveNode(drag.nodeId, Math.max(0, drag.originX + dx), Math.max(0, drag.originY + dy));
+      }
+    };
+
+    document.addEventListener("pointermove", handleMove);
+    document.addEventListener("pointerup", handleUp);
+  };
+
   const { width, height } = worldSize(nodes);
   const wires = buildWirePaths(nodes, connections);
   return (
@@ -104,20 +164,24 @@ export function FlowNodeCanvas({
               </g>
             ))}
           </svg>
-          {nodes.map((node) => (
+          {nodes.map((node) => {
+            const live = livePosition?.nodeId === node.id ? livePosition : null;
+            return (
             <div
               key={node.id}
-              className={`flow-node ${node.className}${node.selected ? " is-selected" : ""}`}
+              className={`flow-node ${node.className}${node.selected ? " is-selected" : ""}${live ? " is-dragging" : ""}`}
               data-node-id={node.id}
               data-node-kind={node.kind}
               aria-current={node.selected ? "true" : undefined}
               style={{
                 position: "absolute",
-                left: node.x,
-                top: node.y,
+                left: live ? live.x : node.x,
+                top: live ? live.y : node.y,
                 width: node.width,
-                minHeight: node.height
+                minHeight: node.height,
+                touchAction: "none"
               }}
+              onPointerDown={(event) => beginDrag(node, event)}
               onClick={(event) => onSelectNode?.(node.id, event.metaKey || event.ctrlKey || event.shiftKey)}
               onDoubleClick={() => {
                 if (node.kind === "state") onEnterState?.(node.id);
@@ -130,7 +194,8 @@ export function FlowNodeCanvas({
                 {node.timing ? <span className="flow-node-timing">{node.timing}</span> : null}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
