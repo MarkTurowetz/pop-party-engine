@@ -1,7 +1,14 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
 import type { ArtComponent } from "../../types/game-data";
 import type { ArtCompositionsController } from "./artCompositionsController";
-import { creatableComponentKinds } from "./artComponentSchema";
+import {
+  componentSupportsImageMask,
+  componentSupportsShapeStyle,
+  containerDistributionOptions,
+  creatableComponentKinds,
+  shapeStyleOptions,
+  validateImageFile
+} from "./artComponentSchema";
 import { useArtCompositions } from "./useArtCompositions";
 
 export interface ArtCompositionEditorProps {
@@ -246,50 +253,109 @@ function ArtComponentInspector({
   }
   const commit = (patch: Partial<ArtComponent>) => controller.updateComponent(component.id, patch);
   const isTextual = component.kind === "text" || component.kind === "badge";
+  const supportsShape = componentSupportsShapeStyle(component);
+  const supportsImage = componentSupportsImageMask(component);
+
+  const numberField = (key: string, label: string, step?: string) => (
+    <label className="flow-react-field" data-art-field={key} key={key}>
+      <span>{label}</span>
+      <input
+        type="number"
+        step={step}
+        key={`${component.id}-${key}`}
+        defaultValue={String(get(component, key) ?? 0)}
+        data-art-component-field={key}
+        onBlur={(event) => commit({ [key]: Number(event.target.value) } as Partial<ArtComponent>)}
+      />
+    </label>
+  );
+  const textField = (key: string, label: string) => (
+    <label className="flow-react-field" data-art-field={key} key={key}>
+      <span>{label}</span>
+      <input
+        type="text"
+        key={`${component.id}-${key}`}
+        defaultValue={String(get(component, key) ?? "")}
+        data-art-component-field={key}
+        onBlur={(event) => commit({ [key]: event.target.value } as Partial<ArtComponent>)}
+      />
+    </label>
+  );
+
+  const onPickImage = async (file: File | undefined) => {
+    if (!file) return;
+    const message = validateImageFile(file);
+    if (message) return;
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => resolve(String(reader.result || "")));
+      reader.addEventListener("error", () => reject(reader.error));
+      reader.readAsDataURL(file);
+    });
+    commit({ imageDataUrl: dataUrl, imageName: file.name, imageMimeType: file.type, imageAssetId: "" } as Partial<ArtComponent>);
+  };
+
   return (
     <section className="flow-react-panel flow-react-inspector" data-art-react-component="component-inspector" data-art-component-id={component.id} style={{ minWidth: 180 }}>
       <h3>{component.name}</h3>
-      <label className="flow-react-field" data-art-field="name">
-        <span>Name</span>
-        <input
-          type="text"
-          key={`${component.id}-name`}
-          defaultValue={component.name || ""}
-          data-art-component-name-input
-          onBlur={(event) => commit({ name: event.target.value })}
-        />
-      </label>
-      {SCALAR_FIELDS.map((field) => (
-        <label className="flow-react-field" data-art-field={field.key} key={field.key}>
-          <span>{field.label}</span>
-          <input
-            type="number"
-            key={`${component.id}-${field.key}`}
-            defaultValue={String(get(component, field.key) ?? 0)}
-            data-art-component-field={field.key}
-            onBlur={(event) => commit({ [field.key]: Number(event.target.value) } as Partial<ArtComponent>)}
-          />
+      {textField("name", "Name")}
+      {SCALAR_FIELDS.map((field) => numberField(field.key, field.label))}
+      {numberField("scale", "Scale", "0.01")}
+      {numberField("rotation", "Rotation", "0.1")}
+      {supportsShape ? (
+        <>
+          <label className="flow-react-field" data-art-field="shapeStyle">
+            <span>Shape Style</span>
+            <select
+              value={String(get(component, "shapeStyle") || "rounded")}
+              data-art-component-field="shapeStyle"
+              onChange={(event) => commit({ shapeStyle: event.target.value } as Partial<ArtComponent>)}
+            >
+              {shapeStyleOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {textField("fillColor", "Fill Color")}
+          {textField("fillCss", "Fill CSS (gradient)")}
+          {textField("borderColor", "Border Color")}
+          {numberField("borderWidth", "Border Width")}
+          {numberField("borderRadius", "Border Radius")}
+        </>
+      ) : null}
+      {component.kind === "container" ? (
+        <label className="flow-react-field" data-art-field="childDistribution">
+          <span>Child Distribution</span>
+          <select
+            value={String(get(component, "childDistribution") || "none")}
+            data-art-component-field="childDistribution"
+            onChange={(event) => commit({ childDistribution: event.target.value } as Partial<ArtComponent>)}
+          >
+            {containerDistributionOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
-      ))}
-      <label className="flow-react-field" data-art-field="fillColor">
-        <span>Fill</span>
-        <input
-          type="text"
-          key={`${component.id}-fill`}
-          defaultValue={String(get(component, "fillColor") || "")}
-          data-art-component-field="fillColor"
-          onBlur={(event) => commit({ fillColor: event.target.value } as Partial<ArtComponent>)}
-        />
-      </label>
+      ) : null}
       {isTextual ? (
-        <label className="flow-react-field" data-art-field="defaultText">
-          <span>Text</span>
+        <>
+          {textField("defaultText", "Text")}
+          {numberField("fontSize", "Font Size")}
+          {textField("fontColor", "Font Color")}
+        </>
+      ) : null}
+      {supportsImage ? (
+        <label className="flow-react-field" data-art-field="imageMask">
+          <span>Image Mask</span>
           <input
-            type="text"
-            key={`${component.id}-text`}
-            defaultValue={String(get(component, "defaultText") || "")}
-            data-art-component-field="defaultText"
-            onBlur={(event) => commit({ defaultText: event.target.value } as Partial<ArtComponent>)}
+            type="file"
+            accept="image/*"
+            data-art-component-image
+            onChange={(event) => void onPickImage(event.target.files?.[0])}
           />
         </label>
       ) : null}
