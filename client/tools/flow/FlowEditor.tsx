@@ -152,13 +152,16 @@ export function FlowEditor({
         if (selectedStateId) controller.addAction(selectedStateId, selectedActionId);
       },
       deleteSelection,
+      redo: () => controller.redo(),
       revert: () => controller.revert(),
+      save: () => void controller.save(),
       selectAction: (actionId: string) => controller.selectActions(actionId),
       selectRouteBranch: (routeNodeId: string, branchId: string) =>
         controller.selectRouteBranch(routeNodeId, branchId),
       selectRouteNode: (routeNodeId: string) => controller.selectRouteNode(routeNodeId),
       selectState: (stateId: string) => controller.selectState(stateId),
-      setViewMode: (mode: "list" | "node") => setViewMode(mode)
+      setViewMode: (mode: "list" | "node") => setViewMode(mode),
+      undo: () => controller.undo()
     }),
     [controller, deleteSelection, selectedStateId, selectedActionId]
   );
@@ -215,23 +218,14 @@ export function FlowEditor({
 
   return (
     <div className="flow-editor-root" data-flow-editor-dirty={dirty ? "true" : "false"}>
-      <div className="flow-editor-controls" data-flow-react-component="editor-controls">
-        <button type="button" disabled={!snapshot.canUndo} onClick={() => controller.undo()}>
-          Undo
-        </button>
-        <button type="button" disabled={!snapshot.canRedo} onClick={() => controller.redo()}>
-          Redo
-        </button>
-        <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <span data-flow-editor-status>{dirty ? "Unsaved changes" : "Saved"}</span>
-      </div>
       <FlowToolApp
         canAddAction={hasState}
         canAddState={true}
         canDelete={hasState || hasActionSelection || hasRouteSelection}
+        canRedo={snapshot.canRedo}
         canRevert={dirty}
+        canSave={dirty}
+        canUndo={snapshot.canUndo}
         flow={flow}
         flowActionTypes={flowActionTypes}
         flowViewMode={viewMode}
@@ -252,6 +246,7 @@ export function FlowEditor({
         selectedRouteBranchId={selection.selectedFlowRouteBranchId}
         selectedRouteNodeId={selection.selectedFlowRouteNodeId}
         selectedStateId={selectedStateId}
+        saving={saving}
         surface={surface}
         visible={true}
       />

@@ -879,6 +879,266 @@
   display: none;
 }
 
+.tool-workspace {
+  position: fixed;
+  inset: clamp(12px, 2vw, 24px);
+  display: grid;
+  grid-template-columns: var(--tool-sidebar-width, 320px) 12px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  padding: 14px;
+  border: 5px solid var(--ink);
+  border-radius: 18px;
+  color: var(--ink);
+  background: rgba(250, 247, 236, 0.98);
+  box-shadow: 10px 10px 0 rgba(23, 19, 31, 0.28);
+  z-index: 80;
+}
+
+.tool-workspace[hidden] {
+  display: none;
+}
+
+.tool-workspace-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 4px solid var(--ink);
+}
+
+.tool-workspace-header p,
+.tool-workspace-sidebar h3,
+.tool-workspace-main h3,
+.tool-workspace-toolbar button,
+.tool-workspace-toolbar span {
+  margin: 0;
+  color: #5e5475;
+  font-size: 12px;
+  font-weight: 1000;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.tool-workspace-stats,
+.tool-workspace-header h2 {
+  margin: 4px 0 0;
+}
+
+.tool-workspace-header h2 {
+  font-size: clamp(26px, 4vw, 44px);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.tool-workspace-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+}
+
+.tool-workspace-stats div {
+  min-width: 82px;
+  padding: 8px 10px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 4px 4px 0 rgba(23, 19, 31, 0.2);
+}
+
+.tool-workspace-stats dt {
+  color: #5e5475;
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.tool-workspace-stats dd {
+  margin: 2px 0 0;
+  font-size: 24px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.tool-workspace-toolbar,
+.tool-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tool-workspace-toolbar button,
+.tool-editor-actions button,
+.tool-workspace-sidebar button,
+.tool-workspace-main button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 3px solid var(--ink);
+  border-radius: 9px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 3px 3px 0 rgba(23, 19, 31, 0.2);
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.tool-workspace-toolbar button:disabled,
+.tool-editor-actions button:disabled,
+.tool-workspace-sidebar button:disabled,
+.tool-workspace-main button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tool-workspace-toolbar button[aria-pressed="true"],
+.tool-workspace-toolbar button:not(:disabled):hover,
+.tool-editor-actions button:not(:disabled):hover,
+.tool-workspace-sidebar button[aria-current="true"],
+.tool-workspace-sidebar button:not(:disabled):hover,
+.tool-workspace-main button[aria-current="true"],
+.tool-workspace-main button:not(:disabled):hover {
+  background: var(--cyan);
+}
+
+.tool-workspace-sidebar,
+.tool-workspace-main {
+  min-height: 0;
+  min-width: 0;
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.2);
+  overflow: hidden;
+}
+
+.tool-workspace-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.tool-workspace-main {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.tool-workspace-sidebar > .flow-react-panel,
+.tool-workspace-main > .flow-react-panel,
+.tool-workspace-main > .tool-main-columns {
+  min-height: 0;
+}
+
+.tool-workspace-sidebar > .flow-react-panel {
+  flex: 1 1 auto;
+}
+
+.tool-workspace-resizer {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.tool-sidebar-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tool-sidebar-switcher button[aria-pressed="true"] {
+  background: var(--cyan);
+}
+
+.tool-sidebar-list,
+.tool-main-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.tool-sidebar-list button,
+.tool-main-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+}
+
+.tool-sidebar-list {
+  flex: 1 1 auto;
+}
+
+.tool-sidebar-list strong,
+.tool-sidebar-list small,
+.tool-main-list strong,
+.tool-main-list small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-sidebar-list small,
+.tool-main-list small {
+  margin-top: 3px;
+  color: #5e5475;
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.tool-detail-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.tool-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tool-detail-header h3 {
+  color: var(--ink);
+  font-size: 26px;
+}
+
+.tool-main-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.tool-main-columns > .flow-react-panel {
+  min-height: 260px;
+}
+
+.flow-workspace-content,
+.layout-workspace-content,
+.art-workspace-content {
+  align-items: stretch;
+}
+
 .flow-react-preview-replace .flow-shell {
   display: none;
 }

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { ConstantsController } from "./constantsController";
 import { CUSTOM_CONSTANT_TYPES, type CustomConstant, type NormalizedGameConstants } from "./constantsModel";
 import { useConstantsEditor } from "./useConstantsEditor";
@@ -24,6 +26,14 @@ const BUILT_IN_FIELDS: BuiltInField[] = [
   { key: "overrideFirstGameOfSession", label: "Override First Game", control: "bool" }
 ];
 
+const CONSTANT_SECTIONS = [
+  { id: "built-in", label: "Game Constants" },
+  { id: "player-colors", label: "Player Colors" },
+  { id: "custom-constants", label: "Custom Constants" }
+] as const;
+
+type ConstantsSectionId = (typeof CONSTANT_SECTIONS)[number]["id"];
+
 function listValueToText(value: unknown): string {
   return Array.isArray(value) ? value.join("\n") : String(value ?? "");
 }
@@ -35,6 +45,7 @@ function listValueToText(value: unknown): string {
  */
 export function ConstantsEditor({ controller, surface = "constants" }: ConstantsEditorProps) {
   const { constants, dirty, saving, canUndo, canRedo } = useConstantsEditor(controller);
+  const [sectionId, setSectionId] = useState<ConstantsSectionId>("built-in");
 
   const customValueControl = (constant: CustomConstant, index: number) => {
     const commit = (value: unknown) => controller.updateCustomConstant(index, { value: value as CustomConstant["value"] });
@@ -75,30 +86,64 @@ export function ConstantsEditor({ controller, surface = "constants" }: Constants
     );
   };
 
-  return (
-    <section
-      className="layout-react-shell"
-      data-constants-react-shell="react"
-      data-surface={surface}
-      data-constants-editor-dirty={dirty ? "true" : "false"}
-    >
-      <div className="flow-editor-controls" data-constants-react-component="editor-controls">
-        <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
-          Undo
-        </button>
-        <button type="button" disabled={!canRedo} onClick={() => controller.redo()}>
-          Redo
-        </button>
-        <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button type="button" disabled={!dirty} onClick={() => controller.revert()}>
-          Revert
-        </button>
-        <span data-constants-editor-status>{dirty ? "Unsaved changes" : "Saved"}</span>
-      </div>
+  const toolbar = (
+    <>
+      <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
+        Undo
+      </button>
+      <button type="button" disabled={!canRedo} onClick={() => controller.redo()}>
+        Redo
+      </button>
+      <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
+        {saving ? "Saving…" : "Save"}
+      </button>
+      <button type="button" disabled={!dirty} onClick={() => controller.revert()}>
+        Revert
+      </button>
+      <span data-constants-editor-status>{dirty ? "Unsaved changes" : "Saved"}</span>
+    </>
+  );
 
-      <section className="flow-react-panel" data-constants-react-component="built-in">
+  const sidebar = (
+    <>
+      <h3>Constants</h3>
+      <ol className="tool-sidebar-list" data-constants-react-component="section-list">
+        {CONSTANT_SECTIONS.map((section) => (
+          <li data-constants-section-id={section.id} key={section.id}>
+            <button
+              type="button"
+              aria-current={section.id === sectionId ? "true" : undefined}
+              onClick={() => setSectionId(section.id)}
+            >
+              <span>
+                <strong>{section.label}</strong>
+                <small>{section.id}</small>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+
+  return (
+    <ToolWorkspace
+      className="constants-workspace"
+      dataAttributes={{
+        "constants-react-shell": "react",
+        "surface": surface,
+        "constants-editor-dirty": dirty ? "true" : "false"
+      }}
+      header={<h2>{CONSTANT_SECTIONS.find((section) => section.id === sectionId)?.label || "Constants"}</h2>}
+      sidebar={sidebar}
+      sidebarLabel="Constant sections"
+      storageKey="partyTemplate.constantsSidebarWidth"
+      title="Game Constants"
+      toolbar={toolbar}
+      toolId="constants"
+    >
+      {sectionId === "built-in" ? (
+        <section className="flow-react-panel" data-constants-react-component="built-in">
         <h3>Game Constants</h3>
         {BUILT_IN_FIELDS.map((field) => {
           const value = constants[field.key];
@@ -137,9 +182,11 @@ export function ConstantsEditor({ controller, surface = "constants" }: Constants
             </label>
           );
         })}
-      </section>
+        </section>
+      ) : null}
 
-      <section className="flow-react-panel" data-constants-react-component="player-colors">
+      {sectionId === "player-colors" ? (
+        <section className="flow-react-panel" data-constants-react-component="player-colors">
         <header>
           <h3>Player Colors</h3>
           <button type="button" data-add-player-color onClick={() => controller.addPlayerColor()}>
@@ -161,9 +208,11 @@ export function ConstantsEditor({ controller, surface = "constants" }: Constants
             </li>
           ))}
         </ol>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="flow-react-panel" data-constants-react-component="custom-constants">
+      {sectionId === "custom-constants" ? (
+        <section className="flow-react-panel" data-constants-react-component="custom-constants">
         <header>
           <h3>Custom Constants</h3>
           <button type="button" data-add-custom-constant onClick={() => controller.addCustomConstant()}>
@@ -207,7 +256,8 @@ export function ConstantsEditor({ controller, surface = "constants" }: Constants
             </li>
           ))}
         </ol>
-      </section>
-    </section>
+        </section>
+      ) : null}
+    </ToolWorkspace>
   );
 }

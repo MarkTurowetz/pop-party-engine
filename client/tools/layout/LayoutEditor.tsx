@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import type { LayoutElement } from "../../types/game-data";
+import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
 import { layoutGroups } from "./layoutModel";
 import { useLayoutEditor } from "./useLayoutEditor";
@@ -112,46 +113,65 @@ export function LayoutEditor({ stageController, controllerController, surface = 
     );
   };
 
-  return (
-    <section className="layout-react-shell" data-layout-react-shell="react" data-surface={surface} data-layout-mode={mode}>
-      <div className="flow-editor-controls">
+  const toolbar = (
+    <>
+      <button type="button" data-layout-add-text onClick={() => controller.addTextElement()}>
+        Add Text
+      </button>
+      <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
+        Undo
+      </button>
+      <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
+        {saving ? "Saving…" : "Save"}
+      </button>
+      <span data-layout-status>{dirty ? "Unsaved changes" : "Saved"}</span>
+    </>
+  );
+
+  const sidebar = (
+    <>
+      <h3>Layouts</h3>
+      <div className="tool-sidebar-switcher" role="group" aria-label="Layout surface">
         <button type="button" aria-pressed={mode === "stage"} onClick={() => setMode("stage")}>
           Stage
         </button>
         <button type="button" aria-pressed={mode === "controller"} onClick={() => setMode("controller")}>
           Controller
         </button>
-        <button type="button" data-layout-add-text onClick={() => controller.addTextElement()}>
-          Add Text
-        </button>
-        <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
-          Undo
-        </button>
-        <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <span data-layout-status>{dirty ? "Unsaved changes" : "Saved"}</span>
       </div>
+      <ol className="tool-sidebar-list" data-layout-react-component="state-list">
+        {groups.map((item) => (
+          <li data-layout-group-id={item.id} key={item.id}>
+            <button
+              type="button"
+              aria-current={item.id === selectedGroupId ? "true" : undefined}
+              data-layout-group-select={item.id}
+              onClick={() => controller.selectGroup(item.id)}
+            >
+              <span>
+                <strong>{item.name || item.id}</strong>
+                <small>{item.id}</small>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
 
-      <div className="art-editor-layout" style={{ display: "flex", gap: 12 }}>
-        <section className="flow-react-panel" data-layout-react-component="state-list" style={{ minWidth: 150 }}>
-          <h3>Layout States</h3>
-          <ol className="flow-react-list">
-            {groups.map((item) => (
-              <li data-layout-group-id={item.id} key={item.id}>
-                <button
-                  type="button"
-                  aria-current={item.id === selectedGroupId ? "true" : undefined}
-                  data-layout-group-select={item.id}
-                  onClick={() => controller.selectGroup(item.id)}
-                >
-                  {item.name || item.id}
-                </button>
-              </li>
-            ))}
-          </ol>
-        </section>
-
+  return (
+    <ToolWorkspace
+      className="layout-react-shell"
+      dataAttributes={{ "layout-react-shell": "react", "surface": surface, "layout-mode": mode }}
+      header={<h2>{group?.name || group?.id || "Layouts"}</h2>}
+      sidebar={sidebar}
+      sidebarLabel="Layout groups"
+      storageKey="partyTemplate.layoutSidebarWidth"
+      title={mode === "controller" ? "Controller Layout Tool" : "Layout Tool"}
+      toolbar={toolbar}
+      toolId="layout"
+    >
+      <div className="tool-main-columns layout-workspace-content">
         <section className="flow-react-panel" data-layout-react-component="canvas" style={{ flex: 1 }}>
           <div
             className="layout-canvas"
@@ -173,7 +193,7 @@ export function LayoutEditor({ stageController, controllerController, surface = 
 
         <LayoutElementInspector controller={controller} element={selectedElement ?? null} />
       </div>
-    </section>
+    </ToolWorkspace>
   );
 }
 

@@ -49,6 +49,18 @@
     overflow: auto;
   }
 
+  .tool-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(160px, auto) minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .tool-workspace-header,
+  .tool-workspace-sidebar,
+  .tool-workspace-main {
+    grid-column: 1;
+  }
+
   .flow-react-header {
     align-items: start;
     flex-direction: column;

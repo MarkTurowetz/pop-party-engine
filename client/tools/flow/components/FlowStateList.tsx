@@ -3,18 +3,25 @@ import type { FlowState } from "../../../types/game-data";
 const STATE_DND_TYPE = "application/x-flow-state";
 
 export interface FlowStateListProps {
+  chrome?: boolean;
   onSelectState?: (stateId: string) => void;
   onReorderState?: (draggedStateId: string, targetStateId: string) => void;
   selectedStateId?: string;
   states: FlowState[];
 }
 
-export function FlowStateList({ onSelectState, onReorderState, selectedStateId = "", states }: FlowStateListProps) {
+export function FlowStateList({
+  chrome = true,
+  onSelectState,
+  onReorderState,
+  selectedStateId = "",
+  states
+}: FlowStateListProps) {
   const draggable = Boolean(onReorderState);
-  return (
-    <section className="flow-react-panel">
+  const contents = (
+    <>
       <h3>States</h3>
-      <ol className="flow-react-list" data-flow-react-component="state-list">
+      <ol className={chrome ? "flow-react-list" : "tool-sidebar-list"} data-flow-react-component="state-list">
       {states.map((state) => (
         <li
           aria-current={state.id === selectedStateId ? "true" : undefined}
@@ -40,6 +47,7 @@ export function FlowStateList({ onSelectState, onReorderState, selectedStateId =
         </li>
       ))}
       </ol>
-    </section>
+    </>
   );
+  return chrome ? <section className="flow-react-panel">{contents}</section> : contents;
 }

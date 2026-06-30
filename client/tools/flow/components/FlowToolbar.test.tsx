@@ -9,7 +9,10 @@ describe("FlowToolbar", () => {
         canAddAction={true}
         canAddState={true}
         canDelete={false}
+        canRedo={true}
         canRevert={true}
+        canSave={true}
+        canUndo={true}
         flowNodeDepth="moments"
         flowViewMode="node"
       />
@@ -19,7 +22,10 @@ describe("FlowToolbar", () => {
     expect(markup).toContain('data-can-add-action="true"');
     expect(markup).toContain('data-can-add-state="true"');
     expect(markup).toContain('data-can-delete="false"');
+    expect(markup).toContain('data-can-redo="true"');
     expect(markup).toContain('data-can-revert="true"');
+    expect(markup).toContain('data-can-save="true"');
+    expect(markup).toContain('data-can-undo="true"');
     expect(markup).toContain('data-flow-node-depth="moments"');
     expect(markup).toContain('data-flow-view-mode="node"');
   });
