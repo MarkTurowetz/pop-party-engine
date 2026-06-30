@@ -2,7 +2,8 @@ import type { FlowAction } from "../../../types/game-data";
 import type { FlowSubroutine } from "../flowSubroutines";
 import type { FlowActionTypeMeta } from "../flowSelectors";
 import { ActionFieldControls } from "./ActionFieldControls";
-import { DecisionBranchControls, type DecisionBranchHandlers } from "./DecisionBranchControls";
+import type { DecisionBranchHandlers } from "./DecisionBranchControls";
+import { DecisionBranchInspector } from "./DecisionBranchInspector";
 import { ActionOptionsControls, type ActionOptionsHandlers } from "./ActionOptionsControls";
 import { ActionTypeSelect } from "./ActionTypeSelect";
 
@@ -131,6 +132,18 @@ export function ActionInspector({
     );
   }
 
+  if (isBranch && parentAction?.type === "decision") {
+    return (
+      <DecisionBranchInspector
+        action={action}
+        actionTargetOptions={edit?.actionTargetOptions || []}
+        handlers={edit?.decision}
+        parentAction={parentAction}
+        stateId={String(state.id)}
+      />
+    );
+  }
+
   return (
     <section
       className="flow-react-panel flow-react-inspector flow-action-inspector"
@@ -176,7 +189,7 @@ export function ActionInspector({
           />
         </label>
       ) : null}
-      {edit?.onSetActionTiming ? (
+      {edit?.onSetActionTiming && action.type !== "decision" ? (
         <div className="flow-react-action-timing" data-flow-react-component="action-timing">
           <label className="flow-react-field" data-flow-react-field="timing-mode">
             <span>Timing Mode</span>
@@ -213,12 +226,13 @@ export function ActionInspector({
           onSetField={edit.onSetActionField}
         />
       ) : null}
-      {action.type === "decision" && edit?.decision ? (
-        <DecisionBranchControls
-          action={action}
-          actionTargetOptions={edit.actionTargetOptions || []}
-          handlers={edit.decision}
-        />
+      {action.type === "decision" && edit?.decision?.onAddBranch ? (
+        <div className="flow-react-decision-summary" data-flow-react-component="decision-summary">
+          <h3>Decision Branches</h3>
+          <button type="button" data-decision-branch-add onClick={() => edit.decision?.onAddBranch?.()}>
+            Add Branch
+          </button>
+        </div>
       ) : null}
       {action.type === "multipleChoiceInput" && edit?.options ? (
         <ActionOptionsControls action={action} handlers={edit.options} />

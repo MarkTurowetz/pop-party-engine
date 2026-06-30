@@ -188,6 +188,7 @@ function minimapNodeFill(node: FlowGraphNode): string {
   if (node.selected) return "#ff4fa3";
   if (node.kind === "system") return "#f8fafc";
   if (node.kind === "subroutine") return "#22d3ee";
+  if (node.kind === "branch") return node.className.includes("is-no-match") ? "#fff7d6" : "#fef3c7";
   if (node.className.includes("is-decision")) return "#a3e635";
   if (node.className.includes("is-transition")) return "#fb923c";
   if (node.className.includes("is-code")) return "#bae6fd";
@@ -405,9 +406,10 @@ export function FlowNodeCanvas({
 
   const exitsByNode = new Map<string, FlowNodeExit[]>();
   for (const exit of exits) {
-    const list = exitsByNode.get(exit.nodeId) || [];
+    const viewNodeId = exit.viewNodeId || exit.nodeId;
+    const list = exitsByNode.get(viewNodeId) || [];
     list.push(exit);
-    exitsByNode.set(exit.nodeId, list);
+    exitsByNode.set(viewNodeId, list);
   }
 
   const toWorldPoint = (clientX: number, clientY: number) => {
@@ -458,6 +460,7 @@ export function FlowNodeCanvas({
       ) as HTMLElement | null;
       const targetNode = targetEl?.closest("[data-node-id]") as HTMLElement | null;
       const targetId = targetNode?.getAttribute("data-node-id") || "";
+      if (targetNode?.getAttribute("data-node-kind") === "branch") return;
       if (targetId && targetId !== connect.exit.nodeId) onConnect(connect.exit, targetId);
     };
 
@@ -467,6 +470,7 @@ export function FlowNodeCanvas({
 
   const beginDrag = (node: FlowGraphNode, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || !onMoveNode) return;
+    if (node.draggable === false) return;
     dragRef.current = {
       nodeId: node.id,
       originX: node.x,

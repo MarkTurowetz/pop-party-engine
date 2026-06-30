@@ -65,4 +65,59 @@ describe("ActionInspector", () => {
     expect(markup).not.toContain("<dt>State</dt>");
     expect(markup).not.toContain("<dt>Parent</dt>");
   });
+
+  it("hides timing controls and bundled branch fields on decision actions", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "decision",
+          name: "Decision",
+          type: "decision",
+          timing: { mode: "E+", seconds: 1 },
+          branches: [{ id: "hit", type: "hit", value: "3", targetActionId: "next" }]
+        }}
+        edit={{
+          onSetActionTiming: () => undefined,
+          onSetActionField: () => undefined,
+          decision: { onAddBranch: () => undefined },
+          actionTargetOptions: [{ id: "next", label: "Next" }]
+        }}
+        state={{ id: "intro", name: "Intro", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-action-type="decision"');
+    expect(markup).toContain("Decision Branches");
+    expect(markup).toContain("Add Branch");
+    expect(markup).not.toContain("Timing Mode");
+    expect(markup).not.toContain("Timing Seconds");
+    expect(markup).not.toContain("Hit 3");
+    expect(markup).not.toContain("Target");
+  });
+
+  it("renders selected decision branch parameters in their own inspector", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{ id: "hit", type: "hit", value: "3", targetActionId: "next" }}
+        edit={{
+          decision: {
+            onRemoveBranch: () => undefined,
+            onSetBranchField: () => undefined
+          },
+          actionTargetOptions: [{ id: "next", label: "Next Action" }]
+        }}
+        isBranch={true}
+        parentAction={{ id: "decision", name: "Decision", type: "decision" }}
+        state={{ id: "intro", name: "Intro", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-flow-react-component="decision-branch-inspector"');
+    expect(markup).toContain("Decision Branch");
+    expect(markup).toContain("Branch Type");
+    expect(markup).toContain("Value");
+    expect(markup).toContain("Target");
+    expect(markup).toContain("Next Action");
+    expect(markup).toContain("Remove Branch");
+  });
 });

@@ -1,6 +1,7 @@
 import type { FlowAction, FlowRouteNode, FlowState, GameFlow } from "../../types/game-data";
 import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
 import {
+  decisionBranchGraphNodeId,
   subroutineGraphNodes,
   type FlowGraphConnection,
   type FlowGraphNode,
@@ -130,7 +131,11 @@ export function rootFlowGraphNodes(
   selection: FlowGraphSelection = {}
 ): FlowGraphNode[] {
   const selectedActionId =
-    selection.selectedRouteNodeId || selection.selectedActionId || selection.selectedStateId || "";
+    selection.selectedRouteBranchId ||
+    selection.selectedRouteNodeId ||
+    selection.selectedActionId ||
+    selection.selectedStateId ||
+    "";
   return subroutineGraphNodes(rootFlowSubroutine(flow), {
     ...selection,
     selectedActionId
@@ -141,11 +146,13 @@ export function rootFlowNodeExits(flow: Partial<GameFlow> | null | undefined): F
   const exits: FlowNodeExit[] = [];
   for (const action of rootFlowActions(flow)) {
     if (action.type === "decision") {
-      for (const [index, branch] of routeDecisionBranches(action).entries()) {
+      for (const branch of routeDecisionBranches(action)) {
+        const viewNodeId = decisionBranchGraphNodeId(action.id, branch.id);
         exits.push({
-          id: `${action.id}:${branch.id}`,
+          id: `${viewNodeId}:target`,
           nodeId: action.id,
-          label: decisionBranchName(branch, index),
+          viewNodeId,
+          label: "Target",
           kind: "branch",
           branchId: branch.id,
           currentTarget: String(branch.targetActionId || "")
@@ -169,18 +176,27 @@ export function rootFlowGraphConnections(
   flow: Partial<GameFlow> | null | undefined
 ): FlowGraphConnection[] {
   const actions = rootFlowActions(flow);
-  const nodeIds = new Set(actions.map((action) => action.id));
+  const nodeIds = new Set(rootFlowGraphNodes(flow).map((node) => node.id));
   const connections: FlowGraphConnection[] = [];
   for (const action of actions) {
     if (action.type === "decision") {
       routeDecisionBranches(action).forEach((branch, index) => {
+        const branchNodeId = decisionBranchGraphNodeId(action.id, branch.id);
+        if (nodeIds.has(branchNodeId)) {
+          connections.push({
+            id: `${action.id}->${branchNodeId}`,
+            from: action.id,
+            to: branchNodeId,
+            label: decisionBranchName(branch, index)
+          });
+        }
         const target = String(branch.targetActionId || "");
         if (rootTargetIsEmpty(target) || !nodeIds.has(target)) return;
         connections.push({
-          id: `${action.id}->${target}:${branch.id}`,
-          from: action.id,
+          id: `${branchNodeId}->${target}`,
+          from: branchNodeId,
           to: target,
-          label: decisionBranchName(branch, index)
+          label: "Target"
         });
       });
       continue;

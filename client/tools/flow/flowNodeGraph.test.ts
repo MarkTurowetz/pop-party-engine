@@ -114,6 +114,92 @@ describe("flowNodeGraph", () => {
     ]);
   });
 
+  it("renders decision branches as selectable stacked nodes with their own target exits", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "s",
+          name: "S",
+          actions: [
+            {
+              id: "decision",
+              name: "Decision",
+              type: "decision",
+              branches: [
+                { id: "hit", type: "hit", value: "3", targetActionId: "a1" },
+                { id: "no-match", type: "noMatch", targetActionId: "return" }
+              ]
+            },
+            { id: "a1", name: "A1", type: "message" }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+    const nodes = subroutineGraphNodes(flow.states[0], { selectedActionId: "hit" });
+    const branchNode = nodes.find((node) => node.id === "decision:branch:hit");
+
+    expect(branchNode).toMatchObject({
+      kind: "branch",
+      parentNodeId: "decision",
+      branchId: "hit",
+      draggable: false,
+      selected: true
+    });
+    expect(branchNode?.y).toBeGreaterThan(nodes.find((node) => node.id === "decision")?.y || 0);
+
+    const exits = subroutineNodeExits(flow.states[0], () => false);
+    expect(exits.find((exit) => exit.branchId === "hit")).toMatchObject({
+      nodeId: "decision",
+      viewNodeId: "decision:branch:hit",
+      label: "Target",
+      currentTarget: "a1"
+    });
+
+    expect(subroutineGraphConnections(flow.states[0])).toEqual([
+      { id: "decision->decision:branch:hit", from: "decision", to: "decision:branch:hit", label: "Hit 3" },
+      { id: "decision:branch:hit->a1", from: "decision:branch:hit", to: "a1", label: "Target" },
+      {
+        id: "decision->decision:branch:no-match",
+        from: "decision",
+        to: "decision:branch:no-match",
+        label: "No Match"
+      },
+      {
+        id: "decision:branch:no-match->return",
+        from: "decision:branch:no-match",
+        to: "return",
+        label: "Target"
+      }
+    ]);
+  });
+
+  it("does not draw stale generic next wires for event-driven actions", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "s",
+          name: "S",
+          actions: [
+            {
+              id: "present",
+              name: "Present",
+              type: "presentText",
+              stageClickTargetActionId: "clicked",
+              nextTargetActionId: "return"
+            },
+            { id: "clicked", name: "Clicked", type: "message" }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+
+    expect(subroutineGraphConnections(flow.states[0])).toEqual([
+      { id: "present->clicked:Screen Click", from: "present", to: "clicked", label: "Screen Click" }
+    ]);
+  });
+
   it("optimizes action nodes by reachable flow order, not action array order", () => {
     const flow: GameFlow = {
       states: [

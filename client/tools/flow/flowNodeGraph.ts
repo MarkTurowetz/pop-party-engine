@@ -19,7 +19,7 @@ export interface FlowNodePoint {
 export interface FlowGraphNode {
   id: string;
   /** Root/nested subroutine, action, or a system node ("start"/"return"). */
-  kind: "subroutine" | "action" | "system";
+  kind: "subroutine" | "action" | "branch" | "system";
   title: string;
   subtitle: string;
   timing: string;
@@ -29,6 +29,9 @@ export interface FlowGraphNode {
   height: number;
   className: string;
   selected: boolean;
+  parentNodeId?: string;
+  branchId?: string;
+  draggable?: boolean;
 }
 
 export interface FlowGraphSelection {
@@ -36,6 +39,7 @@ export interface FlowGraphSelection {
   selectedActionId?: string;
   selectedActionIds?: Iterable<string>;
   selectedRouteNodeId?: string;
+  selectedRouteBranchId?: string;
 }
 
 export interface FlowGraphConnection {
@@ -49,6 +53,7 @@ export interface FlowGraphConnection {
 export interface FlowNodeExit {
   id: string;
   nodeId: string;
+  viewNodeId?: string;
   label: string;
   /** "field" sets action[field]; "branch" sets a decision branch target; "entry"/"nextSubroutine" are subroutine-level. */
   kind: "field" | "branch" | "entry" | "nextSubroutine";
@@ -65,36 +70,27 @@ export interface FlowNodePositionUpdate {
   y: number;
 }
 
-const EXIT_FIELDS: { field: string; label: string }[] = [
-  { field: "nextTargetActionId", label: "Next" },
-  { field: "stageClickTargetActionId", label: "Screen Click" },
-  { field: "timerEndTargetActionId", label: "Timer Ends" },
-  { field: "answersSubmittedTargetActionId", label: "Answers" },
-  { field: "microphoneAccessGrantedTargetActionId", label: "Access Granted" }
-];
+export function decisionBranchGraphNodeId(actionId: string, branchId: string): string {
+  return `${actionId}:branch:${branchId}`;
+}
 
 function isNoFlowTarget(value: string): boolean {
   return !value || value === "none" || value === "noFlow";
 }
 
-function actionExitTargets(action: FlowAction): { to: string; label: string }[] {
-  if (action.type === "decision") {
-    return ensureDecisionBranches(action)
-      .map((branch, index) => ({
-        to: String(branch.targetActionId || ""),
-        label: decisionBranchName(branch, index)
-      }))
-      .filter((exit) => !isNoFlowTarget(exit.to));
-  }
+function actionExitTargets(action: FlowAction, isInputType: IsInputType): { to: string; label: string }[] {
   if (action.type === "jumpNode") {
     const target = String((action as Record<string, unknown>).jumpTargetActionId || "");
     return isNoFlowTarget(target) ? [] : [{ to: target, label: "Jump" }];
   }
   const record = action as Record<string, unknown>;
-  return EXIT_FIELDS.map((exit) => ({
-    to: String(record[exit.field] || ""),
-    label: exit.label
-  })).filter((exit) => !isNoFlowTarget(exit.to));
+  return exitDefinitions(action, isInputType)
+    .filter((exit) => exit.field)
+    .map((exit) => ({
+      to: String(record[exit.field as string] || ""),
+      label: exit.label
+    }))
+    .filter((exit) => !isNoFlowTarget(exit.to));
 }
 
 export function defaultNodePosition(
@@ -154,6 +150,12 @@ function actionClassName(action: FlowAction): string {
     default:
       return "is-standard";
   }
+}
+
+function branchSubtitle(branch: FlowAction): string {
+  if (branch.type === "hit") return String(branch.value || "Hit value");
+  if (branch.type === "code") return String(branch.code || "x < 3");
+  return "Fallback";
 }
 
 /** Nodes for the root subroutines depth: one node per root flow subroutine. */
@@ -230,6 +232,7 @@ export function subroutineGraphNodes(
     const isLabel = action.type === "labelNode";
     const isCode = action.type === "codeNode";
     const isSubroutine = isFlowSubroutineAction(action);
+    const actionHeight = 134;
     nodes.push({
       id: action.id,
       kind: isSubroutine ? "subroutine" : "action",
@@ -250,10 +253,32 @@ export function subroutineGraphNodes(
       x,
       y,
       width: action.type === "decision" || isLabel || isCode ? 320 : 260,
-      height: 134,
+      height: actionHeight,
       className: isSubroutine ? subroutineClassName() : actionClassName(action),
       selected: isSelected(action.id)
     });
+    if (action.type === "decision") {
+      ensureDecisionBranches(action).forEach((branch, branchIndex) => {
+        const branchId = String(branch.id);
+        const isNoMatch = branch.type === "noMatch";
+        nodes.push({
+          id: decisionBranchGraphNodeId(action.id, branchId),
+          kind: "branch",
+          title: decisionBranchName(branch, branchIndex),
+          subtitle: branchSubtitle(branch as FlowAction),
+          timing: "",
+          x: x + 20,
+          y: y + actionHeight + 14 + branchIndex * 64,
+          width: 280,
+          height: 48,
+          className: `is-branch${isNoMatch ? " is-no-match" : ""}`,
+          selected: isSelected(branchId),
+          parentNodeId: action.id,
+          branchId,
+          draggable: false
+        });
+      });
+    }
   });
 
   const returnPos = savedNodePosition(
@@ -339,10 +364,12 @@ export function subroutineNodeExits(subroutine: FlowSubroutine | null, isInputTy
     for (const def of exitDefinitions(action, isInputType)) {
       if (def.branchId) {
         const branch = ensureDecisionBranches(action).find((item) => item.id === def.branchId);
+        const viewNodeId = decisionBranchGraphNodeId(action.id, def.branchId);
         exits.push({
-          id: `${action.id}:${def.branchId}`,
+          id: `${viewNodeId}:target`,
           nodeId: action.id,
-          label: def.label,
+          viewNodeId,
+          label: "Target",
           kind: "branch",
           branchId: def.branchId,
           currentTarget: String(branch?.targetActionId || "")
@@ -388,12 +415,15 @@ export function rootSubroutineGraphConnections(flow: GameFlow | null): FlowGraph
 }
 
 /** Connections inside any subroutine: start -> entry, action -> exit targets. */
-export function subroutineGraphConnections(subroutine: FlowSubroutine | null): FlowGraphConnection[] {
+export function subroutineGraphConnections(
+  subroutine: FlowSubroutine | null,
+  isInputType: IsInputType = () => false
+): FlowGraphConnection[] {
   if (!subroutine) return [];
   const nodeIds = new Set<string>([
     "start",
     "return",
-    ...flowSubroutineActions(subroutine).map((action) => action.id)
+    ...subroutineGraphNodes(subroutine).map((node) => node.id)
   ]);
   const connections: FlowGraphConnection[] = [];
 
@@ -403,7 +433,30 @@ export function subroutineGraphConnections(subroutine: FlowSubroutine | null): F
   }
 
   for (const action of flowSubroutineActions(subroutine)) {
-    for (const exit of actionExitTargets(action)) {
+    if (action.type === "decision") {
+      ensureDecisionBranches(action).forEach((branch, index) => {
+        const branchNodeId = decisionBranchGraphNodeId(action.id, branch.id);
+        if (nodeIds.has(branchNodeId)) {
+          connections.push({
+            id: `${action.id}->${branchNodeId}`,
+            from: action.id,
+            to: branchNodeId,
+            label: decisionBranchName(branch, index)
+          });
+        }
+        const target = String(branch.targetActionId || "");
+        if (!isNoFlowTarget(target) && nodeIds.has(target)) {
+          connections.push({
+            id: `${branchNodeId}->${target}`,
+            from: branchNodeId,
+            to: target,
+            label: "Target"
+          });
+        }
+      });
+      continue;
+    }
+    for (const exit of actionExitTargets(action, isInputType)) {
       if (!nodeIds.has(exit.to)) continue;
       connections.push({
         id: `${action.id}->${exit.to}:${exit.label}`,
