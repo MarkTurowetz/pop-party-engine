@@ -18,7 +18,11 @@ import {
   type RemoveFlowRouteBranchOptions,
   type RenameFlowStateOptions
 } from "./flowMutations";
-import { ensureDecisionBranches, makeDecisionBranchId, type FlowDecisionBranch } from "./flowDecision";
+import {
+  ensureDecisionBranches,
+  makeDecisionBranchId,
+  type FlowDecisionBranch
+} from "./flowDecision";
 import { assertFlowModel } from "./flowValidation";
 
 function findFlowState(flow: GameFlow, stateId: string): FlowState | undefined {
@@ -58,6 +62,12 @@ export interface FlowCommand {
   apply: (flow: GameFlow) => void;
 }
 
+export interface FlowNodePositionUpdate {
+  nodeId: string;
+  x: number;
+  y: number;
+}
+
 export interface FlowCommandHistoryEntry {
   command: FlowCommand;
   before: GameFlow;
@@ -85,7 +95,10 @@ function cloneGameFlow(flow: GameFlow): GameFlow {
   return JSON.parse(JSON.stringify(flow)) as GameFlow;
 }
 
-export function createFlowCommandHistory(initialFlow: GameFlow, options: FlowCommandHistoryOptions = {}): FlowCommandHistory {
+export function createFlowCommandHistory(
+  initialFlow: GameFlow,
+  options: FlowCommandHistoryOptions = {}
+): FlowCommandHistory {
   const cloneFlow = options.cloneFlow || cloneGameFlow;
   const limit = Math.max(1, options.limit || 30);
   let currentFlow = cloneFlow(initialFlow);
@@ -138,7 +151,11 @@ export function createFlowCommandHistory(initialFlow: GameFlow, options: FlowCom
   };
 }
 
-export function renameFlowStateCommand(stateId: string, nextName: string, options: RenameFlowStateOptions = {}): FlowCommand {
+export function renameFlowStateCommand(
+  stateId: string,
+  nextName: string,
+  options: RenameFlowStateOptions = {}
+): FlowCommand {
   return {
     id: `rename-flow-state:${stateId}`,
     label: "Rename flow state",
@@ -159,7 +176,11 @@ export function addFlowStateCommand(state?: FlowState): FlowCommand {
   };
 }
 
-export function moveFlowStateCommand(draggedStateId: string, targetStateId: string, placeAfter = false): FlowCommand {
+export function moveFlowStateCommand(
+  draggedStateId: string,
+  targetStateId: string,
+  placeAfter = false
+): FlowCommand {
   return {
     id: `move-flow-state:${draggedStateId}`,
     label: "Move flow state",
@@ -212,7 +233,11 @@ export interface FlowActionTimingPatch {
   seconds?: number;
 }
 
-export function setFlowActionTimingCommand(stateId: string, actionId: string, timing: FlowActionTimingPatch): FlowCommand {
+export function setFlowActionTimingCommand(
+  stateId: string,
+  actionId: string,
+  timing: FlowActionTimingPatch
+): FlowCommand {
   return {
     id: `set-flow-action-timing:${actionId}`,
     label: "Edit action timing",
@@ -228,12 +253,18 @@ export function setFlowActionTimingCommand(stateId: string, actionId: string, ti
   };
 }
 
-export function setFlowActionFieldCommand(stateId: string, actionId: string, key: string, value: unknown): FlowCommand {
+export function setFlowActionFieldCommand(
+  stateId: string,
+  actionId: string,
+  key: string,
+  value: unknown
+): FlowCommand {
   return {
     id: `set-flow-action-field:${actionId}:${key}`,
     label: "Edit action field",
     apply: (flow) => {
-      const action = findFlowAction(findFlowState(flow, stateId), actionId) as Record<string, unknown> | undefined;
+      const action = findFlowAction(findFlowState(flow, stateId), actionId) as
+        Record<string, unknown> | undefined;
       if (action) action[key] = value;
     }
   };
@@ -251,18 +282,52 @@ export function setFlowNodePositionCommand(
     id: `set-flow-node-position:${depth}:${nodeId}`,
     label: "Move node",
     apply: (flow) => {
-      if (depth === "moments") {
-        const state = findFlowState(flow, nodeId);
-        if (state) (state as Record<string, unknown>).nodePosition = position;
-        return;
-      }
-      const state = findFlowState(flow, stateId);
-      if (!state) return;
-      if (nodeId === "start") (state as Record<string, unknown>).startNodePosition = position;
-      else if (nodeId === "return") (state as Record<string, unknown>).returnNodePosition = position;
-      else {
-        const action = findFlowAction(state, nodeId);
-        if (action) (action as Record<string, unknown>).nodePosition = position;
+      applyFlowNodePosition(flow, depth, stateId, nodeId, position);
+    }
+  };
+}
+
+function applyFlowNodePosition(
+  flow: GameFlow,
+  depth: "moments" | "actions",
+  stateId: string,
+  nodeId: string,
+  position: { x: number; y: number }
+): void {
+  if (depth === "moments") {
+    const state = findFlowState(flow, nodeId);
+    if (state) (state as Record<string, unknown>).nodePosition = position;
+    return;
+  }
+  const state = findFlowState(flow, stateId);
+  if (!state) return;
+  if (nodeId === "start") (state as Record<string, unknown>).startNodePosition = position;
+  else if (nodeId === "return") (state as Record<string, unknown>).returnNodePosition = position;
+  else {
+    const action = findFlowAction(state, nodeId);
+    if (action) (action as Record<string, unknown>).nodePosition = position;
+  }
+}
+
+export function setFlowNodePositionsCommand(
+  depth: "moments" | "actions",
+  stateId: string,
+  updates: FlowNodePositionUpdate[]
+): FlowCommand {
+  const positions = updates.map((update) => ({
+    nodeId: update.nodeId,
+    x: Math.round(update.x),
+    y: Math.round(update.y)
+  }));
+  return {
+    id: `set-flow-node-positions:${depth}:${positions.map((position) => position.nodeId).join(",")}`,
+    label: "Optimize node layout",
+    apply: (flow) => {
+      for (const position of positions) {
+        applyFlowNodePosition(flow, depth, stateId, position.nodeId, {
+          x: position.x,
+          y: position.y
+        });
       }
     }
   };
@@ -290,7 +355,11 @@ export function addDecisionBranchCommand(stateId: string, actionId: string): Flo
   };
 }
 
-export function removeDecisionBranchCommand(stateId: string, actionId: string, branchId: string): FlowCommand {
+export function removeDecisionBranchCommand(
+  stateId: string,
+  actionId: string,
+  branchId: string
+): FlowCommand {
   return {
     id: `remove-decision-branch:${actionId}:${branchId}`,
     label: "Delete decision branch",
@@ -300,7 +369,9 @@ export function removeDecisionBranchCommand(stateId: string, actionId: string, b
       const branches = ensureDecisionBranches(action);
       const branch = branches.find((item) => item.id === branchId);
       if (!branch || branch.type === "noMatch") return;
-      action.branches = branches.filter((item) => item.id !== branchId) as unknown as FlowAction["branches"];
+      action.branches = branches.filter(
+        (item) => item.id !== branchId
+      ) as unknown as FlowAction["branches"];
     }
   };
 }
@@ -345,7 +416,11 @@ export function addActionOptionCommand(stateId: string, actionId: string): FlowC
   };
 }
 
-export function removeActionOptionCommand(stateId: string, actionId: string, index: number): FlowCommand {
+export function removeActionOptionCommand(
+  stateId: string,
+  actionId: string,
+  index: number
+): FlowCommand {
   return {
     id: `remove-action-option:${actionId}:${index}`,
     label: "Remove option",
@@ -359,7 +434,12 @@ export function removeActionOptionCommand(stateId: string, actionId: string, ind
   };
 }
 
-export function setActionOptionCommand(stateId: string, actionId: string, index: number, value: string): FlowCommand {
+export function setActionOptionCommand(
+  stateId: string,
+  actionId: string,
+  index: number,
+  value: string
+): FlowCommand {
   return {
     id: `set-action-option:${actionId}:${index}`,
     label: "Edit option",
@@ -373,7 +453,11 @@ export function setActionOptionCommand(stateId: string, actionId: string, index:
   };
 }
 
-export function renameFlowActionCommand(stateId: string, actionId: string, nextName: string): FlowCommand {
+export function renameFlowActionCommand(
+  stateId: string,
+  actionId: string,
+  nextName: string
+): FlowCommand {
   return {
     id: `rename-flow-action:${actionId}`,
     label: "Rename flow action",
@@ -384,7 +468,11 @@ export function renameFlowActionCommand(stateId: string, actionId: string, nextN
   };
 }
 
-export function addFlowSubActionCommand(stateId: string, parentActionId: string, selectedSubActionId = ""): FlowCommand {
+export function addFlowSubActionCommand(
+  stateId: string,
+  parentActionId: string,
+  selectedSubActionId = ""
+): FlowCommand {
   return {
     id: `add-flow-sub-action:${parentActionId}`,
     label: "Add sub-action",
@@ -405,7 +493,12 @@ export function moveFlowActionCommand(
     id: `move-flow-action:${draggedActionId}`,
     label: "Move flow action",
     apply: (flow) => {
-      moveFlowActionInState(findFlowState(flow, stateId), draggedActionId, targetActionId, placeAfter);
+      moveFlowActionInState(
+        findFlowState(flow, stateId),
+        draggedActionId,
+        targetActionId,
+        placeAfter
+      );
     }
   };
 }
@@ -427,7 +520,10 @@ export function moveFlowSubActionCommand(
   };
 }
 
-export function removeFlowActionsCommand(stateId: string, selectedIds: Iterable<string>): FlowCommand {
+export function removeFlowActionsCommand(
+  stateId: string,
+  selectedIds: Iterable<string>
+): FlowCommand {
   const ids = new Set(selectedIds);
   return {
     id: `remove-flow-actions:${[...ids].join(",")}`,
@@ -463,7 +559,10 @@ export function setFlowStateEntryTargetCommand(stateId: string, targetId: string
   };
 }
 
-export function setFlowStateVotingSourceCommand(stateId: string, sourceStateId: string): FlowCommand {
+export function setFlowStateVotingSourceCommand(
+  stateId: string,
+  sourceStateId: string
+): FlowCommand {
   return {
     id: `set-flow-state-voting-source:${stateId}`,
     label: "Set voting source",

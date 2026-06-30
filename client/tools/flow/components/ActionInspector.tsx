@@ -1,5 +1,5 @@
 import type { FlowAction, FlowState } from "../../../types/game-data";
-import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
+import type { FlowActionTypeMeta } from "../flowSelectors";
 import { ActionFieldControls } from "./ActionFieldControls";
 import { DecisionBranchControls, type DecisionBranchHandlers } from "./DecisionBranchControls";
 import { ActionOptionsControls, type ActionOptionsHandlers } from "./ActionOptionsControls";
@@ -35,20 +35,6 @@ export interface ActionInspectorProps {
   state: FlowState | null;
 }
 
-function actionTimingLabel(action: FlowAction): string {
-  const timing = action.timing;
-  if (!timing) return "default";
-  const mode = typeof timing.mode === "string" && timing.mode ? timing.mode : "E+";
-  const seconds = Number(timing.seconds ?? 0);
-  return `${mode} ${Number.isFinite(seconds) ? seconds.toFixed(2) : "0.00"}s`;
-}
-
-function actionKind(isBranch: boolean, isSubAction: boolean): string {
-  if (isBranch) return "Decision branch";
-  if (isSubAction) return "Sub-action";
-  return "Action";
-}
-
 function TargetSelect({
   label,
   value,
@@ -77,7 +63,6 @@ function TargetSelect({
 
 export function ActionInspector({
   action,
-  actionTypes = [],
   edit,
   isBranch = false,
   isSubAction = false,
@@ -86,7 +71,11 @@ export function ActionInspector({
 }: ActionInspectorProps) {
   if (!state) {
     return (
-      <section className="flow-react-panel flow-react-inspector" data-flow-react-component="action-inspector" data-empty="true">
+      <section
+        className="flow-react-panel flow-react-inspector"
+        data-flow-react-component="action-inspector"
+        data-empty="true"
+      >
         <h3>Inspector</h3>
         No state selected
       </section>
@@ -143,7 +132,7 @@ export function ActionInspector({
 
   return (
     <section
-      className="flow-react-panel flow-react-inspector"
+      className="flow-react-panel flow-react-inspector flow-action-inspector"
       data-action-id={action.id}
       data-action-type={action.type}
       data-flow-react-component="action-inspector"
@@ -152,7 +141,15 @@ export function ActionInspector({
       data-parent-action-id={parentAction?.id || ""}
       data-state-id={state.id}
     >
-      <h2>{action.name || action.id}</h2>
+      <header className="flow-inspector-header">
+        <div>
+          <span className="flow-inspector-kicker">Action</span>
+          <h2>{action.name || action.id}</h2>
+        </div>
+        <span className="flow-inspector-tag" title={action.id}>
+          {action.id}
+        </span>
+      </header>
       {edit?.onRenameAction ? (
         <label className="flow-react-field" data-flow-react-field="name">
           <span>Name</span>
@@ -178,24 +175,6 @@ export function ActionInspector({
           />
         </label>
       ) : null}
-      <dl>
-        <dt>ID</dt>
-        <dd>{action.id}</dd>
-        <dt>Type</dt>
-        <dd>{actionTypeName(actionTypes, action.type) || action.type}</dd>
-        <dt>Kind</dt>
-        <dd>{actionKind(isBranch, isSubAction)}</dd>
-        <dt>State</dt>
-        <dd>{state.name || state.id}</dd>
-        <dt>Parent</dt>
-        <dd>{parentAction?.name || parentAction?.id || "None"}</dd>
-        {edit?.onSetActionTiming ? null : (
-          <>
-            <dt>Timing</dt>
-            <dd>{actionTimingLabel(action)}</dd>
-          </>
-        )}
-      </dl>
       {edit?.onSetActionTiming ? (
         <div className="flow-react-action-timing" data-flow-react-component="action-timing">
           <label className="flow-react-field" data-flow-react-field="timing-mode">

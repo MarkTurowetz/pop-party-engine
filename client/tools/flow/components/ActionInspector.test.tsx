@@ -31,11 +31,20 @@ describe("ActionInspector", () => {
     expect(markup).toContain("round-one");
   });
 
-  it("renders selected action metadata", () => {
+  it("renders selected action fields without metadata clutter", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector
-        action={{ id: "show-title", name: "Show Title", type: "presentText", timing: { mode: "E+", seconds: 1.5 } }}
-        actionTypes={[{ id: "presentText", name: "Present Text" }]}
+        action={{
+          id: "show-title",
+          name: "Show Title",
+          type: "presentText",
+          timing: { mode: "E+", seconds: 1.5 }
+        }}
+        edit={{
+          onRenameAction: () => undefined,
+          onSetActionType: () => undefined,
+          actionTypeOptions: [{ id: "presentText", label: "Present Text" }]
+        }}
         isSubAction={true}
         parentAction={{ id: "parent", name: "Parent", type: "decision" }}
         state={{ id: "intro", name: "Intro", actions: [] }}
@@ -48,8 +57,12 @@ describe("ActionInspector", () => {
     expect(markup).toContain('data-parent-action-id="parent"');
     expect(markup).toContain("Show Title");
     expect(markup).toContain("Present Text");
-    expect(markup).toContain("Sub-action");
-    expect(markup).toContain("Parent");
-    expect(markup).toContain("E+ 1.50s");
+    expect(markup).toContain("Name");
+    expect(markup).toContain("Action Type");
+    expect(markup).not.toContain("Sub-action");
+    expect(markup).not.toContain("<dt>Type</dt>");
+    expect(markup).not.toContain("<dt>Kind</dt>");
+    expect(markup).not.toContain("<dt>State</dt>");
+    expect(markup).not.toContain("<dt>Parent</dt>");
   });
 });

@@ -11,6 +11,7 @@ import {
   momentGraphConnections,
   momentGraphNodes,
   momentNodeExits,
+  type FlowGraphNode,
   type FlowNodeDepth,
   type FlowNodeExit
 } from "./flowNodeGraph";
@@ -20,6 +21,24 @@ export interface FlowEditorProps {
   flowActionTypes?: FlowActionTypeMeta[];
   surface?: string;
   previewMode?: string;
+}
+
+function optimizedVerticalNodePositions(nodes: FlowGraphNode[], depth: FlowNodeDepth) {
+  if (!nodes.length) return [];
+  const centerX = Math.max(
+    depth === "moments" ? 420 : 470,
+    Math.round(nodes.reduce((sum, node) => sum + node.x + node.width / 2, 0) / nodes.length)
+  );
+  let y = 70;
+  return nodes.map((node) => {
+    const position = {
+      nodeId: node.id,
+      x: Math.max(0, Math.round(centerX - node.width / 2)),
+      y
+    };
+    y += Math.max(node.height + 90, depth === "moments" ? 240 : 190);
+    return position;
+  });
 }
 
 /**
@@ -55,12 +74,17 @@ export function FlowEditor({
     const selectedState = states.find((state) => state.id === selectedStateId);
     return {
       onRenameAction: (name: string) => {
-        if (selectedStateId && selectedActionId) controller.renameAction(selectedStateId, selectedActionId, name);
+        if (selectedStateId && selectedActionId)
+          controller.renameAction(selectedStateId, selectedActionId, name);
       },
       onSetActionType: (type: string) => {
-        if (selectedStateId && selectedActionId) controller.setActionType(selectedStateId, selectedActionId, type);
+        if (selectedStateId && selectedActionId)
+          controller.setActionType(selectedStateId, selectedActionId, type);
       },
-      actionTypeOptions: flowActionTypes.map((meta) => ({ id: meta.id, label: meta.name || meta.id })),
+      actionTypeOptions: flowActionTypes.map((meta) => ({
+        id: meta.id,
+        label: meta.name || meta.id
+      })),
       onSetNextTarget: (targetId: string) => {
         if (selectedStateId) controller.setNextTarget(selectedStateId, targetId);
       },
@@ -68,32 +92,45 @@ export function FlowEditor({
         if (selectedStateId) controller.setEntryTarget(selectedStateId, targetId);
       },
       onSetActionField: (key: string, value: unknown) => {
-        if (selectedStateId && selectedActionId) controller.setActionField(selectedStateId, selectedActionId, key, value);
+        if (selectedStateId && selectedActionId)
+          controller.setActionField(selectedStateId, selectedActionId, key, value);
       },
       onSetActionTiming: (timing: { mode?: string; seconds?: number }) => {
-        if (selectedStateId && selectedActionId) controller.setActionTiming(selectedStateId, selectedActionId, timing);
+        if (selectedStateId && selectedActionId)
+          controller.setActionTiming(selectedStateId, selectedActionId, timing);
       },
       decision: {
         onAddBranch: () => {
-          if (selectedStateId && selectedActionId) controller.addDecisionBranch(selectedStateId, selectedActionId);
+          if (selectedStateId && selectedActionId)
+            controller.addDecisionBranch(selectedStateId, selectedActionId);
         },
         onRemoveBranch: (branchId: string) => {
-          if (selectedStateId && selectedActionId) controller.removeDecisionBranch(selectedStateId, selectedActionId, branchId);
+          if (selectedStateId && selectedActionId)
+            controller.removeDecisionBranch(selectedStateId, selectedActionId, branchId);
         },
         onSetBranchField: (branchId: string, key: string, value: unknown) => {
           if (selectedStateId && selectedActionId)
-            controller.setDecisionBranchField(selectedStateId, selectedActionId, branchId, key, value);
+            controller.setDecisionBranchField(
+              selectedStateId,
+              selectedActionId,
+              branchId,
+              key,
+              value
+            );
         }
       },
       options: {
         onAddOption: () => {
-          if (selectedStateId && selectedActionId) controller.addActionOption(selectedStateId, selectedActionId);
+          if (selectedStateId && selectedActionId)
+            controller.addActionOption(selectedStateId, selectedActionId);
         },
         onRemoveOption: (index: number) => {
-          if (selectedStateId && selectedActionId) controller.removeActionOption(selectedStateId, selectedActionId, index);
+          if (selectedStateId && selectedActionId)
+            controller.removeActionOption(selectedStateId, selectedActionId, index);
         },
         onSetOption: (index: number, value: string) => {
-          if (selectedStateId && selectedActionId) controller.setActionOption(selectedStateId, selectedActionId, index, value);
+          if (selectedStateId && selectedActionId)
+            controller.setActionOption(selectedStateId, selectedActionId, index, value);
         }
       },
       nextTargetOptions: states.map((state) => ({ id: state.id, label: state.name || state.id })),
@@ -112,9 +149,16 @@ export function FlowEditor({
     if (!selectedStateId) return;
     if (selectedActionIds.size) controller.removeActions(selectedStateId, selectedActionIds);
     else if (selectedActionId) controller.removeActions(selectedStateId, [selectedActionId]);
-    else if (selection.selectedFlowRouteNodeId) controller.removeRouteNode(selection.selectedFlowRouteNodeId);
+    else if (selection.selectedFlowRouteNodeId)
+      controller.removeRouteNode(selection.selectedFlowRouteNodeId);
     else controller.removeStates([selectedStateId]);
-  }, [controller, selectedStateId, selectedActionId, selectedActionIds, selection.selectedFlowRouteNodeId]);
+  }, [
+    controller,
+    selectedStateId,
+    selectedActionId,
+    selectedActionIds,
+    selection.selectedFlowRouteNodeId
+  ]);
 
   // Keyboard shortcuts: Cmd/Ctrl+Z undo, +Shift redo (or Cmd/Ctrl+Y), Delete/Backspace
   // deletes the selection — but never while typing in a field.
@@ -122,7 +166,11 @@ export function FlowEditor({
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName;
-      const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable === true;
+      const typing =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable === true;
       const meta = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
       if (meta && key === "z") {
@@ -173,34 +221,44 @@ export function FlowEditor({
     selectedActionIds,
     selectedRouteNodeId: selection.selectedFlowRouteNodeId
   };
+  const nodeNodes =
+    nodeDepth === "moments"
+      ? momentGraphNodes(flow, graphSelection)
+      : actionGraphNodes(selectedState, graphSelection);
+  const nodeConnections =
+    nodeDepth === "moments" ? momentGraphConnections(flow) : actionGraphConnections(selectedState);
+  const nodeExits =
+    nodeDepth === "moments"
+      ? momentNodeExits(flow)
+      : actionNodeExits(
+          selectedState,
+          (type) => flowActionTypes.find((meta) => meta.id === type)?.category === "input"
+        );
+  const optimizeNodeLayout = useCallback(() => {
+    const positions = optimizedVerticalNodePositions(nodeNodes, nodeDepth);
+    if (positions.length) controller.setNodePositions(nodeDepth, selectedStateId, positions);
+  }, [controller, nodeDepth, nodeNodes, selectedStateId]);
   const nodeCanvas =
     viewMode === "node" ? (
       <FlowNodeCanvas
         depth={nodeDepth}
         stateTitle={selectedState?.name || selectedState?.id}
-        nodes={
-          nodeDepth === "moments"
-            ? momentGraphNodes(flow, graphSelection)
-            : actionGraphNodes(selectedState, graphSelection)
-        }
-        connections={
-          nodeDepth === "moments" ? momentGraphConnections(flow) : actionGraphConnections(selectedState)
-        }
-        exits={
-          nodeDepth === "moments"
-            ? momentNodeExits(flow)
-            : actionNodeExits(
-                selectedState,
-                (type) => flowActionTypes.find((meta) => meta.id === type)?.category === "input"
-              )
-        }
+        nodes={nodeNodes}
+        connections={nodeConnections}
+        exits={nodeExits}
         onConnect={(exit: FlowNodeExit, targetNodeId: string) => {
           if (exit.kind === "nextState") controller.setNextTarget(exit.nodeId, targetNodeId);
           else if (exit.kind === "entry") controller.setEntryTarget(selectedStateId, targetNodeId);
           else if (exit.kind === "field" && exit.field)
             controller.setActionField(selectedStateId, exit.nodeId, exit.field, targetNodeId);
           else if (exit.kind === "branch" && exit.branchId)
-            controller.setDecisionBranchField(selectedStateId, exit.nodeId, exit.branchId, "targetActionId", targetNodeId);
+            controller.setDecisionBranchField(
+              selectedStateId,
+              exit.nodeId,
+              exit.branchId,
+              "targetActionId",
+              targetNodeId
+            );
         }}
         onSelectNode={(nodeId) => {
           if (nodeDepth === "moments") controller.selectState(nodeId);
@@ -211,7 +269,10 @@ export function FlowEditor({
           setNodeDepth("actions");
         }}
         onBackToMoments={() => setNodeDepth("moments")}
-        onMoveNode={(nodeId, x, y) => controller.setNodePosition(nodeDepth, selectedStateId, nodeId, x, y)}
+        onMoveNode={(nodeId, x, y) =>
+          controller.setNodePosition(nodeDepth, selectedStateId, nodeId, x, y)
+        }
+        onOptimizeLayout={optimizeNodeLayout}
         onSelectNodes={nodeDepth === "actions" ? (ids) => controller.selectActions(ids) : undefined}
       />
     ) : null;
@@ -228,6 +289,7 @@ export function FlowEditor({
         canUndo={snapshot.canUndo}
         flow={flow}
         flowActionTypes={flowActionTypes}
+        flowNodeDepth={nodeDepth}
         flowViewMode={viewMode}
         handlers={handlers}
         inspectorEdit={inspectorEdit}
@@ -238,7 +300,8 @@ export function FlowEditor({
             if (selectedStateId) controller.moveAction(selectedStateId, draggedId, targetId);
           },
           onReorderSubAction: (parentId, draggedId, targetId) => {
-            if (selectedStateId) controller.moveSubAction(selectedStateId, parentId, draggedId, targetId);
+            if (selectedStateId)
+              controller.moveSubAction(selectedStateId, parentId, draggedId, targetId);
           }
         }}
         previewMode={previewMode}

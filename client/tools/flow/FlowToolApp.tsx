@@ -28,7 +28,11 @@ export interface FlowToolReactShellHandlers {
 export interface FlowReorderHandlers {
   onReorderState?: (draggedStateId: string, targetStateId: string) => void;
   onReorderAction?: (draggedActionId: string, targetActionId: string) => void;
-  onReorderSubAction?: (parentActionId: string, draggedActionId: string, targetActionId: string) => void;
+  onReorderSubAction?: (
+    parentActionId: string,
+    draggedActionId: string,
+    targetActionId: string
+  ) => void;
 }
 
 export interface FlowToolAppProps {
@@ -139,7 +143,7 @@ export function FlowToolApp({
         "preview-mode": previewMode,
         "route-node-count": model.routeNodeCount,
         "state-count": model.stateCount,
-        "surface": surface
+        surface: surface
       }}
       header={
         <>
@@ -172,7 +176,10 @@ export function FlowToolApp({
       toolId="flow"
     >
       {flowViewMode === "node" && nodeCanvas ? (
-        nodeCanvas
+        <div className="flow-node-workspace-content">
+          {nodeCanvas}
+          {inspector}
+        </div>
       ) : (
         <div className="tool-main-columns flow-workspace-content">
           <FlowActionList
@@ -194,7 +201,6 @@ export function FlowToolApp({
           {inspector}
         </div>
       )}
-      {flowViewMode === "node" && nodeCanvas ? inspector : null}
     </ToolWorkspace>
   );
 }

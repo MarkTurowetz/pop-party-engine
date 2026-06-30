@@ -8,8 +8,8 @@ import {
 } from "react";
 import type { FlowGraphConnection, FlowGraphNode, FlowNodeExit } from "../flowNodeGraph";
 
-const MINIMAP_W = 200;
-const MINIMAP_H = 130;
+const MINIMAP_W = 300;
+const MINIMAP_H = 260;
 
 interface ViewportRect {
   scrollLeft: number;
@@ -58,15 +58,15 @@ function FlowNodeMinimap({
       onClick={centerOn}
       style={{
         position: "absolute",
-        right: 10,
-        bottom: 10,
+        right: 14,
+        top: 14,
         width: mmW,
         height: mmH,
-        background: "rgba(20, 12, 46, 0.85)",
-        border: "2px solid currentColor",
-        borderRadius: 4,
+        background: "rgba(250, 247, 236, 0.94)",
+        border: "4px solid currentColor",
+        borderRadius: 12,
         overflow: "hidden",
-        zIndex: 5,
+        zIndex: 12,
         cursor: "pointer"
       }}
     >
@@ -120,6 +120,7 @@ export interface FlowNodeCanvasProps {
   onBackToMoments?: () => void;
   onMoveNode?: (nodeId: string, x: number, y: number) => void;
   onConnect?: (exit: FlowNodeExit, targetNodeId: string) => void;
+  onOptimizeLayout?: () => void;
   onSelectNodes?: (nodeIds: string[]) => void;
 }
 
@@ -135,11 +136,10 @@ function rectsOverlap(node: FlowGraphNode, marquee: MarqueeRect): boolean {
   const right = Math.max(marquee.x1, marquee.x2);
   const top = Math.min(marquee.y1, marquee.y2);
   const bottom = Math.max(marquee.y1, marquee.y2);
-  return left < node.x + node.width && right > node.x && top < node.y + node.height && bottom > node.y;
+  return (
+    left < node.x + node.width && right > node.x && top < node.y + node.height && bottom > node.y
+  );
 }
-
-const PORT_TOP = 30;
-const PORT_GAP = 20;
 
 interface ConnectState {
   exit: FlowNodeExit;
@@ -240,6 +240,7 @@ export function FlowNodeCanvas({
   onBackToMoments,
   onMoveNode,
   onConnect,
+  onOptimizeLayout,
   onSelectNodes,
   exits = []
 }: FlowNodeCanvasProps) {
@@ -248,7 +249,12 @@ export function FlowNodeCanvas({
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const connectRef = useRef<ConnectState | null>(null);
-  const [connectPreview, setConnectPreview] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const [connectPreview, setConnectPreview] = useState<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  } | null>(null);
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   useEffect(() => {
@@ -326,13 +332,14 @@ export function FlowNodeCanvas({
   const beginConnect = (
     exit: FlowNodeExit,
     node: FlowGraphNode,
-    portY: number,
+    localX: number,
+    localY: number,
     event: ReactPointerEvent<HTMLButtonElement>
   ) => {
     if (event.button !== 0 || !onConnect) return;
     event.stopPropagation();
-    const startX = node.x + node.width;
-    const startY = node.y + portY;
+    const startX = node.x + localX;
+    const startY = node.y + localY;
     connectRef.current = { exit, startX, startY };
     setConnectPreview({ x1: startX, y1: startY, x2: startX, y2: startY });
 
@@ -349,7 +356,10 @@ export function FlowNodeCanvas({
       connectRef.current = null;
       setConnectPreview(null);
       if (!connect) return;
-      const targetEl = document.elementFromPoint(upEvent.clientX, upEvent.clientY) as HTMLElement | null;
+      const targetEl = document.elementFromPoint(
+        upEvent.clientX,
+        upEvent.clientY
+      ) as HTMLElement | null;
       const targetNode = targetEl?.closest("[data-node-id]") as HTMLElement | null;
       const targetId = targetNode?.getAttribute("data-node-id") || "";
       if (targetId && targetId !== connect.exit.nodeId) onConnect(connect.exit, targetId);
@@ -411,7 +421,12 @@ export function FlowNodeCanvas({
     const handleMove = (moveEvent: PointerEvent) => {
       if (!marqueeRef.current) return;
       const point = toWorldPoint(moveEvent.clientX, moveEvent.clientY);
-      setMarquee({ x1: marqueeRef.current.startX, y1: marqueeRef.current.startY, x2: point.x, y2: point.y });
+      setMarquee({
+        x1: marqueeRef.current.startX,
+        y1: marqueeRef.current.startY,
+        x2: point.x,
+        y2: point.y
+      });
     };
 
     const handleUp = (upEvent: PointerEvent) => {
@@ -431,22 +446,26 @@ export function FlowNodeCanvas({
     document.addEventListener("pointerup", handleUp);
   };
 
-  const { width, height } = worldSize(nodes);
+  const displayNodes = livePosition
+    ? nodes.map((node) =>
+        node.id === livePosition.nodeId ? { ...node, x: livePosition.x, y: livePosition.y } : node
+      )
+    : nodes;
+  const { width, height } = worldSize(displayNodes);
   // Selecting a node highlights the nodes it points TO (its next steps) in pink, so you
   // can follow where the flow goes — not what points back into it.
-  const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
+  const selectedIds = new Set(displayNodes.filter((node) => node.selected).map((node) => node.id));
   const connectedIds = new Set<string>();
   for (const connection of connections) {
     if (selectedIds.has(connection.from)) connectedIds.add(connection.to);
   }
-  const wires = buildWirePaths(nodes, connections, selectedIds);
+  const wires = buildWirePaths(displayNodes, connections, selectedIds);
   return (
     <section
       className="flow-react-node-canvas"
       data-flow-react-component="node-canvas"
       data-node-depth={depth}
       style={{
-        gridColumn: "1 / 4",
         minWidth: 0,
         display: "flex",
         flexDirection: "column",
@@ -455,164 +474,201 @@ export function FlowNodeCanvas({
       }}
     >
       <header className="flow-node-canvas-bar">
-        {depth === "actions" ? (
-          <button type="button" data-node-back onClick={() => onBackToMoments?.()}>
-            ← Moments
+        <div className="flow-node-canvas-actions">
+          {depth === "actions" ? (
+            <button type="button" data-node-back onClick={() => onBackToMoments?.()}>
+              ← Moments
+            </button>
+          ) : null}
+          <button
+            type="button"
+            data-node-optimize
+            onClick={() => onOptimizeLayout?.()}
+            disabled={!onOptimizeLayout || !nodes.length}
+          >
+            Optimize
           </button>
-        ) : null}
+        </div>
         <span data-node-canvas-help>
           {depth === "moments"
             ? "Double-click a moment to edit its actions."
             : `Inside ${stateTitle || "moment"} — click nodes to edit; double-click Start/Return to go back.`}
         </span>
       </header>
-      <div
-        className="flow-node-stage"
-        data-node-stage
-        ref={stageRef}
-        style={{ height: "min(70vh, 640px)", width: "100%", maxWidth: "100%", overflow: "auto" }}
-      >
+      <div className="flow-node-stage-wrap">
         <div
-          className="flow-node-graph"
-          data-node-zoom={zoom}
-          style={{ width: width * zoom, height: height * zoom, position: "relative" }}
+          className="flow-node-stage"
+          data-node-stage
+          ref={stageRef}
+          style={{ height: "min(70vh, 640px)", width: "100%", maxWidth: "100%", overflow: "auto" }}
         >
           <div
-            className="flow-node-world"
-            ref={worldRef}
-            style={{
-              width,
-              height,
-              position: "absolute",
-              left: 0,
-              top: 0,
-              transform: `scale(${zoom})`,
-              transformOrigin: "0 0"
-            }}
-            onPointerDown={beginMarquee}
+            className="flow-node-graph"
+            data-node-zoom={zoom}
+            style={{ width: width * zoom, height: height * zoom, position: "relative" }}
           >
-            {marquee ? (
-              <div
-                className="flow-node-marquee"
-                data-node-marquee
+            <div
+              className="flow-node-world"
+              ref={worldRef}
+              style={{
+                width,
+                height,
+                position: "absolute",
+                left: 0,
+                top: 0,
+                transform: `scale(${zoom})`,
+                transformOrigin: "0 0"
+              }}
+              onPointerDown={beginMarquee}
+            >
+              {marquee ? (
+                <div
+                  className="flow-node-marquee"
+                  data-node-marquee
+                  style={{
+                    position: "absolute",
+                    left: Math.min(marquee.x1, marquee.x2),
+                    top: Math.min(marquee.y1, marquee.y2),
+                    width: Math.abs(marquee.x2 - marquee.x1),
+                    height: Math.abs(marquee.y2 - marquee.y1),
+                    border: "2px dashed currentColor",
+                    background: "rgba(255,255,255,0.08)",
+                    pointerEvents: "none",
+                    zIndex: 2
+                  }}
+                />
+              ) : null}
+              <svg
+                className="flow-node-wires"
+                data-node-wires
+                width={width}
+                height={height}
                 style={{
                   position: "absolute",
-                  left: Math.min(marquee.x1, marquee.x2),
-                  top: Math.min(marquee.y1, marquee.y2),
-                  width: Math.abs(marquee.x2 - marquee.x1),
-                  height: Math.abs(marquee.y2 - marquee.y1),
-                  border: "2px dashed currentColor",
-                  background: "rgba(255,255,255,0.08)",
+                  left: 0,
+                  top: 0,
                   pointerEvents: "none",
-                  zIndex: 2
+                  overflow: "visible"
                 }}
-              />
-            ) : null}
-          <svg
-            className="flow-node-wires"
-            data-node-wires
-            width={width}
-            height={height}
-            style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", overflow: "visible" }}
-          >
-            {wires.map((wire) => (
-              <g key={wire.id} data-wire-id={wire.id} data-wire-highlighted={wire.highlighted ? "true" : undefined}>
-                <path
-                  d={wire.d}
-                  fill="none"
-                  stroke={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : WIRE_COLOR}
-                  strokeWidth={wire.highlighted ? 5 : 3.5}
-                  strokeLinecap="round"
-                  opacity={wire.highlighted ? 1 : 0.9}
-                />
-                {wire.label ? (
-                  <text
-                    x={wire.labelX}
-                    y={wire.labelY}
-                    fontSize={11}
-                    textAnchor="middle"
-                    fill={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : "#cbd5f5"}
+              >
+                {wires.map((wire) => (
+                  <g
+                    key={wire.id}
+                    data-wire-id={wire.id}
+                    data-wire-highlighted={wire.highlighted ? "true" : undefined}
                   >
-                    {wire.label}
-                  </text>
+                    <path
+                      d={wire.d}
+                      fill="none"
+                      stroke={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : WIRE_COLOR}
+                      strokeWidth={wire.highlighted ? 5 : 3.5}
+                      strokeLinecap="round"
+                      opacity={wire.highlighted ? 1 : 0.9}
+                    />
+                    {wire.label ? (
+                      <text
+                        x={wire.labelX}
+                        y={wire.labelY}
+                        fontSize={11}
+                        textAnchor="middle"
+                        fill={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : "#cbd5f5"}
+                      >
+                        {wire.label}
+                      </text>
+                    ) : null}
+                  </g>
+                ))}
+                {connectPreview ? (
+                  <path
+                    data-connect-preview
+                    d={`M ${connectPreview.x1} ${connectPreview.y1} L ${connectPreview.x2} ${connectPreview.y2}`}
+                    fill="none"
+                    stroke={WIRE_HIGHLIGHT_COLOR}
+                    strokeWidth={3.5}
+                    strokeDasharray="6 4"
+                    opacity={0.95}
+                  />
                 ) : null}
-              </g>
-            ))}
-            {connectPreview ? (
-              <path
-                data-connect-preview
-                d={`M ${connectPreview.x1} ${connectPreview.y1} L ${connectPreview.x2} ${connectPreview.y2}`}
-                fill="none"
-                stroke={WIRE_HIGHLIGHT_COLOR}
-                strokeWidth={3.5}
-                strokeDasharray="6 4"
-                opacity={0.95}
-              />
-            ) : null}
-          </svg>
-          {nodes.map((node) => {
-            const live = livePosition?.nodeId === node.id ? livePosition : null;
-            const isConnected = connectedIds.has(node.id) && !node.selected;
-            return (
-            <div
-              key={node.id}
-              className={`flow-node ${node.className}${node.selected ? " is-selected" : ""}${isConnected ? " is-connected" : ""}${live ? " is-dragging" : ""}`}
-              data-node-id={node.id}
-              data-node-kind={node.kind}
-              data-node-connected={isConnected ? "true" : undefined}
-              aria-current={node.selected ? "true" : undefined}
-              style={{
-                position: "absolute",
-                left: live ? live.x : node.x,
-                top: live ? live.y : node.y,
-                width: node.width,
-                minHeight: node.height,
-                touchAction: "none",
-                // Pink ring + glow on nodes wired to the selected node, so connections
-                // are easy to follow at a glance.
-                ...(isConnected
-                  ? { boxShadow: `0 0 0 3px ${WIRE_HIGHLIGHT_COLOR}, 0 0 14px rgba(255, 79, 163, 0.65)` }
-                  : {})
-              }}
-              onPointerDown={(event) => beginDrag(node, event)}
-              onClick={(event) => onSelectNode?.(node.id, event.metaKey || event.ctrlKey || event.shiftKey)}
-              onDoubleClick={() => {
-                if (node.kind === "state") onEnterState?.(node.id);
-                else if (node.id === "start" || node.id === "return") onBackToMoments?.();
-              }}
-            >
-              <div className="flow-node-main">
-                <strong className="flow-node-title">{node.title}</strong>
-                <span className="flow-node-subtitle">{node.subtitle}</span>
-                {node.timing ? <span className="flow-node-timing">{node.timing}</span> : null}
-              </div>
-              {(exitsByNode.get(node.id) || []).map((exit, exitIndex) => {
-                const portY = PORT_TOP + exitIndex * PORT_GAP;
+              </svg>
+              {displayNodes.map((node) => {
+                const isDragging = livePosition?.nodeId === node.id;
+                const isConnected = connectedIds.has(node.id) && !node.selected;
                 return (
-                  <button
-                    type="button"
-                    key={exit.id}
-                    className={`flow-node-port${exit.currentTarget ? " is-wired" : ""}`}
-                    data-port-id={exit.id}
-                    data-port-target={exit.currentTarget || ""}
-                    title={`${exit.label}${exit.currentTarget ? ` → ${exit.currentTarget}` : ""}`}
-                    style={{ position: "absolute", right: -8, top: portY - 6 }}
-                    onPointerDown={(event) => beginConnect(exit, node, portY, event)}
-                    onClick={(event) => event.stopPropagation()}
+                  <div
+                    key={node.id}
+                    className={`flow-node ${node.className}${node.selected ? " is-selected" : ""}${isConnected ? " is-connected" : ""}${isDragging ? " is-dragging" : ""}`}
+                    data-node-id={node.id}
+                    data-node-kind={node.kind}
+                    data-node-connected={isConnected ? "true" : undefined}
+                    aria-current={node.selected ? "true" : undefined}
+                    style={{
+                      position: "absolute",
+                      left: node.x,
+                      top: node.y,
+                      width: node.width,
+                      minHeight: node.height,
+                      touchAction: "none",
+                      // Pink ring + glow on nodes wired to the selected node, so connections
+                      // are easy to follow at a glance.
+                      ...(isConnected
+                        ? {
+                            boxShadow: `0 0 0 3px ${WIRE_HIGHLIGHT_COLOR}, 0 0 14px rgba(255, 79, 163, 0.65)`
+                          }
+                        : {})
+                    }}
+                    onPointerDown={(event) => beginDrag(node, event)}
+                    onClick={(event) =>
+                      onSelectNode?.(node.id, event.metaKey || event.ctrlKey || event.shiftKey)
+                    }
+                    onDoubleClick={() => {
+                      if (node.kind === "state") onEnterState?.(node.id);
+                      else if (node.id === "start" || node.id === "return") onBackToMoments?.();
+                    }}
                   >
-                    <span className="flow-node-port-label">{exit.label}</span>
-                  </button>
+                    <div className="flow-node-main">
+                      <strong className="flow-node-title">{node.title}</strong>
+                      <span className="flow-node-subtitle">{node.subtitle}</span>
+                      {node.timing ? <span className="flow-node-timing">{node.timing}</span> : null}
+                    </div>
+                    {(exitsByNode.get(node.id) || []).map((exit, exitIndex) => {
+                      const portLocalX = Math.max(18, node.width - 22 - exitIndex * 30);
+                      const portLocalY = node.height;
+                      return (
+                        <button
+                          type="button"
+                          key={exit.id}
+                          className={`flow-node-port${exit.currentTarget ? " is-wired" : ""}`}
+                          data-port-id={exit.id}
+                          data-port-target={exit.currentTarget || ""}
+                          aria-label={`${exit.label}${exit.currentTarget ? ` to ${exit.currentTarget}` : ""}`}
+                          title={`${exit.label}${exit.currentTarget ? ` → ${exit.currentTarget}` : ""}`}
+                          style={{ position: "absolute", right: 16 + exitIndex * 30, bottom: -11 }}
+                          onPointerDown={(event) =>
+                            beginConnect(exit, node, portLocalX, portLocalY, event)
+                          }
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <span className="flow-node-port-label">{exit.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })}
             </div>
-            );
-          })}
           </div>
         </div>
+        {displayNodes.length ? (
+          <FlowNodeMinimap
+            nodes={displayNodes}
+            worldWidth={width}
+            worldHeight={height}
+            zoom={zoom}
+            viewport={viewport}
+            stageRef={stageRef}
+          />
+        ) : null}
       </div>
-      {nodes.length ? (
-        <FlowNodeMinimap nodes={nodes} worldWidth={width} worldHeight={height} zoom={zoom} viewport={viewport} stageRef={stageRef} />
-      ) : null}
     </section>
   );
 }

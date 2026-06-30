@@ -7,7 +7,11 @@ function flowFixture(): GameFlow {
   return {
     states: [
       { id: "intro", name: "Intro", actions: [] },
-      { id: "round-one", name: "Round One", actions: [{ id: "act-1", name: "Action 1", type: "message" }] }
+      {
+        id: "round-one",
+        name: "Round One",
+        actions: [{ id: "act-1", name: "Action 1", type: "message" }]
+      }
     ],
     routeNodes: []
   };
@@ -16,7 +20,10 @@ function flowFixture(): GameFlow {
 function fakeApi(overrides: Partial<FlowApi> = {}): FlowApi {
   return {
     loadGameFlow: vi.fn(),
-    saveGameFlow: vi.fn(async (flow: GameFlow) => ({ ok: true, flow, runtimeFlow: flow, storage: {} }) as unknown as GameFlowSaveResponse),
+    saveGameFlow: vi.fn(
+      async (flow: GameFlow) =>
+        ({ ok: true, flow, runtimeFlow: flow, storage: {} }) as unknown as GameFlowSaveResponse
+    ),
     saveToolDraft: vi.fn(async (message) => message),
     ...overrides
   } as FlowApi;
@@ -104,7 +111,8 @@ describe("createFlowEditorController", () => {
     });
     controller.setActionType("round-one", "act-1", "decision");
 
-    const branchesAfterSeed = () => controller.getState().snapshot.flow.states[1].actions[0].branches || [];
+    const branchesAfterSeed = () =>
+      controller.getState().snapshot.flow.states[1].actions[0].branches || [];
     const seeded = branchesAfterSeed().length;
     expect(seeded).toBeGreaterThanOrEqual(2); // at least a hit + noMatch
 
@@ -136,7 +144,9 @@ describe("createFlowEditorController", () => {
     });
     controller.setActionType("round-one", "act-1", "multipleChoiceInput");
 
-    const options = () => (controller.getState().snapshot.flow.states[1].actions[0] as { options?: string[] }).options || [];
+    const options = () =>
+      (controller.getState().snapshot.flow.states[1].actions[0] as { options?: string[] })
+        .options || [];
     const seeded = options().length; // defaults seed ["A","B","C","D"]
     expect(seeded).toBe(4);
 
@@ -155,16 +165,55 @@ describe("createFlowEditorController", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 
     controller.setNodePosition("moments", "round-one", "round-one", 12.4, 34.6);
-    const state = controller.getState().snapshot.flow.states[1] as { nodePosition?: { x: number; y: number } };
+    const state = controller.getState().snapshot.flow.states[1] as {
+      nodePosition?: { x: number; y: number };
+    };
     expect(state.nodePosition).toEqual({ x: 12, y: 35 });
 
     controller.setNodePosition("actions", "round-one", "act-1", 100, 200);
-    const action = controller.getState().snapshot.flow.states[1].actions[0] as { nodePosition?: { x: number; y: number } };
+    const action = controller.getState().snapshot.flow.states[1].actions[0] as {
+      nodePosition?: { x: number; y: number };
+    };
     expect(action.nodePosition).toEqual({ x: 100, y: 200 });
 
     controller.setNodePosition("actions", "round-one", "start", 5, 6);
-    const withStart = controller.getState().snapshot.flow.states[1] as { startNodePosition?: { x: number; y: number } };
+    const withStart = controller.getState().snapshot.flow.states[1] as {
+      startNodePosition?: { x: number; y: number };
+    };
     expect(withStart.startNodePosition).toEqual({ x: 5, y: 6 });
+  });
+
+  it("sets multiple node positions as one undoable operation", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.setNodePositions("actions", "round-one", [
+      { nodeId: "start", x: 10.4, y: 20.8 },
+      { nodeId: "act-1", x: 100, y: 220 },
+      { nodeId: "return", x: 400, y: 700 }
+    ]);
+
+    const state = controller.getState().snapshot.flow.states[1] as {
+      startNodePosition?: { x: number; y: number };
+      returnNodePosition?: { x: number; y: number };
+    };
+    const action = controller.getState().snapshot.flow.states[1].actions[0] as {
+      nodePosition?: { x: number; y: number };
+    };
+    expect(state.startNodePosition).toEqual({ x: 10, y: 21 });
+    expect(action.nodePosition).toEqual({ x: 100, y: 220 });
+    expect(state.returnNodePosition).toEqual({ x: 400, y: 700 });
+
+    controller.undo();
+    const revertedState = controller.getState().snapshot.flow.states[1] as {
+      startNodePosition?: { x: number; y: number };
+      returnNodePosition?: { x: number; y: number };
+    };
+    const revertedAction = controller.getState().snapshot.flow.states[1].actions[0] as {
+      nodePosition?: { x: number; y: number };
+    };
+    expect(revertedState.startNodePosition).toBeUndefined();
+    expect(revertedAction.nodePosition).toBeUndefined();
+    expect(revertedState.returnNodePosition).toBeUndefined();
   });
 
   it("undo returns to a clean snapshot", () => {
