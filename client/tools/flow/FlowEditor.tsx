@@ -11,7 +11,7 @@ import {
   momentGraphConnections,
   momentGraphNodes,
   momentNodeExits,
-  type FlowGraphNode,
+  optimizedVerticalNodePositions,
   type FlowNodeDepth,
   type FlowNodeExit
 } from "./flowNodeGraph";
@@ -21,24 +21,6 @@ export interface FlowEditorProps {
   flowActionTypes?: FlowActionTypeMeta[];
   surface?: string;
   previewMode?: string;
-}
-
-function optimizedVerticalNodePositions(nodes: FlowGraphNode[], depth: FlowNodeDepth) {
-  if (!nodes.length) return [];
-  const centerX = Math.max(
-    depth === "moments" ? 420 : 470,
-    Math.round(nodes.reduce((sum, node) => sum + node.x + node.width / 2, 0) / nodes.length)
-  );
-  let y = 70;
-  return nodes.map((node) => {
-    const position = {
-      nodeId: node.id,
-      x: Math.max(0, Math.round(centerX - node.width / 2)),
-      y
-    };
-    y += Math.max(node.height + 90, depth === "moments" ? 240 : 190);
-    return position;
-  });
 }
 
 /**
@@ -235,9 +217,9 @@ export function FlowEditor({
           (type) => flowActionTypes.find((meta) => meta.id === type)?.category === "input"
         );
   const optimizeNodeLayout = useCallback(() => {
-    const positions = optimizedVerticalNodePositions(nodeNodes, nodeDepth);
+    const positions = optimizedVerticalNodePositions(nodeNodes, nodeConnections, nodeDepth);
     if (positions.length) controller.setNodePositions(nodeDepth, selectedStateId, positions);
-  }, [controller, nodeDepth, nodeNodes, selectedStateId]);
+  }, [controller, nodeConnections, nodeDepth, nodeNodes, selectedStateId]);
   const nodeCanvas =
     viewMode === "node" ? (
       <FlowNodeCanvas

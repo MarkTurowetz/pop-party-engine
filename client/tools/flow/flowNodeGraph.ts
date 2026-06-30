@@ -58,6 +58,12 @@ export interface FlowNodeExit {
 
 export type IsInputType = (type: string) => boolean;
 
+export interface FlowNodePositionUpdate {
+  nodeId: string;
+  x: number;
+  y: number;
+}
+
 const EXIT_FIELDS: { field: string; label: string }[] = [
   { field: "nextTargetActionId", label: "Next" },
   { field: "stageClickTargetActionId", label: "Screen Click" },
@@ -73,7 +79,10 @@ function isNoFlowTarget(value: string): boolean {
 function actionExitTargets(action: FlowAction): { to: string; label: string }[] {
   if (action.type === "decision") {
     return ensureDecisionBranches(action)
-      .map((branch, index) => ({ to: String(branch.targetActionId || ""), label: decisionBranchName(branch, index) }))
+      .map((branch, index) => ({
+        to: String(branch.targetActionId || ""),
+        label: decisionBranchName(branch, index)
+      }))
       .filter((exit) => !isNoFlowTarget(exit.to));
   }
   if (action.type === "jumpNode") {
@@ -81,9 +90,10 @@ function actionExitTargets(action: FlowAction): { to: string; label: string }[] 
     return isNoFlowTarget(target) ? [] : [{ to: target, label: "Jump" }];
   }
   const record = action as Record<string, unknown>;
-  return EXIT_FIELDS.map((exit) => ({ to: String(record[exit.field] || ""), label: exit.label })).filter(
-    (exit) => !isNoFlowTarget(exit.to)
-  );
+  return EXIT_FIELDS.map((exit) => ({
+    to: String(record[exit.field] || ""),
+    label: exit.label
+  })).filter((exit) => !isNoFlowTarget(exit.to));
 }
 
 export function defaultNodePosition(
@@ -100,7 +110,10 @@ export function defaultNodePosition(
   };
 }
 
-export function savedNodePosition(position: FlowNodePoint | null | undefined, fallback: FlowNodePoint): FlowNodePoint {
+export function savedNodePosition(
+  position: FlowNodePoint | null | undefined,
+  fallback: FlowNodePoint
+): FlowNodePoint {
   const x = Number(position?.x);
   const y = Number(position?.y);
   return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : fallback;
@@ -143,11 +156,17 @@ function actionClassName(action: FlowAction): string {
 }
 
 /** Nodes for the "moments" depth: one node per flow state. */
-export function momentGraphNodes(flow: GameFlow | null, selection: FlowGraphSelection = {}): FlowGraphNode[] {
+export function momentGraphNodes(
+  flow: GameFlow | null,
+  selection: FlowGraphSelection = {}
+): FlowGraphNode[] {
   const states = flow?.states || [];
   const selectedActionIds = new Set(selection.selectedActionIds || []);
   return states.map((state, index) => {
-    const { x, y } = savedNodePosition(readPoint(state.nodePosition), defaultNodePosition(index, 3, 80, 80, 420, 240));
+    const { x, y } = savedNodePosition(
+      readPoint(state.nodePosition),
+      defaultNodePosition(index, 3, 80, 80, 420, 240)
+    );
     const nextName = state.nextStateTargetId
       ? states.find((item) => item.id === state.nextStateTargetId)?.name || state.nextStateTargetId
       : "";
@@ -172,7 +191,10 @@ export function momentGraphNodes(flow: GameFlow | null, selection: FlowGraphSele
 }
 
 /** Nodes for the "actions" depth: Start + one node per action + Return, for one state. */
-export function actionGraphNodes(state: FlowState | null, selection: FlowGraphSelection = {}): FlowGraphNode[] {
+export function actionGraphNodes(
+  state: FlowState | null,
+  selection: FlowGraphSelection = {}
+): FlowGraphNode[] {
   if (!state) return [];
   const selectedActionIds = new Set(selection.selectedActionIds || []);
   const isSelected = (id: string) => selection.selectedActionId === id || selectedActionIds.has(id);
@@ -186,7 +208,9 @@ export function actionGraphNodes(state: FlowState | null, selection: FlowGraphSe
       id: "start",
       kind: "system",
       title: "Start",
-      subtitle: state.entryTargetActionId ? `Entry -> ${state.entryTargetActionId}` : "Moment entry",
+      subtitle: state.entryTargetActionId
+        ? `Entry -> ${state.entryTargetActionId}`
+        : "Moment entry",
       timing: "",
       x: startPos.x,
       y: startPos.y,
@@ -198,7 +222,10 @@ export function actionGraphNodes(state: FlowState | null, selection: FlowGraphSe
   ];
 
   (state.actions || []).forEach((action, index) => {
-    const { x, y } = savedNodePosition(readPoint(action.nodePosition), defaultNodePosition(index, 3, 340, 70, 360, 230));
+    const { x, y } = savedNodePosition(
+      readPoint(action.nodePosition),
+      defaultNodePosition(index, 3, 340, 70, 360, 230)
+    );
     const isLabel = action.type === "labelNode";
     const isCode = action.type === "codeNode";
     nodes.push({
@@ -208,7 +235,10 @@ export function actionGraphNodes(state: FlowState | null, selection: FlowGraphSe
         ? String(action.labelText || action.name || "Flow note")
         : action.name || `Action ${index + 1}`,
       subtitle: isCode ? String(action.code || "g.example = true") : action.type,
-      timing: action.type === "decision" || action.type === "jumpNode" || isLabel || isCode ? "" : actionTimingLabel(action),
+      timing:
+        action.type === "decision" || action.type === "jumpNode" || isLabel || isCode
+          ? ""
+          : actionTimingLabel(action),
       x,
       y,
       width: action.type === "decision" || isLabel || isCode ? 320 : 260,
@@ -349,7 +379,11 @@ export function momentGraphConnections(flow: GameFlow | null): FlowGraphConnecti
 /** Connections for the "actions" depth: start -> entry, action -> exit targets. */
 export function actionGraphConnections(state: FlowState | null): FlowGraphConnection[] {
   if (!state) return [];
-  const nodeIds = new Set<string>(["start", "return", ...(state.actions || []).map((action) => action.id)]);
+  const nodeIds = new Set<string>([
+    "start",
+    "return",
+    ...(state.actions || []).map((action) => action.id)
+  ]);
   const connections: FlowGraphConnection[] = [];
 
   const entry = String(state.entryTargetActionId || "");
@@ -360,8 +394,67 @@ export function actionGraphConnections(state: FlowState | null): FlowGraphConnec
   for (const action of state.actions || []) {
     for (const exit of actionExitTargets(action)) {
       if (!nodeIds.has(exit.to)) continue;
-      connections.push({ id: `${action.id}->${exit.to}:${exit.label}`, from: action.id, to: exit.to, label: exit.label });
+      connections.push({
+        id: `${action.id}->${exit.to}:${exit.label}`,
+        from: action.id,
+        to: exit.to,
+        label: exit.label
+      });
     }
   }
   return connections;
+}
+
+function orderedGraphNodesForLayout(
+  nodes: FlowGraphNode[],
+  connections: FlowGraphConnection[],
+  depth: FlowNodeDepth
+): FlowGraphNode[] {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const outgoing = new Map<string, FlowGraphConnection[]>();
+  connections.forEach((connection) => {
+    if (!byId.has(connection.from) || !byId.has(connection.to)) return;
+    const list = outgoing.get(connection.from) || [];
+    list.push(connection);
+    outgoing.set(connection.from, list);
+  });
+
+  const ordered: FlowGraphNode[] = [];
+  const visited = new Set<string>();
+  const visit = (nodeId: string) => {
+    if (visited.has(nodeId)) return;
+    const node = byId.get(nodeId);
+    if (!node) return;
+    visited.add(nodeId);
+    ordered.push(node);
+    (outgoing.get(nodeId) || []).forEach((connection) => visit(connection.to));
+  };
+
+  const startId = depth === "actions" && byId.has("start") ? "start" : nodes[0]?.id || "";
+  visit(startId);
+  nodes.forEach((node) => visit(node.id));
+  return ordered;
+}
+
+export function optimizedVerticalNodePositions(
+  nodes: FlowGraphNode[],
+  connections: FlowGraphConnection[],
+  depth: FlowNodeDepth
+): FlowNodePositionUpdate[] {
+  if (!nodes.length) return [];
+  const orderedNodes = orderedGraphNodesForLayout(nodes, connections, depth);
+  const centerX = Math.max(
+    depth === "moments" ? 420 : 470,
+    Math.round(nodes.reduce((sum, node) => sum + node.x + node.width / 2, 0) / nodes.length)
+  );
+  let y = 70;
+  return orderedNodes.map((node) => {
+    const position = {
+      nodeId: node.id,
+      x: Math.max(0, Math.round(centerX - node.width / 2)),
+      y
+    };
+    y += Math.max(node.height + 90, depth === "moments" ? 240 : 190);
+    return position;
+  });
 }

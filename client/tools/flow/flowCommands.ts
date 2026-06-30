@@ -23,7 +23,10 @@ import {
   makeDecisionBranchId,
   type FlowDecisionBranch
 } from "./flowDecision";
+import type { FlowNodePositionUpdate } from "./flowNodeGraph";
 import { assertFlowModel } from "./flowValidation";
+
+export type { FlowNodePositionUpdate } from "./flowNodeGraph";
 
 function findFlowState(flow: GameFlow, stateId: string): FlowState | undefined {
   return (flow.states || []).find((state) => state.id === stateId);
@@ -60,12 +63,6 @@ export interface FlowCommand {
   id: string;
   label: string;
   apply: (flow: GameFlow) => void;
-}
-
-export interface FlowNodePositionUpdate {
-  nodeId: string;
-  x: number;
-  y: number;
 }
 
 export interface FlowCommandHistoryEntry {

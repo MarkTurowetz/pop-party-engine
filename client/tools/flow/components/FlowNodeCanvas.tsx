@@ -2,7 +2,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject
 } from "react";
@@ -10,6 +9,8 @@ import type { FlowGraphConnection, FlowGraphNode, FlowNodeExit } from "../flowNo
 
 const MINIMAP_W = 300;
 const MINIMAP_H = 260;
+const MINIMAP_BACKGROUND =
+  "linear-gradient(135deg, rgba(34, 211, 238, 0.24), rgba(255, 79, 163, 0.22)), #160b35";
 
 interface ViewportRect {
   scrollLeft: number;
@@ -20,6 +21,7 @@ interface ViewportRect {
 
 function FlowNodeMinimap({
   nodes,
+  connections,
   worldWidth,
   worldHeight,
   zoom,
@@ -27,6 +29,7 @@ function FlowNodeMinimap({
   stageRef
 }: {
   nodes: FlowGraphNode[];
+  connections: FlowGraphConnection[];
   worldWidth: number;
   worldHeight: number;
   zoom: number;
@@ -40,36 +43,96 @@ function FlowNodeMinimap({
   const viewY = (viewport.scrollTop / zoom) * scale;
   const viewW = (viewport.clientW / zoom) * scale;
   const viewH = (viewport.clientH / zoom) * scale;
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
 
-  const centerOn = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const worldX = (event.clientX - rect.left) / scale;
-    const worldY = (event.clientY - rect.top) / scale;
+  const centerStageOn = (clientX: number, clientY: number, rect: DOMRect) => {
     const stage = stageRef.current;
     if (!stage) return;
-    stage.scrollLeft = Math.max(0, worldX * zoom - stage.clientWidth / 2);
-    stage.scrollTop = Math.max(0, worldY * zoom - stage.clientHeight / 2);
+    const worldX = clampNumber((clientX - rect.left) / scale, 0, worldWidth);
+    const worldY = clampNumber((clientY - rect.top) / scale, 0, worldHeight);
+    stage.scrollLeft = clampNumber(
+      worldX * zoom - stage.clientWidth / 2,
+      0,
+      stage.scrollWidth - stage.clientWidth
+    );
+    stage.scrollTop = clampNumber(
+      worldY * zoom - stage.clientHeight / 2,
+      0,
+      stage.scrollHeight - stage.clientHeight
+    );
+  };
+
+  const beginMinimapDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    centerStageOn(event.clientX, event.clientY, rect);
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      moveEvent.preventDefault();
+      centerStageOn(moveEvent.clientX, moveEvent.clientY, rect);
+    };
+    const stop = () => {
+      document.removeEventListener("pointermove", handleMove);
+      document.removeEventListener("pointerup", stop);
+      document.removeEventListener("pointercancel", stop);
+    };
+    document.addEventListener("pointermove", handleMove);
+    document.addEventListener("pointerup", stop);
+    document.addEventListener("pointercancel", stop);
   };
 
   return (
     <div
       className="flow-node-minimap"
       data-node-minimap
-      onClick={centerOn}
+      onPointerDown={beginMinimapDrag}
       style={{
         position: "absolute",
         right: 14,
         top: 14,
         width: mmW,
         height: mmH,
-        background: "rgba(250, 247, 236, 0.94)",
-        border: "4px solid currentColor",
+        background: MINIMAP_BACKGROUND,
+        border: "4px solid #f8fafc",
         borderRadius: 12,
         overflow: "hidden",
         zIndex: 12,
-        cursor: "pointer"
+        cursor: "grab",
+        boxShadow: "0 0 0 3px rgba(34, 211, 238, 0.45), 7px 7px 0 rgba(23, 19, 31, 0.55)"
       }}
     >
+      <svg
+        data-minimap-wires
+        width={mmW}
+        height={mmH}
+        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      >
+        {connections.map((connection) => {
+          const from = byId.get(connection.from);
+          const to = byId.get(connection.to);
+          if (!from || !to) return null;
+          const x1 = (from.x + from.width / 2) * scale;
+          const y1 = (from.y + from.height) * scale;
+          const x2 = (to.x + to.width / 2) * scale;
+          const y2 = to.y * scale;
+          const dy = Math.max(8, Math.abs(y2 - y1) / 2);
+          const highlighted = selectedIds.has(connection.from);
+          return (
+            <path
+              key={connection.id}
+              d={`M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`}
+              fill="none"
+              stroke={highlighted ? "#ff4fa3" : "#38bdf8"}
+              strokeLinecap="round"
+              strokeWidth={highlighted ? 3 : 2}
+              opacity={highlighted ? 0.95 : 0.72}
+            />
+          );
+        })}
+      </svg>
       {nodes.map((node) => (
         <div
           key={node.id}
@@ -80,8 +143,13 @@ function FlowNodeMinimap({
             top: node.y * scale,
             width: Math.max(2, node.width * scale),
             height: Math.max(2, node.height * scale),
-            background: node.selected ? "#ffe156" : "rgba(255, 255, 255, 0.6)",
-            borderRadius: 1
+            background: minimapNodeFill(node),
+            border: "1px solid rgba(23, 19, 31, 0.85)",
+            borderRadius: node.kind === "system" ? 3 : 2,
+            boxShadow: node.selected
+              ? "0 0 0 2px #fff, 0 0 10px #ff4fa3"
+              : "0 0 0 1px rgba(255,255,255,0.18)",
+            opacity: 0.98
           }}
         />
       ))}
@@ -93,8 +161,9 @@ function FlowNodeMinimap({
           top: viewY,
           width: viewW,
           height: viewH,
-          border: "1px solid #fff",
-          background: "rgba(255, 255, 255, 0.14)",
+          border: "3px solid #fff",
+          background: "rgba(34, 211, 238, 0.18)",
+          boxShadow: "0 0 0 2px #ff4fa3, inset 0 0 0 1px rgba(23, 19, 31, 0.65)",
           pointerEvents: "none"
         }}
       />
@@ -105,8 +174,22 @@ function FlowNodeMinimap({
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 1;
 
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 function clampZoom(value: number): number {
-  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
+  return clampNumber(value, MIN_ZOOM, MAX_ZOOM);
+}
+
+function minimapNodeFill(node: FlowGraphNode): string {
+  if (node.selected) return "#ff4fa3";
+  if (node.kind === "system") return "#f8fafc";
+  if (node.kind === "state") return "#22d3ee";
+  if (node.className.includes("is-decision")) return "#a3e635";
+  if (node.className.includes("is-transition")) return "#fb923c";
+  if (node.className.includes("is-code")) return "#bae6fd";
+  return "#ffe156";
 }
 
 export interface FlowNodeCanvasProps {
@@ -408,6 +491,35 @@ export function FlowNodeCanvas({
     document.addEventListener("pointerup", handleUp);
   };
 
+  const beginViewportPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 1) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+    const startScrollLeft = stage.scrollLeft;
+    const startScrollTop = stage.scrollTop;
+    const previousCursor = document.body.style.cursor;
+    document.body.style.cursor = "grabbing";
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      moveEvent.preventDefault();
+      stage.scrollLeft = startScrollLeft - (moveEvent.clientX - startClientX);
+      stage.scrollTop = startScrollTop - (moveEvent.clientY - startClientY);
+    };
+    const stop = () => {
+      document.removeEventListener("pointermove", handleMove);
+      document.removeEventListener("pointerup", stop);
+      document.removeEventListener("pointercancel", stop);
+      document.body.style.cursor = previousCursor;
+    };
+    document.addEventListener("pointermove", handleMove);
+    document.addEventListener("pointerup", stop);
+    document.addEventListener("pointercancel", stop);
+  };
+
   const marqueeRef = useRef<{ startX: number; startY: number } | null>(null);
   const [marquee, setMarquee] = useState<MarqueeRect | null>(null);
 
@@ -501,6 +613,10 @@ export function FlowNodeCanvas({
           data-node-stage
           ref={stageRef}
           style={{ height: "min(70vh, 640px)", width: "100%", maxWidth: "100%", overflow: "auto" }}
+          onPointerDown={beginViewportPan}
+          onAuxClick={(event) => {
+            if (event.button === 1) event.preventDefault();
+          }}
         >
           <div
             className="flow-node-graph"
@@ -661,6 +777,7 @@ export function FlowNodeCanvas({
         {displayNodes.length ? (
           <FlowNodeMinimap
             nodes={displayNodes}
+            connections={connections}
             worldWidth={width}
             worldHeight={height}
             zoom={zoom}

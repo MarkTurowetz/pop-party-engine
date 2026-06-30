@@ -5,14 +5,20 @@ import {
   actionNodeExits,
   momentGraphConnections,
   momentGraphNodes,
-  momentNodeExits
+  momentNodeExits,
+  optimizedVerticalNodePositions
 } from "./flowNodeGraph";
 import type { GameFlow } from "../../types/game-data";
 
 function flowFixture(): GameFlow {
   return {
     states: [
-      { id: "intro", name: "Intro", nextStateTargetId: "round", actions: [{ id: "a1", name: "Act 1", type: "message" }] },
+      {
+        id: "intro",
+        name: "Intro",
+        nextStateTargetId: "round",
+        actions: [{ id: "a1", name: "Act 1", type: "message" }]
+      },
       { id: "round", name: "Round", actions: [], nodePosition: { x: 500, y: 300 } } as never
     ],
     routeNodes: []
@@ -46,7 +52,9 @@ describe("flowNodeGraph", () => {
 
   it("connects states by nextStateTargetId in moments depth", () => {
     const connections = momentGraphConnections(flowFixture());
-    expect(connections).toEqual([{ id: "intro->round", from: "intro", to: "round", label: "Next" }]);
+    expect(connections).toEqual([
+      { id: "intro->round", from: "intro", to: "round", label: "Next" }
+    ]);
   });
 
   it("connects start->entry and action exits in actions depth", () => {
@@ -74,7 +82,9 @@ describe("flowNodeGraph", () => {
 
   it("exposes a Next exit per state in moments depth", () => {
     const exits = momentNodeExits(flowFixture());
-    expect(exits.map((exit) => ({ node: exit.nodeId, kind: exit.kind, target: exit.currentTarget }))).toEqual([
+    expect(
+      exits.map((exit) => ({ node: exit.nodeId, kind: exit.kind, target: exit.currentTarget }))
+    ).toEqual([
       { node: "intro", kind: "nextState", target: "round" },
       { node: "round", kind: "nextState", target: "" }
     ]);
@@ -102,5 +112,47 @@ describe("flowNodeGraph", () => {
       "a2:Timer Ends=return",
       "a2:Answers="
     ]);
+  });
+
+  it("optimizes action nodes by reachable flow order, not action array order", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "lobby",
+          name: "Lobby",
+          entryTargetActionId: "setup",
+          actions: [
+            {
+              id: "countdown",
+              name: "On Countdown Complete",
+              type: "transitionState",
+              nextTargetActionId: "wipe-on"
+            },
+            { id: "setup", name: "Setup Game", type: "setupGame", nextTargetActionId: "wipe-off" },
+            {
+              id: "wipe-on",
+              name: "Set Wipe Shown",
+              type: "setWipeShown",
+              nextTargetActionId: "return"
+            },
+            {
+              id: "wipe-off",
+              name: "Set Wipe Shown 1",
+              type: "setWipeShown",
+              nextTargetActionId: "countdown"
+            }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+    const nodes = actionGraphNodes(flow.states[0]);
+    const connections = actionGraphConnections(flow.states[0]);
+
+    expect(
+      optimizedVerticalNodePositions(nodes, connections, "actions").map(
+        (position) => position.nodeId
+      )
+    ).toEqual(["start", "setup", "wipe-off", "countdown", "wipe-on", "return"]);
   });
 });
