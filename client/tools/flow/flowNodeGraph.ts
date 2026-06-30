@@ -94,7 +94,7 @@ export interface FlowNodePositionUpdate {
 
 const CHILD_NODE_TOP_GAP = 16;
 const CHILD_NODE_GAP = 18;
-const CHILD_NODE_WIDTH = 280;
+const CHILD_NODE_SIDE_INSET = 20;
 const CHILD_NODE_HEIGHT = 34;
 
 export interface SubroutineGraphNodeOptions {
@@ -241,6 +241,14 @@ function bottomCenterAnchor(node: FlowGraphNode): FlowNodePoint {
   };
 }
 
+function childNodeWidth(parentWidth: number): number {
+  return Math.max(180, parentWidth - CHILD_NODE_SIDE_INSET * 2);
+}
+
+function childNodeX(parentX: number, parentWidth: number): number {
+  return parentX + (parentWidth - childNodeWidth(parentWidth)) / 2;
+}
+
 export function decisionBranchTargetAnchor(
   nodes: FlowGraphNode[],
   actionId: string
@@ -359,6 +367,7 @@ export function subroutineGraphNodes(
     const isCode = action.type === "codeNode";
     const isSubroutine = isFlowSubroutineAction(action);
     const actionHeight = 134;
+    const actionWidth = action.type === "decision" || isLabel || isCode ? 320 : 260;
     nodes.push({
       id: action.id,
       kind: isSubroutine ? "subroutine" : "action",
@@ -378,7 +387,7 @@ export function subroutineGraphNodes(
           : actionTimingLabel(action),
       x,
       y,
-      width: action.type === "decision" || isLabel || isCode ? 320 : 260,
+      width: actionWidth,
       height: actionHeight,
       className: isSubroutine ? subroutineClassName() : actionClassName(action),
       selected: isSelected(action.id)
@@ -394,13 +403,13 @@ export function subroutineGraphNodes(
           title: decisionBranchName(branch, branchIndex),
           subtitle: branchSubtitle(branch as FlowAction),
           timing: "",
-          x: x + 20,
+          x: childNodeX(x, actionWidth),
           y:
             y +
             actionHeight +
             CHILD_NODE_TOP_GAP +
             branchIndex * (CHILD_NODE_HEIGHT + CHILD_NODE_GAP),
-          width: CHILD_NODE_WIDTH,
+          width: childNodeWidth(actionWidth),
           height: CHILD_NODE_HEIGHT,
           className: `is-branch${isNoMatch ? " is-no-match" : ""}`,
           selected: isSelected(branchNodeId),
@@ -418,13 +427,13 @@ export function subroutineGraphNodes(
           title: subAction.name || `Sub-action ${subActionIndex + 1}`,
           subtitle: "",
           timing: subActionTimingLabel(subAction),
-          x: x + 20,
+          x: childNodeX(x, actionWidth),
           y:
             y +
             actionHeight +
             CHILD_NODE_TOP_GAP +
             subActionIndex * (CHILD_NODE_HEIGHT + CHILD_NODE_GAP),
-          width: CHILD_NODE_WIDTH,
+          width: childNodeWidth(actionWidth),
           height: CHILD_NODE_HEIGHT,
           className: "is-sub-action",
           selected: isSelected(subActionId),
@@ -543,7 +552,7 @@ export function subroutineNodeExits(
           kind: "field",
           field: def.field,
           currentTarget: String(record[def.field] || ""),
-          portSide: childExitViewNodeId ? "bottomCenter" : undefined
+          portSide: childExitViewNodeId ? "right" : undefined
         });
       }
     }

@@ -4,6 +4,7 @@ const STATE_DND_TYPE = "application/x-flow-state";
 
 export interface FlowStateListProps {
   chrome?: boolean;
+  onEnterState?: (stateId: string) => void;
   onSelectState?: (stateId: string) => void;
   onReorderState?: (draggedStateId: string, targetStateId: string) => void;
   selectedStateId?: string;
@@ -12,6 +13,7 @@ export interface FlowStateListProps {
 
 export function FlowStateList({
   chrome = true,
+  onEnterState,
   onSelectState,
   onReorderState,
   selectedStateId = "",
@@ -21,31 +23,42 @@ export function FlowStateList({
   const contents = (
     <>
       <h3>Subroutines</h3>
-      <ol className={chrome ? "flow-react-list" : "tool-sidebar-list"} data-flow-react-component="state-list">
-      {states.map((state) => (
-        <li
-          aria-current={state.id === selectedStateId ? "true" : undefined}
-          data-state-id={state.id}
-          draggable={draggable}
-          key={state.id}
-          onDragStart={draggable ? (event) => event.dataTransfer.setData(STATE_DND_TYPE, state.id) : undefined}
-          onDragOver={draggable ? (event) => event.preventDefault() : undefined}
-          onDrop={
-            draggable
-              ? (event) => {
-                  event.preventDefault();
-                  const draggedId = event.dataTransfer.getData(STATE_DND_TYPE);
-                  if (draggedId && draggedId !== state.id) onReorderState?.(draggedId, state.id);
-                }
-              : undefined
-          }
-        >
-          <button type="button" onClick={() => onSelectState?.(state.id)}>
-            <span>{state.name || state.id}</span>
-            <span data-action-count>{state.actions?.length || 0}</span>
-          </button>
-        </li>
-      ))}
+      <ol
+        className={chrome ? "flow-react-list" : "tool-sidebar-list"}
+        data-flow-react-component="state-list"
+      >
+        {states.map((state) => (
+          <li
+            aria-current={state.id === selectedStateId ? "true" : undefined}
+            data-state-id={state.id}
+            draggable={draggable}
+            key={state.id}
+            onDragStart={
+              draggable
+                ? (event) => event.dataTransfer.setData(STATE_DND_TYPE, state.id)
+                : undefined
+            }
+            onDragOver={draggable ? (event) => event.preventDefault() : undefined}
+            onDrop={
+              draggable
+                ? (event) => {
+                    event.preventDefault();
+                    const draggedId = event.dataTransfer.getData(STATE_DND_TYPE);
+                    if (draggedId && draggedId !== state.id) onReorderState?.(draggedId, state.id);
+                  }
+                : undefined
+            }
+          >
+            <button
+              type="button"
+              onClick={() => onSelectState?.(state.id)}
+              onDoubleClick={() => onEnterState?.(state.id)}
+            >
+              <span>{state.name || state.id}</span>
+              <span data-action-count>{state.actions?.length || 0}</span>
+            </button>
+          </li>
+        ))}
       </ol>
     </>
   );

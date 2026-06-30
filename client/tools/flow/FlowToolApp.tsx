@@ -12,6 +12,7 @@ export interface FlowToolReactShellHandlers {
   addAction?: () => void;
   addState?: () => void;
   deleteSelection?: () => void;
+  enterState?: (stateId: string) => void;
   redo?: () => void;
   revert?: () => void;
   save?: () => void;
@@ -163,6 +164,7 @@ export function FlowToolApp({
       sidebar={
         <FlowStateList
           chrome={false}
+          onEnterState={handlers.enterState}
           onSelectState={handlers.selectState}
           onReorderState={reorder?.onReorderState}
           selectedStateId={model.selectedStateId}

@@ -5,8 +5,26 @@ import type {
   FlowNodePositionUpdate
 } from "./flowNodeGraph";
 
+function isVisualChildNode(node: FlowGraphNode): boolean {
+  return node.kind === "branch" || node.kind === "subAction";
+}
+
+function layoutChildNodes(nodes: FlowGraphNode[], actionId: string): FlowGraphNode[] {
+  return nodes.filter((node) => isVisualChildNode(node) && node.parentNodeId === actionId);
+}
+
 function layoutDecisionBranchNodes(nodes: FlowGraphNode[], actionId: string): FlowGraphNode[] {
   return nodes.filter((node) => node.kind === "branch" && node.parentNodeId === actionId);
+}
+
+function visualBlockHeight(node: FlowGraphNode, nodes: FlowGraphNode[]): number {
+  const childRows = layoutChildNodes(nodes, node.id);
+  if (!childRows.length) return node.height;
+  const bottom = Math.max(
+    node.y + node.height,
+    ...childRows.map((child) => child.y + child.height)
+  );
+  return bottom - node.y;
 }
 
 function orderedGraphNodesForLayout(
@@ -88,7 +106,8 @@ function layoutLevels(
 ): Map<string, number> {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const levels = new Map<string, number>();
-  const firstNodeId = depth === "subroutine" && byId.has("start") ? "start" : orderedNodes[0]?.id || "";
+  const firstNodeId =
+    depth === "subroutine" && byId.has("start") ? "start" : orderedNodes[0]?.id || "";
   if (firstNodeId) levels.set(firstNodeId, 0);
 
   for (let pass = 0; pass < nodes.length; pass += 1) {
@@ -154,7 +173,11 @@ function uniqueBranchTargets(
   return targets;
 }
 
-function nodeCenterX(node: FlowGraphNode, centers: Map<string, number>, fallbackCenter: number): number {
+function nodeCenterX(
+  node: FlowGraphNode,
+  centers: Map<string, number>,
+  fallbackCenter: number
+): number {
   const center = centers.get(node.id);
   if (Number.isFinite(center)) return Number(center);
   const savedCenter = node.x + node.width / 2;
@@ -173,7 +196,7 @@ function optimizedHorizontalCenters(
   const branchGap = Math.max(360, Math.max(...nodes.map((node) => node.width), 260) + 100);
 
   for (const node of nodes) {
-    if (node.kind === "branch" && node.parentNodeId) {
+    if (isVisualChildNode(node) && node.parentNodeId) {
       centers.set(node.id, centers.get(node.parentNodeId) ?? centerX);
     }
   }
@@ -183,7 +206,11 @@ function optimizedHorizontalCenters(
       const targets = uniqueBranchTargets(node, nodes, outgoing)
         .filter((targetId) => byId.has(targetId))
         .filter((targetId) => (incoming.get(targetId) || []).length < 2);
-      const targetCenters = distributeCentersAround(centers.get(node.id) ?? centerX, targets.length, branchGap);
+      const targetCenters = distributeCentersAround(
+        centers.get(node.id) ?? centerX,
+        targets.length,
+        branchGap
+      );
       targets.forEach((targetId, index) => centers.set(targetId, targetCenters[index] ?? centerX));
     }
   }
@@ -195,7 +222,8 @@ function optimizedHorizontalCenters(
       .filter((source): source is FlowGraphNode => Boolean(source));
     if (sources.length < 2) continue;
     const average =
-      sources.reduce((sum, source) => sum + nodeCenterX(source, centers, centerX), 0) / sources.length;
+      sources.reduce((sum, source) => sum + nodeCenterX(source, centers, centerX), 0) /
+      sources.length;
     centers.set(node.id, average);
   }
 
@@ -210,7 +238,7 @@ function resolveLevelCollisions(
 ): void {
   const byLevel = new Map<number, FlowGraphNode[]>();
   for (const node of nodes) {
-    if (node.kind === "branch") continue;
+    if (isVisualChildNode(node)) continue;
     const level = levels.get(node.id) ?? 0;
     const list = byLevel.get(level) || [];
     list.push(node);
@@ -238,6 +266,32 @@ function resolveLevelCollisions(
   }
 }
 
+function optimizedLevelYPositions(
+  nodes: FlowGraphNode[],
+  levels: Map<string, number>,
+  depth: FlowNodeDepth
+): Map<number, number> {
+  const layoutNodes = nodes.filter((node) => !isVisualChildNode(node));
+  const byLevel = new Map<number, FlowGraphNode[]>();
+  for (const node of layoutNodes) {
+    const level = levels.get(node.id) ?? 0;
+    const list = byLevel.get(level) || [];
+    list.push(node);
+    byLevel.set(level, list);
+  }
+
+  const levelGap = depth === "subroutines" ? 90 : 70;
+  const yByLevel = new Map<number, number>();
+  let nextY = 70;
+  for (const level of [...byLevel.keys()].sort((a, b) => a - b)) {
+    const group = byLevel.get(level) || [];
+    yByLevel.set(level, nextY);
+    const maxHeight = Math.max(...group.map((node) => visualBlockHeight(node, nodes)), 0);
+    nextY += maxHeight + levelGap;
+  }
+  return yByLevel;
+}
+
 export function optimizedVerticalNodePositions(
   nodes: FlowGraphNode[],
   connections: FlowGraphConnection[],
@@ -253,12 +307,12 @@ export function optimizedVerticalNodePositions(
   );
   const centers = optimizedHorizontalCenters(orderedNodes, forwardConnections, centerX);
   resolveLevelCollisions(orderedNodes, centers, levels, centerX);
-  const verticalGap = depth === "subroutines" ? 240 : 190;
+  const levelY = optimizedLevelYPositions(orderedNodes, levels, depth);
   return orderedNodes
-    .filter((node) => node.kind !== "branch")
+    .filter((node) => !isVisualChildNode(node))
     .map((node) => ({
       nodeId: node.id,
       x: Math.max(0, Math.round(nodeCenterX(node, centers, centerX) - node.width / 2)),
-      y: 70 + (levels.get(node.id) ?? 0) * verticalGap
+      y: levelY.get(levels.get(node.id) ?? 0) ?? 70
     }));
 }

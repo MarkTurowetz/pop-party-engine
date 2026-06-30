@@ -243,6 +243,7 @@ describe("flowNodeGraph", () => {
       title: "Early",
       timing: "S+ 0.50s",
       draggable: false,
+      width: 220,
       height: 34
     });
 
@@ -251,7 +252,7 @@ describe("flowNodeGraph", () => {
     ).toMatchObject({
       nodeId: "parent",
       viewNodeId: "sub-late",
-      portSide: "bottomCenter",
+      portSide: "right",
       label: "Next",
       currentTarget: "target"
     });
@@ -505,6 +506,63 @@ describe("flowNodeGraph", () => {
     expect(Math.abs(center("wipe") - center("decision"))).toBeLessThan(40);
     expect(Number(positionById.get("wipe")?.y)).toBeGreaterThan(
       Number(positionById.get("present-1")?.y)
+    );
+  });
+
+  it("optimizes vertical spacing around the full parent and child-row block", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "s",
+          name: "S",
+          entryTargetActionId: "parent",
+          actions: [
+            {
+              id: "parent",
+              name: "Parent",
+              type: "message",
+              nextTargetActionId: "after",
+              subActions: [
+                {
+                  id: "sub-a",
+                  name: "Sub A",
+                  type: "setPlayersShown",
+                  timing: { mode: "S+", seconds: 0 }
+                },
+                {
+                  id: "sub-b",
+                  name: "Sub B",
+                  type: "setPlayersShown",
+                  timing: { mode: "S+", seconds: 1 }
+                }
+              ]
+            },
+            { id: "after", name: "After", type: "message", nextTargetActionId: "return" }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+    const nodes = subroutineGraphNodes(flow.states[0]);
+    const parent = nodes.find((node) => node.id === "parent");
+    const children = nodes.filter((node) => node.parentNodeId === "parent");
+    const parentBlockHeight =
+      Math.max(
+        ...children.map((node) => node.y + node.height),
+        (parent?.y || 0) + (parent?.height || 0)
+      ) - (parent?.y || 0);
+    const positions = new Map(
+      optimizedVerticalNodePositions(
+        nodes,
+        subroutineGraphConnections(flow.states[0]),
+        "subroutine"
+      ).map((position) => [position.nodeId, position])
+    );
+
+    expect(positions.has("sub-a")).toBe(false);
+    expect(positions.has("sub-b")).toBe(false);
+    expect(Number(positions.get("after")?.y) - Number(positions.get("parent")?.y)).toBe(
+      parentBlockHeight + 70
     );
   });
 });

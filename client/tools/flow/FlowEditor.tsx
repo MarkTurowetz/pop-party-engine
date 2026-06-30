@@ -322,6 +322,11 @@ export function FlowEditor({
           controller.addAction(selectedStateId, selectedActionId, activeSubroutinePath);
       },
       deleteSelection,
+      enterState: (stateId: string) => {
+        controller.selectState(stateId);
+        setSubroutinePath([]);
+        setNodeDepth("subroutine");
+      },
       redo: () => controller.redo(),
       revert: () => controller.revert(),
       save: () => void controller.save(),
