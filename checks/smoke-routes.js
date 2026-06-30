@@ -72,22 +72,19 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function assertShell(response, label, expectedText, { expectedScripts = [], forbiddenScripts = [], expectedStyles = [], forbiddenStyles = [] } = {}) {
+function assertShell(response, label, expectedText, { expectedStyles = [], forbiddenStyles = [] } = {}) {
   assert(response.statusCode === 200, `${label} returned ${response.statusCode}`);
   assert(String(response.headers["content-type"] || "").includes("text/html"), `${label} did not return HTML`);
   assert(response.body.includes(expectedText), `${label} shell did not include ${expectedText}`);
-  assert(response.body.includes("/client/app/legacy/app-shell.js"), `${label} shell is missing app shell script`);
+  // The server serves only the Vite shell: a built module entry, no classic script tags.
+  assert(/type="module" src="\/assets\/[^"]+\.js"/.test(response.body), `${label} shell is missing the Vite module entry`);
+  assert(!response.body.includes("/client/app/legacy/app-shell.js"), `${label} shell should not include a classic app-shell script tag`);
+  assert(!response.body.includes("<script src=\"/shared/"), `${label} shell should not include classic /shared script tags`);
   expectedStyles.forEach((stylesheet) => {
     assert(response.body.includes(stylesheet), `${label} shell is missing ${stylesheet}`);
   });
   forbiddenStyles.forEach((stylesheet) => {
     assert(!response.body.includes(stylesheet), `${label} shell should not include ${stylesheet}`);
-  });
-  expectedScripts.forEach((script) => {
-    assert(response.body.includes(script), `${label} shell is missing ${script}`);
-  });
-  forbiddenScripts.forEach((script) => {
-    assert(!response.body.includes(script), `${label} shell should not include ${script}`);
   });
 }
 
@@ -106,10 +103,7 @@ async function main() {
       PORT: String(port),
       GAME_FLOW_STORAGE: "local",
       GAME_FLOW_GITHUB_TOKEN: "",
-      GITHUB_TOKEN: "",
-      // These assertions validate the classic (non-Vite) role-shell structure, which
-      // is now opt-out. check-vite-assets covers the Vite-default shell.
-      PARTY_GAME_USE_VITE_ENTRIES: "0"
+      GITHUB_TOKEN: ""
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -132,32 +126,18 @@ async function main() {
 
     assertShell(await request({ port, pathname: "/stage" }), "/stage", "stageScreen", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/stage-runtime.css"],
-      forbiddenStyles: ["/client/styles/legacy/controller-runtime.css", "/client/styles/legacy/tools.css"],
-      expectedScripts: ["/shared/color-utils.js"],
-      forbiddenScripts: ["/client/controller.js", "/client/flow-tool.js", "/client/stage-runtime.js"]
+      forbiddenStyles: ["/client/styles/legacy/controller-runtime.css", "/client/styles/legacy/tools.css"]
     });
     assertShell(await request({ port, pathname: "/controller" }), "/controller", "controllerScreen", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css"],
-      forbiddenStyles: ["/client/styles/legacy/tools.css"],
-      expectedScripts: ["/shared/color-utils.js"],
-      forbiddenScripts: ["/client/stage-runtime.js", "/client/flow-tool.js", "/client/controller.js", "/client/layout-runtime.js"]
+      forbiddenStyles: ["/client/styles/legacy/tools.css"]
     });
     assertShell(await request({ port, pathname: "/tools" }), "main tool shell", "toolDashboardBar", {
-      expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css", "/client/styles/legacy/tools.css"],
-      expectedScripts: ["/shared/color-utils.js"],
-      forbiddenScripts: ["/client/flow-tool.js", "/client/controller.js", "/client/stage-runtime.js"]
+      expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css", "/client/styles/legacy/tools.css"]
     });
     assertShell(await request({ port, pathname: "/flow" }), "Flow Tool shell", "flowScreen", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/tools.css"],
-      forbiddenStyles: ["/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css"],
-      expectedScripts: ["/shared/color-utils.js"],
-      forbiddenScripts: [
-        "/client/stage-runtime.js",
-        "/client/controller.js",
-        "/client/flow-tool.js",
-        "/client/host-audio-tool.js",
-        "/client/constants-tool.js"
-      ]
+      forbiddenStyles: ["/client/styles/legacy/stage-runtime.css", "/client/styles/legacy/controller-runtime.css"]
     });
 
     const gameFlow = await request({ port, pathname: "/api/game-flow", parseJson: true });

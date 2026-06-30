@@ -104,10 +104,6 @@ const {
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
-// Vite entries are the default now that the entire client runtime is TS/React modules.
-// The classic (non-Vite) script path no longer has the game logic (it lives in the
-// built entries), so it is opt-out only via PARTY_GAME_USE_VITE_ENTRIES=0.
-const USE_VITE_ENTRIES = process.env.PARTY_GAME_USE_VITE_ENTRIES !== "0";
 const ROOT = __dirname;
 const INDEX_FILE = path.join(ROOT, "index.html");
 const CLIENT_ROOT = path.join(ROOT, "client");
@@ -478,8 +474,7 @@ const {
   indexFile: INDEX_FILE,
   root: ROOT,
   sendJson,
-  sharedRoot: SHARED_ROOT,
-  useViteEntriesByDefault: USE_VITE_ENTRIES
+  sharedRoot: SHARED_ROOT
 });
 
 const {

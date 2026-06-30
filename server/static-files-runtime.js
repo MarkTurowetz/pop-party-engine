@@ -1,9 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-const legacyScriptManifest = require("../client/app/legacy/script-manifest.json");
 
-const APP_SHELL_SCRIPT = "/client/app/legacy/app-shell.js";
-const LEGACY_SCRIPT_BLOCK_PATTERN = /  <script src="\/shared\/color-utils\.js"><\/script>\n[\s\S]*?  <script src="\/client\/app\/legacy\/app-shell\.js"><\/script>/;
+// The server only serves the Vite shell now; this marker in index.html is where the built
+// role entry is injected (it boots app-shell + shared globals via bootLegacySurface).
+const LEGACY_SCRIPT_BLOCK_PATTERN = /  <!-- runtime-entry:[^>]*-->/;
 const LEGACY_STYLESHEET_PATTERN = /  <link rel="stylesheet" href="\/client\/styles\/legacy-shell\.css">/;
 const BODY_OPEN = "<body>";
 const VITE_MANIFEST_FILE = path.join("dist", "client", ".vite", "manifest.json");
@@ -56,45 +56,6 @@ function routeRoleForUrl(url) {
   if (REQUESTED_ROLES.has(requestedRole)) return requestedRole;
   const pathname = String(url?.pathname || "").toLowerCase();
   return PATH_ROLES[pathname] || "stage";
-}
-
-function scriptsForRole(role) {
-  const {
-    sharedFoundation,
-    stageRuntime,
-    controllerRuntime,
-    toolFoundation,
-    artTool,
-    hostAudioTool,
-    flowTool,
-    constantsTool,
-    layoutTool
-  } = legacyScriptManifest;
-  const allToolScripts = [
-    ...artTool,
-    ...hostAudioTool,
-    ...flowTool,
-    ...constantsTool,
-    ...layoutTool
-  ];
-  if (role === "controller") return [...sharedFoundation, ...controllerRuntime];
-  if (role === "lab" || role === "art") return [...sharedFoundation, ...stageRuntime, ...toolFoundation, ...artTool];
-  if (role === "flow") return [...sharedFoundation, ...toolFoundation, ...hostAudioTool, ...flowTool];
-  if (role === "constants") return [...sharedFoundation, ...toolFoundation, ...constantsTool];
-  if (role === "host-audio") return [...sharedFoundation, ...toolFoundation, ...hostAudioTool];
-  if (role === "layout" || role === "controller-layout") return [...sharedFoundation, ...stageRuntime, ...toolFoundation, ...layoutTool];
-  if (role === "tools") return [...sharedFoundation, ...stageRuntime, ...controllerRuntime, ...toolFoundation, ...allToolScripts];
-  return [...sharedFoundation, ...stageRuntime];
-}
-
-function renderScriptTags(scripts) {
-  return [...scripts, APP_SHELL_SCRIPT]
-    .map((script) => `  <script src="${script}"></script>`)
-    .join("\n");
-}
-
-function shouldUseViteEntry(url, useViteEntriesByDefault = false) {
-  return useViteEntriesByDefault || url?.searchParams?.get("vite") === "1";
 }
 
 function viteManifest(root) {
@@ -206,8 +167,7 @@ function createStaticFilesRuntime({
   indexFile,
   root,
   sendJson,
-  sharedRoot,
-  useViteEntriesByDefault = false
+  sharedRoot
 }) {
   function serveIndex(res, url = null) {
     fs.readFile(indexFile, (error, data) => {
@@ -217,13 +177,10 @@ function createStaticFilesRuntime({
       }
       const role = routeRoleForUrl(url);
       const stylesheetLinks = renderStylesheetLinks(stylesForRole(role));
-      const useViteEntry = shouldUseViteEntry(url, useViteEntriesByDefault);
-      const viteEntryScript = useViteEntry ? viteEntryScriptForRole(root, role) : "";
-      const scriptTags = viteEntryScript || renderScriptTags(scriptsForRole(role));
-      const sourceHtml = useViteEntry ? renderViteBody(String(data), role) : String(data);
-      const html = sourceHtml
+      const viteEntryScript = viteEntryScriptForRole(root, role);
+      const html = renderViteBody(String(data), role)
         .replace(LEGACY_STYLESHEET_PATTERN, stylesheetLinks)
-        .replace(LEGACY_SCRIPT_BLOCK_PATTERN, scriptTags)
+        .replace(LEGACY_SCRIPT_BLOCK_PATTERN, viteEntryScript)
         .replaceAll("__APP_VERSION__", appVersion);
       res.writeHead(200, {
         "Content-Type": "text/html; charset=utf-8",

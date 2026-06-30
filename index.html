@@ -420,40 +420,6 @@
     </div>
   </section>
 
-  <script src="/shared/color-utils.js"></script>
-  <script src="/shared/game-constants-schema.js"></script>
-  <!-- utils ported to client/runtime/utils.ts (loaded by the Vite entries before bootLegacySurface). -->
-  <!-- visual-object + game-object ported to client/runtime/*.ts (loaded by the Vite entries). -->
-  <!-- text-fit ported to client/runtime/textFit.ts (loaded by the Vite entries). -->
-  <!-- stage-text-renderer ported to client/runtime/stageTextRenderer.ts (Vite entries). -->
-  <script src="/shared/text-answer-action-config.js"></script>
-  <script src="/shared/microphone-access-action-config.js"></script>
-  <script src="/shared/choice-input-action-config.js"></script>
-  <script src="/shared/flow-action-registry.js"></script>
-  <script src="/shared/art-component-schema.js"></script>
-  <!-- qr-code ported to client/runtime/qrCode.ts (loaded by the Vite entries). -->
-  <!-- controller-module-cache ported to client/runtime/controllerModuleCache.ts (Vite entries). -->
-  <!-- controller-text-renderer ported to client/runtime/controllerTextRenderer.ts (Vite entries). -->
-  <!-- controller-view-state ported to client/runtime/controllerViewState.ts (Vite entries). -->
-  <!-- controller-avatar-view ported to client/runtime/controllerAvatarView.ts (Vite entries). -->
-  <!-- controller-microphone-access-view ported to client/runtime/controllerMicrophoneAccessView.ts (Vite entries). -->
-  <!-- controller-recording-lifecycle ported to client/runtime/controllerRecordingLifecycle.ts (Vite entries). -->
-  <!-- controller-voice-input ported to client/runtime/controllerVoiceInput.ts (Vite entries). -->
-  <!-- controller choice/text input views ported to client/runtime/*.ts (Vite entries). -->
-  <!-- controller-lobby-view ported to client/runtime/controllerLobbyView.ts (Vite entries). -->
-  <!-- controller-global-action-view ported to client/runtime/controllerGlobalActionView.ts (Vite entries). -->
-  <!-- controller-state-runtime ported to client/runtime/controllerStateRuntime.ts (Vite entries). -->
-  <!-- controller-submit-api ported to client/runtime/controllerSubmitApi.ts (Vite entries). -->
-  <!-- controller-setup-bindings ported to client/runtime/controllerSetupBindings.ts (Vite entries). -->
-  <!-- controller-heartbeat-runtime ported to client/runtime/controllerHeartbeatRuntime.ts (Vite entries). -->
-  <!-- controller-session-runtime ported to client/runtime/controllerSessionRuntime.ts (Vite entries). -->
-  <!-- controller-action-bindings ported to client/runtime/controllerActionBindings.ts (Vite entries). -->
-  <!-- controller orchestrator ported to client/runtime/controller.ts (Vite entries). -->
-  <!-- Art tool is React-only (client/tools/art + Vite entries). -->
-  <!-- Flow + Constants tools are React-only (client/tools/* + Vite entries). -->
-  <!-- Layout tool is React-only (client/tools/layout + Vite entries). -->
-  <!-- All five authoring tools are now React; only stage/controller runtime + foundation remain legacy. -->
-
-  <script src="/client/app/legacy/app-shell.js"></script>
+  <!-- runtime-entry: the server injects the built Vite role entry here, which boots app-shell + shared globals via bootLegacySurface -->
 </body>
 </html>

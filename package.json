@@ -18,7 +18,7 @@
     "format:check": "prettier --check \"client/**/*.{ts,tsx}\"",
     "start": "node server.js",
     "dev": "node server.js",
-    "preview": "PARTY_GAME_USE_VITE_ENTRIES=1 node server.js",
+    "preview": "node server.js",
     "smoke:build-assets": "node checks/check-vite-assets.js",
     "smoke:routes": "node checks/smoke-routes.js",
     "sync-game-data": "node sync-game-data.js",
