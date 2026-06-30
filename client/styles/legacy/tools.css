@@ -1675,6 +1675,10 @@ body.is-resizing-flow {
   min-height: 0;
 }
 
+.flow-node-workspace-content .flow-react-node-canvas {
+  height: 100%;
+}
+
 .flow-node-toolbar {
   grid-column: 1 / -1;
   display: flex;
@@ -1705,6 +1709,8 @@ body.is-resizing-flow {
 
 .flow-node-stage-wrap {
   position: relative;
+  display: flex;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
 }
@@ -1720,6 +1726,7 @@ body.is-resizing-flow {
 
 .flow-node-stage {
   position: relative;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   background:

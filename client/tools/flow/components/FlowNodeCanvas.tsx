@@ -592,6 +592,7 @@ export function FlowNodeCanvas({
       data-node-depth={depth}
       style={{
         minWidth: 0,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
@@ -625,7 +626,7 @@ export function FlowNodeCanvas({
           className="flow-node-stage"
           data-node-stage
           ref={stageRef}
-          style={{ height: "min(70vh, 640px)", width: "100%", maxWidth: "100%", overflow: "auto" }}
+          style={{ flex: 1, height: "100%", width: "100%", maxWidth: "100%", overflow: "auto" }}
           onPointerDown={beginViewportPan}
           onAuxClick={(event) => {
             if (event.button === 1) event.preventDefault();
