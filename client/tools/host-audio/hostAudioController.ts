@@ -1,6 +1,10 @@
 import type { HostAudioLine, HostAudios } from "../../types/game-data";
 import type { HostAudioApi } from "../../api/hostAudioApi";
-import { hostAudiosSnapshot, makeHostAudioReferenceId, normalizeHostAudios } from "./hostAudioModel";
+import {
+  hostAudiosSnapshot,
+  makeHostAudioReferenceId,
+  normalizeHostAudios
+} from "./hostAudioModel";
 
 export interface HostAudioEditorState {
   hostAudios: HostAudios;
@@ -24,7 +28,11 @@ export interface HostAudioController {
   renameSet(index: number, name: string): void;
   addLine(setIndex: number): void;
   removeLine(setIndex: number, lineIndex: number): void;
-  updateLine(setIndex: number, lineIndex: number, patch: Partial<Pick<HostAudioLine, "text" | "url">>): void;
+  updateLine(
+    setIndex: number,
+    lineIndex: number,
+    patch: Partial<Pick<HostAudioLine, "text" | "url">>
+  ): void;
   undo(): void;
   redo(): void;
   revert(): void;
@@ -37,7 +45,9 @@ function clone(value: HostAudios): HostAudios {
   return normalizeHostAudios(JSON.parse(JSON.stringify(value)) as HostAudios);
 }
 
-export function createHostAudioController(options: HostAudioControllerOptions): HostAudioController {
+export function createHostAudioController(
+  options: HostAudioControllerOptions
+): HostAudioController {
   const { api } = options;
   const listeners = new Set<() => void>();
   let current = normalizeHostAudios(options.initialHostAudios);
@@ -86,7 +96,10 @@ export function createHostAudioController(options: HostAudioControllerOptions): 
     addSet: () =>
       mutate((draft) => {
         const n = draft.hostAudios.length + 1;
-        draft.hostAudios = [...draft.hostAudios, { id: `host-audio-${n}`, name: `Host Audio ${n}`, lines: [] }];
+        draft.hostAudios = [
+          ...draft.hostAudios,
+          { id: `host-audio-${n}`, name: `Host Audio ${n}`, lines: [] }
+        ];
       }),
     removeSet: (index) =>
       mutate((draft) => {
@@ -100,7 +113,10 @@ export function createHostAudioController(options: HostAudioControllerOptions): 
       mutate((draft) => {
         const set = draft.hostAudios[setIndex];
         if (!set) return;
-        set.lines = [...set.lines, { id: makeHostAudioReferenceId("host-line"), text: "", url: "" }];
+        set.lines = [
+          ...set.lines,
+          { id: makeHostAudioReferenceId("host-line"), text: "", url: "" }
+        ];
       }),
     removeLine: (setIndex, lineIndex) =>
       mutate((draft) => {
@@ -112,6 +128,10 @@ export function createHostAudioController(options: HostAudioControllerOptions): 
       mutate((draft) => {
         const set = draft.hostAudios[setIndex];
         if (!set || !set.lines[lineIndex]) return;
+        if (Object.prototype.hasOwnProperty.call(patch, "url") && !String(patch.url || "").trim()) {
+          set.lines = set.lines.filter((_, i) => i !== lineIndex);
+          return;
+        }
         set.lines[lineIndex] = { ...set.lines[lineIndex], ...patch };
       }),
 

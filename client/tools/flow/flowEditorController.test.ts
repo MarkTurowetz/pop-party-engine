@@ -114,10 +114,26 @@ describe("createFlowEditorController", () => {
 
     const action = controller.getState().snapshot.flow.states[1].actions[0];
     expect(action.type).toBe("decision");
+    expect(action.name).toBe("Decision");
     // decision defaults seed a variable + branches
     expect(action.variable).toBe("activePlayerCount");
     expect(Array.isArray(action.branches)).toBe(true);
     expect(controller.getState().dirty).toBe(true);
+  });
+
+  it("names new sub-actions from their default action type", () => {
+    const controller = createFlowEditorController({
+      initialFlow: flowFixture(),
+      api: fakeApi(),
+      actionTypes: [{ id: "setPlayersShown", name: "Set Players Shown", category: "standard" }]
+    });
+
+    controller.addSubAction("round-one", "act-1");
+
+    expect(controller.getState().snapshot.flow.states[1].actions[0].subActions?.[0]).toMatchObject({
+      name: "Set Players Shown",
+      type: "setPlayersShown"
+    });
   });
 
   it("edits action timing (merging mode and seconds)", () => {

@@ -16,8 +16,13 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
   const { hostAudios, dirty, saving, canUndo, canRedo } = useHostAudioEditor(controller);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [selectedSetId, setSelectedSetId] = useState(() => hostAudios.hostAudios[0]?.id || "");
-  const selectedSet = hostAudios.hostAudios.find((set) => set.id === selectedSetId) || hostAudios.hostAudios[0] || null;
-  const selectedSetIndex = selectedSet ? hostAudios.hostAudios.findIndex((set) => set.id === selectedSet.id) : -1;
+  const selectedSet =
+    hostAudios.hostAudios.find((set) => set.id === selectedSetId) ||
+    hostAudios.hostAudios[0] ||
+    null;
+  const selectedSetIndex = selectedSet
+    ? hostAudios.hostAudios.findIndex((set) => set.id === selectedSet.id)
+    : -1;
 
   const play = (url: string) => {
     if (!url) return;
@@ -87,7 +92,7 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
       className="host-audio-workspace"
       dataAttributes={{
         "host-audio-react-shell": "react",
-        "surface": surface,
+        surface: surface,
         "host-audio-editor-dirty": dirty ? "true" : "false"
       }}
       header={<h2>{selectedSet?.name || "Host Audios"}</h2>}
@@ -99,7 +104,11 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
       toolId="host-audio"
     >
       {selectedSet ? (
-        <section className="tool-detail-grid" data-host-audio-react-component="selected-set" data-host-audio-set-id={selectedSet.id}>
+        <section
+          className="tool-detail-grid"
+          data-host-audio-react-component="selected-set"
+          data-host-audio-set-id={selectedSet.id}
+        >
           <header className="tool-detail-header">
             <label className="flow-react-field" data-host-audio-field="name">
               <span>Name</span>
@@ -112,7 +121,11 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
               />
             </label>
             <div className="tool-editor-actions">
-              <button type="button" data-add-host-audio-line={selectedSetIndex} onClick={() => controller.addLine(selectedSetIndex)}>
+              <button
+                type="button"
+                data-add-host-audio-line={selectedSetIndex}
+                onClick={() => controller.addLine(selectedSetIndex)}
+              >
                 Add Line
               </button>
               <button
@@ -135,7 +148,11 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
                       key={`${line.id}-text`}
                       defaultValue={line.text}
                       data-host-audio-line-text={`${selectedSetIndex}:${lineIndex}`}
-                      onBlur={(event) => controller.updateLine(selectedSetIndex, lineIndex, { text: event.target.value })}
+                      onBlur={(event) =>
+                        controller.updateLine(selectedSetIndex, lineIndex, {
+                          text: event.target.value
+                        })
+                      }
                     />
                   </label>
                   <label className="flow-react-field" data-host-audio-line-field="url">
@@ -145,19 +162,24 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
                       key={`${line.id}-url`}
                       defaultValue={line.url}
                       data-host-audio-line-url={`${selectedSetIndex}:${lineIndex}`}
-                      onBlur={(event) => controller.updateLine(selectedSetIndex, lineIndex, { url: event.target.value })}
+                      onBlur={(event) =>
+                        controller.updateLine(selectedSetIndex, lineIndex, {
+                          url: event.target.value
+                        })
+                      }
                     />
                   </label>
-                  <button type="button" data-play-host-audio-line={`${selectedSetIndex}:${lineIndex}`} onClick={() => play(line.url)}>
-                    Play
-                  </button>
-                  <button
-                    type="button"
-                    data-remove-host-audio-line={`${selectedSetIndex}:${lineIndex}`}
-                    onClick={() => controller.removeLine(selectedSetIndex, lineIndex)}
-                  >
-                    Remove
-                  </button>
+                  <div className="host-audio-line-controls">
+                    <button
+                      className="host-audio-play-button"
+                      type="button"
+                      disabled={!line.url}
+                      data-play-host-audio-line={`${selectedSetIndex}:${lineIndex}`}
+                      onClick={() => play(line.url)}
+                    >
+                      Play
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}

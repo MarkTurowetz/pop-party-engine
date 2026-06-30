@@ -9,17 +9,41 @@ export interface EnsureActionTimingOptions {
   actionTypeMeta?: (type: string) => Pick<FlowActionTypeMeta, "category">;
 }
 
+export type FlowActionTypeNamer = (type: string) => string;
+
+export const DEFAULT_FLOW_ACTION_TYPE = "presentText";
+export const DEFAULT_FLOW_SUB_ACTION_TYPE = "setPlayersShown";
+
+export function humanizeFlowActionType(type: string): string {
+  return (
+    String(type || "action")
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (letter) => letter.toUpperCase()) || "Action"
+  );
+}
+
+export function flowActionNameForType(type: string, nameForType?: FlowActionTypeNamer): string {
+  const name = nameForType?.(type) || humanizeFlowActionType(type);
+  return String(name || "").trim() || humanizeFlowActionType(type);
+}
+
 export function createDefaultFlowAction(
   stateId: string,
   name: string,
   isSubAction: boolean,
   options: CreateDefaultFlowActionOptions = {}
 ): FlowAction {
-  const timestamp = typeof options.timestamp === "number" && Number.isFinite(options.timestamp) ? options.timestamp : Date.now();
+  const timestamp =
+    typeof options.timestamp === "number" && Number.isFinite(options.timestamp)
+      ? options.timestamp
+      : Date.now();
   return {
     id: `${stateId}-${isSubAction ? "sub-action" : "action"}-${timestamp.toString(36)}`,
     name,
-    type: isSubAction ? "setPlayersShown" : "presentText",
+    type: isSubAction ? DEFAULT_FLOW_SUB_ACTION_TYPE : DEFAULT_FLOW_ACTION_TYPE,
     timing: { mode: isSubAction ? "S+" : "E+", seconds: 0 },
     text: "Presented text",
     textTarget: "",
@@ -34,7 +58,10 @@ export function createDefaultFlowSubroutineAction(
   name: string,
   options: CreateDefaultFlowActionOptions = {}
 ): FlowAction {
-  const timestamp = typeof options.timestamp === "number" && Number.isFinite(options.timestamp) ? options.timestamp : Date.now();
+  const timestamp =
+    typeof options.timestamp === "number" && Number.isFinite(options.timestamp)
+      ? options.timestamp
+      : Date.now();
   return {
     id: `${stateId}-subroutine-${timestamp.toString(36)}`,
     name,
@@ -47,7 +74,11 @@ export function createDefaultFlowSubroutineAction(
   };
 }
 
-export function ensureActionTiming(action: FlowAction, isSubAction = false, options: EnsureActionTimingOptions = {}) {
+export function ensureActionTiming(
+  action: FlowAction,
+  isSubAction = false,
+  options: EnsureActionTimingOptions = {}
+) {
   if (!action.timing) action.timing = { mode: "E+", seconds: 0 };
   const isInputAction = options.actionTypeMeta?.(action.type)?.category === "input" && !isSubAction;
   if (isSubAction) {

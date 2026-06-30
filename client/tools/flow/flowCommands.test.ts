@@ -18,6 +18,7 @@ import {
   removeFlowStatesCommand,
   renameFlowActionCommand,
   renameFlowStateCommand,
+  setFlowActionTypeCommand,
   setFlowActionTimingCommand,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
@@ -208,12 +209,37 @@ describe("Flow action commands", () => {
     expect(sub.states[0].actions?.[0].subActions?.[0].name).toBe("Renamed Sub");
   });
 
+  it("renames an action when its type changes", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(
+      setFlowActionTypeCommand(
+        "round-one",
+        "act-1",
+        "displayText",
+        (action, type) => {
+          action.type = type;
+        },
+        { nameForType: (type) => (type === "displayText" ? "Display Text" : type) }
+      )
+    );
+
+    expect(next.states[0].actions?.[0]).toMatchObject({
+      name: "Display Text",
+      type: "displayText"
+    });
+  });
+
   it("adds a sub-action under a parent action", () => {
     const history = createFlowCommandHistory(actionFlowFixture());
 
     const next = history.execute(addFlowSubActionCommand("round-one", "act-1"));
 
     expect(next.states[0].actions?.[0].subActions).toHaveLength(2);
+    expect(next.states[0].actions?.[0].subActions?.[1]).toMatchObject({
+      name: "Set Players Shown",
+      type: "setPlayersShown"
+    });
   });
 
   it("moves an action within a state", () => {

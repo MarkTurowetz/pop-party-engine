@@ -17,9 +17,11 @@ import {
   setFlowStateEntryTarget,
   setFlowStateNextTarget,
   setFlowStateVotingSource,
+  type AddFlowSubActionOptions,
   type RemoveFlowRouteBranchOptions,
   type RenameFlowStateOptions
 } from "./flowMutations";
+import { flowActionNameForType, type FlowActionTypeNamer } from "./flowActions";
 import {
   ensureDecisionBranches,
   makeDecisionBranchId,
@@ -47,6 +49,18 @@ function findFlowState(flow: GameFlow, stateId: string): FlowState | undefined {
 }
 
 export type ApplyFlowActionType = (action: FlowAction, type: string, isSubAction: boolean) => void;
+
+export interface FlowActionTypeCommandOptions {
+  nameForType?: FlowActionTypeNamer;
+}
+
+function assignFlowActionTypeName(
+  action: FlowAction,
+  type: string,
+  options: FlowActionTypeCommandOptions = {}
+): void {
+  action.name = flowActionNameForType(type, options.nameForType);
+}
 
 function findFlowRouteNode(flow: GameFlow, nodeId: string): FlowRouteNode | undefined {
   return (flow.routeNodes || []).find((node) => node.id === nodeId);
@@ -422,14 +436,17 @@ export function setFlowActionTypeCommand(
   stateId: string,
   actionId: string,
   type: string,
-  applyType: ApplyFlowActionType
+  applyType: ApplyFlowActionType,
+  options: FlowActionTypeCommandOptions = {}
 ): FlowCommand {
   return {
     id: `set-flow-action-type:${actionId}`,
     label: "Change action type",
     apply: (flow) => {
       const context = findFlowActionContext(findFlowState(flow, stateId), actionId);
-      if (context.action) applyType(context.action, type, context.isSubAction);
+      if (!context.action) return;
+      applyType(context.action, type, context.isSubAction);
+      assignFlowActionTypeName(context.action, type, options);
     }
   };
 }
@@ -634,7 +651,8 @@ export function renameFlowRouteActionCommand(nodeId: string, nextName: string): 
 export function setFlowRouteActionTypeCommand(
   nodeId: string,
   type: string,
-  applyType: ApplyFlowActionType
+  applyType: ApplyFlowActionType,
+  options: FlowActionTypeCommandOptions = {}
 ): FlowCommand {
   return {
     id: `set-flow-route-action-type:${nodeId}`,
@@ -645,6 +663,7 @@ export function setFlowRouteActionTypeCommand(
       const record = node as FlowRouteNodeModel;
       record.routeNodeType = "action";
       applyType(record as FlowAction, type, false);
+      assignFlowActionTypeName(record as FlowAction, type, options);
       if (type === "decision" || isFlowRouteDecisionNode(record)) {
         record.nextTargetNodeId = "";
         record.branches = ensureRouteDecisionBranches(record) as unknown as FlowAction["branches"];
@@ -818,14 +837,16 @@ export function renameFlowActionCommand(
 export function addFlowSubActionCommand(
   stateId: string,
   parentActionId: string,
-  selectedSubActionId = ""
+  selectedSubActionId = "",
+  options: AddFlowSubActionOptions = {}
 ): FlowCommand {
   return {
     id: `add-flow-sub-action:${parentActionId}`,
     label: "Add sub-action",
     apply: (flow) => {
       const parentAction = findFlowAction(findFlowState(flow, stateId), parentActionId);
-      if (parentAction) addDefaultFlowSubAction(parentAction, selectedSubActionId, stateId);
+      if (parentAction)
+        addDefaultFlowSubAction(parentAction, selectedSubActionId, stateId, options);
     }
   };
 }

@@ -7,7 +7,8 @@ function fakeApi(overrides: Partial<HostAudioApi> = {}): HostAudioApi {
   return {
     loadHostAudios: vi.fn(),
     saveHostAudios: vi.fn(
-      async (hostAudios: HostAudios) => ({ ok: true, hostAudios, storage: {} }) as unknown as HostAudiosSaveResponse
+      async (hostAudios: HostAudios) =>
+        ({ ok: true, hostAudios, storage: {} }) as unknown as HostAudiosSaveResponse
     ),
     ...overrides
   } as HostAudioApi;
@@ -47,6 +48,15 @@ describe("createHostAudioController", () => {
     expect(line.url).toBe("b.mp3");
     controller.removeLine(0, 1);
     expect(controller.getState().hostAudios.hostAudios[0].lines).toHaveLength(1);
+  });
+
+  it("removes a line when its audio URL is cleared", () => {
+    const controller = createHostAudioController({ initialHostAudios: initial, api: fakeApi() });
+
+    controller.updateLine(0, 0, { url: "" });
+
+    expect(controller.getState().hostAudios.hostAudios[0].lines).toHaveLength(0);
+    expect(controller.getState().dirty).toBe(true);
   });
 
   it("saves and clears dirty", async () => {

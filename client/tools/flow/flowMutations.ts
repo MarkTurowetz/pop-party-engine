@@ -1,5 +1,17 @@
-import type { FlowAction, FlowRouteNode, FlowState, GameFlow, StageLayoutCollection } from "../../types/game-data";
-import { createDefaultFlowAction, createDefaultFlowSubroutineAction } from "./flowActions";
+import type {
+  FlowAction,
+  FlowRouteNode,
+  FlowState,
+  GameFlow,
+  StageLayoutCollection
+} from "../../types/game-data";
+import {
+  DEFAULT_FLOW_SUB_ACTION_TYPE,
+  createDefaultFlowAction,
+  createDefaultFlowSubroutineAction,
+  flowActionNameForType,
+  type FlowActionTypeNamer
+} from "./flowActions";
 import { flowSubroutineActions, type FlowSubroutine } from "./flowSubroutines";
 
 export interface AddFlowStateResult {
@@ -21,6 +33,10 @@ export interface AddFlowSubActionResult {
 export interface AddFlowSubroutineResult {
   action: FlowAction;
   index: number;
+}
+
+export interface AddFlowSubActionOptions {
+  nameForType?: FlowActionTypeNamer;
 }
 
 export interface RemoveSelectedFlowActionsResult {
@@ -69,7 +85,10 @@ export interface RemoveFlowStatesResult {
 }
 
 export interface RemoveFlowRouteBranchOptions {
-  ensureDecisionBranches?: (node: FlowRouteNode, options?: { targetField?: string }) => FlowAction[];
+  ensureDecisionBranches?: (
+    node: FlowRouteNode,
+    options?: { targetField?: string }
+  ) => FlowAction[];
   targetField?: string;
 }
 
@@ -119,14 +138,20 @@ export function createDefaultFlowState(nextNumber: number): FlowState {
   };
 }
 
-export function addFlowState(flow: Partial<GameFlow>, state: FlowState = createDefaultFlowState((flow.states || []).length + 1)): AddFlowStateResult {
+export function addFlowState(
+  flow: Partial<GameFlow>,
+  state: FlowState = createDefaultFlowState((flow.states || []).length + 1)
+): AddFlowStateResult {
   if (!Array.isArray(flow.states)) flow.states = [];
   const index = flow.states.length;
   flow.states.push(state);
   return { state, index };
 }
 
-export function addDefaultFlowAction(state: FlowState, selectedPrimaryActionId = ""): AddFlowActionResult {
+export function addDefaultFlowAction(
+  state: FlowState,
+  selectedPrimaryActionId = ""
+): AddFlowActionResult {
   return addDefaultFlowActionToSubroutine(state, selectedPrimaryActionId, state.id);
 }
 
@@ -166,10 +191,18 @@ export function addDefaultFlowSubroutine(
   return { action, index };
 }
 
-export function addDefaultFlowSubAction(parentAction: FlowAction, selectedSubActionId = "", stateId = ""): AddFlowSubActionResult {
+export function addDefaultFlowSubAction(
+  parentAction: FlowAction,
+  selectedSubActionId = "",
+  stateId = "",
+  options: AddFlowSubActionOptions = {}
+): AddFlowSubActionResult {
   if (!Array.isArray(parentAction.subActions)) parentAction.subActions = [];
-  const nextNumber = parentAction.subActions.length + 1;
-  const action = createDefaultFlowAction(stateId, `Sub-Action ${nextNumber}`, true);
+  const action = createDefaultFlowAction(
+    stateId,
+    flowActionNameForType(DEFAULT_FLOW_SUB_ACTION_TYPE, options.nameForType),
+    true
+  );
   const selectedIndex = selectedSubActionId
     ? parentAction.subActions.findIndex((item) => item.id === selectedSubActionId)
     : -1;
@@ -178,7 +211,11 @@ export function addDefaultFlowSubAction(parentAction: FlowAction, selectedSubAct
   return { action, parentAction, index };
 }
 
-export function flattenedFlowActionIds(actions: FlowAction[] = [], options: FlowActionBranchOptions = {}, output: string[] = []): string[] {
+export function flattenedFlowActionIds(
+  actions: FlowAction[] = [],
+  options: FlowActionBranchOptions = {},
+  output: string[] = []
+): string[] {
   for (const action of actions || []) {
     output.push(action.id);
     flattenedFlowActionIds(flowSubroutineActions(action), options, output);
@@ -191,7 +228,10 @@ export function flattenedFlowActionIds(actions: FlowAction[] = [], options: Flow
   return output;
 }
 
-export function removeSelectedFlowActionsFromList(actions: FlowAction[] = [], selectedIds: Set<string>): RemoveSelectedFlowActionsResult {
+export function removeSelectedFlowActionsFromList(
+  actions: FlowAction[] = [],
+  selectedIds: Set<string>
+): RemoveSelectedFlowActionsResult {
   const removedIds: string[] = [];
   const filteredActions = (actions || []).filter((action) => {
     if (selectedIds.has(action.id)) {
@@ -222,22 +262,43 @@ export function removeSelectedFlowActionsFromList(actions: FlowAction[] = [], se
   return { actions: filteredActions, removedIds };
 }
 
-export function moveFlowState(flow: Partial<GameFlow>, draggedStateId: string, targetStateId: string, placeAfter = false): MoveFlowItemResult<FlowState> {
+export function moveFlowState(
+  flow: Partial<GameFlow>,
+  draggedStateId: string,
+  targetStateId: string,
+  placeAfter = false
+): MoveFlowItemResult<FlowState> {
   if (!Array.isArray(flow.states)) flow.states = [];
   return moveItemById(flow.states, draggedStateId, targetStateId, placeAfter);
 }
 
-export function moveFlowActionInState(state: Partial<FlowSubroutine> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter = false): MoveFlowItemResult<FlowAction> {
-  if (!state || !Array.isArray(state.actions)) return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
+export function moveFlowActionInState(
+  state: Partial<FlowSubroutine> | null | undefined,
+  draggedActionId: string,
+  targetActionId: string,
+  placeAfter = false
+): MoveFlowItemResult<FlowAction> {
+  if (!state || !Array.isArray(state.actions))
+    return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
   return moveItemById(state.actions, draggedActionId, targetActionId, placeAfter);
 }
 
-export function moveFlowSubAction(parentAction: Partial<FlowAction> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter = false): MoveFlowItemResult<FlowAction> {
-  if (!parentAction || !Array.isArray(parentAction.subActions)) return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
+export function moveFlowSubAction(
+  parentAction: Partial<FlowAction> | null | undefined,
+  draggedActionId: string,
+  targetActionId: string,
+  placeAfter = false
+): MoveFlowItemResult<FlowAction> {
+  if (!parentAction || !Array.isArray(parentAction.subActions))
+    return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
   return moveItemById(parentAction.subActions, draggedActionId, targetActionId, placeAfter);
 }
 
-export function renameFlowState(state: Partial<FlowState>, nextName: string, options: RenameFlowStateOptions = {}): RenameFlowStateResult {
+export function renameFlowState(
+  state: Partial<FlowState>,
+  nextName: string,
+  options: RenameFlowStateOptions = {}
+): RenameFlowStateResult {
   const oldId = String(state.id || "");
   const name = nextName || String(state.name || "");
   state.name = name;
@@ -264,13 +325,20 @@ export function setFlowStateVotingSource(state: Partial<FlowState>, sourceStateI
   state.votingSourceStateId = sourceStateId || undefined;
 }
 
-export function refreshFlowActionName(state: Partial<FlowState>, action: Partial<FlowAction>, options: RefreshFlowActionNameOptions = {}): string {
+export function refreshFlowActionName(
+  state: Partial<FlowState>,
+  action: Partial<FlowAction>,
+  options: RefreshFlowActionNameOptions = {}
+): string {
   const nextName = options.nameForAction?.(state, action) || String(action.name || "");
   action.name = nextName;
   return nextName;
 }
 
-export function flowStateIdsForDelete(flow: Partial<GameFlow> | null | undefined, options: FlowStateIdsForDeleteOptions = {}): string[] {
+export function flowStateIdsForDelete(
+  flow: Partial<GameFlow> | null | undefined,
+  options: FlowStateIdsForDeleteOptions = {}
+): string[] {
   const ids = new Set<string>();
   if (options.flowNodeDepth === "subroutines" && !options.selectedFlowActionId) {
     for (const id of options.selectedFlowActionIds || []) ids.add(id);
@@ -282,24 +350,33 @@ export function flowStateIdsForDelete(flow: Partial<GameFlow> | null | undefined
   return [...ids].filter((id) => id && !protectedIds.has(id) && existingIds.has(id));
 }
 
-export function removeFlowStates(flow: Partial<GameFlow>, stateIds: Iterable<string>): RemoveFlowStatesResult {
+export function removeFlowStates(
+  flow: Partial<GameFlow>,
+  stateIds: Iterable<string>
+): RemoveFlowStatesResult {
   if (!Array.isArray(flow.states)) flow.states = [];
   const stateIdSet = new Set(stateIds);
   const firstDeletedIndex = flow.states.findIndex((state) => stateIdSet.has(state.id));
-  const removedIds = flow.states.filter((state) => stateIdSet.has(state.id)).map((state) => state.id);
+  const removedIds = flow.states
+    .filter((state) => stateIdSet.has(state.id))
+    .map((state) => state.id);
   if (!removedIds.length) {
     return { removedIds: [], firstDeletedIndex: -1, nextStateId: "" };
   }
 
   flow.states = flow.states.filter((state) => !stateIdSet.has(state.id));
-  const nextStateId = flow.states[Math.min(firstDeletedIndex, flow.states.length - 1)]?.id
-    || flow.states[firstDeletedIndex - 1]?.id
-    || flow.states[0]?.id
-    || "";
+  const nextStateId =
+    flow.states[Math.min(firstDeletedIndex, flow.states.length - 1)]?.id ||
+    flow.states[firstDeletedIndex - 1]?.id ||
+    flow.states[0]?.id ||
+    "";
   return { removedIds, firstDeletedIndex, nextStateId };
 }
 
-export function removeLayoutState(layouts: Partial<StageLayoutCollection> | null | undefined, stateId: string): boolean {
+export function removeLayoutState(
+  layouts: Partial<StageLayoutCollection> | null | undefined,
+  stateId: string
+): boolean {
   if (!layouts?.states?.length) return false;
   const beforeCount = layouts.states.length;
   layouts.states = layouts.states.filter((state) => state.id !== stateId);
@@ -313,17 +390,25 @@ export function removeFlowRouteBranch(
 ): RemoveFlowRouteBranchResult {
   if (!node || !branchId) return { removed: false, blocked: false, branchMissing: true, branchId };
   const routeNode = node as FlowRouteNodeWithBranches;
-  const branches = options.ensureDecisionBranches?.(routeNode, { targetField: options.targetField }) || routeNode.branches || [];
+  const branches =
+    options.ensureDecisionBranches?.(routeNode, { targetField: options.targetField }) ||
+    routeNode.branches ||
+    [];
   const branch = branches.find((item) => item.id === branchId);
   if (!branch) return { removed: false, blocked: false, branchMissing: true, branchId };
-  if (branch.type === "noMatch") return { removed: false, blocked: true, branchMissing: false, branchId };
+  if (branch.type === "noMatch")
+    return { removed: false, blocked: true, branchMissing: false, branchId };
 
   routeNode.branches = branches.filter((item) => item.id !== branchId);
   options.ensureDecisionBranches?.(routeNode, { targetField: options.targetField });
   return { removed: true, blocked: false, branchMissing: false, branchId };
 }
 
-export function removeFlowRouteNode(flow: Partial<GameFlow>, nodeId: string, nodes: FlowRouteNode[] = flow.routeNodes || []): RemoveFlowRouteNodeResult {
+export function removeFlowRouteNode(
+  flow: Partial<GameFlow>,
+  nodeId: string,
+  nodes: FlowRouteNode[] = flow.routeNodes || []
+): RemoveFlowRouteNodeResult {
   const node = nodes.find((item) => item.id === nodeId) || null;
   if (!node) return { removed: false, nodeId };
   flow.routeNodes = nodes.filter((item) => item.id !== nodeId);

@@ -33,7 +33,11 @@ describe("Flow mutations", () => {
       index: 0
     });
     expect(flow.states).toEqual([result.state]);
-    expect(createDefaultFlowState(3)).toEqual({ id: "state-3", name: "New Game State 3", actions: [] });
+    expect(createDefaultFlowState(3)).toEqual({
+      id: "state-3",
+      name: "New Game State 3",
+      actions: []
+    });
   });
 
   it("inserts a default action after the selected primary action", () => {
@@ -71,12 +75,26 @@ describe("Flow mutations", () => {
 
     expect(result.index).toBe(1);
     expect(result.action).toMatchObject({
-      name: "Sub-Action 3",
+      name: "Set Players Shown",
       type: "setPlayersShown",
       timing: { mode: "S+", seconds: 0 },
       subActions: []
     });
-    expect(parentAction.subActions?.map((action) => action.id)).toEqual(["sub-a", result.action.id, "sub-b"]);
+    expect(parentAction.subActions?.map((action) => action.id)).toEqual([
+      "sub-a",
+      result.action.id,
+      "sub-b"
+    ]);
+  });
+
+  it("uses the action-type label when inserting a default sub-action", () => {
+    const parentAction: FlowAction = { id: "parent", type: "presentText", subActions: [] };
+
+    const result = addDefaultFlowSubAction(parentAction, "", "intro", {
+      nameForType: (type) => (type === "setPlayersShown" ? "Show Players" : type)
+    });
+
+    expect(result.action.name).toBe("Show Players");
   });
 
   it("flattens top-level, sub-action, and decision branch IDs", () => {
@@ -86,8 +104,16 @@ describe("Flow mutations", () => {
       branches: [{ id: "branch-a", type: "branch" }]
     };
     const actions: FlowAction[] = [
-      { id: "present", type: "presentText", subActions: [{ id: "sub-a", type: "setPlayersShown" }] },
-      { id: "routine", type: "subroutine", actions: [{ id: "inside-routine", type: "presentText" }] },
+      {
+        id: "present",
+        type: "presentText",
+        subActions: [{ id: "sub-a", type: "setPlayersShown" }]
+      },
+      {
+        id: "routine",
+        type: "subroutine",
+        actions: [{ id: "inside-routine", type: "presentText" }]
+      },
       decision
     ];
 
@@ -99,7 +125,11 @@ describe("Flow mutations", () => {
       "decision",
       "branch-a"
     ]);
-    expect(flattenedFlowActionIds([decision], { ensureDecisionBranches: () => [{ id: "branch-b", type: "branch" }] })).toEqual(["decision", "branch-b"]);
+    expect(
+      flattenedFlowActionIds([decision], {
+        ensureDecisionBranches: () => [{ id: "branch-b", type: "branch" }]
+      })
+    ).toEqual(["decision", "branch-b"]);
   });
 
   it("removes selected top-level, sub-action, and branch IDs from action lists", () => {
@@ -131,10 +161,17 @@ describe("Flow mutations", () => {
       }
     ];
 
-    const result = removeSelectedFlowActionsFromList(actions, new Set(["remove-me", "sub-a", "nested-a", "branch-b"]));
+    const result = removeSelectedFlowActionsFromList(
+      actions,
+      new Set(["remove-me", "sub-a", "nested-a", "branch-b"])
+    );
 
     expect(result.removedIds).toEqual(["remove-me", "sub-a", "nested-a", "branch-b"]);
-    expect(result.actions.map((action) => action.id)).toEqual(["keep-parent", "routine", "decision"]);
+    expect(result.actions.map((action) => action.id)).toEqual([
+      "keep-parent",
+      "routine",
+      "decision"
+    ]);
     expect(result.actions[0]?.subActions?.map((action) => action.id)).toEqual(["sub-b"]);
     expect(result.actions[1]?.actions?.map((action) => action.id)).toEqual(["nested-b"]);
     expect(result.actions[2]?.branches?.map((action) => action.id)).toEqual(["branch-a"]);
@@ -207,12 +244,20 @@ describe("Flow mutations", () => {
       fromIndex: 2,
       toIndex: 0
     });
-    expect(parentAction.subActions?.map((action) => action.id)).toEqual(["sub-c", "sub-a", "sub-b"]);
+    expect(parentAction.subActions?.map((action) => action.id)).toEqual([
+      "sub-c",
+      "sub-a",
+      "sub-b"
+    ]);
     expect(moveFlowSubAction(parentAction, "sub-a", "sub-a").moved).toBe(false);
   });
 
   it("renames states while preserving protected legacy ids", () => {
-    const makeFlowId = vi.fn((label: unknown, fallback: string) => String(label || fallback).toLowerCase().replace(/\s+/g, "-"));
+    const makeFlowId = vi.fn((label: unknown, fallback: string) =>
+      String(label || fallback)
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+    );
     const state = { id: "round-one", name: "Round One", actions: [] };
 
     expect(renameFlowState(state, "Bonus Round", { makeFlowId })).toEqual({
@@ -250,7 +295,9 @@ describe("Flow mutations", () => {
     const state = { id: "intro", actions: [] };
     const action = { id: "a", type: "presentText", name: "Old Name" };
 
-    expect(refreshFlowActionName(state, action, { nameForAction: () => "Present Text" })).toBe("Present Text");
+    expect(refreshFlowActionName(state, action, { nameForAction: () => "Present Text" })).toBe(
+      "Present Text"
+    );
     expect(action.name).toBe("Present Text");
   });
 
@@ -264,16 +311,20 @@ describe("Flow mutations", () => {
       ]
     };
 
-    expect(flowStateIdsForDelete(flow, {
-      flowNodeDepth: "subroutines",
-      selectedFlowActionIds: ["round-one", "missing"],
-      selectedFlowStateId: "intro"
-    })).toEqual(["round-one"]);
-    expect(flowStateIdsForDelete(flow, {
-      flowNodeDepth: "subroutine",
-      selectedFlowActionIds: ["round-one"],
-      selectedFlowStateId: "round-two"
-    })).toEqual(["round-two"]);
+    expect(
+      flowStateIdsForDelete(flow, {
+        flowNodeDepth: "subroutines",
+        selectedFlowActionIds: ["round-one", "missing"],
+        selectedFlowStateId: "intro"
+      })
+    ).toEqual(["round-one"]);
+    expect(
+      flowStateIdsForDelete(flow, {
+        flowNodeDepth: "subroutine",
+        selectedFlowActionIds: ["round-one"],
+        selectedFlowStateId: "round-two"
+      })
+    ).toEqual(["round-two"]);
   });
 
   it("removes flow states and returns the next legacy selection id", () => {
@@ -288,7 +339,11 @@ describe("Flow mutations", () => {
 
     const result = removeFlowStates(flow, ["round-two"]);
 
-    expect(result).toEqual({ removedIds: ["round-two"], firstDeletedIndex: 2, nextStateId: "round-three" });
+    expect(result).toEqual({
+      removedIds: ["round-two"],
+      firstDeletedIndex: 2,
+      nextStateId: "round-three"
+    });
     expect(flow.states.map((state) => state.id)).toEqual(["lobby", "round-one", "round-three"]);
   });
 
@@ -335,10 +390,7 @@ describe("Flow mutations", () => {
   it("removes route nodes from the provided route graph list", () => {
     const flow: GameFlow = {
       states: [],
-      routeNodes: [
-        { id: "route-a" },
-        { id: "route-b" }
-      ]
+      routeNodes: [{ id: "route-a" }, { id: "route-b" }]
     };
 
     expect(removeFlowRouteNode(flow, "route-a")).toEqual({ removed: true, nodeId: "route-a" });

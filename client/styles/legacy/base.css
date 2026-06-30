@@ -78,7 +78,7 @@ button:disabled {
 
 .tool-dashboard-bar {
   position: fixed;
-  z-index: 80;
+  z-index: 120;
   top: 0;
   left: 0;
   right: 0;
@@ -186,4 +186,3 @@ body.tool-dashboard-mode .layout-shell {
 .screen {
   min-height: 100vh;
 }
-

@@ -47,9 +47,9 @@ import type { FlowNodeExit, FlowNodePoint } from "./flowNodeGraph";
 import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { createFlowStore, type FlowStore, type FlowStoreSnapshot } from "./flowStore";
 import { createActionDefaults } from "./flowActionDefaults";
-import { ensureActionTiming } from "./flowActions";
+import { ensureActionTiming, flowActionNameForType } from "./flowActions";
 import { ensureDecisionBranches } from "./flowDecision";
-import { makeFlowId, type FlowActionTypeMeta } from "./flowSelectors";
+import { actionTypeName, makeFlowId, type FlowActionTypeMeta } from "./flowSelectors";
 import { serializeGameFlowForSave } from "./flowSerialization";
 import { flowSubroutineActions } from "./flowSubroutines";
 import { type RemoveFlowRouteBranchOptions } from "./flowMutations";
@@ -119,7 +119,11 @@ export interface FlowEditorController {
 
   // State edits
   addState(): void;
-  addSubroutine(stateId: string, subroutinePath?: Iterable<string>, selectedPrimaryActionId?: string): void;
+  addSubroutine(
+    stateId: string,
+    subroutinePath?: Iterable<string>,
+    selectedPrimaryActionId?: string
+  ): void;
   renameState(stateId: string, name: string): void;
   moveState(draggedStateId: string, targetStateId: string, placeAfter?: boolean): void;
   removeStates(stateIds: Iterable<string>): void;
@@ -128,8 +132,17 @@ export interface FlowEditorController {
   setVotingSource(stateId: string, sourceStateId: string): void;
 
   // Action edits
-  addAction(stateId: string, selectedPrimaryActionId?: string, subroutinePath?: Iterable<string>): void;
-  addConnectedAction(stateId: string, source: FlowNodeExit, position: FlowNodePoint, subroutinePath?: Iterable<string>): void;
+  addAction(
+    stateId: string,
+    selectedPrimaryActionId?: string,
+    subroutinePath?: Iterable<string>
+  ): void;
+  addConnectedAction(
+    stateId: string,
+    source: FlowNodeExit,
+    position: FlowNodePoint,
+    subroutinePath?: Iterable<string>
+  ): void;
   addRootAction(position?: FlowNodePoint | null): void;
   addConnectedRootAction(source: FlowNodeExit, position: FlowNodePoint): void;
   connectRootAction(source: FlowNodeExit, targetId: string): void;
@@ -184,7 +197,11 @@ export interface FlowEditorController {
     targetActionId: string,
     placeAfter?: boolean
   ): void;
-  removeActions(stateId: string, selectedIds: Iterable<string>, subroutinePath?: Iterable<string>): void;
+  removeActions(
+    stateId: string,
+    selectedIds: Iterable<string>,
+    subroutinePath?: Iterable<string>
+  ): void;
 
   // Route edits
   removeRouteBranch(nodeId: string, branchId: string, options?: RemoveFlowRouteBranchOptions): void;
@@ -217,6 +234,10 @@ export function createFlowEditorController(
   const actionTypes = options.actionTypes || [];
   const actionTypeMeta = (type: string): Pick<FlowActionTypeMeta, "category"> =>
     actionTypes.find((meta) => meta.id === type) || { category: "standard" };
+  const nameForActionType = (type: string): string => {
+    const registryName = actionTypeName(actionTypes, type);
+    return registryName !== type ? registryName : flowActionNameForType(type);
+  };
   const actionDefaults = createActionDefaults({
     ensureActionTiming: (action, isSubAction) =>
       ensureActionTiming(action, isSubAction, { actionTypeMeta }),
@@ -322,7 +343,9 @@ export function createFlowEditorController(
       );
     },
     addConnectedAction: (stateId, source, position, subroutinePath = []) =>
-      commit(store.execute(addConnectedFlowActionCommand(stateId, source, position, subroutinePath))),
+      commit(
+        store.execute(addConnectedFlowActionCommand(stateId, source, position, subroutinePath))
+      ),
     addRootAction: (position = null) => {
       const nodeId = makeRootRouteActionId();
       store.execute(addRootFlowActionCommand(position, nodeId));
@@ -336,7 +359,13 @@ export function createFlowEditorController(
     connectRootAction: (source, targetId) =>
       commit(store.execute(connectRootFlowActionCommand(source, targetId))),
     addSubAction: (stateId, parentActionId, selectedSubActionId = "") =>
-      commit(store.execute(addFlowSubActionCommand(stateId, parentActionId, selectedSubActionId))),
+      commit(
+        store.execute(
+          addFlowSubActionCommand(stateId, parentActionId, selectedSubActionId, {
+            nameForType: nameForActionType
+          })
+        )
+      ),
     renameAction: (stateId, actionId, name) =>
       commit(store.execute(renameFlowActionCommand(stateId, actionId, name))),
     renameRouteAction: (nodeId, name) =>
@@ -344,16 +373,25 @@ export function createFlowEditorController(
     setActionType: (stateId, actionId, type) =>
       commit(
         store.execute(
-          setFlowActionTypeCommand(stateId, actionId, type, (action, nextType, isSubAction) =>
-            actionDefaults.applyActionTypeDefaults(action, nextType, isSubAction)
+          setFlowActionTypeCommand(
+            stateId,
+            actionId,
+            type,
+            (action, nextType, isSubAction) =>
+              actionDefaults.applyActionTypeDefaults(action, nextType, isSubAction),
+            { nameForType: nameForActionType }
           )
         )
       ),
     setRouteActionType: (nodeId, type) =>
       commit(
         store.execute(
-          setFlowRouteActionTypeCommand(nodeId, type, (action, nextType, isSubAction) =>
-            actionDefaults.applyActionTypeDefaults(action, nextType, isSubAction)
+          setFlowRouteActionTypeCommand(
+            nodeId,
+            type,
+            (action, nextType, isSubAction) =>
+              actionDefaults.applyActionTypeDefaults(action, nextType, isSubAction),
+            { nameForType: nameForActionType }
           )
         )
       ),
@@ -387,10 +425,22 @@ export function createFlowEditorController(
       ),
     setNodePositions: (depth, stateId, updates, subroutinePath = []) =>
       commit(store.execute(setFlowNodePositionsCommand(depth, stateId, updates, subroutinePath))),
-    moveAction: (stateId, draggedActionId, targetActionId, placeAfter = false, subroutinePath = []) =>
+    moveAction: (
+      stateId,
+      draggedActionId,
+      targetActionId,
+      placeAfter = false,
+      subroutinePath = []
+    ) =>
       commit(
         store.execute(
-          moveFlowActionCommand(stateId, draggedActionId, targetActionId, placeAfter, subroutinePath)
+          moveFlowActionCommand(
+            stateId,
+            draggedActionId,
+            targetActionId,
+            placeAfter,
+            subroutinePath
+          )
         )
       ),
     moveSubAction: (stateId, parentActionId, draggedActionId, targetActionId, placeAfter = false) =>
