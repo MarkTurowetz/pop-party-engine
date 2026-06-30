@@ -1,4 +1,5 @@
 import type { FlowAction, FlowState, GameFlow, JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
+import { parseDecisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { findFlowActionContext, flowSubroutineActions } from "./flowSubroutines";
 
 export interface FlowActionRef {
@@ -64,6 +65,23 @@ export function findFlowActionRef(
 ): FlowActionRef | null {
   const state = findFlowState(flow, stateId);
   if (!state || !actionId) return null;
+  const branchRef = parseDecisionBranchGraphNodeId(actionId);
+  if (branchRef) {
+    const parentContext = findFlowActionContext(state, branchRef.actionId);
+    const parentAction = parentContext.action;
+    if (parentAction?.type !== "decision") return null;
+    const branches = options.ensureDecisionBranches?.(parentAction) || parentAction.branches || [];
+    const branch = branches.find((candidate) => candidate.id === branchRef.branchId);
+    if (!branch) return null;
+    return {
+      state,
+      action: branch,
+      parentAction,
+      actions: branches,
+      isSubAction: false,
+      isBranch: true
+    };
+  }
   const context = findFlowActionContext(state, actionId);
   if (!context.action) return null;
   if (context.parentAction?.type === "decision") {

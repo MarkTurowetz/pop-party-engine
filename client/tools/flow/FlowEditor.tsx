@@ -12,6 +12,7 @@ import {
   type FlowNodeDepth,
   type FlowNodeExit
 } from "./flowNodeGraph";
+import { parseDecisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { findFlowSubroutine, flowSubroutineActions, flowSubroutineTitle, isFlowSubroutineAction } from "./flowSubroutines";
 import {
   rootFlowActionById,
@@ -50,6 +51,8 @@ export function FlowEditor({
   const selectedStateId = selection.selectedFlowStateId;
   const selectedActionId = selection.selectedFlowActionId;
   const selectedActionIds = selection.selectedFlowActionIds;
+  const selectedDecisionBranchRef = parseDecisionBranchGraphNodeId(selectedActionId);
+  const selectedDecisionActionId = selectedDecisionBranchRef?.actionId || selectedActionId;
 
   const [viewMode, setViewMode] = useState<"list" | "node">("node");
   const [nodeDepth, setNodeDepth] = useState<FlowNodeDepth>("subroutines");
@@ -119,18 +122,18 @@ export function FlowEditor({
     },
     decision: {
       onAddBranch: () => {
-        if (selectedStateId && selectedActionId)
-          controller.addDecisionBranch(selectedStateId, selectedActionId);
+        if (selectedStateId && selectedDecisionActionId)
+          controller.addDecisionBranch(selectedStateId, selectedDecisionActionId);
       },
       onRemoveBranch: (branchId: string) => {
-        if (selectedStateId && selectedActionId)
-          controller.removeDecisionBranch(selectedStateId, selectedActionId, branchId);
+        if (selectedStateId && selectedDecisionActionId)
+          controller.removeDecisionBranch(selectedStateId, selectedDecisionActionId, branchId);
       },
       onSetBranchField: (branchId: string, key: string, value: unknown) => {
-        if (selectedStateId && selectedActionId)
+        if (selectedStateId && selectedDecisionActionId)
           controller.setDecisionBranchField(
             selectedStateId,
-            selectedActionId,
+            selectedDecisionActionId,
             branchId,
             key,
             value
@@ -219,9 +222,20 @@ export function FlowEditor({
       return;
     }
     if (!selectedStateId) return;
-    if (selectedActionIds.size) controller.removeActions(selectedStateId, selectedActionIds, activeSubroutinePath);
-    else if (selectedActionId) controller.removeActions(selectedStateId, [selectedActionId], activeSubroutinePath);
-    else controller.removeStates([selectedStateId]);
+    const selectedIds = selectedActionIds.size ? [...selectedActionIds] : selectedActionId ? [selectedActionId] : [];
+    const branchRefs = selectedIds.flatMap((id) => {
+      const branchRef = parseDecisionBranchGraphNodeId(id);
+      return branchRef ? [branchRef] : [];
+    });
+    const actionIds = selectedIds.filter((id) => !parseDecisionBranchGraphNodeId(id));
+    for (const branchRef of branchRefs) {
+      controller.removeDecisionBranch(selectedStateId, branchRef.actionId, branchRef.branchId);
+    }
+    if (actionIds.length) {
+      controller.removeActions(selectedStateId, actionIds, activeSubroutinePath);
+    } else if (!branchRefs.length) {
+      controller.removeStates([selectedStateId]);
+    }
   }, [
     controller,
     selectedStateId,
@@ -350,7 +364,7 @@ export function FlowEditor({
           const node = nodeNodes.find((candidate) => candidate.id === nodeId);
           if (node?.kind === "branch" && node.parentNodeId && node.branchId) {
             if (nodeDepth === "subroutines") controller.selectRouteBranch(node.parentNodeId, node.branchId);
-            else controller.selectActions(node.branchId);
+            else controller.selectActions(node.id);
             return;
           }
           if (nodeDepth === "subroutines") {

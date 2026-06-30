@@ -1,6 +1,9 @@
 import type { FlowAction, GameFlow } from "../../types/game-data";
 import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
+import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { flowSubroutineActions, isFlowSubroutineAction, type FlowSubroutine } from "./flowSubroutines";
+
+export { decisionBranchGraphNodeId, parseDecisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 
 /**
  * Typed model for the Flow node-graph canvas. Mirrors the legacy
@@ -47,6 +50,8 @@ export interface FlowGraphConnection {
   from: string;
   to: string;
   label: string;
+  fromPoint?: FlowNodePoint;
+  toPoint?: FlowNodePoint;
 }
 
 /** A draggable output on a node that sets a target when wired to another node. */
@@ -60,6 +65,7 @@ export interface FlowNodeExit {
   field?: string;
   branchId?: string;
   currentTarget: string;
+  portSide?: "bottom" | "right";
 }
 
 export type IsInputType = (type: string) => boolean;
@@ -70,9 +76,10 @@ export interface FlowNodePositionUpdate {
   y: number;
 }
 
-export function decisionBranchGraphNodeId(actionId: string, branchId: string): string {
-  return `${actionId}:branch:${branchId}`;
-}
+const DECISION_BRANCH_NODE_TOP_GAP = 16;
+const DECISION_BRANCH_NODE_GAP = 18;
+const DECISION_BRANCH_NODE_WIDTH = 280;
+const DECISION_BRANCH_NODE_HEIGHT = 34;
 
 function isNoFlowTarget(value: string): boolean {
   return !value || value === "none" || value === "noFlow";
@@ -156,6 +163,23 @@ function branchSubtitle(branch: FlowAction): string {
   if (branch.type === "hit") return String(branch.value || "Hit value");
   if (branch.type === "code") return String(branch.code || "x < 3");
   return "Fallback";
+}
+
+function decisionBranchNodes(nodes: FlowGraphNode[], actionId: string): FlowGraphNode[] {
+  return nodes.filter((node) => node.kind === "branch" && node.parentNodeId === actionId);
+}
+
+export function decisionBranchTargetAnchor(
+  nodes: FlowGraphNode[],
+  actionId: string
+): FlowNodePoint | undefined {
+  const branches = decisionBranchNodes(nodes, actionId);
+  const lastBranch = branches[branches.length - 1];
+  if (!lastBranch) return undefined;
+  return {
+    x: lastBranch.x + lastBranch.width / 2,
+    y: lastBranch.y + lastBranch.height
+  };
 }
 
 /** Nodes for the root subroutines depth: one node per root flow subroutine. */
@@ -260,19 +284,24 @@ export function subroutineGraphNodes(
     if (action.type === "decision") {
       ensureDecisionBranches(action).forEach((branch, branchIndex) => {
         const branchId = String(branch.id);
+        const branchNodeId = decisionBranchGraphNodeId(action.id, branchId);
         const isNoMatch = branch.type === "noMatch";
         nodes.push({
-          id: decisionBranchGraphNodeId(action.id, branchId),
+          id: branchNodeId,
           kind: "branch",
           title: decisionBranchName(branch, branchIndex),
           subtitle: branchSubtitle(branch as FlowAction),
           timing: "",
           x: x + 20,
-          y: y + actionHeight + 14 + branchIndex * 64,
-          width: 280,
-          height: 48,
+          y:
+            y +
+            actionHeight +
+            DECISION_BRANCH_NODE_TOP_GAP +
+            branchIndex * (DECISION_BRANCH_NODE_HEIGHT + DECISION_BRANCH_NODE_GAP),
+          width: DECISION_BRANCH_NODE_WIDTH,
+          height: DECISION_BRANCH_NODE_HEIGHT,
           className: `is-branch${isNoMatch ? " is-no-match" : ""}`,
-          selected: isSelected(branchId),
+          selected: isSelected(branchNodeId),
           parentNodeId: action.id,
           branchId,
           draggable: false
@@ -372,7 +401,8 @@ export function subroutineNodeExits(subroutine: FlowSubroutine | null, isInputTy
           label: "Target",
           kind: "branch",
           branchId: def.branchId,
-          currentTarget: String(branch?.targetActionId || "")
+          currentTarget: String(branch?.targetActionId || ""),
+          portSide: "right"
         });
       } else if (def.field) {
         exits.push({
@@ -420,11 +450,8 @@ export function subroutineGraphConnections(
   isInputType: IsInputType = () => false
 ): FlowGraphConnection[] {
   if (!subroutine) return [];
-  const nodeIds = new Set<string>([
-    "start",
-    "return",
-    ...subroutineGraphNodes(subroutine).map((node) => node.id)
-  ]);
+  const graphNodes = subroutineGraphNodes(subroutine);
+  const nodeIds = new Set<string>(["start", "return", ...graphNodes.map((node) => node.id)]);
   const connections: FlowGraphConnection[] = [];
 
   const entry = String(subroutine.entryTargetActionId || "");
@@ -434,6 +461,7 @@ export function subroutineGraphConnections(
 
   for (const action of flowSubroutineActions(subroutine)) {
     if (action.type === "decision") {
+      const branchAnchor = decisionBranchTargetAnchor(graphNodes, action.id);
       ensureDecisionBranches(action).forEach((branch, index) => {
         const branchNodeId = decisionBranchGraphNodeId(action.id, branch.id);
         if (nodeIds.has(branchNodeId)) {
@@ -450,7 +478,8 @@ export function subroutineGraphConnections(
             id: `${branchNodeId}->${target}`,
             from: branchNodeId,
             to: target,
-            label: "Target"
+            label: "Target",
+            fromPoint: branchAnchor
           });
         }
       });

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createFlowEditorController } from "./flowEditorController";
+import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import type { FlowApi } from "../../api/flowApi";
 import type { GameFlow, GameFlowSaveResponse } from "../../types/game-data";
 
@@ -56,6 +57,40 @@ describe("createFlowEditorController", () => {
     controller.selectActions("act-1");
 
     expect(controller.getState().snapshot.selection.selectedFlowActionId).toBe("act-1");
+  });
+
+  it("selects graph-scoped decision branch ids without local id collisions", () => {
+    const controller = createFlowEditorController({
+      initialFlow: {
+        states: [
+          {
+            id: "round-one",
+            name: "Round One",
+            actions: [
+              {
+                id: "decision-a",
+                name: "Decision A",
+                type: "decision",
+                branches: [{ id: "no-match", type: "noMatch", targetActionId: "" }]
+              },
+              {
+                id: "decision-b",
+                name: "Decision B",
+                type: "decision",
+                branches: [{ id: "no-match", type: "noMatch", targetActionId: "" }]
+              }
+            ]
+          } as never
+        ],
+        routeNodes: []
+      },
+      api: fakeApi()
+    });
+
+    const branchNodeId = decisionBranchGraphNodeId("decision-b", "no-match");
+    controller.selectActions(branchNodeId);
+
+    expect(controller.getState().snapshot.selection.selectedFlowActionId).toBe(branchNodeId);
   });
 
   it("renames the selected action through the controller", () => {

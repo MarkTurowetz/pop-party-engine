@@ -1,4 +1,4 @@
-import type { GameFlow } from "../../types/game-data";
+import type { FlowAction, GameFlow } from "../../types/game-data";
 import type { FlowApi } from "../../api/flowApi";
 import {
   addActionOptionCommand,
@@ -44,18 +44,35 @@ import {
   setFlowStateVotingSourceCommand
 } from "./flowCommands";
 import type { FlowNodeExit, FlowNodePoint } from "./flowNodeGraph";
+import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { createFlowStore, type FlowStore, type FlowStoreSnapshot } from "./flowStore";
 import { createActionDefaults } from "./flowActionDefaults";
 import { ensureActionTiming } from "./flowActions";
 import { ensureDecisionBranches } from "./flowDecision";
 import { makeFlowId, type FlowActionTypeMeta } from "./flowSelectors";
 import { serializeGameFlowForSave } from "./flowSerialization";
-import { flattenedFlowActionIds, type RemoveFlowRouteBranchOptions } from "./flowMutations";
+import { flowSubroutineActions } from "./flowSubroutines";
+import { type RemoveFlowRouteBranchOptions } from "./flowMutations";
 
 /** All selectable action ids across the flow (primary, sub-actions, decision branches). */
 function allFlowActionIds(flow: GameFlow): string[] {
   const ids: string[] = [];
-  for (const state of flow.states || []) flattenedFlowActionIds(state.actions || [], {}, ids);
+  for (const state of flow.states || []) collectSelectableActionIds(state.actions || [], ids);
+  return ids;
+}
+
+function collectSelectableActionIds(actions: FlowAction[] = [], ids: string[] = []): string[] {
+  for (const action of actions || []) {
+    ids.push(action.id);
+    collectSelectableActionIds(flowSubroutineActions(action), ids);
+    for (const subAction of action.subActions || []) ids.push(subAction.id);
+    if (action.type === "decision") {
+      for (const branch of action.branches || []) {
+        ids.push(branch.id);
+        ids.push(decisionBranchGraphNodeId(action.id, branch.id));
+      }
+    }
+  }
   return ids;
 }
 

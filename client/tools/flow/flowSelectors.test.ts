@@ -19,6 +19,7 @@ import {
   stateActionNameSet,
   uniqueActionNameForType
 } from "./flowSelectors";
+import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import type { FlowAction, GameFlow } from "../../types/game-data";
 
 const flow: GameFlow = {
@@ -71,6 +72,40 @@ describe("Flow selectors", () => {
       isBranch: true
     });
     expect(ensureDecisionBranches).toHaveBeenCalledWith(expect.objectContaining({ id: "intro-branch" }));
+  });
+
+  it("resolves graph-scoped decision branch ids to their parent decision", () => {
+    const multiDecisionFlow: GameFlow = {
+      states: [
+        {
+          id: "intro",
+          name: "Intro",
+          actions: [
+            {
+              id: "decision-a",
+              name: "Decision A",
+              type: "decision",
+              branches: [{ id: "no-match", type: "noMatch", targetActionId: "" }]
+            },
+            {
+              id: "decision-b",
+              name: "Decision B",
+              type: "decision",
+              branches: [{ id: "no-match", type: "noMatch", targetActionId: "" }]
+            }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+
+    expect(
+      findFlowActionRef(multiDecisionFlow, "intro", decisionBranchGraphNodeId("decision-b", "no-match"))
+    ).toMatchObject({
+      action: { id: "no-match" },
+      parentAction: { id: "decision-b" },
+      isBranch: true
+    });
   });
 
   it("keeps legacy ID and action-name behavior", () => {

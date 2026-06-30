@@ -2,6 +2,7 @@ import type { FlowAction, FlowRouteNode, FlowState, GameFlow } from "../../types
 import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
 import {
   decisionBranchGraphNodeId,
+  decisionBranchTargetAnchor,
   subroutineGraphNodes,
   type FlowGraphConnection,
   type FlowGraphNode,
@@ -130,8 +131,12 @@ export function rootFlowGraphNodes(
   flow: Partial<GameFlow> | null | undefined,
   selection: FlowGraphSelection = {}
 ): FlowGraphNode[] {
+  const selectedRouteBranchNodeId =
+    selection.selectedRouteNodeId && selection.selectedRouteBranchId
+      ? decisionBranchGraphNodeId(selection.selectedRouteNodeId, selection.selectedRouteBranchId)
+      : "";
   const selectedActionId =
-    selection.selectedRouteBranchId ||
+    selectedRouteBranchNodeId ||
     selection.selectedRouteNodeId ||
     selection.selectedActionId ||
     selection.selectedStateId ||
@@ -155,7 +160,8 @@ export function rootFlowNodeExits(flow: Partial<GameFlow> | null | undefined): F
           label: "Target",
           kind: "branch",
           branchId: branch.id,
-          currentTarget: String(branch.targetActionId || "")
+          currentTarget: String(branch.targetActionId || ""),
+          portSide: "right"
         });
       }
       continue;
@@ -176,10 +182,12 @@ export function rootFlowGraphConnections(
   flow: Partial<GameFlow> | null | undefined
 ): FlowGraphConnection[] {
   const actions = rootFlowActions(flow);
-  const nodeIds = new Set(rootFlowGraphNodes(flow).map((node) => node.id));
+  const graphNodes = rootFlowGraphNodes(flow);
+  const nodeIds = new Set(graphNodes.map((node) => node.id));
   const connections: FlowGraphConnection[] = [];
   for (const action of actions) {
     if (action.type === "decision") {
+      const branchAnchor = decisionBranchTargetAnchor(graphNodes, action.id);
       routeDecisionBranches(action).forEach((branch, index) => {
         const branchNodeId = decisionBranchGraphNodeId(action.id, branch.id);
         if (nodeIds.has(branchNodeId)) {
@@ -196,7 +204,8 @@ export function rootFlowGraphConnections(
           id: `${branchNodeId}->${target}`,
           from: branchNodeId,
           to: target,
-          label: "Target"
+          label: "Target",
+          fromPoint: branchAnchor
         });
       });
       continue;

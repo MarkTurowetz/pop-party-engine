@@ -6,7 +6,8 @@ import {
   subroutineGraphConnections,
   subroutineGraphNodes,
   subroutineNodeExits,
-  optimizedVerticalNodePositions
+  optimizedVerticalNodePositions,
+  decisionBranchGraphNodeId
 } from "./flowNodeGraph";
 import type { GameFlow } from "../../types/game-data";
 
@@ -136,7 +137,9 @@ describe("flowNodeGraph", () => {
       ],
       routeNodes: []
     };
-    const nodes = subroutineGraphNodes(flow.states[0], { selectedActionId: "hit" });
+    const nodes = subroutineGraphNodes(flow.states[0], {
+      selectedActionId: decisionBranchGraphNodeId("decision", "hit")
+    });
     const branchNode = nodes.find((node) => node.id === "decision:branch:hit");
 
     expect(branchNode).toMatchObject({
@@ -144,7 +147,8 @@ describe("flowNodeGraph", () => {
       parentNodeId: "decision",
       branchId: "hit",
       draggable: false,
-      selected: true
+      selected: true,
+      height: 34
     });
     expect(branchNode?.y).toBeGreaterThan(nodes.find((node) => node.id === "decision")?.y || 0);
 
@@ -153,12 +157,19 @@ describe("flowNodeGraph", () => {
       nodeId: "decision",
       viewNodeId: "decision:branch:hit",
       label: "Target",
-      currentTarget: "a1"
+      currentTarget: "a1",
+      portSide: "right"
     });
 
     expect(subroutineGraphConnections(flow.states[0])).toEqual([
       { id: "decision->decision:branch:hit", from: "decision", to: "decision:branch:hit", label: "Hit 3" },
-      { id: "decision:branch:hit->a1", from: "decision:branch:hit", to: "a1", label: "Target" },
+      {
+        id: "decision:branch:hit->a1",
+        from: "decision:branch:hit",
+        to: "a1",
+        label: "Target",
+        fromPoint: { x: 500, y: 306 }
+      },
       {
         id: "decision->decision:branch:no-match",
         from: "decision",
@@ -169,8 +180,47 @@ describe("flowNodeGraph", () => {
         id: "decision:branch:no-match->return",
         from: "decision:branch:no-match",
         to: "return",
-        label: "Target"
+        label: "Target",
+        fromPoint: { x: 500, y: 306 }
       }
+    ]);
+  });
+
+  it("selects branch nodes by parent-qualified graph id", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "s",
+          name: "S",
+          actions: [
+            {
+              id: "decision-a",
+              name: "Decision A",
+              type: "decision",
+              branches: [{ id: "no-match", type: "noMatch", targetActionId: "" }]
+            },
+            {
+              id: "decision-b",
+              name: "Decision B",
+              type: "decision",
+              branches: [{ id: "no-match", type: "noMatch", targetActionId: "" }]
+            }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+
+    const nodes = subroutineGraphNodes(flow.states[0], {
+      selectedActionId: decisionBranchGraphNodeId("decision-b", "no-match")
+    });
+    expect(
+      nodes
+        .filter((node) => node.kind === "branch")
+        .map((node) => [node.id, node.selected])
+    ).toEqual([
+      ["decision-a:branch:no-match", false],
+      ["decision-b:branch:no-match", true]
     ]);
   });
 
