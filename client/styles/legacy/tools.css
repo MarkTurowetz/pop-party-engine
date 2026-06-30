@@ -1454,6 +1454,14 @@ body.tool-dashboard-mode .layout-react-shell {
   min-width: 0;
 }
 
+.flow-action-name-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .flow-react-field input,
 .flow-react-field select,
 .flow-react-field textarea {
@@ -1469,6 +1477,24 @@ body.tool-dashboard-mode .layout-react-shell {
   font-size: 14px;
   font-weight: 800;
   box-sizing: border-box;
+}
+
+.flow-action-name-control .flow-action-name-refresh-button {
+  min-height: 30px;
+  padding: 0 8px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 2px 2px 0 rgba(23, 19, 31, 0.22);
+  font-size: 10px;
+  font-weight: 1000;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.flow-action-name-control .flow-action-name-refresh-button:hover {
+  background: var(--yellow);
 }
 
 .flow-react-field textarea {

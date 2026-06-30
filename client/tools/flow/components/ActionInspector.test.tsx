@@ -42,6 +42,7 @@ describe("ActionInspector", () => {
         }}
         edit={{
           onRenameAction: () => undefined,
+          onRefreshActionName: () => undefined,
           onSetActionType: () => undefined,
           actionTypeOptions: [{ id: "presentText", label: "Present Text" }]
         }}
@@ -58,6 +59,8 @@ describe("ActionInspector", () => {
     expect(markup).toContain("Show Title");
     expect(markup).toContain("Present Text");
     expect(markup).toContain("Name");
+    expect(markup).toContain('data-flow-action-refresh-name="true"');
+    expect(markup).toContain("Refresh");
     expect(markup).toContain("Action Type");
     expect(markup).not.toContain("Sub-action");
     expect(markup).not.toContain("<dt>Type</dt>");

@@ -15,6 +15,7 @@ export interface InspectorTargetOption {
 export interface ActionInspectorEditHandlers {
   onAddSubAction?: () => void;
   onRenameAction?: (name: string) => void;
+  onRefreshActionName?: () => void;
   onSetActionType?: (type: string) => void;
   onSetNextTarget?: (targetId: string) => void;
   onSetEntryTarget?: (targetId: string) => void;
@@ -168,16 +169,28 @@ export function ActionInspector({
       {edit?.onRenameAction ? (
         <label className="flow-react-field" data-flow-react-field="name">
           <span>Name</span>
-          <input
-            type="text"
-            key={action.id}
-            defaultValue={action.name || ""}
-            data-flow-react-action-name-input
-            onBlur={(event) => edit.onRenameAction?.(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-            }}
-          />
+          <div className="flow-action-name-control">
+            <input
+              type="text"
+              key={`${action.id}:${action.name || ""}`}
+              defaultValue={action.name || ""}
+              data-flow-react-action-name-input
+              onBlur={(event) => edit.onRenameAction?.(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+              }}
+            />
+            {edit.onRefreshActionName ? (
+              <button
+                type="button"
+                className="flow-action-name-refresh-button"
+                data-flow-action-refresh-name
+                onClick={() => edit.onRefreshActionName?.()}
+              >
+                Refresh
+              </button>
+            ) : null}
+          </div>
         </label>
       ) : null}
       {edit?.onSetActionType && (edit.actionTypeOptions || []).length ? (

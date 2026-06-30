@@ -103,6 +103,37 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().dirty).toBe(true);
   });
 
+  it("refreshes an action name from the action-type registry", () => {
+    const controller = createFlowEditorController({
+      initialFlow: flowFixture(),
+      api: fakeApi(),
+      actionTypes: [{ id: "message", name: "Message", category: "standard" }]
+    });
+    controller.renameAction("round-one", "act-1", "Custom Name");
+
+    controller.refreshActionName("round-one", "act-1");
+
+    const action = controller.getState().snapshot.flow.states[1].actions[0];
+    expect(action.name).toBe("Message");
+  });
+
+  it("refreshes a root route action name from the action-type registry", () => {
+    const controller = createFlowEditorController({
+      initialFlow: {
+        states: [],
+        routeNodes: [
+          { id: "route-1", routeNodeType: "action", name: "Custom Route", type: "presentText" }
+        ]
+      } as GameFlow,
+      api: fakeApi(),
+      actionTypes: [{ id: "presentText", name: "Present Text", category: "input" }]
+    });
+
+    controller.refreshRouteActionName("route-1");
+
+    expect(controller.getState().snapshot.flow.routeNodes?.[0].name).toBe("Present Text");
+  });
+
   it("changes an action type and applies type defaults", () => {
     const controller = createFlowEditorController({
       initialFlow: flowFixture(),

@@ -9,6 +9,7 @@ import {
   moveFlowActionInState,
   moveFlowState,
   moveFlowSubAction,
+  refreshFlowActionName,
   removeFlowRouteBranch,
   removeFlowRouteNode,
   removeFlowStates,
@@ -830,6 +831,43 @@ export function renameFlowActionCommand(
     apply: (flow) => {
       const action = findFlowAction(findFlowState(flow, stateId), actionId);
       if (action) action.name = nextName;
+    }
+  };
+}
+
+export function refreshFlowActionTypeNameCommand(
+  stateId: string,
+  actionId: string,
+  options: FlowActionTypeCommandOptions = {}
+): FlowCommand {
+  return {
+    id: `refresh-flow-action-type-name:${actionId}`,
+    label: "Refresh action name",
+    apply: (flow) => {
+      const state = findFlowState(flow, stateId);
+      const context = findFlowActionContext(state, actionId);
+      if (!context.action) return;
+      refreshFlowActionName(state || {}, context.action, {
+        nameForAction: (_state, action) =>
+          flowActionNameForType(String(action.type || ""), options.nameForType)
+      });
+    }
+  };
+}
+
+export function refreshFlowRouteActionTypeNameCommand(
+  nodeId: string,
+  options: FlowActionTypeCommandOptions = {}
+): FlowCommand {
+  return {
+    id: `refresh-flow-route-action-type-name:${nodeId}`,
+    label: "Refresh root action name",
+    apply: (flow) => {
+      const node = findFlowRouteNode(flow, nodeId);
+      if (!node) return;
+      const record = node as FlowRouteNodeModel;
+      if (record.routeNodeType !== "action") return;
+      assignFlowActionTypeName(record as FlowAction, String(record.type || ""), options);
     }
   };
 }

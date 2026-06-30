@@ -115,6 +115,10 @@ export function FlowEditor({
       if (selectedStateId && selectedActionId)
         controller.renameAction(selectedStateId, selectedActionId, name);
     },
+    onRefreshActionName: () => {
+      if (selectedStateId && selectedActionId)
+        controller.refreshActionName(selectedStateId, selectedActionId);
+    },
     onSetActionType: (type: string) => {
       if (selectedStateId && selectedActionId)
         controller.setActionType(selectedStateId, selectedActionId, type);
@@ -193,6 +197,9 @@ export function FlowEditor({
     ? {
         onRenameAction: (name: string) => {
           controller.renameRouteAction(selectedRootRouteAction.id, name);
+        },
+        onRefreshActionName: () => {
+          controller.refreshRouteActionName(selectedRootRouteAction.id);
         },
         onSetActionType: (type: string) => {
           controller.setRouteActionType(selectedRootRouteAction.id, type);

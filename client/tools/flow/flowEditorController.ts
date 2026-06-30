@@ -27,6 +27,8 @@ import {
   removeFlowRouteNodeCommand,
   removeFlowStatesCommand,
   renameFlowStateCommand,
+  refreshFlowActionTypeNameCommand,
+  refreshFlowRouteActionTypeNameCommand,
   setFlowActionFieldCommand,
   setFlowActionTimingCommand,
   setFlowActionTypeCommand,
@@ -149,6 +151,8 @@ export interface FlowEditorController {
   addSubAction(stateId: string, parentActionId: string, selectedSubActionId?: string): void;
   renameAction(stateId: string, actionId: string, name: string): void;
   renameRouteAction(nodeId: string, name: string): void;
+  refreshActionName(stateId: string, actionId: string): void;
+  refreshRouteActionName(nodeId: string): void;
   setActionType(stateId: string, actionId: string, type: string): void;
   setRouteActionType(nodeId: string, type: string): void;
   setActionField(stateId: string, actionId: string, key: string, value: unknown): void;
@@ -370,6 +374,18 @@ export function createFlowEditorController(
       commit(store.execute(renameFlowActionCommand(stateId, actionId, name))),
     renameRouteAction: (nodeId, name) =>
       commit(store.execute(renameFlowRouteActionCommand(nodeId, name))),
+    refreshActionName: (stateId, actionId) =>
+      commit(
+        store.execute(
+          refreshFlowActionTypeNameCommand(stateId, actionId, { nameForType: nameForActionType })
+        )
+      ),
+    refreshRouteActionName: (nodeId) =>
+      commit(
+        store.execute(
+          refreshFlowRouteActionTypeNameCommand(nodeId, { nameForType: nameForActionType })
+        )
+      ),
     setActionType: (stateId, actionId, type) =>
       commit(
         store.execute(

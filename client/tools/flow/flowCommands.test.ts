@@ -16,6 +16,8 @@ import {
   removeFlowRouteBranchCommand,
   removeFlowRouteNodeCommand,
   removeFlowStatesCommand,
+  refreshFlowActionTypeNameCommand,
+  refreshFlowRouteActionTypeNameCommand,
   renameFlowActionCommand,
   renameFlowStateCommand,
   setFlowActionTypeCommand,
@@ -228,6 +230,35 @@ describe("Flow action commands", () => {
       name: "Display Text",
       type: "displayText"
     });
+  });
+
+  it("refreshes an action name from its current action type", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(
+      refreshFlowActionTypeNameCommand("round-one", "act-1", {
+        nameForType: (type) => (type === "message" ? "Message" : type)
+      })
+    );
+
+    expect(next.states[0].actions?.[0].name).toBe("Message");
+  });
+
+  it("refreshes a root route action name from its current action type", () => {
+    const history = createFlowCommandHistory({
+      states: [],
+      routeNodes: [
+        { id: "route-1", routeNodeType: "action", name: "Old Route Name", type: "presentText" }
+      ]
+    });
+
+    const next = history.execute(
+      refreshFlowRouteActionTypeNameCommand("route-1", {
+        nameForType: (type) => (type === "presentText" ? "Present Text" : type)
+      })
+    );
+
+    expect(next.routeNodes?.[0].name).toBe("Present Text");
   });
 
   it("adds a sub-action under a parent action", () => {
