@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FlowEditorController } from "./flowEditorController";
-import type { FlowActionTypeMeta } from "./flowSelectors";
+import { findFlowActionRef, type FlowActionTypeMeta } from "./flowSelectors";
 import { useFlowEditor } from "./useFlowEditor";
 import { FlowToolApp, type FlowToolReactShellHandlers } from "./FlowToolApp";
 import { FlowNodeCanvas } from "./components/FlowNodeCanvas";
@@ -83,6 +83,10 @@ export function FlowEditor({
           (branch) => branch.id === selection.selectedFlowRouteBranchId
         ) || null
       : null;
+  const selectedActionRef =
+    selectedStateId && selectedActionId
+      ? findFlowActionRef(flow, selectedStateId, selectedActionId)
+      : null;
   const rootActionTypeOptions = flowActionTypes.map((meta) => ({
     id: meta.id,
     label: meta.name || meta.id
@@ -93,10 +97,20 @@ export function FlowEditor({
   );
 
   const inspectorEdit = {
+    onAddSubAction: () => {
+      if (!selectedStateId || !selectedActionRef || selectedActionRef.isBranch) return;
+      const parentActionId =
+        selectedActionRef.isSubAction && selectedActionRef.parentAction
+          ? selectedActionRef.parentAction.id
+          : selectedActionRef.action.id;
+      const selectedSubActionId = selectedActionRef.isSubAction ? selectedActionRef.action.id : "";
+      controller.addSubAction(selectedStateId, parentActionId, selectedSubActionId);
+    },
     onRenameAction: (name: string) => {
       if (selectedStateId && selectedActionId)
         controller.renameAction(selectedStateId, selectedActionId, name);
     },
+    onSelectAction: (actionId: string) => controller.selectActions(actionId),
     onSetActionType: (type: string) => {
       if (selectedStateId && selectedActionId)
         controller.setActionType(selectedStateId, selectedActionId, type);

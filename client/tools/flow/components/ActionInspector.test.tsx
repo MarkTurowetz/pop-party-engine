@@ -95,6 +95,30 @@ describe("ActionInspector", () => {
     expect(markup).not.toContain("Target");
   });
 
+  it("renders the add sub-action control for primary game actions", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "show-title",
+          name: "Show Title",
+          type: "presentText",
+          subActions: [
+            { id: "sub-1", name: "Sub 1", type: "message", timing: { mode: "S+", seconds: 0.5 } }
+          ]
+        }}
+        edit={{ onAddSubAction: () => undefined, onSelectAction: () => undefined }}
+        state={{ id: "intro", name: "Intro", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-flow-react-component="sub-action-summary"');
+    expect(markup).toContain("Add S+ Sub-action");
+    expect(markup).toContain('data-flow-sub-action-id="sub-1"');
+    expect(markup).toContain("Sub 1");
+    expect(markup).toContain("S+ 0.50s");
+    expect(markup).toContain(">1</span>");
+  });
+
   it("renders selected decision branch parameters in their own inspector", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector

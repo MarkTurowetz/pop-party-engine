@@ -1,5 +1,5 @@
 import type { FlowAction, GameFlow } from "../../types/game-data";
-import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
+import { decisionBranchName, decisionBranchWireLabel, ensureDecisionBranches } from "./flowDecision";
 import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { flowSubroutineActions, isFlowSubroutineAction, type FlowSubroutine } from "./flowSubroutines";
 
@@ -51,6 +51,8 @@ export interface FlowGraphConnection {
   from: string;
   to: string;
   label: string;
+  labelKind?: "default" | "branch-hit" | "branch-code" | "branch-no-match" | "jump-preview";
+  visibleWhenSelected?: boolean;
   fromPoint?: FlowNodePoint;
   toPoint?: FlowNodePoint;
 }
@@ -86,10 +88,15 @@ function isNoFlowTarget(value: string): boolean {
   return !value || value === "none" || value === "noFlow";
 }
 
-function actionExitTargets(action: FlowAction, isInputType: IsInputType): { to: string; label: string }[] {
+function actionExitTargets(
+  action: FlowAction,
+  isInputType: IsInputType
+): Pick<FlowGraphConnection, "to" | "label" | "labelKind" | "visibleWhenSelected">[] {
   if (action.type === "jumpNode") {
     const target = String((action as Record<string, unknown>).jumpTargetActionId || "");
-    return isNoFlowTarget(target) ? [] : [{ to: target, label: "Jump" }];
+    return isNoFlowTarget(target)
+      ? []
+      : [{ to: target, label: "Jump", labelKind: "jump-preview", visibleWhenSelected: true }];
   }
   const record = action as Record<string, unknown>;
   return exitDefinitions(action, isInputType)
@@ -99,6 +106,14 @@ function actionExitTargets(action: FlowAction, isInputType: IsInputType): { to: 
       label: exit.label
     }))
     .filter((exit) => !isNoFlowTarget(exit.to));
+}
+
+export function decisionBranchConnectionKind(
+  branch: Partial<FlowAction> | null | undefined
+): FlowGraphConnection["labelKind"] {
+  if (branch?.type === "code") return "branch-code";
+  if (branch?.type === "noMatch") return "branch-no-match";
+  return "branch-hit";
 }
 
 export function defaultNodePosition(
@@ -479,7 +494,8 @@ export function subroutineGraphConnections(
             id: `${branchNodeId}->${target}`,
             from: branchNodeId,
             to: target,
-            label: "Target",
+            label: decisionBranchWireLabel(branch, index),
+            labelKind: decisionBranchConnectionKind(branch as FlowAction),
             fromPoint: branchAnchor
           });
         }
@@ -492,7 +508,9 @@ export function subroutineGraphConnections(
         id: `${action.id}->${exit.to}:${exit.label}`,
         from: action.id,
         to: exit.to,
-        label: exit.label
+        label: exit.label,
+        labelKind: exit.labelKind,
+        visibleWhenSelected: exit.visibleWhenSelected
       });
     }
   }

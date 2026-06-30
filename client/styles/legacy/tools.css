@@ -1456,6 +1456,7 @@
 .flow-react-action-fields,
 .flow-react-action-timing,
 .flow-react-action-options,
+.flow-react-sub-action-summary,
 .flow-react-decision {
   display: grid;
   gap: 10px;
@@ -1476,6 +1477,18 @@
   display: grid;
   gap: 10px;
   min-width: 0;
+}
+
+.flow-react-sub-action-summary {
+  padding-top: 4px;
+}
+
+.flow-react-sub-action-summary h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 1000;
+  text-transform: uppercase;
 }
 
 .tool-panel-resizer {

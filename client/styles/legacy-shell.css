@@ -3861,6 +3861,7 @@ body.is-resizing-flow {
 }
 
 .flow-react-decision-summary,
+.flow-react-sub-action-summary,
 .flow-branch-inspector {
   display: grid;
   gap: 12px;
@@ -3873,6 +3874,14 @@ body.is-resizing-flow {
 }
 
 .flow-react-decision-summary h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.flow-react-sub-action-summary h3 {
   margin: 0;
   color: var(--muted);
   font-size: 13px;

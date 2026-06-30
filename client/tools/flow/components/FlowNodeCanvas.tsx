@@ -47,6 +47,9 @@ function FlowNodeMinimap({
   const viewH = (viewport.clientH / zoom) * scale;
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
+  const visibleConnections = connections.filter((connection) =>
+    connectionIsVisible(connection, selectedIds)
+  );
 
   const centerStageOn = (clientX: number, clientY: number, rect: DOMRect) => {
     const stage = stageRef.current;
@@ -112,7 +115,7 @@ function FlowNodeMinimap({
         height={mmH}
         style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
       >
-        {connections.map((connection) => {
+        {visibleConnections.map((connection) => {
           const from = byId.get(connection.from);
           const to = byId.get(connection.to);
           if (!from || !to) return null;
@@ -253,6 +256,7 @@ interface WirePath {
   labelX: number;
   labelY: number;
   label: string;
+  labelKind: FlowGraphConnection["labelKind"];
   highlighted: boolean;
 }
 
@@ -359,6 +363,10 @@ function buildConnectionRoute(
   return routeCurve(sourcePoint, targetPoint, scale);
 }
 
+function connectionIsVisible(connection: FlowGraphConnection, selectedIds: Set<string>): boolean {
+  return !connection.visibleWhenSelected || selectedIds.has(connection.from);
+}
+
 function buildWirePaths(
   nodes: FlowGraphNode[],
   connections: FlowGraphConnection[],
@@ -367,6 +375,7 @@ function buildWirePaths(
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const paths: WirePath[] = [];
   for (const connection of connections) {
+    if (!connectionIsVisible(connection, selectedIds)) continue;
     const from = byId.get(connection.from);
     const to = byId.get(connection.to);
     if (!from || !to) continue;
@@ -377,6 +386,7 @@ function buildWirePaths(
       labelX: route.labelX,
       labelY: route.labelY,
       label: connection.label,
+      labelKind: connection.labelKind || "default",
       // Only the OUTGOING wire highlights — selecting a node shows where it goes next,
       // not what points into it.
       highlighted: selectedIds.has(connection.from)
@@ -389,6 +399,105 @@ function buildWirePaths(
 // hot pink for connections touching the selected node.
 const WIRE_COLOR = "#38bdf8";
 const WIRE_HIGHLIGHT_COLOR = "#ff4fa3";
+
+function wireLabelIcon(kind: FlowGraphConnection["labelKind"]): string {
+  if (kind === "branch-code") return "C";
+  if (kind === "branch-no-match") return "N";
+  if (kind === "branch-hit") return "H";
+  if (kind === "jump-preview") return "J";
+  return "";
+}
+
+function wireLabelFill(kind: FlowGraphConnection["labelKind"], highlighted: boolean): string {
+  if (kind === "branch-code") return "#bae6fd";
+  if (kind === "branch-no-match") return "#fff7d6";
+  if (kind === "branch-hit") return "#fef3c7";
+  if (kind === "jump-preview") return "#ffe4f1";
+  return highlighted ? WIRE_HIGHLIGHT_COLOR : "#cbd5f5";
+}
+
+function wireLabelStroke(kind: FlowGraphConnection["labelKind"], highlighted: boolean): string {
+  if (kind === "branch-code") return "#38bdf8";
+  if (kind === "branch-no-match") return "#a16207";
+  if (kind === "branch-hit") return "#ff4fa3";
+  if (kind === "jump-preview") return WIRE_HIGHLIGHT_COLOR;
+  return highlighted ? WIRE_HIGHLIGHT_COLOR : "#cbd5f5";
+}
+
+function truncateWireLabel(label: string): string {
+  return label.length > 26 ? `${label.slice(0, 23)}...` : label;
+}
+
+function WireLabel({ wire }: { wire: WirePath }) {
+  if (!wire.label) return null;
+  const kind = wire.labelKind || "default";
+  const isCapsule = kind !== "default";
+  if (!isCapsule) {
+    return (
+      <text
+        x={wire.labelX}
+        y={wire.labelY}
+        fontSize={11}
+        textAnchor="middle"
+        fill={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : "#cbd5f5"}
+      >
+        {wire.label}
+      </text>
+    );
+  }
+
+  const icon = wireLabelIcon(kind);
+  const label = truncateWireLabel(wire.label);
+  const width = Math.max(54, Math.min(220, label.length * 7.5 + (icon ? 34 : 18)));
+  const height = 24;
+  const x = wire.labelX - width / 2;
+  const y = wire.labelY - height / 2;
+  const stroke = wireLabelStroke(kind, wire.highlighted);
+  const fill = wireLabelFill(kind, wire.highlighted);
+  return (
+    <g
+      data-wire-label-kind={kind}
+      transform={`translate(${x} ${y})`}
+      aria-label={wire.label}
+    >
+      <title>{wire.label}</title>
+      <rect
+        width={width}
+        height={height}
+        rx={12}
+        ry={12}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={2.5}
+      />
+      {icon ? (
+        <>
+          <circle cx={13} cy={12} r={8} fill={stroke} />
+          <text
+            x={13}
+            y={15.5}
+            fontSize={10}
+            fontWeight={900}
+            textAnchor="middle"
+            fill="#fff"
+          >
+            {icon}
+          </text>
+        </>
+      ) : null}
+      <text
+        x={icon ? 28 : width / 2}
+        y={15.5}
+        fontSize={11}
+        fontWeight={900}
+        textAnchor={icon ? "start" : "middle"}
+        fill="#17131f"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
 
 const WORLD_MIN_WIDTH = 1600;
 const WORLD_MIN_HEIGHT = 920;
@@ -790,17 +899,7 @@ export function FlowNodeCanvas({
                       strokeLinecap="round"
                       opacity={wire.highlighted ? 1 : 0.9}
                     />
-                    {wire.label ? (
-                      <text
-                        x={wire.labelX}
-                        y={wire.labelY}
-                        fontSize={11}
-                        textAnchor="middle"
-                        fill={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : "#cbd5f5"}
-                      >
-                        {wire.label}
-                      </text>
-                    ) : null}
+                    <WireLabel wire={wire} />
                   </g>
                 ))}
                 {connectPreview ? (

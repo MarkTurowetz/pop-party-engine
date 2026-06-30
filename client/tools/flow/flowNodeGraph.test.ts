@@ -9,6 +9,7 @@ import {
   optimizedVerticalNodePositions,
   decisionBranchGraphNodeId
 } from "./flowNodeGraph";
+import { rootFlowGraphConnections, rootFlowNodeExits } from "./flowRootGraph";
 import type { GameFlow } from "../../types/game-data";
 
 function flowFixture(): GameFlow {
@@ -167,7 +168,8 @@ describe("flowNodeGraph", () => {
         id: "decision:branch:hit->a1",
         from: "decision:branch:hit",
         to: "a1",
-        label: "Target",
+        label: "3",
+        labelKind: "branch-hit",
         fromPoint: { x: 500, y: 306 }
       },
       {
@@ -180,10 +182,80 @@ describe("flowNodeGraph", () => {
         id: "decision:branch:no-match->return",
         from: "decision:branch:no-match",
         to: "return",
-        label: "Target",
+        label: "No Match",
+        labelKind: "branch-no-match",
         fromPoint: { x: 500, y: 306 }
       }
     ]);
+  });
+
+  it("marks jump-node wires as selected-only previews", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "s",
+          name: "S",
+          actions: [
+            { id: "jump", name: "Jump", type: "jumpNode", jumpTargetActionId: "target" },
+            { id: "target", name: "Target", type: "message" }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+
+    expect(subroutineGraphConnections(flow.states[0])).toContainEqual({
+      id: "jump->target:Jump",
+      from: "jump",
+      to: "target",
+      label: "Jump",
+      labelKind: "jump-preview",
+      visibleWhenSelected: true
+    });
+  });
+
+  it("uses jump targets and branch labels in the root flow graph", () => {
+    const flow: GameFlow = {
+      states: [],
+      routeNodes: [
+        {
+          id: "jump-root",
+          routeNodeType: "action",
+          type: "jumpNode",
+          jumpTargetActionId: "target-root"
+        },
+        {
+          id: "decision-root",
+          routeNodeType: "action",
+          type: "decision",
+          branches: [{ id: "code", type: "code", code: "x > 3", targetNodeId: "target-root" }]
+        },
+        { id: "target-root", routeNodeType: "action", type: "presentText" }
+      ]
+    };
+
+    expect(rootFlowNodeExits(flow).find((exit) => exit.nodeId === "jump-root")).toMatchObject({
+      label: "Jump",
+      field: "jumpTargetActionId",
+      currentTarget: "target-root"
+    });
+    expect(rootFlowGraphConnections(flow)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          from: "jump-root",
+          to: "target-root",
+          label: "Jump",
+          labelKind: "jump-preview",
+          visibleWhenSelected: true
+        }),
+        expect.objectContaining({
+          from: "decision-root:branch:code",
+          to: "target-root",
+          label: "x > 3",
+          labelKind: "branch-code"
+        })
+      ])
+    );
   });
 
   it("selects branch nodes by parent-qualified graph id", () => {

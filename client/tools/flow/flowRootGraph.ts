@@ -1,6 +1,7 @@
 import type { FlowAction, FlowRouteNode, FlowState, GameFlow } from "../../types/game-data";
-import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
+import { decisionBranchName, decisionBranchWireLabel, ensureDecisionBranches } from "./flowDecision";
 import {
+  decisionBranchConnectionKind,
   decisionBranchGraphNodeId,
   decisionBranchTargetAnchor,
   subroutineGraphNodes,
@@ -29,6 +30,13 @@ export interface RootFlowAction extends FlowAction {
 function rootTargetIsEmpty(value: unknown): boolean {
   const target = String(value || "");
   return !target || target === "none" || target === "noFlow";
+}
+
+function rootActionTarget(action: RootFlowAction): string {
+  if (action.type === "jumpNode") {
+    return String(action.jumpTargetActionId || action.nextTargetActionId || "");
+  }
+  return String(action.nextTargetActionId || "");
 }
 
 function routeDecisionBranches(node: FlowRouteNode): FlowAction[] {
@@ -166,6 +174,17 @@ export function rootFlowNodeExits(flow: Partial<GameFlow> | null | undefined): F
       }
       continue;
     }
+    if (action.type === "jumpNode") {
+      exits.push({
+        id: `${action.id}:jumpTargetActionId`,
+        nodeId: action.id,
+        label: "Jump",
+        kind: "field",
+        field: "jumpTargetActionId",
+        currentTarget: rootActionTarget(action)
+      });
+      continue;
+    }
     exits.push({
       id: `${action.id}:nextTargetActionId`,
       nodeId: action.id,
@@ -204,19 +223,22 @@ export function rootFlowGraphConnections(
           id: `${branchNodeId}->${target}`,
           from: branchNodeId,
           to: target,
-          label: "Target",
+          label: decisionBranchWireLabel(branch, index),
+          labelKind: decisionBranchConnectionKind(branch as FlowAction),
           fromPoint: branchAnchor
         });
       });
       continue;
     }
-    const target = String(action.nextTargetActionId || "");
+    const target = rootActionTarget(action);
     if (rootTargetIsEmpty(target) || !nodeIds.has(target)) continue;
     connections.push({
-      id: `${action.id}->${target}:Next`,
+      id: `${action.id}->${target}:${action.type === "jumpNode" ? "Jump" : "Next"}`,
       from: action.id,
       to: target,
-      label: "Next"
+      label: action.type === "jumpNode" ? "Jump" : "Next",
+      labelKind: action.type === "jumpNode" ? "jump-preview" : undefined,
+      visibleWhenSelected: action.type === "jumpNode" ? true : undefined
     });
   }
   return connections;
