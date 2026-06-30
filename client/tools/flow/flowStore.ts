@@ -49,10 +49,6 @@ export interface FlowStoreOptions extends FlowCommandHistoryOptions {
   selection?: FlowSelectionSnapshot;
 }
 
-function cloneFlow(flow: GameFlow): GameFlow {
-  return JSON.parse(JSON.stringify(flow)) as GameFlow;
-}
-
 function cloneSelection(selection: FlowStoreSelection): FlowStoreSelection {
   return {
     ...selection,
