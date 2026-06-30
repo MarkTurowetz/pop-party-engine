@@ -291,4 +291,67 @@ describe("flowNodeGraph", () => {
       )
     ).toEqual(["start", "setup", "wipe-off", "countdown", "wipe-on", "return"]);
   });
+
+  it("optimizes branch paths horizontally and rejoins shared targets near center", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "presentation",
+          name: "Presentation",
+          entryTargetActionId: "present",
+          actions: [
+            {
+              id: "present",
+              name: "Present Text",
+              type: "presentText",
+              stageClickTargetActionId: "decision"
+            },
+            {
+              id: "decision",
+              name: "Decision",
+              type: "decision",
+              branches: [
+                { id: "hit", type: "hit", value: "3", targetActionId: "present-1" },
+                { id: "code", type: "code", code: "x > 3", targetActionId: "present-2" },
+                { id: "no-match", type: "noMatch", targetActionId: "wipe" }
+              ]
+            },
+            {
+              id: "present-1",
+              name: "Present Text 1",
+              type: "presentText",
+              stageClickTargetActionId: "wipe"
+            },
+            {
+              id: "present-2",
+              name: "Present Text 2",
+              type: "presentText",
+              stageClickTargetActionId: "wipe"
+            },
+            { id: "wipe", name: "Set Wipe Shown", type: "setWipeShown", nextTargetActionId: "return" }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+    const nodes = subroutineGraphNodes(flow.states[0]);
+    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const connections = subroutineGraphConnections(flow.states[0]);
+    const updates = optimizedVerticalNodePositions(nodes, connections, "subroutine");
+    const positionById = new Map(updates.map((position) => [position.nodeId, position]));
+    const center = (nodeId: string) => {
+      const node = nodeById.get(nodeId);
+      const position = positionById.get(nodeId);
+      return Number(position?.x || 0) + Number(node?.width || 0) / 2;
+    };
+
+    expect(updates.some((position) => position.nodeId.includes(":branch:"))).toBe(false);
+    expect(positionById.get("present-1")?.y).toBe(positionById.get("present-2")?.y);
+    expect(center("present-1")).toBeLessThan(center("decision") - 100);
+    expect(center("present-2")).toBeGreaterThan(center("decision") + 100);
+    expect(Math.abs(center("wipe") - center("decision"))).toBeLessThan(40);
+    expect(Number(positionById.get("wipe")?.y)).toBeGreaterThan(
+      Number(positionById.get("present-1")?.y)
+    );
+  });
 });

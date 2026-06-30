@@ -116,21 +116,12 @@ function FlowNodeMinimap({
           const from = byId.get(connection.from);
           const to = byId.get(connection.to);
           if (!from || !to) return null;
-          const sourcePoint = connection.fromPoint || {
-            x: from.x + from.width / 2,
-            y: from.y + from.height
-          };
-          const targetPoint = connection.toPoint || { x: to.x + to.width / 2, y: to.y };
-          const x1 = sourcePoint.x * scale;
-          const y1 = sourcePoint.y * scale;
-          const x2 = targetPoint.x * scale;
-          const y2 = targetPoint.y * scale;
-          const dy = Math.max(8, Math.abs(y2 - y1) / 2);
+          const route = buildConnectionRoute(connection, from, to, nodes, scale);
           const highlighted = selectedIds.has(connection.from);
           return (
             <path
               key={connection.id}
-              d={`M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`}
+              d={route.d}
               fill="none"
               stroke={highlighted ? "#ff4fa3" : "#38bdf8"}
               strokeLinecap="round"
@@ -265,6 +256,109 @@ interface WirePath {
   highlighted: boolean;
 }
 
+interface ConnectionRoute {
+  d: string;
+  labelX: number;
+  labelY: number;
+}
+
+function connectionSourcePoint(
+  connection: FlowGraphConnection,
+  from: FlowGraphNode
+): { x: number; y: number } {
+  return connection.fromPoint || {
+    x: from.x + from.width / 2,
+    y: from.y + from.height
+  };
+}
+
+function connectionTargetPoint(
+  connection: FlowGraphConnection,
+  to: FlowGraphNode
+): { x: number; y: number } {
+  return connection.toPoint || { x: to.x + to.width / 2, y: to.y };
+}
+
+function routeCurve(
+  sourcePoint: { x: number; y: number },
+  targetPoint: { x: number; y: number },
+  scale = 1
+): ConnectionRoute {
+  const x1 = sourcePoint.x * scale;
+  const y1 = sourcePoint.y * scale;
+  const x2 = targetPoint.x * scale;
+  const y2 = targetPoint.y * scale;
+  const dy = Math.max(40 * scale, Math.abs(y2 - y1) / 2);
+  return {
+    d: `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`,
+    labelX: (x1 + x2) / 2,
+    labelY: (y1 + y2) / 2
+  };
+}
+
+function verticalRangesOverlap(aTop: number, aBottom: number, bTop: number, bBottom: number): boolean {
+  return aTop < bBottom && aBottom > bTop;
+}
+
+function routeUpwardOrthogonal(
+  sourcePoint: { x: number; y: number },
+  from: FlowGraphNode,
+  to: FlowGraphNode,
+  nodes: FlowGraphNode[],
+  scale = 1
+): ConnectionRoute {
+  const targetCenterX = to.x + to.width / 2;
+  const useLeftSide = sourcePoint.x < targetCenterX;
+  const targetX = useLeftSide ? to.x : to.x + to.width;
+  const targetY = to.y + to.height / 2;
+  const dropY = sourcePoint.y + 52;
+  const routeTop = Math.min(targetY, dropY);
+  const routeBottom = Math.max(targetY, dropY);
+  const overlappingNodes = nodes.filter((node) => {
+    if (node.id === from.id || node.id === to.id) return false;
+    return verticalRangesOverlap(node.y, node.y + node.height, routeTop, routeBottom);
+  });
+  const leftBound =
+    Math.min(from.x, to.x, ...overlappingNodes.map((node) => node.x)) - 100;
+  const rightBound =
+    Math.max(
+      from.x + from.width,
+      to.x + to.width,
+      ...overlappingNodes.map((node) => node.x + node.width)
+    ) + 100;
+  const corridorX = useLeftSide ? leftBound : rightBound;
+  const points = [
+    sourcePoint,
+    { x: sourcePoint.x, y: dropY },
+    { x: corridorX, y: dropY },
+    { x: corridorX, y: targetY },
+    { x: targetX, y: targetY }
+  ];
+  const d = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * scale} ${point.y * scale}`)
+    .join(" ");
+  return {
+    d,
+    labelX: corridorX * scale,
+    labelY: ((dropY + targetY) / 2) * scale
+  };
+}
+
+function buildConnectionRoute(
+  connection: FlowGraphConnection,
+  from: FlowGraphNode,
+  to: FlowGraphNode,
+  nodes: FlowGraphNode[],
+  scale = 1
+): ConnectionRoute {
+  const sourcePoint = connectionSourcePoint(connection, from);
+  const targetPoint = connectionTargetPoint(connection, to);
+  if (targetPoint.y < sourcePoint.y) {
+    return routeUpwardOrthogonal(sourcePoint, from, to, nodes, scale);
+  }
+  return routeCurve(sourcePoint, targetPoint, scale);
+}
+
 function buildWirePaths(
   nodes: FlowGraphNode[],
   connections: FlowGraphConnection[],
@@ -276,25 +370,12 @@ function buildWirePaths(
     const from = byId.get(connection.from);
     const to = byId.get(connection.to);
     if (!from || !to) continue;
-    // Route bottom-center of the source down into top-center of the target. The control
-    // points sit directly below the exit and directly above the entry, so the wire
-    // leaves and (especially) enters vertically — a clean straight drop when the nodes
-    // are aligned, no sideways S-curves.
-    const sourcePoint = connection.fromPoint || {
-      x: from.x + from.width / 2,
-      y: from.y + from.height
-    };
-    const targetPoint = connection.toPoint || { x: to.x + to.width / 2, y: to.y };
-    const x1 = sourcePoint.x;
-    const y1 = sourcePoint.y;
-    const x2 = targetPoint.x;
-    const y2 = targetPoint.y;
-    const dy = Math.max(40, Math.abs(y2 - y1) / 2);
+    const route = buildConnectionRoute(connection, from, to, nodes);
     paths.push({
       id: connection.id,
-      d: `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`,
-      labelX: (x1 + x2) / 2,
-      labelY: (y1 + y2) / 2,
+      d: route.d,
+      labelX: route.labelX,
+      labelY: route.labelY,
       label: connection.label,
       // Only the OUTGOING wire highlights — selecting a node shows where it goes next,
       // not what points into it.

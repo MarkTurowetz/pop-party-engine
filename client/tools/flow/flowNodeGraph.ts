@@ -4,6 +4,7 @@ import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { flowSubroutineActions, isFlowSubroutineAction, type FlowSubroutine } from "./flowSubroutines";
 
 export { decisionBranchGraphNodeId, parseDecisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
+export { optimizedVerticalNodePositions } from "./flowGraphLayout";
 
 /**
  * Typed model for the Flow node-graph canvas. Mirrors the legacy
@@ -496,58 +497,4 @@ export function subroutineGraphConnections(
     }
   }
   return connections;
-}
-
-function orderedGraphNodesForLayout(
-  nodes: FlowGraphNode[],
-  connections: FlowGraphConnection[],
-  depth: FlowNodeDepth
-): FlowGraphNode[] {
-  const byId = new Map(nodes.map((node) => [node.id, node]));
-  const outgoing = new Map<string, FlowGraphConnection[]>();
-  connections.forEach((connection) => {
-    if (!byId.has(connection.from) || !byId.has(connection.to)) return;
-    const list = outgoing.get(connection.from) || [];
-    list.push(connection);
-    outgoing.set(connection.from, list);
-  });
-
-  const ordered: FlowGraphNode[] = [];
-  const visited = new Set<string>();
-  const visit = (nodeId: string) => {
-    if (visited.has(nodeId)) return;
-    const node = byId.get(nodeId);
-    if (!node) return;
-    visited.add(nodeId);
-    ordered.push(node);
-    (outgoing.get(nodeId) || []).forEach((connection) => visit(connection.to));
-  };
-
-  const startId = depth === "subroutine" && byId.has("start") ? "start" : nodes[0]?.id || "";
-  visit(startId);
-  nodes.forEach((node) => visit(node.id));
-  return ordered;
-}
-
-export function optimizedVerticalNodePositions(
-  nodes: FlowGraphNode[],
-  connections: FlowGraphConnection[],
-  depth: FlowNodeDepth
-): FlowNodePositionUpdate[] {
-  if (!nodes.length) return [];
-  const orderedNodes = orderedGraphNodesForLayout(nodes, connections, depth);
-  const centerX = Math.max(
-    depth === "subroutines" ? 420 : 470,
-    Math.round(nodes.reduce((sum, node) => sum + node.x + node.width / 2, 0) / nodes.length)
-  );
-  let y = 70;
-  return orderedNodes.map((node) => {
-    const position = {
-      nodeId: node.id,
-      x: Math.max(0, Math.round(centerX - node.width / 2)),
-      y
-    };
-    y += Math.max(node.height + 90, depth === "subroutines" ? 240 : 190);
-    return position;
-  });
 }
