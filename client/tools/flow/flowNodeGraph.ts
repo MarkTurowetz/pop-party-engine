@@ -94,7 +94,6 @@ export interface FlowNodePositionUpdate {
 
 const CHILD_NODE_TOP_GAP = 16;
 const CHILD_NODE_GAP = 18;
-const CHILD_NODE_SIDE_INSET = 20;
 const CHILD_NODE_HEIGHT = 34;
 
 export interface SubroutineGraphNodeOptions {
@@ -242,7 +241,7 @@ function bottomCenterAnchor(node: FlowGraphNode): FlowNodePoint {
 }
 
 function childNodeWidth(parentWidth: number): number {
-  return Math.max(180, parentWidth - CHILD_NODE_SIDE_INSET * 2);
+  return parentWidth;
 }
 
 function childNodeX(parentX: number, parentWidth: number): number {

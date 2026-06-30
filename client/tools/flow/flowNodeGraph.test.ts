@@ -243,7 +243,8 @@ describe("flowNodeGraph", () => {
       title: "Early",
       timing: "S+ 0.50s",
       draggable: false,
-      width: 220,
+      x: 340,
+      width: 260,
       height: 34
     });
 

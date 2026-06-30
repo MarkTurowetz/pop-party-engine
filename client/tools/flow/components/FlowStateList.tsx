@@ -20,6 +20,10 @@ export function FlowStateList({
   states
 }: FlowStateListProps) {
   const draggable = Boolean(onReorderState);
+  const activateState = (stateId: string) => {
+    if (onEnterState) onEnterState(stateId);
+    else onSelectState?.(stateId);
+  };
   const contents = (
     <>
       <h3>Subroutines</h3>
@@ -49,11 +53,7 @@ export function FlowStateList({
                 : undefined
             }
           >
-            <button
-              type="button"
-              onClick={() => onSelectState?.(state.id)}
-              onDoubleClick={() => onEnterState?.(state.id)}
-            >
+            <button type="button" onClick={() => activateState(state.id)}>
               <span>{state.name || state.id}</span>
               <span data-action-count>{state.actions?.length || 0}</span>
             </button>
