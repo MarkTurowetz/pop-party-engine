@@ -43,7 +43,7 @@ export function FlowEditor({
   const selectedActionId = selection.selectedFlowActionId;
   const selectedActionIds = selection.selectedFlowActionIds;
 
-  const [viewMode, setViewMode] = useState<"list" | "node">("list");
+  const [viewMode, setViewMode] = useState<"list" | "node">("node");
   const [nodeDepth, setNodeDepth] = useState<FlowNodeDepth>("moments");
 
   const hasState = Boolean(selectedStateId);

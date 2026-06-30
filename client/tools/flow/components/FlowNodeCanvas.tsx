@@ -170,9 +170,14 @@ interface WirePath {
   labelX: number;
   labelY: number;
   label: string;
+  highlighted: boolean;
 }
 
-function buildWirePaths(nodes: FlowGraphNode[], connections: FlowGraphConnection[]): WirePath[] {
+function buildWirePaths(
+  nodes: FlowGraphNode[],
+  connections: FlowGraphConnection[],
+  selectedIds: Set<string>
+): WirePath[] {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const paths: WirePath[] = [];
   for (const connection of connections) {
@@ -189,11 +194,19 @@ function buildWirePaths(nodes: FlowGraphNode[], connections: FlowGraphConnection
       d: `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`,
       labelX: (x1 + x2) / 2,
       labelY: (y1 + y2) / 2 - 6,
-      label: connection.label
+      label: connection.label,
+      // A wire is highlighted when either end is a selected node, so selecting a
+      // node lights up the paths into/out of it.
+      highlighted: selectedIds.has(connection.from) || selectedIds.has(connection.to)
     });
   }
   return paths;
 }
+
+// Wire colors chosen to read against the dark node canvas: bright cyan by default,
+// hot pink for connections touching the selected node.
+const WIRE_COLOR = "#38bdf8";
+const WIRE_HIGHLIGHT_COLOR = "#ff4fa3";
 
 const WORLD_MIN_WIDTH = 1600;
 const WORLD_MIN_HEIGHT = 920;
@@ -415,7 +428,15 @@ export function FlowNodeCanvas({
   };
 
   const { width, height } = worldSize(nodes);
-  const wires = buildWirePaths(nodes, connections);
+  // Selecting a node highlights the nodes it connects to (either direction) in pink so
+  // the wiring is easy to follow.
+  const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
+  const connectedIds = new Set<string>();
+  for (const connection of connections) {
+    if (selectedIds.has(connection.from)) connectedIds.add(connection.to);
+    if (selectedIds.has(connection.to)) connectedIds.add(connection.from);
+  }
+  const wires = buildWirePaths(nodes, connections, selectedIds);
   return (
     <section
       className="flow-react-node-canvas"
@@ -492,10 +513,23 @@ export function FlowNodeCanvas({
             style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", overflow: "visible" }}
           >
             {wires.map((wire) => (
-              <g key={wire.id} data-wire-id={wire.id}>
-                <path d={wire.d} fill="none" stroke="currentColor" strokeWidth={2} opacity={0.6} />
+              <g key={wire.id} data-wire-id={wire.id} data-wire-highlighted={wire.highlighted ? "true" : undefined}>
+                <path
+                  d={wire.d}
+                  fill="none"
+                  stroke={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : WIRE_COLOR}
+                  strokeWidth={wire.highlighted ? 5 : 3.5}
+                  strokeLinecap="round"
+                  opacity={wire.highlighted ? 1 : 0.9}
+                />
                 {wire.label ? (
-                  <text x={wire.labelX} y={wire.labelY} fontSize={11} textAnchor="middle" fill="currentColor">
+                  <text
+                    x={wire.labelX}
+                    y={wire.labelY}
+                    fontSize={11}
+                    textAnchor="middle"
+                    fill={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : "#cbd5f5"}
+                  >
                     {wire.label}
                   </text>
                 ) : null}
@@ -506,21 +540,23 @@ export function FlowNodeCanvas({
                 data-connect-preview
                 d={`M ${connectPreview.x1} ${connectPreview.y1} L ${connectPreview.x2} ${connectPreview.y2}`}
                 fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
+                stroke={WIRE_HIGHLIGHT_COLOR}
+                strokeWidth={3.5}
                 strokeDasharray="6 4"
-                opacity={0.9}
+                opacity={0.95}
               />
             ) : null}
           </svg>
           {nodes.map((node) => {
             const live = livePosition?.nodeId === node.id ? livePosition : null;
+            const isConnected = connectedIds.has(node.id) && !node.selected;
             return (
             <div
               key={node.id}
-              className={`flow-node ${node.className}${node.selected ? " is-selected" : ""}${live ? " is-dragging" : ""}`}
+              className={`flow-node ${node.className}${node.selected ? " is-selected" : ""}${isConnected ? " is-connected" : ""}${live ? " is-dragging" : ""}`}
               data-node-id={node.id}
               data-node-kind={node.kind}
+              data-node-connected={isConnected ? "true" : undefined}
               aria-current={node.selected ? "true" : undefined}
               style={{
                 position: "absolute",
@@ -528,7 +564,12 @@ export function FlowNodeCanvas({
                 top: live ? live.y : node.y,
                 width: node.width,
                 minHeight: node.height,
-                touchAction: "none"
+                touchAction: "none",
+                // Pink ring + glow on nodes wired to the selected node, so connections
+                // are easy to follow at a glance.
+                ...(isConnected
+                  ? { boxShadow: `0 0 0 3px ${WIRE_HIGHLIGHT_COLOR}, 0 0 14px rgba(255, 79, 163, 0.65)` }
+                  : {})
               }}
               onPointerDown={(event) => beginDrag(node, event)}
               onClick={(event) => onSelectNode?.(node.id, event.metaKey || event.ctrlKey || event.shiftKey)}
