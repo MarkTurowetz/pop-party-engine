@@ -1,5 +1,5 @@
 {
-  "comment": "Builds the dual-use shared/*.ts sources to committed CommonJS+global shared/*.js (npm run build:shared), emitting each .js next to its .ts. Separate from the client tsconfig because these need Node's `module` global and emit, where the client config is DOM-only + noEmit. The .js outputs are committed so a plain `node server.js` deploy needs no build step; check:shared-fresh guards them against drift.",
+  "comment": "Builds the dual-use shared/*.ts sources to committed CommonJS+global shared/*.js (npm run build:shared), emitting each .js next to its .ts. Separate from the client tsconfig because these need Node's `module` global and emit, where the client config is DOM-only + noEmit. The .js outputs are committed so a plain `node server.js` deploy needs no build step; check:shared-fresh guards them against drift. noImplicitAny is off here: the large flow-action-registry/game-data definition arrays and room-effect callbacks aren't worth per-param typing; strictNullChecks and the rest of strict stay on, and the contract files (color/config/schema/constants) carry explicit types.",
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
@@ -7,7 +7,7 @@
     "types": ["node"],
     "rootDir": "shared",
     "strict": true,
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "skipLibCheck": true,
     "removeComments": false,
     "newLine": "lf",
