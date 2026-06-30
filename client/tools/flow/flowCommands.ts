@@ -23,7 +23,7 @@ import {
   makeDecisionBranchId,
   type FlowDecisionBranch
 } from "./flowDecision";
-import type { FlowNodePositionUpdate } from "./flowNodeGraph";
+import type { FlowNodeExit, FlowNodePoint, FlowNodePositionUpdate } from "./flowNodeGraph";
 import { assertFlowModel } from "./flowValidation";
 
 export type { FlowNodePositionUpdate } from "./flowNodeGraph";
@@ -205,6 +205,64 @@ export function addFlowActionCommand(stateId: string, selectedPrimaryActionId = 
     apply: (flow) => {
       const state = findFlowState(flow, stateId);
       if (state) addDefaultFlowAction(state, selectedPrimaryActionId);
+    }
+  };
+}
+
+function canConnectNewAction(source: Pick<FlowNodeExit, "kind" | "field" | "branchId">): boolean {
+  if (source.kind === "entry") return true;
+  if (source.kind === "field") return Boolean(source.field);
+  if (source.kind === "branch") return Boolean(source.branchId);
+  return false;
+}
+
+function connectSourceToAction(
+  state: FlowState,
+  source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
+  targetActionId: string
+): void {
+  if (source.kind === "entry") {
+    state.entryTargetActionId = targetActionId;
+    return;
+  }
+
+  const sourceAction = findFlowAction(state, source.nodeId);
+  if (!sourceAction) return;
+
+  if (source.kind === "field" && source.field) {
+    (sourceAction as Record<string, unknown>)[source.field] = targetActionId;
+    return;
+  }
+
+  if (source.kind === "branch" && source.branchId) {
+    const branches = ensureDecisionBranches(sourceAction);
+    const branch = branches.find((item) => item.id === source.branchId);
+    if (branch) branch.targetActionId = targetActionId;
+    sourceAction.branches = branches as unknown as FlowAction["branches"];
+  }
+}
+
+export function addConnectedFlowActionCommand(
+  stateId: string,
+  source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
+  position: FlowNodePoint
+): FlowCommand {
+  const nodePosition = {
+    x: Math.max(0, Math.round(position.x)),
+    y: Math.max(0, Math.round(position.y))
+  };
+  return {
+    id: `add-connected-flow-action:${stateId}:${source.nodeId}`,
+    label: "Add connected action",
+    apply: (flow) => {
+      if (!canConnectNewAction(source)) return;
+      const state = findFlowState(flow, stateId);
+      if (!state) return;
+      const insertAfterActionId =
+        source.kind === "field" || source.kind === "branch" ? source.nodeId : "";
+      const result = addDefaultFlowAction(state, insertAfterActionId);
+      (result.action as Record<string, unknown>).nodePosition = nodePosition;
+      connectSourceToAction(state, source, result.action.id);
     }
   };
 }

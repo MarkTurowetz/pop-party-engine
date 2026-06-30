@@ -216,6 +216,35 @@ describe("createFlowEditorController", () => {
     expect(revertedState.returnNodePosition).toBeUndefined();
   });
 
+  it("adds and connects a new action from a node exit", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.addConnectedAction(
+      "round-one",
+      {
+        id: "act-1:nextTargetActionId",
+        nodeId: "act-1",
+        label: "Next",
+        kind: "field",
+        field: "nextTargetActionId",
+        currentTarget: ""
+      },
+      { x: 222.2, y: 333.8 }
+    );
+
+    const actions = controller.getState().snapshot.flow.states[1].actions;
+    const created = actions[1];
+    expect(actions.map((action) => action.id)).toEqual(["act-1", created.id]);
+    expect(actions[0].nextTargetActionId).toBe(created.id);
+    expect(created.nodePosition).toEqual({ x: 222, y: 334 });
+
+    controller.undo();
+    expect(controller.getState().snapshot.flow.states[1].actions).toHaveLength(1);
+    expect(
+      controller.getState().snapshot.flow.states[1].actions[0].nextTargetActionId
+    ).toBeUndefined();
+  });
+
   it("undo returns to a clean snapshot", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 

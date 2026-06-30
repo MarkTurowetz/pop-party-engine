@@ -254,6 +254,10 @@ export function FlowEditor({
         onMoveNode={(nodeId, x, y) =>
           controller.setNodePosition(nodeDepth, selectedStateId, nodeId, x, y)
         }
+        onCreateConnectedAction={(exit, x, y) => {
+          if (nodeDepth === "actions")
+            controller.addConnectedAction(selectedStateId, exit, { x, y });
+        }}
         onOptimizeLayout={optimizeNodeLayout}
         onSelectNodes={nodeDepth === "actions" ? (ids) => controller.selectActions(ids) : undefined}
       />

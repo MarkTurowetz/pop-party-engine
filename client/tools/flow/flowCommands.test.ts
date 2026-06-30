@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addConnectedFlowActionCommand,
   addFlowActionCommand,
   addFlowStateCommand,
   addFlowSubActionCommand,
@@ -36,7 +37,12 @@ function actionFlowFixture(): GameFlow {
         id: "round-one",
         name: "Round One",
         actions: [
-          { id: "act-1", name: "Action 1", type: "message", subActions: [{ id: "sub-1", name: "Sub 1", type: "message" }] },
+          {
+            id: "act-1",
+            name: "Action 1",
+            type: "message",
+            subActions: [{ id: "sub-1", name: "Sub 1", type: "message" }]
+          },
           { id: "act-2", name: "Action 2", type: "message" }
         ]
       }
@@ -63,7 +69,11 @@ describe("Flow command history", () => {
     history.execute(renameFlowStateCommand("intro", "Cold Open"));
     history.execute(addFlowStateCommand({ id: "results", name: "Results", actions: [] }));
 
-    expect(history.flow().states.map((state) => state.id)).toEqual(["intro", "round-one", "results"]);
+    expect(history.flow().states.map((state) => state.id)).toEqual([
+      "intro",
+      "round-one",
+      "results"
+    ]);
     expect(history.undo()?.states.map((state) => state.id)).toEqual(["intro", "round-one"]);
     expect(history.undo()?.states[0].name).toBe("Intro");
     expect(history.redo()?.states[0].name).toBe("Cold Open");
@@ -83,10 +93,11 @@ describe("Flow command history", () => {
   it("can move states with command history", () => {
     const history = createFlowCommandHistory(flowFixture());
 
-    expect(history.execute(moveFlowStateCommand("intro", "round-one", true)).states.map((state) => state.id)).toEqual([
-      "round-one",
-      "intro"
-    ]);
+    expect(
+      history
+        .execute(moveFlowStateCommand("intro", "round-one", true))
+        .states.map((state) => state.id)
+    ).toEqual(["round-one", "intro"]);
   });
 
   it("respects the configured undo limit", () => {
@@ -107,8 +118,78 @@ describe("Flow action commands", () => {
 
     const next = history.execute(addFlowActionCommand("round-one", "act-1"));
 
-    expect(next.states[0].actions?.map((action) => action.id)).toEqual(["act-1", expect.any(String), "act-2"]);
+    expect(next.states[0].actions?.map((action) => action.id)).toEqual([
+      "act-1",
+      expect.any(String),
+      "act-2"
+    ]);
     expect(next.states[0].actions).toHaveLength(3);
+  });
+
+  it("adds a connected action from a source field as one undoable command", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(
+      addConnectedFlowActionCommand(
+        "round-one",
+        {
+          kind: "field",
+          nodeId: "act-1",
+          field: "nextTargetActionId"
+        },
+        { x: 123.4, y: 456.6 }
+      )
+    );
+
+    const actions = next.states[0].actions || [];
+    const created = actions[1];
+    expect(actions.map((action) => action.id)).toEqual(["act-1", created.id, "act-2"]);
+    expect(actions[0].nextTargetActionId).toBe(created.id);
+    expect(created.nodePosition).toEqual({ x: 123, y: 457 });
+    expect(history.undo()?.states[0].actions?.map((action) => action.id)).toEqual([
+      "act-1",
+      "act-2"
+    ]);
+  });
+
+  it("adds a connected action from a decision branch", () => {
+    const history = createFlowCommandHistory({
+      states: [
+        {
+          id: "round-one",
+          name: "Round One",
+          actions: [
+            {
+              id: "decision-1",
+              name: "Decision",
+              type: "decision",
+              branches: [
+                { id: "branch-1", type: "hit", value: "yes", targetActionId: "" },
+                { id: "branch-default", type: "noMatch", targetActionId: "" }
+              ]
+            }
+          ]
+        }
+      ],
+      routeNodes: []
+    } as GameFlow);
+
+    const next = history.execute(
+      addConnectedFlowActionCommand(
+        "round-one",
+        {
+          kind: "branch",
+          nodeId: "decision-1",
+          branchId: "branch-1"
+        },
+        { x: 10, y: 20 }
+      )
+    );
+
+    const actions = next.states[0].actions || [];
+    const created = actions[1];
+    expect(actions[0].branches?.[0].targetActionId).toBe(created.id);
+    expect(created.nodePosition).toEqual({ x: 10, y: 20 });
   });
 
   it("renames an action (including nested sub-actions)", () => {
@@ -142,9 +223,14 @@ describe("Flow action commands", () => {
     flow.states[0].actions![0].subActions!.push({ id: "sub-2", name: "Sub 2", type: "message" });
     const history = createFlowCommandHistory(flow);
 
-    const next = history.execute(moveFlowSubActionCommand("round-one", "act-1", "sub-2", "sub-1", false));
+    const next = history.execute(
+      moveFlowSubActionCommand("round-one", "act-1", "sub-2", "sub-1", false)
+    );
 
-    expect(next.states[0].actions?.[0].subActions?.map((sub) => sub.id)).toEqual(["sub-2", "sub-1"]);
+    expect(next.states[0].actions?.[0].subActions?.map((sub) => sub.id)).toEqual([
+      "sub-2",
+      "sub-1"
+    ]);
   });
 
   it("removes selected actions and their sub-actions", () => {

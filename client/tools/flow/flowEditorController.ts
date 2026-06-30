@@ -2,6 +2,7 @@ import type { GameFlow } from "../../types/game-data";
 import type { FlowApi } from "../../api/flowApi";
 import {
   addActionOptionCommand,
+  addConnectedFlowActionCommand,
   addDecisionBranchCommand,
   addFlowActionCommand,
   addFlowStateCommand,
@@ -30,6 +31,7 @@ import {
   setFlowStateNextTargetCommand,
   setFlowStateVotingSourceCommand
 } from "./flowCommands";
+import type { FlowNodeExit, FlowNodePoint } from "./flowNodeGraph";
 import { createFlowStore, type FlowStore, type FlowStoreSnapshot } from "./flowStore";
 import { createActionDefaults } from "./flowActionDefaults";
 import { ensureActionTiming } from "./flowActions";
@@ -97,6 +99,7 @@ export interface FlowEditorController {
 
   // Action edits
   addAction(stateId: string, selectedPrimaryActionId?: string): void;
+  addConnectedAction(stateId: string, source: FlowNodeExit, position: FlowNodePoint): void;
   addSubAction(stateId: string, parentActionId: string, selectedSubActionId?: string): void;
   renameAction(stateId: string, actionId: string, name: string): void;
   setActionType(stateId: string, actionId: string, type: string): void;
@@ -252,6 +255,8 @@ export function createFlowEditorController(
 
     addAction: (stateId, selectedPrimaryActionId = "") =>
       commit(store.execute(addFlowActionCommand(stateId, selectedPrimaryActionId))),
+    addConnectedAction: (stateId, source, position) =>
+      commit(store.execute(addConnectedFlowActionCommand(stateId, source, position))),
     addSubAction: (stateId, parentActionId, selectedSubActionId = "") =>
       commit(store.execute(addFlowSubActionCommand(stateId, parentActionId, selectedSubActionId))),
     renameAction: (stateId, actionId, name) =>

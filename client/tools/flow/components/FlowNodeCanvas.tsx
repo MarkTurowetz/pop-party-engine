@@ -9,6 +9,8 @@ import type { FlowGraphConnection, FlowGraphNode, FlowNodeExit } from "../flowNo
 
 const MINIMAP_W = 300;
 const MINIMAP_H = 260;
+const NEW_CONNECTED_ACTION_WIDTH = 260;
+const NEW_CONNECTED_ACTION_HEIGHT = 134;
 const MINIMAP_BACKGROUND =
   "linear-gradient(135deg, rgba(34, 211, 238, 0.24), rgba(255, 79, 163, 0.22)), #160b35";
 
@@ -203,6 +205,7 @@ export interface FlowNodeCanvasProps {
   onBackToMoments?: () => void;
   onMoveNode?: (nodeId: string, x: number, y: number) => void;
   onConnect?: (exit: FlowNodeExit, targetNodeId: string) => void;
+  onCreateConnectedAction?: (exit: FlowNodeExit, x: number, y: number) => void;
   onOptimizeLayout?: () => void;
   onSelectNodes?: (nodeIds: string[]) => void;
 }
@@ -323,6 +326,7 @@ export function FlowNodeCanvas({
   onBackToMoments,
   onMoveNode,
   onConnect,
+  onCreateConnectedAction,
   onOptimizeLayout,
   onSelectNodes,
   exits = []
@@ -439,6 +443,15 @@ export function FlowNodeCanvas({
       connectRef.current = null;
       setConnectPreview(null);
       if (!connect) return;
+      if ((upEvent.metaKey || upEvent.ctrlKey) && onCreateConnectedAction) {
+        const point = toWorldPoint(upEvent.clientX, upEvent.clientY);
+        onCreateConnectedAction(
+          connect.exit,
+          Math.max(0, point.x - NEW_CONNECTED_ACTION_WIDTH / 2),
+          Math.max(0, point.y - NEW_CONNECTED_ACTION_HEIGHT / 2)
+        );
+        return;
+      }
       const targetEl = document.elementFromPoint(
         upEvent.clientX,
         upEvent.clientY
