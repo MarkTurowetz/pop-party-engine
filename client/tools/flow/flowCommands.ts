@@ -28,6 +28,7 @@ import {
 import type { FlowNodeExit, FlowNodePoint, FlowNodePositionUpdate } from "./flowNodeGraph";
 import { assertFlowModel } from "./flowValidation";
 import { findFlowAction, findFlowActionContext, findFlowSubroutine, flowSubroutineActions, type FlowSubroutine } from "./flowSubroutines";
+import { createRouteActionNode, isFlowRouteDecisionNode, type FlowRouteNodeModel } from "./flowRouteGraph";
 
 export type { FlowNodePositionUpdate } from "./flowNodeGraph";
 
@@ -39,6 +40,11 @@ export type ApplyFlowActionType = (action: FlowAction, type: string, isSubAction
 
 function findFlowRouteNode(flow: GameFlow, nodeId: string): FlowRouteNode | undefined {
   return (flow.routeNodes || []).find((node) => node.id === nodeId);
+}
+
+function flowRouteNodes(flow: GameFlow): FlowRouteNode[] {
+  if (!Array.isArray(flow.routeNodes)) flow.routeNodes = [];
+  return flow.routeNodes;
 }
 
 export interface FlowCommand {
@@ -256,6 +262,77 @@ function connectSourceToAction(
   }
 }
 
+const ROOT_ROUTE_TARGET_FIELDS = new Set([
+  "nextTargetActionId",
+  "stageClickTargetActionId",
+  "timerEndTargetActionId",
+  "answersSubmittedTargetActionId",
+  "microphoneAccessGrantedTargetActionId"
+]);
+
+function ensureRouteDecisionBranches(node: FlowRouteNode): FlowDecisionBranch[] {
+  return ensureDecisionBranches(node as FlowAction, { targetField: "targetNodeId" });
+}
+
+function setRootRouteTarget(node: FlowRouteNode, field: string | undefined, targetId: string): void {
+  const record = node as Record<string, unknown>;
+  const routeNodeType = String(record.routeNodeType || "");
+  if (routeNodeType === "momentEntry") {
+    record.targetStateId = targetId;
+    return;
+  }
+  if (field === "jumpTargetActionId") {
+    record.jumpTargetActionId = targetId;
+    return;
+  }
+  record.nextTargetNodeId = targetId;
+  record.nextTargetActionId = targetId;
+}
+
+function connectRootSourceToTarget(
+  flow: GameFlow,
+  source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
+  targetId: string
+): void {
+  if (!source.nodeId || source.kind === "entry") return;
+
+  const state = findFlowState(flow, source.nodeId);
+  if (state) {
+    if (source.kind === "field") setFlowStateNextTarget(state, targetId);
+    return;
+  }
+
+  const node = findFlowRouteNode(flow, source.nodeId);
+  if (!node) return;
+
+  if (source.kind === "branch" && source.branchId) {
+    const branches = ensureRouteDecisionBranches(node);
+    const branch = branches.find((item) => item.id === source.branchId);
+    if (branch) {
+      branch.targetNodeId = targetId;
+      branch.targetActionId = targetId;
+    }
+    (node as FlowAction).branches = branches as unknown as FlowAction["branches"];
+    return;
+  }
+
+  if (source.kind === "field") setRootRouteTarget(node, source.field, targetId);
+}
+
+function createRootRouteAction(
+  flow: GameFlow,
+  position: FlowNodePoint | null,
+  newNodeId?: string
+): FlowRouteNodeModel {
+  const nodePosition = position
+    ? { x: Math.max(0, Math.round(position.x)), y: Math.max(0, Math.round(position.y)) }
+    : null;
+  const node = createRouteActionNode(flow, nodePosition);
+  if (newNodeId) node.id = newNodeId;
+  flowRouteNodes(flow).push(node);
+  return node;
+}
+
 export function addConnectedFlowActionCommand(
   stateId: string,
   source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
@@ -279,6 +356,48 @@ export function addConnectedFlowActionCommand(
       const result = addDefaultFlowActionToSubroutine(ref.subroutine, insertAfterActionId, stateId);
       (result.action as Record<string, unknown>).nodePosition = nodePosition;
       connectSourceToAction(ref.subroutine, source, result.action.id);
+    }
+  };
+}
+
+export function addRootFlowActionCommand(
+  position: FlowNodePoint | null = null,
+  newNodeId?: string
+): FlowCommand {
+  return {
+    id: `add-root-flow-action:${newNodeId || "auto"}`,
+    label: "Add root action",
+    apply: (flow) => {
+      createRootRouteAction(flow, position, newNodeId);
+    }
+  };
+}
+
+export function connectRootFlowActionCommand(
+  source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
+  targetId: string
+): FlowCommand {
+  return {
+    id: `connect-root-flow-action:${source.nodeId}:${targetId}`,
+    label: "Connect root action",
+    apply: (flow) => {
+      connectRootSourceToTarget(flow, source, targetId);
+    }
+  };
+}
+
+export function addConnectedRootFlowActionCommand(
+  source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
+  position: FlowNodePoint,
+  newNodeId?: string
+): FlowCommand {
+  return {
+    id: `add-connected-root-flow-action:${source.nodeId}:${newNodeId || "auto"}`,
+    label: "Add connected root action",
+    apply: (flow) => {
+      if (!canConnectNewAction(source)) return;
+      const node = createRootRouteAction(flow, position, newNodeId);
+      connectRootSourceToTarget(flow, source, String(node.id || ""));
     }
   };
 }
@@ -371,6 +490,8 @@ function applyFlowNodePosition(
   if (depth === "subroutines") {
     const state = findFlowState(flow, nodeId);
     if (state) (state as Record<string, unknown>).nodePosition = position;
+    const routeNode = findFlowRouteNode(flow, nodeId);
+    if (routeNode) (routeNode as Record<string, unknown>).nodePosition = position;
     return;
   }
   const ref = findFlowSubroutine(flow, stateId, subroutinePath);
@@ -470,6 +591,130 @@ export function setDecisionBranchFieldCommand(
       const branch = branches.find((item) => item.id === branchId);
       if (branch) (branch as Record<string, unknown>)[key] = value;
       action.branches = branches as unknown as FlowAction["branches"];
+    }
+  };
+}
+
+export function renameFlowRouteActionCommand(nodeId: string, nextName: string): FlowCommand {
+  return {
+    id: `rename-flow-route-action:${nodeId}`,
+    label: "Rename root action",
+    apply: (flow) => {
+      const node = findFlowRouteNode(flow, nodeId);
+      if (node) (node as Record<string, unknown>).name = nextName;
+    }
+  };
+}
+
+export function setFlowRouteActionTypeCommand(
+  nodeId: string,
+  type: string,
+  applyType: ApplyFlowActionType
+): FlowCommand {
+  return {
+    id: `set-flow-route-action-type:${nodeId}`,
+    label: "Change root action type",
+    apply: (flow) => {
+      const node = findFlowRouteNode(flow, nodeId);
+      if (!node) return;
+      const record = node as FlowRouteNodeModel;
+      record.routeNodeType = "action";
+      applyType(record as FlowAction, type, false);
+      if (type === "decision" || isFlowRouteDecisionNode(record)) {
+        record.nextTargetNodeId = "";
+        record.branches = ensureRouteDecisionBranches(record) as unknown as FlowAction["branches"];
+      }
+    }
+  };
+}
+
+export function setFlowRouteActionFieldCommand(
+  nodeId: string,
+  key: string,
+  value: unknown
+): FlowCommand {
+  return {
+    id: `set-flow-route-action-field:${nodeId}:${key}`,
+    label: "Edit root action field",
+    apply: (flow) => {
+      const node = findFlowRouteNode(flow, nodeId);
+      if (!node) return;
+      const record = node as Record<string, unknown>;
+      record[key] = value;
+      if (key === "jumpTargetActionId") {
+        setRootRouteTarget(node, key, String(value || ""));
+      } else if (ROOT_ROUTE_TARGET_FIELDS.has(key)) {
+        setRootRouteTarget(node, key, String(value || ""));
+      }
+    }
+  };
+}
+
+export function setFlowRouteActionTimingCommand(
+  nodeId: string,
+  timing: FlowActionTimingPatch
+): FlowCommand {
+  return {
+    id: `set-flow-route-action-timing:${nodeId}`,
+    label: "Edit root action timing",
+    apply: (flow) => {
+      const node = findFlowRouteNode(flow, nodeId) as FlowAction | undefined;
+      if (!node) return;
+      const current = node.timing || { mode: "E+", seconds: 0 };
+      const mode = timing.mode ?? current.mode ?? "E+";
+      const secondsValue = timing.seconds ?? current.seconds ?? 0;
+      const seconds = Number.isFinite(Number(secondsValue)) ? Math.max(0, Number(secondsValue)) : 0;
+      node.timing = { ...current, mode, seconds };
+    }
+  };
+}
+
+export function addFlowRouteDecisionBranchCommand(nodeId: string): FlowCommand {
+  return {
+    id: `add-flow-route-decision-branch:${nodeId}`,
+    label: "Add root decision branch",
+    apply: (flow) => {
+      const node = findFlowRouteNode(flow, nodeId);
+      if (!node) return;
+      const branches = ensureRouteDecisionBranches(node);
+      const noMatchIndex = branches.findIndex((branch) => branch.type === "noMatch");
+      const newBranch: FlowDecisionBranch = {
+        id: makeDecisionBranchId("branch"),
+        type: "hit",
+        value: "",
+        code: "x < 3",
+        targetNodeId: "",
+        targetActionId: ""
+      };
+      branches.splice(noMatchIndex >= 0 ? noMatchIndex : branches.length, 0, newBranch);
+      (node as FlowAction).branches = branches as unknown as FlowAction["branches"];
+    }
+  };
+}
+
+export function setFlowRouteDecisionBranchFieldCommand(
+  nodeId: string,
+  branchId: string,
+  key: string,
+  value: unknown
+): FlowCommand {
+  return {
+    id: `set-flow-route-decision-branch-field:${nodeId}:${branchId}:${key}`,
+    label: "Edit root decision branch",
+    apply: (flow) => {
+      const node = findFlowRouteNode(flow, nodeId);
+      if (!node) return;
+      const branches = ensureRouteDecisionBranches(node);
+      const branch = branches.find((item) => item.id === branchId);
+      if (branch) {
+        if (key === "targetActionId" || key === "targetNodeId") {
+          branch.targetNodeId = String(value || "");
+          branch.targetActionId = String(value || "");
+        } else {
+          (branch as Record<string, unknown>)[key] = value;
+        }
+      }
+      (node as FlowAction).branches = branches as unknown as FlowAction["branches"];
     }
   };
 }

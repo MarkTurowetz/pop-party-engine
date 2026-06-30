@@ -3,18 +3,23 @@ import type { FlowApi } from "../../api/flowApi";
 import {
   addActionOptionCommand,
   addConnectedFlowActionCommand,
+  addConnectedRootFlowActionCommand,
   addDecisionBranchCommand,
   addFlowActionCommand,
   addFlowActionToSubroutineCommand,
+  addFlowRouteDecisionBranchCommand,
   addFlowStateCommand,
   addFlowSubroutineCommand,
   addFlowSubActionCommand,
+  addRootFlowActionCommand,
+  connectRootFlowActionCommand,
   removeActionOptionCommand,
   removeDecisionBranchCommand,
   setActionOptionCommand,
   setDecisionBranchFieldCommand,
   moveFlowActionCommand,
   renameFlowActionCommand,
+  renameFlowRouteActionCommand,
   moveFlowStateCommand,
   moveFlowSubActionCommand,
   removeFlowActionsCommand,
@@ -25,6 +30,10 @@ import {
   setFlowActionFieldCommand,
   setFlowActionTimingCommand,
   setFlowActionTypeCommand,
+  setFlowRouteActionFieldCommand,
+  setFlowRouteActionTimingCommand,
+  setFlowRouteActionTypeCommand,
+  setFlowRouteDecisionBranchFieldCommand,
   setFlowNodePositionCommand,
   setFlowNodePositionsCommand,
   type FlowActionTimingPatch,
@@ -104,12 +113,20 @@ export interface FlowEditorController {
   // Action edits
   addAction(stateId: string, selectedPrimaryActionId?: string, subroutinePath?: Iterable<string>): void;
   addConnectedAction(stateId: string, source: FlowNodeExit, position: FlowNodePoint, subroutinePath?: Iterable<string>): void;
+  addRootAction(position?: FlowNodePoint | null): void;
+  addConnectedRootAction(source: FlowNodeExit, position: FlowNodePoint): void;
+  connectRootAction(source: FlowNodeExit, targetId: string): void;
   addSubAction(stateId: string, parentActionId: string, selectedSubActionId?: string): void;
   renameAction(stateId: string, actionId: string, name: string): void;
+  renameRouteAction(nodeId: string, name: string): void;
   setActionType(stateId: string, actionId: string, type: string): void;
+  setRouteActionType(nodeId: string, type: string): void;
   setActionField(stateId: string, actionId: string, key: string, value: unknown): void;
+  setRouteActionField(nodeId: string, key: string, value: unknown): void;
   setActionTiming(stateId: string, actionId: string, timing: FlowActionTimingPatch): void;
+  setRouteActionTiming(nodeId: string, timing: FlowActionTimingPatch): void;
   addDecisionBranch(stateId: string, actionId: string): void;
+  addRouteDecisionBranch(nodeId: string): void;
   removeDecisionBranch(stateId: string, actionId: string, branchId: string): void;
   setDecisionBranchField(
     stateId: string,
@@ -118,6 +135,7 @@ export interface FlowEditorController {
     key: string,
     value: unknown
   ): void;
+  setRouteDecisionBranchField(nodeId: string, branchId: string, key: string, value: unknown): void;
   addActionOption(stateId: string, actionId: string): void;
   removeActionOption(stateId: string, actionId: string, index: number): void;
   setActionOption(stateId: string, actionId: string, index: number, value: string): void;
@@ -168,6 +186,10 @@ export interface FlowEditorController {
 
 function savedSnapshotOf(flow: GameFlow): string {
   return JSON.stringify(serializeGameFlowForSave(flow));
+}
+
+function makeRootRouteActionId(): string {
+  return `route-action-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export function createFlowEditorController(
@@ -284,10 +306,24 @@ export function createFlowEditorController(
     },
     addConnectedAction: (stateId, source, position, subroutinePath = []) =>
       commit(store.execute(addConnectedFlowActionCommand(stateId, source, position, subroutinePath))),
+    addRootAction: (position = null) => {
+      const nodeId = makeRootRouteActionId();
+      store.execute(addRootFlowActionCommand(position, nodeId));
+      commit(store.selectRouteNode(nodeId));
+    },
+    addConnectedRootAction: (source, position) => {
+      const nodeId = makeRootRouteActionId();
+      store.execute(addConnectedRootFlowActionCommand(source, position, nodeId));
+      commit(store.selectRouteNode(nodeId));
+    },
+    connectRootAction: (source, targetId) =>
+      commit(store.execute(connectRootFlowActionCommand(source, targetId))),
     addSubAction: (stateId, parentActionId, selectedSubActionId = "") =>
       commit(store.execute(addFlowSubActionCommand(stateId, parentActionId, selectedSubActionId))),
     renameAction: (stateId, actionId, name) =>
       commit(store.execute(renameFlowActionCommand(stateId, actionId, name))),
+    renameRouteAction: (nodeId, name) =>
+      commit(store.execute(renameFlowRouteActionCommand(nodeId, name))),
     setActionType: (stateId, actionId, type) =>
       commit(
         store.execute(
@@ -296,16 +332,32 @@ export function createFlowEditorController(
           )
         )
       ),
+    setRouteActionType: (nodeId, type) =>
+      commit(
+        store.execute(
+          setFlowRouteActionTypeCommand(nodeId, type, (action, nextType, isSubAction) =>
+            actionDefaults.applyActionTypeDefaults(action, nextType, isSubAction)
+          )
+        )
+      ),
     setActionField: (stateId, actionId, key, value) =>
       commit(store.execute(setFlowActionFieldCommand(stateId, actionId, key, value))),
+    setRouteActionField: (nodeId, key, value) =>
+      commit(store.execute(setFlowRouteActionFieldCommand(nodeId, key, value))),
     setActionTiming: (stateId, actionId, timing) =>
       commit(store.execute(setFlowActionTimingCommand(stateId, actionId, timing))),
+    setRouteActionTiming: (nodeId, timing) =>
+      commit(store.execute(setFlowRouteActionTimingCommand(nodeId, timing))),
     addDecisionBranch: (stateId, actionId) =>
       commit(store.execute(addDecisionBranchCommand(stateId, actionId))),
+    addRouteDecisionBranch: (nodeId) =>
+      commit(store.execute(addFlowRouteDecisionBranchCommand(nodeId))),
     removeDecisionBranch: (stateId, actionId, branchId) =>
       commit(store.execute(removeDecisionBranchCommand(stateId, actionId, branchId))),
     setDecisionBranchField: (stateId, actionId, branchId, key, value) =>
       commit(store.execute(setDecisionBranchFieldCommand(stateId, actionId, branchId, key, value))),
+    setRouteDecisionBranchField: (nodeId, branchId, key, value) =>
+      commit(store.execute(setFlowRouteDecisionBranchFieldCommand(nodeId, branchId, key, value))),
     addActionOption: (stateId, actionId) =>
       commit(store.execute(addActionOptionCommand(stateId, actionId))),
     removeActionOption: (stateId, actionId, index) =>

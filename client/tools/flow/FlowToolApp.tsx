@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { GameFlow } from "../../types/game-data";
+import type { FlowAction, GameFlow } from "../../types/game-data";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowPreviewModel } from "./flowPreviewModel";
@@ -50,6 +50,14 @@ export interface FlowToolAppProps {
   flow?: GameFlow | null;
   handlers?: FlowToolReactShellHandlers;
   inspectorEdit?: ActionInspectorEditHandlers;
+  inspectorActionOverride?: {
+    action: FlowAction | null;
+    edit?: ActionInspectorEditHandlers;
+    isBranch?: boolean;
+    isSubAction?: boolean;
+    parentAction?: FlowAction | null;
+    state: FlowSubroutine | null;
+  } | null;
   inspectorSubroutine?: FlowSubroutine | null;
   nodeCanvas?: ReactNode;
   reorder?: FlowReorderHandlers;
@@ -77,6 +85,7 @@ export function FlowToolApp({
   flowViewMode = "list",
   handlers = {},
   inspectorEdit,
+  inspectorActionOverride = null,
   inspectorSubroutine = null,
   nodeCanvas,
   reorder,
@@ -120,7 +129,17 @@ export function FlowToolApp({
     />
   );
 
-  const inspector = model.selectedRouteNode ? (
+  const inspector = inspectorActionOverride ? (
+    <ActionInspector
+      action={inspectorActionOverride.action}
+      actionTypes={flowActionTypes}
+      edit={inspectorActionOverride.edit}
+      isBranch={inspectorActionOverride.isBranch || false}
+      isSubAction={inspectorActionOverride.isSubAction || false}
+      parentAction={inspectorActionOverride.parentAction || null}
+      state={inspectorActionOverride.state}
+    />
+  ) : model.selectedRouteNode ? (
     <FlowRouteInspector
       actionTypes={flowActionTypes}
       branch={model.selectedRouteBranch}

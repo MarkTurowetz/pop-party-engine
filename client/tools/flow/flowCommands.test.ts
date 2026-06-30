@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addConnectedFlowActionCommand,
+  addConnectedRootFlowActionCommand,
+  connectRootFlowActionCommand,
   addFlowActionCommand,
   addFlowActionToSubroutineCommand,
   addFlowStateCommand,
@@ -331,5 +333,34 @@ describe("Flow route commands", () => {
     const next = history.execute(removeFlowRouteNodeCommand("node-1"));
 
     expect(next.routeNodes).toEqual([]);
+  });
+
+  it("creates and connects root actions through route-node storage", () => {
+    const history = createFlowCommandHistory(flowFixture());
+
+    const withRootAction = history.execute(
+      addConnectedRootFlowActionCommand(
+        { kind: "field", nodeId: "intro", field: "nextTargetActionId" },
+        { x: 20, y: 40 },
+        "route-action-test"
+      )
+    );
+
+    expect(withRootAction.states[0].nextStateTargetId).toBe("route-action-test");
+    expect(withRootAction.routeNodes?.[0]).toMatchObject({
+      id: "route-action-test",
+      routeNodeType: "action",
+      nextTargetNodeId: "",
+      nodePosition: { x: 20, y: 40 }
+    });
+
+    const connected = history.execute(
+      connectRootFlowActionCommand(
+        { kind: "field", nodeId: "route-action-test", field: "nextTargetActionId" },
+        "round-one"
+      )
+    );
+
+    expect(connected.routeNodes?.[0]?.nextTargetNodeId).toBe("round-one");
   });
 });

@@ -1,0 +1,210 @@
+import type { FlowAction, FlowRouteNode, FlowState, GameFlow } from "../../types/game-data";
+import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
+import {
+  subroutineGraphNodes,
+  type FlowGraphConnection,
+  type FlowGraphNode,
+  type FlowGraphSelection,
+  type FlowNodeExit
+} from "./flowNodeGraph";
+import { flowRouteNodeTypeName, isFlowRouteDecisionNode, type FlowRouteNodeModel } from "./flowRouteGraph";
+
+export const ROOT_FLOW_SUBROUTINE_ID = "root-flow";
+
+export interface RootFlowSubroutine extends FlowAction {
+  id: typeof ROOT_FLOW_SUBROUTINE_ID;
+  name: string;
+  type: "subroutine";
+  actions: FlowAction[];
+}
+
+export type RootFlowNodeSource = "state" | "routeNode";
+
+export interface RootFlowAction extends FlowAction {
+  rootNodeSource: RootFlowNodeSource;
+}
+
+function rootTargetIsEmpty(value: unknown): boolean {
+  const target = String(value || "");
+  return !target || target === "none" || target === "noFlow";
+}
+
+function routeDecisionBranches(node: FlowRouteNode): FlowAction[] {
+  const normalized = ensureDecisionBranches(
+    {
+      ...(node as FlowAction),
+      branches: Array.isArray(node.branches) ? [...node.branches] : undefined
+    },
+    { targetField: "targetNodeId" }
+  );
+  return normalized.map((branch) => ({
+    ...branch,
+    targetActionId: String(branch.targetNodeId || branch.targetActionId || "")
+  })) as FlowAction[];
+}
+
+function stateAsRootAction(state: FlowState): RootFlowAction {
+  return {
+    id: state.id,
+    name: state.name || state.id,
+    type: "subroutine",
+    actions: state.actions || [],
+    entryTargetActionId: String(state.entryTargetActionId || ""),
+    nextTargetActionId: String(state.nextStateTargetId || ""),
+    nodePosition: state.nodePosition,
+    rootNodeSource: "state",
+    subActions: []
+  };
+}
+
+function routeNodeAsRootAction(node: FlowRouteNode, index: number): RootFlowAction {
+  const routeNode = node as FlowRouteNodeModel;
+  const routeNodeType = routeNode.routeNodeType || "momentEntry";
+  const type = isFlowRouteDecisionNode(routeNode)
+    ? "decision"
+    : routeNodeType === "momentEntry"
+      ? "momentEntry"
+      : routeNode.type || "presentText";
+  const nextTargetActionId =
+    routeNodeType === "momentEntry"
+      ? String(routeNode.targetStateId || "")
+      : String(routeNode.nextTargetNodeId || routeNode.nextTargetActionId || "");
+  return {
+    ...(routeNode as FlowAction),
+    id: String(routeNode.id || `route-node-${index + 1}`),
+    name: routeNode.name || `${flowRouteNodeTypeName(routeNode)} ${index + 1}`,
+    type,
+    branches: type === "decision" ? routeDecisionBranches(routeNode) : routeNode.branches,
+    nextTargetActionId,
+    rootNodeSource: "routeNode",
+    subActions: routeNode.subActions || []
+  };
+}
+
+export function rootFlowActions(flow: Partial<GameFlow> | null | undefined): RootFlowAction[] {
+  const stateActions = (flow?.states || []).map(stateAsRootAction);
+  const routeActions = (flow?.routeNodes || []).map(routeNodeAsRootAction);
+  return [...stateActions, ...routeActions];
+}
+
+export function rootFlowSubroutine(flow: Partial<GameFlow> | null | undefined): RootFlowSubroutine {
+  return {
+    id: ROOT_FLOW_SUBROUTINE_ID,
+    name: "Root Flow",
+    type: "subroutine",
+    actions: rootFlowActions(flow),
+    subActions: []
+  };
+}
+
+export function rootFlowActionById(
+  flow: Partial<GameFlow> | null | undefined,
+  actionId: string
+): RootFlowAction | null {
+  return rootFlowActions(flow).find((action) => action.id === actionId) || null;
+}
+
+export function rootFlowNodeSource(
+  flow: Partial<GameFlow> | null | undefined,
+  nodeId: string
+): RootFlowNodeSource | null {
+  const action = rootFlowActionById(flow, nodeId);
+  return action?.rootNodeSource || null;
+}
+
+export function rootFlowTargetOptions(
+  flow: Partial<GameFlow> | null | undefined,
+  currentNodeId = ""
+): { id: string; label: string }[] {
+  const options = [{ id: "none", label: "None / Halt" }];
+  for (const action of rootFlowActions(flow)) {
+    if (action.id === currentNodeId) continue;
+    const prefix = action.rootNodeSource === "state" ? "Subroutine" : flowRouteNodeTypeName(action);
+    options.push({ id: action.id, label: `${prefix}: ${action.name || action.id}` });
+  }
+  return options;
+}
+
+export function rootFlowGraphNodes(
+  flow: Partial<GameFlow> | null | undefined,
+  selection: FlowGraphSelection = {}
+): FlowGraphNode[] {
+  const selectedActionId =
+    selection.selectedRouteNodeId || selection.selectedActionId || selection.selectedStateId || "";
+  return subroutineGraphNodes(rootFlowSubroutine(flow), {
+    ...selection,
+    selectedActionId
+  }).filter((node) => node.kind !== "system");
+}
+
+export function rootFlowNodeExits(flow: Partial<GameFlow> | null | undefined): FlowNodeExit[] {
+  const exits: FlowNodeExit[] = [];
+  for (const action of rootFlowActions(flow)) {
+    if (action.type === "decision") {
+      for (const [index, branch] of routeDecisionBranches(action).entries()) {
+        exits.push({
+          id: `${action.id}:${branch.id}`,
+          nodeId: action.id,
+          label: decisionBranchName(branch, index),
+          kind: "branch",
+          branchId: branch.id,
+          currentTarget: String(branch.targetActionId || "")
+        });
+      }
+      continue;
+    }
+    exits.push({
+      id: `${action.id}:nextTargetActionId`,
+      nodeId: action.id,
+      label: "Next",
+      kind: "field",
+      field: "nextTargetActionId",
+      currentTarget: String(action.nextTargetActionId || "")
+    });
+  }
+  return exits;
+}
+
+export function rootFlowGraphConnections(
+  flow: Partial<GameFlow> | null | undefined
+): FlowGraphConnection[] {
+  const actions = rootFlowActions(flow);
+  const nodeIds = new Set(actions.map((action) => action.id));
+  const connections: FlowGraphConnection[] = [];
+  for (const action of actions) {
+    if (action.type === "decision") {
+      routeDecisionBranches(action).forEach((branch, index) => {
+        const target = String(branch.targetActionId || "");
+        if (rootTargetIsEmpty(target) || !nodeIds.has(target)) return;
+        connections.push({
+          id: `${action.id}->${target}:${branch.id}`,
+          from: action.id,
+          to: target,
+          label: decisionBranchName(branch, index)
+        });
+      });
+      continue;
+    }
+    const target = String(action.nextTargetActionId || "");
+    if (rootTargetIsEmpty(target) || !nodeIds.has(target)) continue;
+    connections.push({
+      id: `${action.id}->${target}:Next`,
+      from: action.id,
+      to: target,
+      label: "Next"
+    });
+  }
+  return connections;
+}
+
+export function rootRouteNodeIds(flow: Partial<GameFlow> | null | undefined): string[] {
+  return rootFlowActions(flow)
+    .filter((action) => action.rootNodeSource === "routeNode")
+    .map((action) => action.id);
+}
+
+export function rootStateIds(flow: Partial<GameFlow> | null | undefined): string[] {
+  return rootFlowActions(flow)
+    .filter((action) => action.rootNodeSource === "state")
+    .map((action) => action.id);
+}
