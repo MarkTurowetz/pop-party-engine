@@ -1,9 +1,20 @@
 import type { FlowAction, GameFlow } from "../../types/game-data";
-import { decisionBranchName, decisionBranchWireLabel, ensureDecisionBranches } from "./flowDecision";
+import {
+  decisionBranchName,
+  decisionBranchWireLabel,
+  ensureDecisionBranches
+} from "./flowDecision";
 import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
-import { flowSubroutineActions, isFlowSubroutineAction, type FlowSubroutine } from "./flowSubroutines";
+import {
+  flowSubroutineActions,
+  isFlowSubroutineAction,
+  type FlowSubroutine
+} from "./flowSubroutines";
 
-export { decisionBranchGraphNodeId, parseDecisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
+export {
+  decisionBranchGraphNodeId,
+  parseDecisionBranchGraphNodeId
+} from "./flowDecisionBranchIdentity";
 export { optimizedVerticalNodePositions } from "./flowGraphLayout";
 
 /**
@@ -23,7 +34,7 @@ export interface FlowNodePoint {
 export interface FlowGraphNode {
   id: string;
   /** Root/nested subroutine, action, or a system node ("start"/"return"). */
-  kind: "subroutine" | "action" | "branch" | "system";
+  kind: "subroutine" | "action" | "branch" | "subAction" | "system";
   title: string;
   subtitle: string;
   timing: string;
@@ -35,6 +46,7 @@ export interface FlowGraphNode {
   selected: boolean;
   parentNodeId?: string;
   branchId?: string;
+  subActionId?: string;
   draggable?: boolean;
 }
 
@@ -53,6 +65,7 @@ export interface FlowGraphConnection {
   label: string;
   labelKind?: "default" | "branch-hit" | "branch-code" | "branch-no-match" | "jump-preview";
   visibleWhenSelected?: boolean;
+  fromAnchorNodeId?: string;
   fromPoint?: FlowNodePoint;
   toPoint?: FlowNodePoint;
 }
@@ -68,7 +81,7 @@ export interface FlowNodeExit {
   field?: string;
   branchId?: string;
   currentTarget: string;
-  portSide?: "bottom" | "right";
+  portSide?: "bottom" | "bottomCenter" | "right";
 }
 
 export type IsInputType = (type: string) => boolean;
@@ -79,10 +92,14 @@ export interface FlowNodePositionUpdate {
   y: number;
 }
 
-const DECISION_BRANCH_NODE_TOP_GAP = 16;
-const DECISION_BRANCH_NODE_GAP = 18;
-const DECISION_BRANCH_NODE_WIDTH = 280;
-const DECISION_BRANCH_NODE_HEIGHT = 34;
+const CHILD_NODE_TOP_GAP = 16;
+const CHILD_NODE_GAP = 18;
+const CHILD_NODE_WIDTH = 280;
+const CHILD_NODE_HEIGHT = 34;
+
+export interface SubroutineGraphNodeOptions {
+  includeSubActions?: boolean;
+}
 
 function isNoFlowTarget(value: string): boolean {
   return !value || value === "none" || value === "noFlow";
@@ -153,6 +170,26 @@ function actionTimingLabel(action: FlowAction): string {
   return `${mode} ${Number.isFinite(seconds) ? seconds.toFixed(2) : "0.00"}s`;
 }
 
+function subActionTimingSeconds(action: FlowAction): number {
+  const seconds = Number(action.timing?.seconds ?? 0);
+  return Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+}
+
+function subActionTimingLabel(action: FlowAction): string {
+  return `S+ ${subActionTimingSeconds(action).toFixed(2)}s`;
+}
+
+function sortedSubActions(action: FlowAction): FlowAction[] {
+  return (action.subActions || [])
+    .map((subAction, index) => ({ subAction, index }))
+    .sort((left, right) => {
+      const timingDelta =
+        subActionTimingSeconds(left.subAction) - subActionTimingSeconds(right.subAction);
+      return timingDelta || left.index - right.index;
+    })
+    .map((entry) => entry.subAction);
+}
+
 function subroutineClassName(): string {
   return "is-subroutine";
 }
@@ -181,8 +218,27 @@ function branchSubtitle(branch: FlowAction): string {
   return "Fallback";
 }
 
+function childNodes(
+  nodes: FlowGraphNode[],
+  actionId: string,
+  kind: FlowGraphNode["kind"]
+): FlowGraphNode[] {
+  return nodes.filter((node) => node.kind === kind && node.parentNodeId === actionId);
+}
+
 function decisionBranchNodes(nodes: FlowGraphNode[], actionId: string): FlowGraphNode[] {
-  return nodes.filter((node) => node.kind === "branch" && node.parentNodeId === actionId);
+  return childNodes(nodes, actionId, "branch");
+}
+
+function subActionNodes(nodes: FlowGraphNode[], actionId: string): FlowGraphNode[] {
+  return childNodes(nodes, actionId, "subAction");
+}
+
+function bottomCenterAnchor(node: FlowGraphNode): FlowNodePoint {
+  return {
+    x: node.x + node.width / 2,
+    y: node.y + node.height
+  };
 }
 
 export function decisionBranchTargetAnchor(
@@ -192,10 +248,37 @@ export function decisionBranchTargetAnchor(
   const branches = decisionBranchNodes(nodes, actionId);
   const lastBranch = branches[branches.length - 1];
   if (!lastBranch) return undefined;
-  return {
-    x: lastBranch.x + lastBranch.width / 2,
-    y: lastBranch.y + lastBranch.height
-  };
+  return bottomCenterAnchor(lastBranch);
+}
+
+export function decisionBranchTargetAnchorNodeId(
+  nodes: FlowGraphNode[],
+  actionId: string
+): string | undefined {
+  const branches = decisionBranchNodes(nodes, actionId);
+  return branches[branches.length - 1]?.id;
+}
+
+export function subActionTargetAnchor(
+  nodes: FlowGraphNode[],
+  actionId: string
+): FlowNodePoint | undefined {
+  const subActions = subActionNodes(nodes, actionId);
+  const lastSubAction = subActions[subActions.length - 1];
+  return lastSubAction ? bottomCenterAnchor(lastSubAction) : undefined;
+}
+
+export function subActionTargetAnchorNodeId(
+  nodes: FlowGraphNode[],
+  actionId: string
+): string | undefined {
+  const subActions = subActionNodes(nodes, actionId);
+  return subActions[subActions.length - 1]?.id;
+}
+
+function lastSortedSubActionId(action: FlowAction): string {
+  const subActions = sortedSubActions(action);
+  return String(subActions[subActions.length - 1]?.id || "");
 }
 
 /** Nodes for the root subroutines depth: one node per root flow subroutine. */
@@ -211,7 +294,8 @@ export function rootSubroutineGraphNodes(
       defaultNodePosition(index, 3, 80, 80, 420, 240)
     );
     const nextName = state.nextStateTargetId
-      ? subroutines.find((item) => item.id === state.nextStateTargetId)?.name || state.nextStateTargetId
+      ? subroutines.find((item) => item.id === state.nextStateTargetId)?.name ||
+        state.nextStateTargetId
       : "";
     const selected =
       !selection.selectedRouteNodeId &&
@@ -236,9 +320,11 @@ export function rootSubroutineGraphNodes(
 /** Nodes inside a subroutine: Start + child actions/subroutines + Return. */
 export function subroutineGraphNodes(
   subroutine: FlowSubroutine | null,
-  selection: FlowGraphSelection = {}
+  selection: FlowGraphSelection = {},
+  options: SubroutineGraphNodeOptions = {}
 ): FlowGraphNode[] {
   if (!subroutine) return [];
+  const includeSubActions = options.includeSubActions !== false;
   const selectedActionIds = new Set(selection.selectedActionIds || []);
   const isSelected = (id: string) => selection.selectedActionId === id || selectedActionIds.has(id);
 
@@ -279,8 +365,8 @@ export function subroutineGraphNodes(
       title: isSubroutine
         ? action.name || `Subroutine ${index + 1}`
         : isLabel
-        ? String(action.labelText || action.name || "Flow note")
-        : action.name || `Action ${index + 1}`,
+          ? String(action.labelText || action.name || "Flow note")
+          : action.name || `Action ${index + 1}`,
       subtitle: isSubroutine
         ? `${flowSubroutineActions(action).length} actions`
         : isCode
@@ -312,14 +398,38 @@ export function subroutineGraphNodes(
           y:
             y +
             actionHeight +
-            DECISION_BRANCH_NODE_TOP_GAP +
-            branchIndex * (DECISION_BRANCH_NODE_HEIGHT + DECISION_BRANCH_NODE_GAP),
-          width: DECISION_BRANCH_NODE_WIDTH,
-          height: DECISION_BRANCH_NODE_HEIGHT,
+            CHILD_NODE_TOP_GAP +
+            branchIndex * (CHILD_NODE_HEIGHT + CHILD_NODE_GAP),
+          width: CHILD_NODE_WIDTH,
+          height: CHILD_NODE_HEIGHT,
           className: `is-branch${isNoMatch ? " is-no-match" : ""}`,
           selected: isSelected(branchNodeId),
           parentNodeId: action.id,
           branchId,
+          draggable: false
+        });
+      });
+    } else if (includeSubActions) {
+      sortedSubActions(action).forEach((subAction, subActionIndex) => {
+        const subActionId = String(subAction.id);
+        nodes.push({
+          id: subActionId,
+          kind: "subAction",
+          title: subAction.name || `Sub-action ${subActionIndex + 1}`,
+          subtitle: "",
+          timing: subActionTimingLabel(subAction),
+          x: x + 20,
+          y:
+            y +
+            actionHeight +
+            CHILD_NODE_TOP_GAP +
+            subActionIndex * (CHILD_NODE_HEIGHT + CHILD_NODE_GAP),
+          width: CHILD_NODE_WIDTH,
+          height: CHILD_NODE_HEIGHT,
+          className: "is-sub-action",
+          selected: isSelected(subActionId),
+          parentNodeId: action.id,
+          subActionId,
           draggable: false
         });
       });
@@ -393,7 +503,10 @@ function exitDefinitions(action: FlowAction, isInputType: IsInputType): ExitDefi
 }
 
 /** Output exits per node inside any subroutine (Start entry + each child action's exits). */
-export function subroutineNodeExits(subroutine: FlowSubroutine | null, isInputType: IsInputType): FlowNodeExit[] {
+export function subroutineNodeExits(
+  subroutine: FlowSubroutine | null,
+  isInputType: IsInputType
+): FlowNodeExit[] {
   if (!subroutine) return [];
   const exits: FlowNodeExit[] = [
     {
@@ -406,6 +519,7 @@ export function subroutineNodeExits(subroutine: FlowSubroutine | null, isInputTy
   ];
   for (const action of flowSubroutineActions(subroutine)) {
     const record = action as Record<string, unknown>;
+    const childExitViewNodeId = action.type === "decision" ? "" : lastSortedSubActionId(action);
     for (const def of exitDefinitions(action, isInputType)) {
       if (def.branchId) {
         const branch = ensureDecisionBranches(action).find((item) => item.id === def.branchId);
@@ -424,10 +538,12 @@ export function subroutineNodeExits(subroutine: FlowSubroutine | null, isInputTy
         exits.push({
           id: `${action.id}:${def.field}`,
           nodeId: action.id,
+          viewNodeId: childExitViewNodeId || undefined,
           label: def.label,
           kind: "field",
           field: def.field,
-          currentTarget: String(record[def.field] || "")
+          currentTarget: String(record[def.field] || ""),
+          portSide: childExitViewNodeId ? "bottomCenter" : undefined
         });
       }
     }
@@ -477,7 +593,7 @@ export function subroutineGraphConnections(
 
   for (const action of flowSubroutineActions(subroutine)) {
     if (action.type === "decision") {
-      const branchAnchor = decisionBranchTargetAnchor(graphNodes, action.id);
+      const branchAnchorNodeId = decisionBranchTargetAnchorNodeId(graphNodes, action.id);
       ensureDecisionBranches(action).forEach((branch, index) => {
         const branchNodeId = decisionBranchGraphNodeId(action.id, branch.id);
         if (nodeIds.has(branchNodeId)) {
@@ -496,12 +612,13 @@ export function subroutineGraphConnections(
             to: target,
             label: decisionBranchWireLabel(branch, index),
             labelKind: decisionBranchConnectionKind(branch as FlowAction),
-            fromPoint: branchAnchor
+            fromAnchorNodeId: branchAnchorNodeId
           });
         }
       });
       continue;
     }
+    const subActionAnchorNodeId = subActionTargetAnchorNodeId(graphNodes, action.id);
     for (const exit of actionExitTargets(action, isInputType)) {
       if (!nodeIds.has(exit.to)) continue;
       connections.push({
@@ -510,7 +627,8 @@ export function subroutineGraphConnections(
         to: exit.to,
         label: exit.label,
         labelKind: exit.labelKind,
-        visibleWhenSelected: exit.visibleWhenSelected
+        visibleWhenSelected: exit.visibleWhenSelected,
+        fromAnchorNodeId: subActionAnchorNodeId
       });
     }
   }

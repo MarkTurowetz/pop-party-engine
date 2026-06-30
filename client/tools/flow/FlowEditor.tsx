@@ -13,7 +13,12 @@ import {
   type FlowNodeExit
 } from "./flowNodeGraph";
 import { parseDecisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
-import { findFlowSubroutine, flowSubroutineActions, flowSubroutineTitle, isFlowSubroutineAction } from "./flowSubroutines";
+import {
+  findFlowSubroutine,
+  flowSubroutineActions,
+  flowSubroutineTitle,
+  isFlowSubroutineAction
+} from "./flowSubroutines";
 import {
   rootFlowActionById,
   rootFlowGraphConnections,
@@ -110,7 +115,6 @@ export function FlowEditor({
       if (selectedStateId && selectedActionId)
         controller.renameAction(selectedStateId, selectedActionId, name);
     },
-    onSelectAction: (actionId: string) => controller.selectActions(actionId),
     onSetActionType: (type: string) => {
       if (selectedStateId && selectedActionId)
         controller.setActionType(selectedStateId, selectedActionId, type);
@@ -123,7 +127,8 @@ export function FlowEditor({
       if (selectedStateId) controller.setNextTarget(selectedStateId, targetId);
     },
     onSetEntryTarget: (targetId: string) => {
-      if (selectedStateId) controller.setEntryTarget(selectedStateId, targetId, activeSubroutinePath);
+      if (selectedStateId)
+        controller.setEntryTarget(selectedStateId, targetId, activeSubroutinePath);
     },
     onSetActionField: (key: string, value: unknown) => {
       if (selectedStateId && selectedActionId)
@@ -225,9 +230,13 @@ export function FlowEditor({
 
   const deleteSelection = useCallback(() => {
     if (selection.selectedFlowRouteNodeId && selection.selectedFlowRouteBranchId) {
-      controller.removeRouteBranch(selection.selectedFlowRouteNodeId, selection.selectedFlowRouteBranchId, {
-        targetField: "targetNodeId"
-      });
+      controller.removeRouteBranch(
+        selection.selectedFlowRouteNodeId,
+        selection.selectedFlowRouteBranchId,
+        {
+          targetField: "targetNodeId"
+        }
+      );
       return;
     }
     if (selection.selectedFlowRouteNodeId) {
@@ -235,7 +244,11 @@ export function FlowEditor({
       return;
     }
     if (!selectedStateId) return;
-    const selectedIds = selectedActionIds.size ? [...selectedActionIds] : selectedActionId ? [selectedActionId] : [];
+    const selectedIds = selectedActionIds.size
+      ? [...selectedActionIds]
+      : selectedActionId
+        ? [selectedActionId]
+        : [];
     const branchRefs = selectedIds.flatMap((id) => {
       const branchRef = parseDecisionBranchGraphNodeId(id);
       return branchRef ? [branchRef] : [];
@@ -300,7 +313,8 @@ export function FlowEditor({
     () => ({
       addState: () => {
         if (nodeDepth === "subroutines") controller.addState();
-        else if (selectedStateId) controller.addSubroutine(selectedStateId, activeSubroutinePath, selectedActionId);
+        else if (selectedStateId)
+          controller.addSubroutine(selectedStateId, activeSubroutinePath, selectedActionId);
       },
       addAction: () => {
         if (nodeDepth === "subroutines") controller.addRootAction();
@@ -314,7 +328,14 @@ export function FlowEditor({
       selectState: (stateId: string) => controller.selectState(stateId),
       undo: () => controller.undo()
     }),
-    [controller, deleteSelection, nodeDepth, selectedStateId, selectedActionId, activeSubroutinePath]
+    [
+      controller,
+      deleteSelection,
+      nodeDepth,
+      selectedStateId,
+      selectedActionId,
+      activeSubroutinePath
+    ]
   );
 
   const graphSelection = {
@@ -344,7 +365,8 @@ export function FlowEditor({
         );
   const optimizeNodeLayout = useCallback(() => {
     const positions = optimizedVerticalNodePositions(nodeNodes, nodeConnections, nodeDepth);
-    if (positions.length) controller.setNodePositions(nodeDepth, selectedStateId, positions, activeSubroutinePath);
+    if (positions.length)
+      controller.setNodePositions(nodeDepth, selectedStateId, positions, activeSubroutinePath);
   }, [controller, nodeConnections, nodeDepth, nodeNodes, selectedStateId, activeSubroutinePath]);
   const nodeCanvas = (
     <FlowNodeCanvas
@@ -355,7 +377,8 @@ export function FlowEditor({
       exits={nodeExits}
       onConnect={(exit: FlowNodeExit, targetNodeId: string) => {
         if (nodeDepth === "subroutines") controller.connectRootAction(exit, targetNodeId);
-        else if (exit.kind === "entry") controller.setEntryTarget(selectedStateId, targetNodeId, activeSubroutinePath);
+        else if (exit.kind === "entry")
+          controller.setEntryTarget(selectedStateId, targetNodeId, activeSubroutinePath);
         else if (exit.kind === "field" && exit.field)
           controller.setActionField(selectedStateId, exit.nodeId, exit.field, targetNodeId);
         else if (exit.kind === "branch" && exit.branchId)
@@ -370,7 +393,8 @@ export function FlowEditor({
       onSelectNode={(nodeId) => {
         const node = nodeNodes.find((candidate) => candidate.id === nodeId);
         if (node?.kind === "branch" && node.parentNodeId && node.branchId) {
-          if (nodeDepth === "subroutines") controller.selectRouteBranch(node.parentNodeId, node.branchId);
+          if (nodeDepth === "subroutines")
+            controller.selectRouteBranch(node.parentNodeId, node.branchId);
           else controller.selectActions(node.id);
           return;
         }
@@ -412,7 +436,9 @@ export function FlowEditor({
           controller.addConnectedAction(selectedStateId, exit, { x, y }, activeSubroutinePath);
       }}
       onOptimizeLayout={optimizeNodeLayout}
-      onSelectNodes={nodeDepth === "subroutine" ? (ids) => controller.selectActions(ids) : undefined}
+      onSelectNodes={
+        nodeDepth === "subroutine" ? (ids) => controller.selectActions(ids) : undefined
+      }
     />
   );
 
@@ -440,12 +466,12 @@ export function FlowEditor({
                 state: rootInspectorSubroutine
               }
             : selectedRootRouteAction
-            ? {
-                action: selectedRootRouteAction,
-                edit: rootRouteInspectorEdit,
-                state: rootInspectorSubroutine
-              }
-            : null
+              ? {
+                  action: selectedRootRouteAction,
+                  edit: rootRouteInspectorEdit,
+                  state: rootInspectorSubroutine
+                }
+              : null
         }
         inspectorEdit={inspectorEdit}
         inspectorSubroutine={currentSubroutine}

@@ -1,16 +1,24 @@
 import type { FlowAction, FlowRouteNode, FlowState, GameFlow } from "../../types/game-data";
-import { decisionBranchName, decisionBranchWireLabel, ensureDecisionBranches } from "./flowDecision";
+import {
+  decisionBranchName,
+  decisionBranchWireLabel,
+  ensureDecisionBranches
+} from "./flowDecision";
 import {
   decisionBranchConnectionKind,
   decisionBranchGraphNodeId,
-  decisionBranchTargetAnchor,
+  decisionBranchTargetAnchorNodeId,
   subroutineGraphNodes,
   type FlowGraphConnection,
   type FlowGraphNode,
   type FlowGraphSelection,
   type FlowNodeExit
 } from "./flowNodeGraph";
-import { flowRouteNodeTypeName, isFlowRouteDecisionNode, type FlowRouteNodeModel } from "./flowRouteGraph";
+import {
+  flowRouteNodeTypeName,
+  isFlowRouteDecisionNode,
+  type FlowRouteNodeModel
+} from "./flowRouteGraph";
 
 export const ROOT_FLOW_SUBROUTINE_ID = "root-flow";
 
@@ -149,10 +157,14 @@ export function rootFlowGraphNodes(
     selection.selectedActionId ||
     selection.selectedStateId ||
     "";
-  return subroutineGraphNodes(rootFlowSubroutine(flow), {
-    ...selection,
-    selectedActionId
-  }).filter((node) => node.kind !== "system");
+  return subroutineGraphNodes(
+    rootFlowSubroutine(flow),
+    {
+      ...selection,
+      selectedActionId
+    },
+    { includeSubActions: false }
+  ).filter((node) => node.kind !== "system");
 }
 
 export function rootFlowNodeExits(flow: Partial<GameFlow> | null | undefined): FlowNodeExit[] {
@@ -206,7 +218,7 @@ export function rootFlowGraphConnections(
   const connections: FlowGraphConnection[] = [];
   for (const action of actions) {
     if (action.type === "decision") {
-      const branchAnchor = decisionBranchTargetAnchor(graphNodes, action.id);
+      const branchAnchorNodeId = decisionBranchTargetAnchorNodeId(graphNodes, action.id);
       routeDecisionBranches(action).forEach((branch, index) => {
         const branchNodeId = decisionBranchGraphNodeId(action.id, branch.id);
         if (nodeIds.has(branchNodeId)) {
@@ -225,7 +237,7 @@ export function rootFlowGraphConnections(
           to: target,
           label: decisionBranchWireLabel(branch, index),
           labelKind: decisionBranchConnectionKind(branch as FlowAction),
-          fromPoint: branchAnchor
+          fromAnchorNodeId: branchAnchorNodeId
         });
       });
       continue;

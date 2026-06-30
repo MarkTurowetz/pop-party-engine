@@ -106,16 +106,15 @@ describe("ActionInspector", () => {
             { id: "sub-1", name: "Sub 1", type: "message", timing: { mode: "S+", seconds: 0.5 } }
           ]
         }}
-        edit={{ onAddSubAction: () => undefined, onSelectAction: () => undefined }}
+        edit={{ onAddSubAction: () => undefined }}
         state={{ id: "intro", name: "Intro", actions: [] }}
       />
     );
 
     expect(markup).toContain('data-flow-react-component="sub-action-summary"');
     expect(markup).toContain("Add S+ Sub-action");
-    expect(markup).toContain('data-flow-sub-action-id="sub-1"');
-    expect(markup).toContain("Sub 1");
-    expect(markup).toContain("S+ 0.50s");
+    expect(markup).not.toContain('data-flow-sub-action-id="sub-1"');
+    expect(markup).not.toContain("Sub 1");
     expect(markup).toContain(">1</span>");
   });
 

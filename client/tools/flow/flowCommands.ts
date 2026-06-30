@@ -27,8 +27,18 @@ import {
 } from "./flowDecision";
 import type { FlowNodeExit, FlowNodePoint, FlowNodePositionUpdate } from "./flowNodeGraph";
 import { assertFlowModel } from "./flowValidation";
-import { findFlowAction, findFlowActionContext, findFlowSubroutine, flowSubroutineActions, type FlowSubroutine } from "./flowSubroutines";
-import { createRouteActionNode, isFlowRouteDecisionNode, type FlowRouteNodeModel } from "./flowRouteGraph";
+import {
+  findFlowAction,
+  findFlowActionContext,
+  findFlowSubroutine,
+  flowSubroutineActions,
+  type FlowSubroutine
+} from "./flowSubroutines";
+import {
+  createRouteActionNode,
+  isFlowRouteDecisionNode,
+  type FlowRouteNodeModel
+} from "./flowRouteGraph";
 
 export type { FlowNodePositionUpdate } from "./flowNodeGraph";
 
@@ -246,7 +256,9 @@ function connectSourceToAction(
     return;
   }
 
-  const sourceAction = flowSubroutineActions(subroutine).find((action) => action.id === source.nodeId);
+  const sourceAction = flowSubroutineActions(subroutine).find(
+    (action) => action.id === source.nodeId
+  );
   if (!sourceAction) return;
 
   if (source.kind === "field" && source.field) {
@@ -274,7 +286,11 @@ function ensureRouteDecisionBranches(node: FlowRouteNode): FlowDecisionBranch[] 
   return ensureDecisionBranches(node as FlowAction, { targetField: "targetNodeId" });
 }
 
-function setRootRouteTarget(node: FlowRouteNode, field: string | undefined, targetId: string): void {
+function setRootRouteTarget(
+  node: FlowRouteNode,
+  field: string | undefined,
+  targetId: string
+): void {
   const record = node as Record<string, unknown>;
   const routeNodeType = String(record.routeNodeType || "");
   if (routeNodeType === "momentEntry") {
@@ -432,10 +448,11 @@ export function setFlowActionTimingCommand(
     id: `set-flow-action-timing:${actionId}`,
     label: "Edit action timing",
     apply: (flow) => {
-      const action = findFlowAction(findFlowState(flow, stateId), actionId);
+      const actionContext = findFlowActionContext(findFlowState(flow, stateId), actionId);
+      const action = actionContext.action;
       if (!action) return;
       const current = action.timing || { mode: "E+", seconds: 0 };
-      const mode = timing.mode ?? current.mode ?? "E+";
+      const mode = actionContext.isSubAction ? "S+" : (timing.mode ?? current.mode ?? "E+");
       const secondsValue = timing.seconds ?? current.seconds ?? 0;
       const seconds = Number.isFinite(Number(secondsValue)) ? Math.max(0, Number(secondsValue)) : 0;
       action.timing = { ...current, mode, seconds };
@@ -498,7 +515,8 @@ function applyFlowNodePosition(
   const subroutine = ref?.subroutine;
   if (!subroutine) return;
   if (nodeId === "start") (subroutine as Record<string, unknown>).startNodePosition = position;
-  else if (nodeId === "return") (subroutine as Record<string, unknown>).returnNodePosition = position;
+  else if (nodeId === "return")
+    (subroutine as Record<string, unknown>).returnNodePosition = position;
   else {
     const action = flowSubroutineActions(subroutine).find((item) => item.id === nodeId);
     if (action) (action as Record<string, unknown>).nodePosition = position;
@@ -522,10 +540,17 @@ export function setFlowNodePositionsCommand(
     label: "Optimize node layout",
     apply: (flow) => {
       for (const position of positions) {
-        applyFlowNodePosition(flow, depth, stateId, position.nodeId, {
-          x: position.x,
-          y: position.y
-        }, path);
+        applyFlowNodePosition(
+          flow,
+          depth,
+          stateId,
+          position.nodeId,
+          {
+            x: position.x,
+            y: position.y
+          },
+          path
+        );
       }
     }
   };

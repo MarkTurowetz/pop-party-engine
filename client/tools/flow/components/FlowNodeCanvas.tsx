@@ -188,6 +188,7 @@ function minimapNodeFill(node: FlowGraphNode): string {
   if (node.kind === "system") return "#f8fafc";
   if (node.kind === "subroutine") return "#22d3ee";
   if (node.kind === "branch") return node.className.includes("is-no-match") ? "#fff7d6" : "#fef3c7";
+  if (node.kind === "subAction") return "#fff7d6";
   if (node.className.includes("is-decision")) return "#a3e635";
   if (node.className.includes("is-transition")) return "#fb923c";
   if (node.className.includes("is-code")) return "#bae6fd";
@@ -246,6 +247,8 @@ interface DragState {
 
 interface LivePosition {
   nodeId: string;
+  dx: number;
+  dy: number;
   x: number;
   y: number;
 }
@@ -268,9 +271,18 @@ interface ConnectionRoute {
 
 function connectionSourcePoint(
   connection: FlowGraphConnection,
-  from: FlowGraphNode
+  from: FlowGraphNode,
+  byId: Map<string, FlowGraphNode>
 ): { x: number; y: number } {
-  return connection.fromPoint || {
+  if (connection.fromPoint) return connection.fromPoint;
+  const anchorNode = connection.fromAnchorNodeId ? byId.get(connection.fromAnchorNodeId) : null;
+  if (anchorNode) {
+    return {
+      x: anchorNode.x + anchorNode.width / 2,
+      y: anchorNode.y + anchorNode.height
+    };
+  }
+  return {
     x: from.x + from.width / 2,
     y: from.y + from.height
   };
@@ -300,7 +312,12 @@ function routeCurve(
   };
 }
 
-function verticalRangesOverlap(aTop: number, aBottom: number, bTop: number, bBottom: number): boolean {
+function verticalRangesOverlap(
+  aTop: number,
+  aBottom: number,
+  bTop: number,
+  bBottom: number
+): boolean {
   return aTop < bBottom && aBottom > bTop;
 }
 
@@ -322,8 +339,7 @@ function routeUpwardOrthogonal(
     if (node.id === from.id || node.id === to.id) return false;
     return verticalRangesOverlap(node.y, node.y + node.height, routeTop, routeBottom);
   });
-  const leftBound =
-    Math.min(from.x, to.x, ...overlappingNodes.map((node) => node.x)) - 100;
+  const leftBound = Math.min(from.x, to.x, ...overlappingNodes.map((node) => node.x)) - 100;
   const rightBound =
     Math.max(
       from.x + from.width,
@@ -355,7 +371,8 @@ function buildConnectionRoute(
   nodes: FlowGraphNode[],
   scale = 1
 ): ConnectionRoute {
-  const sourcePoint = connectionSourcePoint(connection, from);
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const sourcePoint = connectionSourcePoint(connection, from, byId);
   const targetPoint = connectionTargetPoint(connection, to);
   if (targetPoint.y < sourcePoint.y) {
     return routeUpwardOrthogonal(sourcePoint, from, to, nodes, scale);
@@ -455,11 +472,7 @@ function WireLabel({ wire }: { wire: WirePath }) {
   const stroke = wireLabelStroke(kind, wire.highlighted);
   const fill = wireLabelFill(kind, wire.highlighted);
   return (
-    <g
-      data-wire-label-kind={kind}
-      transform={`translate(${x} ${y})`}
-      aria-label={wire.label}
-    >
+    <g data-wire-label-kind={kind} transform={`translate(${x} ${y})`} aria-label={wire.label}>
       <title>{wire.label}</title>
       <rect
         width={width}
@@ -473,14 +486,7 @@ function WireLabel({ wire }: { wire: WirePath }) {
       {icon ? (
         <>
           <circle cx={13} cy={12} r={8} fill={stroke} />
-          <text
-            x={13}
-            y={15.5}
-            fontSize={10}
-            fontWeight={900}
-            textAnchor="middle"
-            fill="#fff"
-          >
+          <text x={13} y={15.5} fontSize={10} fontWeight={900} textAnchor="middle" fill="#fff">
             {icon}
           </text>
         </>
@@ -660,7 +666,8 @@ export function FlowNodeCanvas({
       ) as HTMLElement | null;
       const targetNode = targetEl?.closest("[data-node-id]") as HTMLElement | null;
       const targetId = targetNode?.getAttribute("data-node-id") || "";
-      if (targetNode?.getAttribute("data-node-kind") === "branch") return;
+      const targetKind = targetNode?.getAttribute("data-node-kind");
+      if (targetKind === "branch" || targetKind === "subAction") return;
       if (targetId && targetId !== connect.exit.nodeId) onConnect(connect.exit, targetId);
     };
 
@@ -687,7 +694,13 @@ export function FlowNodeCanvas({
       const dx = (moveEvent.clientX - drag.startClientX) / z;
       const dy = (moveEvent.clientY - drag.startClientY) / z;
       if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) drag.moved = true;
-      setLivePosition({ nodeId: drag.nodeId, x: drag.originX + dx, y: drag.originY + dy });
+      setLivePosition({
+        nodeId: drag.nodeId,
+        dx,
+        dy,
+        x: drag.originX + dx,
+        y: drag.originY + dy
+      });
     };
 
     const handleUp = (upEvent: PointerEvent) => {
@@ -777,7 +790,11 @@ export function FlowNodeCanvas({
 
   const displayNodes = livePosition
     ? nodes.map((node) =>
-        node.id === livePosition.nodeId ? { ...node, x: livePosition.x, y: livePosition.y } : node
+        node.id === livePosition.nodeId
+          ? { ...node, x: livePosition.x, y: livePosition.y }
+          : node.parentNodeId === livePosition.nodeId
+            ? { ...node, x: node.x + livePosition.dx, y: node.y + livePosition.dy }
+            : node
       )
     : nodes;
   const { width, height } = worldSize(displayNodes);
@@ -951,7 +968,9 @@ export function FlowNodeCanvas({
                   >
                     <div className="flow-node-main">
                       <strong className="flow-node-title">{node.title}</strong>
-                      <span className="flow-node-subtitle">{node.subtitle}</span>
+                      {node.subtitle ? (
+                        <span className="flow-node-subtitle">{node.subtitle}</span>
+                      ) : null}
                       {node.timing ? <span className="flow-node-timing">{node.timing}</span> : null}
                     </div>
                     {(() => {
@@ -963,16 +982,26 @@ export function FlowNodeCanvas({
                         );
                         const sameSideIndex = nodeExits
                           .slice(0, exitIndex)
-                          .filter((candidate) => (candidate.portSide || "bottom") === portSide).length;
+                          .filter(
+                            (candidate) => (candidate.portSide || "bottom") === portSide
+                          ).length;
                         const isRightPort = portSide === "right";
+                        const isBottomCenterPort = portSide === "bottomCenter";
                         const rightPortSpacing = 28;
+                        const bottomCenterSpacing = 30;
                         const rightPortY =
                           node.height / 2 -
                           ((sameSideExits.length - 1) * rightPortSpacing) / 2 +
                           sameSideIndex * rightPortSpacing;
+                        const bottomCenterX =
+                          node.width / 2 -
+                          ((sameSideExits.length - 1) * bottomCenterSpacing) / 2 +
+                          sameSideIndex * bottomCenterSpacing;
                         const portLocalX = isRightPort
                           ? node.width
-                          : Math.max(18, node.width - 22 - sameSideIndex * 30);
+                          : isBottomCenterPort
+                            ? bottomCenterX
+                            : Math.max(18, node.width - 22 - sameSideIndex * 30);
                         const portLocalY = isRightPort ? rightPortY : node.height;
                         const portStyle = isRightPort
                           ? {
@@ -980,30 +1009,36 @@ export function FlowNodeCanvas({
                               right: -12,
                               top: rightPortY - 12
                             }
-                          : {
-                              position: "absolute" as const,
-                              right: 16 + sameSideIndex * 30,
-                              bottom: -11
-                            };
-                      return (
-                        <button
-                          type="button"
-                          key={exit.id}
-                          className={`flow-node-port${exit.currentTarget ? " is-wired" : ""}`}
-                          data-port-id={exit.id}
-                          data-port-side={portSide}
-                          data-port-target={exit.currentTarget || ""}
-                          aria-label={`${exit.label}${exit.currentTarget ? ` to ${exit.currentTarget}` : ""}`}
-                          title={`${exit.label}${exit.currentTarget ? ` → ${exit.currentTarget}` : ""}`}
-                          style={portStyle}
-                          onPointerDown={(event) =>
-                            beginConnect(exit, node, portLocalX, portLocalY, event)
-                          }
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <span className="flow-node-port-label">{exit.label}</span>
-                        </button>
-                      );
+                          : isBottomCenterPort
+                            ? {
+                                position: "absolute" as const,
+                                left: bottomCenterX - 12,
+                                bottom: -11
+                              }
+                            : {
+                                position: "absolute" as const,
+                                right: 16 + sameSideIndex * 30,
+                                bottom: -11
+                              };
+                        return (
+                          <button
+                            type="button"
+                            key={exit.id}
+                            className={`flow-node-port${exit.currentTarget ? " is-wired" : ""}`}
+                            data-port-id={exit.id}
+                            data-port-side={portSide}
+                            data-port-target={exit.currentTarget || ""}
+                            aria-label={`${exit.label}${exit.currentTarget ? ` to ${exit.currentTarget}` : ""}`}
+                            title={`${exit.label}${exit.currentTarget ? ` → ${exit.currentTarget}` : ""}`}
+                            style={portStyle}
+                            onPointerDown={(event) =>
+                              beginConnect(exit, node, portLocalX, portLocalY, event)
+                            }
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <span className="flow-node-port-label">{exit.label}</span>
+                          </button>
+                        );
                       });
                     })()}
                   </div>

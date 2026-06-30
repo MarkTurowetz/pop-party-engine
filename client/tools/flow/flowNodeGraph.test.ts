@@ -163,14 +163,19 @@ describe("flowNodeGraph", () => {
     });
 
     expect(subroutineGraphConnections(flow.states[0])).toEqual([
-      { id: "decision->decision:branch:hit", from: "decision", to: "decision:branch:hit", label: "Hit 3" },
+      {
+        id: "decision->decision:branch:hit",
+        from: "decision",
+        to: "decision:branch:hit",
+        label: "Hit 3"
+      },
       {
         id: "decision:branch:hit->a1",
         from: "decision:branch:hit",
         to: "a1",
         label: "3",
         labelKind: "branch-hit",
-        fromPoint: { x: 500, y: 306 }
+        fromAnchorNodeId: "decision:branch:no-match"
       },
       {
         id: "decision->decision:branch:no-match",
@@ -184,9 +189,82 @@ describe("flowNodeGraph", () => {
         to: "return",
         label: "No Match",
         labelKind: "branch-no-match",
-        fromPoint: { x: 500, y: 306 }
+        fromAnchorNodeId: "decision:branch:no-match"
       }
     ]);
+  });
+
+  it("renders sub-actions as sorted child nodes and anchors parent exits to the last sub-action", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "s",
+          name: "S",
+          actions: [
+            {
+              id: "parent",
+              name: "Parent",
+              type: "message",
+              nextTargetActionId: "target",
+              subActions: [
+                {
+                  id: "sub-late",
+                  name: "Late",
+                  type: "setPlayersShown",
+                  timing: { mode: "S+", seconds: 2 }
+                },
+                {
+                  id: "sub-early",
+                  name: "Early",
+                  type: "setPlayersShown",
+                  timing: { mode: "S+", seconds: 0.5 }
+                },
+                {
+                  id: "sub-same",
+                  name: "Same",
+                  type: "setPlayersShown",
+                  timing: { mode: "S+", seconds: 0.5 }
+                }
+              ]
+            },
+            { id: "target", name: "Target", type: "message" }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+    const nodes = subroutineGraphNodes(flow.states[0], { selectedActionId: "sub-early" });
+    const subActionNodes = nodes.filter((node) => node.kind === "subAction");
+
+    expect(subActionNodes.map((node) => node.id)).toEqual(["sub-early", "sub-same", "sub-late"]);
+    expect(subActionNodes[0]).toMatchObject({
+      parentNodeId: "parent",
+      selected: true,
+      title: "Early",
+      timing: "S+ 0.50s",
+      draggable: false,
+      height: 34
+    });
+
+    expect(
+      subroutineNodeExits(flow.states[0], () => false).find((exit) => exit.nodeId === "parent")
+    ).toMatchObject({
+      nodeId: "parent",
+      viewNodeId: "sub-late",
+      portSide: "bottomCenter",
+      label: "Next",
+      currentTarget: "target"
+    });
+
+    expect(subroutineGraphConnections(flow.states[0])).toContainEqual({
+      id: "parent->target:Next",
+      from: "parent",
+      to: "target",
+      label: "Next",
+      labelKind: undefined,
+      visibleWhenSelected: undefined,
+      fromAnchorNodeId: "sub-late"
+    });
   });
 
   it("marks jump-node wires as selected-only previews", () => {
@@ -287,9 +365,7 @@ describe("flowNodeGraph", () => {
       selectedActionId: decisionBranchGraphNodeId("decision-b", "no-match")
     });
     expect(
-      nodes
-        .filter((node) => node.kind === "branch")
-        .map((node) => [node.id, node.selected])
+      nodes.filter((node) => node.kind === "branch").map((node) => [node.id, node.selected])
     ).toEqual([
       ["decision-a:branch:no-match", false],
       ["decision-b:branch:no-match", true]
@@ -400,7 +476,12 @@ describe("flowNodeGraph", () => {
               type: "presentText",
               stageClickTargetActionId: "wipe"
             },
-            { id: "wipe", name: "Set Wipe Shown", type: "setWipeShown", nextTargetActionId: "return" }
+            {
+              id: "wipe",
+              name: "Set Wipe Shown",
+              type: "setWipeShown",
+              nextTargetActionId: "return"
+            }
           ]
         } as never
       ],

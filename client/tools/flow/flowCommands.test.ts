@@ -18,6 +18,7 @@ import {
   removeFlowStatesCommand,
   renameFlowActionCommand,
   renameFlowStateCommand,
+  setFlowActionTimingCommand,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
   setFlowSubroutineEntryTargetCommand,
@@ -236,6 +237,19 @@ describe("Flow action commands", () => {
       "sub-2",
       "sub-1"
     ]);
+  });
+
+  it("keeps sub-action timing locked to S+ when editing timing", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(
+      setFlowActionTimingCommand("round-one", "sub-1", { mode: "E+", seconds: 1.25 })
+    );
+
+    expect(next.states[0].actions?.[0].subActions?.[0].timing).toEqual({
+      mode: "S+",
+      seconds: 1.25
+    });
   });
 
   it("removes selected actions and their sub-actions", () => {

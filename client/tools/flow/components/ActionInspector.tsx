@@ -15,7 +15,6 @@ export interface InspectorTargetOption {
 export interface ActionInspectorEditHandlers {
   onAddSubAction?: () => void;
   onRenameAction?: (name: string) => void;
-  onSelectAction?: (actionId: string) => void;
   onSetActionType?: (type: string) => void;
   onSetNextTarget?: (targetId: string) => void;
   onSetEntryTarget?: (targetId: string) => void;
@@ -63,12 +62,6 @@ function TargetSelect({
       </select>
     </label>
   );
-}
-
-function subActionTimingLabel(action: FlowAction): string {
-  const mode = action.timing?.mode || "S+";
-  const seconds = Number(action.timing?.seconds ?? 0);
-  return `${mode} ${Number.isFinite(seconds) ? seconds.toFixed(2) : "0.00"}s`;
 }
 
 export function ActionInspector({
@@ -199,17 +192,29 @@ export function ActionInspector({
       ) : null}
       {edit?.onSetActionTiming && action.type !== "decision" ? (
         <div className="flow-react-action-timing" data-flow-react-component="action-timing">
-          <label className="flow-react-field" data-flow-react-field="timing-mode">
-            <span>Timing Mode</span>
-            <select
-              value={action.timing?.mode || "E+"}
-              data-flow-react-timing-mode
-              onChange={(event) => edit.onSetActionTiming?.({ mode: event.target.value })}
-            >
-              <option value="E+">E+ (after enter)</option>
-              <option value="S+">S+ (after start)</option>
-            </select>
-          </label>
+          {isSubAction ? (
+            <label className="flow-react-field" data-flow-react-field="timing-mode">
+              <span>Timing Mode</span>
+              <input
+                type="text"
+                value="S+ (after parent starts)"
+                readOnly
+                data-flow-react-timing-mode
+              />
+            </label>
+          ) : (
+            <label className="flow-react-field" data-flow-react-field="timing-mode">
+              <span>Timing Mode</span>
+              <select
+                value={action.timing?.mode || "E+"}
+                data-flow-react-timing-mode
+                onChange={(event) => edit.onSetActionTiming?.({ mode: event.target.value })}
+              >
+                <option value="E+">E+ (after enter)</option>
+                <option value="S+">S+ (after start)</option>
+              </select>
+            </label>
+          )}
           <label className="flow-react-field" data-flow-react-field="timing-seconds">
             <span>Timing Seconds</span>
             <input
@@ -219,7 +224,12 @@ export function ActionInspector({
               key={`${action.id}-timing-seconds`}
               defaultValue={String(Number(action.timing?.seconds ?? 0))}
               data-flow-react-timing-seconds
-              onBlur={(event) => edit.onSetActionTiming?.({ seconds: Number(event.target.value) })}
+              onBlur={(event) =>
+                edit.onSetActionTiming?.({
+                  ...(isSubAction ? { mode: "S+" } : {}),
+                  seconds: Number(event.target.value)
+                })
+              }
               onKeyDown={(event) => {
                 if (event.key === "Enter") (event.target as HTMLInputElement).blur();
               }}
@@ -237,35 +247,25 @@ export function ActionInspector({
       {action.type === "decision" && edit?.decision?.onAddBranch ? (
         <div className="flow-react-decision-summary" data-flow-react-component="decision-summary">
           <h3>Decision Branches</h3>
-          <button type="button" data-decision-branch-add onClick={() => edit.decision?.onAddBranch?.()}>
+          <button
+            type="button"
+            data-decision-branch-add
+            onClick={() => edit.decision?.onAddBranch?.()}
+          >
             Add Branch
           </button>
         </div>
       ) : null}
       {edit?.onAddSubAction && !isBranch && !isSubAction && action.type !== "decision" ? (
-        <div className="flow-react-sub-action-summary" data-flow-react-component="sub-action-summary">
+        <div
+          className="flow-react-sub-action-summary"
+          data-flow-react-component="sub-action-summary"
+        >
           <h3>Sub-actions</h3>
           <button type="button" data-flow-sub-action-add onClick={() => edit.onAddSubAction?.()}>
             Add S+ Sub-action
           </button>
           <span>{(action.subActions || []).length}</span>
-          {(action.subActions || []).length ? (
-            <ol className="flow-react-list" data-flow-sub-actions>
-              {(action.subActions || []).map((subAction) => (
-                <li key={subAction.id} data-flow-sub-action-id={subAction.id}>
-                  <button
-                    type="button"
-                    onClick={() => edit.onSelectAction?.(subAction.id)}
-                  >
-                    <span>
-                      <strong>{subAction.name || subAction.id}</strong>
-                      <small>{subActionTimingLabel(subAction)}</small>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          ) : null}
         </div>
       ) : null}
       {action.type === "multipleChoiceInput" && edit?.options ? (

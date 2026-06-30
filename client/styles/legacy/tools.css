@@ -1968,10 +1968,24 @@ body.is-resizing-flow {
   min-height: 34px;
 }
 
+.flow-node.is-sub-action {
+  min-height: 34px;
+}
+
 .flow-node.is-branch .flow-node-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1px;
+  padding: 5px 12px;
+  background: #fff7d6;
+  border-radius: 10px;
+}
+
+.flow-node.is-sub-action .flow-node-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
   padding: 5px 12px;
   background: #fff7d6;
   border-radius: 10px;
@@ -1982,12 +1996,23 @@ body.is-resizing-flow {
   line-height: 1;
 }
 
+.flow-node.is-sub-action .flow-node-title {
+  font-size: 12px;
+  line-height: 1;
+}
+
 .flow-node.is-branch .flow-node-subtitle {
   font-size: 9px;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.flow-node.is-sub-action .flow-node-timing {
+  padding: 3px 7px;
+  font-size: 9px;
+  box-shadow: 2px 2px 0 rgba(23, 19, 31, 0.2);
 }
 
 .flow-node.is-branch.is-no-match .flow-node-main {
