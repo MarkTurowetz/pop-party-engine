@@ -4,8 +4,8 @@
       "id": "lobby",
       "name": "Lobby Game State",
       "nodePosition": {
-        "x": 90,
-        "y": 80
+        "x": 625,
+        "y": 70
       },
       "startNodePosition": {
         "x": 715,
@@ -118,8 +118,8 @@
       "id": "intro",
       "name": "Game Intro Game State",
       "nodePosition": {
-        "x": 90,
-        "y": 300
+        "x": 625,
+        "y": 310
       },
       "startNodePosition": {
         "x": 715,
@@ -195,8 +195,8 @@
       "id": "round-intro-game-state",
       "name": "Round Intro Game State",
       "nodePosition": {
-        "x": 90,
-        "y": 520
+        "x": 625,
+        "y": 550
       },
       "startNodePosition": {
         "x": 715,
@@ -274,8 +274,8 @@
       "id": "crafting-game-state",
       "name": "Crafting Game State",
       "nodePosition": {
-        "x": 90,
-        "y": 750
+        "x": 625,
+        "y": 790
       },
       "startNodePosition": {
         "x": 715,
@@ -571,8 +571,8 @@
       "id": "presentation-game-state",
       "name": "Presentation Game State",
       "nodePosition": {
-        "x": 90,
-        "y": 960
+        "x": 625,
+        "y": 1030
       },
       "startNodePosition": {
         "x": 715,
@@ -733,8 +733,8 @@
       "id": "scoreboard-game-state",
       "name": "Scoreboard Game State",
       "nodePosition": {
-        "x": 90,
-        "y": 1180
+        "x": 625,
+        "y": 1270
       },
       "startNodePosition": {
         "x": 715,
@@ -812,8 +812,8 @@
       "id": "post-game-state",
       "name": "Post Game State",
       "nodePosition": {
-        "x": 1650,
-        "y": 1370
+        "x": 625,
+        "y": 2470
       },
       "startNodePosition": {
         "x": 715,
@@ -1064,8 +1064,8 @@
         "y": 2038
       },
       "nodePosition": {
-        "x": 461,
-        "y": 1422
+        "x": 835,
+        "y": 1990
       }
     },
     {
@@ -1267,8 +1267,8 @@
         "y": 2292
       },
       "nodePosition": {
-        "x": 811,
-        "y": 1424
+        "x": 415,
+        "y": 1990
       }
     },
     {
@@ -1563,8 +1563,8 @@
         "y": 3562
       },
       "nodePosition": {
-        "x": 589,
-        "y": 1814
+        "x": 625,
+        "y": 2230
       }
     }
   ],
@@ -1585,8 +1585,8 @@
       "subActions": [],
       "nextTargetNodeId": "",
       "nodePosition": {
-        "x": 624,
-        "y": 1129
+        "x": 595,
+        "y": 1510
       },
       "variable": "activePlayerCount",
       "valueType": "int",
@@ -1623,8 +1623,8 @@
       "subActions": [],
       "nextTargetNodeId": "",
       "nodePosition": {
-        "x": 1676,
-        "y": 1922
+        "x": 625,
+        "y": 2950
       },
       "jumpTargetActionId": "lobby",
       "nextTargetActionId": ""
@@ -1645,8 +1645,8 @@
       "subActions": [],
       "nextTargetNodeId": "route-action-mqrd9i6n-8mb29",
       "nodePosition": {
-        "x": 1680,
-        "y": 1650
+        "x": 625,
+        "y": 2710
       }
     }
   ]
