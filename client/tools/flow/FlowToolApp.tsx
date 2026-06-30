@@ -4,9 +4,6 @@ import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowPreviewModel } from "./flowPreviewModel";
 import { ActionInspector, type ActionInspectorEditHandlers } from "./components/ActionInspector";
-import { FlowActionList } from "./components/FlowActionList";
-import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
-import { FlowRouteInspector } from "./components/FlowRouteInspector";
 import { FlowStateList } from "./components/FlowStateList";
 import { FlowToolbar } from "./components/FlowToolbar";
 import type { FlowSubroutine } from "./flowSubroutines";
@@ -18,22 +15,12 @@ export interface FlowToolReactShellHandlers {
   redo?: () => void;
   revert?: () => void;
   save?: () => void;
-  selectAction?: (actionId: string) => void;
-  selectRouteBranch?: (routeNodeId: string, branchId: string) => void;
-  selectRouteNode?: (routeNodeId: string) => void;
   selectState?: (stateId: string) => void;
-  setViewMode?: (mode: "list" | "node") => void;
   undo?: () => void;
 }
 
 export interface FlowReorderHandlers {
   onReorderState?: (draggedStateId: string, targetStateId: string) => void;
-  onReorderAction?: (draggedActionId: string, targetActionId: string) => void;
-  onReorderSubAction?: (
-    parentActionId: string,
-    draggedActionId: string,
-    targetActionId: string
-  ) => void;
 }
 
 export interface FlowToolAppProps {
@@ -46,7 +33,6 @@ export interface FlowToolAppProps {
   canUndo?: boolean;
   flowActionTypes?: FlowActionTypeMeta[];
   flowNodeDepth?: string;
-  flowViewMode?: string;
   flow?: GameFlow | null;
   handlers?: FlowToolReactShellHandlers;
   inspectorEdit?: ActionInspectorEditHandlers;
@@ -82,7 +68,6 @@ export function FlowToolApp({
   flowActionTypes = [],
   flow = null,
   flowNodeDepth = "subroutine",
-  flowViewMode = "list",
   handlers = {},
   inspectorEdit,
   inspectorActionOverride = null,
@@ -116,7 +101,6 @@ export function FlowToolApp({
       canSave={canSave}
       canUndo={canUndo}
       flowNodeDepth={flowNodeDepth}
-      flowViewMode={flowViewMode}
       saving={saving}
       onAddAction={handlers.addAction}
       onAddState={handlers.addState}
@@ -124,7 +108,6 @@ export function FlowToolApp({
       onRedo={handlers.redo}
       onRevert={handlers.revert}
       onSave={handlers.save}
-      onSetViewMode={handlers.setViewMode}
       onUndo={handlers.undo}
     />
   );
@@ -138,12 +121,6 @@ export function FlowToolApp({
       isSubAction={inspectorActionOverride.isSubAction || false}
       parentAction={inspectorActionOverride.parentAction || null}
       state={inspectorActionOverride.state}
-    />
-  ) : model.selectedRouteNode ? (
-    <FlowRouteInspector
-      actionTypes={flowActionTypes}
-      branch={model.selectedRouteBranch}
-      node={model.selectedRouteNode}
     />
   ) : (
     <ActionInspector
@@ -198,32 +175,10 @@ export function FlowToolApp({
       toolbar={toolbar}
       toolId="flow"
     >
-      {flowViewMode === "node" && nodeCanvas ? (
-        <div className="flow-node-workspace-content">
-          {nodeCanvas}
-          {inspector}
-        </div>
-      ) : (
-        <div className="tool-main-columns flow-workspace-content">
-          <FlowActionList
-            actions={activeSubroutine?.actions || []}
-            actionTypes={flowActionTypes}
-            onSelectAction={handlers.selectAction}
-            onReorderAction={reorder?.onReorderAction}
-            onReorderSubAction={reorder?.onReorderSubAction}
-            selectedActionId={model.selectedActionId}
-          />
-          <FlowRouteNodeList
-            actionTypes={flowActionTypes}
-            onSelectRouteBranch={handlers.selectRouteBranch}
-            onSelectRouteNode={handlers.selectRouteNode}
-            routeNodes={flow?.routeNodes || []}
-            selectedRouteBranchId={selectedRouteBranchId}
-            selectedRouteNodeId={selectedRouteNodeId}
-          />
-          {inspector}
-        </div>
-      )}
+      <div className="flow-node-workspace-content">
+        {nodeCanvas}
+        {inspector}
+      </div>
     </ToolWorkspace>
   );
 }

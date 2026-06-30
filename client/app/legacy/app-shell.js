@@ -260,7 +260,6 @@ let selectedFlowActionId = "";
 let selectedFlowActionIds = new Set();
 let selectedFlowRouteNodeId = "";
 let selectedFlowRouteBranchId = "";
-let flowViewMode = getLocalValue("partyTemplate.flowViewMode") === "node" ? "node" : "list";
 let flowNodeDepth = "moments";
 let flowNodeZoom = Math.min(1, Math.max(0.1, Number(getLocalValue("partyTemplate.flowNodeZoom") || 1) || 1));
 const collapsedFlowStates = new Set(getLocalJsonArray("partyTemplate.collapsedFlowStates"));
@@ -557,7 +556,6 @@ Object.defineProperty(window, "selectedFlowActionId", { configurable: true, get:
 Object.defineProperty(window, "selectedFlowActionIds", { configurable: true, get: () => selectedFlowActionIds, set: (v) => { selectedFlowActionIds = v; } });
 Object.defineProperty(window, "selectedFlowRouteNodeId", { configurable: true, get: () => selectedFlowRouteNodeId, set: (v) => { selectedFlowRouteNodeId = v; } });
 Object.defineProperty(window, "selectedFlowRouteBranchId", { configurable: true, get: () => selectedFlowRouteBranchId, set: (v) => { selectedFlowRouteBranchId = v; } });
-Object.defineProperty(window, "flowViewMode", { configurable: true, get: () => flowViewMode, set: (v) => { flowViewMode = v; } });
 Object.defineProperty(window, "flowNodeDepth", { configurable: true, get: () => flowNodeDepth, set: (v) => { flowNodeDepth = v; } });
 Object.defineProperty(window, "flowNodeZoom", { configurable: true, get: () => flowNodeZoom, set: (v) => { flowNodeZoom = v; } });
 Object.defineProperty(window, "flowHistoryManager", { configurable: true, get: () => flowHistoryManager, set: (v) => { flowHistoryManager = v; } });

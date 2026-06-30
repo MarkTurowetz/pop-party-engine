@@ -7,7 +7,6 @@ export interface FlowToolbarProps {
   canSave?: boolean;
   canUndo?: boolean;
   flowNodeDepth?: string;
-  flowViewMode?: string;
   saving?: boolean;
   onAddAction?: () => void;
   onAddState?: () => void;
@@ -15,7 +14,6 @@ export interface FlowToolbarProps {
   onRedo?: () => void;
   onRevert?: () => void;
   onSave?: () => void;
-  onSetViewMode?: (mode: "list" | "node") => void;
   onUndo?: () => void;
 }
 
@@ -28,7 +26,6 @@ export function FlowToolbar({
   canSave = false,
   canUndo = false,
   flowNodeDepth = "subroutine",
-  flowViewMode = "list",
   saving = false,
   onAddAction,
   onAddState,
@@ -36,7 +33,6 @@ export function FlowToolbar({
   onRedo,
   onRevert,
   onSave,
-  onSetViewMode,
   onUndo
 }: FlowToolbarProps) {
   return (
@@ -51,7 +47,6 @@ export function FlowToolbar({
       data-can-undo={canUndo ? "true" : "false"}
       data-flow-node-depth={flowNodeDepth}
       data-flow-react-component="toolbar"
-      data-flow-view-mode={flowViewMode}
     >
       <button type="button" disabled={!canUndo} onClick={onUndo}>Undo</button>
       <button type="button" disabled={!canRedo} onClick={onRedo}>Redo</button>
@@ -62,20 +57,6 @@ export function FlowToolbar({
       <button type="button" disabled={!canAddAction} onClick={onAddAction}>Add Action</button>
       <button type="button" disabled={!canDelete} onClick={onDeleteSelection}>Delete</button>
       <button type="button" disabled={!canRevert} onClick={onRevert}>Revert</button>
-      <button
-        aria-pressed={flowViewMode !== "node"}
-        type="button"
-        onClick={() => onSetViewMode?.("list")}
-      >
-        List
-      </button>
-      <button
-        aria-pressed={flowViewMode === "node"}
-        type="button"
-        onClick={() => onSetViewMode?.("node")}
-      >
-        Node
-      </button>
       <span>{flowNodeDepth}</span>
     </div>
   );

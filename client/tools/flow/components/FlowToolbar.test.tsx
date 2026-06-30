@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { FlowToolbar } from "./FlowToolbar";
 
 describe("FlowToolbar", () => {
-  it("renders legacy action affordance state", () => {
+  it("renders node-only action affordance state", () => {
     const markup = renderToStaticMarkup(
       <FlowToolbar
         canAddAction={true}
@@ -14,7 +14,6 @@ describe("FlowToolbar", () => {
         canSave={true}
         canUndo={true}
         flowNodeDepth="subroutines"
-        flowViewMode="node"
       />
     );
 
@@ -27,6 +26,8 @@ describe("FlowToolbar", () => {
     expect(markup).toContain('data-can-save="true"');
     expect(markup).toContain('data-can-undo="true"');
     expect(markup).toContain('data-flow-node-depth="subroutines"');
-    expect(markup).toContain('data-flow-view-mode="node"');
+    expect(markup).not.toContain("List");
+    expect(markup).not.toContain("Node");
+    expect(markup).not.toContain("data-flow-view-mode");
   });
 });

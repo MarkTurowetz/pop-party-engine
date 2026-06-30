@@ -593,56 +593,19 @@ original browser script.
 
 ## Flow React Shell
 
-React is now available for editor migration work, and Vite Flow entries mount a
-hidden `FlowToolApp` bridge shell before loading the legacy tool. The shell does
-not replace visible UI yet; it establishes the React entrypoint and rendering
-runtime for moving Flow panels over in later slices.
+The Flow Tool now uses the React node editor as its only live workspace. The
+shell owns the shared Flow Tool chrome, resizable subroutine sidebar, node canvas,
+toolbar, and inspector; it no longer carries a parallel list/node view mode.
 
-The shell is exposed as `window.PartyGameFlowReactShell` in Vite mode. Legacy
-Flow render and undo/redo restore paths push the current `gameFlow` into the
-hidden React shell, so future React panels can subscribe to live Flow data
-without owning the legacy render lifecycle yet.
+The shell is still exposed as `window.PartyGameFlowReactShell` in Vite mode for
+the legacy bootstrap boundary, but view selection no longer crosses that bridge.
+Flow state/action/route selection is driven from the node graph and the shared
+`ActionInspector` path.
 
-The hidden shell now renders framework-native `FlowStateList` and
-`FlowActionList` components from live Flow data and legacy selection ids. They
-remain hidden behind the bridge while the visible legacy sidebar stays in place.
-
-It also includes a hidden read-only `ActionInspector` component wired to the
-same selected action lookup as the legacy editor, establishing the next React
-surface boundary without changing the visible inspector yet.
-
-Moment-route graph data now feeds a hidden `FlowRouteNodeList` React component
-as well, carrying route node ids, types, and legacy route-node selection into
-the React shell.
-
-The React bridge also receives the legacy toolbar state through a hidden
-`FlowToolbar` component, mirroring add/delete/revert availability plus the
-current list/node view mode.
-Appending `?reactFlowPreview=1` exposes the React bridge in the Flow screen for
-manual comparison while leaving the default production path on the legacy UI.
-The preview state/action/route-node lists now call back into legacy selection
-handlers, so preview clicks exercise the same selection lifecycle as the current
-visible Flow tool.
-
-The opt-in preview now has a styled overlay shell for manual comparison. Its
-toolbar can trigger the legacy add-action, delete, revert, and list/node view
-handlers, while the action and route lists render nested sub-actions and route
-branches. Legacy action-type metadata is passed into the React shell so preview
-labels match the current Flow Tool vocabulary instead of showing only raw action
-type ids. The read-only React inspector now shows action id, type name, kind,
-parent, state, and timing metadata for the selected action.
-
-Appending `?reactFlowPreview=replace` switches that same bridge into an opt-in
-replacement preview: the legacy Flow shell is hidden, and the React shell takes
-the available tool workspace. The default path remains unchanged, and
-`?reactFlowPreview=1` still provides the overlay comparison mode.
-
-The preview selection derivation now lives in `flowPreviewModel.ts`, keeping
-selected state, action, route-node, and route-branch lookup outside the React
-component tree. The React inspector now handles state-only selections and
-route-node selections in addition to action selections, giving the replacement
-preview a usable read-only detail panel for the major Flow editor selection
-types.
+Selection derivation lives in `flowPreviewModel.ts`, keeping selected state and
+action lookup outside the React component tree. Root route actions and decision
+branches are adapted into the same action-inspector model so the inspector has
+one editing surface across root flow and nested subroutines.
 
 ## Frontend Boundary Checks
 

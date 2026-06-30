@@ -13,6 +13,7 @@ describe("FlowToolApp shell", () => {
           routeNodes: [{ id: "entry" }]
         }}
         selectedStateId="intro"
+        nodeCanvas={<section data-flow-react-component="node-canvas">Node canvas</section>}
         visible={true}
       />
     );
@@ -22,10 +23,13 @@ describe("FlowToolApp shell", () => {
     expect(markup).toContain('data-route-node-count="1"');
     expect(markup).toContain('data-surface="tools"');
     expect(markup).toContain('data-flow-react-component="state-list"');
-    expect(markup).toContain('data-flow-react-component="action-list"');
-    expect(markup).toContain('data-flow-react-component="route-node-list"');
+    expect(markup).toContain('data-flow-react-component="node-canvas"');
     expect(markup).toContain('data-flow-react-component="action-inspector"');
     expect(markup).toContain('data-flow-react-component="toolbar"');
+    expect(markup).toContain('class="flow-node-workspace-content"');
+    expect(markup).not.toContain('data-flow-react-component="action-list"');
+    expect(markup).not.toContain('data-flow-react-component="route-node-list"');
+    expect(markup).not.toContain('data-flow-react-component="route-inspector"');
     expect(markup).not.toContain(" hidden");
   });
 });
