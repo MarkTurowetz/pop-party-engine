@@ -65,6 +65,12 @@ function TargetSelect({
   );
 }
 
+const UNTIMED_ACTION_TYPES = new Set(["decision", "jumpNode", "labelNode", "codeNode", "subroutine"]);
+
+function inspectorShouldShowTiming(action: FlowAction): boolean {
+  return !UNTIMED_ACTION_TYPES.has(action.type);
+}
+
 export function ActionInspector({
   action,
   edit,
@@ -203,7 +209,7 @@ export function ActionInspector({
           />
         </label>
       ) : null}
-      {edit?.onSetActionTiming && action.type !== "decision" ? (
+      {edit?.onSetActionTiming && inspectorShouldShowTiming(action) ? (
         <div className="flow-react-action-timing" data-flow-react-component="action-timing">
           {isSubAction ? (
             <label className="flow-react-field" data-flow-react-field="timing-mode">

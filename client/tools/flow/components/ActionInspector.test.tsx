@@ -98,6 +98,50 @@ describe("ActionInspector", () => {
     expect(markup).not.toContain("Target");
   });
 
+  it("hides timing controls on structural jump and label nodes", () => {
+    const baseProps = {
+      edit: {
+        onSetActionTiming: () => undefined,
+        onSetActionField: () => undefined,
+        actionTargetOptions: [{ id: "next", label: "Next Action" }]
+      },
+      state: { id: "intro", name: "Intro", actions: [] }
+    };
+    const jumpMarkup = renderToStaticMarkup(
+      <ActionInspector
+        {...baseProps}
+        action={{
+          id: "jump",
+          name: "Jump",
+          type: "jumpNode",
+          timing: { mode: "E+", seconds: 10 },
+          jumpTargetActionId: "next"
+        }}
+      />
+    );
+    const labelMarkup = renderToStaticMarkup(
+      <ActionInspector
+        {...baseProps}
+        action={{
+          id: "label",
+          name: "Label",
+          type: "labelNode",
+          timing: { mode: "E+", seconds: 10 },
+          labelText: "Flow note"
+        }}
+      />
+    );
+
+    expect(jumpMarkup).toContain('data-action-type="jumpNode"');
+    expect(jumpMarkup).toContain("Jump Target");
+    expect(jumpMarkup).not.toContain("Timing Mode");
+    expect(jumpMarkup).not.toContain("Timing Seconds");
+    expect(labelMarkup).toContain('data-action-type="labelNode"');
+    expect(labelMarkup).toContain("Label Text");
+    expect(labelMarkup).not.toContain("Timing Mode");
+    expect(labelMarkup).not.toContain("Timing Seconds");
+  });
+
   it("renders the add sub-action control for primary game actions", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector
