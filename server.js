@@ -617,6 +617,7 @@ const {
   clearTextInput,
   clearVotingInput,
   enterGamePhase,
+  flowActionTarget,
   flowActionIndexById,
   flowEventTargetForAction,
   getFlowState,

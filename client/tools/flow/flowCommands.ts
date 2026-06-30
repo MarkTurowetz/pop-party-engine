@@ -1,6 +1,8 @@
 import type { FlowAction, FlowRouteNode, FlowState, GameFlow } from "../../types/game-data";
 import {
   addDefaultFlowAction,
+  addDefaultFlowActionToSubroutine,
+  addDefaultFlowSubroutine,
   addDefaultFlowSubAction,
   addFlowState,
   createDefaultFlowState,
@@ -25,32 +27,12 @@ import {
 } from "./flowDecision";
 import type { FlowNodeExit, FlowNodePoint, FlowNodePositionUpdate } from "./flowNodeGraph";
 import { assertFlowModel } from "./flowValidation";
+import { findFlowAction, findFlowActionContext, findFlowSubroutine, flowSubroutineActions, type FlowSubroutine } from "./flowSubroutines";
 
 export type { FlowNodePositionUpdate } from "./flowNodeGraph";
 
 function findFlowState(flow: GameFlow, stateId: string): FlowState | undefined {
   return (flow.states || []).find((state) => state.id === stateId);
-}
-
-interface FlowActionContext {
-  action: FlowAction | undefined;
-  isSubAction: boolean;
-}
-
-function findFlowActionContext(state: FlowState | undefined, actionId: string): FlowActionContext {
-  if (state) {
-    for (const action of state.actions || []) {
-      if (action.id === actionId) return { action, isSubAction: false };
-      for (const subAction of action.subActions || []) {
-        if (subAction.id === actionId) return { action: subAction, isSubAction: true };
-      }
-    }
-  }
-  return { action: undefined, isSubAction: false };
-}
-
-function findFlowAction(state: FlowState | undefined, actionId: string): FlowAction | undefined {
-  return findFlowActionContext(state, actionId).action;
 }
 
 export type ApplyFlowActionType = (action: FlowAction, type: string, isSubAction: boolean) => void;
@@ -209,6 +191,38 @@ export function addFlowActionCommand(stateId: string, selectedPrimaryActionId = 
   };
 }
 
+export function addFlowActionToSubroutineCommand(
+  stateId: string,
+  subroutinePath: Iterable<string> = [],
+  selectedPrimaryActionId = ""
+): FlowCommand {
+  const path = [...subroutinePath].filter(Boolean);
+  return {
+    id: `add-flow-action:${stateId}:${path.join("/")}`,
+    label: "Add flow action",
+    apply: (flow) => {
+      const ref = findFlowSubroutine(flow, stateId, path);
+      if (ref) addDefaultFlowActionToSubroutine(ref.subroutine, selectedPrimaryActionId, stateId);
+    }
+  };
+}
+
+export function addFlowSubroutineCommand(
+  stateId: string,
+  subroutinePath: Iterable<string> = [],
+  selectedPrimaryActionId = ""
+): FlowCommand {
+  const path = [...subroutinePath].filter(Boolean);
+  return {
+    id: `add-flow-subroutine:${stateId}:${path.join("/")}`,
+    label: "Add subroutine",
+    apply: (flow) => {
+      const ref = findFlowSubroutine(flow, stateId, path);
+      if (ref) addDefaultFlowSubroutine(ref.subroutine, selectedPrimaryActionId, stateId);
+    }
+  };
+}
+
 function canConnectNewAction(source: Pick<FlowNodeExit, "kind" | "field" | "branchId">): boolean {
   if (source.kind === "entry") return true;
   if (source.kind === "field") return Boolean(source.field);
@@ -217,16 +231,16 @@ function canConnectNewAction(source: Pick<FlowNodeExit, "kind" | "field" | "bran
 }
 
 function connectSourceToAction(
-  state: FlowState,
+  subroutine: FlowSubroutine,
   source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
   targetActionId: string
 ): void {
   if (source.kind === "entry") {
-    state.entryTargetActionId = targetActionId;
+    subroutine.entryTargetActionId = targetActionId;
     return;
   }
 
-  const sourceAction = findFlowAction(state, source.nodeId);
+  const sourceAction = flowSubroutineActions(subroutine).find((action) => action.id === source.nodeId);
   if (!sourceAction) return;
 
   if (source.kind === "field" && source.field) {
@@ -245,24 +259,26 @@ function connectSourceToAction(
 export function addConnectedFlowActionCommand(
   stateId: string,
   source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
-  position: FlowNodePoint
+  position: FlowNodePoint,
+  subroutinePath: Iterable<string> = []
 ): FlowCommand {
   const nodePosition = {
     x: Math.max(0, Math.round(position.x)),
     y: Math.max(0, Math.round(position.y))
   };
+  const path = [...subroutinePath].filter(Boolean);
   return {
     id: `add-connected-flow-action:${stateId}:${source.nodeId}`,
     label: "Add connected action",
     apply: (flow) => {
       if (!canConnectNewAction(source)) return;
-      const state = findFlowState(flow, stateId);
-      if (!state) return;
+      const ref = findFlowSubroutine(flow, stateId, path);
+      if (!ref) return;
       const insertAfterActionId =
         source.kind === "field" || source.kind === "branch" ? source.nodeId : "";
-      const result = addDefaultFlowAction(state, insertAfterActionId);
+      const result = addDefaultFlowActionToSubroutine(ref.subroutine, insertAfterActionId, stateId);
       (result.action as Record<string, unknown>).nodePosition = nodePosition;
-      connectSourceToAction(state, source, result.action.id);
+      connectSourceToAction(ref.subroutine, source, result.action.id);
     }
   };
 }
@@ -326,54 +342,60 @@ export function setFlowActionFieldCommand(
 }
 
 export function setFlowNodePositionCommand(
-  depth: "moments" | "actions",
+  depth: "subroutines" | "subroutine",
   stateId: string,
   nodeId: string,
   x: number,
-  y: number
+  y: number,
+  subroutinePath: Iterable<string> = []
 ): FlowCommand {
   const position = { x: Math.round(x), y: Math.round(y) };
+  const path = [...subroutinePath].filter(Boolean);
   return {
     id: `set-flow-node-position:${depth}:${nodeId}`,
     label: "Move node",
     apply: (flow) => {
-      applyFlowNodePosition(flow, depth, stateId, nodeId, position);
+      applyFlowNodePosition(flow, depth, stateId, nodeId, position, path);
     }
   };
 }
 
 function applyFlowNodePosition(
   flow: GameFlow,
-  depth: "moments" | "actions",
+  depth: "subroutines" | "subroutine",
   stateId: string,
   nodeId: string,
-  position: { x: number; y: number }
+  position: { x: number; y: number },
+  subroutinePath: Iterable<string> = []
 ): void {
-  if (depth === "moments") {
+  if (depth === "subroutines") {
     const state = findFlowState(flow, nodeId);
     if (state) (state as Record<string, unknown>).nodePosition = position;
     return;
   }
-  const state = findFlowState(flow, stateId);
-  if (!state) return;
-  if (nodeId === "start") (state as Record<string, unknown>).startNodePosition = position;
-  else if (nodeId === "return") (state as Record<string, unknown>).returnNodePosition = position;
+  const ref = findFlowSubroutine(flow, stateId, subroutinePath);
+  const subroutine = ref?.subroutine;
+  if (!subroutine) return;
+  if (nodeId === "start") (subroutine as Record<string, unknown>).startNodePosition = position;
+  else if (nodeId === "return") (subroutine as Record<string, unknown>).returnNodePosition = position;
   else {
-    const action = findFlowAction(state, nodeId);
+    const action = flowSubroutineActions(subroutine).find((item) => item.id === nodeId);
     if (action) (action as Record<string, unknown>).nodePosition = position;
   }
 }
 
 export function setFlowNodePositionsCommand(
-  depth: "moments" | "actions",
+  depth: "subroutines" | "subroutine",
   stateId: string,
-  updates: FlowNodePositionUpdate[]
+  updates: FlowNodePositionUpdate[],
+  subroutinePath: Iterable<string> = []
 ): FlowCommand {
   const positions = updates.map((update) => ({
     nodeId: update.nodeId,
     x: Math.round(update.x),
     y: Math.round(update.y)
   }));
+  const path = [...subroutinePath].filter(Boolean);
   return {
     id: `set-flow-node-positions:${depth}:${positions.map((position) => position.nodeId).join(",")}`,
     label: "Optimize node layout",
@@ -382,7 +404,7 @@ export function setFlowNodePositionsCommand(
         applyFlowNodePosition(flow, depth, stateId, position.nodeId, {
           x: position.x,
           y: position.y
-        });
+        }, path);
       }
     }
   };
@@ -542,18 +564,16 @@ export function moveFlowActionCommand(
   stateId: string,
   draggedActionId: string,
   targetActionId: string,
-  placeAfter = false
+  placeAfter = false,
+  subroutinePath: Iterable<string> = []
 ): FlowCommand {
+  const path = [...subroutinePath].filter(Boolean);
   return {
     id: `move-flow-action:${draggedActionId}`,
     label: "Move flow action",
     apply: (flow) => {
-      moveFlowActionInState(
-        findFlowState(flow, stateId),
-        draggedActionId,
-        targetActionId,
-        placeAfter
-      );
+      const ref = findFlowSubroutine(flow, stateId, path);
+      if (ref) moveFlowActionInState(ref.subroutine, draggedActionId, targetActionId, placeAfter);
     }
   };
 }
@@ -577,17 +597,19 @@ export function moveFlowSubActionCommand(
 
 export function removeFlowActionsCommand(
   stateId: string,
-  selectedIds: Iterable<string>
+  selectedIds: Iterable<string>,
+  subroutinePath: Iterable<string> = []
 ): FlowCommand {
   const ids = new Set(selectedIds);
+  const path = [...subroutinePath].filter(Boolean);
   return {
     id: `remove-flow-actions:${[...ids].join(",")}`,
     label: ids.size > 1 ? "Delete flow actions" : "Delete flow action",
     apply: (flow) => {
-      const state = findFlowState(flow, stateId);
-      if (!state) return;
-      const result = removeSelectedFlowActionsFromList(state.actions || [], ids);
-      state.actions = result.actions;
+      const ref = findFlowSubroutine(flow, stateId, path);
+      if (!ref) return;
+      const result = removeSelectedFlowActionsFromList(flowSubroutineActions(ref.subroutine), ids);
+      ref.subroutine.actions = result.actions;
     }
   };
 }
@@ -610,6 +632,22 @@ export function setFlowStateEntryTargetCommand(stateId: string, targetId: string
     apply: (flow) => {
       const state = findFlowState(flow, stateId);
       if (state) setFlowStateEntryTarget(state, targetId);
+    }
+  };
+}
+
+export function setFlowSubroutineEntryTargetCommand(
+  stateId: string,
+  subroutinePath: Iterable<string>,
+  targetId: string
+): FlowCommand {
+  const path = [...subroutinePath].filter(Boolean);
+  return {
+    id: `set-flow-subroutine-entry-target:${stateId}:${path.join("/")}`,
+    label: "Set subroutine entry target",
+    apply: (flow) => {
+      const ref = findFlowSubroutine(flow, stateId, path);
+      if (ref) setFlowStateEntryTarget(ref.subroutine, targetId);
     }
   };
 }

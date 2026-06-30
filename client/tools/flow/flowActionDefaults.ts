@@ -134,6 +134,13 @@ export function createActionDefaults(context: FlowActionDefaultsContext = {}): F
       action.timing = { mode: "E+", seconds: 0 };
       action.subActions = [];
     }
+    if (value === "subroutine") {
+      action.entryTargetActionId = text(action.entryTargetActionId);
+      action.nextTargetActionId = text(action.nextTargetActionId);
+      action.actions = Array.isArray(action.actions) ? action.actions : [];
+      action.subActions = [];
+      action.timing = { mode: "E+", seconds: 0 };
+    }
     if (value === "decision") {
       action.variable = text(action.variable, "activePlayerCount");
       action.valueType = text(action.valueType, "int");
@@ -142,7 +149,7 @@ export function createActionDefaults(context: FlowActionDefaultsContext = {}): F
     if (value === "transition") action.transition = text(action.transition, "horizontalWipe");
     if (value === "transitionState") action.targetState = text(action.targetState, "intro");
     if (value === "presentText" || value === "displayText" || value === "text") action.textTarget = text(action.textTarget, "presentation");
-    if (value !== "jumpNode" && value !== "labelNode" && value !== "codeNode") context.ensureActionTiming?.(action, isSubAction);
+    if (value !== "jumpNode" && value !== "labelNode" && value !== "codeNode" && value !== "subroutine") context.ensureActionTiming?.(action, isSubAction);
   }
 
   return { applyActionTypeDefaults };

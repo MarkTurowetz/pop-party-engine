@@ -1,5 +1,6 @@
 import type { FlowAction, FlowRouteNode, FlowState, GameFlow, StageLayoutCollection } from "../../types/game-data";
-import { createDefaultFlowAction } from "./flowActions";
+import { createDefaultFlowAction, createDefaultFlowSubroutineAction } from "./flowActions";
+import { flowSubroutineActions, type FlowSubroutine } from "./flowSubroutines";
 
 export interface AddFlowStateResult {
   state: FlowState;
@@ -14,6 +15,11 @@ export interface AddFlowActionResult {
 export interface AddFlowSubActionResult {
   action: FlowAction;
   parentAction: FlowAction;
+  index: number;
+}
+
+export interface AddFlowSubroutineResult {
+  action: FlowAction;
   index: number;
 }
 
@@ -121,14 +127,42 @@ export function addFlowState(flow: Partial<GameFlow>, state: FlowState = createD
 }
 
 export function addDefaultFlowAction(state: FlowState, selectedPrimaryActionId = ""): AddFlowActionResult {
-  if (!Array.isArray(state.actions)) state.actions = [];
-  const nextNumber = state.actions.length + 1;
-  const action = createDefaultFlowAction(state.id, `Game Action ${nextNumber}`, false);
+  return addDefaultFlowActionToSubroutine(state, selectedPrimaryActionId, state.id);
+}
+
+export function addDefaultFlowActionToSubroutine(
+  subroutine: FlowSubroutine,
+  selectedPrimaryActionId = "",
+  stateId = ""
+): AddFlowActionResult {
+  if (!Array.isArray(subroutine.actions)) subroutine.actions = [];
+  const nextNumber = subroutine.actions.length + 1;
+  const prefixId = stateId || String(subroutine.id || "subroutine");
+  const action = createDefaultFlowAction(prefixId, `Game Action ${nextNumber}`, false);
   const selectedIndex = selectedPrimaryActionId
-    ? state.actions.findIndex((item) => item.id === selectedPrimaryActionId)
+    ? subroutine.actions.findIndex((item) => item.id === selectedPrimaryActionId)
     : -1;
-  const index = selectedIndex >= 0 ? selectedIndex + 1 : state.actions.length;
-  state.actions.splice(index, 0, action);
+  const index = selectedIndex >= 0 ? selectedIndex + 1 : subroutine.actions.length;
+  subroutine.actions.splice(index, 0, action);
+  return { action, index };
+}
+
+export function addDefaultFlowSubroutine(
+  subroutine: FlowSubroutine,
+  selectedPrimaryActionId = "",
+  stateId = ""
+): AddFlowSubroutineResult {
+  if (!Array.isArray(subroutine.actions)) subroutine.actions = [];
+  const nextNumber = subroutine.actions.length + 1;
+  const action = createDefaultFlowSubroutineAction(
+    stateId || String(subroutine.id || "subroutine"),
+    `Subroutine ${nextNumber}`
+  );
+  const selectedIndex = selectedPrimaryActionId
+    ? subroutine.actions.findIndex((item) => item.id === selectedPrimaryActionId)
+    : -1;
+  const index = selectedIndex >= 0 ? selectedIndex + 1 : subroutine.actions.length;
+  subroutine.actions.splice(index, 0, action);
   return { action, index };
 }
 
@@ -147,6 +181,7 @@ export function addDefaultFlowSubAction(parentAction: FlowAction, selectedSubAct
 export function flattenedFlowActionIds(actions: FlowAction[] = [], options: FlowActionBranchOptions = {}, output: string[] = []): string[] {
   for (const action of actions || []) {
     output.push(action.id);
+    flattenedFlowActionIds(flowSubroutineActions(action), options, output);
     for (const subAction of action.subActions || []) output.push(subAction.id);
     if (action.type === "decision") {
       const branches = options.ensureDecisionBranches?.(action) || action.branches || [];
@@ -170,6 +205,11 @@ export function removeSelectedFlowActionsFromList(actions: FlowAction[] = [], se
         return false;
       });
     }
+    if (Array.isArray(action.actions)) {
+      const nested = removeSelectedFlowActionsFromList(action.actions, selectedIds);
+      action.actions = nested.actions;
+      removedIds.push(...nested.removedIds);
+    }
     if (action.type === "decision" && Array.isArray(action.branches)) {
       action.branches = action.branches.filter((branch) => {
         if (!selectedIds.has(branch.id)) return true;
@@ -187,7 +227,7 @@ export function moveFlowState(flow: Partial<GameFlow>, draggedStateId: string, t
   return moveItemById(flow.states, draggedStateId, targetStateId, placeAfter);
 }
 
-export function moveFlowActionInState(state: Partial<FlowState> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter = false): MoveFlowItemResult<FlowAction> {
+export function moveFlowActionInState(state: Partial<FlowSubroutine> | null | undefined, draggedActionId: string, targetActionId: string, placeAfter = false): MoveFlowItemResult<FlowAction> {
   if (!state || !Array.isArray(state.actions)) return { moved: false, item: null, fromIndex: -1, toIndex: -1 };
   return moveItemById(state.actions, draggedActionId, targetActionId, placeAfter);
 }
@@ -216,7 +256,7 @@ export function setFlowStateNextTarget(state: Partial<FlowState>, targetId: stri
   state.nextStateTargetId = targetId;
 }
 
-export function setFlowStateEntryTarget(state: Partial<FlowState>, targetId: string): void {
+export function setFlowStateEntryTarget(state: Partial<FlowSubroutine>, targetId: string): void {
   state.entryTargetActionId = targetId;
 }
 
@@ -232,7 +272,7 @@ export function refreshFlowActionName(state: Partial<FlowState>, action: Partial
 
 export function flowStateIdsForDelete(flow: Partial<GameFlow> | null | undefined, options: FlowStateIdsForDeleteOptions = {}): string[] {
   const ids = new Set<string>();
-  if (options.flowNodeDepth === "moments" && !options.selectedFlowActionId) {
+  if (options.flowNodeDepth === "subroutines" && !options.selectedFlowActionId) {
     for (const id of options.selectedFlowActionIds || []) ids.add(id);
   }
   if (options.selectedFlowStateId) ids.add(options.selectedFlowStateId);

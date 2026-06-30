@@ -11,6 +11,7 @@ function flowStateHasActionType(flowState, type) {
   while (stack.length) {
     const action = stack.pop();
     if (action?.type === type) return true;
+    stack.push(...(action?.actions || []));
     stack.push(...(action?.subActions || []));
   }
   return false;

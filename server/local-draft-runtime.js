@@ -63,6 +63,8 @@ function createLocalDraftRuntime({
         clearActionTimer(room);
         resetCraftingTimer(room);
         room.actionIndex = 0;
+        room.subroutinePath = [];
+        room.subroutineStack = [];
         room.presentedAction = null;
         room.lastDecisionTrace = null;
         clearAppliedActionEffects(room);

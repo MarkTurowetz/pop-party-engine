@@ -101,7 +101,7 @@ describe("Flow selectors", () => {
     expect(flowActionTargetOptions(flow.states[0], "missing-action")).toEqual([
       { id: "", name: "No Connection" },
       { id: "none", name: "None" },
-      { id: "return", name: "Return To Moments" },
+      { id: "return", name: "Return To Parent Subroutine" },
       { id: "intro-present", name: "Present Text" },
       { id: "intro-branch", name: "Branch" },
       { id: "missing-action", name: "missing-action" }
@@ -114,7 +114,7 @@ describe("Flow selectors", () => {
     });
 
     expect(flowStateTargetOptions(flow, "missing-state", "intro", { appendRouteTargets })).toEqual([
-      { id: "", name: "No Next Moment" },
+      { id: "", name: "No Next Subroutine" },
       { id: "none", name: "None / Halt" },
       { id: "route:bonus", name: "Route: Bonus" },
       { id: "missing-state", name: "missing-state" }

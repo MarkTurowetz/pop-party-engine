@@ -19,6 +19,8 @@ function createDefaultRoom(stageCode) {
     appliedActionEffectId: "",
     appliedActionEffectIds: new Set(),
     actionIndex: 0,
+    subroutinePath: [],
+    subroutineStack: [],
     presentedAction: null,
     routeActionSession: null,
     playersShown: true,

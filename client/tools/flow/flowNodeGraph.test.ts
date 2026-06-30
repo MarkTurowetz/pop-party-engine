@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  actionGraphConnections,
-  actionGraphNodes,
-  actionNodeExits,
-  momentGraphConnections,
-  momentGraphNodes,
-  momentNodeExits,
+  rootSubroutineGraphConnections,
+  rootSubroutineGraphNodes,
+  rootSubroutineNodeExits,
+  subroutineGraphConnections,
+  subroutineGraphNodes,
+  subroutineNodeExits,
   optimizedVerticalNodePositions
 } from "./flowNodeGraph";
 import type { GameFlow } from "../../types/game-data";
@@ -26,8 +26,8 @@ function flowFixture(): GameFlow {
 }
 
 describe("flowNodeGraph", () => {
-  it("builds one moment node per state with positions and subtitles", () => {
-    const nodes = momentGraphNodes(flowFixture(), { selectedStateId: "intro" });
+  it("builds one root subroutine node per state with positions and subtitles", () => {
+    const nodes = rootSubroutineGraphNodes(flowFixture(), { selectedStateId: "intro" });
 
     expect(nodes.map((node) => node.id)).toEqual(["intro", "round"]);
     expect(nodes[0].selected).toBe(true);
@@ -36,9 +36,9 @@ describe("flowNodeGraph", () => {
     expect({ x: nodes[1].x, y: nodes[1].y }).toEqual({ x: 500, y: 300 });
   });
 
-  it("builds Start + action + Return nodes for the actions depth", () => {
+  it("builds Start + action + Return nodes inside a subroutine", () => {
     const flow = flowFixture();
-    const nodes = actionGraphNodes(flow.states[0], { selectedActionId: "a1" });
+    const nodes = subroutineGraphNodes(flow.states[0], { selectedActionId: "a1" });
 
     expect(nodes.map((node) => node.id)).toEqual(["start", "a1", "return"]);
     expect(nodes[0].kind).toBe("system");
@@ -47,17 +47,17 @@ describe("flowNodeGraph", () => {
   });
 
   it("returns no action nodes for a null state", () => {
-    expect(actionGraphNodes(null)).toEqual([]);
+    expect(subroutineGraphNodes(null)).toEqual([]);
   });
 
-  it("connects states by nextStateTargetId in moments depth", () => {
-    const connections = momentGraphConnections(flowFixture());
+  it("connects root subroutines by nextStateTargetId", () => {
+    const connections = rootSubroutineGraphConnections(flowFixture());
     expect(connections).toEqual([
       { id: "intro->round", from: "intro", to: "round", label: "Next" }
     ]);
   });
 
-  it("connects start->entry and action exits in actions depth", () => {
+  it("connects start->entry and action exits inside a subroutine", () => {
     const flow: GameFlow = {
       states: [
         {
@@ -72,7 +72,7 @@ describe("flowNodeGraph", () => {
       ],
       routeNodes: []
     };
-    const connections = actionGraphConnections(flow.states[0]);
+    const connections = subroutineGraphConnections(flow.states[0]);
     expect(connections).toEqual([
       { id: "start->a1", from: "start", to: "a1", label: "Entry" },
       { id: "a1->a2:Next", from: "a1", to: "a2", label: "Next" },
@@ -80,17 +80,17 @@ describe("flowNodeGraph", () => {
     ]);
   });
 
-  it("exposes a Next exit per state in moments depth", () => {
-    const exits = momentNodeExits(flowFixture());
+  it("exposes a Next exit per root subroutine", () => {
+    const exits = rootSubroutineNodeExits(flowFixture());
     expect(
       exits.map((exit) => ({ node: exit.nodeId, kind: exit.kind, target: exit.currentTarget }))
     ).toEqual([
-      { node: "intro", kind: "nextState", target: "round" },
-      { node: "round", kind: "nextState", target: "" }
+      { node: "intro", kind: "nextSubroutine", target: "round" },
+      { node: "round", kind: "nextSubroutine", target: "" }
     ]);
   });
 
-  it("exposes Start entry + per-type action exits in actions depth", () => {
+  it("exposes Start entry + per-type action exits inside a subroutine", () => {
     const flow: GameFlow = {
       states: [
         {
@@ -105,7 +105,7 @@ describe("flowNodeGraph", () => {
       ],
       routeNodes: []
     };
-    const exits = actionNodeExits(flow.states[0], (type) => type === "textSubmissionInput");
+    const exits = subroutineNodeExits(flow.states[0], (type) => type === "textSubmissionInput");
     expect(exits.map((exit) => `${exit.nodeId}:${exit.label}=${exit.currentTarget}`)).toEqual([
       "start:Entry=a1",
       "a1:Screen Click=a2",
@@ -146,11 +146,11 @@ describe("flowNodeGraph", () => {
       ],
       routeNodes: []
     };
-    const nodes = actionGraphNodes(flow.states[0]);
-    const connections = actionGraphConnections(flow.states[0]);
+    const nodes = subroutineGraphNodes(flow.states[0]);
+    const connections = subroutineGraphConnections(flow.states[0]);
 
     expect(
-      optimizedVerticalNodePositions(nodes, connections, "actions").map(
+      optimizedVerticalNodePositions(nodes, connections, "subroutine").map(
         (position) => position.nodeId
       )
     ).toEqual(["start", "setup", "wipe-off", "countdown", "wipe-on", "return"]);

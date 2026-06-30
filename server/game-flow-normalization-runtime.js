@@ -138,7 +138,15 @@ function createGameFlowNormalizationRuntime({
       nodePosition: normalizeNodePosition(action?.nodePosition, actionIndex),
       subActions: normalizeSubActions(action?.subActions, stateId)
     };
-    return actionRegistry.normalizeAction(type, action, base);
+    const normalized = actionRegistry.normalizeAction(type, action, base);
+    if (type !== "subroutine") return normalized;
+    return {
+      ...normalized,
+      entryTargetActionId: flowActionTarget(action?.entryTargetActionId),
+      startNodePosition: normalizeNodePosition(action?.startNodePosition, 0),
+      returnNodePosition: normalizeNodePosition(action?.returnNodePosition, 0),
+      actions: normalizeSubroutineActions(action?.actions, normalized.id)
+    };
   }
 
   function normalizeTextTarget(value) {
@@ -149,6 +157,11 @@ function createGameFlowNormalizationRuntime({
   function normalizeSubActions(subActions, stateId) {
     if (!Array.isArray(subActions)) return [];
     return subActions.map((subAction, subActionIndex) => normalizeFlowAction(subAction, subActionIndex, stateId, true)).filter(Boolean);
+  }
+
+  function normalizeSubroutineActions(actions, subroutineId) {
+    if (!Array.isArray(actions)) return [];
+    return actions.map((action, actionIndex) => normalizeFlowAction(action, actionIndex, subroutineId)).filter(Boolean);
   }
 
   function normalizeActionTiming(timing, allowStartTiming = true, preferStartTiming = false) {

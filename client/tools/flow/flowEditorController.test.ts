@@ -161,22 +161,22 @@ describe("createFlowEditorController", () => {
     expect(options().length).toBe(4);
   });
 
-  it("sets node positions for moments and actions depth", () => {
+  it("sets node positions for root subroutine and nested subroutine depth", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 
-    controller.setNodePosition("moments", "round-one", "round-one", 12.4, 34.6);
+    controller.setNodePosition("subroutines", "round-one", "round-one", 12.4, 34.6);
     const state = controller.getState().snapshot.flow.states[1] as {
       nodePosition?: { x: number; y: number };
     };
     expect(state.nodePosition).toEqual({ x: 12, y: 35 });
 
-    controller.setNodePosition("actions", "round-one", "act-1", 100, 200);
+    controller.setNodePosition("subroutine", "round-one", "act-1", 100, 200);
     const action = controller.getState().snapshot.flow.states[1].actions[0] as {
       nodePosition?: { x: number; y: number };
     };
     expect(action.nodePosition).toEqual({ x: 100, y: 200 });
 
-    controller.setNodePosition("actions", "round-one", "start", 5, 6);
+    controller.setNodePosition("subroutine", "round-one", "start", 5, 6);
     const withStart = controller.getState().snapshot.flow.states[1] as {
       startNodePosition?: { x: number; y: number };
     };
@@ -186,7 +186,7 @@ describe("createFlowEditorController", () => {
   it("sets multiple node positions as one undoable operation", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 
-    controller.setNodePositions("actions", "round-one", [
+    controller.setNodePositions("subroutine", "round-one", [
       { nodeId: "start", x: 10.4, y: 20.8 },
       { nodeId: "act-1", x: 100, y: 220 },
       { nodeId: "return", x: 400, y: 700 }

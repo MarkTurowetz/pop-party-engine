@@ -3,15 +3,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ActionInspector } from "./ActionInspector";
 
 describe("ActionInspector", () => {
-  it("renders an empty state without an action", () => {
+  it("renders an empty subroutine without an action", () => {
     const markup = renderToStaticMarkup(<ActionInspector action={null} state={null} />);
 
     expect(markup).toContain('data-flow-react-component="action-inspector"');
     expect(markup).toContain('data-empty="true"');
-    expect(markup).toContain("No state selected");
+    expect(markup).toContain("No subroutine selected");
   });
 
-  it("renders selected state metadata when no action is selected", () => {
+  it("renders selected subroutine metadata when no action is selected", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector
         action={null}
@@ -27,7 +27,7 @@ describe("ActionInspector", () => {
 
     expect(markup).toContain('data-state-id="intro"');
     expect(markup).toContain("Intro");
-    expect(markup).toContain("State");
+    expect(markup).toContain("Subroutine");
     expect(markup).toContain("round-one");
   });
 

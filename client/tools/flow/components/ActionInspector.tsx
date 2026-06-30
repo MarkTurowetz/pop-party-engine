@@ -1,4 +1,5 @@
-import type { FlowAction, FlowState } from "../../../types/game-data";
+import type { FlowAction } from "../../../types/game-data";
+import type { FlowSubroutine } from "../flowSubroutines";
 import type { FlowActionTypeMeta } from "../flowSelectors";
 import { ActionFieldControls } from "./ActionFieldControls";
 import { DecisionBranchControls, type DecisionBranchHandlers } from "./DecisionBranchControls";
@@ -32,7 +33,7 @@ export interface ActionInspectorProps {
   isBranch?: boolean;
   isSubAction?: boolean;
   parentAction?: FlowAction | null;
-  state: FlowState | null;
+  state: FlowSubroutine | null;
 }
 
 function TargetSelect({
@@ -77,7 +78,7 @@ export function ActionInspector({
         data-empty="true"
       >
         <h3>Inspector</h3>
-        No state selected
+        No subroutine selected
       </section>
     );
   }
@@ -96,7 +97,7 @@ export function ActionInspector({
           <dt>ID</dt>
           <dd>{state.id}</dd>
           <dt>Kind</dt>
-          <dd>State</dd>
+          <dd>Subroutine</dd>
           <dt>Actions</dt>
           <dd>{state.actions?.length || 0}</dd>
         </dl>
@@ -113,19 +114,19 @@ export function ActionInspector({
             <dd>{String(state.entryTargetActionId || "Default")}</dd>
           </dl>
         )}
-        {edit?.onSetNextTarget ? (
+        {"nextStateTargetId" in state && edit?.onSetNextTarget ? (
           <TargetSelect
             label="Next"
             value={String(state.nextStateTargetId || "")}
             options={edit.nextTargetOptions || []}
             onChange={edit.onSetNextTarget}
           />
-        ) : (
+        ) : "nextStateTargetId" in state ? (
           <dl>
             <dt>Next</dt>
             <dd>{String(state.nextStateTargetId || "Default")}</dd>
           </dl>
-        )}
+        ) : null}
       </section>
     );
   }

@@ -5,10 +5,16 @@ export interface FlowSerializationOptions {
 }
 
 export function serializeFlowActionForSave(action: FlowAction): FlowAction {
-  return {
+  const serialized: FlowAction = {
     ...action,
     subActions: (action.subActions || []).map(serializeFlowActionForSave)
   };
+  if (action.type === "subroutine" || Array.isArray(action.actions)) {
+    serialized.actions = (action.actions || []).map(serializeFlowActionForSave);
+  } else {
+    delete serialized.actions;
+  }
+  return serialized;
 }
 
 export function serializeGameFlowForSave(flow: Partial<GameFlow> | null | undefined, options: FlowSerializationOptions = {}): GameFlow {

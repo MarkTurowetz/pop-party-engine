@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   addConnectedFlowActionCommand,
   addFlowActionCommand,
+  addFlowActionToSubroutineCommand,
   addFlowStateCommand,
+  addFlowSubroutineCommand,
   addFlowSubActionCommand,
   createFlowCommandHistory,
   moveFlowActionCommand,
@@ -16,6 +18,7 @@ import {
   renameFlowStateCommand,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
+  setFlowSubroutineEntryTargetCommand,
   setFlowStateVotingSourceCommand
 } from "./flowCommands";
 import type { GameFlow } from "../../types/game-data";
@@ -240,6 +243,32 @@ describe("Flow action commands", () => {
 
     expect(next.states[0].actions?.map((action) => action.id)).toEqual(["act-2"]);
     expect(history.undo()?.states[0].actions).toHaveLength(2);
+  });
+
+  it("adds, configures, and edits nested subroutine actions through the same command history", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const withSubroutine = history.execute(addFlowSubroutineCommand("round-one", [], "act-1"));
+    const subroutine = withSubroutine.states[0].actions?.[1];
+    expect(subroutine).toMatchObject({ type: "subroutine", actions: [] });
+
+    const withNestedAction = history.execute(
+      addFlowActionToSubroutineCommand("round-one", [String(subroutine?.id)])
+    );
+    const nested = withNestedAction.states[0].actions?.[1].actions?.[0];
+    expect(nested).toMatchObject({ type: "presentText", timing: { mode: "E+", seconds: 0 } });
+
+    const withEntry = history.execute(
+      setFlowSubroutineEntryTargetCommand("round-one", [String(subroutine?.id)], String(nested?.id))
+    );
+    expect(withEntry.states[0].actions?.[1].entryTargetActionId).toBe(nested?.id);
+
+    const moved = history.execute(
+      moveFlowActionCommand("round-one", String(nested?.id), String(nested?.id), false, [
+        String(subroutine?.id)
+      ])
+    );
+    expect(moved.states[0].actions?.[1].actions?.[0].id).toBe(nested?.id);
   });
 });
 

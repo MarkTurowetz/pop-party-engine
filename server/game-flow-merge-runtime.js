@@ -25,6 +25,9 @@ function createGameFlowMergeRuntime({ readGameFlowSource }) {
   function indexActionTree(action, actionsById) {
     if (!action?.id) return;
     actionsById.set(action.id, action);
+    for (const childAction of action.actions || []) {
+      indexActionTree(childAction, actionsById);
+    }
     for (const subAction of action.subActions || []) {
       indexActionTree(subAction, actionsById);
     }
@@ -33,10 +36,15 @@ function createGameFlowMergeRuntime({ readGameFlowSource }) {
   function mergeActionSubActions(action, existingActionsById) {
     if (!action || typeof action !== "object") return action;
     const existingAction = existingActionsById.get(action.id);
+    const hasIncomingActions = Array.isArray(action.actions);
+    const actions = hasIncomingActions ? action.actions : existingAction?.actions;
     const hasIncomingSubActions = Array.isArray(action.subActions);
     const subActions = hasIncomingSubActions ? action.subActions : existingAction?.subActions;
     return {
       ...action,
+      actions: Array.isArray(actions)
+        ? actions.map((childAction) => mergeActionSubActions(childAction, existingActionsById))
+        : actions,
       subActions: Array.isArray(subActions)
         ? subActions.map((subAction) => mergeActionSubActions(subAction, existingActionsById))
         : subActions

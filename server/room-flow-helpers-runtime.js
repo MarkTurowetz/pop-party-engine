@@ -16,6 +16,7 @@ function createRoomFlowHelpersRuntime({
   clearVotingInput,
   getStateActions,
   enterGamePhase,
+  flowActionTarget,
   flowActionIndexById,
   flowEventTargetForAction,
   getFlowState,
@@ -52,18 +53,28 @@ function createRoomFlowHelpersRuntime({
     if (room.presentedAction) return room.presentedAction;
     const routeAction = currentRouteAction(room);
     if (routeAction) return routeAction;
-    const actions = getStateActions(room.phase, room);
-    if (room.actionIndex >= actions.length) return null;
     let guard = 0;
-    while (actions[room.actionIndex]?.type === "decision" && guard < 20) {
-      clearAppliedActionEffects(room);
-      const nextActionIndex = resolveDecisionActionIndex(room, actions[room.actionIndex]);
-      if (nextActionIndex === null) return null;
-      room.actionIndex = Math.max(0, Math.min(actions.length, nextActionIndex));
-      guard += 1;
+    while (guard < 40) {
+      const actions = getStateActions(room.phase, room);
       if (room.actionIndex >= actions.length) return null;
+      const action = actions[room.actionIndex];
+      if (action?.type === "subroutine") {
+        enterNestedSubroutine(room, action);
+        guard += 1;
+        continue;
+      }
+      if (action?.type === "decision") {
+        clearAppliedActionEffects(room);
+        const nextActionIndex = resolveDecisionActionIndex(room, action);
+        if (nextActionIndex === null) return null;
+        room.actionIndex = Math.max(0, Math.min(actions.length, nextActionIndex));
+        guard += 1;
+        continue;
+      }
+      return publicFlowAction(action, room.actionIndex);
     }
-    return publicFlowAction(actions[room.actionIndex], room.actionIndex);
+    markNoAction(room, null, "Flow Guard Limit");
+    return null;
   }
 
   function actionAdvanceTarget(action) {
@@ -82,15 +93,93 @@ function createRoomFlowHelpersRuntime({
     };
   }
 
+  function ensureSubroutineStack(room) {
+    if (!Array.isArray(room.subroutineStack)) room.subroutineStack = [];
+    if (!Array.isArray(room.subroutinePath)) room.subroutinePath = [];
+  }
+
+  function actionList(action) {
+    return Array.isArray(action?.actions) ? action.actions : [];
+  }
+
+  function entryIndexForSubroutine(room, action) {
+    const target = flowActionTarget(action?.entryTargetActionId);
+    if (isReturnActionTarget(target)) return -2;
+    if (isNoActionTarget(target)) return -1;
+    if (target) {
+      const targetIndex = flowActionIndexById(room, target);
+      if (targetIndex >= 0) return targetIndex;
+    }
+    const actions = getStateActions(room.phase, room);
+    return actions.length ? 0 : -1;
+  }
+
+  function enterNestedSubroutine(room, action) {
+    ensureSubroutineStack(room);
+    const parentPath = [...room.subroutinePath];
+    room.subroutineStack.push({
+      phase: room.phase,
+      subroutinePath: parentPath,
+      actionIndex: room.actionIndex,
+      actionId: action.id
+    });
+    room.subroutinePath = [...parentPath, action.id];
+    const entryIndex = entryIndexForSubroutine(room, action);
+    if (entryIndex === -2) {
+      returnFromNestedSubroutine(room, action);
+      return true;
+    }
+    const actions = actionList(action);
+    room.actionIndex = entryIndex === -1 ? actions.length : Math.max(0, entryIndex);
+    return true;
+  }
+
+  function restoreSubroutineFrame(room, frame) {
+    room.phase = frame.phase || room.phase;
+    room.subroutinePath = Array.isArray(frame.subroutinePath) ? [...frame.subroutinePath] : [];
+    room.actionIndex = Math.max(0, Number(frame.actionIndex || 0));
+  }
+
+  function parentSubroutineActionForFrame(room, frame) {
+    const actions = getStateActions(room.phase, room);
+    const indexed = actions[room.actionIndex];
+    if (indexed?.id === frame.actionId) return indexed;
+    return actions.find((action) => action.id === frame.actionId) || indexed || null;
+  }
+
+  function returnFromNestedSubroutine(room, sourceAction = null) {
+    ensureSubroutineStack(room);
+    const frame = room.subroutineStack.pop();
+    if (!frame) {
+      advanceRoomFromMomentReturn(room);
+      return true;
+    }
+    restoreSubroutineFrame(room, frame);
+    const parentAction = parentSubroutineActionForFrame(room, frame);
+    if (!parentAction) {
+      markNoAction(room, sourceAction, "Missing Parent Subroutine");
+      return false;
+    }
+    advanceRoomAfterAction(room, parentAction);
+    return true;
+  }
+
   function advanceRoomAfterAction(room, action) {
     if (action?.routeNodeType === "action" || room.routeActionSession?.currentNodeId === action?.id) {
       advanceRoomFromRouteAction(room, action);
       return;
     }
+    if (action?.type === "subroutine" && !Array.isArray(room.subroutinePath)) {
+      room.subroutinePath = [];
+    }
     const target = actionAdvanceTarget(action);
     if (isNoActionTarget(target)) return;
     if (isReturnActionTarget(target)) {
-      advanceRoomFromMomentReturn(room);
+      if (Array.isArray(room.subroutineStack) && room.subroutineStack.length) {
+        returnFromNestedSubroutine(room, action);
+      } else {
+        advanceRoomFromMomentReturn(room);
+      }
       return;
     }
     const targetIndex = flowActionIndexById(room, target);
@@ -113,7 +202,11 @@ function createRoomFlowHelpersRuntime({
       room.presentedAction = null;
       clearActiveInputFlowEvent(room);
       clearAppliedActionEffects(room);
-      advanceRoomFromMomentReturn(room);
+      if (Array.isArray(room.subroutineStack) && room.subroutineStack.length) {
+        returnFromNestedSubroutine(room, sourceAction);
+      } else {
+        advanceRoomFromMomentReturn(room);
+      }
       return;
     }
     const targetIndex = flowActionIndexById(room, actionId);
@@ -238,6 +331,8 @@ function createRoomFlowHelpersRuntime({
       return;
     }
     room.phase = lobbyState.id;
+    room.subroutinePath = [];
+    room.subroutineStack = [];
     room.lobbyFlowActive = true;
     room.actionIndex = Math.max(0, lobbyState.actions.findIndex((item) => item.id === action.id));
     room.currentPresentationActionId = "";

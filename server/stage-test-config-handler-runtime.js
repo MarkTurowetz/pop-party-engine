@@ -32,6 +32,8 @@ function createStageTestConfigHandlerRuntime({
     room.actionCompletionPendingId = "";
     clearAppliedActionEffects(room);
     room.presentedAction = null;
+    room.subroutinePath = [];
+    room.subroutineStack = [];
     if (room.actionIndex >= getStateActions(room.phase, room).length) {
       room.actionIndex = 0;
     }

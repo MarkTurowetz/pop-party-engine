@@ -1,4 +1,5 @@
 import type { FlowAction, FlowState, GameFlow, JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
+import { findFlowActionContext, flowSubroutineActions } from "./flowSubroutines";
 
 export interface FlowActionRef {
   state: FlowState;
@@ -63,25 +64,23 @@ export function findFlowActionRef(
 ): FlowActionRef | null {
   const state = findFlowState(flow, stateId);
   if (!state || !actionId) return null;
-  for (const action of state.actions || []) {
-    if (action.id === actionId) {
-      return { state, action, parentAction: null, actions: state.actions, isSubAction: false, isBranch: false };
-    }
-    for (const subAction of action.subActions || []) {
-      if (subAction.id === actionId) {
-        return { state, action: subAction, parentAction: action, actions: action.subActions || [], isSubAction: true, isBranch: false };
-      }
-    }
-    if (action.type === "decision") {
-      const branches = options.ensureDecisionBranches?.(action) || (Array.isArray(action.branches) ? action.branches : []);
-      for (const branch of branches) {
-        if (branch.id === actionId) {
-          return { state, action: branch, parentAction: action, actions: branches, isSubAction: false, isBranch: true };
-        }
-      }
+  const context = findFlowActionContext(state, actionId);
+  if (!context.action) return null;
+  if (context.parentAction?.type === "decision") {
+    const branches = options.ensureDecisionBranches?.(context.parentAction) || context.actions;
+    const branch = branches.find((candidate) => candidate.id === actionId);
+    if (branch) {
+      return { state, action: branch, parentAction: context.parentAction, actions: branches, isSubAction: false, isBranch: true };
     }
   }
-  return null;
+  return {
+    state,
+    action: context.action,
+    parentAction: context.parentAction,
+    actions: context.actions,
+    isSubAction: context.isSubAction,
+    isBranch: context.isBranch
+  };
 }
 
 export function makeFlowId(label: unknown, fallback: string): string {
@@ -112,6 +111,9 @@ export function stateActionNameSet(state: Partial<FlowState> | null | undefined,
   const names = new Set<string>();
   for (const action of state?.actions || []) {
     if (action.id !== excludeActionId && action.name) names.add(String(action.name).trim().toLowerCase());
+    for (const nested of flowSubroutineActions(action)) {
+      if (nested.id !== excludeActionId && nested.name) names.add(String(nested.name).trim().toLowerCase());
+    }
     for (const subAction of action.subActions || []) {
       if (subAction.id !== excludeActionId && subAction.name) names.add(String(subAction.name).trim().toLowerCase());
     }
@@ -132,7 +134,7 @@ export function flowActionTargetOptions(state: Partial<FlowState> | null | undef
   const options = [
     { id: "", name: "No Connection" },
     { id: "none", name: "None" },
-    { id: "return", name: "Return To Moments" }
+    { id: "return", name: "Return To Parent Subroutine" }
   ];
   for (const action of state?.actions || []) {
     options.push({ id: action.id, name: action.name || action.id });
@@ -145,7 +147,7 @@ export function flowActionTargetOptions(state: Partial<FlowState> | null | undef
 
 export function flowStateTargetOptions(flow: Partial<GameFlow> | null | undefined, selectedStateId = "", currentStateId = "", config: FlowStateTargetOptionsConfig = {}): FlowOption[] {
   const options = [
-    { id: "", name: "No Next Moment" },
+    { id: "", name: "No Next Subroutine" },
     { id: "none", name: "None / Halt" }
   ];
   for (const state of flow?.states || []) {

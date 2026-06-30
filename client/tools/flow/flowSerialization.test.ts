@@ -102,6 +102,43 @@ describe("Flow serialization", () => {
     });
   });
 
+  it("serializes subroutine child actions without adding child actions to every action", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "intro",
+          actions: [
+            {
+              id: "nested",
+              type: "subroutine",
+              actions: [{ id: "inside", type: "presentText" }]
+            },
+            { id: "plain", type: "presentText" }
+          ]
+        }
+      ],
+      routeNodes: []
+    };
+
+    expect(serializeGameFlowForSave(flow)).toEqual({
+      states: [
+        {
+          id: "intro",
+          actions: [
+            {
+              id: "nested",
+              type: "subroutine",
+              actions: [{ id: "inside", type: "presentText", subActions: [] }],
+              subActions: []
+            },
+            { id: "plain", type: "presentText", subActions: [] }
+          ]
+        }
+      ],
+      routeNodes: []
+    });
+  });
+
   it("returns an empty compatible flow when given missing data", () => {
     expect(serializeGameFlowForSave(null)).toEqual({
       states: [],

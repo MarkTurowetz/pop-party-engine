@@ -1,5 +1,6 @@
-import type { FlowAction, FlowState, GameFlow } from "../../types/game-data";
+import type { FlowAction, GameFlow } from "../../types/game-data";
 import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
+import { flowSubroutineActions, isFlowSubroutineAction, type FlowSubroutine } from "./flowSubroutines";
 
 /**
  * Typed model for the Flow node-graph canvas. Mirrors the legacy
@@ -8,7 +9,7 @@ import { decisionBranchName, ensureDecisionBranches } from "./flowDecision";
  * compatible). This module is pure: it derives node descriptors from the flow and
  * selection; rendering + interaction live in the React canvas.
  */
-export type FlowNodeDepth = "moments" | "actions";
+export type FlowNodeDepth = "subroutines" | "subroutine";
 
 export interface FlowNodePoint {
   x: number;
@@ -17,8 +18,8 @@ export interface FlowNodePoint {
 
 export interface FlowGraphNode {
   id: string;
-  /** "state" (moments depth), "action", or a system node ("start"/"return"). */
-  kind: "state" | "action" | "system";
+  /** Root/nested subroutine, action, or a system node ("start"/"return"). */
+  kind: "subroutine" | "action" | "system";
   title: string;
   subtitle: string;
   timing: string;
@@ -49,8 +50,8 @@ export interface FlowNodeExit {
   id: string;
   nodeId: string;
   label: string;
-  /** "field" sets action[field]; "branch" sets a decision branch target; "entry"/"nextState" are state-level. */
-  kind: "field" | "branch" | "entry" | "nextState";
+  /** "field" sets action[field]; "branch" sets a decision branch target; "entry"/"nextSubroutine" are subroutine-level. */
+  kind: "field" | "branch" | "entry" | "nextSubroutine";
   field?: string;
   branchId?: string;
   currentTarget: string;
@@ -133,8 +134,8 @@ function actionTimingLabel(action: FlowAction): string {
   return `${mode} ${Number.isFinite(seconds) ? seconds.toFixed(2) : "0.00"}s`;
 }
 
-function stateClassName(): string {
-  return "is-moment";
+function subroutineClassName(): string {
+  return "is-subroutine";
 }
 
 function actionClassName(action: FlowAction): string {
@@ -155,20 +156,20 @@ function actionClassName(action: FlowAction): string {
   }
 }
 
-/** Nodes for the "moments" depth: one node per flow state. */
-export function momentGraphNodes(
+/** Nodes for the root subroutines depth: one node per root flow subroutine. */
+export function rootSubroutineGraphNodes(
   flow: GameFlow | null,
   selection: FlowGraphSelection = {}
 ): FlowGraphNode[] {
-  const states = flow?.states || [];
+  const subroutines = flow?.states || [];
   const selectedActionIds = new Set(selection.selectedActionIds || []);
-  return states.map((state, index) => {
+  return subroutines.map((state, index) => {
     const { x, y } = savedNodePosition(
       readPoint(state.nodePosition),
       defaultNodePosition(index, 3, 80, 80, 420, 240)
     );
     const nextName = state.nextStateTargetId
-      ? states.find((item) => item.id === state.nextStateTargetId)?.name || state.nextStateTargetId
+      ? subroutines.find((item) => item.id === state.nextStateTargetId)?.name || state.nextStateTargetId
       : "";
     const selected =
       !selection.selectedRouteNodeId &&
@@ -176,7 +177,7 @@ export function momentGraphNodes(
       (selection.selectedStateId === state.id || selectedActionIds.has(state.id));
     return {
       id: state.id,
-      kind: "state",
+      kind: "subroutine",
       title: state.name || state.id,
       subtitle: `${(state.actions || []).length} actions${nextName ? ` / Next: ${nextName}` : ""}`,
       timing: "",
@@ -184,23 +185,23 @@ export function momentGraphNodes(
       y,
       width: 300,
       height: 150,
-      className: stateClassName(),
+      className: subroutineClassName(),
       selected
     };
   });
 }
 
-/** Nodes for the "actions" depth: Start + one node per action + Return, for one state. */
-export function actionGraphNodes(
-  state: FlowState | null,
+/** Nodes inside a subroutine: Start + child actions/subroutines + Return. */
+export function subroutineGraphNodes(
+  subroutine: FlowSubroutine | null,
   selection: FlowGraphSelection = {}
 ): FlowGraphNode[] {
-  if (!state) return [];
+  if (!subroutine) return [];
   const selectedActionIds = new Set(selection.selectedActionIds || []);
   const isSelected = (id: string) => selection.selectedActionId === id || selectedActionIds.has(id);
 
   const startPos = savedNodePosition(
-    readPoint((state as { startNodePosition?: unknown }).startNodePosition),
+    readPoint((subroutine as { startNodePosition?: unknown }).startNodePosition),
     { x: 70, y: 70 }
   );
   const nodes: FlowGraphNode[] = [
@@ -208,9 +209,9 @@ export function actionGraphNodes(
       id: "start",
       kind: "system",
       title: "Start",
-      subtitle: state.entryTargetActionId
-        ? `Entry -> ${state.entryTargetActionId}`
-        : "Moment entry",
+      subtitle: subroutine.entryTargetActionId
+        ? `Entry -> ${subroutine.entryTargetActionId}`
+        : "Subroutine entry",
       timing: "",
       x: startPos.x,
       y: startPos.y,
@@ -221,20 +222,27 @@ export function actionGraphNodes(
     }
   ];
 
-  (state.actions || []).forEach((action, index) => {
+  flowSubroutineActions(subroutine).forEach((action, index) => {
     const { x, y } = savedNodePosition(
       readPoint(action.nodePosition),
       defaultNodePosition(index, 3, 340, 70, 360, 230)
     );
     const isLabel = action.type === "labelNode";
     const isCode = action.type === "codeNode";
+    const isSubroutine = isFlowSubroutineAction(action);
     nodes.push({
       id: action.id,
-      kind: "action",
-      title: isLabel
+      kind: isSubroutine ? "subroutine" : "action",
+      title: isSubroutine
+        ? action.name || `Subroutine ${index + 1}`
+        : isLabel
         ? String(action.labelText || action.name || "Flow note")
         : action.name || `Action ${index + 1}`,
-      subtitle: isCode ? String(action.code || "g.example = true") : action.type,
+      subtitle: isSubroutine
+        ? `${flowSubroutineActions(action).length} actions`
+        : isCode
+          ? String(action.code || "g.example = true")
+          : action.type,
       timing:
         action.type === "decision" || action.type === "jumpNode" || isLabel || isCode
           ? ""
@@ -243,20 +251,20 @@ export function actionGraphNodes(
       y,
       width: action.type === "decision" || isLabel || isCode ? 320 : 260,
       height: 134,
-      className: actionClassName(action),
+      className: isSubroutine ? subroutineClassName() : actionClassName(action),
       selected: isSelected(action.id)
     });
   });
 
   const returnPos = savedNodePosition(
-    readPoint((state as { returnNodePosition?: unknown }).returnNodePosition),
+    readPoint((subroutine as { returnNodePosition?: unknown }).returnNodePosition),
     { x: 1240, y: 720 }
   );
   nodes.push({
     id: "return",
     kind: "system",
     title: "Return",
-    subtitle: "Back to moments",
+    subtitle: "Back to parent subroutine",
     timing: "",
     x: returnPos.x,
     y: returnPos.y,
@@ -286,6 +294,9 @@ function exitDefinitions(action: FlowAction, isInputType: IsInputType): ExitDefi
   if (action.type === "labelNode" || action.type === "codeNode") {
     return [{ label: "Next", field: "nextTargetActionId" }];
   }
+  if (isFlowSubroutineAction(action)) {
+    return [{ label: "Next", field: "nextTargetActionId" }];
+  }
   if (action.type === "voteOnAnswersInput") {
     return [
       { label: "Timer Ends", field: "timerEndTargetActionId" },
@@ -311,19 +322,19 @@ function exitDefinitions(action: FlowAction, isInputType: IsInputType): ExitDefi
   return [{ label: "Next", field: "nextTargetActionId" }];
 }
 
-/** Output exits per node for the "actions" depth (Start entry + each action's exits). */
-export function actionNodeExits(state: FlowState | null, isInputType: IsInputType): FlowNodeExit[] {
-  if (!state) return [];
+/** Output exits per node inside any subroutine (Start entry + each child action's exits). */
+export function subroutineNodeExits(subroutine: FlowSubroutine | null, isInputType: IsInputType): FlowNodeExit[] {
+  if (!subroutine) return [];
   const exits: FlowNodeExit[] = [
     {
       id: "start:entry",
       nodeId: "start",
       label: "Entry",
       kind: "entry",
-      currentTarget: String(state.entryTargetActionId || "")
+      currentTarget: String(subroutine.entryTargetActionId || "")
     }
   ];
-  for (const action of state.actions || []) {
+  for (const action of flowSubroutineActions(subroutine)) {
     const record = action as Record<string, unknown>;
     for (const def of exitDefinitions(action, isInputType)) {
       if (def.branchId) {
@@ -351,19 +362,19 @@ export function actionNodeExits(state: FlowState | null, isInputType: IsInputTyp
   return exits;
 }
 
-/** Output exits per node for the "moments" depth (each state's Next). */
-export function momentNodeExits(flow: GameFlow | null): FlowNodeExit[] {
+/** Output exits per node for the root subroutines depth (each root subroutine's Next). */
+export function rootSubroutineNodeExits(flow: GameFlow | null): FlowNodeExit[] {
   return (flow?.states || []).map((state) => ({
     id: `${state.id}:next`,
     nodeId: state.id,
     label: "Next",
-    kind: "nextState",
+    kind: "nextSubroutine",
     currentTarget: String(state.nextStateTargetId || "")
   }));
 }
 
-/** Connections for the "moments" depth: state -> nextStateTargetId. */
-export function momentGraphConnections(flow: GameFlow | null): FlowGraphConnection[] {
+/** Connections for the root subroutines depth: root subroutine -> nextStateTargetId. */
+export function rootSubroutineGraphConnections(flow: GameFlow | null): FlowGraphConnection[] {
   const states = flow?.states || [];
   const ids = new Set(states.map((state) => state.id));
   const connections: FlowGraphConnection[] = [];
@@ -376,22 +387,22 @@ export function momentGraphConnections(flow: GameFlow | null): FlowGraphConnecti
   return connections;
 }
 
-/** Connections for the "actions" depth: start -> entry, action -> exit targets. */
-export function actionGraphConnections(state: FlowState | null): FlowGraphConnection[] {
-  if (!state) return [];
+/** Connections inside any subroutine: start -> entry, action -> exit targets. */
+export function subroutineGraphConnections(subroutine: FlowSubroutine | null): FlowGraphConnection[] {
+  if (!subroutine) return [];
   const nodeIds = new Set<string>([
     "start",
     "return",
-    ...(state.actions || []).map((action) => action.id)
+    ...flowSubroutineActions(subroutine).map((action) => action.id)
   ]);
   const connections: FlowGraphConnection[] = [];
 
-  const entry = String(state.entryTargetActionId || "");
+  const entry = String(subroutine.entryTargetActionId || "");
   if (!isNoFlowTarget(entry) && nodeIds.has(entry)) {
     connections.push({ id: `start->${entry}`, from: "start", to: entry, label: "Entry" });
   }
 
-  for (const action of state.actions || []) {
+  for (const action of flowSubroutineActions(subroutine)) {
     for (const exit of actionExitTargets(action)) {
       if (!nodeIds.has(exit.to)) continue;
       connections.push({
@@ -430,7 +441,7 @@ function orderedGraphNodesForLayout(
     (outgoing.get(nodeId) || []).forEach((connection) => visit(connection.to));
   };
 
-  const startId = depth === "actions" && byId.has("start") ? "start" : nodes[0]?.id || "";
+  const startId = depth === "subroutine" && byId.has("start") ? "start" : nodes[0]?.id || "";
   visit(startId);
   nodes.forEach((node) => visit(node.id));
   return ordered;
@@ -444,7 +455,7 @@ export function optimizedVerticalNodePositions(
   if (!nodes.length) return [];
   const orderedNodes = orderedGraphNodesForLayout(nodes, connections, depth);
   const centerX = Math.max(
-    depth === "moments" ? 420 : 470,
+    depth === "subroutines" ? 420 : 470,
     Math.round(nodes.reduce((sum, node) => sum + node.x + node.width / 2, 0) / nodes.length)
   );
   let y = 70;
@@ -454,7 +465,7 @@ export function optimizedVerticalNodePositions(
       x: Math.max(0, Math.round(centerX - node.width / 2)),
       y
     };
-    y += Math.max(node.height + 90, depth === "moments" ? 240 : 190);
+    y += Math.max(node.height + 90, depth === "subroutines" ? 240 : 190);
     return position;
   });
 }

@@ -23,6 +23,7 @@ export interface FlowAction extends JsonObject {
   name?: string;
   type: string;
   timing?: FlowTiming;
+  actions?: FlowAction[];
   subActions?: FlowAction[];
   branches?: FlowAction[];
 }

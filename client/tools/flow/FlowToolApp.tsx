@@ -9,6 +9,7 @@ import { FlowRouteNodeList } from "./components/FlowRouteNodeList";
 import { FlowRouteInspector } from "./components/FlowRouteInspector";
 import { FlowStateList } from "./components/FlowStateList";
 import { FlowToolbar } from "./components/FlowToolbar";
+import type { FlowSubroutine } from "./flowSubroutines";
 
 export interface FlowToolReactShellHandlers {
   addAction?: () => void;
@@ -49,6 +50,7 @@ export interface FlowToolAppProps {
   flow?: GameFlow | null;
   handlers?: FlowToolReactShellHandlers;
   inspectorEdit?: ActionInspectorEditHandlers;
+  inspectorSubroutine?: FlowSubroutine | null;
   nodeCanvas?: ReactNode;
   reorder?: FlowReorderHandlers;
   selectedActionId?: string;
@@ -71,10 +73,11 @@ export function FlowToolApp({
   canUndo = false,
   flowActionTypes = [],
   flow = null,
-  flowNodeDepth = "actions",
+  flowNodeDepth = "subroutine",
   flowViewMode = "list",
   handlers = {},
   inspectorEdit,
+  inspectorSubroutine = null,
   nodeCanvas,
   reorder,
   selectedActionId = "",
@@ -92,6 +95,7 @@ export function FlowToolApp({
     selectedRouteNodeId,
     selectedStateId
   });
+  const activeSubroutine = inspectorSubroutine || model.selectedState;
 
   const toolbar = (
     <FlowToolbar
@@ -130,7 +134,7 @@ export function FlowToolApp({
       isBranch={model.actionRef?.isBranch || false}
       isSubAction={model.actionRef?.isSubAction || false}
       parentAction={model.actionRef?.parentAction || null}
-      state={model.actionRef?.state || model.selectedState}
+      state={model.actionRef?.state || inspectorSubroutine || model.selectedState}
     />
   );
 
@@ -147,10 +151,10 @@ export function FlowToolApp({
       }}
       header={
         <>
-          <h2>{model.selectedState?.name || model.selectedState?.id || "Game Flow"}</h2>
+          <h2>{activeSubroutine?.name || activeSubroutine?.id || "Game Flow"}</h2>
           <dl className="tool-workspace-stats">
             <div>
-              <dt>States</dt>
+              <dt>Subroutines</dt>
               <dd>{model.stateCount}</dd>
             </div>
             <div>
@@ -169,7 +173,7 @@ export function FlowToolApp({
           states={flow?.states || []}
         />
       }
-      sidebarLabel="Flow states"
+      sidebarLabel="Flow subroutines"
       storageKey="partyTemplate.flowSidebarWidth"
       title="Game Flow"
       toolbar={toolbar}
@@ -183,7 +187,7 @@ export function FlowToolApp({
       ) : (
         <div className="tool-main-columns flow-workspace-content">
           <FlowActionList
-            actions={model.selectedState?.actions || []}
+            actions={activeSubroutine?.actions || []}
             actionTypes={flowActionTypes}
             onSelectAction={handlers.selectAction}
             onReorderAction={reorder?.onReorderAction}

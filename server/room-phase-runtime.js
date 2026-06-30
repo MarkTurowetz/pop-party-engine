@@ -87,7 +87,11 @@ function createRoomPhaseRuntime({
   }
 
   function actionListHasVotingCards(actions = []) {
-    return actions.some((action) => VOTING_CARD_ACTION_TYPES.has(action?.type) || actionListHasVotingCards(action?.subActions || []));
+    return actions.some((action) => (
+      VOTING_CARD_ACTION_TYPES.has(action?.type)
+      || actionListHasVotingCards(action?.actions || [])
+      || actionListHasVotingCards(action?.subActions || [])
+    ));
   }
 
   function storedAnswerRecordsForState(room, round, stateId) {
@@ -118,6 +122,8 @@ function createRoomPhaseRuntime({
     room.countdownEndsAt = 0;
     room.countdownRemainingMs = 0;
     room.actionIndex = 0;
+    room.subroutinePath = [];
+    room.subroutineStack = [];
     room.presentedAction = null;
     room.routeActionSession = null;
     room.lastDecisionTrace = null;
@@ -181,6 +187,8 @@ function createRoomPhaseRuntime({
       }
     }
     room.phase = phase;
+    room.subroutinePath = [];
+    room.subroutineStack = [];
     room.controllerLayoutId = phase;
     room.isPaused = false;
     room.pausedAt = 0;

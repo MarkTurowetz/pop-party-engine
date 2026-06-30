@@ -13,7 +13,7 @@ describe("FlowToolbar", () => {
         canRevert={true}
         canSave={true}
         canUndo={true}
-        flowNodeDepth="moments"
+        flowNodeDepth="subroutines"
         flowViewMode="node"
       />
     );
@@ -26,7 +26,7 @@ describe("FlowToolbar", () => {
     expect(markup).toContain('data-can-revert="true"');
     expect(markup).toContain('data-can-save="true"');
     expect(markup).toContain('data-can-undo="true"');
-    expect(markup).toContain('data-flow-node-depth="moments"');
+    expect(markup).toContain('data-flow-node-depth="subroutines"');
     expect(markup).toContain('data-flow-view-mode="node"');
   });
 });

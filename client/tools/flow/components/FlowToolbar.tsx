@@ -27,7 +27,7 @@ export function FlowToolbar({
   canRevert = false,
   canSave = false,
   canUndo = false,
-  flowNodeDepth = "actions",
+  flowNodeDepth = "subroutine",
   flowViewMode = "list",
   saving = false,
   onAddAction,
@@ -58,7 +58,7 @@ export function FlowToolbar({
       <button type="button" disabled={!canSave || saving} onClick={onSave}>
         {saving ? "Saving…" : "Save"}
       </button>
-      <button type="button" disabled={!canAddState} onClick={onAddState}>Add State</button>
+      <button type="button" disabled={!canAddState} onClick={onAddState}>Add Subroutine</button>
       <button type="button" disabled={!canAddAction} onClick={onAddAction}>Add Action</button>
       <button type="button" disabled={!canDelete} onClick={onDeleteSelection}>Delete</button>
       <button type="button" disabled={!canRevert} onClick={onRevert}>Revert</button>

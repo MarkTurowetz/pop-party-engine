@@ -63,6 +63,7 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
     }
     if (action.type === "labelNode") return text(action.labelText, "Flow note");
     if (action.type === "codeNode") return text(action.code, "g.example = true");
+    if (action.type === "subroutine") return `${text(action.name, "Subroutine")} / ${(Array.isArray(action.actions) ? action.actions : []).length} actions`;
 
     const timingText = timingLabel(action, isSubAction);
     const targetText = action.textTarget ? context.textTargetName(action.textTarget) : "\u26a0 No Field";
@@ -151,7 +152,7 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
   }
 
   function actionTimingLabel(action: FlowAction, isSubAction = false): string {
-    if (action?.type === "jumpNode" || action?.type === "labelNode" || action?.type === "codeNode") return "";
+    if (action?.type === "jumpNode" || action?.type === "labelNode" || action?.type === "codeNode" || action?.type === "subroutine") return "";
     return timingLabel(action, isSubAction, 2);
   }
 
@@ -164,6 +165,7 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
     }
     if (action.type === "labelNode") return { text: "Label", className: "is-label" };
     if (action.type === "codeNode") return { text: "Code", className: "is-code" };
+    if (action.type === "subroutine") return { text: "Subroutine", className: "is-subroutine" };
     const visibilityActionTypes = new Set([
       "displayText",
       "presentText",

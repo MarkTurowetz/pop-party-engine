@@ -87,10 +87,18 @@ describe("Flow mutations", () => {
     };
     const actions: FlowAction[] = [
       { id: "present", type: "presentText", subActions: [{ id: "sub-a", type: "setPlayersShown" }] },
+      { id: "routine", type: "subroutine", actions: [{ id: "inside-routine", type: "presentText" }] },
       decision
     ];
 
-    expect(flattenedFlowActionIds(actions)).toEqual(["present", "sub-a", "decision", "branch-a"]);
+    expect(flattenedFlowActionIds(actions)).toEqual([
+      "present",
+      "sub-a",
+      "routine",
+      "inside-routine",
+      "decision",
+      "branch-a"
+    ]);
     expect(flattenedFlowActionIds([decision], { ensureDecisionBranches: () => [{ id: "branch-b", type: "branch" }] })).toEqual(["decision", "branch-b"]);
   });
 
@@ -106,6 +114,14 @@ describe("Flow mutations", () => {
         ]
       },
       {
+        id: "routine",
+        type: "subroutine",
+        actions: [
+          { id: "nested-a", type: "setPlayersShown" },
+          { id: "nested-b", type: "setPlayersShown" }
+        ]
+      },
+      {
         id: "decision",
         type: "decision",
         branches: [
@@ -115,12 +131,13 @@ describe("Flow mutations", () => {
       }
     ];
 
-    const result = removeSelectedFlowActionsFromList(actions, new Set(["remove-me", "sub-a", "branch-b"]));
+    const result = removeSelectedFlowActionsFromList(actions, new Set(["remove-me", "sub-a", "nested-a", "branch-b"]));
 
-    expect(result.removedIds).toEqual(["remove-me", "sub-a", "branch-b"]);
-    expect(result.actions.map((action) => action.id)).toEqual(["keep-parent", "decision"]);
+    expect(result.removedIds).toEqual(["remove-me", "sub-a", "nested-a", "branch-b"]);
+    expect(result.actions.map((action) => action.id)).toEqual(["keep-parent", "routine", "decision"]);
     expect(result.actions[0]?.subActions?.map((action) => action.id)).toEqual(["sub-b"]);
-    expect(result.actions[1]?.branches?.map((action) => action.id)).toEqual(["branch-a"]);
+    expect(result.actions[1]?.actions?.map((action) => action.id)).toEqual(["nested-b"]);
+    expect(result.actions[2]?.branches?.map((action) => action.id)).toEqual(["branch-a"]);
   });
 
   it("moves flow states before and after target states", () => {
@@ -237,7 +254,7 @@ describe("Flow mutations", () => {
     expect(action.name).toBe("Present Text");
   });
 
-  it("resolves selected flow state ids for delete with legacy protected-state rules", () => {
+  it("resolves selected root subroutine ids for delete with protected-state rules", () => {
     const flow: GameFlow = {
       states: [
         { id: "lobby", actions: [] },
@@ -248,12 +265,12 @@ describe("Flow mutations", () => {
     };
 
     expect(flowStateIdsForDelete(flow, {
-      flowNodeDepth: "moments",
+      flowNodeDepth: "subroutines",
       selectedFlowActionIds: ["round-one", "missing"],
       selectedFlowStateId: "intro"
     })).toEqual(["round-one"]);
     expect(flowStateIdsForDelete(flow, {
-      flowNodeDepth: "actions",
+      flowNodeDepth: "subroutine",
       selectedFlowActionIds: ["round-one"],
       selectedFlowStateId: "round-two"
     })).toEqual(["round-two"]);

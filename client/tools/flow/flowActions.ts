@@ -29,6 +29,24 @@ export function createDefaultFlowAction(
   };
 }
 
+export function createDefaultFlowSubroutineAction(
+  stateId: string,
+  name: string,
+  options: CreateDefaultFlowActionOptions = {}
+): FlowAction {
+  const timestamp = typeof options.timestamp === "number" && Number.isFinite(options.timestamp) ? options.timestamp : Date.now();
+  return {
+    id: `${stateId}-subroutine-${timestamp.toString(36)}`,
+    name,
+    type: "subroutine",
+    timing: { mode: "E+", seconds: 0 },
+    entryTargetActionId: "",
+    nextTargetActionId: "",
+    actions: [],
+    subActions: []
+  };
+}
+
 export function ensureActionTiming(action: FlowAction, isSubAction = false, options: EnsureActionTimingOptions = {}) {
   if (!action.timing) action.timing = { mode: "E+", seconds: 0 };
   const isInputAction = options.actionTypeMeta?.(action.type)?.category === "input" && !isSubAction;

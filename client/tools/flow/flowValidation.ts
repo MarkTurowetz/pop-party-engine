@@ -34,6 +34,7 @@ function validateFlowActionList(value: unknown, path: string, issues: FlowValida
       return;
     }
     if (typeof action.id !== "string") pushIssue(issues, `${actionPath}.id`, "must be a string");
+    if (action.actions !== undefined) validateFlowActionList(action.actions, `${actionPath}.actions`, issues);
     if (action.subActions !== undefined) validateFlowActionList(action.subActions, `${actionPath}.subActions`, issues);
     if (action.branches !== undefined) validateFlowActionList(action.branches, `${actionPath}.branches`, issues);
   });

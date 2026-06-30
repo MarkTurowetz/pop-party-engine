@@ -187,7 +187,7 @@ function clampZoom(value: number): number {
 function minimapNodeFill(node: FlowGraphNode): string {
   if (node.selected) return "#ff4fa3";
   if (node.kind === "system") return "#f8fafc";
-  if (node.kind === "state") return "#22d3ee";
+  if (node.kind === "subroutine") return "#22d3ee";
   if (node.className.includes("is-decision")) return "#a3e635";
   if (node.className.includes("is-transition")) return "#fb923c";
   if (node.className.includes("is-code")) return "#bae6fd";
@@ -198,11 +198,11 @@ export interface FlowNodeCanvasProps {
   nodes: FlowGraphNode[];
   connections?: FlowGraphConnection[];
   exits?: FlowNodeExit[];
-  depth: "moments" | "actions";
+  depth: "subroutines" | "subroutine";
   stateTitle?: string;
   onSelectNode?: (nodeId: string, additive: boolean) => void;
-  onEnterState?: (stateId: string) => void;
-  onBackToMoments?: () => void;
+  onEnterSubroutine?: (nodeId: string) => void;
+  onBackToSubroutines?: () => void;
   onMoveNode?: (nodeId: string, x: number, y: number) => void;
   onConnect?: (exit: FlowNodeExit, targetNodeId: string) => void;
   onCreateConnectedAction?: (exit: FlowNodeExit, x: number, y: number) => void;
@@ -322,8 +322,8 @@ export function FlowNodeCanvas({
   depth,
   stateTitle,
   onSelectNode,
-  onEnterState,
-  onBackToMoments,
+  onEnterSubroutine,
+  onBackToSubroutines,
   onMoveNode,
   onConnect,
   onCreateConnectedAction,
@@ -601,9 +601,9 @@ export function FlowNodeCanvas({
     >
       <header className="flow-node-canvas-bar">
         <div className="flow-node-canvas-actions">
-          {depth === "actions" ? (
-            <button type="button" data-node-back onClick={() => onBackToMoments?.()}>
-              ← Moments
+          {depth === "subroutine" ? (
+            <button type="button" data-node-back onClick={() => onBackToSubroutines?.()}>
+              ← Subroutines
             </button>
           ) : null}
           <button
@@ -616,9 +616,9 @@ export function FlowNodeCanvas({
           </button>
         </div>
         <span data-node-canvas-help>
-          {depth === "moments"
-            ? "Double-click a moment to edit its actions."
-            : `Inside ${stateTitle || "moment"} — click nodes to edit; double-click Start/Return to go back.`}
+          {depth === "subroutines"
+            ? "Double-click a subroutine to edit its actions."
+            : `Inside ${stateTitle || "subroutine"} — click nodes to edit; double-click nested subroutines to drill in.`}
         </span>
       </header>
       <div className="flow-node-stage-wrap">
@@ -751,8 +751,8 @@ export function FlowNodeCanvas({
                       onSelectNode?.(node.id, event.metaKey || event.ctrlKey || event.shiftKey)
                     }
                     onDoubleClick={() => {
-                      if (node.kind === "state") onEnterState?.(node.id);
-                      else if (node.id === "start" || node.id === "return") onBackToMoments?.();
+                      if (node.kind === "subroutine") onEnterSubroutine?.(node.id);
+                      else if (node.id === "start" || node.id === "return") onBackToSubroutines?.();
                     }}
                   >
                     <div className="flow-node-main">

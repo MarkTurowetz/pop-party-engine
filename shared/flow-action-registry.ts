@@ -270,6 +270,30 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     }
   },
   {
+    id: "subroutine",
+    name: "Subroutine",
+    category: "standard",
+    canCompleteFromStage: true,
+    primaryOnly: true,
+    stageActionType: "subroutine",
+    stageRunner: "immediateComplete",
+    normalize: (action, base, context) => ({
+      ...base,
+      timing: { mode: "E+", seconds: 0 },
+      entryTargetActionId: context.flowActionTarget(action?.entryTargetActionId),
+      nextTargetActionId: context.flowActionTarget(action?.nextTargetActionId),
+      subActions: []
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "subroutine",
+      timing: { mode: "E+", seconds: 0 },
+      entryTargetActionId: context.flowActionTarget(action.entryTargetActionId),
+      nextTargetActionId: context.flowActionTarget(action.nextTargetActionId),
+      subActions: []
+    })
+  },
+  {
     id: "jumpNode",
     name: "Jump Node",
     category: "standard",

@@ -20,7 +20,7 @@ export function FlowStateList({
   const draggable = Boolean(onReorderState);
   const contents = (
     <>
-      <h3>States</h3>
+      <h3>Subroutines</h3>
       <ol className={chrome ? "flow-react-list" : "tool-sidebar-list"} data-flow-react-component="state-list">
       {states.map((state) => (
         <li
