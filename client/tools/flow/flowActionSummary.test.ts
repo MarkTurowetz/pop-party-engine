@@ -33,6 +33,26 @@ describe("Flow action summary", () => {
     expect(runtime.actionValueBadge(action)).toEqual({ text: "Show", className: "is-show" });
   });
 
+  it("builds value badges from visibility and single boolean fields", () => {
+    const runtime = createActionSummary(context());
+
+    expect(
+      runtime.actionValueBadge({
+        id: "wipe",
+        type: "setWipeShown",
+        isShown: false,
+        instant: true
+      } as FlowAction)
+    ).toEqual({ text: "Hide", className: "is-hide" });
+    expect(
+      runtime.actionValueBadge({
+        id: "choice",
+        type: "multipleChoiceInput",
+        locked: true
+      } as FlowAction)
+    ).toEqual({ text: "Locked", className: "is-on" });
+  });
+
   it("summarizes special node actions without timing", () => {
     const runtime = createActionSummary(context());
 

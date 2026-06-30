@@ -3697,6 +3697,16 @@ body.is-resizing-flow {
   box-shadow: 2px 2px 0 rgba(23, 19, 31, 0.2);
 }
 
+.flow-node.is-sub-action .flow-node-meta-row {
+  justify-self: end;
+}
+
+.flow-node.is-sub-action .flow-node-value-badge {
+  padding: 3px 7px;
+  font-size: 9px;
+  box-shadow: 2px 2px 0 rgba(23, 19, 31, 0.2);
+}
+
 .flow-node.is-branch.is-no-match .flow-node-main {
   background: #fffdf2;
   border-style: dashed;
@@ -3795,6 +3805,16 @@ body.is-resizing-flow {
 .flow-node-value-badge.is-show {
   background: #60d394;
   color: var(--ink);
+}
+
+.flow-node-value-badge.is-on {
+  background: #dff7ff;
+  color: #185b70;
+}
+
+.flow-node-value-badge.is-off {
+  background: #ebe6f5;
+  color: #5e5475;
 }
 
 .flow-node-value-badge.is-jump {

@@ -971,7 +971,18 @@ export function FlowNodeCanvas({
                       {node.subtitle ? (
                         <span className="flow-node-subtitle">{node.subtitle}</span>
                       ) : null}
-                      {node.timing ? <span className="flow-node-timing">{node.timing}</span> : null}
+                      {node.timing || node.valueBadge ? (
+                        <span className="flow-node-meta-row">
+                          {node.timing ? (
+                            <span className="flow-node-timing">{node.timing}</span>
+                          ) : null}
+                          {node.valueBadge ? (
+                            <span className={`flow-node-value-badge ${node.valueBadge.className}`}>
+                              {node.valueBadge.text}
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
                     </div>
                     {(() => {
                       const nodeExits = exitsByNode.get(node.id) || [];

@@ -48,6 +48,32 @@ describe("flowNodeGraph", () => {
     expect(nodes[1].selected).toBe(true);
   });
 
+  it("attaches boolean value badges to action graph nodes", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "s",
+          name: "S",
+          actions: [
+            {
+              id: "wipe",
+              name: "Set Wipe Shown",
+              type: "setWipeShown",
+              isShown: false,
+              timing: { mode: "E+", seconds: 0 }
+            }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+
+    expect(subroutineGraphNodes(flow.states[0]).find((node) => node.id === "wipe")).toMatchObject({
+      timing: "E+ 0.00s",
+      valueBadge: { text: "Hide", className: "is-hide" }
+    });
+  });
+
   it("returns no action nodes for a null state", () => {
     expect(subroutineGraphNodes(null)).toEqual([]);
   });

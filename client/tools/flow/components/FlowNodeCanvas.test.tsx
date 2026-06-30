@@ -78,4 +78,27 @@ describe("FlowNodeCanvas", () => {
     expect(markup).toContain("x &gt; 3");
     expect(markup).toContain(">C</text>");
   });
+
+  it("renders node timing and value badges together", () => {
+    const markup = renderToStaticMarkup(
+      <FlowNodeCanvas
+        depth="subroutine"
+        nodes={[
+          {
+            ...nodes(true)[0],
+            id: "wipe",
+            title: "Set Wipe Shown",
+            subtitle: "setWipeShown",
+            timing: "E+ 0.00s",
+            valueBadge: { text: "Hide", className: "is-hide" }
+          }
+        ]}
+      />
+    );
+
+    expect(markup).toContain("flow-node-meta-row");
+    expect(markup).toContain("E+ 0.00s");
+    expect(markup).toContain("flow-node-value-badge is-hide");
+    expect(markup).toContain("Hide");
+  });
 });

@@ -1,4 +1,5 @@
 import type { FlowAction, GameFlow } from "../../types/game-data";
+import { flowActionValueBadge, type FlowActionValueBadge } from "./flowActionSummary";
 import {
   decisionBranchName,
   decisionBranchWireLabel,
@@ -44,6 +45,7 @@ export interface FlowGraphNode {
   height: number;
   className: string;
   selected: boolean;
+  valueBadge?: FlowActionValueBadge | null;
   parentNodeId?: string;
   branchId?: string;
   subActionId?: string;
@@ -389,7 +391,8 @@ export function subroutineGraphNodes(
       width: actionWidth,
       height: actionHeight,
       className: isSubroutine ? subroutineClassName() : actionClassName(action),
-      selected: isSelected(action.id)
+      selected: isSelected(action.id),
+      valueBadge: flowActionValueBadge(action)
     });
     if (action.type === "decision") {
       ensureDecisionBranches(action).forEach((branch, branchIndex) => {
@@ -436,6 +439,7 @@ export function subroutineGraphNodes(
           height: CHILD_NODE_HEIGHT,
           className: "is-sub-action",
           selected: isSelected(subActionId),
+          valueBadge: flowActionValueBadge(subAction),
           parentNodeId: action.id,
           subActionId,
           draggable: false

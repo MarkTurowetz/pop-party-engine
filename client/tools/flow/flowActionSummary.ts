@@ -1,4 +1,5 @@
 import type { FlowAction, FlowTiming } from "../../types/game-data";
+import { actionFieldsForType, type FlowActionFieldDescriptor } from "./flowActionFieldSchema";
 
 export interface FlowActionSummaryContext {
   artAssetTargetName?: (elementId?: unknown, scope?: unknown) => string;
@@ -40,11 +41,92 @@ function externalActionConfig(globalName: string, methodName: string, actionType
   return (method as (type: string) => Record<string, unknown> | null | undefined)(actionType) || {};
 }
 
-export function createActionSummary(context: FlowActionSummaryContext): FlowActionSummaryRuntime {
-  function jumpTargetIsMissing(action: FlowAction | null | undefined): boolean {
-    const target = String(action?.jumpTargetActionId || "").toLowerCase();
-    return !target || target === "none";
+function jumpTargetIsMissing(action: FlowAction | null | undefined): boolean {
+  const target = String(action?.jumpTargetActionId || "").toLowerCase();
+  return !target || target === "none";
+}
+
+interface BooleanBadgeCopy {
+  trueText: string;
+  falseText: string;
+  trueClassName: string;
+  falseClassName: string;
+}
+
+const BOOLEAN_BADGE_COPY: Record<string, BooleanBadgeCopy> = {
+  instant: {
+    trueText: "Instant",
+    falseText: "Timed",
+    trueClassName: "is-on",
+    falseClassName: "is-off"
+  },
+  isShown: {
+    trueText: "Show",
+    falseText: "Hide",
+    trueClassName: "is-show",
+    falseClassName: "is-hide"
+  },
+  locked: {
+    trueText: "Locked",
+    falseText: "Unlocked",
+    trueClassName: "is-on",
+    falseClassName: "is-off"
+  },
+  randomizeOptions: {
+    trueText: "Random",
+    falseText: "Ordered",
+    trueClassName: "is-on",
+    falseClassName: "is-off"
   }
+};
+
+function booleanFieldValue(action: FlowAction, field: FlowActionFieldDescriptor): boolean {
+  const value = (action as Record<string, unknown>)[field.key];
+  return field.key === "isShown" ? value !== false : value === true;
+}
+
+function booleanFieldBadge(
+  action: FlowAction,
+  field: FlowActionFieldDescriptor
+): FlowActionValueBadge {
+  const value = booleanFieldValue(action, field);
+  const copy = BOOLEAN_BADGE_COPY[field.key];
+  if (copy) {
+    return {
+      text: value ? copy.trueText : copy.falseText,
+      className: value ? copy.trueClassName : copy.falseClassName
+    };
+  }
+  return {
+    text: value ? `${field.label}: True` : `${field.label}: False`,
+    className: value ? "is-on" : "is-off"
+  };
+}
+
+export function flowActionValueBadge(
+  action: FlowAction | null | undefined
+): FlowActionValueBadge | null {
+  if (!action) return null;
+  if (action.type === "jumpNode") {
+    return jumpTargetIsMissing(action)
+      ? { text: "\u26a0 Target", className: "is-warning" }
+      : { text: "Jump", className: "is-jump" };
+  }
+  if (action.type === "labelNode") return { text: "Label", className: "is-label" };
+  if (action.type === "codeNode") return { text: "Code", className: "is-code" };
+  if (action.type === "subroutine") return { text: "Subroutine", className: "is-subroutine" };
+  const isTextAction = action.type === "presentText" || action.type === "displayText";
+  if (isTextAction && !action.textTarget) return { text: "\u26a0 No Field", className: "is-warning" };
+
+  const booleanFields = actionFieldsForType(action.type).filter(
+    (field) => field.control === "boolean"
+  );
+  const visibilityField = booleanFields.find((field) => field.key === "isShown");
+  if (visibilityField) return booleanFieldBadge(action, visibilityField);
+  return booleanFields.length === 1 ? booleanFieldBadge(action, booleanFields[0]) : null;
+}
+
+export function createActionSummary(context: FlowActionSummaryContext): FlowActionSummaryRuntime {
 
   function timingLabel(action: FlowAction, isSubAction = false, fractionDigits = 1): string {
     const timing = context.ensureActionTiming(action, isSubAction);
@@ -157,34 +239,7 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
   }
 
   function actionValueBadge(action: FlowAction | null | undefined): FlowActionValueBadge | null {
-    if (!action) return null;
-    if (action.type === "jumpNode") {
-      return jumpTargetIsMissing(action)
-        ? { text: "\u26a0 Target", className: "is-warning" }
-        : { text: "Jump", className: "is-jump" };
-    }
-    if (action.type === "labelNode") return { text: "Label", className: "is-label" };
-    if (action.type === "codeNode") return { text: "Code", className: "is-code" };
-    if (action.type === "subroutine") return { text: "Subroutine", className: "is-subroutine" };
-    const visibilityActionTypes = new Set([
-      "displayText",
-      "presentText",
-      "setPlayersShown",
-      "setPlayerAnswersShown",
-      "setGameObjectShown",
-      "setArtAssetShown",
-      "setTimerShown",
-      "setWipeShown",
-      "setVotingCardsShown"
-    ]);
-    if (!visibilityActionTypes.has(action.type)) return null;
-    const isTextAction = action.type === "presentText" || action.type === "displayText";
-    if (isTextAction && !action.textTarget) return { text: "\u26a0 No Field", className: "is-warning" };
-    const isShown = action.isShown !== false;
-    return {
-      text: isShown ? "Show" : "Hide",
-      className: isShown ? "is-show" : "is-hide"
-    };
+    return flowActionValueBadge(action);
   }
 
   return { actionSummary, actionTimingLabel, actionValueBadge };
