@@ -184,20 +184,24 @@ function buildWirePaths(
     const from = byId.get(connection.from);
     const to = byId.get(connection.to);
     if (!from || !to) continue;
-    const x1 = from.x + from.width;
-    const y1 = from.y + from.height / 2;
-    const x2 = to.x;
-    const y2 = to.y + to.height / 2;
-    const dx = Math.max(40, Math.abs(x2 - x1) / 2);
+    // Route bottom-center of the source down into top-center of the target. The control
+    // points sit directly below the exit and directly above the entry, so the wire
+    // leaves and (especially) enters vertically — a clean straight drop when the nodes
+    // are aligned, no sideways S-curves.
+    const x1 = from.x + from.width / 2;
+    const y1 = from.y + from.height;
+    const x2 = to.x + to.width / 2;
+    const y2 = to.y;
+    const dy = Math.max(40, Math.abs(y2 - y1) / 2);
     paths.push({
       id: connection.id,
-      d: `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`,
+      d: `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`,
       labelX: (x1 + x2) / 2,
-      labelY: (y1 + y2) / 2 - 6,
+      labelY: (y1 + y2) / 2,
       label: connection.label,
-      // A wire is highlighted when either end is a selected node, so selecting a
-      // node lights up the paths into/out of it.
-      highlighted: selectedIds.has(connection.from) || selectedIds.has(connection.to)
+      // Only the OUTGOING wire highlights — selecting a node shows where it goes next,
+      // not what points into it.
+      highlighted: selectedIds.has(connection.from)
     });
   }
   return paths;
@@ -428,13 +432,12 @@ export function FlowNodeCanvas({
   };
 
   const { width, height } = worldSize(nodes);
-  // Selecting a node highlights the nodes it connects to (either direction) in pink so
-  // the wiring is easy to follow.
+  // Selecting a node highlights the nodes it points TO (its next steps) in pink, so you
+  // can follow where the flow goes — not what points back into it.
   const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
   const connectedIds = new Set<string>();
   for (const connection of connections) {
     if (selectedIds.has(connection.from)) connectedIds.add(connection.to);
-    if (selectedIds.has(connection.to)) connectedIds.add(connection.from);
   }
   const wires = buildWirePaths(nodes, connections, selectedIds);
   return (

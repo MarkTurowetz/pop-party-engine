@@ -3,6 +3,7 @@ import { actionTypeName, type FlowActionTypeMeta } from "../flowSelectors";
 import { ActionFieldControls } from "./ActionFieldControls";
 import { DecisionBranchControls, type DecisionBranchHandlers } from "./DecisionBranchControls";
 import { ActionOptionsControls, type ActionOptionsHandlers } from "./ActionOptionsControls";
+import { ActionTypeSelect } from "./ActionTypeSelect";
 
 export interface InspectorTargetOption {
   id: string;
@@ -170,17 +171,11 @@ export function ActionInspector({
       {edit?.onSetActionType && (edit.actionTypeOptions || []).length ? (
         <label className="flow-react-field" data-flow-react-field="action-type">
           <span>Action Type</span>
-          <select
+          <ActionTypeSelect
             value={action.type}
-            data-flow-react-action-type-select
-            onChange={(event) => edit.onSetActionType?.(event.target.value)}
-          >
-            {(edit.actionTypeOptions || []).map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            options={edit.actionTypeOptions || []}
+            onChange={(type) => edit.onSetActionType?.(type)}
+          />
         </label>
       ) : null}
       <dl>
