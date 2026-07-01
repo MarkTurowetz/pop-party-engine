@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useMemo, useState, type DragEvent, type MouseEvent } from "react";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
 import { folderIdFromKey, type OrgItem, type OrgSurface } from "./organizationModel";
@@ -13,9 +13,29 @@ export interface ArtCompositionBrowserProps {
 }
 
 const DND_TYPE = "application/x-art-composition-browser-key";
+const COLLAPSED_STORAGE_KEY = "partyTemplate.artCompositionBrowserCollapsedFolders";
 
 function compositionIdFromKey(key: string): string {
   return String(key || "").startsWith("composition:") ? String(key).slice("composition:".length) : "";
+}
+
+function collapsedKey(surface: OrgSurface, folderId: string): string {
+  return `${surface}:${folderId}`;
+}
+
+function readCollapsedFolders(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const value = JSON.parse(window.localStorage.getItem(COLLAPSED_STORAGE_KEY) || "[]");
+    return new Set(Array.isArray(value) ? value.map(String) : []);
+  } catch (_error) {
+    return new Set();
+  }
+}
+
+function writeCollapsedFolders(collapsed: Set<string>): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify([...collapsed]));
 }
 
 export function ArtCompositionBrowser({
@@ -27,11 +47,19 @@ export function ArtCompositionBrowser({
   const { selectedCompositionId } = useArtCompositions(compositionsController);
   const { organization, surfaceItems, dirty, saving, canUndo, canRedo } = useArtOrganization(organizationController);
   const [folderName, setFolderName] = useState("");
+  const [collapsedFolders, setCollapsedFolders] = useState(readCollapsedFolders);
   const state = organization[surface];
   const compositionItems = surfaceItems[surface].filter((item: OrgItem) => item.type === "composition");
   const validCompositionKeys = new Set(compositionItems.map((item) => item.key));
   const nameByKey = new Map(compositionItems.map((item) => [item.key, item.name]));
   const folderNameFor = (id: string) => state.folders.find((folder) => folder.id === id)?.name || "Folder";
+  const visibleFolderIds = useMemo(
+    () => state.folders.map((folder) => folder.id),
+    [state.folders]
+  );
+  const allSurfaceFoldersCollapsed = visibleFolderIds.length > 0 && visibleFolderIds.every((folderId) =>
+    collapsedFolders.has(collapsedKey(surface, folderId))
+  );
 
   const placed = new Set<string>(state.order.filter((key) => validCompositionKeys.has(key)));
   for (const folderId of Object.keys(state.folderItems)) {
@@ -61,6 +89,33 @@ export function ArtCompositionBrowser({
     const dragged = dragKey(event);
     if (dragged) organizationController.moveIntoFolder(surface, dragged, "");
   };
+  const updateCollapsedFolders = (apply: (draft: Set<string>) => void) => {
+    setCollapsedFolders((current) => {
+      const next = new Set(current);
+      apply(next);
+      writeCollapsedFolders(next);
+      return next;
+    });
+  };
+  const toggleFolder = (event: MouseEvent<HTMLButtonElement>, folderId: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.metaKey || event.ctrlKey) {
+      updateCollapsedFolders((draft) => {
+        for (const id of visibleFolderIds) {
+          const key = collapsedKey(surface, id);
+          if (allSurfaceFoldersCollapsed) draft.delete(key);
+          else draft.add(key);
+        }
+      });
+      return;
+    }
+    updateCollapsedFolders((draft) => {
+      const key = collapsedKey(surface, folderId);
+      if (draft.has(key)) draft.delete(key);
+      else draft.add(key);
+    });
+  };
 
   const renderCompositionItem = (key: string) => {
     const compositionId = compositionIdFromKey(key);
@@ -86,15 +141,28 @@ export function ArtCompositionBrowser({
     );
   };
 
-  const renderFolder = (folderId: string) => (
-    <li className="art-browser-folder" data-art-browser-folder={folderId} key={`folder:${folderId}`}>
+  const renderFolder = (folderId: string) => {
+    const collapsed = collapsedFolders.has(collapsedKey(surface, folderId));
+    return (
+    <li
+      className={`art-browser-folder${collapsed ? " is-collapsed" : ""}`}
+      data-art-browser-folder={folderId}
+      key={`folder:${folderId}`}
+    >
       <header
         draggable
         onDragStart={(event) => onDragStart(event, `folder:${folderId}`)}
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => onDropIntoFolder(event, folderId)}
       >
-        <span aria-hidden="true">v</span>
+        <button
+          type="button"
+          className={`disclosure-button${collapsed ? " is-collapsed" : ""}`}
+          aria-label={`${collapsed ? "Open" : "Close"} ${folderNameFor(folderId)}`}
+          aria-expanded={!collapsed}
+          onClick={(event) => toggleFolder(event, folderId)}
+          onDragStart={(event) => event.preventDefault()}
+        />
         <input
           type="text"
           key={`${folderId}-name`}
@@ -112,7 +180,8 @@ export function ArtCompositionBrowser({
         )}
       </ol>
     </li>
-  );
+    );
+  };
 
   return (
     <>

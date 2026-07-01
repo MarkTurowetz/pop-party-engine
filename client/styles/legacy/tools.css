@@ -1387,6 +1387,10 @@ body.tool-dashboard-mode .layout-react-shell {
   border-left: 4px solid rgba(23, 19, 31, 0.2);
 }
 
+.art-browser-folder.is-collapsed > .art-browser-list {
+  display: none;
+}
+
 .art-browser-item button {
   justify-content: start;
   width: 100%;
