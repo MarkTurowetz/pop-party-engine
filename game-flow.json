@@ -187,25 +187,7 @@
             "x": 670,
             "y": 514
           },
-          "stageClickTargetActionId": "intro-action-mr1dk6uo"
-        },
-        {
-          "id": "intro-action-mr1dk6uo",
-          "name": "Game Action 4",
-          "type": "presentText",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 1251,
-            "y": 523
-          }
+          "stageClickTargetActionId": "intro-action-mqprim01"
         }
       ]
     },
