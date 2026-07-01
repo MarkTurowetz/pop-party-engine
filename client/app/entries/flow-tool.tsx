@@ -6,4 +6,8 @@ import { mountFlowEditor } from "../../tools/flow/mountFlowEditor";
 export const flowToolContext = createToolAppContext({ surface: "flow" });
 
 installToolContextAdapter(flowToolContext);
-void mountFlowEditor({ api: flowToolContext.api.flow, surface: flowToolContext.surface });
+void mountFlowEditor({
+  api: flowToolContext.api.flow,
+  layoutApi: flowToolContext.api.layout,
+  surface: flowToolContext.surface
+});

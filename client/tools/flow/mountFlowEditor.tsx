@@ -1,11 +1,13 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { FlowApi } from "../../api/flowApi";
+import type { LayoutApi } from "../../api/layoutApi";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowEditorController, type FlowEditorController } from "./flowEditorController";
 import { FlowEditor } from "./FlowEditor";
 
 export interface MountFlowEditorOptions {
   api: FlowApi;
+  layoutApi?: LayoutApi;
   document?: Document;
   surface?: string;
   /**
@@ -39,7 +41,16 @@ function toActionTypeMeta(values: unknown[]): FlowActionTypeMeta[] {
  */
 export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<MountedFlowEditor> {
   const doc = options.document || document;
-  const response = await options.api.loadGameFlow();
+  const loadStageLayouts = options.layoutApi
+    ? async () => {
+        const response = await options.layoutApi?.loadStageLayouts();
+        return response?.layouts || null;
+      }
+    : undefined;
+  const [response, stageLayouts] = await Promise.all([
+    options.api.loadGameFlow(),
+    loadStageLayouts ? loadStageLayouts() : Promise.resolve(null)
+  ]);
   const actionTypes = toActionTypeMeta(response.availableActionTypes || []);
   const controller = createFlowEditorController({
     initialFlow: response.flow,
@@ -68,7 +79,15 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
   (flowScreen || doc.body).appendChild(host);
 
   const root = createRoot(host);
-  root.render(<FlowEditor controller={controller} flowActionTypes={actionTypes} surface={options.surface} />);
+  root.render(
+    <FlowEditor
+      controller={controller}
+      flowActionTypes={actionTypes}
+      loadStageLayouts={loadStageLayouts}
+      stageLayouts={stageLayouts}
+      surface={options.surface}
+    />
+  );
 
   return {
     controller,

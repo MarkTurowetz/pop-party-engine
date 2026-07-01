@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FlowEditorController } from "./flowEditorController";
-import { findFlowActionRef, type FlowActionTypeMeta } from "./flowSelectors";
+import {
+  findFlowActionRef,
+  flowTextTargetOptions,
+  type FlowActionTypeMeta
+} from "./flowSelectors";
 import { useFlowEditor } from "./useFlowEditor";
 import { FlowToolApp, type FlowToolReactShellHandlers } from "./FlowToolApp";
 import { FlowNodeCanvas } from "./components/FlowNodeCanvas";
+import type { StageLayoutCollection } from "../../types/game-data";
 import {
   optimizedVerticalNodePositions,
   subroutineGraphConnections,
@@ -32,6 +37,8 @@ import {
 export interface FlowEditorProps {
   controller: FlowEditorController;
   flowActionTypes?: FlowActionTypeMeta[];
+  stageLayouts?: StageLayoutCollection | null;
+  loadStageLayouts?: () => Promise<StageLayoutCollection | null>;
   surface?: string;
   previewMode?: string;
 }
@@ -47,6 +54,8 @@ export interface FlowEditorProps {
 export function FlowEditor({
   controller,
   flowActionTypes = [],
+  stageLayouts = null,
+  loadStageLayouts,
   surface = "flow",
   previewMode = "replace"
 }: FlowEditorProps) {
@@ -61,6 +70,7 @@ export function FlowEditor({
 
   const [nodeDepth, setNodeDepth] = useState<FlowNodeDepth>("subroutines");
   const [subroutinePath, setSubroutinePath] = useState<string[]>([]);
+  const [layoutSnapshot, setLayoutSnapshot] = useState<StageLayoutCollection | null>(stageLayouts);
 
   const hasState = Boolean(selectedStateId);
   const hasActionSelection = Boolean(selectedActionId) || selectedActionIds.size > 0;
@@ -92,6 +102,7 @@ export function FlowEditor({
     selectedStateId && selectedActionId
       ? findFlowActionRef(flow, selectedStateId, selectedActionId)
       : null;
+  const selectedActionType = selectedActionRef?.action?.type || selectedRootRouteAction?.type || "";
   const rootActionTypeOptions = flowActionTypes.map((meta) => ({
     id: meta.id,
     label: meta.name || meta.id
@@ -99,6 +110,29 @@ export function FlowEditor({
   const rootTargetOptions = rootFlowTargetOptions(
     flow,
     selection.selectedFlowRouteNodeId || selectedStateId
+  );
+
+  useEffect(() => {
+    if (!loadStageLayouts || !["displayText", "presentText", "text"].includes(selectedActionType)) return undefined;
+    let cancelled = false;
+    void loadStageLayouts().then((layouts) => {
+      if (!cancelled) setLayoutSnapshot(layouts);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadStageLayouts, selectedActionId, selectedActionType, selectedRootRouteAction?.id]);
+
+  const textTargetOptionsForState = (stateId: string, selectedTextTarget = "") => {
+    const state = states.find((candidate) => candidate.id === stateId) || null;
+    return flowTextTargetOptions(layoutSnapshot, state, stateId, selectedTextTarget).map((option) => ({
+      id: option.id,
+      label: option.name
+    }));
+  };
+  const inspectorTextTargetOptions = textTargetOptionsForState(
+    selectedStateId,
+    String(selectedActionRef?.action?.textTarget || "")
   );
 
   const inspectorEdit = {
@@ -190,7 +224,8 @@ export function FlowEditor({
         : currentSubroutineActions.map((action) => ({
             id: action.id,
             label: action.name || action.id
-          }))
+          })),
+    textTargetOptions: inspectorTextTargetOptions
   };
 
   const rootRouteInspectorEdit = selectedRootRouteAction
@@ -230,6 +265,10 @@ export function FlowEditor({
           }
         },
         actionTargetOptions: rootTargetOptions,
+        textTargetOptions: textTargetOptionsForState(
+          String(selectedRootRouteAction.targetStateId || selectedStateId || ""),
+          String(selectedRootRouteAction.textTarget || "")
+        ),
         nextTargetOptions: rootTargetOptions,
         entryTargetOptions: []
       }

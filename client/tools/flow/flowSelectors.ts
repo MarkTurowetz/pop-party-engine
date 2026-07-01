@@ -53,6 +53,52 @@ type FlowLayoutStateWithVisibility = Partial<LayoutState> & {
   hiddenInStates?: boolean;
 };
 
+const LAYOUT_TEXT_ART_COMPOSITION_ID = "layout-text-field";
+const LEGACY_LAYOUT_TEXT_ELEMENT_IDS = new Set([
+  "stagetitle",
+  "stageintrotitle",
+  "stagepresentationtext",
+  "stageprompttext",
+  "roundintrotext",
+  "roundintroinfotext"
+]);
+
+export function normalizeFlowTextTargetId(value: unknown): string {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const compact = normalized.replace(/-/g, "");
+  if (compact === "presentation") return "stagepresentationtext";
+  if (compact === "prompt") return "stageprompttext";
+  if (compact === "stagepresentationtext") return "stagepresentationtext";
+  if (compact === "stageprompttext") return "stageprompttext";
+  if (compact === "roundintrotext") return "roundintrotext";
+  if (compact === "roundintroinfotext") return "roundintroinfotext";
+  return normalized;
+}
+
+function compactLayoutTextId(value: unknown): string {
+  return String(value || "")
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function isFlowLayoutTextElement(element: Partial<LayoutElement> | null | undefined): boolean {
+  const compactId = compactLayoutTextId(element?.id);
+  return (
+    element?.kind === "text" ||
+    element?.artCompositionId === LAYOUT_TEXT_ART_COMPOSITION_ID ||
+    LEGACY_LAYOUT_TEXT_ELEMENT_IDS.has(compactId) ||
+    compactId.endsWith("momenttext") ||
+    compactId.endsWith("controllertext")
+  );
+}
+
 export function findFlowState(flow: Partial<GameFlow> | null | undefined, stateId: string): FlowState | null {
   return (flow?.states || []).find((state) => state.id === stateId) || null;
 }
@@ -256,6 +302,56 @@ export function flowGameObjectTargetOptions(
     options.push({ id: selectedElementId, name: selectedParts.id });
   }
   return options;
+}
+
+export function flowTextTargetOptions(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  state: Partial<FlowState> | null | undefined,
+  selectedFlowStateId = "",
+  selectedTextTarget = ""
+): FlowOption[] {
+  const options = [{ id: "", name: "No Text Field" }];
+  const seen = new Set<string>();
+  for (const element of flowGameObjectLayoutElements(stageLayouts, state, selectedFlowStateId)) {
+    if (!isFlowLayoutTextElement(element)) continue;
+    const id = String(element.id || "");
+    const normalized = normalizeFlowTextTargetId(id);
+    if (!id || seen.has(normalized)) continue;
+    seen.add(normalized);
+    options.push({ id, name: flowGameObjectTargetLabel(element) });
+  }
+  const selected = String(selectedTextTarget || "");
+  const normalizedSelected = normalizeFlowTextTargetId(selected);
+  if (
+    selected &&
+    !options.some((option) => normalizeFlowTextTargetId(option.id) === normalizedSelected)
+  ) {
+    options.push({ id: selected, name: selected });
+  }
+  return options;
+}
+
+export function flowTextTargetName(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  selectedFlowStateId: string,
+  textTarget: unknown
+): string {
+  const target = String(textTarget || "");
+  if (!target) return "No Text Field";
+  const normalizedTarget = normalizeFlowTextTargetId(target);
+  const selectedState = (stageLayouts?.states || []).find((state) => state.id === selectedFlowStateId);
+  const candidates = [
+    ...flowGameObjectLayoutElements(stageLayouts, selectedState || { id: selectedFlowStateId }, selectedFlowStateId),
+    ...((stageLayouts?.states || []).flatMap((state) =>
+      flowPlacedGameObjectElementsForLayoutGroup(state, "moment")
+    ) as FlowTargetLayoutElement[])
+  ];
+  const match = candidates.find(
+    (element) =>
+      isFlowLayoutTextElement(element) &&
+      normalizeFlowTextTargetId(element.id) === normalizedTarget
+  );
+  return match ? flowGameObjectTargetLabel(match) : target;
 }
 
 export function flowGameObjectTargetName(

@@ -1,10 +1,12 @@
 import type { FlowAction } from "../../../types/game-data";
 import { actionFieldsForType, type FlowActionFieldDescriptor } from "../flowActionFieldSchema";
+import { normalizeFlowTextTargetId } from "../flowSelectors";
 import type { InspectorTargetOption } from "./ActionInspector";
 
 export interface ActionFieldControlsProps {
   action: FlowAction;
   actionTargetOptions: InspectorTargetOption[];
+  textTargetOptions?: InspectorTargetOption[];
   onSetField: (key: string, value: unknown) => void;
 }
 
@@ -20,15 +22,23 @@ function booleanValue(action: FlowAction, key: string): boolean {
   return key === "isShown";
 }
 
+type SelectOption = { id: string; name: string };
+
+function withDefaultSelectOption(options: SelectOption[], defaultOption: SelectOption): SelectOption[] {
+  return options.some((option) => option.id === "") ? options : [defaultOption, ...options];
+}
+
 function FieldControl({
   field,
   action,
   actionTargetOptions,
+  textTargetOptions = [],
   onSetField
 }: {
   field: FlowActionFieldDescriptor;
   action: FlowAction;
   actionTargetOptions: InspectorTargetOption[];
+  textTargetOptions?: InspectorTargetOption[];
   onSetField: (key: string, value: unknown) => void;
 }) {
   const fieldKey = `${action.id}:${field.key}`;
@@ -50,16 +60,33 @@ function FieldControl({
     );
   }
 
-  if (field.control === "select" || field.control === "actionTarget") {
+  if (field.control === "select" || field.control === "actionTarget" || field.control === "textTarget") {
     const options =
       field.control === "actionTarget"
-        ? [{ id: "", name: "Default" }, ...actionTargetOptions.map((option) => ({ id: option.id, name: option.label }))]
-        : field.options || [];
+        ? withDefaultSelectOption(
+            actionTargetOptions.map((option) => ({ id: option.id, name: option.label })),
+            { id: "", name: "Default" }
+          )
+        : field.control === "textTarget"
+          ? withDefaultSelectOption(
+              textTargetOptions.map((option) => ({ id: option.id, name: option.label })),
+              { id: "", name: "No Text Field" }
+            )
+          : field.options || [];
+    const currentValue = String(rawValue(action, field.key) ?? "");
+    const selectedValue =
+      field.control === "textTarget" && currentValue
+        ? options.find(
+            (option) =>
+              option.id === currentValue ||
+              normalizeFlowTextTargetId(option.id) === normalizeFlowTextTargetId(currentValue)
+          )?.id || currentValue
+        : currentValue;
     return (
       <label className="flow-react-field" data-flow-react-field={field.key}>
         <span>{field.label}</span>
         <select
-          value={String(rawValue(action, field.key) ?? "")}
+          value={selectedValue}
           data-flow-react-field-input={field.key}
           onChange={(event) => onSetField(field.key, event.target.value)}
         >
@@ -117,7 +144,12 @@ function FieldControl({
  * by {@link actionFieldsForType}. Each edit commits through `onSetField`, which the
  * controller turns into an undoable command.
  */
-export function ActionFieldControls({ action, actionTargetOptions, onSetField }: ActionFieldControlsProps) {
+export function ActionFieldControls({
+  action,
+  actionTargetOptions,
+  textTargetOptions = [],
+  onSetField
+}: ActionFieldControlsProps) {
   const fields = actionFieldsForType(action.type);
   if (!fields.length) return null;
   return (
@@ -128,6 +160,7 @@ export function ActionFieldControls({ action, actionTargetOptions, onSetField }:
           field={field}
           action={action}
           actionTargetOptions={actionTargetOptions}
+          textTargetOptions={textTargetOptions}
           onSetField={onSetField}
         />
       ))}

@@ -1,4 +1,10 @@
-import { useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 import type { LayoutElement } from "../../types/game-data";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
@@ -24,18 +30,60 @@ const SCALAR_FIELDS = [
   { key: "rotation", label: "Rotation" }
 ];
 
+function useElementSize<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+
+    const measure = () => {
+      setSize({ width: node.clientWidth, height: node.clientHeight });
+    };
+    measure();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect) {
+        measure();
+        return;
+      }
+      setSize({ width: rect.width, height: rect.height });
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, size] as const;
+}
+
 export function LayoutEditor({ stageController, controllerController, surface = "layout" }: LayoutEditorProps) {
   const [mode, setMode] = useState<"stage" | "controller">("stage");
   const controller = mode === "stage" ? stageController : controllerController;
   const state = useLayoutEditor(controller);
   const { layouts, selectedGroupId, selectedElementIds, dirty, saving, canUndo } = state;
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [previewPanelRef, previewPanelSize] = useElementSize<HTMLElement>();
 
   const groups = layoutGroups(layouts);
   const group = groups.find((item) => item.id === selectedGroupId) || layouts.global || null;
   const canvasWidth = Number(layouts.canvas?.width || (mode === "controller" ? 390 : 1920));
   const canvasHeight = Number(layouts.canvas?.height || (mode === "controller" ? 844 : 1080));
-  const scaleToFit = Math.min(1, 640 / canvasWidth, 360 / canvasHeight);
+  const fallbackPreviewWidth = mode === "controller" ? 420 : 960;
+  const fallbackPreviewHeight = mode === "controller" ? 680 : 540;
+  const availablePreviewWidth = Math.max(1, (previewPanelSize.width || fallbackPreviewWidth) - 32);
+  const availablePreviewHeight = Math.max(1, (previewPanelSize.height || fallbackPreviewHeight) - 32);
+  const maxPreviewScale = mode === "controller" ? 1.2 : 1;
+  const scaleToFit = Math.max(
+    0.05,
+    Math.min(maxPreviewScale, availablePreviewWidth / canvasWidth, availablePreviewHeight / canvasHeight)
+  );
   const selectedElement =
     group && selectedElementIds.size === 1
       ? (group.elements || []).find((element) => element.id === [...selectedElementIds][0])
@@ -172,7 +220,11 @@ export function LayoutEditor({ stageController, controllerController, surface = 
       toolId="layout"
     >
       <div className="tool-main-columns layout-workspace-content">
-        <section className="flow-react-panel" data-layout-react-component="canvas" style={{ flex: 1 }}>
+        <section
+          ref={previewPanelRef}
+          className="flow-react-panel layout-preview-panel"
+          data-layout-react-component="canvas"
+        >
           <div
             className="layout-canvas"
             data-layout-canvas
@@ -200,7 +252,11 @@ export function LayoutEditor({ stageController, controllerController, surface = 
 function LayoutElementInspector({ controller, element }: { controller: LayoutController; element: LayoutElement | null }) {
   if (!element) {
     return (
-      <section className="flow-react-panel flow-react-inspector" data-layout-react-component="element-inspector" data-empty="true" style={{ minWidth: 170 }}>
+      <section
+        className="flow-react-panel flow-react-inspector layout-element-inspector"
+        data-layout-react-component="element-inspector"
+        data-empty="true"
+      >
         <h3>Element</h3>
         <p>Select an element.</p>
       </section>
@@ -209,7 +265,11 @@ function LayoutElementInspector({ controller, element }: { controller: LayoutCon
   const commit = (patch: Partial<LayoutElement>) => controller.updateElement(element.id, patch);
   const isText = element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
   return (
-    <section className="flow-react-panel flow-react-inspector" data-layout-react-component="element-inspector" data-layout-element-id={element.id} style={{ minWidth: 170 }}>
+    <section
+      className="flow-react-panel flow-react-inspector layout-element-inspector"
+      data-layout-react-component="element-inspector"
+      data-layout-element-id={element.id}
+    >
       <h3>{element.name || element.kind}</h3>
       <label className="flow-react-field" data-layout-field="name">
         <span>Name</span>

@@ -69,6 +69,29 @@ describe("ActionInspector", () => {
     expect(markup).not.toContain("<dt>Parent</dt>");
   });
 
+  it("renders moment text-field target choices for text actions", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "show-title",
+          name: "Show Title",
+          type: "presentText",
+          textTarget: "presentation"
+        }}
+        edit={{
+          onSetActionField: () => undefined,
+          actionTargetOptions: [],
+          textTargetOptions: [{ id: "stagePresentationText", label: "Presentation Text" }]
+        }}
+        state={{ id: "intro", name: "Intro", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-flow-react-field="textTarget"');
+    expect(markup).toContain("Text Field");
+    expect(markup).toContain("Presentation Text");
+  });
+
   it("hides timing controls and bundled branch fields on decision actions", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector

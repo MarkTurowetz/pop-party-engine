@@ -73,11 +73,14 @@ export const toolsContext = createToolAppContext({ surface: "tools" });
 installToolContextAdapter(toolsContext);
 
 let flowController: FlowEditorController | null = null;
-void mountFlowEditor({ api: toolsContext.api.flow, surface: toolsContext.surface, revealScreen: false }).then(
-  (mounted) => {
-    flowController = mounted.controller;
-  }
-);
+void mountFlowEditor({
+  api: toolsContext.api.flow,
+  layoutApi: toolsContext.api.layout,
+  surface: toolsContext.surface,
+  revealScreen: false
+}).then((mounted) => {
+  flowController = mounted.controller;
+});
 registerDashboardTool("flow", {
   isDirty: () => flowController?.getState().dirty ?? false,
   save: () => flowController?.save() ?? Promise.resolve(),

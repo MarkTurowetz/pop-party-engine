@@ -25,6 +25,7 @@ export interface ActionInspectorEditHandlers {
   options?: ActionOptionsHandlers;
   actionTypeOptions?: InspectorTargetOption[];
   actionTargetOptions?: InspectorTargetOption[];
+  textTargetOptions?: InspectorTargetOption[];
   nextTargetOptions?: InspectorTargetOption[];
   entryTargetOptions?: InspectorTargetOption[];
 }
@@ -260,6 +261,7 @@ export function ActionInspector({
         <ActionFieldControls
           action={action}
           actionTargetOptions={edit.actionTargetOptions || []}
+          textTargetOptions={edit.textTargetOptions || []}
           onSetField={edit.onSetActionField}
         />
       ) : null}

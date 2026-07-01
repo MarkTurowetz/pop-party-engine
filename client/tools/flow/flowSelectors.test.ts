@@ -11,11 +11,14 @@ import {
   flowGameObjectTargetOptions,
   flowGameObjectTargetParts,
   flowGameObjectTargetValue,
+  flowTextTargetName,
+  flowTextTargetOptions,
   flowPlacedGameObjectElementsForLayoutGroup,
   flowStateName,
   flowStateTargetOptions,
   flowTargetActionName,
   makeFlowId,
+  normalizeFlowTextTargetId,
   stateActionNameSet,
   uniqueActionNameForType
 } from "./flowSelectors";
@@ -197,6 +200,39 @@ describe("Flow selectors", () => {
       { id: "moment-only", name: "Moment Only", targetLayoutScope: "moment" },
       { id: "global-only", name: "Global Only", targetLayoutScope: "global" }
     ]);
+  });
+
+  it("builds text target options from the selected moment layout", () => {
+    const stageLayouts = {
+      global: {
+        id: "global",
+        elements: [
+          { id: "stageTitle", name: "Stage Title", artCompositionId: "layout-text-field" },
+          { id: "global-card", name: "Global Card", kind: "shape" }
+        ]
+      },
+      states: [
+        {
+          id: "intro",
+          elements: [
+            { id: "stagePresentationText", name: "Presentation Text", artCompositionId: "layout-text-field" },
+            { id: "stagePromptText", name: "Prompt Text", kind: "text" },
+            { id: "hero-card", name: "Hero Card", kind: "shape" }
+          ],
+          hiddenGlobals: ["stageTitle"]
+        }
+      ]
+    };
+
+    expect(normalizeFlowTextTargetId("presentation")).toBe("stagepresentationtext");
+    expect(flowTextTargetOptions(stageLayouts, { id: "intro" }, "intro", "presentation")).toEqual([
+      { id: "", name: "No Text Field" },
+      { id: "stagePresentationText", name: "Presentation Text (stagePresentationText)" },
+      { id: "stagePromptText", name: "Prompt Text (stagePromptText)" }
+    ]);
+    expect(flowTextTargetName(stageLayouts, "intro", "presentation")).toBe(
+      "Presentation Text (stagePresentationText)"
+    );
   });
 
   it("supports game-object target labels, values, parts, options, and names", () => {

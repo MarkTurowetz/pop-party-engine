@@ -22,6 +22,7 @@ export type FlowFieldControl =
   | "integer"
   | "boolean"
   | "select"
+  | "textTarget"
   | "actionTarget";
 
 export interface FlowActionFieldDescriptor {
@@ -34,6 +35,7 @@ export interface FlowActionFieldDescriptor {
 }
 
 const TEXT_FIELDS: FlowActionFieldDescriptor[] = [
+  { key: "textTarget", label: "Text Field", control: "textTarget" },
   { key: "text", label: "Text", control: "textarea" },
   { key: "isShown", label: "Text Visible", control: "boolean" }
 ];
