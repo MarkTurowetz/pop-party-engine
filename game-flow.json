@@ -179,7 +179,7 @@
             "seconds": 0
           },
           "text": "This is the Game Intro State",
-          "textTarget": "stageprompttext",
+          "textTarget": "layout-text-field-instance-1",
           "instant": false,
           "isShown": true,
           "subActions": [],
