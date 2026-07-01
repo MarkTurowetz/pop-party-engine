@@ -135,7 +135,7 @@ export function createArtOrganizationController(
         removeKeyFromSurface(state, folderKey(folderId));
         delete state.folderItems[folderId];
         state.folders = state.folders.filter((folder) => folder.id !== folderId);
-        state.order = [...state.order, ...orphans.filter((key) => !key.startsWith("folder:"))];
+        state.order = [...state.order, ...orphans.filter((key) => key !== folderKey(folderId))];
       }),
     moveBeside: (surface, draggedKey, targetKey, placeAfter) =>
       mutate((org) => {

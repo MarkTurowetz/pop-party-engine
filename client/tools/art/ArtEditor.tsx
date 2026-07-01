@@ -5,8 +5,9 @@ import type { ArtOrganizationController } from "./artOrganizationController";
 import type { OrgSurface } from "./organizationModel";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import { ArtAssetManager } from "./ArtAssetManager";
+import { ArtCompositionBrowser } from "./ArtCompositionBrowser";
 import { ArtCompositionEditor } from "./ArtCompositionEditor";
-import { ArtOrganizationPanel } from "./ArtOrganizationPanel";
+import { useArtAssets } from "./useArtAssets";
 
 export interface ArtEditorProps {
   assetsController: ArtAssetsController;
@@ -26,20 +27,15 @@ export function ArtEditor({
   organizationController,
   surface = "art"
 }: ArtEditorProps) {
-  const [orgSurface, setOrgSurface] = useState<OrgSurface>("stage");
+  const [surfaceFilter, setSurfaceFilter] = useState<OrgSurface>("stage");
+  const { assets } = useArtAssets(assetsController);
   const sidebar = (
-    <>
-      <h3>Art Assets</h3>
-      <div className="tool-sidebar-switcher" role="group" aria-label="Art organization surface">
-        <button type="button" aria-pressed={orgSurface === "stage"} onClick={() => setOrgSurface("stage")}>
-          Stage Org
-        </button>
-        <button type="button" aria-pressed={orgSurface === "controller"} onClick={() => setOrgSurface("controller")}>
-          Controller Org
-        </button>
-      </div>
-      <ArtOrganizationPanel controller={organizationController} surface={orgSurface} />
-    </>
+    <ArtCompositionBrowser
+      compositionsController={compositionsController}
+      organizationController={organizationController}
+      surface={surfaceFilter}
+      onSurfaceChange={setSurfaceFilter}
+    />
   );
 
   return (
@@ -48,14 +44,17 @@ export function ArtEditor({
       dataAttributes={{ "art-react-shell": "react", "surface": surface }}
       header={<h2>Art Manager</h2>}
       sidebar={sidebar}
-      sidebarLabel="Art organization"
+      sidebarLabel="Compositions"
       storageKey="partyTemplate.artSidebarWidth"
-      title="Art Assets"
+      title="Art Manager"
       toolId="art"
     >
-      <div className="tool-main-columns art-workspace-content">
-        <ArtCompositionEditor controller={compositionsController} />
-        <ArtAssetManager controller={assetsController} />
+      <div className="art-workspace-content">
+        <ArtCompositionEditor controller={compositionsController} assets={assets} />
+        <details className="art-replacement-drawer">
+          <summary>Replacement Assets</summary>
+          <ArtAssetManager controller={assetsController} />
+        </details>
       </div>
     </ToolWorkspace>
   );

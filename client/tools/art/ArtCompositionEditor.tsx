@@ -1,11 +1,13 @@
 import {
   useRef,
+  useMemo,
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   type ReactElement
 } from "react";
-import type { ArtComponent } from "../../types/game-data";
+import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import {
   componentSupportsImageMask,
@@ -19,6 +21,7 @@ import { useArtCompositions } from "./useArtCompositions";
 
 export interface ArtCompositionEditorProps {
   controller: ArtCompositionsController;
+  assets: ArtAsset[];
 }
 
 const SCALAR_FIELDS: { key: string; label: string }[] = [
@@ -82,17 +85,22 @@ function ComponentTree({
   );
 }
 
-export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) {
+export function ArtCompositionEditor({ controller, assets }: ArtCompositionEditorProps) {
   const { compositions, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo } =
     useArtCompositions(controller);
-  const [surface, setSurface] = useState<"stage" | "controller">("stage");
   const dragRef = useRef<{ id: string; originX: number; originY: number; startX: number; startY: number; moved: boolean } | null>(
     null
   );
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; rotation?: number } | null>(
-    null
-  );
+  const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; rotation?: number } | null>(null);
+  const assetUrlById = useMemo(() => new Map((assets || []).map((asset) => [asset.id, asset.currentUrl])), [assets]);
+  const compositionById = useMemo(() => new Map(compositions.map((item) => [item.id, item])), [compositions]);
+  const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
+  const canvasWidth = Number(composition?.canvas?.width || 560);
+  const canvasHeight = Number(composition?.canvas?.height || 230);
+  const previewScale = composition
+    ? Math.min(3.5, Math.max(0.65, Math.min(940 / canvasWidth, 620 / canvasHeight)))
+    : 1;
 
   const beginResize = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -103,7 +111,10 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
     const startY = event.clientY;
     let next = { width: originW, height: originH };
     const move = (e: PointerEvent) => {
-      next = { width: Math.max(4, originW + (e.clientX - startX)), height: Math.max(4, originH + (e.clientY - startY)) };
+      next = {
+        width: Math.max(4, originW + (e.clientX - startX) / previewScale),
+        height: Math.max(4, originH + (e.clientY - startY) / previewScale)
+      };
       setLiveTransform({ id: component.id, width: next.width, height: next.height });
     };
     const up = () => {
@@ -138,8 +149,6 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
     document.addEventListener("pointerup", up);
   };
 
-  const visible = compositions.filter((composition) => (composition.surface || "stage") === surface);
-  const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
   const selectedComponent =
     composition && selectedComponentIds.size === 1
       ? findComponent(composition.components || [], [...selectedComponentIds][0])
@@ -162,7 +171,7 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
       const dx = e.clientX - drag.startX;
       const dy = e.clientY - drag.startY;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
-      setLive({ id: drag.id, x: drag.originX + dx, y: drag.originY + dy });
+      setLive({ id: drag.id, x: drag.originX + dx / previewScale, y: drag.originY + dy / previewScale });
     };
     const up = (e: PointerEvent) => {
       document.removeEventListener("pointermove", move);
@@ -171,14 +180,34 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
       dragRef.current = null;
       setLive(null);
       if (drag && drag.moved) {
-        controller.moveComponent(drag.id, drag.originX + (e.clientX - drag.startX), drag.originY + (e.clientY - drag.startY));
+        controller.moveComponent(
+          drag.id,
+          drag.originX + (e.clientX - drag.startX) / previewScale,
+          drag.originY + (e.clientY - drag.startY) / previewScale
+        );
       }
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
   };
 
-  const renderComponent = (component: ArtComponent): ReactElement => {
+  const imageSourceFor = (component: ArtComponent): string => {
+    return String(get(component, "imageDataUrl") || "") || assetUrlById.get(String(get(component, "imageAssetId") || "")) || "";
+  };
+
+  const referencedCompositionFor = (component: ArtComponent, referencePath: Set<string>): ArtComposition | null => {
+    if (component.kind !== "reference") return null;
+    const referencedId = String(get(component, "artCompositionId") || "");
+    if (!referencedId || referencePath.has(referencedId)) return null;
+    return compositionById.get(referencedId) || null;
+  };
+
+  const renderComponent = (
+    component: ArtComponent,
+    layer: { index: number; total: number; interactive?: boolean; referencePath?: Set<string> } = { index: 0, total: 1 }
+  ): ReactElement => {
+    const interactive = layer.interactive !== false;
+    const referencePath = layer.referencePath || new Set<string>();
     const livePos = live?.id === component.id ? live : null;
     const liveTx = liveTransform?.id === component.id ? liveTransform : null;
     const x = livePos ? livePos.x : Number(get(component, "x") || 0);
@@ -193,9 +222,22 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
     const borderWidth = Number(get(component, "borderWidth") || 0);
     const scale = Number(get(component, "scale") || 1);
     const rotation = liveTx?.rotation ?? Number(get(component, "rotation") || 0);
-    const imageUrl = componentSupportsImageMask(component) ? String(get(component, "imageDataUrl") || "") : "";
+    const imageUrl = componentSupportsImageMask(component) ? imageSourceFor(component) : "";
     const objectFit = String(get(component, "imageObjectFit") || "cover");
-    const selected = selectedComponentIds.has(component.id);
+    const selected = interactive && selectedComponentIds.has(component.id);
+    const tintWithCurrentColor = Boolean(imageUrl && get(component, "imageTint") === "currentColor");
+    const referencedComposition = referencedCompositionFor(component, referencePath);
+    const referenceCanvas = referencedComposition?.canvas || { width, height };
+    const referenceScaleX = width / Math.max(1, Number(referenceCanvas.width || width));
+    const referenceScaleY = height / Math.max(1, Number(referenceCanvas.height || height));
+    const maskSize = objectFit === "fill" ? "100% 100%" : objectFit;
+    const transparentBase = kind === "container" || kind === "reference";
+    const fill = fillColor === "currentColor" ? "currentColor" : fillColor;
+    const background = tintWithCurrentColor
+      ? (fill === "transparent" ? "currentColor" : fill || "currentColor")
+      : imageUrl
+        ? "transparent"
+        : fillCss || (fill === "transparent" ? (transparentBase ? "transparent" : "rgba(255,255,255,0.06)") : fill);
 
     const style: CSSProperties = {
       position: "absolute",
@@ -206,20 +248,32 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
       transform: `scale(${scale}) rotate(${rotation}deg)`,
       transformOrigin: "center",
       borderRadius: shapeBorderRadius(String(get(component, "shapeStyle") || "rounded"), Number(get(component, "borderRadius") || 0)),
-      background: imageUrl ? "transparent" : fillCss || (fillColor === "transparent" ? "rgba(255,255,255,0.06)" : fillColor),
-      backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
-      backgroundSize: imageUrl ? objectFit : undefined,
+      background,
+      backgroundImage: imageUrl && !tintWithCurrentColor ? `url(${imageUrl})` : undefined,
+      backgroundSize: imageUrl && !tintWithCurrentColor ? objectFit : undefined,
       backgroundPosition: "center",
       backgroundRepeat: "no-repeat",
-      border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "1px solid rgba(255,255,255,0.18)",
+      WebkitMaskImage: tintWithCurrentColor ? `url(${imageUrl})` : undefined,
+      maskImage: tintWithCurrentColor ? `url(${imageUrl})` : undefined,
+      WebkitMaskSize: tintWithCurrentColor ? maskSize : undefined,
+      maskSize: tintWithCurrentColor ? maskSize : undefined,
+      WebkitMaskPosition: tintWithCurrentColor ? "center" : undefined,
+      maskPosition: tintWithCurrentColor ? "center" : undefined,
+      WebkitMaskRepeat: tintWithCurrentColor ? "no-repeat" : undefined,
+      maskRepeat: tintWithCurrentColor ? "no-repeat" : undefined,
+      border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "0",
       outline: selected ? "2px solid #22d3ee" : "none",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      color: String(get(component, "fontColor") || "#17131f"),
+      color:
+        fillColor === "currentColor" || get(component, "imageTint") === "currentColor"
+          ? "var(--art-preview-current-color)"
+          : String(get(component, "fontColor") || "#17131f"),
       fontSize: isTextual ? Number(get(component, "fontSize") || 16) : 11,
       overflow: "hidden",
-      boxSizing: "border-box"
+      boxSizing: "border-box",
+      zIndex: Math.max(1, layer.total - layer.index)
     };
 
     return (
@@ -230,14 +284,44 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
         data-art-component-kind={kind}
         aria-current={selected ? "true" : undefined}
         style={style}
-        onPointerDown={(event) => beginDrag(component, event)}
-        onClick={(event) => {
-          event.stopPropagation();
-          controller.selectComponent(component.id, event.metaKey || event.ctrlKey || event.shiftKey);
-        }}
+        onPointerDown={interactive ? (event) => beginDrag(component, event) : undefined}
+        onClick={
+          interactive
+            ? (event) => {
+                event.stopPropagation();
+                controller.selectComponent(component.id, event.metaKey || event.ctrlKey || event.shiftKey);
+              }
+            : undefined
+        }
       >
         {isTextual ? <span>{String(get(component, "defaultText") || "")}</span> : null}
-        {component.children?.map((child) => renderComponent(child))}
+        {referencedComposition ? (
+          <div
+            className="art-reference-canvas"
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: Number(referenceCanvas.width || width),
+              height: Number(referenceCanvas.height || height),
+              transform: `scale(${referenceScaleX}, ${referenceScaleY})`,
+              transformOrigin: "top left",
+              pointerEvents: "none"
+            }}
+          >
+            {(referencedComposition.components || []).map((child, index) =>
+              renderComponent(child, {
+                index,
+                total: referencedComposition.components?.length || 1,
+                interactive: false,
+                referencePath: new Set([...referencePath, referencedComposition.id])
+              })
+            )}
+          </div>
+        ) : null}
+        {(component.children || []).map((child, index) =>
+          renderComponent(child, { index, total: component.children?.length || 1, interactive, referencePath })
+        )}
         {selected ? (
           <>
             <div
@@ -277,46 +361,27 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
   };
 
   return (
-    <section className="flow-react-panel" data-art-react-component="composition-editor">
-      <div className="flow-editor-controls">
-        <button type="button" aria-pressed={surface === "stage"} onClick={() => setSurface("stage")}>
-          Stage
-        </button>
-        <button type="button" aria-pressed={surface === "controller"} onClick={() => setSurface("controller")}>
-          Controller
-        </button>
-        <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
-          Undo
-        </button>
-        <button type="button" disabled={!canRedo} onClick={() => controller.redo()}>
-          Redo
-        </button>
-        <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <span data-art-compositions-status>{dirty ? "Unsaved changes" : "Saved"}</span>
+    <section className="art-composition-editor" data-art-react-component="composition-editor">
+      <div className="art-editor-toolbar">
+        <div>
+          <h3>{composition?.name || "Composition"}</h3>
+          <span data-art-compositions-status>{dirty ? "Unsaved changes" : "Saved"}</span>
+        </div>
+        <div className="flow-editor-controls">
+          <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
+            Undo
+          </button>
+          <button type="button" disabled={!canRedo} onClick={() => controller.redo()}>
+            Redo
+          </button>
+          <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
 
-      <div className="art-editor-layout" style={{ display: "flex", gap: 12 }}>
-        <section className="flow-react-panel" data-art-react-component="composition-list" style={{ minWidth: 160 }}>
-          <h3>Compositions ({visible.length})</h3>
-          <ol className="flow-react-list">
-            {visible.map((item) => (
-              <li data-art-composition-id={item.id} key={item.id}>
-                <button
-                  type="button"
-                  aria-current={item.id === selectedCompositionId ? "true" : undefined}
-                  data-art-composition-select={item.id}
-                  onClick={() => controller.selectComposition(item.id)}
-                >
-                  {item.name}
-                </button>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        <section className="flow-react-panel" data-art-react-component="canvas" style={{ flex: 1 }}>
+      <div className="art-studio-layout">
+        <section className="art-preview-panel" data-art-react-component="canvas">
           <div className="flow-editor-controls">
             {creatableComponentKinds.map((kind) => (
               <button type="button" data-art-add-component={kind} key={kind} onClick={() => controller.addComponent(kind)}>
@@ -325,33 +390,48 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
             ))}
           </div>
           {composition ? (
-            <div
-              className="art-canvas"
-              data-art-canvas={composition.id}
-              style={{
-                position: "relative",
-                width: Number(composition.canvas?.width || 560),
-                height: Number(composition.canvas?.height || 230),
-                background: "#2b145f",
-                overflow: "hidden"
-              }}
-              onClick={() => controller.clearComponentSelection()}
-            >
-              {(composition.components || []).map((component) => renderComponent(component))}
+            <div className="art-canvas-viewport">
+              <div
+                className="art-canvas-shell"
+                style={{ width: canvasWidth * previewScale, height: canvasHeight * previewScale }}
+              >
+                <div
+                  className="art-canvas"
+                  data-art-canvas={composition.id}
+                  style={{
+                    position: "relative",
+                    width: canvasWidth,
+                    height: canvasHeight,
+                    transform: `scale(${previewScale})`,
+                    transformOrigin: "top left",
+                    overflow: "hidden"
+                  }}
+                  onClick={() => controller.clearComponentSelection()}
+                >
+                  {(composition.components || []).map((component, index) =>
+                    renderComponent(component, { index, total: composition.components?.length || 1 })
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <p>No composition selected.</p>
           )}
-          {composition ? (
-            <ComponentTree
-              components={composition.components || []}
-              selectedIds={selectedComponentIds}
-              onSelect={(id, additive) => controller.selectComponent(id, additive)}
-            />
-          ) : null}
         </section>
 
-        <ArtComponentInspector controller={controller} component={selectedComponent ?? null} />
+        <ArtComponentInspector
+          controller={controller}
+          component={selectedComponent ?? null}
+          tree={
+            composition ? (
+              <ComponentTree
+                components={composition.components || []}
+                selectedIds={selectedComponentIds}
+                onSelect={(id, additive) => controller.selectComponent(id, additive)}
+              />
+            ) : null
+          }
+        />
       </div>
     </section>
   );
@@ -359,14 +439,20 @@ export function ArtCompositionEditor({ controller }: ArtCompositionEditorProps) 
 
 function ArtComponentInspector({
   controller,
-  component
+  component,
+  tree
 }: {
   controller: ArtCompositionsController;
   component: ArtComponent | null;
+  tree: ReactNode;
 }) {
   if (!component) {
     return (
-      <section className="flow-react-panel flow-react-inspector" data-art-react-component="component-inspector" data-empty="true" style={{ minWidth: 180 }}>
+      <section className="flow-react-panel flow-react-inspector art-component-inspector" data-art-react-component="component-inspector" data-empty="true">
+        <div className="art-component-tree-panel">
+          <h3>Layers</h3>
+          {tree}
+        </div>
         <h3>Component</h3>
         <p>Select a component.</p>
       </section>
@@ -417,7 +503,11 @@ function ArtComponentInspector({
   };
 
   return (
-    <section className="flow-react-panel flow-react-inspector" data-art-react-component="component-inspector" data-art-component-id={component.id} style={{ minWidth: 180 }}>
+    <section className="flow-react-panel flow-react-inspector art-component-inspector" data-art-react-component="component-inspector" data-art-component-id={component.id}>
+      <div className="art-component-tree-panel">
+        <h3>Layers</h3>
+        {tree}
+      </div>
       <h3>{component.name}</h3>
       {textField("name", "Name")}
       {SCALAR_FIELDS.map((field) => numberField(field.key, field.label))}
