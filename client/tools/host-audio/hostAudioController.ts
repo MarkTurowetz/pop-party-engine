@@ -1,5 +1,6 @@
-import type { HostAudioLine, HostAudios } from "../../types/game-data";
+import type { HostAudioLine, HostAudios, JsonObject } from "../../types/game-data";
 import type { HostAudioApi } from "../../api/hostAudioApi";
+import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import {
   hostAudiosSnapshot,
   makeHostAudioReferenceId,
@@ -18,6 +19,8 @@ export interface HostAudioEditorState {
 export interface HostAudioControllerOptions {
   initialHostAudios: HostAudios;
   api: HostAudioApi;
+  postDraft?: (message: JsonObject) => Promise<unknown>;
+  draftPublishDelayMs?: number;
 }
 
 export interface HostAudioController {
@@ -52,6 +55,15 @@ export function createHostAudioController(
   const listeners = new Set<() => void>();
   let current = normalizeHostAudios(options.initialHostAudios);
   let savedSnapshot = hostAudiosSnapshot(current);
+  const sessionDraftPublisher = options.postDraft
+    ? createSessionDraftPublisher({
+        postDraft: options.postDraft,
+        savedSnapshot,
+        delayMs: options.draftPublishDelayMs,
+        clearMessage: { clearHostAudios: true },
+        draftMessage: (snapshot) => ({ hostAudios: JSON.parse(snapshot) as HostAudios })
+      })
+    : null;
   const undoStack: HostAudios[] = [];
   const redoStack: HostAudios[] = [];
   let saving = false;
@@ -82,6 +94,7 @@ export function createHostAudioController(
     redoStack.length = 0;
     current = normalizeHostAudios(draft);
     emit();
+    sessionDraftPublisher?.schedule(hostAudiosSnapshot(current));
   }
 
   return {
@@ -141,6 +154,7 @@ export function createHostAudioController(
       redoStack.push(current);
       current = previous;
       emit();
+      sessionDraftPublisher?.schedule(hostAudiosSnapshot(current));
     },
     redo: () => {
       const next = redoStack.pop();
@@ -148,12 +162,14 @@ export function createHostAudioController(
       undoStack.push(current);
       current = next;
       emit();
+      sessionDraftPublisher?.schedule(hostAudiosSnapshot(current));
     },
     revert: () => {
       undoStack.push(current);
       redoStack.length = 0;
       current = normalizeHostAudios(JSON.parse(savedSnapshot) as HostAudios);
       emit();
+      sessionDraftPublisher?.schedule(hostAudiosSnapshot(current));
     },
     save: async () => {
       saving = true;
@@ -164,6 +180,7 @@ export function createHostAudioController(
         const saved = normalizeHostAudios(response.hostAudios || current);
         current = saved;
         savedSnapshot = hostAudiosSnapshot(saved);
+        sessionDraftPublisher?.markSaved(savedSnapshot);
         saving = false;
         emit();
         return saved;

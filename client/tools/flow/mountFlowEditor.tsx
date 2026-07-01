@@ -1,12 +1,15 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { FlowApi } from "../../api/flowApi";
 import type { LayoutApi } from "../../api/layoutApi";
+import type { ToolDraftApi } from "../../api/toolDraftApi";
+import { installSessionDraftLifecycle } from "../common/sessionDraftLifecycle";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowEditorController, type FlowEditorController } from "./flowEditorController";
 import { FlowEditor } from "./FlowEditor";
 
 export interface MountFlowEditorOptions {
   api: FlowApi;
+  draftApi?: ToolDraftApi;
   layoutApi?: LayoutApi;
   document?: Document;
   /** Clear any prior in-memory Flow draft before loading. This makes refresh discard unsaved edits. */
@@ -43,26 +46,13 @@ function toActionTypeMeta(values: unknown[]): FlowActionTypeMeta[] {
  */
 export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<MountedFlowEditor> {
   const doc = options.document || document;
-  const clearFlowDraft = () => options.api.saveToolDraft({ clearFlow: true }).catch(() => undefined);
-  if (options.resetSessionDraftOnMount !== false) {
-    await clearFlowDraft();
-  }
-  const win = doc.defaultView || window;
-  const clearDraftOnPageHide = () => {
-    const body = JSON.stringify({ clearFlow: true });
-    if (win.navigator?.sendBeacon) {
-      const blob = new Blob([body], { type: "application/json" });
-      win.navigator.sendBeacon("/api/tool-drafts", blob);
-      return;
-    }
-    void fetch("/api/tool-drafts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-      keepalive: true
-    }).catch(() => undefined);
-  };
-  win.addEventListener("pagehide", clearDraftOnPageHide);
+  const draftApi = options.draftApi || options.api;
+  const draftLifecycle = await installSessionDraftLifecycle({
+    document: doc,
+    clearMessage: { clearFlow: true },
+    postDraft: (message) => draftApi.saveToolDraft(message),
+    resetOnMount: options.resetSessionDraftOnMount
+  });
   const loadStageLayouts = options.layoutApi
     ? async () => {
         const response = await options.layoutApi?.loadStageLayouts();
@@ -79,6 +69,7 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
     api: options.api,
     hasLocalDraft: response.hasLocalDraft,
     autoPublishDraft: true,
+    postDraft: (message) => draftApi.saveToolDraft(message),
     actionTypes
   });
 
@@ -117,8 +108,7 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
     root,
     unmount: () => {
       root.unmount();
-      win.removeEventListener("pagehide", clearDraftOnPageHide);
-      void clearFlowDraft();
+      draftLifecycle.dispose();
       doc.body?.classList?.remove("flow-react-preview-replace");
       host.remove();
     }

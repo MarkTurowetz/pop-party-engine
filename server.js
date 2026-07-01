@@ -149,7 +149,9 @@ const localDraftStore = {
   layouts: null,
   controllerLayouts: null,
   hostAudios: null,
-  artCompositions: null
+  artCompositions: null,
+  artOrganization: null,
+  artAssetReplacements: null
 };
 
 const APP_VERSION = readAppVersion(ROOT);
@@ -440,7 +442,9 @@ const {
   handleSaveArtOrganization,
   handleSaveArtComposition,
   handleReplaceArtAsset,
+  normalizeArtAssetReplacementsDraft,
   normalizeArtCompositionsDraft,
+  normalizeArtOrganization,
   sendArtAssetList,
   serveArtFile
 } = createArtAssetsRuntime({
@@ -768,11 +772,13 @@ const {
   clearActionTimer,
   clearAppliedActionEffects,
   localDraftStore,
+  normalizeArtAssetReplacementsDraft,
   normalizeControllerLayouts,
   normalizeGameConstants,
   normalizeGameFlow,
   normalizeHostAudios,
   normalizeArtCompositionsDraft,
+  normalizeArtOrganization,
   normalizeStageLayouts,
   readGameFlow,
   readJson,

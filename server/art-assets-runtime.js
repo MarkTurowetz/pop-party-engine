@@ -580,7 +580,7 @@ function createArtAssetsRuntime({
     const customFilePath = customFile ? path.join(customDir, customFile) : "";
     const hasCustom = Boolean(customFile && fs.existsSync(customFilePath));
     const currentUrl = hasCustom ? cacheBustFileUrl(customFilePath, `/art/custom/${customFile}`) : defaultUrl;
-    return {
+    const publicAsset = {
       id: asset.id,
       name: asset.name,
       category: asset.category,
@@ -594,6 +594,16 @@ function createArtAssetsRuntime({
       fileName: hasCustom ? customFile : asset.defaultFile,
       updatedAt: hasCustom ? custom.updatedAt : null
     };
+    const draftReplacement = localDraftStore?.artAssetReplacements?.[asset.id] || null;
+    if (!draftReplacement) return publicAsset;
+    return {
+      ...publicAsset,
+      currentUrl: draftReplacement.dataUrl,
+      hasCustom: true,
+      hasDraft: true,
+      fileName: draftReplacement.fileName || publicAsset.fileName,
+      updatedAt: draftReplacement.updatedAt || null
+    };
   }
 
   async function sendArtAssetList(res) {
@@ -603,7 +613,7 @@ function createArtAssetsRuntime({
       groups: artGroups,
       assets: artAssets.map((asset) => publicArtAsset(asset, manifest)),
       compositions: allPublicArtCompositions(manifest),
-      organization: normalizeArtOrganization(manifest.organization)
+      organization: normalizeArtOrganization(localDraftStore?.artOrganization || manifest.organization)
     });
   }
 
@@ -618,6 +628,7 @@ function createArtAssetsRuntime({
     const manifest = await loadArtManifest();
     manifest.organization = normalizeArtOrganization(payload.organization || payload);
     const savedManifest = await saveArtManifest(manifest);
+    if (localDraftStore) localDraftStore.artOrganization = null;
     onArtAssetsChanged({ type: "organization", updatedAt: new Date().toISOString() });
     sendJson(res, 200, { ok: true, organization: normalizeArtOrganization(savedManifest.organization) });
   }
@@ -638,6 +649,41 @@ function createArtAssetsRuntime({
       };
       return normalizeComposition(definition, incoming);
     });
+  }
+
+  function normalizeArtAssetReplacementsDraft(source = {}) {
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      throw new Error("Art asset replacement draft must be an object");
+    }
+    const replacements = {};
+    for (const [assetId, replacement] of Object.entries(source)) {
+      const asset = artAssets.find((item) => item.id === assetId);
+      if (!asset) throw new Error(`Unknown art asset id: ${assetId}`);
+      const dataUrl = String(replacement?.dataUrl || "");
+      const mimeType = String(replacement?.mimeType || "");
+      const fileName = path.basename(String(replacement?.fileName || "replacement"));
+      const match = dataUrl.match(/^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/);
+      if (!match || match[1] !== mimeType || !acceptedArtTypes[mimeType]) {
+        throw new Error("Use a PNG, SVG, JPG, or WEBP file");
+      }
+      const originalExt = path.extname(fileName).toLowerCase();
+      const expectedExt = acceptedArtTypes[mimeType];
+      const ext = originalExt === ".jpeg" ? ".jpg" : originalExt;
+      if (ext && ext !== expectedExt) {
+        throw new Error(`Selected file does not match ${mimeType}`);
+      }
+      const buffer = Buffer.from(match[2], "base64");
+      if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) {
+        throw new Error("Replacement art must be under 5 MB");
+      }
+      replacements[asset.id] = {
+        fileName: cleanImageName(fileName, "replacement"),
+        mimeType,
+        dataUrl,
+        updatedAt: cleanText(replacement?.updatedAt, new Date().toISOString(), 40) || new Date().toISOString()
+      };
+    }
+    return replacements;
   }
 
   async function handleSaveArtComposition(req, res, compositionId) {
@@ -682,6 +728,10 @@ function createArtAssetsRuntime({
       updatedAt: new Date().toISOString()
     };
     const savedManifest = await saveArtManifest(manifest);
+    if (Array.isArray(localDraftStore?.artCompositions)) {
+      localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => composition?.id !== definition.id);
+      if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
+    }
     onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: savedManifest.compositions?.[definition.id]?.updatedAt || manifest.compositions[definition.id].updatedAt });
     sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, savedManifest) });
   }
@@ -700,6 +750,10 @@ function createArtAssetsRuntime({
     if (knownCompositionIds.has(safeCompositionId)) deletedIds.add(safeCompositionId);
     manifest.deletedCompositionIds = [...deletedIds];
     const savedManifest = await saveArtManifest(manifest);
+    if (Array.isArray(localDraftStore?.artCompositions)) {
+      localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => composition?.id !== safeCompositionId);
+      if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
+    }
     onArtAssetsChanged({ type: "composition-delete", id: safeCompositionId, updatedAt: new Date().toISOString() });
     sendJson(res, 200, { ok: true, compositions: allPublicArtCompositions(savedManifest) });
   }
@@ -766,6 +820,10 @@ function createArtAssetsRuntime({
       updatedAt
     };
     const savedManifest = await saveArtManifest(manifest);
+    if (localDraftStore?.artAssetReplacements) {
+      delete localDraftStore.artAssetReplacements[asset.id];
+      if (!Object.keys(localDraftStore.artAssetReplacements).length) localDraftStore.artAssetReplacements = null;
+    }
     onArtAssetsChanged({ type: "asset", id: asset.id, updatedAt });
     sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, savedManifest) });
   }
@@ -797,6 +855,7 @@ function createArtAssetsRuntime({
     handleSaveArtOrganization,
     handleSaveArtComposition,
     handleReplaceArtAsset,
+    normalizeArtAssetReplacementsDraft,
     normalizeArtCompositionsDraft,
     normalizeArtOrganization,
     publicArtAsset,

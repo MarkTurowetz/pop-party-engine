@@ -50,4 +50,27 @@ describe("createArtAssetsController", () => {
     expect(controller.getState().assets[0].currentUrl).toBe("a-custom.png");
     expect(controller.getState().assets[0].hasCustom).toBe(true);
   });
+
+  it("publishes staged replacements as a session draft and clears when clean", async () => {
+    vi.useFakeTimers();
+    try {
+      const postDraft = vi.fn(async (message) => message);
+      const controller = createArtAssetsController({
+        initialAssets: [asset("a")],
+        api: fakeApi(),
+        postDraft,
+        draftPublishDelayMs: 1
+      });
+
+      controller.stageReplacement("a", replacement);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(postDraft).toHaveBeenLastCalledWith({ artAssetReplacements: { a: replacement } });
+
+      controller.clearReplacement("a");
+      await vi.advanceTimersByTimeAsync(1);
+      expect(postDraft).toHaveBeenLastCalledWith({ clearArtAssetReplacements: true });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

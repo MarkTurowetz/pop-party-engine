@@ -1,5 +1,6 @@
 import type { ArtApi } from "../../api/artApi";
-import type { ArtAsset, ArtComposition, ArtOrganization } from "../../types/game-data";
+import type { ArtAsset, ArtComposition, ArtOrganization, JsonObject } from "../../types/game-data";
+import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import {
   cleanOrganizationForSave,
   folderIdFromKey,
@@ -26,6 +27,8 @@ export interface ArtOrganizationControllerOptions {
   compositions: ArtComposition[];
   assets: ArtAsset[];
   api: ArtApi;
+  postDraft?: (message: JsonObject) => Promise<unknown>;
+  draftPublishDelayMs?: number;
 }
 
 export interface ArtOrganizationController {
@@ -59,6 +62,15 @@ export function createArtOrganizationController(
   const listeners = new Set<() => void>();
   let organization = normalizeOrganization(options.initialOrganization);
   let savedSnapshot = organizationSnapshot(organization, items);
+  const sessionDraftPublisher = options.postDraft
+    ? createSessionDraftPublisher({
+        postDraft: options.postDraft,
+        savedSnapshot,
+        delayMs: options.draftPublishDelayMs,
+        clearMessage: { clearArtOrganization: true },
+        draftMessage: (snapshot) => ({ artOrganization: JSON.parse(snapshot) as ArtOrganization })
+      })
+    : null;
   const undoStack: ArtOrganization[] = [];
   let saving = false;
   let error: string | null = null;
@@ -80,12 +92,17 @@ export function createArtOrganizationController(
     listeners.forEach((listener) => listener());
   }
 
+  function scheduleDraft(): void {
+    sessionDraftPublisher?.schedule(organizationSnapshot(organization, items));
+  }
+
   function mutate(apply: (org: ArtOrganization) => void): void {
     undoStack.push(JSON.parse(JSON.stringify(organization)) as ArtOrganization);
     const draft = JSON.parse(JSON.stringify(organization)) as ArtOrganization;
     apply(draft);
     organization = normalizeOrganization(draft);
     emit();
+    scheduleDraft();
   }
 
   return {
@@ -151,6 +168,7 @@ export function createArtOrganizationController(
       if (!previous) return;
       organization = previous;
       emit();
+      scheduleDraft();
     },
     save: async () => {
       saving = true;
@@ -161,6 +179,7 @@ export function createArtOrganizationController(
         const response = await api.saveArtOrganization(payload);
         organization = normalizeOrganization(response.organization || payload);
         savedSnapshot = organizationSnapshot(organization, items);
+        sessionDraftPublisher?.markSaved(savedSnapshot);
         saving = false;
         emit();
         return true;

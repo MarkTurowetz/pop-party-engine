@@ -59,4 +59,56 @@ describe("createLayoutController", () => {
     expect(api.saveStageLayouts).toHaveBeenCalledTimes(1);
     expect(controller.getState().dirty).toBe(false);
   });
+
+  it("publishes stage layout edits as session drafts", async () => {
+    vi.useFakeTimers();
+    try {
+      const postDraft = vi.fn(async (message) => message);
+      const controller = createLayoutController({
+        initialLayouts: layouts(),
+        mode: "stage",
+        api: fakeApi(),
+        postDraft,
+        draftPublishDelayMs: 1
+      });
+      controller.selectGroup("intro");
+
+      controller.moveElement("e1", 12, 6);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(postDraft).toHaveBeenLastCalledWith({
+        layouts: expect.objectContaining({
+          states: [expect.objectContaining({ elements: [expect.objectContaining({ x: 12, y: 6 })] })]
+        })
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("publishes controller layout edits under the controller draft key", async () => {
+    vi.useFakeTimers();
+    try {
+      const postDraft = vi.fn(async (message) => message);
+      const controller = createLayoutController({
+        initialLayouts: layouts(),
+        mode: "controller",
+        api: fakeApi(),
+        postDraft,
+        draftPublishDelayMs: 1
+      });
+      controller.selectGroup("intro");
+
+      controller.moveElement("e1", 20, 8);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(postDraft).toHaveBeenLastCalledWith({
+        controllerLayouts: expect.objectContaining({
+          states: [expect.objectContaining({ elements: [expect.objectContaining({ x: 20, y: 8 })] })]
+        })
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

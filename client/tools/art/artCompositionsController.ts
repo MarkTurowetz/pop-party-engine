@@ -1,5 +1,6 @@
 import type { ArtApi } from "../../api/artApi";
-import type { ArtComponent, ArtComposition } from "../../types/game-data";
+import type { ArtComponent, ArtComposition, JsonObject } from "../../types/game-data";
+import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import { artCompositionSnapshot, serializeArtCompositionForSave } from "./artCompositionModel";
 import { componentKindLabel, normalizeCreatableComponentKind } from "./artComponentSchema";
 
@@ -23,6 +24,8 @@ export interface ArtCompositionsEditorState {
 export interface ArtCompositionsControllerOptions {
   initialCompositions: ArtComposition[];
   api: ArtApi;
+  postDraft?: (message: JsonObject) => Promise<unknown>;
+  draftPublishDelayMs?: number;
 }
 
 export interface ArtCompositionsController {
@@ -91,6 +94,10 @@ function removeFromList(components: ArtComponent[], ids: Set<string>): ArtCompon
     }));
 }
 
+function compositionsDraftSnapshot(compositions: ArtComposition[]): string {
+  return JSON.stringify(compositions.map((composition) => serializeArtCompositionForSave(composition)));
+}
+
 export function createArtCompositionsController(
   options: ArtCompositionsControllerOptions
 ): ArtCompositionsController {
@@ -101,6 +108,15 @@ export function createArtCompositionsController(
   );
   const savedSnapshots = new Map<string, string>();
   for (const composition of compositions) savedSnapshots.set(composition.id, artCompositionSnapshot(composition));
+  const sessionDraftPublisher = options.postDraft
+    ? createSessionDraftPublisher({
+        postDraft: options.postDraft,
+        savedSnapshot: compositionsDraftSnapshot(compositions),
+        delayMs: options.draftPublishDelayMs,
+        clearMessage: { clearArtCompositions: true },
+        draftMessage: (snapshot) => ({ artCompositions: JSON.parse(snapshot) as ArtComposition[] })
+      })
+    : null;
 
   let selectedCompositionId = compositions[0]?.id || "";
   let selectedComponentIds = new Set<string>();
@@ -142,6 +158,10 @@ export function createArtCompositionsController(
     listeners.forEach((listener) => listener());
   }
 
+  function scheduleDraft(): void {
+    sessionDraftPublisher?.schedule(compositionsDraftSnapshot(compositions));
+  }
+
   function snapshot(): ArtComposition[] {
     return compositions.map((composition) => JSON.parse(JSON.stringify(composition)) as ArtComposition);
   }
@@ -155,6 +175,7 @@ export function createArtCompositionsController(
     redoStack.length = 0;
     apply(composition);
     emit();
+    scheduleDraft();
   }
 
   return {
@@ -225,6 +246,7 @@ export function createArtCompositionsController(
       redoStack.push(snapshot());
       compositions = previous;
       emit();
+      scheduleDraft();
     },
     redo: () => {
       const next = redoStack.pop();
@@ -232,10 +254,14 @@ export function createArtCompositionsController(
       undoStack.push(snapshot());
       compositions = next;
       emit();
+      scheduleDraft();
     },
     save: async () => {
       const dirty = dirtyIds();
-      if (!dirty.size) return true;
+      if (!dirty.size) {
+        sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
+        return true;
+      }
       saving = true;
       error = null;
       emit();
@@ -250,6 +276,7 @@ export function createArtCompositionsController(
           if (index >= 0) compositions[index] = saved;
           savedSnapshots.set(id, artCompositionSnapshot(saved));
         }
+        sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
         saving = false;
         emit();
         return true;

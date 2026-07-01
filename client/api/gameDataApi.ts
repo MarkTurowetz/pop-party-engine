@@ -4,6 +4,7 @@ import { createFlowApi, type FlowApi } from "./flowApi";
 import { createApiClient, type ApiClient, type ApiClientOptions } from "./http";
 import { createHostAudioApi, type HostAudioApi } from "./hostAudioApi";
 import { createLayoutApi, type LayoutApi } from "./layoutApi";
+import { createToolDraftApi, type ToolDraftApi } from "./toolDraftApi";
 import { validateHealthResponse } from "./validators";
 import type { HealthResponse } from "../types/game-data";
 
@@ -15,6 +16,7 @@ export interface GameDataApi {
   art: ArtApi;
   constants: ConstantsApi;
   hostAudio: HostAudioApi;
+  drafts: ToolDraftApi;
 }
 
 export function createGameDataApi(options: ApiClientOptions = {}): GameDataApi {
@@ -26,6 +28,7 @@ export function createGameDataApi(options: ApiClientOptions = {}): GameDataApi {
     layout: createLayoutApi(client),
     art: createArtApi(client),
     constants: createConstantsApi(client),
-    hostAudio: createHostAudioApi(client)
+    hostAudio: createHostAudioApi(client),
+    drafts: createToolDraftApi(client)
   };
 }

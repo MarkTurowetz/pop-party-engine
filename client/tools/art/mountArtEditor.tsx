@@ -1,5 +1,7 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { ArtApi } from "../../api/artApi";
+import type { ToolDraftApi } from "../../api/toolDraftApi";
+import { installSessionDraftLifecycle, type SessionDraftLifecycle } from "../common/sessionDraftLifecycle";
 import { createArtAssetsController, type ArtAssetsController } from "./artAssetsController";
 import { createArtCompositionsController, type ArtCompositionsController } from "./artCompositionsController";
 import { createArtOrganizationController, type ArtOrganizationController } from "./artOrganizationController";
@@ -8,6 +10,7 @@ import { ArtEditor } from "./ArtEditor";
 
 export interface MountArtEditorOptions {
   api: ArtApi;
+  draftApi?: ToolDraftApi;
   document?: Document;
   surface?: string;
   /** Reveal #artScreen (standalone /art). False on /tools (router manages). */
@@ -24,17 +27,44 @@ export interface MountedArtEditor {
 
 export async function mountArtEditor(options: MountArtEditorOptions): Promise<MountedArtEditor> {
   const doc = options.document || document;
+  const draftLifecycles: SessionDraftLifecycle[] = [];
+  if (options.draftApi) {
+    draftLifecycles.push(
+      await installSessionDraftLifecycle({
+        document: doc,
+        clearMessage: { clearArtAssetReplacements: true },
+        postDraft: (message) => options.draftApi!.saveToolDraft(message)
+      }),
+      await installSessionDraftLifecycle({
+        document: doc,
+        clearMessage: { clearArtCompositions: true },
+        postDraft: (message) => options.draftApi!.saveToolDraft(message)
+      }),
+      await installSessionDraftLifecycle({
+        document: doc,
+        clearMessage: { clearArtOrganization: true },
+        postDraft: (message) => options.draftApi!.saveToolDraft(message)
+      })
+    );
+  }
   const response = await options.api.loadArtAssets();
-  const assetsController = createArtAssetsController({ initialAssets: response.assets || [], api: options.api });
+  const postDraft = options.draftApi ? (message: Parameters<ToolDraftApi["saveToolDraft"]>[0]) => options.draftApi!.saveToolDraft(message) : undefined;
+  const assetsController = createArtAssetsController({
+    initialAssets: response.assets || [],
+    api: options.api,
+    postDraft
+  });
   const compositionsController = createArtCompositionsController({
     initialCompositions: response.compositions || [],
-    api: options.api
+    api: options.api,
+    postDraft
   });
   const organizationController = createArtOrganizationController({
     initialOrganization: normalizeOrganization(response.organization),
     compositions: response.compositions || [],
     assets: response.assets || [],
-    api: options.api
+    api: options.api,
+    postDraft
   });
 
   const host = doc.createElement("div");
@@ -68,6 +98,7 @@ export async function mountArtEditor(options: MountArtEditorOptions): Promise<Mo
     root,
     unmount: () => {
       root.unmount();
+      for (const draftLifecycle of draftLifecycles) draftLifecycle.dispose();
       doc.body?.classList?.remove("art-react-replace");
       host.remove();
     }

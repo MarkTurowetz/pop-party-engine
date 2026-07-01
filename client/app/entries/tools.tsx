@@ -75,6 +75,7 @@ installToolContextAdapter(toolsContext);
 let flowController: FlowEditorController | null = null;
 void mountFlowEditor({
   api: toolsContext.api.flow,
+  draftApi: toolsContext.api.drafts,
   layoutApi: toolsContext.api.layout,
   surface: toolsContext.surface,
   revealScreen: false
@@ -88,11 +89,14 @@ registerDashboardTool("flow", {
 });
 
 let constantsController: ConstantsController | null = null;
-void mountConstantsEditor({ api: toolsContext.api.constants, surface: toolsContext.surface, revealScreen: false }).then(
-  (mounted) => {
-    constantsController = mounted.controller;
-  }
-);
+void mountConstantsEditor({
+  api: toolsContext.api.constants,
+  draftApi: toolsContext.api.drafts,
+  surface: toolsContext.surface,
+  revealScreen: false
+}).then((mounted) => {
+  constantsController = mounted.controller;
+});
 registerDashboardTool("constants", {
   isDirty: () => constantsController?.getState().dirty ?? false,
   save: () => constantsController?.save() ?? Promise.resolve(),
@@ -100,11 +104,14 @@ registerDashboardTool("constants", {
 });
 
 let hostAudioController: HostAudioController | null = null;
-void mountHostAudioEditor({ api: toolsContext.api.hostAudio, surface: toolsContext.surface, revealScreen: false }).then(
-  (mounted) => {
-    hostAudioController = mounted.controller;
-  }
-);
+void mountHostAudioEditor({
+  api: toolsContext.api.hostAudio,
+  draftApi: toolsContext.api.drafts,
+  surface: toolsContext.surface,
+  revealScreen: false
+}).then((mounted) => {
+  hostAudioController = mounted.controller;
+});
 registerDashboardTool("host-audio", {
   isDirty: () => hostAudioController?.getState().dirty ?? false,
   save: () => hostAudioController?.save() ?? Promise.resolve(),
@@ -112,7 +119,12 @@ registerDashboardTool("host-audio", {
 });
 
 let artEditor: MountedArtEditor | null = null;
-void mountArtEditor({ api: toolsContext.api.art, surface: toolsContext.surface, revealScreen: false }).then((mounted) => {
+void mountArtEditor({
+  api: toolsContext.api.art,
+  draftApi: toolsContext.api.drafts,
+  surface: toolsContext.surface,
+  revealScreen: false
+}).then((mounted) => {
   artEditor = mounted;
 });
 registerDashboardTool("art", {
@@ -133,11 +145,14 @@ registerDashboardTool("art", {
 });
 
 let layoutEditor: MountedLayoutEditor | null = null;
-void mountLayoutEditor({ api: toolsContext.api.layout, surface: toolsContext.surface, revealScreen: false }).then(
-  (mounted) => {
-    layoutEditor = mounted;
-  }
-);
+void mountLayoutEditor({
+  api: toolsContext.api.layout,
+  draftApi: toolsContext.api.drafts,
+  surface: toolsContext.surface,
+  revealScreen: false
+}).then((mounted) => {
+  layoutEditor = mounted;
+});
 registerDashboardTool("layout", {
   isDirty: () => layoutEditor?.stageController.getState().dirty ?? false,
   save: () => layoutEditor?.stageController.save() ?? Promise.resolve(),

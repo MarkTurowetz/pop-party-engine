@@ -85,4 +85,30 @@ describe("createArtOrganizationController", () => {
     expect(api.saveArtOrganization).toHaveBeenCalledTimes(1);
     expect(controller.getState().dirty).toBe(false);
   });
+
+  it("publishes organization changes as a session draft", async () => {
+    vi.useFakeTimers();
+    try {
+      const postDraft = vi.fn(async (message) => message);
+      const controller = createArtOrganizationController({
+        initialOrganization: emptyOrganization(),
+        compositions: comps,
+        assets: [],
+        api: fakeApi(),
+        postDraft,
+        draftPublishDelayMs: 1
+      });
+
+      controller.createFolder("stage", "Group");
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(postDraft).toHaveBeenLastCalledWith({
+        artOrganization: expect.objectContaining({
+          stage: expect.objectContaining({ folders: [expect.objectContaining({ name: "Group" })] })
+        })
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

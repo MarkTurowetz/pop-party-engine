@@ -8,6 +8,7 @@ export const flowToolContext = createToolAppContext({ surface: "flow" });
 installToolContextAdapter(flowToolContext);
 void mountFlowEditor({
   api: flowToolContext.api.flow,
+  draftApi: flowToolContext.api.drafts,
   layoutApi: flowToolContext.api.layout,
   surface: flowToolContext.surface
 });

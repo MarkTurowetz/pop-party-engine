@@ -71,4 +71,26 @@ describe("createArtCompositionsController", () => {
     expect(api.saveArtComposition).toHaveBeenCalledWith("a", expect.anything());
     expect(controller.getState().dirty).toBe(false);
   });
+
+  it("publishes composition edits as a session draft", async () => {
+    vi.useFakeTimers();
+    try {
+      const postDraft = vi.fn(async (message) => message);
+      const controller = createArtCompositionsController({
+        initialCompositions: [composition("a")],
+        api: fakeApi(),
+        postDraft,
+        draftPublishDelayMs: 1
+      });
+
+      controller.addComponent("shape");
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(postDraft).toHaveBeenLastCalledWith({
+        artCompositions: [expect.objectContaining({ id: "a", components: [expect.objectContaining({ kind: "shape" })] })]
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

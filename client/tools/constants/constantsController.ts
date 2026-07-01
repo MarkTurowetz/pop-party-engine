@@ -1,5 +1,6 @@
-import type { GameConstants } from "../../types/game-data";
+import type { GameConstants, JsonObject } from "../../types/game-data";
 import type { ConstantsApi } from "../../api/constantsApi";
+import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import {
   constantsSnapshot,
   normalizeCustomConstantType,
@@ -27,6 +28,8 @@ export interface ConstantsEditorState {
 export interface ConstantsControllerOptions {
   initialConstants: GameConstants;
   api: ConstantsApi;
+  postDraft?: (message: JsonObject) => Promise<unknown>;
+  draftPublishDelayMs?: number;
 }
 
 export interface ConstantsController {
@@ -56,6 +59,15 @@ export function createConstantsController(options: ConstantsControllerOptions): 
   const listeners = new Set<() => void>();
   let current = normalizeGameConstants(options.initialConstants);
   let savedSnapshot = constantsSnapshot(current);
+  const sessionDraftPublisher = options.postDraft
+    ? createSessionDraftPublisher({
+        postDraft: options.postDraft,
+        savedSnapshot,
+        delayMs: options.draftPublishDelayMs,
+        clearMessage: { clearConstants: true },
+        draftMessage: (snapshot) => ({ constants: JSON.parse(snapshot) as GameConstants })
+      })
+    : null;
   const undoStack: NormalizedGameConstants[] = [];
   const redoStack: NormalizedGameConstants[] = [];
   let saving = false;
@@ -80,6 +92,10 @@ export function createConstantsController(options: ConstantsControllerOptions): 
     listeners.forEach((listener) => listener());
   }
 
+  function scheduleDraft(): void {
+    sessionDraftPublisher?.schedule(constantsSnapshot(current));
+  }
+
   function getState(): ConstantsEditorState {
     return cachedState;
   }
@@ -94,6 +110,7 @@ export function createConstantsController(options: ConstantsControllerOptions): 
     redoStack.length = 0;
     current = next;
     emit();
+    scheduleDraft();
   }
 
   return {
@@ -147,6 +164,7 @@ export function createConstantsController(options: ConstantsControllerOptions): 
       redoStack.push(current);
       current = previous;
       emit();
+      scheduleDraft();
     },
     redo: () => {
       const next = redoStack.pop();
@@ -154,12 +172,14 @@ export function createConstantsController(options: ConstantsControllerOptions): 
       undoStack.push(current);
       current = next;
       emit();
+      scheduleDraft();
     },
     revert: () => {
       undoStack.push(current);
       redoStack.length = 0;
       current = normalizeGameConstants(JSON.parse(savedSnapshot) as GameConstants);
       emit();
+      scheduleDraft();
     },
     save: async () => {
       saving = true;
@@ -170,6 +190,7 @@ export function createConstantsController(options: ConstantsControllerOptions): 
         const saved = normalizeGameConstants(response.constants || current);
         current = saved;
         savedSnapshot = constantsSnapshot(saved);
+        sessionDraftPublisher?.markSaved(savedSnapshot);
         saving = false;
         emit();
         return saved;

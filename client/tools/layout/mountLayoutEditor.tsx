@@ -1,10 +1,13 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { LayoutApi } from "../../api/layoutApi";
+import type { ToolDraftApi } from "../../api/toolDraftApi";
+import { installSessionDraftLifecycle, type SessionDraftLifecycle } from "../common/sessionDraftLifecycle";
 import { createLayoutController, type LayoutController } from "./layoutController";
 import { LayoutEditor } from "./LayoutEditor";
 
 export interface MountLayoutEditorOptions {
   api: LayoutApi;
+  draftApi?: ToolDraftApi;
   document?: Document;
   surface?: string;
   /** Reveal #layoutScreen (standalone /layout). False on /tools (router manages). */
@@ -20,12 +23,34 @@ export interface MountedLayoutEditor {
 
 export async function mountLayoutEditor(options: MountLayoutEditorOptions): Promise<MountedLayoutEditor> {
   const doc = options.document || document;
+  const draftLifecycles: SessionDraftLifecycle[] = [];
+  if (options.draftApi) {
+    draftLifecycles.push(
+      await installSessionDraftLifecycle({
+        document: doc,
+        clearMessage: { clearLayouts: true },
+        postDraft: (message) => options.draftApi!.saveToolDraft(message)
+      }),
+      await installSessionDraftLifecycle({
+        document: doc,
+        clearMessage: { clearControllerLayouts: true },
+        postDraft: (message) => options.draftApi!.saveToolDraft(message)
+      })
+    );
+  }
   const [stage, controller] = await Promise.all([options.api.loadStageLayouts(), options.api.loadControllerLayouts()]);
-  const stageController = createLayoutController({ initialLayouts: stage.layouts, mode: "stage", api: options.api });
+  const postDraft = options.draftApi ? (message: Parameters<ToolDraftApi["saveToolDraft"]>[0]) => options.draftApi!.saveToolDraft(message) : undefined;
+  const stageController = createLayoutController({
+    initialLayouts: stage.layouts,
+    mode: "stage",
+    api: options.api,
+    postDraft
+  });
   const controllerController = createLayoutController({
     initialLayouts: controller.layouts,
     mode: "controller",
-    api: options.api
+    api: options.api,
+    postDraft
   });
 
   const host = doc.createElement("div");
@@ -53,6 +78,7 @@ export async function mountLayoutEditor(options: MountLayoutEditorOptions): Prom
     root,
     unmount: () => {
       root.unmount();
+      for (const draftLifecycle of draftLifecycles) draftLifecycle.dispose();
       doc.body?.classList?.remove("layout-react-replace");
       host.remove();
     }

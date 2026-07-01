@@ -72,4 +72,29 @@ describe("createConstantsController", () => {
     expect(controller.getState().constants.gameTitle).toBe("Test");
     expect(controller.getState().dirty).toBe(false);
   });
+
+  it("publishes unsaved edits as a session draft and clears when clean", async () => {
+    vi.useFakeTimers();
+    try {
+      const postDraft = vi.fn(async (message) => message);
+      const controller = createConstantsController({
+        initialConstants: initial,
+        api: fakeApi(),
+        postDraft,
+        draftPublishDelayMs: 1
+      });
+
+      controller.setConstant("gameTitle", "Changed");
+      await vi.advanceTimersByTimeAsync(1);
+      expect(postDraft).toHaveBeenLastCalledWith({
+        constants: expect.objectContaining({ gameTitle: "Changed" })
+      });
+
+      controller.undo();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(postDraft).toHaveBeenLastCalledWith({ clearConstants: true });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

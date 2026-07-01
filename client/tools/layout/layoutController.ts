@@ -1,5 +1,6 @@
 import type { LayoutApi } from "../../api/layoutApi";
-import type { LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
+import type { JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
+import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import { layoutGroups, layoutSnapshot, type LayoutMode } from "./layoutModel";
 
 export interface LayoutEditorState {
@@ -17,6 +18,8 @@ export interface LayoutControllerOptions {
   initialLayouts: StageLayoutCollection;
   mode: LayoutMode;
   api: LayoutApi;
+  postDraft?: (message: JsonObject) => Promise<unknown>;
+  draftPublishDelayMs?: number;
 }
 
 export interface LayoutController {
@@ -46,6 +49,18 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
   const listeners = new Set<() => void>();
   let layouts = JSON.parse(JSON.stringify(options.initialLayouts)) as StageLayoutCollection;
   let savedSnapshot = layoutSnapshot(layouts, mode);
+  const sessionDraftPublisher = options.postDraft
+    ? createSessionDraftPublisher({
+        postDraft: options.postDraft,
+        savedSnapshot,
+        delayMs: options.draftPublishDelayMs,
+        clearMessage: mode === "stage" ? { clearLayouts: true } : { clearControllerLayouts: true },
+        draftMessage: (snapshotText) =>
+          mode === "stage"
+            ? { layouts: JSON.parse(snapshotText) as StageLayoutCollection }
+            : { controllerLayouts: JSON.parse(snapshotText) as StageLayoutCollection }
+      })
+    : null;
   let selectedGroupId = layouts.global?.id || "global";
   let selectedElementIds = new Set<string>();
   const undoStack: StageLayoutCollection[] = [];
@@ -75,6 +90,10 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
     listeners.forEach((listener) => listener());
   }
 
+  function scheduleDraft(): void {
+    sessionDraftPublisher?.schedule(layoutSnapshot(layouts, mode));
+  }
+
   function snapshot(): StageLayoutCollection {
     return JSON.parse(JSON.stringify(layouts)) as StageLayoutCollection;
   }
@@ -86,6 +105,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
     apply(target);
     emit();
+    scheduleDraft();
   }
 
   return {
@@ -160,6 +180,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       if (!previous) return;
       layouts = previous;
       emit();
+      scheduleDraft();
     },
     save: async () => {
       saving = true;
@@ -170,6 +191,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
           mode === "stage" ? await api.saveStageLayouts(layouts) : await api.saveControllerLayouts(layouts);
         layouts = (response.layouts || layouts) as StageLayoutCollection;
         savedSnapshot = layoutSnapshot(layouts, mode);
+        sessionDraftPublisher?.markSaved(savedSnapshot);
         saving = false;
         emit();
         return true;

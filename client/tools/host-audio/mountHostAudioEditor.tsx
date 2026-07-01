@@ -1,10 +1,13 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { HostAudioApi } from "../../api/hostAudioApi";
+import type { ToolDraftApi } from "../../api/toolDraftApi";
+import { installSessionDraftLifecycle, type SessionDraftLifecycle } from "../common/sessionDraftLifecycle";
 import { createHostAudioController, type HostAudioController } from "./hostAudioController";
 import { HostAudioEditor } from "./HostAudioEditor";
 
 export interface MountHostAudioEditorOptions {
   api: HostAudioApi;
+  draftApi?: ToolDraftApi;
   document?: Document;
   surface?: string;
   /** Reveal #hostAudioScreen (standalone /host-audio). False on /tools (router manages). */
@@ -19,8 +22,19 @@ export interface MountedHostAudioEditor {
 
 export async function mountHostAudioEditor(options: MountHostAudioEditorOptions): Promise<MountedHostAudioEditor> {
   const doc = options.document || document;
+  const draftLifecycle: SessionDraftLifecycle | null = options.draftApi
+    ? await installSessionDraftLifecycle({
+        document: doc,
+        clearMessage: { clearHostAudios: true },
+        postDraft: (message) => options.draftApi!.saveToolDraft(message)
+      })
+    : null;
   const response = await options.api.loadHostAudios();
-  const controller = createHostAudioController({ initialHostAudios: response.hostAudios, api: options.api });
+  const controller = createHostAudioController({
+    initialHostAudios: response.hostAudios,
+    api: options.api,
+    postDraft: options.draftApi ? (message) => options.draftApi!.saveToolDraft(message) : undefined
+  });
 
   const host = doc.createElement("div");
   host.id = "hostAudioEditorRoot";
@@ -44,6 +58,7 @@ export async function mountHostAudioEditor(options: MountHostAudioEditorOptions)
     root,
     unmount: () => {
       root.unmount();
+      draftLifecycle?.dispose();
       doc.body?.classList?.remove("host-audio-react-replace");
       host.remove();
     }

@@ -1,5 +1,6 @@
 import type { ArtApi } from "../../api/artApi";
-import type { ArtAsset } from "../../types/game-data";
+import type { ArtAsset, JsonObject } from "../../types/game-data";
+import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 
 /**
  * Controller for the Art asset manager (slice 1 of the Art tool). Holds the
@@ -25,6 +26,8 @@ export interface ArtAssetsEditorState {
 export interface ArtAssetsControllerOptions {
   initialAssets: ArtAsset[];
   api: ArtApi;
+  postDraft?: (message: JsonObject) => Promise<unknown>;
+  draftPublishDelayMs?: number;
 }
 
 export interface ArtAssetsController {
@@ -35,11 +38,28 @@ export interface ArtAssetsController {
   save(): Promise<boolean>;
 }
 
+function pendingSnapshot(pending: Map<string, ArtAssetReplacement>): string {
+  return JSON.stringify([...pending.entries()].sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function pendingDraftMessage(snapshot: string): JsonObject {
+  return { artAssetReplacements: Object.fromEntries(JSON.parse(snapshot) as [string, ArtAssetReplacement][]) };
+}
+
 export function createArtAssetsController(options: ArtAssetsControllerOptions): ArtAssetsController {
   const { api } = options;
   const listeners = new Set<() => void>();
   let assets = [...options.initialAssets];
   let pending = new Map<string, ArtAssetReplacement>();
+  const sessionDraftPublisher = options.postDraft
+    ? createSessionDraftPublisher({
+        postDraft: options.postDraft,
+        savedSnapshot: pendingSnapshot(pending),
+        delayMs: options.draftPublishDelayMs,
+        clearMessage: { clearArtAssetReplacements: true },
+        draftMessage: pendingDraftMessage
+      })
+    : null;
   let saving = false;
   let error: string | null = null;
   let cachedState = buildState();
@@ -51,6 +71,10 @@ export function createArtAssetsController(options: ArtAssetsControllerOptions): 
   function emit(): void {
     cachedState = buildState();
     listeners.forEach((listener) => listener());
+  }
+
+  function scheduleDraft(): void {
+    sessionDraftPublisher?.schedule(pendingSnapshot(pending));
   }
 
   return {
@@ -65,11 +89,13 @@ export function createArtAssetsController(options: ArtAssetsControllerOptions): 
       pending = new Map(pending);
       pending.set(assetId, replacement);
       emit();
+      scheduleDraft();
     },
     clearReplacement: (assetId) => {
       pending = new Map(pending);
       pending.delete(assetId);
       emit();
+      scheduleDraft();
     },
     save: async () => {
       if (!pending.size) return true;
@@ -83,6 +109,7 @@ export function createArtAssetsController(options: ArtAssetsControllerOptions): 
           assets = assets.map((asset) => (asset.id === updated.id ? updated : asset));
         }
         pending = new Map();
+        sessionDraftPublisher?.markSaved(pendingSnapshot(pending));
         saving = false;
         emit();
         return true;

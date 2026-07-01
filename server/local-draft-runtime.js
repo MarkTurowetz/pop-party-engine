@@ -3,8 +3,10 @@ function createLocalDraftRuntime({
   clearActionTimer,
   clearAppliedActionEffects,
   localDraftStore,
+  normalizeArtAssetReplacementsDraft,
   normalizeControllerLayouts,
   normalizeArtCompositionsDraft,
+  normalizeArtOrganization,
   normalizeGameConstants,
   normalizeGameFlow,
   normalizeHostAudios,
@@ -27,12 +29,16 @@ function createLocalDraftRuntime({
       controllerLayouts: localDraftStore.controllerLayouts,
       hostAudios: localDraftStore.hostAudios,
       artCompositions: localDraftStore.artCompositions,
+      artOrganization: localDraftStore.artOrganization,
+      artAssetReplacements: localDraftStore.artAssetReplacements,
       hasFlowDraft: Boolean(localDraftStore.flow),
       hasConstantsDraft: Boolean(localDraftStore.constants),
       hasLayoutDraft: Boolean(localDraftStore.layouts),
       hasControllerLayoutDraft: Boolean(localDraftStore.controllerLayouts),
       hasHostAudiosDraft: Boolean(localDraftStore.hostAudios),
-      hasArtCompositionsDraft: Boolean(localDraftStore.artCompositions)
+      hasArtCompositionsDraft: Boolean(localDraftStore.artCompositions),
+      hasArtOrganizationDraft: Boolean(localDraftStore.artOrganization),
+      hasArtAssetReplacementsDraft: Boolean(localDraftStore.artAssetReplacements)
     });
   }
 
@@ -88,6 +94,8 @@ function createLocalDraftRuntime({
     if (payload.clearControllerLayouts) localDraftStore.controllerLayouts = null;
     if (payload.clearHostAudios) localDraftStore.hostAudios = null;
     if (payload.clearArtCompositions) localDraftStore.artCompositions = null;
+    if (payload.clearArtOrganization) localDraftStore.artOrganization = null;
+    if (payload.clearArtAssetReplacements) localDraftStore.artAssetReplacements = null;
 
     if (!applyDraftValue(res, "flow", payload.flow, normalizeGameFlow, "Local flow draft")) return;
     if (!applyDraftValue(res, "constants", payload.constants, normalizeGameConstants, "Local constants draft")) return;
@@ -95,11 +103,20 @@ function createLocalDraftRuntime({
     if (!applyDraftValue(res, "controllerLayouts", payload.controllerLayouts, normalizeControllerLayouts, "Local controller layout draft")) return;
     if (!applyDraftValue(res, "hostAudios", payload.hostAudios, normalizeHostAudios, "Local host audio draft")) return;
     if (!applyDraftValue(res, "artCompositions", payload.artCompositions, normalizeArtCompositionsDraft, "Local art composition draft")) return;
+    if (!applyDraftValue(res, "artOrganization", payload.artOrganization, normalizeArtOrganization, "Local art organization draft")) return;
+    if (!applyDraftValue(res, "artAssetReplacements", payload.artAssetReplacements, normalizeArtAssetReplacementsDraft, "Local art asset replacement draft")) return;
 
     syncDraftLayoutsToFlow();
     broadcastDraftChange(payload);
-    if (payload.artCompositions || payload.clearArtCompositions) {
-      onArtAssetsChanged({ type: "art-compositions-draft", updatedAt: new Date().toISOString() });
+    if (
+      payload.artCompositions ||
+      payload.clearArtCompositions ||
+      payload.artOrganization ||
+      payload.clearArtOrganization ||
+      payload.artAssetReplacements ||
+      payload.clearArtAssetReplacements
+    ) {
+      onArtAssetsChanged({ type: "art-draft", updatedAt: new Date().toISOString() });
     }
     sendLocalDraft(res);
   }

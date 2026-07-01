@@ -1,10 +1,13 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { ConstantsApi } from "../../api/constantsApi";
+import type { ToolDraftApi } from "../../api/toolDraftApi";
+import { installSessionDraftLifecycle, type SessionDraftLifecycle } from "../common/sessionDraftLifecycle";
 import { createConstantsController, type ConstantsController } from "./constantsController";
 import { ConstantsEditor } from "./ConstantsEditor";
 
 export interface MountConstantsEditorOptions {
   api: ConstantsApi;
+  draftApi?: ToolDraftApi;
   document?: Document;
   surface?: string;
   /** Reveal #constantsScreen (standalone /constants). False on /tools where the router manages it. */
@@ -20,8 +23,19 @@ export interface MountedConstantsEditor {
 /** Mount the React-only constants editor: loads from the API, no legacy bridge. */
 export async function mountConstantsEditor(options: MountConstantsEditorOptions): Promise<MountedConstantsEditor> {
   const doc = options.document || document;
+  const draftLifecycle: SessionDraftLifecycle | null = options.draftApi
+    ? await installSessionDraftLifecycle({
+        document: doc,
+        clearMessage: { clearConstants: true },
+        postDraft: (message) => options.draftApi!.saveToolDraft(message)
+      })
+    : null;
   const response = await options.api.loadGameConstants();
-  const controller = createConstantsController({ initialConstants: response.constants, api: options.api });
+  const controller = createConstantsController({
+    initialConstants: response.constants,
+    api: options.api,
+    postDraft: options.draftApi ? (message) => options.draftApi!.saveToolDraft(message) : undefined
+  });
 
   const host = doc.createElement("div");
   host.id = "constantsEditorRoot";
@@ -45,6 +59,7 @@ export async function mountConstantsEditor(options: MountConstantsEditorOptions)
     root,
     unmount: () => {
       root.unmount();
+      draftLifecycle?.dispose();
       doc.body?.classList?.remove("constants-react-replace");
       host.remove();
     }

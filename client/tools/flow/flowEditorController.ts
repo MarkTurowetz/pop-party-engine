@@ -1,4 +1,4 @@
-import type { FlowAction, GameFlow } from "../../types/game-data";
+import type { FlowAction, GameFlow, JsonObject } from "../../types/game-data";
 import type { FlowApi } from "../../api/flowApi";
 import {
   addActionOptionCommand,
@@ -108,6 +108,7 @@ export interface FlowEditorControllerOptions {
    */
   autoPublishDraft?: boolean;
   draftPublishDelayMs?: number;
+  postDraft?: (message: JsonObject) => Promise<unknown>;
   /** Action type metadata (id/name/category) used to apply type-change defaults + timing. */
   actionTypes?: FlowActionTypeMeta[];
   /** Protected state ids whose ids are not regenerated on rename. */
@@ -262,7 +263,7 @@ export function createFlowEditorController(
   let savedSnapshot = savedSnapshotOf(store.snapshot().flow);
   let lastCommittedFlowSnapshot = savedSnapshot;
   const sessionDraftPublisher = createSessionDraftPublisher({
-    postDraft: (message) => api.saveToolDraft(message),
+    postDraft: (message) => (options.postDraft || api.saveToolDraft)(message),
     savedSnapshot,
     hasDraft: options.hasLocalDraft,
     delayMs: options.draftPublishDelayMs,

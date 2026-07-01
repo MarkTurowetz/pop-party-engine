@@ -76,4 +76,31 @@ describe("createHostAudioController", () => {
     expect(controller.getState().hostAudios.hostAudios).toHaveLength(1);
     expect(controller.getState().dirty).toBe(false);
   });
+
+  it("publishes unsaved edits as a session draft and clears when clean", async () => {
+    vi.useFakeTimers();
+    try {
+      const postDraft = vi.fn(async (message) => message);
+      const controller = createHostAudioController({
+        initialHostAudios: initial,
+        api: fakeApi(),
+        postDraft,
+        draftPublishDelayMs: 1
+      });
+
+      controller.renameSet(0, "Changed");
+      await vi.advanceTimersByTimeAsync(1);
+      expect(postDraft).toHaveBeenLastCalledWith({
+        hostAudios: expect.objectContaining({
+          hostAudios: [expect.objectContaining({ name: "Changed" })]
+        })
+      });
+
+      controller.undo();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(postDraft).toHaveBeenLastCalledWith({ clearHostAudios: true });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
