@@ -39,6 +39,18 @@ describe("createLayoutController", () => {
     expect(controller.getState().layouts.states[0].elements).toHaveLength(1);
   });
 
+  it("redoes an undone layout edit", () => {
+    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    controller.selectGroup("intro");
+    controller.addTextElement();
+    controller.undo();
+    expect(controller.getState().layouts.states[0].elements).toHaveLength(1);
+    expect(controller.getState().canRedo).toBe(true);
+
+    controller.redo();
+    expect(controller.getState().layouts.states[0].elements).toHaveLength(2);
+  });
+
   it("updates and moves an element", () => {
     const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
     controller.selectGroup("intro");

@@ -1,4 +1,22 @@
-import { useMemo, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode
+} from "react";
+
+export interface ToolWorkspaceHistoryScope {
+  canRedo?: boolean;
+  canUndo?: boolean;
+  id: string;
+  onRedo?: () => void;
+  onUndo?: () => void;
+  targetSelector?: string;
+}
 
 export interface ToolWorkspaceProps {
   children: ReactNode;
@@ -14,6 +32,7 @@ export interface ToolWorkspaceProps {
   title: string;
   toolbar?: ReactNode;
   toolId: string;
+  history?: ToolWorkspaceHistoryScope | ToolWorkspaceHistoryScope[];
 }
 
 const DEFAULT_SIDEBAR_WIDTH = 320;
@@ -41,9 +60,12 @@ export function ToolWorkspace({
   storageKey,
   title,
   toolbar,
-  toolId
+  toolId,
+  history
 }: ToolWorkspaceProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => readStoredWidth(storageKey, minSidebarWidth, maxSidebarWidth));
+  const rootRef = useRef<HTMLElement | null>(null);
+  const lastHistoryScopeId = useRef<string>("");
 
   const attributes = useMemo(() => {
     const output: Record<string, string> = {};
@@ -53,6 +75,59 @@ export function ToolWorkspace({
     }
     return output;
   }, [dataAttributes]);
+
+  const historyScopes = useMemo(() => {
+    if (!history) return [];
+    return Array.isArray(history) ? history : [history];
+  }, [history]);
+
+  const historyScopeForTarget = useCallback((target: EventTarget | null): ToolWorkspaceHistoryScope | null => {
+    const root = rootRef.current;
+    if (!root || !historyScopes.length) return null;
+    const targetElement = target instanceof Element ? target : document.activeElement;
+    if (targetElement && targetElement !== document.body && targetElement !== document.documentElement && !root.contains(targetElement)) {
+      return null;
+    }
+    if (targetElement) {
+      for (const scope of historyScopes) {
+        if (!scope.targetSelector) continue;
+        const matched = targetElement.closest(scope.targetSelector);
+        if (matched && root.contains(matched)) return scope;
+      }
+    }
+    const recent = historyScopes.find((scope) => scope.id === lastHistoryScopeId.current);
+    return recent || historyScopes[0] || null;
+  }, [historyScopes]);
+
+  const rememberHistoryScope = useCallback((target: EventTarget | null): void => {
+    const scope = historyScopeForTarget(target);
+    if (scope) lastHistoryScopeId.current = scope.id;
+  }, [historyScopeForTarget]);
+
+  useEffect(() => {
+    if (hidden || !historyScopes.length) return undefined;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const meta = event.metaKey || event.ctrlKey;
+      if (!meta) return;
+      const key = event.key.toLowerCase();
+      const isRedo = key === "y" || (key === "z" && event.shiftKey);
+      const isUndo = key === "z" && !event.shiftKey;
+      if (!isUndo && !isRedo) return;
+
+      const scope = historyScopeForTarget(event.target);
+      if (!scope) return;
+      const callback = isRedo ? scope.onRedo : scope.onUndo;
+      const enabled = isRedo ? scope.canRedo : scope.canUndo;
+      if (!callback || !enabled) return;
+
+      event.preventDefault();
+      callback();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [hidden, historyScopeForTarget, historyScopes]);
 
   const beginResize = (event: PointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return;
@@ -80,10 +155,12 @@ export function ToolWorkspace({
 
   return (
     <section
+      ref={rootRef}
       className={`tool-workspace ${className}`.trim()}
       aria-hidden={hidden ? "true" : "false"}
       data-tool-workspace={toolId}
       hidden={hidden}
+      onPointerDownCapture={(event) => rememberHistoryScope(event.target)}
       style={{ "--tool-sidebar-width": `${sidebarWidth}px` } as CSSProperties}
       {...attributes}
     >

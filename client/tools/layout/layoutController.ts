@@ -11,6 +11,7 @@ export interface LayoutEditorState {
   dirty: boolean;
   saving: boolean;
   canUndo: boolean;
+  canRedo: boolean;
   error: string | null;
 }
 
@@ -33,6 +34,7 @@ export interface LayoutController {
   updateElement(elementId: string, patch: Partial<LayoutElement>): void;
   moveElement(elementId: string, x: number, y: number): void;
   undo(): void;
+  redo(): void;
   save(): Promise<boolean>;
 }
 
@@ -64,6 +66,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
   let selectedGroupId = layouts.global?.id || "global";
   let selectedElementIds = new Set<string>();
   const undoStack: StageLayoutCollection[] = [];
+  const redoStack: StageLayoutCollection[] = [];
   let saving = false;
   let error: string | null = null;
   let cachedState = buildState();
@@ -81,6 +84,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       dirty: layoutSnapshot(layouts, mode) !== savedSnapshot,
       saving,
       canUndo: undoStack.length > 0,
+      canRedo: redoStack.length > 0,
       error
     };
   }
@@ -103,6 +107,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
     if (!target) return;
     undoStack.push(snapshot());
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+    redoStack.length = 0;
     apply(target);
     emit();
     scheduleDraft();
@@ -178,7 +183,16 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
     undo: () => {
       const previous = undoStack.pop();
       if (!previous) return;
+      redoStack.push(snapshot());
       layouts = previous;
+      emit();
+      scheduleDraft();
+    },
+    redo: () => {
+      const next = redoStack.pop();
+      if (!next) return;
+      undoStack.push(snapshot());
+      layouts = next;
       emit();
       scheduleDraft();
     },

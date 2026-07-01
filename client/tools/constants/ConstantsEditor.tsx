@@ -141,6 +141,13 @@ export function ConstantsEditor({ controller, surface = "constants" }: Constants
       title="Game Constants"
       toolbar={toolbar}
       toolId="constants"
+      history={{
+        id: "constants",
+        canUndo,
+        canRedo,
+        onUndo: () => controller.undo(),
+        onRedo: () => controller.redo()
+      }}
     >
       {sectionId === "built-in" ? (
         <section className="flow-react-panel" data-constants-react-component="built-in">

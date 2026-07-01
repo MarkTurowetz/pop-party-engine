@@ -71,6 +71,25 @@ describe("createArtOrganizationController", () => {
     expect(controller.getState().organization.stage.folders).toHaveLength(1);
   });
 
+  it("redoes an undone organization change", () => {
+    const controller = createArtOrganizationController({
+      initialOrganization: emptyOrganization(),
+      compositions: comps,
+      assets: [],
+      api: fakeApi()
+    });
+    controller.createFolder("stage", "Group");
+    const folderId = controller.getState().organization.stage.folders[0].id;
+    controller.moveIntoFolder("stage", "composition:a", folderId);
+
+    controller.undo();
+    expect(controller.getState().organization.stage.folderItems[folderId] || []).not.toContain("composition:a");
+    expect(controller.getState().canRedo).toBe(true);
+
+    controller.redo();
+    expect(controller.getState().organization.stage.folderItems[folderId]).toContain("composition:a");
+  });
+
   it("saves the cleaned organization and clears dirty", async () => {
     const api = fakeApi();
     const controller = createArtOrganizationController({

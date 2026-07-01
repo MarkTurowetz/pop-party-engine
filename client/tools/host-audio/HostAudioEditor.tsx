@@ -102,6 +102,13 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
       title="Host Audios"
       toolbar={toolbar}
       toolId="host-audio"
+      history={{
+        id: "host-audio",
+        canUndo,
+        canRedo,
+        onUndo: () => controller.undo(),
+        onRedo: () => controller.redo()
+      }}
     >
       {selectedSet ? (
         <section

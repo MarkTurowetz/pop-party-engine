@@ -19,6 +19,7 @@ export interface ArtOrganizationEditorState {
   dirty: boolean;
   saving: boolean;
   canUndo: boolean;
+  canRedo: boolean;
   error: string | null;
 }
 
@@ -42,6 +43,7 @@ export interface ArtOrganizationController {
   /** Drop `draggedKey` into a folder (or root if folderId is ""). */
   moveIntoFolder(surface: OrgSurface, draggedKey: string, folderId: string): void;
   undo(): void;
+  redo(): void;
   save(): Promise<boolean>;
 }
 
@@ -72,6 +74,7 @@ export function createArtOrganizationController(
       })
     : null;
   const undoStack: ArtOrganization[] = [];
+  const redoStack: ArtOrganization[] = [];
   let saving = false;
   let error: string | null = null;
   let cachedState = buildState();
@@ -83,6 +86,7 @@ export function createArtOrganizationController(
       dirty: organizationSnapshot(organization, items) !== savedSnapshot,
       saving,
       canUndo: undoStack.length > 0,
+      canRedo: redoStack.length > 0,
       error
     };
   }
@@ -98,6 +102,7 @@ export function createArtOrganizationController(
 
   function mutate(apply: (org: ArtOrganization) => void): void {
     undoStack.push(JSON.parse(JSON.stringify(organization)) as ArtOrganization);
+    redoStack.length = 0;
     const draft = JSON.parse(JSON.stringify(organization)) as ArtOrganization;
     apply(draft);
     organization = normalizeOrganization(draft);
@@ -166,7 +171,16 @@ export function createArtOrganizationController(
     undo: () => {
       const previous = undoStack.pop();
       if (!previous) return;
+      redoStack.push(JSON.parse(JSON.stringify(organization)) as ArtOrganization);
       organization = previous;
+      emit();
+      scheduleDraft();
+    },
+    redo: () => {
+      const next = redoStack.pop();
+      if (!next) return;
+      undoStack.push(JSON.parse(JSON.stringify(organization)) as ArtOrganization);
+      organization = next;
       emit();
       scheduleDraft();
     },

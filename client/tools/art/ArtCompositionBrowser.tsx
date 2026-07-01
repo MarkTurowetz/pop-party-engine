@@ -25,7 +25,7 @@ export function ArtCompositionBrowser({
   onSurfaceChange
 }: ArtCompositionBrowserProps) {
   const { selectedCompositionId } = useArtCompositions(compositionsController);
-  const { organization, surfaceItems, dirty, saving, canUndo } = useArtOrganization(organizationController);
+  const { organization, surfaceItems, dirty, saving, canUndo, canRedo } = useArtOrganization(organizationController);
   const [folderName, setFolderName] = useState("");
   const state = organization[surface];
   const compositionItems = surfaceItems[surface].filter((item: OrgItem) => item.type === "composition");
@@ -145,6 +145,9 @@ export function ArtCompositionBrowser({
       <div className="art-browser-save-row">
         <button type="button" disabled={!canUndo} onClick={() => organizationController.undo()}>
           Undo
+        </button>
+        <button type="button" disabled={!canRedo} onClick={() => organizationController.redo()}>
+          Redo
         </button>
         <button type="button" disabled={!dirty || saving} onClick={() => void organizationController.save()}>
           {saving ? "Saving..." : "Save Folders"}

@@ -67,7 +67,7 @@ export function LayoutEditor({ stageController, controllerController, surface = 
   const [mode, setMode] = useState<"stage" | "controller">("stage");
   const controller = mode === "stage" ? stageController : controllerController;
   const state = useLayoutEditor(controller);
-  const { layouts, selectedGroupId, selectedElementIds, dirty, saving, canUndo } = state;
+  const { layouts, selectedGroupId, selectedElementIds, dirty, saving, canUndo, canRedo } = state;
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
   const [previewPanelRef, previewPanelSize] = useElementSize<HTMLElement>();
 
@@ -169,6 +169,9 @@ export function LayoutEditor({ stageController, controllerController, surface = 
       <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
         Undo
       </button>
+      <button type="button" disabled={!canRedo} onClick={() => controller.redo()}>
+        Redo
+      </button>
       <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
         {saving ? "Saving…" : "Save"}
       </button>
@@ -218,6 +221,13 @@ export function LayoutEditor({ stageController, controllerController, surface = 
       title={mode === "controller" ? "Controller Layout Tool" : "Layout Tool"}
       toolbar={toolbar}
       toolId="layout"
+      history={{
+        id: "layout",
+        canUndo,
+        canRedo,
+        onUndo: () => controller.undo(),
+        onRedo: () => controller.redo()
+      }}
     >
       <div className="tool-main-columns layout-workspace-content">
         <section

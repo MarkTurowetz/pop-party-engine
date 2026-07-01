@@ -8,6 +8,8 @@ import { ArtAssetManager } from "./ArtAssetManager";
 import { ArtCompositionBrowser } from "./ArtCompositionBrowser";
 import { ArtCompositionEditor } from "./ArtCompositionEditor";
 import { useArtAssets } from "./useArtAssets";
+import { useArtCompositions } from "./useArtCompositions";
+import { useArtOrganization } from "./useArtOrganization";
 
 export interface ArtEditorProps {
   assetsController: ArtAssetsController;
@@ -29,6 +31,8 @@ export function ArtEditor({
 }: ArtEditorProps) {
   const [surfaceFilter, setSurfaceFilter] = useState<OrgSurface>("stage");
   const { assets } = useArtAssets(assetsController);
+  const compositionsState = useArtCompositions(compositionsController);
+  const organizationState = useArtOrganization(organizationController);
   const sidebar = (
     <ArtCompositionBrowser
       compositionsController={compositionsController}
@@ -48,6 +52,24 @@ export function ArtEditor({
       storageKey="partyTemplate.artSidebarWidth"
       title="Art Manager"
       toolId="art"
+      history={[
+        {
+          id: "art-organization",
+          targetSelector: ".tool-workspace-sidebar",
+          canUndo: organizationState.canUndo,
+          canRedo: organizationState.canRedo,
+          onUndo: () => organizationController.undo(),
+          onRedo: () => organizationController.redo()
+        },
+        {
+          id: "art-compositions",
+          targetSelector: ".art-composition-editor",
+          canUndo: compositionsState.canUndo,
+          canRedo: compositionsState.canRedo,
+          onUndo: () => compositionsController.undo(),
+          onRedo: () => compositionsController.redo()
+        }
+      ]}
     >
       <div className="art-workspace-content">
         <ArtCompositionEditor controller={compositionsController} assets={assets} />

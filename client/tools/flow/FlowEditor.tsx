@@ -318,8 +318,9 @@ export function FlowEditor({
     selection.selectedFlowRouteBranchId
   ]);
 
-  // Keyboard shortcuts: Cmd/Ctrl+Z undo, +Shift redo (or Cmd/Ctrl+Y), Delete/Backspace
-  // deletes the selection — but never while typing in a field.
+  // Delete/Backspace deletes the selection — but never while typing in a field.
+  // Undo/redo shortcuts live in the shared ToolWorkspace so every tool uses the
+  // same keyboard history contract.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -329,19 +330,6 @@ export function FlowEditor({
         tag === "TEXTAREA" ||
         tag === "SELECT" ||
         target?.isContentEditable === true;
-      const meta = event.metaKey || event.ctrlKey;
-      const key = event.key.toLowerCase();
-      if (meta && key === "z") {
-        event.preventDefault();
-        if (event.shiftKey) controller.redo();
-        else controller.undo();
-        return;
-      }
-      if (meta && key === "y") {
-        event.preventDefault();
-        controller.redo();
-        return;
-      }
       if (
         !typing &&
         (event.key === "Delete" || event.key === "Backspace") &&

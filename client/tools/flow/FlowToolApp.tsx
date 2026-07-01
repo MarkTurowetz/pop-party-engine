@@ -176,6 +176,13 @@ export function FlowToolApp({
       title="Game Flow"
       toolbar={toolbar}
       toolId="flow"
+      history={{
+        id: "flow",
+        canUndo,
+        canRedo,
+        onUndo: handlers.undo,
+        onRedo: handlers.redo
+      }}
     >
       <div className="flow-node-workspace-content">
         {nodeCanvas}
