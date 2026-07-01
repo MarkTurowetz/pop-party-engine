@@ -392,4 +392,76 @@ describe("createFlowEditorController", () => {
     expect(api.saveToolDraft).toHaveBeenCalledTimes(1);
     expect(controller.getState().hasLocalDraft).toBe(true);
   });
+
+  it("auto-publishes a session draft when flow data changes", async () => {
+    vi.useFakeTimers();
+    try {
+      const api = fakeApi();
+      const controller = createFlowEditorController({
+        initialFlow: flowFixture(),
+        api,
+        autoPublishDraft: true,
+        draftPublishDelayMs: 10
+      });
+
+      controller.addState();
+      expect(api.saveToolDraft).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(api.saveToolDraft).toHaveBeenCalledTimes(1);
+      expect(api.saveToolDraft).toHaveBeenCalledWith({
+        flow: expect.objectContaining({ states: expect.arrayContaining([expect.objectContaining({ id: "state-3" })]) })
+      });
+      expect(controller.getState().hasLocalDraft).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears the session draft after undoing back to the saved flow", async () => {
+    vi.useFakeTimers();
+    try {
+      const api = fakeApi();
+      const controller = createFlowEditorController({
+        initialFlow: flowFixture(),
+        api,
+        autoPublishDraft: true,
+        draftPublishDelayMs: 10
+      });
+
+      controller.addState();
+      await vi.advanceTimersByTimeAsync(10);
+      controller.undo();
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(api.saveToolDraft).toHaveBeenLastCalledWith({ clearFlow: true });
+      expect(controller.getState().hasLocalDraft).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not publish a stale session draft after saving", async () => {
+    vi.useFakeTimers();
+    try {
+      const api = fakeApi();
+      const controller = createFlowEditorController({
+        initialFlow: flowFixture(),
+        api,
+        autoPublishDraft: true,
+        draftPublishDelayMs: 100
+      });
+
+      controller.addState();
+      await controller.save();
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(api.saveGameFlow).toHaveBeenCalledTimes(1);
+      expect(api.saveToolDraft).not.toHaveBeenCalled();
+      expect(controller.getState().hasLocalDraft).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

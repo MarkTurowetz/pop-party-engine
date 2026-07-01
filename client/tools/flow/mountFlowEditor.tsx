@@ -9,6 +9,8 @@ export interface MountFlowEditorOptions {
   api: FlowApi;
   layoutApi?: LayoutApi;
   document?: Document;
+  /** Clear any prior in-memory Flow draft before loading. This makes refresh discard unsaved edits. */
+  resetSessionDraftOnMount?: boolean;
   surface?: string;
   /**
    * Whether to reveal #flowScreen by removing its `hidden` class. True for the
@@ -41,6 +43,26 @@ function toActionTypeMeta(values: unknown[]): FlowActionTypeMeta[] {
  */
 export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<MountedFlowEditor> {
   const doc = options.document || document;
+  const clearFlowDraft = () => options.api.saveToolDraft({ clearFlow: true }).catch(() => undefined);
+  if (options.resetSessionDraftOnMount !== false) {
+    await clearFlowDraft();
+  }
+  const win = doc.defaultView || window;
+  const clearDraftOnPageHide = () => {
+    const body = JSON.stringify({ clearFlow: true });
+    if (win.navigator?.sendBeacon) {
+      const blob = new Blob([body], { type: "application/json" });
+      win.navigator.sendBeacon("/api/tool-drafts", blob);
+      return;
+    }
+    void fetch("/api/tool-drafts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true
+    }).catch(() => undefined);
+  };
+  win.addEventListener("pagehide", clearDraftOnPageHide);
   const loadStageLayouts = options.layoutApi
     ? async () => {
         const response = await options.layoutApi?.loadStageLayouts();
@@ -56,6 +78,7 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
     initialFlow: response.flow,
     api: options.api,
     hasLocalDraft: response.hasLocalDraft,
+    autoPublishDraft: true,
     actionTypes
   });
 
@@ -94,6 +117,8 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
     root,
     unmount: () => {
       root.unmount();
+      win.removeEventListener("pagehide", clearDraftOnPageHide);
+      void clearFlowDraft();
       doc.body?.classList?.remove("flow-react-preview-replace");
       host.remove();
     }

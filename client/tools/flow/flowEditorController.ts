@@ -55,6 +55,7 @@ import { actionTypeName, makeFlowId, type FlowActionTypeMeta } from "./flowSelec
 import { serializeGameFlowForSave } from "./flowSerialization";
 import { flowSubroutineActions } from "./flowSubroutines";
 import { type RemoveFlowRouteBranchOptions } from "./flowMutations";
+import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 
 /** All selectable action ids across the flow (primary, sub-actions, decision branches). */
 function allFlowActionIds(flow: GameFlow): string[] {
@@ -101,6 +102,12 @@ export interface FlowEditorControllerOptions {
   initialFlow: GameFlow;
   api: FlowApi;
   hasLocalDraft?: boolean;
+  /**
+   * When true, mutating the flow publishes an in-memory server draft so the
+   * running stage/controller use the current editing session before durable save.
+   */
+  autoPublishDraft?: boolean;
+  draftPublishDelayMs?: number;
   /** Action type metadata (id/name/category) used to apply type-change defaults + timing. */
   actionTypes?: FlowActionTypeMeta[];
   /** Protected state ids whose ids are not regenerated on rename. */
@@ -253,6 +260,17 @@ export function createFlowEditorController(
 
   const listeners = new Set<() => void>();
   let savedSnapshot = savedSnapshotOf(store.snapshot().flow);
+  let lastCommittedFlowSnapshot = savedSnapshot;
+  const sessionDraftPublisher = createSessionDraftPublisher({
+    postDraft: (message) => api.saveToolDraft(message),
+    savedSnapshot,
+    hasDraft: options.hasLocalDraft,
+    delayMs: options.draftPublishDelayMs,
+    clearMessage: { clearFlow: true },
+    draftMessage: (flowSnapshot) => ({ flow: JSON.parse(flowSnapshot) as GameFlow }),
+    onCleared: () => patch({ hasLocalDraft: false }),
+    onPublished: () => patch({ hasLocalDraft: true })
+  });
   let state: FlowEditorState = deriveState(store.snapshot(), {
     saving: false,
     hasLocalDraft: Boolean(options.hasLocalDraft),
@@ -272,13 +290,22 @@ export function createFlowEditorController(
     };
   }
 
+  function scheduleDraftPublish(flowSnapshot: string): void {
+    if (!options.autoPublishDraft) return;
+    sessionDraftPublisher.schedule(flowSnapshot);
+  }
+
   function commit(snapshot: FlowStoreSnapshot = store.snapshot()): void {
+    const nextFlowSnapshot = savedSnapshotOf(snapshot.flow);
+    const flowChanged = nextFlowSnapshot !== lastCommittedFlowSnapshot;
+    lastCommittedFlowSnapshot = nextFlowSnapshot;
     state = deriveState(snapshot, {
       saving: state.saving,
       hasLocalDraft: state.hasLocalDraft,
       error: state.error
     });
     listeners.forEach((listener) => listener());
+    if (flowChanged) scheduleDraftPublish(nextFlowSnapshot);
   }
 
   function patch(
@@ -503,6 +530,8 @@ export function createFlowEditorController(
         const response = await api.saveGameFlow(payload);
         const savedFlow = response.flow || payload;
         savedSnapshot = savedSnapshotOf(savedFlow);
+        lastCommittedFlowSnapshot = savedSnapshot;
+        sessionDraftPublisher.markSaved(savedSnapshot);
         patch({ saving: false, hasLocalDraft: false });
         commit();
         return savedFlow;
@@ -514,7 +543,7 @@ export function createFlowEditorController(
     publishDraft: async () => {
       const payload = serializeGameFlowForSave(store.snapshot().flow);
       try {
-        await api.saveToolDraft({ flow: payload });
+        await sessionDraftPublisher.publish(savedSnapshotOf(payload), { force: true });
         patch({ hasLocalDraft: true });
       } catch {
         // Local-draft publishing is best-effort, matching legacy `.catch(() => {})`.
