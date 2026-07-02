@@ -778,7 +778,8 @@
           "defaultText": "Starting Game",
           "fontSize": 32,
           "autoFitText": true,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "popup-card",
@@ -796,10 +797,10 @@
           "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 5,
-          "borderRadius": 20
+          "borderRadius": 99
         }
       ],
-      "updatedAt": "2026-06-28T00:01:45.505Z"
+      "updatedAt": "2026-07-02T01:14:19.998Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer",
