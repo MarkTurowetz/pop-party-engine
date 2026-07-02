@@ -1,6 +1,7 @@
 import { useMemo, useState, type DragEvent, type MouseEvent } from "react";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
+import { searchArtHierarchy } from "./artHierarchySearch";
 import { folderIdFromKey, type OrgItem, type OrgSurface } from "./organizationModel";
 import { useArtCompositions } from "./useArtCompositions";
 import { useArtOrganization } from "./useArtOrganization";
@@ -47,11 +48,16 @@ export function ArtCompositionBrowser({
   const { selectedCompositionId } = useArtCompositions(compositionsController);
   const { organization, surfaceItems, dirty, saving, canUndo, canRedo } = useArtOrganization(organizationController);
   const [folderName, setFolderName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [collapsedFolders, setCollapsedFolders] = useState(readCollapsedFolders);
   const state = organization[surface];
   const compositionItems = surfaceItems[surface].filter((item: OrgItem) => item.type === "composition");
   const validCompositionKeys = new Set(compositionItems.map((item) => item.key));
   const nameByKey = new Map(compositionItems.map((item) => [item.key, item.name]));
+  const search = useMemo(
+    () => searchArtHierarchy(state, compositionItems, searchQuery),
+    [state, compositionItems, searchQuery]
+  );
   const folderNameFor = (id: string) => state.folders.find((folder) => folder.id === id)?.name || "Folder";
   const visibleFolderIds = useMemo(
     () => state.folders.map((folder) => folder.id),
@@ -120,6 +126,7 @@ export function ArtCompositionBrowser({
   const renderCompositionItem = (key: string) => {
     const compositionId = compositionIdFromKey(key);
     if (!compositionId || !validCompositionKeys.has(key)) return null;
+    if (search.active && !search.visibleKeys.has(key)) return null;
     return (
       <li
         className="art-browser-item"
@@ -142,7 +149,10 @@ export function ArtCompositionBrowser({
   };
 
   const renderFolder = (folderId: string) => {
-    const collapsed = collapsedFolders.has(collapsedKey(surface, folderId));
+    if (search.active && !search.visibleKeys.has(`folder:${folderId}`)) return null;
+    const collapsed = search.active
+      ? !search.expandedFolderIds.has(folderId)
+      : collapsedFolders.has(collapsedKey(surface, folderId));
     return (
     <li
       className={`art-browser-folder${collapsed ? " is-collapsed" : ""}`}
@@ -194,6 +204,21 @@ export function ArtCompositionBrowser({
           Controller
         </button>
       </div>
+      <div className="art-browser-search">
+        <input
+          type="search"
+          placeholder="Search assets"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          aria-label="Search art assets"
+          data-art-hierarchy-search
+        />
+        {searchQuery ? (
+          <button type="button" onClick={() => setSearchQuery("")} aria-label="Clear art asset search">
+            Clear
+          </button>
+        ) : null}
+      </div>
       <div className="art-browser-folder-tools">
         <input
           type="text"
@@ -225,12 +250,17 @@ export function ArtCompositionBrowser({
       </div>
       <ol className="art-browser-list art-browser-root" onDragOver={(event) => event.preventDefault()} onDrop={onDropRoot}>
         {state.order.map((key) => (key.startsWith("folder:") ? renderFolder(folderIdFromKey(key)) : renderCompositionItem(key)))}
-        {unfiled.length ? (
+        {unfiled.filter((item) => !search.active || search.visibleKeys.has(item.key)).length ? (
           <li className="art-browser-unfiled">
             <small>Unfiled</small>
-            <ol className="art-browser-list">{unfiled.map((item) => renderCompositionItem(item.key))}</ol>
+            <ol className="art-browser-list">
+              {unfiled
+                .filter((item) => !search.active || search.visibleKeys.has(item.key))
+                .map((item) => renderCompositionItem(item.key))}
+            </ol>
           </li>
         ) : null}
+        {search.active && !search.matchCount ? <li className="art-browser-empty">No matching assets.</li> : null}
       </ol>
     </>
   );

@@ -1323,12 +1323,14 @@ body.tool-dashboard-mode .layout-react-shell {
 }
 
 .art-browser-folder-tools,
-.art-browser-save-row {
+.art-browser-save-row,
+.art-browser-search {
   display: grid;
   gap: 8px;
 }
 
-.art-browser-folder-tools {
+.art-browser-folder-tools,
+.art-browser-search {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
@@ -1338,6 +1340,7 @@ body.tool-dashboard-mode .layout-react-shell {
 }
 
 .art-browser-folder-tools input,
+.art-browser-search input,
 .art-browser-folder input {
   width: 100%;
   min-width: 0;
@@ -1404,6 +1407,16 @@ body.tool-dashboard-mode .layout-react-shell {
 .art-browser-unfiled {
   display: grid;
   gap: 7px;
+}
+
+.art-browser-empty {
+  padding: 10px;
+  border: 3px dashed rgba(23, 19, 31, 0.35);
+  border-radius: 10px;
+  color: #5e5475;
+  font-size: 12px;
+  font-weight: 1000;
+  text-transform: uppercase;
 }
 
 .layout-react-shell .tool-workspace-main {
