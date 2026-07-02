@@ -8,6 +8,7 @@ import {
   type ReactElement
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
+import { artCompositionVisualBounds } from "./artCompositionBounds";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import {
   componentSupportsImageMask,
@@ -98,8 +99,15 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
   const canvasWidth = Number(composition?.canvas?.width || 560);
   const canvasHeight = Number(composition?.canvas?.height || 230);
+  const visualBounds = useMemo(
+    () =>
+      composition
+        ? artCompositionVisualBounds(composition, compositionById, { padding: 40 })
+        : { minX: 0, minY: 0, maxX: canvasWidth, maxY: canvasHeight, width: canvasWidth, height: canvasHeight },
+    [composition, compositionById, canvasWidth, canvasHeight]
+  );
   const previewScale = composition
-    ? Math.min(3.5, Math.max(0.65, Math.min(940 / canvasWidth, 620 / canvasHeight)))
+    ? Math.min(3.5, Math.max(0.35, Math.min(940 / visualBounds.width, 620 / visualBounds.height)))
     : 1;
 
   const beginResize = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
@@ -232,6 +240,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     const referenceScaleY = height / Math.max(1, Number(referenceCanvas.height || height));
     const maskSize = objectFit === "fill" ? "100% 100%" : objectFit;
     const transparentBase = kind === "container" || kind === "reference";
+    const clipsOwnContent = Boolean(imageUrl || isTextual);
     const fill = fillColor === "currentColor" ? "currentColor" : fillColor;
     const background = tintWithCurrentColor
       ? (fill === "transparent" ? "currentColor" : fill || "currentColor")
@@ -271,7 +280,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           ? "var(--art-preview-current-color)"
           : String(get(component, "fontColor") || "#17131f"),
       fontSize: isTextual ? Number(get(component, "fontSize") || 16) : 11,
-      overflow: "hidden",
+      overflow: clipsOwnContent ? "hidden" : "visible",
       boxSizing: "border-box",
       zIndex: Math.max(1, layer.total - layer.index)
     };
@@ -393,18 +402,20 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             <div className="art-canvas-viewport">
               <div
                 className="art-canvas-shell"
-                style={{ width: canvasWidth * previewScale, height: canvasHeight * previewScale }}
+                style={{ width: visualBounds.width * previewScale, height: visualBounds.height * previewScale }}
               >
                 <div
                   className="art-canvas"
                   data-art-canvas={composition.id}
                   style={{
-                    position: "relative",
+                    position: "absolute",
+                    left: (0 - visualBounds.minX) * previewScale,
+                    top: (0 - visualBounds.minY) * previewScale,
                     width: canvasWidth,
                     height: canvasHeight,
                     transform: `scale(${previewScale})`,
                     transformOrigin: "top left",
-                    overflow: "hidden"
+                    overflow: "visible"
                   }}
                   onClick={() => controller.clearComponentSelection()}
                 >
