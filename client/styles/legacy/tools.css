@@ -557,6 +557,7 @@
   transform-origin: center;
   border: calc(2px * var(--art-composition-editor-scale, 1)) dashed rgba(23, 19, 31, 0.45);
   color: var(--component-text-color, var(--ink));
+  font-family: var(--component-font-family, ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif);
   font-size: var(--component-font-size, 18px);
   font-weight: 1000;
   line-height: 1;
@@ -1277,6 +1278,8 @@ body.tool-dashboard-mode .layout-react-shell {
   padding: 0 4px;
   overflow-wrap: anywhere;
   text-align: center;
+  text-transform: uppercase;
+  font-weight: 1000;
   line-height: 1.05;
 }
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { gameTextDefaultFontFamily, gameTextFontOptions } from "../../textFonts";
 import { serializeArtComponentForSave, serializeArtCompositionForSave } from "./artCompositionModel";
 import { componentKindLabel, normalizeShapeStyle } from "./artComponentSchema";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
@@ -38,6 +39,17 @@ describe("artCompositionModel serialization", () => {
     expect(serialized.surface).toBe("stage");
     const components = serialized.components as Record<string, unknown>[];
     expect((components[0].children as Record<string, unknown>[])[0].defaultText).toBe("Hi");
+    expect((components[0].children as Record<string, unknown>[])[0].fontFamily).toBe(gameTextDefaultFontFamily);
     expect(components[0].childDistribution).toBe("none");
+  });
+
+  it("serializes supported text font families", () => {
+    const fontFamily = gameTextFontOptions.find((option) => option.label === "Georgia")?.value || "";
+    const component = { id: "text", kind: "text", fontFamily } as unknown as ArtComponent;
+    const serialized = serializeArtComponentForSave(component) as Record<string, unknown>;
+    expect(serialized.fontFamily).toBe(fontFamily);
+    expect(serializeArtComponentForSave({ id: "text", kind: "text", fontFamily: "Papyrus" } as unknown as ArtComponent).fontFamily).toBe(
+      gameTextDefaultFontFamily
+    );
   });
 });

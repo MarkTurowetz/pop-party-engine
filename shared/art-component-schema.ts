@@ -25,6 +25,16 @@
     { value: "vertical", label: "Vertical Distribution" }
   ];
   const containerDistributionValues = containerDistributionOptions.map((option) => option.value);
+  const defaultTextFontFamily = 'ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif';
+  const textFontFamilyOptions = [
+    { value: defaultTextFontFamily, label: "Game UI" },
+    { value: '"Avenir Next", Avenir, system-ui, sans-serif', label: "Avenir Next" },
+    { value: '"Trebuchet MS", "Avenir Next", system-ui, sans-serif', label: "Trebuchet MS" },
+    { value: 'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif', label: "Impact" },
+    { value: 'Georgia, "Times New Roman", serif', label: "Georgia" },
+    { value: '"Courier New", Courier, monospace', label: "Courier New" }
+  ];
+  const textFontFamilyValues = textFontFamilyOptions.map((option) => option.value);
   const componentImageMaxBytes = 5 * 1024 * 1024;
   const imageAccept = imageMimeTypes.join(",");
   const fillCssMaxLength = 240;
@@ -104,6 +114,14 @@
     return containerDistributionValues.includes(distribution) ? distribution : "none";
   }
 
+  function normalizeTextFontFamily(value: unknown, fallback: unknown = defaultTextFontFamily): string {
+    const text = String(value || "").trim();
+    if (textFontFamilyValues.includes(text)) return text;
+    const fallbackText = String(fallback || "").trim();
+    if (textFontFamilyValues.includes(fallbackText)) return fallbackText;
+    return defaultTextFontFamily;
+  }
+
   function isSupportedImageMimeType(mimeType: unknown): boolean {
     return imageMimeTypes.includes(String(mimeType || "").trim().toLowerCase());
   }
@@ -152,6 +170,7 @@
     containerDistributionOptions,
     containerDistributionValues,
     creatableComponentKinds,
+    defaultTextFontFamily,
     defaultShapeStyle,
     imageAccept,
     imageBase64ByteLength,
@@ -162,11 +181,14 @@
     normalizeContainerDistribution,
     normalizeCreatableComponentKind,
     normalizeFillCss,
+    normalizeTextFontFamily,
     normalizeImageObjectFit,
     normalizeShapeStyle,
     parseImageDataUrl,
     shapeStyleOptions,
     shapeStyleValues,
+    textFontFamilyOptions,
+    textFontFamilyValues,
     validateImageFile
   };
 

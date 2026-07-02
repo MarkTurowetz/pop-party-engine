@@ -4,6 +4,7 @@
  * (Phase 5 unifies shared/ to TS; until then this is the byte-compatible client copy.)
  */
 import type { ArtComponent } from "../../types/game-data";
+import { gameTextDefaultFontFamily, gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
 
 export const componentKinds = ["text", "shape", "container", "badge", "reference"] as const;
 export const creatableComponentKinds = ["text", "shape", "container"] as const;
@@ -21,6 +22,9 @@ export const containerDistributionOptions = [
   { value: "horizontal", label: "Horizontal Distribution" },
   { value: "vertical", label: "Vertical Distribution" }
 ] as const;
+export const textFontFamilyOptions = gameTextFontOptions;
+export const defaultTextFontFamily = gameTextDefaultFontFamily;
+export { normalizeGameTextFontFamily };
 const containerDistributionValues = containerDistributionOptions.map((option) => option.value as string);
 const componentImageMaxBytes = 5 * 1024 * 1024;
 const fillCssMaxLength = 240;

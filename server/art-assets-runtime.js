@@ -228,6 +228,7 @@ function createArtAssetsRuntime({
       normalized.fontSize = cleanNumber(source.fontSize, Number(base.fontSize || 16), 6, 240);
       normalized.autoFitText = source.autoFitText !== false && base.autoFitText !== false;
       normalized.fontColor = cleanColor(source.fontColor, base.fontColor || "#17131f");
+      normalized.fontFamily = artComponentSchema.normalizeTextFontFamily(source.fontFamily, base.fontFamily);
     }
     if (kind === "shape" || kind === "container" || kind === "badge") {
       normalized.shapeStyle = artComponentSchema.normalizeShapeStyle(source.shapeStyle || base.shapeStyle, kind);

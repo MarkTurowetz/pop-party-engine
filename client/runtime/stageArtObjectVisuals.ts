@@ -4,6 +4,8 @@
 // is read lazily (it is a legacy script loaded via bootLegacySurface, after this
 // module's import-time install).
 
+import { normalizeGameTextFontFamily } from "../textFonts";
+
 type Dict = Record<string, unknown>;
 type Component = Dict;
 type CanvasSize = { width?: number; height?: number } | undefined;
@@ -60,6 +62,7 @@ function applyComponentLayout(element: HTMLElement | null, component: Component 
   const textLayout = isTextBearingComponentKind(kind) ? componentTextLayout(component, labelText) : null;
   (element as unknown as Dict).__partyGameTextLayout = textLayout;
   element.style.setProperty("--component-font-size", `${(num(textLayout?.fontSize, num(component.fontSize, 16))) * fontScale}px`);
+  element.style.setProperty("--component-font-family", normalizeGameTextFontFamily(component.fontFamily));
   element.style.setProperty("--component-text-color", (component.fontColor as string) || "#17131f");
   element.style.setProperty("--component-fill-color", (component.fillColor as string) || "transparent");
   element.style.setProperty("--component-fill-css", s.normalizeFillCss(component.fillCss) || (component.fillColor as string) || "transparent");

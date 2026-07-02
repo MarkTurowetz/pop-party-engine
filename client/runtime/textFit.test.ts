@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { gameTextDefaultFontFamily, gameTextFontOptions } from "../textFonts";
 import { PartyGameTextFit } from "./textFit";
 
 describe("PartyGameTextFit (ported text-fit)", () => {
@@ -6,9 +7,18 @@ describe("PartyGameTextFit (ported text-fit)", () => {
     const stage = PartyGameTextFit.normalizeTextFieldElement({}, {});
     expect(stage.fontSize).toBe(58);
     expect(stage.fontColor).toBe("#ffffff");
+    expect(stage.fontFamily).toBe(gameTextDefaultFontFamily);
     const controller = PartyGameTextFit.normalizeTextFieldElement({ surface: "controller" }, {});
     expect(controller.fontSize).toBe(42);
     expect(controller.fontColor).toBe("#17131f");
+  });
+
+  it("normalizes text font families to the shared dropdown options", () => {
+    const fontFamily = gameTextFontOptions.find((option) => option.label === "Impact")?.value || "";
+    const layout = PartyGameTextFit.normalizeTextFieldElement({ fontFamily }, {});
+    expect(layout.fontFamily).toBe(fontFamily);
+    const unknown = PartyGameTextFit.normalizeTextFieldElement({ fontFamily: "Papyrus" }, {});
+    expect(unknown.fontFamily).toBe(gameTextDefaultFontFamily);
   });
 
   it("fixedTextLayout returns the legacy metric shape", () => {

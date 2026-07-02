@@ -847,6 +847,7 @@
   display: block;
   box-sizing: border-box;
   color: var(--component-text-color, var(--ink));
+  font-family: var(--component-font-family, ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif);
   font-size: var(--component-font-size, 18px);
   font-weight: 1000;
   line-height: 1;

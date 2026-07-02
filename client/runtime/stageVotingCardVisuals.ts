@@ -4,6 +4,8 @@
 // legacy used arguments.length to distinguish "text override passed" from "use
 // default"; we replicate that with a NO_OVERRIDE sentinel.
 
+import { normalizeGameTextFontFamily } from "../textFonts";
+
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
 
@@ -226,6 +228,7 @@ class VotingCardView {
     const labelText = textOverride !== NO_OVERRIDE ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
     const fontSize = (w().PartyGameArtObject as { componentFontSize?: (c: Dict, t: string) => number } | undefined)?.componentFontSize?.(component, labelText) || Number(component.fontSize || 16);
     element.style.setProperty("--component-font-size", `${fontSize}px`);
+    element.style.setProperty("--component-font-family", normalizeGameTextFontFamily(component.fontFamily));
     element.style.setProperty("--component-text-color", (component.fontColor as string) || "#17131f");
     element.style.setProperty("--component-fill-color", (component.fillColor as string) || "transparent");
     element.style.setProperty("--component-border-color", (component.borderColor as string) || "transparent");

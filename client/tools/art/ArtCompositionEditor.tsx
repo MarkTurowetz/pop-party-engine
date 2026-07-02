@@ -15,7 +15,9 @@ import {
   componentSupportsShapeStyle,
   containerDistributionOptions,
   creatableComponentKinds,
+  normalizeGameTextFontFamily,
   shapeStyleOptions,
+  textFontFamilyOptions,
   validateImageFile
 } from "./artComponentSchema";
 import { useArtCompositions } from "./useArtCompositions";
@@ -279,7 +281,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         fillColor === "currentColor" || get(component, "imageTint") === "currentColor"
           ? "var(--art-preview-current-color)"
           : String(get(component, "fontColor") || "#17131f"),
+      fontFamily: isTextual ? normalizeGameTextFontFamily(get(component, "fontFamily")) : undefined,
       fontSize: isTextual ? Number(get(component, "fontSize") || 16) : 11,
+      fontWeight: isTextual ? 1000 : undefined,
+      textTransform: isTextual ? "uppercase" : undefined,
       overflow: clipsOwnContent ? "hidden" : "visible",
       boxSizing: "border-box",
       zIndex: Math.max(1, layer.total - layer.index)
@@ -566,6 +571,20 @@ function ArtComponentInspector({
       {isTextual ? (
         <>
           {textField("defaultText", "Text")}
+          <label className="flow-react-field" data-art-field="fontFamily">
+            <span>Font</span>
+            <select
+              value={normalizeGameTextFontFamily(get(component, "fontFamily"))}
+              data-art-component-field="fontFamily"
+              onChange={(event) => commit({ fontFamily: event.target.value } as Partial<ArtComponent>)}
+            >
+              {textFontFamilyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           {numberField("fontSize", "Font Size")}
           {textField("fontColor", "Font Color")}
         </>

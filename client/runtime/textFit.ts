@@ -1,3 +1,5 @@
+import { gameTextDefaultFontFamily, normalizeGameTextFontFamily } from "../textFonts";
+
 // Typed port of the legacy client/text-fit.js IIFE. Behaviour is preserved 1:1;
 // the public API is both exported (for TS consumers) and assigned to window
 // (PartyGameTextFit + fittedLayoutTextSize) so the still-legacy stage/controller
@@ -7,7 +9,7 @@ type Dict = Record<string, unknown>;
 type TextTarget = HTMLElement | null | undefined;
 
 const defaultOptions = {
-  fontFamily: 'ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif',
+  fontFamily: gameTextDefaultFontFamily,
   fontStyle: "normal",
   fontWeight: "1000",
   lineHeight: 1,
@@ -60,7 +62,8 @@ function normalizeTextFieldElement(element: Dict = {}, defaults: Dict = {}): Dic
     defaultText: String(source.defaultText ?? fallback.defaultText ?? ""),
     fontSize: positiveNumber(source.fontSize ?? fallback.fontSize, fontFallback),
     autoFitText: source.autoFitText !== false && fallback.autoFitText !== false,
-    fontColor: String(source.fontColor || fallback.fontColor || colorFallback)
+    fontColor: String(source.fontColor || fallback.fontColor || colorFallback),
+    fontFamily: normalizeGameTextFontFamily(source.fontFamily ?? fallback.fontFamily)
   };
 }
 
@@ -81,7 +84,7 @@ function fixedTextLayout(element: Dict | undefined, text: unknown, fontSize: unk
   const lines = String(text ?? "").split("\n");
   return {
     fontSize: size,
-    fontFamily: options.fontFamily || defaultOptions.fontFamily,
+    fontFamily: normalizeGameTextFontFamily(options.fontFamily),
     fontStyle: options.fontStyle || defaultOptions.fontStyle,
     fontWeight: String(options.fontWeight || defaultOptions.fontWeight),
     height,
@@ -129,7 +132,7 @@ function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, 
   const fontSize = positiveNumber(spec.fontSize, positiveNumber(computed?.fontSize, defaultOptions.minSize));
   const lineHeight = normalizeLineHeight(options.lineHeight || spec.lineHeight || computed?.lineHeight, defaultOptions.lineHeight);
   const fontColor = (spec.fontColor || options.fontColor || computed?.color || "") as string;
-  const fontFamily = (options.fontFamily || spec.fontFamily || computed?.fontFamily || defaultOptions.fontFamily) as string;
+  const fontFamily = normalizeGameTextFontFamily(options.fontFamily || spec.fontFamily || computed?.fontFamily);
   const fontStyle = (options.fontStyle || spec.fontStyle || computed?.fontStyle || defaultOptions.fontStyle) as string;
   const fontWeight = String(options.fontWeight || spec.fontWeight || computed?.fontWeight || defaultOptions.fontWeight);
   const textValue = applyTextTransform(String(text ?? ""), options.textTransform || computed?.textTransform || "none");

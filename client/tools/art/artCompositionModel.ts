@@ -4,6 +4,7 @@ import {
   componentSupportsImageMask,
   normalizeContainerDistribution,
   normalizeFillCss,
+  normalizeGameTextFontFamily,
   normalizeImageObjectFit,
   normalizeShapeStyle
 } from "./artComponentSchema";
@@ -42,6 +43,7 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
     fontSize: num(component.fontSize, 16),
     autoFitText: isTextual ? component.autoFitText !== false : false,
     fontColor: String(component.fontColor || "#17131f"),
+    fontFamily: isTextual ? normalizeGameTextFontFamily(component.fontFamily) : "",
     shapeStyle: normalizeShapeStyle(component.shapeStyle, kind),
     fillColor: String(component.fillColor || "transparent"),
     fillCss: normalizeFillCss(component.fillCss),

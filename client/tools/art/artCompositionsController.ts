@@ -2,7 +2,7 @@ import type { ArtApi } from "../../api/artApi";
 import type { ArtComponent, ArtComposition, JsonObject } from "../../types/game-data";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import { artCompositionSnapshot, serializeArtCompositionForSave } from "./artCompositionModel";
-import { componentKindLabel, normalizeCreatableComponentKind } from "./artComponentSchema";
+import { componentKindLabel, defaultTextFontFamily, normalizeCreatableComponentKind } from "./artComponentSchema";
 
 /**
  * Controller for the Art composition editor: a list of compositions, each a nested
@@ -72,6 +72,7 @@ function createComponent(kind: string, bounds: { width: number; height: number }
     component.fontSize = 48;
     component.autoFitText = false;
     component.fontColor = "#17131f";
+    component.fontFamily = defaultTextFontFamily;
   }
   return component as ArtComponent;
 }
