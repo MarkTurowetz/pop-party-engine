@@ -170,6 +170,39 @@ describe("legacy art composition migrations", () => {
       "answer-bubble-tail"
     ]);
   });
+
+  it("expands saved player object canvases to fit nested label prefabs", () => {
+    const runtime = createRuntime({
+      artCompositions: [
+        {
+          id: "player-object-rex",
+          name: "Rex Player Object",
+          canvas: { width: 300, height: 370 },
+          components: [
+            { id: "answer-bubble", name: "Answer Bubble Slot", kind: "reference", x: 150, y: 96, width: 300, height: 180, artCompositionId: "player-answer-bubble" },
+            { id: "avatar", name: "Player Avatar", kind: "container", x: 150, y: 234, width: 100, height: 100 },
+            { id: "player-name", name: "Player Name Widget", kind: "reference", x: 150, y: 309, width: 126, height: 42, artCompositionId: "player-name-widget" },
+            { id: "vip-badge", name: "VIP Badge Widget", kind: "reference", x: 150, y: 345, width: 52, height: 28, artCompositionId: "player-vip-widget" }
+          ]
+        }
+      ]
+    });
+
+    const [composition] = runtime.normalizeArtCompositionsDraft([
+      {
+        id: "player-object-rex",
+        canvas: { width: 300, height: 300 },
+        components: [
+          { id: "answer-bubble", name: "Answer Bubble Slot", kind: "reference", x: 150, y: 96, width: 225, height: 135, artCompositionId: "player-answer-bubble" },
+          { id: "avatar", name: "Player Avatar", kind: "container", x: 150, y: 234, width: 100, height: 100 }
+        ]
+      }
+    ]);
+
+    expect(composition.canvas).toEqual({ width: 300, height: 370 });
+    expect(composition.components.map((component) => component.id)).toEqual(["answer-bubble", "avatar", "player-name", "vip-badge"]);
+    expect(composition.components[0]).toMatchObject({ width: 225, height: 135 });
+  });
 });
 
 describe("art container distribution", () => {

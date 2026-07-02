@@ -319,6 +319,7 @@ function createArtAssetsRuntime({
       height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
     };
     migrateGeneratedWidgetCanvas(composition.id, canvas);
+    migratePlayerObjectCanvas(composition.id, canvas);
     return {
       id: composition.id,
       name: cleanText(override?.name, composition.name || "Art Asset"),
@@ -397,6 +398,11 @@ function createArtAssetsRuntime({
       canvas.width = 180;
       canvas.height = 180;
     }
+  }
+
+  function migratePlayerObjectCanvas(compositionId, canvas = {}) {
+    if (!String(compositionId || "").startsWith("player-object-")) return;
+    if (Number(canvas.height || 0) < 370) canvas.height = 370;
   }
 
   function migrateGeneratedWidgetDefaults(compositionId, components = []) {

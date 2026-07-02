@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   PartyGamePlayerRoster,
   playerAnswerBubbleRuntimeState,
+  playerNameRuntimeText,
   playerObjectCompositionIdForShape,
+  playerVipRuntimeState,
   runtimeAnswerBubbleComposition,
+  runtimePlayerNameWidgetComposition,
+  runtimePlayerVipWidgetComposition,
   runtimePlayerObjectComponents
 } from "./stagePlayerRoster";
 
@@ -54,6 +58,40 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     });
   });
 
+  it("injects player names into a cloned shared name widget composition", () => {
+    const sharedName = {
+      components: [
+        { id: "name-card", kind: "shape", fillColor: "#fffdf4" },
+        { id: "name-text", kind: "text", defaultText: "Player" }
+      ]
+    };
+
+    const runtime = runtimePlayerNameWidgetComposition(sharedName, { name: "Ava" });
+
+    expect(playerNameRuntimeText({ name: "Ava" })).toBe("Ava");
+    expect(sharedName.components[1].defaultText).toBe("Player");
+    expect(runtime.components).toEqual([
+      expect.objectContaining({ id: "name-card", defaultAnimationState: "on" }),
+      expect.objectContaining({ id: "name-text", defaultAnimationState: "on", defaultText: "Ava" })
+    ]);
+  });
+
+  it("parks a cloned shared VIP widget when the player is not VIP", () => {
+    const sharedVip = {
+      components: [
+        { id: "vip-card", kind: "shape", fillColor: "#ffe256" },
+        { id: "vip-text", kind: "text", defaultText: "VIP" }
+      ]
+    };
+
+    const runtime = runtimePlayerVipWidgetComposition(sharedVip, playerVipRuntimeState({ isVip: false }));
+
+    expect(runtime.components).toEqual([
+      expect.objectContaining({ id: "vip-card", defaultAnimationState: "park" }),
+      expect.objectContaining({ id: "vip-text", defaultAnimationState: "park", defaultText: "VIP" })
+    ]);
+  });
+
   it("injects runtime answer text and correctness into a cloned shared bubble composition", () => {
     const sharedBubble = {
       canvas: { width: 300, height: 180 },
@@ -85,6 +123,8 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       canvas: { width: 260, height: 260 },
       components: [
         { id: "answer-bubble", kind: "reference", artCompositionId: "player-answer-bubble", x: 130, y: 80, width: 225, height: 135 },
+        { id: "player-name", kind: "reference", artCompositionId: "player-name-widget", x: 130, y: 300, width: 118, height: 34 },
+        { id: "vip-badge", kind: "reference", artCompositionId: "player-vip-widget", x: 130, y: 334, width: 44, height: 22 },
         {
           id: "avatar",
           kind: "container",
@@ -96,7 +136,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
 
     const components = runtimePlayerObjectComponents(
       playerObject,
-      { avatar: { color: "#ff4d8d" } },
+      { avatar: { color: "#ff4d8d" }, isVip: true },
       { hasAnswer: true, visible: true, text: "ARCTIC", nonce: "answer-1", correctness: "" }
     );
 
@@ -107,7 +147,19 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       height: 135,
       defaultAnimationState: "on"
     });
-    expect((components[1].children as Record<string, unknown>[])[0]).toMatchObject({
+    expect(components[1]).toMatchObject({
+      id: "player-name",
+      artCompositionId: "player-name-widget",
+      width: 118,
+      height: 34,
+      defaultAnimationState: "on"
+    });
+    expect(components[2]).toMatchObject({
+      id: "vip-badge",
+      artCompositionId: "player-vip-widget",
+      defaultAnimationState: "on"
+    });
+    expect((components[3].children as Record<string, unknown>[])[0]).toMatchObject({
       id: "dino-mask",
       fillColor: "currentColor",
       fontColor: "#ff4d8d"

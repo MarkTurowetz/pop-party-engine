@@ -412,12 +412,105 @@ function playerPointPopupComponents() {
   ];
 }
 
+function playerNameWidgetComponents() {
+  return [
+    {
+      id: "name-shadow",
+      name: "Name Shadow",
+      kind: "shape",
+      x: 65,
+      y: 23,
+      width: 118,
+      height: 34,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      shapeStyle: "rounded",
+      fillColor: "rgba(23, 19, 31, 0.42)",
+      borderColor: "transparent",
+      borderWidth: 0,
+      borderRadius: 999
+    },
+    {
+      id: "name-card",
+      name: "Name Card",
+      kind: "shape",
+      x: 61,
+      y: 19,
+      width: 118,
+      height: 34,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      shapeStyle: "rounded",
+      fillColor: "#fffdf4",
+      borderColor: "#17131f",
+      borderWidth: 3,
+      borderRadius: 999
+    },
+    {
+      id: "name-text",
+      name: "Name Text",
+      kind: "text",
+      x: 61,
+      y: 19,
+      width: 96,
+      height: 22,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      defaultText: "Player",
+      fontSize: 17,
+      autoFitText: true,
+      fontColor: "#17131f"
+    }
+  ];
+}
+
+function playerVipWidgetComponents() {
+  return [
+    {
+      id: "vip-card",
+      name: "VIP Card",
+      kind: "shape",
+      x: 22,
+      y: 11,
+      width: 44,
+      height: 22,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      shapeStyle: "rounded",
+      fillColor: "#ffe256",
+      borderColor: "#17131f",
+      borderWidth: 2,
+      borderRadius: 999
+    },
+    {
+      id: "vip-text",
+      name: "VIP Text",
+      kind: "text",
+      x: 22,
+      y: 11,
+      width: 34,
+      height: 12,
+      scale: 1,
+      rotation: 0,
+      defaultAnimationState: "on",
+      defaultText: "VIP",
+      fontSize: 11,
+      autoFitText: false,
+      fontColor: "#17131f"
+    }
+  ];
+}
+
 function defaultPlayerObjectComposition(species, label, assetId) {
   return {
     id: `player-object-${species}`,
     name: `${label} Player Object`,
-    description: "Editable player object composed from the answer bubble and avatar art.",
-    canvas: { width: 300, height: 300 },
+    description: "Editable player object composed from shared answer bubble, avatar, name, and VIP prefabs.",
+    canvas: { width: 300, height: 370 },
     components: [
       {
         id: "answer-bubble",
@@ -489,6 +582,32 @@ function defaultPlayerObjectComposition(species, label, assetId) {
             imageObjectFit: "contain"
           }
         ]
+      },
+      {
+        id: "player-name",
+        name: "Player Name Widget",
+        kind: "reference",
+        x: 150,
+        y: 309,
+        width: 126,
+        height: 42,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "on",
+        artCompositionId: "player-name-widget"
+      },
+      {
+        id: "vip-badge",
+        name: "VIP Badge Widget",
+        kind: "reference",
+        x: 150,
+        y: 345,
+        width: 52,
+        height: 28,
+        scale: 1,
+        rotation: 0,
+        defaultAnimationState: "park",
+        artCompositionId: "player-vip-widget"
       }
     ]
   };
@@ -701,6 +820,20 @@ const defaultArtCompositions = [
     description: "Shared editable scoring popup art spawned when points are shown.",
     canvas: { width: 150, height: 60 },
     components: playerPointPopupComponents()
+  },
+  {
+    id: "player-name-widget",
+    name: "Player Name Widget",
+    description: "Shared editable player name pill nested inside every player object.",
+    canvas: { width: 126, height: 42 },
+    components: playerNameWidgetComponents()
+  },
+  {
+    id: "player-vip-widget",
+    name: "Player VIP Widget",
+    description: "Shared editable VIP badge nested inside every player object.",
+    canvas: { width: 52, height: 28 },
+    components: playerVipWidgetComponents()
   },
   defaultPlayerObjectComposition("rex", "Rex", "avatar-rex"),
   defaultPlayerObjectComposition("stego", "Stego", "avatar-stego"),

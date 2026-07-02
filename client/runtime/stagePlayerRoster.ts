@@ -75,9 +75,21 @@ export interface PlayerAnswerBubbleRuntimeState {
   correctness: string;
 }
 
+export interface PlayerVipRuntimeState {
+  visible: boolean;
+}
+
 export function playerObjectCompositionIdForShape(shape?: unknown): string {
   const species = String(shape || "rex").trim().toLowerCase() || "rex";
   return `player-object-${species}`;
+}
+
+export function playerNameRuntimeText(player: Dict | null): string {
+  return String(player?.name || "Player");
+}
+
+export function playerVipRuntimeState(player: Dict | null): PlayerVipRuntimeState {
+  return { visible: player?.isVip === true };
 }
 
 export function playerAnswerBubbleRuntimeState(player: Dict | null, answersShown = true): PlayerAnswerBubbleRuntimeState {
@@ -108,12 +120,31 @@ export function runtimeAnswerBubbleComposition(composition: Dict, state: PlayerA
   });
 }
 
+export function runtimePlayerNameWidgetComposition(composition: Dict, player: Dict | null): Dict {
+  const name = playerNameRuntimeText(player);
+  return cloneArtComposition(composition, (component) => {
+    component.defaultAnimationState = "on";
+    if (component.id === "name-text") component.defaultText = name;
+  });
+}
+
+export function runtimePlayerVipWidgetComposition(composition: Dict, state: PlayerVipRuntimeState): Dict {
+  const animationState = state.visible ? "on" : "park";
+  return cloneArtComposition(composition, (component) => {
+    component.defaultAnimationState = animationState;
+    if (component.id === "vip-text") component.defaultText = "VIP";
+  });
+}
+
 export function runtimePlayerObjectComponents(composition: Dict, player: Dict, answerState: PlayerAnswerBubbleRuntimeState): Dict[] {
   const color = String((player.avatar as Dict)?.color || "#22d3ee");
+  const vipState = playerVipRuntimeState(player);
   return ((composition.components as Dict[]) || []).map((component) =>
     cloneArtComponent(component, (clone) => {
       applyRuntimePlayerColor(clone, color);
       if (clone.id === "answer-bubble") clone.defaultAnimationState = answerState.visible ? "on" : "park";
+      if (clone.id === "player-name") clone.defaultAnimationState = "on";
+      if (clone.id === "vip-badge") clone.defaultAnimationState = vipState.visible ? "on" : "park";
     })
   );
 }
@@ -145,7 +176,7 @@ class PlayerRosterRenderer {
   }
 
   playerSignature(player: Dict): string {
-    return JSON.stringify({ name: player.name, avatar: player.avatar || {}, isVip: player.isVip === true });
+    return JSON.stringify({ id: player.id || "" });
   }
 
   createTile(player: Dict, playerIndex: number, signature: string): El {
@@ -155,10 +186,8 @@ class PlayerRosterRenderer {
     tile.dataset.playerId = player.id as string;
     tile.dataset.signature = signature;
     tile.style.setProperty("--player-index", String(playerIndex));
-    tile.append(this.createPlayerObjectNode(), this.createNameNode(player));
-    if (player.isVip) tile.appendChild(this.createVipNode());
+    tile.append(this.createPlayerObjectNode());
     this.syncTileGameObject(tile, player);
-    this.syncTileText(tile, player);
     this.syncPlayerObject(tile, player, { instant: true });
     return tile;
   }
@@ -168,35 +197,6 @@ class PlayerRosterRenderer {
     object.className = "player-object-art-host";
     object.dataset.playerPart = "player-object";
     return object;
-  }
-
-  createNameNode(player: Dict): El {
-    const name = this.document.createElement("div");
-    name.className = "player-name";
-    name.dataset.playerPart = "name";
-    renderStageTextBox(name, player.name, { width: 118, height: 34, fontSize: 17, fontColor: "#17131f" });
-    return name;
-  }
-
-  createVipNode(): El {
-    const badge = this.document.createElement("div");
-    badge.className = "vip-badge";
-    badge.dataset.playerPart = "vip-badge";
-    renderStageTextBox(badge, "VIP", { width: 44, height: 22, fontSize: 11, fontColor: "#17131f" });
-    return badge;
-  }
-
-  syncTileText(tile: El | null, player: Dict): void {
-    renderStageTextBox(tile?.querySelector(":scope > .player-name") || null, player.name, {
-      width: 118,
-      height: 34,
-      fontSize: 17,
-      fontColor: "#17131f"
-    });
-    const vipBadge = tile?.querySelector(":scope > .vip-badge") as El | null;
-    if (vipBadge) {
-      renderStageTextBox(vipBadge, player.isVip ? "VIP" : "", { width: 44, height: 22, fontSize: 11, fontColor: "#17131f" });
-    }
   }
 
   playerObjectCompositionFor(player: Dict): Dict | null {
@@ -215,6 +215,8 @@ class PlayerRosterRenderer {
       const player = this.tilePlayers.get(tile) || {};
       const color = String((player.avatar as Dict)?.color || "#22d3ee");
       if (id === "player-answer-bubble") return runtimeAnswerBubbleComposition(composition, this.answerStateFor(player));
+      if (id === "player-name-widget") return runtimePlayerNameWidgetComposition(composition, player);
+      if (id === "player-vip-widget") return runtimePlayerVipWidgetComposition(composition, playerVipRuntimeState(player));
       return cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
     };
   }
@@ -262,6 +264,8 @@ class PlayerRosterRenderer {
     const previousNonce = tile.dataset.answerBubbleNonce || "";
     const previousText = tile.dataset.answerBubbleText || "";
     const previousCorrectness = tile.dataset.answerBubbleCorrectness || "";
+    const previousPlayerName = tile.dataset.playerName || "";
+    const previousPlayerVip = tile.dataset.playerVip === "true";
 
     renderer.render(runtimePlayerObjectComponents(composition, player, answerState), canvas, {
       defaultAnimation: "on",
@@ -276,12 +280,19 @@ class PlayerRosterRenderer {
       previousText,
       previousCorrectness
     });
+    const labelDuration = this.syncPlayerLabelComponents(renderer, player, {
+      ...options,
+      previousPlayerName,
+      previousPlayerVip
+    });
     tile.dataset.answerBubbleHasAnswer = answerState.hasAnswer ? "true" : "false";
     tile.dataset.answerBubbleVisible = answerState.visible ? "true" : "false";
     tile.dataset.answerBubbleNonce = answerState.nonce;
     tile.dataset.answerBubbleText = answerState.text;
     tile.dataset.answerBubbleCorrectness = answerState.correctness;
-    return duration;
+    tile.dataset.playerName = playerNameRuntimeText(player);
+    tile.dataset.playerVip = playerVipRuntimeState(player).visible ? "true" : "false";
+    return Math.max(duration, labelDuration);
   }
 
   syncAnswerBubbleComponent(tile: El, renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {
@@ -299,6 +310,26 @@ class PlayerRosterRenderer {
     if (!previousVisible || !renderer.isComponentVisible?.("answer-bubble")) return play("appear");
     if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) return play("update");
     return 0;
+  }
+
+  syncPlayerLabelComponents(renderer: TreeRenderer, player: Dict, options: Dict = {}): number {
+    const instant = options.instant === true;
+    const previousPlayerName = String(options.previousPlayerName || "");
+    const previousPlayerVip = options.previousPlayerVip === true;
+    const playerName = playerNameRuntimeText(player);
+    const vipState = playerVipRuntimeState(player);
+    const play = (componentId: string, animation: string) => renderer.playComponentTree?.(componentId, animation, { instant }) || 0;
+    let duration = 0;
+    if (previousPlayerName && previousPlayerName !== playerName && renderer.isComponentVisible?.("player-name")) {
+      duration = Math.max(duration, play("player-name", "update"));
+    }
+    const vipVisible = renderer.isComponentVisible?.("vip-badge") === true;
+    if (vipState.visible) {
+      if (!previousPlayerVip || !vipVisible) duration = Math.max(duration, play("vip-badge", "appear"));
+    } else if (previousPlayerVip || vipVisible) {
+      duration = Math.max(duration, play("vip-badge", instant ? "park" : "disappear"));
+    }
+    return duration;
   }
 
   syncTileGameObject(tile: El | null, player: Dict): GameObjectLike | null {
@@ -354,14 +385,10 @@ class PlayerRosterRenderer {
         this.tileGameObjects.delete(String(player.id || ""));
         existing.remove();
       }
-      const isNewTile = tile !== existing;
       if (tile === cursor) {
         cursor = cursor.nextElementSibling;
       } else {
         this.host!.insertBefore(tile, cursor);
-      }
-      if (!isNewTile) {
-        this.syncTileText(tile, player);
       }
       this.syncPlayerObject(tile, player);
     });
