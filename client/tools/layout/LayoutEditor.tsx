@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from "react";
 import type { LayoutElement } from "../../types/game-data";
+import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
 import { layoutGroups } from "./layoutModel";
@@ -99,18 +100,31 @@ export function LayoutEditor({ stageController, controllerController, surface = 
     let moved = false;
     let nextX = originX;
     let nextY = originY;
+    const modifierState = createDragModifierState();
     const move = (e: PointerEvent) => {
       const dx = (e.clientX - startX) / scaleToFit;
       const dy = (e.clientY - startY) / scaleToFit;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
-      nextX = originX + dx;
-      nextY = originY + dy;
+      const next = applyDragModifiers(
+        { originX, originY, deltaX: dx, deltaY: dy, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey },
+        modifierState
+      );
+      nextX = next.x;
+      nextY = next.y;
       setLive({ id: element.id, x: nextX, y: nextY });
     };
-    const up = () => {
+    const up = (e: PointerEvent) => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
       setLive(null);
+      const dx = (e.clientX - startX) / scaleToFit;
+      const dy = (e.clientY - startY) / scaleToFit;
+      const next = applyDragModifiers(
+        { originX, originY, deltaX: dx, deltaY: dy, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey },
+        modifierState
+      );
+      nextX = next.x;
+      nextY = next.y;
       if (moved) controller.moveElement(element.id, nextX, nextY);
     };
     document.addEventListener("pointermove", move);

@@ -8,6 +8,7 @@ import {
   type ReactElement
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
+import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
 import { artResizeDimensions } from "./artResize";
 import type { ArtCompositionsController } from "./artCompositionsController";
@@ -188,13 +189,26 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       startY: event.clientY,
       moved: false
     };
+    const modifierState = createDragModifierState();
     const move = (e: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      const dx = e.clientX - drag.startX;
-      const dy = e.clientY - drag.startY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
-      setLive({ id: drag.id, x: drag.originX + dx / previewScale, y: drag.originY + dy / previewScale });
+      const rawDeltaX = e.clientX - drag.startX;
+      const rawDeltaY = e.clientY - drag.startY;
+      if (Math.abs(rawDeltaX) > 3 || Math.abs(rawDeltaY) > 3) drag.moved = true;
+      const next = applyDragModifiers(
+        {
+          originX: drag.originX,
+          originY: drag.originY,
+          deltaX: rawDeltaX / previewScale,
+          deltaY: rawDeltaY / previewScale,
+          shiftKey: e.shiftKey,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey
+        },
+        modifierState
+      );
+      setLive({ id: drag.id, x: next.x, y: next.y });
     };
     const up = (e: PointerEvent) => {
       document.removeEventListener("pointermove", move);
@@ -203,11 +217,19 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       dragRef.current = null;
       setLive(null);
       if (drag && drag.moved) {
-        controller.moveComponent(
-          drag.id,
-          drag.originX + (e.clientX - drag.startX) / previewScale,
-          drag.originY + (e.clientY - drag.startY) / previewScale
+        const next = applyDragModifiers(
+          {
+            originX: drag.originX,
+            originY: drag.originY,
+            deltaX: (e.clientX - drag.startX) / previewScale,
+            deltaY: (e.clientY - drag.startY) / previewScale,
+            shiftKey: e.shiftKey,
+            metaKey: e.metaKey,
+            ctrlKey: e.ctrlKey
+          },
+          modifierState
         );
+        controller.moveComponent(drag.id, next.x, next.y);
       }
     };
     document.addEventListener("pointermove", move);
