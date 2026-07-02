@@ -122,31 +122,26 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     const startX = event.clientX;
     const startY = event.clientY;
     let next = { width: originW, height: originH };
-    let preserveAspectRatio = event.metaKey || event.ctrlKey;
-    const syncModifier = (e: KeyboardEvent) => {
-      preserveAspectRatio =
-        e.type === "keydown" ? e.metaKey || e.ctrlKey || e.key === "Meta" || e.key === "Control" : e.metaKey || e.ctrlKey;
-    };
-    const move = (e: PointerEvent) => {
-      next = artResizeDimensions({
+    const dimensionsForEvent = (e: PointerEvent) =>
+      artResizeDimensions({
         originWidth: originW,
         originHeight: originH,
         deltaX: (e.clientX - startX) / previewScale,
         deltaY: (e.clientY - startY) / previewScale,
-        preserveAspectRatio: preserveAspectRatio || e.metaKey || e.ctrlKey
+        preserveAspectRatio: e.shiftKey,
+        snapToInteger: e.metaKey || e.ctrlKey
       });
+    const move = (e: PointerEvent) => {
+      next = dimensionsForEvent(e);
       setLiveTransform({ id: component.id, width: next.width, height: next.height });
     };
-    const up = () => {
-      document.removeEventListener("keydown", syncModifier);
-      document.removeEventListener("keyup", syncModifier);
+    const up = (e: PointerEvent) => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
+      next = dimensionsForEvent(e);
       setLiveTransform(null);
       controller.updateComponent(component.id, { width: next.width, height: next.height } as Partial<ArtComponent>);
     };
-    document.addEventListener("keydown", syncModifier);
-    document.addEventListener("keyup", syncModifier);
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
   };

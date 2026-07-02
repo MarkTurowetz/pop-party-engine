@@ -5,6 +5,7 @@ export interface ArtResizeInput {
   deltaY: number;
   minSize?: number;
   preserveAspectRatio?: boolean;
+  snapToInteger?: boolean;
 }
 
 export interface ArtResizeDimensions {
@@ -27,15 +28,23 @@ export function artResizeDimensions(input: ArtResizeInput): ArtResizeDimensions 
     height: safeDimension(originHeight + deltaY, minSize)
   };
 
-  if (!input.preserveAspectRatio) return target;
+  const snap = (dimensions: ArtResizeDimensions): ArtResizeDimensions =>
+    input.snapToInteger
+      ? {
+          width: safeDimension(Math.round(dimensions.width), minSize),
+          height: safeDimension(Math.round(dimensions.height), minSize)
+        }
+      : dimensions;
+
+  if (!input.preserveAspectRatio) return snap(target);
 
   const widthScale = (originWidth + deltaX) / originWidth;
   const heightScale = (originHeight + deltaY) / originHeight;
   const dominantScale = Math.abs(deltaX) >= Math.abs(deltaY) ? widthScale : heightScale;
   const minScale = Math.max(minSize / originWidth, minSize / originHeight);
   const scale = Math.max(minScale, Number.isFinite(dominantScale) ? dominantScale : 1);
-  return {
+  return snap({
     width: originWidth * scale,
     height: originHeight * scale
-  };
+  });
 }

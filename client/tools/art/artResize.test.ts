@@ -9,6 +9,15 @@ describe("artResizeDimensions", () => {
     });
   });
 
+  it("snaps width and height to whole numbers when requested", () => {
+    expect(
+      artResizeDimensions({ originWidth: 200, originHeight: 100, deltaX: 10.4, deltaY: -4.6, snapToInteger: true })
+    ).toEqual({
+      width: 210,
+      height: 95
+    });
+  });
+
   it("preserves the original aspect ratio when requested", () => {
     const resized = artResizeDimensions({
       originWidth: 200,
@@ -27,6 +36,19 @@ describe("artResizeDimensions", () => {
     expect(
       artResizeDimensions({ originWidth: 200, originHeight: 100, deltaX: 0, deltaY: 50, preserveAspectRatio: true })
     ).toEqual({ width: 300, height: 150 });
+  });
+
+  it("can preserve aspect ratio and snap dimensions together", () => {
+    expect(
+      artResizeDimensions({
+        originWidth: 200,
+        originHeight: 100,
+        deltaX: 41.6,
+        deltaY: 0,
+        preserveAspectRatio: true,
+        snapToInteger: true
+      })
+    ).toEqual({ width: 242, height: 121 });
   });
 
   it("keeps dimensions above the minimum size", () => {
