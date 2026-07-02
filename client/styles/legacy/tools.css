@@ -1261,14 +1261,10 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-canvas {
   --art-preview-current-color: #22d3ee;
-  background:
-    linear-gradient(90deg, rgba(23, 19, 31, 0.05) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(23, 19, 31, 0.05) 1px, transparent 1px),
-    rgba(255, 253, 244, 0.52);
-  background-size: 20px 20px, 20px 20px, auto;
-  border: 4px solid var(--ink);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .art-canvas-component {
