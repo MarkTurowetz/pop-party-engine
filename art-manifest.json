@@ -1382,9 +1382,9 @@
           "name": "Answer Bubble Slot",
           "kind": "reference",
           "x": 150,
-          "y": 96,
-          "width": 300,
-          "height": 180,
+          "y": 110,
+          "width": 225.015,
+          "height": 135.009,
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "park",
@@ -1458,7 +1458,7 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-28T01:28:48.011Z"
+      "updatedAt": "2026-07-02T07:36:08.888Z"
     },
     "player-object-stego": {
       "name": "Stego Player Object",
