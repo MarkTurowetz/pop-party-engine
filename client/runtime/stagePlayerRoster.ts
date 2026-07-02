@@ -15,6 +15,8 @@ interface GameObjectApi {
 }
 interface TreeRenderer {
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
+  isComponentVisible?: (componentId: string) => boolean;
+  playComponentTree?: (componentId: string, animation: string, options?: Dict) => number;
 }
 
 declare global {
@@ -37,35 +39,106 @@ function fn(value: unknown): boolean {
   return typeof value === "function";
 }
 
+function cloneArtComponent(component: Dict, apply?: (component: Dict) => void): Dict {
+  const clone: Dict = {
+    ...component,
+    children: ((component.children as Dict[]) || []).map((child) => cloneArtComponent(child, apply))
+  };
+  apply?.(clone);
+  return clone;
+}
+
+function cloneArtComposition(composition: Dict, apply?: (component: Dict) => void): Dict {
+  return {
+    ...composition,
+    canvas: { ...((composition.canvas as Dict) || {}) },
+    components: ((composition.components as Dict[]) || []).map((component) => cloneArtComponent(component, apply))
+  };
+}
+
+function usesCurrentColor(component: Dict): boolean {
+  return [component.fillColor, component.fillCss, component.borderColor, component.imageTint, component.fontColor]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .includes("currentcolor");
+}
+
+function applyRuntimePlayerColor(component: Dict, color: string): void {
+  if (!color || !usesCurrentColor(component)) return;
+  component.fontColor = color;
+}
+
+export interface PlayerAnswerBubbleRuntimeState {
+  hasAnswer: boolean;
+  visible: boolean;
+  text: string;
+  nonce: string;
+  correctness: string;
+}
+
+export function playerObjectCompositionIdForShape(shape?: unknown): string {
+  const species = String(shape || "rex").trim().toLowerCase() || "rex";
+  return `player-object-${species}`;
+}
+
+export function playerAnswerBubbleRuntimeState(player: Dict | null, answersShown = true): PlayerAnswerBubbleRuntimeState {
+  const displayedAnswer = (player?.displayedAnswer as Dict) || null;
+  const text = String(displayedAnswer?.text || "");
+  const hasAnswer = Boolean(text && displayedAnswer?.hidden !== true);
+  return {
+    hasAnswer,
+    visible: hasAnswer && answersShown !== false,
+    text,
+    nonce: String(displayedAnswer?.nonce || ""),
+    correctness: displayedAnswer?.correct === true ? "correct" : displayedAnswer?.correct === false ? "wrong" : ""
+  };
+}
+
+export function runtimeAnswerBubbleComposition(composition: Dict, state: PlayerAnswerBubbleRuntimeState): Dict {
+  const fillColor = state.correctness === "correct" ? "#60d394" : state.correctness === "wrong" ? "#d7d3c7" : "";
+  const textColor = state.correctness === "wrong" ? "rgba(23, 19, 31, 0.68)" : "";
+  return cloneArtComposition(composition, (component) => {
+    component.defaultAnimationState = state.visible ? "on" : "park";
+    if (component.id === "answer-text") {
+      if (state.hasAnswer) component.defaultText = state.text;
+      if (textColor) component.fontColor = textColor;
+    }
+    if (fillColor && (component.id === "answer-bubble-card" || component.id === "answer-bubble-tail")) {
+      component.fillColor = fillColor;
+    }
+  });
+}
+
+export function runtimePlayerObjectComponents(composition: Dict, player: Dict, answerState: PlayerAnswerBubbleRuntimeState): Dict[] {
+  const color = String((player.avatar as Dict)?.color || "#22d3ee");
+  return ((composition.components as Dict[]) || []).map((component) =>
+    cloneArtComponent(component, (clone) => {
+      applyRuntimePlayerColor(clone, color);
+      if (clone.id === "answer-bubble") clone.defaultAnimationState = answerState.visible ? "on" : "park";
+    })
+  );
+}
+
 class PlayerRosterRenderer {
   host?: El;
   document: Document;
   gameObjectApi: GameObjectApi | undefined;
   timerSink: ((id: number) => void) | null;
-  avatarClass: (shape?: string) => string;
-  avatarFrameImage: () => string;
-  dinoIcon: (shape?: string) => string;
-  playerAvatarArt: (shape?: string) => string;
-  syncAnswerBubble: (tile: El, player: Dict, options?: Dict) => number;
   getComposition: (id: string) => Dict | null;
   pointPopupIds = new Set<string>();
   gameObject: GameObjectLike | null = null;
   tileGameObjects = new Map<string, GameObjectLike>();
+  tileRenderers = new WeakMap<El, TreeRenderer>();
+  tilePlayers = new WeakMap<El, Dict>();
   pointPopupGameObjects = new Map<string, GameObjectLike>();
   pointPopupRenderers = new WeakMap<El, TreeRenderer>();
+  renderedAnswersShown = true;
+  answerAnimationEndsAt = 0;
 
   constructor(options: Dict = {}) {
     this.host = options.host as El | undefined;
     this.document = (options.document as Document) || globalThis.document;
     this.gameObjectApi = (options.gameObjectApi as GameObjectApi) || (w().PartyGameGameObject as GameObjectApi) || (w().PartyGameStageGameObject as GameObjectApi);
     this.timerSink = fn(options.timerSink) ? (options.timerSink as (id: number) => void) : null;
-    this.avatarClass = fn(options.avatarClass) ? (options.avatarClass as (s?: string) => string) : () => "";
-    this.avatarFrameImage = fn(options.avatarFrameImage) ? (options.avatarFrameImage as () => string) : () => "";
-    this.dinoIcon = fn(options.dinoIcon) ? (options.dinoIcon as (s?: string) => string) : () => "";
-    this.playerAvatarArt = fn(options.playerAvatarArt)
-      ? (options.playerAvatarArt as (s?: string) => string)
-      : (shape?: string) => `${this.avatarFrameImage()}${this.dinoIcon(shape)}`;
-    this.syncAnswerBubble = fn(options.syncAnswerBubble) ? (options.syncAnswerBubble as (t: El, p: Dict, o?: Dict) => number) : () => 0;
     this.getComposition = fn(options.getComposition)
       ? (options.getComposition as (id: string) => Dict | null)
       : (id: string) => w().artComposition?.(id) || null;
@@ -82,21 +155,19 @@ class PlayerRosterRenderer {
     tile.dataset.playerId = player.id as string;
     tile.dataset.signature = signature;
     tile.style.setProperty("--player-index", String(playerIndex));
-    tile.append(this.createAvatarNode(player), this.createNameNode(player));
+    tile.append(this.createPlayerObjectNode(), this.createNameNode(player));
     if (player.isVip) tile.appendChild(this.createVipNode());
     this.syncTileGameObject(tile, player);
     this.syncTileText(tile, player);
-    this.syncAnswerBubble(tile, player, { instant: true });
+    this.syncPlayerObject(tile, player, { instant: true });
     return tile;
   }
 
-  createAvatarNode(player: Dict): El {
-    const avatar = this.document.createElement("div");
-    avatar.className = `player-avatar ${this.avatarClass((player.avatar as Dict)?.shape as string)}`.trim();
-    avatar.style.setProperty("--avatar-color", ((player.avatar as Dict)?.color as string) || "#22d3ee");
-    avatar.dataset.playerPart = "avatar";
-    avatar.innerHTML = this.playerAvatarArt((player.avatar as Dict)?.shape as string);
-    return avatar;
+  createPlayerObjectNode(): El {
+    const object = this.document.createElement("div");
+    object.className = "player-object-art-host";
+    object.dataset.playerPart = "player-object";
+    return object;
   }
 
   createNameNode(player: Dict): El {
@@ -126,6 +197,108 @@ class PlayerRosterRenderer {
     if (vipBadge) {
       renderStageTextBox(vipBadge, player.isVip ? "VIP" : "", { width: 44, height: 22, fontSize: 11, fontColor: "#17131f" });
     }
+  }
+
+  playerObjectCompositionFor(player: Dict): Dict | null {
+    const requestedId = playerObjectCompositionIdForShape((player.avatar as Dict)?.shape);
+    return this.getComposition(requestedId) || this.getComposition("player-object-rex");
+  }
+
+  answerStateFor(player: Dict): PlayerAnswerBubbleRuntimeState {
+    return playerAnswerBubbleRuntimeState(player, this.renderedAnswersShown);
+  }
+
+  compositionResolverFor(tile: El): (id: string) => Dict | null {
+    return (id: string) => {
+      const composition = this.getComposition(id);
+      if (!composition) return null;
+      const player = this.tilePlayers.get(tile) || {};
+      const color = String((player.avatar as Dict)?.color || "#22d3ee");
+      if (id === "player-answer-bubble") return runtimeAnswerBubbleComposition(composition, this.answerStateFor(player));
+      return cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
+    };
+  }
+
+  rendererFor(tile: El): TreeRenderer | null {
+    let renderer = this.tileRenderers.get(tile);
+    if (renderer) return renderer;
+    const artRuntime = w().PartyGameArtObject as unknown as { ArtObjectTreeRenderer?: new (options: Dict) => TreeRenderer } | undefined;
+    const host = tile.querySelector(":scope > .player-object-art-host") as El | null;
+    if (!host || !artRuntime?.ArtObjectTreeRenderer) return null;
+    renderer = new artRuntime.ArtObjectTreeRenderer({
+      host,
+      document: this.document,
+      instanceId: `player-object:${tile.dataset.playerId || Math.random().toString(36).slice(2)}`,
+      gameObjectApi: this.gameObjectApi,
+      visualAnimation: w().PartyGameVisualObject,
+      getComposition: this.compositionResolverFor(tile)
+    });
+    this.tileRenderers.set(tile, renderer);
+    return renderer;
+  }
+
+  syncPlayerObject(tile: El | null, player: Dict, options: Dict = {}): number {
+    if (!tile) return 0;
+    const host = tile.querySelector(":scope > .player-object-art-host") as El | null;
+    const composition = this.playerObjectCompositionFor(player);
+    const renderer = this.rendererFor(tile);
+    if (!host || !composition || !renderer) return 0;
+
+    this.tilePlayers.set(tile, player);
+    const canvas = (composition.canvas as Dict) || { width: 300, height: 300 };
+    const canvasWidth = Math.max(1, Number(canvas.width || 300));
+    const canvasHeight = Math.max(1, Number(canvas.height || 300));
+    const color = String((player.avatar as Dict)?.color || "#22d3ee");
+    const answerState = this.answerStateFor(player);
+    host.style.width = `${canvasWidth}px`;
+    host.style.height = `${canvasHeight}px`;
+    host.style.color = color;
+    tile.style.setProperty("--player-object-width", `${canvasWidth}px`);
+    tile.style.setProperty("--player-object-height", `${canvasHeight}px`);
+    tile.style.setProperty("--avatar-color", color);
+    tile.dataset.playerObjectCompositionId = String(composition.id || "");
+
+    const previousVisible = tile.dataset.answerBubbleVisible === "true";
+    const previousNonce = tile.dataset.answerBubbleNonce || "";
+    const previousText = tile.dataset.answerBubbleText || "";
+    const previousCorrectness = tile.dataset.answerBubbleCorrectness || "";
+
+    renderer.render(runtimePlayerObjectComponents(composition, player, answerState), canvas, {
+      defaultAnimation: "on",
+      instant: true,
+      respectDefaultAnimationState: true
+    });
+
+    const duration = this.syncAnswerBubbleComponent(tile, renderer, answerState, {
+      ...options,
+      previousVisible,
+      previousNonce,
+      previousText,
+      previousCorrectness
+    });
+    tile.dataset.answerBubbleHasAnswer = answerState.hasAnswer ? "true" : "false";
+    tile.dataset.answerBubbleVisible = answerState.visible ? "true" : "false";
+    tile.dataset.answerBubbleNonce = answerState.nonce;
+    tile.dataset.answerBubbleText = answerState.text;
+    tile.dataset.answerBubbleCorrectness = answerState.correctness;
+    return duration;
+  }
+
+  syncAnswerBubbleComponent(tile: El, renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {
+    const instant = options.instant === true;
+    const previousVisible = options.previousVisible === true;
+    const previousNonce = String(options.previousNonce || "");
+    const previousText = String(options.previousText || "");
+    const previousCorrectness = String(options.previousCorrectness || "");
+    const play = (animation: string) => renderer.playComponentTree?.("answer-bubble", animation, { instant }) || 0;
+
+    if (!state.visible) {
+      if (previousVisible || renderer.isComponentVisible?.("answer-bubble")) return play(instant ? "park" : "disappear");
+      return play("park");
+    }
+    if (!previousVisible || !renderer.isComponentVisible?.("answer-bubble")) return play("appear");
+    if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) return play("update");
+    return 0;
   }
 
   syncTileGameObject(tile: El | null, player: Dict): GameObjectLike | null {
@@ -189,8 +362,8 @@ class PlayerRosterRenderer {
       }
       if (!isNewTile) {
         this.syncTileText(tile, player);
-        this.syncAnswerBubble(tile, player);
       }
+      this.syncPlayerObject(tile, player);
     });
     Array.from(this.host.querySelectorAll(".player-tile[data-player-id]")).forEach((node) => {
       const tile = node as El;
@@ -249,6 +422,47 @@ class PlayerRosterRenderer {
     this.host.classList.toggle("players-hidden", !targetShown);
     this.host.classList.toggle("players-instant", instant);
     return this.visibilityDuration({ ...options, instant });
+  }
+
+  currentAnswerBubblesShown(): boolean {
+    return this.renderedAnswersShown !== false;
+  }
+
+  answerBubbleAnimationRemaining(): number {
+    return Math.max(0, this.answerAnimationEndsAt - Date.now());
+  }
+
+  hasParkedShownBubbles(): boolean {
+    if (!this.currentAnswerBubblesShown() || !this.host) return false;
+    return Array.from(this.host.querySelectorAll(".player-tile[data-answer-bubble-has-answer='true']")).some((node) => {
+      const tile = node as El;
+      return this.tileRenderers.get(tile)?.isComponentVisible?.("answer-bubble") !== true;
+    });
+  }
+
+  resetAnswerBubbles(): void {
+    this.renderedAnswersShown = true;
+    this.answerAnimationEndsAt = 0;
+    this.host?.classList.remove("answers-hidden");
+  }
+
+  setAnswerBubblesShown(isShown: boolean, options: Dict = {}): number {
+    if (!this.host) return 0;
+    const instant = options.instant === true;
+    const remainingDuration = this.answerBubbleAnimationRemaining();
+    const wasShown = this.currentAnswerBubblesShown();
+    this.renderedAnswersShown = isShown !== false;
+    this.host.classList.toggle("answers-hidden", !this.renderedAnswersShown);
+    if (!instant && wasShown === this.renderedAnswersShown && remainingDuration > 0) return remainingDuration;
+
+    let duration = 0;
+    for (const node of Array.from(this.host.querySelectorAll(".player-tile[data-player-id]"))) {
+      const tile = node as El;
+      const player = this.tilePlayers.get(tile);
+      if (player) duration = Math.max(duration, this.syncPlayerObject(tile, player, { instant }));
+    }
+    this.answerAnimationEndsAt = duration > 0 ? Date.now() + duration : 0;
+    return duration;
   }
 
   tileForPlayerId(playerId: unknown): El | null {

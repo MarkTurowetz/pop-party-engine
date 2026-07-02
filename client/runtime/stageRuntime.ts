@@ -13,7 +13,6 @@ type AudioEl = HTMLAudioElement & { stageInterrupted?: boolean };
 interface StageVisualControllersApi {
   createStageTextController: (o: Dict) => { init: () => void; set: (t: unknown, o: Dict) => number };
   createCraftingTimerController: (o: Dict) => Dict;
-  createPlayerAnswerBubbleController: (o: Dict) => Dict;
 }
 
 declare global {
@@ -78,7 +77,6 @@ const artComposition = (id: string): Dict | null => w().artComposition?.(id) || 
 
 let stageTextControllerInstance: { init: () => void; set: (t: unknown, o: Dict) => number } | null = null;
 let craftingTimerControllerInstance: Dict | null = null;
-let playerAnswerBubbleControllerInstance: Dict | null = null;
 let playerRosterRendererInstance: Dict | null = null;
 let stageDebugPanelInstance: Dict | null = null;
 let stageWipeControllerInstance: Dict | null = null;
@@ -133,22 +131,12 @@ function craftingTimerController(): Dict | null {
   return craftingTimerControllerInstance;
 }
 
-function playerAnswerBubbleController(): Dict | null {
-  if (!playerAnswerBubbleControllerInstance && stageVisualControllers()) {
-    playerAnswerBubbleControllerInstance = stageVisualControllers()!.createPlayerAnswerBubbleController({
-      visualAnimation: visualAnimation(), gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject, host: w().playerLobby, document, getComposition: artComposition
-    });
-  }
-  return playerAnswerBubbleControllerInstance;
-}
-
 function playerRosterRenderer(): Dict | null {
   if (!playerRosterRendererInstance && w().PartyGamePlayerRoster) {
     playerRosterRendererInstance = (w().PartyGamePlayerRoster as unknown as { createRenderer: (o: Dict) => Dict }).createRenderer({
       host: w().playerLobby, document, gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject,
       timerSink: (timerId: number) => w().textObjectTimers.push(timerId),
-      avatarClass: w().avatarClass, avatarFrameImage: w().avatarFrameImage, dinoIcon: w().dinoIcon, playerAvatarArt: w().playerAvatarArt,
-      syncAnswerBubble: syncPlayerAnswerBubble, getComposition: artComposition
+      getComposition: artComposition
     });
   }
   return playerRosterRendererInstance;
@@ -208,16 +196,12 @@ function clearVotingCardVisuals(options: Dict = {}): void {
   (votingCardRenderer() as { clear?: (o: Dict) => void } | null)?.clear?.(options);
 }
 
-function syncPlayerAnswerBubble(tile: El, player: Dict, options: Dict = {}): number {
-  return ((playerAnswerBubbleController() as { sync?: (t: El, p: Dict, o: Dict) => number } | null)?.sync?.(tile, player, options) as number) || 0;
-}
-
 function setPlayerAnswerBubblesShown(isShown: boolean, options: Dict = {}): number {
-  return ((playerAnswerBubbleController() as { setShown?: (s: boolean, o: Dict) => number } | null)?.setShown?.(isShown, options) as number) || 0;
+  return ((playerRosterRenderer() as { setAnswerBubblesShown?: (s: boolean, o: Dict) => number } | null)?.setAnswerBubblesShown?.(isShown, options) as number) || 0;
 }
 
 function playerAnswerBubbleAnimationRemaining(): number {
-  return ((playerAnswerBubbleController() as { remaining?: () => number } | null)?.remaining?.() as number) || 0;
+  return ((playerRosterRenderer() as { answerBubbleAnimationRemaining?: () => number } | null)?.answerBubbleAnimationRemaining?.() as number) || 0;
 }
 
 function renderStagePlayers(players: Dict[]): void {
@@ -351,7 +335,7 @@ function resetStageObjects(options: Dict = {}): void {
   clearStageAudioPlayers();
   (craftingTimerController() as { reset?: () => void } | null)?.reset?.();
   setPlayersShown(true, { instant: false });
-  (playerAnswerBubbleController() as { reset?: () => void } | null)?.reset?.();
+  (playerRosterRenderer() as { resetAnswerBubbles?: () => void } | null)?.resetAnswerBubbles?.();
   (playerRosterRenderer() as { clearPointPopupIds?: () => void } | null)?.clearPointPopupIds?.();
   clearVotingCardVisuals({ instant: true });
   initStageTextObjects();
@@ -616,8 +600,8 @@ function applyStageState(lobby: Dict): void {
   setPlayersShown(lobby.playersShown !== false);
   const nextAnswersShown = lobby.playerAnswersShown !== false;
   const answersAreStillAnimating = playerAnswerBubbleAnimationRemaining() > 0;
-  const hasParkedShownBubbles = (playerAnswerBubbleController() as { hasParkedShownBubbles?: () => boolean } | null)?.hasParkedShownBubbles?.() === true;
-  const answersWereAlreadyShown = (playerAnswerBubbleController() as { currentShown?: () => boolean } | null)?.currentShown?.() === nextAnswersShown;
+  const hasParkedShownBubbles = (playerRosterRenderer() as { hasParkedShownBubbles?: () => boolean } | null)?.hasParkedShownBubbles?.() === true;
+  const answersWereAlreadyShown = (playerRosterRenderer() as { currentAnswerBubblesShown?: () => boolean } | null)?.currentAnswerBubblesShown?.() === nextAnswersShown;
   setPlayerAnswerBubblesShown(nextAnswersShown, { instant: answersWereAlreadyShown && !answersAreStillAnimating && !hasParkedShownBubbles });
   renderPointPopups((lobby.pendingPointPopups as Dict[]) || []);
   renderVotingCards((lobby.votingCards as Dict[]) || [], votingCardRenderOptions(lobby));

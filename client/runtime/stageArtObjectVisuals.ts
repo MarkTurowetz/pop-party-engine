@@ -330,6 +330,15 @@ class ArtObjectView {
     return (this.createVisual() as { isVisible?: () => boolean } | null)?.isVisible?.() === true;
   }
 
+  viewForComponentId(componentId: string): ArtObjectView | null {
+    if (String(this.component?.id || "") === componentId) return this;
+    for (const child of this.children.values()) {
+      const match = child.viewForComponentId(componentId);
+      if (match) return match;
+    }
+    return null;
+  }
+
   update(component: Component, canvas: CanvasSize, layer: Dict = {}): void {
     this.component = component || {};
     const wasVisible = this.visual ? this.isVisible() : true;
@@ -390,6 +399,12 @@ class ArtObjectView {
 
   play(animation: string, options: Dict = {}): number {
     return (this.createVisual() as { play?: (a: string, o: Dict) => number } | null)?.play?.(animation, options) || 0;
+  }
+
+  playTree(animation: string, options: Dict = {}): number {
+    let duration = this.play(animation, options);
+    for (const child of this.children.values()) duration = Math.max(duration, child.playTree(animation, options));
+    return duration;
   }
 
   park(options: Dict = {}): number {
@@ -489,6 +504,26 @@ class ArtObjectTreeRenderer {
     let duration = 0;
     for (const view of this.views.values()) duration = Math.max(duration, view.play(animation, options));
     return duration;
+  }
+
+  viewForComponentId(componentId: string): ArtObjectView | null {
+    for (const view of this.views.values()) {
+      const match = view.viewForComponentId(componentId);
+      if (match) return match;
+    }
+    return null;
+  }
+
+  isComponentVisible(componentId: string): boolean {
+    return this.viewForComponentId(componentId)?.isVisible() === true;
+  }
+
+  playComponent(componentId: string, animation: string, options: Dict = {}): number {
+    return this.viewForComponentId(componentId)?.play(animation, options) || 0;
+  }
+
+  playComponentTree(componentId: string, animation: string, options: Dict = {}): number {
+    return this.viewForComponentId(componentId)?.playTree(animation, options) || 0;
   }
 
   clear(options: Dict = {}): number {

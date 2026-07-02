@@ -2,10 +2,9 @@ import { describe, expect, it } from "vitest";
 import { PartyGameStageVisualControllers } from "./stageVisualControllers";
 
 describe("PartyGameStageVisualControllers (ported)", () => {
-  it("exposes the three controllers and factories", () => {
+  it("exposes the stage text and crafting timer controllers and factories", () => {
     expect(PartyGameStageVisualControllers.StageTextController).toBeTypeOf("function");
     expect(PartyGameStageVisualControllers.CraftingTimerController).toBeTypeOf("function");
-    expect(PartyGameStageVisualControllers.PlayerAnswerBubbleController).toBeTypeOf("function");
     expect(PartyGameStageVisualControllers.createStageTextController({})).toBeTypeOf("object");
   });
 
