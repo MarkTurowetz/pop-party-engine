@@ -3,6 +3,8 @@
 // legacy stage runtime. PartyGame* + artComposition deps are read lazily via
 // globalThis at call time.
 
+import { distributedContainerItemPositions, type DistributedItemSize } from "./distributedContainerLayout";
+
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
 interface GameObjectLike {
@@ -65,6 +67,24 @@ function usesCurrentColor(component: Dict): boolean {
 function applyRuntimePlayerColor(component: Dict, color: string): void {
   if (!color || !usesCurrentColor(component)) return;
   component.fontColor = color;
+}
+
+function elementDimension(element: El | undefined, dimension: "width" | "height", fallback = 1): number {
+  if (!element) return fallback;
+  const clientValue = dimension === "width" ? element.clientWidth : element.clientHeight;
+  if (clientValue > 0) return clientValue;
+  const rect = element.getBoundingClientRect?.();
+  const rectValue = rect ? Number(rect[dimension]) : 0;
+  if (rectValue > 0) return rectValue;
+  const styleValue = Number.parseFloat(element.style.getPropertyValue(dimension));
+  return Number.isFinite(styleValue) && styleValue > 0 ? styleValue : fallback;
+}
+
+function tileDistributionSize(tile: El): DistributedItemSize {
+  const width = Number(tile.dataset.playerObjectWidth || 0) || Number.parseFloat(tile.style.getPropertyValue("--player-object-width")) || 300;
+  const height = Number(tile.dataset.playerObjectHeight || 0) || Number.parseFloat(tile.style.getPropertyValue("--player-object-height")) || 300;
+  const scale = Number(tile.dataset.playerObjectScale || 1) || 1;
+  return { width, height, scale };
 }
 
 export interface PlayerAnswerBubbleRuntimeState {
@@ -162,6 +182,7 @@ class PlayerRosterRenderer {
   tilePlayers = new WeakMap<El, Dict>();
   pointPopupGameObjects = new Map<string, GameObjectLike>();
   pointPopupRenderers = new WeakMap<El, TreeRenderer>();
+  resizeObserver: ResizeObserver | null = null;
   renderedAnswersShown = true;
   answerAnimationEndsAt = 0;
 
@@ -173,6 +194,13 @@ class PlayerRosterRenderer {
     this.getComposition = fn(options.getComposition)
       ? (options.getComposition as (id: string) => Dict | null)
       : (id: string) => w().artComposition?.(id) || null;
+    this.observeHostSize();
+  }
+
+  observeHostSize(): void {
+    if (!this.host || typeof ResizeObserver !== "function") return;
+    this.resizeObserver = new ResizeObserver(() => this.layoutTiles());
+    this.resizeObserver.observe(this.host);
   }
 
   playerSignature(player: Dict): string {
@@ -258,6 +286,9 @@ class PlayerRosterRenderer {
     tile.style.setProperty("--player-object-width", `${canvasWidth}px`);
     tile.style.setProperty("--player-object-height", `${canvasHeight}px`);
     tile.style.setProperty("--avatar-color", color);
+    tile.dataset.playerObjectWidth = String(canvasWidth);
+    tile.dataset.playerObjectHeight = String(canvasHeight);
+    tile.dataset.playerObjectScale = "1";
     tile.dataset.playerObjectCompositionId = String(composition.id || "");
 
     const previousVisible = tile.dataset.answerBubbleVisible === "true";
@@ -292,6 +323,7 @@ class PlayerRosterRenderer {
     tile.dataset.answerBubbleCorrectness = answerState.correctness;
     tile.dataset.playerName = playerNameRuntimeText(player);
     tile.dataset.playerVip = playerVipRuntimeState(player).visible ? "true" : "false";
+    this.layoutTiles();
     return Math.max(duration, labelDuration);
   }
 
@@ -398,6 +430,26 @@ class PlayerRosterRenderer {
         this.tileGameObjects.delete(String(tile.dataset.playerId || ""));
         tile.remove();
       }
+    });
+    this.layoutTiles();
+  }
+
+  layoutTiles(): void {
+    if (!this.host) return;
+    const tiles = Array.from(this.host.querySelectorAll(":scope > .player-tile[data-player-id]")) as El[];
+    if (!tiles.length) return;
+    const containerWidth = elementDimension(this.host, "width", 1);
+    const containerHeight = elementDimension(this.host, "height", 116);
+    const positions = distributedContainerItemPositions(
+      { width: containerWidth, height: containerHeight },
+      tiles.map(tileDistributionSize),
+      "horizontal"
+    );
+    tiles.forEach((tile, index) => {
+      const position = positions[index];
+      if (!position) return;
+      tile.style.left = `${position.x}px`;
+      tile.style.top = `${position.y}px`;
     });
   }
 

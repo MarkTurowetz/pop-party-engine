@@ -5,6 +5,7 @@
 // module's import-time install).
 
 import { normalizeGameTextFontFamily } from "../textFonts";
+import { distributedContainerItemPositions } from "./distributedContainerLayout";
 
 type Dict = Record<string, unknown>;
 type Component = Dict;
@@ -236,16 +237,11 @@ function distributedContainerChildren(component: Component, children: Component[
   if (distribution === "none" || !Array.isArray(children) || children.length === 0) return children || [];
   const width = Math.max(1, num(component.width, 1));
   const height = Math.max(1, num(component.height, 1));
-  const count = children.length;
+  const positions = distributedContainerItemPositions({ width, height }, children, distribution === "vertical" ? "vertical" : "horizontal");
   return children.map((child, index) => {
     const clone = cloneArtComponentTree(child);
-    if (distribution === "horizontal") {
-      clone.x = width * ((index + 1) / (count + 1));
-      clone.y = height / 2;
-    } else if (distribution === "vertical") {
-      clone.x = width / 2;
-      clone.y = height * ((index + 1) / (count + 1));
-    }
+    clone.x = positions[index]?.x ?? num(clone.x);
+    clone.y = positions[index]?.y ?? num(clone.y);
     return clone;
   });
 }

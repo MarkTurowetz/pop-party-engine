@@ -40,6 +40,32 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(playerObjectCompositionIdForShape("")).toBe("player-object-rex");
   });
 
+  it("lays out player object tiles by their origin centers inside the roster container", () => {
+    const style = () => ({
+      left: "",
+      top: "",
+      getPropertyValue: () => ""
+    });
+    const tiles = [
+      { dataset: { playerObjectWidth: "100", playerObjectHeight: "80", playerId: "a" }, style: style() },
+      { dataset: { playerObjectWidth: "300", playerObjectHeight: "80", playerId: "b" }, style: style() },
+      { dataset: { playerObjectWidth: "100", playerObjectHeight: "80", playerId: "c" }, style: style() }
+    ];
+    const host = {
+      clientWidth: 1000,
+      clientHeight: 200,
+      querySelectorAll: () => tiles
+    };
+
+    PartyGamePlayerRoster.createRenderer({ host }).layoutTiles();
+
+    expect(tiles.map((tile) => [tile.style.left, tile.style.top])).toEqual([
+      ["175px", "100px"],
+      ["500px", "100px"],
+      ["825px", "100px"]
+    ]);
+  });
+
   it("builds answer bubble runtime state from the displayed player answer", () => {
     expect(
       playerAnswerBubbleRuntimeState({
