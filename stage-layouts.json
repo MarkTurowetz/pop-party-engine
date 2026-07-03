@@ -15,6 +15,8 @@
         "selector": "#stageCodeBadge",
         "kind": "art",
         "artCompositionId": "stage-code-widget",
+        "hidden": false,
+        "locked": false,
         "x": 160,
         "y": 100,
         "width": 170,
@@ -25,6 +27,7 @@
         "defaultText": "",
         "fontSize": 58,
         "autoFitText": false,
+        "fontFamily": "",
         "fontColor": "#ffffff"
       },
       {
@@ -33,6 +36,8 @@
         "selector": "#presentClickWidget",
         "kind": "art",
         "artCompositionId": "presentation-click-prompt",
+        "hidden": false,
+        "locked": false,
         "x": 1800,
         "y": 960,
         "width": 90,
@@ -43,6 +48,7 @@
         "defaultText": "",
         "fontSize": 58,
         "autoFitText": false,
+        "fontFamily": "",
         "fontColor": "#ffffff"
       },
       {
@@ -51,6 +57,8 @@
         "selector": "#playerLobby",
         "kind": "art",
         "artCompositionId": "",
+        "hidden": false,
+        "locked": false,
         "x": 960,
         "y": 810,
         "width": 1320,
@@ -61,6 +69,7 @@
         "defaultText": "",
         "fontSize": 58,
         "autoFitText": false,
+        "fontFamily": "",
         "fontColor": "#ffffff"
       }
     ]
@@ -80,6 +89,8 @@
           "selector": "#startPopup",
           "kind": "art",
           "artCompositionId": "countdown-popup",
+          "hidden": false,
+          "locked": false,
           "x": 1710,
           "y": 150,
           "width": 200,
@@ -90,6 +101,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         },
         {
@@ -98,6 +110,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 140,
           "width": 1080,
@@ -108,6 +122,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         },
         {
@@ -116,6 +131,8 @@
           "selector": ".stage-code-panel",
           "kind": "art",
           "artCompositionId": "stage-code-panel",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 480,
           "width": 560,
@@ -126,6 +143,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         },
         {
@@ -134,6 +152,8 @@
           "selector": "#waitingStatus",
           "kind": "art",
           "artCompositionId": "waiting-status-widget",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 990,
           "width": 700,
@@ -144,6 +164,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         },
         {
@@ -152,6 +173,8 @@
           "selector": "#joinPrompt",
           "kind": "art",
           "artCompositionId": "join-widget",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 300,
           "width": 740,
@@ -162,6 +185,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         },
         {
@@ -170,6 +194,8 @@
           "selector": "#stageJoinQr",
           "kind": "art",
           "artCompositionId": "join-qr-code",
+          "hidden": false,
+          "locked": false,
           "x": 1510,
           "y": 420,
           "width": 260,
@@ -180,6 +206,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         }
       ]
@@ -196,6 +223,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 140,
           "width": 1060,
@@ -206,6 +235,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         },
         {
@@ -214,6 +244,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 970,
           "width": 700,
@@ -224,6 +256,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         },
         {
@@ -232,6 +265,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 420,
           "width": 1180,
@@ -242,6 +277,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         }
       ]
@@ -258,6 +294,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 430,
           "width": 1100,
@@ -268,6 +306,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         },
         {
@@ -276,6 +315,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 610,
           "width": 980,
@@ -286,6 +327,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         }
       ]
@@ -302,6 +344,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 460,
           "width": 980,
@@ -309,9 +353,10 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "defaultText": "",
+          "defaultText": "this is the presentation text",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         },
         {
@@ -320,6 +365,8 @@
           "selector": "#craftingTimer",
           "kind": "art",
           "artCompositionId": "crafting-timer-widget",
+          "hidden": false,
+          "locked": false,
           "x": 1750,
           "y": 120,
           "width": 190,
@@ -330,6 +377,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         },
         {
@@ -338,6 +386,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 990,
           "width": 1000,
@@ -348,6 +398,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         }
       ]
@@ -364,6 +415,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 460,
           "width": 980,
@@ -371,9 +424,10 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "defaultText": "",
+          "defaultText": "this is the presentation text",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         }
       ]
@@ -390,6 +444,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 460,
           "width": 980,
@@ -397,9 +453,10 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "defaultText": "",
+          "defaultText": "scoreboard text",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         }
       ]
@@ -416,6 +473,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 460,
           "width": 980,
@@ -423,9 +482,10 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "defaultText": "",
+          "defaultText": "post game text",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         }
       ]
@@ -442,6 +502,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 460,
           "width": 980,
@@ -449,9 +511,10 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "defaultText": "",
+          "defaultText": "writing moment",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         },
         {
@@ -460,6 +523,8 @@
           "selector": "#craftingTimer",
           "kind": "art",
           "artCompositionId": "crafting-timer-widget",
+          "hidden": false,
+          "locked": false,
           "x": 1660,
           "y": 185,
           "width": 190,
@@ -470,6 +535,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         }
       ]
@@ -486,6 +552,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 460,
           "width": 980,
@@ -493,9 +561,10 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "defaultText": "",
+          "defaultText": "voting moment",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         },
         {
@@ -504,6 +573,8 @@
           "selector": "#craftingTimer",
           "kind": "art",
           "artCompositionId": "crafting-timer-widget",
+          "hidden": false,
+          "locked": false,
           "x": 1660,
           "y": 185,
           "width": 190,
@@ -514,6 +585,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         },
         {
@@ -522,6 +594,8 @@
           "selector": "#votingCardLayer",
           "kind": "art",
           "artCompositionId": "",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 330,
           "width": 1100,
@@ -532,6 +606,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         }
       ]
@@ -548,6 +623,8 @@
           "selector": "",
           "kind": "art",
           "artCompositionId": "layout-text-field",
+          "hidden": false,
+          "locked": false,
           "x": 960,
           "y": 460,
           "width": 980,
@@ -555,9 +632,10 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "defaultText": "",
+          "defaultText": "voice moment",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "fontColor": "#ffffff"
         },
         {
@@ -566,6 +644,8 @@
           "selector": "#craftingTimer",
           "kind": "art",
           "artCompositionId": "crafting-timer-widget",
+          "hidden": false,
+          "locked": false,
           "x": 1660,
           "y": 185,
           "width": 190,
@@ -576,6 +656,7 @@
           "defaultText": "",
           "fontSize": 58,
           "autoFitText": false,
+          "fontFamily": "",
           "fontColor": "#ffffff"
         }
       ]
