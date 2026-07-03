@@ -1,6 +1,9 @@
 const {
   stageLayoutWidgetArtCompositionId
 } = require("../shared/stage-layout-art-widgets");
+const {
+  controllerLayoutWidgetArtCompositionId
+} = require("../shared/controller-layout-art-widgets");
 const artComponentSchema = require("../shared/art-component-schema");
 const {
   isLayoutTextArtElementId,
@@ -40,13 +43,16 @@ function createLayoutNormalizationRuntime({
     const width = normalizeLayoutNumber(element.width, 240, 24, 4000);
     const height = normalizeLayoutNumber(element.height, 100, 24, 4000);
     const selector = cleanLayoutSelector(element.selector);
-    const widgetArtCompositionId = stageLayoutWidgetArtCompositionId(id);
+    const stageWidgetArtCompositionId = stageLayoutWidgetArtCompositionId(id);
+    const controllerWidgetArtCompositionId =
+      controllerLayoutWidgetArtCompositionId(id) || controllerLayoutWidgetArtCompositionId(selector);
+    const widgetArtCompositionId = stageWidgetArtCompositionId || controllerWidgetArtCompositionId;
     const shouldPromoteTextToArt = isLayoutTextArtElementId(id) || isLayoutTextArtSelector(selector);
     const kind = widgetArtCompositionId || shouldPromoteTextToArt ? "art" : normalizeLayoutElementKind(element.kind, selector);
     const artCompositionId = normalizeFlowId(element.artCompositionId, "") || widgetArtCompositionId || (shouldPromoteTextToArt ? layoutTextArtCompositionId : "");
     const textDefaultsEnabled = kind === "text" || shouldPromoteTextToArt;
     const defaultAnimationState = normalizeLayoutDefaultAnimationState(element.defaultAnimationState)
-      || (id === "startpopup" ? "park" : "");
+      || (id === "startpopup" ? "park" : controllerWidgetArtCompositionId ? "on" : "");
     return {
       id,
       name: cleanFlowText(element.name, element.id || fallbackId),

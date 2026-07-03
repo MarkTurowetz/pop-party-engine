@@ -77,6 +77,24 @@ export function createControllerAvatarView(options: ControllerAvatarViewOptions)
   let pendingShape = "";
   let pickerOpen = false;
 
+  function avatarButtonClassName(shape?: string): string {
+    const preserved = Array.from(elements.avatar?.classList || []).filter(
+      (className) => className.startsWith("controller-layout") || className === "controller-widget-art-host" || className === "has-controller-widget-art"
+    );
+    return ["controller-avatar", avatarClass(shape), ...preserved].filter(Boolean).join(" ");
+  }
+
+  function setAvatarButtonArt(html: string): void {
+    const layer = elements.avatar.querySelector(":scope > .controller-widget-art-layer");
+    let overlay = elements.avatar.querySelector(":scope > .controller-avatar-art-overlay") as HTMLElement | null;
+    if (!overlay) {
+      overlay = document.createElement("span");
+      overlay.className = "controller-widget-art-overlay controller-avatar-art-overlay";
+    }
+    overlay.innerHTML = html;
+    elements.avatar.replaceChildren(...(layer ? [layer] : []), overlay);
+  }
+
   function setBanner(player: Player): void {
     if (!player || !elements.banner) return;
     writeText(elements.bannerName, player.name || "Player");
@@ -86,9 +104,9 @@ export function createControllerAvatarView(options: ControllerAvatarViewOptions)
   }
 
   function setAvatar(player: Player): void {
-    elements.avatar.className = `controller-avatar ${avatarClass(player.avatar?.shape)}`;
+    elements.avatar.className = avatarButtonClassName(player.avatar?.shape);
     elements.avatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
-    elements.avatar.innerHTML = avatarArt(player.avatar?.shape);
+    setAvatarButtonArt(avatarArt(player.avatar?.shape));
     setBanner(player);
   }
 

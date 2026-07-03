@@ -78,6 +78,33 @@ function normalizeTextTargetId(value: unknown): string {
 
 const layoutTextArtCompositionId = "layout-text-field";
 const layoutTextArtComponentId = "text";
+const controllerPrimaryButtonArtCompositionId = "controller-primary-button";
+const controllerChoiceOptionArtCompositionId = "controller-choice-option";
+const controllerWidgetTextComponentIds: Record<string, string> = {
+  "controller-choice-option": "option-text",
+  "controller-invalid-banner": "invalid-text",
+  "controller-player-banner": "banner-name",
+  "controller-player-name-field": "field-value",
+  "controller-primary-button": "button-text",
+  "controller-stage-code-field": "field-value",
+  "controller-text-input-field": "placeholder-text"
+};
+const controllerWidgetArtCompositionIds: Record<string, string> = {
+  controlleravatar: "controller-avatar-button",
+  controllerglobalactionbutton: controllerPrimaryButtonArtCompositionId,
+  controllerinvalidbanner: "controller-invalid-banner",
+  controllermicaccessbutton: controllerPrimaryButtonArtCompositionId,
+  controllerplayerbanner: "controller-player-banner",
+  controllertextinput: "controller-text-input-field",
+  controllertextsubmitbutton: controllerPrimaryButtonArtCompositionId,
+  controllervoicebutton: controllerPrimaryButtonArtCompositionId,
+  intropresentbutton: controllerPrimaryButtonArtCompositionId,
+  joinbutton: controllerPrimaryButtonArtCompositionId,
+  playernamefield: "controller-player-name-field",
+  stagecodefield: "controller-stage-code-field",
+  startgamebutton: controllerPrimaryButtonArtCompositionId
+};
+let controllerRuntimeArtRendererCounter = 0;
 const legacyLayoutTextElementIds = new Set([
   "stagetitle", "stageintrotitle", "stagepresentationtext", "stageprompttext", "roundintrotext", "roundintroinfotext",
   "jointitle", "controllerplayername", "controllermeta", "controllerintromessage", "controllerglobalactionmessage",
@@ -87,6 +114,32 @@ const legacyLayoutTextElementIds = new Set([
 
 function compactLayoutTextId(value: unknown): string {
   return String(value || "").trim().replace(/^#/, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function compactControllerWidgetId(value: unknown): string {
+  return String(value || "").trim().replace(/^#/, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function controllerWidgetArtCompositionIdForTarget(target: El | null): string {
+  if (!target) return "";
+  const layoutHost = target.closest("[data-controller-layout-art-composition-id]") as El | null;
+  const layoutCompositionId = layoutHost?.dataset.controllerLayoutArtCompositionId || target.dataset.controllerLayoutArtCompositionId || "";
+  if (layoutCompositionId) return layoutCompositionId;
+  if (target.classList.contains("choice-option-button")) return controllerChoiceOptionArtCompositionId;
+  if (target.classList.contains("primary-button") || target.dataset.controllerOption !== undefined) return controllerPrimaryButtonArtCompositionId;
+  return controllerWidgetArtCompositionIds[compactControllerWidgetId(target.id)] || "";
+}
+
+function controllerWidgetTextComponentId(compositionId: unknown): string {
+  return controllerWidgetTextComponentIds[String(compositionId || "")] || "";
+}
+
+function controllerRuntimeArtRendererKey(target: El, prefix: string): string {
+  if (!target.dataset.controllerRuntimeArtRendererKey) {
+    controllerRuntimeArtRendererCounter += 1;
+    target.dataset.controllerRuntimeArtRendererKey = `${prefix}:${controllerRuntimeArtRendererCounter}`;
+  }
+  return target.dataset.controllerRuntimeArtRendererKey;
 }
 
 function isLayoutTextArtElement(element: Dict | null): boolean {
@@ -100,6 +153,27 @@ function layoutTextArtRenderOptions(element: Dict | null, textOverride: unknown 
     textOverrides: { [layoutTextArtComponentId]: text },
     textStyle: { componentId: layoutTextArtComponentId, fontSize: Number(element?.fontSize || 58), fontColor: normalizeUiColor(element?.fontColor) || "#ffffff" }
   };
+}
+
+function controllerWidgetTextRenderOptions(compositionId: unknown, text: unknown): Dict {
+  const componentId = controllerWidgetTextComponentId(compositionId);
+  return componentId ? { textOverrides: { [componentId]: String(text ?? "") } } : {};
+}
+
+function controllerLayoutArtDefaultText(element: Dict | null, host: El | null): string {
+  const compositionId = String(element?.artCompositionId || "");
+  if (compositionId === "controller-stage-code-field" || compositionId === "controller-player-name-field" || compositionId === "controller-text-input-field") return "";
+  if (host?.dataset.textFitSource !== undefined) return host.dataset.textFitSource || "";
+  if (compositionId === "controller-invalid-banner") return String(host?.textContent || "Your submission was invalid").trim();
+  if (compositionId === "controller-player-banner") return String(host?.querySelector(".controller-player-banner-name")?.textContent || "").trim();
+  if (compositionId === controllerPrimaryButtonArtCompositionId) return host?.dataset.controllerTextValue || String(host?.textContent || "").trim();
+  return "";
+}
+
+function controllerLayoutArtRenderOptions(element: Dict | null, host: El | null): Dict {
+  if (isLayoutTextArtElement(element)) return layoutTextArtRenderOptions(element, host?.dataset.textFitSource);
+  const text = controllerLayoutArtDefaultText(element, host);
+  return controllerWidgetTextRenderOptions(element?.artCompositionId, text);
 }
 
 function layoutTextDefault(element: Dict | null): string {
@@ -202,19 +276,22 @@ function clearControllerLayoutTargets(): void {
   const targets = new Set<El>(Array.from(controllerPanel.querySelectorAll(".controller-layout-target")) as El[]);
   for (const selector of allControllerLayoutSelectors()) {
     const target = controllerPanel.querySelector(selector) as El | null;
-    if (target) targets.add(target);
+    if (target) targets.add(controllerLayoutHostForExistingTarget(target));
   }
   for (const target of targets) {
     if (target.classList.contains("controller-dynamic-text")) {
       target.remove();
       continue;
     }
-    target.classList.remove("controller-layout-target", "controller-layout-visual-hidden", "controller-layout-visual-exiting", "controller-layout-visual-update", "controller-layout-visual-instant", "controller-layout-transition-suppressed", "controller-global-layout-target");
+    const elementId = target.dataset.controllerLayoutElementId || "";
+    if (elementId) clearControllerArtInstanceRenderer(elementId, target);
+    target.classList.remove("controller-layout-target", "controller-widget-art-host", "has-controller-widget-art", "controller-layout-visual-hidden", "controller-layout-visual-exiting", "controller-layout-visual-update", "controller-layout-visual-instant", "controller-layout-transition-suppressed", "controller-global-layout-target");
     target.classList.add("controller-layout-hidden");
     for (const prop of ["--controller-layout-x", "--controller-layout-y", "--controller-layout-w", "--controller-layout-h", "--controller-layout-scale", "--controller-layout-rotation", "--controller-text-color", "--controller-text-font-size", "color", "font-size"]) {
       target.style.removeProperty(prop);
     }
     delete target.dataset.controllerLayoutElementId;
+    delete target.dataset.controllerLayoutArtCompositionId;
     delete target.dataset.controllerLayoutVisibilityKey;
   }
 }
@@ -256,13 +333,18 @@ function applyControllerElementLayout(element: Dict, isGlobal = false): void {
   });
   target.classList.toggle("controller-global-layout-target", isGlobal);
   target.dataset.controllerLayoutElementId = (entity.id as string) || "";
+  target.dataset.controllerLayoutArtCompositionId = (element.artCompositionId as string) || "";
   target.dataset.controllerLayoutVisibilityKey = (entity.visibilityKey as string) || "";
   applyLayoutElementBoxStyles(target, element, "controller");
   if (element.kind === "text") {
     applyControllerLayoutTextProperties(target, element);
-  } else if (isDynamicControllerArtInstance(element)) {
+  } else if (isControllerLayoutArtElement(element)) {
+    target.classList.add("controller-widget-art-host", "has-controller-widget-art");
     attachRenderedLayoutArtEntity(entity, () =>
-      renderControllerArtInstance(element, target, entity.visibilityKey as string, isLayoutTextArtElement(element) ? layoutTextArtRenderOptions(element, target.dataset.textFitSource) : {})
+      renderControllerArtInstance(element, target, entity.visibilityKey as string, {
+        ...controllerLayoutArtRenderOptions(element, target),
+        keepElements: controllerLayoutArtKeepElements(target)
+      })
     );
   }
   applyControllerLayoutArtVisibilityOverride(entity);
@@ -307,7 +389,7 @@ function controllerLayoutElementVisibilityKey(elementId: string, target: El | nu
 const controllerLayoutGameObjectTargets = createPlacedLayoutGameObjectTargetResolver({
   registry: controllerLayoutGameObjectRegistry, targetByElementId: controllerLayoutTargetByElementId, visibilityKeyForTarget: controllerLayoutElementVisibilityKey,
   registryKeyFor: controllerLayoutRegistryKeyForElement, visibilityOverrides: controllerLayoutVisibilityOverrides, hiddenClass: "controller-layout-visual-hidden", exitingClass: "controller-layout-visual-exiting",
-  isGameObjectArtTarget: (t: El) => t.classList.contains("dynamic-controller-art-instance"),
+  isGameObjectArtTarget: (t: El) => Boolean(t.dataset.controllerLayoutArtCompositionId) || t.classList.contains("dynamic-controller-art-instance"),
   isDynamicTarget: (t: El) => t.classList.contains("dynamic-controller-art-instance"),
   isGlobalTarget: (t: El) => t.classList.contains("controller-global-layout-target")
 });
@@ -376,7 +458,8 @@ function applyControllerLayoutTextProperties(target: El, element: Dict): void {
 
 function controllerLayoutElementForTarget(target: El | null): Dict | null {
   if (!target) return null;
-  const elementId = target.dataset?.controllerLayoutElementId || "";
+  const layoutTarget = target.closest("[data-controller-layout-element-id]") as El | null;
+  const elementId = layoutTarget?.dataset?.controllerLayoutElementId || target.dataset?.controllerLayoutElementId || "";
   if (!elementId) return null;
   const stateElements = (controllerLayoutState(currentControllerLayoutStateId)?.elements as Dict[]) || [];
   const globalElements = (globalControllerLayout().elements as Dict[]) || [];
@@ -398,10 +481,17 @@ function setControllerLayoutText(target: El | string | null, value: unknown): vo
   }
   const text = String(value ?? "");
   const element = controllerLayoutElementForTarget(target);
+  const host = (target.closest("[data-controller-layout-element-id]") as El | null) || target;
   target.dataset.textFitSource = text;
+  host.dataset.textFitSource = text;
   const textFit = w().PartyGameTextFit as TextFitApi | undefined;
   if (element?.kind === "text" && typeof textFit?.renderLayoutTextField === "function") {
     applyControllerLayoutTextProperties(target, element);
+  } else if (isControllerLayoutArtElement(element)) {
+    renderControllerArtInstance(element, host, host.dataset.controllerLayoutVisibilityKey || controllerLayoutVisibilityKey(element.id as string), {
+      ...controllerWidgetTextRenderOptions(element?.artCompositionId, text),
+      keepElements: controllerLayoutArtKeepElements(host)
+    });
   } else if (typeof textFit?.renderRuntimeText === "function") {
     textFit.renderRuntimeText(target, text, {
       width: target.clientWidth || target.offsetWidth || 1, height: target.clientHeight || target.offsetHeight || 1, fontSize: Number.parseFloat(w().getComputedStyle?.(target)?.fontSize as string) || 16, autoFitText: false
@@ -409,6 +499,33 @@ function setControllerLayoutText(target: El | string | null, value: unknown): vo
   } else {
     target.textContent = text;
   }
+}
+
+function setControllerLayoutButtonText(target: El | null, value: unknown, spec: Dict = {}): boolean {
+  if (!target) return false;
+  const compositionId = controllerWidgetArtCompositionIdForTarget(target);
+  if (!compositionId) return false;
+  const text = String(value ?? "");
+  target.dataset.controllerTextValue = text;
+  target.dataset.controllerLayoutArtCompositionId = compositionId;
+  target.setAttribute("aria-label", text);
+  target.classList.add("controller-widget-art-host", "has-controller-widget-art");
+  const element: Dict = {
+    id: target.dataset.optionId || target.id || controllerRuntimeArtRendererKey(target, "controller-button"),
+    kind: "art",
+    artCompositionId: compositionId,
+    width: Number(spec.width || target.clientWidth || target.offsetWidth || 300),
+    height: Number(spec.height || target.clientHeight || target.offsetHeight || 78),
+    scale: 1,
+    defaultAnimationState: "on"
+  };
+  const renderer = renderControllerArtInstance(element, target, controllerRuntimeArtRendererKey(target, "controller-button"), {
+    ...controllerWidgetTextRenderOptions(compositionId, text),
+    keepElements: controllerLayoutArtKeepElements(target)
+  });
+  if (renderer) return true;
+  target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
+  return false;
 }
 
 function controllerLayoutElementForId(elementId: string): Dict | null {
@@ -425,10 +542,50 @@ function setControllerLayoutTextShown(elementId: string, isShown: boolean, optio
   }) as number) || 0;
 }
 
+function isControllerLayoutArtElement(element: Dict | null): element is Dict {
+  return Boolean(element?.artCompositionId && element?.kind === "art");
+}
+
+function controllerCanHostArtChildren(target: El | null): boolean {
+  const tag = target?.tagName?.toLowerCase() || "";
+  return !["input", "textarea", "select", "img", "canvas"].includes(tag);
+}
+
+function controllerLayoutHostForExistingTarget(target: El): El {
+  return (target.closest("[data-controller-art-selector-host-for]") as El | null) || target;
+}
+
+function controllerLayoutArtHost(element: Dict, target: El | null): El | null {
+  if (!target || controllerCanHostArtChildren(target)) return target;
+  const controllerPanel = w().controllerPanel;
+  const hostId = String(element.id || "");
+  const existingHost = target.closest("[data-controller-art-selector-host-for]") as El | null;
+  if (existingHost) return existingHost;
+  const host = document.createElement("div");
+  host.className = "controller-widget-art-selector-host controller-widget-art-host";
+  host.dataset.controllerArtSelectorHostFor = hostId;
+  target.parentElement?.insertBefore(host, target);
+  host.appendChild(target);
+  target.classList.add("controller-widget-art-overlay");
+  target.dataset.controllerArtOverlayFor = hostId;
+  return controllerPanel.contains(host) ? host : target;
+}
+
+function controllerLayoutArtKeepElements(host: El | null): El[] {
+  if (!host) return [];
+  const kept = Array.from(
+    host.querySelectorAll(
+      ":scope > input, :scope > textarea, :scope > select, :scope > .controller-widget-art-overlay, :scope > .player-avatar, :scope > .controller-player-banner-name"
+    )
+  ) as El[];
+  return kept.filter((element) => element.parentElement === host);
+}
+
 function controllerLayoutTargetElement(element: Dict): El | null {
   const controllerPanel = w().controllerPanel;
   if (isDynamicControllerArtInstance(element)) return getOrCreateControllerArtInstance(element);
   const target = controllerPanel.querySelector(element.selector as string) as El | null;
+  if (target && isControllerLayoutArtElement(element)) return controllerLayoutArtHost(element, target);
   if (target || element.kind !== "text") return target;
   const id = String(element.selector || "").replace(/^#/, "") || (element.id as string);
   let dynamic = controllerPanel.querySelector(`#${CSS.escape(id)}`) as El | null;
@@ -826,6 +983,7 @@ function stageLayoutElementForId(elementId: string): Dict | null {
 // PRESERVED: PartyGameLayoutText install.
 const PartyGameLayoutText = {
   ...((w().PartyGameLayoutText as Dict) || {}),
+  setControllerButtonText: setControllerLayoutButtonText,
   setControllerText: setControllerLayoutText,
   setControllerTextShown: setControllerLayoutTextShown,
   setStageText: setStageLayoutText
@@ -847,6 +1005,7 @@ Object.assign(w(), {
   layoutDefaultText, layoutTextArtRenderOptions, layoutTextDefault, loadControllerLayouts, loadStageLayouts, normalizeTextTargetId,
   registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances,
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
+  setControllerLayoutButtonText,
   setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
   stageLayoutGameObjectTargets, stageLayoutGameObjectVisibilityKey, stageLayoutGameObjectVisibilityOverrides, stageLayoutRegistryKeyForElement, stageLayoutState, stageLayoutStateForPhase,

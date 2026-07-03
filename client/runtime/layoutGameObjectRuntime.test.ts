@@ -22,4 +22,88 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     const host = globalThis as typeof globalThis & { PartyGameLayoutGameObjects?: unknown };
     expect(host.PartyGameLayoutGameObjects).toBeTypeOf("object");
   });
+
+  it("renders layout art without removing preserved overlay controls", () => {
+    class FakeElement {
+      childNodes: FakeElement[] = [];
+      dataset: Record<string, string> = {};
+      hidden = false;
+      nodeType = 1;
+      nodeValue: string | null = null;
+      private classNames = new Set<string>();
+      readonly classList = {
+        add: (...names: string[]) => names.forEach((name) => this.classNames.add(name)),
+        contains: (name: string) => this.classNames.has(name),
+        remove: (...names: string[]) => names.forEach((name) => this.classNames.delete(name))
+      };
+      get children() {
+        return this.childNodes;
+      }
+      set className(value: string) {
+        this.classNames = new Set(value.split(/\s+/).filter(Boolean));
+      }
+      get className() {
+        return [...this.classNames].join(" ");
+      }
+      appendChild(child: FakeElement) {
+        this.childNodes.push(child);
+        return child;
+      }
+      contains(child: FakeElement) {
+        return this.childNodes.includes(child);
+      }
+      prepend(child: FakeElement) {
+        this.childNodes.unshift(child);
+      }
+      querySelector(selector: string) {
+        const className = selector.startsWith(".") ? selector.slice(1) : "";
+        return this.childNodes.find((child) => child.classList.contains(className)) || null;
+      }
+    }
+    const fakeDocument = { createElement: () => new FakeElement() };
+    const root = new FakeElement();
+    const overlay = new FakeElement();
+    root.appendChild(overlay);
+    const renderCalls: unknown[] = [];
+    const host = globalThis as typeof globalThis & {
+      artComposition?: (id: string) => unknown;
+      PartyGameArtObject?: unknown;
+    };
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousDocument = globals.document;
+    const previousComposition = host.artComposition;
+    const previousArtObject = host.PartyGameArtObject;
+    globals.document = fakeDocument;
+    host.artComposition = () => ({ canvas: { width: 100, height: 50 }, components: [] });
+    host.PartyGameArtObject = {
+      ArtObjectTreeRenderer: class {
+        render(...args: unknown[]) {
+          renderCalls.push(args);
+        }
+        clear() {}
+      }
+    };
+
+    const api = PartyGameLayoutGameObjects.createDynamicLayoutArtInstanceApi({
+      root: () => root,
+      selector: ".dynamic-test-art",
+      className: "dynamic-test-art",
+      layerClassName: "controller-widget-art-layer",
+      missingDatasetKey: "missing"
+    });
+    try {
+      api.render({ id: "test", artCompositionId: "controller-primary-button" }, root as unknown as HTMLElement, "test", {
+        keepElements: [overlay as unknown as HTMLElement]
+      });
+
+      expect(root.querySelector(".controller-widget-art-layer")).toBeTruthy();
+      expect(root.contains(overlay)).toBe(true);
+      expect(overlay.hidden).toBe(false);
+      expect(renderCalls.length).toBe(1);
+    } finally {
+      globals.document = previousDocument;
+      host.artComposition = previousComposition;
+      host.PartyGameArtObject = previousArtObject;
+    }
+  });
 });

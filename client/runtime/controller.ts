@@ -23,6 +23,7 @@ type Dict = Record<string, unknown>;
 type TextTarget = HTMLElement | string;
 
 interface LayoutTextApi {
+  setControllerButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => boolean;
   setControllerText?: (target: TextTarget, value: unknown) => void;
   setControllerTextShown?: (target: string, isShown: boolean, options?: Dict) => void;
 }
@@ -103,6 +104,9 @@ function setControllerTextShown(target: TextTarget | undefined, isShown: boolean
 
 function setControllerButtonText(target: HTMLElement | undefined, value: unknown, spec: Dict = {}): void {
   if (!target) return;
+  if (typeof w.PartyGameLayoutText?.setControllerButtonText === "function" && w.PartyGameLayoutText.setControllerButtonText(target, value, spec)) {
+    return;
+  }
   w.PartyGameControllerText?.setButtonText(target, value, spec);
 }
 

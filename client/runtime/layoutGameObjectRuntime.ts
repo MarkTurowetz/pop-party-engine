@@ -14,6 +14,10 @@ interface DebugRuntime {
   showGameObjectWarning?: (warning: Dict) => void;
   showArtAssetWarning?: (warning: Dict) => void;
 }
+interface TreeRenderer {
+  render: (c: Dict[], canvas: Dict, o: Dict) => void;
+  clear: (o: Dict) => void;
+}
 
 declare global {
   interface Window {
@@ -39,25 +43,50 @@ function getOrCreateLayoutArtInstance(element: Dict | null, root: El | null, sel
   return host;
 }
 
+function layoutArtLayer(host: El, className: string, keepElements: El[] = []): El {
+  const layerClassName = className || "layout-art-layer";
+  let layer = Array.from(host.children).find((child) => child.classList?.contains(layerClassName)) as El | undefined;
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.className = layerClassName;
+    host.prepend(layer);
+  }
+  const keep = new Set<Node>(keepElements.filter(Boolean));
+  for (const element of keepElements) {
+    element.hidden = false;
+    delete element.dataset.layoutArtLegacyHidden;
+  }
+  for (const node of Array.from(host.childNodes)) {
+    if (node === layer || keep.has(node)) continue;
+    if (node.nodeType === 3 && String(node.nodeValue || "").trim()) {
+      node.nodeValue = "";
+    }
+    if (node.nodeType === 1) {
+      const child = node as El;
+      child.hidden = true;
+      child.dataset.layoutArtLegacyHidden = "true";
+    }
+  }
+  return layer;
+}
+
 function renderLayoutArtInstance(element: Dict | null, host: El | null, options: Dict = {}): unknown {
   const composition = artComposition(element?.artCompositionId as string);
-  const artRuntime = w().PartyGameArtObject as { ArtObjectTreeRenderer?: new (o: Dict) => { render: (c: Dict[], canvas: Dict, o: Dict) => void; clear: (o: Dict) => void } } | undefined;
+  const artRuntime = w().PartyGameArtObject as { ArtObjectTreeRenderer?: new (o: Dict) => TreeRenderer } | undefined;
   const rendererKey = (options.rendererKey as string) || (element?.id as string) || "";
   if (!host) return null;
-  const renderers = options.renderers as Map<string, { render: (c: Dict[], canvas: Dict, o: Dict) => void }>;
+  const renderers = (options.renderers as Map<string, TreeRenderer>) || new Map<string, TreeRenderer>();
   const missingKey = options.missingDatasetKey as string;
   if (!composition || !artRuntime?.ArtObjectTreeRenderer) {
     (options.clearRenderer as ((id: unknown, host: El) => void) | undefined)?.(element?.id, host);
-    host.dataset[missingKey] = "true";
+    if (missingKey) host.dataset[missingKey] = "true";
     return null;
   }
-  delete host.dataset[missingKey];
+  if (missingKey) delete host.dataset[missingKey];
   host.dataset.layoutRendererKey = rendererKey;
   let renderer = renderers.get(rendererKey);
+  const layer = layoutArtLayer(host, options.layerClassName as string, (options.keepElements as El[]) || []);
   if (!renderer) {
-    const layer = document.createElement("div");
-    layer.className = options.layerClassName as string;
-    host.replaceChildren(layer);
     renderer = new artRuntime.ArtObjectTreeRenderer({
       host: layer,
       document,
@@ -97,7 +126,11 @@ function clearLayoutArtInstanceRenderer(renderers: Map<string, { clear: (o: Dict
   const renderer = renderers.get(rendererKey);
   if (renderer) renderer.clear({ instant: true });
   renderers.delete(rendererKey);
-  if (host) host.replaceChildren();
+  if (host) {
+    for (const layer of Array.from(host.querySelectorAll(":scope > .stage-widget-art-layer, :scope > .controller-widget-art-layer, :scope > .layout-art-layer"))) {
+      layer.remove();
+    }
+  }
 }
 
 function removeInactiveLayoutArtInstances(options: Dict): void {

@@ -37,11 +37,13 @@ function createControllerLayoutStateRuntime({
             name: "Microphone Access Button",
             selector: "#controllerMicAccessButton",
             kind: "art",
+            artCompositionId: "controller-primary-button",
             x: 195,
             y: 430,
             width: 280,
             height: 82,
-            scale: 1
+            scale: 1,
+            defaultAnimationState: "on"
           },
           {
             id: "controllerMicAccessStatus",
@@ -127,44 +129,52 @@ function createControllerLayoutStateRuntime({
             name: "Invalid Submission Banner",
             selector: "#controllerInvalidBanner",
             kind: "art",
+            artCompositionId: "controller-invalid-banner",
             x: 195,
             y: 245,
             width: 330,
             height: 64,
-            scale: 1
+            scale: 1,
+            defaultAnimationState: "on"
           },
           {
             id: "controllerTextInput",
             name: "Text Input Field",
             selector: "#controllerTextInput",
             kind: "art",
+            artCompositionId: "controller-text-input-field",
             x: 195,
             y: 360,
             width: 330,
             height: 128,
-            scale: 1
+            scale: 1,
+            defaultAnimationState: "on"
           },
           {
             id: "controllerTextSubmitButton",
             name: "Text Submit Button",
             selector: "#controllerTextSubmitButton",
             kind: "art",
+            artCompositionId: "controller-primary-button",
             x: 195,
             y: 475,
             width: 300,
             height: 70,
-            scale: 1
+            scale: 1,
+            defaultAnimationState: "on"
           },
           {
             id: "controllerVoiceButton",
             name: "Voice Record Button",
             selector: "#controllerVoiceButton",
             kind: "art",
+            artCompositionId: "controller-primary-button",
             x: 195,
             y: 390,
             width: 300,
             height: 110,
-            scale: 1
+            scale: 1,
+            defaultAnimationState: "on"
           },
           {
             id: "controllerVoiceStatus",
