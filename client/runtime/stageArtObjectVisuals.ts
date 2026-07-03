@@ -33,6 +33,7 @@ const w = () => globalThis as typeof globalThis & Window;
 const schema = (): ArtComponentSchema => w().PartyGameArtComponentSchema as unknown as ArtComponentSchema;
 
 const RUNTIME_CLASS = "art-runtime-object";
+const ART_TEXT_PADDING = 4;
 const HIDDEN_CLASS = "art-runtime-object-hidden";
 const EXITING_CLASS = "art-runtime-object-exiting";
 const UPDATE_CLASS = "art-runtime-object-update";
@@ -79,7 +80,7 @@ function componentFontSize(component: Component, labelText: string = schema().co
 
 function componentTextLayout(component: Component, labelText: string = schema().componentLabel(component)): Dict {
   const baseSize = num(component?.fontSize, 16);
-  const measuredLayout = w().PartyGameTextFit?.measureGameText?.({ text: labelText, element: component, fallbackSize: baseSize });
+  const measuredLayout = w().PartyGameTextFit?.measureGameText?.({ text: labelText, element: component, fallbackSize: baseSize, options: { padding: ART_TEXT_PADDING } });
   if (measuredLayout) return measuredLayout as Dict;
   const lineHeight = w().PartyGameTextFit?.constants?.lineHeight || 1.15;
   const fontSize = Math.max(8, baseSize);
@@ -151,7 +152,8 @@ function setLabelText(label: HTMLElement, component: Component, labelText: strin
     const layout = textFit.renderLayoutTextField(label, textElement, {
       text: labelText,
       defaults: { defaultText: schema().componentLabel(component), fontSize: baseSize, fontColor: (component?.fontColor as string) || "#17131f" },
-      fallbackSize: baseSize
+      fallbackSize: baseSize,
+      renderOptions: { padding: ART_TEXT_PADDING }
     }) as Dict | null;
     label.style.setProperty("--component-font-size", `${num(layout?.fontSize, baseSize)}px`);
   } else {
@@ -171,7 +173,8 @@ function renderComponentText(target: HTMLElement | null, component: Component | 
       ? textFit.renderLayoutTextField(target, textElement, {
           text,
           defaults: { defaultText: schema().componentLabel(component), fontSize: baseSize, fontColor: (component?.fontColor as string) || "#17131f" },
-          fallbackSize: baseSize
+          fallbackSize: baseSize,
+          renderOptions: { padding: ART_TEXT_PADDING }
         })
       : componentTextLayout(component, text)
   ) as Dict;

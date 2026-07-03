@@ -42,13 +42,13 @@ describe("PartyGameTextFit (ported text-fit)", () => {
     const singleLine = PartyGameTextFit.measureGameText({ text: "STAGE", element: { width: 400, height: 80, fontSize: 12, autoFitText: true }, fallbackSize: 12 });
     const multiline = PartyGameTextFit.measureGameText({ text: "ONE\nTWO\nTHREE", element: { width: 80, height: 24, fontSize: 36, autoFitText: true }, fallbackSize: 36 });
     const constrained = PartyGameTextFit.measureGameText({ text: "SUPERLONGANSWER", element: { width: 80, height: 20, fontSize: 48, autoFitText: true }, fallbackSize: 48 });
-    const widthLimited = PartyGameTextFit.measureGameText({ text: "Starting Game", element: { width: 200, height: 200, fontSize: 40, autoFitText: true }, fallbackSize: 40, options: { textTransform: "uppercase" } });
+    const widthLimited = PartyGameTextFit.measureGameText({ text: "Starting Game", element: { width: 200, height: 200, fontSize: 40, autoFitText: true }, fallbackSize: 40, options: { paddingX: 4, textTransform: "uppercase" } });
     expect(Number(manual.fontSize)).toBe(48);
     expect(Number(singleLine.fontSize)).toBeGreaterThan(12);
     expect(Number(multiline.fontSize)).toBeLessThanOrEqual(8.2);
     expect(Number(constrained.fontSize)).toBeLessThan(16);
-    expect(Number(widthLimited.fontSize)).toBeLessThan(45);
-    expect(Number(widthLimited.measuredWidth)).toBeLessThanOrEqual(200.5);
+    expect(Number(widthLimited.fontSize)).toBeLessThanOrEqual(37.5);
+    expect(Number(widthLimited.measuredWidth)).toBeLessThanOrEqual(192.5);
   });
 
   it("fittedLayoutTextSize returns fitted or manual sizes through the same path", () => {

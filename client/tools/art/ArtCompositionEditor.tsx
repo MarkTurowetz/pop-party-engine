@@ -38,6 +38,7 @@ const SCALAR_FIELDS: { key: string; label: string }[] = [
   { key: "height", label: "Height" }
 ];
 type LayerDropPlacement = "before" | "after";
+const ART_PREVIEW_TEXT_INSET = 4;
 
 type LayerDropTarget = {
   id: string;
@@ -55,7 +56,7 @@ function artPreviewFontSize(component: ArtComponent, text: string, width: number
     text,
     element: { ...component, width, height, fontSize: fallbackSize, fontFamily, autoFitText: get(component, "autoFitText") !== false },
     fallbackSize,
-    options: { fontFamily, lineHeight: 1, textTransform: "uppercase" }
+    options: { fontFamily, lineHeight: 1, paddingX: ART_PREVIEW_TEXT_INSET, textTransform: "uppercase" }
   });
   return Number(layout.fontSize || fallbackSize);
 }
