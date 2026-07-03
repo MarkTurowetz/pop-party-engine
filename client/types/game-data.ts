@@ -112,6 +112,13 @@ export interface ArtComponent extends JsonObject {
   id: string;
   name?: string;
   kind: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  scale?: number;
+  rotation?: number;
+  artCompositionId?: string;
   childDistribution?: "none" | "horizontal" | "vertical" | string;
   locked?: boolean;
   defaultText?: string;
@@ -127,6 +134,8 @@ export interface ArtComposition extends JsonObject {
   name: string;
   description?: string;
   surface: "stage" | "controller" | string;
+  compositionKind?: "gameObject" | "prefab" | string;
+  isCustom?: boolean;
   canvas: {
     width: number;
     height: number;

@@ -7,7 +7,7 @@ import type { ArtComponent } from "../../types/game-data";
 import { gameTextDefaultFontFamily, gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
 
 export const componentKinds = ["text", "shape", "container", "badge", "reference"] as const;
-export const creatableComponentKinds = ["text", "shape", "container"] as const;
+export const creatableComponentKinds = ["text", "shape", "container", "reference"] as const;
 export const shapeStyleOptions = [
   { value: "rounded", label: "Rounded" },
   { value: "rectangle", label: "Rectangle" },

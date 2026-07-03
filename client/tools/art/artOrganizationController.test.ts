@@ -41,6 +41,21 @@ describe("createArtOrganizationController", () => {
     expect(controller.getState().dirty).toBe(true);
   });
 
+  it("refreshes organizer items when compositions are added locally", () => {
+    const controller = createArtOrganizationController({
+      initialOrganization: emptyOrganization(),
+      compositions: [composition("a")],
+      assets: [],
+      api: fakeApi()
+    });
+
+    controller.setSourceItems([composition("a"), composition("new-prefab")], []);
+    controller.moveIntoFolder("stage", "composition:new-prefab", "");
+
+    expect(controller.getState().surfaceItems.stage.map((item) => item.key)).toContain("composition:new-prefab");
+    expect(controller.getState().organization.stage.order).toContain("composition:new-prefab");
+  });
+
   it("reorders items beside a target", () => {
     const controller = createArtOrganizationController({
       initialOrganization: emptyOrganization(),

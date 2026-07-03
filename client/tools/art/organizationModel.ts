@@ -12,6 +12,7 @@ export interface OrgItem {
   key: string;
   type: "composition" | "asset";
   name: string;
+  compositionKind?: string;
 }
 
 export function itemKey(item: { id: string; currentUrl?: unknown }): string {
@@ -61,7 +62,12 @@ export function surfaceItems(
   const normalized = normalizeArtCompositionSurface(surface);
   const items: OrgItem[] = compositions
     .filter((composition) => isSharedComposition(composition) || normalizeArtCompositionSurface(composition.surface) === normalized)
-    .map((composition) => ({ key: itemKey(composition), type: "composition" as const, name: composition.name }));
+    .map((composition) => ({
+      key: itemKey(composition),
+      type: "composition" as const,
+      name: composition.name,
+      compositionKind: String(composition.compositionKind || "gameObject")
+    }));
   if (normalized === "stage") {
     for (const asset of assets || []) {
       if (asset.parent && ["player-avatar", "presentation-click-prompt"].includes(String(asset.parent))) continue;

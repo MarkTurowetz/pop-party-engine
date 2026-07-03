@@ -28,6 +28,22 @@ describe("createArtCompositionsController", () => {
     expect(state.selectedCompositionId).toBe("a");
   });
 
+  it("creates a top-level prefab composition as an undoable local edit", () => {
+    const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
+
+    const created = controller.createComposition("prefab", "stage", "Answer Bubble");
+
+    expect(created.id).toBe("prefab-answer-bubble");
+    expect(created.compositionKind).toBe("prefab");
+    expect(controller.getState().selectedCompositionId).toBe(created.id);
+    expect(controller.getState().dirtyCompositionIds.has(created.id)).toBe(true);
+
+    controller.undo();
+
+    expect(controller.getState().compositions.some((item) => item.id === created.id)).toBe(false);
+    expect(controller.getState().selectedCompositionId).toBe("a");
+  });
+
   it("adds a component to the root, marks dirty, undoes", () => {
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
     controller.addComponent("shape");
@@ -48,6 +64,45 @@ describe("createArtCompositionsController", () => {
     const container = controller.getState().compositions[0].components[0];
     expect(container.children).toHaveLength(1);
     expect(container.children?.[0].kind).toBe("text");
+  });
+
+  it("adds a prefab reference component with the referenced composition dimensions", () => {
+    const prefab = composition("answer-bubble");
+    prefab.name = "Answer Bubble";
+    prefab.compositionKind = "prefab";
+    prefab.canvas = { width: 300, height: 180 };
+    const host = composition("host");
+    const controller = createArtCompositionsController({ initialCompositions: [host, prefab], api: fakeApi() });
+
+    controller.addComponent("reference");
+
+    const reference = controller.getState().compositions[0].components[0];
+    expect(reference.kind).toBe("reference");
+    expect(reference.artCompositionId).toBe("answer-bubble");
+    expect(reference.name).toBe("Answer Bubble");
+    expect(reference.width).toBe(300);
+    expect(reference.height).toBe(180);
+  });
+
+  it("refreshes reference overrides when the referenced prefab changes", () => {
+    const first = composition("first");
+    first.compositionKind = "prefab";
+    first.canvas = { width: 100, height: 50 };
+    const second = composition("second");
+    second.name = "Second Prefab";
+    second.compositionKind = "prefab";
+    second.canvas = { width: 420, height: 210 };
+    const controller = createArtCompositionsController({ initialCompositions: [composition("host"), first, second], api: fakeApi() });
+
+    controller.addComponent("reference");
+    const referenceId = controller.getState().compositions[0].components[0].id;
+    controller.updateComponent(referenceId, { artCompositionId: "second" } as never);
+
+    const reference = controller.getState().compositions[0].components[0];
+    expect(reference.artCompositionId).toBe("second");
+    expect(reference.name).toBe("Second Prefab");
+    expect(reference.width).toBe(420);
+    expect(reference.height).toBe(210);
   });
 
   it("updates a component property and removes it", () => {
@@ -130,6 +185,24 @@ describe("createArtCompositionsController", () => {
     expect(api.saveArtComposition).toHaveBeenCalledTimes(1);
     expect(api.saveArtComposition).toHaveBeenCalledWith("a", expect.anything());
     expect(controller.getState().dirty).toBe(false);
+  });
+
+  it("saves created composition metadata", async () => {
+    const api = fakeApi();
+    const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api });
+    const created = controller.createComposition("gameObject", "controller", "Score Popup");
+
+    await controller.save();
+
+    expect(api.saveArtComposition).toHaveBeenCalledWith(
+      created.id,
+      expect.objectContaining({
+        name: "Score Popup",
+        surface: "controller",
+        compositionKind: "gameObject",
+        isCustom: true
+      })
+    );
   });
 
   it("publishes composition edits as a session draft", async () => {

@@ -1,7 +1,13 @@
 import type { ArtApi } from "../../api/artApi";
 import type { ArtComponent, ArtComposition, JsonObject } from "../../types/game-data";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
-import { artCompositionSnapshot, serializeArtCompositionForSave } from "./artCompositionModel";
+import {
+  artCompositionSnapshot,
+  normalizeArtCompositionKind,
+  normalizeArtCompositionSurface,
+  serializeArtCompositionForSave,
+  type ArtCompositionKind
+} from "./artCompositionModel";
 import { componentKindLabel, defaultTextFontFamily, normalizeCreatableComponentKind } from "./artComponentSchema";
 
 /**
@@ -31,6 +37,8 @@ export interface ArtCompositionsControllerOptions {
 export interface ArtCompositionsController {
   getState(): ArtCompositionsEditorState;
   subscribe(listener: () => void): () => void;
+  createComposition(kind: ArtCompositionKind, surface: string, name?: string): ArtComposition;
+  updateComposition(compositionId: string, patch: Partial<ArtComposition>): void;
   selectComposition(compositionId: string): void;
   selectComponent(componentId: string, additive?: boolean): void;
   clearComponentSelection(): void;
@@ -45,6 +53,7 @@ export interface ArtCompositionsController {
 }
 
 const HISTORY_LIMIT = 50;
+const DEFAULT_COMPOSITION_CANVAS = { width: 560, height: 230 };
 
 function makeArtId(kind: string): string {
   const cryptoObj = typeof crypto !== "undefined" ? crypto : undefined;
@@ -52,13 +61,64 @@ function makeArtId(kind: string): string {
   return `${kind}-${token}`;
 }
 
-function createComponent(kind: string, bounds: { width: number; height: number }): ArtComponent {
+function cleanCompositionName(name: string | undefined, fallback: string): string {
+  return String(name || "").trim() || fallback;
+}
+
+function slugify(value: string, fallback: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || fallback;
+}
+
+function uniqueCompositionId(name: string, kind: ArtCompositionKind, compositions: ArtComposition[]): string {
+  const prefix = kind === "prefab" ? "prefab" : "game-object";
+  const base = `${prefix}-${slugify(name, prefix)}`;
+  const used = new Set(compositions.map((composition) => composition.id));
+  if (!used.has(base)) return base;
+  let index = 2;
+  while (used.has(`${base}-${index}`)) index += 1;
+  return `${base}-${index}`;
+}
+
+function createComposition(kind: ArtCompositionKind, surface: string, name: string | undefined, compositions: ArtComposition[]): ArtComposition {
+  const cleanKind = normalizeArtCompositionKind(kind);
+  const label = cleanKind === "prefab" ? "Prefab" : "Game Object";
+  const cleanName = cleanCompositionName(name, label);
+  return {
+    id: uniqueCompositionId(cleanName, cleanKind, compositions),
+    name: cleanName,
+    description: cleanKind === "prefab" ? "Reusable art prefab." : "Editable game object.",
+    surface: normalizeArtCompositionSurface(surface),
+    compositionKind: cleanKind,
+    isCustom: true,
+    canvas: { ...DEFAULT_COMPOSITION_CANVAS },
+    components: []
+  };
+}
+
+function referenceComponentPatch(composition: ArtComposition): Partial<ArtComponent> {
+  return {
+    name: composition.name,
+    width: Number(composition.canvas?.width || DEFAULT_COMPOSITION_CANVAS.width),
+    height: Number(composition.canvas?.height || DEFAULT_COMPOSITION_CANVAS.height),
+    artCompositionId: composition.id
+  };
+}
+
+function createComponent(kind: string, bounds: { width: number; height: number }, referencedComposition: ArtComposition | null = null): ArtComponent {
   const cleanKind = normalizeCreatableComponentKind(kind);
-  const width = cleanKind === "text" ? 220 : cleanKind === "container" ? 320 : 180;
-  const height = cleanKind === "text" ? 60 : cleanKind === "container" ? 140 : 96;
+  const referencePatch = cleanKind === "reference" && referencedComposition ? referenceComponentPatch(referencedComposition) : null;
+  const width =
+    Number(referencePatch?.width || 0) || (cleanKind === "text" ? 220 : cleanKind === "container" ? 320 : cleanKind === "reference" ? 220 : 180);
+  const height =
+    Number(referencePatch?.height || 0) || (cleanKind === "text" ? 60 : cleanKind === "container" ? 140 : cleanKind === "reference" ? 120 : 96);
   const component: Record<string, unknown> = {
     id: makeArtId(cleanKind),
-    name: componentKindLabel(cleanKind),
+    name: referencePatch?.name || componentKindLabel(cleanKind),
     kind: cleanKind,
     x: Number(bounds.width || 560) / 2,
     y: Number(bounds.height || 230) / 2,
@@ -68,6 +128,9 @@ function createComponent(kind: string, bounds: { width: number; height: number }
     rotation: 0,
     children: []
   };
+  if (cleanKind === "reference") {
+    component.artCompositionId = String(referencePatch?.artCompositionId || "");
+  }
   if (cleanKind === "text") {
     component.defaultText = "TEXT";
     component.fontSize = 48;
@@ -164,6 +227,19 @@ export function createArtCompositionsController(
     return compositions.find((composition) => composition.id === selectedCompositionId);
   }
 
+  function referencedCompositionFor(composition: ArtComposition, preferredId = ""): ArtComposition | null {
+    const candidates = compositions.filter((item) => item.id !== composition.id);
+    if (preferredId) return candidates.find((item) => item.id === preferredId) || null;
+    const sameSurface = candidates.filter((item) => normalizeArtCompositionSurface(item.surface) === normalizeArtCompositionSurface(composition.surface));
+    return (
+      sameSurface.find((item) => normalizeArtCompositionKind(item.compositionKind) === "prefab") ||
+      candidates.find((item) => normalizeArtCompositionKind(item.compositionKind) === "prefab") ||
+      sameSurface[0] ||
+      candidates[0] ||
+      null
+    );
+  }
+
   function dirtyIds(): Set<string> {
     const ids = new Set<string>();
     for (const composition of compositions) {
@@ -200,16 +276,28 @@ export function createArtCompositionsController(
     return compositions.map((composition) => JSON.parse(JSON.stringify(composition)) as ArtComposition);
   }
 
+  function ensureSelectedComposition(): void {
+    if (!compositions.some((composition) => composition.id === selectedCompositionId)) {
+      selectedCompositionId = compositions[0]?.id || "";
+      selectedComponentIds = new Set();
+    }
+  }
+
+  function mutateAll(apply: () => void): void {
+    undoStack.push(snapshot());
+    if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+    redoStack.length = 0;
+    apply();
+    ensureSelectedComposition();
+    emit();
+    scheduleDraft();
+  }
+
   /** Mutate the selected composition's component tree with history. */
   function mutateSelected(apply: (composition: ArtComposition) => void): void {
     const composition = selectedComposition();
     if (!composition) return;
-    undoStack.push(snapshot());
-    if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
-    redoStack.length = 0;
-    apply(composition);
-    emit();
-    scheduleDraft();
+    mutateAll(() => apply(composition));
   }
 
   return {
@@ -221,6 +309,32 @@ export function createArtCompositionsController(
       };
     },
 
+    createComposition: (kind, surface, name) => {
+      const next = createComposition(kind, surface, name, compositions);
+      mutateAll(() => {
+        compositions = [...compositions, next];
+        selectedCompositionId = next.id;
+        selectedComponentIds = new Set();
+      });
+      return next;
+    },
+    updateComposition: (compositionId, patch) => {
+      const index = compositions.findIndex((composition) => composition.id === compositionId);
+      if (index < 0) return;
+      mutateAll(() => {
+        const current = compositions[index];
+        compositions[index] = {
+          ...current,
+          ...patch,
+          id: current.id,
+          name: cleanCompositionName(patch.name, current.name),
+          surface: normalizeArtCompositionSurface(patch.surface || current.surface),
+          compositionKind: normalizeArtCompositionKind(patch.compositionKind, normalizeArtCompositionKind(current.compositionKind)),
+          canvas: patch.canvas || current.canvas,
+          components: patch.components || current.components
+        };
+      });
+    },
     selectComposition: (compositionId) => {
       selectedCompositionId = compositionId;
       selectedComponentIds = new Set();
@@ -247,7 +361,8 @@ export function createArtCompositionsController(
         const bounds = parent
           ? { width: Number(parent.width || 1), height: Number(parent.height || 1) }
           : { width: Number(composition.canvas?.width || 560), height: Number(composition.canvas?.height || 230) };
-        const child = createComponent(kind, bounds);
+        const reference = normalizeCreatableComponentKind(kind) === "reference" ? referencedCompositionFor(composition) : null;
+        const child = createComponent(kind, bounds, reference);
         if (parent && (parent.kind === "container")) {
           parent.children = [...(parent.children || []), child];
         } else {
@@ -263,7 +378,13 @@ export function createArtCompositionsController(
     updateComponent: (componentId, patch) =>
       mutateSelected((composition) => {
         const component = findComponent(composition.components || [], componentId);
-        if (component) Object.assign(component, patch);
+        if (!component) return;
+        if (Object.prototype.hasOwnProperty.call(patch, "artCompositionId")) {
+          const referenced = referencedCompositionFor(composition, String(patch.artCompositionId || ""));
+          Object.assign(component, referenced ? referenceComponentPatch(referenced) : patch);
+          return;
+        }
+        Object.assign(component, patch);
       }),
     moveComponent: (componentId, x, y) =>
       mutateSelected((composition) => {
@@ -295,6 +416,7 @@ export function createArtCompositionsController(
       if (!previous) return;
       redoStack.push(snapshot());
       compositions = previous;
+      ensureSelectedComposition();
       emit();
       scheduleDraft();
     },
@@ -303,6 +425,7 @@ export function createArtCompositionsController(
       if (!next) return;
       undoStack.push(snapshot());
       compositions = next;
+      ensureSelectedComposition();
       emit();
       scheduleDraft();
     },

@@ -9,7 +9,7 @@
   type ImageFileLike = { type?: unknown; size?: unknown } | null | undefined;
 
   const componentKinds = ["text", "shape", "container", "badge", "reference"];
-  const creatableComponentKinds = ["text", "shape", "container"];
+  const creatableComponentKinds = ["text", "shape", "container", "reference"];
   const shapeStyleOptions = [
     { value: "rounded", label: "Rounded" },
     { value: "rectangle", label: "Rectangle" },

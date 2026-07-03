@@ -13,6 +13,13 @@ import {
  * Typed port of serializeArtCompositionsForSave / serializeArtComponentForSave so
  * the React composition editor saves byte-compatibly with the legacy art tool.
  */
+export type ArtCompositionKind = "gameObject" | "prefab";
+
+export const artCompositionKindOptions = [
+  { value: "gameObject", label: "Game Object" },
+  { value: "prefab", label: "Prefab" }
+] as const;
+
 function num(value: unknown, fallback = 0, precision = 3): number {
   const n = Number((value as number) ?? fallback);
   return Number(Number(Number.isFinite(n) ? n : fallback).toFixed(precision));
@@ -20,6 +27,15 @@ function num(value: unknown, fallback = 0, precision = 3): number {
 
 export function normalizeArtCompositionSurface(surface: unknown): string {
   return surface === "controller" ? "controller" : "stage";
+}
+
+export function normalizeArtCompositionKind(value: unknown, fallback: ArtCompositionKind = "gameObject"): ArtCompositionKind {
+  return value === "prefab" ? "prefab" : fallback;
+}
+
+export function artCompositionKindLabel(value: unknown): string {
+  const kind = normalizeArtCompositionKind(value);
+  return artCompositionKindOptions.find((option) => option.value === kind)?.label || "Game Object";
 }
 
 export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
@@ -72,6 +88,7 @@ export function serializeArtCompositionForSave(raw: ArtComposition): ArtComposit
     name: String(composition.name || "Art Asset"),
     description: String(composition.description || ""),
     surface: normalizeArtCompositionSurface(composition.surface),
+    compositionKind: normalizeArtCompositionKind(composition.compositionKind),
     isCustom: Boolean(composition.isCustom),
     canvas: { width: Number(canvas.width || 1), height: Number(canvas.height || 1) },
     components: (Array.isArray(composition.components) ? composition.components : []).map((component) =>

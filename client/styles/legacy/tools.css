@@ -1219,6 +1219,18 @@ body.tool-dashboard-mode .layout-react-shell {
   text-transform: uppercase;
 }
 
+.art-editor-composition-meta {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) minmax(150px, 200px) auto;
+  align-items: end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.art-editor-composition-meta .flow-react-field {
+  margin: 0;
+}
+
 .art-editor-toolbar span,
 .art-browser-save-row span,
 .art-browser-unfiled small {
@@ -1400,6 +1412,7 @@ body.tool-dashboard-mode .layout-react-shell {
 }
 
 .art-browser-folder-tools,
+.art-browser-create-tools,
 .art-browser-save-row,
 .art-browser-search {
   display: grid;
@@ -1411,12 +1424,17 @@ body.tool-dashboard-mode .layout-react-shell {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.art-browser-create-tools {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .art-browser-save-row {
   grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
 }
 
 .art-browser-folder-tools input,
+.art-browser-create-tools input,
 .art-browser-search input,
 .art-browser-folder input {
   width: 100%;
@@ -1471,6 +1489,9 @@ body.tool-dashboard-mode .layout-react-shell {
 }
 
 .art-browser-item button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
   justify-content: start;
   width: 100%;
   text-align: left;
@@ -1479,6 +1500,13 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-browser-item button[aria-current="true"] {
   background: var(--cyan);
+}
+
+.art-browser-item small {
+  color: #5e5475;
+  font-size: 9px;
+  font-weight: 1000;
+  text-transform: uppercase;
 }
 
 .art-browser-unfiled {

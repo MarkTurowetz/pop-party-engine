@@ -48,12 +48,14 @@ export function ArtCompositionBrowser({
   const { selectedCompositionId } = useArtCompositions(compositionsController);
   const { organization, surfaceItems, dirty, saving, canUndo, canRedo } = useArtOrganization(organizationController);
   const [folderName, setFolderName] = useState("");
+  const [compositionName, setCompositionName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [collapsedFolders, setCollapsedFolders] = useState(readCollapsedFolders);
   const state = organization[surface];
   const compositionItems = surfaceItems[surface].filter((item: OrgItem) => item.type === "composition");
   const validCompositionKeys = new Set(compositionItems.map((item) => item.key));
   const nameByKey = new Map(compositionItems.map((item) => [item.key, item.name]));
+  const kindByKey = new Map(compositionItems.map((item) => [item.key, item.compositionKind || "gameObject"]));
   const search = useMemo(
     () => searchArtHierarchy(state, compositionItems, searchQuery),
     [state, compositionItems, searchQuery]
@@ -122,6 +124,10 @@ export function ArtCompositionBrowser({
       else draft.add(key);
     });
   };
+  const createComposition = (kind: "gameObject" | "prefab") => {
+    compositionsController.createComposition(kind, surface, compositionName);
+    setCompositionName("");
+  };
 
   const renderCompositionItem = (key: string) => {
     const compositionId = compositionIdFromKey(key);
@@ -143,6 +149,7 @@ export function ArtCompositionBrowser({
           onClick={() => compositionsController.selectComposition(compositionId)}
         >
           <span>{nameByKey.get(key) || compositionId}</span>
+          <small>{kindByKey.get(key) === "prefab" ? "Prefab" : "Game Object"}</small>
         </button>
       </li>
     );
@@ -218,6 +225,21 @@ export function ArtCompositionBrowser({
             Clear
           </button>
         ) : null}
+      </div>
+      <div className="art-browser-create-tools">
+        <input
+          type="text"
+          placeholder="New asset name"
+          value={compositionName}
+          onChange={(event) => setCompositionName(event.target.value)}
+          aria-label="New art asset name"
+        />
+        <button type="button" onClick={() => createComposition("gameObject")}>
+          Add Game Object
+        </button>
+        <button type="button" onClick={() => createComposition("prefab")}>
+          Add Prefab
+        </button>
       </div>
       <div className="art-browser-folder-tools">
         <input

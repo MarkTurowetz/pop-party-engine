@@ -326,6 +326,7 @@ function createArtAssetsRuntime({
       name: cleanText(override?.name, composition.name || "Art Asset"),
       description: cleanText(override?.description, composition.description || "Editable art asset.", 240),
       surface: normalizeCompositionSurface(override?.surface || composition.surface),
+      compositionKind: normalizeCompositionKind(override?.compositionKind || composition.compositionKind),
       isCustom: Boolean(composition.isCustom || override?.isCustom),
       canvas,
       components,
@@ -352,6 +353,10 @@ function createArtAssetsRuntime({
 
   function normalizeCompositionSurface(surface) {
     return surface === "controller" ? "controller" : "stage";
+  }
+
+  function normalizeCompositionKind(kind) {
+    return kind === "prefab" ? "prefab" : "gameObject";
   }
 
   function migrateGeneratedStageCodePanelDefaults(compositionId, components = []) {
@@ -548,6 +553,7 @@ function createArtAssetsRuntime({
         name: cleanText(composition?.name, "Art Asset"),
         description: cleanText(composition?.description, "Editable art asset.", 240),
         surface: normalizeCompositionSurface(composition?.surface),
+        compositionKind: normalizeCompositionKind(composition?.compositionKind),
         isCustom: true,
         canvas: composition?.canvas || { width: 560, height: 230 },
         components: []
@@ -651,6 +657,7 @@ function createArtAssetsRuntime({
         name: cleanText(incoming?.name, "Art Asset"),
         description: cleanText(incoming?.description, "Editable art asset.", 240),
         surface: normalizeCompositionSurface(incoming?.surface),
+        compositionKind: normalizeCompositionKind(incoming?.compositionKind),
         isCustom: true,
         canvas: incoming?.canvas || { width: 560, height: 230 },
         components: []
@@ -717,6 +724,7 @@ function createArtAssetsRuntime({
       name: cleanText(incoming?.name, savedDefinition?.name || "Art Asset"),
       description: cleanText(incoming?.description, savedDefinition?.description || "Editable art asset.", 240),
       surface: normalizeCompositionSurface(incoming?.surface || savedDefinition?.surface),
+      compositionKind: normalizeCompositionKind(incoming?.compositionKind || savedDefinition?.compositionKind),
       isCustom: true,
       canvas: incoming?.canvas || savedDefinition?.canvas || { width: 560, height: 230 },
       components: []
@@ -730,6 +738,7 @@ function createArtAssetsRuntime({
       name: normalized.name,
       description: normalized.description,
       surface: normalized.surface,
+      compositionKind: normalized.compositionKind,
       isCustom: normalized.isCustom,
       canvas: normalized.canvas,
       components: normalized.components,

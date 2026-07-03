@@ -12,6 +12,7 @@ import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-da
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { PartyGameTextFit } from "../../runtime/textFit";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
+import { artCompositionKindOptions, normalizeArtCompositionKind } from "./artCompositionModel";
 import { artResizeDimensions } from "./artResize";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import {
@@ -37,6 +38,12 @@ const SCALAR_FIELDS: { key: string; label: string }[] = [
   { key: "width", label: "Width" },
   { key: "height", label: "Height" }
 ];
+const ADD_COMPONENT_LABELS: Record<string, string> = {
+  text: "Text",
+  shape: "Shape",
+  container: "Container",
+  reference: "Prefab Ref"
+};
 type LayerDropPlacement = "before" | "after";
 const ART_PREVIEW_TEXT_INSET = 4;
 
@@ -259,6 +266,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     composition && selectedComponentIds.size === 1
       ? findComponent(composition.components || [], [...selectedComponentIds][0])
       : undefined;
+  const updateComposition = (patch: Partial<ArtComposition>) => {
+    if (!composition) return;
+    controller.updateComposition(composition.id, patch);
+  };
 
   const beginLayerDrag = (id: string, event: ReactDragEvent<HTMLDivElement>) => {
     setLayerDragId(id);
@@ -540,8 +551,37 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   return (
     <section className="art-composition-editor" data-art-react-component="composition-editor">
       <div className="art-editor-toolbar">
-        <div>
-          <h3>{composition?.name || "Composition"}</h3>
+        <div className="art-editor-composition-meta">
+          {composition ? (
+            <>
+              <label className="flow-react-field art-composition-name-field">
+                <span>Name</span>
+                <input
+                  type="text"
+                  key={`${composition.id}-composition-name`}
+                  defaultValue={composition.name}
+                  data-art-composition-field="name"
+                  onBlur={(event) => updateComposition({ name: event.target.value })}
+                />
+              </label>
+              <label className="flow-react-field art-composition-kind-field">
+                <span>Type</span>
+                <select
+                  value={normalizeArtCompositionKind(composition.compositionKind)}
+                  data-art-composition-field="compositionKind"
+                  onChange={(event) => updateComposition({ compositionKind: event.target.value })}
+                >
+                  {artCompositionKindOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : (
+            <h3>Composition</h3>
+          )}
           <span data-art-compositions-status>{dirty ? "Unsaved changes" : "Saved"}</span>
         </div>
         <div className="flow-editor-controls">
@@ -562,7 +602,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           <div className="flow-editor-controls">
             {creatableComponentKinds.map((kind) => (
               <button type="button" data-art-add-component={kind} key={kind} onClick={() => controller.addComponent(kind)}>
-                Add {kind}
+                Add {ADD_COMPONENT_LABELS[kind] || kind}
               </button>
             ))}
           </div>
@@ -600,6 +640,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
 
         <ArtComponentInspector
           controller={controller}
+          composition={composition}
+          compositions={compositions}
           component={selectedComponent ?? null}
           tree={
             composition ? (
@@ -624,10 +666,14 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
 
 function ArtComponentInspector({
   controller,
+  composition,
+  compositions,
   component,
   tree
 }: {
   controller: ArtCompositionsController;
+  composition: ArtComposition | null;
+  compositions: ArtComposition[];
   component: ArtComponent | null;
   tree: ReactNode;
 }) {
@@ -647,6 +693,7 @@ function ArtComponentInspector({
   const isTextual = component.kind === "text" || component.kind === "badge";
   const supportsShape = componentSupportsShapeStyle(component);
   const supportsImage = componentSupportsImageMask(component);
+  const referenceOptions = compositions.filter((item) => item.id !== composition?.id);
 
   const numberField = (key: string, label: string, step?: string) => (
     <label className="flow-react-field" data-art-field={key} key={key}>
@@ -698,6 +745,23 @@ function ArtComponentInspector({
       {SCALAR_FIELDS.map((field) => numberField(field.key, field.label))}
       {numberField("scale", "Scale", "0.01")}
       {numberField("rotation", "Rotation", "0.1")}
+      {component.kind === "reference" ? (
+        <label className="flow-react-field" data-art-field="artCompositionId">
+          <span>Prefab</span>
+          <select
+            value={String(get(component, "artCompositionId") || "")}
+            data-art-component-field="artCompositionId"
+            onChange={(event) => commit({ artCompositionId: event.target.value } as Partial<ArtComponent>)}
+          >
+            <option value="">Choose prefab</option>
+            {referenceOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name} ({normalizeArtCompositionKind(option.compositionKind) === "prefab" ? "Prefab" : "Game Object"})
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {supportsShape ? (
         <>
           <label className="flow-react-field" data-art-field="shapeStyle">

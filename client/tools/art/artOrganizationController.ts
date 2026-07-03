@@ -35,6 +35,7 @@ export interface ArtOrganizationControllerOptions {
 export interface ArtOrganizationController {
   getState(): ArtOrganizationEditorState;
   subscribe(listener: () => void): () => void;
+  setSourceItems(compositions: ArtComposition[], assets?: ArtAsset[]): void;
   createFolder(surface: OrgSurface, name: string): void;
   renameFolder(surface: OrgSurface, folderId: string, name: string): void;
   deleteFolder(surface: OrgSurface, folderId: string): void;
@@ -57,10 +58,9 @@ export function createArtOrganizationController(
   options: ArtOrganizationControllerOptions
 ): ArtOrganizationController {
   const { api } = options;
-  const items: Record<OrgSurface, OrgItem[]> = {
-    stage: surfaceItems(options.compositions, options.assets, "stage"),
-    controller: surfaceItems(options.compositions, options.assets, "controller")
-  };
+  let sourceCompositions = options.compositions || [];
+  let sourceAssets = options.assets || [];
+  let items = buildSurfaceItems(sourceCompositions, sourceAssets);
   const listeners = new Set<() => void>();
   let organization = normalizeOrganization(options.initialOrganization);
   let savedSnapshot = organizationSnapshot(organization, items);
@@ -91,6 +91,13 @@ export function createArtOrganizationController(
     };
   }
 
+  function buildSurfaceItems(compositions: ArtComposition[], assets: ArtAsset[]): Record<OrgSurface, OrgItem[]> {
+    return {
+      stage: surfaceItems(compositions, assets, "stage"),
+      controller: surfaceItems(compositions, assets, "controller")
+    };
+  }
+
   function emit(): void {
     cachedState = buildState();
     listeners.forEach((listener) => listener());
@@ -117,6 +124,13 @@ export function createArtOrganizationController(
       return () => {
         listeners.delete(listener);
       };
+    },
+
+    setSourceItems: (compositions, assets = sourceAssets) => {
+      sourceCompositions = compositions || [];
+      sourceAssets = assets || [];
+      items = buildSurfaceItems(sourceCompositions, sourceAssets);
+      emit();
     },
 
     createFolder: (surface, name) =>

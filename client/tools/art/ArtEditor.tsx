@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ArtAssetsController } from "./artAssetsController";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
@@ -33,6 +33,9 @@ export function ArtEditor({
   const { assets } = useArtAssets(assetsController);
   const compositionsState = useArtCompositions(compositionsController);
   const organizationState = useArtOrganization(organizationController);
+  useEffect(() => {
+    organizationController.setSourceItems(compositionsState.compositions, assets);
+  }, [assets, compositionsState.compositions, organizationController]);
   const sidebar = (
     <ArtCompositionBrowser
       compositionsController={compositionsController}
