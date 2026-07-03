@@ -2034,6 +2034,75 @@
         }
       ],
       "updatedAt": "2026-06-28T00:01:10.632Z"
+    },
+    "player-name-widget": {
+      "name": "Player Name Widget",
+      "description": "Shared editable player name pill nested inside every player object.",
+      "surface": "stage",
+      "isCustom": false,
+      "canvas": {
+        "width": 126,
+        "height": 42
+      },
+      "components": [
+        {
+          "id": "name-text",
+          "name": "Name Text",
+          "kind": "text",
+          "x": 61,
+          "y": 19,
+          "width": 96,
+          "height": 22,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "on",
+          "defaultText": "Player",
+          "fontSize": 17,
+          "autoFitText": true,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "name-card",
+          "name": "Name Card",
+          "kind": "shape",
+          "x": 61,
+          "y": 19,
+          "width": 118,
+          "height": 34,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 3,
+          "borderRadius": 999
+        },
+        {
+          "id": "name-shadow",
+          "name": "Name Shadow",
+          "kind": "shape",
+          "x": 65,
+          "y": 23,
+          "width": 118,
+          "height": 34,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "rgba(23, 19, 31, 0.42)",
+          "fillCss": "",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 999
+        }
+      ],
+      "updatedAt": "2026-07-03T01:04:00.623Z"
     }
   },
   "deletedCompositionIds": [],
