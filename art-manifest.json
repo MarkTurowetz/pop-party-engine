@@ -1274,6 +1274,7 @@
       "name": "Controller Invalid Banner",
       "description": "Editable controller invalid submission banner art.",
       "surface": "controller",
+      "compositionKind": "gameObject",
       "isCustom": false,
       "canvas": {
         "width": 330,
@@ -1290,11 +1291,13 @@
           "height": 34,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "on",
           "defaultText": "Your submission was invalid",
           "fontSize": 20,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "invalid-card",
@@ -1306,6 +1309,7 @@
           "height": 64,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "on",
           "shapeStyle": "rounded",
           "fillColor": "#ff9e2c",
@@ -1315,7 +1319,7 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-28T00:00:53.915Z"
+      "updatedAt": "2026-07-03T19:55:00.558Z"
     },
     "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c": {
       "name": "Prompt Text Field",
