@@ -116,8 +116,8 @@ function ensureDomSizingElement(): HTMLElement | null {
     display: "block",
     overflow: "visible",
     whiteSpace: "pre-wrap",
-    overflowWrap: "anywhere",
-    wordBreak: "break-word",
+    overflowWrap: "normal",
+    wordBreak: "normal",
     textAlign: "center",
     padding: "0",
     margin: "0"
@@ -151,14 +151,38 @@ function approximateWidth(text: string, fontSize: number, fontWeight: string): n
   return String(text || "").length * fontSize * 0.62 * weightBoost;
 }
 
+function approximateWrappedLineCount(line: string, fontSize: number, spec: TextFitSpec): { width: number; lineCount: number } {
+  const cleanLine = String(line || "");
+  if (!cleanLine.trim()) return { width: 0, lineCount: 1 };
+  const tokens = cleanLine.match(/\S+\s*/g) || [cleanLine];
+  let lineCount = 1;
+  let currentWidth = 0;
+  let widest = 0;
+
+  for (const token of tokens) {
+    const tokenWidth = approximateWidth(token.replace(/\s+$/u, ""), fontSize, spec.fontWeight);
+    const tokenWithSpaceWidth = approximateWidth(token, fontSize, spec.fontWeight);
+    widest = Math.max(widest, tokenWidth);
+    if (currentWidth > 0 && currentWidth + tokenWithSpaceWidth > spec.width) {
+      lineCount += 1;
+      currentWidth = tokenWithSpaceWidth;
+    } else {
+      currentWidth += tokenWithSpaceWidth;
+    }
+    widest = Math.max(widest, Math.min(currentWidth, spec.width));
+  }
+
+  return { width: widest, lineCount };
+}
+
 function approximateSizeFor(text: string, fontSize: number, spec: TextFitSpec): { width: number; height: number; visualLineCount: number } {
   const lines = String(text || " ").split("\n");
   let widest = 0;
   let visualLineCount = 0;
   for (const line of lines) {
-    const lineWidth = approximateWidth(line || " ", fontSize, spec.fontWeight);
-    widest = Math.max(widest, Math.min(lineWidth, spec.width));
-    visualLineCount += Math.max(1, Math.ceil(lineWidth / Math.max(1, spec.width)));
+    const wrapped = approximateWrappedLineCount(line, fontSize, spec);
+    widest = Math.max(widest, wrapped.width);
+    visualLineCount += wrapped.lineCount;
   }
   return {
     width: widest,
@@ -322,8 +346,8 @@ function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, 
     overflow: "hidden",
     textAlign: "center",
     whiteSpace: "pre-wrap",
-    overflowWrap: "anywhere",
-    wordBreak: "break-word",
+    overflowWrap: layout.autoFitText ? "break-word" : "anywhere",
+    wordBreak: "normal",
     lineHeight: String(lineHeight),
     fontSize: `${layout.fontSize}px`,
     fontFamily,

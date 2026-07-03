@@ -190,7 +190,23 @@ export function LayoutEditor({ stageController, controllerController, surface = 
           controller.selectElement(element.id, event.metaKey || event.ctrlKey || event.shiftKey);
         }}
       >
-        <span>{isText ? textValue : element.name || element.kind || "art"}</span>
+        <span
+          style={
+            isText
+              ? {
+                  width: "100%",
+                  minWidth: 0,
+                  boxSizing: "border-box",
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "break-word",
+                  wordBreak: "normal",
+                  textAlign: "center"
+                }
+              : undefined
+          }
+        >
+          {isText ? textValue : element.name || element.kind || "art"}
+        </span>
       </div>
     );
   };

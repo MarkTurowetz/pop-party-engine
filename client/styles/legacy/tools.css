@@ -1274,9 +1274,14 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-canvas-component > span {
   display: block;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   padding: 0 4px;
-  overflow-wrap: anywhere;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
   text-align: center;
   text-transform: uppercase;
   font-weight: 1000;
