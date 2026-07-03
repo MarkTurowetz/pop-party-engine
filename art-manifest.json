@@ -1374,7 +1374,7 @@
       "isCustom": false,
       "canvas": {
         "width": 300,
-        "height": 300
+        "height": 370
       },
       "components": [
         {
@@ -1382,11 +1382,12 @@
           "name": "Answer Bubble Slot",
           "kind": "reference",
           "x": 150,
-          "y": 110,
-          "width": 225.015,
-          "height": 135.009,
+          "y": 96,
+          "width": 300,
+          "height": 180,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "park",
           "artCompositionId": "player-answer-bubble"
         },
@@ -1400,6 +1401,7 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "on",
           "childDistribution": "none",
           "shapeStyle": "rectangle",
@@ -1419,6 +1421,7 @@
               "height": 70,
               "scale": 1,
               "rotation": 0,
+              "locked": false,
               "defaultAnimationState": "on",
               "shapeStyle": "rectangle",
               "fillColor": "currentColor",
@@ -1442,6 +1445,7 @@
               "height": 100,
               "scale": 1,
               "rotation": 0,
+              "locked": false,
               "defaultAnimationState": "on",
               "shapeStyle": "rectangle",
               "fillColor": "transparent",
@@ -1456,9 +1460,37 @@
               "imageTint": ""
             }
           ]
+        },
+        {
+          "id": "player-name",
+          "name": "Player Name Widget",
+          "kind": "reference",
+          "x": 150,
+          "y": 309,
+          "width": 126,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "on",
+          "artCompositionId": "player-name-widget"
+        },
+        {
+          "id": "vip-badge",
+          "name": "VIP Badge Widget",
+          "kind": "reference",
+          "x": 150,
+          "y": 345,
+          "width": 52,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "park",
+          "artCompositionId": "player-vip-widget"
         }
       ],
-      "updatedAt": "2026-07-02T07:36:08.888Z"
+      "updatedAt": "2026-07-03T01:06:38.359Z"
     },
     "player-object-stego": {
       "name": "Stego Player Object",
