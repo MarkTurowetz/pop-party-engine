@@ -1385,7 +1385,7 @@
           "y": 96,
           "width": 300,
           "height": 180,
-          "scale": 1.1,
+          "scale": 1,
           "rotation": 0,
           "locked": false,
           "defaultAnimationState": "park",
@@ -1490,7 +1490,7 @@
           "artCompositionId": "player-vip-widget"
         }
       ],
-      "updatedAt": "2026-07-03T01:10:27.253Z"
+      "updatedAt": "2026-07-03T01:10:31.114Z"
     },
     "player-object-stego": {
       "name": "Stego Player Object",
