@@ -19,6 +19,7 @@ import { useLayoutEditor } from "./useLayoutEditor";
 export interface LayoutEditorProps {
   artAssets?: ArtAsset[];
   artCompositions?: ArtComposition[];
+  onOpenArtComposition?: (compositionId: string) => void;
   stageController: LayoutController;
   controllerController: LayoutController;
   surface?: string;
@@ -98,6 +99,7 @@ function layoutTextOverride(element: LayoutElement): ArtTextOverride {
 export function LayoutEditor({
   artAssets = [],
   artCompositions = [],
+  onOpenArtComposition,
   stageController,
   controllerController,
   surface = "layout"
@@ -131,6 +133,13 @@ export function LayoutEditor({
     group && selectedElementIds.size === 1
       ? groupElements.find((element) => element.id === [...selectedElementIds][0])
       : undefined;
+
+  const openArtCompositionForElement = (element: LayoutElement) => {
+    if (!onOpenArtComposition) return;
+    const compositionId = layoutElementArtCompositionId(element);
+    if (!compositionId || !compositionById.has(compositionId)) return;
+    onOpenArtComposition(compositionId);
+  };
 
   const beginDrag = (element: LayoutElement, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -216,10 +225,19 @@ export function LayoutEditor({
         key={element.id}
         className="layout-canvas-element"
         data-layout-element={element.id}
+        data-layout-art-composition={composition ? composition.id : undefined}
         data-layout-element-hidden={hidden ? "true" : "false"}
         data-layout-element-locked={locked ? "true" : "false"}
         aria-current={selected ? "true" : undefined}
         style={style}
+        onDoubleClick={
+          locked || hidden || !composition
+            ? undefined
+            : (event) => {
+                event.stopPropagation();
+                openArtCompositionForElement(element);
+              }
+        }
         onPointerDown={locked || hidden ? undefined : (event) => beginDrag(element, event)}
         onClick={
           locked || hidden
@@ -363,9 +381,12 @@ export function LayoutEditor({
               const hidden = get(element, "hidden") === true;
               const locked = get(element, "locked") === true;
               const selected = selectedElementIds.has(element.id);
+              const compositionId = layoutElementArtCompositionId(element);
+              const linkedComposition = compositionId ? compositionById.get(compositionId) : null;
               return (
                 <li
                   data-layout-object-id={element.id}
+                  data-layout-object-art-composition={linkedComposition ? linkedComposition.id : undefined}
                   data-layout-layer-drop-placement={elementDropTarget?.id === element.id ? elementDropTarget.placement : undefined}
                   key={element.id}
                 >
@@ -385,9 +406,17 @@ export function LayoutEditor({
                       aria-current={selected ? "true" : undefined}
                       data-layout-object-select={element.id}
                       onClick={(event) => controller.selectElement(element.id, event.metaKey || event.ctrlKey || event.shiftKey)}
+                      onDoubleClick={
+                        linkedComposition
+                          ? (event) => {
+                              event.stopPropagation();
+                              openArtCompositionForElement(element);
+                            }
+                          : undefined
+                      }
                     >
                       <strong>{element.name || element.id}</strong>
-                      <small>{layoutElementArtCompositionId(element) || element.kind || "object"}</small>
+                      <small>{compositionId || element.kind || "object"}</small>
                     </button>
                     <button
                       type="button"

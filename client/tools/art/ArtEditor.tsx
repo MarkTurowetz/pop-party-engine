@@ -18,6 +18,10 @@ export interface ArtEditorProps {
   surface?: string;
 }
 
+function surfaceForComposition(surface: unknown): OrgSurface {
+  return surface === "controller" ? "controller" : "stage";
+}
+
 /**
  * React-only Art tool: the composition editor (list + canvas + component tree +
  * inspector), the drag-drop organizer, and the asset manager — all driven by typed
@@ -29,7 +33,13 @@ export function ArtEditor({
   organizationController,
   surface = "art"
 }: ArtEditorProps) {
-  const [surfaceFilter, setSurfaceFilter] = useState<OrgSurface>("stage");
+  const [surfaceFilter, setSurfaceFilter] = useState<OrgSurface>(() => {
+    const initialState = compositionsController.getState();
+    const selectedComposition = initialState.compositions.find(
+      (composition) => composition.id === initialState.selectedCompositionId
+    );
+    return selectedComposition ? surfaceForComposition(selectedComposition.surface) : "stage";
+  });
   const { assets } = useArtAssets(assetsController);
   const compositionsState = useArtCompositions(compositionsController);
   const organizationState = useArtOrganization(organizationController);

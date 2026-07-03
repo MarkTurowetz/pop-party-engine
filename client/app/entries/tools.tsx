@@ -19,7 +19,7 @@ import "../../runtime/stageTextRenderer";
 import "../../runtime/layoutRuntime";
 import "../../runtime/stageRuntime";
 // The /tools dashboard tab router (defines setupToolDashboard, dispatched by app-shell).
-import { registerDashboardTool } from "../../runtime/toolDashboard";
+import { registerDashboardTool, showDashboardTool } from "../../runtime/toolDashboard";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/qrCode";
@@ -66,6 +66,8 @@ import type { MountedLayoutEditor } from "../../tools/layout/mountLayoutEditor";
 // each tool registers its dirty/save/setup, routed into its React controller. This
 // replaced the old window.setupFlowTool/saveGameFlow/isFlowDirty/… shim globals.
 const revealScreen = (id: string) => () => document.querySelector(`#${id}`)?.classList.remove("hidden");
+const initialToolParams = new URLSearchParams(window.location.search);
+const initialArtCompositionId = initialToolParams.get("tool") === "art" ? initialToolParams.get("composition") || undefined : undefined;
 
 export const legacyToolsScripts = legacyScriptsForRole("tools");
 export const toolsContext = createToolAppContext({ surface: "tools" });
@@ -119,13 +121,28 @@ registerDashboardTool("host-audio", {
 });
 
 let artEditor: MountedArtEditor | null = null;
+let pendingArtCompositionId = "";
+const selectArtComposition = (compositionId: string): boolean => {
+  if (!artEditor) return false;
+  const compositions = artEditor.compositionsController.getState().compositions;
+  if (!compositions.some((composition) => composition.id === compositionId)) return false;
+  artEditor.compositionsController.selectComposition(compositionId);
+  return true;
+};
+const openArtComposition = (compositionId: string) => {
+  pendingArtCompositionId = compositionId;
+  void showDashboardTool("art");
+  if (selectArtComposition(compositionId)) pendingArtCompositionId = "";
+};
 void mountArtEditor({
   api: toolsContext.api.art,
   draftApi: toolsContext.api.drafts,
+  initialCompositionId: initialArtCompositionId,
   surface: toolsContext.surface,
   revealScreen: false
 }).then((mounted) => {
   artEditor = mounted;
+  if (pendingArtCompositionId && selectArtComposition(pendingArtCompositionId)) pendingArtCompositionId = "";
 });
 registerDashboardTool("art", {
   isDirty: () =>
@@ -149,6 +166,7 @@ void mountLayoutEditor({
   api: toolsContext.api.layout,
   artApi: toolsContext.api.art,
   draftApi: toolsContext.api.drafts,
+  onOpenArtComposition: openArtComposition,
   surface: toolsContext.surface,
   revealScreen: false
 }).then((mounted) => {

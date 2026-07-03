@@ -113,5 +113,7 @@ describe("LayoutEditor", () => {
 
     expect(markup).toContain('class="layout-art-instance-canvas"');
     expect(markup).toContain('data-art-canvas-component="card"');
+    expect(markup).toContain('data-layout-art-composition="player-object"');
+    expect(markup).toContain('data-layout-object-art-composition="player-object"');
   });
 });

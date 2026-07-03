@@ -8,5 +8,10 @@ void mountLayoutEditor({
   api: layoutToolContext.api.layout,
   artApi: layoutToolContext.api.art,
   draftApi: layoutToolContext.api.drafts,
+  onOpenArtComposition: (compositionId) => {
+    const url = new URL("/art", window.location.origin);
+    url.searchParams.set("composition", compositionId);
+    window.location.href = url.toString();
+  },
   surface: layoutToolContext.surface
 });

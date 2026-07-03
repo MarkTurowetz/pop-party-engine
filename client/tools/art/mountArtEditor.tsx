@@ -12,6 +12,7 @@ export interface MountArtEditorOptions {
   api: ArtApi;
   draftApi?: ToolDraftApi;
   document?: Document;
+  initialCompositionId?: string;
   surface?: string;
   /** Reveal #artScreen (standalone /art). False on /tools (router manages). */
   revealScreen?: boolean;
@@ -59,6 +60,10 @@ export async function mountArtEditor(options: MountArtEditorOptions): Promise<Mo
     api: options.api,
     postDraft
   });
+  const initialCompositionId = String(options.initialCompositionId || "");
+  if (initialCompositionId && (response.compositions || []).some((composition) => composition.id === initialCompositionId)) {
+    compositionsController.selectComposition(initialCompositionId);
+  }
   const organizationController = createArtOrganizationController({
     initialOrganization: normalizeOrganization(response.organization),
     compositions: response.compositions || [],

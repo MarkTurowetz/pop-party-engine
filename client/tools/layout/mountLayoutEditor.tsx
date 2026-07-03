@@ -11,6 +11,7 @@ export interface MountLayoutEditorOptions {
   artApi?: ArtApi;
   draftApi?: ToolDraftApi;
   document?: Document;
+  onOpenArtComposition?: (compositionId: string) => void;
   surface?: string;
   /** Reveal #layoutScreen (standalone /layout). False on /tools (router manages). */
   revealScreen?: boolean;
@@ -78,6 +79,7 @@ export async function mountLayoutEditor(options: MountLayoutEditorOptions): Prom
     <LayoutEditor
       artAssets={art.assets}
       artCompositions={art.compositions}
+      onOpenArtComposition={options.onOpenArtComposition}
       stageController={stageController}
       controllerController={controllerController}
       surface={options.surface}

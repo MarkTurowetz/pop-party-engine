@@ -108,6 +108,10 @@ async function activateTool(toolId: string | null, options: { force?: boolean } 
   await toolHooks.get(metadata.id)?.setup();
 }
 
+export function showDashboardTool(toolId: string): Promise<void> {
+  return activateTool(toolId);
+}
+
 function setupToolDashboard(): void {
   document.body.classList.add("tool-dashboard-mode");
   w().toolDashboardBar?.classList.remove("hidden");
