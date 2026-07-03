@@ -28,6 +28,8 @@ function serializeElement(raw: LayoutElement): LayoutElement {
     selector: String(element.selector || ""),
     kind,
     artCompositionId,
+    hidden: element.hidden === true,
+    locked: element.locked === true,
     x: num(element.x, 0),
     y: num(element.y, 0),
     width: num(element.width, 0),

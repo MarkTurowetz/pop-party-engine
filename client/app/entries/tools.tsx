@@ -147,6 +147,7 @@ registerDashboardTool("art", {
 let layoutEditor: MountedLayoutEditor | null = null;
 void mountLayoutEditor({
   api: toolsContext.api.layout,
+  artApi: toolsContext.api.art,
   draftApi: toolsContext.api.drafts,
   surface: toolsContext.surface,
   revealScreen: false

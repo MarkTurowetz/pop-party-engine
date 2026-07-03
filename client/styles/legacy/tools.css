@@ -1566,11 +1566,160 @@ body.tool-dashboard-mode .layout-react-shell {
   box-shadow: var(--shadow);
 }
 
+.layout-canvas-element {
+  user-select: none;
+}
+
+.layout-canvas-element[aria-current="true"] {
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.22);
+}
+
+.layout-canvas-element[data-layout-element-locked="true"] {
+  cursor: default;
+}
+
+.layout-art-instance-canvas {
+  --art-preview-current-color: #22d3ee;
+}
+
 .layout-element-inspector {
   min-width: 0;
   overflow: auto;
   border-left: 4px solid var(--ink) !important;
   background: #fff;
+}
+
+.layout-object-list-panel {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  padding-top: 12px;
+  border-top: 4px solid rgba(23, 19, 31, 0.18);
+}
+
+.layout-object-list {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.layout-object-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px 42px;
+  gap: 6px;
+  align-items: stretch;
+  cursor: grab;
+}
+
+.layout-object-row:active {
+  cursor: grabbing;
+}
+
+.layout-object-select {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  justify-content: start;
+  width: 100%;
+  text-align: left;
+  background: var(--cream);
+}
+
+.layout-object-select[aria-current="true"] {
+  background: var(--cyan);
+}
+
+.layout-object-select strong,
+.layout-object-select small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-object-select small {
+  color: #5e5475;
+  font-size: 9px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.layout-object-toggle {
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  width: 42px;
+  padding: 0;
+  overflow: visible;
+}
+
+.layout-object-row[data-layout-object-hidden="true"] .layout-object-select,
+.layout-object-row[data-layout-object-locked="true"] .layout-object-select {
+  opacity: 0.68;
+}
+
+.layout-object-row[data-layout-object-hidden="true"] .layout-object-visible-toggle,
+.layout-object-row[data-layout-object-locked="true"] .layout-object-lock-toggle {
+  background: var(--yellow);
+}
+
+.layout-object-eye-icon {
+  position: relative;
+  display: inline-block;
+  width: 20px;
+  height: 13px;
+  border: 3px solid var(--ink);
+  border-radius: 999px 999px 999px 999px / 80% 80% 80% 80%;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.layout-object-eye-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+}
+
+.layout-object-eye-icon[data-layout-object-eye-icon="hidden"]::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 25px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--ink);
+  transform: translate(-50%, -50%) rotate(-38deg);
+}
+
+.layout-object-list li[data-layout-layer-drop-placement="before"] > .layout-object-row {
+  box-shadow: 0 -4px 0 var(--cyan);
+}
+
+.layout-object-list li[data-layout-layer-drop-placement="after"] > .layout-object-row {
+  box-shadow: 0 4px 0 var(--cyan);
+}
+
+.layout-object-empty {
+  margin: 0;
+  padding: 10px;
+  border: 3px dashed rgba(23, 19, 31, 0.35);
+  border-radius: 10px;
+  color: #5e5475;
+  font-size: 12px;
+  font-weight: 1000;
+  text-transform: uppercase;
 }
 
 .flow-react-preview-replace .flow-shell {

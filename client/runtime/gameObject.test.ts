@@ -8,6 +8,8 @@ describe("PartyGameGameObject (ported game-object)", () => {
     expect(defaultVisibleFor({ defaultAnimationState: "appear" })).toBe(true);
     expect(defaultVisibleFor({ defaultAnimationState: "off" })).toBe(false);
     expect(defaultVisibleFor({ defaultAnimationState: "hidden" })).toBe(false);
+    expect(defaultVisibleFor({ hidden: true, defaultAnimationState: "on" })).toBe(false);
+    expect(defaultVisibleFor({ element: { hidden: true }, defaultAnimationState: "on" })).toBe(false);
     expect(defaultVisibleFor({ isDynamic: true, isArt: true })).toBe(false);
     expect(defaultVisibleFor({})).toBe(null);
   });

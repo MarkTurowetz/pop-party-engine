@@ -61,6 +61,40 @@ describe("createLayoutController", () => {
     expect(el.x).toBe(12.345);
   });
 
+  it("reorders elements in the selected group", () => {
+    const controller = createLayoutController({
+      initialLayouts: {
+        ...layouts(),
+        states: [
+          {
+            id: "intro",
+            name: "Intro",
+            elements: [
+              { id: "a", name: "A", kind: "art" } as never,
+              { id: "b", name: "B", kind: "art" } as never,
+              { id: "c", name: "C", kind: "art" } as never
+            ]
+          }
+        ]
+      },
+      mode: "stage",
+      api: fakeApi()
+    });
+    controller.selectGroup("intro");
+    controller.reorderElement("c", "a", "before");
+    expect(controller.getState().layouts.states[0].elements.map((element) => element.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("stores hidden and locked layout element state", () => {
+    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    controller.selectGroup("intro");
+    controller.updateElement("e1", { hidden: true, locked: true } as never);
+    const el = controller.getState().layouts.states[0].elements[0] as Record<string, unknown>;
+    expect(el.hidden).toBe(true);
+    expect(el.locked).toBe(true);
+    expect(controller.getState().dirty).toBe(true);
+  });
+
   it("saves via the stage endpoint and clears dirty", async () => {
     const api = fakeApi();
     const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api });

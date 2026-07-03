@@ -6,6 +6,7 @@ export const layoutToolContext = createToolAppContext({ surface: "layout" });
 
 void mountLayoutEditor({
   api: layoutToolContext.api.layout,
+  artApi: layoutToolContext.api.art,
   draftApi: layoutToolContext.api.drafts,
   surface: layoutToolContext.surface
 });

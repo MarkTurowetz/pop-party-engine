@@ -32,6 +32,7 @@ export interface LayoutController {
   clearElementSelection(): void;
   addTextElement(): void;
   removeSelectedElements(): void;
+  reorderElement(sourceElementId: string, targetElementId: string, placement: "before" | "after"): void;
   updateElement(elementId: string, patch: Partial<LayoutElement>): void;
   moveElement(elementId: string, x: number, y: number): void;
   undo(): void;
@@ -168,6 +169,19 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       mutateGroup((target) => {
         target.elements = (target.elements || []).filter((element) => !selectedElementIds.has(element.id));
         selectedElementIds = new Set();
+      }),
+    reorderElement: (sourceElementId, targetElementId, placement) =>
+      mutateGroup((target) => {
+        if (!sourceElementId || !targetElementId || sourceElementId === targetElementId) return;
+        const elements = [...(target.elements || [])];
+        const sourceIndex = elements.findIndex((element) => element.id === sourceElementId);
+        const targetIndex = elements.findIndex((element) => element.id === targetElementId);
+        if (sourceIndex < 0 || targetIndex < 0) return;
+        const [source] = elements.splice(sourceIndex, 1);
+        const adjustedTargetIndex = elements.findIndex((element) => element.id === targetElementId);
+        const insertIndex = placement === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+        elements.splice(Math.max(0, insertIndex), 0, source);
+        target.elements = elements;
       }),
     updateElement: (elementId, patch) =>
       mutateGroup((target) => {

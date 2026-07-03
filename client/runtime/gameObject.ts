@@ -271,6 +271,7 @@ function createGameObjectRegistry(options: Dict = {}): GameObjectRegistry {
 
 function defaultVisibleFor(options: Dict = {}): boolean | null {
   const element = options.element as Dict | undefined;
+  if (options.hidden === true || element?.hidden === true) return false;
   const state = String(options.defaultAnimationState ?? element?.defaultAnimationState ?? "").trim().toLowerCase();
   if (["on", "appear", "update", "visible", "shown"].includes(state)) return true;
   if (["park", "off", "disappear", "hidden", "hide"].includes(state)) return false;

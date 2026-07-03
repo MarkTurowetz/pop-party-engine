@@ -59,6 +59,8 @@ function createLayoutNormalizationRuntime({
       selector: shouldPromoteTextToArt ? "" : selector,
       kind,
       artCompositionId: kind === "art" ? artCompositionId : "",
+      hidden: element.hidden === true,
+      locked: element.locked === true,
       x: normalizeLayoutNumber(element.x, defaultCanvas.width / 2, -5000, 15000),
       y: normalizeLayoutNumber(element.y, defaultCanvas.height / 2, -5000, 15000),
       width,

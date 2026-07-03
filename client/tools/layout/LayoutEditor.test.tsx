@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { LayoutApi } from "../../api/layoutApi";
-import type { LayoutSaveResponse, StageLayoutCollection } from "../../types/game-data";
+import type { ArtComposition, LayoutSaveResponse, StageLayoutCollection } from "../../types/game-data";
 import { createLayoutController } from "./layoutController";
 import { LayoutEditor } from "./LayoutEditor";
 
@@ -49,5 +49,69 @@ describe("LayoutEditor", () => {
     expect(markup).toContain('class="tool-main-columns layout-workspace-content"');
     expect(markup).toContain('class="flow-react-panel layout-preview-panel"');
     expect(markup).toContain('class="flow-react-panel flow-react-inspector layout-element-inspector"');
+    expect(markup).toContain('data-layout-react-component="object-list"');
+  });
+
+  it("renders layout art from the referenced Art Manager composition", () => {
+    const api = fakeApi();
+    const stageLayouts = {
+      ...layouts(),
+      global: {
+        id: "global",
+        name: "Global",
+        elements: [
+          {
+            id: "player",
+            name: "Player",
+            kind: "art",
+            artCompositionId: "player-object",
+            x: 960,
+            y: 540,
+            width: 120,
+            height: 80
+          } as never
+        ]
+      }
+    };
+    const artCompositions: ArtComposition[] = [
+      {
+        id: "player-object",
+        name: "Player Object",
+        surface: "stage",
+        compositionKind: "gameObject",
+        canvas: { width: 120, height: 80 },
+        components: [
+          {
+            id: "card",
+            name: "Card",
+            kind: "shape",
+            x: 60,
+            y: 40,
+            width: 120,
+            height: 80,
+            fillColor: "#fff8df",
+            borderColor: "#17131f",
+            borderWidth: 4
+          } as never
+        ]
+      }
+    ];
+    const stageController = createLayoutController({ initialLayouts: stageLayouts, mode: "stage", api });
+    const controllerController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api
+    });
+    const markup = renderToStaticMarkup(
+      <LayoutEditor
+        artCompositions={artCompositions}
+        stageController={stageController}
+        controllerController={controllerController}
+        surface="tools"
+      />
+    );
+
+    expect(markup).toContain('class="layout-art-instance-canvas"');
+    expect(markup).toContain('data-art-canvas-component="card"');
   });
 });

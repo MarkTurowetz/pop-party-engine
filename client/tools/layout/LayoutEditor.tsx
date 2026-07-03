@@ -1,13 +1,15 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent
 } from "react";
-import type { LayoutElement } from "../../types/game-data";
+import type { ArtAsset, ArtComposition, LayoutElement } from "../../types/game-data";
 import { gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
-import { PartyGameTextFit } from "../../runtime/textFit";
+import { ArtPreviewRenderer, assetUrlMap, compositionMap, type ArtTextOverride } from "../art/ArtPreviewRenderer";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
@@ -15,6 +17,8 @@ import { layoutGroups } from "./layoutModel";
 import { useLayoutEditor } from "./useLayoutEditor";
 
 export interface LayoutEditorProps {
+  artAssets?: ArtAsset[];
+  artCompositions?: ArtComposition[];
   stageController: LayoutController;
   controllerController: LayoutController;
   surface?: string;
@@ -22,18 +26,6 @@ export interface LayoutEditorProps {
 
 function get(element: LayoutElement, key: string): unknown {
   return (element as Record<string, unknown>)[key];
-}
-
-function layoutPreviewFontSize(element: LayoutElement, text: string, width: number, height: number): number {
-  const fallbackSize = Number(get(element, "fontSize") || 58);
-  const fontFamily = normalizeGameTextFontFamily(get(element, "fontFamily"));
-  const layout = PartyGameTextFit.measureGameText({
-    text,
-    element: { ...element, width, height, fontSize: fallbackSize, fontFamily, autoFitText: get(element, "autoFitText") === true },
-    fallbackSize,
-    options: { fontFamily, lineHeight: 1 }
-  });
-  return Number(layout.fontSize || fallbackSize);
 }
 
 const SCALAR_FIELDS = [
@@ -44,6 +36,12 @@ const SCALAR_FIELDS = [
   { key: "scale", label: "Scale" },
   { key: "rotation", label: "Rotation" }
 ];
+type LayerDropPlacement = "before" | "after";
+
+type LayerDropTarget = {
+  id: string;
+  placement: LayerDropPlacement;
+};
 
 function useElementSize<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -78,13 +76,42 @@ function useElementSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-export function LayoutEditor({ stageController, controllerController, surface = "layout" }: LayoutEditorProps) {
+function layerDropPlacement(event: ReactDragEvent<HTMLElement>): LayerDropPlacement {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+}
+
+function layoutElementArtCompositionId(element: LayoutElement): string {
+  return String(get(element, "artCompositionId") || "");
+}
+
+function layoutTextOverride(element: LayoutElement): ArtTextOverride {
+  return {
+    autoFitText: get(element, "autoFitText") === true,
+    fontColor: String(get(element, "fontColor") || "#ffffff"),
+    fontFamily: normalizeGameTextFontFamily(get(element, "fontFamily")),
+    fontSize: Number(get(element, "fontSize") || 58),
+    text: String(get(element, "defaultText") || "")
+  };
+}
+
+export function LayoutEditor({
+  artAssets = [],
+  artCompositions = [],
+  stageController,
+  controllerController,
+  surface = "layout"
+}: LayoutEditorProps) {
   const [mode, setMode] = useState<"stage" | "controller">("stage");
   const controller = mode === "stage" ? stageController : controllerController;
   const state = useLayoutEditor(controller);
   const { layouts, selectedGroupId, selectedElementIds, dirty, saving, canUndo, canRedo } = state;
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [elementDragId, setElementDragId] = useState<string | null>(null);
+  const [elementDropTarget, setElementDropTarget] = useState<LayerDropTarget | null>(null);
   const [previewPanelRef, previewPanelSize] = useElementSize<HTMLElement>();
+  const assetUrlById = useMemo(() => assetUrlMap(artAssets), [artAssets]);
+  const compositionById = useMemo(() => compositionMap(artCompositions), [artCompositions]);
 
   const groups = layoutGroups(layouts);
   const group = groups.find((item) => item.id === selectedGroupId) || layouts.global || null;
@@ -99,13 +126,15 @@ export function LayoutEditor({ stageController, controllerController, surface = 
     0.05,
     Math.min(maxPreviewScale, availablePreviewWidth / canvasWidth, availablePreviewHeight / canvasHeight)
   );
+  const groupElements = group?.elements || [];
   const selectedElement =
     group && selectedElementIds.size === 1
-      ? (group.elements || []).find((element) => element.id === [...selectedElementIds][0])
+      ? groupElements.find((element) => element.id === [...selectedElementIds][0])
       : undefined;
 
   const beginDrag = (element: LayoutElement, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
+    if (get(element, "locked") === true) return;
     event.stopPropagation();
     const originX = Number(get(element, "x") || 0);
     const originY = Number(get(element, "y") || 0);
@@ -145,17 +174,20 @@ export function LayoutEditor({ stageController, controllerController, surface = 
     document.addEventListener("pointerup", up);
   };
 
-  const renderElement = (element: LayoutElement) => {
+  const renderElement = (element: LayoutElement, index: number, total: number) => {
     const livePos = live?.id === element.id ? live : null;
     const x = livePos ? livePos.x : Number(get(element, "x") || 0);
     const y = livePos ? livePos.y : Number(get(element, "y") || 0);
     const width = Number(get(element, "width") || 1);
     const height = Number(get(element, "height") || 1);
-    const isText = element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
+    const compositionId = layoutElementArtCompositionId(element);
+    const composition = compositionId ? compositionById.get(compositionId) : null;
+    const isText = element.kind === "text" || compositionId === "layout-text-field";
     const textValue = String(get(element, "defaultText") || "");
     const fontFamily = normalizeGameTextFontFamily(get(element, "fontFamily"));
-    const fontSize = isText ? layoutPreviewFontSize(element, textValue, width, height) : 14;
     const selected = selectedElementIds.has(element.id);
+    const hidden = get(element, "hidden") === true;
+    const locked = get(element, "locked") === true;
     const style: CSSProperties = {
       position: "absolute",
       left: x - width / 2,
@@ -165,50 +197,116 @@ export function LayoutEditor({ stageController, controllerController, surface = 
       transform: `scale(${Number(get(element, "scale") || 1)}) rotate(${Number(get(element, "rotation") || 0)}deg)`,
       transformOrigin: "center",
       border: selected ? "2px solid #22d3ee" : "1px solid rgba(255,255,255,0.4)",
-      background: "rgba(255,255,255,0.08)",
+      background: composition ? "transparent" : "rgba(255,255,255,0.08)",
       color: isText ? String(get(element, "fontColor") || "#ffffff") : "#fff",
       fontFamily: isText ? fontFamily : undefined,
-      fontSize,
-      fontWeight: isText ? 1000 : undefined,
-      lineHeight: isText ? 1 : undefined,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-      boxSizing: "border-box"
+      display: "grid",
+      placeItems: "center",
+      opacity: hidden ? (selected ? 0.28 : 0.08) : 1,
+      overflow: "visible",
+      boxSizing: "border-box",
+      zIndex: Math.max(1, total - index),
+      pointerEvents: locked || hidden ? "none" : "auto"
     };
+    const compositionCanvas = composition?.canvas || { width, height };
+    const compositionScaleX = width / Math.max(1, Number(compositionCanvas.width || width));
+    const compositionScaleY = height / Math.max(1, Number(compositionCanvas.height || height));
     return (
       <div
         key={element.id}
         className="layout-canvas-element"
         data-layout-element={element.id}
+        data-layout-element-hidden={hidden ? "true" : "false"}
+        data-layout-element-locked={locked ? "true" : "false"}
         aria-current={selected ? "true" : undefined}
         style={style}
-        onPointerDown={(event) => beginDrag(element, event)}
-        onClick={(event) => {
-          event.stopPropagation();
-          controller.selectElement(element.id, event.metaKey || event.ctrlKey || event.shiftKey);
-        }}
+        onPointerDown={locked || hidden ? undefined : (event) => beginDrag(element, event)}
+        onClick={
+          locked || hidden
+            ? undefined
+            : (event) => {
+                event.stopPropagation();
+                controller.selectElement(element.id, event.metaKey || event.ctrlKey || event.shiftKey);
+              }
+        }
       >
-        <span
-          style={
-            isText
-              ? {
-                  width: "100%",
-                  minWidth: 0,
-                  boxSizing: "border-box",
-                  whiteSpace: "pre-wrap",
-                  overflowWrap: get(element, "autoFitText") === true ? "normal" : "anywhere",
-                  wordBreak: get(element, "autoFitText") === true ? "keep-all" : "normal",
-                  textAlign: "center"
-                }
-              : undefined
-          }
-        >
-          {isText ? textValue : element.name || element.kind || "art"}
-        </span>
+        {composition ? (
+          <div
+            className="layout-art-instance-canvas"
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: Number(compositionCanvas.width || width),
+              height: Number(compositionCanvas.height || height),
+              transform: `scale(${compositionScaleX}, ${compositionScaleY})`,
+              transformOrigin: "top left",
+              pointerEvents: "none"
+            }}
+          >
+            <ArtPreviewRenderer
+              assetUrlById={assetUrlById}
+              components={composition.components || []}
+              compositionById={compositionById}
+              interactive={false}
+              showHandles={false}
+              textOverride={isText ? layoutTextOverride(element) : undefined}
+            />
+          </div>
+        ) : (
+          <span
+            style={
+              isText
+                ? {
+                    width: "100%",
+                    minWidth: 0,
+                    boxSizing: "border-box",
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: get(element, "autoFitText") === true ? "normal" : "anywhere",
+                    wordBreak: get(element, "autoFitText") === true ? "keep-all" : "normal",
+                    textAlign: "center",
+                    fontSize: Number(get(element, "fontSize") || 58),
+                    fontWeight: 1000,
+                    lineHeight: 1
+                  }
+                : undefined
+            }
+          >
+            {isText ? textValue : element.name || element.kind || "art"}
+          </span>
+        )}
       </div>
     );
+  };
+
+  const beginElementLayerDrag = (id: string, event: ReactDragEvent<HTMLDivElement>) => {
+    setElementDragId(id);
+    setElementDropTarget(null);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+  };
+
+  const updateElementLayerDropTarget = (targetId: string, event: ReactDragEvent<HTMLDivElement>) => {
+    const draggingId = elementDragId || event.dataTransfer.getData("text/plain");
+    if (!draggingId || draggingId === targetId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setElementDropTarget({ id: targetId, placement: layerDropPlacement(event) });
+  };
+
+  const dropElementLayer = (targetId: string, event: ReactDragEvent<HTMLDivElement>) => {
+    const draggingId = elementDragId || event.dataTransfer.getData("text/plain");
+    const placement = layerDropPlacement(event);
+    setElementDragId(null);
+    setElementDropTarget(null);
+    if (!draggingId || draggingId === targetId) return;
+    event.preventDefault();
+    controller.reorderElement(draggingId, targetId, placement);
+  };
+
+  const endElementLayerDrag = () => {
+    setElementDragId(null);
+    setElementDropTarget(null);
   };
 
   const toolbar = (
@@ -257,6 +355,81 @@ export function LayoutEditor({ stageController, controllerController, surface = 
           </li>
         ))}
       </ol>
+      <div className="layout-object-list-panel" data-layout-react-component="object-list">
+        <h3>Game Objects</h3>
+        {group ? (
+          <ol className="layout-object-list">
+            {groupElements.map((element) => {
+              const hidden = get(element, "hidden") === true;
+              const locked = get(element, "locked") === true;
+              const selected = selectedElementIds.has(element.id);
+              return (
+                <li
+                  data-layout-object-id={element.id}
+                  data-layout-layer-drop-placement={elementDropTarget?.id === element.id ? elementDropTarget.placement : undefined}
+                  key={element.id}
+                >
+                  <div
+                    className="layout-object-row"
+                    draggable
+                    data-layout-object-hidden={hidden ? "true" : "false"}
+                    data-layout-object-locked={locked ? "true" : "false"}
+                    onDragStart={(event) => beginElementLayerDrag(element.id, event)}
+                    onDragOver={(event) => updateElementLayerDropTarget(element.id, event)}
+                    onDrop={(event) => dropElementLayer(element.id, event)}
+                    onDragEnd={endElementLayerDrag}
+                  >
+                    <button
+                      type="button"
+                      className="layout-object-select"
+                      aria-current={selected ? "true" : undefined}
+                      data-layout-object-select={element.id}
+                      onClick={(event) => controller.selectElement(element.id, event.metaKey || event.ctrlKey || event.shiftKey)}
+                    >
+                      <strong>{element.name || element.id}</strong>
+                      <small>{layoutElementArtCompositionId(element) || element.kind || "object"}</small>
+                    </button>
+                    <button
+                      type="button"
+                      className="layout-object-toggle layout-object-visible-toggle"
+                      aria-label={hidden ? `Show ${element.name || element.id}` : `Hide ${element.name || element.id}`}
+                      aria-pressed={!hidden}
+                      title={hidden ? "Show in layout" : "Hide in layout"}
+                      data-layout-object-visible={element.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        controller.updateElement(element.id, { hidden: !hidden } as Partial<LayoutElement>);
+                      }}
+                    >
+                      <span className="layout-object-eye-icon" data-layout-object-eye-icon={hidden ? "hidden" : "visible"} />
+                    </button>
+                    <button
+                      type="button"
+                      className="layout-object-toggle layout-object-lock-toggle"
+                      aria-label={locked ? `Unlock ${element.name || element.id}` : `Lock ${element.name || element.id}`}
+                      aria-pressed={locked}
+                      title={locked ? "Unlock preview selection" : "Lock preview selection"}
+                      data-layout-object-lock={element.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        controller.updateElement(element.id, { locked: !locked } as Partial<LayoutElement>);
+                      }}
+                    >
+                      <span
+                        className="art-component-layer-lock-icon"
+                        data-art-layer-lock-icon={locked ? "locked" : "unlocked"}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="layout-object-empty">Select a layout.</p>
+        )}
+      </div>
     </>
   );
 
@@ -298,7 +471,7 @@ export function LayoutEditor({ stageController, controllerController, surface = 
             onClick={() => controller.clearElementSelection()}
           >
             <div style={{ position: "absolute", inset: 0, transform: `scale(${scaleToFit})`, transformOrigin: "0 0", width: canvasWidth, height: canvasHeight }}>
-              {(group?.elements || []).map((element) => renderElement(element))}
+              {groupElements.map((element, index) => renderElement(element, index, groupElements.length || 1))}
             </div>
           </div>
         </section>
@@ -339,6 +512,24 @@ function LayoutElementInspector({ controller, element }: { controller: LayoutCon
           defaultValue={element.name || ""}
           data-layout-element-name
           onBlur={(event) => commit({ name: event.target.value })}
+        />
+      </label>
+      <label className="flow-react-field" data-layout-field="visible">
+        <span>Visible</span>
+        <input
+          type="checkbox"
+          checked={get(element, "hidden") !== true}
+          data-layout-element-field="visible"
+          onChange={(event) => commit({ hidden: !event.target.checked } as Partial<LayoutElement>)}
+        />
+      </label>
+      <label className="flow-react-field" data-layout-field="locked">
+        <span>Locked</span>
+        <input
+          type="checkbox"
+          checked={get(element, "locked") === true}
+          data-layout-element-field="locked"
+          onChange={(event) => commit({ locked: event.target.checked } as Partial<LayoutElement>)}
         />
       </label>
       {SCALAR_FIELDS.map((field) => (
