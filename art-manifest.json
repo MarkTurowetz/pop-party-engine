@@ -1755,15 +1755,17 @@
           "kind": "text",
           "x": 150,
           "y": 92,
-          "width": 226,
+          "width": 200,
           "height": 78,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "park",
           "defaultText": "ANSWER",
           "fontSize": 28,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "answer-bubble-card",
@@ -1771,10 +1773,11 @@
           "kind": "shape",
           "x": 150,
           "y": 92,
-          "width": 270,
-          "height": 128,
+          "width": 220,
+          "height": 105,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "park",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
@@ -1788,11 +1791,12 @@
           "name": "Answer Bubble Tail",
           "kind": "shape",
           "x": 150,
-          "y": 165,
+          "y": 153.193,
           "width": 24,
           "height": 24,
           "scale": 1,
           "rotation": 45,
+          "locked": false,
           "defaultAnimationState": "park",
           "shapeStyle": "rectangle",
           "fillColor": "#fffdf4",
@@ -1802,7 +1806,7 @@
           "borderRadius": 3
         }
       ],
-      "updatedAt": "2026-06-28T01:28:43.708Z"
+      "updatedAt": "2026-07-03T01:06:36.438Z"
     },
     "player-object-trike": {
       "name": "Trike Player Object",
