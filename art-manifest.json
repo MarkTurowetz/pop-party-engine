@@ -2103,6 +2103,56 @@
         }
       ],
       "updatedAt": "2026-07-03T01:04:00.623Z"
+    },
+    "player-vip-widget": {
+      "name": "Player VIP Widget",
+      "description": "Shared editable VIP badge nested inside every player object.",
+      "surface": "stage",
+      "isCustom": false,
+      "canvas": {
+        "width": 52,
+        "height": 28
+      },
+      "components": [
+        {
+          "id": "vip-text",
+          "name": "VIP Text",
+          "kind": "text",
+          "x": 22,
+          "y": 11,
+          "width": 34,
+          "height": 12,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "on",
+          "defaultText": "VIP",
+          "fontSize": 11,
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "vip-card",
+          "name": "VIP Card",
+          "kind": "shape",
+          "x": 22,
+          "y": 11,
+          "width": 44,
+          "height": 22,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "on",
+          "shapeStyle": "rounded",
+          "fillColor": "#ffe256",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 2,
+          "borderRadius": 999
+        }
+      ],
+      "updatedAt": "2026-07-03T01:04:24.051Z"
     }
   },
   "deletedCompositionIds": [],
