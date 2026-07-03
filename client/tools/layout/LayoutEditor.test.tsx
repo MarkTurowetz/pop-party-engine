@@ -67,8 +67,8 @@ describe("LayoutEditor", () => {
             artCompositionId: "player-object",
             x: 960,
             y: 540,
-            width: 120,
-            height: 80
+            width: 90,
+            height: 40
           } as never
         ]
       }
@@ -97,6 +97,7 @@ describe("LayoutEditor", () => {
       }
     ];
     const stageController = createLayoutController({ initialLayouts: stageLayouts, mode: "stage", api });
+    stageController.selectElement("player");
     const controllerController = createLayoutController({
       initialLayouts: layouts(),
       mode: "controller",
@@ -115,5 +116,8 @@ describe("LayoutEditor", () => {
     expect(markup).toContain('data-art-canvas-component="card"');
     expect(markup).toContain('data-layout-art-composition="player-object"');
     expect(markup).toContain('data-layout-object-art-composition="player-object"');
+    expect(markup).toContain('data-layout-reset-art-dimensions="true"');
+    expect(markup).toContain('data-layout-art-default-width="120"');
+    expect(markup).toContain('data-layout-art-default-height="80"');
   });
 });

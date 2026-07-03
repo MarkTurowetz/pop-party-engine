@@ -96,6 +96,13 @@ function layoutTextOverride(element: LayoutElement): ArtTextOverride {
   };
 }
 
+function artCompositionDefaultDimensions(composition: ArtComposition | null | undefined): { width: number; height: number } | null {
+  const width = Number(composition?.canvas?.width || 0);
+  const height = Number(composition?.canvas?.height || 0);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  return { width, height };
+}
+
 export function LayoutEditor({
   artAssets = [],
   artCompositions = [],
@@ -133,6 +140,8 @@ export function LayoutEditor({
     group && selectedElementIds.size === 1
       ? groupElements.find((element) => element.id === [...selectedElementIds][0])
       : undefined;
+  const selectedArtCompositionId = selectedElement ? layoutElementArtCompositionId(selectedElement) : "";
+  const selectedArtComposition = selectedArtCompositionId ? compositionById.get(selectedArtCompositionId) || null : null;
 
   const openArtCompositionForElement = (element: LayoutElement) => {
     if (!onOpenArtComposition) return;
@@ -505,13 +514,25 @@ export function LayoutEditor({
           </div>
         </section>
 
-        <LayoutElementInspector controller={controller} element={selectedElement ?? null} />
+        <LayoutElementInspector
+          artComposition={selectedArtComposition}
+          controller={controller}
+          element={selectedElement ?? null}
+        />
       </div>
     </ToolWorkspace>
   );
 }
 
-function LayoutElementInspector({ controller, element }: { controller: LayoutController; element: LayoutElement | null }) {
+function LayoutElementInspector({
+  artComposition,
+  controller,
+  element
+}: {
+  artComposition: ArtComposition | null;
+  controller: LayoutController;
+  element: LayoutElement | null;
+}) {
   if (!element) {
     return (
       <section
@@ -526,6 +547,7 @@ function LayoutElementInspector({ controller, element }: { controller: LayoutCon
   }
   const commit = (patch: Partial<LayoutElement>) => controller.updateElement(element.id, patch);
   const isText = element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
+  const defaultDimensions = artCompositionDefaultDimensions(artComposition);
   return (
     <section
       className="flow-react-panel flow-react-inspector layout-element-inspector"
@@ -573,6 +595,24 @@ function LayoutElementInspector({ controller, element }: { controller: LayoutCon
           />
         </label>
       ))}
+      {defaultDimensions ? (
+        <div
+          className="flow-react-field layout-dimension-reset-row"
+          data-layout-field="resetDimensions"
+          data-layout-art-default-width={defaultDimensions.width}
+          data-layout-art-default-height={defaultDimensions.height}
+        >
+          <span>Size Preset</span>
+          <button
+            type="button"
+            data-layout-reset-art-dimensions
+            title={`Reset width and height to ${defaultDimensions.width} x ${defaultDimensions.height}`}
+            onClick={() => commit({ width: defaultDimensions.width, height: defaultDimensions.height } as Partial<LayoutElement>)}
+          >
+            Refresh Width/Height
+          </button>
+        </div>
+      ) : null}
       {isText ? (
         <>
           <label className="flow-react-field" data-layout-field="defaultText">
