@@ -1304,6 +1304,78 @@ body.tool-dashboard-mode .layout-react-shell {
   max-height: 240px;
 }
 
+.art-component-layer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 6px;
+  align-items: stretch;
+  cursor: grab;
+}
+
+.art-component-layer-row:active {
+  cursor: grabbing;
+}
+
+.flow-react-list .art-component-layer-select[aria-current="true"] {
+  background: var(--cyan);
+}
+
+.flow-react-list .art-component-layer-lock {
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  width: 52px;
+  padding: 0;
+  overflow: visible;
+  text-align: center;
+}
+
+.art-component-layer-row[data-art-layer-locked="true"] .art-component-layer-select {
+  opacity: 0.68;
+}
+
+.art-component-layer-row[data-art-layer-locked="true"] .art-component-layer-lock {
+  background: var(--yellow);
+}
+
+.art-component-layer-lock-icon {
+  position: relative;
+  display: inline-block;
+  width: 17px;
+  height: 13px;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  background: #fff;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.art-component-layer-lock-icon::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: -12px;
+  width: 9px;
+  height: 10px;
+  border: 3px solid var(--ink);
+  border-bottom: 0;
+  border-radius: 9px 9px 0 0;
+  box-sizing: border-box;
+  transform-origin: 100% 100%;
+}
+
+.art-component-layer-lock-icon[data-art-layer-lock-icon="unlocked"]::before {
+  transform: rotate(-30deg) translate(-3px, 1px);
+}
+
+.flow-react-list li[data-art-layer-drop-placement="before"] > .art-component-layer-row {
+  box-shadow: 0 -4px 0 var(--cyan);
+}
+
+.flow-react-list li[data-art-layer-drop-placement="after"] > .art-component-layer-row {
+  box-shadow: 0 4px 0 var(--cyan);
+}
+
 .art-replacement-drawer {
   border-top: 4px solid var(--ink);
   background: #fff;

@@ -3,6 +3,7 @@ import {
   useMemo,
   useState,
   type CSSProperties,
+  type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type ReactElement
@@ -35,6 +36,12 @@ const SCALAR_FIELDS: { key: string; label: string }[] = [
   { key: "width", label: "Width" },
   { key: "height", label: "Height" }
 ];
+type LayerDropPlacement = "before" | "after";
+
+type LayerDropTarget = {
+  id: string;
+  placement: LayerDropPlacement;
+};
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -57,35 +64,99 @@ function findComponent(components: ArtComponent[], id: string): ArtComponent | u
   return undefined;
 }
 
+function layerDropPlacement(event: ReactDragEvent<HTMLElement>): LayerDropPlacement {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+}
+
 function ComponentTree({
   components,
   selectedIds,
   onSelect,
+  onToggleLocked,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  dropTarget,
   depth = 0
 }: {
   components: ArtComponent[];
   selectedIds: Set<string>;
   onSelect: (id: string, additive: boolean) => void;
+  onToggleLocked: (id: string, locked: boolean) => void;
+  onDragStart: (id: string, event: ReactDragEvent<HTMLDivElement>) => void;
+  onDragOver: (id: string, event: ReactDragEvent<HTMLDivElement>) => void;
+  onDrop: (id: string, event: ReactDragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
+  dropTarget: LayerDropTarget | null;
   depth?: number;
 }) {
   return (
     <ol className="flow-react-list" data-art-component-tree={depth}>
-      {components.map((component) => (
-        <li data-art-component-id={component.id} key={component.id}>
-          <button
-            type="button"
-            aria-current={selectedIds.has(component.id) ? "true" : undefined}
-            data-art-component-select={component.id}
-            onClick={(event) => onSelect(component.id, event.metaKey || event.ctrlKey || event.shiftKey)}
+      {components.map((component) => {
+        const locked = component.locked === true;
+        return (
+          <li
+            data-art-component-id={component.id}
+            data-art-layer-drop-placement={dropTarget?.id === component.id ? dropTarget.placement : undefined}
+            key={component.id}
           >
-            <strong>{component.name || component.kind}</strong>
-            <small>{component.kind}</small>
-          </button>
-          {component.children?.length ? (
-            <ComponentTree components={component.children} selectedIds={selectedIds} onSelect={onSelect} depth={depth + 1} />
-          ) : null}
-        </li>
-      ))}
+            <div
+              className="art-component-layer-row"
+              draggable
+              data-art-layer-locked={locked ? "true" : "false"}
+              onDragStart={(event) => onDragStart(component.id, event)}
+              onDragOver={(event) => onDragOver(component.id, event)}
+              onDrop={(event) => onDrop(component.id, event)}
+              onDragEnd={onDragEnd}
+            >
+              <button
+                type="button"
+                className="art-component-layer-select"
+                aria-current={selectedIds.has(component.id) ? "true" : undefined}
+                data-art-component-select={component.id}
+                onClick={(event) => onSelect(component.id, event.metaKey || event.ctrlKey || event.shiftKey)}
+              >
+                <strong>{component.name || component.kind}</strong>
+                <small>{component.kind}</small>
+              </button>
+              <button
+                type="button"
+                className="art-component-layer-lock"
+                aria-label={locked ? `Unlock ${component.name || component.kind}` : `Lock ${component.name || component.kind}`}
+                aria-pressed={locked}
+                title={locked ? "Unlock layer" : "Lock layer"}
+                data-art-component-lock={component.id}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleLocked(component.id, !locked);
+                }}
+              >
+                <span
+                  className="art-component-layer-lock-icon"
+                  data-art-layer-lock-icon={locked ? "locked" : "unlocked"}
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
+            {component.children?.length ? (
+              <ComponentTree
+                components={component.children}
+                selectedIds={selectedIds}
+                onSelect={onSelect}
+                onToggleLocked={onToggleLocked}
+                onDragStart={onDragStart}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                onDragEnd={onDragEnd}
+                dropTarget={dropTarget}
+                depth={depth + 1}
+              />
+            ) : null}
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -98,6 +169,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   );
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
   const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; rotation?: number } | null>(null);
+  const [layerDragId, setLayerDragId] = useState<string | null>(null);
+  const [layerDropTarget, setLayerDropTarget] = useState<LayerDropTarget | null>(null);
   const assetUrlById = useMemo(() => new Map((assets || []).map((asset) => [asset.id, asset.currentUrl])), [assets]);
   const compositionById = useMemo(() => new Map(compositions.map((item) => [item.id, item])), [compositions]);
   const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
@@ -173,6 +246,36 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       ? findComponent(composition.components || [], [...selectedComponentIds][0])
       : undefined;
 
+  const beginLayerDrag = (id: string, event: ReactDragEvent<HTMLDivElement>) => {
+    setLayerDragId(id);
+    setLayerDropTarget(null);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+  };
+
+  const updateLayerDropTarget = (targetId: string, event: ReactDragEvent<HTMLDivElement>) => {
+    const draggingId = layerDragId || event.dataTransfer.getData("text/plain");
+    if (!draggingId || draggingId === targetId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setLayerDropTarget({ id: targetId, placement: layerDropPlacement(event) });
+  };
+
+  const dropLayer = (targetId: string, event: ReactDragEvent<HTMLDivElement>) => {
+    const draggingId = layerDragId || event.dataTransfer.getData("text/plain");
+    const placement = layerDropPlacement(event);
+    setLayerDragId(null);
+    setLayerDropTarget(null);
+    if (!draggingId || draggingId === targetId) return;
+    event.preventDefault();
+    controller.reorderComponent(draggingId, targetId, placement);
+  };
+
+  const endLayerDrag = () => {
+    setLayerDragId(null);
+    setLayerDropTarget(null);
+  };
+
   const beginDrag = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.stopPropagation();
@@ -246,7 +349,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     component: ArtComponent,
     layer: { index: number; total: number; interactive?: boolean; referencePath?: Set<string> } = { index: 0, total: 1 }
   ): ReactElement => {
-    const interactive = layer.interactive !== false;
+    const locked = component.locked === true;
+    const interactive = layer.interactive !== false && !locked;
     const referencePath = layer.referencePath || new Set<string>();
     const livePos = live?.id === component.id ? live : null;
     const liveTx = liveTransform?.id === component.id ? liveTransform : null;
@@ -317,7 +421,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       textTransform: isTextual ? "uppercase" : undefined,
       overflow: clipsOwnContent ? "hidden" : "visible",
       boxSizing: "border-box",
-      zIndex: Math.max(1, layer.total - layer.index)
+      zIndex: Math.max(1, layer.total - layer.index),
+      pointerEvents: interactive ? "auto" : "none"
     };
 
     return (
@@ -328,6 +433,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         data-art-component-kind={kind}
         aria-current={selected ? "true" : undefined}
         style={style}
+        data-art-component-locked={locked ? "true" : "false"}
         onPointerDown={interactive ? (event) => beginDrag(component, event) : undefined}
         onClick={
           interactive
@@ -474,6 +580,12 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                 components={composition.components || []}
                 selectedIds={selectedComponentIds}
                 onSelect={(id, additive) => controller.selectComponent(id, additive)}
+                onToggleLocked={(id, locked) => controller.updateComponent(id, { locked } as Partial<ArtComponent>)}
+                onDragStart={beginLayerDrag}
+                onDragOver={updateLayerDropTarget}
+                onDrop={dropLayer}
+                onDragEnd={endLayerDrag}
+                dropTarget={layerDropTarget}
               />
             ) : null
           }

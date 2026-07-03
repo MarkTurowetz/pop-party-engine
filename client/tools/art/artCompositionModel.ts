@@ -37,6 +37,7 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
     height: num(component.height, 1),
     scale: num(component.scale, 1),
     rotation: num(component.rotation, 0),
+    locked: component.locked === true,
     defaultAnimationState: String(component.defaultAnimationState || ""),
     childDistribution: kind === "container" ? normalizeContainerDistribution(component.childDistribution) : "none",
     defaultText: String(component.defaultText || ""),

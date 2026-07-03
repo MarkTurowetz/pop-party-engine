@@ -134,6 +134,28 @@ describe("art composition child persistence", () => {
 
     expect(composition.components[0].children.map((child) => child.id)).toEqual(["text"]);
   });
+
+  it("preserves saved layer lock state", () => {
+    const runtime = createRuntime({
+      artCompositions: [
+        {
+          id: "locked-composition",
+          name: "Locked Composition",
+          canvas: { width: 100, height: 100 },
+          components: [{ id: "root", name: "Root", kind: "shape", x: 50, y: 50, width: 80, height: 80, locked: false }]
+        }
+      ]
+    });
+
+    const [composition] = runtime.normalizeArtCompositionsDraft([
+      {
+        id: "locked-composition",
+        components: [{ id: "root", name: "Root", kind: "shape", x: 50, y: 50, width: 80, height: 80, locked: true }]
+      }
+    ]);
+
+    expect(composition.components[0].locked).toBe(true);
+  });
 });
 
 describe("legacy art composition migrations", () => {

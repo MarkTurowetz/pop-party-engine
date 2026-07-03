@@ -21,6 +21,7 @@ describe("artCompositionModel serialization", () => {
     expect(serialized.name).toBe("Shape");
     expect(serialized.x).toBe(1.235);
     expect(serialized.width).toBe(10);
+    expect(serialized.locked).toBe(false);
     expect(serialized.shapeStyle).toBe("rounded");
     expect(serialized.children).toEqual([]);
     // non-shape image fields are blanked
@@ -51,5 +52,10 @@ describe("artCompositionModel serialization", () => {
     expect(serializeArtComponentForSave({ id: "text", kind: "text", fontFamily: "Papyrus" } as unknown as ArtComponent).fontFamily).toBe(
       gameTextDefaultFontFamily
     );
+  });
+
+  it("keeps layer lock state in serialized components", () => {
+    const serialized = serializeArtComponentForSave({ id: "locked", kind: "shape", locked: true } as unknown as ArtComponent);
+    expect(serialized.locked).toBe(true);
   });
 });

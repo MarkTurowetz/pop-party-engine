@@ -61,6 +61,66 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().compositions[0].components).toHaveLength(0);
   });
 
+  it("reorders root and nested component siblings with undo support", () => {
+    const initial = composition("a");
+    initial.components = [
+      { id: "one", name: "One", kind: "shape" },
+      {
+        id: "group",
+        name: "Group",
+        kind: "container",
+        children: [
+          { id: "child-a", name: "Child A", kind: "shape" },
+          { id: "child-b", name: "Child B", kind: "shape" },
+          { id: "child-c", name: "Child C", kind: "shape" }
+        ]
+      },
+      { id: "two", name: "Two", kind: "shape" }
+    ] as never;
+    const controller = createArtCompositionsController({ initialCompositions: [initial], api: fakeApi() });
+
+    controller.reorderComponent("two", "one", "before");
+    expect(controller.getState().compositions[0].components.map((component) => component.id)).toEqual(["two", "one", "group"]);
+
+    controller.reorderComponent("child-c", "child-a", "after");
+    expect(controller.getState().compositions[0].components[2].children?.map((component) => component.id)).toEqual([
+      "child-a",
+      "child-c",
+      "child-b"
+    ]);
+
+    controller.reorderComponent("child-a", "one", "after");
+    expect(controller.getState().compositions[0].components[2].children?.map((component) => component.id)).toEqual([
+      "child-a",
+      "child-c",
+      "child-b"
+    ]);
+
+    controller.undo();
+    expect(controller.getState().compositions[0].components[2].children?.map((component) => component.id)).toEqual([
+      "child-a",
+      "child-b",
+      "child-c"
+    ]);
+  });
+
+  it("persists component lock changes through save payloads", async () => {
+    const api = fakeApi();
+    const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api });
+    controller.addComponent("shape");
+    const id = controller.getState().compositions[0].components[0].id;
+    controller.updateComponent(id, { locked: true } as never);
+
+    await controller.save();
+
+    expect(api.saveArtComposition).toHaveBeenCalledWith(
+      "a",
+      expect.objectContaining({
+        components: [expect.objectContaining({ id, locked: true })]
+      })
+    );
+  });
+
   it("saves only dirty compositions and clears dirty", async () => {
     const api = fakeApi();
     const controller = createArtCompositionsController({ initialCompositions: [composition("a"), composition("b")], api });

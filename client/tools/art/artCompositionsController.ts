@@ -38,6 +38,7 @@ export interface ArtCompositionsController {
   removeSelectedComponents(): void;
   updateComponent(componentId: string, patch: Partial<ArtComponent>): void;
   moveComponent(componentId: string, x: number, y: number): void;
+  reorderComponent(componentId: string, targetComponentId: string, placement: "before" | "after"): void;
   undo(): void;
   redo(): void;
   save(): Promise<boolean>;
@@ -84,6 +85,38 @@ function findComponent(components: ArtComponent[], id: string): ArtComponent | u
     if (found) return found;
   }
   return undefined;
+}
+
+function findSiblingGroup(
+  components: ArtComponent[],
+  id: string,
+  owner: ArtComponent | null = null
+): { owner: ArtComponent | null; siblings: ArtComponent[] } | null {
+  if (components.some((component) => component.id === id)) return { owner, siblings: components };
+  for (const component of components) {
+    const found = component.children ? findSiblingGroup(component.children, id, component) : null;
+    if (found) return found;
+  }
+  return null;
+}
+
+function reorderedSiblings(
+  siblings: ArtComponent[],
+  componentId: string,
+  targetComponentId: string,
+  placement: "before" | "after"
+): ArtComponent[] | null {
+  if (componentId === targetComponentId) return null;
+  const fromIndex = siblings.findIndex((component) => component.id === componentId);
+  const targetIndex = siblings.findIndex((component) => component.id === targetComponentId);
+  if (fromIndex < 0 || targetIndex < 0) return null;
+  const originalOrder = siblings.map((component) => component.id).join("\u0000");
+  const next = siblings.slice();
+  const [component] = next.splice(fromIndex, 1);
+  const nextTargetIndex = next.findIndex((item) => item.id === targetComponentId);
+  if (nextTargetIndex < 0 || !component) return null;
+  next.splice(placement === "after" ? nextTargetIndex + 1 : nextTargetIndex, 0, component);
+  return next.map((item) => item.id).join("\u0000") === originalOrder ? null : next;
 }
 
 function removeFromList(components: ArtComponent[], ids: Set<string>): ArtComponent[] {
@@ -240,6 +273,22 @@ export function createArtCompositionsController(
           (component as Record<string, unknown>).y = Number(y.toFixed(3));
         }
       }),
+    reorderComponent: (componentId, targetComponentId, placement) => {
+      const composition = selectedComposition();
+      if (!composition) return;
+      const sourceGroup = findSiblingGroup(composition.components || [], componentId);
+      const targetGroup = findSiblingGroup(composition.components || [], targetComponentId);
+      if (!sourceGroup || !targetGroup || sourceGroup.siblings !== targetGroup.siblings) return;
+      const nextSiblings = reorderedSiblings(sourceGroup.siblings, componentId, targetComponentId, placement);
+      if (!nextSiblings) return;
+      undoStack.push(snapshot());
+      if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+      redoStack.length = 0;
+      if (sourceGroup.owner) sourceGroup.owner.children = nextSiblings;
+      else composition.components = nextSiblings;
+      emit();
+      scheduleDraft();
+    },
 
     undo: () => {
       const previous = undoStack.pop();
