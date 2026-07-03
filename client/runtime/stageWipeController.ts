@@ -158,7 +158,7 @@ class StageWipeController {
       return 0;
     }
     api.removeClasses("hidden");
-    api.setVisibleState(false);
+    api.setVisibleState(true);
     api.removeClasses(["is-entering", "is-covered"]);
     api.addClasses("is-exiting");
     api.schedule(api.duration, () => {

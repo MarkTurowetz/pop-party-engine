@@ -7,9 +7,18 @@ import { PartyGameVisualObject } from "./visualObject";
 
 type Dict = Record<string, unknown>;
 type VisualInstance = ReturnType<typeof PartyGameVisualObject.createCssVisualObject>;
+type VisualLifecycleState = "hidden" | "shown" | "appearing" | "disappearing";
 
 function fn(value: unknown): value is (...args: unknown[]) => unknown {
   return typeof value === "function";
+}
+
+function isVisualLifecycleState(value: unknown): value is VisualLifecycleState {
+  return value === "hidden" || value === "shown" || value === "appearing" || value === "disappearing";
+}
+
+function isShownLifecycleState(value: VisualLifecycleState): boolean {
+  return value === "shown" || value === "appearing" || value === "disappearing";
 }
 
 class GameObject {
@@ -122,6 +131,9 @@ class GameObject {
     if (this.visibilityOverrides.has(this.visibilityKey)) {
       return this.visibilityOverrides.get(this.visibilityKey) === true;
     }
+    if (isVisualLifecycleState(this.target.dataset.visualState)) {
+      return isShownLifecycleState(this.target.dataset.visualState);
+    }
     if (this.getVisible) return this.getVisible() === true;
     return (
       this.target.dataset.visualVisible === "true" ||
@@ -147,6 +159,7 @@ class GameObject {
     const hiddenClass = this.visualClass("hiddenClasses", "stage-layout-visual-hidden") as string;
     const exitingClass = this.visualClass("exitingClass", "stage-layout-visual-exiting") as string;
     this.target.dataset.visualVisible = isShown ? "true" : "false";
+    this.target.dataset.visualState = isShown ? "shown" : "hidden";
     if (isShown) {
       for (const className of this.layoutHiddenClasses || []) {
         if (className) this.target.classList.remove(className);

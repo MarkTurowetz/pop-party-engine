@@ -3,6 +3,7 @@
 // installed on window for the still-legacy stage runtime.
 
 export type AnimationName = "park" | "on" | "off" | "appear" | "disappear" | "update";
+type VisualLifecycleState = "hidden" | "shown" | "appearing" | "disappearing";
 
 const DEFAULT_DURATIONS = Object.freeze({
   park: 0,
@@ -32,6 +33,14 @@ function instantAnimation(animation: string, instant: boolean): string {
 
 function animationToken(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isVisualLifecycleState(value: unknown): value is VisualLifecycleState {
+  return value === "hidden" || value === "shown" || value === "appearing" || value === "disappearing";
+}
+
+function isShownLifecycleState(state: VisualLifecycleState): boolean {
+  return state === "shown" || state === "appearing" || state === "disappearing";
 }
 
 interface CustomAnimationApi {
@@ -126,9 +135,7 @@ class CssVisualObject {
 
   isVisible(): boolean {
     if (!this.element) return false;
-    if (this.getVisible) return this.getVisible();
-    if (this.element.dataset.visualVisible === "true") return true;
-    return !this.hasAnyClass([...this.hiddenClasses, this.exitingClass].filter(Boolean));
+    return isShownLifecycleState(this.readLifecycleState());
   }
 
   rememberTimer(timerId: number): void {
@@ -190,6 +197,19 @@ class CssVisualObject {
     return this.element?.dataset.visualAnimationToken === token;
   }
 
+  readLifecycleState(): VisualLifecycleState {
+    if (!this.element) return "hidden";
+    const state = this.element.dataset.visualState;
+    if (isVisualLifecycleState(state)) return state;
+    if (this.getVisible) return this.getVisible() ? "shown" : "hidden";
+    if (this.element.dataset.visualVisible === "true") return "shown";
+    return this.hasAnyClass([...this.hiddenClasses, this.exitingClass].filter(Boolean)) ? "hidden" : "shown";
+  }
+
+  setLifecycleState(state: VisualLifecycleState): void {
+    if (this.element) this.element.dataset.visualState = state;
+  }
+
   clearTransientClasses(): void {
     this.removeClasses([this.updateClass, this.instantClass].filter(Boolean));
   }
@@ -197,12 +217,35 @@ class CssVisualObject {
   applyParkedState(): void {
     this.addClasses(this.hiddenClasses);
     if (this.exitingClass) this.element?.classList.remove(this.exitingClass);
+    this.setLifecycleState("hidden");
     this.setVisibleState(false);
   }
 
   applyShownState(): void {
     this.removeClasses([...this.hiddenClasses, this.exitingClass].filter(Boolean));
+    this.setLifecycleState("shown");
     this.setVisibleState(true);
+  }
+
+  applyAppearingState(): void {
+    this.setVisibleState(true);
+    this.setLifecycleState("appearing");
+  }
+
+  applyDisappearingState(): void {
+    this.setVisibleState(true);
+    this.setLifecycleState("disappearing");
+  }
+
+  completeLifecycleAnimation(animation: string, token: string): void {
+    if (!this.tokenMatches(token)) return;
+    if (animation === "appear" || animation === "on") {
+      this.applyShownState();
+    } else if (animation === "disappear" || animation === "off" || animation === "park") {
+      this.applyParkedState();
+    } else if (animation === "update") {
+      this.applyShownState();
+    }
   }
 
   play(animation: string, options: PlayOptions = {}): number {
@@ -210,15 +253,25 @@ class CssVisualObject {
     const instant = options.instant === true;
     const effectiveAnimation = instantAnimation(animation, instant);
     const duration = this.durations[effectiveAnimation] || 0;
-    const wasVisible = this.isVisible();
+    const lifecycleState = this.readLifecycleState();
+    const wasVisible = isShownLifecycleState(lifecycleState);
 
-    if ((effectiveAnimation === "appear" || effectiveAnimation === "on") && wasVisible) {
+    if (
+      (effectiveAnimation === "appear" || effectiveAnimation === "on") &&
+      (lifecycleState === "shown" || lifecycleState === "appearing")
+    ) {
       this.setVisibleState(true);
       this.completeAfter(0, options.complete);
       return 0;
     }
 
-    if ((effectiveAnimation === "disappear" || effectiveAnimation === "off") && !wasVisible) {
+    if ((effectiveAnimation === "update" || effectiveAnimation === "on") && lifecycleState === "appearing") {
+      this.setVisibleState(true);
+      this.completeAfter(0, options.complete);
+      return 0;
+    }
+
+    if ((effectiveAnimation === "disappear" || effectiveAnimation === "off") && lifecycleState === "hidden") {
       this.applyParkedState();
       this.completeAfter(0, options.complete);
       return 0;
@@ -230,8 +283,19 @@ class CssVisualObject {
       this.addClasses([this.instantClass].filter(Boolean));
     }
 
+    if (effectiveAnimation === "appear") {
+      this.applyAppearingState();
+    } else if (effectiveAnimation === "disappear") {
+      this.applyDisappearingState();
+    }
+
     const customDuration = this.playCustomAnimation(effectiveAnimation, token, duration, instant, wasVisible);
     if (customDuration !== null) {
+      if (customDuration > 0) {
+        this.completeAfter(customDuration, () => this.completeLifecycleAnimation(effectiveAnimation, token));
+      } else {
+        this.completeLifecycleAnimation(effectiveAnimation, token);
+      }
       this.completeAfter(customDuration, options.complete);
       return customDuration;
     }
@@ -245,20 +309,21 @@ class CssVisualObject {
       if (this.exitingClass) this.element.classList.remove(this.exitingClass);
       this.addClasses(this.motionHiddenClasses);
       void this.element.offsetWidth;
-      this.setVisibleState(true);
+      this.applyAppearingState();
       window.requestAnimationFrame(() => {
         if (!this.tokenMatches(token)) return;
         this.removeClasses(this.motionHiddenClasses);
       });
+      this.completeAfter(duration, () => this.completeLifecycleAnimation(effectiveAnimation, token));
     } else if (effectiveAnimation === "disappear") {
       this.removeClasses([...this.hiddenClasses, ...this.displayHiddenClasses]);
       void this.element.offsetWidth;
+      this.applyDisappearingState();
       if (this.exitingClass) {
         this.element.classList.add(this.exitingClass);
       } else {
         this.addClasses(this.motionHiddenClasses);
       }
-      this.setVisibleState(false);
       if (duration > 0) {
         const timerId = window.setTimeout(() => {
           if (!this.tokenMatches(token)) return;
