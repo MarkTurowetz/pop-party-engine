@@ -37,18 +37,21 @@ describe("PartyGameTextFit (ported text-fit)", () => {
     expect(manual.autoFitText).toBe(false);
   });
 
-  it("measureGameText uses the manual font size and ignores auto-fit shrinking (regression guard)", () => {
-    const small = PartyGameTextFit.measureGameText({ text: "STAGE", element: { width: 400, height: 80, fontSize: 12, autoFitText: true }, fallbackSize: 12 });
-    const large = PartyGameTextFit.measureGameText({ text: "STAGE", element: { width: 400, height: 80, fontSize: 48, autoFitText: true }, fallbackSize: 48 });
+  it("measureGameText auto-fits when enabled and preserves manual size when disabled", () => {
+    const manual = PartyGameTextFit.measureGameText({ text: "STAGE", element: { width: 400, height: 80, fontSize: 48, autoFitText: false }, fallbackSize: 48 });
+    const singleLine = PartyGameTextFit.measureGameText({ text: "STAGE", element: { width: 400, height: 80, fontSize: 12, autoFitText: true }, fallbackSize: 12 });
     const multiline = PartyGameTextFit.measureGameText({ text: "ONE\nTWO\nTHREE", element: { width: 80, height: 24, fontSize: 36, autoFitText: true }, fallbackSize: 36 });
-    expect(Number(small.fontSize)).toBe(12);
-    expect(Number(large.fontSize)).toBe(48);
-    expect(Number(multiline.fontSize)).toBe(36);
+    const constrained = PartyGameTextFit.measureGameText({ text: "SUPERLONGANSWER", element: { width: 80, height: 20, fontSize: 48, autoFitText: true }, fallbackSize: 48 });
+    expect(Number(manual.fontSize)).toBe(48);
+    expect(Number(singleLine.fontSize)).toBeGreaterThan(12);
+    expect(Number(multiline.fontSize)).toBeLessThanOrEqual(8.2);
+    expect(Number(constrained.fontSize)).toBeLessThan(16);
   });
 
-  it("fittedLayoutTextSize prefers the fallback then the element size", () => {
-    expect(PartyGameTextFit.fittedLayoutTextSize({ fontSize: 22 }, "x")).toBe(22);
-    expect(PartyGameTextFit.fittedLayoutTextSize({ fontSize: 22 }, "x", 80)).toBe(80);
+  it("fittedLayoutTextSize returns fitted or manual sizes through the same path", () => {
+    expect(PartyGameTextFit.fittedLayoutTextSize({ fontSize: 22, autoFitText: false }, "x")).toBe(22);
+    expect(PartyGameTextFit.fittedLayoutTextSize({ fontSize: 22, autoFitText: false }, "x", 80)).toBe(80);
+    expect(PartyGameTextFit.fittedLayoutTextSize({ width: 400, height: 80, fontSize: 22, autoFitText: true }, "x", 22)).toBeGreaterThan(22);
     expect(PartyGameTextFit.fittedLayoutTextSize({}, "x")).toBe(6);
   });
 

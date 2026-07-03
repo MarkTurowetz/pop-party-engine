@@ -1280,7 +1280,7 @@ body.tool-dashboard-mode .layout-react-shell {
   text-align: center;
   text-transform: uppercase;
   font-weight: 1000;
-  line-height: 1.05;
+  line-height: inherit;
 }
 
 .art-component-inspector {

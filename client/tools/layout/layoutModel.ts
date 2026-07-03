@@ -1,4 +1,5 @@
 import type { LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
+import { normalizeGameTextFontFamily } from "../../textFonts";
 
 /**
  * Typed port of the legacy serializeStageLayoutsForSave / serializeLayoutGroup so
@@ -36,7 +37,8 @@ function serializeElement(raw: LayoutElement): LayoutElement {
     defaultAnimationState: String(element.defaultAnimationState || ""),
     defaultText: isText ? String(element.defaultText ?? "") : "",
     fontSize: isText ? num(element.fontSize, 58) : 58,
-    autoFitText: false,
+    autoFitText: isText ? element.autoFitText === true : false,
+    fontFamily: isText ? normalizeGameTextFontFamily(element.fontFamily) : "",
     fontColor: isText ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
   } as LayoutElement;
 }

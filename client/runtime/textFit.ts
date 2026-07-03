@@ -7,6 +7,15 @@ import { gameTextDefaultFontFamily, normalizeGameTextFontFamily } from "../textF
 
 type Dict = Record<string, unknown>;
 type TextTarget = HTMLElement | null | undefined;
+type TextFitSpec = {
+  width: number;
+  height: number;
+  lineHeight: number;
+  fontFamily: string;
+  fontStyle: string;
+  fontWeight: string;
+  textTransform: unknown;
+};
 
 const defaultOptions = {
   fontFamily: gameTextDefaultFontFamily,
@@ -33,6 +42,30 @@ function normalizeLineHeight(value: unknown, fallback: number): number {
   return fallback;
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function hasOwn(object: Dict | undefined, key: string): boolean {
+  return !!object && Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function optionNumber(options: Dict, key: string, fallback: number): number {
+  return positiveNumber(options[key], fallback);
+}
+
+function fittingWidth(element: Dict | undefined, options: Dict): number {
+  const rawWidth = positiveNumber(element?.width, 1);
+  const padding = positiveNumber(options.paddingX ?? options.padding, 0);
+  return Math.max(1, rawWidth - padding * 2);
+}
+
+function fittingHeight(element: Dict | undefined, options: Dict): number {
+  const rawHeight = positiveNumber(element?.height, 1);
+  const padding = positiveNumber(options.paddingY ?? options.padding, 0);
+  return Math.max(1, rawHeight - padding * 2);
+}
+
 function applyTextTransform(text: string, transform: unknown): string {
   if (transform === "uppercase") return text.toUpperCase();
   if (transform === "lowercase") return text.toLowerCase();
@@ -41,7 +74,7 @@ function applyTextTransform(text: string, transform: unknown): string {
 }
 
 function computedStyleFor(target: TextTarget): CSSStyleDeclaration | null {
-  if (!target || typeof window.getComputedStyle !== "function") return null;
+  if (!target || typeof window === "undefined" || typeof window.getComputedStyle !== "function") return null;
   try {
     return window.getComputedStyle(target);
   } catch {
@@ -65,6 +98,87 @@ function normalizeTextFieldElement(element: Dict = {}, defaults: Dict = {}): Dic
     fontColor: String(source.fontColor || fallback.fontColor || colorFallback),
     fontFamily: normalizeGameTextFontFamily(source.fontFamily ?? fallback.fontFamily)
   };
+}
+
+let domSizingElement: HTMLElement | null = null;
+
+function ensureDomSizingElement(): HTMLElement | null {
+  if (typeof document === "undefined" || !document.body) return null;
+  if (domSizingElement && domSizingElement.ownerDocument === document) return domSizingElement;
+  domSizingElement = document.createElement("div");
+  Object.assign(domSizingElement.style, {
+    position: "absolute",
+    left: "-10000px",
+    top: "-10000px",
+    visibility: "hidden",
+    pointerEvents: "none",
+    boxSizing: "border-box",
+    display: "block",
+    overflow: "visible",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
+    textAlign: "center",
+    padding: "0",
+    margin: "0"
+  });
+  document.body.appendChild(domSizingElement);
+  return domSizingElement;
+}
+
+function domSizeFor(text: string, fontSize: number, spec: TextFitSpec): { width: number; height: number } | null {
+  const node = ensureDomSizingElement();
+  if (!node) return null;
+  Object.assign(node.style, {
+    width: `${spec.width}px`,
+    height: "auto",
+    fontSize: `${fontSize}px`,
+    lineHeight: String(spec.lineHeight),
+    fontFamily: spec.fontFamily,
+    fontStyle: spec.fontStyle,
+    fontWeight: spec.fontWeight,
+    textTransform: "none"
+  });
+  node.textContent = applyTextTransform(text, spec.textTransform);
+  return {
+    width: node.scrollWidth,
+    height: node.scrollHeight
+  };
+}
+
+function approximateWidth(text: string, fontSize: number, fontWeight: string): number {
+  const weightBoost = Number(fontWeight) >= 800 ? 1.04 : 1;
+  return String(text || "").length * fontSize * 0.62 * weightBoost;
+}
+
+function approximateSizeFor(text: string, fontSize: number, spec: TextFitSpec): { width: number; height: number; visualLineCount: number } {
+  const lines = String(text || " ").split("\n");
+  let widest = 0;
+  let visualLineCount = 0;
+  for (const line of lines) {
+    const lineWidth = approximateWidth(line || " ", fontSize, spec.fontWeight);
+    widest = Math.max(widest, Math.min(lineWidth, spec.width));
+    visualLineCount += Math.max(1, Math.ceil(lineWidth / Math.max(1, spec.width)));
+  }
+  return {
+    width: widest,
+    height: visualLineCount * fontSize * spec.lineHeight,
+    visualLineCount
+  };
+}
+
+function sizeFor(text: string, fontSize: number, spec: TextFitSpec): { width: number; height: number; visualLineCount: number } {
+  const domSize = domSizeFor(text, fontSize, spec);
+  if (domSize) {
+    const visualLineCount = Math.max(1, Math.round(domSize.height / Math.max(1, fontSize * spec.lineHeight)));
+    return { ...domSize, visualLineCount };
+  }
+  return approximateSizeFor(text, fontSize, spec);
+}
+
+function fitsText(text: string, fontSize: number, spec: TextFitSpec): boolean {
+  const size = sizeFor(text, fontSize, spec);
+  return size.width <= spec.width + 0.5 && size.height <= spec.height + 0.5;
 }
 
 function resolveLayoutTextSource(target: TextTarget, element: Dict, runtimeText?: unknown, options: Dict = {}): string {
@@ -107,23 +221,78 @@ function fixedTextLayout(element: Dict | undefined, text: unknown, fontSize: unk
   };
 }
 
-function fittedLayoutTextSize(element: Dict | undefined, _text?: unknown, fallbackSize?: unknown): number {
-  return positiveNumber(fallbackSize ?? element?.fontSize, defaultOptions.minSize);
+function textFitSpec(element: Dict | undefined, options: Dict): TextFitSpec {
+  return {
+    width: fittingWidth(element, options),
+    height: fittingHeight(element, options),
+    lineHeight: normalizeLineHeight(options.lineHeight ?? element?.lineHeight, defaultOptions.lineHeight),
+    fontFamily: normalizeGameTextFontFamily(options.fontFamily ?? element?.fontFamily),
+    fontStyle: String(options.fontStyle ?? element?.fontStyle ?? defaultOptions.fontStyle),
+    fontWeight: String(options.fontWeight ?? element?.fontWeight ?? defaultOptions.fontWeight),
+    textTransform: options.textTransform ?? element?.textTransform ?? "none"
+  };
+}
+
+function autoFitEnabled(element: Dict | undefined, options: Dict): boolean {
+  return (!hasOwn(options, "autoFit") || options.autoFit !== false) && element?.autoFitText !== false;
+}
+
+function fittedLayoutTextSize(element: Dict | undefined, text?: unknown, fallbackSize?: unknown, options: Dict = {}): number {
+  return Number(fitTextLayout(element, text ?? "", fallbackSize ?? element?.fontSize, options).fontSize || defaultOptions.minSize);
 }
 
 function fitTextLayout(element: Dict | undefined, text: unknown, fallbackSize: unknown, options: Dict = {}): Dict {
-  return fixedTextLayout(element, text, fallbackSize, options);
+  const fallback = positiveNumber(fallbackSize, positiveNumber(element?.fontSize, defaultOptions.minSize));
+  if (!autoFitEnabled(element, options)) {
+    return fixedTextLayout(element, text, fallback, options);
+  }
+
+  const spec = textFitSpec(element, options);
+  const textValue = String(text ?? "");
+  const minSize = Math.max(1, optionNumber(options, "minSize", positiveNumber(element?.minFontSize, defaultOptions.minSize)));
+  const maxSize = Math.max(minSize, optionNumber(options, "maxSize", positiveNumber(element?.maxFontSize, defaultOptions.maxSize)));
+  let low = minSize;
+  let high = maxSize;
+  let best = minSize;
+
+  if (fitsText(textValue, high, spec)) {
+    best = high;
+  } else {
+    for (let index = 0; index < 14; index += 1) {
+      const candidate = (low + high) / 2;
+      if (fitsText(textValue, candidate, spec)) {
+        best = candidate;
+        low = candidate;
+      } else {
+        high = candidate;
+      }
+    }
+  }
+
+  const rounded = Number(clamp(best, minSize, maxSize).toFixed(3));
+  const layout = fixedTextLayout(element, textValue, rounded, { ...options, lineHeight: spec.lineHeight, fontFamily: spec.fontFamily, fontStyle: spec.fontStyle, fontWeight: spec.fontWeight });
+  const size = sizeFor(textValue, rounded, spec);
+  return {
+    ...layout,
+    autoFitText: true,
+    visualLineCount: size.visualLineCount,
+    maxWidth: size.width,
+    targetWidth: spec.width,
+    targetHeight: spec.height,
+    measuredWidth: size.width,
+    measuredHeight: size.height
+  };
 }
 
 function measuredTextLayout(element: Dict | undefined, text: unknown, fallbackSize: unknown, options: Dict = {}): Dict {
-  return fixedTextLayout(element, text, fallbackSize, options);
+  return fitTextLayout(element, text, fallbackSize, options);
 }
 
 function measureGameText(config: Dict = {}): Dict {
   const text = String(config.text ?? "");
   const element = (config.element || config.spec || {}) as Dict;
   const fallbackSize = num(config.fallbackSize ?? element.fontSize ?? defaultOptions.minSize);
-  return fixedTextLayout(element, text, fallbackSize, (config.options as Dict) || {});
+  return fitTextLayout(element, text, fallbackSize, (config.options as Dict) || {});
 }
 
 function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, options: Dict = {}): Dict | null {
@@ -136,6 +305,12 @@ function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, 
   const fontStyle = (options.fontStyle || spec.fontStyle || computed?.fontStyle || defaultOptions.fontStyle) as string;
   const fontWeight = String(options.fontWeight || spec.fontWeight || computed?.fontWeight || defaultOptions.fontWeight);
   const textValue = applyTextTransform(String(text ?? ""), options.textTransform || computed?.textTransform || "none");
+  const layout = fitTextLayout(
+    { ...spec, fontSize, fontFamily, fontStyle, fontWeight, lineHeight },
+    textValue,
+    fontSize,
+    { ...options, lineHeight, fontFamily, fontStyle, fontWeight, textTransform: "none" }
+  );
 
   if (target.dataset) target.dataset.textFitSource = String(text ?? "");
   target.setAttribute?.("aria-label", String(text ?? ""));
@@ -150,13 +325,13 @@ function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, 
     overflowWrap: "anywhere",
     wordBreak: "break-word",
     lineHeight: String(lineHeight),
-    fontSize: `${fontSize}px`,
+    fontSize: `${layout.fontSize}px`,
     fontFamily,
     fontStyle,
     fontWeight
   });
   target.textContent = textValue;
-  return fixedTextLayout(spec, textValue, fontSize, { ...options, lineHeight, fontFamily, fontStyle, fontWeight });
+  return layout;
 }
 
 function renderLayoutTextField(target: TextTarget, element: Dict, options: Dict = {}): Dict | null {
@@ -208,8 +383,8 @@ function renderTextElement(target: TextTarget, text: unknown, layout: Dict | nul
   return renderPlainTextBox(target, String(text ?? ""), layout || {}, {});
 }
 
-function textRenderOptions(_element: Dict, options: Dict = {}): Dict {
-  return { ...options, autoFit: false };
+function textRenderOptions(element: Dict, options: Dict = {}): Dict {
+  return { ...options, autoFit: options.autoFit !== false && element?.autoFitText !== false };
 }
 
 function targetTextRenderOptions(_target: TextTarget, element: Dict, options: Dict = {}): Dict {

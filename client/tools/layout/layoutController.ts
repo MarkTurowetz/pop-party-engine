@@ -1,4 +1,5 @@
 import type { LayoutApi } from "../../api/layoutApi";
+import { gameTextDefaultFontFamily } from "../../textFonts";
 import type { JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import { layoutGroups, layoutSnapshot, type LayoutMode } from "./layoutModel";
@@ -156,7 +157,9 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
           rotation: 0,
           defaultText: "Text",
           fontSize: 58,
-          fontColor: "#ffffff"
+          fontColor: "#ffffff",
+          fontFamily: gameTextDefaultFontFamily,
+          autoFitText: false
         } as unknown as LayoutElement;
         target.elements = [...(target.elements || []), element];
         selectedElementIds = new Set([element.id]);

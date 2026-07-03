@@ -1,6 +1,7 @@
 const {
   stageLayoutWidgetArtCompositionId
 } = require("../shared/stage-layout-art-widgets");
+const artComponentSchema = require("../shared/art-component-schema");
 const {
   isLayoutTextArtElementId,
   isLayoutTextArtSelector,
@@ -61,7 +62,8 @@ function createLayoutNormalizationRuntime({
       defaultAnimationState,
       defaultText: textDefaultsEnabled ? cleanLayoutText(element.defaultText) : "",
       fontSize: textDefaultsEnabled ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,
-      autoFitText: false,
+      autoFitText: textDefaultsEnabled ? element.autoFitText === true : false,
+      fontFamily: textDefaultsEnabled ? artComponentSchema.normalizeTextFontFamily(element.fontFamily) : "",
       fontColor: textDefaultsEnabled ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
     };
   }

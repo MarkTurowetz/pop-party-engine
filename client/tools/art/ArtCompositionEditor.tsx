@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
+import { PartyGameTextFit } from "../../runtime/textFit";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
 import { artResizeDimensions } from "./artResize";
 import type { ArtCompositionsController } from "./artCompositionsController";
@@ -45,6 +46,18 @@ type LayerDropTarget = {
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
+}
+
+function artPreviewFontSize(component: ArtComponent, text: string, width: number, height: number): number {
+  const fallbackSize = Number(get(component, "fontSize") || 16);
+  const fontFamily = normalizeGameTextFontFamily(get(component, "fontFamily"));
+  const layout = PartyGameTextFit.measureGameText({
+    text,
+    element: { ...component, width, height, fontSize: fallbackSize, fontFamily, autoFitText: get(component, "autoFitText") !== false },
+    fallbackSize,
+    options: { fontFamily, lineHeight: 1, textTransform: "uppercase" }
+  });
+  return Number(layout.fontSize || fallbackSize);
 }
 
 /** Map a shape style + borderRadius to a CSS border-radius (matches legacy is-style-*). */
@@ -377,6 +390,9 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     const maskSize = objectFit === "fill" ? "100% 100%" : objectFit;
     const transparentBase = kind === "container" || kind === "reference";
     const clipsOwnContent = Boolean(imageUrl || isTextual);
+    const textValue = String(get(component, "defaultText") || "");
+    const fontFamily = normalizeGameTextFontFamily(get(component, "fontFamily"));
+    const fontSize = isTextual ? artPreviewFontSize(component, textValue, width, height) : 11;
     const fill = fillColor === "currentColor" ? "currentColor" : fillColor;
     const background = tintWithCurrentColor
       ? (fill === "transparent" ? "currentColor" : fill || "currentColor")
@@ -415,9 +431,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         fillColor === "currentColor" || get(component, "imageTint") === "currentColor"
           ? "var(--art-preview-current-color)"
           : String(get(component, "fontColor") || "#17131f"),
-      fontFamily: isTextual ? normalizeGameTextFontFamily(get(component, "fontFamily")) : undefined,
-      fontSize: isTextual ? Number(get(component, "fontSize") || 16) : 11,
+      fontFamily: isTextual ? fontFamily : undefined,
+      fontSize,
       fontWeight: isTextual ? 1000 : undefined,
+      lineHeight: isTextual ? 1 : undefined,
       textTransform: isTextual ? "uppercase" : undefined,
       overflow: clipsOwnContent ? "hidden" : "visible",
       boxSizing: "border-box",
@@ -444,7 +461,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             : undefined
         }
       >
-        {isTextual ? <span>{String(get(component, "defaultText") || "")}</span> : null}
+        {isTextual ? <span>{textValue}</span> : null}
         {referencedComposition ? (
           <div
             className="art-reference-canvas"
@@ -728,6 +745,15 @@ function ArtComponentInspector({
             </select>
           </label>
           {numberField("fontSize", "Font Size")}
+          <label className="flow-react-field" data-art-field="autoFitText">
+            <span>Auto Fit Text</span>
+            <input
+              type="checkbox"
+              checked={get(component, "autoFitText") !== false}
+              data-art-component-field="autoFitText"
+              onChange={(event) => commit({ autoFitText: event.target.checked } as Partial<ArtComponent>)}
+            />
+          </label>
           {textField("fontColor", "Font Color")}
         </>
       ) : null}

@@ -6,6 +6,8 @@ import {
   type PointerEvent as ReactPointerEvent
 } from "react";
 import type { LayoutElement } from "../../types/game-data";
+import { gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
+import { PartyGameTextFit } from "../../runtime/textFit";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
@@ -20,6 +22,18 @@ export interface LayoutEditorProps {
 
 function get(element: LayoutElement, key: string): unknown {
   return (element as Record<string, unknown>)[key];
+}
+
+function layoutPreviewFontSize(element: LayoutElement, text: string, width: number, height: number): number {
+  const fallbackSize = Number(get(element, "fontSize") || 58);
+  const fontFamily = normalizeGameTextFontFamily(get(element, "fontFamily"));
+  const layout = PartyGameTextFit.measureGameText({
+    text,
+    element: { ...element, width, height, fontSize: fallbackSize, fontFamily, autoFitText: get(element, "autoFitText") === true },
+    fallbackSize,
+    options: { fontFamily, lineHeight: 1 }
+  });
+  return Number(layout.fontSize || fallbackSize);
 }
 
 const SCALAR_FIELDS = [
@@ -138,6 +152,9 @@ export function LayoutEditor({ stageController, controllerController, surface = 
     const width = Number(get(element, "width") || 1);
     const height = Number(get(element, "height") || 1);
     const isText = element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
+    const textValue = String(get(element, "defaultText") || "");
+    const fontFamily = normalizeGameTextFontFamily(get(element, "fontFamily"));
+    const fontSize = isText ? layoutPreviewFontSize(element, textValue, width, height) : 14;
     const selected = selectedElementIds.has(element.id);
     const style: CSSProperties = {
       position: "absolute",
@@ -150,7 +167,10 @@ export function LayoutEditor({ stageController, controllerController, surface = 
       border: selected ? "2px solid #22d3ee" : "1px solid rgba(255,255,255,0.4)",
       background: "rgba(255,255,255,0.08)",
       color: isText ? String(get(element, "fontColor") || "#ffffff") : "#fff",
-      fontSize: isText ? Number(get(element, "fontSize") || 58) : 14,
+      fontFamily: isText ? fontFamily : undefined,
+      fontSize,
+      fontWeight: isText ? 1000 : undefined,
+      lineHeight: isText ? 1 : undefined,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -170,7 +190,7 @@ export function LayoutEditor({ stageController, controllerController, surface = 
           controller.selectElement(element.id, event.metaKey || event.ctrlKey || event.shiftKey);
         }}
       >
-        <span>{isText ? String(get(element, "defaultText") || "") : element.name || element.kind || "art"}</span>
+        <span>{isText ? textValue : element.name || element.kind || "art"}</span>
       </div>
     );
   };
@@ -337,6 +357,29 @@ function LayoutElementInspector({ controller, element }: { controller: LayoutCon
               defaultValue={String(get(element, "fontSize") ?? 58)}
               data-layout-element-field="fontSize"
               onBlur={(event) => commit({ fontSize: Number(event.target.value) } as Partial<LayoutElement>)}
+            />
+          </label>
+          <label className="flow-react-field" data-layout-field="fontFamily">
+            <span>Font</span>
+            <select
+              value={normalizeGameTextFontFamily(get(element, "fontFamily"))}
+              data-layout-element-field="fontFamily"
+              onChange={(event) => commit({ fontFamily: event.target.value } as Partial<LayoutElement>)}
+            >
+              {gameTextFontOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flow-react-field" data-layout-field="autoFitText">
+            <span>Auto Fit Text</span>
+            <input
+              type="checkbox"
+              checked={get(element, "autoFitText") === true}
+              data-layout-element-field="autoFitText"
+              onChange={(event) => commit({ autoFitText: event.target.checked } as Partial<LayoutElement>)}
             />
           </label>
         </>

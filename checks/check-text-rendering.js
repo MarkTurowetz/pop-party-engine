@@ -70,8 +70,8 @@ if (failures.length) {
   process.exit(1);
 }
 
-// Behavioural assertions (measureGameText / normalizeTextFieldElement defaults and
-// fixed font sizing) live in client/runtime/textFit.test.ts now that text-fit is a
+// Behavioural assertions (measureGameText / normalizeTextFieldElement defaults,
+// optional auto-fit, and fixed manual sizing) live in client/runtime/textFit.test.ts now that text-fit is a
 // TS module. This node check keeps the source-shape guards below.
 const textFitSource = fs.readFileSync(path.join(repoRoot, "client/runtime/textFit.ts"), "utf8");
 if (/createElementNS/.test(textFitSource) || /dominant-baseline/.test(textFitSource) || /measureText/.test(textFitSource)) {
@@ -101,10 +101,10 @@ if (!/normalized === "presentation"\) return "stagepresentationtext"/.test(layou
 }
 
 const layoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/layout-normalization-runtime.js"), "utf8");
-if (!/autoFitText: false/.test(layoutNormalizerSource)
+if (!/element\.autoFitText === true/.test(layoutNormalizerSource)
   || !/layoutTextArtCompositionId/.test(layoutNormalizerSource)) {
   console.error("Text rendering regression check failed:");
-  console.error("- server layout normalization must promote legacy layout text to fixed-size text art");
+  console.error("- server layout normalization must promote legacy layout text while preserving explicit auto-fit opt-in");
   process.exit(1);
 }
 
