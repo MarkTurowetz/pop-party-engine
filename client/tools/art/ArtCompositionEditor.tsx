@@ -462,7 +462,16 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             : undefined
         }
       >
-        {isTextual ? <span>{textValue}</span> : null}
+        {isTextual ? (
+          <span
+            style={{
+              overflowWrap: get(component, "autoFitText") !== false ? "normal" : "anywhere",
+              wordBreak: get(component, "autoFitText") !== false ? "keep-all" : "normal"
+            }}
+          >
+            {textValue}
+          </span>
+        ) : null}
         {referencedComposition ? (
           <div
             className="art-reference-canvas"

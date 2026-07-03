@@ -198,8 +198,8 @@ export function LayoutEditor({ stageController, controllerController, surface = 
                   minWidth: 0,
                   boxSizing: "border-box",
                   whiteSpace: "pre-wrap",
-                  overflowWrap: "break-word",
-                  wordBreak: "normal",
+                  overflowWrap: get(element, "autoFitText") === true ? "normal" : "anywhere",
+                  wordBreak: get(element, "autoFitText") === true ? "keep-all" : "normal",
                   textAlign: "center"
                 }
               : undefined

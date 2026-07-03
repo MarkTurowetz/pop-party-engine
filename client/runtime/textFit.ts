@@ -10,6 +10,7 @@ type TextTarget = HTMLElement | null | undefined;
 type TextFitSpec = {
   width: number;
   height: number;
+  widthSafety: number;
   lineHeight: number;
   fontFamily: string;
   fontStyle: string;
@@ -23,7 +24,8 @@ const defaultOptions = {
   fontWeight: "1000",
   lineHeight: 1,
   minSize: 6,
-  maxSize: 260
+  maxSize: 260,
+  widthSafety: 2
 };
 
 function num(value: unknown): number {
@@ -117,7 +119,7 @@ function ensureDomSizingElement(): HTMLElement | null {
     overflow: "visible",
     whiteSpace: "pre-wrap",
     overflowWrap: "normal",
-    wordBreak: "normal",
+    wordBreak: "keep-all",
     textAlign: "center",
     padding: "0",
     margin: "0"
@@ -140,9 +142,13 @@ function domSizeFor(text: string, fontSize: number, spec: TextFitSpec): { width:
     textTransform: "none"
   });
   node.textContent = applyTextTransform(text, spec.textTransform);
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  const rect = range.getBoundingClientRect();
+  range.detach?.();
   return {
-    width: node.scrollWidth,
-    height: node.scrollHeight
+    width: node.scrollWidth > spec.width + 0.5 ? node.scrollWidth : rect.width,
+    height: Math.max(rect.height, node.scrollHeight)
   };
 }
 
@@ -202,7 +208,8 @@ function sizeFor(text: string, fontSize: number, spec: TextFitSpec): { width: nu
 
 function fitsText(text: string, fontSize: number, spec: TextFitSpec): boolean {
   const size = sizeFor(text, fontSize, spec);
-  return size.width <= spec.width + 0.5 && size.height <= spec.height + 0.5;
+  const widthLimit = Math.max(1, spec.width - spec.widthSafety);
+  return size.width <= widthLimit && size.height <= spec.height + 0.5;
 }
 
 function resolveLayoutTextSource(target: TextTarget, element: Dict, runtimeText?: unknown, options: Dict = {}): string {
@@ -246,9 +253,11 @@ function fixedTextLayout(element: Dict | undefined, text: unknown, fontSize: unk
 }
 
 function textFitSpec(element: Dict | undefined, options: Dict): TextFitSpec {
+  const width = fittingWidth(element, options);
   return {
-    width: fittingWidth(element, options),
+    width,
     height: fittingHeight(element, options),
+    widthSafety: Math.min(Math.max(0, width - 1), positiveNumber(options.widthSafety ?? element?.widthSafety, defaultOptions.widthSafety)),
     lineHeight: normalizeLineHeight(options.lineHeight ?? element?.lineHeight, defaultOptions.lineHeight),
     fontFamily: normalizeGameTextFontFamily(options.fontFamily ?? element?.fontFamily),
     fontStyle: String(options.fontStyle ?? element?.fontStyle ?? defaultOptions.fontStyle),
@@ -346,8 +355,8 @@ function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, 
     overflow: "hidden",
     textAlign: "center",
     whiteSpace: "pre-wrap",
-    overflowWrap: layout.autoFitText ? "break-word" : "anywhere",
-    wordBreak: "normal",
+    overflowWrap: layout.autoFitText ? "normal" : "anywhere",
+    wordBreak: layout.autoFitText ? "keep-all" : "normal",
     lineHeight: String(lineHeight),
     fontSize: `${layout.fontSize}px`,
     fontFamily,
