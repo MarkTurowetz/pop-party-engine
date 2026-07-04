@@ -42,6 +42,7 @@ const TOOL_METADATA: ToolMetadata[] = [
 ];
 
 const toolHooks = new Map<string, DashboardToolHooks>();
+let savingAllTools = false;
 
 /** Register a /tools tab's dirty/save/setup behaviour (called by tools.tsx). */
 export function registerDashboardTool(id: string, hooks: DashboardToolHooks): void {
@@ -64,24 +65,32 @@ function isToolDirty(toolId: string): boolean {
 function updateGlobalSaveButton(): void {
   const globalSaveButton = w().globalSaveButton;
   if (!globalSaveButton) return;
-  globalSaveButton.disabled = !TOOL_METADATA.some((tool) => isToolDirty(tool.id));
+  const dirty = TOOL_METADATA.some((tool) => isToolDirty(tool.id));
+  globalSaveButton.disabled = savingAllTools;
+  globalSaveButton.dataset.dashboardDirty = dirty ? "true" : "false";
 }
 
 async function saveAllTools(): Promise<void> {
   const globalSaveButton = w().globalSaveButton;
   if (!globalSaveButton) return;
+  if (savingAllTools) return;
+  const dirtyTools = TOOL_METADATA.filter((tool) => isToolDirty(tool.id));
+  if (!dirtyTools.length) {
+    updateGlobalSaveButton();
+    return;
+  }
   const pendingDeleteCount = typeof w().artCompositionsPendingDeleteCount === "function" ? w().artCompositionsPendingDeleteCount!() : 0;
   if (pendingDeleteCount > 0) {
     const confirmed = window.confirm(`Save All will permanently delete ${pendingDeleteCount} art asset${pendingDeleteCount === 1 ? "" : "s"} and any layout instances that use them. This action cannot be undone.`);
     if (!confirmed) return;
   }
-  globalSaveButton.disabled = true;
+  savingAllTools = true;
+  updateGlobalSaveButton();
   globalSaveButton.textContent = "Saving";
   try {
-    for (const tool of TOOL_METADATA) {
-      if (isToolDirty(tool.id)) await toolHooks.get(tool.id)?.save();
-    }
+    for (const tool of dirtyTools) await toolHooks.get(tool.id)?.save();
   } finally {
+    savingAllTools = false;
     globalSaveButton.textContent = "Save All";
     updateGlobalSaveButton();
   }
