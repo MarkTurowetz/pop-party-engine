@@ -119,7 +119,7 @@
           "scale": 1,
           "rotation": 0,
           "defaultAnimationState": "",
-          "defaultText": "",
+          "defaultText": "Header Text",
           "fontSize": 58,
           "autoFitText": false,
           "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
