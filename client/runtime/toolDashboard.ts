@@ -43,6 +43,7 @@ const TOOL_METADATA: ToolMetadata[] = [
 
 const toolHooks = new Map<string, DashboardToolHooks>();
 let savingAllTools = false;
+let dashboardEventsInstalled = false;
 
 /** Register a /tools tab's dirty/save/setup behaviour (called by tools.tsx). */
 export function registerDashboardTool(id: string, hooks: DashboardToolHooks): void {
@@ -96,6 +97,17 @@ async function saveAllTools(): Promise<void> {
   }
 }
 
+function isSaveAllHotkey(event: KeyboardEvent): boolean {
+  const key = String(event.key || "").toLowerCase();
+  return key === "s" && event.shiftKey && (event.metaKey || event.ctrlKey);
+}
+
+function handleDashboardKeydown(event: KeyboardEvent): void {
+  if (!isSaveAllHotkey(event)) return;
+  event.preventDefault();
+  void saveAllTools();
+}
+
 function resolveUnsafeChangesModal(): void {
   w().unsafeChangesModal?.classList.add("hidden");
 }
@@ -124,7 +136,11 @@ export function showDashboardTool(toolId: string): Promise<void> {
 function setupToolDashboard(): void {
   document.body.classList.add("tool-dashboard-mode");
   w().toolDashboardBar?.classList.remove("hidden");
-  w().globalSaveButton?.addEventListener("click", saveAllTools);
+  if (!dashboardEventsInstalled) {
+    w().globalSaveButton?.addEventListener("click", saveAllTools);
+    document.addEventListener("keydown", handleDashboardKeydown);
+    dashboardEventsInstalled = true;
+  }
   updateGlobalSaveButton();
   w().unsafeCancelButton?.addEventListener("click", resolveUnsafeChangesModal);
   w().unsafeSaveButton?.addEventListener("click", resolveUnsafeChangesModal);

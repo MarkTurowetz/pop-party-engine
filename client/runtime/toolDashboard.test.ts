@@ -5,6 +5,7 @@ type Listener = (event?: Event) => unknown;
 interface DashboardHarness {
   button: HTMLButtonElement;
   clickSaveAll: () => Promise<void>;
+  pressSaveAllHotkey: () => Promise<{ prevented: boolean }>;
   registerDashboardTool: typeof import("./toolDashboard").registerDashboardTool;
   setupToolDashboard: () => void;
 }
@@ -30,15 +31,17 @@ function classListStub(): DOMTokenList {
 
 async function createDashboardHarness(): Promise<DashboardHarness> {
   vi.resetModules();
-  const listeners = new Map<string, Listener>();
+  const buttonListeners = new Map<string, Listener>();
+  const documentListeners = new Map<string, Listener>();
   const button = {
-    addEventListener: vi.fn((type: string, listener: Listener) => listeners.set(type, listener)),
+    addEventListener: vi.fn((type: string, listener: Listener) => buttonListeners.set(type, listener)),
     dataset: {},
     disabled: true,
     textContent: "Save All"
   } as unknown as HTMLButtonElement;
   const globals = globalThis as Record<string, unknown>;
   globals.document = {
+    addEventListener: vi.fn((type: string, listener: Listener) => documentListeners.set(type, listener)),
     body: { classList: classListStub() },
     querySelector: vi.fn(() => null)
   } as unknown as Document;
@@ -57,8 +60,24 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
   return {
     button,
     clickSaveAll: async () => {
-      const listener = listeners.get("click");
+      const listener = buttonListeners.get("click");
       if (listener) await listener();
+    },
+    pressSaveAllHotkey: async () => {
+      let prevented = false;
+      const listener = documentListeners.get("keydown");
+      if (listener) {
+        await listener({
+          ctrlKey: false,
+          key: "S",
+          metaKey: true,
+          preventDefault: () => {
+            prevented = true;
+          },
+          shiftKey: true
+        } as unknown as KeyboardEvent);
+      }
+      return { prevented };
     },
     registerDashboardTool: dashboard.registerDashboardTool,
     setupToolDashboard
@@ -123,5 +142,21 @@ describe("toolDashboard Save All", () => {
 
     expect(harness.button.disabled).toBe(false);
     expect(harness.button.textContent).toBe("Save All");
+  });
+
+  it("saves dirty tools from Command Shift S", async () => {
+    const harness = await createDashboardHarness();
+    const save = vi.fn();
+    harness.registerDashboardTool("flow", {
+      isDirty: () => true,
+      save,
+      setup: vi.fn()
+    });
+
+    harness.setupToolDashboard();
+    const result = await harness.pressSaveAllHotkey();
+
+    expect(result.prevented).toBe(true);
+    expect(save).toHaveBeenCalledTimes(1);
   });
 });
