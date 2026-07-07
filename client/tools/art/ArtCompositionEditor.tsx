@@ -106,6 +106,11 @@ type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
   | { kind: "keyframe"; targetId: string; frame: number };
+type TimelineTargetOption = {
+  id: string;
+  label: string;
+  detail: string;
+};
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -193,6 +198,21 @@ function findComponent(components: ArtComponent[], id: string): ArtComponent | u
     if (found) return found;
   }
   return undefined;
+}
+
+function timelineTargetOptionsFor(component: ArtComponent | undefined): TimelineTargetOption[] {
+  if (!component) return [];
+  const options: TimelineTargetOption[] = [];
+  const visit = (item: ArtComponent, depth: number) => {
+    options.push({
+      id: item.id,
+      label: `${"  ".repeat(depth)}${String(item.name || item.kind || item.id)}`,
+      detail: `${String(item.kind || "component")} / ${item.id}`
+    });
+    for (const child of item.children || []) visit(child, depth + 1);
+  };
+  visit(component, 0);
+  return options;
 }
 
 function layerDropPlacement(event: ReactDragEvent<HTMLElement>): LayerDropPlacement {
@@ -824,6 +844,7 @@ function ArtTimelinePanel({
   const [commandEvent, setCommandEvent] = useState("");
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [frameWindowStart, setFrameWindowStart] = useState(0);
+  const [keyframeTargetId, setKeyframeTargetId] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
@@ -851,6 +872,11 @@ function ArtTimelinePanel({
   const visibleTimelineFrames = Array.from({ length: visibleTimelineFrameCount }, (_, index) => cleanFrameWindowStart + index);
   const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
+  const keyframeTargets = useMemo(() => timelineTargetOptionsFor(component), [component]);
+  const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
+    ? keyframeTargetId
+    : component?.id || keyframeTargets[0]?.id || "";
+  const activeKeyframeTarget = component && activeKeyframeTargetId ? findComponent([component], activeKeyframeTargetId) : undefined;
 
   useEffect(() => {
     playerRef.current?.updateTimeline(current);
@@ -1028,11 +1054,11 @@ function ArtTimelinePanel({
   }
 
   function pasteCopiedKeyframe(nextFrame = cleanFrame): void {
-    if (!copiedKeyframe || !component) return;
+    if (!copiedKeyframe || !activeKeyframeTarget) return;
     const normalizedFrame = Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(nextFrame) || 0)));
-    const nextTimeline = copyTimelineKeyframe(current, copiedKeyframe.targetId, copiedKeyframe.frame, component.id, normalizedFrame);
+    const nextTimeline = copyTimelineKeyframe(current, copiedKeyframe.targetId, copiedKeyframe.frame, activeKeyframeTarget.id, normalizedFrame);
     onChange(nextTimeline);
-    setSelectedKeyframe({ targetId: component.id, frame: normalizedFrame });
+    setSelectedKeyframe({ targetId: activeKeyframeTarget.id, frame: normalizedFrame });
     previewFrame(normalizedFrame);
   }
 
@@ -1309,6 +1335,16 @@ function ArtTimelinePanel({
       ) : null}
       <div className="art-timeline-actions">
         <label className="flow-react-field">
+          <span>Keyframe Target</span>
+          <select value={activeKeyframeTargetId} disabled={keyframeTargets.length === 0} onChange={(event) => setKeyframeTargetId(event.target.value)}>
+            {keyframeTargets.map((target) => (
+              <option key={target.id} value={target.id}>
+                {target.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flow-react-field">
           <span>Label</span>
           <input type="text" value={labelName} placeholder="appear" onChange={(event) => setLabelName(event.target.value)} />
         </label>
@@ -1326,18 +1362,18 @@ function ArtTimelinePanel({
         </button>
         <button
           type="button"
-          disabled={!component}
+          disabled={!activeKeyframeTarget}
           onClick={() => {
-            if (!component) return;
-            const nextTimeline = addTransformKeyframe(current, component, cleanFrame);
+            if (!activeKeyframeTarget) return;
+            const nextTimeline = addTransformKeyframe(current, activeKeyframeTarget, cleanFrame);
             onChange(nextTimeline);
             setSelectedMarker(null);
-            setSelectedKeyframe({ targetId: component.id, frame: cleanFrame });
+            setSelectedKeyframe({ targetId: activeKeyframeTarget.id, frame: cleanFrame });
           }}
         >
           Add Keyframe
         </button>
-        <button type="button" disabled={!component || !copiedKeyframe} onClick={() => pasteCopiedKeyframe(cleanFrame)}>
+        <button type="button" disabled={!activeKeyframeTarget || !copiedKeyframe} onClick={() => pasteCopiedKeyframe(cleanFrame)}>
           Paste Keyframe
         </button>
       </div>

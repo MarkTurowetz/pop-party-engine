@@ -1421,7 +1421,7 @@ body.tool-dashboard-mode .layout-react-shell {
 }
 
 .art-timeline-actions {
-  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 0.85fr) repeat(3, auto);
   align-items: end;
 }
 
