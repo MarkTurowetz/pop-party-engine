@@ -1,6 +1,15 @@
-// Typed port of the legacy client/stage/visual-object.js IIFE. Behaviour preserved
-// 1:1; PartyGameVisualObject is exported for TS consumers (game-object next) and
-// installed on window for the still-legacy stage runtime.
+// Typed port of the legacy client/stage/visual-object.js IIFE. PartyGameVisualObject
+// is exported for TS consumers (game-object next) and installed on window for the
+// still-legacy stage runtime.
+
+import {
+  defaultVisibilityTimeline,
+  hasTimelineLabel,
+  normalizeTimeline,
+  timelineSegmentFor,
+  type TimelineDocument
+} from "../../shared/timeline-model";
+import { TimelinePlayer } from "./timelinePlayer";
 
 export type AnimationName = "park" | "on" | "off" | "appear" | "disappear" | "update";
 type VisualLifecycleState = "hidden" | "shown" | "appearing" | "disappearing";
@@ -74,6 +83,7 @@ export interface CssVisualObjectOptions {
   setVisible?: (isVisible: boolean) => void;
   timerSink?: (timerId: number) => void;
   durations?: Partial<Record<AnimationName, number>>;
+  timeline?: TimelineDocument | null;
 }
 
 interface PlayOptions {
@@ -95,6 +105,8 @@ class CssVisualObject {
   setVisible: ((isVisible: boolean) => void) | null;
   timerSink: ((timerId: number) => void) | null;
   durations: Record<string, number>;
+  timeline: TimelineDocument | null;
+  timelinePlayer: TimelinePlayer | null;
   token: string;
 
   constructor(options: CssVisualObjectOptions = {}) {
@@ -111,6 +123,19 @@ class CssVisualObject {
     this.setVisible = typeof options.setVisible === "function" ? options.setVisible : null;
     this.timerSink = typeof options.timerSink === "function" ? options.timerSink : null;
     this.durations = { ...DEFAULT_DURATIONS, ...(options.durations || {}) };
+    this.timeline = normalizeTimeline(options.timeline);
+    this.timelinePlayer = this.timeline
+      ? new TimelinePlayer({
+          timeline: this.timeline,
+          schedule: (callback, delay) => {
+            const timerId = this.schedule(delay, callback);
+            return timerId || 0;
+          },
+          clearScheduled: (id) => {
+            if (id) window.clearTimeout(id);
+          }
+        })
+      : null;
     this.token = "";
     this.applyTransformOrigin();
   }
@@ -187,6 +212,13 @@ class CssVisualObject {
     return Number.isFinite(nextDuration) ? Math.max(0, nextDuration) : duration;
   }
 
+  durationForAnimation(animation: string): number {
+    if (this.timeline && hasTimelineLabel(this.timeline, animation)) {
+      return timelineSegmentFor(this.timeline, animation).durationMs;
+    }
+    return this.durations[animation] || 0;
+  }
+
   markNewAnimation(): string {
     this.token = animationToken();
     if (this.element) this.element.dataset.visualAnimationToken = this.token;
@@ -252,7 +284,7 @@ class CssVisualObject {
     if (!this.element) return 0;
     const instant = options.instant === true;
     const effectiveAnimation = instantAnimation(animation, instant);
-    const duration = this.durations[effectiveAnimation] || 0;
+    const duration = this.durationForAnimation(effectiveAnimation);
     const lifecycleState = this.readLifecycleState();
     const wasVisible = isShownLifecycleState(lifecycleState);
 
@@ -278,6 +310,9 @@ class CssVisualObject {
     }
 
     const token = this.markNewAnimation();
+    if (this.timelinePlayer?.hasLabel(effectiveAnimation)) {
+      this.timelinePlayer.gotoAndPlay(effectiveAnimation, { instant });
+    }
     this.clearTransientClasses();
     if (instant || effectiveAnimation === "on" || effectiveAnimation === "off") {
       this.addClasses([this.instantClass].filter(Boolean));
@@ -349,6 +384,7 @@ export const PartyGameVisualObject = {
   CssVisualObject,
   animationForVisibility,
   createCssVisualObject: (options?: CssVisualObjectOptions) => new CssVisualObject(options),
+  defaultVisibilityTimeline,
   createLegacyCssVisualObject: (options?: CssVisualObjectOptions) => new CssVisualObject(options),
   instantAnimation
 };

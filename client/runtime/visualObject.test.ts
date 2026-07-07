@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { normalizeTimeline } from "../../shared/timeline-model";
 import { PartyGameVisualObject } from "./visualObject";
 
 interface FakeElement {
@@ -175,5 +176,26 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualVisible).toBe("false");
     expect(element.classList.contains("hidden")).toBe(true);
     expect(element.classList.contains("exiting")).toBe(false);
+  });
+
+  it("uses authored timeline segment duration when a matching label exists", () => {
+    const element = createFakeElement(["hidden"]);
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      timeline: normalizeTimeline({
+        fps: 20,
+        frameCount: 12,
+        labels: [{ name: "appear", frame: 2 }],
+        commands: [{ frame: 8, type: "stop" }],
+        tracks: []
+      })
+    });
+
+    expect(visual.play("appear")).toBe(300);
+    expect(element.dataset.visualState).toBe("appearing");
+    vi.advanceTimersByTime(300);
+    expect(element.dataset.visualState).toBe("shown");
   });
 });

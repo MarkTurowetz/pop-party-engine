@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const artComponentSchema = require("../shared/art-component-schema");
 const { normalizeColor } = require("../shared/color-utils");
+const { normalizeTimeline } = require("../shared/timeline-model");
 
 function createArtAssetsRuntime({
   acceptedArtTypes,
@@ -218,6 +219,8 @@ function createArtAssetsRuntime({
       locked: typeof source.locked === "boolean" ? source.locked : base.locked === true,
       defaultAnimationState: cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24)
     };
+    const timeline = normalizeTimeline(source.timeline, base.timeline);
+    if (timeline) normalized.timeline = timeline;
     if (kind === "reference") {
       normalized.artCompositionId = cleanId(source.artCompositionId, base.artCompositionId || "");
     }
@@ -321,7 +324,8 @@ function createArtAssetsRuntime({
     };
     migrateGeneratedWidgetCanvas(composition.id, canvas);
     migratePlayerObjectCanvas(composition.id, canvas);
-    return {
+    const timeline = normalizeTimeline(override?.timeline, composition.timeline);
+    const normalized = {
       id: composition.id,
       name: cleanText(override?.name, composition.name || "Art Asset"),
       description: cleanText(override?.description, composition.description || "Editable art asset.", 240),
@@ -332,6 +336,8 @@ function createArtAssetsRuntime({
       components,
       updatedAt: override?.updatedAt || null
     };
+    if (timeline) normalized.timeline = timeline;
+    return normalized;
   }
 
   function migrateVotingCardVoterContainerDefaults(compositionId, components) {

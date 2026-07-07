@@ -91,6 +91,7 @@ class GameObject {
       hiddenClasses: options.hiddenClasses || [],
       instantClass: options.instantClass || "",
       motionHiddenClasses: options.motionHiddenClasses || [],
+      timeline: options.timeline || null,
       transformOrigin: options.transformOrigin ?? "center center",
       updateClass: options.updateClass || ""
     });
@@ -105,6 +106,7 @@ class GameObject {
       updateClass: (options.updateClass as string) || "stage-layout-visual-update",
       instantClass: (options.instantClass as string) || "stage-layout-visual-instant",
       durations: options.durations as never,
+      timeline: options.timeline as never,
       animationHandlers: options.animationHandlers as never,
       transformOrigin: options.transformOrigin as never,
       getVisible: () => this.isVisible(),

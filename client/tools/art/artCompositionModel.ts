@@ -1,4 +1,5 @@
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
+import { normalizeTimeline } from "../../../shared/timeline-model";
 import {
   componentKindLabel,
   componentSupportsImageMask,
@@ -43,7 +44,8 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
   const kind = String(component.kind || "shape");
   const supportsImage = componentSupportsImageMask(raw);
   const isTextual = kind === "text" || kind === "badge";
-  return {
+  const timeline = normalizeTimeline(component.timeline);
+  const serialized = {
     id: String(component.id || ""),
     name: String(component.name || componentKindLabel(kind)),
     kind,
@@ -78,12 +80,15 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
       serializeArtComponentForSave(child as ArtComponent)
     )
   } as ArtComponent;
+  if (timeline) serialized.timeline = timeline as ArtComponent["timeline"];
+  return serialized;
 }
 
 export function serializeArtCompositionForSave(raw: ArtComposition): ArtComposition {
   const composition = raw as Record<string, unknown>;
   const canvas = (composition.canvas || {}) as Record<string, unknown>;
-  return {
+  const timeline = normalizeTimeline(composition.timeline);
+  const serialized = {
     id: String(composition.id || ""),
     name: String(composition.name || "Art Asset"),
     description: String(composition.description || ""),
@@ -95,6 +100,8 @@ export function serializeArtCompositionForSave(raw: ArtComposition): ArtComposit
       serializeArtComponentForSave(component as ArtComponent)
     )
   } as ArtComposition;
+  if (timeline) serialized.timeline = timeline as ArtComposition["timeline"];
+  return serialized;
 }
 
 export function serializeArtCompositionsForSave(source: ArtComposition[] | null | undefined): ArtComposition[] {

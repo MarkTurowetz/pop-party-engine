@@ -309,7 +309,8 @@ class ArtObjectView {
           exitingClass: EXITING_CLASS,
           updateClass: UPDATE_CLASS,
           instantClass: INSTANT_CLASS,
-          layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS]
+          layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS],
+          timeline: this.component?.timeline || null
         }
       },
       legacyVisualOptions: {
@@ -317,7 +318,8 @@ class ArtObjectView {
         motionHiddenClasses: [HIDDEN_CLASS],
         exitingClass: EXITING_CLASS,
         updateClass: UPDATE_CLASS,
-        instantClass: INSTANT_CLASS
+        instantClass: INSTANT_CLASS,
+        timeline: this.component?.timeline || null
       }
     }) as Dict | undefined;
     this.gameObject = (bridge?.gameObject as Dict) || this.gameObject;

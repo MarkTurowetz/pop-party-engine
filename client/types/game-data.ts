@@ -1,3 +1,5 @@
+import type { TimelineDocument } from "../../shared/timeline-model";
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: unknown };
@@ -130,6 +132,7 @@ export interface ArtComponent extends JsonObject {
   fontSize?: number;
   fontColor?: string;
   autoFitText?: boolean;
+  timeline?: TimelineDocument | null;
   children?: ArtComponent[];
 }
 
@@ -144,6 +147,7 @@ export interface ArtComposition extends JsonObject {
     width: number;
     height: number;
   };
+  timeline?: TimelineDocument | null;
   components: ArtComponent[];
 }
 
