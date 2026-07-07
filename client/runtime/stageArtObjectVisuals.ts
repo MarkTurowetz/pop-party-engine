@@ -257,6 +257,7 @@ class ArtObjectView {
   getComposition: (id: string) => Dict | null;
   referencePath: Set<string>;
   component: Component | null = null;
+  canvas: CanvasSize | null = null;
   children = new Map<string, ArtObjectView>();
   element: HTMLElement;
   image: HTMLImageElement;
@@ -310,7 +311,8 @@ class ArtObjectView {
           updateClass: UPDATE_CLASS,
           instantClass: INSTANT_CLASS,
           layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS],
-          timeline: this.component?.timeline || null
+          timeline: this.component?.timeline || null,
+          timelineCanvas: this.canvas || null
         }
       },
       legacyVisualOptions: {
@@ -319,7 +321,8 @@ class ArtObjectView {
         exitingClass: EXITING_CLASS,
         updateClass: UPDATE_CLASS,
         instantClass: INSTANT_CLASS,
-        timeline: this.component?.timeline || null
+        timeline: this.component?.timeline || null,
+        timelineCanvas: this.canvas || null
       }
     }) as Dict | undefined;
     this.gameObject = (bridge?.gameObject as Dict) || this.gameObject;
@@ -342,6 +345,7 @@ class ArtObjectView {
 
   update(component: Component, canvas: CanvasSize, layer: Dict = {}): void {
     this.component = component || {};
+    this.canvas = canvas || null;
     const wasVisible = this.visual ? this.isVisible() : true;
     if (!wasVisible) this.element.classList.add(HIDDEN_CLASS);
     syncComponentElement({
@@ -355,6 +359,7 @@ class ArtObjectView {
       isRootContainer: layer.isRootContainer
     });
     if (!wasVisible) this.element.classList.add(HIDDEN_CLASS);
+    if (this.visual || this.gameObject) this.createVisual();
     this.renderChildren((this.component.children as Component[]) || []);
   }
 

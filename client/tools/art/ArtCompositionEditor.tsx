@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useRef,
   useMemo,
   useState,
@@ -36,7 +37,7 @@ import {
 } from "./artTimelineModel";
 import { useArtCompositions } from "./useArtCompositions";
 import type { TimelineDocument } from "../../../shared/timeline-model";
-import { timelineSnapshotAt } from "../../runtime/timelinePlayer";
+import { TimelinePlayer, timelineSnapshotAt } from "../../runtime/timelinePlayer";
 
 export interface ArtCompositionEditorProps {
   controller: ArtCompositionsController;
@@ -696,10 +697,44 @@ function ArtTimelinePanel({
   onChange: (timeline: TimelineDocument) => void;
   onPreviewFrame?: (frame: number) => void;
 }) {
-  const current = artTimelineOrDefault(timeline);
+  const current = useMemo(() => artTimelineOrDefault(timeline), [timeline]);
   const [frame, setFrame] = useState(0);
   const [labelName, setLabelName] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playerRef = useRef<TimelinePlayer | null>(null);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
+
+  useEffect(() => {
+    playerRef.current?.updateTimeline(current);
+    return () => {
+      playerRef.current?.stop();
+      playerRef.current = null;
+    };
+  }, [current]);
+
+  function previewFrame(nextFrame: number): void {
+    const normalizedFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(nextFrame) || 0)));
+    setFrame(normalizedFrame);
+    onPreviewFrame?.(normalizedFrame);
+  }
+
+  function stopPlayback(): void {
+    playerRef.current?.stop();
+    setIsPlaying(false);
+  }
+
+  function playTimeline(): void {
+    stopPlayback();
+    const player = new TimelinePlayer({
+      timeline: current,
+      onFrame: (snapshot) => previewFrame(snapshot.frame)
+    });
+    playerRef.current = player;
+    setIsPlaying(true);
+    player.gotoAndPlay(cleanFrame, {
+      complete: () => setIsPlaying(false)
+    });
+  }
 
   return (
     <section className="art-timeline-panel" data-art-timeline-panel>
@@ -738,12 +773,22 @@ function ArtTimelinePanel({
             max={Math.max(0, current.frameCount - 1)}
             value={cleanFrame}
             onChange={(event) => {
-              const nextFrame = Number(event.target.value);
-              setFrame(nextFrame);
-              onPreviewFrame?.(nextFrame);
+              stopPlayback();
+              previewFrame(Number(event.target.value));
             }}
           />
         </label>
+      </div>
+      <div className="art-timeline-playback">
+        <button type="button" onClick={playTimeline} disabled={isPlaying || current.frameCount <= 1}>
+          Play
+        </button>
+        <button type="button" onClick={stopPlayback} disabled={!isPlaying}>
+          Stop
+        </button>
+        <button type="button" onClick={() => previewFrame(0)}>
+          First
+        </button>
       </div>
       <div className="art-timeline-ruler" style={{ gridTemplateColumns: `repeat(${Math.min(current.frameCount, 60)}, minmax(10px, 1fr))` }}>
         {Array.from({ length: Math.min(current.frameCount, 60) }, (_, index) => (
@@ -752,8 +797,8 @@ function ArtTimelinePanel({
             key={index}
             aria-current={cleanFrame === index ? "true" : undefined}
             onClick={() => {
-              setFrame(index);
-              onPreviewFrame?.(index);
+              stopPlayback();
+              previewFrame(index);
             }}
             title={`Frame ${index}`}
           >

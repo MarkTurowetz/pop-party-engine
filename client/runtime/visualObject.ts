@@ -7,9 +7,11 @@ import {
   hasTimelineLabel,
   normalizeTimeline,
   timelineSegmentFor,
-  type TimelineDocument
+  type TimelineDocument,
+  type TimelineProperties,
+  type TimelinePropertyValue
 } from "../../shared/timeline-model";
-import { TimelinePlayer } from "./timelinePlayer";
+import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
 
 export type AnimationName = "park" | "on" | "off" | "appear" | "disappear" | "update";
 type VisualLifecycleState = "hidden" | "shown" | "appearing" | "disappearing";
@@ -52,6 +54,32 @@ function isShownLifecycleState(state: VisualLifecycleState): boolean {
   return state === "shown" || state === "appearing" || state === "disappearing";
 }
 
+function normalizeTimelineCanvas(value: CssVisualObjectOptions["timelineCanvas"]): { width: number; height: number } | null {
+  const width = Number(value?.width);
+  const height = Number(value?.height);
+  if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return null;
+  return { width, height };
+}
+
+function numericTimelineValue(value: TimelinePropertyValue | undefined): number | null {
+  const next = Number(value);
+  return Number.isFinite(next) ? next : null;
+}
+
+function timelineTextValue(value: TimelinePropertyValue | undefined): string | null {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return null;
+}
+
+function setStyleProperty(element: HTMLElement, name: string, value: string): void {
+  if (typeof element.style.setProperty === "function") {
+    element.style.setProperty(name, value);
+    return;
+  }
+  (element.style as unknown as Record<string, string>)[name] = value;
+}
+
 interface CustomAnimationApi {
   addClasses: (classes: unknown) => void;
   animation: string;
@@ -84,6 +112,7 @@ export interface CssVisualObjectOptions {
   timerSink?: (timerId: number) => void;
   durations?: Partial<Record<AnimationName, number>>;
   timeline?: TimelineDocument | null;
+  timelineCanvas?: { width?: number; height?: number } | null;
 }
 
 interface PlayOptions {
@@ -106,6 +135,7 @@ class CssVisualObject {
   timerSink: ((timerId: number) => void) | null;
   durations: Record<string, number>;
   timeline: TimelineDocument | null;
+  timelineCanvas: { width: number; height: number } | null;
   timelinePlayer: TimelinePlayer | null;
   token: string;
 
@@ -124,9 +154,11 @@ class CssVisualObject {
     this.timerSink = typeof options.timerSink === "function" ? options.timerSink : null;
     this.durations = { ...DEFAULT_DURATIONS, ...(options.durations || {}) };
     this.timeline = normalizeTimeline(options.timeline);
+    this.timelineCanvas = normalizeTimelineCanvas(options.timelineCanvas);
     this.timelinePlayer = this.timeline
       ? new TimelinePlayer({
           timeline: this.timeline,
+          onFrame: (snapshot) => this.applyTimelineSnapshot(snapshot),
           schedule: (callback, delay) => {
             const timerId = this.schedule(delay, callback);
             return timerId || 0;
@@ -144,6 +176,57 @@ class CssVisualObject {
     if (this.element && this.transformOrigin) {
       this.element.style.transformOrigin = this.transformOrigin;
     }
+  }
+
+  timelineTargetIds(): string[] {
+    const ids = new Set<string>(["self"]);
+    const dataset = this.element?.dataset || {};
+    if (this.element?.id) ids.add(this.element.id);
+    if (dataset.artComponentId) ids.add(dataset.artComponentId);
+    if (dataset.componentId) ids.add(dataset.componentId);
+    return Array.from(ids);
+  }
+
+  applyTimelineSnapshot(snapshot: TimelineFrameSnapshot): void {
+    const targetIds = this.timelineTargetIds();
+    for (const targetId of targetIds) {
+      const props = snapshot.targets[targetId];
+      if (props) {
+        this.applyTimelineProperties(props);
+        return;
+      }
+    }
+  }
+
+  applyTimelineProperties(props: TimelineProperties): void {
+    if (!this.element) return;
+    const width = numericTimelineValue(props.width);
+    const height = numericTimelineValue(props.height);
+    const x = numericTimelineValue(props.x);
+    const y = numericTimelineValue(props.y);
+    const scale = numericTimelineValue(props.scale);
+    const rotation = numericTimelineValue(props.rotation);
+    const opacity = numericTimelineValue(props.opacity);
+    if (width !== null) this.element.style.width = this.canvasUnit(width, "width");
+    if (height !== null) this.element.style.height = this.canvasUnit(height, "height");
+    if (x !== null) this.element.style.left = this.canvasUnit(x, "width");
+    if (y !== null) this.element.style.top = this.canvasUnit(y, "height");
+    if (scale !== null) setStyleProperty(this.element, "--component-scale", String(scale));
+    if (rotation !== null) setStyleProperty(this.element, "--component-rotation", `${rotation}deg`);
+    if (opacity !== null) this.element.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+    if (typeof props.visible === "boolean") {
+      this.element.style.display = props.visible ? "" : "none";
+    }
+    const text = timelineTextValue(props.text ?? props.defaultText);
+    if (text !== null) {
+      const label = this.element.querySelector?.(".art-runtime-object-label");
+      if (label) label.textContent = text;
+    }
+  }
+
+  canvasUnit(value: number, axis: "width" | "height"): string {
+    const canvasSize = this.timelineCanvas?.[axis] || 0;
+    return canvasSize > 0 ? `${(value / canvasSize) * 100}%` : `${value}px`;
   }
 
   addClasses(classes: string[]): void {

@@ -10,6 +10,7 @@ interface FakeElement {
   };
   dataset: Record<string, string>;
   offsetWidth: number;
+  querySelector?: (selector: string) => { textContent: string } | null;
   style: Record<string, string>;
 }
 
@@ -197,5 +198,51 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualState).toBe("appearing");
     vi.advanceTimersByTime(300);
     expect(element.dataset.visualState).toBe("shown");
+  });
+
+  it("applies authored timeline keyframe snapshots while playing", () => {
+    const label = { textContent: "" };
+    const element = createFakeElement(["hidden"]);
+    element.dataset.artComponentId = "component-a";
+    element.querySelector = (selector: string) => (selector === ".art-runtime-object-label" ? label : null);
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      timelineCanvas: { width: 200, height: 100 },
+      timeline: normalizeTimeline({
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [{ frame: 2, type: "stop" }],
+        tracks: [
+          {
+            targetId: "component-a",
+            keyframes: [
+              { frame: 0, props: { x: 50, y: 25, width: 80, height: 20, scale: 0.5, opacity: 0.25, text: "Start" } },
+              { frame: 2, props: { x: 100, y: 50, width: 120, height: 40, scale: 1, opacity: 1, text: "Done" } }
+            ]
+          }
+        ]
+      })
+    });
+
+    expect(visual.play("appear")).toBe(200);
+    expect(element.style.left).toBe("25%");
+    expect(element.style.top).toBe("25%");
+    expect(element.style.width).toBe("40%");
+    expect(element.style.height).toBe("20%");
+    expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("0.5");
+    expect(element.style.opacity).toBe("0.25");
+    expect(label.textContent).toBe("Start");
+
+    vi.advanceTimersByTime(200);
+    expect(element.style.left).toBe("50%");
+    expect(element.style.top).toBe("50%");
+    expect(element.style.width).toBe("60%");
+    expect(element.style.height).toBe("40%");
+    expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1");
+    expect(element.style.opacity).toBe("1");
+    expect(label.textContent).toBe("Done");
   });
 });
