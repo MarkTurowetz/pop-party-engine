@@ -30,9 +30,11 @@ import {
   addTransformKeyframe,
   artTimelineOrDefault,
   defaultArtVisibilityTimeline,
+  insertTimelineFrames,
   removeTimelineCommandAt,
   removeTimelineKeyframe,
   removeTimelineLabel,
+  removeTimelineFrames,
   updateTimelineSettings
 } from "./artTimelineModel";
 import { useArtCompositions } from "./useArtCompositions";
@@ -703,6 +705,7 @@ function ArtTimelinePanel({
   const [commandType, setCommandType] = useState("stop");
   const [commandTarget, setCommandTarget] = useState("");
   const [commandEvent, setCommandEvent] = useState("");
+  const [frameEditCount, setFrameEditCount] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef<TimelinePlayer | null>(null);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
@@ -737,6 +740,12 @@ function ArtTimelinePanel({
     player.gotoAndPlay(cleanFrame, {
       complete: () => setIsPlaying(false)
     });
+  }
+
+  function applyTimelineFrameEdit(nextTimeline: TimelineDocument, nextFrame = cleanFrame): void {
+    stopPlayback();
+    onChange(nextTimeline);
+    previewFrame(Math.max(0, Math.min(Math.max(0, nextTimeline.frameCount - 1), nextFrame)));
   }
 
   return (
@@ -791,6 +800,28 @@ function ArtTimelinePanel({
         </button>
         <button type="button" onClick={() => previewFrame(0)}>
           First
+        </button>
+      </div>
+      <div className="art-timeline-frame-editor">
+        <label className="flow-react-field">
+          <span>Edit Count</span>
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={frameEditCount}
+            onChange={(event) => setFrameEditCount(Math.max(1, Math.min(1000, Math.round(Number(event.target.value) || 1))))}
+          />
+        </label>
+        <button type="button" onClick={() => applyTimelineFrameEdit(insertTimelineFrames(current, cleanFrame, frameEditCount), cleanFrame)}>
+          Insert Frames
+        </button>
+        <button
+          type="button"
+          onClick={() => applyTimelineFrameEdit(removeTimelineFrames(current, cleanFrame, frameEditCount), cleanFrame)}
+          disabled={current.frameCount <= 1}
+        >
+          Delete Frames
         </button>
       </div>
       <div className="art-timeline-ruler" style={{ gridTemplateColumns: `repeat(${Math.min(current.frameCount, 60)}, minmax(10px, 1fr))` }}>

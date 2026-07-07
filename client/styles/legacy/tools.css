@@ -1438,6 +1438,13 @@ body.tool-dashboard-mode .layout-react-shell {
   align-items: center;
 }
 
+.art-timeline-frame-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: end;
+}
+
 .art-timeline-ruler {
   display: grid;
   gap: 2px;

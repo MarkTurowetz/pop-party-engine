@@ -16,6 +16,7 @@ const DEFAULT_TIMELINE: TimelineDocument = Object.freeze({
   commands: [],
   tracks: []
 });
+const MAX_FRAME_COUNT = 60 * 60 * 10;
 
 export const defaultArtVisibilityTimeline = (): TimelineDocument =>
   defaultVisibilityTimeline({ appear: 500, update: 200, disappear: 500 });
@@ -26,6 +27,14 @@ export function artTimelineOrDefault(timeline: TimelineDocument | null | undefin
 
 function cleanFrame(frame: number, frameCount: number): number {
   return Math.max(0, Math.min(Math.max(0, frameCount - 1), Math.round(Number(frame) || 0)));
+}
+
+function cleanFrameCount(value: unknown, fallback: number): number {
+  return Math.max(1, Math.min(MAX_FRAME_COUNT, Math.round(Number(value) || fallback)));
+}
+
+function cleanFrameDelta(value: unknown): number {
+  return Math.max(1, Math.min(1000, Math.round(Number(value) || 1)));
 }
 
 function cleanName(name: string, fallback: string): string {
@@ -50,7 +59,7 @@ export function updateTimelineSettings(
 ): TimelineDocument {
   const current = artTimelineOrDefault(timeline);
   const fps = Math.max(1, Math.min(120, Number(patch.fps ?? current.fps) || current.fps));
-  const frameCount = Math.max(1, Math.min(60 * 60 * 10, Math.round(Number(patch.frameCount ?? current.frameCount) || current.frameCount)));
+  const frameCount = cleanFrameCount(patch.frameCount ?? current.frameCount, current.frameCount);
   return {
     ...current,
     fps,
@@ -62,6 +71,66 @@ export function updateTimelineSettings(
       keyframes: track.keyframes.map((keyframe) => ({ ...keyframe, frame: cleanFrame(keyframe.frame, frameCount) }))
     }))
   };
+}
+
+export function insertTimelineFrames(
+  timeline: TimelineDocument | null | undefined,
+  frame: number,
+  count = 1
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const delta = cleanFrameDelta(count);
+  const insertAt = cleanFrame(frame, current.frameCount);
+  const frameCount = cleanFrameCount(current.frameCount + delta, current.frameCount + delta);
+  return sortTimeline({
+    ...current,
+    frameCount,
+    labels: current.labels.map((label) => ({ ...label, frame: cleanFrame(label.frame >= insertAt ? label.frame + delta : label.frame, frameCount) })),
+    commands: current.commands.map((command) => ({
+      ...command,
+      frame: cleanFrame(command.frame >= insertAt ? command.frame + delta : command.frame, frameCount)
+    })),
+    tracks: current.tracks.map((track) => ({
+      ...track,
+      keyframes: track.keyframes.map((keyframe) => ({
+        ...keyframe,
+        frame: cleanFrame(keyframe.frame >= insertAt ? keyframe.frame + delta : keyframe.frame, frameCount)
+      }))
+    }))
+  });
+}
+
+export function removeTimelineFrames(
+  timeline: TimelineDocument | null | undefined,
+  frame: number,
+  count = 1
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const delta = Math.min(cleanFrameDelta(count), Math.max(1, current.frameCount));
+  const removeAt = cleanFrame(frame, current.frameCount);
+  const removeEnd = Math.min(current.frameCount, removeAt + delta);
+  const removedCount = Math.max(1, removeEnd - removeAt);
+  const frameCount = cleanFrameCount(current.frameCount - removedCount, 1);
+  const shiftFrame = (value: number) => (value >= removeEnd ? value - removedCount : value);
+  const isInsideRemovedRange = (value: number) => value >= removeAt && value < removeEnd;
+  return sortTimeline({
+    ...current,
+    frameCount,
+    labels: current.labels
+      .filter((label) => !isInsideRemovedRange(label.frame) || (frameCount === 1 && removeAt === 0))
+      .map((label) => ({ ...label, frame: cleanFrame(shiftFrame(label.frame), frameCount) })),
+    commands: current.commands
+      .filter((command) => !isInsideRemovedRange(command.frame))
+      .map((command) => ({ ...command, frame: cleanFrame(shiftFrame(command.frame), frameCount) })),
+    tracks: current.tracks
+      .map((track) => ({
+        ...track,
+        keyframes: track.keyframes
+          .filter((keyframe) => !isInsideRemovedRange(keyframe.frame))
+          .map((keyframe) => ({ ...keyframe, frame: cleanFrame(shiftFrame(keyframe.frame), frameCount) }))
+      }))
+      .filter((track) => track.keyframes.length > 0)
+  });
 }
 
 export function addTimelineLabel(
