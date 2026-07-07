@@ -68,4 +68,60 @@ describe("TimelinePlayer", () => {
     expect(snapshots).toEqual([{ imageAssetId: "stego" }]);
     expect(player.currentFrame).toBe(3);
   });
+
+  it("carries completion through gotoAndPlay commands", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 8,
+      labels: [
+        { name: "appear", frame: 0 },
+        { name: "loop", frame: 4 }
+      ],
+      commands: [
+        { frame: 1, type: "gotoAndPlay", target: "loop" },
+        { frame: 6, type: "stop" }
+      ],
+      tracks: []
+    });
+    const frames: number[] = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      onFrame: (snapshot) => frames.push(snapshot.frame)
+    });
+
+    expect(player.gotoAndPlay("appear", { complete })).toBe(600);
+    vi.advanceTimersByTime(100);
+    expect(frames).toEqual([0, 1, 4]);
+    expect(complete).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(200);
+    expect(frames).toEqual([0, 1, 4, 5, 6]);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("carries completion through gotoAndStop commands", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 5,
+      labels: [
+        { name: "appear", frame: 0 },
+        { name: "parked", frame: 4 }
+      ],
+      commands: [{ frame: 1, type: "gotoAndStop", target: "parked" }],
+      tracks: []
+    });
+    const frames: number[] = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      onFrame: (snapshot) => frames.push(snapshot.frame)
+    });
+
+    player.gotoAndPlay("appear", { complete });
+    vi.advanceTimersByTime(100);
+
+    expect(frames).toEqual([0, 1, 4]);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(player.isPlaying).toBe(false);
+  });
 });

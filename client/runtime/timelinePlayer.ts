@@ -130,8 +130,7 @@ export class TimelinePlayer {
     }
     const frame = frameForTimelineLabel(this.timeline, labelOrFrame);
     this.applyFrame(frame);
-    this.runFrameCommands(frame);
-    options.complete?.();
+    if (!this.runFrameCommands(frame, options.complete)) options.complete?.();
     return 0;
   }
 
@@ -144,8 +143,7 @@ export class TimelinePlayer {
     const segment = timelineSegmentFor(this.timeline, labelOrFrame);
     if (options.instant === true || segment.durationMs === 0) {
       this.applyFrame(segment.endFrame);
-      this.runFrameCommands(segment.endFrame);
-      options.complete?.();
+      if (!this.runFrameCommands(segment.endFrame, options.complete)) options.complete?.();
       return 0;
     }
     this.isPlaying = true;
@@ -157,8 +155,8 @@ export class TimelinePlayer {
       const timerId = this.schedule(() => {
         if (this.token !== playToken) return;
         this.applyFrame(frame);
-        this.runFrameCommands(frame);
-        if (frame === segment.endFrame) {
+        const redirected = this.runFrameCommands(frame, options.complete);
+        if (!redirected && frame === segment.endFrame) {
           this.isPlaying = false;
           options.complete?.();
         }
@@ -168,16 +166,19 @@ export class TimelinePlayer {
     return segment.durationMs;
   }
 
-  runFrameCommands(frame: number): void {
-    if (!this.timeline) return;
+  runFrameCommands(frame: number, complete?: () => void): boolean {
+    if (!this.timeline) return false;
     for (const command of this.timeline.commands.filter((entry) => entry.frame === frame)) {
       this.onCommand?.(command);
       if (command.type === "gotoAndStop" && command.target) {
-        this.gotoAndStop(command.target);
+        this.gotoAndStop(command.target, { complete });
+        return true;
       } else if (command.type === "gotoAndPlay" && command.target) {
-        this.gotoAndPlay(command.target);
+        this.gotoAndPlay(command.target, { complete });
+        return true;
       }
     }
+    return false;
   }
 }
 
