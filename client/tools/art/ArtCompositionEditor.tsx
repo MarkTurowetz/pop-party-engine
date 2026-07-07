@@ -29,6 +29,7 @@ import {
   addTimelineLabel,
   addTransformKeyframe,
   artTimelineOrDefault,
+  copyTimelineKeyframe,
   defaultArtVisibilityTimeline,
   insertTimelineFrames,
   removeTimelineCommandAt,
@@ -767,6 +768,7 @@ function ArtTimelinePanel({
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
+  const [copiedKeyframe, setCopiedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [newPropertyName, setNewPropertyName] = useState("");
   const [newPropertyType, setNewPropertyType] = useState<"number" | "boolean" | "string">("number");
   const [newPropertyValue, setNewPropertyValue] = useState("");
@@ -841,6 +843,39 @@ function ArtTimelinePanel({
     const nextProps: TimelineProperties = { ...selectedTimelineKeyframe.keyframe.props };
     delete nextProps[key];
     updateSelectedKeyframe({ props: nextProps });
+  }
+
+  function copySelectedKeyframe(): void {
+    if (!selectedTimelineKeyframe) return;
+    setCopiedKeyframe({
+      targetId: selectedTimelineKeyframe.trackTargetId,
+      frame: selectedTimelineKeyframe.keyframe.frame
+    });
+  }
+
+  function pasteCopiedKeyframe(nextFrame = cleanFrame): void {
+    if (!copiedKeyframe || !component) return;
+    const normalizedFrame = Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(nextFrame) || 0)));
+    const nextTimeline = copyTimelineKeyframe(current, copiedKeyframe.targetId, copiedKeyframe.frame, component.id, normalizedFrame);
+    onChange(nextTimeline);
+    setSelectedKeyframe({ targetId: component.id, frame: normalizedFrame });
+    previewFrame(normalizedFrame);
+  }
+
+  function duplicateSelectedKeyframe(): void {
+    if (!selectedTimelineKeyframe) return;
+    const nextFrame = Math.min(current.frameCount - 1, selectedTimelineKeyframe.keyframe.frame + 1);
+    const nextTimeline = copyTimelineKeyframe(
+      current,
+      selectedTimelineKeyframe.trackTargetId,
+      selectedTimelineKeyframe.keyframe.frame,
+      selectedTimelineKeyframe.trackTargetId,
+      nextFrame
+    );
+    onChange(nextTimeline);
+    setCopiedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: selectedTimelineKeyframe.keyframe.frame });
+    setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: nextFrame });
+    previewFrame(nextFrame);
   }
 
   return (
@@ -961,6 +996,9 @@ function ArtTimelinePanel({
           }}
         >
           Add Keyframe
+        </button>
+        <button type="button" disabled={!component || !copiedKeyframe} onClick={() => pasteCopiedKeyframe(cleanFrame)}>
+          Paste Keyframe
         </button>
       </div>
       <div className="art-timeline-command-editor">
@@ -1092,6 +1130,17 @@ function ArtTimelinePanel({
               onChange={(event) => updateSelectedKeyframe({ frame: Number(event.target.value) })}
             />
           </label>
+          <div className="art-timeline-keyframe-actions">
+            <button type="button" onClick={copySelectedKeyframe}>
+              Copy Keyframe
+            </button>
+            <button type="button" onClick={duplicateSelectedKeyframe} disabled={current.frameCount <= 1}>
+              Duplicate Next Frame
+            </button>
+            <button type="button" disabled={!copiedKeyframe || !component} onClick={() => pasteCopiedKeyframe(cleanFrame)}>
+              Paste At Current Frame
+            </button>
+          </div>
           <ol className="flow-react-list art-timeline-property-list">
             {Object.entries(selectedTimelineKeyframe.keyframe.props).map(([key, value]) => {
               const valueType = timelinePropertyType(value);

@@ -272,6 +272,13 @@ function cleanTimelineProps(props: TimelineProperties): TimelineProperties {
   return next;
 }
 
+function keyframeAt(timeline: TimelineDocument, targetId: string, frame: number): TimelineKeyframe | null {
+  const cleanTargetId = String(targetId || "").trim();
+  const cleanFrameValue = cleanFrame(frame, timeline.frameCount);
+  const track = timeline.tracks.find((item) => item.targetId === cleanTargetId);
+  return track?.keyframes.find((keyframe) => keyframe.frame === cleanFrameValue) || null;
+}
+
 export function addTransformKeyframe(
   timeline: TimelineDocument | null | undefined,
   component: ArtComponent,
@@ -322,6 +329,33 @@ export function updateTimelineKeyframe(
     return upsertKeyframe({ ...track, keyframes: track.keyframes.filter((keyframe) => keyframe.frame !== currentFrame) }, nextKeyframe);
   });
   return changed ? sortTimeline({ ...current, tracks }) : current;
+}
+
+export function copyTimelineKeyframe(
+  timeline: TimelineDocument | null | undefined,
+  sourceTargetId: string,
+  sourceFrame: number,
+  targetTargetId: string,
+  targetFrame: number
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const sourceKeyframe = keyframeAt(current, sourceTargetId, sourceFrame);
+  const cleanTargetId = String(targetTargetId || "").trim();
+  if (!sourceKeyframe || !cleanTargetId) return current;
+  const cleanFrameValue = cleanFrame(targetFrame, current.frameCount);
+  const nextKeyframe: TimelineKeyframe = {
+    id: `key-${cleanTargetId}-${cleanFrameValue}`,
+    frame: cleanFrameValue,
+    props: cleanTimelineProps(sourceKeyframe.props)
+  };
+  const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
+  const nextTrack = existingTrack
+    ? upsertKeyframe(existingTrack, nextKeyframe)
+    : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [nextKeyframe] };
+  return sortTimeline({
+    ...current,
+    tracks: [...current.tracks.filter((track) => track.targetId !== cleanTargetId), nextTrack]
+  });
 }
 
 export function removeTimelineKeyframe(

@@ -6,6 +6,7 @@ import {
   addTimelineLabel,
   addTransformKeyframe,
   artTimelineOrDefault,
+  copyTimelineKeyframe,
   defaultArtVisibilityTimeline,
   insertTimelineFrames,
   removeTimelineFrames,
@@ -171,6 +172,25 @@ describe("artTimelineModel", () => {
         id: "key-title-2",
         frame: 6,
         props: { defaultText: "Two", visible: false, fontSize: 28 }
+      }
+    ]);
+  });
+
+  it("copies keyframe properties to another frame", () => {
+    const timeline = addTransformKeyframe(
+      { fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] },
+      { id: "title", kind: "text", defaultText: "One", width: 100, height: 40, fontSize: 24 } as ArtComponent,
+      2
+    );
+    const result = copyTimelineKeyframe(timeline, "title", 2, "title", 8);
+    expect(result.tracks[0].keyframes.map((keyframe) => ({ frame: keyframe.frame, props: keyframe.props }))).toEqual([
+      {
+        frame: 2,
+        props: timeline.tracks[0].keyframes[0].props
+      },
+      {
+        frame: 8,
+        props: timeline.tracks[0].keyframes[0].props
       }
     ]);
   });
