@@ -94,6 +94,7 @@ const TIMELINE_PROPERTY_SUGGESTIONS = [
   "imageTint",
   "imageObjectFit"
 ];
+const TIMELINE_VISIBLE_FRAME_LIMIT = 60;
 type LayerDropPlacement = "before" | "after";
 
 type LayerDropTarget = {
@@ -814,6 +815,7 @@ function ArtTimelinePanel({
   const [commandTarget, setCommandTarget] = useState("");
   const [commandEvent, setCommandEvent] = useState("");
   const [frameEditCount, setFrameEditCount] = useState(1);
+  const [frameWindowStart, setFrameWindowStart] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
@@ -835,7 +837,11 @@ function ArtTimelinePanel({
     const command = current.commands[selectedMarker.index];
     return command ? { kind: "command" as const, command, index: selectedMarker.index } : null;
   }, [current, selectedMarker]);
-  const visibleTimelineFrameCount = Math.min(current.frameCount, 60);
+  const visibleTimelineFrameCount = Math.min(current.frameCount, TIMELINE_VISIBLE_FRAME_LIMIT);
+  const maxFrameWindowStart = Math.max(0, current.frameCount - visibleTimelineFrameCount);
+  const cleanFrameWindowStart = Math.max(0, Math.min(maxFrameWindowStart, Math.round(Number(frameWindowStart) || 0)));
+  const visibleTimelineFrames = Array.from({ length: visibleTimelineFrameCount }, (_, index) => cleanFrameWindowStart + index);
+  const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
 
   useEffect(() => {
@@ -846,9 +852,20 @@ function ArtTimelinePanel({
     };
   }, [current]);
 
+  function windowStartForFrame(nextFrame: number, currentWindowStart = cleanFrameWindowStart): number {
+    if (nextFrame < currentWindowStart) return Math.max(0, Math.min(maxFrameWindowStart, nextFrame));
+    if (nextFrame > currentWindowStart + visibleTimelineFrameCount - 1) return Math.max(0, Math.min(maxFrameWindowStart, nextFrame - visibleTimelineFrameCount + 1));
+    return currentWindowStart;
+  }
+
+  function setTimelineWindowStart(nextStart: number): void {
+    setFrameWindowStart(Math.max(0, Math.min(maxFrameWindowStart, Math.round(Number(nextStart) || 0))));
+  }
+
   function previewFrame(nextFrame: number): void {
     const normalizedFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(nextFrame) || 0)));
     setFrame(normalizedFrame);
+    setFrameWindowStart(windowStartForFrame(normalizedFrame));
     onPreviewFrame?.(normalizedFrame);
   }
 
@@ -1103,19 +1120,44 @@ function ArtTimelinePanel({
           Delete Frames
         </button>
       </div>
+      <div className="art-timeline-window-controls">
+        <button type="button" onClick={() => setTimelineWindowStart(cleanFrameWindowStart - visibleTimelineFrameCount)} disabled={cleanFrameWindowStart <= 0}>
+          Prev Frames
+        </button>
+        <label className="flow-react-field">
+          <span>Window Start</span>
+          <input
+            type="number"
+            min={0}
+            max={maxFrameWindowStart}
+            value={cleanFrameWindowStart}
+            onChange={(event) => setTimelineWindowStart(Number(event.target.value))}
+          />
+        </label>
+        <span className="art-timeline-window-summary">
+          Frames {cleanFrameWindowStart}-{visibleFrameEnd} of {Math.max(0, current.frameCount - 1)}
+        </span>
+        <button
+          type="button"
+          onClick={() => setTimelineWindowStart(cleanFrameWindowStart + visibleTimelineFrameCount)}
+          disabled={cleanFrameWindowStart >= maxFrameWindowStart}
+        >
+          Next Frames
+        </button>
+      </div>
       <div className="art-timeline-ruler" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
-        {Array.from({ length: visibleTimelineFrameCount }, (_, index) => (
+        {visibleTimelineFrames.map((frameIndex) => (
           <button
             type="button"
-            key={index}
-            aria-current={cleanFrame === index ? "true" : undefined}
+            key={frameIndex}
+            aria-current={cleanFrame === frameIndex ? "true" : undefined}
             onClick={() => {
               stopPlayback();
-              previewFrame(index);
+              previewFrame(frameIndex);
             }}
-            title={`Frame ${index}`}
+            title={`Frame ${frameIndex}`}
           >
-            {index % 5 === 0 ? index : ""}
+            {frameIndex % 5 === 0 ? frameIndex : ""}
           </button>
         ))}
       </div>
@@ -1127,31 +1169,31 @@ function ArtTimelinePanel({
                 Labels
               </div>
               <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
-                {Array.from({ length: visibleTimelineFrameCount }, (_, index) => {
-                  const labels = timelineLabelsAtFrame(current, index);
+                {visibleTimelineFrames.map((frameIndex) => {
+                  const labels = timelineLabelsAtFrame(current, frameIndex);
                   return (
                     <button
                       type="button"
-                      key={index}
+                      key={frameIndex}
                       className="art-timeline-lane-frame"
-                      aria-current={cleanFrame === index ? "true" : undefined}
+                      aria-current={cleanFrame === frameIndex ? "true" : undefined}
                       data-art-timeline-has-label={labels.length ? "true" : "false"}
                       data-art-timeline-marker-selected={
                         labels.some((label) => selectedMarker?.kind === "label" && selectedMarker.name === label.name) ? "true" : "false"
                       }
-                      data-art-timeline-drop-target={timelineDropFrame === index ? "true" : "false"}
+                      data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                       draggable={labels.length > 0}
-                      title={labels.length ? `Frame ${index}: ${labels.map((label) => label.name).join(", ")}` : `Preview frame ${index}`}
-                      onClick={() => (labels[0] ? selectTimelineMarker({ kind: "label", name: labels[0].name }, index) : previewFrame(index))}
+                      title={labels.length ? `Frame ${frameIndex}: ${labels.map((label) => label.name).join(", ")}` : `Preview frame ${frameIndex}`}
+                      onClick={() => (labels[0] ? selectTimelineMarker({ kind: "label", name: labels[0].name }, frameIndex) : previewFrame(frameIndex))}
                       onDragStart={(event) => {
                         if (!labels[0]) return;
                         startTimelineDrag(event, { kind: "label", name: labels[0].name });
                       }}
-                      onDragOver={(event) => handleTimelineFrameDragOver(event, index)}
-                      onDrop={(event) => handleTimelineFrameDrop(event, index)}
+                      onDragOver={(event) => handleTimelineFrameDragOver(event, frameIndex)}
+                      onDrop={(event) => handleTimelineFrameDrop(event, frameIndex)}
                       onDragEnd={endTimelineDrag}
                       onDragLeave={() => {
-                        if (timelineDropFrame === index) setTimelineDropFrame(null);
+                        if (timelineDropFrame === frameIndex) setTimelineDropFrame(null);
                       }}
                     >
                       {labels.length ? <span className="art-timeline-marker-pill">{labels.map((label) => label.name).join(", ")}</span> : null}
@@ -1167,35 +1209,35 @@ function ArtTimelinePanel({
                 Commands
               </div>
               <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
-                {Array.from({ length: visibleTimelineFrameCount }, (_, index) => {
-                  const commands = timelineCommandsAtFrame(current, index);
+                {visibleTimelineFrames.map((frameIndex) => {
+                  const commands = timelineCommandsAtFrame(current, frameIndex);
                   return (
                     <button
                       type="button"
-                      key={index}
+                      key={frameIndex}
                       className="art-timeline-lane-frame"
-                      aria-current={cleanFrame === index ? "true" : undefined}
+                      aria-current={cleanFrame === frameIndex ? "true" : undefined}
                       data-art-timeline-has-command={commands.length ? "true" : "false"}
                       data-art-timeline-marker-selected={
                         commands.some(({ index: commandIndex }) => selectedMarker?.kind === "command" && selectedMarker.index === commandIndex) ? "true" : "false"
                       }
-                      data-art-timeline-drop-target={timelineDropFrame === index ? "true" : "false"}
+                      data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                       draggable={commands.length > 0}
                       title={
                         commands.length
-                          ? `Frame ${index}: ${commands.map(({ command }) => timelineCommandTitle(command)).join(", ")}`
-                          : `Preview frame ${index}`
+                          ? `Frame ${frameIndex}: ${commands.map(({ command }) => timelineCommandTitle(command)).join(", ")}`
+                          : `Preview frame ${frameIndex}`
                       }
-                      onClick={() => (commands[0] ? selectTimelineMarker({ kind: "command", index: commands[0].index }, index) : previewFrame(index))}
+                      onClick={() => (commands[0] ? selectTimelineMarker({ kind: "command", index: commands[0].index }, frameIndex) : previewFrame(frameIndex))}
                       onDragStart={(event) => {
                         if (!commands[0]) return;
                         startTimelineDrag(event, { kind: "command", index: commands[0].index, command: commands[0].command });
                       }}
-                      onDragOver={(event) => handleTimelineFrameDragOver(event, index)}
-                      onDrop={(event) => handleTimelineFrameDrop(event, index)}
+                      onDragOver={(event) => handleTimelineFrameDragOver(event, frameIndex)}
+                      onDrop={(event) => handleTimelineFrameDrop(event, frameIndex)}
                       onDragEnd={endTimelineDrag}
                       onDragLeave={() => {
-                        if (timelineDropFrame === index) setTimelineDropFrame(null);
+                        if (timelineDropFrame === frameIndex) setTimelineDropFrame(null);
                       }}
                     >
                       {commands.length ? (
@@ -1213,30 +1255,30 @@ function ArtTimelinePanel({
                 {track.targetId}
               </div>
               <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
-                {Array.from({ length: visibleTimelineFrameCount }, (_, index) => {
-                  const keyframe = track.keyframes.find((item) => item.frame === index);
-                  const isSelected = selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === index;
+                {visibleTimelineFrames.map((frameIndex) => {
+                  const keyframe = track.keyframes.find((item) => item.frame === frameIndex);
+                  const isSelected = selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === frameIndex;
                   return (
                     <button
                       type="button"
-                      key={index}
+                      key={frameIndex}
                       className="art-timeline-lane-frame"
-                      aria-current={cleanFrame === index ? "true" : undefined}
+                      aria-current={cleanFrame === frameIndex ? "true" : undefined}
                       data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
                       data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
-                      data-art-timeline-drop-target={timelineDropFrame === index ? "true" : "false"}
+                      data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                       draggable={Boolean(keyframe)}
-                      title={keyframe ? `${track.targetId} keyframe ${index}` : `Preview frame ${index}`}
-                      onClick={() => (keyframe ? selectKeyframe(track.targetId, keyframe.frame) : previewFrame(index))}
+                      title={keyframe ? `${track.targetId} keyframe ${frameIndex}` : `Preview frame ${frameIndex}`}
+                      onClick={() => (keyframe ? selectKeyframe(track.targetId, keyframe.frame) : previewFrame(frameIndex))}
                       onDragStart={(event) => {
                         if (!keyframe) return;
                         startTimelineDrag(event, { kind: "keyframe", targetId: track.targetId, frame: keyframe.frame });
                       }}
-                      onDragOver={(event) => handleTimelineFrameDragOver(event, index)}
-                      onDrop={(event) => handleTimelineFrameDrop(event, index)}
+                      onDragOver={(event) => handleTimelineFrameDragOver(event, frameIndex)}
+                      onDrop={(event) => handleTimelineFrameDrop(event, frameIndex)}
                       onDragEnd={endTimelineDrag}
                       onDragLeave={() => {
-                        if (timelineDropFrame === index) setTimelineDropFrame(null);
+                        if (timelineDropFrame === frameIndex) setTimelineDropFrame(null);
                       }}
                     >
                       {keyframe ? <span className="art-timeline-keyframe-dot" aria-hidden="true" /> : null}
@@ -1247,7 +1289,9 @@ function ArtTimelinePanel({
             </div>
           ))}
           {current.frameCount > visibleTimelineFrameCount ? (
-            <small className="art-timeline-lane-note">Showing frames 0-{visibleTimelineFrameCount - 1}; use Current Frame for later frames.</small>
+            <small className="art-timeline-lane-note">
+              Showing frames {cleanFrameWindowStart}-{visibleFrameEnd}; use the window controls for the rest of the timeline.
+            </small>
           ) : null}
         </div>
       ) : null}

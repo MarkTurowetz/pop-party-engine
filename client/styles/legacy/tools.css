@@ -1445,6 +1445,20 @@ body.tool-dashboard-mode .layout-react-shell {
   align-items: end;
 }
 
+.art-timeline-window-controls {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 0.5fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.art-timeline-window-summary {
+  align-self: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 1000;
+}
+
 .art-timeline-ruler {
   display: grid;
   gap: 2px;
