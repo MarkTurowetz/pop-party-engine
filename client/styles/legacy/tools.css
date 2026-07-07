@@ -1528,16 +1528,48 @@ body.tool-dashboard-mode .layout-react-shell {
   background: #ffe156;
 }
 
+.art-timeline-lane-frame[data-art-timeline-has-label="true"] {
+  border-color: var(--ink);
+  background: #ff6fb2;
+  color: var(--ink);
+}
+
+.art-timeline-lane-frame[data-art-timeline-has-command="true"] {
+  border-color: var(--ink);
+  background: var(--cyan);
+  color: var(--ink);
+}
+
 .art-timeline-lane-frame[data-art-timeline-keyframe-selected="true"] {
   background: var(--cyan);
 }
 
-.art-timeline-lane-frame span {
+.art-timeline-keyframe-dot {
   width: 8px;
   height: 8px;
   border: 2px solid var(--ink);
   border-radius: 50%;
   background: var(--paper);
+}
+
+.art-timeline-marker-pill {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 1px 4px;
+  font-size: 8px;
+  font-weight: 1000;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.art-timeline-lane[data-art-timeline-lane-kind="labels"] .art-timeline-lane-label {
+  background: #ffcae4;
+}
+
+.art-timeline-lane[data-art-timeline-lane-kind="commands"] .art-timeline-lane-label {
+  background: #b9f4ff;
 }
 
 .art-timeline-lane-note {

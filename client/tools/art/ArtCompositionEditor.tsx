@@ -40,7 +40,14 @@ import {
   updateTimelineSettings
 } from "./artTimelineModel";
 import { useArtCompositions } from "./useArtCompositions";
-import type { TimelineDocument, TimelineKeyframe, TimelineProperties, TimelinePropertyValue } from "../../../shared/timeline-model";
+import type {
+  TimelineCommand,
+  TimelineDocument,
+  TimelineKeyframe,
+  TimelineLabel,
+  TimelineProperties,
+  TimelinePropertyValue
+} from "../../../shared/timeline-model";
 import { TimelinePlayer, timelineSnapshotAt } from "../../runtime/timelinePlayer";
 
 export interface ArtCompositionEditorProps {
@@ -127,6 +134,26 @@ function findTimelineKeyframe(
     if (keyframe) return { trackTargetId: track.targetId, keyframe };
   }
   return null;
+}
+
+function timelineLabelsAtFrame(timeline: TimelineDocument, frame: number): TimelineLabel[] {
+  return timeline.labels.filter((label) => label.frame === frame);
+}
+
+function timelineCommandsAtFrame(timeline: TimelineDocument, frame: number): TimelineCommand[] {
+  return timeline.commands.filter((command) => command.frame === frame);
+}
+
+function timelineCommandLabel(command: TimelineCommand): string {
+  if (command.type === "gotoAndPlay") return command.target ? `play ${command.target}` : "play";
+  if (command.type === "gotoAndStop") return command.target ? `stop at ${command.target}` : "stop at";
+  if (command.type === "emit") return command.event ? `emit ${command.event}` : "emit";
+  return command.type;
+}
+
+function timelineCommandTitle(command: TimelineCommand): string {
+  const details = [command.target ? `target: ${command.target}` : "", command.event ? `event: ${command.event}` : ""].filter(Boolean).join(" / ");
+  return details ? `${command.type} (${details})` : command.type;
 }
 
 function findComponent(components: ArtComponent[], id: string): ArtComponent | undefined {
@@ -776,6 +803,7 @@ function ArtTimelinePanel({
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
   const visibleTimelineFrameCount = Math.min(current.frameCount, 60);
+  const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
 
   useEffect(() => {
     playerRef.current?.updateTimeline(current);
@@ -971,8 +999,64 @@ function ArtTimelinePanel({
           </button>
         ))}
       </div>
-      {current.tracks.length ? (
+      {hasTimelineLanes ? (
         <div className="art-timeline-lanes" data-art-timeline-lanes>
+          {current.labels.length ? (
+            <div className="art-timeline-lane" data-art-timeline-lane-kind="labels">
+              <div className="art-timeline-lane-label" title="Timeline labels">
+                Labels
+              </div>
+              <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
+                {Array.from({ length: visibleTimelineFrameCount }, (_, index) => {
+                  const labels = timelineLabelsAtFrame(current, index);
+                  return (
+                    <button
+                      type="button"
+                      key={index}
+                      className="art-timeline-lane-frame"
+                      aria-current={cleanFrame === index ? "true" : undefined}
+                      data-art-timeline-has-label={labels.length ? "true" : "false"}
+                      title={labels.length ? `Frame ${index}: ${labels.map((label) => label.name).join(", ")}` : `Preview frame ${index}`}
+                      onClick={() => previewFrame(index)}
+                    >
+                      {labels.length ? <span className="art-timeline-marker-pill">{labels.map((label) => label.name).join(", ")}</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          {current.commands.length ? (
+            <div className="art-timeline-lane" data-art-timeline-lane-kind="commands">
+              <div className="art-timeline-lane-label" title="Timeline commands">
+                Commands
+              </div>
+              <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
+                {Array.from({ length: visibleTimelineFrameCount }, (_, index) => {
+                  const commands = timelineCommandsAtFrame(current, index);
+                  return (
+                    <button
+                      type="button"
+                      key={index}
+                      className="art-timeline-lane-frame"
+                      aria-current={cleanFrame === index ? "true" : undefined}
+                      data-art-timeline-has-command={commands.length ? "true" : "false"}
+                      title={
+                        commands.length
+                          ? `Frame ${index}: ${commands.map((command) => timelineCommandTitle(command)).join(", ")}`
+                          : `Preview frame ${index}`
+                      }
+                      onClick={() => previewFrame(index)}
+                    >
+                      {commands.length ? (
+                        <span className="art-timeline-marker-pill">{commands.map((command) => timelineCommandLabel(command)).join(", ")}</span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {current.tracks.map((track) => (
             <div className="art-timeline-lane" key={track.targetId}>
               <div className="art-timeline-lane-label" title={track.targetId}>
@@ -993,7 +1077,7 @@ function ArtTimelinePanel({
                       title={keyframe ? `${track.targetId} keyframe ${index}` : `Preview frame ${index}`}
                       onClick={() => (keyframe ? selectKeyframe(track.targetId, keyframe.frame) : previewFrame(index))}
                     >
-                      {keyframe ? <span aria-hidden="true" /> : null}
+                      {keyframe ? <span className="art-timeline-keyframe-dot" aria-hidden="true" /> : null}
                     </button>
                   );
                 })}
