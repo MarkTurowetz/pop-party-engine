@@ -11,6 +11,7 @@ interface FakeElement {
   dataset: Record<string, string>;
   offsetWidth: number;
   querySelector?: (selector: string) => { textContent: string } | null;
+  dispatchEvent?: (event: Event) => boolean;
   style: Record<string, string>;
 }
 
@@ -244,5 +245,39 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1");
     expect(element.style.opacity).toBe("1");
     expect(label.textContent).toBe("Done");
+  });
+
+  it("dispatches authored timeline emit commands through the visual object", () => {
+    const element = createFakeElement(["hidden"]);
+    const dispatched: { type: string; detail: unknown }[] = [];
+    element.dispatchEvent = (event: Event) => {
+      dispatched.push({ type: event.type, detail: (event as unknown as { detail?: unknown }).detail });
+      return true;
+    };
+    const handled: unknown[] = [];
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      timelineCommandHandler: (detail) => handled.push(detail),
+      timeline: normalizeTimeline({
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 1, type: "emit", event: "pop-name" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      })
+    });
+
+    expect(visual.play("appear")).toBe(200);
+    vi.advanceTimersByTime(100);
+
+    expect(handled).toHaveLength(1);
+    expect(dispatched.map((event) => event.type)).toEqual(["party-game:timeline-command", "party-game:timeline:pop-name"]);
+    expect((handled[0] as { eventName: string }).eventName).toBe("pop-name");
+    expect((dispatched[0].detail as { eventName: string }).eventName).toBe("pop-name");
   });
 });

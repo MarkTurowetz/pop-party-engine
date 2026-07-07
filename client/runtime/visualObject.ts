@@ -7,6 +7,7 @@ import {
   hasTimelineLabel,
   normalizeTimeline,
   timelineSegmentFor,
+  type TimelineCommand,
   type TimelineDocument,
   type TimelineProperties,
   type TimelinePropertyValue
@@ -80,6 +81,19 @@ function setStyleProperty(element: HTMLElement, name: string, value: string): vo
   (element.style as unknown as Record<string, string>)[name] = value;
 }
 
+function timelineDomEvent(type: string, detail: TimelineCommandEventDetail): Event {
+  if (typeof globalThis.CustomEvent === "function") {
+    return new globalThis.CustomEvent(type, { bubbles: true, detail });
+  }
+  return { type, detail } as unknown as Event;
+}
+
+export interface TimelineCommandEventDetail {
+  command: TimelineCommand;
+  eventName: string;
+  visual: CssVisualObject;
+}
+
 interface CustomAnimationApi {
   addClasses: (classes: unknown) => void;
   animation: string;
@@ -113,6 +127,7 @@ export interface CssVisualObjectOptions {
   durations?: Partial<Record<AnimationName, number>>;
   timeline?: TimelineDocument | null;
   timelineCanvas?: { width?: number; height?: number } | null;
+  timelineCommandHandler?: (detail: TimelineCommandEventDetail) => void;
 }
 
 interface PlayOptions {
@@ -136,6 +151,7 @@ class CssVisualObject {
   durations: Record<string, number>;
   timeline: TimelineDocument | null;
   timelineCanvas: { width: number; height: number } | null;
+  timelineCommandHandler: ((detail: TimelineCommandEventDetail) => void) | null;
   timelinePlayer: TimelinePlayer | null;
   token: string;
 
@@ -155,10 +171,12 @@ class CssVisualObject {
     this.durations = { ...DEFAULT_DURATIONS, ...(options.durations || {}) };
     this.timeline = normalizeTimeline(options.timeline);
     this.timelineCanvas = normalizeTimelineCanvas(options.timelineCanvas);
+    this.timelineCommandHandler = typeof options.timelineCommandHandler === "function" ? options.timelineCommandHandler : null;
     this.timelinePlayer = this.timeline
       ? new TimelinePlayer({
           timeline: this.timeline,
           onFrame: (snapshot) => this.applyTimelineSnapshot(snapshot),
+          onCommand: (command) => this.handleTimelineCommand(command),
           schedule: (callback, delay) => {
             const timerId = this.schedule(delay, callback);
             return timerId || 0;
@@ -227,6 +245,17 @@ class CssVisualObject {
   canvasUnit(value: number, axis: "width" | "height"): string {
     const canvasSize = this.timelineCanvas?.[axis] || 0;
     return canvasSize > 0 ? `${(value / canvasSize) * 100}%` : `${value}px`;
+  }
+
+  handleTimelineCommand(command: TimelineCommand): void {
+    const eventName = String(command.event || command.type || "").trim();
+    if (!eventName) return;
+    const detail: TimelineCommandEventDetail = { command, eventName, visual: this };
+    this.timelineCommandHandler?.(detail);
+    this.element?.dispatchEvent?.(timelineDomEvent("party-game:timeline-command", detail));
+    if (command.type === "emit") {
+      this.element?.dispatchEvent?.(timelineDomEvent(`party-game:timeline:${eventName}`, detail));
+    }
   }
 
   addClasses(classes: string[]): void {
