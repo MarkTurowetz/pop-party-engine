@@ -775,6 +775,7 @@ function ArtTimelinePanel({
   const playerRef = useRef<TimelinePlayer | null>(null);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
+  const visibleTimelineFrameCount = Math.min(current.frameCount, 60);
 
   useEffect(() => {
     playerRef.current?.updateTimeline(current);
@@ -954,8 +955,8 @@ function ArtTimelinePanel({
           Delete Frames
         </button>
       </div>
-      <div className="art-timeline-ruler" style={{ gridTemplateColumns: `repeat(${Math.min(current.frameCount, 60)}, minmax(10px, 1fr))` }}>
-        {Array.from({ length: Math.min(current.frameCount, 60) }, (_, index) => (
+      <div className="art-timeline-ruler" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
+        {Array.from({ length: visibleTimelineFrameCount }, (_, index) => (
           <button
             type="button"
             key={index}
@@ -970,6 +971,40 @@ function ArtTimelinePanel({
           </button>
         ))}
       </div>
+      {current.tracks.length ? (
+        <div className="art-timeline-lanes" data-art-timeline-lanes>
+          {current.tracks.map((track) => (
+            <div className="art-timeline-lane" key={track.targetId}>
+              <div className="art-timeline-lane-label" title={track.targetId}>
+                {track.targetId}
+              </div>
+              <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
+                {Array.from({ length: visibleTimelineFrameCount }, (_, index) => {
+                  const keyframe = track.keyframes.find((item) => item.frame === index);
+                  const isSelected = selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === index;
+                  return (
+                    <button
+                      type="button"
+                      key={index}
+                      className="art-timeline-lane-frame"
+                      aria-current={cleanFrame === index ? "true" : undefined}
+                      data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
+                      data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
+                      title={keyframe ? `${track.targetId} keyframe ${index}` : `Preview frame ${index}`}
+                      onClick={() => (keyframe ? selectKeyframe(track.targetId, keyframe.frame) : previewFrame(index))}
+                    >
+                      {keyframe ? <span aria-hidden="true" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {current.frameCount > visibleTimelineFrameCount ? (
+            <small className="art-timeline-lane-note">Showing frames 0-{visibleTimelineFrameCount - 1}; use Current Frame for later frames.</small>
+          ) : null}
+        </div>
+      ) : null}
       <div className="art-timeline-actions">
         <label className="flow-react-field">
           <span>Label</span>
