@@ -178,6 +178,14 @@ function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: T
   return matchingIndex >= 0 ? matchingIndex : Math.max(0, Math.min(timeline.commands.length - 1, fallbackIndex));
 }
 
+function timelineTrackLabel(targetId: string, component: ArtComponent | undefined): { title: string; detail: string } {
+  const matchedComponent = component ? findComponent([component], targetId) : undefined;
+  if (!matchedComponent) return { title: targetId, detail: "track target" };
+  const title = String(matchedComponent.name || matchedComponent.kind || targetId);
+  const detailParts = [String(matchedComponent.kind || "component"), matchedComponent.id === targetId ? "" : targetId].filter(Boolean);
+  return { title, detail: detailParts.join(" / ") || targetId };
+}
+
 function findComponent(components: ArtComponent[], id: string): ArtComponent | undefined {
   for (const component of components) {
     if (component.id === id) return component;
@@ -1249,45 +1257,49 @@ function ArtTimelinePanel({
               </div>
             </div>
           ) : null}
-          {current.tracks.map((track) => (
-            <div className="art-timeline-lane" key={track.targetId}>
-              <div className="art-timeline-lane-label" title={track.targetId}>
-                {track.targetId}
+          {current.tracks.map((track) => {
+            const trackLabel = timelineTrackLabel(track.targetId, component);
+            return (
+              <div className="art-timeline-lane" key={track.targetId}>
+                <div className="art-timeline-lane-label" title={`${trackLabel.title} (${track.targetId})`}>
+                  <span>{trackLabel.title}</span>
+                  <small>{trackLabel.detail}</small>
+                </div>
+                <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
+                  {visibleTimelineFrames.map((frameIndex) => {
+                    const keyframe = track.keyframes.find((item) => item.frame === frameIndex);
+                    const isSelected = selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === frameIndex;
+                    return (
+                      <button
+                        type="button"
+                        key={frameIndex}
+                        className="art-timeline-lane-frame"
+                        aria-current={cleanFrame === frameIndex ? "true" : undefined}
+                        data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
+                        data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
+                        data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
+                        draggable={Boolean(keyframe)}
+                        title={keyframe ? `${track.targetId} keyframe ${frameIndex}` : `Preview frame ${frameIndex}`}
+                        onClick={() => (keyframe ? selectKeyframe(track.targetId, keyframe.frame) : previewFrame(frameIndex))}
+                        onDragStart={(event) => {
+                          if (!keyframe) return;
+                          startTimelineDrag(event, { kind: "keyframe", targetId: track.targetId, frame: keyframe.frame });
+                        }}
+                        onDragOver={(event) => handleTimelineFrameDragOver(event, frameIndex)}
+                        onDrop={(event) => handleTimelineFrameDrop(event, frameIndex)}
+                        onDragEnd={endTimelineDrag}
+                        onDragLeave={() => {
+                          if (timelineDropFrame === frameIndex) setTimelineDropFrame(null);
+                        }}
+                      >
+                        {keyframe ? <span className="art-timeline-keyframe-dot" aria-hidden="true" /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
-                {visibleTimelineFrames.map((frameIndex) => {
-                  const keyframe = track.keyframes.find((item) => item.frame === frameIndex);
-                  const isSelected = selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === frameIndex;
-                  return (
-                    <button
-                      type="button"
-                      key={frameIndex}
-                      className="art-timeline-lane-frame"
-                      aria-current={cleanFrame === frameIndex ? "true" : undefined}
-                      data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
-                      data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
-                      data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
-                      draggable={Boolean(keyframe)}
-                      title={keyframe ? `${track.targetId} keyframe ${frameIndex}` : `Preview frame ${frameIndex}`}
-                      onClick={() => (keyframe ? selectKeyframe(track.targetId, keyframe.frame) : previewFrame(frameIndex))}
-                      onDragStart={(event) => {
-                        if (!keyframe) return;
-                        startTimelineDrag(event, { kind: "keyframe", targetId: track.targetId, frame: keyframe.frame });
-                      }}
-                      onDragOver={(event) => handleTimelineFrameDragOver(event, frameIndex)}
-                      onDrop={(event) => handleTimelineFrameDrop(event, frameIndex)}
-                      onDragEnd={endTimelineDrag}
-                      onDragLeave={() => {
-                        if (timelineDropFrame === frameIndex) setTimelineDropFrame(null);
-                      }}
-                    >
-                      {keyframe ? <span className="art-timeline-keyframe-dot" aria-hidden="true" /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {current.frameCount > visibleTimelineFrameCount ? (
             <small className="art-timeline-lane-note">
               Showing frames {cleanFrameWindowStart}-{visibleFrameEnd}; use the window controls for the rest of the timeline.
