@@ -82,12 +82,25 @@ export function removeTimelineLabel(timeline: TimelineDocument | null | undefine
 }
 
 export function addStopCommand(timeline: TimelineDocument | null | undefined, frame: number): TimelineDocument {
+  return addTimelineCommand(timeline, frame, { type: "stop" });
+}
+
+export function addTimelineCommand(
+  timeline: TimelineDocument | null | undefined,
+  frame: number,
+  command: Partial<Pick<TimelineCommand, "type" | "target" | "event">>
+): TimelineDocument {
   const current = artTimelineOrDefault(timeline);
+  const type = cleanName(String(command.type || ""), "stop");
   const nextCommand: TimelineCommand = {
-    id: `stop-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    id: `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     frame: cleanFrame(frame, current.frameCount),
-    type: "stop"
+    type
   };
+  const target = cleanName(String(command.target || ""), "");
+  const event = cleanName(String(command.event || ""), "");
+  if (target) nextCommand.target = target;
+  if (event) nextCommand.event = event;
   return sortTimeline({ ...current, commands: [...current.commands, nextCommand] });
 }
 

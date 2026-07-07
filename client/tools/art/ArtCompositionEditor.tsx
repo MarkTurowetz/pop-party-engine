@@ -25,7 +25,7 @@ import {
   validateImageFile
 } from "./artComponentSchema";
 import {
-  addStopCommand,
+  addTimelineCommand,
   addTimelineLabel,
   addTransformKeyframe,
   artTimelineOrDefault,
@@ -700,6 +700,9 @@ function ArtTimelinePanel({
   const current = useMemo(() => artTimelineOrDefault(timeline), [timeline]);
   const [frame, setFrame] = useState(0);
   const [labelName, setLabelName] = useState("");
+  const [commandType, setCommandType] = useState("stop");
+  const [commandTarget, setCommandTarget] = useState("");
+  const [commandEvent, setCommandEvent] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef<TimelinePlayer | null>(null);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
@@ -821,12 +824,49 @@ function ArtTimelinePanel({
         >
           Add Label
         </button>
-        <button type="button" onClick={() => onChange(addStopCommand(current, cleanFrame))}>
-          Add Stop
-        </button>
         <button type="button" disabled={!component} onClick={() => component && onChange(addTransformKeyframe(current, component, cleanFrame))}>
           Add Keyframe
         </button>
+      </div>
+      <div className="art-timeline-command-editor">
+        <label className="flow-react-field">
+          <span>Command</span>
+          <select value={commandType} onChange={(event) => setCommandType(event.target.value)}>
+            <option value="stop">Stop</option>
+            <option value="gotoAndPlay">Go To And Play</option>
+            <option value="gotoAndStop">Go To And Stop</option>
+            <option value="emit">Emit Event</option>
+          </select>
+        </label>
+        <label className="flow-react-field">
+          <span>Target Label</span>
+          <input
+            type="text"
+            list="art-timeline-labels"
+            value={commandTarget}
+            placeholder="appear"
+            onChange={(event) => setCommandTarget(event.target.value)}
+          />
+        </label>
+        <label className="flow-react-field">
+          <span>Event</span>
+          <input type="text" value={commandEvent} placeholder="pop-name" onChange={(event) => setCommandEvent(event.target.value)} />
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            onChange(addTimelineCommand(current, cleanFrame, { type: commandType, target: commandTarget, event: commandEvent }));
+            setCommandEvent("");
+            if (commandType === "stop") setCommandTarget("");
+          }}
+        >
+          Add Command
+        </button>
+        <datalist id="art-timeline-labels">
+          {current.labels.map((label) => (
+            <option value={label.name} key={label.name} />
+          ))}
+        </datalist>
       </div>
       <div className="art-timeline-lists">
         <div>
@@ -854,7 +894,11 @@ function ArtTimelinePanel({
               {current.commands.map((command, index) => (
                 <li key={command.id || `${command.type}-${command.frame}-${index}`}>
                   <span>{command.type}</span>
-                  <small>Frame {command.frame}</small>
+                  <small>
+                    Frame {command.frame}
+                    {command.target ? ` -> ${command.target}` : ""}
+                    {command.event ? ` / ${command.event}` : ""}
+                  </small>
                   <button type="button" onClick={() => onChange(removeTimelineCommandAt(current, index))}>
                     Remove
                   </button>

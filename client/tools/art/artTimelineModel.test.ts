@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ArtComponent } from "../../types/game-data";
 import {
+  addTimelineCommand,
   addStopCommand,
   addTimelineLabel,
   addTransformKeyframe,
@@ -33,6 +34,17 @@ describe("artTimelineModel", () => {
     const withStop = addStopCommand({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, 18);
     expect(withStop.commands[0]).toMatchObject({ frame: 18, type: "stop" });
     expect(updateTimelineSettings(withStop, { frameCount: 10 }).commands[0].frame).toBe(9);
+  });
+
+  it("adds timeline commands with targets and events", () => {
+    const timeline = addTimelineCommand({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, 4, {
+      type: "gotoAndPlay",
+      target: "appear",
+      event: "ignored"
+    });
+    const withEmit = addTimelineCommand(timeline, 8, { type: "emit", event: "pop-name" });
+    expect(withEmit.commands[0]).toMatchObject({ frame: 4, type: "gotoAndPlay", target: "appear", event: "ignored" });
+    expect(withEmit.commands[1]).toMatchObject({ frame: 8, type: "emit", event: "pop-name" });
   });
 
   it("adds transform keyframes to a target track", () => {
