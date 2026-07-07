@@ -81,6 +81,31 @@ function setStyleProperty(element: HTMLElement, name: string, value: string): vo
   (element.style as unknown as Record<string, string>)[name] = value;
 }
 
+function removeStyleProperty(element: HTMLElement, name: string): void {
+  if (typeof element.style.removeProperty === "function") {
+    element.style.removeProperty(name);
+    return;
+  }
+  delete (element.style as unknown as Record<string, string>)[name];
+}
+
+function hasTimelineProperty(props: TimelineProperties, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(props, key);
+}
+
+function cssUrl(value: string): string {
+  return `url('${value.replaceAll("'", "%27")}')`;
+}
+
+function timelineImageSource(props: TimelineProperties): string | null {
+  const directUrl = timelineTextValue(props.imageDataUrl);
+  if (directUrl) return directUrl;
+  const assetId = timelineTextValue(props.imageAssetId);
+  if (!assetId) return null;
+  const resolver = (globalThis as unknown as { artAssetUrl?: (assetId?: string) => string }).artAssetUrl;
+  return typeof resolver === "function" ? resolver(assetId) || "" : "";
+}
+
 function timelineDomEvent(type: string, detail: TimelineCommandEventDetail): Event {
   if (typeof globalThis.CustomEvent === "function") {
     return new globalThis.CustomEvent(type, { bubbles: true, detail });
@@ -225,6 +250,9 @@ class CssVisualObject {
     const scale = numericTimelineValue(props.scale);
     const rotation = numericTimelineValue(props.rotation);
     const opacity = numericTimelineValue(props.opacity);
+    const fontSize = numericTimelineValue(props.fontSize);
+    const borderWidth = numericTimelineValue(props.borderWidth);
+    const borderRadius = numericTimelineValue(props.borderRadius);
     if (width !== null) this.element.style.width = this.canvasUnit(width, "width");
     if (height !== null) this.element.style.height = this.canvasUnit(height, "height");
     if (x !== null) this.element.style.left = this.canvasUnit(x, "width");
@@ -232,6 +260,21 @@ class CssVisualObject {
     if (scale !== null) setStyleProperty(this.element, "--component-scale", String(scale));
     if (rotation !== null) setStyleProperty(this.element, "--component-rotation", `${rotation}deg`);
     if (opacity !== null) this.element.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+    if (fontSize !== null) setStyleProperty(this.element, "--component-font-size", `${fontSize}px`);
+    if (borderWidth !== null) setStyleProperty(this.element, "--component-border-width", `${Math.max(0, borderWidth)}px`);
+    if (borderRadius !== null) setStyleProperty(this.element, "--component-border-radius", `${Math.max(0, borderRadius)}px`);
+    const fontFamily = timelineTextValue(props.fontFamily);
+    const fontColor = timelineTextValue(props.fontColor);
+    const fillColor = timelineTextValue(props.fillColor);
+    const fillCss = timelineTextValue(props.fillCss);
+    const borderColor = timelineTextValue(props.borderColor);
+    const imageFit = timelineTextValue(props.imageObjectFit);
+    if (fontFamily !== null) setStyleProperty(this.element, "--component-font-family", fontFamily);
+    if (fontColor !== null) setStyleProperty(this.element, "--component-text-color", fontColor);
+    if (fillColor !== null) setStyleProperty(this.element, "--component-fill-color", fillColor);
+    if (fillCss !== null) setStyleProperty(this.element, "--component-fill-css", fillCss || fillColor || "transparent");
+    if (borderColor !== null) setStyleProperty(this.element, "--component-border-color", borderColor);
+    if (imageFit !== null) setStyleProperty(this.element, "--component-image-fit", imageFit);
     if (typeof props.visible === "boolean") {
       this.element.style.display = props.visible ? "" : "none";
     }
@@ -239,6 +282,23 @@ class CssVisualObject {
     if (text !== null) {
       const label = this.element.querySelector?.(".art-runtime-object-label");
       if (label) label.textContent = text;
+    }
+    if (hasTimelineProperty(props, "imageAssetId") || hasTimelineProperty(props, "imageDataUrl")) {
+      const imageSource = timelineImageSource(props);
+      const imageTint = timelineTextValue(props.imageTint);
+      this.element.classList?.toggle?.("has-image-mask", Boolean(imageSource));
+      this.element.classList?.toggle?.("has-tinted-image-mask", Boolean(imageSource && imageTint === "currentColor"));
+      if (imageSource) setStyleProperty(this.element, "--component-mask-url", cssUrl(imageSource));
+      else removeStyleProperty(this.element, "--component-mask-url");
+      const image = this.element.querySelector?.(".art-runtime-object-image") as HTMLImageElement | null | undefined;
+      if (image) {
+        image.hidden = !imageSource;
+        if (imageSource) {
+          if (image.getAttribute("src") !== imageSource) image.src = imageSource;
+        } else {
+          image.removeAttribute("src");
+        }
+      }
     }
   }
 

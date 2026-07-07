@@ -221,7 +221,25 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
             targetId: "component-a",
             keyframes: [
               { frame: 0, props: { x: 50, y: 25, width: 80, height: 20, scale: 0.5, opacity: 0.25, text: "Start" } },
-              { frame: 2, props: { x: 100, y: 50, width: 120, height: 40, scale: 1, opacity: 1, text: "Done" } }
+              {
+                frame: 2,
+                props: {
+                  x: 100,
+                  y: 50,
+                  width: 120,
+                  height: 40,
+                  scale: 1,
+                  opacity: 1,
+                  text: "Done",
+                  fontSize: 42,
+                  fontColor: "#ffffff",
+                  fontFamily: "Game UI",
+                  fillColor: "#ffe156",
+                  borderColor: "#17131f",
+                  borderWidth: 4,
+                  borderRadius: 12
+                }
+              }
             ]
           }
         ]
@@ -245,6 +263,13 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1");
     expect(element.style.opacity).toBe("1");
     expect(label.textContent).toBe("Done");
+    expect((element.style as unknown as Record<string, string>)["--component-font-size"]).toBe("42px");
+    expect((element.style as unknown as Record<string, string>)["--component-text-color"]).toBe("#ffffff");
+    expect((element.style as unknown as Record<string, string>)["--component-font-family"]).toBe("Game UI");
+    expect((element.style as unknown as Record<string, string>)["--component-fill-color"]).toBe("#ffe156");
+    expect((element.style as unknown as Record<string, string>)["--component-border-color"]).toBe("#17131f");
+    expect((element.style as unknown as Record<string, string>)["--component-border-width"]).toBe("4px");
+    expect((element.style as unknown as Record<string, string>)["--component-border-radius"]).toBe("12px");
   });
 
   it("dispatches authored timeline emit commands through the visual object", () => {

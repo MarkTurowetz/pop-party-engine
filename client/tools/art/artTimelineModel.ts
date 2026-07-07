@@ -183,15 +183,73 @@ export function removeTimelineCommandAt(timeline: TimelineDocument | null | unde
   return { ...current, commands: current.commands.filter((_, commandIndex) => commandIndex !== index) };
 }
 
-function transformPropsFor(component: ArtComponent): TimelineProperties {
-  return {
+function hasOwn(component: ArtComponent, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(component, key);
+}
+
+function numberProp(component: ArtComponent, key: string, fallback: number): number {
+  const value = Number((component as Record<string, unknown>)[key]);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function stringProp(component: ArtComponent, key: string): string | null {
+  const value = (component as Record<string, unknown>)[key];
+  if (value === undefined || value === null) return null;
+  return String(value);
+}
+
+function booleanProp(component: ArtComponent, key: string, fallback: boolean): boolean {
+  const value = (component as Record<string, unknown>)[key];
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function addOptionalString(props: TimelineProperties, component: ArtComponent, key: string): void {
+  if (!hasOwn(component, key)) return;
+  const value = stringProp(component, key);
+  if (value !== null) props[key] = value;
+}
+
+function addOptionalNumber(props: TimelineProperties, component: ArtComponent, key: string): void {
+  if (!hasOwn(component, key)) return;
+  props[key] = numberProp(component, key, 0);
+}
+
+function componentTimelinePropsFor(component: ArtComponent): TimelineProperties {
+  const props: TimelineProperties = {
     x: Number(component.x || 0),
     y: Number(component.y || 0),
     width: Number(component.width || 1),
     height: Number(component.height || 1),
     scale: Number(component.scale || 1),
-    rotation: Number(component.rotation || 0)
+    rotation: Number(component.rotation || 0),
+    opacity: numberProp(component, "opacity", 1),
+    visible: booleanProp(component, "visible", true)
   };
+
+  if (component.kind === "text" || component.kind === "badge") {
+    addOptionalString(props, component, "defaultText");
+    addOptionalString(props, component, "fontFamily");
+    addOptionalNumber(props, component, "fontSize");
+    addOptionalString(props, component, "fontColor");
+    if (hasOwn(component, "autoFitText")) props.autoFitText = booleanProp(component, "autoFitText", true);
+  }
+
+  if (component.kind === "shape" || component.kind === "container" || component.kind === "badge") {
+    addOptionalString(props, component, "shapeStyle");
+    addOptionalString(props, component, "fillColor");
+    addOptionalString(props, component, "fillCss");
+    addOptionalString(props, component, "borderColor");
+    addOptionalNumber(props, component, "borderWidth");
+    addOptionalNumber(props, component, "borderRadius");
+  }
+
+  if (component.kind === "shape") {
+    addOptionalString(props, component, "imageAssetId");
+    addOptionalString(props, component, "imageTint");
+    addOptionalString(props, component, "imageObjectFit");
+  }
+
+  return props;
 }
 
 function upsertKeyframe(track: TimelineTrack, keyframe: TimelineKeyframe): TimelineTrack {
@@ -211,7 +269,7 @@ export function addTransformKeyframe(
   const keyframe: TimelineKeyframe = {
     id: `key-${cleanTargetId}-${cleanFrameValue}`,
     frame: cleanFrameValue,
-    props: transformPropsFor(component)
+    props: componentTimelinePropsFor(component)
   };
   const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
   const nextTrack = existingTrack

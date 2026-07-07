@@ -94,15 +94,65 @@ describe("artTimelineModel", () => {
       width: 100,
       height: 50,
       scale: 1.2,
-      rotation: 8
+      rotation: 8,
+      fillColor: "#ffe156",
+      borderColor: "#17131f",
+      borderWidth: 4,
+      borderRadius: 12,
+      imageAssetId: "rex",
+      imageObjectFit: "contain"
     } as ArtComponent;
     const timeline = addTransformKeyframe({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, component, 5);
     expect(timeline.tracks).toHaveLength(1);
     expect(timeline.tracks[0]).toMatchObject({
       targetId: "card",
-      keyframes: [{ frame: 5, props: { x: 10, y: 20, width: 100, height: 50, scale: 1.2, rotation: 8 } }]
+      keyframes: [
+        {
+          frame: 5,
+          props: {
+            x: 10,
+            y: 20,
+            width: 100,
+            height: 50,
+            scale: 1.2,
+            rotation: 8,
+            opacity: 1,
+            visible: true,
+            fillColor: "#ffe156",
+            borderColor: "#17131f",
+            borderWidth: 4,
+            borderRadius: 12,
+            imageAssetId: "rex",
+            imageObjectFit: "contain"
+          }
+        }
+      ]
     });
     expect(removeTimelineKeyframe(timeline, "card", 5).tracks).toEqual([]);
+  });
+
+  it("captures text state when adding keyframes", () => {
+    const component = {
+      id: "title",
+      kind: "text",
+      width: 300,
+      height: 80,
+      defaultText: "Round One",
+      fontFamily: "Game UI",
+      fontSize: 42,
+      fontColor: "#ffffff",
+      autoFitText: true
+    } as ArtComponent;
+    const timeline = addTransformKeyframe({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, component, 2);
+    expect(timeline.tracks[0].keyframes[0].props).toMatchObject({
+      defaultText: "Round One",
+      fontFamily: "Game UI",
+      fontSize: 42,
+      fontColor: "#ffffff",
+      autoFitText: true,
+      opacity: 1,
+      visible: true
+    });
   });
 
   it("creates a default visibility timeline with known animation labels", () => {

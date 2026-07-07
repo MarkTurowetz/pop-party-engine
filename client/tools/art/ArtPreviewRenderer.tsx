@@ -78,10 +78,20 @@ function textFieldFor(component: ArtComponent, props: ArtPreviewRendererProps, k
   return fallback;
 }
 
-function artPreviewFontSize(component: ArtComponent, props: ArtPreviewRendererProps, text: string, width: number, height: number): number {
-  const fallbackSize = Number(textFieldFor(component, props, "fontSize", get(component, "fontSize") || 16));
-  const fontFamily = normalizeGameTextFontFamily(textFieldFor(component, props, "fontFamily", get(component, "fontFamily")));
-  const autoFitText = textFieldFor(component, props, "autoFitText", get(component, "autoFitText") !== false) !== false;
+function artPreviewFontSize(
+  component: ArtComponent,
+  props: ArtPreviewRendererProps,
+  text: string,
+  width: number,
+  height: number,
+  timelineOverride: Record<string, unknown> = {}
+): number {
+  const fallbackSize = Number(textFieldFor(component, props, "fontSize", timelineOverride.fontSize ?? get(component, "fontSize") ?? 16));
+  const fontFamily = normalizeGameTextFontFamily(
+    textFieldFor(component, props, "fontFamily", timelineOverride.fontFamily ?? get(component, "fontFamily"))
+  );
+  const autoFitText =
+    textFieldFor(component, props, "autoFitText", timelineOverride.autoFitText ?? get(component, "autoFitText") !== false) !== false;
   const layout = PartyGameTextFit.measureGameText({
     text,
     element: { ...component, width, height, fontSize: fallbackSize, fontFamily, autoFitText },
@@ -95,8 +105,10 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
   const assetUrls = props.assetUrlById || new Map<string, string>();
   const selectedIds = props.selectedIds || new Set<string>();
 
-  const imageSourceFor = (component: ArtComponent): string => {
-    return String(get(component, "imageDataUrl") || "") || assetUrls.get(String(get(component, "imageAssetId") || "")) || "";
+  const imageSourceFor = (component: ArtComponent, timelineOverride: Record<string, unknown> = {}): string => {
+    const imageDataUrl = String(timelineOverride.imageDataUrl ?? get(component, "imageDataUrl") ?? "");
+    const imageAssetId = String(timelineOverride.imageAssetId ?? get(component, "imageAssetId") ?? "");
+    return imageDataUrl || assetUrls.get(imageAssetId) || "";
   };
 
   const referencedCompositionFor = (component: ArtComponent, referencePath: Set<string>): ArtComposition | null => {
@@ -124,16 +136,17 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const height = liveTx?.height ?? Number(timelineValue("height", get(component, "height") || 1));
     const kind = component.kind;
     const isTextual = kind === "text" || kind === "badge";
-    const fillCss = String(get(component, "fillCss") || "");
-    const fillColor = String(get(component, "fillColor") || "transparent");
-    const borderColor = String(get(component, "borderColor") || "transparent");
-    const borderWidth = Number(get(component, "borderWidth") || 0);
+    const fillCss = String(timelineValue("fillCss", get(component, "fillCss") || ""));
+    const fillColor = String(timelineValue("fillColor", get(component, "fillColor") || "transparent"));
+    const borderColor = String(timelineValue("borderColor", get(component, "borderColor") || "transparent"));
+    const borderWidth = Number(timelineValue("borderWidth", get(component, "borderWidth") || 0));
     const scale = Number(timelineValue("scale", get(component, "scale") || 1));
     const rotation = liveTx?.rotation ?? Number(timelineValue("rotation", get(component, "rotation") || 0));
-    const imageUrl = componentSupportsImageMask(component) ? imageSourceFor(component) : "";
-    const objectFit = String(get(component, "imageObjectFit") || "cover");
+    const imageUrl = componentSupportsImageMask(component) ? imageSourceFor(component, timelineOverride) : "";
+    const objectFit = String(timelineValue("imageObjectFit", get(component, "imageObjectFit") || "cover"));
     const selected = interactive && selectedIds.has(component.id);
-    const tintWithCurrentColor = Boolean(imageUrl && get(component, "imageTint") === "currentColor");
+    const imageTint = String(timelineValue("imageTint", get(component, "imageTint") || ""));
+    const tintWithCurrentColor = Boolean(imageUrl && imageTint === "currentColor");
     const referencedComposition = referencedCompositionFor(component, referencePath);
     const referenceCanvas = referencedComposition?.canvas || { width, height };
     const referenceScaleX = width / Math.max(1, Number(referenceCanvas.width || width));
@@ -143,15 +156,15 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const clipsOwnContent = Boolean(imageUrl || isTextual);
     const textOverrideValue = timelineValue("defaultText", timelineValue("text", undefined));
     const textValue = textOverrideValue === undefined ? textValueFor(component, props) : String(textOverrideValue);
-    const fontFamily = normalizeGameTextFontFamily(textFieldFor(component, props, "fontFamily", get(component, "fontFamily")));
-    const fontSize = isTextual ? artPreviewFontSize(component, props, textValue, width, height) : 11;
+    const fontFamily = normalizeGameTextFontFamily(textFieldFor(component, props, "fontFamily", timelineValue("fontFamily", get(component, "fontFamily"))));
+    const fontSize = isTextual ? artPreviewFontSize(component, props, textValue, width, height, timelineOverride) : 11;
     const fill = fillColor === "currentColor" ? "currentColor" : fillColor;
     const background = tintWithCurrentColor
       ? (fill === "transparent" ? "currentColor" : fill || "currentColor")
       : imageUrl
         ? "transparent"
         : fillCss || (fill === "transparent" ? (transparentBase ? "transparent" : "rgba(255,255,255,0.06)") : fill);
-    const fontColor = String(textFieldFor(component, props, "fontColor", get(component, "fontColor") || "#17131f"));
+    const fontColor = String(textFieldFor(component, props, "fontColor", timelineValue("fontColor", get(component, "fontColor") || "#17131f")));
 
     const style: CSSProperties = {
       position: "absolute",
@@ -161,7 +174,10 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       height,
       transform: `scale(${scale}) rotate(${rotation}deg)`,
       transformOrigin: "center",
-      borderRadius: shapeBorderRadius(String(get(component, "shapeStyle") || "rounded"), Number(get(component, "borderRadius") || 0)),
+      borderRadius: shapeBorderRadius(
+        String(timelineValue("shapeStyle", get(component, "shapeStyle") || "rounded")),
+        Number(timelineValue("borderRadius", get(component, "borderRadius") || 0))
+      ),
       background,
       backgroundImage: imageUrl && !tintWithCurrentColor ? `url(${imageUrl})` : undefined,
       backgroundSize: imageUrl && !tintWithCurrentColor ? objectFit : undefined,
@@ -182,7 +198,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       alignItems: "center",
       justifyContent: "center",
       color:
-        fillColor === "currentColor" || get(component, "imageTint") === "currentColor"
+        fillColor === "currentColor" || imageTint === "currentColor"
           ? "var(--art-preview-current-color)"
           : fontColor,
       fontFamily: isTextual ? fontFamily : undefined,
@@ -218,8 +234,14 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
         {isTextual ? (
           <span
             style={{
-              overflowWrap: textFieldFor(component, props, "autoFitText", get(component, "autoFitText") !== false) !== false ? "normal" : "anywhere",
-              wordBreak: textFieldFor(component, props, "autoFitText", get(component, "autoFitText") !== false) !== false ? "keep-all" : "normal"
+              overflowWrap:
+                textFieldFor(component, props, "autoFitText", timelineOverride.autoFitText ?? get(component, "autoFitText") !== false) !== false
+                  ? "normal"
+                  : "anywhere",
+              wordBreak:
+                textFieldFor(component, props, "autoFitText", timelineOverride.autoFitText ?? get(component, "autoFitText") !== false) !== false
+                  ? "keep-all"
+                  : "normal"
             }}
           >
             {textValue}
