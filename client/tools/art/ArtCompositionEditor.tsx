@@ -41,6 +41,7 @@ import {
   updateTimelineLabel,
   updateTimelineSettings
 } from "./artTimelineModel";
+import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
 import { useArtCompositions } from "./useArtCompositions";
 import type {
   TimelineCommand,
@@ -106,11 +107,6 @@ type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
   | { kind: "keyframe"; targetId: string; frame: number };
-type TimelineTargetOption = {
-  id: string;
-  label: string;
-  detail: string;
-};
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -181,38 +177,6 @@ function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: T
       (command.event || "") === (previousCommand.event || "")
   );
   return matchingIndex >= 0 ? matchingIndex : Math.max(0, Math.min(timeline.commands.length - 1, fallbackIndex));
-}
-
-function timelineTrackLabel(targetId: string, component: ArtComponent | undefined): { title: string; detail: string } {
-  const matchedComponent = component ? findComponent([component], targetId) : undefined;
-  if (!matchedComponent) return { title: targetId, detail: "track target" };
-  const title = String(matchedComponent.name || matchedComponent.kind || targetId);
-  const detailParts = [String(matchedComponent.kind || "component"), matchedComponent.id === targetId ? "" : targetId].filter(Boolean);
-  return { title, detail: detailParts.join(" / ") || targetId };
-}
-
-function findComponent(components: ArtComponent[], id: string): ArtComponent | undefined {
-  for (const component of components) {
-    if (component.id === id) return component;
-    const found = component.children ? findComponent(component.children, id) : undefined;
-    if (found) return found;
-  }
-  return undefined;
-}
-
-function timelineTargetOptionsFor(component: ArtComponent | undefined): TimelineTargetOption[] {
-  if (!component) return [];
-  const options: TimelineTargetOption[] = [];
-  const visit = (item: ArtComponent, depth: number) => {
-    options.push({
-      id: item.id,
-      label: `${"  ".repeat(depth)}${String(item.name || item.kind || item.id)}`,
-      detail: `${String(item.kind || "component")} / ${item.id}`
-    });
-    for (const child of item.children || []) visit(child, depth + 1);
-  };
-  visit(component, 0);
-  return options;
 }
 
 function layerDropPlacement(event: ReactDragEvent<HTMLElement>): LayerDropPlacement {
@@ -395,7 +359,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
 
   const selectedComponent =
     composition && selectedComponentIds.size === 1
-      ? findComponent(composition.components || [], [...selectedComponentIds][0])
+      ? findTimelineTargetComponent(composition.components || [], [...selectedComponentIds][0])
       : undefined;
   const activeTimeline = (selectedComponent?.timeline || composition?.timeline || null) as TimelineDocument | null;
   const timelineFrameOverrides = useMemo(() => {
@@ -876,7 +840,7 @@ function ArtTimelinePanel({
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
     : component?.id || keyframeTargets[0]?.id || "";
-  const activeKeyframeTarget = component && activeKeyframeTargetId ? findComponent([component], activeKeyframeTargetId) : undefined;
+  const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId) : undefined;
 
   useEffect(() => {
     playerRef.current?.updateTimeline(current);
@@ -1284,11 +1248,11 @@ function ArtTimelinePanel({
             </div>
           ) : null}
           {current.tracks.map((track) => {
-            const trackLabel = timelineTrackLabel(track.targetId, component);
+            const trackLabel = timelineTargetLabel(track.targetId, component);
             return (
               <div className="art-timeline-lane" key={track.targetId}>
-                <div className="art-timeline-lane-label" title={`${trackLabel.title} (${track.targetId})`}>
-                  <span>{trackLabel.title}</span>
+                <div className="art-timeline-lane-label" title={`${trackLabel.label} (${track.targetId})`}>
+                  <span>{trackLabel.label}</span>
                   <small>{trackLabel.detail}</small>
                 </div>
                 <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
@@ -1573,16 +1537,19 @@ function ArtTimelinePanel({
         <div className="art-timeline-keyframes">
           <h4>Keyframes</h4>
           <ol className="flow-react-list art-timeline-list">
-            {current.tracks.flatMap((track) =>
-              track.keyframes.map((keyframe) => (
+            {current.tracks.flatMap((track) => {
+              const targetLabel = timelineTargetLabel(track.targetId, component);
+              return track.keyframes.map((keyframe) => (
                 <li key={`${track.targetId}-${keyframe.frame}`}>
                   <button
                     type="button"
                     aria-current={selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === keyframe.frame ? "true" : undefined}
                     onClick={() => selectKeyframe(track.targetId, keyframe.frame)}
                   >
-                    <span>{track.targetId}</span>
-                    <small>Frame {keyframe.frame}</small>
+                    <span>{targetLabel.label}</span>
+                    <small>
+                      Frame {keyframe.frame} / {targetLabel.detail}
+                    </small>
                   </button>
                   <button
                     type="button"
@@ -1594,8 +1561,8 @@ function ArtTimelinePanel({
                     Remove
                   </button>
                 </li>
-              ))
-            )}
+              ));
+            })}
           </ol>
         </div>
       ) : null}
@@ -1604,7 +1571,11 @@ function ArtTimelinePanel({
           <h4>Selected Keyframe</h4>
           <label className="flow-react-field">
             <span>Target</span>
-            <input type="text" value={selectedTimelineKeyframe.trackTargetId} readOnly />
+            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component).label} readOnly />
+          </label>
+          <label className="flow-react-field">
+            <span>Target Detail</span>
+            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component).detail} readOnly />
           </label>
           <label className="flow-react-field">
             <span>Frame</span>
