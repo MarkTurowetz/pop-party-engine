@@ -5,6 +5,7 @@ import {
   type TimelineDocument,
   type TimelineKeyframe,
   type TimelineProperties,
+  type TimelinePropertyValue,
   type TimelineTrack
 } from "../../../shared/timeline-model";
 import type { ArtComponent } from "../../types/game-data";
@@ -257,6 +258,20 @@ function upsertKeyframe(track: TimelineTrack, keyframe: TimelineKeyframe): Timel
   return { ...track, keyframes: [...withoutFrame, keyframe].sort((a, b) => a.frame - b.frame) };
 }
 
+function cleanTimelineValue(value: unknown): TimelinePropertyValue | undefined {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+  return undefined;
+}
+
+function cleanTimelineProps(props: TimelineProperties): TimelineProperties {
+  const next: TimelineProperties = {};
+  for (const [key, value] of Object.entries(props || {})) {
+    const cleanValue = cleanTimelineValue(value);
+    if (cleanValue !== undefined) next[key] = cleanValue;
+  }
+  return next;
+}
+
 export function addTransformKeyframe(
   timeline: TimelineDocument | null | undefined,
   component: ArtComponent,
@@ -279,6 +294,34 @@ export function addTransformKeyframe(
     ...current,
     tracks: [...current.tracks.filter((track) => track.targetId !== cleanTargetId), nextTrack]
   });
+}
+
+export function updateTimelineKeyframe(
+  timeline: TimelineDocument | null | undefined,
+  targetId: string,
+  frame: number,
+  patch: Partial<Pick<TimelineKeyframe, "frame" | "props">>
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const cleanTargetId = String(targetId || "").trim();
+  if (!cleanTargetId) return current;
+  const currentFrame = cleanFrame(frame, current.frameCount);
+  let changed = false;
+  const tracks = current.tracks.map((track) => {
+    if (track.targetId !== cleanTargetId) return track;
+    const existing = track.keyframes.find((keyframe) => keyframe.frame === currentFrame);
+    if (!existing) return track;
+    changed = true;
+    const nextFrame = patch.frame === undefined ? existing.frame : cleanFrame(patch.frame, current.frameCount);
+    const nextKeyframe: TimelineKeyframe = {
+      ...existing,
+      id: existing.id || `key-${cleanTargetId}-${nextFrame}`,
+      frame: nextFrame,
+      props: patch.props ? cleanTimelineProps(patch.props) : existing.props
+    };
+    return upsertKeyframe({ ...track, keyframes: track.keyframes.filter((keyframe) => keyframe.frame !== currentFrame) }, nextKeyframe);
+  });
+  return changed ? sortTimeline({ ...current, tracks }) : current;
 }
 
 export function removeTimelineKeyframe(

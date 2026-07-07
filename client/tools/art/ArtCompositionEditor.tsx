@@ -35,10 +35,11 @@ import {
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineFrames,
+  updateTimelineKeyframe,
   updateTimelineSettings
 } from "./artTimelineModel";
 import { useArtCompositions } from "./useArtCompositions";
-import type { TimelineDocument } from "../../../shared/timeline-model";
+import type { TimelineDocument, TimelineKeyframe, TimelineProperties, TimelinePropertyValue } from "../../../shared/timeline-model";
 import { TimelinePlayer, timelineSnapshotAt } from "../../runtime/timelinePlayer";
 
 export interface ArtCompositionEditorProps {
@@ -58,6 +59,31 @@ const ADD_COMPONENT_LABELS: Record<string, string> = {
   container: "Container",
   reference: "Prefab Ref"
 };
+const TIMELINE_PROPERTY_SUGGESTIONS = [
+  "x",
+  "y",
+  "width",
+  "height",
+  "scale",
+  "rotation",
+  "opacity",
+  "visible",
+  "defaultText",
+  "text",
+  "fontSize",
+  "fontColor",
+  "fontFamily",
+  "autoFitText",
+  "fillColor",
+  "fillCss",
+  "borderColor",
+  "borderWidth",
+  "borderRadius",
+  "shapeStyle",
+  "imageAssetId",
+  "imageTint",
+  "imageObjectFit"
+];
 type LayerDropPlacement = "before" | "after";
 
 type LayerDropTarget = {
@@ -67,6 +93,39 @@ type LayerDropTarget = {
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
+}
+
+function timelineValueInput(value: TimelinePropertyValue | undefined): string {
+  if (value === null || value === undefined) return "";
+  return String(value);
+}
+
+function timelinePropertyType(value: TimelinePropertyValue | undefined): "number" | "boolean" | "string" {
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "boolean";
+  return "string";
+}
+
+function coerceTimelinePropertyValue(value: string, type: "number" | "boolean" | "string"): TimelinePropertyValue {
+  if (type === "number") {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+  }
+  if (type === "boolean") return value === "true";
+  return value;
+}
+
+function findTimelineKeyframe(
+  timeline: TimelineDocument,
+  selection: { targetId: string; frame: number } | null
+): { trackTargetId: string; keyframe: TimelineKeyframe } | null {
+  if (!selection) return null;
+  for (const track of timeline.tracks) {
+    if (track.targetId !== selection.targetId) continue;
+    const keyframe = track.keyframes.find((item) => item.frame === selection.frame);
+    if (keyframe) return { trackTargetId: track.targetId, keyframe };
+  }
+  return null;
 }
 
 function findComponent(components: ArtComponent[], id: string): ArtComponent | undefined {
@@ -707,8 +766,13 @@ function ArtTimelinePanel({
   const [commandEvent, setCommandEvent] = useState("");
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
+  const [newPropertyName, setNewPropertyName] = useState("");
+  const [newPropertyType, setNewPropertyType] = useState<"number" | "boolean" | "string">("number");
+  const [newPropertyValue, setNewPropertyValue] = useState("");
   const playerRef = useRef<TimelinePlayer | null>(null);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
+  const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
 
   useEffect(() => {
     playerRef.current?.updateTimeline(current);
@@ -746,6 +810,37 @@ function ArtTimelinePanel({
     stopPlayback();
     onChange(nextTimeline);
     previewFrame(Math.max(0, Math.min(Math.max(0, nextTimeline.frameCount - 1), nextFrame)));
+  }
+
+  function selectKeyframe(targetId: string, keyframeFrame: number): void {
+    stopPlayback();
+    setSelectedKeyframe({ targetId, frame: keyframeFrame });
+    previewFrame(keyframeFrame);
+  }
+
+  function updateSelectedKeyframe(patch: Partial<Pick<TimelineKeyframe, "frame" | "props">>): void {
+    if (!selectedTimelineKeyframe) return;
+    const nextFrame = patch.frame === undefined ? selectedTimelineKeyframe.keyframe.frame : Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(patch.frame) || 0)));
+    const nextTimeline = updateTimelineKeyframe(current, selectedTimelineKeyframe.trackTargetId, selectedTimelineKeyframe.keyframe.frame, patch);
+    setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: nextFrame });
+    applyTimelineFrameEdit(nextTimeline, nextFrame);
+  }
+
+  function updateSelectedKeyframeProp(key: string, value: TimelinePropertyValue): void {
+    if (!selectedTimelineKeyframe) return;
+    updateSelectedKeyframe({
+      props: {
+        ...selectedTimelineKeyframe.keyframe.props,
+        [key]: value
+      }
+    });
+  }
+
+  function removeSelectedKeyframeProp(key: string): void {
+    if (!selectedTimelineKeyframe) return;
+    const nextProps: TimelineProperties = { ...selectedTimelineKeyframe.keyframe.props };
+    delete nextProps[key];
+    updateSelectedKeyframe({ props: nextProps });
   }
 
   return (
@@ -855,7 +950,16 @@ function ArtTimelinePanel({
         >
           Add Label
         </button>
-        <button type="button" disabled={!component} onClick={() => component && onChange(addTransformKeyframe(current, component, cleanFrame))}>
+        <button
+          type="button"
+          disabled={!component}
+          onClick={() => {
+            if (!component) return;
+            const nextTimeline = addTransformKeyframe(current, component, cleanFrame);
+            onChange(nextTimeline);
+            setSelectedKeyframe({ targetId: component.id, frame: cleanFrame });
+          }}
+        >
           Add Keyframe
         </button>
       </div>
@@ -948,15 +1052,127 @@ function ArtTimelinePanel({
             {current.tracks.flatMap((track) =>
               track.keyframes.map((keyframe) => (
                 <li key={`${track.targetId}-${keyframe.frame}`}>
-                  <span>{track.targetId}</span>
-                  <small>Frame {keyframe.frame}</small>
-                  <button type="button" onClick={() => onChange(removeTimelineKeyframe(current, track.targetId, keyframe.frame))}>
+                  <button
+                    type="button"
+                    aria-current={selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === keyframe.frame ? "true" : undefined}
+                    onClick={() => selectKeyframe(track.targetId, keyframe.frame)}
+                  >
+                    <span>{track.targetId}</span>
+                    <small>Frame {keyframe.frame}</small>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(removeTimelineKeyframe(current, track.targetId, keyframe.frame));
+                      if (selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === keyframe.frame) setSelectedKeyframe(null);
+                    }}
+                  >
                     Remove
                   </button>
                 </li>
               ))
             )}
           </ol>
+        </div>
+      ) : null}
+      {selectedTimelineKeyframe ? (
+        <div className="art-timeline-keyframe-editor">
+          <h4>Selected Keyframe</h4>
+          <label className="flow-react-field">
+            <span>Target</span>
+            <input type="text" value={selectedTimelineKeyframe.trackTargetId} readOnly />
+          </label>
+          <label className="flow-react-field">
+            <span>Frame</span>
+            <input
+              type="number"
+              min={0}
+              max={Math.max(0, current.frameCount - 1)}
+              value={selectedTimelineKeyframe.keyframe.frame}
+              onChange={(event) => updateSelectedKeyframe({ frame: Number(event.target.value) })}
+            />
+          </label>
+          <ol className="flow-react-list art-timeline-property-list">
+            {Object.entries(selectedTimelineKeyframe.keyframe.props).map(([key, value]) => {
+              const valueType = timelinePropertyType(value);
+              return (
+                <li key={key}>
+                  <label className="flow-react-field">
+                    <span>{key}</span>
+                    {valueType === "boolean" ? (
+                      <select value={String(value)} onChange={(event) => updateSelectedKeyframeProp(key, event.target.value === "true")}>
+                        <option value="true">True</option>
+                        <option value="false">False</option>
+                      </select>
+                    ) : (
+                      <input
+                        type={valueType === "number" ? "number" : "text"}
+                        step={valueType === "number" ? "0.01" : undefined}
+                        value={timelineValueInput(value)}
+                        onChange={(event) => updateSelectedKeyframeProp(key, coerceTimelinePropertyValue(event.target.value, valueType))}
+                      />
+                    )}
+                  </label>
+                  <button type="button" onClick={() => removeSelectedKeyframeProp(key)}>
+                    Clear
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <div className="art-timeline-add-property">
+            <label className="flow-react-field">
+              <span>Property</span>
+              <input
+                type="text"
+                list="art-timeline-property-suggestions"
+                value={newPropertyName}
+                placeholder="opacity"
+                onChange={(event) => setNewPropertyName(event.target.value)}
+              />
+            </label>
+            <label className="flow-react-field">
+              <span>Type</span>
+              <select value={newPropertyType} onChange={(event) => setNewPropertyType(event.target.value as "number" | "boolean" | "string")}>
+                <option value="number">Number</option>
+                <option value="boolean">Boolean</option>
+                <option value="string">String</option>
+              </select>
+            </label>
+            <label className="flow-react-field">
+              <span>Value</span>
+              {newPropertyType === "boolean" ? (
+                <select value={newPropertyValue || "true"} onChange={(event) => setNewPropertyValue(event.target.value)}>
+                  <option value="true">True</option>
+                  <option value="false">False</option>
+                </select>
+              ) : (
+                <input
+                  type={newPropertyType === "number" ? "number" : "text"}
+                  step={newPropertyType === "number" ? "0.01" : undefined}
+                  value={newPropertyValue}
+                  onChange={(event) => setNewPropertyValue(event.target.value)}
+                />
+              )}
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const propertyName = newPropertyName.trim();
+                if (!propertyName) return;
+                updateSelectedKeyframeProp(propertyName, coerceTimelinePropertyValue(newPropertyValue || (newPropertyType === "boolean" ? "true" : ""), newPropertyType));
+                setNewPropertyName("");
+                setNewPropertyValue("");
+              }}
+            >
+              Add Property
+            </button>
+            <datalist id="art-timeline-property-suggestions">
+              {TIMELINE_PROPERTY_SUGGESTIONS.map((property) => (
+                <option value={property} key={property} />
+              ))}
+            </datalist>
+          </div>
         </div>
       ) : null}
     </section>

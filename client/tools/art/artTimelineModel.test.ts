@@ -11,6 +11,7 @@ import {
   removeTimelineFrames,
   removeTimelineKeyframe,
   removeTimelineLabel,
+  updateTimelineKeyframe,
   updateTimelineSettings
 } from "./artTimelineModel";
 
@@ -153,6 +154,25 @@ describe("artTimelineModel", () => {
       opacity: 1,
       visible: true
     });
+  });
+
+  it("updates keyframe frames and properties", () => {
+    const timeline = addTransformKeyframe(
+      { fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] },
+      { id: "title", kind: "text", defaultText: "One", width: 100, height: 40 } as ArtComponent,
+      2
+    );
+    const result = updateTimelineKeyframe(timeline, "title", 2, {
+      frame: 6,
+      props: { defaultText: "Two", visible: false, fontSize: 28, nested: { ignored: true } as never }
+    });
+    expect(result.tracks[0].keyframes).toEqual([
+      {
+        id: "key-title-2",
+        frame: 6,
+        props: { defaultText: "Two", visible: false, fontSize: 28 }
+      }
+    ]);
   });
 
   it("creates a default visibility timeline with known animation labels", () => {
