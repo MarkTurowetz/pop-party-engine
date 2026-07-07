@@ -12,7 +12,9 @@ import {
   removeTimelineFrames,
   removeTimelineKeyframe,
   removeTimelineLabel,
+  updateTimelineCommandAt,
   updateTimelineKeyframe,
+  updateTimelineLabel,
   updateTimelineSettings
 } from "./artTimelineModel";
 
@@ -34,6 +36,21 @@ describe("artTimelineModel", () => {
     expect(removeTimelineLabel(second, "appear").labels).toEqual([]);
   });
 
+  it("updates labels by name and keeps label names unique", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 20,
+      labels: [
+        { name: "appear", frame: 2 },
+        { name: "park", frame: 0 }
+      ],
+      commands: [],
+      tracks: []
+    };
+    const renamed = updateTimelineLabel(timeline, "appear", { name: "park", frame: 7 });
+    expect(renamed.labels).toEqual([{ name: "park", frame: 7 }]);
+  });
+
   it("adds stop commands and clamps frames when settings change", () => {
     const withStop = addStopCommand({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, 18);
     expect(withStop.commands[0]).toMatchObject({ frame: 18, type: "stop" });
@@ -49,6 +66,24 @@ describe("artTimelineModel", () => {
     const withEmit = addTimelineCommand(timeline, 8, { type: "emit", event: "pop-name" });
     expect(withEmit.commands[0]).toMatchObject({ frame: 4, type: "gotoAndPlay", target: "appear", event: "ignored" });
     expect(withEmit.commands[1]).toMatchObject({ frame: 8, type: "emit", event: "pop-name" });
+  });
+
+  it("updates timeline commands by normalized list index", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [
+        { id: "a", frame: 2, type: "stop" },
+        { id: "b", frame: 8, type: "emit", event: "old" }
+      ],
+      tracks: []
+    };
+    const result = updateTimelineCommandAt(timeline, 1, { frame: 4, type: "gotoAndStop", target: "appear", event: "" });
+    expect(result.commands).toEqual([
+      { id: "a", frame: 2, type: "stop" },
+      { id: "b", frame: 4, type: "gotoAndStop", target: "appear" }
+    ]);
   });
 
   it("inserts frames and shifts timeline data at or after the insertion point", () => {

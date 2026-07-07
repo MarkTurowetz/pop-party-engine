@@ -36,7 +36,9 @@ import {
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineFrames,
+  updateTimelineCommandAt,
   updateTimelineKeyframe,
+  updateTimelineLabel,
   updateTimelineSettings
 } from "./artTimelineModel";
 import { useArtCompositions } from "./useArtCompositions";
@@ -98,6 +100,7 @@ type LayerDropTarget = {
   id: string;
   placement: LayerDropPlacement;
 };
+type TimelineMarkerSelection = { kind: "label"; name: string } | { kind: "command"; index: number };
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -140,8 +143,8 @@ function timelineLabelsAtFrame(timeline: TimelineDocument, frame: number): Timel
   return timeline.labels.filter((label) => label.frame === frame);
 }
 
-function timelineCommandsAtFrame(timeline: TimelineDocument, frame: number): TimelineCommand[] {
-  return timeline.commands.filter((command) => command.frame === frame);
+function timelineCommandsAtFrame(timeline: TimelineDocument, frame: number): { command: TimelineCommand; index: number }[] {
+  return timeline.commands.map((command, index) => ({ command, index })).filter(({ command }) => command.frame === frame);
 }
 
 function timelineCommandLabel(command: TimelineCommand): string {
@@ -795,6 +798,7 @@ function ArtTimelinePanel({
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
+  const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
   const [copiedKeyframe, setCopiedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [newPropertyName, setNewPropertyName] = useState("");
   const [newPropertyType, setNewPropertyType] = useState<"number" | "boolean" | "string">("number");
@@ -802,6 +806,15 @@ function ArtTimelinePanel({
   const playerRef = useRef<TimelinePlayer | null>(null);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
+  const selectedTimelineMarker = useMemo(() => {
+    if (!selectedMarker) return null;
+    if (selectedMarker.kind === "label") {
+      const label = current.labels.find((item) => item.name === selectedMarker.name);
+      return label ? { kind: "label" as const, label } : null;
+    }
+    const command = current.commands[selectedMarker.index];
+    return command ? { kind: "command" as const, command, index: selectedMarker.index } : null;
+  }, [current, selectedMarker]);
   const visibleTimelineFrameCount = Math.min(current.frameCount, 60);
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
 
@@ -845,8 +858,48 @@ function ArtTimelinePanel({
 
   function selectKeyframe(targetId: string, keyframeFrame: number): void {
     stopPlayback();
+    setSelectedMarker(null);
     setSelectedKeyframe({ targetId, frame: keyframeFrame });
     previewFrame(keyframeFrame);
+  }
+
+  function selectTimelineMarker(selection: TimelineMarkerSelection, markerFrame: number): void {
+    stopPlayback();
+    setSelectedKeyframe(null);
+    setSelectedMarker(selection);
+    previewFrame(markerFrame);
+  }
+
+  function updateSelectedMarkerFrame(nextFrame: number): void {
+    if (!selectedTimelineMarker) return;
+    const normalizedFrame = Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(nextFrame) || 0)));
+    if (selectedTimelineMarker.kind === "label") {
+      const nextTimeline = updateTimelineLabel(current, selectedTimelineMarker.label.name, { frame: normalizedFrame });
+      onChange(nextTimeline);
+      previewFrame(normalizedFrame);
+      return;
+    }
+    const nextTimeline = updateTimelineCommandAt(current, selectedTimelineMarker.index, { frame: normalizedFrame });
+    onChange(nextTimeline);
+    const nextIndex = nextTimeline.commands.findIndex((command) => command.id && command.id === selectedTimelineMarker.command.id);
+    setSelectedMarker({ kind: "command", index: nextIndex >= 0 ? nextIndex : selectedTimelineMarker.index });
+    previewFrame(normalizedFrame);
+  }
+
+  function updateSelectedLabelName(name: string): void {
+    if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "label") return;
+    const nextTimeline = updateTimelineLabel(current, selectedTimelineMarker.label.name, { name });
+    const nextName = name.trim() || selectedTimelineMarker.label.name;
+    onChange(nextTimeline);
+    setSelectedMarker({ kind: "label", name: nextName });
+  }
+
+  function updateSelectedCommand(patch: Partial<Pick<TimelineCommand, "type" | "target" | "event">>): void {
+    if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "command") return;
+    const nextTimeline = updateTimelineCommandAt(current, selectedTimelineMarker.index, patch);
+    onChange(nextTimeline);
+    const nextIndex = nextTimeline.commands.findIndex((command) => command.id && command.id === selectedTimelineMarker.command.id);
+    setSelectedMarker({ kind: "command", index: nextIndex >= 0 ? nextIndex : selectedTimelineMarker.index });
   }
 
   function updateSelectedKeyframe(patch: Partial<Pick<TimelineKeyframe, "frame" | "props">>): void {
@@ -1016,8 +1069,11 @@ function ArtTimelinePanel({
                       className="art-timeline-lane-frame"
                       aria-current={cleanFrame === index ? "true" : undefined}
                       data-art-timeline-has-label={labels.length ? "true" : "false"}
+                      data-art-timeline-marker-selected={
+                        labels.some((label) => selectedMarker?.kind === "label" && selectedMarker.name === label.name) ? "true" : "false"
+                      }
                       title={labels.length ? `Frame ${index}: ${labels.map((label) => label.name).join(", ")}` : `Preview frame ${index}`}
-                      onClick={() => previewFrame(index)}
+                      onClick={() => (labels[0] ? selectTimelineMarker({ kind: "label", name: labels[0].name }, index) : previewFrame(index))}
                     >
                       {labels.length ? <span className="art-timeline-marker-pill">{labels.map((label) => label.name).join(", ")}</span> : null}
                     </button>
@@ -1041,15 +1097,18 @@ function ArtTimelinePanel({
                       className="art-timeline-lane-frame"
                       aria-current={cleanFrame === index ? "true" : undefined}
                       data-art-timeline-has-command={commands.length ? "true" : "false"}
+                      data-art-timeline-marker-selected={
+                        commands.some(({ index: commandIndex }) => selectedMarker?.kind === "command" && selectedMarker.index === commandIndex) ? "true" : "false"
+                      }
                       title={
                         commands.length
-                          ? `Frame ${index}: ${commands.map((command) => timelineCommandTitle(command)).join(", ")}`
+                          ? `Frame ${index}: ${commands.map(({ command }) => timelineCommandTitle(command)).join(", ")}`
                           : `Preview frame ${index}`
                       }
-                      onClick={() => previewFrame(index)}
+                      onClick={() => (commands[0] ? selectTimelineMarker({ kind: "command", index: commands[0].index }, index) : previewFrame(index))}
                     >
                       {commands.length ? (
-                        <span className="art-timeline-marker-pill">{commands.map((command) => timelineCommandLabel(command)).join(", ")}</span>
+                        <span className="art-timeline-marker-pill">{commands.map(({ command }) => timelineCommandLabel(command)).join(", ")}</span>
                       ) : null}
                     </button>
                   );
@@ -1099,6 +1158,8 @@ function ArtTimelinePanel({
           onClick={() => {
             const nextLabel = labelName.trim() || `Frame ${cleanFrame}`;
             onChange(addTimelineLabel(current, cleanFrame, nextLabel));
+            setSelectedKeyframe(null);
+            setSelectedMarker({ kind: "label", name: nextLabel });
             setLabelName("");
           }}
         >
@@ -1111,6 +1172,7 @@ function ArtTimelinePanel({
             if (!component) return;
             const nextTimeline = addTransformKeyframe(current, component, cleanFrame);
             onChange(nextTimeline);
+            setSelectedMarker(null);
             setSelectedKeyframe({ targetId: component.id, frame: cleanFrame });
           }}
         >
@@ -1147,7 +1209,17 @@ function ArtTimelinePanel({
         <button
           type="button"
           onClick={() => {
-            onChange(addTimelineCommand(current, cleanFrame, { type: commandType, target: commandTarget, event: commandEvent }));
+            const nextTimeline = addTimelineCommand(current, cleanFrame, { type: commandType, target: commandTarget, event: commandEvent });
+            const selectedCommandIndex = nextTimeline.commands.findIndex(
+              (command) =>
+                command.frame === cleanFrame &&
+                command.type === commandType &&
+                (command.target || "") === commandTarget.trim() &&
+                (command.event || "") === commandEvent.trim()
+            );
+            onChange(nextTimeline);
+            setSelectedKeyframe(null);
+            if (selectedCommandIndex >= 0) setSelectedMarker({ kind: "command", index: selectedCommandIndex });
             setCommandEvent("");
             if (commandType === "stop") setCommandTarget("");
           }}
@@ -1167,9 +1239,21 @@ function ArtTimelinePanel({
             <ol className="flow-react-list art-timeline-list">
               {current.labels.map((label) => (
                 <li key={label.name}>
-                  <span>{label.name}</span>
+                  <button
+                    type="button"
+                    aria-current={selectedMarker?.kind === "label" && selectedMarker.name === label.name ? "true" : undefined}
+                    onClick={() => selectTimelineMarker({ kind: "label", name: label.name }, label.frame)}
+                  >
+                    <span>{label.name}</span>
+                  </button>
                   <small>Frame {label.frame}</small>
-                  <button type="button" onClick={() => onChange(removeTimelineLabel(current, label.name))}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(removeTimelineLabel(current, label.name));
+                      if (selectedMarker?.kind === "label" && selectedMarker.name === label.name) setSelectedMarker(null);
+                    }}
+                  >
                     Remove
                   </button>
                 </li>
@@ -1185,13 +1269,25 @@ function ArtTimelinePanel({
             <ol className="flow-react-list art-timeline-list">
               {current.commands.map((command, index) => (
                 <li key={command.id || `${command.type}-${command.frame}-${index}`}>
-                  <span>{command.type}</span>
+                  <button
+                    type="button"
+                    aria-current={selectedMarker?.kind === "command" && selectedMarker.index === index ? "true" : undefined}
+                    onClick={() => selectTimelineMarker({ kind: "command", index }, command.frame)}
+                  >
+                    <span>{command.type}</span>
+                  </button>
                   <small>
                     Frame {command.frame}
                     {command.target ? ` -> ${command.target}` : ""}
                     {command.event ? ` / ${command.event}` : ""}
                   </small>
-                  <button type="button" onClick={() => onChange(removeTimelineCommandAt(current, index))}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(removeTimelineCommandAt(current, index));
+                      if (selectedMarker?.kind === "command" && selectedMarker.index === index) setSelectedMarker(null);
+                    }}
+                  >
                     Remove
                   </button>
                 </li>
@@ -1202,6 +1298,82 @@ function ArtTimelinePanel({
           )}
         </div>
       </div>
+      {selectedTimelineMarker ? (
+        <div className="art-timeline-marker-editor">
+          <h4>{selectedTimelineMarker.kind === "label" ? "Selected Label" : "Selected Command"}</h4>
+          {selectedTimelineMarker.kind === "label" ? (
+            <>
+              <label className="flow-react-field">
+                <span>Name</span>
+                <input type="text" value={selectedTimelineMarker.label.name} onChange={(event) => updateSelectedLabelName(event.target.value)} />
+              </label>
+              <label className="flow-react-field">
+                <span>Frame</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={Math.max(0, current.frameCount - 1)}
+                  value={selectedTimelineMarker.label.frame}
+                  onChange={(event) => updateSelectedMarkerFrame(Number(event.target.value))}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(removeTimelineLabel(current, selectedTimelineMarker.label.name));
+                  setSelectedMarker(null);
+                }}
+              >
+                Remove Label
+              </button>
+            </>
+          ) : (
+            <>
+              <label className="flow-react-field">
+                <span>Command</span>
+                <select value={selectedTimelineMarker.command.type} onChange={(event) => updateSelectedCommand({ type: event.target.value })}>
+                  <option value="stop">Stop</option>
+                  <option value="gotoAndPlay">Go To And Play</option>
+                  <option value="gotoAndStop">Go To And Stop</option>
+                  <option value="emit">Emit Event</option>
+                </select>
+              </label>
+              <label className="flow-react-field">
+                <span>Frame</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={Math.max(0, current.frameCount - 1)}
+                  value={selectedTimelineMarker.command.frame}
+                  onChange={(event) => updateSelectedMarkerFrame(Number(event.target.value))}
+                />
+              </label>
+              <label className="flow-react-field">
+                <span>Target Label</span>
+                <input
+                  type="text"
+                  list="art-timeline-labels"
+                  value={selectedTimelineMarker.command.target || ""}
+                  onChange={(event) => updateSelectedCommand({ target: event.target.value })}
+                />
+              </label>
+              <label className="flow-react-field">
+                <span>Event</span>
+                <input type="text" value={selectedTimelineMarker.command.event || ""} onChange={(event) => updateSelectedCommand({ event: event.target.value })} />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(removeTimelineCommandAt(current, selectedTimelineMarker.index));
+                  setSelectedMarker(null);
+                }}
+              >
+                Remove Command
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
       {current.tracks.length ? (
         <div className="art-timeline-keyframes">
           <h4>Keyframes</h4>

@@ -151,6 +151,21 @@ export function removeTimelineLabel(timeline: TimelineDocument | null | undefine
   return { ...current, labels: current.labels.filter((label) => label.name !== name) };
 }
 
+export function updateTimelineLabel(
+  timeline: TimelineDocument | null | undefined,
+  currentName: string,
+  patch: Partial<Pick<TimelineDocument["labels"][number], "name" | "frame">>
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const existing = current.labels.find((label) => label.name === currentName);
+  if (!existing) return current;
+  const nextName = patch.name === undefined ? existing.name : cleanName(patch.name, existing.name);
+  const nextFrame = patch.frame === undefined ? existing.frame : cleanFrame(patch.frame, current.frameCount);
+  const nextLabels = current.labels.filter((label) => label.name !== currentName && label.name !== nextName);
+  nextLabels.push({ name: nextName, frame: nextFrame });
+  return sortTimeline({ ...current, labels: nextLabels });
+}
+
 export function addStopCommand(timeline: TimelineDocument | null | undefined, frame: number): TimelineDocument {
   return addTimelineCommand(timeline, frame, { type: "stop" });
 }
@@ -182,6 +197,31 @@ export function removeTimelineCommand(timeline: TimelineDocument | null | undefi
 export function removeTimelineCommandAt(timeline: TimelineDocument | null | undefined, index: number): TimelineDocument {
   const current = artTimelineOrDefault(timeline);
   return { ...current, commands: current.commands.filter((_, commandIndex) => commandIndex !== index) };
+}
+
+export function updateTimelineCommandAt(
+  timeline: TimelineDocument | null | undefined,
+  index: number,
+  patch: Partial<Pick<TimelineCommand, "frame" | "type" | "target" | "event">>
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  if (index < 0 || index >= current.commands.length) return current;
+  const commands = current.commands.map((command, commandIndex) => {
+    if (commandIndex !== index) return command;
+    const nextCommand: TimelineCommand = {
+      ...command,
+      frame: patch.frame === undefined ? command.frame : cleanFrame(patch.frame, current.frameCount),
+      type: patch.type === undefined ? command.type : cleanName(patch.type, command.type || "stop")
+    };
+    const target = patch.target === undefined ? command.target || "" : cleanName(patch.target, "");
+    const event = patch.event === undefined ? command.event || "" : cleanName(patch.event, "");
+    if (target) nextCommand.target = target;
+    else delete nextCommand.target;
+    if (event) nextCommand.event = event;
+    else delete nextCommand.event;
+    return nextCommand;
+  });
+  return sortTimeline({ ...current, commands });
 }
 
 function hasOwn(component: ArtComponent, key: string): boolean {

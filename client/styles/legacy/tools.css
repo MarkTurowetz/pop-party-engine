@@ -1544,6 +1544,11 @@ body.tool-dashboard-mode .layout-react-shell {
   background: var(--cyan);
 }
 
+.art-timeline-lane-frame[data-art-timeline-marker-selected="true"] {
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
+}
+
 .art-timeline-keyframe-dot {
   width: 8px;
   height: 8px;
@@ -1597,6 +1602,17 @@ body.tool-dashboard-mode .layout-react-shell {
   align-items: center;
 }
 
+.art-timeline-list li > button:first-child {
+  min-width: 0;
+  justify-content: start;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.art-timeline-list li > button:first-child[aria-current="true"] {
+  background: var(--cyan);
+}
+
 .art-timeline-list span {
   min-width: 0;
   overflow: hidden;
@@ -1605,6 +1621,29 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-list small {
   white-space: nowrap;
+}
+
+.art-timeline-marker-editor,
+.art-timeline-keyframe-editor {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.art-timeline-marker-editor {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+
+.art-timeline-marker-editor h4 {
+  grid-column: 1 / -1;
+}
+
+.art-timeline-marker-editor .flow-react-field {
+  min-width: 0;
 }
 
 .art-replacement-drawer {
