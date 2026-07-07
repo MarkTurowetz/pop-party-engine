@@ -1393,6 +1393,93 @@ body.tool-dashboard-mode .layout-react-shell {
   box-shadow: 0 4px 0 var(--cyan);
 }
 
+.art-timeline-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 3px solid rgba(23, 19, 31, 0.18);
+}
+
+.art-timeline-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.art-timeline-header h3,
+.art-timeline-panel h4 {
+  margin: 0;
+}
+
+.art-timeline-settings,
+.art-timeline-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.art-timeline-actions {
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+  align-items: end;
+}
+
+.art-timeline-ruler {
+  display: grid;
+  gap: 2px;
+  min-height: 34px;
+  overflow: hidden;
+  padding: 4px;
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+  background: rgba(23, 19, 31, 0.08);
+}
+
+.art-timeline-ruler button {
+  min-width: 0;
+  min-height: 24px;
+  padding: 0;
+  border-width: 2px;
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.art-timeline-ruler button[aria-current="true"] {
+  background: var(--cyan);
+}
+
+.art-timeline-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.art-timeline-list {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.art-timeline-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.art-timeline-list span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.art-timeline-list small {
+  white-space: nowrap;
+}
+
 .art-replacement-drawer {
   border-top: 4px solid var(--ink);
   background: #fff;

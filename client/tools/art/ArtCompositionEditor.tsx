@@ -23,7 +23,20 @@ import {
   textFontFamilyOptions,
   validateImageFile
 } from "./artComponentSchema";
+import {
+  addStopCommand,
+  addTimelineLabel,
+  addTransformKeyframe,
+  artTimelineOrDefault,
+  defaultArtVisibilityTimeline,
+  removeTimelineCommandAt,
+  removeTimelineKeyframe,
+  removeTimelineLabel,
+  updateTimelineSettings
+} from "./artTimelineModel";
 import { useArtCompositions } from "./useArtCompositions";
+import type { TimelineDocument } from "../../../shared/timeline-model";
+import { timelineSnapshotAt } from "../../runtime/timelinePlayer";
 
 export interface ArtCompositionEditorProps {
   controller: ArtCompositionsController;
@@ -169,6 +182,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; rotation?: number } | null>(null);
   const [layerDragId, setLayerDragId] = useState<string | null>(null);
   const [layerDropTarget, setLayerDropTarget] = useState<LayerDropTarget | null>(null);
+  const [timelinePreviewFrame, setTimelinePreviewFrame] = useState(0);
   const assetUrlById = useMemo(() => assetUrlMap(assets || []), [assets]);
   const compositionById = useMemo(() => compositionMap(compositions), [compositions]);
   const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
@@ -243,6 +257,12 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     composition && selectedComponentIds.size === 1
       ? findComponent(composition.components || [], [...selectedComponentIds][0])
       : undefined;
+  const activeTimeline = (selectedComponent?.timeline || composition?.timeline || null) as TimelineDocument | null;
+  const timelineFrameOverrides = useMemo(() => {
+    const timeline = artTimelineOrDefault(activeTimeline);
+    if (!activeTimeline || timeline.tracks.length === 0) return null;
+    return timelineSnapshotAt(timeline, timelinePreviewFrame).targets;
+  }, [activeTimeline, timelinePreviewFrame]);
   const updateComposition = (patch: Partial<ArtComposition>) => {
     if (!composition) return;
     controller.updateComposition(composition.id, patch);
@@ -422,6 +442,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                     interactive
                     livePosition={live}
                     liveTransform={liveTransform}
+                    timelineFrameOverrides={timelineFrameOverrides}
                     onBeginDrag={beginDrag}
                     onBeginResize={beginResize}
                     onBeginRotate={beginRotate}
@@ -441,6 +462,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           composition={composition}
           compositions={compositions}
           component={selectedComponent ?? null}
+          onPreviewTimelineFrame={setTimelinePreviewFrame}
           tree={
             composition ? (
               <ComponentTree
@@ -467,12 +489,14 @@ function ArtComponentInspector({
   composition,
   compositions,
   component,
+  onPreviewTimelineFrame,
   tree
 }: {
   controller: ArtCompositionsController;
   composition: ArtComposition | null;
   compositions: ArtComposition[];
   component: ArtComponent | null;
+  onPreviewTimelineFrame: (frame: number) => void;
   tree: ReactNode;
 }) {
   if (!component) {
@@ -482,8 +506,16 @@ function ArtComponentInspector({
           <h3>Layers</h3>
           {tree}
         </div>
-        <h3>Component</h3>
+        <h3>Composition</h3>
         <p>Select a component.</p>
+        {composition ? (
+          <ArtTimelinePanel
+            title={`${composition.name} Timeline`}
+            timeline={composition.timeline as TimelineDocument | null | undefined}
+            onChange={(timeline) => controller.updateComposition(composition.id, { timeline })}
+            onPreviewFrame={onPreviewTimelineFrame}
+          />
+        ) : null}
       </section>
     );
   }
@@ -639,6 +671,173 @@ function ArtComponentInspector({
             onChange={(event) => void onPickImage(event.target.files?.[0])}
           />
         </label>
+      ) : null}
+      <ArtTimelinePanel
+        title={`${component.name || component.kind} Timeline`}
+        timeline={component.timeline as TimelineDocument | null | undefined}
+        component={component}
+        onChange={(timeline) => commit({ timeline } as Partial<ArtComponent>)}
+        onPreviewFrame={onPreviewTimelineFrame}
+      />
+    </section>
+  );
+}
+
+function ArtTimelinePanel({
+  title,
+  timeline,
+  component,
+  onChange,
+  onPreviewFrame
+}: {
+  title: string;
+  timeline: TimelineDocument | null | undefined;
+  component?: ArtComponent;
+  onChange: (timeline: TimelineDocument) => void;
+  onPreviewFrame?: (frame: number) => void;
+}) {
+  const current = artTimelineOrDefault(timeline);
+  const [frame, setFrame] = useState(0);
+  const [labelName, setLabelName] = useState("");
+  const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
+
+  return (
+    <section className="art-timeline-panel" data-art-timeline-panel>
+      <div className="art-timeline-header">
+        <h3>{title}</h3>
+        <button type="button" onClick={() => onChange(defaultArtVisibilityTimeline())}>
+          Visibility Defaults
+        </button>
+      </div>
+      <div className="art-timeline-settings">
+        <label className="flow-react-field">
+          <span>FPS</span>
+          <input
+            type="number"
+            min={1}
+            max={120}
+            value={current.fps}
+            onChange={(event) => onChange(updateTimelineSettings(current, { fps: Number(event.target.value) }))}
+          />
+        </label>
+        <label className="flow-react-field">
+          <span>Frames</span>
+          <input
+            type="number"
+            min={1}
+            max={18000}
+            value={current.frameCount}
+            onChange={(event) => onChange(updateTimelineSettings(current, { frameCount: Number(event.target.value) }))}
+          />
+        </label>
+        <label className="flow-react-field">
+          <span>Current Frame</span>
+          <input
+            type="number"
+            min={0}
+            max={Math.max(0, current.frameCount - 1)}
+            value={cleanFrame}
+            onChange={(event) => {
+              const nextFrame = Number(event.target.value);
+              setFrame(nextFrame);
+              onPreviewFrame?.(nextFrame);
+            }}
+          />
+        </label>
+      </div>
+      <div className="art-timeline-ruler" style={{ gridTemplateColumns: `repeat(${Math.min(current.frameCount, 60)}, minmax(10px, 1fr))` }}>
+        {Array.from({ length: Math.min(current.frameCount, 60) }, (_, index) => (
+          <button
+            type="button"
+            key={index}
+            aria-current={cleanFrame === index ? "true" : undefined}
+            onClick={() => {
+              setFrame(index);
+              onPreviewFrame?.(index);
+            }}
+            title={`Frame ${index}`}
+          >
+            {index % 5 === 0 ? index : ""}
+          </button>
+        ))}
+      </div>
+      <div className="art-timeline-actions">
+        <label className="flow-react-field">
+          <span>Label</span>
+          <input type="text" value={labelName} placeholder="appear" onChange={(event) => setLabelName(event.target.value)} />
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            const nextLabel = labelName.trim() || `Frame ${cleanFrame}`;
+            onChange(addTimelineLabel(current, cleanFrame, nextLabel));
+            setLabelName("");
+          }}
+        >
+          Add Label
+        </button>
+        <button type="button" onClick={() => onChange(addStopCommand(current, cleanFrame))}>
+          Add Stop
+        </button>
+        <button type="button" disabled={!component} onClick={() => component && onChange(addTransformKeyframe(current, component, cleanFrame))}>
+          Add Keyframe
+        </button>
+      </div>
+      <div className="art-timeline-lists">
+        <div>
+          <h4>Labels</h4>
+          {current.labels.length ? (
+            <ol className="flow-react-list art-timeline-list">
+              {current.labels.map((label) => (
+                <li key={label.name}>
+                  <span>{label.name}</span>
+                  <small>Frame {label.frame}</small>
+                  <button type="button" onClick={() => onChange(removeTimelineLabel(current, label.name))}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>No labels.</p>
+          )}
+        </div>
+        <div>
+          <h4>Commands</h4>
+          {current.commands.length ? (
+            <ol className="flow-react-list art-timeline-list">
+              {current.commands.map((command, index) => (
+                <li key={command.id || `${command.type}-${command.frame}-${index}`}>
+                  <span>{command.type}</span>
+                  <small>Frame {command.frame}</small>
+                  <button type="button" onClick={() => onChange(removeTimelineCommandAt(current, index))}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>No commands.</p>
+          )}
+        </div>
+      </div>
+      {current.tracks.length ? (
+        <div className="art-timeline-keyframes">
+          <h4>Keyframes</h4>
+          <ol className="flow-react-list art-timeline-list">
+            {current.tracks.flatMap((track) =>
+              track.keyframes.map((keyframe) => (
+                <li key={`${track.targetId}-${keyframe.frame}`}>
+                  <span>{track.targetId}</span>
+                  <small>Frame {keyframe.frame}</small>
+                  <button type="button" onClick={() => onChange(removeTimelineKeyframe(current, track.targetId, keyframe.frame))}>
+                    Remove
+                  </button>
+                </li>
+              ))
+            )}
+          </ol>
+        </div>
       ) : null}
     </section>
   );

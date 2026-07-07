@@ -25,6 +25,7 @@ export interface ArtPreviewRendererProps {
   interactive?: boolean;
   livePosition?: { id: string; x: number; y: number } | null;
   liveTransform?: { id: string; width?: number; height?: number; rotation?: number } | null;
+  timelineFrameOverrides?: Record<string, Record<string, unknown>> | null;
   onBeginDrag?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBeginResize?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBeginRotate?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -114,18 +115,21 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const referencePath = layer.referencePath || new Set<string>();
     const livePos = props.livePosition?.id === component.id ? props.livePosition : null;
     const liveTx = props.liveTransform?.id === component.id ? props.liveTransform : null;
-    const x = livePos ? livePos.x : Number(get(component, "x") || 0);
-    const y = livePos ? livePos.y : Number(get(component, "y") || 0);
-    const width = liveTx?.width ?? Number(get(component, "width") || 1);
-    const height = liveTx?.height ?? Number(get(component, "height") || 1);
+    const timelineOverride = props.timelineFrameOverrides?.[component.id] || {};
+    const timelineValue = (key: string, fallback: unknown): unknown =>
+      Object.prototype.hasOwnProperty.call(timelineOverride, key) ? timelineOverride[key] : fallback;
+    const x = livePos ? livePos.x : Number(timelineValue("x", get(component, "x") || 0));
+    const y = livePos ? livePos.y : Number(timelineValue("y", get(component, "y") || 0));
+    const width = liveTx?.width ?? Number(timelineValue("width", get(component, "width") || 1));
+    const height = liveTx?.height ?? Number(timelineValue("height", get(component, "height") || 1));
     const kind = component.kind;
     const isTextual = kind === "text" || kind === "badge";
     const fillCss = String(get(component, "fillCss") || "");
     const fillColor = String(get(component, "fillColor") || "transparent");
     const borderColor = String(get(component, "borderColor") || "transparent");
     const borderWidth = Number(get(component, "borderWidth") || 0);
-    const scale = Number(get(component, "scale") || 1);
-    const rotation = liveTx?.rotation ?? Number(get(component, "rotation") || 0);
+    const scale = Number(timelineValue("scale", get(component, "scale") || 1));
+    const rotation = liveTx?.rotation ?? Number(timelineValue("rotation", get(component, "rotation") || 0));
     const imageUrl = componentSupportsImageMask(component) ? imageSourceFor(component) : "";
     const objectFit = String(get(component, "imageObjectFit") || "cover");
     const selected = interactive && selectedIds.has(component.id);
@@ -137,7 +141,8 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const maskSize = objectFit === "fill" ? "100% 100%" : objectFit;
     const transparentBase = kind === "container" || kind === "reference";
     const clipsOwnContent = Boolean(imageUrl || isTextual);
-    const textValue = textValueFor(component, props);
+    const textOverrideValue = timelineValue("defaultText", timelineValue("text", undefined));
+    const textValue = textOverrideValue === undefined ? textValueFor(component, props) : String(textOverrideValue);
     const fontFamily = normalizeGameTextFontFamily(textFieldFor(component, props, "fontFamily", get(component, "fontFamily")));
     const fontSize = isTextual ? artPreviewFontSize(component, props, textValue, width, height) : 11;
     const fill = fillColor === "currentColor" ? "currentColor" : fillColor;
@@ -171,8 +176,9 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       WebkitMaskRepeat: tintWithCurrentColor ? "no-repeat" : undefined,
       maskRepeat: tintWithCurrentColor ? "no-repeat" : undefined,
       border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "0",
+      opacity: Number(timelineValue("opacity", 1)),
       outline: selected ? "2px solid #22d3ee" : "none",
-      display: "flex",
+      display: timelineValue("visible", true) === false ? "none" : "flex",
       alignItems: "center",
       justifyContent: "center",
       color:
