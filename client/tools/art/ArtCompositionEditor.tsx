@@ -101,6 +101,10 @@ type LayerDropTarget = {
   placement: LayerDropPlacement;
 };
 type TimelineMarkerSelection = { kind: "label"; name: string } | { kind: "command"; index: number };
+type TimelineDragItem =
+  | { kind: "label"; name: string }
+  | { kind: "command"; index: number; command: TimelineCommand }
+  | { kind: "keyframe"; targetId: string; frame: number };
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -157,6 +161,20 @@ function timelineCommandLabel(command: TimelineCommand): string {
 function timelineCommandTitle(command: TimelineCommand): string {
   const details = [command.target ? `target: ${command.target}` : "", command.event ? `event: ${command.event}` : ""].filter(Boolean).join(" / ");
   return details ? `${command.type} (${details})` : command.type;
+}
+
+function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: TimelineCommand, fallbackIndex: number): number {
+  if (previousCommand.id) {
+    const idIndex = timeline.commands.findIndex((command) => command.id === previousCommand.id);
+    if (idIndex >= 0) return idIndex;
+  }
+  const matchingIndex = timeline.commands.findIndex(
+    (command) =>
+      command.type === previousCommand.type &&
+      (command.target || "") === (previousCommand.target || "") &&
+      (command.event || "") === (previousCommand.event || "")
+  );
+  return matchingIndex >= 0 ? matchingIndex : Math.max(0, Math.min(timeline.commands.length - 1, fallbackIndex));
 }
 
 function findComponent(components: ArtComponent[], id: string): ArtComponent | undefined {
@@ -799,6 +817,8 @@ function ArtTimelinePanel({
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
+  const [timelineDragItem, setTimelineDragItem] = useState<TimelineDragItem | null>(null);
+  const [timelineDropFrame, setTimelineDropFrame] = useState<number | null>(null);
   const [copiedKeyframe, setCopiedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [newPropertyName, setNewPropertyName] = useState("");
   const [newPropertyType, setNewPropertyType] = useState<"number" | "boolean" | "string">("number");
@@ -881,8 +901,8 @@ function ArtTimelinePanel({
     }
     const nextTimeline = updateTimelineCommandAt(current, selectedTimelineMarker.index, { frame: normalizedFrame });
     onChange(nextTimeline);
-    const nextIndex = nextTimeline.commands.findIndex((command) => command.id && command.id === selectedTimelineMarker.command.id);
-    setSelectedMarker({ kind: "command", index: nextIndex >= 0 ? nextIndex : selectedTimelineMarker.index });
+    const nextIndex = findTimelineCommandIndex(nextTimeline, selectedTimelineMarker.command, selectedTimelineMarker.index);
+    setSelectedMarker({ kind: "command", index: nextIndex });
     previewFrame(normalizedFrame);
   }
 
@@ -898,8 +918,55 @@ function ArtTimelinePanel({
     if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "command") return;
     const nextTimeline = updateTimelineCommandAt(current, selectedTimelineMarker.index, patch);
     onChange(nextTimeline);
-    const nextIndex = nextTimeline.commands.findIndex((command) => command.id && command.id === selectedTimelineMarker.command.id);
-    setSelectedMarker({ kind: "command", index: nextIndex >= 0 ? nextIndex : selectedTimelineMarker.index });
+    const nextIndex = findTimelineCommandIndex(nextTimeline, selectedTimelineMarker.command, selectedTimelineMarker.index);
+    setSelectedMarker({ kind: "command", index: nextIndex });
+  }
+
+  function startTimelineDrag(event: ReactDragEvent<HTMLElement>, item: TimelineDragItem): void {
+    stopPlayback();
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-art-timeline-item", JSON.stringify(item));
+    setTimelineDragItem(item);
+  }
+
+  function handleTimelineFrameDragOver(event: ReactDragEvent<HTMLElement>, frameIndex: number): void {
+    if (!timelineDragItem) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setTimelineDropFrame(frameIndex);
+  }
+
+  function handleTimelineFrameDrop(event: ReactDragEvent<HTMLElement>, frameIndex: number): void {
+    if (!timelineDragItem) return;
+    event.preventDefault();
+    const normalizedFrame = Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(frameIndex) || 0)));
+    if (timelineDragItem.kind === "label") {
+      const nextTimeline = updateTimelineLabel(current, timelineDragItem.name, { frame: normalizedFrame });
+      onChange(nextTimeline);
+      setSelectedKeyframe(null);
+      setSelectedMarker({ kind: "label", name: timelineDragItem.name });
+      previewFrame(normalizedFrame);
+    } else if (timelineDragItem.kind === "command") {
+      const nextTimeline = updateTimelineCommandAt(current, timelineDragItem.index, { frame: normalizedFrame });
+      const nextIndex = findTimelineCommandIndex(nextTimeline, timelineDragItem.command, timelineDragItem.index);
+      onChange(nextTimeline);
+      setSelectedKeyframe(null);
+      setSelectedMarker({ kind: "command", index: nextIndex });
+      previewFrame(normalizedFrame);
+    } else {
+      const nextTimeline = updateTimelineKeyframe(current, timelineDragItem.targetId, timelineDragItem.frame, { frame: normalizedFrame });
+      onChange(nextTimeline);
+      setSelectedMarker(null);
+      setSelectedKeyframe({ targetId: timelineDragItem.targetId, frame: normalizedFrame });
+      previewFrame(normalizedFrame);
+    }
+    setTimelineDragItem(null);
+    setTimelineDropFrame(null);
+  }
+
+  function endTimelineDrag(): void {
+    setTimelineDragItem(null);
+    setTimelineDropFrame(null);
   }
 
   function updateSelectedKeyframe(patch: Partial<Pick<TimelineKeyframe, "frame" | "props">>): void {
@@ -1072,8 +1139,20 @@ function ArtTimelinePanel({
                       data-art-timeline-marker-selected={
                         labels.some((label) => selectedMarker?.kind === "label" && selectedMarker.name === label.name) ? "true" : "false"
                       }
+                      data-art-timeline-drop-target={timelineDropFrame === index ? "true" : "false"}
+                      draggable={labels.length > 0}
                       title={labels.length ? `Frame ${index}: ${labels.map((label) => label.name).join(", ")}` : `Preview frame ${index}`}
                       onClick={() => (labels[0] ? selectTimelineMarker({ kind: "label", name: labels[0].name }, index) : previewFrame(index))}
+                      onDragStart={(event) => {
+                        if (!labels[0]) return;
+                        startTimelineDrag(event, { kind: "label", name: labels[0].name });
+                      }}
+                      onDragOver={(event) => handleTimelineFrameDragOver(event, index)}
+                      onDrop={(event) => handleTimelineFrameDrop(event, index)}
+                      onDragEnd={endTimelineDrag}
+                      onDragLeave={() => {
+                        if (timelineDropFrame === index) setTimelineDropFrame(null);
+                      }}
                     >
                       {labels.length ? <span className="art-timeline-marker-pill">{labels.map((label) => label.name).join(", ")}</span> : null}
                     </button>
@@ -1100,12 +1179,24 @@ function ArtTimelinePanel({
                       data-art-timeline-marker-selected={
                         commands.some(({ index: commandIndex }) => selectedMarker?.kind === "command" && selectedMarker.index === commandIndex) ? "true" : "false"
                       }
+                      data-art-timeline-drop-target={timelineDropFrame === index ? "true" : "false"}
+                      draggable={commands.length > 0}
                       title={
                         commands.length
                           ? `Frame ${index}: ${commands.map(({ command }) => timelineCommandTitle(command)).join(", ")}`
                           : `Preview frame ${index}`
                       }
                       onClick={() => (commands[0] ? selectTimelineMarker({ kind: "command", index: commands[0].index }, index) : previewFrame(index))}
+                      onDragStart={(event) => {
+                        if (!commands[0]) return;
+                        startTimelineDrag(event, { kind: "command", index: commands[0].index, command: commands[0].command });
+                      }}
+                      onDragOver={(event) => handleTimelineFrameDragOver(event, index)}
+                      onDrop={(event) => handleTimelineFrameDrop(event, index)}
+                      onDragEnd={endTimelineDrag}
+                      onDragLeave={() => {
+                        if (timelineDropFrame === index) setTimelineDropFrame(null);
+                      }}
                     >
                       {commands.length ? (
                         <span className="art-timeline-marker-pill">{commands.map(({ command }) => timelineCommandLabel(command)).join(", ")}</span>
@@ -1133,8 +1224,20 @@ function ArtTimelinePanel({
                       aria-current={cleanFrame === index ? "true" : undefined}
                       data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
                       data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
+                      data-art-timeline-drop-target={timelineDropFrame === index ? "true" : "false"}
+                      draggable={Boolean(keyframe)}
                       title={keyframe ? `${track.targetId} keyframe ${index}` : `Preview frame ${index}`}
                       onClick={() => (keyframe ? selectKeyframe(track.targetId, keyframe.frame) : previewFrame(index))}
+                      onDragStart={(event) => {
+                        if (!keyframe) return;
+                        startTimelineDrag(event, { kind: "keyframe", targetId: track.targetId, frame: keyframe.frame });
+                      }}
+                      onDragOver={(event) => handleTimelineFrameDragOver(event, index)}
+                      onDrop={(event) => handleTimelineFrameDrop(event, index)}
+                      onDragEnd={endTimelineDrag}
+                      onDragLeave={() => {
+                        if (timelineDropFrame === index) setTimelineDropFrame(null);
+                      }}
                     >
                       {keyframe ? <span className="art-timeline-keyframe-dot" aria-hidden="true" /> : null}
                     </button>
