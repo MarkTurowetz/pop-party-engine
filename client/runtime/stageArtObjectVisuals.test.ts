@@ -42,4 +42,49 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
 
     expect(snapshots).toEqual([snapshot]);
   });
+
+  it("routes parent timeline emit commands to targeted descendant animations", () => {
+    const played: unknown[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      handleTimelineCommand: (detail: unknown) => number;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      play: (animation: string) => number;
+    };
+    parent.component = { id: "parent" };
+    child.component = { id: "name-card" };
+    child.children = new Map();
+    child.play = (animation) => {
+      played.push(animation);
+      return 250;
+    };
+    parent.children = new Map([["name-card", child]]);
+
+    const duration = parent.handleTimelineCommand({
+      command: { type: "emit", frame: 12, target: "name-card", event: "pop" },
+      eventName: "pop",
+      visual: {}
+    });
+
+    expect(duration).toBe(250);
+    expect(played).toEqual(["pop"]);
+  });
+
+  it("ignores timeline emit commands without both a target and animation event", () => {
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      handleTimelineCommand: (detail: unknown) => number;
+    };
+    parent.component = { id: "parent" };
+    parent.children = new Map();
+
+    expect(parent.handleTimelineCommand({ command: { type: "emit", frame: 1, event: "pop" }, eventName: "pop", visual: {} })).toBe(0);
+    expect(parent.handleTimelineCommand({ command: { type: "emit", frame: 1, target: "name-card" }, eventName: "emit", visual: {} })).toBe(0);
+    expect(parent.handleTimelineCommand({ command: { type: "gotoAndPlay", frame: 1, target: "appear" }, eventName: "gotoAndPlay", visual: {} })).toBe(0);
+  });
 });

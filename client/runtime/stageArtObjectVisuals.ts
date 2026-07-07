@@ -6,6 +6,7 @@
 
 import { normalizeGameTextFontFamily } from "../textFonts";
 import { distributedContainerItemPositions } from "./distributedContainerLayout";
+import type { TimelineCommandEventDetail } from "./visualObject";
 import type { TimelineFrameSnapshot } from "./timelinePlayer";
 
 type Dict = Record<string, unknown>;
@@ -314,7 +315,8 @@ class ArtObjectView {
           layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS],
           timeline: this.component?.timeline || null,
           timelineCanvas: this.canvas || null,
-          timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot)
+          timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
+          timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail)
         }
       },
       legacyVisualOptions: {
@@ -325,7 +327,8 @@ class ArtObjectView {
         instantClass: INSTANT_CLASS,
         timeline: this.component?.timeline || null,
         timelineCanvas: this.canvas || null,
-        timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot)
+        timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
+        timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail)
       }
     }) as Dict | undefined;
     this.gameObject = (bridge?.gameObject as Dict) || this.gameObject;
@@ -353,6 +356,15 @@ class ArtObjectView {
       const visual = view.createVisual() as { applyTimelineSnapshot?: (nextSnapshot: TimelineFrameSnapshot) => void } | null;
       visual?.applyTimelineSnapshot?.(snapshot);
     }
+  }
+
+  handleTimelineCommand(detail: TimelineCommandEventDetail): number {
+    const command = detail.command || {};
+    if (command.type !== "emit") return 0;
+    const targetId = String(command.target || "").trim();
+    const animation = String(command.event || "").trim();
+    if (!targetId || !animation) return 0;
+    return this.viewForComponentId(targetId)?.play(animation) || 0;
   }
 
   update(component: Component, canvas: CanvasSize, layer: Dict = {}): void {
