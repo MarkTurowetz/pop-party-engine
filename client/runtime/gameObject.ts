@@ -93,6 +93,7 @@ class GameObject {
       motionHiddenClasses: options.motionHiddenClasses || [],
       timeline: options.timeline || null,
       timelineCanvas: options.timelineCanvas || null,
+      timelineFrameHandler: typeof options.timelineFrameHandler === "function" ? "handler" : "",
       timelineCommandHandler: typeof options.timelineCommandHandler === "function" ? "handler" : "",
       transformOrigin: options.transformOrigin ?? "center center",
       updateClass: options.updateClass || ""
@@ -110,6 +111,7 @@ class GameObject {
       durations: options.durations as never,
       timeline: options.timeline as never,
       timelineCanvas: options.timelineCanvas as never,
+      timelineFrameHandler: options.timelineFrameHandler as never,
       timelineCommandHandler: options.timelineCommandHandler as never,
       animationHandlers: options.animationHandlers as never,
       transformOrigin: options.transformOrigin as never,

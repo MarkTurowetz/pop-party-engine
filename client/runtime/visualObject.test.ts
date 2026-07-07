@@ -305,4 +305,28 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect((handled[0] as { eventName: string }).eventName).toBe("pop-name");
     expect((dispatched[0].detail as { eventName: string }).eventName).toBe("pop-name");
   });
+
+  it("notifies timeline frame handlers after applying authored snapshots", () => {
+    const element = createFakeElement(["hidden"]);
+    element.dataset.artComponentId = "component-a";
+    const frames: number[] = [];
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      timelineFrameHandler: (snapshot) => frames.push(snapshot.frame),
+      timeline: normalizeTimeline({
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [{ frame: 2, type: "stop" }],
+        tracks: [{ targetId: "component-a", keyframes: [{ frame: 0, props: { opacity: 0.1 } }, { frame: 2, props: { opacity: 1 } }] }]
+      })
+    });
+
+    expect(visual.play("appear")).toBe(200);
+    expect(frames).toEqual([0]);
+    vi.advanceTimersByTime(200);
+    expect(frames).toEqual([0, 1, 2]);
+  });
 });

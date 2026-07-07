@@ -6,6 +6,7 @@
 
 import { normalizeGameTextFontFamily } from "../textFonts";
 import { distributedContainerItemPositions } from "./distributedContainerLayout";
+import type { TimelineFrameSnapshot } from "./timelinePlayer";
 
 type Dict = Record<string, unknown>;
 type Component = Dict;
@@ -312,7 +313,8 @@ class ArtObjectView {
           instantClass: INSTANT_CLASS,
           layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS],
           timeline: this.component?.timeline || null,
-          timelineCanvas: this.canvas || null
+          timelineCanvas: this.canvas || null,
+          timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot)
         }
       },
       legacyVisualOptions: {
@@ -322,7 +324,8 @@ class ArtObjectView {
         updateClass: UPDATE_CLASS,
         instantClass: INSTANT_CLASS,
         timeline: this.component?.timeline || null,
-        timelineCanvas: this.canvas || null
+        timelineCanvas: this.canvas || null,
+        timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot)
       }
     }) as Dict | undefined;
     this.gameObject = (bridge?.gameObject as Dict) || this.gameObject;
@@ -341,6 +344,15 @@ class ArtObjectView {
       if (match) return match;
     }
     return null;
+  }
+
+  applyTimelineSnapshotToDescendants(snapshot: TimelineFrameSnapshot): void {
+    for (const targetId of Object.keys(snapshot.targets || {})) {
+      const view = this.viewForComponentId(targetId);
+      if (!view || view === this) continue;
+      const visual = view.createVisual() as { applyTimelineSnapshot?: (nextSnapshot: TimelineFrameSnapshot) => void } | null;
+      visual?.applyTimelineSnapshot?.(snapshot);
+    }
   }
 
   update(component: Component, canvas: CanvasSize, layer: Dict = {}): void {

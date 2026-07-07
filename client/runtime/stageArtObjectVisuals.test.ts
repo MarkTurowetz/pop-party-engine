@@ -18,4 +18,28 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     const host = globalThis as typeof globalThis & { PartyGameArtObject?: unknown };
     expect(host.PartyGameArtObject).toBeTypeOf("object");
   });
+
+  it("routes parent timeline snapshots to descendant component views", () => {
+    const snapshots: unknown[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      applyTimelineSnapshotToDescendants: (snapshot: unknown) => void;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      createVisual: () => { applyTimelineSnapshot: (snapshot: unknown) => void };
+    };
+    parent.component = { id: "parent" };
+    child.component = { id: "child" };
+    child.children = new Map();
+    child.createVisual = () => ({ applyTimelineSnapshot: (snapshot) => snapshots.push(snapshot) });
+    parent.children = new Map([["child", child]]);
+
+    const snapshot = { frame: 2, targets: { parent: { opacity: 0.5 }, child: { x: 24 } } };
+    parent.applyTimelineSnapshotToDescendants(snapshot);
+
+    expect(snapshots).toEqual([snapshot]);
+  });
 });

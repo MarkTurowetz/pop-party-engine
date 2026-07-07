@@ -152,6 +152,7 @@ export interface CssVisualObjectOptions {
   durations?: Partial<Record<AnimationName, number>>;
   timeline?: TimelineDocument | null;
   timelineCanvas?: { width?: number; height?: number } | null;
+  timelineFrameHandler?: (snapshot: TimelineFrameSnapshot) => void;
   timelineCommandHandler?: (detail: TimelineCommandEventDetail) => void;
 }
 
@@ -176,6 +177,7 @@ class CssVisualObject {
   durations: Record<string, number>;
   timeline: TimelineDocument | null;
   timelineCanvas: { width: number; height: number } | null;
+  timelineFrameHandler: ((snapshot: TimelineFrameSnapshot) => void) | null;
   timelineCommandHandler: ((detail: TimelineCommandEventDetail) => void) | null;
   timelinePlayer: TimelinePlayer | null;
   token: string;
@@ -196,11 +198,15 @@ class CssVisualObject {
     this.durations = { ...DEFAULT_DURATIONS, ...(options.durations || {}) };
     this.timeline = normalizeTimeline(options.timeline);
     this.timelineCanvas = normalizeTimelineCanvas(options.timelineCanvas);
+    this.timelineFrameHandler = typeof options.timelineFrameHandler === "function" ? options.timelineFrameHandler : null;
     this.timelineCommandHandler = typeof options.timelineCommandHandler === "function" ? options.timelineCommandHandler : null;
     this.timelinePlayer = this.timeline
       ? new TimelinePlayer({
           timeline: this.timeline,
-          onFrame: (snapshot) => this.applyTimelineSnapshot(snapshot),
+          onFrame: (snapshot) => {
+            this.applyTimelineSnapshot(snapshot);
+            this.timelineFrameHandler?.(snapshot);
+          },
           onCommand: (command) => this.handleTimelineCommand(command),
           schedule: (callback, delay) => {
             const timerId = this.schedule(delay, callback);
