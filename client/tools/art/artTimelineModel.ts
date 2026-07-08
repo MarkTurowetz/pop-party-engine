@@ -123,6 +123,13 @@ function sortTimeline(timeline: TimelineDocument): TimelineDocument {
   };
 }
 
+function remappedTimelineCommandTarget(command: TimelineCommand, labelNameBySource: Map<string, string>): string | undefined {
+  if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target && labelNameBySource.has(command.target)) {
+    return labelNameBySource.get(command.target);
+  }
+  return command.target;
+}
+
 export function updateTimelineSettings(
   timeline: TimelineDocument | null | undefined,
   patch: Partial<Pick<TimelineDocument, "fps" | "frameCount">>
@@ -257,7 +264,7 @@ export function pasteTimelineFrameRange(
     return copiedLabel;
   });
   const copiedCommands = (clipboard.commands || []).reduce<TimelineCommand[]>((commands, command) => {
-    const target = command.target && labelNameBySource.has(command.target) ? labelNameBySource.get(command.target) : command.target;
+    const target = remappedTimelineCommandTarget(command, labelNameBySource);
     const copiedCommand: TimelineCommand = {
       ...command,
       frame: cleanFrame(destinationFrame + command.frame, withSpace.frameCount)
@@ -335,7 +342,15 @@ export function updateTimelineLabel(
   const nextFrame = patch.frame === undefined ? existing.frame : cleanFrame(patch.frame, current.frameCount);
   const nextLabels = current.labels.filter((label) => label.name !== currentName && label.name !== nextName);
   nextLabels.push({ name: nextName, frame: nextFrame });
-  return sortTimeline({ ...current, labels: nextLabels });
+  return sortTimeline({
+    ...current,
+    labels: nextLabels,
+    commands: current.commands.map((command) =>
+      (command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target === currentName
+        ? { ...command, target: nextName }
+        : command
+    )
+  });
 }
 
 export function addStopCommand(timeline: TimelineDocument | null | undefined, frame: number): TimelineDocument {
@@ -394,7 +409,7 @@ export function duplicateTimelineSegment(
   const copiedCommands = current.commands
     .filter((command) => command.frame >= segment.startFrame && command.frame <= segment.endFrame)
     .reduce<TimelineCommand[]>((commands, command) => {
-      const target = command.target && labelNameBySource.has(command.target) ? labelNameBySource.get(command.target) : command.target;
+      const target = remappedTimelineCommandTarget(command, labelNameBySource);
       const nextCommand: TimelineCommand = {
         ...command,
         frame: destinationStartFrame + (command.frame - segment.startFrame)

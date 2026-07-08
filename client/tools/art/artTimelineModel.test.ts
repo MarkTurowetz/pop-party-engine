@@ -62,11 +62,12 @@ describe("artTimelineModel", () => {
         { name: "appear", frame: 2 },
         { name: "park", frame: 0 }
       ],
-      commands: [],
+      commands: [{ frame: 4, type: "gotoAndPlay", target: "appear" }],
       tracks: []
     };
     const renamed = updateTimelineLabel(timeline, "appear", { name: "park", frame: 7 });
     expect(renamed.labels).toEqual([{ name: "park", frame: 7 }]);
+    expect(renamed.commands).toEqual([{ frame: 4, type: "gotoAndPlay", target: "park" }]);
   });
 
   it("adds stop commands and clamps frames when settings change", () => {
@@ -308,6 +309,37 @@ describe("artTimelineModel", () => {
       { frame: 5, props: { scale: 1 } },
       { frame: 8, props: { scale: 0.4 } },
       { frame: 11, props: { scale: 1 } }
+    ]);
+  });
+
+  it("does not remap component command targets that match copied label names", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 8,
+      labels: [{ name: "child", frame: 2 }, { name: "settle", frame: 4 }],
+      commands: [
+        { id: "play-child", frame: 3, type: "playComponent", target: "child", event: "pop" },
+        { id: "jump-settle", frame: 3, type: "gotoAndPlay", target: "settle" },
+        { id: "stop", frame: 5, type: "stop" }
+      ],
+      tracks: []
+    };
+
+    const pasted = pasteTimelineFrameRange(timeline, copyTimelineFrameRange(timeline, 2, 4), 6);
+    expect(pasted.commands.map((command) => ({ frame: command.frame, type: command.type, target: command.target, event: command.event }))).toEqual([
+      { frame: 3, type: "playComponent", target: "child", event: "pop" },
+      { frame: 3, type: "gotoAndPlay", target: "settle", event: undefined },
+      { frame: 5, type: "stop", target: undefined, event: undefined },
+      { frame: 7, type: "playComponent", target: "child", event: "pop" },
+      { frame: 7, type: "gotoAndPlay", target: "settle 2", event: undefined },
+      { frame: 9, type: "stop", target: undefined, event: undefined }
+    ]);
+
+    const duplicated = duplicateTimelineSegment(timeline, "child", "bounce");
+    expect(duplicated.commands.slice(3).map((command) => ({ frame: command.frame, type: command.type, target: command.target, event: command.event }))).toEqual([
+      { frame: 9, type: "playComponent", target: "child", event: "pop" },
+      { frame: 9, type: "gotoAndPlay", target: "bounce settle", event: undefined },
+      { frame: 11, type: "stop", target: undefined, event: undefined }
     ]);
   });
 
