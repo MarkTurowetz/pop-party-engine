@@ -954,6 +954,8 @@ function ArtTimelinePanel({
   const cleanFrameWindowStart = Math.max(0, Math.min(maxFrameWindowStart, Math.round(Number(frameWindowStart) || 0)));
   const visibleTimelineFrames = Array.from({ length: visibleTimelineFrameCount }, (_, index) => cleanFrameWindowStart + index);
   const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
+  const selectedFrameRangeCount = Math.max(1, Math.min(Math.max(1, current.frameCount - cleanFrame), Math.round(Number(frameEditCount) || 1)));
+  const selectedFrameRangeEnd = Math.min(current.frameCount - 1, cleanFrame + selectedFrameRangeCount - 1);
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
   const timelineSegments = useMemo(() => timelineSegmentsForArt(current), [current]);
   const keyframeTargets = useMemo(() => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget }), [component, includeRootTarget]);
@@ -997,6 +999,20 @@ function ArtTimelinePanel({
     setFrame(normalizedFrame);
     setFrameWindowStart(windowStartForFrame(normalizedFrame));
     onPreviewFrame?.(normalizedFrame);
+  }
+
+  function frameInSelectedRange(frameIndex: number): boolean {
+    return frameIndex >= cleanFrame && frameIndex <= selectedFrameRangeEnd;
+  }
+
+  function selectFrameRangeTo(nextFrame: number): void {
+    const normalizedFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(nextFrame) || 0)));
+    const startFrame = Math.min(cleanFrame, normalizedFrame);
+    const endFrame = Math.max(cleanFrame, normalizedFrame);
+    setFrame(startFrame);
+    setFrameEditCount(endFrame - startFrame + 1);
+    setFrameWindowStart(windowStartForFrame(startFrame));
+    onPreviewFrame?.(startFrame);
   }
 
   function previewFrameWithOverrides(nextFrame: number, overrides: TimelinePreviewOverrides | null): void {
@@ -1073,11 +1089,11 @@ function ArtTimelinePanel({
   }
 
   function copyFrameRangeAtCurrentFrame(): void {
-    setCopiedFrameRange(copyTimelineFrameRange(current, cleanFrame, frameEditCount));
+    setCopiedFrameRange(copyTimelineFrameRange(current, cleanFrame, selectedFrameRangeCount));
   }
 
   function cutFrameRangeAtCurrentFrame(): void {
-    const result = cutTimelineFrameRange(current, cleanFrame, frameEditCount);
+    const result = cutTimelineFrameRange(current, cleanFrame, selectedFrameRangeCount);
     setCopiedFrameRange(result.clipboard);
     setSelectedKeyframe(null);
     setSelectedMarker(null);
@@ -1432,7 +1448,7 @@ function ArtTimelinePanel({
       ) : null}
       <div className="art-timeline-frame-editor">
         <label className="flow-react-field">
-          <span>Edit Count</span>
+          <span>Range Frames</span>
           <input
             type="number"
             min={1}
@@ -1441,12 +1457,12 @@ function ArtTimelinePanel({
             onChange={(event) => setFrameEditCount(Math.max(1, Math.min(1000, Math.round(Number(event.target.value) || 1))))}
           />
         </label>
-        <button type="button" onClick={() => applyTimelineFrameEdit(insertTimelineFrames(current, cleanFrame, frameEditCount), cleanFrame)}>
+        <button type="button" onClick={() => applyTimelineFrameEdit(insertTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame)}>
           Insert Frames
         </button>
         <button
           type="button"
-          onClick={() => applyTimelineFrameEdit(removeTimelineFrames(current, cleanFrame, frameEditCount), cleanFrame)}
+          onClick={() => applyTimelineFrameEdit(removeTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame)}
           disabled={current.frameCount <= 1}
         >
           Delete Frames
@@ -1465,6 +1481,9 @@ function ArtTimelinePanel({
             Clipboard: {copiedFrameRange.frameCount} frame{copiedFrameRange.frameCount === 1 ? "" : "s"}
           </span>
         ) : null}
+        <span className="art-timeline-frame-clipboard-summary">
+          Selected: {cleanFrame}-{selectedFrameRangeEnd}
+        </span>
       </div>
       <div className="art-timeline-window-controls">
         <button type="button" onClick={() => setTimelineWindowStart(cleanFrameWindowStart - visibleTimelineFrameCount)} disabled={cleanFrameWindowStart <= 0}>
@@ -1497,11 +1516,13 @@ function ArtTimelinePanel({
             type="button"
             key={frameIndex}
             aria-current={cleanFrame === frameIndex ? "true" : undefined}
-            onClick={() => {
+            data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
+            onClick={(event) => {
               stopPlayback();
-              previewFrame(frameIndex);
+              if (event.shiftKey) selectFrameRangeTo(frameIndex);
+              else previewFrame(frameIndex);
             }}
-            title={`Frame ${frameIndex}`}
+            title={`Frame ${frameIndex}${frameInSelectedRange(frameIndex) ? " / selected range" : ""}`}
           >
             {frameIndex % 5 === 0 ? frameIndex : ""}
           </button>
@@ -1523,6 +1544,7 @@ function ArtTimelinePanel({
                       key={frameIndex}
                       className="art-timeline-lane-frame"
                       aria-current={cleanFrame === frameIndex ? "true" : undefined}
+                      data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                       data-art-timeline-has-label={labels.length ? "true" : "false"}
                       data-art-timeline-marker-selected={
                         labels.some((label) => selectedMarker?.kind === "label" && selectedMarker.name === label.name) ? "true" : "false"
@@ -1566,6 +1588,7 @@ function ArtTimelinePanel({
                       key={frameIndex}
                       className="art-timeline-lane-frame"
                       aria-current={cleanFrame === frameIndex ? "true" : undefined}
+                      data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                       data-art-timeline-has-command={commands.length ? "true" : "false"}
                       data-art-timeline-marker-selected={
                         commands.some(({ index: commandIndex }) => selectedMarker?.kind === "command" && selectedMarker.index === commandIndex) ? "true" : "false"
@@ -1616,6 +1639,7 @@ function ArtTimelinePanel({
                         key={frameIndex}
                         className="art-timeline-lane-frame"
                         aria-current={cleanFrame === frameIndex ? "true" : undefined}
+                        data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                         data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
                         data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
                         data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}

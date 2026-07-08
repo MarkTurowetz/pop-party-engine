@@ -1559,6 +1559,11 @@ body.tool-dashboard-mode .layout-react-shell {
   background: var(--cyan);
 }
 
+.art-timeline-ruler button[data-art-timeline-range-selected="true"],
+.art-timeline-lane-frame[data-art-timeline-range-selected="true"] {
+  box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.85);
+}
+
 .art-timeline-lanes {
   display: grid;
   gap: 6px;
