@@ -154,6 +154,7 @@ export interface CssVisualObjectOptions {
   timelineCanvas?: { width?: number; height?: number } | null;
   timelineFrameHandler?: (snapshot: TimelineFrameSnapshot) => void;
   timelineCommandHandler?: (detail: TimelineCommandEventDetail) => void;
+  timelineCommandDurationHandler?: (command: TimelineCommand, context: { frame: number; elapsedMs: number }) => number;
 }
 
 interface PlayOptions {
@@ -179,6 +180,7 @@ class CssVisualObject {
   timelineCanvas: { width: number; height: number } | null;
   timelineFrameHandler: ((snapshot: TimelineFrameSnapshot) => void) | null;
   timelineCommandHandler: ((detail: TimelineCommandEventDetail) => void) | null;
+  timelineCommandDurationHandler: ((command: TimelineCommand, context: { frame: number; elapsedMs: number }) => number) | null;
   timelinePlayer: TimelinePlayer | null;
   token: string;
 
@@ -200,6 +202,7 @@ class CssVisualObject {
     this.timelineCanvas = normalizeTimelineCanvas(options.timelineCanvas);
     this.timelineFrameHandler = typeof options.timelineFrameHandler === "function" ? options.timelineFrameHandler : null;
     this.timelineCommandHandler = typeof options.timelineCommandHandler === "function" ? options.timelineCommandHandler : null;
+    this.timelineCommandDurationHandler = typeof options.timelineCommandDurationHandler === "function" ? options.timelineCommandDurationHandler : null;
     this.timelinePlayer = this.timeline
       ? new TimelinePlayer({
           timeline: this.timeline,
@@ -208,6 +211,7 @@ class CssVisualObject {
             this.timelineFrameHandler?.(snapshot);
           },
           onCommand: (command) => this.handleTimelineCommand(command),
+          commandDuration: (command, context) => this.timelineCommandDurationHandler?.(command, context) || 0,
           schedule: (callback, delay) => {
             const timerId = this.schedule(delay, callback);
             return timerId || 0;
@@ -392,7 +396,9 @@ class CssVisualObject {
 
   durationForAnimation(animation: string): number {
     if (this.timeline && hasTimelineLabel(this.timeline, animation)) {
-      return timelinePlaybackDuration(this.timeline, animation);
+      return timelinePlaybackDuration(this.timeline, animation, {
+        commandDuration: (command, context) => this.timelineCommandDurationHandler?.(command, context) || 0
+      });
     }
     return this.durations[animation] || 0;
   }

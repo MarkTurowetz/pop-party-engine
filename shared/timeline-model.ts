@@ -46,6 +46,7 @@ export interface TimelineSegment {
 export interface TimelinePlaybackDurationOptions {
   instant?: boolean;
   maxCommandRedirects?: number;
+  commandDuration?: (command: TimelineCommand, context: { frame: number; elapsedMs: number }) => number;
 }
 
 const DEFAULT_FPS = 30;
@@ -182,33 +183,48 @@ export function timelineSegmentFor(timeline: TimelineDocument, labelOrFrame: str
   };
 }
 
-function redirectCommandAtFrame(timeline: TimelineDocument, frame: number): TimelineCommand | null {
-  return timeline.commands.find((command) => command.frame === frame && (command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target) || null;
-}
-
-function firstRedirectCommandInSegment(timeline: TimelineDocument, startFrame: number, endFrame: number): TimelineCommand | null {
-  for (let frame = startFrame; frame <= endFrame; frame += 1) {
-    const command = redirectCommandAtFrame(timeline, frame);
-    if (command) return command;
-  }
-  return null;
-}
-
 function cleanMaxCommandRedirects(value: unknown): number {
   if (value === undefined || value === null) return 50;
   const next = Number(value);
   return Number.isFinite(next) ? Math.max(0, Math.round(next)) : 50;
 }
 
-function timelineFrameCommandDuration(timeline: TimelineDocument, frame: number, remainingRedirects: number): number {
-  const command = redirectCommandAtFrame(timeline, frame);
-  if (!command?.target) return 0;
-  if (remainingRedirects <= 0) return 0;
-  if (command.type === "gotoAndStop") {
-    const targetFrame = frameForTimelineLabel(timeline, command.target);
-    return timelineFrameCommandDuration(timeline, targetFrame, remainingRedirects - 1);
+function cleanCommandDuration(value: unknown): number {
+  const next = Number(value);
+  return Number.isFinite(next) ? Math.max(0, next) : 0;
+}
+
+function timelineFrameCommandDuration(
+  timeline: TimelineDocument,
+  frame: number,
+  elapsedMs: number,
+  remainingRedirects: number,
+  options: TimelinePlaybackDurationOptions
+): { durationMs: number; redirected: boolean } {
+  let durationMs = 0;
+  for (const command of timeline.commands.filter((entry) => entry.frame === frame)) {
+    if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target) {
+      if (remainingRedirects <= 0) return { durationMs, redirected: false };
+      if (command.type === "gotoAndStop") {
+        const targetFrame = frameForTimelineLabel(timeline, command.target);
+        const redirected = timelineFrameCommandDuration(timeline, targetFrame, 0, remainingRedirects - 1, options);
+        return { durationMs: Math.max(durationMs, elapsedMs + redirected.durationMs), redirected: true };
+      }
+      return {
+        durationMs: Math.max(
+          durationMs,
+          elapsedMs +
+            timelinePlaybackDuration(timeline, command.target, {
+              ...options,
+              maxCommandRedirects: remainingRedirects - 1
+            })
+        ),
+        redirected: true
+      };
+    }
+    durationMs = Math.max(durationMs, elapsedMs + cleanCommandDuration(options.commandDuration?.(command, { frame, elapsedMs })));
   }
-  return timelinePlaybackDuration(timeline, command.target, { maxCommandRedirects: remainingRedirects - 1 });
+  return { durationMs, redirected: false };
 }
 
 export function timelinePlaybackDuration(
@@ -219,16 +235,16 @@ export function timelinePlaybackDuration(
   const maxCommandRedirects = cleanMaxCommandRedirects(options.maxCommandRedirects);
   const segment = timelineSegmentFor(timeline, labelOrFrame);
   if (options.instant === true || segment.durationMs === 0) {
-    return timelineFrameCommandDuration(timeline, segment.endFrame, maxCommandRedirects);
+    return timelineFrameCommandDuration(timeline, segment.endFrame, 0, maxCommandRedirects, options).durationMs;
   }
-  const command = firstRedirectCommandInSegment(timeline, segment.startFrame, segment.endFrame);
-  if (!command?.target) return segment.durationMs;
-  const elapsedToCommand = Math.max(0, ((command.frame - segment.startFrame) * 1000) / timeline.fps);
-  if (maxCommandRedirects <= 0) return elapsedToCommand;
-  if (command.type === "gotoAndStop") {
-    return elapsedToCommand + timelineFrameCommandDuration(timeline, frameForTimelineLabel(timeline, command.target), maxCommandRedirects - 1);
+  let durationMs = 0;
+  for (let frame = segment.startFrame; frame <= segment.endFrame; frame += 1) {
+    const elapsedMs = Math.max(0, ((frame - segment.startFrame) * 1000) / timeline.fps);
+    const frameCommands = timelineFrameCommandDuration(timeline, frame, elapsedMs, maxCommandRedirects, options);
+    durationMs = Math.max(durationMs, frameCommands.durationMs);
+    if (frameCommands.redirected) return durationMs;
   }
-  return elapsedToCommand + timelinePlaybackDuration(timeline, command.target, { maxCommandRedirects: maxCommandRedirects - 1 });
+  return Math.max(segment.durationMs, durationMs);
 }
 
 export function defaultVisibilityTimeline(durations: Record<string, number>): TimelineDocument {

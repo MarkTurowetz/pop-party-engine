@@ -18,6 +18,7 @@ export interface TimelinePlayerOptions {
   timeline?: TimelineDocument | null;
   onFrame?: (snapshot: TimelineFrameSnapshot) => void;
   onCommand?: (command: { type: string; frame: number; target?: string; event?: string }) => void;
+  commandDuration?: (command: { type: string; frame: number; target?: string; event?: string }, context: { frame: number; elapsedMs: number }) => number;
   onCommandLimit?: (detail: { frame: number; commandCount: number; maxCommandRedirects: number }) => void;
   maxCommandRedirects?: number;
   schedule?: (callback: () => void, delay: number) => number;
@@ -99,6 +100,7 @@ export class TimelinePlayer {
   timeline: TimelineDocument | null;
   onFrame: ((snapshot: TimelineFrameSnapshot) => void) | null;
   onCommand: TimelinePlayerOptions["onCommand"] | null;
+  commandDuration: NonNullable<TimelinePlayerOptions["commandDuration"]> | null;
   onCommandLimit: TimelinePlayerOptions["onCommandLimit"] | null;
   maxCommandRedirects: number;
   schedule: (callback: () => void, delay: number) => number;
@@ -111,6 +113,7 @@ export class TimelinePlayer {
   constructor(options: TimelinePlayerOptions = {}) {
     this.timeline = normalizeTimeline(options.timeline);
     this.onFrame = options.onFrame || null;
+    this.commandDuration = options.commandDuration || null;
     this.onCommand = options.onCommand || null;
     this.onCommandLimit = options.onCommandLimit || null;
     this.maxCommandRedirects = Math.max(1, Math.round(Number(options.maxCommandRedirects) || DEFAULT_MAX_COMMAND_REDIRECTS));
@@ -152,6 +155,7 @@ export class TimelinePlayer {
     }
     const duration = timelinePlaybackDuration(this.timeline, labelOrFrame, {
       instant: true,
+      commandDuration: this.commandDuration || undefined,
       maxCommandRedirects: this.maxCommandRedirects - commandCount
     });
     const frame = frameForTimelineLabel(this.timeline, labelOrFrame);
@@ -173,6 +177,7 @@ export class TimelinePlayer {
     const segment = timelineSegmentFor(this.timeline, labelOrFrame);
     const duration = timelinePlaybackDuration(this.timeline, labelOrFrame, {
       instant: options.instant,
+      commandDuration: this.commandDuration || undefined,
       maxCommandRedirects: this.maxCommandRedirects - commandCount
     });
     if (options.instant === true || segment.durationMs === 0) {

@@ -211,6 +211,25 @@ describe("TimelinePlayer", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
+  it("includes non-redirect command durations in timeline playback duration", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 1, type: "playComponent", target: "child", event: "pop" },
+        { frame: 2, type: "stop" }
+      ],
+      tracks: []
+    });
+
+    expect(
+      timelinePlaybackDuration(timeline!, "appear", {
+        commandDuration: (command) => (command.type === "playComponent" ? 500 : 0)
+      })
+    ).toBe(600);
+  });
+
   it("redirects from the starting frame when a play command sits on a label", () => {
     const timeline = normalizeTimeline({
       fps: 10,

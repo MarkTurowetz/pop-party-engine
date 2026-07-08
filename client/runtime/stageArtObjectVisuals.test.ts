@@ -185,6 +185,47 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     ]);
   });
 
+  it("includes nested component timeline command durations in renderer root playback", () => {
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      views: Map<string, unknown>;
+      rootTimelinePlayer: unknown;
+      updateRootTimeline: (timeline: unknown) => void;
+      playAll: (animation: string, options?: unknown) => number;
+    };
+    const played: unknown[] = [];
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      durationForAnimation: (animation: string) => number;
+      play: (animation: string) => number;
+    };
+    child.component = { id: "child" };
+    child.children = new Map();
+    child.durationForAnimation = (animation) => (animation === "pop" ? 500 : 0);
+    child.play = (animation) => {
+      played.push(animation);
+      return child.durationForAnimation(animation);
+    };
+    renderer.views = new Map([["child", child]]);
+    renderer.rootTimelinePlayer = null;
+    renderer.updateRootTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 1, type: "playComponent", target: "child", event: "pop" },
+        { frame: 2, type: "stop" }
+      ],
+      tracks: []
+    });
+
+    const duration = renderer.playAll("appear", {});
+    vi.advanceTimersByTime(100);
+
+    expect(duration).toBe(600);
+    expect(played).toEqual(["pop"]);
+  });
+
   it("ignores timeline emit commands without both a target and animation event", () => {
     const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
       component: { id: string };

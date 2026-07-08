@@ -95,6 +95,7 @@ class GameObject {
       timelineCanvas: options.timelineCanvas || null,
       timelineFrameHandler: typeof options.timelineFrameHandler === "function" ? "handler" : "",
       timelineCommandHandler: typeof options.timelineCommandHandler === "function" ? "handler" : "",
+      timelineCommandDurationHandler: typeof options.timelineCommandDurationHandler === "function" ? "handler" : "",
       transformOrigin: options.transformOrigin ?? "center center",
       updateClass: options.updateClass || ""
     });
@@ -113,6 +114,7 @@ class GameObject {
       timelineCanvas: options.timelineCanvas as never,
       timelineFrameHandler: options.timelineFrameHandler as never,
       timelineCommandHandler: options.timelineCommandHandler as never,
+      timelineCommandDurationHandler: options.timelineCommandDurationHandler as never,
       animationHandlers: options.animationHandlers as never,
       transformOrigin: options.transformOrigin as never,
       getVisible: () => this.isVisible(),

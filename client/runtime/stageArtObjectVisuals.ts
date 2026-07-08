@@ -8,7 +8,7 @@ import { normalizeGameTextFontFamily } from "../textFonts";
 import { distributedContainerItemPositions } from "./distributedContainerLayout";
 import type { TimelineCommandEventDetail } from "./visualObject";
 import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
-import type { TimelineDocument } from "../../shared/timeline-model";
+import { hasTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument } from "../../shared/timeline-model";
 
 type Dict = Record<string, unknown>;
 type Component = Dict;
@@ -317,7 +317,8 @@ class ArtObjectView {
           timeline: this.component?.timeline || null,
           timelineCanvas: this.canvas || null,
           timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
-          timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail)
+          timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail),
+          timelineCommandDurationHandler: (command: TimelineCommand) => this.timelineCommandDuration(command)
         }
       },
       legacyVisualOptions: {
@@ -329,7 +330,8 @@ class ArtObjectView {
         timeline: this.component?.timeline || null,
         timelineCanvas: this.canvas || null,
         timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
-        timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail)
+        timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail),
+        timelineCommandDurationHandler: (command: TimelineCommand) => this.timelineCommandDuration(command)
       }
     }) as Dict | undefined;
     this.gameObject = (bridge?.gameObject as Dict) || this.gameObject;
@@ -367,6 +369,28 @@ class ArtObjectView {
     if (!targetId || !animation) return 0;
     const target = this.viewForComponentId(targetId);
     return command.type === "stopComponent" ? target?.stopAt(animation) || 0 : target?.play(animation) || 0;
+  }
+
+  timelineCommandDuration(command: TimelineCommand): number {
+    if (command.type !== "emit" && command.type !== "playComponent" && command.type !== "stopComponent") return 0;
+    const targetId = String(command.target || "").trim();
+    const animation = String(command.event || "").trim();
+    if (!targetId || !animation) return 0;
+    if (command.type === "stopComponent") return 0;
+    return this.viewForComponentId(targetId)?.durationForAnimation(animation) || 0;
+  }
+
+  durationForAnimation(animation: string): number {
+    const cleanAnimation = String(animation || "").trim();
+    if (!cleanAnimation) return 0;
+    const timeline = (this.component?.timeline || null) as TimelineDocument | null;
+    if (timeline && hasTimelineLabel(timeline, cleanAnimation)) {
+      return timelinePlaybackDuration(timeline, cleanAnimation, {
+        commandDuration: (command) => this.timelineCommandDuration(command)
+      });
+    }
+    const visual = this.createVisual() as { durationForAnimation?: (a: string) => number } | null;
+    return Number(visual?.durationForAnimation?.(cleanAnimation) || 0);
   }
 
   update(component: Component, canvas: CanvasSize, layer: Dict = {}): void {
@@ -531,7 +555,8 @@ class ArtObjectTreeRenderer {
       this.rootTimelinePlayer = new TimelinePlayer({
         timeline,
         onFrame: (snapshot) => this.applyTimelineSnapshotToViews(snapshot),
-        onCommand: (command) => this.playTimelineCommand(command)
+        onCommand: (command) => this.playTimelineCommand(command),
+        commandDuration: (command) => this.timelineCommandDuration(command)
       });
       return;
     }
@@ -590,6 +615,15 @@ class ArtObjectTreeRenderer {
     let duration = 0;
     for (const view of this.views.values()) duration = Math.max(duration, view.play(animation, options));
     return duration;
+  }
+
+  timelineCommandDuration(command: { type?: unknown; target?: unknown; event?: unknown }): number {
+    const commandType = String(command.type || "");
+    if (commandType !== "emit" && commandType !== "playComponent" && commandType !== "stopComponent") return 0;
+    const targetId = String(command.target || "").trim();
+    const animation = String(command.event || "").trim();
+    if (!targetId || !animation || commandType === "stopComponent") return 0;
+    return this.viewForComponentId(targetId)?.durationForAnimation(animation) || 0;
   }
 
   stopAtAll(animation: string, options: Dict = {}): number {
