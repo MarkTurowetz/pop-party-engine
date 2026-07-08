@@ -12,6 +12,7 @@ import {
   type TimelineProperties,
   type TimelinePropertyValue
 } from "../../shared/timeline-model";
+import { PartyGameTextFit, type PartyGameTextFitApi } from "./textFit";
 import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
 
 export type AnimationName = "park" | "on" | "off" | "appear" | "disappear" | "update";
@@ -94,6 +95,8 @@ function hasTimelineProperty(props: TimelineProperties, key: string): boolean {
 }
 
 const TIMELINE_SHAPE_STYLE_CLASSES = ["is-style-rounded", "is-style-circle", "is-style-pill", "is-style-rectangle"];
+const TIMELINE_TEXT_PADDING = 4;
+const TIMELINE_DEFAULT_TEXT_SIZE = 16;
 
 function timelineShapeStyle(value: TimelinePropertyValue | undefined): string | null {
   const style = timelineTextValue(value);
@@ -104,6 +107,59 @@ function timelineShapeStyle(value: TimelinePropertyValue | undefined): string | 
 function setTimelineShapeStyleClass(element: HTMLElement, style: string): void {
   element.classList?.remove?.(...TIMELINE_SHAPE_STYLE_CLASSES);
   element.classList?.add?.(`is-style-${style}`);
+}
+
+function textFitApi(): PartyGameTextFitApi {
+  const globalApi = (globalThis as typeof globalThis & { PartyGameTextFit?: Partial<PartyGameTextFitApi> }).PartyGameTextFit;
+  return typeof globalApi?.renderLayoutTextField === "function" ? (globalApi as PartyGameTextFitApi) : PartyGameTextFit;
+}
+
+function positiveStyleNumber(value: unknown): number | null {
+  const parsed = Number.parseFloat(String(value ?? ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function timelineTextBoxSize(element: HTMLElement, key: "width" | "height", timelineValue: number | null): number {
+  if (timelineValue !== null) return timelineValue;
+  const direct = key === "width" ? element.clientWidth || element.offsetWidth : element.clientHeight || element.offsetHeight;
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  return positiveStyleNumber(element.style[key]) || 1;
+}
+
+function currentComponentFontSize(element: HTMLElement, explicitSize: number | null): number {
+  return explicitSize || positiveStyleNumber(element.style.getPropertyValue?.("--component-font-size")) || TIMELINE_DEFAULT_TEXT_SIZE;
+}
+
+function renderTimelineLabelText(element: HTMLElement, props: TimelineProperties, width: number | null, height: number | null, fontSize: number | null): void {
+  const label = element.querySelector?.(".art-runtime-object-label") as HTMLElement | null | undefined;
+  if (!label) return;
+  const explicitText = timelineTextValue(props.text ?? props.defaultText);
+  const text = explicitText !== null ? explicitText : String(label.textContent ?? "");
+  if (!text) {
+    label.textContent = "";
+    return;
+  }
+  const fallbackSize = currentComponentFontSize(element, fontSize);
+  const fontFamily = timelineTextValue(props.fontFamily) || element.style.getPropertyValue?.("--component-font-family") || undefined;
+  const fontColor = timelineTextValue(props.fontColor) || element.style.getPropertyValue?.("--component-text-color") || undefined;
+  const layout = textFitApi().renderLayoutTextField(label, {
+    defaultText: text,
+    width: timelineTextBoxSize(element, "width", width),
+    height: timelineTextBoxSize(element, "height", height),
+    fontSize: fallbackSize,
+    fontFamily,
+    fontColor,
+    autoFitText: props.autoFitText !== false
+  }, {
+    text,
+    defaults: { defaultText: text, fontSize: fallbackSize, fontColor },
+    fallbackSize,
+    renderOptions: { padding: TIMELINE_TEXT_PADDING }
+  }) as Record<string, unknown> | null;
+  const measuredSize = Number(layout?.fontSize);
+  if (Number.isFinite(measuredSize) && measuredSize > 0) {
+    setStyleProperty(element, "--component-font-size", `${measuredSize}px`);
+  }
 }
 
 function cssUrl(value: string): string {
@@ -303,10 +359,17 @@ class CssVisualObject {
     if (typeof props.visible === "boolean") {
       this.element.style.display = props.visible ? "" : "none";
     }
-    const text = timelineTextValue(props.text ?? props.defaultText);
-    if (text !== null) {
-      const label = this.element.querySelector?.(".art-runtime-object-label");
-      if (label) label.textContent = text;
+    if (
+      hasTimelineProperty(props, "text") ||
+      hasTimelineProperty(props, "defaultText") ||
+      hasTimelineProperty(props, "fontSize") ||
+      hasTimelineProperty(props, "fontFamily") ||
+      hasTimelineProperty(props, "fontColor") ||
+      hasTimelineProperty(props, "autoFitText") ||
+      width !== null ||
+      height !== null
+    ) {
+      renderTimelineLabelText(this.element, props, width, height, fontSize);
     }
     if (hasTimelineProperty(props, "imageAssetId") || hasTimelineProperty(props, "imageDataUrl")) {
       const imageSource = timelineImageSource(props);

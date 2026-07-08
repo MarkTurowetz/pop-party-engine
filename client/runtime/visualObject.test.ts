@@ -3,6 +3,8 @@ import { normalizeTimeline } from "../../shared/timeline-model";
 import { PartyGameVisualObject } from "./visualObject";
 
 interface FakeElement {
+  clientHeight?: number;
+  clientWidth?: number;
   classList: {
     add: (...classes: string[]) => void;
     contains: (className: string) => boolean;
@@ -10,10 +12,12 @@ interface FakeElement {
     toggle: (className: string, force?: boolean) => boolean;
   };
   dataset: Record<string, string>;
+  offsetHeight?: number;
   offsetWidth: number;
-  querySelector?: (selector: string) => { textContent: string } | null;
+  querySelector?: (selector: string) => HTMLElement | null;
   dispatchEvent?: (event: Event) => boolean;
-  style: Record<string, string>;
+  setAttribute?: (name: string, value: string) => void;
+  style: CSSStyleDeclaration | Record<string, string>;
 }
 
 interface TestWindowShim {
@@ -28,6 +32,7 @@ interface TestGlobalWithWindow {
 
 function createFakeElement(initialClasses: string[] = []): HTMLElement {
   const classes = new Set(initialClasses);
+  const style = createFakeStyle();
   const element: FakeElement = {
     classList: {
       add: (...nextClasses) => {
@@ -46,9 +51,46 @@ function createFakeElement(initialClasses: string[] = []): HTMLElement {
     },
     dataset: {},
     offsetWidth: 0,
-    style: {}
+    style
   };
   return element as unknown as HTMLElement;
+}
+
+function createFakeStyle(): CSSStyleDeclaration {
+  const values: Record<string, string> = {};
+  return new Proxy(values, {
+    get(target, property) {
+      if (property === "setProperty") {
+        return (name: string, value: string) => {
+          target[name] = value;
+        };
+      }
+      if (property === "getPropertyValue") {
+        return (name: string) => target[name] || "";
+      }
+      if (property === "removeProperty") {
+        return (name: string) => {
+          const previous = target[name] || "";
+          delete target[name];
+          return previous;
+        };
+      }
+      return target[property as string] || "";
+    },
+    set(target, property, value) {
+      target[property as string] = String(value);
+      return true;
+    }
+  }) as unknown as CSSStyleDeclaration;
+}
+
+function createFakeLabel(): HTMLElement {
+  return {
+    dataset: {},
+    setAttribute: vi.fn(),
+    style: createFakeStyle(),
+    textContent: ""
+  } as unknown as HTMLElement;
 }
 
 describe("PartyGameVisualObject (ported visual-object)", () => {
@@ -245,7 +287,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
   });
 
   it("applies authored timeline keyframe snapshots while playing", () => {
-    const label = { textContent: "" };
+    const label = createFakeLabel();
     const element = createFakeElement(["hidden"]);
     element.dataset.artComponentId = "component-a";
     element.querySelector = (selector: string) => (selector === ".art-runtime-object-label" ? label : null);
@@ -306,13 +348,59 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1");
     expect(element.style.opacity).toBe("1");
     expect(label.textContent).toBe("Done");
-    expect((element.style as unknown as Record<string, string>)["--component-font-size"]).toBe("42px");
+    expect(Number.parseFloat((element.style as unknown as Record<string, string>)["--component-font-size"])).toBeLessThanOrEqual(42);
     expect((element.style as unknown as Record<string, string>)["--component-text-color"]).toBe("#ffffff");
     expect((element.style as unknown as Record<string, string>)["--component-font-family"]).toBe("Game UI");
     expect((element.style as unknown as Record<string, string>)["--component-fill-color"]).toBe("#ffe156");
     expect((element.style as unknown as Record<string, string>)["--component-border-color"]).toBe("#17131f");
     expect((element.style as unknown as Record<string, string>)["--component-border-width"]).toBe("4px");
     expect((element.style as unknown as Record<string, string>)["--component-border-radius"]).toBe("12px");
+  });
+
+  it("fits authored timeline text through the shared text renderer", () => {
+    const label = createFakeLabel();
+    const element = createFakeElement(["hidden"]);
+    const textFit = (globalThis as unknown as { PartyGameTextFit?: { renderLayoutTextField?: unknown } }).PartyGameTextFit;
+    const originalRender = textFit?.renderLayoutTextField;
+    const renderLayoutTextField = vi.fn((target: HTMLElement, _element: unknown, options: { text?: string }) => {
+      target.textContent = String(options.text ?? "");
+      return { fontSize: 18 };
+    });
+    if (textFit) textFit.renderLayoutTextField = renderLayoutTextField;
+    element.dataset.artComponentId = "component-a";
+    element.querySelector = (selector: string) => (selector === ".art-runtime-object-label" ? label : null);
+
+    try {
+      const visual = PartyGameVisualObject.createCssVisualObject({
+        element,
+        hiddenClasses: ["hidden"],
+        motionHiddenClasses: ["hidden"],
+        timeline: normalizeTimeline({
+          fps: 10,
+          frameCount: 2,
+          labels: [{ name: "appear", frame: 0 }],
+          commands: [{ frame: 1, type: "stop" }],
+          tracks: [
+            {
+              targetId: "component-a",
+              keyframes: [{ frame: 0, props: { width: 120, height: 40, defaultText: "Timeline Text", fontSize: 40, autoFitText: true } }]
+            }
+          ]
+        })
+      });
+
+      expect(visual.play("appear")).toBe(100);
+
+      expect(renderLayoutTextField).toHaveBeenCalledWith(
+        label,
+        expect.objectContaining({ autoFitText: true, fontSize: 40, height: 40, width: 120 }),
+        expect.objectContaining({ text: "Timeline Text", renderOptions: { padding: 4 } })
+      );
+      expect(label.textContent).toBe("Timeline Text");
+      expect((element.style as unknown as Record<string, string>)["--component-font-size"]).toBe("18px");
+    } finally {
+      if (textFit) textFit.renderLayoutTextField = originalRender;
+    }
   });
 
   it("applies authored timeline shape style classes while playing", () => {
