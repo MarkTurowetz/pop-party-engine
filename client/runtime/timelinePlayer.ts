@@ -67,6 +67,7 @@ function easedProgress(progress: number, easing?: string): number {
 function keyframeSnapshotForTrack(track: TimelineTrack, frame: number): TimelineProperties {
   const keyframes = track.keyframes;
   if (!keyframes.length) return {};
+  if (frame < keyframes[0].frame) return {};
   let previous = keyframes[0];
   let next = keyframes[keyframes.length - 1];
   for (const keyframe of keyframes) {

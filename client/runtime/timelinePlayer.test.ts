@@ -116,6 +116,21 @@ describe("TimelinePlayer", () => {
     expect(timelineSnapshotAt(timeline!, 2).targets.card.x).toBe(25);
   });
 
+  it("does not apply future keyframes before a track starts", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 8,
+      labels: [],
+      commands: [],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 3, props: { x: 30 } }, { frame: 6, props: { x: 60 } }] }]
+    });
+
+    expect(timelineSnapshotAt(timeline!, 2).targets.card).toEqual({});
+    expect(timelineSnapshotAt(timeline!, 3).targets.card.x).toBe(30);
+    expect(timelineSnapshotAt(timeline!, 5).targets.card.x).toBe(50);
+    expect(timelineSnapshotAt(timeline!, 7).targets.card.x).toBe(60);
+  });
+
   it("supports hold keyframes for stepped sprite-state timelines", () => {
     const timeline = normalizeTimeline({
       fps: 10,
