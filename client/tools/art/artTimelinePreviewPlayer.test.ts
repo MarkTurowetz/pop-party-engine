@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ArtComponent } from "../../types/game-data";
-import { playArtTimelinePreview } from "./artTimelinePreviewPlayer";
+import { artTimelinePlaybackDuration, playArtTimelinePreview } from "./artTimelinePreviewPlayer";
 
 describe("playArtTimelinePreview", () => {
   beforeEach(() => {
@@ -97,6 +97,33 @@ describe("playArtTimelinePreview", () => {
     playback.stop();
 
     expect(scales).toEqual([0.5, 0.5, 1]);
+  });
+
+  it("includes nested component command durations in preview playback duration", () => {
+    const child: ArtComponent = {
+      id: "child",
+      kind: "shape",
+      timeline: {
+        fps: 10,
+        frameCount: 7,
+        labels: [{ name: "pop", frame: 1 }],
+        commands: [{ frame: 6, type: "stop" }],
+        tracks: []
+      }
+    };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const timeline = {
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 1, type: "playComponent", target: "child", event: "pop" },
+        { frame: 2, type: "stop" }
+      ],
+      tracks: []
+    };
+
+    expect(artTimelinePlaybackDuration(timeline, root, "appear")).toBe(600);
   });
 
   it("plays nested component timelines from commands on the starting frame", () => {

@@ -48,10 +48,14 @@ import {
   updateTimelineSettings
 } from "./artTimelineModel";
 import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
-import { playArtTimelinePreview, type ArtTimelinePreviewPlayback, type TimelinePreviewOverrides } from "./artTimelinePreviewPlayer";
+import {
+  artTimelinePlaybackDuration,
+  playArtTimelinePreview,
+  type ArtTimelinePreviewPlayback,
+  type TimelinePreviewOverrides
+} from "./artTimelinePreviewPlayer";
 import { useArtCompositions } from "./useArtCompositions";
 import {
-  timelinePlaybackDuration,
   type TimelineCommand,
   type TimelineDocument,
   type TimelineKeyframe,
@@ -956,8 +960,8 @@ function ArtTimelinePanel({
     ? duplicateSegmentSource
     : current.labels[0]?.name || "";
   const activePlaybackDuration = useMemo(
-    () => timelinePlaybackDuration(current, activePlayStart || cleanFrame),
-    [activePlayStart, cleanFrame, current]
+    () => artTimelinePlaybackDuration(current, component, activePlayStart || cleanFrame),
+    [activePlayStart, cleanFrame, component, current]
   );
 
   useEffect(() => {
@@ -1364,7 +1368,7 @@ function ArtTimelinePanel({
               >
                 <span>{segment.label}</span>
                 <small>
-                  {segment.startFrame}-{segment.endFrame} / {Math.round(segment.durationMs)}ms
+                  {segment.startFrame}-{segment.endFrame} / {Math.round(artTimelinePlaybackDuration(current, component, segment.label))}ms
                 </small>
               </button>
               <button type="button" onClick={() => deleteSegment(segment.label)}>

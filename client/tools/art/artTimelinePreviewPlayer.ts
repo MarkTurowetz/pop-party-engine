@@ -1,4 +1,4 @@
-import { frameForTimelineLabel, type TimelineDocument, type TimelineProperties } from "../../../shared/timeline-model";
+import { frameForTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument, type TimelineProperties } from "../../../shared/timeline-model";
 import { TimelinePlayer } from "../../runtime/timelinePlayer";
 import type { ArtComponent } from "../../types/game-data";
 import { artTimelineOrDefault } from "./artTimelineModel";
@@ -18,6 +18,40 @@ export interface PlayArtTimelinePreviewOptions {
   onComplete?: () => void;
 }
 
+const MAX_NESTED_PREVIEW_DEPTH = 20;
+
+function nestedAnimationForCommand(command: { type?: string; target?: string; event?: string }): { targetId: string; animation: string; mode: "play" | "stop" } | null {
+  if (command.type !== "emit" && command.type !== "playComponent" && command.type !== "stopComponent") return null;
+  const targetId = String(command.target || "").trim();
+  const animation = String(command.event || "").trim();
+  return targetId && animation ? { targetId, animation, mode: command.type === "stopComponent" ? "stop" : "play" } : null;
+}
+
+export function artTimelineCommandDuration(
+  rootComponent: ArtComponent | undefined,
+  command: TimelineCommand,
+  depth = 0
+): number {
+  const nestedAnimation = nestedAnimationForCommand(command);
+  if (!rootComponent || !nestedAnimation || nestedAnimation.mode === "stop" || depth >= MAX_NESTED_PREVIEW_DEPTH) return 0;
+  const target = findTimelineTargetComponent([rootComponent], nestedAnimation.targetId);
+  if (!target) return 0;
+  const targetTimeline = artTimelineOrDefault((target.timeline || null) as TimelineDocument | null);
+  if (!new TimelinePlayer({ timeline: targetTimeline }).hasLabel(nestedAnimation.animation)) return 0;
+  return artTimelinePlaybackDuration(targetTimeline, target, nestedAnimation.animation, depth + 1);
+}
+
+export function artTimelinePlaybackDuration(
+  timeline: TimelineDocument,
+  component: ArtComponent | undefined,
+  start: string | number,
+  depth = 0
+): number {
+  return timelinePlaybackDuration(timeline, start, {
+    commandDuration: (command) => artTimelineCommandDuration(component, command, depth)
+  });
+}
+
 export function playArtTimelinePreview({
   timeline,
   component,
@@ -32,13 +66,6 @@ export function playArtTimelinePreview({
   let parentFrame = frameForTimelineLabel(timeline, start);
   let stopped = false;
   let activePlaybackCount = 1;
-
-  const nestedAnimationForCommand = (command: { type?: string; target?: string; event?: string }): { targetId: string; animation: string; mode: "play" | "stop" } | null => {
-    if (command.type !== "emit" && command.type !== "playComponent" && command.type !== "stopComponent") return null;
-    const targetId = String(command.target || "").trim();
-    const animation = String(command.event || "").trim();
-    return targetId && animation ? { targetId, animation, mode: command.type === "stopComponent" ? "stop" : "play" } : null;
-  };
 
   const completePlayback = (): void => {
     if (stopped) return;
@@ -69,7 +96,8 @@ export function playArtTimelinePreview({
       onCommand: (command) => {
         const nestedAnimation = nestedAnimationForCommand(command);
         if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
-      }
+      },
+      commandDuration: (command) => artTimelineCommandDuration(component, command)
     });
     childPlayers.push(childPlayer);
     if (mode === "stop") {
@@ -86,7 +114,8 @@ export function playArtTimelinePreview({
     onCommand: (command) => {
       const nestedAnimation = nestedAnimationForCommand(command);
       if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
-    }
+    },
+    commandDuration: (command) => artTimelineCommandDuration(component, command)
   });
 
   parentPlayer.gotoAndPlay(start, {
