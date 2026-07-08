@@ -342,6 +342,38 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect((dispatched[0].detail as { eventName: string }).eventName).toBe("pop-name");
   });
 
+  it("dispatches authored timeline emit commands on the starting frame", () => {
+    const element = createFakeElement(["hidden"]);
+    const dispatched: { type: string; detail: unknown }[] = [];
+    element.dispatchEvent = (event: Event) => {
+      dispatched.push({ type: event.type, detail: (event as unknown as { detail?: unknown }).detail });
+      return true;
+    };
+    const handled: unknown[] = [];
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      timelineCommandHandler: (detail) => handled.push(detail),
+      timeline: normalizeTimeline({
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 0, type: "emit", event: "pop-name" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      })
+    });
+
+    expect(visual.play("appear")).toBe(200);
+
+    expect(handled).toHaveLength(1);
+    expect(dispatched.map((event) => event.type)).toEqual(["party-game:timeline-command", "party-game:timeline:pop-name"]);
+    expect((handled[0] as { eventName: string }).eventName).toBe("pop-name");
+  });
+
   it("notifies timeline frame handlers after applying authored snapshots", () => {
     const element = createFakeElement(["hidden"]);
     element.dataset.artComponentId = "component-a";
