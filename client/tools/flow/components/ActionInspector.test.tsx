@@ -171,6 +171,7 @@ describe("ActionInspector", () => {
     expect(markup).toContain("Avatar");
     expect(markup).toContain("Dino Mask");
     expect(markup).toContain("Animation Label");
+    expect(markup).toContain("Instant");
     expect(markup).toContain('value="stego"');
   });
 

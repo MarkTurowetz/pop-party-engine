@@ -68,4 +68,18 @@ describe("Flow action summary", () => {
     expect(runtime.actionSummary({ id: "audio", type: "playHostAudio", hostAudioId: "intro", playMode: "index", lineIndex: 2 } as FlowAction))
       .toBe("Play host audio: Audio intro / Index 2 / E+ 0.0s");
   });
+
+  it("summarizes instant stop-at-label game object actions", () => {
+    const runtime = createActionSummary(context());
+
+    expect(
+      runtime.actionSummary({
+        id: "stop-avatar",
+        type: "stopGameObjectAnimation",
+        targetLayoutElementId: "avatar",
+        animationName: "stego",
+        instant: true
+      } as FlowAction)
+    ).toBe("Stop at stego on Object avatar / E+ 0.0s / Instant");
+  });
 });

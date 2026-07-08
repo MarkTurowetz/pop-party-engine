@@ -129,7 +129,10 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
     ...GAME_OBJECT_TIMELINE_TARGET_FIELDS,
     { key: "instant", label: "Instant", control: "boolean" }
   ],
-  stopGameObjectAnimation: GAME_OBJECT_TIMELINE_TARGET_FIELDS,
+  stopGameObjectAnimation: [
+    ...GAME_OBJECT_TIMELINE_TARGET_FIELDS,
+    { key: "instant", label: "Instant", control: "boolean" }
+  ],
   setPlayersShown: [{ key: "isShown", label: "Visible", control: "boolean" }],
   setPlayerAnswersShown: [
     { key: "isShown", label: "Visible", control: "boolean" },

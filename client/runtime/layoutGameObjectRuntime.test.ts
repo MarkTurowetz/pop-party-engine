@@ -63,11 +63,11 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     globals.PartyGameVisualObject = {};
     try {
       const result = resolver.playAnimationForAction(
-        { type: "stopGameObjectAnimation", targetLayoutElementId: "avatar", animationName: "stego", timelinePlaybackMode: "stop" },
+        { type: "stopGameObjectAnimation", targetLayoutElementId: "avatar", animationName: "stego", timelinePlaybackMode: "stop", instant: true },
         { returnResult: true }
       );
       expect(result).toEqual({ duration: 0, missing: false, reason: "" });
-      expect(stopAtAnimation).toHaveBeenCalledWith("stego", { instant: false });
+      expect(stopAtAnimation).toHaveBeenCalledWith("stego", { instant: true });
       expect(playAnimation).not.toHaveBeenCalled();
     } finally {
       globals.PartyGameVisualObject = previousVisualRuntime;

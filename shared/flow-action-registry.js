@@ -43,7 +43,7 @@
             targetComponentId: context.normalizeFlowId(action?.targetComponentId || action?.componentId, ""),
             animationName: context.cleanFlowText(action?.animationName || action?.timelineLabel || action?.animation, "appear"),
             timelinePlaybackMode: playbackMode,
-            ...(playbackMode === "play" ? { instant: action?.instant === true } : {})
+            instant: action?.instant === true
         };
     }
     function publicGameObjectTimelineAction(action, base, context, publicType, playbackMode) {
@@ -56,7 +56,7 @@
             targetComponentId: context.normalizeFlowId(action.targetComponentId || action.componentId, ""),
             animationName: context.cleanFlowText(action.animationName || action.timelineLabel || action.animation, "appear"),
             timelinePlaybackMode: playbackMode,
-            ...(playbackMode === "play" ? { instant: action.instant === true } : {})
+            instant: action.instant === true
         };
     }
     function normalizeLayoutTargetScope(value) {
