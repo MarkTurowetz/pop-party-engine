@@ -27,6 +27,20 @@ function nestedAnimationForCommand(command: { type?: string; target?: string; ev
   return targetId && animation ? { targetId, animation, mode: command.type === "stopComponent" ? "stop" : "play" } : null;
 }
 
+function scopedNestedOverrides(parentTargetId: string, parentRawId: string, overrides: TimelinePreviewOverrides): TimelinePreviewOverrides {
+  const scoped: TimelinePreviewOverrides = {};
+  for (const [targetId, props] of Object.entries(overrides || {})) {
+    if (targetId === "self" || targetId === parentRawId || targetId === parentTargetId) {
+      scoped[parentTargetId] = props;
+    } else if (targetId.includes("/")) {
+      scoped[targetId.startsWith(`${parentTargetId}/`) ? targetId : `${parentTargetId}/${targetId}`] = props;
+    } else {
+      scoped[`${parentTargetId}/${targetId}`] = props;
+    }
+  }
+  return scoped;
+}
+
 export function artTimelineCommandDuration(
   rootComponent: ArtComponent | undefined,
   command: TimelineCommand,
@@ -87,10 +101,11 @@ export function playArtTimelinePreview({
     const target = findTimelineTargetComponent([component], targetId);
     const nestedTimeline = artTimelineOrDefault((target?.timeline || null) as TimelineDocument | null);
     if (!target || !new TimelinePlayer({ timeline: nestedTimeline }).hasLabel(animation)) return;
+    const targetRawId = String(target.id || "").trim();
     const childPlayer = new TimelinePlayer({
       timeline: nestedTimeline,
       onFrame: (snapshot) => {
-        Object.assign(nestedOverrides, snapshot.targets);
+        Object.assign(nestedOverrides, scopedNestedOverrides(targetId, targetRawId, snapshot.targets));
         publishPreview(parentFrame);
       },
       onCommand: (command) => {

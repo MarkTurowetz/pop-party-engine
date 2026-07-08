@@ -99,6 +99,48 @@ describe("playArtTimelinePreview", () => {
     expect(scales).toEqual([0.5, 0.5, 1]);
   });
 
+  it("scopes nested component preview overrides to path targets", () => {
+    const child: ArtComponent = {
+      id: "child",
+      kind: "container",
+      children: [{ id: "label", kind: "text" }],
+      timeline: {
+        fps: 10,
+        frameCount: 2,
+        labels: [{ name: "pop", frame: 0 }],
+        commands: [{ frame: 1, type: "stop" }],
+        tracks: [
+          { targetId: "self", keyframes: [{ frame: 0, props: { scale: 0.5 } }, { frame: 1, props: { scale: 1 } }] },
+          { targetId: "label", keyframes: [{ frame: 0, props: { defaultText: "A" } }, { frame: 1, props: { defaultText: "B" } }] }
+        ]
+      }
+    };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const scopedFrames: Array<Record<string, unknown>> = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      timeline: {
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "root/child", event: "pop" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (_frame, overrides) => scopedFrames.push(overrides)
+    });
+
+    vi.advanceTimersByTime(200);
+    playback.stop();
+
+    expect(scopedFrames.some((frame) => (frame["root/child"] as { scale?: number } | undefined)?.scale === 0.5)).toBe(true);
+    expect(scopedFrames.some((frame) => (frame["root/child/label"] as { defaultText?: string } | undefined)?.defaultText === "B")).toBe(true);
+    expect(scopedFrames.every((frame) => frame.child === undefined && frame.label === undefined)).toBe(true);
+  });
+
   it("includes nested component command durations in preview playback duration", () => {
     const child: ArtComponent = {
       id: "child",

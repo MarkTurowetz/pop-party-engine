@@ -120,14 +120,16 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
 
   const renderComponent = (
     component: ArtComponent,
-    layer: { index: number; total: number; interactive?: boolean; referencePath?: Set<string> } = { index: 0, total: 1 }
+    layer: { index: number; total: number; interactive?: boolean; referencePath?: Set<string>; targetPath?: string[] } = { index: 0, total: 1 }
   ): ReactElement => {
+    const targetPath = [...(layer.targetPath || []), component.id].filter(Boolean);
+    const scopedTargetId = targetPath.join("/");
     const locked = component.locked === true;
     const interactive = props.interactive !== false && layer.interactive !== false && !locked;
     const referencePath = layer.referencePath || new Set<string>();
     const livePos = props.livePosition?.id === component.id ? props.livePosition : null;
     const liveTx = props.liveTransform?.id === component.id ? props.liveTransform : null;
-    const timelineOverride = props.timelineFrameOverrides?.[component.id] || {};
+    const timelineOverride = props.timelineFrameOverrides?.[scopedTargetId] || props.timelineFrameOverrides?.[component.id] || {};
     const timelineValue = (key: string, fallback: unknown): unknown =>
       Object.prototype.hasOwnProperty.call(timelineOverride, key) ? timelineOverride[key] : fallback;
     const x = livePos ? livePos.x : Number(timelineValue("x", get(component, "x") || 0));
@@ -266,13 +268,14 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
                 index,
                 total: referencedComposition.components?.length || 1,
                 interactive: false,
-                referencePath: new Set([...referencePath, referencedComposition.id])
+                referencePath: new Set([...referencePath, referencedComposition.id]),
+                targetPath: scopedTargetId ? [scopedTargetId] : []
               })
             )}
           </div>
         ) : null}
         {(component.children || []).map((child, index) =>
-          renderComponent(child, { index, total: component.children?.length || 1, interactive, referencePath })
+          renderComponent(child, { index, total: component.children?.length || 1, interactive, referencePath, targetPath })
         )}
         {selected && props.showHandles !== false ? (
           <>

@@ -998,10 +998,10 @@ function ArtTimelinePanel({
   const selectedFrameRangeEnd = Math.min(current.frameCount - 1, cleanFrame + selectedFrameRangeCount - 1);
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
   const timelineSegments = useMemo(() => timelineSegmentsForArt(current), [current]);
-  const keyframeTargets = useMemo(() => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget }), [component, includeRootTarget]);
+  const keyframeTargets = useMemo(() => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true }), [component, includeRootTarget]);
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
-    : component?.id || keyframeTargets[0]?.id || "";
+    : keyframeTargets[0]?.id || component?.id || "";
   const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId) : undefined;
   const commandTargetLabel = timelineCommandTargetLabel(commandType);
   const commandTargetPlaceholder = timelineCommandTargetPlaceholder(commandType, activeKeyframeTargetId);
@@ -1036,6 +1036,10 @@ function ArtTimelinePanel({
   function commandDefaultsForType(type: string, previousTarget = "", previousEvent = ""): { target: string; event: string } {
     const target = type === "stop" ? "" : previousTarget || defaultCommandTargetForType(type);
     return { target, event: defaultCommandEventForType(type, target, previousEvent) };
+  }
+
+  function componentWithTimelineTargetId(target: ArtComponent, targetId: string): ArtComponent {
+    return target.id === targetId ? target : { ...target, id: targetId };
   }
 
   function setNewCommandType(nextType: string): void {
@@ -1442,9 +1446,9 @@ function ArtTimelinePanel({
   function pasteCopiedKeyframe(nextFrame = cleanFrame): void {
     if (!copiedKeyframe || !activeKeyframeTarget) return;
     const normalizedFrame = Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(nextFrame) || 0)));
-    const nextTimeline = copyTimelineKeyframe(current, copiedKeyframe.targetId, copiedKeyframe.frame, activeKeyframeTarget.id, normalizedFrame);
+    const nextTimeline = copyTimelineKeyframe(current, copiedKeyframe.targetId, copiedKeyframe.frame, activeKeyframeTargetId, normalizedFrame);
     onChange(nextTimeline);
-    setSelectedKeyframe({ targetId: activeKeyframeTarget.id, frame: normalizedFrame });
+    setSelectedKeyframe({ targetId: activeKeyframeTargetId, frame: normalizedFrame });
     previewFrame(normalizedFrame);
   }
 
@@ -1468,10 +1472,10 @@ function ArtTimelinePanel({
     if (!activeKeyframeTarget) return;
     const propertyKeys = timelinePropertyKeyList(keyframePropertyNames);
     if (!propertyKeys.length) return;
-    const nextTimeline = addTimelinePropertyKeyframe(current, activeKeyframeTarget, cleanFrame, propertyKeys);
+    const nextTimeline = addTimelinePropertyKeyframe(current, componentWithTimelineTargetId(activeKeyframeTarget, activeKeyframeTargetId), cleanFrame, propertyKeys);
     onChange(nextTimeline);
     setSelectedMarker(null);
-    setSelectedKeyframe({ targetId: activeKeyframeTarget.id, frame: cleanFrame });
+    setSelectedKeyframe({ targetId: activeKeyframeTargetId, frame: cleanFrame });
     previewFrame(cleanFrame);
   }
 
@@ -1480,7 +1484,12 @@ function ArtTimelinePanel({
     const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId);
     const propertyKeys = timelinePropertyKeyList(keyframePropertyNames);
     if (!target || !propertyKeys.length) return;
-    const nextTimeline = addTimelinePropertyKeyframe(current, target, selectedTimelineKeyframe.keyframe.frame, propertyKeys);
+    const nextTimeline = addTimelinePropertyKeyframe(
+      current,
+      componentWithTimelineTargetId(target, selectedTimelineKeyframe.trackTargetId),
+      selectedTimelineKeyframe.keyframe.frame,
+      propertyKeys
+    );
     onChange(nextTimeline);
     setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: selectedTimelineKeyframe.keyframe.frame });
     previewFrame(selectedTimelineKeyframe.keyframe.frame);
@@ -1490,7 +1499,11 @@ function ArtTimelinePanel({
     if (!selectedTimelineKeyframe || !component) return;
     const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId);
     if (!target) return;
-    const nextTimeline = replaceTransformKeyframeFromComponent(current, target, selectedTimelineKeyframe.keyframe.frame);
+    const nextTimeline = replaceTransformKeyframeFromComponent(
+      current,
+      componentWithTimelineTargetId(target, selectedTimelineKeyframe.trackTargetId),
+      selectedTimelineKeyframe.keyframe.frame
+    );
     onChange(nextTimeline);
     setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: selectedTimelineKeyframe.keyframe.frame });
     previewFrame(selectedTimelineKeyframe.keyframe.frame);
@@ -1506,7 +1519,13 @@ function ArtTimelinePanel({
     >
       <div className="art-timeline-header">
         <h3>{title}</h3>
-        <button type="button" disabled={!activeKeyframeTarget} onClick={() => onChange(mergeDefaultArtVisibilityTimeline(current, activeKeyframeTarget))}>
+        <button
+          type="button"
+          disabled={!activeKeyframeTarget}
+          onClick={() => {
+            if (activeKeyframeTarget) onChange(mergeDefaultArtVisibilityTimeline(current, componentWithTimelineTargetId(activeKeyframeTarget, activeKeyframeTargetId)));
+          }}
+        >
           Add Visibility Defaults
         </button>
       </div>
@@ -1906,10 +1925,10 @@ function ArtTimelinePanel({
           disabled={!activeKeyframeTarget}
           onClick={() => {
             if (!activeKeyframeTarget) return;
-            const nextTimeline = addTransformKeyframe(current, activeKeyframeTarget, cleanFrame);
+            const nextTimeline = addTransformKeyframe(current, componentWithTimelineTargetId(activeKeyframeTarget, activeKeyframeTargetId), cleanFrame);
             onChange(nextTimeline);
             setSelectedMarker(null);
-            setSelectedKeyframe({ targetId: activeKeyframeTarget.id, frame: cleanFrame });
+            setSelectedKeyframe({ targetId: activeKeyframeTargetId, frame: cleanFrame });
           }}
         >
           Add Keyframe

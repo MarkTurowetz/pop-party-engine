@@ -51,6 +51,34 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(snapshots).toEqual([snapshot]);
   });
 
+  it("routes parent timeline snapshots by scoped component path", () => {
+    const snapshots: unknown[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      componentPath: string[];
+      children: Map<string, unknown>;
+      applyTimelineSnapshotToDescendants: (snapshot: unknown) => void;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      componentPath: string[];
+      children: Map<string, unknown>;
+      createVisual: () => { applyTimelineSnapshot: (snapshot: unknown) => void };
+    };
+    parent.component = { id: "player" };
+    parent.componentPath = ["player"];
+    child.component = { id: "answer-text" };
+    child.componentPath = ["player", "bubble", "answer-text"];
+    child.children = new Map();
+    child.createVisual = () => ({ applyTimelineSnapshot: (snapshot) => snapshots.push(snapshot) });
+    parent.children = new Map([["answer-text", child]]);
+
+    const snapshot = { frame: 2, targets: { "player/bubble/answer-text": { defaultText: "Scoped" } } };
+    parent.applyTimelineSnapshotToDescendants(snapshot);
+
+    expect(snapshots).toEqual([snapshot]);
+  });
+
   it("routes parent timeline emit commands to targeted descendant animations", () => {
     const played: unknown[] = [];
     const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {

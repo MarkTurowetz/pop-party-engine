@@ -306,6 +306,7 @@ class CssVisualObject {
     if (this.element?.id) ids.add(this.element.id);
     if (dataset.artComponentId) ids.add(dataset.artComponentId);
     if (dataset.componentId) ids.add(dataset.componentId);
+    if (dataset.artComponentPath) ids.add(dataset.artComponentPath);
     return Array.from(ids);
   }
 

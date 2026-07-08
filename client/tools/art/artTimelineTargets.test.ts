@@ -29,13 +29,33 @@ describe("artTimelineTargets", () => {
 
   it("finds nested timeline targets", () => {
     expect(findTimelineTargetComponent([tree], "answer-text")?.name).toBe("Answer Text");
+    expect(findTimelineTargetComponent([tree], "player/bubble/answer-text")?.name).toBe("Answer Text");
+  });
+
+  it("can expose scoped target ids for repeated nested components", () => {
+    expect(timelineTargetOptionsFor(tree, { useScopedIds: true }).map((option) => option.id)).toEqual([
+      "player",
+      "player/avatar",
+      "player/bubble",
+      "player/bubble/answer-text"
+    ]);
+    expect(timelineTargetOptionsFor(tree, { includeRoot: false, useScopedIds: true }).map((option) => option.id)).toEqual([
+      "player/avatar",
+      "player/bubble",
+      "player/bubble/answer-text"
+    ]);
   });
 
   it("returns readable labels and fallback labels", () => {
     expect(timelineTargetLabel("bubble", tree)).toMatchObject({
       id: "bubble",
       label: "Answer Bubble",
-      detail: "container / bubble"
+      detail: "container / bubble / player/bubble"
+    });
+    expect(timelineTargetLabel("player/bubble", tree)).toMatchObject({
+      id: "player/bubble",
+      label: "Answer Bubble",
+      detail: "container / bubble / player/bubble"
     });
     expect(timelineTargetLabel("missing", tree)).toEqual({
       id: "missing",

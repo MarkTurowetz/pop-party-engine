@@ -259,6 +259,7 @@ class ArtObjectView {
   instanceId: string;
   getComposition: (id: string) => Dict | null;
   referencePath: Set<string>;
+  componentPath: string[];
   component: Component | null = null;
   canvas: CanvasSize | null = null;
   children = new Map<string, ArtObjectView>();
@@ -278,6 +279,7 @@ class ArtObjectView {
         ? (options.getComposition as (id: string) => Dict | null)
         : (id: string) => w().artComposition?.(id) || null;
     this.referencePath = options.referencePath instanceof Set ? (options.referencePath as Set<string>) : new Set();
+    this.componentPath = Array.isArray(options.componentPath) ? (options.componentPath as string[]) : [];
     this.element = this.document.createElement("div");
     this.image = this.document.createElement("img");
     this.image.className = "art-runtime-object-image";
@@ -292,7 +294,21 @@ class ArtObjectView {
 
   gameObjectId(): string {
     const componentId = (this.component?.id as string) || this.element.dataset.artComponentId || "";
-    return `art-component:${this.instanceId || "default"}:${componentId}`;
+    const componentPath = this.componentPathId() || componentId;
+    return `art-component:${this.instanceId || "default"}:${componentPath}`;
+  }
+
+  componentPathId(): string {
+    return (this.componentPath || []).filter(Boolean).join("/");
+  }
+
+  componentTargetIds(): Set<string> {
+    const ids = new Set<string>();
+    const componentId = String(this.component?.id || "").trim();
+    const pathId = this.componentPathId();
+    if (componentId) ids.add(componentId);
+    if (pathId) ids.add(pathId);
+    return ids;
   }
 
   createVisual(): Dict | null {
@@ -344,7 +360,7 @@ class ArtObjectView {
   }
 
   viewForComponentId(componentId: string): ArtObjectView | null {
-    if (String(this.component?.id || "") === componentId) return this;
+    if (this.componentTargetIds().has(componentId)) return this;
     for (const child of this.children.values()) {
       const match = child.viewForComponentId(componentId);
       if (match) return match;
@@ -409,6 +425,7 @@ class ArtObjectView {
       isRootContainer: layer.isRootContainer
     });
     if (!wasVisible) this.element.classList.add(HIDDEN_CLASS);
+    this.element.dataset.artComponentPath = this.componentPathId();
     if (this.visual || this.gameObject) this.createVisual();
     this.renderChildren((this.component.children as Component[]) || []);
   }
@@ -434,6 +451,7 @@ class ArtObjectView {
           gameObjectApi: this.gameObjectApi,
           getComposition: this.getComposition,
           referencePath: childReferencePath,
+          componentPath: [...this.componentPath, String(child.id || "").trim()].filter(Boolean),
           instanceId: `${this.instanceId}/${key}`,
           component: child,
           canvas: childCanvas,
@@ -583,6 +601,7 @@ class ArtObjectTreeRenderer {
           visualAnimation: this.visualAnimation,
           gameObjectApi: this.gameObjectApi,
           getComposition: this.getComposition,
+          componentPath: [String(component.id || "").trim()].filter(Boolean),
           instanceId: `${this.instanceId}/${key}`,
           component,
           canvas,
