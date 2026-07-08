@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ArtComponent } from "../../types/game-data";
+import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
 
 const tree = {
@@ -61,6 +61,32 @@ describe("artTimelineTargets", () => {
       id: "missing",
       label: "missing",
       detail: "track target"
+    });
+  });
+
+  it("expands referenced composition children when a resolver is provided", () => {
+    const referenceTree = {
+      id: "player",
+      name: "Player",
+      kind: "container",
+      children: [{ id: "bubble-slot", name: "Bubble Slot", kind: "reference", artCompositionId: "bubble" }]
+    } as ArtComponent;
+    const bubble = {
+      id: "bubble",
+      name: "Bubble",
+      components: [{ id: "answer-text", name: "Answer Text", kind: "text" }]
+    } as ArtComposition;
+    const resolveReference = (component: ArtComponent) => (component.artCompositionId === "bubble" ? bubble : null);
+
+    expect(timelineTargetOptionsFor(referenceTree, { useScopedIds: true, resolveReference }).map((option) => option.id)).toEqual([
+      "player",
+      "player/bubble-slot",
+      "player/bubble-slot/answer-text"
+    ]);
+    expect(findTimelineTargetComponent([referenceTree], "player/bubble-slot/answer-text", { resolveReference })?.name).toBe("Answer Text");
+    expect(timelineTargetLabel("player/bubble-slot/answer-text", referenceTree, { resolveReference })).toMatchObject({
+      label: "Answer Text",
+      detail: "text / answer-text / player/bubble-slot/answer-text"
     });
   });
 });

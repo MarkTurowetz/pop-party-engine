@@ -202,6 +202,11 @@ function compositionTimelineTargetRoot(composition: ArtComposition): ArtComponen
   } as ArtComponent;
 }
 
+function artCompositionReferenceResolver(compositions: ArtComposition[]) {
+  const byId = new Map(compositions.map((item) => [String(item.id || ""), item]));
+  return (component: ArtComponent) => byId.get(String(component.artCompositionId || "")) || null;
+}
+
 function timelineLabelsAtFrame(timeline: TimelineDocument, frame: number): TimelineLabel[] {
   return timeline.labels.filter((label) => label.frame === frame);
 }
@@ -310,8 +315,12 @@ function timelineCommandEventPlaceholder(type: string): string {
   return "";
 }
 
-function timelineTargetAnimationLabels(component: ArtComponent | undefined, targetId: string): TimelineLabel[] {
-  const target = component && targetId ? findTimelineTargetComponent([component], targetId) : undefined;
+function timelineTargetAnimationLabels(
+  component: ArtComponent | undefined,
+  targetId: string,
+  resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined
+): TimelineLabel[] {
+  const target = component && targetId ? findTimelineTargetComponent([component], targetId, { resolveReference }) : undefined;
   const targetTimeline = artTimelineOrDefault((target?.timeline || null) as TimelineDocument | null);
   return targetTimeline.labels;
 }
@@ -760,6 +769,7 @@ function ArtComponentInspector({
             title={`${composition.name} Timeline`}
             timeline={composition.timeline as TimelineDocument | null | undefined}
             component={compositionTimelineTargetRoot(composition)}
+            compositions={compositions}
             includeRootTarget={false}
             onChange={(timeline) => controller.updateComposition(composition.id, { timeline })}
             onPreviewFrame={onPreviewTimelineOverrides}
@@ -925,6 +935,7 @@ function ArtComponentInspector({
         title={`${component.name || component.kind} Timeline`}
         timeline={component.timeline as TimelineDocument | null | undefined}
         component={component}
+        compositions={compositions}
         onChange={(timeline) => commit({ timeline } as Partial<ArtComponent>)}
         onPreviewFrame={onPreviewTimelineOverrides}
       />
@@ -936,6 +947,7 @@ function ArtTimelinePanel({
   title,
   timeline,
   component,
+  compositions = [],
   includeRootTarget = true,
   onChange,
   onPreviewFrame
@@ -943,6 +955,7 @@ function ArtTimelinePanel({
   title: string;
   timeline: TimelineDocument | null | undefined;
   component?: ArtComponent;
+  compositions?: ArtComposition[];
   includeRootTarget?: boolean;
   onChange: (timeline: TimelineDocument) => void;
   onPreviewFrame?: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
@@ -975,6 +988,7 @@ function ArtTimelinePanel({
   const [newPropertyType, setNewPropertyType] = useState<"number" | "boolean" | "string">("number");
   const [newPropertyValue, setNewPropertyValue] = useState("");
   const playbackRef = useRef<ArtTimelinePreviewPlayback | null>(null);
+  const resolveReference = useMemo(() => artCompositionReferenceResolver(compositions), [compositions]);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const cleanTimelineFrame = (value: number): number => Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(value) || 0)));
   const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
@@ -998,23 +1012,26 @@ function ArtTimelinePanel({
   const selectedFrameRangeEnd = Math.min(current.frameCount - 1, cleanFrame + selectedFrameRangeCount - 1);
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
   const timelineSegments = useMemo(() => timelineSegmentsForArt(current), [current]);
-  const keyframeTargets = useMemo(() => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true }), [component, includeRootTarget]);
+  const keyframeTargets = useMemo(
+    () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true, resolveReference }),
+    [component, includeRootTarget, resolveReference]
+  );
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
     : keyframeTargets[0]?.id || component?.id || "";
-  const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId) : undefined;
+  const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId, { resolveReference }) : undefined;
   const commandTargetLabel = timelineCommandTargetLabel(commandType);
   const commandTargetPlaceholder = timelineCommandTargetPlaceholder(commandType, activeKeyframeTargetId);
   const commandEventLabel = timelineCommandEventLabel(commandType);
   const commandEventPlaceholder = timelineCommandEventPlaceholder(commandType);
-  const commandTargetAnimationLabels = timelineTargetAnimationLabels(component, commandTarget);
+  const commandTargetAnimationLabels = timelineTargetAnimationLabels(component, commandTarget, resolveReference);
   const activePlayStart = current.labels.some((label) => label.name === playStartLabel) ? playStartLabel : "";
   const activeDuplicateSegmentSource = current.labels.some((label) => label.name === duplicateSegmentSource)
     ? duplicateSegmentSource
     : current.labels[0]?.name || "";
   const activePlaybackDuration = useMemo(
-    () => artTimelinePlaybackDuration(current, component, activePlayStart || cleanFrame),
-    [activePlayStart, cleanFrame, component, current]
+    () => artTimelinePlaybackDuration(current, component, activePlayStart || cleanFrame, 0, { resolveReference }),
+    [activePlayStart, cleanFrame, component, current, resolveReference]
   );
 
   function defaultCommandTargetForType(type: string): string {
@@ -1025,7 +1042,7 @@ function ArtTimelinePanel({
 
   function defaultCommandEventForType(type: string, targetId: string, previousEvent = ""): string {
     if (type === "playComponent" || type === "stopComponent") {
-      const labels = timelineTargetAnimationLabels(component, targetId);
+      const labels = timelineTargetAnimationLabels(component, targetId, resolveReference);
       if (labels.some((label) => label.name === previousEvent)) return previousEvent;
       return labels[0]?.name || "appear";
     }
@@ -1125,6 +1142,7 @@ function ArtTimelinePanel({
       timeline: current,
       component,
       start: activePlayStart || cleanFrame,
+      resolveReference,
       onPreview: (previewFrameValue, overrides) => previewFrameWithOverrides(previewFrameValue, overrides),
       onComplete: () => {
         playbackRef.current = null;
@@ -1481,7 +1499,7 @@ function ArtTimelinePanel({
 
   function recaptureSelectedKeyframeProperties(): void {
     if (!selectedTimelineKeyframe || !component) return;
-    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId);
+    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId, { resolveReference });
     const propertyKeys = timelinePropertyKeyList(keyframePropertyNames);
     if (!target || !propertyKeys.length) return;
     const nextTimeline = addTimelinePropertyKeyframe(
@@ -1497,7 +1515,7 @@ function ArtTimelinePanel({
 
   function recaptureSelectedKeyframe(): void {
     if (!selectedTimelineKeyframe || !component) return;
-    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId);
+    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId, { resolveReference });
     if (!target) return;
     const nextTimeline = replaceTransformKeyframeFromComponent(
       current,
@@ -1645,7 +1663,7 @@ function ArtTimelinePanel({
               >
                 <span>{segment.label}</span>
                 <small>
-                  {segment.startFrame}-{segment.endFrame} / {Math.round(artTimelinePlaybackDuration(current, component, segment.label))}ms
+                  {segment.startFrame}-{segment.endFrame} / {Math.round(artTimelinePlaybackDuration(current, component, segment.label, 0, { resolveReference }))}ms
                 </small>
               </button>
               <button type="button" onClick={() => deleteSegment(segment.label)}>
@@ -2195,7 +2213,7 @@ function ArtTimelinePanel({
                 </label>
               ) : null}
               <datalist id="art-timeline-selected-command-target-labels">
-                {timelineTargetAnimationLabels(component, selectedTimelineMarker.command.target || "").map((label) => (
+                {timelineTargetAnimationLabels(component, selectedTimelineMarker.command.target || "", resolveReference).map((label) => (
                   <option value={label.name} key={label.name} />
                 ))}
               </datalist>

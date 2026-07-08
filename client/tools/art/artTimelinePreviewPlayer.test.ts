@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ArtComponent } from "../../types/game-data";
+import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import { artTimelinePlaybackDuration, playArtTimelinePreview } from "./artTimelinePreviewPlayer";
 
 describe("playArtTimelinePreview", () => {
@@ -139,6 +139,50 @@ describe("playArtTimelinePreview", () => {
     expect(scopedFrames.some((frame) => (frame["root/child"] as { scale?: number } | undefined)?.scale === 0.5)).toBe(true);
     expect(scopedFrames.some((frame) => (frame["root/child/label"] as { defaultText?: string } | undefined)?.defaultText === "B")).toBe(true);
     expect(scopedFrames.every((frame) => frame.child === undefined && frame.label === undefined)).toBe(true);
+  });
+
+  it("previews nested component timelines through referenced compositions", () => {
+    const bubbleText: ArtComponent = {
+      id: "answer-text",
+      kind: "text",
+      timeline: {
+        fps: 10,
+        frameCount: 2,
+        labels: [{ name: "pulse", frame: 0 }],
+        commands: [{ frame: 1, type: "stop" }],
+        tracks: [{ targetId: "self", keyframes: [{ frame: 0, props: { scale: 0.5 } }, { frame: 1, props: { scale: 1 } }] }]
+      }
+    };
+    const bubble = { id: "answer-bubble", name: "Answer Bubble", components: [bubbleText] } as ArtComposition;
+    const root: ArtComponent = {
+      id: "player",
+      kind: "container",
+      children: [{ id: "answer-bubble-slot", kind: "reference", artCompositionId: "answer-bubble" }]
+    };
+    const resolveReference = (component: ArtComponent) => (component.artCompositionId === "answer-bubble" ? bubble : null);
+    const frames: Array<Record<string, unknown>> = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      resolveReference,
+      timeline: {
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "player/answer-bubble-slot/answer-text", event: "pulse" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (_frame, overrides) => frames.push(overrides)
+    });
+
+    vi.advanceTimersByTime(200);
+    playback.stop();
+
+    expect(frames.some((frame) => (frame["player/answer-bubble-slot/answer-text"] as { scale?: number } | undefined)?.scale === 0.5)).toBe(true);
+    expect(frames.some((frame) => (frame["player/answer-bubble-slot/answer-text"] as { scale?: number } | undefined)?.scale === 1)).toBe(true);
   });
 
   it("includes nested component command durations in preview playback duration", () => {

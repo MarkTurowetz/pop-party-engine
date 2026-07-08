@@ -1,4 +1,4 @@
-import type { ArtComponent } from "../../types/game-data";
+import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import {
   artComponentTargetIdFor,
   artComponentTargetLabel,
@@ -15,10 +15,11 @@ export type TimelineTargetOption = {
 export type TimelineTargetOptions = {
   includeRoot?: boolean;
   useScopedIds?: boolean;
+  resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined;
 };
 
-export function findTimelineTargetComponent(components: ArtComponent[], id: string): ArtComponent | undefined {
-  return findArtComponentTarget(components, id);
+export function findTimelineTargetComponent(components: ArtComponent[], id: string, targetOptions: TimelineTargetOptions = {}): ArtComponent | undefined {
+  return findArtComponentTarget(components, id, targetOptions);
 }
 
 export function timelineTargetIdFor(component: ArtComponent, path: string[], targetOptions: TimelineTargetOptions = {}): string {
@@ -33,6 +34,6 @@ export function timelineTargetOptionsFor(component: ArtComponent | undefined, ta
   }));
 }
 
-export function timelineTargetLabel(targetId: string, component: ArtComponent | undefined): TimelineTargetOption {
-  return artComponentTargetLabel(targetId, component);
+export function timelineTargetLabel(targetId: string, component: ArtComponent | undefined, targetOptions: TimelineTargetOptions = {}): TimelineTargetOption {
+  return artComponentTargetLabel(targetId, component, targetOptions);
 }
