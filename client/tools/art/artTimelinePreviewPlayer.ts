@@ -14,12 +14,14 @@ export interface PlayArtTimelinePreviewOptions {
   timeline: TimelineDocument;
   component?: ArtComponent;
   start: string | number;
+  scopeRootPath?: boolean;
   resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined;
   onPreview: (frame: number, overrides: TimelinePreviewOverrides) => void;
   onComplete?: () => void;
 }
 
 export interface ArtTimelineReferenceOptions {
+  scopeRootPath?: boolean;
   resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined;
 }
 
@@ -77,6 +79,7 @@ export function playArtTimelinePreview({
   timeline,
   component,
   start,
+  scopeRootPath,
   resolveReference,
   onPreview,
   onComplete
@@ -106,7 +109,7 @@ export function playArtTimelinePreview({
 
   const playNestedTargetTimeline = (targetId: string, animation: string, mode: "play" | "stop" = "play"): void => {
     if (!component || stopped) return;
-    const target = findTimelineTargetComponent([component], targetId, { resolveReference });
+    const target = findTimelineTargetComponent([component], targetId, { scopeRootPath, resolveReference });
     const nestedTimeline = artTimelineOrDefault((target?.timeline || null) as TimelineDocument | null);
     if (!target || !new TimelinePlayer({ timeline: nestedTimeline }).hasLabel(animation)) return;
     const targetRawId = String(target.id || "").trim();
@@ -120,7 +123,7 @@ export function playArtTimelinePreview({
         const nestedAnimation = nestedAnimationForCommand(command);
         if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
       },
-      commandDuration: (command) => artTimelineCommandDuration(component, command, 0, { resolveReference })
+      commandDuration: (command) => artTimelineCommandDuration(component, command, 0, { scopeRootPath, resolveReference })
     });
     childPlayers.push(childPlayer);
     if (mode === "stop") {
@@ -138,7 +141,7 @@ export function playArtTimelinePreview({
       const nestedAnimation = nestedAnimationForCommand(command);
       if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
     },
-    commandDuration: (command) => artTimelineCommandDuration(component, command, 0, { resolveReference })
+    commandDuration: (command) => artTimelineCommandDuration(component, command, 0, { scopeRootPath, resolveReference })
   });
 
   parentPlayer.gotoAndPlay(start, {

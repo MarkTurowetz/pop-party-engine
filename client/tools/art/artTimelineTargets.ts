@@ -15,6 +15,7 @@ export type TimelineTargetOption = {
 export type TimelineTargetOptions = {
   includeRoot?: boolean;
   useScopedIds?: boolean;
+  scopeRootPath?: boolean;
   resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined;
 };
 

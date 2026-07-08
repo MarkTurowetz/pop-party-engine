@@ -8,6 +8,7 @@ export interface ArtComponentTargetMatch {
 export interface ArtComponentTargetOptions {
   includeRoot?: boolean;
   useScopedIds?: boolean;
+  scopeRootPath?: boolean;
   resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined;
 }
 
@@ -62,7 +63,8 @@ export function findArtComponentTargetPath(
     for (const component of items || []) {
       const componentId = String(component.id || "").trim();
       const nextPath = [...path, componentId].filter(Boolean);
-      const matches = usesPath ? artComponentTargetPathId(nextPath) === cleanId : componentId === cleanId;
+      const matchPath = options.scopeRootPath === false ? nextPath.slice(1) : nextPath;
+      const matches = usesPath ? artComponentTargetPathId(matchPath) === cleanId : componentId === cleanId;
       if (matches) return { component, path: nextPath };
       const children = referencedChildren(component, options) || component.children || [];
       const found = visit(children, nextPath);
@@ -101,9 +103,10 @@ export function artComponentTargetOptionsFor(
       });
     }
     const itemId = String(item.id || "").trim();
+    const childPath = depth === 0 && includeRoot === false && options.scopeRootPath === false ? [] : [...path, itemId].filter(Boolean);
     const children = referencedChildren(item, options) || item.children || [];
     for (const child of children) {
-      visit(child, depth + 1, [...path, itemId].filter(Boolean));
+      visit(child, depth + 1, childPath);
     }
   };
   visit(component, 0, []);

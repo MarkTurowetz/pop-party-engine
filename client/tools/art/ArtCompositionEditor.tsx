@@ -318,9 +318,10 @@ function timelineCommandEventPlaceholder(type: string): string {
 function timelineTargetAnimationLabels(
   component: ArtComponent | undefined,
   targetId: string,
+  scopeRootPath?: boolean,
   resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined
 ): TimelineLabel[] {
-  const target = component && targetId ? findTimelineTargetComponent([component], targetId, { resolveReference }) : undefined;
+  const target = component && targetId ? findTimelineTargetComponent([component], targetId, { scopeRootPath, resolveReference }) : undefined;
   const targetTimeline = artTimelineOrDefault((target?.timeline || null) as TimelineDocument | null);
   return targetTimeline.labels;
 }
@@ -771,6 +772,7 @@ function ArtComponentInspector({
             component={compositionTimelineTargetRoot(composition)}
             compositions={compositions}
             includeRootTarget={false}
+            scopeRootPath={false}
             onChange={(timeline) => controller.updateComposition(composition.id, { timeline })}
             onPreviewFrame={onPreviewTimelineOverrides}
           />
@@ -949,6 +951,7 @@ function ArtTimelinePanel({
   component,
   compositions = [],
   includeRootTarget = true,
+  scopeRootPath = true,
   onChange,
   onPreviewFrame
 }: {
@@ -957,6 +960,7 @@ function ArtTimelinePanel({
   component?: ArtComponent;
   compositions?: ArtComposition[];
   includeRootTarget?: boolean;
+  scopeRootPath?: boolean;
   onChange: (timeline: TimelineDocument) => void;
   onPreviewFrame?: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
 }) {
@@ -1013,25 +1017,25 @@ function ArtTimelinePanel({
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
   const timelineSegments = useMemo(() => timelineSegmentsForArt(current), [current]);
   const keyframeTargets = useMemo(
-    () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true, resolveReference }),
-    [component, includeRootTarget, resolveReference]
+    () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true, scopeRootPath, resolveReference }),
+    [component, includeRootTarget, scopeRootPath, resolveReference]
   );
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
     : keyframeTargets[0]?.id || component?.id || "";
-  const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId, { resolveReference }) : undefined;
+  const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId, { scopeRootPath, resolveReference }) : undefined;
   const commandTargetLabel = timelineCommandTargetLabel(commandType);
   const commandTargetPlaceholder = timelineCommandTargetPlaceholder(commandType, activeKeyframeTargetId);
   const commandEventLabel = timelineCommandEventLabel(commandType);
   const commandEventPlaceholder = timelineCommandEventPlaceholder(commandType);
-  const commandTargetAnimationLabels = timelineTargetAnimationLabels(component, commandTarget, resolveReference);
+  const commandTargetAnimationLabels = timelineTargetAnimationLabels(component, commandTarget, scopeRootPath, resolveReference);
   const activePlayStart = current.labels.some((label) => label.name === playStartLabel) ? playStartLabel : "";
   const activeDuplicateSegmentSource = current.labels.some((label) => label.name === duplicateSegmentSource)
     ? duplicateSegmentSource
     : current.labels[0]?.name || "";
   const activePlaybackDuration = useMemo(
-    () => artTimelinePlaybackDuration(current, component, activePlayStart || cleanFrame, 0, { resolveReference }),
-    [activePlayStart, cleanFrame, component, current, resolveReference]
+    () => artTimelinePlaybackDuration(current, component, activePlayStart || cleanFrame, 0, { scopeRootPath, resolveReference }),
+    [activePlayStart, cleanFrame, component, current, scopeRootPath, resolveReference]
   );
 
   function defaultCommandTargetForType(type: string): string {
@@ -1042,7 +1046,7 @@ function ArtTimelinePanel({
 
   function defaultCommandEventForType(type: string, targetId: string, previousEvent = ""): string {
     if (type === "playComponent" || type === "stopComponent") {
-      const labels = timelineTargetAnimationLabels(component, targetId, resolveReference);
+      const labels = timelineTargetAnimationLabels(component, targetId, scopeRootPath, resolveReference);
       if (labels.some((label) => label.name === previousEvent)) return previousEvent;
       return labels[0]?.name || "appear";
     }
@@ -1142,6 +1146,7 @@ function ArtTimelinePanel({
       timeline: current,
       component,
       start: activePlayStart || cleanFrame,
+      scopeRootPath,
       resolveReference,
       onPreview: (previewFrameValue, overrides) => previewFrameWithOverrides(previewFrameValue, overrides),
       onComplete: () => {
@@ -1499,7 +1504,7 @@ function ArtTimelinePanel({
 
   function recaptureSelectedKeyframeProperties(): void {
     if (!selectedTimelineKeyframe || !component) return;
-    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId, { resolveReference });
+    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId, { scopeRootPath, resolveReference });
     const propertyKeys = timelinePropertyKeyList(keyframePropertyNames);
     if (!target || !propertyKeys.length) return;
     const nextTimeline = addTimelinePropertyKeyframe(
@@ -1515,7 +1520,7 @@ function ArtTimelinePanel({
 
   function recaptureSelectedKeyframe(): void {
     if (!selectedTimelineKeyframe || !component) return;
-    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId, { resolveReference });
+    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId, { scopeRootPath, resolveReference });
     if (!target) return;
     const nextTimeline = replaceTransformKeyframeFromComponent(
       current,
@@ -1663,7 +1668,7 @@ function ArtTimelinePanel({
               >
                 <span>{segment.label}</span>
                 <small>
-                  {segment.startFrame}-{segment.endFrame} / {Math.round(artTimelinePlaybackDuration(current, component, segment.label, 0, { resolveReference }))}ms
+                  {segment.startFrame}-{segment.endFrame} / {Math.round(artTimelinePlaybackDuration(current, component, segment.label, 0, { scopeRootPath, resolveReference }))}ms
                 </small>
               </button>
               <button type="button" onClick={() => deleteSegment(segment.label)}>
@@ -2213,7 +2218,7 @@ function ArtTimelinePanel({
                 </label>
               ) : null}
               <datalist id="art-timeline-selected-command-target-labels">
-                {timelineTargetAnimationLabels(component, selectedTimelineMarker.command.target || "", resolveReference).map((label) => (
+                {timelineTargetAnimationLabels(component, selectedTimelineMarker.command.target || "", scopeRootPath, resolveReference).map((label) => (
                   <option value={label.name} key={label.name} />
                 ))}
               </datalist>
@@ -2268,11 +2273,11 @@ function ArtTimelinePanel({
           <h4>Selected Keyframe</h4>
           <label className="flow-react-field">
             <span>Target</span>
-            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component, { resolveReference }).label} readOnly />
+            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component, { scopeRootPath, resolveReference }).label} readOnly />
           </label>
           <label className="flow-react-field">
             <span>Target Detail</span>
-            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component, { resolveReference }).detail} readOnly />
+            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component, { scopeRootPath, resolveReference }).detail} readOnly />
           </label>
           <label className="flow-react-field">
             <span>Frame</span>

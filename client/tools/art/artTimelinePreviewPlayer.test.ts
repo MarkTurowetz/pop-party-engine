@@ -141,6 +141,34 @@ describe("playArtTimelinePreview", () => {
     expect(scopedFrames.every((frame) => frame.child === undefined && frame.label === undefined)).toBe(true);
   });
 
+  it("previews composition timelines without requiring the synthetic root in target ids", () => {
+    const root: ArtComponent = {
+      id: "composition",
+      kind: "container",
+      children: [{ id: "child", kind: "shape" }]
+    };
+    const frames: Array<Record<string, unknown>> = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      scopeRootPath: false,
+      timeline: {
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [{ frame: 2, type: "stop" }],
+        tracks: [{ targetId: "child", keyframes: [{ frame: 0, props: { x: 0 } }, { frame: 2, props: { x: 20 } }] }]
+      },
+      onPreview: (_frame, overrides) => frames.push(overrides)
+    });
+
+    vi.advanceTimersByTime(200);
+    playback.stop();
+
+    expect(frames.some((frame) => (frame.child as { x?: number } | undefined)?.x === 20)).toBe(true);
+    expect(frames.every((frame) => frame["composition/child"] === undefined)).toBe(true);
+  });
+
   it("previews nested component timelines through referenced compositions", () => {
     const bubbleText: ArtComponent = {
       id: "answer-text",

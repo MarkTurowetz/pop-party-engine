@@ -46,6 +46,15 @@ describe("artTimelineTargets", () => {
     ]);
   });
 
+  it("can omit a synthetic root from scoped child target ids", () => {
+    expect(timelineTargetOptionsFor(tree, { includeRoot: false, useScopedIds: true, scopeRootPath: false }).map((option) => option.id)).toEqual([
+      "avatar",
+      "bubble",
+      "bubble/answer-text"
+    ]);
+    expect(findTimelineTargetComponent([tree], "bubble/answer-text", { scopeRootPath: false })?.name).toBe("Answer Text");
+  });
+
   it("returns readable labels and fallback labels", () => {
     expect(timelineTargetLabel("bubble", tree)).toMatchObject({
       id: "bubble",
