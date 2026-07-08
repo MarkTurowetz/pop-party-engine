@@ -53,6 +53,14 @@ function publicTextAction(action, base, context, publicType) {
   };
 }
 
+function normalizeComponentTargetId(value, context) {
+  const parts = String(value || "")
+    .split("/")
+    .map((part) => context.normalizeFlowId(part, ""))
+    .filter(Boolean);
+  return parts.join("/");
+}
+
 function normalizeGameObjectTimelineAction(action, base, context, publicType, playbackMode) {
   return {
     ...base,
@@ -60,7 +68,7 @@ function normalizeGameObjectTimelineAction(action, base, context, publicType, pl
     targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
     targetLayoutScope: normalizeLayoutTargetScope(action?.targetLayoutScope),
     targetLayoutSurface: normalizeLayoutTargetSurface(action?.targetLayoutSurface),
-    targetComponentId: context.normalizeFlowId(action?.targetComponentId || action?.componentId, ""),
+    targetComponentId: normalizeComponentTargetId(action?.targetComponentId || action?.componentId, context),
     animationName: context.cleanFlowText(action?.animationName || action?.timelineLabel || action?.animation, "appear"),
     timelinePlaybackMode: playbackMode,
     instant: action?.instant === true
@@ -74,7 +82,7 @@ function publicGameObjectTimelineAction(action, base, context, publicType, playb
     targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
     targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
     targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
-    targetComponentId: context.normalizeFlowId(action.targetComponentId || action.componentId, ""),
+    targetComponentId: normalizeComponentTargetId(action.targetComponentId || action.componentId, context),
     animationName: context.cleanFlowText(action.animationName || action.timelineLabel || action.animation, "appear"),
     timelinePlaybackMode: playbackMode,
     instant: action.instant === true
