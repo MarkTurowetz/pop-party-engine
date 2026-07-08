@@ -13,6 +13,7 @@ import {
   cutTimelineFrameRange,
   defaultArtVisibilityTimeline,
   duplicateTimelineSegment,
+  effectiveArtVisibilityTimeline,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
   moveTimelineCommandAt,
@@ -634,5 +635,21 @@ describe("artTimelineModel", () => {
     expect(track?.keyframes.find((keyframe) => keyframe.frame === 17)?.props).toEqual({ opacity: 1, visible: true });
     expect(track?.keyframes.find((keyframe) => keyframe.frame === 40)?.props).toEqual({ opacity: 0, visible: false });
     expect(track?.keyframes.some((keyframe) => "x" in keyframe.props || "width" in keyframe.props)).toBe(false);
+  });
+
+  it("uses default visibility timelines only when no authored timeline exists", () => {
+    const missing = effectiveArtVisibilityTimeline(null, { id: "title" } as ArtComponent);
+    expect(missing.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
+    expect(missing.tracks.find((track) => track.targetId === "title")?.keyframes.some((keyframe) => keyframe.props.visible === false)).toBe(true);
+
+    const authored = effectiveArtVisibilityTimeline({
+      fps: 12,
+      frameCount: 2,
+      labels: [{ name: "custom", frame: 0 }],
+      commands: [{ frame: 0, type: "stop" }],
+      tracks: []
+    });
+    expect(authored.labels).toEqual([{ name: "custom", frame: 0 }]);
+    expect(authored.commands).toEqual([{ frame: 0, type: "stop" }]);
   });
 });
