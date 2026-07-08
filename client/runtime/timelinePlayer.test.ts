@@ -25,6 +25,26 @@ describe("TimelinePlayer", () => {
     expect(timelineSnapshotAt(timeline!, 5).targets.card.scale).toBe(0.75);
   });
 
+  it("normalizes command target and event fields by command type", () => {
+    const timeline = normalizeTimeline({
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [
+        { frame: 1, type: "stop", target: "stale", event: "ignored" },
+        { frame: 2, type: "gotoAndPlay", target: "appear", event: "ignored" },
+        { frame: 3, type: "playComponent", target: "child", event: "pop" }
+      ],
+      tracks: []
+    });
+
+    expect(timeline?.commands).toEqual([
+      { frame: 1, type: "stop" },
+      { frame: 2, type: "gotoAndPlay", target: "appear" },
+      { frame: 3, type: "playComponent", target: "child", event: "pop" }
+    ]);
+  });
+
   it("preserves authored command order within the same frame", () => {
     const timeline = normalizeTimeline({
       fps: 30,

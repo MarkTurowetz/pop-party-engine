@@ -80,6 +80,15 @@ function cleanPropertyValue(value: unknown): TimelinePropertyValue | undefined {
   return undefined;
 }
 
+export function timelineCommandAcceptsTarget(type: string): boolean {
+  return String(type || "") !== "stop";
+}
+
+export function timelineCommandAcceptsEvent(type: string): boolean {
+  const cleanType = String(type || "");
+  return cleanType === "emit" || cleanType === "playComponent" || cleanType === "stopComponent";
+}
+
 function normalizeProps(value: unknown): TimelineProperties {
   const source = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   const props: TimelineProperties = {};
@@ -117,15 +126,20 @@ export function normalizeTimeline(raw: unknown, fallback: unknown = null): Timel
 
   const commands = (Array.isArray(input.commands) ? input.commands : [])
     .slice(0, MAX_COMMANDS)
-    .map((command) => {
-      const entry = command && typeof command === "object" && !Array.isArray(command) ? (command as Record<string, unknown>) : {};
-      return {
-        id: cleanText(entry.id, "", 80) || undefined,
+    .map((rawCommand) => {
+      const entry = rawCommand && typeof rawCommand === "object" && !Array.isArray(rawCommand) ? (rawCommand as Record<string, unknown>) : {};
+      const type = cleanText(entry.type, "stop", 40) || "stop";
+      const target = cleanText(entry.target, "", 120);
+      const event = cleanText(entry.event, "", 120);
+      const normalizedCommand: TimelineCommand = {
         frame: cleanFrame(entry.frame, 0, maxFrame),
-        type: cleanText(entry.type, "stop", 40) || "stop",
-        target: cleanText(entry.target, "", 120) || undefined,
-        event: cleanText(entry.event, "", 120) || undefined
+        type
       };
+      const id = cleanText(entry.id, "", 80);
+      if (id) normalizedCommand.id = id;
+      if (timelineCommandAcceptsTarget(type) && target) normalizedCommand.target = target;
+      if (timelineCommandAcceptsEvent(type) && event) normalizedCommand.event = event;
+      return normalizedCommand;
     })
     .sort((a, b) => a.frame - b.frame);
 

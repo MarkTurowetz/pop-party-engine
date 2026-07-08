@@ -1,5 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.timelineCommandAcceptsTarget = timelineCommandAcceptsTarget;
+exports.timelineCommandAcceptsEvent = timelineCommandAcceptsEvent;
 exports.normalizeTimeline = normalizeTimeline;
 exports.hasTimelineLabel = hasTimelineLabel;
 exports.frameForTimelineLabel = frameForTimelineLabel;
@@ -37,6 +39,13 @@ function cleanPropertyValue(value) {
     if (typeof value === "boolean" || value === null)
         return value;
     return undefined;
+}
+function timelineCommandAcceptsTarget(type) {
+    return String(type || "") !== "stop";
+}
+function timelineCommandAcceptsEvent(type) {
+    const cleanType = String(type || "");
+    return cleanType === "emit" || cleanType === "playComponent" || cleanType === "stopComponent";
 }
 function normalizeProps(value) {
     const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -76,15 +85,23 @@ function normalizeTimeline(raw, fallback = null) {
         .sort((a, b) => a.frame - b.frame || a.name.localeCompare(b.name));
     const commands = (Array.isArray(input.commands) ? input.commands : [])
         .slice(0, MAX_COMMANDS)
-        .map((command) => {
-        const entry = command && typeof command === "object" && !Array.isArray(command) ? command : {};
-        return {
-            id: cleanText(entry.id, "", 80) || undefined,
+        .map((rawCommand) => {
+        const entry = rawCommand && typeof rawCommand === "object" && !Array.isArray(rawCommand) ? rawCommand : {};
+        const type = cleanText(entry.type, "stop", 40) || "stop";
+        const target = cleanText(entry.target, "", 120);
+        const event = cleanText(entry.event, "", 120);
+        const normalizedCommand = {
             frame: cleanFrame(entry.frame, 0, maxFrame),
-            type: cleanText(entry.type, "stop", 40) || "stop",
-            target: cleanText(entry.target, "", 120) || undefined,
-            event: cleanText(entry.event, "", 120) || undefined
+            type
         };
+        const id = cleanText(entry.id, "", 80);
+        if (id)
+            normalizedCommand.id = id;
+        if (timelineCommandAcceptsTarget(type) && target)
+            normalizedCommand.target = target;
+        if (timelineCommandAcceptsEvent(type) && event)
+            normalizedCommand.event = event;
+        return normalizedCommand;
     })
         .sort((a, b) => a.frame - b.frame);
     const tracks = (Array.isArray(input.tracks) ? input.tracks : [])

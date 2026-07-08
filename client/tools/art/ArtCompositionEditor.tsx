@@ -63,6 +63,8 @@ import {
 } from "./artTimelinePreviewPlayer";
 import { useArtCompositions } from "./useArtCompositions";
 import {
+  timelineCommandAcceptsEvent,
+  timelineCommandAcceptsTarget,
   type TimelineCommand,
   type TimelineDocument,
   type TimelineKeyframe,
@@ -281,11 +283,11 @@ function timelineCommandUsesComponentTarget(type: string): boolean {
 }
 
 function timelineCommandUsesTarget(type: string): boolean {
-  return type !== "stop";
+  return timelineCommandAcceptsTarget(type);
 }
 
 function timelineCommandUsesEvent(type: string): boolean {
-  return type === "emit" || type === "playComponent" || type === "stopComponent";
+  return timelineCommandAcceptsEvent(type);
 }
 
 function timelineCommandTargetLabel(type: string): string {

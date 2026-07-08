@@ -1,6 +1,8 @@
 import {
   defaultVisibilityTimeline,
   normalizeTimeline,
+  timelineCommandAcceptsEvent,
+  timelineCommandAcceptsTarget,
   timelineSegmentFor,
   timelineStopFrame,
   type TimelineCommand,
@@ -128,14 +130,6 @@ function remappedTimelineCommandTarget(command: TimelineCommand, labelNameBySour
     return labelNameBySource.get(command.target);
   }
   return command.target;
-}
-
-function timelineCommandAcceptsTarget(type: string): boolean {
-  return type !== "stop";
-}
-
-function timelineCommandAcceptsEvent(type: string): boolean {
-  return type === "emit" || type === "playComponent" || type === "stopComponent";
 }
 
 function assignTimelineCommandFields(command: TimelineCommand, target: string, event: string): TimelineCommand {
