@@ -32,6 +32,7 @@ import {
   copyTimelineKeyframe,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
+  moveTimelineCommandAt,
   removeTimelineCommandAt,
   removeTimelineKeyframe,
   removeTimelineLabel,
@@ -208,6 +209,29 @@ function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: T
       (command.event || "") === (previousCommand.event || "")
   );
   return matchingIndex >= 0 ? matchingIndex : Math.max(0, Math.min(timeline.commands.length - 1, fallbackIndex));
+}
+
+function findLastTimelineCommandIndex(timeline: TimelineDocument, predicate: (command: TimelineCommand) => boolean): number {
+  for (let index = timeline.commands.length - 1; index >= 0; index -= 1) {
+    if (predicate(timeline.commands[index])) return index;
+  }
+  return -1;
+}
+
+function timelineCommandFrameOrder(timeline: TimelineDocument, index: number): { position: number; total: number } {
+  const command = timeline.commands[index];
+  if (!command) return { position: 0, total: 0 };
+  const sameFrame = timeline.commands.map((item, commandIndex) => ({ command: item, index: commandIndex })).filter(({ command: item }) => item.frame === command.frame);
+  return {
+    position: sameFrame.findIndex((item) => item.index === index) + 1,
+    total: sameFrame.length
+  };
+}
+
+function canMoveTimelineCommandInFrame(timeline: TimelineDocument, index: number, direction: -1 | 1): boolean {
+  const command = timeline.commands[index];
+  const target = timeline.commands[index + direction];
+  return Boolean(command && target && command.frame === target.frame);
 }
 
 function timelineCommandUsesComponentTarget(type: string): boolean {
@@ -1031,6 +1055,27 @@ function ArtTimelinePanel({
     setSelectedMarker({ kind: "command", index: nextIndex });
   }
 
+  function moveCommand(index: number, direction: -1 | 1): void {
+    const command = current.commands[index];
+    if (!command || !canMoveTimelineCommandInFrame(current, index, direction)) return;
+    const nextTimeline = moveTimelineCommandAt(current, index, direction);
+    const nextIndex = index + direction;
+    onChange(nextTimeline);
+    setSelectedKeyframe(null);
+    setSelectedMarker({ kind: "command", index: nextIndex });
+    previewFrame(command.frame);
+  }
+
+  function selectCommandFrame(commands: { command: TimelineCommand; index: number }[], commandFrame: number): void {
+    if (!commands.length) {
+      previewFrame(commandFrame);
+      return;
+    }
+    const selectedCommandIndex = selectedMarker?.kind === "command" ? commands.findIndex(({ index }) => index === selectedMarker.index) : -1;
+    const nextCommand = commands[(selectedCommandIndex + 1) % commands.length] || commands[0];
+    selectTimelineMarker({ kind: "command", index: nextCommand.index }, commandFrame);
+  }
+
   function startTimelineDrag(event: ReactDragEvent<HTMLElement>, item: TimelineDragItem): void {
     stopPlayback();
     event.dataTransfer.effectAllowed = "move";
@@ -1325,6 +1370,9 @@ function ArtTimelinePanel({
               <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
                 {visibleTimelineFrames.map((frameIndex) => {
                   const commands = timelineCommandsAtFrame(current, frameIndex);
+                  const selectedFrameCommand =
+                    selectedMarker?.kind === "command" ? commands.find(({ index: commandIndex }) => commandIndex === selectedMarker.index) : undefined;
+                  const dragCommand = selectedFrameCommand || commands[0];
                   return (
                     <button
                       type="button"
@@ -1342,10 +1390,10 @@ function ArtTimelinePanel({
                           ? `Frame ${frameIndex}: ${commands.map(({ command }) => timelineCommandTitle(command)).join(", ")}`
                           : `Preview frame ${frameIndex}`
                       }
-                      onClick={() => (commands[0] ? selectTimelineMarker({ kind: "command", index: commands[0].index }, frameIndex) : previewFrame(frameIndex))}
+                      onClick={() => selectCommandFrame(commands, frameIndex)}
                       onDragStart={(event) => {
-                        if (!commands[0]) return;
-                        startTimelineDrag(event, { kind: "command", index: commands[0].index, command: commands[0].command });
+                        if (!dragCommand) return;
+                        startTimelineDrag(event, { kind: "command", index: dragCommand.index, command: dragCommand.command });
                       }}
                       onDragOver={(event) => handleTimelineFrameDragOver(event, frameIndex)}
                       onDrop={(event) => handleTimelineFrameDrop(event, frameIndex)}
@@ -1493,7 +1541,8 @@ function ArtTimelinePanel({
           type="button"
           onClick={() => {
             const nextTimeline = addTimelineCommand(current, cleanFrame, { type: commandType, target: commandTarget, event: commandEvent });
-            const selectedCommandIndex = nextTimeline.commands.findIndex(
+            const selectedCommandIndex = findLastTimelineCommandIndex(
+              nextTimeline,
               (command) =>
                 command.frame === cleanFrame &&
                 command.type === commandType &&
@@ -1562,31 +1611,41 @@ function ArtTimelinePanel({
           <h4>Commands</h4>
           {current.commands.length ? (
             <ol className="flow-react-list art-timeline-list">
-              {current.commands.map((command, index) => (
-                <li key={command.id || `${command.type}-${command.frame}-${index}`}>
-                  <button
-                    type="button"
-                    aria-current={selectedMarker?.kind === "command" && selectedMarker.index === index ? "true" : undefined}
-                    onClick={() => selectTimelineMarker({ kind: "command", index }, command.frame)}
-                  >
-                    <span>{command.type}</span>
-                  </button>
-                  <small>
-                    Frame {command.frame}
-                    {command.target ? ` -> ${command.target}` : ""}
-                    {command.event ? ` / ${command.event}` : ""}
-                  </small>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(removeTimelineCommandAt(current, index));
-                      if (selectedMarker?.kind === "command" && selectedMarker.index === index) setSelectedMarker(null);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
+              {current.commands.map((command, index) => {
+                const order = timelineCommandFrameOrder(current, index);
+                return (
+                  <li key={command.id || `${command.type}-${command.frame}-${index}`}>
+                    <button
+                      type="button"
+                      aria-current={selectedMarker?.kind === "command" && selectedMarker.index === index ? "true" : undefined}
+                      onClick={() => selectTimelineMarker({ kind: "command", index }, command.frame)}
+                    >
+                      <span>{command.type}</span>
+                    </button>
+                    <small>
+                      Frame {command.frame}
+                      {order.total > 1 ? ` / Order ${order.position} of ${order.total}` : ""}
+                      {command.target ? ` -> ${command.target}` : ""}
+                      {command.event ? ` / ${command.event}` : ""}
+                    </small>
+                    <button type="button" disabled={!canMoveTimelineCommandInFrame(current, index, -1)} onClick={() => moveCommand(index, -1)}>
+                      Earlier
+                    </button>
+                    <button type="button" disabled={!canMoveTimelineCommandInFrame(current, index, 1)} onClick={() => moveCommand(index, 1)}>
+                      Later
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(removeTimelineCommandAt(current, index));
+                        if (selectedMarker?.kind === "command" && selectedMarker.index === index) setSelectedMarker(null);
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
           ) : (
             <p>No commands.</p>
@@ -1624,6 +1683,30 @@ function ArtTimelinePanel({
             </>
           ) : (
             <>
+              {(() => {
+                const order = timelineCommandFrameOrder(current, selectedTimelineMarker.index);
+                return order.total > 1 ? (
+                  <div className="art-timeline-command-order-actions">
+                    <span>
+                      Order {order.position} of {order.total} on frame {selectedTimelineMarker.command.frame}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!canMoveTimelineCommandInFrame(current, selectedTimelineMarker.index, -1)}
+                      onClick={() => moveCommand(selectedTimelineMarker.index, -1)}
+                    >
+                      Earlier
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canMoveTimelineCommandInFrame(current, selectedTimelineMarker.index, 1)}
+                      onClick={() => moveCommand(selectedTimelineMarker.index, 1)}
+                    >
+                      Later
+                    </button>
+                  </div>
+                ) : null;
+              })()}
               <label className="flow-react-field">
                 <span>Command</span>
                 <select value={selectedTimelineMarker.command.type} onChange={(event) => updateSelectedCommand({ type: event.target.value })}>

@@ -1656,7 +1656,7 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-list li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, auto) repeat(3, auto);
   gap: 6px;
   align-items: center;
 }
@@ -1703,6 +1703,20 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-marker-editor .flow-react-field {
   min-width: 0;
+}
+
+.art-timeline-command-order-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.art-timeline-command-order-actions span {
+  margin-right: auto;
+  color: var(--muted);
+  font-weight: 900;
 }
 
 .art-replacement-drawer {

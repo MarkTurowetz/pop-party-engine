@@ -200,6 +200,24 @@ export function removeTimelineCommandAt(timeline: TimelineDocument | null | unde
   return { ...current, commands: current.commands.filter((_, commandIndex) => commandIndex !== index) };
 }
 
+export function moveTimelineCommandAt(
+  timeline: TimelineDocument | null | undefined,
+  index: number,
+  direction: -1 | 1
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  if (index < 0 || index >= current.commands.length) return current;
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= current.commands.length) return current;
+  const command = current.commands[index];
+  const target = current.commands[targetIndex];
+  if (!command || !target || command.frame !== target.frame) return current;
+  const commands = [...current.commands];
+  commands[index] = target;
+  commands[targetIndex] = command;
+  return { ...current, commands };
+}
+
 export function updateTimelineCommandAt(
   timeline: TimelineDocument | null | undefined,
   index: number,

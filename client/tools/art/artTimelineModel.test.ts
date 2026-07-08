@@ -10,6 +10,7 @@ import {
   defaultArtVisibilityTimeline,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
+  moveTimelineCommandAt,
   replaceTransformKeyframeFromComponent,
   removeTimelineFrames,
   removeTimelineKeyframe,
@@ -97,6 +98,29 @@ describe("artTimelineModel", () => {
       { id: "a", frame: 2, type: "stop" },
       { id: "b", frame: 4, type: "gotoAndStop", target: "appear" }
     ]);
+  });
+
+  it("moves commands only within their authored frame", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [
+        { id: "before", frame: 2, type: "stop" },
+        { id: "play", frame: 4, type: "gotoAndPlay", target: "settle" },
+        { id: "emit", frame: 4, type: "emit", event: "started" },
+        { id: "after", frame: 8, type: "stop" }
+      ],
+      tracks: []
+    };
+    const movedEarlier = moveTimelineCommandAt(timeline, 2, -1);
+    expect(movedEarlier.commands.map((command) => command.id)).toEqual(["before", "emit", "play", "after"]);
+
+    const blockedAcrossFrame = moveTimelineCommandAt(movedEarlier, 1, -1);
+    expect(blockedAcrossFrame.commands.map((command) => command.id)).toEqual(["before", "emit", "play", "after"]);
+
+    const movedLater = moveTimelineCommandAt(movedEarlier, 1, 1);
+    expect(movedLater.commands.map((command) => command.id)).toEqual(["before", "play", "emit", "after"]);
   });
 
   it("inserts frames and shifts timeline data at or after the insertion point", () => {
