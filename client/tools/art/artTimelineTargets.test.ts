@@ -22,6 +22,11 @@ describe("artTimelineTargets", () => {
     expect(timelineTargetOptionsFor(tree).map((option) => option.id)).toEqual(["player", "avatar", "bubble", "answer-text"]);
   });
 
+  it("can expose only real children when a synthetic root is used", () => {
+    expect(timelineTargetOptionsFor(tree, { includeRoot: false }).map((option) => option.id)).toEqual(["avatar", "bubble", "answer-text"]);
+    expect(timelineTargetOptionsFor(tree, { includeRoot: false }).map((option) => option.label)).toEqual(["Avatar", "Answer Bubble", "  Answer Text"]);
+  });
+
   it("finds nested timeline targets", () => {
     expect(findTimelineTargetComponent([tree], "answer-text")?.name).toBe("Answer Text");
   });

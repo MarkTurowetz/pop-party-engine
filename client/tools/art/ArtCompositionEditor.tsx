@@ -154,6 +154,19 @@ function findTimelineKeyframe(
   return null;
 }
 
+function compositionTimelineTargetRoot(composition: ArtComposition): ArtComponent {
+  return {
+    id: composition.id || "composition",
+    name: composition.name || "Composition",
+    kind: "container",
+    x: 0,
+    y: 0,
+    width: Number(composition.canvas?.width || 1),
+    height: Number(composition.canvas?.height || 1),
+    children: composition.components || []
+  } as ArtComponent;
+}
+
 function timelineLabelsAtFrame(timeline: TimelineDocument, frame: number): TimelineLabel[] {
   return timeline.labels.filter((label) => label.frame === frame);
 }
@@ -665,6 +678,8 @@ function ArtComponentInspector({
           <ArtTimelinePanel
             title={`${composition.name} Timeline`}
             timeline={composition.timeline as TimelineDocument | null | undefined}
+            component={compositionTimelineTargetRoot(composition)}
+            includeRootTarget={false}
             onChange={(timeline) => controller.updateComposition(composition.id, { timeline })}
             onPreviewFrame={onPreviewTimelineOverrides}
           />
@@ -840,12 +855,14 @@ function ArtTimelinePanel({
   title,
   timeline,
   component,
+  includeRootTarget = true,
   onChange,
   onPreviewFrame
 }: {
   title: string;
   timeline: TimelineDocument | null | undefined;
   component?: ArtComponent;
+  includeRootTarget?: boolean;
   onChange: (timeline: TimelineDocument) => void;
   onPreviewFrame?: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
 }) {
@@ -886,7 +903,7 @@ function ArtTimelinePanel({
   const visibleTimelineFrames = Array.from({ length: visibleTimelineFrameCount }, (_, index) => cleanFrameWindowStart + index);
   const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
-  const keyframeTargets = useMemo(() => timelineTargetOptionsFor(component), [component]);
+  const keyframeTargets = useMemo(() => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget }), [component, includeRootTarget]);
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
     : component?.id || keyframeTargets[0]?.id || "";

@@ -6,6 +6,10 @@ export type TimelineTargetOption = {
   detail: string;
 };
 
+export type TimelineTargetOptions = {
+  includeRoot?: boolean;
+};
+
 function componentLabel(component: ArtComponent): string {
   return String(component.name || component.kind || component.id);
 }
@@ -23,19 +27,22 @@ export function findTimelineTargetComponent(components: ArtComponent[], id: stri
   return undefined;
 }
 
-export function timelineTargetOptionsFor(component: ArtComponent | undefined): TimelineTargetOption[] {
+export function timelineTargetOptionsFor(component: ArtComponent | undefined, targetOptions: TimelineTargetOptions = {}): TimelineTargetOption[] {
   if (!component) return [];
-  const options: TimelineTargetOption[] = [];
+  const includeRoot = targetOptions.includeRoot !== false;
+  const result: TimelineTargetOption[] = [];
   const visit = (item: ArtComponent, depth: number) => {
-    options.push({
-      id: item.id,
-      label: `${"  ".repeat(depth)}${componentLabel(item)}`,
-      detail: componentDetail(item)
-    });
+    if (includeRoot || depth > 0) {
+      result.push({
+        id: item.id,
+        label: `${"  ".repeat(includeRoot ? depth : depth - 1)}${componentLabel(item)}`,
+        detail: componentDetail(item)
+      });
+    }
     for (const child of item.children || []) visit(child, depth + 1);
   };
   visit(component, 0);
-  return options;
+  return result;
 }
 
 export function timelineTargetLabel(targetId: string, component: ArtComponent | undefined): TimelineTargetOption {
