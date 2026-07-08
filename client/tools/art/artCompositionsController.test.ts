@@ -35,6 +35,7 @@ describe("createArtCompositionsController", () => {
 
     expect(created.id).toBe("prefab-answer-bubble");
     expect(created.compositionKind).toBe("prefab");
+    expect(created.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
     expect(controller.getState().selectedCompositionId).toBe(created.id);
     expect(controller.getState().dirtyCompositionIds.has(created.id)).toBe(true);
 
@@ -48,6 +49,12 @@ describe("createArtCompositionsController", () => {
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
     controller.addComponent("shape");
     expect(controller.getState().compositions[0].components).toHaveLength(1);
+    expect(controller.getState().compositions[0].components[0].timeline?.labels.map((label) => label.name)).toEqual(
+      expect.arrayContaining(["park", "on", "appear", "update", "disappear"])
+    );
+    expect(controller.getState().compositions[0].components[0].timeline?.tracks[0].targetId).toBe(
+      controller.getState().compositions[0].components[0].id
+    );
     expect(controller.getState().dirty).toBe(true);
     expect(controller.getState().dirtyCompositionIds.has("a")).toBe(true);
     controller.undo();
@@ -64,6 +71,9 @@ describe("createArtCompositionsController", () => {
     const container = controller.getState().compositions[0].components[0];
     expect(container.children).toHaveLength(1);
     expect(container.children?.[0].kind).toBe("text");
+    expect(container.children?.[0].timeline?.labels.map((label) => label.name)).toEqual(
+      expect.arrayContaining(["park", "on", "appear", "update", "disappear"])
+    );
   });
 
   it("adds a prefab reference component with the referenced composition dimensions", () => {
@@ -82,6 +92,7 @@ describe("createArtCompositionsController", () => {
     expect(reference.name).toBe("Answer Bubble");
     expect(reference.width).toBe(300);
     expect(reference.height).toBe(180);
+    expect(reference.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
   });
 
   it("refreshes reference overrides when the referenced prefab changes", () => {

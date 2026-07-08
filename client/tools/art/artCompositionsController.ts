@@ -9,6 +9,7 @@ import {
   type ArtCompositionKind
 } from "./artCompositionModel";
 import { componentKindLabel, defaultTextFontFamily, normalizeCreatableComponentKind } from "./artComponentSchema";
+import { mergeDefaultArtVisibilityTimeline } from "./artTimelineModel";
 
 /**
  * Controller for the Art composition editor: a list of compositions, each a nested
@@ -96,6 +97,7 @@ function createComposition(kind: ArtCompositionKind, surface: string, name: stri
     compositionKind: cleanKind,
     isCustom: true,
     canvas: { ...DEFAULT_COMPOSITION_CANVAS },
+    timeline: mergeDefaultArtVisibilityTimeline(null),
     components: []
   };
 }
@@ -126,8 +128,10 @@ function createComponent(kind: string, bounds: { width: number; height: number }
     height,
     scale: 1,
     rotation: 0,
+    timeline: null,
     children: []
   };
+  component.timeline = mergeDefaultArtVisibilityTimeline(null, { id: String(component.id || "") });
   if (cleanKind === "reference") {
     component.artCompositionId = String(referencePatch?.artCompositionId || "");
   }
