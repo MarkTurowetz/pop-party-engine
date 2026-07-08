@@ -417,6 +417,24 @@ function componentTimelinePropsFor(component: ArtComponent): TimelineProperties 
   return props;
 }
 
+function cleanPropertyKeys(keys: Iterable<unknown>): string[] {
+  const seen = new Set<string>();
+  for (const key of keys || []) {
+    const cleanKey = String(key || "").trim();
+    if (cleanKey) seen.add(cleanKey);
+  }
+  return [...seen];
+}
+
+function componentTimelinePropsForKeys(component: ArtComponent, keys: Iterable<unknown>): TimelineProperties {
+  const availableProps = componentTimelinePropsFor(component);
+  const props: TimelineProperties = {};
+  for (const key of cleanPropertyKeys(keys)) {
+    if (Object.prototype.hasOwnProperty.call(availableProps, key)) props[key] = availableProps[key];
+  }
+  return props;
+}
+
 function upsertKeyframe(track: TimelineTrack, keyframe: TimelineKeyframe): TimelineTrack {
   const withoutFrame = track.keyframes.filter((item) => item.frame !== keyframe.frame);
   return { ...track, keyframes: [...withoutFrame, keyframe].sort((a, b) => a.frame - b.frame) };
@@ -534,6 +552,35 @@ export function addTransformKeyframe(
     props: componentTimelinePropsFor(component)
   };
   const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
+  const nextTrack = existingTrack
+    ? upsertKeyframe(existingTrack, keyframe)
+    : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };
+  return sortTimeline({
+    ...current,
+    tracks: [...current.tracks.filter((track) => track.targetId !== cleanTargetId), nextTrack]
+  });
+}
+
+export function addTimelinePropertyKeyframe(
+  timeline: TimelineDocument | null | undefined,
+  component: ArtComponent,
+  frame: number,
+  propertyKeys: Iterable<unknown>
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const cleanTargetId = String(component.id || "").trim();
+  if (!cleanTargetId) return current;
+  const props = componentTimelinePropsForKeys(component, propertyKeys);
+  if (Object.keys(props).length === 0) return current;
+  const cleanFrameValue = cleanFrame(frame, current.frameCount);
+  const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
+  const existingKeyframe = existingTrack?.keyframes.find((keyframe) => keyframe.frame === cleanFrameValue);
+  const keyframe: TimelineKeyframe = {
+    id: existingKeyframe?.id || `key-${cleanTargetId}-${cleanFrameValue}`,
+    frame: cleanFrameValue,
+    props: cleanTimelineProps({ ...(existingKeyframe?.props || {}), ...props })
+  };
+  if (existingKeyframe?.easing) keyframe.easing = existingKeyframe.easing;
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, keyframe)
     : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };

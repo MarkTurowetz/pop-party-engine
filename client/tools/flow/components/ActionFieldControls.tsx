@@ -2,6 +2,7 @@ import type { FlowAction } from "../../../types/game-data";
 import { actionFieldsForType, type FlowActionFieldDescriptor } from "../flowActionFieldSchema";
 import { flowGameObjectTargetParts, normalizeFlowTextTargetId } from "../flowSelectors";
 import type { InspectorTargetOption } from "./ActionInspector";
+import { FlowFreeformFuzzyInput } from "./FlowFreeformFuzzyInput";
 
 export interface ActionFieldControlsProps {
   action: FlowAction;
@@ -146,28 +147,17 @@ function FieldControl({
   }
 
   if (field.control === "animationLabel") {
-    const listId = `${fieldKey}:animation-labels`;
     return (
       <label className="flow-react-field" data-flow-react-field={field.key}>
         <span>{field.label}</span>
-        <input
-          type="text"
+        <FlowFreeformFuzzyInput
           key={fieldKey}
-          list={listId}
-          defaultValue={String(rawValue(action, field.key) ?? "")}
-          data-flow-react-field-input={field.key}
-          onBlur={(event) => commitText(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-          }}
+          value={String(rawValue(action, field.key) ?? "")}
+          options={animationLabelOptions.map((option) => ({ id: option.id, label: option.label }))}
+          placeholder="appear"
+          inputDataAttribute={field.key}
+          onCommit={commitText}
         />
-        <datalist id={listId}>
-          {animationLabelOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </datalist>
       </label>
     );
   }

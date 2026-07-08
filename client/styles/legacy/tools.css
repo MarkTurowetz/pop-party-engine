@@ -1421,7 +1421,7 @@ body.tool-dashboard-mode .layout-react-shell {
 }
 
 .art-timeline-actions {
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 0.85fr) repeat(3, auto);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   align-items: end;
 }
 
@@ -2398,6 +2398,45 @@ body.tool-dashboard-mode .layout-react-shell {
   font-size: 14px;
   font-weight: 800;
   box-sizing: border-box;
+}
+
+.flow-fuzzy-select {
+  min-width: 0;
+}
+
+.flow-fuzzy-options {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  max-height: 260px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  background: #1b1430;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  list-style: none;
+}
+
+.flow-fuzzy-options li {
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #f5f3ff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.flow-fuzzy-options li[data-active="true"] {
+  color: var(--ink);
+  background: var(--accent);
+}
+
+.flow-fuzzy-options li[aria-selected="true"] {
+  font-weight: 1000;
 }
 
 .flow-action-name-control .flow-action-name-refresh-button {

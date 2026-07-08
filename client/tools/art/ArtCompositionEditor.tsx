@@ -27,6 +27,7 @@ import {
 import {
   addTimelineCommand,
   addTimelineLabel,
+  addTimelinePropertyKeyframe,
   addTransformKeyframe,
   artTimelineOrDefault,
   copyTimelineKeyframe,
@@ -149,6 +150,10 @@ function coerceTimelinePropertyValue(value: string, type: "number" | "boolean" |
   }
   if (type === "boolean") return value === "true";
   return value;
+}
+
+function timelinePropertyKeyList(value: string): string[] {
+  return [...new Set(String(value || "").split(/[\s,]+/).map((entry) => entry.trim()).filter(Boolean))];
 }
 
 function findTimelineKeyframe(
@@ -916,6 +921,7 @@ function ArtTimelinePanel({
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [frameWindowStart, setFrameWindowStart] = useState(0);
   const [keyframeTargetId, setKeyframeTargetId] = useState("");
+  const [keyframePropertyNames, setKeyframePropertyNames] = useState("scale");
   const [playStartLabel, setPlayStartLabel] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
@@ -1232,6 +1238,28 @@ function ArtTimelinePanel({
     setCopiedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: selectedTimelineKeyframe.keyframe.frame });
     setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: nextFrame });
     previewFrame(nextFrame);
+  }
+
+  function addPropertyKeyframeAtCurrentFrame(): void {
+    if (!activeKeyframeTarget) return;
+    const propertyKeys = timelinePropertyKeyList(keyframePropertyNames);
+    if (!propertyKeys.length) return;
+    const nextTimeline = addTimelinePropertyKeyframe(current, activeKeyframeTarget, cleanFrame, propertyKeys);
+    onChange(nextTimeline);
+    setSelectedMarker(null);
+    setSelectedKeyframe({ targetId: activeKeyframeTarget.id, frame: cleanFrame });
+    previewFrame(cleanFrame);
+  }
+
+  function recaptureSelectedKeyframeProperties(): void {
+    if (!selectedTimelineKeyframe || !component) return;
+    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId);
+    const propertyKeys = timelinePropertyKeyList(keyframePropertyNames);
+    if (!target || !propertyKeys.length) return;
+    const nextTimeline = addTimelinePropertyKeyframe(current, target, selectedTimelineKeyframe.keyframe.frame, propertyKeys);
+    onChange(nextTimeline);
+    setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: selectedTimelineKeyframe.keyframe.frame });
+    previewFrame(selectedTimelineKeyframe.keyframe.frame);
   }
 
   function recaptureSelectedKeyframe(): void {
@@ -1594,6 +1622,16 @@ function ArtTimelinePanel({
           </select>
         </label>
         <label className="flow-react-field">
+          <span>Key Properties</span>
+          <input
+            type="text"
+            list="art-timeline-property-suggestions"
+            value={keyframePropertyNames}
+            placeholder="scale opacity"
+            onChange={(event) => setKeyframePropertyNames(event.target.value)}
+          />
+        </label>
+        <label className="flow-react-field">
           <span>Label</span>
           <input type="text" value={labelName} placeholder="appear" onChange={(event) => setLabelName(event.target.value)} />
         </label>
@@ -1621,6 +1659,9 @@ function ArtTimelinePanel({
           }}
         >
           Add Keyframe
+        </button>
+        <button type="button" disabled={!activeKeyframeTarget || timelinePropertyKeyList(keyframePropertyNames).length === 0} onClick={addPropertyKeyframeAtCurrentFrame}>
+          Add Property Keyframe
         </button>
         <button type="button" disabled={!activeKeyframeTarget || !copiedKeyframe} onClick={() => pasteCopiedKeyframe(cleanFrame)}>
           Paste Keyframe
@@ -1694,6 +1735,11 @@ function ArtTimelinePanel({
         <datalist id="art-timeline-command-target-labels">
           {commandTargetAnimationLabels.map((label) => (
             <option value={label.name} key={label.name} />
+          ))}
+        </datalist>
+        <datalist id="art-timeline-property-suggestions">
+          {TIMELINE_PROPERTY_SUGGESTIONS.map((property) => (
+            <option value={property} key={property} />
           ))}
         </datalist>
       </div>
@@ -1956,6 +2002,13 @@ function ArtTimelinePanel({
             <button type="button" disabled={!component} onClick={recaptureSelectedKeyframe}>
               Recapture Current State
             </button>
+            <button
+              type="button"
+              disabled={!component || timelinePropertyKeyList(keyframePropertyNames).length === 0}
+              onClick={recaptureSelectedKeyframeProperties}
+            >
+              Recapture Key Properties
+            </button>
             <button type="button" onClick={copySelectedKeyframe}>
               Copy Keyframe
             </button>
@@ -2041,11 +2094,6 @@ function ArtTimelinePanel({
             >
               Add Property
             </button>
-            <datalist id="art-timeline-property-suggestions">
-              {TIMELINE_PROPERTY_SUGGESTIONS.map((property) => (
-                <option value={property} key={property} />
-              ))}
-            </datalist>
           </div>
         </div>
       ) : null}

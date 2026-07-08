@@ -131,7 +131,7 @@ describe("ActionInspector", () => {
     expect(markup).toContain("Component");
     expect(markup).toContain("Answer Text");
     expect(markup).toContain("Animation Label");
-    expect(markup).toContain('list="pop-bubble:animationName:animation-labels"');
+    expect(markup).toContain('data-flow-react-field-input="animationName"');
     expect(markup).toContain('value="pop"');
   });
 

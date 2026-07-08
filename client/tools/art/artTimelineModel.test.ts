@@ -4,6 +4,7 @@ import {
   addTimelineCommand,
   addStopCommand,
   addTimelineLabel,
+  addTimelinePropertyKeyframe,
   addTransformKeyframe,
   artTimelineOrDefault,
   copyTimelineKeyframe,
@@ -274,6 +275,63 @@ describe("artTimelineModel", () => {
       ]
     });
     expect(removeTimelineKeyframe(timeline, "card", 5).tracks).toEqual([]);
+  });
+
+  it("adds property-specific keyframes without capturing unrelated component state", () => {
+    const component = {
+      id: "card",
+      kind: "shape",
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 50,
+      scale: 1.2,
+      rotation: 8,
+      fillColor: "#ffe156",
+      borderColor: "#17131f"
+    } as ArtComponent;
+
+    const timeline = addTimelinePropertyKeyframe({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, component, 5, [
+      "scale",
+      "opacity",
+      "fillColor"
+    ]);
+
+    expect(timeline.tracks).toEqual([
+      {
+        id: "track-card",
+        targetId: "card",
+        keyframes: [
+          {
+            id: "key-card-5",
+            frame: 5,
+            props: { scale: 1.2, opacity: 1, fillColor: "#ffe156" }
+          }
+        ]
+      }
+    ]);
+  });
+
+  it("merges property-specific keyframes into an existing keyframe and preserves easing", () => {
+    const initial = addTransformKeyframe(
+      { fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] },
+      { id: "title", kind: "text", defaultText: "One", width: 100, height: 40, fontSize: 24 } as ArtComponent,
+      2
+    );
+    const eased = updateTimelineKeyframe(initial, "title", 2, { easing: "easeOut", props: { scale: 0.5 } });
+    const result = addTimelinePropertyKeyframe(
+      eased,
+      { id: "title", kind: "text", defaultText: "Two", width: 240, height: 80, fontSize: 36 } as ArtComponent,
+      2,
+      ["defaultText", "fontSize"]
+    );
+
+    expect(result.tracks[0].keyframes[0]).toEqual({
+      id: "key-title-2",
+      frame: 2,
+      easing: "easeOut",
+      props: { scale: 0.5, defaultText: "Two", fontSize: 36 }
+    });
   });
 
   it("captures text state when adding keyframes", () => {
