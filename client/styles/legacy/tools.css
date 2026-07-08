@@ -1432,9 +1432,41 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-command-editor {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(140px, 0.85fr) auto;
   gap: 8px;
   align-items: end;
+}
+
+.art-timeline-command-target-summary {
+  display: grid;
+  align-self: end;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: rgba(185, 244, 255, 0.72);
+  box-shadow: 2px 3px 0 rgba(23, 19, 31, 0.16);
+  color: var(--ink);
+  line-height: 1;
+}
+
+.art-timeline-command-target-summary span,
+.art-timeline-command-target-summary small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.art-timeline-command-target-summary span {
+  font-size: 10px;
+  font-weight: 1000;
+}
+
+.art-timeline-command-target-summary small {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
 }
 
 .art-timeline-playback {

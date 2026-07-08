@@ -235,6 +235,28 @@ function timelineCommandTitle(command: TimelineCommand): string {
   return details ? `${command.type} (${details})` : command.type;
 }
 
+function timelineCommandTargetSummary(
+  command: Pick<TimelineCommand, "type" | "target" | "event">,
+  component: ArtComponent | undefined,
+  options: { scopeRootPath?: boolean; resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined } = {}
+): { label: string; detail: string } | null {
+  const target = String(command.target || "").trim();
+  if (!timelineCommandUsesTarget(command.type || "") || !target) return null;
+  if (!timelineCommandUsesComponentTarget(command.type || "")) {
+    return { label: target, detail: command.event ? `label / ${command.event}` : "timeline label" };
+  }
+  const targetLabel = timelineTargetLabel(target, component, {
+    useScopedIds: true,
+    scopeRootPath: options.scopeRootPath,
+    resolveReference: options.resolveReference
+  });
+  const event = String(command.event || "").trim();
+  return {
+    label: targetLabel.label,
+    detail: [targetLabel.detail, event ? `animation: ${event}` : ""].filter(Boolean).join(" / ")
+  };
+}
+
 function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: TimelineCommand, fallbackIndex: number): number {
   if (previousCommand.id) {
     const idIndex = timeline.commands.findIndex((command) => command.id === previousCommand.id);
@@ -1032,6 +1054,15 @@ function ArtTimelinePanel({
   const commandEventLabel = timelineCommandEventLabel(commandType);
   const commandEventPlaceholder = timelineCommandEventPlaceholder(commandType);
   const commandTargetAnimationLabels = timelineTargetAnimationLabels(component, commandTarget, scopeRootPath, resolveReference);
+  const newCommandTargetSummary = timelineCommandTargetSummary(
+    { type: commandType, target: commandTarget, event: commandEvent },
+    component,
+    { scopeRootPath, resolveReference }
+  );
+  const selectedCommandTargetSummary =
+    selectedTimelineMarker?.kind === "command"
+      ? timelineCommandTargetSummary(selectedTimelineMarker.command, component, { scopeRootPath, resolveReference })
+      : null;
   const activePlayStart = current.labels.some((label) => label.name === playStartLabel) ? playStartLabel : "";
   const activeDuplicateSegmentSource = current.labels.some((label) => label.name === duplicateSegmentSource)
     ? duplicateSegmentSource
@@ -2002,6 +2033,12 @@ function ArtTimelinePanel({
             />
           </label>
         ) : null}
+        {newCommandTargetSummary ? (
+          <div className="art-timeline-command-target-summary" title={newCommandTargetSummary.detail}>
+            <span>{newCommandTargetSummary.label}</span>
+            <small>{newCommandTargetSummary.detail}</small>
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -2095,8 +2132,12 @@ function ArtTimelinePanel({
                     <small>
                       Frame {command.frame}
                       {order.total > 1 ? ` / Order ${order.position} of ${order.total}` : ""}
-                      {command.target ? ` -> ${command.target}` : ""}
-                      {command.event ? ` / ${command.event}` : ""}
+                      {(() => {
+                        const summary = timelineCommandTargetSummary(command, component, { scopeRootPath, resolveReference });
+                        if (summary) return ` / ${summary.label}: ${summary.detail}`;
+                        return command.target ? ` -> ${command.target}` : "";
+                      })()}
+                      {command.event && !timelineCommandUsesComponentTarget(command.type) ? ` / ${command.event}` : ""}
                     </small>
                     <button type="button" disabled={!canMoveTimelineCommandInFrame(current, index, -1)} onClick={() => moveCommand(index, -1)}>
                       Earlier
@@ -2219,6 +2260,12 @@ function ArtTimelinePanel({
                     onChange={(event) => updateSelectedCommand({ event: event.target.value })}
                   />
                 </label>
+              ) : null}
+              {selectedCommandTargetSummary ? (
+                <div className="art-timeline-command-target-summary" title={selectedCommandTargetSummary.detail}>
+                  <span>{selectedCommandTargetSummary.label}</span>
+                  <small>{selectedCommandTargetSummary.detail}</small>
+                </div>
               ) : null}
               <datalist id="art-timeline-selected-command-target-labels">
                 {timelineTargetAnimationLabels(component, selectedTimelineMarker.command.target || "", scopeRootPath, resolveReference).map((label) => (
