@@ -355,7 +355,7 @@ describe("Flow selectors", () => {
     ).toEqual([
       { id: "", name: "Whole Game Object" },
       { id: "bubble-card", name: "Bubble Card (bubble-card)" },
-      { id: "answer-text", name: "  Answer Text (answer-text)" }
+      { id: "bubble-card/answer-text", name: "  Answer Text (bubble-card/answer-text)" }
     ]);
     expect(
       flowGameObjectAnimationLabelOptions(
@@ -374,10 +374,89 @@ describe("Flow selectors", () => {
         compositions,
         { id: "intro" },
         "intro",
+        "moment:bubble",
+        "bubble-card/answer-text",
+        ""
+      ).map((option) => option.id)
+    ).toContain("text-pop");
+    expect(
+      flowGameObjectAnimationLabelOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
         "global:wipe",
         "",
         ""
       ).map((option) => option.id)
     ).toContain("sweep");
+  });
+
+  it("expands referenced prefab components for animation targets", () => {
+    const stageLayouts = {
+      states: [
+        {
+          id: "intro",
+          elements: [{ id: "player", name: "Player", artCompositionId: "player-object" }]
+        }
+      ]
+    };
+    const compositions = [
+      {
+        id: "player-object",
+        name: "Player Object",
+        components: [
+          {
+            id: "answer-bubble-slot",
+            name: "Answer Bubble Slot",
+            kind: "reference",
+            artCompositionId: "answer-bubble"
+          }
+        ]
+      },
+      {
+        id: "answer-bubble",
+        name: "Answer Bubble",
+        components: [
+          {
+            id: "answer-text",
+            name: "Answer Text",
+            kind: "text",
+            timeline: {
+              fps: 30,
+              frameCount: 12,
+              labels: [{ name: "pulse", frame: 4 }],
+              commands: [],
+              tracks: []
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(
+      flowGameObjectComponentTargetOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "moment:player"
+      )
+    ).toEqual([
+      { id: "", name: "Whole Game Object" },
+      { id: "answer-bubble-slot", name: "Answer Bubble Slot (answer-bubble-slot)" },
+      { id: "answer-bubble-slot/answer-text", name: "  Answer Text (answer-bubble-slot/answer-text)" }
+    ]);
+    expect(
+      flowGameObjectAnimationLabelOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "moment:player",
+        "answer-bubble-slot/answer-text",
+        ""
+      ).map((option) => option.id)
+    ).toContain("pulse");
   });
 });

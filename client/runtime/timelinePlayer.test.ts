@@ -45,6 +45,20 @@ describe("TimelinePlayer", () => {
     ]);
   });
 
+  it("preserves scoped component targets through normalization", () => {
+    const timeline = normalizeTimeline({
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [{ frame: 3, type: "playComponent", target: "player/bubble/text", event: "pop" }],
+      tracks: [{ targetId: "player/bubble/text", keyframes: [{ frame: 3, props: { defaultText: "Scoped" } }] }]
+    });
+
+    expect(timeline?.commands[0]).toMatchObject({ target: "player/bubble/text" });
+    expect(timeline?.tracks[0].targetId).toBe("player/bubble/text");
+    expect(timelineSnapshotAt(timeline!, 3).targets["player/bubble/text"].defaultText).toBe("Scoped");
+  });
+
   it("preserves authored command order within the same frame", () => {
     const timeline = normalizeTimeline({
       fps: 30,

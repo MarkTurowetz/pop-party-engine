@@ -110,6 +110,39 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     }
   });
 
+  it("passes scoped nested component animation targets through placed layout targets", () => {
+    const target = {} as HTMLElement;
+    const playComponent = vi.fn(() => 180);
+    const resolver = PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver({
+      registry: () => ({
+        get: () => ({
+          id: "player",
+          target,
+          artRenderer: { playComponent },
+          visibilityKey: "moment:player"
+        })
+      }),
+      visibilityKeyForTarget: () => "moment:player"
+    });
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousVisualRuntime = globals.PartyGameVisualObject;
+    globals.PartyGameVisualObject = {};
+    try {
+      const result = resolver.playAnimationForAction(
+        {
+          targetLayoutElementId: "player",
+          targetComponentId: "answer-bubble-slot/answer-text",
+          animationName: "pulse"
+        },
+        { returnResult: true }
+      );
+      expect(result).toEqual({ duration: 180, missing: false, reason: "" });
+      expect(playComponent).toHaveBeenCalledWith("answer-bubble-slot/answer-text", "pulse", { instant: false });
+    } finally {
+      globals.PartyGameVisualObject = previousVisualRuntime;
+    }
+  });
+
   it("stops nested art components at named timeline labels through placed layout targets", () => {
     const target = {} as HTMLElement;
     const stopAtComponent = vi.fn(() => 0);

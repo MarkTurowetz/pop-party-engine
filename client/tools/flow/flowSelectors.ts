@@ -1,4 +1,5 @@
 import type { ArtComponent, ArtComposition, FlowAction, FlowState, GameFlow, JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
+import { artComponentTargetOptionsFor, findArtComponentTarget } from "../shared/artComponentTargets";
 import { parseDecisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { findFlowActionContext, flowSubroutineActions } from "./flowSubroutines";
 
@@ -338,21 +339,21 @@ function flowGameObjectCompositionForTarget(
   return (artCompositions || []).find((item) => item.id === compositionId) || null;
 }
 
-function walkArtComponents(
-  components: Partial<ArtComponent>[] | null | undefined,
-  visit: (component: Partial<ArtComponent>, depth: number) => void,
-  depth = 0
-): void {
-  for (const component of components || []) {
-    visit(component, depth);
-    walkArtComponents(component.children, visit, depth + 1);
-  }
+function artCompositionById(
+  artCompositions: Partial<ArtComposition>[] | null | undefined,
+  compositionId: string
+): ArtComposition | null {
+  return (artCompositions || []).find((item) => String(item.id || "") === compositionId) as ArtComposition | undefined || null;
 }
 
-function flowComponentName(component: Partial<ArtComponent>, depth: number): string {
+function referenceResolverFor(artCompositions: Partial<ArtComposition>[] | null | undefined) {
+  return (component: ArtComponent) => artCompositionById(artCompositions, String(component.artCompositionId || ""));
+}
+
+function flowComponentName(component: Partial<ArtComponent>, depth: number, targetId = ""): string {
   const prefix = depth > 0 ? `${"  ".repeat(depth)}` : "";
   const name = String(component.name || component.id || "Component");
-  const id = String(component.id || "");
+  const id = String(targetId || component.id || "");
   const suffix = id && id.toLowerCase() !== name.toLowerCase() ? ` (${id})` : "";
   return `${prefix}${name}${suffix}`;
 }
@@ -374,16 +375,55 @@ export function flowGameObjectComponentTargetOptions(
     selectedFlowStateId,
     selectedTarget
   );
-  walkArtComponents(composition?.components, (component, depth) => {
-    const id = String(component.id || "");
-    if (!id || seen.has(id)) return;
-    seen.add(id);
-    options.push({ id, name: flowComponentName(component, depth) });
-  });
-  if (selectedComponentId && !seen.has(selectedComponentId)) {
-    options.push({ id: selectedComponentId, name: selectedComponentId });
+  const selectedComponent = flowGameObjectComponentForTarget(artCompositions, composition, selectedComponentId);
+  for (const root of (composition?.components || []) as ArtComponent[]) {
+    for (const target of artComponentTargetOptionsFor(root, {
+      includeRoot: true,
+      useScopedIds: true,
+      resolveReference: referenceResolverFor(artCompositions)
+    })) {
+      const id = String(target.id || "");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      options.push({ id, name: flowComponentName(target.component, target.depth, id) });
+    }
   }
+  pushLegacyRawComponentOption(options, seen, selectedComponent, selectedComponentId);
   return options;
+}
+
+function flowGameObjectComponentForTarget(
+  artCompositions: Partial<ArtComposition>[] | null | undefined,
+  composition: Partial<ArtComposition> | null | undefined,
+  selectedComponentId: string
+): ArtComponent | undefined {
+  const id = String(selectedComponentId || "");
+  if (!id) return undefined;
+  return findArtComponentTarget((composition?.components || []) as ArtComponent[], id, {
+    resolveReference: referenceResolverFor(artCompositions)
+  });
+}
+
+function flowCompositionTimelineLabels(composition: Partial<ArtComposition> | null | undefined): { name: string }[] {
+  return (composition?.timeline?.labels || []) as { name: string }[];
+}
+
+function flowComponentTimelineLabels(component: ArtComponent | undefined): { name: string }[] {
+  return (component?.timeline?.labels || []) as { name: string }[];
+}
+
+function pushLegacyRawComponentOption(
+  options: FlowOption[],
+  seen: Set<string>,
+  component: Partial<ArtComponent> | undefined,
+  selectedComponentId: string
+): void {
+  if (!selectedComponentId || seen.has(selectedComponentId)) return;
+  if (!component) {
+    options.push({ id: selectedComponentId, name: selectedComponentId });
+    return;
+  }
+  options.push({ id: selectedComponentId, name: flowComponentName(component, 0, selectedComponentId) });
 }
 
 export function flowGameObjectAnimationLabelOptions(
@@ -411,15 +451,10 @@ export function flowGameObjectAnimationLabelOptions(
     selectedFlowStateId,
     selectedTarget
   );
-  let componentTimelineLabels: { name: string }[] = [];
-  if (selectedComponentId) {
-    walkArtComponents(composition?.components, (component) => {
-      if (component.id === selectedComponentId) {
-        componentTimelineLabels = component.timeline?.labels || [];
-      }
-    });
-  }
-  for (const label of componentTimelineLabels.length ? componentTimelineLabels : composition?.timeline?.labels || []) push(label.name);
+  const componentTimelineLabels = flowComponentTimelineLabels(
+    flowGameObjectComponentForTarget(artCompositions, composition, selectedComponentId)
+  );
+  for (const label of componentTimelineLabels.length ? componentTimelineLabels : flowCompositionTimelineLabels(composition)) push(label.name);
   push(selectedAnimation);
   return options;
 }
