@@ -223,6 +223,18 @@ class GameObject {
     if (visual) duration = Math.max(duration, Number(visual.play(cleanAnimation, options) || 0));
     return duration;
   }
+
+  stopAtAnimation(animation: string, options: Dict = {}): number {
+    const cleanAnimation = String(animation || "").trim();
+    if (!cleanAnimation) return 0;
+    let duration = 0;
+    if (fn(this.artRenderer?.stopAtAll)) {
+      duration = Math.max(duration, Number((this.artRenderer!.stopAtAll as (a: string, o: Dict) => number)(cleanAnimation, options) || 0));
+    }
+    const visual = this.createVisual() as (VisualInstance & { stopAt?: (a: string, o: Dict) => number }) | null;
+    if (visual) duration = Math.max(duration, Number(visual.stopAt?.(cleanAnimation, options) || visual.play(cleanAnimation, { ...options, instant: true }) || 0));
+    return duration;
+  }
 }
 
 class GameObjectRegistry {
@@ -365,6 +377,26 @@ function playAnimationForTarget(options: Dict = {}): Dict {
   return { ...bridge, duration };
 }
 
+function stopAtAnimationForTarget(options: Dict = {}): Dict {
+  const animation = String(options.animation || options.animationName || "").trim();
+  const bridge = options.visual
+    ? {
+        gameObject: (options.gameObject as GameObject) || null,
+        legacyVisual: (options.legacyVisual as VisualInstance) || null,
+        visual: options.visual as VisualInstance
+      }
+    : createVisualForTarget(options);
+  const gameObject = (bridge.gameObject as GameObject) || null;
+  const visual = (bridge.visual as (VisualInstance & { stopAt?: (a: string, o: Dict) => number })) || null;
+  if (!animation || (!gameObject && !visual)) {
+    return { ...bridge, duration: 0 };
+  }
+  const duration = gameObject
+    ? gameObject.stopAtAnimation(animation, (options.playOptions as Dict) || {})
+    : visual?.stopAt?.(animation, (options.playOptions as Dict) || {}) || visual?.play(animation, { ...((options.playOptions as Dict) || {}), instant: true }) || 0;
+  return { ...bridge, duration };
+}
+
 const api = {
   create: createGameObject,
   createGameObject,
@@ -373,6 +405,7 @@ const api = {
   createVisualForTarget,
   defaultVisibleFor,
   playAnimationForTarget,
+  stopAtAnimationForTarget,
   playVisibilityForTarget,
   GameObject,
   GameObjectRegistry,
@@ -381,7 +414,7 @@ const api = {
 };
 
 export const PartyGameGameObject = api;
-export const PartyGameVisualBridge = { createVisualForTarget, playAnimationForTarget, playVisibilityForTarget };
+export const PartyGameVisualBridge = { createVisualForTarget, playAnimationForTarget, stopAtAnimationForTarget, playVisibilityForTarget };
 export type PartyGameGameObjectApi = typeof api;
 export { GameObject, GameObjectRegistry };
 

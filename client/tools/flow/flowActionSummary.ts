@@ -219,6 +219,10 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
       const targetName = (context.gameObjectTargetName || context.artAssetTargetName)?.(action.targetLayoutElementId, action.targetLayoutScope);
       return `Play ${text(action.animationName, "appear")} on ${targetName || "game object"} / ${timingText}${instantText}`;
     }
+    if (action.type === "stopGameObjectAnimation") {
+      const targetName = (context.gameObjectTargetName || context.artAssetTargetName)?.(action.targetLayoutElementId, action.targetLayoutScope);
+      return `Stop at ${text(action.animationName, "appear")} on ${targetName || "game object"} / ${timingText}${instantText}`;
+    }
     if (action.type === "revealPlayerAnswerCorrectness") return `Reveal answer correctness / ${timingText}`;
     if (action.type === "showPoints") return `Show points for ${text(action.playerFilter, "correct")} players / ${timingText}`;
     if (action.type === "givePendingPoints") return `Bank pending points / ${timingText}`;

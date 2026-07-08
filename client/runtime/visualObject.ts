@@ -564,6 +564,19 @@ class CssVisualObject {
     if (!useTimelinePlayback) this.completeAfter(duration, options.complete);
     return duration;
   }
+
+  stopAt(animation: string, options: PlayOptions = {}): number {
+    if (!this.element) return 0;
+    const cleanAnimation = String(animation || "").trim();
+    if (!cleanAnimation) return 0;
+    if (this.timelinePlayer?.hasLabel(cleanAnimation)) {
+      return this.timelinePlayer.gotoAndStop(cleanAnimation, {
+        instant: true,
+        complete: options.complete
+      });
+    }
+    return this.play(cleanAnimation, { ...options, instant: true });
+  }
 }
 
 export const PartyGameVisualObject = {

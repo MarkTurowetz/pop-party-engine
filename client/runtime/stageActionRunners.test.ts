@@ -51,4 +51,21 @@ describe("PartyGameStageActionRunners (ported)", () => {
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a3");
     vi.useRealTimers();
   });
+
+  it("waits for stop-at-label game object animation actions to complete", () => {
+    vi.useFakeTimers();
+    const c = context();
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    runner.run({ id: "a4", type: "stopGameObjectAnimation", targetLayoutElementId: "avatar", animationName: "stego" }, { isPrimary: true, actionKey: "k" });
+    expect(c.playStageLayoutGameObjectAnimationForAction).toHaveBeenCalledWith({
+      id: "a4",
+      type: "stopGameObjectAnimation",
+      targetLayoutElementId: "avatar",
+      animationName: "stego"
+    });
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(250);
+    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a4");
+    vi.useRealTimers();
+  });
 });

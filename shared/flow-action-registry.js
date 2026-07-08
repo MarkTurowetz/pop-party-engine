@@ -33,6 +33,32 @@
             instant: action.instant === true
         };
     }
+    function normalizeGameObjectTimelineAction(action, base, context, publicType, playbackMode) {
+        return {
+            ...base,
+            type: publicType,
+            targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
+            targetLayoutScope: normalizeLayoutTargetScope(action?.targetLayoutScope),
+            targetLayoutSurface: normalizeLayoutTargetSurface(action?.targetLayoutSurface),
+            targetComponentId: context.normalizeFlowId(action?.targetComponentId || action?.componentId, ""),
+            animationName: context.cleanFlowText(action?.animationName || action?.timelineLabel || action?.animation, "appear"),
+            timelinePlaybackMode: playbackMode,
+            ...(playbackMode === "play" ? { instant: action?.instant === true } : {})
+        };
+    }
+    function publicGameObjectTimelineAction(action, base, context, publicType, playbackMode) {
+        return {
+            ...base,
+            type: publicType,
+            targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
+            targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
+            targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
+            targetComponentId: context.normalizeFlowId(action.targetComponentId || action.componentId, ""),
+            animationName: context.cleanFlowText(action.animationName || action.timelineLabel || action.animation, "appear"),
+            timelinePlaybackMode: playbackMode,
+            ...(playbackMode === "play" ? { instant: action.instant === true } : {})
+        };
+    }
     function normalizeLayoutTargetScope(value) {
         const scope = String(value || "").toLowerCase();
         return ["global", "moment"].includes(scope) ? scope : "";
@@ -628,25 +654,18 @@
             canCompleteFromStage: true,
             stageActionType: "playGameObjectAnimation",
             stageRunner: "playGameObjectAnimation",
-            normalize: (action, base, context) => ({
-                ...base,
-                targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
-                targetLayoutScope: normalizeLayoutTargetScope(action?.targetLayoutScope),
-                targetLayoutSurface: normalizeLayoutTargetSurface(action?.targetLayoutSurface),
-                targetComponentId: context.normalizeFlowId(action?.targetComponentId || action?.componentId, ""),
-                animationName: context.cleanFlowText(action?.animationName || action?.timelineLabel || action?.animation, "appear"),
-                instant: action?.instant === true
-            }),
-            toPublic: (action, base, context) => ({
-                ...base,
-                type: "playGameObjectAnimation",
-                targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
-                targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
-                targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
-                targetComponentId: context.normalizeFlowId(action.targetComponentId || action.componentId, ""),
-                animationName: context.cleanFlowText(action.animationName || action.timelineLabel || action.animation, "appear"),
-                instant: action.instant === true
-            })
+            normalize: (action, base, context) => normalizeGameObjectTimelineAction(action, base, context, "playGameObjectAnimation", "play"),
+            toPublic: (action, base, context) => publicGameObjectTimelineAction(action, base, context, "playGameObjectAnimation", "play")
+        },
+        {
+            id: "stopGameObjectAnimation",
+            name: "Go To And Stop Game Object Animation",
+            category: "standard",
+            canCompleteFromStage: true,
+            stageActionType: "stopGameObjectAnimation",
+            stageRunner: "playGameObjectAnimation",
+            normalize: (action, base, context) => normalizeGameObjectTimelineAction(action, base, context, "stopGameObjectAnimation", "stop"),
+            toPublic: (action, base, context) => publicGameObjectTimelineAction(action, base, context, "stopGameObjectAnimation", "stop")
         },
         {
             id: "setArtAssetShown",

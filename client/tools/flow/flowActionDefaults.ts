@@ -120,11 +120,11 @@ export function createActionDefaults(context: FlowActionDefaultsContext = {}): F
       action.targetLayoutElementId = text(action.targetLayoutElementId);
       action.targetLayoutSurface = text(action.targetLayoutSurface, "stage");
     }
-    if (value === "playGameObjectAnimation") {
+    if (value === "playGameObjectAnimation" || value === "stopGameObjectAnimation") {
       action.targetLayoutElementId = text(action.targetLayoutElementId);
       action.targetLayoutSurface = text(action.targetLayoutSurface, "stage");
       action.animationName = text(action.animationName, "appear");
-      action.instant = bool(action.instant);
+      if (value === "playGameObjectAnimation") action.instant = bool(action.instant);
     }
     if (value === "setPlayerAnswersShown" || value === "showPoints") action.playerFilter = text(action.playerFilter, value === "showPoints" ? "correct" : "all");
     if (value === "showPoints") action.points = Math.max(0, Math.floor(numberValue(action.points)));

@@ -37,6 +37,16 @@ import {
   rootFlowTargetOptions
 } from "./flowRootGraph";
 
+const GAME_OBJECT_TIMELINE_ACTION_TYPES = new Set(["playGameObjectAnimation", "stopGameObjectAnimation"]);
+const LAYOUT_TARGET_ACTION_TYPES = new Set([
+  "displayText",
+  "presentText",
+  "text",
+  "setGameObjectShown",
+  "setArtAssetShown",
+  ...GAME_OBJECT_TIMELINE_ACTION_TYPES
+]);
+
 export interface FlowEditorProps {
   controller: FlowEditorController;
   flowActionTypes?: FlowActionTypeMeta[];
@@ -121,7 +131,7 @@ export function FlowEditor({
   );
 
   useEffect(() => {
-    if (!loadStageLayouts || !["displayText", "presentText", "text", "setGameObjectShown", "setArtAssetShown", "playGameObjectAnimation"].includes(selectedActionType)) return undefined;
+    if (!loadStageLayouts || !LAYOUT_TARGET_ACTION_TYPES.has(selectedActionType)) return undefined;
     let cancelled = false;
     void loadStageLayouts().then((layouts) => {
       if (!cancelled) setLayoutSnapshot(layouts);
@@ -132,7 +142,7 @@ export function FlowEditor({
   }, [loadStageLayouts, selectedActionId, selectedActionType, selectedRootRouteAction?.id]);
 
   useEffect(() => {
-    if (!loadArtCompositions || selectedActionType !== "playGameObjectAnimation") return undefined;
+    if (!loadArtCompositions || !GAME_OBJECT_TIMELINE_ACTION_TYPES.has(selectedActionType)) return undefined;
     let cancelled = false;
     void loadArtCompositions().then((compositions) => {
       if (!cancelled) setArtCompositionSnapshot(compositions);

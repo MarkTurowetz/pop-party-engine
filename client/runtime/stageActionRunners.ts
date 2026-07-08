@@ -73,6 +73,7 @@ const fallbackRunnerDefinitions: RunnerDefinition[] = [
   { type: "setGameObjectShown", runner: "setGameObjectShown" },
   { type: "setArtAssetShown", runner: "setGameObjectShown" },
   { type: "playGameObjectAnimation", runner: "playGameObjectAnimation" },
+  { type: "stopGameObjectAnimation", runner: "playGameObjectAnimation" },
   { type: "revealPlayerAnswerCorrectness", runner: "delayedComplete", delayMs: 250 },
   { type: "showPoints", runner: "delayedComplete", delayMs: 1500 },
   { type: "givePendingPoints", runner: "serverEffect" },

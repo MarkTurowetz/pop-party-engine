@@ -432,9 +432,20 @@ class ArtObjectView {
     return (this.createVisual() as { play?: (a: string, o: Dict) => number } | null)?.play?.(animation, options) || 0;
   }
 
+  stopAt(animation: string, options: Dict = {}): number {
+    const visual = this.createVisual() as { stopAt?: (a: string, o: Dict) => number; play?: (a: string, o: Dict) => number } | null;
+    return visual?.stopAt?.(animation, options) || visual?.play?.(animation, { ...options, instant: true }) || 0;
+  }
+
   playTree(animation: string, options: Dict = {}): number {
     let duration = this.play(animation, options);
     for (const child of this.children.values()) duration = Math.max(duration, child.playTree(animation, options));
+    return duration;
+  }
+
+  stopAtTree(animation: string, options: Dict = {}): number {
+    let duration = this.stopAt(animation, options);
+    for (const child of this.children.values()) duration = Math.max(duration, child.stopAtTree(animation, options));
     return duration;
   }
 
@@ -580,6 +591,19 @@ class ArtObjectTreeRenderer {
     return duration;
   }
 
+  stopAtAll(animation: string, options: Dict = {}): number {
+    const cleanAnimation = String(animation || "").trim();
+    if (cleanAnimation && this.rootTimelinePlayer?.hasLabel(cleanAnimation)) {
+      return this.rootTimelinePlayer.gotoAndStop(cleanAnimation, {
+        instant: true,
+        complete: typeof options.complete === "function" ? (options.complete as () => void) : undefined
+      });
+    }
+    let duration = 0;
+    for (const view of this.views.values()) duration = Math.max(duration, view.stopAt(animation, options));
+    return duration;
+  }
+
   viewForComponentId(componentId: string): ArtObjectView | null {
     for (const view of this.views.values()) {
       const match = view.viewForComponentId(componentId);
@@ -596,8 +620,16 @@ class ArtObjectTreeRenderer {
     return this.viewForComponentId(componentId)?.play(animation, options) || 0;
   }
 
+  stopAtComponent(componentId: string, animation: string, options: Dict = {}): number {
+    return this.viewForComponentId(componentId)?.stopAt(animation, options) || 0;
+  }
+
   playComponentTree(componentId: string, animation: string, options: Dict = {}): number {
     return this.viewForComponentId(componentId)?.playTree(animation, options) || 0;
+  }
+
+  stopAtComponentTree(componentId: string, animation: string, options: Dict = {}): number {
+    return this.viewForComponentId(componentId)?.stopAtTree(animation, options) || 0;
   }
 
   clear(options: Dict = {}): number {

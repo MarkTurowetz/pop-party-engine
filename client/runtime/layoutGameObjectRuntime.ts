@@ -9,6 +9,7 @@ type El = HTMLElement;
 
 interface VisualBridgeApi {
   playAnimationForTarget?: (options: Dict) => { duration?: number } | undefined;
+  stopAtAnimationForTarget?: (options: Dict) => { duration?: number } | undefined;
   playVisibilityForTarget?: (options: Dict) => { duration?: number } | undefined;
 }
 interface DebugRuntime {
@@ -434,23 +435,31 @@ function playLayoutEntityAnimation(entity: Dict | null, animation: string, optio
   const cleanAnimation = String(animation || "").trim();
   if (!cleanAnimation) return 0;
   const componentId = String(options.componentId || "").trim();
+  const playbackMode = options.playbackMode === "stop" ? "stop" : "play";
   const artRenderer = entity?.artRenderer as {
     playAll?: (a: string, o: Dict) => number;
     playComponent?: (id: string, a: string, o: Dict) => number;
+    stopAtAll?: (a: string, o: Dict) => number;
+    stopAtComponent?: (id: string, a: string, o: Dict) => number;
   } | undefined;
   if (componentId) {
-    if (typeof artRenderer?.playComponent === "function") {
-      return Number(artRenderer.playComponent(componentId, cleanAnimation, { instant: options.instant === true }) || 0);
+    const componentPlayer = playbackMode === "stop" ? artRenderer?.stopAtComponent : artRenderer?.playComponent;
+    if (typeof componentPlayer === "function") {
+      return Number(componentPlayer(componentId, cleanAnimation, { instant: options.instant === true }) || 0);
     }
     (options.warn as ((r: string) => void) | undefined)?.(`component target unavailable: ${componentId}`);
     return 0;
   }
-  if (typeof entity?.playAnimation === "function") {
+  if (playbackMode === "stop" && typeof entity?.stopAtAnimation === "function") {
+    return (entity.stopAtAnimation as (a: string, o: Dict) => number)(cleanAnimation, { instant: options.instant === true });
+  }
+  if (playbackMode === "play" && typeof entity?.playAnimation === "function") {
     return (entity.playAnimation as (a: string, o: Dict) => number)(cleanAnimation, { instant: options.instant === true });
   }
   let duration = 0;
-  if (typeof artRenderer?.playAll === "function") {
-    duration = Math.max(duration, Number(artRenderer.playAll(cleanAnimation, { instant: options.instant === true }) || 0));
+  const treePlayer = playbackMode === "stop" ? artRenderer?.stopAtAll : artRenderer?.playAll;
+  if (typeof treePlayer === "function") {
+    duration = Math.max(duration, Number(treePlayer(cleanAnimation, { instant: options.instant === true }) || 0));
   }
   const target = (entity?.target as El) || null;
   const visual = layoutGameObjectVisualFor(entity);
@@ -458,7 +467,9 @@ function playLayoutEntityAnimation(entity: Dict | null, animation: string, optio
     if (!duration) (options.warn as ((r: string) => void) | undefined)?.("visual object unavailable");
     return duration;
   }
-  const result = visualBridge()?.playAnimationForTarget?.({ target, visual, animation: cleanAnimation, playOptions: { instant: options.instant === true } });
+  const bridge = visualBridge();
+  const bridgePlayer = playbackMode === "stop" ? bridge?.stopAtAnimationForTarget : bridge?.playAnimationForTarget;
+  const result = bridgePlayer?.({ target, visual, animation: cleanAnimation, playOptions: { instant: options.instant === true } });
   return Math.max(duration, Number(result?.duration || 0));
 }
 
@@ -537,6 +548,7 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
     playLayoutEntityAnimation(entity || entityForElementId?.(elementId, target, scope) || null, animation, {
       componentId,
       instant: action.instant === true,
+      playbackMode: action.timelinePlaybackMode === "stop" || action.type === "stopGameObjectAnimation" ? "stop" : "play",
       warn
     })
   );

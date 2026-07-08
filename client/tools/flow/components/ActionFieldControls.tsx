@@ -127,7 +127,7 @@ function FieldControl({
                 targetLayoutScope: parts.scope || "",
                 [field.key]: parts.id
               };
-              if (action.type === "playGameObjectAnimation") patch.targetComponentId = "";
+              if (action.type === "playGameObjectAnimation" || action.type === "stopGameObjectAnimation") patch.targetComponentId = "";
               onSetFields(patch);
               return;
             }

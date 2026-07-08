@@ -48,6 +48,13 @@ const INPUT_TARGET_FIELDS: FlowActionFieldDescriptor[] = [
   { key: "answersSubmittedTargetActionId", label: "On Answers Submitted", control: "actionTarget" }
 ];
 
+const GAME_OBJECT_TIMELINE_TARGET_FIELDS: FlowActionFieldDescriptor[] = [
+  { key: "targetLayoutElementId", label: "Game Object", control: "gameObjectTarget" },
+  { key: "targetComponentId", label: "Component", control: "componentTarget" },
+  { key: "targetLayoutSurface", label: "Layout Surface", control: "text" },
+  { key: "animationName", label: "Animation Label", control: "animationLabel" }
+];
+
 const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
   presentText: [
     ...TEXT_FIELDS,
@@ -119,12 +126,10 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
     { key: "targetLayoutSurface", label: "Layout Surface", control: "text" }
   ],
   playGameObjectAnimation: [
-    { key: "targetLayoutElementId", label: "Game Object", control: "gameObjectTarget" },
-    { key: "targetComponentId", label: "Component", control: "componentTarget" },
-    { key: "targetLayoutSurface", label: "Layout Surface", control: "text" },
-    { key: "animationName", label: "Animation Label", control: "animationLabel" },
+    ...GAME_OBJECT_TIMELINE_TARGET_FIELDS,
     { key: "instant", label: "Instant", control: "boolean" }
   ],
+  stopGameObjectAnimation: GAME_OBJECT_TIMELINE_TARGET_FIELDS,
   setPlayersShown: [{ key: "isShown", label: "Visible", control: "boolean" }],
   setPlayerAnswersShown: [
     { key: "isShown", label: "Visible", control: "boolean" },

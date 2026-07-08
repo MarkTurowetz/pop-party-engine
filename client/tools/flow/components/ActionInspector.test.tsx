@@ -135,6 +135,45 @@ describe("ActionInspector", () => {
     expect(markup).toContain('value="pop"');
   });
 
+  it("renders placed game-object target choices for stop-at-label animation actions", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "stego-frame",
+          name: "Stego Frame",
+          type: "stopGameObjectAnimation",
+          targetLayoutElementId: "avatar",
+          targetLayoutScope: "moment",
+          targetComponentId: "dino-mask",
+          animationName: "stego"
+        }}
+        edit={{
+          onSetActionField: () => undefined,
+          actionTargetOptions: [],
+          gameObjectTargetOptions: [
+            { id: "", label: "No Game Object" },
+            { id: "moment:avatar", label: "Avatar" }
+          ],
+          animationLabelOptions: [
+            { id: "rex", label: "rex" },
+            { id: "stego", label: "stego" }
+          ],
+          componentTargetOptions: [
+            { id: "", label: "Whole Game Object" },
+            { id: "dino-mask", label: "Dino Mask" }
+          ]
+        }}
+        state={{ id: "intro", name: "Intro", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-flow-react-field="targetLayoutElementId"');
+    expect(markup).toContain("Avatar");
+    expect(markup).toContain("Dino Mask");
+    expect(markup).toContain("Animation Label");
+    expect(markup).toContain('value="stego"');
+  });
+
   it("hides timing controls and bundled branch fields on decision actions", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector

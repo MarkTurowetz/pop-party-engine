@@ -48,6 +48,32 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     }
   });
 
+  it("stops placed layout targets at named timeline labels", () => {
+    const target = {} as HTMLElement;
+    const stopAtAnimation = vi.fn(() => 0);
+    const playAnimation = vi.fn(() => 360);
+    const resolver = PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver({
+      registry: () => ({
+        get: () => ({ id: "avatar", target, playAnimation, stopAtAnimation, visibilityKey: "moment:avatar" })
+      }),
+      visibilityKeyForTarget: () => "moment:avatar"
+    });
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousVisualRuntime = globals.PartyGameVisualObject;
+    globals.PartyGameVisualObject = {};
+    try {
+      const result = resolver.playAnimationForAction(
+        { type: "stopGameObjectAnimation", targetLayoutElementId: "avatar", animationName: "stego", timelinePlaybackMode: "stop" },
+        { returnResult: true }
+      );
+      expect(result).toEqual({ duration: 0, missing: false, reason: "" });
+      expect(stopAtAnimation).toHaveBeenCalledWith("stego", { instant: false });
+      expect(playAnimation).not.toHaveBeenCalled();
+    } finally {
+      globals.PartyGameVisualObject = previousVisualRuntime;
+    }
+  });
+
   it("plays named animations on nested art components through placed layout targets", () => {
     const target = {} as HTMLElement;
     const playComponent = vi.fn(() => 180);
@@ -79,6 +105,43 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
       expect(result).toEqual({ duration: 180, missing: false, reason: "" });
       expect(playComponent).toHaveBeenCalledWith("answer-text", "text-pop", { instant: false });
       expect(playAnimation).not.toHaveBeenCalled();
+    } finally {
+      globals.PartyGameVisualObject = previousVisualRuntime;
+    }
+  });
+
+  it("stops nested art components at named timeline labels through placed layout targets", () => {
+    const target = {} as HTMLElement;
+    const stopAtComponent = vi.fn(() => 0);
+    const playComponent = vi.fn(() => 180);
+    const resolver = PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver({
+      registry: () => ({
+        get: () => ({
+          id: "avatar",
+          target,
+          artRenderer: { playComponent, stopAtComponent },
+          visibilityKey: "moment:avatar"
+        })
+      }),
+      visibilityKeyForTarget: () => "moment:avatar"
+    });
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousVisualRuntime = globals.PartyGameVisualObject;
+    globals.PartyGameVisualObject = {};
+    try {
+      const result = resolver.playAnimationForAction(
+        {
+          type: "stopGameObjectAnimation",
+          targetLayoutElementId: "avatar",
+          targetComponentId: "dino-mask",
+          animationName: "stego",
+          timelinePlaybackMode: "stop"
+        },
+        { returnResult: true }
+      );
+      expect(result).toEqual({ duration: 0, missing: false, reason: "" });
+      expect(stopAtComponent).toHaveBeenCalledWith("dino-mask", "stego", { instant: false });
+      expect(playComponent).not.toHaveBeenCalled();
     } finally {
       globals.PartyGameVisualObject = previousVisualRuntime;
     }
