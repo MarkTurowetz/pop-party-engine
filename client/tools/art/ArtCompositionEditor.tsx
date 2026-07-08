@@ -30,8 +30,8 @@ import {
   addTransformKeyframe,
   artTimelineOrDefault,
   copyTimelineKeyframe,
-  defaultArtVisibilityTimeline,
   insertTimelineFrames,
+  mergeDefaultArtVisibilityTimeline,
   removeTimelineCommandAt,
   removeTimelineKeyframe,
   removeTimelineLabel,
@@ -1150,8 +1150,8 @@ function ArtTimelinePanel({
     <section className="art-timeline-panel" data-art-timeline-panel>
       <div className="art-timeline-header">
         <h3>{title}</h3>
-        <button type="button" onClick={() => onChange(defaultArtVisibilityTimeline())}>
-          Visibility Defaults
+        <button type="button" disabled={!activeKeyframeTarget} onClick={() => onChange(mergeDefaultArtVisibilityTimeline(current, activeKeyframeTarget))}>
+          Add Visibility Defaults
         </button>
       </div>
       <div className="art-timeline-settings">

@@ -1,6 +1,7 @@
 import {
   defaultVisibilityTimeline,
   normalizeTimeline,
+  timelineStopFrame,
   type TimelineCommand,
   type TimelineDocument,
   type TimelineKeyframe,
@@ -296,6 +297,77 @@ function componentTimelinePropsFor(component: ArtComponent): TimelineProperties 
 function upsertKeyframe(track: TimelineTrack, keyframe: TimelineKeyframe): TimelineTrack {
   const withoutFrame = track.keyframes.filter((item) => item.frame !== keyframe.frame);
   return { ...track, keyframes: [...withoutFrame, keyframe].sort((a, b) => a.frame - b.frame) };
+}
+
+function commandKey(command: TimelineCommand): string {
+  return [command.frame, command.type, command.target || "", command.event || ""].join("|");
+}
+
+function labelFrame(timeline: TimelineDocument, name: string): number {
+  return timeline.labels.find((label) => label.name === name)?.frame ?? 0;
+}
+
+function mergeKeyframeProps(track: TimelineTrack, frame: number, props: TimelineProperties, easing?: string): TimelineTrack {
+  const existing = track.keyframes.find((keyframe) => keyframe.frame === frame);
+  const nextProps = existing ? { ...props, ...existing.props } : props;
+  const nextKeyframe: TimelineKeyframe = {
+    id: existing?.id || `key-${track.targetId}-${frame}`,
+    frame,
+    props: cleanTimelineProps(nextProps)
+  };
+  const nextEasing = existing?.easing || cleanTimelineEasing(easing);
+  if (nextEasing && nextEasing !== "linear") nextKeyframe.easing = nextEasing;
+  return upsertKeyframe(track, nextKeyframe);
+}
+
+function mergeDefaultVisibilityTrack(timeline: TimelineDocument, defaults: TimelineDocument, targetId: string): TimelineDocument {
+  const cleanTargetId = String(targetId || "").trim();
+  if (!cleanTargetId) return timeline;
+  const appearFrame = labelFrame(defaults, "appear");
+  const appearStopFrame = timelineStopFrame(defaults, appearFrame);
+  const updateFrame = labelFrame(defaults, "update");
+  const updateStopFrame = timelineStopFrame(defaults, updateFrame);
+  const disappearFrame = labelFrame(defaults, "disappear");
+  const disappearStopFrame = timelineStopFrame(defaults, disappearFrame);
+  const existingTrack = timeline.tracks.find((track) => track.targetId === cleanTargetId);
+  let nextTrack: TimelineTrack = existingTrack || { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [] };
+  nextTrack = mergeKeyframeProps(nextTrack, labelFrame(defaults, "park"), { opacity: 0, visible: false }, "hold");
+  nextTrack = mergeKeyframeProps(nextTrack, labelFrame(defaults, "on"), { opacity: 1, visible: true }, "hold");
+  nextTrack = mergeKeyframeProps(nextTrack, appearFrame, { opacity: 0, visible: true }, "easeOut");
+  nextTrack = mergeKeyframeProps(nextTrack, appearStopFrame, { opacity: 1, visible: true }, "hold");
+  nextTrack = mergeKeyframeProps(nextTrack, updateFrame, { opacity: 1, visible: true }, "hold");
+  nextTrack = mergeKeyframeProps(nextTrack, updateStopFrame, { opacity: 1, visible: true }, "hold");
+  nextTrack = mergeKeyframeProps(nextTrack, disappearFrame, { opacity: 1, visible: true }, "easeIn");
+  nextTrack = mergeKeyframeProps(nextTrack, disappearStopFrame, { opacity: 0, visible: false }, "hold");
+  return {
+    ...timeline,
+    tracks: [...timeline.tracks.filter((track) => track.targetId !== cleanTargetId), nextTrack]
+  };
+}
+
+export function mergeDefaultArtVisibilityTimeline(
+  timeline: TimelineDocument | null | undefined,
+  targetComponent?: Pick<ArtComponent, "id"> | null
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const defaults = defaultArtVisibilityTimeline();
+  const existingLabelNames = new Set(current.labels.map((label) => label.name));
+  const labels = [
+    ...current.labels,
+    ...defaults.labels.filter((label) => !existingLabelNames.has(label.name))
+  ];
+  const existingCommandKeys = new Set(current.commands.map(commandKey));
+  const commands = [
+    ...current.commands,
+    ...defaults.commands.filter((command) => !existingCommandKeys.has(commandKey(command)))
+  ];
+  const withMarkers = sortTimeline({
+    ...current,
+    frameCount: Math.max(current.frameCount, defaults.frameCount),
+    labels,
+    commands
+  });
+  return sortTimeline(mergeDefaultVisibilityTrack(withMarkers, defaults, targetComponent?.id || ""));
 }
 
 function cleanTimelineValue(value: unknown): TimelinePropertyValue | undefined {

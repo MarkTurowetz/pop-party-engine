@@ -9,6 +9,7 @@ import {
   copyTimelineKeyframe,
   defaultArtVisibilityTimeline,
   insertTimelineFrames,
+  mergeDefaultArtVisibilityTimeline,
   replaceTransformKeyframeFromComponent,
   removeTimelineFrames,
   removeTimelineKeyframe,
@@ -268,5 +269,50 @@ describe("artTimelineModel", () => {
     expect(timeline.labels.map((label) => label.name)).toContain("appear");
     expect(timeline.labels.map((label) => label.name)).toContain("disappear");
     expect(timeline.commands.some((command) => command.type === "stop")).toBe(true);
+  });
+
+  it("merges visibility defaults without replacing authored timeline data", () => {
+    const timeline = mergeDefaultArtVisibilityTimeline({
+      fps: 12,
+      frameCount: 3,
+      labels: [
+        { name: "appear", frame: 1 },
+        { name: "custom-pop", frame: 2 }
+      ],
+      commands: [
+        { frame: 2, type: "emit", target: "title", event: "pop" },
+        { frame: 0, type: "stop" }
+      ],
+      tracks: [{ targetId: "title", keyframes: [{ frame: 2, props: { scale: 1.25 } }] }]
+    });
+    expect(timeline.frameCount).toBeGreaterThan(3);
+    expect(timeline.labels).toEqual(expect.arrayContaining([{ name: "appear", frame: 1 }, { name: "custom-pop", frame: 2 }]));
+    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "update", "disappear"]));
+    expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 2, type: "emit", target: "title", event: "pop" }]));
+    expect(timeline.commands.filter((command) => command.frame === 0 && command.type === "stop")).toHaveLength(1);
+    expect(timeline.tracks).toEqual([{ targetId: "title", keyframes: [{ frame: 2, props: { scale: 1.25 } }] }]);
+  });
+
+  it("adds default visibility keyframes for a selected target without locking layout props", () => {
+    const timeline = mergeDefaultArtVisibilityTimeline(
+      {
+        fps: 30,
+        frameCount: 3,
+        labels: [],
+        commands: [],
+        tracks: [{ targetId: "title", keyframes: [{ frame: 2, props: { scale: 1.25, opacity: 0.5 } }] }]
+      },
+      { id: "title" } as ArtComponent
+    );
+    const track = timeline.tracks.find((item) => item.targetId === "title");
+    expect(track?.keyframes.map((keyframe) => keyframe.frame)).toEqual([0, 1, 2, 17, 18, 24, 25, 40]);
+    expect(track?.keyframes.find((keyframe) => keyframe.frame === 2)?.props).toEqual({
+      opacity: 0.5,
+      visible: true,
+      scale: 1.25
+    });
+    expect(track?.keyframes.find((keyframe) => keyframe.frame === 17)?.props).toEqual({ opacity: 1, visible: true });
+    expect(track?.keyframes.find((keyframe) => keyframe.frame === 40)?.props).toEqual({ opacity: 0, visible: false });
+    expect(track?.keyframes.some((keyframe) => "x" in keyframe.props || "width" in keyframe.props)).toBe(false);
   });
 });
