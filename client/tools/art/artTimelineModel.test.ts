@@ -7,7 +7,9 @@ import {
   addTransformKeyframe,
   artTimelineOrDefault,
   copyTimelineKeyframe,
+  createTimelineSegment,
   defaultArtVisibilityTimeline,
+  duplicateTimelineSegment,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
   moveTimelineCommandAt,
@@ -15,10 +17,12 @@ import {
   removeTimelineFrames,
   removeTimelineKeyframe,
   removeTimelineLabel,
+  removeTimelineSegment,
   updateTimelineCommandAt,
   updateTimelineKeyframe,
   updateTimelineLabel,
-  updateTimelineSettings
+  updateTimelineSettings,
+  timelineSegmentsForArt
 } from "./artTimelineModel";
 
 describe("artTimelineModel", () => {
@@ -58,6 +62,73 @@ describe("artTimelineModel", () => {
     const withStop = addStopCommand({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, 18);
     expect(withStop.commands[0]).toMatchObject({ frame: 18, type: "stop" });
     expect(updateTimelineSettings(withStop, { frameCount: 10 }).commands[0].frame).toBe(9);
+  });
+
+  it("creates named timeline animation segments with stop commands", () => {
+    const timeline = createTimelineSegment({ fps: 30, frameCount: 10, labels: [], commands: [], tracks: [] }, 4, "pop", 6);
+    expect(timeline.frameCount).toBe(11);
+    expect(timeline.labels).toEqual([{ name: "pop", frame: 4 }]);
+    expect(timeline.commands).toEqual([{ id: "stop-pop-10", frame: 10, type: "stop" }]);
+    expect(timelineSegmentsForArt(timeline)).toEqual([{ label: "pop", startFrame: 4, endFrame: 10, durationMs: 200 }]);
+  });
+
+  it("duplicates animation segments with relative markers, commands, and keyframes", () => {
+    const timeline = {
+      fps: 10,
+      frameCount: 8,
+      labels: [
+        { name: "appear", frame: 1 },
+        { name: "settle", frame: 3 }
+      ],
+      commands: [
+        { id: "emit-start", frame: 1, type: "emit", target: "card", event: "started" },
+        { id: "jump-settle", frame: 2, type: "gotoAndPlay", target: "settle" },
+        { id: "stop", frame: 5, type: "stop" }
+      ],
+      tracks: [{ targetId: "card", keyframes: [{ id: "one", frame: 1, props: { scale: 0.5 } }, { id: "two", frame: 5, props: { scale: 1 } }] }]
+    };
+    const duplicated = duplicateTimelineSegment(timeline, "appear", "bounce");
+
+    expect(duplicated.frameCount).toBe(13);
+    expect(duplicated.labels).toEqual([
+      { name: "appear", frame: 1 },
+      { name: "settle", frame: 3 },
+      { name: "bounce", frame: 8 },
+      { name: "bounce settle", frame: 10 }
+    ]);
+    expect(duplicated.commands.slice(3)).toEqual([
+      expect.objectContaining({ frame: 8, type: "emit", target: "card", event: "started" }),
+      expect.objectContaining({ frame: 9, type: "gotoAndPlay", target: "bounce settle" }),
+      expect.objectContaining({ frame: 12, type: "stop" })
+    ]);
+    expect(duplicated.tracks[0].keyframes.map((keyframe) => ({ frame: keyframe.frame, props: keyframe.props }))).toEqual([
+      { frame: 1, props: { scale: 0.5 } },
+      { frame: 5, props: { scale: 1 } },
+      { frame: 8, props: { scale: 0.5 } },
+      { frame: 12, props: { scale: 1 } }
+    ]);
+  });
+
+  it("removes a whole animation segment and shifts later timeline data back", () => {
+    const timeline = {
+      fps: 10,
+      frameCount: 12,
+      labels: [
+        { name: "appear", frame: 1 },
+        { name: "later", frame: 9 }
+      ],
+      commands: [
+        { frame: 4, type: "stop" },
+        { frame: 10, type: "stop" }
+      ],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 1, props: { scale: 0.5 } }, { frame: 10, props: { scale: 1 } }] }]
+    };
+    const removed = removeTimelineSegment(timeline, "appear");
+
+    expect(removed.frameCount).toBe(8);
+    expect(removed.labels).toEqual([{ name: "later", frame: 5 }]);
+    expect(removed.commands).toEqual([{ frame: 6, type: "stop" }]);
+    expect(removed.tracks).toEqual([{ targetId: "card", keyframes: [{ frame: 6, props: { scale: 1 } }] }]);
   });
 
   it("adds timeline commands with targets and events", () => {

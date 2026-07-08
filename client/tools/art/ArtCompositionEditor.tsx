@@ -30,6 +30,8 @@ import {
   addTransformKeyframe,
   artTimelineOrDefault,
   copyTimelineKeyframe,
+  createTimelineSegment,
+  duplicateTimelineSegment,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
   moveTimelineCommandAt,
@@ -37,7 +39,9 @@ import {
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineFrames,
+  removeTimelineSegment,
   replaceTransformKeyframeFromComponent,
+  timelineSegmentsForArt,
   updateTimelineCommandAt,
   updateTimelineKeyframe,
   updateTimelineLabel,
@@ -898,6 +902,10 @@ function ArtTimelinePanel({
   const current = useMemo(() => artTimelineOrDefault(timeline), [timeline]);
   const [frame, setFrame] = useState(0);
   const [labelName, setLabelName] = useState("");
+  const [segmentName, setSegmentName] = useState("");
+  const [segmentDurationFrames, setSegmentDurationFrames] = useState(15);
+  const [duplicateSegmentSource, setDuplicateSegmentSource] = useState("");
+  const [duplicateSegmentName, setDuplicateSegmentName] = useState("");
   const [commandType, setCommandType] = useState("stop");
   const [commandTarget, setCommandTarget] = useState("");
   const [commandEvent, setCommandEvent] = useState("");
@@ -932,6 +940,7 @@ function ArtTimelinePanel({
   const visibleTimelineFrames = Array.from({ length: visibleTimelineFrameCount }, (_, index) => cleanFrameWindowStart + index);
   const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
+  const timelineSegments = useMemo(() => timelineSegmentsForArt(current), [current]);
   const keyframeTargets = useMemo(() => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget }), [component, includeRootTarget]);
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
@@ -943,6 +952,9 @@ function ArtTimelinePanel({
   const commandEventPlaceholder = timelineCommandEventPlaceholder(commandType);
   const commandTargetAnimationLabels = timelineTargetAnimationLabels(component, commandTarget);
   const activePlayStart = current.labels.some((label) => label.name === playStartLabel) ? playStartLabel : "";
+  const activeDuplicateSegmentSource = current.labels.some((label) => label.name === duplicateSegmentSource)
+    ? duplicateSegmentSource
+    : current.labels[0]?.name || "";
   const activePlaybackDuration = useMemo(
     () => timelinePlaybackDuration(current, activePlayStart || cleanFrame),
     [activePlayStart, cleanFrame, current]
@@ -1000,6 +1012,43 @@ function ArtTimelinePanel({
     });
     playbackRef.current = playback;
     setIsPlaying(true);
+  }
+
+  function createSegmentAtCurrentFrame(): void {
+    const nextTimeline = createTimelineSegment(current, cleanFrame, segmentName, segmentDurationFrames);
+    const existingNames = new Set(current.labels.map((label) => label.name));
+    const nextLabel = nextTimeline.labels.find((label) => !existingNames.has(label.name) && label.frame === cleanFrame);
+    applyTimelineFrameEdit(nextTimeline, cleanFrame);
+    if (nextLabel) {
+      setSelectedKeyframe(null);
+      setSelectedMarker({ kind: "label", name: nextLabel.name });
+      setPlayStartLabel(nextLabel.name);
+    }
+    setSegmentName("");
+  }
+
+  function duplicateSelectedSegment(): void {
+    if (!activeDuplicateSegmentSource) return;
+    const nextTimeline = duplicateTimelineSegment(current, activeDuplicateSegmentSource, duplicateSegmentName || `${activeDuplicateSegmentSource} Copy`);
+    const previousNames = new Set(current.labels.map((label) => label.name));
+    const nextLabel = nextTimeline.labels.find((label) => !previousNames.has(label.name));
+    if (nextLabel) {
+      applyTimelineFrameEdit(nextTimeline, nextLabel.frame);
+      setSelectedKeyframe(null);
+      setSelectedMarker({ kind: "label", name: nextLabel.name });
+      setPlayStartLabel(nextLabel.name);
+    } else {
+      applyTimelineFrameEdit(nextTimeline, cleanFrame);
+    }
+    setDuplicateSegmentName("");
+  }
+
+  function deleteSegment(label: string): void {
+    const nextTimeline = removeTimelineSegment(current, label);
+    if (selectedMarker?.kind === "label" && selectedMarker.name === label) setSelectedMarker(null);
+    if (activePlayStart === label) setPlayStartLabel("");
+    if (duplicateSegmentSource === label) setDuplicateSegmentSource("");
+    applyTimelineFrameEdit(nextTimeline, Math.min(cleanFrame, Math.max(0, nextTimeline.frameCount - 1)));
   }
 
   function applyTimelineFrameEdit(nextTimeline: TimelineDocument, nextFrame = cleanFrame): void {
@@ -1257,6 +1306,74 @@ function ArtTimelinePanel({
         </button>
         <span className="art-timeline-playback-duration">{Math.round(activePlaybackDuration)}ms</span>
       </div>
+      <div className="art-timeline-segment-editor">
+        <label className="flow-react-field">
+          <span>Animation Name</span>
+          <input type="text" value={segmentName} placeholder="pop" onChange={(event) => setSegmentName(event.target.value)} />
+        </label>
+        <label className="flow-react-field">
+          <span>Duration Frames</span>
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={segmentDurationFrames}
+            onChange={(event) => setSegmentDurationFrames(Math.max(1, Math.min(1000, Math.round(Number(event.target.value) || 1))))}
+          />
+        </label>
+        <button type="button" onClick={createSegmentAtCurrentFrame}>
+          New Animation
+        </button>
+        <label className="flow-react-field">
+          <span>Duplicate</span>
+          <select value={activeDuplicateSegmentSource} disabled={!current.labels.length} onChange={(event) => setDuplicateSegmentSource(event.target.value)}>
+            {current.labels.map((label) => (
+              <option key={label.name} value={label.name}>
+                {label.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flow-react-field">
+          <span>New Name</span>
+          <input
+            type="text"
+            value={duplicateSegmentName}
+            placeholder={activeDuplicateSegmentSource ? `${activeDuplicateSegmentSource} Copy` : "Animation Copy"}
+            onChange={(event) => setDuplicateSegmentName(event.target.value)}
+          />
+        </label>
+        <button type="button" disabled={!activeDuplicateSegmentSource} onClick={duplicateSelectedSegment}>
+          Duplicate Animation
+        </button>
+      </div>
+      {timelineSegments.length ? (
+        <div className="art-timeline-segment-list" aria-label="Timeline animation segments">
+          {timelineSegments.map((segment) => (
+            <div
+              key={segment.label}
+              className="art-timeline-segment-item"
+              data-art-timeline-segment-active={activePlayStart === segment.label ? "true" : "false"}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setPlayStartLabel(segment.label);
+                  selectTimelineMarker({ kind: "label", name: segment.label }, segment.startFrame);
+                }}
+              >
+                <span>{segment.label}</span>
+                <small>
+                  {segment.startFrame}-{segment.endFrame} / {Math.round(segment.durationMs)}ms
+                </small>
+              </button>
+              <button type="button" onClick={() => deleteSegment(segment.label)}>
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="art-timeline-frame-editor">
         <label className="flow-react-field">
           <span>Edit Count</span>

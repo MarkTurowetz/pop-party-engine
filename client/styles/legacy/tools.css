@@ -1455,6 +1455,57 @@ body.tool-dashboard-mode .layout-react-shell {
   padding: 7px 10px;
 }
 
+.art-timeline-segment-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.45fr) auto minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  padding: 8px;
+  border: 3px solid rgba(23, 19, 31, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 225, 86, 0.18);
+}
+
+.art-timeline-segment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.art-timeline-segment-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.art-timeline-segment-item > button:first-child {
+  display: grid;
+  justify-items: start;
+  min-width: 0;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--paper);
+  line-height: 1;
+}
+
+.art-timeline-segment-item[data-art-timeline-segment-active="true"] > button:first-child {
+  background: var(--cyan);
+}
+
+.art-timeline-segment-list span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.art-timeline-segment-list small {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+}
+
 .art-timeline-frame-editor {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

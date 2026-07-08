@@ -1,6 +1,7 @@
 import {
   defaultVisibilityTimeline,
   normalizeTimeline,
+  timelineSegmentFor,
   timelineStopFrame,
   type TimelineCommand,
   type TimelineDocument,
@@ -41,6 +42,17 @@ function cleanFrameDelta(value: unknown): number {
 
 function cleanName(name: string, fallback: string): string {
   return String(name || "").trim().slice(0, 80) || fallback;
+}
+
+function uniqueLabelName(timeline: TimelineDocument, name: string, fallback: string): string {
+  const baseName = cleanName(name, fallback);
+  const existingNames = new Set(timeline.labels.map((label) => label.name));
+  if (!existingNames.has(baseName)) return baseName;
+  for (let index = 2; index < 1000; index += 1) {
+    const candidate = `${baseName} ${index}`;
+    if (!existingNames.has(candidate)) return candidate;
+  }
+  return `${baseName} ${Date.now().toString(36)}`;
 }
 
 function sortTimeline(timeline: TimelineDocument): TimelineDocument {
@@ -169,6 +181,99 @@ export function updateTimelineLabel(
 
 export function addStopCommand(timeline: TimelineDocument | null | undefined, frame: number): TimelineDocument {
   return addTimelineCommand(timeline, frame, { type: "stop" });
+}
+
+export function createTimelineSegment(
+  timeline: TimelineDocument | null | undefined,
+  frame: number,
+  name: string,
+  durationFrames = 15
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const startFrame = cleanFrame(frame, current.frameCount);
+  const segmentFrames = Math.max(1, Math.min(1000, Math.round(Number(durationFrames) || 1)));
+  const stopFrame = startFrame + segmentFrames;
+  const frameCount = cleanFrameCount(Math.max(current.frameCount, stopFrame + 1), current.frameCount);
+  const labelName = uniqueLabelName(current, name, `Animation ${current.labels.length + 1}`);
+  return sortTimeline({
+    ...current,
+    frameCount,
+    labels: [...current.labels, { name: labelName, frame: startFrame }],
+    commands: [...current.commands, { id: `stop-${labelName}-${stopFrame}`, frame: stopFrame, type: "stop" }]
+  });
+}
+
+export function timelineSegmentsForArt(timeline: TimelineDocument | null | undefined) {
+  const current = artTimelineOrDefault(timeline);
+  return current.labels.map((label) => timelineSegmentFor(current, label.name));
+}
+
+export function duplicateTimelineSegment(
+  timeline: TimelineDocument | null | undefined,
+  sourceLabel: string,
+  name: string
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const source = current.labels.find((label) => label.name === sourceLabel);
+  if (!source) return current;
+  const segment = timelineSegmentFor(current, sourceLabel);
+  const segmentFrameCount = Math.max(1, segment.endFrame - segment.startFrame + 1);
+  const destinationStartFrame = current.frameCount;
+  const frameCount = cleanFrameCount(current.frameCount + segmentFrameCount, current.frameCount + segmentFrameCount);
+  const sourceLabels = current.labels.filter((label) => label.frame >= segment.startFrame && label.frame <= segment.endFrame);
+  const labelNameBySource = new Map<string, string>();
+  const seededTimeline = { ...current, labels: [...current.labels] };
+  const copiedLabels = sourceLabels.map((label) => {
+    const labelName =
+      label.name === sourceLabel
+        ? uniqueLabelName(seededTimeline, name, `${sourceLabel} Copy`)
+        : uniqueLabelName(seededTimeline, `${cleanName(name, `${sourceLabel} Copy`)} ${label.name}`, `${label.name} Copy`);
+    labelNameBySource.set(label.name, labelName);
+    seededTimeline.labels.push({ name: labelName, frame: destinationStartFrame + (label.frame - segment.startFrame) });
+    return { name: labelName, frame: destinationStartFrame + (label.frame - segment.startFrame) };
+  });
+  const copiedCommands = current.commands
+    .filter((command) => command.frame >= segment.startFrame && command.frame <= segment.endFrame)
+    .map((command, index) => {
+      const target = command.target && labelNameBySource.has(command.target) ? labelNameBySource.get(command.target) : command.target;
+      const nextCommand: TimelineCommand = {
+        ...command,
+        id: `${command.type}-${destinationStartFrame}-${index}-${Date.now().toString(36)}`,
+        frame: destinationStartFrame + (command.frame - segment.startFrame)
+      };
+      if (target) nextCommand.target = target;
+      else delete nextCommand.target;
+      return nextCommand;
+    });
+  const copiedTracks = current.tracks.map((track) => {
+    const copiedKeyframes = track.keyframes
+      .filter((keyframe) => keyframe.frame >= segment.startFrame && keyframe.frame <= segment.endFrame)
+      .map((keyframe) => ({
+        ...keyframe,
+        id: `key-${track.targetId}-${destinationStartFrame + (keyframe.frame - segment.startFrame)}`,
+        frame: destinationStartFrame + (keyframe.frame - segment.startFrame),
+        props: cleanTimelineProps(keyframe.props),
+        easing: cleanTimelineEasing(keyframe.easing)
+      }));
+    return copiedKeyframes.length
+      ? { ...track, keyframes: [...track.keyframes, ...copiedKeyframes] }
+      : track;
+  });
+  return sortTimeline({
+    ...current,
+    frameCount,
+    labels: [...current.labels, ...copiedLabels],
+    commands: [...current.commands, ...copiedCommands],
+    tracks: copiedTracks
+  });
+}
+
+export function removeTimelineSegment(timeline: TimelineDocument | null | undefined, sourceLabel: string): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const source = current.labels.find((label) => label.name === sourceLabel);
+  if (!source) return current;
+  const segment = timelineSegmentFor(current, sourceLabel);
+  return removeTimelineFrames(current, segment.startFrame, Math.max(1, segment.endFrame - segment.startFrame + 1));
 }
 
 export function addTimelineCommand(

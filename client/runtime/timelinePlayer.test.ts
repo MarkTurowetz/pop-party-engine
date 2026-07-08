@@ -110,6 +110,47 @@ describe("TimelinePlayer", () => {
     expect(timelineSnapshotAt(timeline!, 4).targets.avatar.imageAssetId).toBe("stego");
   });
 
+  it("plays any copied label as an ordinary animation segment", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 8,
+      labels: [
+        { name: "appear", frame: 0 },
+        { name: "bounce", frame: 4 }
+      ],
+      commands: [
+        { frame: 2, type: "stop" },
+        { frame: 7, type: "stop" }
+      ],
+      tracks: [
+        {
+          targetId: "card",
+          keyframes: [
+            { frame: 4, props: { scale: 1.4 } },
+            { frame: 7, props: { scale: 1 } }
+          ]
+        }
+      ]
+    });
+    const frames: number[] = [];
+    const scales: unknown[] = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      onFrame: (snapshot) => {
+        frames.push(snapshot.frame);
+        scales.push(snapshot.targets.card?.scale);
+      }
+    });
+
+    expect(player.gotoAndPlay("bounce", { complete })).toBe(300);
+    vi.advanceTimersByTime(300);
+
+    expect(frames).toEqual([4, 5, 6, 7]);
+    expect(scales).toEqual([1.4, 1.267, 1.133, 1]);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
   it("carries completion through gotoAndPlay commands", () => {
     const timeline = normalizeTimeline({
       fps: 10,
