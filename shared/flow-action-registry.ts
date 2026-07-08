@@ -650,6 +650,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
       targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
       targetLayoutScope: normalizeLayoutTargetScope(action?.targetLayoutScope),
       targetLayoutSurface: normalizeLayoutTargetSurface(action?.targetLayoutSurface),
+      targetComponentId: context.normalizeFlowId(action?.targetComponentId || action?.componentId, ""),
       animationName: context.cleanFlowText(action?.animationName || action?.timelineLabel || action?.animation, "appear"),
       instant: action?.instant === true
     }),
@@ -659,6 +660,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
       targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
       targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
       targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
+      targetComponentId: context.normalizeFlowId(action.targetComponentId || action.componentId, ""),
       animationName: context.cleanFlowText(action.animationName || action.timelineLabel || action.animation, "appear"),
       instant: action.instant === true
     })

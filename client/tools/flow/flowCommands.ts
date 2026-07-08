@@ -495,6 +495,24 @@ export function setFlowActionFieldCommand(
   };
 }
 
+export function setFlowActionFieldsCommand(
+  stateId: string,
+  actionId: string,
+  patch: Record<string, unknown>
+): FlowCommand {
+  const keys = Object.keys(patch).sort();
+  return {
+    id: `set-flow-action-fields:${actionId}:${keys.join(",")}`,
+    label: "Edit action fields",
+    apply: (flow) => {
+      const action = findFlowAction(findFlowState(flow, stateId), actionId) as
+        Record<string, unknown> | undefined;
+      if (!action) return;
+      for (const key of keys) action[key] = patch[key];
+    }
+  };
+}
+
 export function setFlowNodePositionCommand(
   depth: "subroutines" | "subroutine",
   stateId: string,
@@ -684,13 +702,33 @@ export function setFlowRouteActionFieldCommand(
     apply: (flow) => {
       const node = findFlowRouteNode(flow, nodeId);
       if (!node) return;
-      const record = node as Record<string, unknown>;
-      record[key] = value;
-      if (key === "jumpTargetActionId") {
-        setRootRouteTarget(node, key, String(value || ""));
-      } else if (ROOT_ROUTE_TARGET_FIELDS.has(key)) {
-        setRootRouteTarget(node, key, String(value || ""));
-      }
+      applyFlowRouteActionField(node, key, value);
+    }
+  };
+}
+
+function applyFlowRouteActionField(node: FlowRouteNode, key: string, value: unknown): void {
+  const record = node as Record<string, unknown>;
+  record[key] = value;
+  if (key === "jumpTargetActionId") {
+    setRootRouteTarget(node, key, String(value || ""));
+  } else if (ROOT_ROUTE_TARGET_FIELDS.has(key)) {
+    setRootRouteTarget(node, key, String(value || ""));
+  }
+}
+
+export function setFlowRouteActionFieldsCommand(
+  nodeId: string,
+  patch: Record<string, unknown>
+): FlowCommand {
+  const keys = Object.keys(patch).sort();
+  return {
+    id: `set-flow-route-action-fields:${nodeId}:${keys.join(",")}`,
+    label: "Edit root action fields",
+    apply: (flow) => {
+      const node = findFlowRouteNode(flow, nodeId);
+      if (!node) return;
+      for (const key of keys) applyFlowRouteActionField(node, key, patch[key]);
     }
   };
 }

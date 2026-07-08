@@ -110,6 +110,14 @@ describe("ActionInspector", () => {
             { id: "", label: "No Game Object" },
             { id: "moment:answer-bubble", label: "Answer Bubble" },
             { id: "global:wipe", label: "Global: Wipe" }
+          ],
+          animationLabelOptions: [
+            { id: "appear", label: "appear" },
+            { id: "pop", label: "pop" }
+          ],
+          componentTargetOptions: [
+            { id: "", label: "Whole Game Object" },
+            { id: "answer-text", label: "Answer Text" }
           ]
         }}
         state={{ id: "intro", name: "Intro", actions: [] }}
@@ -120,7 +128,11 @@ describe("ActionInspector", () => {
     expect(markup).toContain("Game Object");
     expect(markup).toContain("Answer Bubble");
     expect(markup).toContain("Global: Wipe");
+    expect(markup).toContain("Component");
+    expect(markup).toContain("Answer Text");
     expect(markup).toContain("Animation Label");
+    expect(markup).toContain('list="pop-bubble:animationName:animation-labels"');
+    expect(markup).toContain('value="pop"');
   });
 
   it("hides timing controls and bundled branch fields on decision actions", () => {

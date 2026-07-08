@@ -6,6 +6,8 @@ import {
   findFlowState,
   flowActionTargetOptions,
   flowGameObjectLayoutElements,
+  flowGameObjectAnimationLabelOptions,
+  flowGameObjectComponentTargetOptions,
   flowGameObjectTargetLabel,
   flowGameObjectTargetName,
   flowGameObjectTargetOptions,
@@ -270,5 +272,112 @@ describe("Flow selectors", () => {
     expect(flowGameObjectTargetName(stageLayouts, "intro", "score", "global")).toBe("Global: Score");
     expect(flowGameObjectTargetName(stageLayouts, "intro", "bonus-card")).toBe("Bonus Card (bonus-card)");
     expect(flowGameObjectTargetName(stageLayouts, "intro", "missing")).toBe("missing");
+  });
+
+  it("builds animation label suggestions from the selected target composition timeline", () => {
+    const stageLayouts = {
+      global: {
+        id: "global",
+        elements: [{ id: "wipe", name: "Wipe", artCompositionId: "wipe-composition" }]
+      },
+      states: [
+        {
+          id: "intro",
+          elements: [{ id: "bubble", name: "Bubble", artCompositionId: "bubble-composition" }]
+        }
+      ]
+    };
+    const compositions = [
+      {
+        id: "bubble-composition",
+        name: "Bubble",
+        timeline: {
+          fps: 30,
+          frameCount: 20,
+          labels: [{ name: "pop", frame: 3 }],
+          commands: [],
+          tracks: []
+        },
+        components: [
+          {
+            id: "bubble-card",
+            name: "Bubble Card",
+            kind: "shape",
+            children: [
+              {
+                id: "answer-text",
+                name: "Answer Text",
+                kind: "text",
+                timeline: {
+                  fps: 30,
+                  frameCount: 12,
+                  labels: [{ name: "text-pop", frame: 2 }],
+                  commands: [],
+                  tracks: []
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: "wipe-composition",
+        name: "Wipe",
+        timeline: {
+          fps: 30,
+          frameCount: 20,
+          labels: [{ name: "sweep", frame: 1 }],
+          commands: [],
+          tracks: []
+        }
+      }
+    ];
+
+    expect(
+      flowGameObjectAnimationLabelOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "moment:bubble",
+        "",
+        "custom-label"
+      ).map((option) => option.id)
+    ).toEqual(["appear", "disappear", "on", "off", "park", "update", "pop", "custom-label"]);
+    expect(
+      flowGameObjectComponentTargetOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "moment:bubble"
+      )
+    ).toEqual([
+      { id: "", name: "Whole Game Object" },
+      { id: "bubble-card", name: "Bubble Card (bubble-card)" },
+      { id: "answer-text", name: "  Answer Text (answer-text)" }
+    ]);
+    expect(
+      flowGameObjectAnimationLabelOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "moment:bubble",
+        "answer-text",
+        ""
+      ).map((option) => option.id)
+    ).toContain("text-pop");
+    expect(
+      flowGameObjectAnimationLabelOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "global:wipe",
+        "",
+        ""
+      ).map((option) => option.id)
+    ).toContain("sweep");
   });
 });

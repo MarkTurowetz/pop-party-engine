@@ -185,6 +185,26 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().snapshot.flow.states[1].actions[0].text).toBe("Hello world");
   });
 
+  it("sets multiple action fields through one undoable edit", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+
+    controller.setActionFields("round-one", "act-1", {
+      targetLayoutElementId: "prompt-text",
+      targetLayoutScope: "moment"
+    });
+
+    expect(controller.getState().snapshot.flow.states[1].actions[0]).toMatchObject({
+      targetLayoutElementId: "prompt-text",
+      targetLayoutScope: "moment"
+    });
+
+    controller.undo();
+    expect(
+      controller.getState().snapshot.flow.states[1].actions[0].targetLayoutElementId
+    ).toBeUndefined();
+    expect(controller.getState().snapshot.flow.states[1].actions[0].targetLayoutScope).toBeUndefined();
+  });
+
   it("adds, edits, and removes decision branches", () => {
     const controller = createFlowEditorController({
       initialFlow: flowFixture(),

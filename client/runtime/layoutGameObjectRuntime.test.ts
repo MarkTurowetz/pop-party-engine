@@ -48,6 +48,42 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     }
   });
 
+  it("plays named animations on nested art components through placed layout targets", () => {
+    const target = {} as HTMLElement;
+    const playComponent = vi.fn(() => 180);
+    const playAnimation = vi.fn(() => 360);
+    const resolver = PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver({
+      registry: () => ({
+        get: () => ({
+          id: "answer-bubble",
+          target,
+          playAnimation,
+          artRenderer: { playComponent },
+          visibilityKey: "moment:answer-bubble"
+        })
+      }),
+      visibilityKeyForTarget: () => "moment:answer-bubble"
+    });
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousVisualRuntime = globals.PartyGameVisualObject;
+    globals.PartyGameVisualObject = {};
+    try {
+      const result = resolver.playAnimationForAction(
+        {
+          targetLayoutElementId: "answer-bubble",
+          targetComponentId: "answer-text",
+          animationName: "text-pop"
+        },
+        { returnResult: true }
+      );
+      expect(result).toEqual({ duration: 180, missing: false, reason: "" });
+      expect(playComponent).toHaveBeenCalledWith("answer-text", "text-pop", { instant: false });
+      expect(playAnimation).not.toHaveBeenCalled();
+    } finally {
+      globals.PartyGameVisualObject = previousVisualRuntime;
+    }
+  });
+
   it("renders layout art without removing preserved overlay controls", () => {
     class FakeElement {
       childNodes: FakeElement[] = [];

@@ -1,4 +1,4 @@
-import type { FlowAction, FlowState, GameFlow, JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
+import type { ArtComponent, ArtComposition, FlowAction, FlowState, GameFlow, JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
 import { parseDecisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import { findFlowActionContext, flowSubroutineActions } from "./flowSubroutines";
 
@@ -54,6 +54,7 @@ type FlowLayoutStateWithVisibility = Partial<LayoutState> & {
 };
 
 const LAYOUT_TEXT_ART_COMPOSITION_ID = "layout-text-field";
+const BASE_ANIMATION_LABELS = ["appear", "disappear", "on", "off", "park", "update"];
 const LEGACY_LAYOUT_TEXT_ELEMENT_IDS = new Set([
   "stagetitle",
   "stageintrotitle",
@@ -301,6 +302,125 @@ export function flowGameObjectTargetOptions(
   if (selectedParts.id && !options.some((option) => option.id === selectedValue)) {
     options.push({ id: selectedElementId, name: selectedParts.id });
   }
+  return options;
+}
+
+function flowGameObjectLayoutElementForTarget(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  state: Partial<FlowState> | null | undefined,
+  selectedFlowStateId: string,
+  selectedTarget: unknown
+): FlowTargetLayoutElement | null {
+  const parts = flowGameObjectTargetParts(selectedTarget, "moment");
+  if (!parts.id) return null;
+  return (
+    flowGameObjectLayoutElements(stageLayouts, state, selectedFlowStateId).find((element) => {
+      const scope = String(element.targetLayoutScope || "moment");
+      return element.id === parts.id && scope === (parts.scope || "moment");
+    }) || null
+  );
+}
+
+function flowGameObjectCompositionForTarget(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  artCompositions: Partial<ArtComposition>[] | null | undefined,
+  state: Partial<FlowState> | null | undefined,
+  selectedFlowStateId: string,
+  selectedTarget: unknown
+): Partial<ArtComposition> | null {
+  const element = flowGameObjectLayoutElementForTarget(
+    stageLayouts,
+    state,
+    selectedFlowStateId,
+    selectedTarget
+  );
+  const compositionId = String(element?.artCompositionId || "");
+  return (artCompositions || []).find((item) => item.id === compositionId) || null;
+}
+
+function walkArtComponents(
+  components: Partial<ArtComponent>[] | null | undefined,
+  visit: (component: Partial<ArtComponent>, depth: number) => void,
+  depth = 0
+): void {
+  for (const component of components || []) {
+    visit(component, depth);
+    walkArtComponents(component.children, visit, depth + 1);
+  }
+}
+
+function flowComponentName(component: Partial<ArtComponent>, depth: number): string {
+  const prefix = depth > 0 ? `${"  ".repeat(depth)}` : "";
+  const name = String(component.name || component.id || "Component");
+  const id = String(component.id || "");
+  const suffix = id && id.toLowerCase() !== name.toLowerCase() ? ` (${id})` : "";
+  return `${prefix}${name}${suffix}`;
+}
+
+export function flowGameObjectComponentTargetOptions(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  artCompositions: Partial<ArtComposition>[] | null | undefined,
+  state: Partial<FlowState> | null | undefined,
+  selectedFlowStateId = "",
+  selectedTarget = "",
+  selectedComponentId = ""
+): FlowOption[] {
+  const options = [{ id: "", name: "Whole Game Object" }];
+  const seen = new Set<string>([""]);
+  const composition = flowGameObjectCompositionForTarget(
+    stageLayouts,
+    artCompositions,
+    state,
+    selectedFlowStateId,
+    selectedTarget
+  );
+  walkArtComponents(composition?.components, (component, depth) => {
+    const id = String(component.id || "");
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    options.push({ id, name: flowComponentName(component, depth) });
+  });
+  if (selectedComponentId && !seen.has(selectedComponentId)) {
+    options.push({ id: selectedComponentId, name: selectedComponentId });
+  }
+  return options;
+}
+
+export function flowGameObjectAnimationLabelOptions(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  artCompositions: Partial<ArtComposition>[] | null | undefined,
+  state: Partial<FlowState> | null | undefined,
+  selectedFlowStateId = "",
+  selectedTarget = "",
+  selectedComponentId = "",
+  selectedAnimation = ""
+): FlowOption[] {
+  const options: FlowOption[] = [];
+  const seen = new Set<string>();
+  const push = (label: unknown) => {
+    const id = String(label || "").trim();
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    options.push({ id, name: id });
+  };
+  for (const label of BASE_ANIMATION_LABELS) push(label);
+  const composition = flowGameObjectCompositionForTarget(
+    stageLayouts,
+    artCompositions,
+    state,
+    selectedFlowStateId,
+    selectedTarget
+  );
+  let componentTimelineLabels: { name: string }[] = [];
+  if (selectedComponentId) {
+    walkArtComponents(composition?.components, (component) => {
+      if (component.id === selectedComponentId) {
+        componentTimelineLabels = component.timeline?.labels || [];
+      }
+    });
+  }
+  for (const label of componentTimelineLabels.length ? componentTimelineLabels : composition?.timeline?.labels || []) push(label.name);
+  push(selectedAnimation);
   return options;
 }
 

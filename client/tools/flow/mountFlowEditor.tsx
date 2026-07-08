@@ -1,4 +1,5 @@
 import { createRoot, type Root } from "react-dom/client";
+import type { ArtApi } from "../../api/artApi";
 import type { FlowApi } from "../../api/flowApi";
 import type { LayoutApi } from "../../api/layoutApi";
 import type { ToolDraftApi } from "../../api/toolDraftApi";
@@ -9,6 +10,7 @@ import { FlowEditor } from "./FlowEditor";
 
 export interface MountFlowEditorOptions {
   api: FlowApi;
+  artApi?: ArtApi;
   draftApi?: ToolDraftApi;
   layoutApi?: LayoutApi;
   document?: Document;
@@ -59,9 +61,16 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
         return response?.layouts || null;
       }
     : undefined;
-  const [response, stageLayouts] = await Promise.all([
+  const loadArtCompositions = options.artApi
+    ? async () => {
+        const response = await options.artApi?.loadArtAssets();
+        return response?.compositions || [];
+      }
+    : undefined;
+  const [response, stageLayouts, artCompositions] = await Promise.all([
     options.api.loadGameFlow(),
-    loadStageLayouts ? loadStageLayouts() : Promise.resolve(null)
+    loadStageLayouts ? loadStageLayouts() : Promise.resolve(null),
+    loadArtCompositions ? loadArtCompositions() : Promise.resolve([])
   ]);
   const actionTypes = toActionTypeMeta(response.availableActionTypes || []);
   const controller = createFlowEditorController({
@@ -98,7 +107,9 @@ export async function mountFlowEditor(options: MountFlowEditorOptions): Promise<
       controller={controller}
       flowActionTypes={actionTypes}
       loadStageLayouts={loadStageLayouts}
+      loadArtCompositions={loadArtCompositions}
       stageLayouts={stageLayouts}
+      artCompositions={artCompositions}
       surface={options.surface}
     />
   );

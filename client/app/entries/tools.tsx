@@ -77,6 +77,7 @@ installToolContextAdapter(toolsContext);
 let flowController: FlowEditorController | null = null;
 void mountFlowEditor({
   api: toolsContext.api.flow,
+  artApi: toolsContext.api.art,
   draftApi: toolsContext.api.drafts,
   layoutApi: toolsContext.api.layout,
   surface: toolsContext.surface,

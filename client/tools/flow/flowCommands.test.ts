@@ -20,8 +20,10 @@ import {
   refreshFlowRouteActionTypeNameCommand,
   renameFlowActionCommand,
   renameFlowStateCommand,
+  setFlowActionFieldsCommand,
   setFlowActionTypeCommand,
   setFlowActionTimingCommand,
+  setFlowRouteActionFieldsCommand,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
   setFlowSubroutineEntryTargetCommand,
@@ -232,6 +234,27 @@ describe("Flow action commands", () => {
     });
   });
 
+  it("sets multiple action fields as one undoable command", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(
+      setFlowActionFieldsCommand("round-one", "act-1", {
+        targetLayoutElementId: "layout-wipe",
+        targetLayoutScope: "global"
+      })
+    );
+
+    expect(next.states[0].actions?.[0]).toMatchObject({
+      targetLayoutElementId: "layout-wipe",
+      targetLayoutScope: "global"
+    });
+    expect(history.undoLabels()).toEqual(["Edit action fields"]);
+
+    const reverted = history.undo();
+    expect(reverted?.states[0].actions?.[0].targetLayoutElementId).toBeUndefined();
+    expect(reverted?.states[0].actions?.[0].targetLayoutScope).toBeUndefined();
+  });
+
   it("refreshes an action name from its current action type", () => {
     const history = createFlowCommandHistory(actionFlowFixture());
 
@@ -433,5 +456,36 @@ describe("Flow route commands", () => {
     );
 
     expect(connected.routeNodes?.[0]?.nextTargetNodeId).toBe("round-one");
+  });
+
+  it("sets multiple root action fields as one undoable command", () => {
+    const history = createFlowCommandHistory({
+      states: [],
+      routeNodes: [
+        {
+          id: "route-action-test",
+          routeNodeType: "action",
+          type: "playGameObjectAnimation",
+          name: "Play Animation"
+        }
+      ]
+    } as GameFlow);
+
+    const next = history.execute(
+      setFlowRouteActionFieldsCommand("route-action-test", {
+        targetLayoutElementId: "stage-code",
+        targetLayoutScope: "moment"
+      })
+    );
+
+    expect(next.routeNodes?.[0]).toMatchObject({
+      targetLayoutElementId: "stage-code",
+      targetLayoutScope: "moment"
+    });
+    expect(history.undoLabels()).toEqual(["Edit root action fields"]);
+
+    const reverted = history.undo();
+    expect(reverted?.routeNodes?.[0].targetLayoutElementId).toBeUndefined();
+    expect(reverted?.routeNodes?.[0].targetLayoutScope).toBeUndefined();
   });
 });

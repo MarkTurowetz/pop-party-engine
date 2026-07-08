@@ -432,11 +432,22 @@ function playLayoutEntityVisibility(entity: Dict | null, isShown: boolean, optio
 function playLayoutEntityAnimation(entity: Dict | null, animation: string, options: Dict = {}): number {
   const cleanAnimation = String(animation || "").trim();
   if (!cleanAnimation) return 0;
+  const componentId = String(options.componentId || "").trim();
+  const artRenderer = entity?.artRenderer as {
+    playAll?: (a: string, o: Dict) => number;
+    playComponent?: (id: string, a: string, o: Dict) => number;
+  } | undefined;
+  if (componentId) {
+    if (typeof artRenderer?.playComponent === "function") {
+      return Number(artRenderer.playComponent(componentId, cleanAnimation, { instant: options.instant === true }) || 0);
+    }
+    (options.warn as ((r: string) => void) | undefined)?.(`component target unavailable: ${componentId}`);
+    return 0;
+  }
   if (typeof entity?.playAnimation === "function") {
     return (entity.playAnimation as (a: string, o: Dict) => number)(cleanAnimation, { instant: options.instant === true });
   }
   let duration = 0;
-  const artRenderer = entity?.artRenderer as { playAll?: (a: string, o: Dict) => number } | undefined;
   if (typeof artRenderer?.playAll === "function") {
     duration = Math.max(duration, Number(artRenderer.playAll(cleanAnimation, { instant: options.instant === true }) || 0));
   }
@@ -502,6 +513,7 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
   const result = (duration: unknown, missing = false, reason = "") =>
     options.returnResult ? { duration: Math.max(0, Number(duration || 0)), missing, reason } : Math.max(0, Number(duration || 0));
   const animation = String(action?.animationName || action?.timelineLabel || action?.animation || "").trim();
+  const componentId = String(action?.targetComponentId || action?.componentId || "").trim();
   if (!elementId || !animation || !w().PartyGameVisualObject) return result(0, true, "missing target id, animation, or visual runtime");
   const scope = ["global", "moment", "controller"].includes(String(action?.targetLayoutScope || "")) ? (action.targetLayoutScope as string) : "";
   const sourceArtAsset = artComposition(elementId);
@@ -521,7 +533,11 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
     return result(0, true, reason);
   }
   return result(
-    playLayoutEntityAnimation(entity || entityForElementId?.(elementId, target, scope) || null, animation, { instant: action.instant === true, warn })
+    playLayoutEntityAnimation(entity || entityForElementId?.(elementId, target, scope) || null, animation, {
+      componentId,
+      instant: action.instant === true,
+      warn
+    })
   );
 }
 

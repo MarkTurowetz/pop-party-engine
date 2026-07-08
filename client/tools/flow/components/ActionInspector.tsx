@@ -20,11 +20,14 @@ export interface ActionInspectorEditHandlers {
   onSetNextTarget?: (targetId: string) => void;
   onSetEntryTarget?: (targetId: string) => void;
   onSetActionField?: (key: string, value: unknown) => void;
+  onSetActionFields?: (patch: Record<string, unknown>) => void;
   onSetActionTiming?: (timing: { mode?: string; seconds?: number }) => void;
   decision?: DecisionBranchHandlers;
   options?: ActionOptionsHandlers;
   actionTypeOptions?: InspectorTargetOption[];
   actionTargetOptions?: InspectorTargetOption[];
+  animationLabelOptions?: InspectorTargetOption[];
+  componentTargetOptions?: InspectorTargetOption[];
   gameObjectTargetOptions?: InspectorTargetOption[];
   textTargetOptions?: InspectorTargetOption[];
   nextTargetOptions?: InspectorTargetOption[];
@@ -262,9 +265,12 @@ export function ActionInspector({
         <ActionFieldControls
           action={action}
           actionTargetOptions={edit.actionTargetOptions || []}
+          animationLabelOptions={edit.animationLabelOptions || []}
+          componentTargetOptions={edit.componentTargetOptions || []}
           gameObjectTargetOptions={edit.gameObjectTargetOptions || []}
           textTargetOptions={edit.textTargetOptions || []}
           onSetField={edit.onSetActionField}
+          onSetFields={edit.onSetActionFields}
         />
       ) : null}
       {action.type === "decision" && edit?.decision?.onAddBranch ? (

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FlowEditorController } from "./flowEditorController";
 import {
   findFlowActionRef,
+  flowGameObjectAnimationLabelOptions,
+  flowGameObjectComponentTargetOptions,
   flowGameObjectTargetOptions,
   flowTextTargetOptions,
   type FlowActionTypeMeta
@@ -9,7 +11,7 @@ import {
 import { useFlowEditor } from "./useFlowEditor";
 import { FlowToolApp, type FlowToolReactShellHandlers } from "./FlowToolApp";
 import { FlowNodeCanvas } from "./components/FlowNodeCanvas";
-import type { StageLayoutCollection } from "../../types/game-data";
+import type { ArtComposition, StageLayoutCollection } from "../../types/game-data";
 import {
   optimizedVerticalNodePositions,
   subroutineGraphConnections,
@@ -38,7 +40,9 @@ import {
 export interface FlowEditorProps {
   controller: FlowEditorController;
   flowActionTypes?: FlowActionTypeMeta[];
+  artCompositions?: ArtComposition[];
   stageLayouts?: StageLayoutCollection | null;
+  loadArtCompositions?: () => Promise<ArtComposition[]>;
   loadStageLayouts?: () => Promise<StageLayoutCollection | null>;
   surface?: string;
   previewMode?: string;
@@ -55,7 +59,9 @@ export interface FlowEditorProps {
 export function FlowEditor({
   controller,
   flowActionTypes = [],
+  artCompositions = [],
   stageLayouts = null,
+  loadArtCompositions,
   loadStageLayouts,
   surface = "flow",
   previewMode = "replace"
@@ -72,6 +78,7 @@ export function FlowEditor({
   const [nodeDepth, setNodeDepth] = useState<FlowNodeDepth>("subroutines");
   const [subroutinePath, setSubroutinePath] = useState<string[]>([]);
   const [layoutSnapshot, setLayoutSnapshot] = useState<StageLayoutCollection | null>(stageLayouts);
+  const [artCompositionSnapshot, setArtCompositionSnapshot] = useState<ArtComposition[]>(artCompositions);
 
   const hasState = Boolean(selectedStateId);
   const hasActionSelection = Boolean(selectedActionId) || selectedActionIds.size > 0;
@@ -124,6 +131,17 @@ export function FlowEditor({
     };
   }, [loadStageLayouts, selectedActionId, selectedActionType, selectedRootRouteAction?.id]);
 
+  useEffect(() => {
+    if (!loadArtCompositions || selectedActionType !== "playGameObjectAnimation") return undefined;
+    let cancelled = false;
+    void loadArtCompositions().then((compositions) => {
+      if (!cancelled) setArtCompositionSnapshot(compositions);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadArtCompositions, selectedActionId, selectedActionType, selectedRootRouteAction?.id]);
+
   const textTargetOptionsForState = (stateId: string, selectedTextTarget = "") => {
     const state = states.find((candidate) => candidate.id === stateId) || null;
     return flowTextTargetOptions(layoutSnapshot, state, stateId, selectedTextTarget).map((option) => ({
@@ -138,6 +156,44 @@ export function FlowEditor({
       label: option.name
     }));
   };
+  const animationLabelOptionsForState = (
+    stateId: string,
+    selectedTarget = "",
+    selectedComponent = "",
+    selectedAnimation = ""
+  ) => {
+    const state = states.find((candidate) => candidate.id === stateId) || null;
+    return flowGameObjectAnimationLabelOptions(
+      layoutSnapshot,
+      artCompositionSnapshot,
+      state,
+      stateId,
+      selectedTarget,
+      selectedComponent,
+      selectedAnimation
+    ).map((option) => ({
+      id: option.id,
+      label: option.name
+    }));
+  };
+  const componentTargetOptionsForState = (
+    stateId: string,
+    selectedTarget = "",
+    selectedComponent = ""
+  ) => {
+    const state = states.find((candidate) => candidate.id === stateId) || null;
+    return flowGameObjectComponentTargetOptions(
+      layoutSnapshot,
+      artCompositionSnapshot,
+      state,
+      stateId,
+      selectedTarget,
+      selectedComponent
+    ).map((option) => ({
+      id: option.id,
+      label: option.name
+    }));
+  };
   const inspectorTextTargetOptions = textTargetOptionsForState(
     selectedStateId,
     String(selectedActionRef?.action?.textTarget || "")
@@ -145,6 +201,17 @@ export function FlowEditor({
   const inspectorGameObjectTargetOptions = gameObjectTargetOptionsForState(
     selectedStateId,
     `${String(selectedActionRef?.action?.targetLayoutScope || "moment")}:${String(selectedActionRef?.action?.targetLayoutElementId || "")}`
+  );
+  const inspectorAnimationLabelOptions = animationLabelOptionsForState(
+    selectedStateId,
+    `${String(selectedActionRef?.action?.targetLayoutScope || "moment")}:${String(selectedActionRef?.action?.targetLayoutElementId || "")}`,
+    String(selectedActionRef?.action?.targetComponentId || ""),
+    String(selectedActionRef?.action?.animationName || "")
+  );
+  const inspectorComponentTargetOptions = componentTargetOptionsForState(
+    selectedStateId,
+    `${String(selectedActionRef?.action?.targetLayoutScope || "moment")}:${String(selectedActionRef?.action?.targetLayoutElementId || "")}`,
+    String(selectedActionRef?.action?.targetComponentId || "")
   );
 
   const inspectorEdit = {
@@ -183,6 +250,10 @@ export function FlowEditor({
     onSetActionField: (key: string, value: unknown) => {
       if (selectedStateId && selectedActionId)
         controller.setActionField(selectedStateId, selectedActionId, key, value);
+    },
+    onSetActionFields: (patch: Record<string, unknown>) => {
+      if (selectedStateId && selectedActionId)
+        controller.setActionFields(selectedStateId, selectedActionId, patch);
     },
     onSetActionTiming: (timing: { mode?: string; seconds?: number }) => {
       if (selectedStateId && selectedActionId)
@@ -237,6 +308,8 @@ export function FlowEditor({
             id: action.id,
             label: action.name || action.id
           })),
+    animationLabelOptions: inspectorAnimationLabelOptions,
+    componentTargetOptions: inspectorComponentTargetOptions,
     gameObjectTargetOptions: inspectorGameObjectTargetOptions,
     textTargetOptions: inspectorTextTargetOptions
   };
@@ -255,6 +328,9 @@ export function FlowEditor({
         actionTypeOptions: rootActionTypeOptions,
         onSetActionField: (key: string, value: unknown) => {
           controller.setRouteActionField(selectedRootRouteAction.id, key, value);
+        },
+        onSetActionFields: (patch: Record<string, unknown>) => {
+          controller.setRouteActionFields(selectedRootRouteAction.id, patch);
         },
         onSetActionTiming: (timing: { mode?: string; seconds?: number }) => {
           controller.setRouteActionTiming(selectedRootRouteAction.id, timing);
@@ -281,6 +357,17 @@ export function FlowEditor({
         gameObjectTargetOptions: gameObjectTargetOptionsForState(
           String(selectedRootRouteAction.targetStateId || selectedStateId || ""),
           `${String(selectedRootRouteAction.targetLayoutScope || "moment")}:${String(selectedRootRouteAction.targetLayoutElementId || "")}`
+        ),
+        animationLabelOptions: animationLabelOptionsForState(
+          String(selectedRootRouteAction.targetStateId || selectedStateId || ""),
+          `${String(selectedRootRouteAction.targetLayoutScope || "moment")}:${String(selectedRootRouteAction.targetLayoutElementId || "")}`,
+          String(selectedRootRouteAction.targetComponentId || ""),
+          String(selectedRootRouteAction.animationName || "")
+        ),
+        componentTargetOptions: componentTargetOptionsForState(
+          String(selectedRootRouteAction.targetStateId || selectedStateId || ""),
+          `${String(selectedRootRouteAction.targetLayoutScope || "moment")}:${String(selectedRootRouteAction.targetLayoutElementId || "")}`,
+          String(selectedRootRouteAction.targetComponentId || "")
         ),
         textTargetOptions: textTargetOptionsForState(
           String(selectedRootRouteAction.targetStateId || selectedStateId || ""),

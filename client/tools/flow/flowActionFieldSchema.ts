@@ -20,7 +20,9 @@ export type FlowFieldControl =
   | "textarea"
   | "number"
   | "integer"
+  | "animationLabel"
   | "boolean"
+  | "componentTarget"
   | "gameObjectTarget"
   | "select"
   | "textTarget"
@@ -118,8 +120,9 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
   ],
   playGameObjectAnimation: [
     { key: "targetLayoutElementId", label: "Game Object", control: "gameObjectTarget" },
+    { key: "targetComponentId", label: "Component", control: "componentTarget" },
     { key: "targetLayoutSurface", label: "Layout Surface", control: "text" },
-    { key: "animationName", label: "Animation Label", control: "text" },
+    { key: "animationName", label: "Animation Label", control: "animationLabel" },
     { key: "instant", label: "Instant", control: "boolean" }
   ],
   setPlayersShown: [{ key: "isShown", label: "Visible", control: "boolean" }],

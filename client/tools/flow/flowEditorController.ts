@@ -30,9 +30,11 @@ import {
   refreshFlowActionTypeNameCommand,
   refreshFlowRouteActionTypeNameCommand,
   setFlowActionFieldCommand,
+  setFlowActionFieldsCommand,
   setFlowActionTimingCommand,
   setFlowActionTypeCommand,
   setFlowRouteActionFieldCommand,
+  setFlowRouteActionFieldsCommand,
   setFlowRouteActionTimingCommand,
   setFlowRouteActionTypeCommand,
   setFlowRouteDecisionBranchFieldCommand,
@@ -164,7 +166,9 @@ export interface FlowEditorController {
   setActionType(stateId: string, actionId: string, type: string): void;
   setRouteActionType(nodeId: string, type: string): void;
   setActionField(stateId: string, actionId: string, key: string, value: unknown): void;
+  setActionFields(stateId: string, actionId: string, patch: Record<string, unknown>): void;
   setRouteActionField(nodeId: string, key: string, value: unknown): void;
+  setRouteActionFields(nodeId: string, patch: Record<string, unknown>): void;
   setActionTiming(stateId: string, actionId: string, timing: FlowActionTimingPatch): void;
   setRouteActionTiming(nodeId: string, timing: FlowActionTimingPatch): void;
   addDecisionBranch(stateId: string, actionId: string): void;
@@ -441,8 +445,12 @@ export function createFlowEditorController(
       ),
     setActionField: (stateId, actionId, key, value) =>
       commit(store.execute(setFlowActionFieldCommand(stateId, actionId, key, value))),
+    setActionFields: (stateId, actionId, patch) =>
+      commit(store.execute(setFlowActionFieldsCommand(stateId, actionId, patch))),
     setRouteActionField: (nodeId, key, value) =>
       commit(store.execute(setFlowRouteActionFieldCommand(nodeId, key, value))),
+    setRouteActionFields: (nodeId, patch) =>
+      commit(store.execute(setFlowRouteActionFieldsCommand(nodeId, patch))),
     setActionTiming: (stateId, actionId, timing) =>
       commit(store.execute(setFlowActionTimingCommand(stateId, actionId, timing))),
     setRouteActionTiming: (nodeId, timing) =>

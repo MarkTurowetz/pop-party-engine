@@ -6,9 +6,12 @@ import type { InspectorTargetOption } from "./ActionInspector";
 export interface ActionFieldControlsProps {
   action: FlowAction;
   actionTargetOptions: InspectorTargetOption[];
+  animationLabelOptions?: InspectorTargetOption[];
+  componentTargetOptions?: InspectorTargetOption[];
   gameObjectTargetOptions?: InspectorTargetOption[];
   textTargetOptions?: InspectorTargetOption[];
   onSetField: (key: string, value: unknown) => void;
+  onSetFields?: (patch: Record<string, unknown>) => void;
 }
 
 function rawValue(action: FlowAction, key: string): unknown {
@@ -33,16 +36,22 @@ function FieldControl({
   field,
   action,
   actionTargetOptions,
+  animationLabelOptions = [],
+  componentTargetOptions = [],
   gameObjectTargetOptions = [],
   textTargetOptions = [],
-  onSetField
+  onSetField,
+  onSetFields
 }: {
   field: FlowActionFieldDescriptor;
   action: FlowAction;
   actionTargetOptions: InspectorTargetOption[];
+  animationLabelOptions?: InspectorTargetOption[];
+  componentTargetOptions?: InspectorTargetOption[];
   gameObjectTargetOptions?: InspectorTargetOption[];
   textTargetOptions?: InspectorTargetOption[];
   onSetField: (key: string, value: unknown) => void;
+  onSetFields?: (patch: Record<string, unknown>) => void;
 }) {
   const fieldKey = `${action.id}:${field.key}`;
   const commitText = (value: string) => onSetField(field.key, value);
@@ -66,6 +75,7 @@ function FieldControl({
   if (
     field.control === "select" ||
     field.control === "actionTarget" ||
+    field.control === "componentTarget" ||
     field.control === "textTarget" ||
     field.control === "gameObjectTarget"
   ) {
@@ -75,6 +85,8 @@ function FieldControl({
             actionTargetOptions.map((option) => ({ id: option.id, name: option.label })),
             { id: "", name: "Default" }
           )
+        : field.control === "componentTarget"
+          ? componentTargetOptions.map((option) => ({ id: option.id, name: option.label }))
         : field.control === "gameObjectTarget"
           ? gameObjectTargetOptions.map((option) => ({ id: option.id, name: option.label }))
           : field.control === "textTarget"
@@ -110,6 +122,15 @@ function FieldControl({
               return;
             }
             const parts = flowGameObjectTargetParts(event.target.value);
+            if (onSetFields) {
+              const patch: Record<string, unknown> = {
+                targetLayoutScope: parts.scope || "",
+                [field.key]: parts.id
+              };
+              if (action.type === "playGameObjectAnimation") patch.targetComponentId = "";
+              onSetFields(patch);
+              return;
+            }
             onSetField("targetLayoutScope", parts.scope || "");
             onSetField(field.key, parts.id);
           }}
@@ -120,6 +141,33 @@ function FieldControl({
             </option>
           ))}
         </select>
+      </label>
+    );
+  }
+
+  if (field.control === "animationLabel") {
+    const listId = `${fieldKey}:animation-labels`;
+    return (
+      <label className="flow-react-field" data-flow-react-field={field.key}>
+        <span>{field.label}</span>
+        <input
+          type="text"
+          key={fieldKey}
+          list={listId}
+          defaultValue={String(rawValue(action, field.key) ?? "")}
+          data-flow-react-field-input={field.key}
+          onBlur={(event) => commitText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+          }}
+        />
+        <datalist id={listId}>
+          {animationLabelOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </datalist>
       </label>
     );
   }
@@ -171,9 +219,12 @@ function FieldControl({
 export function ActionFieldControls({
   action,
   actionTargetOptions,
+  animationLabelOptions = [],
+  componentTargetOptions = [],
   gameObjectTargetOptions = [],
   textTargetOptions = [],
-  onSetField
+  onSetField,
+  onSetFields
 }: ActionFieldControlsProps) {
   const fields = actionFieldsForType(action.type);
   if (!fields.length) return null;
@@ -185,9 +236,12 @@ export function ActionFieldControls({
           field={field}
           action={action}
           actionTargetOptions={actionTargetOptions}
+          animationLabelOptions={animationLabelOptions}
+          componentTargetOptions={componentTargetOptions}
           gameObjectTargetOptions={gameObjectTargetOptions}
           textTargetOptions={textTargetOptions}
           onSetField={onSetField}
+          onSetFields={onSetFields}
         />
       ))}
     </div>
