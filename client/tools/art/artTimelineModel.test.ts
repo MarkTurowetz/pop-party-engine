@@ -7,13 +7,16 @@ import {
   addTimelinePropertyKeyframe,
   addTransformKeyframe,
   artTimelineOrDefault,
+  copyTimelineFrameRange,
   copyTimelineKeyframe,
   createTimelineSegment,
+  cutTimelineFrameRange,
   defaultArtVisibilityTimeline,
   duplicateTimelineSegment,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
   moveTimelineCommandAt,
+  pasteTimelineFrameRange,
   replaceTransformKeyframeFromComponent,
   removeTimelineFrames,
   removeTimelineKeyframe,
@@ -229,6 +232,87 @@ describe("artTimelineModel", () => {
     expect(result.labels).toEqual([{ name: "keep", frame: 5 }]);
     expect(result.commands).toEqual([{ frame: 6, type: "emit", event: "done" }]);
     expect(result.tracks[0].keyframes).toEqual([{ frame: 7, props: { x: 20 } }]);
+  });
+
+  it("copies and pastes frame ranges without overwriting later timeline data", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 12,
+      labels: [
+        { name: "pop", frame: 2 },
+        { name: "settle", frame: 4 },
+        { name: "later", frame: 9 }
+      ],
+      commands: [
+        { id: "jump", frame: 3, type: "gotoAndPlay", target: "settle" },
+        { id: "stop", frame: 5, type: "stop" },
+        { id: "later-stop", frame: 10, type: "stop" }
+      ],
+      tracks: [{ targetId: "card", keyframes: [{ id: "start", frame: 2, props: { scale: 0.4 } }, { id: "end", frame: 5, props: { scale: 1 } }] }]
+    };
+
+    const clipboard = copyTimelineFrameRange(timeline, 2, 4);
+    expect(clipboard).toMatchObject({
+      frameCount: 4,
+      labels: [
+        { name: "pop", frame: 0 },
+        { name: "settle", frame: 2 }
+      ],
+      commands: [
+        { frame: 1, type: "gotoAndPlay", target: "settle" },
+        { frame: 3, type: "stop" }
+      ],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 0, props: { scale: 0.4 } }, { frame: 3, props: { scale: 1 } }] }]
+    });
+
+    const pasted = pasteTimelineFrameRange(timeline, clipboard, 8);
+    expect(pasted.frameCount).toBe(16);
+    expect(pasted.labels).toEqual([
+      { name: "pop", frame: 2 },
+      { name: "settle", frame: 4 },
+      { name: "pop 2", frame: 8 },
+      { name: "settle 2", frame: 10 },
+      { name: "later", frame: 13 }
+    ]);
+    expect(pasted.commands.map((command) => ({ frame: command.frame, type: command.type, target: command.target }))).toEqual([
+      { frame: 3, type: "gotoAndPlay", target: "settle" },
+      { frame: 5, type: "stop", target: undefined },
+      { frame: 9, type: "gotoAndPlay", target: "settle 2" },
+      { frame: 11, type: "stop", target: undefined },
+      { frame: 14, type: "stop", target: undefined }
+    ]);
+    expect(pasted.tracks[0].keyframes.map((keyframe) => ({ frame: keyframe.frame, props: keyframe.props }))).toEqual([
+      { frame: 2, props: { scale: 0.4 } },
+      { frame: 5, props: { scale: 1 } },
+      { frame: 8, props: { scale: 0.4 } },
+      { frame: 11, props: { scale: 1 } }
+    ]);
+  });
+
+  it("cuts frame ranges by returning clipboard data and a shifted timeline", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 8,
+      labels: [{ name: "remove", frame: 2 }, { name: "keep", frame: 6 }],
+      commands: [{ frame: 3, type: "emit", event: "inside" }, { frame: 7, type: "stop" }],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 2, props: { x: 1 } }, { frame: 6, props: { x: 2 } }] }]
+    };
+
+    const result = cutTimelineFrameRange(timeline, 2, 3);
+
+    expect(result.clipboard).toMatchObject({
+      frameCount: 3,
+      labels: [{ name: "remove", frame: 0 }],
+      commands: [{ frame: 1, type: "emit", event: "inside" }],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 0, props: { x: 1 } }] }]
+    });
+    expect(result.timeline).toEqual({
+      fps: 30,
+      frameCount: 5,
+      labels: [{ name: "keep", frame: 3 }],
+      commands: [{ frame: 4, type: "stop" }],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 3, props: { x: 2 } }] }]
+    });
   });
 
   it("adds transform keyframes to a target track", () => {

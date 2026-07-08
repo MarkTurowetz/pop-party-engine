@@ -21,6 +21,13 @@ const DEFAULT_TIMELINE: TimelineDocument = Object.freeze({
 });
 const MAX_FRAME_COUNT = 60 * 60 * 10;
 
+export interface TimelineFrameClipboard {
+  frameCount: number;
+  labels: TimelineDocument["labels"];
+  commands: TimelineCommand[];
+  tracks: TimelineTrack[];
+}
+
 export const defaultArtVisibilityTimeline = (): TimelineDocument =>
   defaultVisibilityTimeline({ appear: 500, update: 200, disappear: 500 });
 
@@ -145,6 +152,108 @@ export function removeTimelineFrames(
       }))
       .filter((track) => track.keyframes.length > 0)
   });
+}
+
+export function copyTimelineFrameRange(
+  timeline: TimelineDocument | null | undefined,
+  frame: number,
+  count = 1
+): TimelineFrameClipboard {
+  const current = artTimelineOrDefault(timeline);
+  const startFrame = cleanFrame(frame, current.frameCount);
+  const endFrame = Math.min(current.frameCount, startFrame + cleanFrameDelta(count));
+  const frameCount = Math.max(1, endFrame - startFrame);
+  const isInsideRange = (value: number) => value >= startFrame && value < endFrame;
+  return {
+    frameCount,
+    labels: current.labels
+      .filter((label) => isInsideRange(label.frame))
+      .map((label) => ({ ...label, frame: label.frame - startFrame })),
+    commands: current.commands
+      .filter((command) => isInsideRange(command.frame))
+      .map((command) => ({ ...command, frame: command.frame - startFrame })),
+    tracks: current.tracks
+      .map((track) => ({
+        ...track,
+        keyframes: track.keyframes
+          .filter((keyframe) => isInsideRange(keyframe.frame))
+          .map((keyframe) => ({
+            ...keyframe,
+            frame: keyframe.frame - startFrame,
+            props: cleanTimelineProps(keyframe.props),
+            easing: cleanTimelineEasing(keyframe.easing)
+          }))
+      }))
+      .filter((track) => track.keyframes.length > 0)
+  };
+}
+
+export function pasteTimelineFrameRange(
+  timeline: TimelineDocument | null | undefined,
+  clipboard: TimelineFrameClipboard | null | undefined,
+  frame: number
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const frameCountToPaste = cleanFrameDelta(clipboard?.frameCount || 1);
+  if (!clipboard) return insertTimelineFrames(current, frame, frameCountToPaste);
+  const destinationFrame = cleanFrame(frame, current.frameCount);
+  const withSpace = insertTimelineFrames(current, destinationFrame, frameCountToPaste);
+  const labelNameBySource = new Map<string, string>();
+  const seededTimeline = { ...withSpace, labels: [...withSpace.labels] };
+  const copiedLabels = (clipboard.labels || []).map((label) => {
+    const labelName = uniqueLabelName(seededTimeline, label.name, label.name || "Label");
+    labelNameBySource.set(label.name, labelName);
+    const copiedLabel = { name: labelName, frame: cleanFrame(destinationFrame + label.frame, withSpace.frameCount) };
+    seededTimeline.labels.push(copiedLabel);
+    return copiedLabel;
+  });
+  const copiedCommands = (clipboard.commands || []).map((command, index) => {
+    const target = command.target && labelNameBySource.has(command.target) ? labelNameBySource.get(command.target) : command.target;
+    const copiedCommand: TimelineCommand = {
+      ...command,
+      id: `${command.id || command.type || "command"}-${destinationFrame}-${index}-${Date.now().toString(36)}`,
+      frame: cleanFrame(destinationFrame + command.frame, withSpace.frameCount)
+    };
+    if (target) copiedCommand.target = target;
+    else delete copiedCommand.target;
+    return copiedCommand;
+  });
+  const copiedTracks = (clipboard.tracks || []).map((track) => ({
+    ...track,
+    keyframes: track.keyframes.map((keyframe) => ({
+      ...keyframe,
+      id: `key-${track.targetId}-${cleanFrame(destinationFrame + keyframe.frame, withSpace.frameCount)}`,
+      frame: cleanFrame(destinationFrame + keyframe.frame, withSpace.frameCount),
+      props: cleanTimelineProps(keyframe.props),
+      easing: cleanTimelineEasing(keyframe.easing)
+    }))
+  }));
+  const tracksByTargetId = new Map<string, TimelineTrack>();
+  for (const track of withSpace.tracks) {
+    tracksByTargetId.set(track.targetId, { ...track, keyframes: [...track.keyframes] });
+  }
+  for (const track of copiedTracks) {
+    const existing = tracksByTargetId.get(track.targetId);
+    tracksByTargetId.set(track.targetId, existing ? { ...existing, keyframes: [...existing.keyframes, ...track.keyframes] } : track);
+  }
+  return sortTimeline({
+    ...withSpace,
+    labels: [...withSpace.labels, ...copiedLabels],
+    commands: [...withSpace.commands, ...copiedCommands],
+    tracks: [...tracksByTargetId.values()].filter((track) => track.keyframes.length > 0)
+  });
+}
+
+export function cutTimelineFrameRange(
+  timeline: TimelineDocument | null | undefined,
+  frame: number,
+  count = 1
+): { timeline: TimelineDocument; clipboard: TimelineFrameClipboard } {
+  const clipboard = copyTimelineFrameRange(timeline, frame, count);
+  return {
+    clipboard,
+    timeline: removeTimelineFrames(timeline, frame, clipboard.frameCount)
+  };
 }
 
 export function addTimelineLabel(

@@ -1508,9 +1508,16 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-frame-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   align-items: end;
+}
+
+.art-timeline-frame-clipboard-summary {
+  align-self: center;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
 }
 
 .art-timeline-window-controls {
