@@ -1401,6 +1401,11 @@ body.tool-dashboard-mode .layout-react-shell {
   border-top: 3px solid rgba(23, 19, 31, 0.18);
 }
 
+.art-timeline-panel:focus-visible {
+  outline: 3px solid var(--cyan);
+  outline-offset: 3px;
+}
+
 .art-timeline-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

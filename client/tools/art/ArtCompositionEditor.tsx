@@ -4,6 +4,7 @@ import {
   useMemo,
   useState,
   type DragEvent as ReactDragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode
 } from "react";
@@ -158,6 +159,12 @@ function coerceTimelinePropertyValue(value: string, type: "number" | "boolean" |
 
 function timelinePropertyKeyList(value: string): string[] {
   return [...new Set(String(value || "").split(/[\s,]+/).map((entry) => entry.trim()).filter(Boolean))];
+}
+
+function isEditableTimelineShortcutTarget(target: EventTarget | null): boolean {
+  const element = target instanceof HTMLElement ? target : null;
+  if (!element) return false;
+  return Boolean(element.closest("input, textarea, select, [contenteditable='true']"));
 }
 
 function findTimelineKeyframe(
@@ -1107,6 +1114,43 @@ function ArtTimelinePanel({
     applyTimelineFrameEdit(pasteTimelineFrameRange(current, copiedFrameRange, cleanFrame), cleanFrame);
   }
 
+  function handleTimelineKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
+    if (isEditableTimelineShortcutTarget(event.target)) return;
+    const usesModifier = event.metaKey || event.ctrlKey;
+    const key = event.key.toLowerCase();
+    if (usesModifier && key === "c") {
+      event.preventDefault();
+      copyFrameRangeAtCurrentFrame();
+      return;
+    }
+    if (usesModifier && key === "x") {
+      event.preventDefault();
+      if (current.frameCount > 1) cutFrameRangeAtCurrentFrame();
+      return;
+    }
+    if (usesModifier && key === "v") {
+      event.preventDefault();
+      pasteFrameRangeAtCurrentFrame();
+      return;
+    }
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      if (current.frameCount > 1) {
+        setSelectedKeyframe(null);
+        setSelectedMarker(null);
+        applyTimelineFrameEdit(removeTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame);
+      }
+      return;
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      const delta = event.key === "ArrowLeft" ? -1 : 1;
+      const nextFrame = Math.max(0, Math.min(current.frameCount - 1, cleanFrame + delta));
+      if (event.shiftKey) selectFrameRangeTo(nextFrame);
+      else previewFrame(nextFrame);
+    }
+  }
+
   function selectKeyframe(targetId: string, keyframeFrame: number): void {
     stopPlayback();
     setSelectedMarker(null);
@@ -1313,7 +1357,13 @@ function ArtTimelinePanel({
   }
 
   return (
-    <section className="art-timeline-panel" data-art-timeline-panel>
+    <section
+      className="art-timeline-panel"
+      data-art-timeline-panel
+      tabIndex={0}
+      aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
+      onKeyDown={handleTimelineKeyDown}
+    >
       <div className="art-timeline-header">
         <h3>{title}</h3>
         <button type="button" disabled={!activeKeyframeTarget} onClick={() => onChange(mergeDefaultArtVisibilityTimeline(current, activeKeyframeTarget))}>
