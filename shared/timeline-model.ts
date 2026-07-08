@@ -126,7 +126,7 @@ export function normalizeTimeline(raw: unknown, fallback: unknown = null): Timel
         event: cleanText(entry.event, "", 120) || undefined
       };
     })
-    .sort((a, b) => a.frame - b.frame || a.type.localeCompare(b.type));
+    .sort((a, b) => a.frame - b.frame);
 
   const tracks = (Array.isArray(input.tracks) ? input.tracks : [])
     .slice(0, MAX_TRACKS)

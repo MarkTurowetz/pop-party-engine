@@ -70,6 +70,17 @@ describe("artTimelineModel", () => {
     expect(withEmit.commands[1]).toMatchObject({ frame: 8, type: "emit", event: "pop-name" });
   });
 
+  it("preserves authored command order within a frame", () => {
+    const first = addTimelineCommand({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, 4, {
+      type: "gotoAndPlay",
+      target: "settle"
+    });
+    const second = addTimelineCommand(first, 4, { type: "emit", event: "started" });
+    const third = addTimelineCommand(second, 2, { type: "stop" });
+
+    expect(third.commands.map((command) => command.type)).toEqual(["stop", "gotoAndPlay", "emit"]);
+  });
+
   it("updates timeline commands by normalized list index", () => {
     const timeline = {
       fps: 30,

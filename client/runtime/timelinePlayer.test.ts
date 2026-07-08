@@ -25,6 +25,22 @@ describe("TimelinePlayer", () => {
     expect(timelineSnapshotAt(timeline!, 5).targets.card.scale).toBe(0.75);
   });
 
+  it("preserves authored command order within the same frame", () => {
+    const timeline = normalizeTimeline({
+      fps: 30,
+      frameCount: 5,
+      labels: [],
+      commands: [
+        { frame: 2, type: "gotoAndPlay", target: "settle" },
+        { frame: 2, type: "emit", event: "started" },
+        { frame: 1, type: "stop" }
+      ],
+      tracks: []
+    });
+
+    expect(timeline?.commands.map((command) => command.type)).toEqual(["stop", "gotoAndPlay", "emit"]);
+  });
+
   it("plays from a label until the next stop command", () => {
     const timeline = normalizeTimeline({
       fps: 10,

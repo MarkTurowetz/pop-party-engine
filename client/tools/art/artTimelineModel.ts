@@ -47,7 +47,7 @@ function sortTimeline(timeline: TimelineDocument): TimelineDocument {
   return {
     ...timeline,
     labels: [...timeline.labels].sort((a, b) => a.frame - b.frame || a.name.localeCompare(b.name)),
-    commands: [...timeline.commands].sort((a, b) => a.frame - b.frame || a.type.localeCompare(b.type)),
+    commands: [...timeline.commands].sort((a, b) => a.frame - b.frame),
     tracks: timeline.tracks.map((track) => ({
       ...track,
       keyframes: [...track.keyframes].sort((a, b) => a.frame - b.frame)
