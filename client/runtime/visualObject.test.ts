@@ -326,7 +326,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
         frameCount: 3,
         labels: [{ name: "appear", frame: 0 }],
         commands: [
-          { frame: 1, type: "emit", event: "pop-name" },
+          { id: "emit-pop-name", frame: 1, type: "emit", event: "pop-name" },
           { frame: 2, type: "stop" }
         ],
         tracks: []
@@ -339,7 +339,9 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(handled).toHaveLength(1);
     expect(dispatched.map((event) => event.type)).toEqual(["party-game:timeline-command", "party-game:timeline:pop-name"]);
     expect((handled[0] as { eventName: string }).eventName).toBe("pop-name");
+    expect((handled[0] as { command: { id?: string } }).command.id).toBe("emit-pop-name");
     expect((dispatched[0].detail as { eventName: string }).eventName).toBe("pop-name");
+    expect((dispatched[0].detail as { command: { id?: string } }).command.id).toBe("emit-pop-name");
   });
 
   it("dispatches authored timeline emit commands on the starting frame", () => {

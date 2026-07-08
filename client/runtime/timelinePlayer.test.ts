@@ -265,6 +265,35 @@ describe("TimelinePlayer", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
+  it("passes normalized command ids through runtime command callbacks", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { id: "play-child-pop", frame: 1, type: "playComponent", target: "child", event: "pop" },
+        { frame: 2, type: "stop" }
+      ],
+      tracks: []
+    });
+    const commandIds: Array<string | undefined> = [];
+    const durationCommandIds: Array<string | undefined> = [];
+    const player = new TimelinePlayer({
+      timeline,
+      onCommand: (command) => commandIds.push(command.id),
+      commandDuration: (command) => {
+        durationCommandIds.push(command.id);
+        return 0;
+      }
+    });
+
+    expect(player.gotoAndPlay("appear")).toBe(200);
+    vi.advanceTimersByTime(100);
+
+    expect(commandIds).toEqual(["play-child-pop"]);
+    expect(durationCommandIds).toContain("play-child-pop");
+  });
+
   it("includes non-redirect command durations in timeline playback duration", () => {
     const timeline = normalizeTimeline({
       fps: 10,

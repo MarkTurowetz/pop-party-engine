@@ -2,6 +2,7 @@ import {
   frameForTimelineLabel,
   normalizeTimeline,
   timelinePlaybackDuration,
+  type TimelineCommand,
   timelineSegmentFor,
   type TimelineDocument,
   type TimelineProperties,
@@ -17,8 +18,8 @@ export interface TimelineFrameSnapshot {
 export interface TimelinePlayerOptions {
   timeline?: TimelineDocument | null;
   onFrame?: (snapshot: TimelineFrameSnapshot) => void;
-  onCommand?: (command: { type: string; frame: number; target?: string; event?: string }) => void;
-  commandDuration?: (command: { type: string; frame: number; target?: string; event?: string }, context: { frame: number; elapsedMs: number }) => number;
+  onCommand?: (command: TimelineCommand) => void;
+  commandDuration?: (command: TimelineCommand, context: { frame: number; elapsedMs: number }) => number;
   onCommandLimit?: (detail: { frame: number; commandCount: number; maxCommandRedirects: number }) => void;
   maxCommandRedirects?: number;
   schedule?: (callback: () => void, delay: number) => number;
