@@ -235,6 +235,7 @@ function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: T
   }
   const matchingIndex = timeline.commands.findIndex(
     (command) =>
+      command.frame === previousCommand.frame &&
       command.type === previousCommand.type &&
       (command.target || "") === (previousCommand.target || "") &&
       (command.event || "") === (previousCommand.event || "")
@@ -276,6 +277,14 @@ function canMoveTimelineCommandInFrame(timeline: TimelineDocument, index: number
 }
 
 function timelineCommandUsesComponentTarget(type: string): boolean {
+  return type === "emit" || type === "playComponent" || type === "stopComponent";
+}
+
+function timelineCommandUsesTarget(type: string): boolean {
+  return type !== "stop";
+}
+
+function timelineCommandUsesEvent(type: string): boolean {
   return type === "emit" || type === "playComponent" || type === "stopComponent";
 }
 
@@ -1922,26 +1931,30 @@ function ArtTimelinePanel({
             <option value="emit">Emit Event</option>
           </select>
         </label>
-        <label className="flow-react-field">
-          <span>{commandTargetLabel}</span>
-          <input
-            type="text"
-            list={timelineCommandUsesComponentTarget(commandType) ? "art-timeline-target-components" : "art-timeline-labels"}
-            value={commandTarget}
-            placeholder={commandTargetPlaceholder}
-            onChange={(event) => setNewCommandTarget(event.target.value)}
-          />
-        </label>
-        <label className="flow-react-field">
-          <span>{commandEventLabel}</span>
-          <input
-            type="text"
-            list={commandType === "playComponent" || commandType === "stopComponent" ? "art-timeline-command-target-labels" : undefined}
-            value={commandEvent}
-            placeholder={commandEventPlaceholder}
-            onChange={(event) => setCommandEvent(event.target.value)}
-          />
-        </label>
+        {timelineCommandUsesTarget(commandType) ? (
+          <label className="flow-react-field">
+            <span>{commandTargetLabel}</span>
+            <input
+              type="text"
+              list={timelineCommandUsesComponentTarget(commandType) ? "art-timeline-target-components" : "art-timeline-labels"}
+              value={commandTarget}
+              placeholder={commandTargetPlaceholder}
+              onChange={(event) => setNewCommandTarget(event.target.value)}
+            />
+          </label>
+        ) : null}
+        {timelineCommandUsesEvent(commandType) ? (
+          <label className="flow-react-field">
+            <span>{commandEventLabel}</span>
+            <input
+              type="text"
+              list={commandType === "playComponent" || commandType === "stopComponent" ? "art-timeline-command-target-labels" : undefined}
+              value={commandEvent}
+              placeholder={commandEventPlaceholder}
+              onChange={(event) => setCommandEvent(event.target.value)}
+            />
+          </label>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -1951,8 +1964,8 @@ function ArtTimelinePanel({
               (command) =>
                 command.frame === cleanFrame &&
                 command.type === commandType &&
-                (command.target || "") === commandTarget.trim() &&
-                (command.event || "") === commandEvent.trim()
+                (command.target || "") === (timelineCommandUsesTarget(commandType) ? commandTarget.trim() : "") &&
+                (command.event || "") === (timelineCommandUsesEvent(commandType) ? commandEvent.trim() : "")
             );
             onChange(nextTimeline);
             setSelectedKeyframe(null);
@@ -2138,24 +2151,28 @@ function ArtTimelinePanel({
                   onChange={(event) => updateSelectedMarkerFrame(Number(event.target.value))}
                 />
               </label>
-              <label className="flow-react-field">
-                <span>{timelineCommandTargetLabel(selectedTimelineMarker.command.type)}</span>
-                <input
-                  type="text"
-                  list={timelineCommandUsesComponentTarget(selectedTimelineMarker.command.type) ? "art-timeline-target-components" : "art-timeline-labels"}
-                  value={selectedTimelineMarker.command.target || ""}
-                  onChange={(event) => setSelectedCommandTarget(event.target.value)}
-                />
-              </label>
-              <label className="flow-react-field">
-                <span>{timelineCommandEventLabel(selectedTimelineMarker.command.type)}</span>
-                <input
-                  type="text"
-                  list={selectedTimelineMarker.command.type === "playComponent" || selectedTimelineMarker.command.type === "stopComponent" ? "art-timeline-selected-command-target-labels" : undefined}
-                  value={selectedTimelineMarker.command.event || ""}
-                  onChange={(event) => updateSelectedCommand({ event: event.target.value })}
-                />
-              </label>
+              {timelineCommandUsesTarget(selectedTimelineMarker.command.type) ? (
+                <label className="flow-react-field">
+                  <span>{timelineCommandTargetLabel(selectedTimelineMarker.command.type)}</span>
+                  <input
+                    type="text"
+                    list={timelineCommandUsesComponentTarget(selectedTimelineMarker.command.type) ? "art-timeline-target-components" : "art-timeline-labels"}
+                    value={selectedTimelineMarker.command.target || ""}
+                    onChange={(event) => setSelectedCommandTarget(event.target.value)}
+                  />
+                </label>
+              ) : null}
+              {timelineCommandUsesEvent(selectedTimelineMarker.command.type) ? (
+                <label className="flow-react-field">
+                  <span>{timelineCommandEventLabel(selectedTimelineMarker.command.type)}</span>
+                  <input
+                    type="text"
+                    list={selectedTimelineMarker.command.type === "playComponent" || selectedTimelineMarker.command.type === "stopComponent" ? "art-timeline-selected-command-target-labels" : undefined}
+                    value={selectedTimelineMarker.command.event || ""}
+                    onChange={(event) => updateSelectedCommand({ event: event.target.value })}
+                  />
+                </label>
+              ) : null}
               <datalist id="art-timeline-selected-command-target-labels">
                 {timelineTargetAnimationLabels(component, selectedTimelineMarker.command.target || "").map((label) => (
                   <option value={label.name} key={label.name} />

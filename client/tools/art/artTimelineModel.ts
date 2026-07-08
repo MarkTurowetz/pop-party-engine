@@ -130,6 +130,23 @@ function remappedTimelineCommandTarget(command: TimelineCommand, labelNameBySour
   return command.target;
 }
 
+function timelineCommandAcceptsTarget(type: string): boolean {
+  return type !== "stop";
+}
+
+function timelineCommandAcceptsEvent(type: string): boolean {
+  return type === "emit" || type === "playComponent" || type === "stopComponent";
+}
+
+function assignTimelineCommandFields(command: TimelineCommand, target: string, event: string): TimelineCommand {
+  const nextCommand: TimelineCommand = { ...command };
+  if (timelineCommandAcceptsTarget(nextCommand.type) && target) nextCommand.target = target;
+  else delete nextCommand.target;
+  if (timelineCommandAcceptsEvent(nextCommand.type) && event) nextCommand.event = event;
+  else delete nextCommand.event;
+  return nextCommand;
+}
+
 export function updateTimelineSettings(
   timeline: TimelineDocument | null | undefined,
   patch: Partial<Pick<TimelineDocument, "fps" | "frameCount">>
@@ -464,10 +481,9 @@ export function addTimelineCommand(
   };
   const target = cleanName(String(command.target || ""), "");
   const event = cleanName(String(command.event || ""), "");
-  if (target) nextCommand.target = target;
-  if (event) nextCommand.event = event;
-  nextCommand.id = uniqueCommandId(current, nextCommand);
-  return sortTimeline({ ...current, commands: [...current.commands, nextCommand] });
+  const cleanCommand = assignTimelineCommandFields(nextCommand, target, event);
+  cleanCommand.id = uniqueCommandId(current, cleanCommand);
+  return sortTimeline({ ...current, commands: [...current.commands, cleanCommand] });
 }
 
 export function removeTimelineCommand(timeline: TimelineDocument | null | undefined, commandId: string): TimelineDocument {
@@ -514,11 +530,7 @@ export function updateTimelineCommandAt(
     };
     const target = patch.target === undefined ? command.target || "" : cleanName(patch.target, "");
     const event = patch.event === undefined ? command.event || "" : cleanName(patch.event, "");
-    if (target) nextCommand.target = target;
-    else delete nextCommand.target;
-    if (event) nextCommand.event = event;
-    else delete nextCommand.event;
-    return nextCommand;
+    return assignTimelineCommandFields(nextCommand, target, event);
   });
   return sortTimeline({ ...current, commands });
 }

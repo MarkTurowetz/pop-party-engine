@@ -149,15 +149,33 @@ describe("artTimelineModel", () => {
       target: "appear",
       event: "ignored"
     });
-    const withEmit = addTimelineCommand(timeline, 8, { type: "emit", event: "pop-name" });
+    const withEmit = addTimelineCommand(timeline, 8, { type: "emit", target: "name-card", event: "pop-name" });
     expect(withEmit.commands[0]).toMatchObject({
-      id: "gotoandplay-4-appear-ignored",
+      id: "gotoandplay-4-appear",
       frame: 4,
       type: "gotoAndPlay",
+      target: "appear"
+    });
+    expect(withEmit.commands[0].event).toBeUndefined();
+    expect(withEmit.commands[1]).toMatchObject({ id: "emit-8-name-card-pop-name", frame: 8, type: "emit", target: "name-card", event: "pop-name" });
+  });
+
+  it("drops stale target and event fields for command types that do not use them", () => {
+    const timeline = addTimelineCommand({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, 4, {
+      type: "stop",
       target: "appear",
       event: "ignored"
     });
-    expect(withEmit.commands[1]).toMatchObject({ id: "emit-8-pop-name", frame: 8, type: "emit", event: "pop-name" });
+
+    expect(timeline.commands[0]).toEqual({ id: "stop-4", frame: 4, type: "stop" });
+
+    const updated = updateTimelineCommandAt(timeline, 0, {
+      type: "gotoAndStop",
+      target: "park",
+      event: "ignored"
+    });
+
+    expect(updated.commands[0]).toEqual({ id: "stop-4", frame: 4, type: "gotoAndStop", target: "park" });
   });
 
   it("generates unique deterministic command ids for repeated timeline commands", () => {
