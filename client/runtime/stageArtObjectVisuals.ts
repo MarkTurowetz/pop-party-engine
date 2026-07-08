@@ -7,7 +7,8 @@
 import { normalizeGameTextFontFamily } from "../textFonts";
 import { distributedContainerItemPositions } from "./distributedContainerLayout";
 import type { TimelineCommandEventDetail } from "./visualObject";
-import type { TimelineFrameSnapshot } from "./timelinePlayer";
+import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
+import type { TimelineDocument } from "../../shared/timeline-model";
 
 type Dict = Record<string, unknown>;
 type Component = Dict;
@@ -477,6 +478,7 @@ class ArtObjectTreeRenderer {
   instanceId: string;
   getComposition: (id: string) => Dict | null;
   views = new Map<string, ArtObjectView>();
+  rootTimelinePlayer: TimelinePlayer | null = null;
 
   constructor(options: Dict = {}) {
     this.host = options.host as HTMLElement | undefined;
@@ -490,8 +492,43 @@ class ArtObjectTreeRenderer {
         : (id: string) => w().artComposition?.(id) || null;
   }
 
+  playTimelineCommand(command: { type?: unknown; target?: unknown; event?: unknown }): number {
+    const commandType = String(command.type || "");
+    if (commandType !== "emit" && commandType !== "playComponent") return 0;
+    const targetId = String(command.target || "").trim();
+    const animation = String(command.event || "").trim();
+    if (!targetId || !animation) return 0;
+    return this.playComponent(targetId, animation);
+  }
+
+  applyTimelineSnapshotToViews(snapshot: TimelineFrameSnapshot): void {
+    for (const targetId of Object.keys(snapshot.targets || {})) {
+      const view = this.viewForComponentId(targetId);
+      const visual = view?.createVisual() as { applyTimelineSnapshot?: (nextSnapshot: TimelineFrameSnapshot) => void } | null | undefined;
+      visual?.applyTimelineSnapshot?.(snapshot);
+    }
+  }
+
+  updateRootTimeline(timeline: TimelineDocument | null | undefined): void {
+    if (!timeline) {
+      this.rootTimelinePlayer?.stop();
+      this.rootTimelinePlayer = null;
+      return;
+    }
+    if (!this.rootTimelinePlayer) {
+      this.rootTimelinePlayer = new TimelinePlayer({
+        timeline,
+        onFrame: (snapshot) => this.applyTimelineSnapshotToViews(snapshot),
+        onCommand: (command) => this.playTimelineCommand(command)
+      });
+      return;
+    }
+    this.rootTimelinePlayer.updateTimeline(timeline);
+  }
+
   render(components: Component[] = [], canvas?: CanvasSize, options: Dict = {}): void {
     if (!this.host) return;
+    this.updateRootTimeline((options.timeline || null) as TimelineDocument | null);
     const defaultAnimation = (options.defaultAnimation as string) || "on";
     const respectDefaultAnimationState = options.respectDefaultAnimationState !== false;
     const counts = new Map<string, number>();
@@ -531,6 +568,13 @@ class ArtObjectTreeRenderer {
   }
 
   playAll(animation: string, options: Dict = {}): number {
+    const cleanAnimation = String(animation || "").trim();
+    if (cleanAnimation && this.rootTimelinePlayer?.hasLabel(cleanAnimation)) {
+      return this.rootTimelinePlayer.gotoAndPlay(cleanAnimation, {
+        instant: options.instant === true,
+        complete: typeof options.complete === "function" ? (options.complete as () => void) : undefined
+      });
+    }
     let duration = 0;
     for (const view of this.views.values()) duration = Math.max(duration, view.play(animation, options));
     return duration;

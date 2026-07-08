@@ -101,6 +101,7 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
   renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
     defaultAnimation: "on",
     instant: true,
+    timeline: composition.timeline || null,
     respectDefaultAnimationState: false
   });
   return renderer;

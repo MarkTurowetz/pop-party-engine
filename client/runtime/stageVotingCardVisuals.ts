@@ -300,7 +300,10 @@ class VotingCardView {
       renderer = created;
       this.componentChildRenderers.set(componentId, renderer);
     }
-    renderer.render((component!.children as Dict[]) || [], { width: Number(component!.width || 1), height: Number(component!.height || 1) }, { defaultAnimation: "on" });
+    renderer.render((component!.children as Dict[]) || [], { width: Number(component!.width || 1), height: Number(component!.height || 1) }, {
+      defaultAnimation: "on",
+      timeline: component!.timeline || null
+    });
   }
 
   syncAuthor(cardData: Dict): void {

@@ -301,6 +301,7 @@ class PlayerRosterRenderer {
     renderer.render(runtimePlayerObjectComponents(composition, player, answerState), canvas, {
       defaultAnimation: "on",
       instant: true,
+      timeline: composition.timeline || null,
       respectDefaultAnimationState: true
     });
 
@@ -602,7 +603,7 @@ class PlayerRosterRenderer {
       });
       this.pointPopupRenderers.set(node, renderer);
     }
-    renderer.render(components, canvas, { defaultAnimation: "on", instant: true, respectDefaultAnimationState: false });
+    renderer.render(components, canvas, { defaultAnimation: "on", instant: true, timeline: composition.timeline || null, respectDefaultAnimationState: false });
     return true;
   }
 

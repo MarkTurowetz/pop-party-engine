@@ -1,7 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PartyGameArtObject } from "./stageArtObjectVisuals";
 
 describe("PartyGameArtObject (ported art-object-visuals)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("exposes the renderer + view classes and helpers", () => {
     expect(PartyGameArtObject.ArtObjectTreeRenderer).toBeTypeOf("function");
     expect(PartyGameArtObject.ArtObjectView).toBeTypeOf("function");
@@ -103,6 +111,45 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
 
     expect(duration).toBe(300);
     expect(played).toEqual(["pop"]);
+  });
+
+  it("plays renderer root timelines before falling back to component timelines", () => {
+    const snapshots: unknown[] = [];
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      views: Map<string, unknown>;
+      rootTimelinePlayer: unknown;
+      updateRootTimeline: (timeline: unknown) => void;
+      playAll: (animation: string, options?: unknown) => number;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      createVisual: () => { applyTimelineSnapshot: (snapshot: unknown) => void };
+      play: (animation: string) => number;
+    };
+    child.component = { id: "child" };
+    child.children = new Map();
+    child.createVisual = () => ({ applyTimelineSnapshot: (snapshot) => snapshots.push(snapshot) });
+    child.play = () => 999;
+    renderer.views = new Map([["child", child]]);
+    renderer.rootTimelinePlayer = null;
+    renderer.updateRootTimeline({
+      fps: 10,
+      frameCount: 3,
+      labels: [{ name: "pulse", frame: 0 }],
+      commands: [{ frame: 2, type: "stop" }],
+      tracks: [{ targetId: "child", keyframes: [{ frame: 0, props: { x: 10 } }, { frame: 2, props: { x: 30 } }] }]
+    });
+
+    const duration = renderer.playAll("pulse", {});
+    vi.advanceTimersByTime(200);
+
+    expect(duration).toBe(200);
+    expect(snapshots).toEqual([
+      { frame: 0, targets: { child: { x: 10 } } },
+      { frame: 1, targets: { child: { x: 20 } } },
+      { frame: 2, targets: { child: { x: 30 } } }
+    ]);
   });
 
   it("ignores timeline emit commands without both a target and animation event", () => {

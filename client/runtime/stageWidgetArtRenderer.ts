@@ -97,6 +97,7 @@ function createRenderer(options: Dict = {}) {
     renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
       defaultAnimation: "on",
       instant: renderOptions.instant !== false,
+      timeline: composition.timeline || null,
       respectDefaultAnimationState: false
     });
     return { composition, renderer };
