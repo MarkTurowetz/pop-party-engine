@@ -107,6 +107,7 @@ type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
   | { kind: "keyframe"; targetId: string; frame: number };
+type TimelinePreviewOverrides = Record<string, TimelineProperties>;
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -287,6 +288,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const [layerDragId, setLayerDragId] = useState<string | null>(null);
   const [layerDropTarget, setLayerDropTarget] = useState<LayerDropTarget | null>(null);
   const [timelinePreviewFrame, setTimelinePreviewFrame] = useState(0);
+  const [timelinePreviewOverrides, setTimelinePreviewOverrides] = useState<TimelinePreviewOverrides | null>(null);
   const assetUrlById = useMemo(() => assetUrlMap(assets || []), [assets]);
   const compositionById = useMemo(() => compositionMap(compositions), [compositions]);
   const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
@@ -362,11 +364,16 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       ? findTimelineTargetComponent(composition.components || [], [...selectedComponentIds][0])
       : undefined;
   const activeTimeline = (selectedComponent?.timeline || composition?.timeline || null) as TimelineDocument | null;
-  const timelineFrameOverrides = useMemo(() => {
+  const baseTimelineFrameOverrides = useMemo(() => {
     const timeline = artTimelineOrDefault(activeTimeline);
     if (!activeTimeline || timeline.tracks.length === 0) return null;
     return timelineSnapshotAt(timeline, timelinePreviewFrame).targets;
   }, [activeTimeline, timelinePreviewFrame]);
+  const timelineFrameOverrides = timelinePreviewOverrides || baseTimelineFrameOverrides;
+  const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
+    setTimelinePreviewFrame(frame);
+    setTimelinePreviewOverrides(overrides || null);
+  };
   const updateComposition = (patch: Partial<ArtComposition>) => {
     if (!composition) return;
     controller.updateComposition(composition.id, patch);
@@ -566,7 +573,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           composition={composition}
           compositions={compositions}
           component={selectedComponent ?? null}
-          onPreviewTimelineFrame={setTimelinePreviewFrame}
+          onPreviewTimelineOverrides={previewTimelineFrame}
           tree={
             composition ? (
               <ComponentTree
@@ -593,14 +600,14 @@ function ArtComponentInspector({
   composition,
   compositions,
   component,
-  onPreviewTimelineFrame,
+  onPreviewTimelineOverrides,
   tree
 }: {
   controller: ArtCompositionsController;
   composition: ArtComposition | null;
   compositions: ArtComposition[];
   component: ArtComponent | null;
-  onPreviewTimelineFrame: (frame: number) => void;
+  onPreviewTimelineOverrides: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
   tree: ReactNode;
 }) {
   if (!component) {
@@ -617,7 +624,7 @@ function ArtComponentInspector({
             title={`${composition.name} Timeline`}
             timeline={composition.timeline as TimelineDocument | null | undefined}
             onChange={(timeline) => controller.updateComposition(composition.id, { timeline })}
-            onPreviewFrame={onPreviewTimelineFrame}
+            onPreviewFrame={onPreviewTimelineOverrides}
           />
         ) : null}
       </section>
@@ -781,7 +788,7 @@ function ArtComponentInspector({
         timeline={component.timeline as TimelineDocument | null | undefined}
         component={component}
         onChange={(timeline) => commit({ timeline } as Partial<ArtComponent>)}
-        onPreviewFrame={onPreviewTimelineFrame}
+        onPreviewFrame={onPreviewTimelineOverrides}
       />
     </section>
   );
@@ -798,7 +805,7 @@ function ArtTimelinePanel({
   timeline: TimelineDocument | null | undefined;
   component?: ArtComponent;
   onChange: (timeline: TimelineDocument) => void;
-  onPreviewFrame?: (frame: number) => void;
+  onPreviewFrame?: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
 }) {
   const current = useMemo(() => artTimelineOrDefault(timeline), [timeline]);
   const [frame, setFrame] = useState(0);
@@ -819,6 +826,8 @@ function ArtTimelinePanel({
   const [newPropertyType, setNewPropertyType] = useState<"number" | "boolean" | "string">("number");
   const [newPropertyValue, setNewPropertyValue] = useState("");
   const playerRef = useRef<TimelinePlayer | null>(null);
+  const childPreviewPlayersRef = useRef<TimelinePlayer[]>([]);
+  const previewParentFrameRef = useRef(0);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
   const selectedTimelineMarker = useMemo(() => {
@@ -869,16 +878,60 @@ function ArtTimelinePanel({
     onPreviewFrame?.(normalizedFrame);
   }
 
+  function previewFrameWithOverrides(nextFrame: number, overrides: TimelinePreviewOverrides | null): void {
+    const normalizedFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(nextFrame) || 0)));
+    setFrame(normalizedFrame);
+    setFrameWindowStart(windowStartForFrame(normalizedFrame));
+    onPreviewFrame?.(normalizedFrame, overrides);
+  }
+
   function stopPlayback(): void {
     playerRef.current?.stop();
+    for (const childPlayer of childPreviewPlayersRef.current) childPlayer.stop();
+    childPreviewPlayersRef.current = [];
+    onPreviewFrame?.(cleanFrame, null);
     setIsPlaying(false);
   }
 
   function playTimeline(): void {
     stopPlayback();
+    const nestedOverrides: TimelinePreviewOverrides = {};
+    let latestParentOverrides: TimelinePreviewOverrides = {};
+    const publishPreview = (parentFrame: number, parentOverrides?: TimelinePreviewOverrides): void => {
+      if (parentOverrides) latestParentOverrides = parentOverrides;
+      previewParentFrameRef.current = parentFrame;
+      previewFrameWithOverrides(parentFrame, { ...latestParentOverrides, ...nestedOverrides });
+    };
+    const playNestedTargetTimeline = (targetId: string, animation: string): void => {
+      if (!component) return;
+      const target = findTimelineTargetComponent([component], targetId);
+      const nestedTimeline = artTimelineOrDefault((target?.timeline || null) as TimelineDocument | null);
+      if (!target || !nestedTimeline || !new TimelinePlayer({ timeline: nestedTimeline }).hasLabel(animation)) return;
+      const childPlayer = new TimelinePlayer({
+        timeline: nestedTimeline,
+        onFrame: (snapshot) => {
+          Object.assign(nestedOverrides, snapshot.targets);
+          publishPreview(previewParentFrameRef.current);
+        },
+        onCommand: (command) => {
+          if (command.type !== "emit") return;
+          const nestedTargetId = String(command.target || "").trim();
+          const nestedAnimation = String(command.event || "").trim();
+          if (nestedTargetId && nestedAnimation) playNestedTargetTimeline(nestedTargetId, nestedAnimation);
+        }
+      });
+      childPreviewPlayersRef.current.push(childPlayer);
+      childPlayer.gotoAndPlay(animation);
+    };
     const player = new TimelinePlayer({
       timeline: current,
-      onFrame: (snapshot) => previewFrame(snapshot.frame)
+      onFrame: (snapshot) => publishPreview(snapshot.frame, snapshot.targets),
+      onCommand: (command) => {
+        if (command.type !== "emit") return;
+        const targetId = String(command.target || "").trim();
+        const animation = String(command.event || "").trim();
+        if (targetId && animation) playNestedTargetTimeline(targetId, animation);
+      }
     });
     playerRef.current = player;
     setIsPlaying(true);
