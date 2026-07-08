@@ -187,11 +187,11 @@ function redirectCommandAtFrame(timeline: TimelineDocument, frame: number): Time
 }
 
 function firstRedirectCommandInSegment(timeline: TimelineDocument, startFrame: number, endFrame: number): TimelineCommand | null {
-  for (let frame = startFrame + 1; frame <= endFrame; frame += 1) {
+  for (let frame = startFrame; frame <= endFrame; frame += 1) {
     const command = redirectCommandAtFrame(timeline, frame);
     if (command) return command;
   }
-  return startFrame === endFrame ? redirectCommandAtFrame(timeline, startFrame) : null;
+  return null;
 }
 
 function cleanMaxCommandRedirects(value: unknown): number {

@@ -184,6 +184,8 @@ export class TimelinePlayer {
     const playToken = this.token;
     const frameDuration = 1000 / this.timeline.fps;
     this.applyFrame(segment.startFrame);
+    const startRedirected = this.runFrameCommands(segment.startFrame, options.complete, commandCount);
+    if (startRedirected) return duration;
     for (let frame = segment.startFrame + 1; frame <= segment.endFrame; frame += 1) {
       const delay = (frame - segment.startFrame) * frameDuration;
       const timerId = this.schedule(() => {

@@ -139,12 +139,12 @@ function redirectCommandAtFrame(timeline, frame) {
     return timeline.commands.find((command) => command.frame === frame && (command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target) || null;
 }
 function firstRedirectCommandInSegment(timeline, startFrame, endFrame) {
-    for (let frame = startFrame + 1; frame <= endFrame; frame += 1) {
+    for (let frame = startFrame; frame <= endFrame; frame += 1) {
         const command = redirectCommandAtFrame(timeline, frame);
         if (command)
             return command;
     }
-    return startFrame === endFrame ? redirectCommandAtFrame(timeline, startFrame) : null;
+    return null;
 }
 function cleanMaxCommandRedirects(value) {
     if (value === undefined || value === null)

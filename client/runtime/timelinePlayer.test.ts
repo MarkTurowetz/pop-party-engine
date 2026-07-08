@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { normalizeTimeline, timelineSegmentFor } from "../../shared/timeline-model";
+import { normalizeTimeline, timelinePlaybackDuration, timelineSegmentFor } from "../../shared/timeline-model";
 import { TimelinePlayer, timelineSnapshotAt } from "./timelinePlayer";
 
 describe("TimelinePlayer", () => {
@@ -121,6 +121,66 @@ describe("TimelinePlayer", () => {
     expect(complete).not.toHaveBeenCalled();
     vi.advanceTimersByTime(200);
     expect(frames).toEqual([0, 1, 4, 5, 6]);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs non-redirect commands on the starting frame when playing", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 0, type: "emit", event: "started" },
+        { frame: 2, type: "stop" }
+      ],
+      tracks: []
+    });
+    const frames: number[] = [];
+    const commands: string[] = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      onFrame: (snapshot) => frames.push(snapshot.frame),
+      onCommand: (command) => commands.push(command.event || command.type)
+    });
+
+    expect(player.gotoAndPlay("appear", { complete })).toBe(200);
+    expect(frames).toEqual([0]);
+    expect(commands).toEqual(["started"]);
+    expect(complete).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(200);
+    expect(frames).toEqual([0, 1, 2]);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("redirects from the starting frame when a play command sits on a label", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 6,
+      labels: [
+        { name: "appear", frame: 0 },
+        { name: "settle", frame: 2 }
+      ],
+      commands: [
+        { frame: 0, type: "gotoAndPlay", target: "settle" },
+        { frame: 4, type: "stop" }
+      ],
+      tracks: []
+    });
+    const frames: number[] = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      onFrame: (snapshot) => frames.push(snapshot.frame)
+    });
+
+    expect(timelinePlaybackDuration(timeline!, "appear")).toBe(200);
+    expect(player.gotoAndPlay("appear", { complete })).toBe(200);
+    expect(frames).toEqual([0, 2]);
+
+    vi.advanceTimersByTime(200);
+    expect(frames).toEqual([0, 2, 3, 4]);
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
