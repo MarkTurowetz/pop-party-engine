@@ -6,7 +6,7 @@ import {
   defaultVisibilityTimeline,
   hasTimelineLabel,
   normalizeTimeline,
-  timelineSegmentFor,
+  timelinePlaybackDuration,
   type TimelineCommand,
   type TimelineDocument,
   type TimelineProperties,
@@ -392,7 +392,7 @@ class CssVisualObject {
 
   durationForAnimation(animation: string): number {
     if (this.timeline && hasTimelineLabel(this.timeline, animation)) {
-      return timelineSegmentFor(this.timeline, animation).durationMs;
+      return timelinePlaybackDuration(this.timeline, animation);
     }
     return this.durations[animation] || 0;
   }
@@ -488,8 +488,15 @@ class CssVisualObject {
     }
 
     const token = this.markNewAnimation();
-    if (this.timelinePlayer?.hasLabel(effectiveAnimation)) {
-      this.timelinePlayer.gotoAndPlay(effectiveAnimation, { instant });
+    const useTimelinePlayback = Boolean(this.timelinePlayer?.hasLabel(effectiveAnimation));
+    if (useTimelinePlayback) {
+      this.timelinePlayer?.gotoAndPlay(effectiveAnimation, {
+        instant,
+        complete: () => {
+          this.completeLifecycleAnimation(effectiveAnimation, token);
+          options.complete?.();
+        }
+      });
     }
     this.clearTransientClasses();
     if (instant || effectiveAnimation === "on" || effectiveAnimation === "off") {
@@ -504,13 +511,15 @@ class CssVisualObject {
 
     const customDuration = this.playCustomAnimation(effectiveAnimation, token, duration, instant, wasVisible);
     if (customDuration !== null) {
-      if (customDuration > 0) {
-        this.completeAfter(customDuration, () => this.completeLifecycleAnimation(effectiveAnimation, token));
-      } else {
-        this.completeLifecycleAnimation(effectiveAnimation, token);
+      if (!useTimelinePlayback) {
+        if (customDuration > 0) {
+          this.completeAfter(customDuration, () => this.completeLifecycleAnimation(effectiveAnimation, token));
+        } else {
+          this.completeLifecycleAnimation(effectiveAnimation, token);
+        }
+        this.completeAfter(customDuration, options.complete);
       }
-      this.completeAfter(customDuration, options.complete);
-      return customDuration;
+      return useTimelinePlayback ? Math.max(duration, customDuration) : customDuration;
     }
 
     if (effectiveAnimation === "park" || effectiveAnimation === "off") {
@@ -527,7 +536,7 @@ class CssVisualObject {
         if (!this.tokenMatches(token)) return;
         this.removeClasses(this.motionHiddenClasses);
       });
-      this.completeAfter(duration, () => this.completeLifecycleAnimation(effectiveAnimation, token));
+      if (!useTimelinePlayback) this.completeAfter(duration, () => this.completeLifecycleAnimation(effectiveAnimation, token));
     } else if (effectiveAnimation === "disappear") {
       this.removeClasses([...this.hiddenClasses, ...this.displayHiddenClasses]);
       void this.element.offsetWidth;
@@ -552,7 +561,7 @@ class CssVisualObject {
       if (!instant) this.addClasses([this.updateClass].filter(Boolean));
     }
 
-    this.completeAfter(duration, options.complete);
+    if (!useTimelinePlayback) this.completeAfter(duration, options.complete);
     return duration;
   }
 }

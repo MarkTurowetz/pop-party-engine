@@ -44,13 +44,14 @@ import {
 import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
 import { playArtTimelinePreview, type ArtTimelinePreviewPlayback, type TimelinePreviewOverrides } from "./artTimelinePreviewPlayer";
 import { useArtCompositions } from "./useArtCompositions";
-import type {
-  TimelineCommand,
-  TimelineDocument,
-  TimelineKeyframe,
-  TimelineLabel,
-  TimelineProperties,
-  TimelinePropertyValue
+import {
+  timelinePlaybackDuration,
+  type TimelineCommand,
+  type TimelineDocument,
+  type TimelineKeyframe,
+  type TimelineLabel,
+  type TimelineProperties,
+  type TimelinePropertyValue
 } from "../../../shared/timeline-model";
 import { timelineSnapshotAt } from "../../runtime/timelinePlayer";
 
@@ -97,6 +98,13 @@ const TIMELINE_PROPERTY_SUGGESTIONS = [
   "imageObjectFit"
 ];
 const TIMELINE_VISIBLE_FRAME_LIMIT = 60;
+const TIMELINE_EASING_OPTIONS = [
+  { value: "linear", label: "Linear" },
+  { value: "easeIn", label: "Ease In" },
+  { value: "easeOut", label: "Ease Out" },
+  { value: "easeInOut", label: "Ease In Out" },
+  { value: "hold", label: "Hold" }
+];
 type LayerDropPlacement = "before" | "after";
 
 type LayerDropTarget = {
@@ -816,6 +824,7 @@ function ArtTimelinePanel({
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [frameWindowStart, setFrameWindowStart] = useState(0);
   const [keyframeTargetId, setKeyframeTargetId] = useState("");
+  const [playStartLabel, setPlayStartLabel] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
@@ -850,6 +859,11 @@ function ArtTimelinePanel({
   const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId) : undefined;
   const commandTargetLabel = commandType === "emit" ? "Target Component" : "Target Label";
   const commandTargetPlaceholder = commandType === "emit" ? activeKeyframeTargetId || "component-id" : "appear";
+  const activePlayStart = current.labels.some((label) => label.name === playStartLabel) ? playStartLabel : "";
+  const activePlaybackDuration = useMemo(
+    () => timelinePlaybackDuration(current, activePlayStart || cleanFrame),
+    [activePlayStart, cleanFrame, current]
+  );
 
   useEffect(() => {
     return () => {
@@ -894,7 +908,7 @@ function ArtTimelinePanel({
     const playback = playArtTimelinePreview({
       timeline: current,
       component,
-      start: cleanFrame,
+      start: activePlayStart || cleanFrame,
       onPreview: (previewFrameValue, overrides) => previewFrameWithOverrides(previewFrameValue, overrides),
       onComplete: () => {
         playbackRef.current = null;
@@ -922,6 +936,7 @@ function ArtTimelinePanel({
     stopPlayback();
     setSelectedKeyframe(null);
     setSelectedMarker(selection);
+    if (selection.kind === "label") setPlayStartLabel(selection.name);
     previewFrame(markerFrame);
   }
 
@@ -1004,7 +1019,7 @@ function ArtTimelinePanel({
     setTimelineDropFrame(null);
   }
 
-  function updateSelectedKeyframe(patch: Partial<Pick<TimelineKeyframe, "frame" | "props">>): void {
+  function updateSelectedKeyframe(patch: Partial<Pick<TimelineKeyframe, "frame" | "props" | "easing">>): void {
     if (!selectedTimelineKeyframe) return;
     const nextFrame = patch.frame === undefined ? selectedTimelineKeyframe.keyframe.frame : Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(patch.frame) || 0)));
     const nextTimeline = updateTimelineKeyframe(current, selectedTimelineKeyframe.trackTargetId, selectedTimelineKeyframe.keyframe.frame, patch);
@@ -1106,6 +1121,17 @@ function ArtTimelinePanel({
         </label>
       </div>
       <div className="art-timeline-playback">
+        <label className="flow-react-field">
+          <span>Play From</span>
+          <select value={activePlayStart} onChange={(event) => setPlayStartLabel(event.target.value)}>
+            <option value="">Current Frame</option>
+            {current.labels.map((label) => (
+              <option key={label.name} value={label.name}>
+                {label.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <button type="button" onClick={playTimeline} disabled={isPlaying || current.frameCount <= 1}>
           Play
         </button>
@@ -1115,6 +1141,7 @@ function ArtTimelinePanel({
         <button type="button" onClick={() => previewFrame(0)}>
           First
         </button>
+        <span className="art-timeline-playback-duration">{Math.round(activePlaybackDuration)}ms</span>
       </div>
       <div className="art-timeline-frame-editor">
         <label className="flow-react-field">
@@ -1613,6 +1640,19 @@ function ArtTimelinePanel({
               value={selectedTimelineKeyframe.keyframe.frame}
               onChange={(event) => updateSelectedKeyframe({ frame: Number(event.target.value) })}
             />
+          </label>
+          <label className="flow-react-field">
+            <span>Easing</span>
+            <select
+              value={selectedTimelineKeyframe.keyframe.easing || "linear"}
+              onChange={(event) => updateSelectedKeyframe({ easing: event.target.value })}
+            >
+              {TIMELINE_EASING_OPTIONS.map((option) => (
+                <option value={option.value} key={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="art-timeline-keyframe-actions">
             <button type="button" onClick={copySelectedKeyframe}>

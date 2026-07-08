@@ -5,6 +5,7 @@ exports.hasTimelineLabel = hasTimelineLabel;
 exports.frameForTimelineLabel = frameForTimelineLabel;
 exports.timelineStopFrame = timelineStopFrame;
 exports.timelineSegmentFor = timelineSegmentFor;
+exports.timelinePlaybackDuration = timelinePlaybackDuration;
 exports.defaultVisibilityTimeline = defaultVisibilityTimeline;
 const DEFAULT_FPS = 30;
 const DEFAULT_FRAME_COUNT = 1;
@@ -133,6 +134,52 @@ function timelineSegmentFor(timeline, labelOrFrame) {
         endFrame,
         durationMs: Math.max(0, ((endFrame - startFrame) * 1000) / timeline.fps)
     };
+}
+function redirectCommandAtFrame(timeline, frame) {
+    return timeline.commands.find((command) => command.frame === frame && (command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target) || null;
+}
+function firstRedirectCommandInSegment(timeline, startFrame, endFrame) {
+    for (let frame = startFrame + 1; frame <= endFrame; frame += 1) {
+        const command = redirectCommandAtFrame(timeline, frame);
+        if (command)
+            return command;
+    }
+    return startFrame === endFrame ? redirectCommandAtFrame(timeline, startFrame) : null;
+}
+function cleanMaxCommandRedirects(value) {
+    if (value === undefined || value === null)
+        return 50;
+    const next = Number(value);
+    return Number.isFinite(next) ? Math.max(0, Math.round(next)) : 50;
+}
+function timelineFrameCommandDuration(timeline, frame, remainingRedirects) {
+    const command = redirectCommandAtFrame(timeline, frame);
+    if (!command?.target)
+        return 0;
+    if (remainingRedirects <= 0)
+        return 0;
+    if (command.type === "gotoAndStop") {
+        const targetFrame = frameForTimelineLabel(timeline, command.target);
+        return timelineFrameCommandDuration(timeline, targetFrame, remainingRedirects - 1);
+    }
+    return timelinePlaybackDuration(timeline, command.target, { maxCommandRedirects: remainingRedirects - 1 });
+}
+function timelinePlaybackDuration(timeline, labelOrFrame, options = {}) {
+    const maxCommandRedirects = cleanMaxCommandRedirects(options.maxCommandRedirects);
+    const segment = timelineSegmentFor(timeline, labelOrFrame);
+    if (options.instant === true || segment.durationMs === 0) {
+        return timelineFrameCommandDuration(timeline, segment.endFrame, maxCommandRedirects);
+    }
+    const command = firstRedirectCommandInSegment(timeline, segment.startFrame, segment.endFrame);
+    if (!command?.target)
+        return segment.durationMs;
+    const elapsedToCommand = Math.max(0, ((command.frame - segment.startFrame) * 1000) / timeline.fps);
+    if (maxCommandRedirects <= 0)
+        return elapsedToCommand;
+    if (command.type === "gotoAndStop") {
+        return elapsedToCommand + timelineFrameCommandDuration(timeline, frameForTimelineLabel(timeline, command.target), maxCommandRedirects - 1);
+    }
+    return elapsedToCommand + timelinePlaybackDuration(timeline, command.target, { maxCommandRedirects: maxCommandRedirects - 1 });
 }
 function defaultVisibilityTimeline(durations) {
     const fps = DEFAULT_FPS;

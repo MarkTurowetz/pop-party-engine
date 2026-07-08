@@ -192,7 +192,7 @@ describe("artTimelineModel", () => {
     });
   });
 
-  it("updates keyframe frames and properties", () => {
+  it("updates keyframe frames, properties, and easing", () => {
     const timeline = addTransformKeyframe(
       { fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] },
       { id: "title", kind: "text", defaultText: "One", width: 100, height: 40 } as ArtComponent,
@@ -200,31 +200,38 @@ describe("artTimelineModel", () => {
     );
     const result = updateTimelineKeyframe(timeline, "title", 2, {
       frame: 6,
+      easing: "easeOut",
       props: { defaultText: "Two", visible: false, fontSize: 28, nested: { ignored: true } as never }
     });
     expect(result.tracks[0].keyframes).toEqual([
       {
         id: "key-title-2",
         frame: 6,
+        easing: "easeOut",
         props: { defaultText: "Two", visible: false, fontSize: 28 }
       }
     ]);
+    const linear = updateTimelineKeyframe(result, "title", 6, { easing: "linear" });
+    expect(linear.tracks[0].keyframes[0].easing).toBeUndefined();
   });
 
-  it("copies keyframe properties to another frame", () => {
+  it("copies keyframe properties and easing to another frame", () => {
     const timeline = addTransformKeyframe(
       { fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] },
       { id: "title", kind: "text", defaultText: "One", width: 100, height: 40, fontSize: 24 } as ArtComponent,
       2
     );
-    const result = copyTimelineKeyframe(timeline, "title", 2, "title", 8);
-    expect(result.tracks[0].keyframes.map((keyframe) => ({ frame: keyframe.frame, props: keyframe.props }))).toEqual([
+    const eased = updateTimelineKeyframe(timeline, "title", 2, { easing: "hold" });
+    const result = copyTimelineKeyframe(eased, "title", 2, "title", 8);
+    expect(result.tracks[0].keyframes.map((keyframe) => ({ frame: keyframe.frame, easing: keyframe.easing, props: keyframe.props }))).toEqual([
       {
         frame: 2,
+        easing: "hold",
         props: timeline.tracks[0].keyframes[0].props
       },
       {
         frame: 8,
+        easing: "hold",
         props: timeline.tracks[0].keyframes[0].props
       }
     ]);

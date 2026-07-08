@@ -1436,6 +1436,23 @@ body.tool-dashboard-mode .layout-react-shell {
   display: flex;
   gap: 6px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.art-timeline-playback .flow-react-field {
+  min-width: 170px;
+}
+
+.art-timeline-playback-duration {
+  border: 3px solid #17131f;
+  border-radius: 999px;
+  background: #ffe156;
+  box-shadow: 2px 3px 0 rgba(23, 19, 31, 0.2);
+  color: #17131f;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 10px;
 }
 
 .art-timeline-frame-editor {

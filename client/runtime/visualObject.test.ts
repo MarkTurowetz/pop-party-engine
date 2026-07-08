@@ -16,6 +16,7 @@ interface FakeElement {
 }
 
 interface TestWindowShim {
+  clearTimeout: (id: number) => void;
   requestAnimationFrame: (callback: FrameRequestCallback) => number;
   setTimeout: (callback: TimerHandler, delay?: number) => number;
 }
@@ -51,6 +52,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     const host = globalThis as unknown as TestGlobalWithWindow;
     previousWindow = host.window;
     host.window = {
+      clearTimeout: (id: number) => clearTimeout(id),
       requestAnimationFrame: (callback: FrameRequestCallback) => Number(setTimeout(() => callback(0), 0)),
       setTimeout: (callback: TimerHandler, delay?: number) => Number(setTimeout(callback, delay))
     };
@@ -199,6 +201,40 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualState).toBe("appearing");
     vi.advanceTimersByTime(300);
     expect(element.dataset.visualState).toBe("shown");
+  });
+
+  it("uses authored timeline command-chain duration and completion for redirected playback", () => {
+    const element = createFakeElement(["hidden"]);
+    const complete = vi.fn();
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      timeline: normalizeTimeline({
+        fps: 10,
+        frameCount: 8,
+        labels: [
+          { name: "appear", frame: 0 },
+          { name: "settle", frame: 4 }
+        ],
+        commands: [
+          { frame: 1, type: "gotoAndPlay", target: "settle" },
+          { frame: 6, type: "stop" }
+        ],
+        tracks: []
+      })
+    });
+
+    expect(visual.play("appear", { complete })).toBe(300);
+    expect(element.dataset.visualState).toBe("appearing");
+
+    vi.advanceTimersByTime(299);
+    expect(element.dataset.visualState).toBe("appearing");
+    expect(complete).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(element.dataset.visualState).toBe("shown");
+    expect(complete).toHaveBeenCalledTimes(1);
   });
 
   it("applies authored timeline keyframe snapshots while playing", () => {

@@ -1,6 +1,7 @@
 import {
   frameForTimelineLabel,
   normalizeTimeline,
+  timelinePlaybackDuration,
   timelineSegmentFor,
   type TimelineDocument,
   type TimelineProperties,
@@ -53,6 +54,15 @@ function interpolateValue(
   return previous ?? next;
 }
 
+function easedProgress(progress: number, easing?: string): number {
+  const t = Math.max(0, Math.min(1, progress));
+  if (easing === "hold") return 0;
+  if (easing === "easeIn") return t * t;
+  if (easing === "easeOut") return 1 - (1 - t) * (1 - t);
+  if (easing === "easeInOut") return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  return t;
+}
+
 function keyframeSnapshotForTrack(track: TimelineTrack, frame: number): TimelineProperties {
   const keyframes = track.keyframes;
   if (!keyframes.length) return {};
@@ -66,7 +76,7 @@ function keyframeSnapshotForTrack(track: TimelineTrack, frame: number): Timeline
     }
   }
   const span = Math.max(1, next.frame - previous.frame);
-  const progress = previous.frame === next.frame ? 0 : Math.max(0, Math.min(1, (frame - previous.frame) / span));
+  const progress = previous.frame === next.frame ? 0 : easedProgress((frame - previous.frame) / span, previous.easing);
   const keys = new Set([...Object.keys(previous.props), ...Object.keys(next.props)]);
   const props: TimelineProperties = {};
   for (const key of keys) {
@@ -140,10 +150,14 @@ export class TimelinePlayer {
       options.complete?.();
       return 0;
     }
+    const duration = timelinePlaybackDuration(this.timeline, labelOrFrame, {
+      instant: true,
+      maxCommandRedirects: this.maxCommandRedirects - commandCount
+    });
     const frame = frameForTimelineLabel(this.timeline, labelOrFrame);
     this.applyFrame(frame);
     if (!this.runFrameCommands(frame, options.complete, commandCount)) options.complete?.();
-    return 0;
+    return duration;
   }
 
   gotoAndPlay(labelOrFrame: string | number, options: TimelinePlayOptions = {}): number {
@@ -157,10 +171,14 @@ export class TimelinePlayer {
       return 0;
     }
     const segment = timelineSegmentFor(this.timeline, labelOrFrame);
+    const duration = timelinePlaybackDuration(this.timeline, labelOrFrame, {
+      instant: options.instant,
+      maxCommandRedirects: this.maxCommandRedirects - commandCount
+    });
     if (options.instant === true || segment.durationMs === 0) {
       this.applyFrame(segment.endFrame);
       if (!this.runFrameCommands(segment.endFrame, options.complete, commandCount)) options.complete?.();
-      return 0;
+      return duration;
     }
     this.isPlaying = true;
     const playToken = this.token;
@@ -179,7 +197,7 @@ export class TimelinePlayer {
       }, delay);
       this.timerIds.add(timerId);
     }
-    return segment.durationMs;
+    return duration;
   }
 
   runFrameCommands(frame: number, complete?: () => void, commandCount = 0): boolean {

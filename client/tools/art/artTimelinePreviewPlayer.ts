@@ -1,4 +1,4 @@
-import type { TimelineDocument, TimelineProperties } from "../../../shared/timeline-model";
+import { frameForTimelineLabel, type TimelineDocument, type TimelineProperties } from "../../../shared/timeline-model";
 import { TimelinePlayer } from "../../runtime/timelinePlayer";
 import type { ArtComponent } from "../../types/game-data";
 import { artTimelineOrDefault } from "./artTimelineModel";
@@ -29,7 +29,7 @@ export function playArtTimelinePreview({
   const nestedOverrides: TimelinePreviewOverrides = {};
   let parentPlayer: TimelinePlayer | null = null;
   let latestParentOverrides: TimelinePreviewOverrides = {};
-  let parentFrame = Math.max(0, Math.round(Number(start) || 0));
+  let parentFrame = frameForTimelineLabel(timeline, start);
   let stopped = false;
   let activePlaybackCount = 1;
 

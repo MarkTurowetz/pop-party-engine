@@ -312,6 +312,11 @@ function cleanTimelineProps(props: TimelineProperties): TimelineProperties {
   return next;
 }
 
+function cleanTimelineEasing(value: unknown): string | undefined {
+  const easing = String(value || "").trim();
+  return ["linear", "easeIn", "easeOut", "easeInOut", "hold"].includes(easing) ? easing : undefined;
+}
+
 function keyframeAt(timeline: TimelineDocument, targetId: string, frame: number): TimelineKeyframe | null {
   const cleanTargetId = String(targetId || "").trim();
   const cleanFrameValue = cleanFrame(frame, timeline.frameCount);
@@ -347,7 +352,7 @@ export function updateTimelineKeyframe(
   timeline: TimelineDocument | null | undefined,
   targetId: string,
   frame: number,
-  patch: Partial<Pick<TimelineKeyframe, "frame" | "props">>
+  patch: Partial<Pick<TimelineKeyframe, "frame" | "props" | "easing">>
 ): TimelineDocument {
   const current = artTimelineOrDefault(timeline);
   const cleanTargetId = String(targetId || "").trim();
@@ -366,6 +371,11 @@ export function updateTimelineKeyframe(
       frame: nextFrame,
       props: patch.props ? cleanTimelineProps(patch.props) : existing.props
     };
+    if (patch.easing !== undefined) {
+      const easing = cleanTimelineEasing(patch.easing);
+      if (easing && easing !== "linear") nextKeyframe.easing = easing;
+      else delete nextKeyframe.easing;
+    }
     return upsertKeyframe({ ...track, keyframes: track.keyframes.filter((keyframe) => keyframe.frame !== currentFrame) }, nextKeyframe);
   });
   return changed ? sortTimeline({ ...current, tracks }) : current;
@@ -386,7 +396,8 @@ export function copyTimelineKeyframe(
   const nextKeyframe: TimelineKeyframe = {
     id: `key-${cleanTargetId}-${cleanFrameValue}`,
     frame: cleanFrameValue,
-    props: cleanTimelineProps(sourceKeyframe.props)
+    props: cleanTimelineProps(sourceKeyframe.props),
+    easing: cleanTimelineEasing(sourceKeyframe.easing)
   };
   const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
   const nextTrack = existingTrack

@@ -69,6 +69,31 @@ describe("TimelinePlayer", () => {
     expect(player.currentFrame).toBe(3);
   });
 
+  it("applies keyframe easing while interpolating numeric values", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 5,
+      labels: [{ name: "ease", frame: 0 }],
+      commands: [{ frame: 4, type: "stop" }],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 0, easing: "easeIn", props: { x: 0 } }, { frame: 4, props: { x: 100 } }] }]
+    });
+
+    expect(timelineSnapshotAt(timeline!, 2).targets.card.x).toBe(25);
+  });
+
+  it("supports hold keyframes for stepped sprite-state timelines", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 5,
+      labels: [{ name: "hold", frame: 0 }],
+      commands: [{ frame: 4, type: "stop" }],
+      tracks: [{ targetId: "avatar", keyframes: [{ frame: 0, easing: "hold", props: { imageAssetId: "rex" } }, { frame: 4, props: { imageAssetId: "stego" } }] }]
+    });
+
+    expect(timelineSnapshotAt(timeline!, 2).targets.avatar.imageAssetId).toBe("rex");
+    expect(timelineSnapshotAt(timeline!, 4).targets.avatar.imageAssetId).toBe("stego");
+  });
+
   it("carries completion through gotoAndPlay commands", () => {
     const timeline = normalizeTimeline({
       fps: 10,
@@ -90,7 +115,7 @@ describe("TimelinePlayer", () => {
       onFrame: (snapshot) => frames.push(snapshot.frame)
     });
 
-    expect(player.gotoAndPlay("appear", { complete })).toBe(600);
+    expect(player.gotoAndPlay("appear", { complete })).toBe(300);
     vi.advanceTimersByTime(100);
     expect(frames).toEqual([0, 1, 4]);
     expect(complete).not.toHaveBeenCalled();
@@ -117,7 +142,7 @@ describe("TimelinePlayer", () => {
       onFrame: (snapshot) => frames.push(snapshot.frame)
     });
 
-    player.gotoAndPlay("appear", { complete });
+    expect(player.gotoAndPlay("appear", { complete })).toBe(100);
     vi.advanceTimersByTime(100);
 
     expect(frames).toEqual([0, 1, 4]);
