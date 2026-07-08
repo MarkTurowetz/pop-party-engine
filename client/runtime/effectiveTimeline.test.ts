@@ -9,7 +9,7 @@ describe("effectiveVisibilityTimeline", () => {
     expect(timeline.commands.some((command) => command.type === "stop")).toBe(true);
   });
 
-  it("keeps authored timeline data while adding missing visibility defaults", () => {
+  it("keeps authored timeline data without injecting default stop commands", () => {
     const timeline = effectiveVisibilityTimeline({
       fps: 24,
       frameCount: 4,
@@ -19,7 +19,7 @@ describe("effectiveVisibilityTimeline", () => {
     });
 
     expect(timeline.fps).toBe(24);
-    expect(timeline.labels).toEqual(expect.arrayContaining([{ name: "custom", frame: 2 }, { name: "appear", frame: 2 }]));
+    expect(timeline.labels).toEqual([{ name: "custom", frame: 2 }]);
     expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 2, type: "emit", target: "name", event: "pop" }]));
     expect(timeline.tracks).toEqual([{ targetId: "name", keyframes: [{ frame: 2, props: { scale: 1.2 } }] }]);
   });

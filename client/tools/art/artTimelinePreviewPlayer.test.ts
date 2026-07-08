@@ -99,6 +99,35 @@ describe("playArtTimelinePreview", () => {
     expect(scales).toEqual([0.5, 0.5, 1]);
   });
 
+  it("previews default visibility timelines for nested components without authored timelines", () => {
+    const child: ArtComponent = { id: "child", kind: "shape" };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const opacities: unknown[] = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      timeline: {
+        fps: 10,
+        frameCount: 2,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 0, type: "playComponent", target: "child", event: "appear" },
+          { frame: 1, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (_frame, overrides) => {
+        if (overrides.child?.opacity !== undefined) opacities.push(overrides.child.opacity);
+      }
+    });
+
+    vi.advanceTimersByTime(600);
+    playback.stop();
+
+    expect(opacities[0]).toBe(0);
+    expect(opacities.at(-1)).toBe(1);
+  });
+
   it("scopes nested component preview overrides to path targets", () => {
     const child: ArtComponent = {
       id: "child",

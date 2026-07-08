@@ -696,7 +696,9 @@ export function effectiveArtVisibilityTimeline(
   timeline: TimelineDocument | null | undefined,
   targetComponent?: Pick<ArtComponent, "id"> | null
 ): TimelineDocument {
-  return mergeDefaultArtVisibilityTimeline(timeline, targetComponent);
+  const normalized = normalizeTimeline(timeline);
+  if (normalized && (normalized.labels.length > 0 || normalized.commands.length > 0 || normalized.tracks.length > 0)) return normalized;
+  return mergeDefaultArtVisibilityTimeline(null, targetComponent);
 }
 
 function cleanTimelineValue(value: unknown): TimelinePropertyValue | undefined {

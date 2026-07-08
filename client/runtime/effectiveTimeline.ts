@@ -5,7 +5,9 @@ function commandKey(command: TimelineCommand): string {
 }
 
 export function effectiveVisibilityTimeline(timeline: TimelineDocument | null | undefined): TimelineDocument {
-  const current = normalizeTimeline(timeline) || { fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] };
+  const normalized = normalizeTimeline(timeline);
+  if (normalized && (normalized.labels.length > 0 || normalized.commands.length > 0 || normalized.tracks.length > 0)) return normalized;
+  const current: TimelineDocument = { fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] };
   const defaults = defaultVisibilityTimeline({ appear: 500, update: 200, disappear: 500 });
   const existingLabelNames = new Set(current.labels.map((label) => label.name));
   const existingCommandKeys = new Set(current.commands.map(commandKey));

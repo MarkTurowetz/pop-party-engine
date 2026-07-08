@@ -510,7 +510,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     composition && selectedComponentIds.size === 1
       ? findTimelineTargetComponent(composition.components || [], [...selectedComponentIds][0])
       : undefined;
-  const activeTimeline = (selectedComponent?.timeline || composition?.timeline || null) as TimelineDocument | null;
+  const activeTimeline = (selectedComponent ? selectedComponent.timeline || null : composition?.timeline || null) as TimelineDocument | null;
   const effectiveActiveTimeline = useMemo(
     () => effectiveArtVisibilityTimeline(activeTimeline, selectedComponent || null),
     [activeTimeline, selectedComponent]

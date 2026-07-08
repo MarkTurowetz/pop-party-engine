@@ -2,7 +2,7 @@ import { frameForTimelineLabel, timelinePlaybackDuration, type TimelineCommand, 
 import { TimelinePlayer } from "../../runtime/timelinePlayer";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import { artComponentTargetPathId, findArtComponentTargetPath } from "../shared/artComponentTargets";
-import { artTimelineOrDefault } from "./artTimelineModel";
+import { effectiveArtVisibilityTimeline } from "./artTimelineModel";
 
 export type TimelinePreviewOverrides = Record<string, TimelineProperties>;
 
@@ -122,7 +122,7 @@ function artTimelineCommandDurationForContext(context: TimelinePreviewContext, c
   if (!nestedAnimation || nestedAnimation.mode === "stop" || depth >= MAX_NESTED_PREVIEW_DEPTH) return 0;
   const target = resolvePreviewTarget(context, nestedAnimation.targetId);
   if (!target) return 0;
-  const targetTimeline = artTimelineOrDefault((target.component.timeline || null) as TimelineDocument | null);
+  const targetTimeline = effectiveArtVisibilityTimeline((target.component.timeline || null) as TimelineDocument | null, target.component);
   if (!new TimelinePlayer({ timeline: targetTimeline }).hasLabel(nestedAnimation.animation)) return 0;
   return artTimelinePlaybackDurationForContext(
     {
@@ -219,7 +219,9 @@ export function playArtTimelinePreview({
   ): void => {
     if (stopped) return;
     const target = resolvePreviewTarget(context, targetId);
-    const nestedTimeline = artTimelineOrDefault((target?.component.timeline || null) as TimelineDocument | null);
+    const nestedTimeline = target
+      ? effectiveArtVisibilityTimeline((target.component.timeline || null) as TimelineDocument | null, target.component)
+      : null;
     if (!target || !new TimelinePlayer({ timeline: nestedTimeline }).hasLabel(animation)) return;
     const targetRawId = String(target.component.id || "").trim();
     const nestedContext: TimelinePreviewContext = {
