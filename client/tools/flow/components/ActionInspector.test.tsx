@@ -92,6 +92,37 @@ describe("ActionInspector", () => {
     expect(markup).toContain("Presentation Text");
   });
 
+  it("renders placed game-object target choices for layout animation actions", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "pop-bubble",
+          name: "Pop Bubble",
+          type: "playGameObjectAnimation",
+          targetLayoutElementId: "answer-bubble",
+          targetLayoutScope: "moment",
+          animationName: "pop"
+        }}
+        edit={{
+          onSetActionField: () => undefined,
+          actionTargetOptions: [],
+          gameObjectTargetOptions: [
+            { id: "", label: "No Game Object" },
+            { id: "moment:answer-bubble", label: "Answer Bubble" },
+            { id: "global:wipe", label: "Global: Wipe" }
+          ]
+        }}
+        state={{ id: "intro", name: "Intro", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-flow-react-field="targetLayoutElementId"');
+    expect(markup).toContain("Game Object");
+    expect(markup).toContain("Answer Bubble");
+    expect(markup).toContain("Global: Wipe");
+    expect(markup).toContain("Animation Label");
+  });
+
   it("hides timing controls and bundled branch fields on decision actions", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector

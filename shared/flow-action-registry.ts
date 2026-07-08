@@ -639,6 +639,31 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     })
   },
   {
+    id: "playGameObjectAnimation",
+    name: "Play Game Object Animation",
+    category: "standard",
+    canCompleteFromStage: true,
+    stageActionType: "playGameObjectAnimation",
+    stageRunner: "playGameObjectAnimation",
+    normalize: (action, base, context) => ({
+      ...base,
+      targetLayoutElementId: context.normalizeFlowId(action?.targetLayoutElementId, ""),
+      targetLayoutScope: normalizeLayoutTargetScope(action?.targetLayoutScope),
+      targetLayoutSurface: normalizeLayoutTargetSurface(action?.targetLayoutSurface),
+      animationName: context.cleanFlowText(action?.animationName || action?.timelineLabel || action?.animation, "appear"),
+      instant: action?.instant === true
+    }),
+    toPublic: (action, base, context) => ({
+      ...base,
+      type: "playGameObjectAnimation",
+      targetLayoutElementId: context.normalizeFlowId(action.targetLayoutElementId, ""),
+      targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
+      targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
+      animationName: context.cleanFlowText(action.animationName || action.timelineLabel || action.animation, "appear"),
+      instant: action.instant === true
+    })
+  },
+  {
     id: "setArtAssetShown",
     name: "Set Art Asset Shown (Deprecated)",
     category: "standard",

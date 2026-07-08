@@ -49,7 +49,8 @@ const {
   finishLayoutElementTargetApplication,
   layoutElementTargetMatchesSelector,
   layoutElementVisibilityKey,
-  layoutTargetByElementId
+  layoutTargetByElementId,
+  playLayoutEntityAnimationForAction
 } = lgo;
 
 // --- module-internal layout game-object state (not read by other scripts) ---
@@ -404,6 +405,15 @@ function setControllerLayoutGameObjectShownForAction(action: Dict): unknown {
 
 function setControllerLayoutArtElementShownForAction(action: Dict): unknown {
   return setControllerLayoutGameObjectShownForAction(action);
+}
+
+function playControllerLayoutGameObjectAnimationForAction(action: Dict, options: Dict = {}): unknown {
+  return playLayoutEntityAnimationForAction(action, {
+    entityForElementId: controllerLayoutGameObjectTargets.entityForElementId,
+    visibilityKeyForTarget: controllerLayoutGameObjectTargets.visibilityKeyForTarget,
+    returnResult: options.returnResult === true,
+    suppressMissingWarning: options.suppressMissingWarning === true
+  });
 }
 
 function applyControllerLayoutGameObjectVisibilityOverride(entity: Dict): void {
@@ -809,6 +819,19 @@ function setStageLayoutArtElementShownForAction(action: Dict, options: Dict = {}
   return setStageLayoutGameObjectShownForAction(action, options);
 }
 
+function playStageLayoutGameObjectAnimationForAction(action: Dict, options: Dict = {}): unknown {
+  const surface = String(action?.targetLayoutSurface || "stage").toLowerCase();
+  if (surface !== "stage") {
+    const reason = `target layout surface ${surface} is not handled by the stage runner`;
+    const warning = { elementId: action?.targetLayoutElementId || "", name: action?.name || action?.actionName || "", scope: action?.targetLayoutScope || "", reason };
+    const debug = w().PartyGameStageDebugRuntime;
+    if (typeof debug?.showGameObjectWarning === "function") debug.showGameObjectWarning(warning);
+    else debug?.showArtAssetWarning?.(warning);
+    return options.returnResult ? { duration: 0, missing: true, reason } : 0;
+  }
+  return stageLayoutGameObjectTargets.playAnimationForAction(action, options);
+}
+
 function stageLayoutTargetElement(element: Dict): El | null {
   const stageBoard = w().stageBoard;
   if (isDynamicStageArtInstance(element)) return getOrCreateStageArtInstance(element);
@@ -1005,8 +1028,8 @@ Object.assign(w(), {
   layoutDefaultText, layoutTextArtRenderOptions, layoutTextDefault, loadControllerLayouts, loadStageLayouts, normalizeTextTargetId,
   registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances,
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
-  setControllerLayoutButtonText,
-  setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
+  setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
+  playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
   stageLayoutGameObjectTargets, stageLayoutGameObjectVisibilityKey, stageLayoutGameObjectVisibilityOverrides, stageLayoutRegistryKeyForElement, stageLayoutState, stageLayoutStateForPhase,
   stageLayoutTargetByElementId, stageLayoutTargetElement, stageLayoutTextDefault, textFieldPadding

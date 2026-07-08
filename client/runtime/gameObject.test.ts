@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PartyGameGameObject } from "./gameObject";
 
 describe("PartyGameGameObject (ported game-object)", () => {
@@ -37,5 +37,12 @@ describe("PartyGameGameObject (ported game-object)", () => {
     const object = PartyGameGameObject.create({ id: "x" });
     expect(object.isVisible()).toBe(false);
     expect(object.playVisibility(true)).toBe(0);
+  });
+
+  it("plays arbitrary named animations on attached art renderers", () => {
+    const playAll = vi.fn(() => 480);
+    const object = PartyGameGameObject.create({ id: "animated", artRenderer: { playAll } });
+    expect(object.playAnimation("pop", { instant: true })).toBe(480);
+    expect(playAll).toHaveBeenCalledWith("pop", { instant: true });
   });
 });

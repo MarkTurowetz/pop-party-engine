@@ -1,11 +1,12 @@
 import type { FlowAction } from "../../../types/game-data";
 import { actionFieldsForType, type FlowActionFieldDescriptor } from "../flowActionFieldSchema";
-import { normalizeFlowTextTargetId } from "../flowSelectors";
+import { flowGameObjectTargetParts, normalizeFlowTextTargetId } from "../flowSelectors";
 import type { InspectorTargetOption } from "./ActionInspector";
 
 export interface ActionFieldControlsProps {
   action: FlowAction;
   actionTargetOptions: InspectorTargetOption[];
+  gameObjectTargetOptions?: InspectorTargetOption[];
   textTargetOptions?: InspectorTargetOption[];
   onSetField: (key: string, value: unknown) => void;
 }
@@ -32,12 +33,14 @@ function FieldControl({
   field,
   action,
   actionTargetOptions,
+  gameObjectTargetOptions = [],
   textTargetOptions = [],
   onSetField
 }: {
   field: FlowActionFieldDescriptor;
   action: FlowAction;
   actionTargetOptions: InspectorTargetOption[];
+  gameObjectTargetOptions?: InspectorTargetOption[];
   textTargetOptions?: InspectorTargetOption[];
   onSetField: (key: string, value: unknown) => void;
 }) {
@@ -60,20 +63,28 @@ function FieldControl({
     );
   }
 
-  if (field.control === "select" || field.control === "actionTarget" || field.control === "textTarget") {
+  if (
+    field.control === "select" ||
+    field.control === "actionTarget" ||
+    field.control === "textTarget" ||
+    field.control === "gameObjectTarget"
+  ) {
     const options =
       field.control === "actionTarget"
         ? withDefaultSelectOption(
             actionTargetOptions.map((option) => ({ id: option.id, name: option.label })),
             { id: "", name: "Default" }
           )
-        : field.control === "textTarget"
-          ? withDefaultSelectOption(
-              textTargetOptions.map((option) => ({ id: option.id, name: option.label })),
-              { id: "", name: "No Text Field" }
-            )
-          : field.options || [];
+        : field.control === "gameObjectTarget"
+          ? gameObjectTargetOptions.map((option) => ({ id: option.id, name: option.label }))
+          : field.control === "textTarget"
+            ? withDefaultSelectOption(
+                textTargetOptions.map((option) => ({ id: option.id, name: option.label })),
+                { id: "", name: "No Text Field" }
+              )
+            : field.options || [];
     const currentValue = String(rawValue(action, field.key) ?? "");
+    const currentTargetScope = String(rawValue(action, "targetLayoutScope") || "moment");
     const selectedValue =
       field.control === "textTarget" && currentValue
         ? options.find(
@@ -81,14 +92,27 @@ function FieldControl({
               option.id === currentValue ||
               normalizeFlowTextTargetId(option.id) === normalizeFlowTextTargetId(currentValue)
           )?.id || currentValue
-        : currentValue;
+        : field.control === "gameObjectTarget" && currentValue
+          ? options.find((option) => {
+              const parts = flowGameObjectTargetParts(option.id);
+              return parts.id === currentValue && (parts.scope || "moment") === currentTargetScope;
+            })?.id || `${currentTargetScope}:${currentValue}`
+          : currentValue;
     return (
       <label className="flow-react-field" data-flow-react-field={field.key}>
         <span>{field.label}</span>
         <select
           value={selectedValue}
           data-flow-react-field-input={field.key}
-          onChange={(event) => onSetField(field.key, event.target.value)}
+          onChange={(event) => {
+            if (field.control !== "gameObjectTarget") {
+              onSetField(field.key, event.target.value);
+              return;
+            }
+            const parts = flowGameObjectTargetParts(event.target.value);
+            onSetField("targetLayoutScope", parts.scope || "");
+            onSetField(field.key, parts.id);
+          }}
         >
           {options.map((option) => (
             <option key={option.id} value={option.id}>
@@ -147,6 +171,7 @@ function FieldControl({
 export function ActionFieldControls({
   action,
   actionTargetOptions,
+  gameObjectTargetOptions = [],
   textTargetOptions = [],
   onSetField
 }: ActionFieldControlsProps) {
@@ -160,6 +185,7 @@ export function ActionFieldControls({
           field={field}
           action={action}
           actionTargetOptions={actionTargetOptions}
+          gameObjectTargetOptions={gameObjectTargetOptions}
           textTargetOptions={textTargetOptions}
           onSetField={onSetField}
         />

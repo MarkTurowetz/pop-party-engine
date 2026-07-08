@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FlowEditorController } from "./flowEditorController";
 import {
   findFlowActionRef,
+  flowGameObjectTargetOptions,
   flowTextTargetOptions,
   type FlowActionTypeMeta
 } from "./flowSelectors";
@@ -113,7 +114,7 @@ export function FlowEditor({
   );
 
   useEffect(() => {
-    if (!loadStageLayouts || !["displayText", "presentText", "text"].includes(selectedActionType)) return undefined;
+    if (!loadStageLayouts || !["displayText", "presentText", "text", "setGameObjectShown", "setArtAssetShown", "playGameObjectAnimation"].includes(selectedActionType)) return undefined;
     let cancelled = false;
     void loadStageLayouts().then((layouts) => {
       if (!cancelled) setLayoutSnapshot(layouts);
@@ -130,9 +131,20 @@ export function FlowEditor({
       label: option.name
     }));
   };
+  const gameObjectTargetOptionsForState = (stateId: string, selectedTarget = "") => {
+    const state = states.find((candidate) => candidate.id === stateId) || null;
+    return flowGameObjectTargetOptions(layoutSnapshot, state, stateId, selectedTarget).map((option) => ({
+      id: option.id,
+      label: option.name
+    }));
+  };
   const inspectorTextTargetOptions = textTargetOptionsForState(
     selectedStateId,
     String(selectedActionRef?.action?.textTarget || "")
+  );
+  const inspectorGameObjectTargetOptions = gameObjectTargetOptionsForState(
+    selectedStateId,
+    `${String(selectedActionRef?.action?.targetLayoutScope || "moment")}:${String(selectedActionRef?.action?.targetLayoutElementId || "")}`
   );
 
   const inspectorEdit = {
@@ -225,6 +237,7 @@ export function FlowEditor({
             id: action.id,
             label: action.name || action.id
           })),
+    gameObjectTargetOptions: inspectorGameObjectTargetOptions,
     textTargetOptions: inspectorTextTargetOptions
   };
 
@@ -265,6 +278,10 @@ export function FlowEditor({
           }
         },
         actionTargetOptions: rootTargetOptions,
+        gameObjectTargetOptions: gameObjectTargetOptionsForState(
+          String(selectedRootRouteAction.targetStateId || selectedStateId || ""),
+          `${String(selectedRootRouteAction.targetLayoutScope || "moment")}:${String(selectedRootRouteAction.targetLayoutElementId || "")}`
+        ),
         textTargetOptions: textTargetOptionsForState(
           String(selectedRootRouteAction.targetStateId || selectedStateId || ""),
           String(selectedRootRouteAction.textTarget || "")

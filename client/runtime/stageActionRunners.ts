@@ -72,6 +72,7 @@ const fallbackRunnerDefinitions: RunnerDefinition[] = [
   { type: "setPlayerAnswersShown", runner: "setPlayerAnswersShown" },
   { type: "setGameObjectShown", runner: "setGameObjectShown" },
   { type: "setArtAssetShown", runner: "setGameObjectShown" },
+  { type: "playGameObjectAnimation", runner: "playGameObjectAnimation" },
   { type: "revealPlayerAnswerCorrectness", runner: "delayedComplete", delayMs: 250 },
   { type: "showPoints", runner: "delayedComplete", delayMs: 1500 },
   { type: "givePendingPoints", runner: "serverEffect" },
@@ -146,6 +147,12 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
         : c.setStageLayoutArtElementShownForAction
           ? (c.setStageLayoutArtElementShownForAction as (a: Action) => unknown)(action)
           : 0;
+      completeAfterResult(action, runtime, duration);
+    },
+    playGameObjectAnimation(action, runtime) {
+      const duration = c.playStageLayoutGameObjectAnimationForAction
+        ? (c.playStageLayoutGameObjectAnimationForAction as (a: Action) => unknown)(action)
+        : 0;
       completeAfterResult(action, runtime, duration);
     },
     setTimerShown(action, runtime) {

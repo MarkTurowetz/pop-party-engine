@@ -25,6 +25,7 @@ declare global {
     applyControllerLayoutForPhase?: (phase: string) => void;
     setStageLayoutGameObjectShownForAction?: (action: Dict, options?: Dict) => unknown;
     setStageLayoutArtElementShownForAction?: (action: Dict, options?: Dict) => unknown;
+    playStageLayoutGameObjectAnimationForAction?: (action: Dict, options?: Dict) => unknown;
     loadStageLayouts?: (options?: { forceServer?: boolean }) => Promise<Dict>;
     stageLayoutStateForPhase?: (phase: string) => Dict | null;
     stageLayoutEntityForElementId?: (elementId: string, target: El | null, scope?: string) => Dict | null;
@@ -258,6 +259,17 @@ async function setStageLayoutGameObjectShownForStageAction(action: Dict): Promis
   await Promise.all([w().loadArtAssets!().catch(() => w().artCompositions), w().loadStageLayouts!({ forceServer: true }).catch(() => w().stageLayouts)]);
   if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
   const retry = showGameObject(action, { returnResult: true }) as Dict;
+  return (retry?.duration as number) || 0;
+}
+
+async function playStageLayoutGameObjectAnimationForStageAction(action: Dict): Promise<number> {
+  const playAnimation = w().playStageLayoutGameObjectAnimationForAction;
+  if (typeof playAnimation !== "function") return 0;
+  const first = playAnimation(action, { returnResult: true, suppressMissingWarning: true }) as Dict;
+  if (!first?.missing) return (first?.duration as number) || 0;
+  await Promise.all([w().loadArtAssets!().catch(() => w().artCompositions), w().loadStageLayouts!({ forceServer: true }).catch(() => w().stageLayouts)]);
+  if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
+  const retry = playAnimation(action, { returnResult: true }) as Dict;
   return (retry?.duration as number) || 0;
 }
 
@@ -721,7 +733,7 @@ function getStageActionRunner(): Dict | null {
   if (!stageActionRunner && w().PartyGameStageActionRunners) {
     stageActionRunner = (w().PartyGameStageActionRunners as unknown as { createRunner: (o: Dict) => Dict }).createRunner({
       applyFlowActionEffect, completeFlowAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, playerAnswerBubbleAnimationRemaining,
-      runStageWipe, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShown, setPlayersShownForAction, setStageWipeShownForAction, setStageTextObject, voteRevealDurationMs
+      playStageLayoutGameObjectAnimationForAction: playStageLayoutGameObjectAnimationForStageAction, runStageWipe, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShown, setPlayersShownForAction, setStageWipeShownForAction, setStageTextObject, voteRevealDurationMs
     });
   }
   return stageActionRunner;

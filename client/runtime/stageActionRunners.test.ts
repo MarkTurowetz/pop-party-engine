@@ -9,6 +9,7 @@ function context() {
     setStageTextObject: vi.fn(() => 0),
     runStageWipe: vi.fn(),
     playStageAudioAction: vi.fn(),
+    playStageLayoutGameObjectAnimationForAction: vi.fn(() => 250),
     voteRevealDurationMs: () => 0
   };
 }
@@ -32,5 +33,22 @@ describe("PartyGameStageActionRunners (ported)", () => {
   it("installs the global bridge on import", () => {
     const host = globalThis as typeof globalThis & { PartyGameStageActionRunners?: unknown };
     expect(host.PartyGameStageActionRunners).toBeTypeOf("object");
+  });
+
+  it("waits for placed game object animation actions to complete", () => {
+    vi.useFakeTimers();
+    const c = context();
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    runner.run({ id: "a3", type: "playGameObjectAnimation", targetLayoutElementId: "bubble", animationName: "pop" }, { isPrimary: true, actionKey: "k" });
+    expect(c.playStageLayoutGameObjectAnimationForAction).toHaveBeenCalledWith({
+      id: "a3",
+      type: "playGameObjectAnimation",
+      targetLayoutElementId: "bubble",
+      animationName: "pop"
+    });
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(250);
+    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a3");
+    vi.useRealTimers();
   });
 });

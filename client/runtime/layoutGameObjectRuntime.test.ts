@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PartyGameLayoutGameObjects } from "./layoutGameObjectRuntime";
 
 describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () => {
   it("exposes the layout game-object helpers", () => {
     expect(PartyGameLayoutGameObjects.activeDynamicLayoutArtInstanceIds).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver).toBeTypeOf("function");
+    expect(PartyGameLayoutGameObjects.playLayoutEntityAnimationForAction).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.setLayoutGameObjectShownForAction).toBeTypeOf("function");
   });
 
@@ -21,6 +22,30 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
   it("installs the global bridge on import", () => {
     const host = globalThis as typeof globalThis & { PartyGameLayoutGameObjects?: unknown };
     expect(host.PartyGameLayoutGameObjects).toBeTypeOf("object");
+  });
+
+  it("plays named animations through placed layout target resolvers", () => {
+    const target = {} as HTMLElement;
+    const playAnimation = vi.fn(() => 360);
+    const resolver = PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver({
+      registry: () => ({
+        get: () => ({ id: "answer-bubble", target, playAnimation, visibilityKey: "moment:answer-bubble" })
+      }),
+      visibilityKeyForTarget: () => "moment:answer-bubble"
+    });
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousVisualRuntime = globals.PartyGameVisualObject;
+    globals.PartyGameVisualObject = {};
+    try {
+      const result = resolver.playAnimationForAction(
+        { targetLayoutElementId: "answer-bubble", animationName: "pop" },
+        { returnResult: true }
+      );
+      expect(result).toEqual({ duration: 360, missing: false, reason: "" });
+      expect(playAnimation).toHaveBeenCalledWith("pop", { instant: false });
+    } finally {
+      globals.PartyGameVisualObject = previousVisualRuntime;
+    }
   });
 
   it("renders layout art without removing preserved overlay controls", () => {

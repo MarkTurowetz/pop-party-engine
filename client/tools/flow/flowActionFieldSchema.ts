@@ -21,6 +21,7 @@ export type FlowFieldControl =
   | "number"
   | "integer"
   | "boolean"
+  | "gameObjectTarget"
   | "select"
   | "textTarget"
   | "actionTarget";
@@ -107,13 +108,19 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
   codeNode: [{ key: "code", label: "Code", control: "textarea" }],
   setGameObjectShown: [
     { key: "isShown", label: "Visible", control: "boolean" },
-    { key: "targetLayoutElementId", label: "Layout Element Id", control: "text" },
+    { key: "targetLayoutElementId", label: "Game Object", control: "gameObjectTarget" },
     { key: "targetLayoutSurface", label: "Layout Surface", control: "text" }
   ],
   setArtAssetShown: [
     { key: "isShown", label: "Visible", control: "boolean" },
-    { key: "targetLayoutElementId", label: "Layout Element Id", control: "text" },
+    { key: "targetLayoutElementId", label: "Game Object", control: "gameObjectTarget" },
     { key: "targetLayoutSurface", label: "Layout Surface", control: "text" }
+  ],
+  playGameObjectAnimation: [
+    { key: "targetLayoutElementId", label: "Game Object", control: "gameObjectTarget" },
+    { key: "targetLayoutSurface", label: "Layout Surface", control: "text" },
+    { key: "animationName", label: "Animation Label", control: "text" },
+    { key: "instant", label: "Instant", control: "boolean" }
   ],
   setPlayersShown: [{ key: "isShown", label: "Visible", control: "boolean" }],
   setPlayerAnswersShown: [
