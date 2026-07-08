@@ -93,6 +93,19 @@ function hasTimelineProperty(props: TimelineProperties, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(props, key);
 }
 
+const TIMELINE_SHAPE_STYLE_CLASSES = ["is-style-rounded", "is-style-circle", "is-style-pill", "is-style-rectangle"];
+
+function timelineShapeStyle(value: TimelinePropertyValue | undefined): string | null {
+  const style = timelineTextValue(value);
+  if (style === "circle" || style === "pill" || style === "rectangle" || style === "rounded") return style;
+  return null;
+}
+
+function setTimelineShapeStyleClass(element: HTMLElement, style: string): void {
+  element.classList?.remove?.(...TIMELINE_SHAPE_STYLE_CLASSES);
+  element.classList?.add?.(`is-style-${style}`);
+}
+
 function cssUrl(value: string): string {
   return `url('${value.replaceAll("'", "%27")}')`;
 }
@@ -279,12 +292,14 @@ class CssVisualObject {
     const fillCss = timelineTextValue(props.fillCss);
     const borderColor = timelineTextValue(props.borderColor);
     const imageFit = timelineTextValue(props.imageObjectFit);
+    const shapeStyle = timelineShapeStyle(props.shapeStyle);
     if (fontFamily !== null) setStyleProperty(this.element, "--component-font-family", fontFamily);
     if (fontColor !== null) setStyleProperty(this.element, "--component-text-color", fontColor);
     if (fillColor !== null) setStyleProperty(this.element, "--component-fill-color", fillColor);
     if (fillCss !== null) setStyleProperty(this.element, "--component-fill-css", fillCss || fillColor || "transparent");
     if (borderColor !== null) setStyleProperty(this.element, "--component-border-color", borderColor);
     if (imageFit !== null) setStyleProperty(this.element, "--component-image-fit", imageFit);
+    if (shapeStyle !== null) setTimelineShapeStyleClass(this.element, shapeStyle);
     if (typeof props.visible === "boolean") {
       this.element.style.display = props.visible ? "" : "none";
     }
@@ -309,6 +324,11 @@ class CssVisualObject {
           image.removeAttribute("src");
         }
       }
+    }
+    if (hasTimelineProperty(props, "imageTint") && !hasTimelineProperty(props, "imageAssetId") && !hasTimelineProperty(props, "imageDataUrl")) {
+      const imageTint = timelineTextValue(props.imageTint);
+      const hasImageMask = this.element.classList?.contains?.("has-image-mask") === true;
+      this.element.classList?.toggle?.("has-tinted-image-mask", Boolean(hasImageMask && imageTint === "currentColor"));
     }
   }
 

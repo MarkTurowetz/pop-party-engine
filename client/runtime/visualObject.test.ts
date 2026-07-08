@@ -7,6 +7,7 @@ interface FakeElement {
     add: (...classes: string[]) => void;
     contains: (className: string) => boolean;
     remove: (...classes: string[]) => void;
+    toggle: (className: string, force?: boolean) => boolean;
   };
   dataset: Record<string, string>;
   offsetWidth: number;
@@ -35,6 +36,12 @@ function createFakeElement(initialClasses: string[] = []): HTMLElement {
       contains: (className) => classes.has(className),
       remove: (...nextClasses) => {
         for (const className of nextClasses) classes.delete(className);
+      },
+      toggle: (className, force) => {
+        const shouldAdd = force === undefined ? !classes.has(className) : force;
+        if (shouldAdd) classes.add(className);
+        else classes.delete(className);
+        return shouldAdd;
       }
     },
     dataset: {},
@@ -306,6 +313,39 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect((element.style as unknown as Record<string, string>)["--component-border-color"]).toBe("#17131f");
     expect((element.style as unknown as Record<string, string>)["--component-border-width"]).toBe("4px");
     expect((element.style as unknown as Record<string, string>)["--component-border-radius"]).toBe("12px");
+  });
+
+  it("applies authored timeline shape style classes while playing", () => {
+    const element = createFakeElement(["hidden", "is-style-rounded"]);
+    element.dataset.artComponentId = "component-a";
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      timeline: normalizeTimeline({
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [{ frame: 2, type: "stop" }],
+        tracks: [
+          {
+            targetId: "component-a",
+            keyframes: [
+              { frame: 0, props: { shapeStyle: "rounded" } },
+              { frame: 2, props: { shapeStyle: "pill" } }
+            ]
+          }
+        ]
+      })
+    });
+
+    expect(visual.play("appear")).toBe(200);
+    expect(element.classList.contains("is-style-rounded")).toBe(true);
+
+    vi.advanceTimersByTime(200);
+
+    expect(element.classList.contains("is-style-rounded")).toBe(false);
+    expect(element.classList.contains("is-style-pill")).toBe(true);
   });
 
   it("dispatches authored timeline emit commands through the visual object", () => {
