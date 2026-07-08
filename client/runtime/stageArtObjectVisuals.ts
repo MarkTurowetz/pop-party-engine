@@ -360,7 +360,7 @@ class ArtObjectView {
 
   handleTimelineCommand(detail: TimelineCommandEventDetail): number {
     const command = detail.command || {};
-    if (command.type !== "emit") return 0;
+    if (command.type !== "emit" && command.type !== "playComponent") return 0;
     const targetId = String(command.target || "").trim();
     const animation = String(command.event || "").trim();
     if (!targetId || !animation) return 0;

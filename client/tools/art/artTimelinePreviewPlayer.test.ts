@@ -60,4 +60,42 @@ describe("playArtTimelinePreview", () => {
       { frame: 3, rootOpacity: 1, childX: 30 }
     ]);
   });
+
+  it("plays nested component timelines from playComponent commands", () => {
+    const child: ArtComponent = {
+      id: "child",
+      kind: "shape",
+      timeline: {
+        fps: 10,
+        frameCount: 2,
+        labels: [{ name: "pop", frame: 0 }],
+        commands: [{ frame: 1, type: "stop" }],
+        tracks: [{ targetId: "child", keyframes: [{ frame: 0, props: { scale: 0.5 } }, { frame: 1, props: { scale: 1 } }] }]
+      }
+    };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const scales: unknown[] = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      timeline: {
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "child", event: "pop" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (_frame, overrides) => {
+        if (overrides.child?.scale !== undefined) scales.push(overrides.child.scale);
+      }
+    });
+
+    vi.advanceTimersByTime(200);
+    playback.stop();
+
+    expect(scales).toEqual([0.5, 0.5, 1]);
+  });
 });

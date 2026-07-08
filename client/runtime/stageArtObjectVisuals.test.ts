@@ -74,6 +74,37 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(played).toEqual(["pop"]);
   });
 
+  it("routes parent timeline playComponent commands to targeted descendant animations", () => {
+    const played: unknown[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      handleTimelineCommand: (detail: unknown) => number;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      play: (animation: string) => number;
+    };
+    parent.component = { id: "parent" };
+    child.component = { id: "name-card" };
+    child.children = new Map();
+    child.play = (animation) => {
+      played.push(animation);
+      return 300;
+    };
+    parent.children = new Map([["name-card", child]]);
+
+    const duration = parent.handleTimelineCommand({
+      command: { type: "playComponent", frame: 12, target: "name-card", event: "pop" },
+      eventName: "playComponent",
+      visual: {}
+    });
+
+    expect(duration).toBe(300);
+    expect(played).toEqual(["pop"]);
+  });
+
   it("ignores timeline emit commands without both a target and animation event", () => {
     const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
       component: { id: string };

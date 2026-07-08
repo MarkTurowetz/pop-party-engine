@@ -33,6 +33,13 @@ export function playArtTimelinePreview({
   let stopped = false;
   let activePlaybackCount = 1;
 
+  const nestedAnimationForCommand = (command: { type?: string; target?: string; event?: string }): { targetId: string; animation: string } | null => {
+    if (command.type !== "emit" && command.type !== "playComponent") return null;
+    const targetId = String(command.target || "").trim();
+    const animation = String(command.event || "").trim();
+    return targetId && animation ? { targetId, animation } : null;
+  };
+
   const completePlayback = (): void => {
     if (stopped) return;
     activePlaybackCount = Math.max(0, activePlaybackCount - 1);
@@ -60,10 +67,8 @@ export function playArtTimelinePreview({
         publishPreview(parentFrame);
       },
       onCommand: (command) => {
-        if (command.type !== "emit") return;
-        const nestedTargetId = String(command.target || "").trim();
-        const nestedAnimation = String(command.event || "").trim();
-        if (nestedTargetId && nestedAnimation) playNestedTargetTimeline(nestedTargetId, nestedAnimation);
+        const nestedAnimation = nestedAnimationForCommand(command);
+        if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation);
       }
     });
     childPlayers.push(childPlayer);
@@ -75,10 +80,8 @@ export function playArtTimelinePreview({
     timeline,
     onFrame: (snapshot) => publishPreview(snapshot.frame, snapshot.targets),
     onCommand: (command) => {
-      if (command.type !== "emit") return;
-      const targetId = String(command.target || "").trim();
-      const animation = String(command.event || "").trim();
-      if (targetId && animation) playNestedTargetTimeline(targetId, animation);
+      const nestedAnimation = nestedAnimationForCommand(command);
+      if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation);
     }
   });
 
