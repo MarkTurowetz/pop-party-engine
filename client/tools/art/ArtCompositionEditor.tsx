@@ -2268,11 +2268,11 @@ function ArtTimelinePanel({
           <h4>Selected Keyframe</h4>
           <label className="flow-react-field">
             <span>Target</span>
-            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component).label} readOnly />
+            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component, { resolveReference }).label} readOnly />
           </label>
           <label className="flow-react-field">
             <span>Target Detail</span>
-            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component).detail} readOnly />
+            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component, { resolveReference }).detail} readOnly />
           </label>
           <label className="flow-react-field">
             <span>Frame</span>
