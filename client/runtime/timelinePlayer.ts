@@ -17,6 +17,8 @@ export interface TimelinePlayerOptions {
   timeline?: TimelineDocument | null;
   onFrame?: (snapshot: TimelineFrameSnapshot) => void;
   onCommand?: (command: { type: string; frame: number; target?: string; event?: string }) => void;
+  onCommandLimit?: (detail: { frame: number; commandCount: number; maxCommandRedirects: number }) => void;
+  maxCommandRedirects?: number;
   schedule?: (callback: () => void, delay: number) => number;
   clearScheduled?: (id: number) => void;
 }
@@ -33,6 +35,8 @@ function defaultSchedule(callback: () => void, delay: number): number {
 function defaultClearScheduled(id: number): void {
   globalThis.clearTimeout(id);
 }
+
+const DEFAULT_MAX_COMMAND_REDIRECTS = 50;
 
 function isNumericValue(value: TimelinePropertyValue | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -85,6 +89,8 @@ export class TimelinePlayer {
   timeline: TimelineDocument | null;
   onFrame: ((snapshot: TimelineFrameSnapshot) => void) | null;
   onCommand: TimelinePlayerOptions["onCommand"] | null;
+  onCommandLimit: TimelinePlayerOptions["onCommandLimit"] | null;
+  maxCommandRedirects: number;
   schedule: (callback: () => void, delay: number) => number;
   clearScheduled: (id: number) => void;
   timerIds = new Set<number>();
@@ -96,6 +102,8 @@ export class TimelinePlayer {
     this.timeline = normalizeTimeline(options.timeline);
     this.onFrame = options.onFrame || null;
     this.onCommand = options.onCommand || null;
+    this.onCommandLimit = options.onCommandLimit || null;
+    this.maxCommandRedirects = Math.max(1, Math.round(Number(options.maxCommandRedirects) || DEFAULT_MAX_COMMAND_REDIRECTS));
     this.schedule = options.schedule || defaultSchedule;
     this.clearScheduled = options.clearScheduled || defaultClearScheduled;
   }
@@ -123,6 +131,10 @@ export class TimelinePlayer {
   }
 
   gotoAndStop(labelOrFrame: string | number, options: TimelinePlayOptions = {}): number {
+    return this.gotoAndStopInternal(labelOrFrame, options, 0);
+  }
+
+  private gotoAndStopInternal(labelOrFrame: string | number, options: TimelinePlayOptions = {}, commandCount = 0): number {
     this.stop();
     if (!this.timeline) {
       options.complete?.();
@@ -130,11 +142,15 @@ export class TimelinePlayer {
     }
     const frame = frameForTimelineLabel(this.timeline, labelOrFrame);
     this.applyFrame(frame);
-    if (!this.runFrameCommands(frame, options.complete)) options.complete?.();
+    if (!this.runFrameCommands(frame, options.complete, commandCount)) options.complete?.();
     return 0;
   }
 
   gotoAndPlay(labelOrFrame: string | number, options: TimelinePlayOptions = {}): number {
+    return this.gotoAndPlayInternal(labelOrFrame, options, 0);
+  }
+
+  private gotoAndPlayInternal(labelOrFrame: string | number, options: TimelinePlayOptions = {}, commandCount = 0): number {
     this.stop();
     if (!this.timeline) {
       options.complete?.();
@@ -143,7 +159,7 @@ export class TimelinePlayer {
     const segment = timelineSegmentFor(this.timeline, labelOrFrame);
     if (options.instant === true || segment.durationMs === 0) {
       this.applyFrame(segment.endFrame);
-      if (!this.runFrameCommands(segment.endFrame, options.complete)) options.complete?.();
+      if (!this.runFrameCommands(segment.endFrame, options.complete, commandCount)) options.complete?.();
       return 0;
     }
     this.isPlaying = true;
@@ -155,7 +171,7 @@ export class TimelinePlayer {
       const timerId = this.schedule(() => {
         if (this.token !== playToken) return;
         this.applyFrame(frame);
-        const redirected = this.runFrameCommands(frame, options.complete);
+        const redirected = this.runFrameCommands(frame, options.complete, 0);
         if (!redirected && frame === segment.endFrame) {
           this.isPlaying = false;
           options.complete?.();
@@ -166,18 +182,27 @@ export class TimelinePlayer {
     return segment.durationMs;
   }
 
-  runFrameCommands(frame: number, complete?: () => void): boolean {
+  runFrameCommands(frame: number, complete?: () => void, commandCount = 0): boolean {
     if (!this.timeline) return false;
     for (const command of this.timeline.commands.filter((entry) => entry.frame === frame)) {
       this.onCommand?.(command);
       if (command.type === "gotoAndStop" && command.target) {
-        this.gotoAndStop(command.target, { complete });
+        if (!this.canRedirectFrameCommand(frame, commandCount + 1)) return false;
+        this.gotoAndStopInternal(command.target, { complete }, commandCount + 1);
         return true;
       } else if (command.type === "gotoAndPlay" && command.target) {
-        this.gotoAndPlay(command.target, { complete });
+        if (!this.canRedirectFrameCommand(frame, commandCount + 1)) return false;
+        this.gotoAndPlayInternal(command.target, { complete }, commandCount + 1);
         return true;
       }
     }
+    return false;
+  }
+
+  private canRedirectFrameCommand(frame: number, commandCount: number): boolean {
+    if (commandCount <= this.maxCommandRedirects) return true;
+    this.stop();
+    this.onCommandLimit?.({ frame, commandCount, maxCommandRedirects: this.maxCommandRedirects });
     return false;
   }
 }

@@ -124,4 +124,53 @@ describe("TimelinePlayer", () => {
     expect(complete).toHaveBeenCalledTimes(1);
     expect(player.isPlaying).toBe(false);
   });
+
+  it("stops runaway gotoAndPlay command loops", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 3,
+      labels: [{ name: "loop", frame: 0 }],
+      commands: [
+        { frame: 0, type: "gotoAndPlay", target: "loop" },
+        { frame: 0, type: "stop" }
+      ],
+      tracks: []
+    });
+    const commandLimit = vi.fn();
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      maxCommandRedirects: 3,
+      onCommandLimit: commandLimit
+    });
+
+    player.gotoAndPlay("loop", { instant: true, complete });
+
+    expect(commandLimit).toHaveBeenCalledWith({ frame: 0, commandCount: 4, maxCommandRedirects: 3 });
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(player.isPlaying).toBe(false);
+  });
+
+  it("stops runaway gotoAndStop command loops", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 3,
+      labels: [{ name: "park", frame: 0 }],
+      commands: [{ frame: 0, type: "gotoAndStop", target: "park" }],
+      tracks: []
+    });
+    const commandLimit = vi.fn();
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      maxCommandRedirects: 2,
+      onCommandLimit: commandLimit
+    });
+
+    player.gotoAndStop("park", { complete });
+
+    expect(commandLimit).toHaveBeenCalledWith({ frame: 0, commandCount: 3, maxCommandRedirects: 2 });
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(player.isPlaying).toBe(false);
+  });
 });
