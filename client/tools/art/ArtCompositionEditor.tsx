@@ -46,6 +46,7 @@ import {
   removeTimelineFrames,
   removeTimelineSegment,
   replaceTransformKeyframeFromComponent,
+  timelineFrameRangeFromAnchor,
   timelineSegmentsForArt,
   type TimelineFrameClipboard,
   updateTimelineCommandAt,
@@ -946,6 +947,8 @@ function ArtTimelinePanel({
   const [commandTarget, setCommandTarget] = useState("");
   const [commandEvent, setCommandEvent] = useState("");
   const [frameEditCount, setFrameEditCount] = useState(1);
+  const [frameRangeAnchor, setFrameRangeAnchor] = useState<number | null>(null);
+  const [frameRangeFocus, setFrameRangeFocus] = useState<number | null>(null);
   const [frameWindowStart, setFrameWindowStart] = useState(0);
   const [keyframeTargetId, setKeyframeTargetId] = useState("");
   const [keyframePropertyNames, setKeyframePropertyNames] = useState("scale");
@@ -962,6 +965,7 @@ function ArtTimelinePanel({
   const [newPropertyValue, setNewPropertyValue] = useState("");
   const playbackRef = useRef<ArtTimelinePreviewPlayback | null>(null);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
+  const cleanTimelineFrame = (value: number): number => Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(value) || 0)));
   const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
   const selectedTimelineMarker = useMemo(() => {
     if (!selectedMarker) return null;
@@ -1020,10 +1024,19 @@ function ArtTimelinePanel({
   }
 
   function previewFrame(nextFrame: number): void {
-    const normalizedFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(nextFrame) || 0)));
+    const normalizedFrame = cleanTimelineFrame(nextFrame);
     setFrame(normalizedFrame);
+    setFrameEditCount(1);
+    setFrameRangeAnchor(null);
+    setFrameRangeFocus(null);
     setFrameWindowStart(windowStartForFrame(normalizedFrame));
     onPreviewFrame?.(normalizedFrame);
+  }
+
+  function setManualFrameRangeCount(nextCount: number): void {
+    setFrameEditCount(Math.max(1, Math.min(1000, Math.round(Number(nextCount) || 1))));
+    setFrameRangeAnchor(null);
+    setFrameRangeFocus(null);
   }
 
   function frameInSelectedRange(frameIndex: number): boolean {
@@ -1031,17 +1044,19 @@ function ArtTimelinePanel({
   }
 
   function selectFrameRangeTo(nextFrame: number): void {
-    const normalizedFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(nextFrame) || 0)));
-    const startFrame = Math.min(cleanFrame, normalizedFrame);
-    const endFrame = Math.max(cleanFrame, normalizedFrame);
-    setFrame(startFrame);
-    setFrameEditCount(endFrame - startFrame + 1);
-    setFrameWindowStart(windowStartForFrame(startFrame));
-    onPreviewFrame?.(startFrame);
+    const normalizedFrame = cleanTimelineFrame(nextFrame);
+    const anchorFrame = cleanTimelineFrame(frameRangeAnchor ?? cleanFrame);
+    const range = timelineFrameRangeFromAnchor(current.frameCount, anchorFrame, normalizedFrame);
+    setFrame(range.startFrame);
+    setFrameRangeAnchor(anchorFrame);
+    setFrameRangeFocus(normalizedFrame);
+    setFrameEditCount(range.frameCount);
+    setFrameWindowStart(windowStartForFrame(normalizedFrame));
+    onPreviewFrame?.(range.startFrame);
   }
 
   function previewFrameWithOverrides(nextFrame: number, overrides: TimelinePreviewOverrides | null): void {
-    const normalizedFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(nextFrame) || 0)));
+    const normalizedFrame = cleanTimelineFrame(nextFrame);
     setFrame(normalizedFrame);
     setFrameWindowStart(windowStartForFrame(normalizedFrame));
     onPreviewFrame?.(normalizedFrame, overrides);
@@ -1114,11 +1129,13 @@ function ArtTimelinePanel({
   }
 
   function copyFrameRangeAtCurrentFrame(): void {
+    setCopiedKeyframe(null);
     setCopiedFrameRange(copyTimelineFrameRange(current, cleanFrame, selectedFrameRangeCount));
   }
 
   function cutFrameRangeAtCurrentFrame(): void {
     const result = cutTimelineFrameRange(current, cleanFrame, selectedFrameRangeCount);
+    setCopiedKeyframe(null);
     setCopiedFrameRange(result.clipboard);
     setSelectedKeyframe(null);
     setSelectedMarker(null);
@@ -1132,27 +1149,52 @@ function ArtTimelinePanel({
     applyTimelineFrameEdit(pasteTimelineFrameRange(current, copiedFrameRange, cleanFrame), cleanFrame);
   }
 
+  function removeSelectedTimelineItem(): boolean {
+    if (selectedTimelineKeyframe) {
+      onChange(removeTimelineKeyframe(current, selectedTimelineKeyframe.trackTargetId, selectedTimelineKeyframe.keyframe.frame));
+      setSelectedKeyframe(null);
+      return true;
+    }
+    if (!selectedTimelineMarker) return false;
+    if (selectedTimelineMarker.kind === "label") {
+      onChange(removeTimelineLabel(current, selectedTimelineMarker.label.name));
+      setSelectedMarker(null);
+      return true;
+    }
+    onChange(removeTimelineCommandAt(current, selectedTimelineMarker.index));
+    setSelectedMarker(null);
+    return true;
+  }
+
   function handleTimelineKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
     if (isEditableTimelineShortcutTarget(event.target)) return;
     const usesModifier = event.metaKey || event.ctrlKey;
     const key = event.key.toLowerCase();
     if (usesModifier && key === "c") {
       event.preventDefault();
-      copyFrameRangeAtCurrentFrame();
+      if (selectedTimelineKeyframe) copySelectedKeyframe();
+      else copyFrameRangeAtCurrentFrame();
       return;
     }
     if (usesModifier && key === "x") {
       event.preventDefault();
+      if (selectedTimelineKeyframe) {
+        copySelectedKeyframe();
+        removeSelectedTimelineItem();
+        return;
+      }
       if (current.frameCount > 1) cutFrameRangeAtCurrentFrame();
       return;
     }
     if (usesModifier && key === "v") {
       event.preventDefault();
-      pasteFrameRangeAtCurrentFrame();
+      if (copiedFrameRange) pasteFrameRangeAtCurrentFrame();
+      else if (copiedKeyframe) pasteCopiedKeyframe(cleanFrame);
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
+      if (removeSelectedTimelineItem()) return;
       if (current.frameCount > 1) {
         setSelectedKeyframe(null);
         setSelectedMarker(null);
@@ -1180,7 +1222,8 @@ function ArtTimelinePanel({
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
       const delta = event.key === "ArrowLeft" ? -1 : 1;
-      const nextFrame = Math.max(0, Math.min(current.frameCount - 1, cleanFrame + delta));
+      const currentFocusFrame = event.shiftKey ? cleanTimelineFrame(frameRangeFocus ?? cleanFrame) : cleanFrame;
+      const nextFrame = cleanTimelineFrame(currentFocusFrame + delta);
       if (event.shiftKey) selectFrameRangeTo(nextFrame);
       else previewFrame(nextFrame);
     }
@@ -1329,6 +1372,7 @@ function ArtTimelinePanel({
 
   function copySelectedKeyframe(): void {
     if (!selectedTimelineKeyframe) return;
+    setCopiedFrameRange(null);
     setCopiedKeyframe({
       targetId: selectedTimelineKeyframe.trackTargetId,
       frame: selectedTimelineKeyframe.keyframe.frame
@@ -1540,7 +1584,7 @@ function ArtTimelinePanel({
             min={1}
             max={1000}
             value={frameEditCount}
-            onChange={(event) => setFrameEditCount(Math.max(1, Math.min(1000, Math.round(Number(event.target.value) || 1))))}
+            onChange={(event) => setManualFrameRangeCount(Number(event.target.value))}
           />
         </label>
         <button type="button" onClick={() => applyTimelineFrameEdit(insertTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame)}>

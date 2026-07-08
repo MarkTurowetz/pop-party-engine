@@ -47,6 +47,23 @@ function cleanFrameDelta(value: unknown): number {
   return Math.max(1, Math.min(1000, Math.round(Number(value) || 1)));
 }
 
+export function timelineFrameRangeFromAnchor(
+  frameCount: number,
+  anchorFrame: number,
+  focusFrame: number
+): { startFrame: number; endFrame: number; frameCount: number } {
+  const cleanCount = cleanFrameCount(frameCount, 1);
+  const cleanAnchor = cleanFrame(anchorFrame, cleanCount);
+  const cleanFocus = cleanFrame(focusFrame, cleanCount);
+  const startFrame = Math.min(cleanAnchor, cleanFocus);
+  const endFrame = Math.max(cleanAnchor, cleanFocus);
+  return {
+    startFrame,
+    endFrame,
+    frameCount: endFrame - startFrame + 1
+  };
+}
+
 function cleanName(name: string, fallback: string): string {
   return String(name || "").trim().slice(0, 80) || fallback;
 }

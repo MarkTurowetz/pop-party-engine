@@ -22,11 +22,12 @@ import {
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineSegment,
+  timelineFrameRangeFromAnchor,
+  timelineSegmentsForArt,
   updateTimelineCommandAt,
   updateTimelineKeyframe,
   updateTimelineLabel,
-  updateTimelineSettings,
-  timelineSegmentsForArt
+  updateTimelineSettings
 } from "./artTimelineModel";
 
 describe("artTimelineModel", () => {
@@ -45,6 +46,12 @@ describe("artTimelineModel", () => {
     const second = addTimelineLabel({ ...first, frameCount: 20 }, 9, "appear");
     expect(second.labels).toEqual([{ name: "appear", frame: 9 }]);
     expect(removeTimelineLabel(second, "appear").labels).toEqual([]);
+  });
+
+  it("builds normalized timeline frame ranges from an anchor and focus", () => {
+    expect(timelineFrameRangeFromAnchor(20, 5, 8)).toEqual({ startFrame: 5, endFrame: 8, frameCount: 4 });
+    expect(timelineFrameRangeFromAnchor(20, 8, 5)).toEqual({ startFrame: 5, endFrame: 8, frameCount: 4 });
+    expect(timelineFrameRangeFromAnchor(20, -10, 99)).toEqual({ startFrame: 0, endFrame: 19, frameCount: 20 });
   });
 
   it("updates labels by name and keeps label names unique", () => {
