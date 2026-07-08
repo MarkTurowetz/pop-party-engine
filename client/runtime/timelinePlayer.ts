@@ -40,6 +40,11 @@ function defaultClearScheduled(id: number): void {
 
 const DEFAULT_MAX_COMMAND_REDIRECTS = 50;
 
+function cleanCommandDuration(value: unknown): number {
+  const next = Number(value);
+  return Number.isFinite(next) ? Math.max(0, next) : 0;
+}
+
 function isNumericValue(value: TimelinePropertyValue | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -147,6 +152,43 @@ export class TimelinePlayer {
     this.timerIds.add(timerId);
   }
 
+  private completeAfterDuration(duration: number, token: number, complete?: () => void): void {
+    if (typeof complete !== "function") return;
+    if (duration <= 0) {
+      complete();
+      return;
+    }
+    this.scheduleFrame(() => {
+      if (this.token !== token) return;
+      this.isPlaying = false;
+      complete();
+    }, duration);
+  }
+
+  private durationForFrameCommands(frame: number, commandCount = 0): number {
+    if (!this.timeline) return 0;
+    let duration = 0;
+    for (const command of this.timeline.commands.filter((entry) => entry.frame === frame)) {
+      if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target) {
+        if (commandCount + 1 > this.maxCommandRedirects) return duration;
+        if (command.type === "gotoAndPlay") {
+          duration = Math.max(
+            duration,
+            timelinePlaybackDuration(this.timeline, command.target, {
+              commandDuration: this.commandDuration || undefined,
+              maxCommandRedirects: this.maxCommandRedirects - commandCount - 1
+            })
+          );
+        } else {
+          duration = Math.max(duration, this.durationForFrameCommands(frameForTimelineLabel(this.timeline, command.target), commandCount + 1));
+        }
+        continue;
+      }
+      duration = Math.max(duration, cleanCommandDuration(this.commandDuration?.(command, { frame, elapsedMs: 0 })));
+    }
+    return Math.max(0, duration);
+  }
+
   applyFrame(frame: number): void {
     if (!this.timeline) return;
     this.currentFrame = Math.max(0, Math.min(Math.max(0, this.timeline.frameCount - 1), Math.round(frame)));
@@ -163,14 +205,13 @@ export class TimelinePlayer {
       options.complete?.();
       return 0;
     }
-    const duration = timelinePlaybackDuration(this.timeline, labelOrFrame, {
-      instant: true,
-      commandDuration: this.commandDuration || undefined,
-      maxCommandRedirects: this.maxCommandRedirects - commandCount
-    });
     const frame = frameForTimelineLabel(this.timeline, labelOrFrame);
+    const duration = this.durationForFrameCommands(frame, commandCount);
+    const stopToken = this.token;
     this.applyFrame(frame);
-    if (!this.runFrameCommands(frame, options.complete, commandCount)) options.complete?.();
+    if (!this.runFrameCommands(frame, options.complete, commandCount)) {
+      this.completeAfterDuration(duration, stopToken, options.complete);
+    }
     return duration;
   }
 
@@ -190,13 +231,15 @@ export class TimelinePlayer {
       commandDuration: this.commandDuration || undefined,
       maxCommandRedirects: this.maxCommandRedirects - commandCount
     });
+    const playToken = this.token;
     if (options.instant === true || segment.durationMs === 0) {
       this.applyFrame(segment.endFrame);
-      if (!this.runFrameCommands(segment.endFrame, options.complete, commandCount)) options.complete?.();
+      if (!this.runFrameCommands(segment.endFrame, options.complete, commandCount)) {
+        this.completeAfterDuration(duration, playToken, options.complete);
+      }
       return duration;
     }
     this.isPlaying = true;
-    const playToken = this.token;
     const frameDuration = 1000 / this.timeline.fps;
     this.applyFrame(segment.startFrame);
     const startRedirected = this.runFrameCommands(segment.startFrame, options.complete, commandCount);
@@ -208,8 +251,7 @@ export class TimelinePlayer {
         this.applyFrame(frame);
         const redirected = this.runFrameCommands(frame, options.complete, 0);
         if (!redirected && frame === segment.endFrame) {
-          this.isPlaying = false;
-          options.complete?.();
+          this.completeAfterDuration(duration - delay, playToken, options.complete);
         }
       }, delay);
     }

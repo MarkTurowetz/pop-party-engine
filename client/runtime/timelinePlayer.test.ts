@@ -264,6 +264,77 @@ describe("TimelinePlayer", () => {
     ).toBe(600);
   });
 
+  it("waits for non-redirect command durations before completing playback", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 1, type: "playComponent", target: "child", event: "pop" },
+        { frame: 2, type: "stop" }
+      ],
+      tracks: []
+    });
+    const commands: string[] = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      onCommand: (command) => commands.push(command.event || command.type),
+      commandDuration: (command) => (command.type === "playComponent" ? 500 : 0)
+    });
+
+    expect(player.gotoAndPlay("appear", { complete })).toBe(600);
+    vi.advanceTimersByTime(100);
+    expect(commands).toEqual(["pop"]);
+    expect(complete).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(500);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(player.isPlaying).toBe(false);
+  });
+
+  it("waits for non-redirect command durations before completing gotoAndStop", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "parked", frame: 2 }],
+      commands: [{ frame: 2, type: "playComponent", target: "child", event: "park-pop" }],
+      tracks: []
+    });
+    const commands: string[] = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      onCommand: (command) => commands.push(command.event || command.type),
+      commandDuration: (command) => (command.type === "playComponent" ? 300 : 0)
+    });
+
+    expect(player.gotoAndStop("parked", { complete })).toBe(300);
+    expect(commands).toEqual(["park-pop"]);
+    expect(complete).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(300);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores invalid stopped-frame command durations", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 3,
+      labels: [{ name: "parked", frame: 1 }],
+      commands: [{ frame: 1, type: "playComponent", target: "child", event: "bad-duration" }],
+      tracks: []
+    });
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      commandDuration: () => Number.NaN
+    });
+
+    expect(player.gotoAndStop("parked", { complete })).toBe(0);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
   it("redirects from the starting frame when a play command sits on a label", () => {
     const timeline = normalizeTimeline({
       fps: 10,
