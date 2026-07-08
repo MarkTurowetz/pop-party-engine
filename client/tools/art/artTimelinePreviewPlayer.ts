@@ -33,11 +33,11 @@ export function playArtTimelinePreview({
   let stopped = false;
   let activePlaybackCount = 1;
 
-  const nestedAnimationForCommand = (command: { type?: string; target?: string; event?: string }): { targetId: string; animation: string } | null => {
-    if (command.type !== "emit" && command.type !== "playComponent") return null;
+  const nestedAnimationForCommand = (command: { type?: string; target?: string; event?: string }): { targetId: string; animation: string; mode: "play" | "stop" } | null => {
+    if (command.type !== "emit" && command.type !== "playComponent" && command.type !== "stopComponent") return null;
     const targetId = String(command.target || "").trim();
     const animation = String(command.event || "").trim();
-    return targetId && animation ? { targetId, animation } : null;
+    return targetId && animation ? { targetId, animation, mode: command.type === "stopComponent" ? "stop" : "play" } : null;
   };
 
   const completePlayback = (): void => {
@@ -55,7 +55,7 @@ export function playArtTimelinePreview({
     onPreview(parentFrame, { ...latestParentOverrides, ...nestedOverrides });
   };
 
-  const playNestedTargetTimeline = (targetId: string, animation: string): void => {
+  const playNestedTargetTimeline = (targetId: string, animation: string, mode: "play" | "stop" = "play"): void => {
     if (!component || stopped) return;
     const target = findTimelineTargetComponent([component], targetId);
     const nestedTimeline = artTimelineOrDefault((target?.timeline || null) as TimelineDocument | null);
@@ -68,10 +68,14 @@ export function playArtTimelinePreview({
       },
       onCommand: (command) => {
         const nestedAnimation = nestedAnimationForCommand(command);
-        if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation);
+        if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
       }
     });
     childPlayers.push(childPlayer);
+    if (mode === "stop") {
+      childPlayer.gotoAndStop(animation);
+      return;
+    }
     activePlaybackCount += 1;
     childPlayer.gotoAndPlay(animation, { complete: completePlayback });
   };
@@ -81,7 +85,7 @@ export function playArtTimelinePreview({
     onFrame: (snapshot) => publishPreview(snapshot.frame, snapshot.targets),
     onCommand: (command) => {
       const nestedAnimation = nestedAnimationForCommand(command);
-      if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation);
+      if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
     }
   });
 

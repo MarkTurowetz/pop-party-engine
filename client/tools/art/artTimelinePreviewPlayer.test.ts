@@ -98,4 +98,45 @@ describe("playArtTimelinePreview", () => {
 
     expect(scales).toEqual([0.5, 0.5, 1]);
   });
+
+  it("stops nested component timelines at labels from stopComponent commands", () => {
+    const child: ArtComponent = {
+      id: "child",
+      kind: "shape",
+      timeline: {
+        fps: 10,
+        frameCount: 5,
+        labels: [
+          { name: "rex", frame: 1 },
+          { name: "stego", frame: 3 }
+        ],
+        commands: [],
+        tracks: [{ targetId: "child", keyframes: [{ frame: 1, props: { imageAssetId: "rex" } }, { frame: 3, props: { imageAssetId: "stego" } }] }]
+      }
+    };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const images: unknown[] = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      timeline: {
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 1, type: "stopComponent", target: "child", event: "stego" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (_frame, overrides) => {
+        if (overrides.child?.imageAssetId !== undefined) images.push(overrides.child.imageAssetId);
+      }
+    });
+
+    vi.advanceTimersByTime(200);
+    playback.stop();
+
+    expect(images).toEqual(["stego", "stego"]);
+  });
 });

@@ -113,6 +113,39 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(played).toEqual(["pop"]);
   });
 
+  it("routes parent timeline stopComponent commands to targeted descendant timeline labels", () => {
+    const stopped: unknown[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      handleTimelineCommand: (detail: unknown) => number;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      stopAt: (animation: string) => number;
+      play: (animation: string) => number;
+    };
+    parent.component = { id: "parent" };
+    child.component = { id: "dino-mask" };
+    child.children = new Map();
+    child.stopAt = (animation) => {
+      stopped.push(animation);
+      return 0;
+    };
+    child.play = () => 999;
+    parent.children = new Map([["dino-mask", child]]);
+
+    const duration = parent.handleTimelineCommand({
+      command: { type: "stopComponent", frame: 12, target: "dino-mask", event: "stego" },
+      eventName: "stopComponent",
+      visual: {}
+    });
+
+    expect(duration).toBe(0);
+    expect(stopped).toEqual(["stego"]);
+  });
+
   it("plays renderer root timelines before falling back to component timelines", () => {
     const snapshots: unknown[] = [];
     const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {

@@ -182,6 +182,10 @@ function timelineCommandLabel(command: TimelineCommand): string {
     if (command.target && command.event) return `play ${command.event}`;
     return "play component";
   }
+  if (command.type === "stopComponent") {
+    if (command.target && command.event) return `stop at ${command.event}`;
+    return "stop component";
+  }
   if (command.type === "emit") return command.event ? `emit ${command.event}` : "emit";
   return command.type;
 }
@@ -206,7 +210,7 @@ function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: T
 }
 
 function timelineCommandUsesComponentTarget(type: string): boolean {
-  return type === "emit" || type === "playComponent";
+  return type === "emit" || type === "playComponent" || type === "stopComponent";
 }
 
 function timelineCommandTargetLabel(type: string): string {
@@ -218,13 +222,13 @@ function timelineCommandTargetPlaceholder(type: string, fallbackComponentId = ""
 }
 
 function timelineCommandEventLabel(type: string): string {
-  if (type === "playComponent") return "Animation Label";
+  if (type === "playComponent" || type === "stopComponent") return "Animation Label";
   if (type === "emit") return "Event";
   return "Event";
 }
 
 function timelineCommandEventPlaceholder(type: string): string {
-  if (type === "playComponent") return "appear";
+  if (type === "playComponent" || type === "stopComponent") return "appear";
   if (type === "emit") return "pop-name";
   return "";
 }
@@ -1450,6 +1454,7 @@ function ArtTimelinePanel({
             <option value="gotoAndPlay">Go To And Play</option>
             <option value="gotoAndStop">Go To And Stop</option>
             <option value="playComponent">Play Component Timeline</option>
+            <option value="stopComponent">Stop Component Timeline</option>
             <option value="emit">Emit Event</option>
           </select>
         </label>
@@ -1457,7 +1462,7 @@ function ArtTimelinePanel({
           <span>{commandTargetLabel}</span>
           <input
             type="text"
-            list={commandType === "emit" ? "art-timeline-target-components" : "art-timeline-labels"}
+            list={timelineCommandUsesComponentTarget(commandType) ? "art-timeline-target-components" : "art-timeline-labels"}
             value={commandTarget}
             placeholder={commandTargetPlaceholder}
             onChange={(event) => setCommandTarget(event.target.value)}
@@ -1467,7 +1472,7 @@ function ArtTimelinePanel({
           <span>{commandEventLabel}</span>
           <input
             type="text"
-            list={commandType === "playComponent" ? "art-timeline-command-target-labels" : undefined}
+            list={commandType === "playComponent" || commandType === "stopComponent" ? "art-timeline-command-target-labels" : undefined}
             value={commandEvent}
             placeholder={commandEventPlaceholder}
             onChange={(event) => setCommandEvent(event.target.value)}
@@ -1615,6 +1620,7 @@ function ArtTimelinePanel({
                   <option value="gotoAndPlay">Go To And Play</option>
                   <option value="gotoAndStop">Go To And Stop</option>
                   <option value="playComponent">Play Component Timeline</option>
+                  <option value="stopComponent">Stop Component Timeline</option>
                   <option value="emit">Emit Event</option>
                 </select>
               </label>
@@ -1641,7 +1647,7 @@ function ArtTimelinePanel({
                 <span>{timelineCommandEventLabel(selectedTimelineMarker.command.type)}</span>
                 <input
                   type="text"
-                  list={selectedTimelineMarker.command.type === "playComponent" ? "art-timeline-selected-command-target-labels" : undefined}
+                  list={selectedTimelineMarker.command.type === "playComponent" || selectedTimelineMarker.command.type === "stopComponent" ? "art-timeline-selected-command-target-labels" : undefined}
                   value={selectedTimelineMarker.command.event || ""}
                   onChange={(event) => updateSelectedCommand({ event: event.target.value })}
                 />

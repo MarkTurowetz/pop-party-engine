@@ -361,11 +361,12 @@ class ArtObjectView {
 
   handleTimelineCommand(detail: TimelineCommandEventDetail): number {
     const command = detail.command || {};
-    if (command.type !== "emit" && command.type !== "playComponent") return 0;
+    if (command.type !== "emit" && command.type !== "playComponent" && command.type !== "stopComponent") return 0;
     const targetId = String(command.target || "").trim();
     const animation = String(command.event || "").trim();
     if (!targetId || !animation) return 0;
-    return this.viewForComponentId(targetId)?.play(animation) || 0;
+    const target = this.viewForComponentId(targetId);
+    return command.type === "stopComponent" ? target?.stopAt(animation) || 0 : target?.play(animation) || 0;
   }
 
   update(component: Component, canvas: CanvasSize, layer: Dict = {}): void {
@@ -505,11 +506,11 @@ class ArtObjectTreeRenderer {
 
   playTimelineCommand(command: { type?: unknown; target?: unknown; event?: unknown }): number {
     const commandType = String(command.type || "");
-    if (commandType !== "emit" && commandType !== "playComponent") return 0;
+    if (commandType !== "emit" && commandType !== "playComponent" && commandType !== "stopComponent") return 0;
     const targetId = String(command.target || "").trim();
     const animation = String(command.event || "").trim();
     if (!targetId || !animation) return 0;
-    return this.playComponent(targetId, animation);
+    return commandType === "stopComponent" ? this.stopAtComponent(targetId, animation) : this.playComponent(targetId, animation);
   }
 
   applyTimelineSnapshotToViews(snapshot: TimelineFrameSnapshot): void {
