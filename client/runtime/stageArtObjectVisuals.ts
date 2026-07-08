@@ -252,6 +252,39 @@ function distributedContainerChildren(component: Component, children: Component[
   });
 }
 
+type TimelineComponentCommandTarget = {
+  play?: (animation: string, options?: Dict) => number;
+  stopAt?: (animation: string, options?: Dict) => number;
+  durationForAnimation?: (animation: string) => number;
+};
+
+type TimelineComponentCommandHost = {
+  viewForComponentId: (componentId: string) => TimelineComponentCommandTarget | null;
+};
+
+function timelineComponentCommandPayload(command: TimelineCommand | { type?: unknown; target?: unknown; event?: unknown }): { targetId: string; animation: string; stop: boolean } | null {
+  const commandType = String(command?.type || "");
+  if (commandType !== "emit" && commandType !== "playComponent" && commandType !== "stopComponent") return null;
+  const targetId = String(command.target || "").trim();
+  const animation = String(command.event || "").trim();
+  if (!targetId || !animation) return null;
+  return { targetId, animation, stop: commandType === "stopComponent" };
+}
+
+function playTimelineComponentCommand(host: TimelineComponentCommandHost, command: TimelineCommand | { type?: unknown; target?: unknown; event?: unknown }, options: Dict = {}): number {
+  const payload = timelineComponentCommandPayload(command);
+  if (!payload) return 0;
+  const target = host.viewForComponentId(payload.targetId);
+  if (!target) return 0;
+  return payload.stop ? target.stopAt?.(payload.animation, options) || 0 : target.play?.(payload.animation, options) || 0;
+}
+
+function timelineComponentCommandDuration(host: TimelineComponentCommandHost, command: TimelineCommand | { type?: unknown; target?: unknown; event?: unknown }): number {
+  const payload = timelineComponentCommandPayload(command);
+  if (!payload || payload.stop) return 0;
+  return host.viewForComponentId(payload.targetId)?.durationForAnimation?.(payload.animation) || 0;
+}
+
 class ArtObjectView {
   document: Document;
   visualAnimation: unknown;
@@ -378,22 +411,11 @@ class ArtObjectView {
   }
 
   handleTimelineCommand(detail: TimelineCommandEventDetail): number {
-    const command = detail.command || {};
-    if (command.type !== "emit" && command.type !== "playComponent" && command.type !== "stopComponent") return 0;
-    const targetId = String(command.target || "").trim();
-    const animation = String(command.event || "").trim();
-    if (!targetId || !animation) return 0;
-    const target = this.viewForComponentId(targetId);
-    return command.type === "stopComponent" ? target?.stopAt(animation) || 0 : target?.play(animation) || 0;
+    return playTimelineComponentCommand(this, detail.command || {});
   }
 
   timelineCommandDuration(command: TimelineCommand): number {
-    if (command.type !== "emit" && command.type !== "playComponent" && command.type !== "stopComponent") return 0;
-    const targetId = String(command.target || "").trim();
-    const animation = String(command.event || "").trim();
-    if (!targetId || !animation) return 0;
-    if (command.type === "stopComponent") return 0;
-    return this.viewForComponentId(targetId)?.durationForAnimation(animation) || 0;
+    return timelineComponentCommandDuration(this, command);
   }
 
   durationForAnimation(animation: string): number {
@@ -547,12 +569,7 @@ class ArtObjectTreeRenderer {
   }
 
   playTimelineCommand(command: { type?: unknown; target?: unknown; event?: unknown }): number {
-    const commandType = String(command.type || "");
-    if (commandType !== "emit" && commandType !== "playComponent" && commandType !== "stopComponent") return 0;
-    const targetId = String(command.target || "").trim();
-    const animation = String(command.event || "").trim();
-    if (!targetId || !animation) return 0;
-    return commandType === "stopComponent" ? this.stopAtComponent(targetId, animation) : this.playComponent(targetId, animation);
+    return playTimelineComponentCommand(this, command);
   }
 
   applyTimelineSnapshotToViews(snapshot: TimelineFrameSnapshot): void {
@@ -637,12 +654,7 @@ class ArtObjectTreeRenderer {
   }
 
   timelineCommandDuration(command: { type?: unknown; target?: unknown; event?: unknown }): number {
-    const commandType = String(command.type || "");
-    if (commandType !== "emit" && commandType !== "playComponent" && commandType !== "stopComponent") return 0;
-    const targetId = String(command.target || "").trim();
-    const animation = String(command.event || "").trim();
-    if (!targetId || !animation || commandType === "stopComponent") return 0;
-    return this.viewForComponentId(targetId)?.durationForAnimation(animation) || 0;
+    return timelineComponentCommandDuration(this, command);
   }
 
   stopAtAll(animation: string, options: Dict = {}): number {

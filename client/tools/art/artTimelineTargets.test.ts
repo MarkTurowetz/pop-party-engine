@@ -98,4 +98,31 @@ describe("artTimelineTargets", () => {
       detail: "text / answer-text / player/bubble-slot/answer-text"
     });
   });
+
+  it("expands referenced composition children without synthetic root prefixes", () => {
+    const referenceTree = {
+      id: "composition",
+      name: "Composition",
+      kind: "container",
+      children: [{ id: "bubble-slot", name: "Bubble Slot", kind: "reference", artCompositionId: "bubble" }]
+    } as ArtComponent;
+    const bubble = {
+      id: "bubble",
+      name: "Bubble",
+      components: [{ id: "answer-text", name: "Answer Text", kind: "text" }]
+    } as ArtComposition;
+    const resolveReference = (component: ArtComponent) => (component.artCompositionId === "bubble" ? bubble : null);
+
+    expect(
+      timelineTargetOptionsFor(referenceTree, {
+        includeRoot: false,
+        useScopedIds: true,
+        scopeRootPath: false,
+        resolveReference
+      }).map((option) => option.id)
+    ).toEqual(["bubble-slot", "bubble-slot/answer-text"]);
+    expect(findTimelineTargetComponent([referenceTree], "bubble-slot/answer-text", { scopeRootPath: false, resolveReference })?.name).toBe(
+      "Answer Text"
+    );
+  });
 });

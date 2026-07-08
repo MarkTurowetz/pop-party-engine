@@ -141,6 +141,41 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(played).toEqual(["pop"]);
   });
 
+  it("routes parent timeline playComponent commands by scoped component path", () => {
+    const played: unknown[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      componentPath: string[];
+      children: Map<string, unknown>;
+      handleTimelineCommand: (detail: unknown) => number;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      componentPath: string[];
+      children: Map<string, unknown>;
+      play: (animation: string) => number;
+    };
+    parent.component = { id: "player" };
+    parent.componentPath = ["player"];
+    child.component = { id: "answer-text" };
+    child.componentPath = ["player", "answer-bubble-slot", "answer-text"];
+    child.children = new Map();
+    child.play = (animation) => {
+      played.push(animation);
+      return 300;
+    };
+    parent.children = new Map([["answer-text", child]]);
+
+    const duration = parent.handleTimelineCommand({
+      command: { type: "playComponent", frame: 12, target: "player/answer-bubble-slot/answer-text", event: "pulse" },
+      eventName: "playComponent",
+      visual: {}
+    });
+
+    expect(duration).toBe(300);
+    expect(played).toEqual(["pulse"]);
+  });
+
   it("routes nested timeline commands relative to the nested component view", () => {
     const played: unknown[] = [];
     const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
@@ -305,6 +340,57 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
 
     expect(duration).toBe(600);
     expect(played).toEqual(["pop"]);
+  });
+
+  it("includes scoped component timeline command durations in renderer root playback", () => {
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      views: Map<string, unknown>;
+      rootTimelinePlayer: unknown;
+      updateRootTimeline: (timeline: unknown) => void;
+      playAll: (animation: string, options?: unknown) => number;
+    };
+    const played: unknown[] = [];
+    const player = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      componentPath: string[];
+      children: Map<string, unknown>;
+    };
+    const bubbleText = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      componentPath: string[];
+      children: Map<string, unknown>;
+      durationForAnimation: (animation: string) => number;
+      play: (animation: string) => number;
+    };
+    player.component = { id: "player" };
+    player.componentPath = ["player"];
+    bubbleText.component = { id: "answer-text" };
+    bubbleText.componentPath = ["player", "answer-bubble-slot", "answer-text"];
+    bubbleText.children = new Map();
+    bubbleText.durationForAnimation = (animation) => (animation === "pulse" ? 450 : 0);
+    bubbleText.play = (animation) => {
+      played.push(animation);
+      return bubbleText.durationForAnimation(animation);
+    };
+    player.children = new Map([["answer-text", bubbleText]]);
+    renderer.views = new Map([["player", player]]);
+    renderer.rootTimelinePlayer = null;
+    renderer.updateRootTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 1, type: "playComponent", target: "player/answer-bubble-slot/answer-text", event: "pulse" },
+        { frame: 2, type: "stop" }
+      ],
+      tracks: []
+    });
+
+    const duration = renderer.playAll("appear", {});
+    vi.advanceTimersByTime(100);
+
+    expect(duration).toBe(550);
+    expect(played).toEqual(["pulse"]);
   });
 
   it("ignores timeline emit commands without both a target and animation event", () => {
