@@ -62,6 +62,38 @@ function uniqueLabelName(timeline: TimelineDocument, name: string, fallback: str
   return `${baseName} ${Date.now().toString(36)}`;
 }
 
+function slugForId(value: string, fallback: string): string {
+  return cleanName(value, fallback)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64) || fallback;
+}
+
+function uniqueCommandId(
+  timeline: Pick<TimelineDocument, "commands">,
+  command: Pick<TimelineCommand, "frame" | "type" | "target" | "event">,
+  fallback = "command"
+): string {
+  const existingIds = new Set(timeline.commands.map((entry) => entry.id).filter(Boolean));
+  const targetSlug = command.target ? slugForId(command.target, "target") : "";
+  const eventSlug = command.event ? slugForId(command.event, "event") : "";
+  const suffix = [targetSlug, eventSlug].filter(Boolean).join("-");
+  const base = [
+    slugForId(command.type || fallback, fallback),
+    Math.max(0, Math.round(Number(command.frame) || 0)),
+    suffix
+  ]
+    .filter((entry) => entry !== "")
+    .join("-");
+  if (!existingIds.has(base)) return base;
+  for (let index = 2; index < 1000; index += 1) {
+    const candidate = `${base}-${index}`;
+    if (!existingIds.has(candidate)) return candidate;
+  }
+  return `${base}-${timeline.commands.length + 1}`;
+}
+
 function sortTimeline(timeline: TimelineDocument): TimelineDocument {
   return {
     ...timeline,
@@ -207,17 +239,18 @@ export function pasteTimelineFrameRange(
     seededTimeline.labels.push(copiedLabel);
     return copiedLabel;
   });
-  const copiedCommands = (clipboard.commands || []).map((command, index) => {
+  const copiedCommands = (clipboard.commands || []).reduce<TimelineCommand[]>((commands, command) => {
     const target = command.target && labelNameBySource.has(command.target) ? labelNameBySource.get(command.target) : command.target;
     const copiedCommand: TimelineCommand = {
       ...command,
-      id: `${command.id || command.type || "command"}-${destinationFrame}-${index}-${Date.now().toString(36)}`,
       frame: cleanFrame(destinationFrame + command.frame, withSpace.frameCount)
     };
     if (target) copiedCommand.target = target;
     else delete copiedCommand.target;
-    return copiedCommand;
-  });
+    copiedCommand.id = uniqueCommandId({ commands: [...withSpace.commands, ...commands] }, copiedCommand);
+    commands.push(copiedCommand);
+    return commands;
+  }, []);
   const copiedTracks = (clipboard.tracks || []).map((track) => ({
     ...track,
     keyframes: track.keyframes.map((keyframe) => ({
@@ -343,17 +376,18 @@ export function duplicateTimelineSegment(
   });
   const copiedCommands = current.commands
     .filter((command) => command.frame >= segment.startFrame && command.frame <= segment.endFrame)
-    .map((command, index) => {
+    .reduce<TimelineCommand[]>((commands, command) => {
       const target = command.target && labelNameBySource.has(command.target) ? labelNameBySource.get(command.target) : command.target;
       const nextCommand: TimelineCommand = {
         ...command,
-        id: `${command.type}-${destinationStartFrame}-${index}-${Date.now().toString(36)}`,
         frame: destinationStartFrame + (command.frame - segment.startFrame)
       };
       if (target) nextCommand.target = target;
       else delete nextCommand.target;
-      return nextCommand;
-    });
+      nextCommand.id = uniqueCommandId({ commands: [...current.commands, ...commands] }, nextCommand);
+      commands.push(nextCommand);
+      return commands;
+    }, []);
   const copiedTracks = current.tracks.map((track) => {
     const copiedKeyframes = track.keyframes
       .filter((keyframe) => keyframe.frame >= segment.startFrame && keyframe.frame <= segment.endFrame)
@@ -393,7 +427,6 @@ export function addTimelineCommand(
   const current = artTimelineOrDefault(timeline);
   const type = cleanName(String(command.type || ""), "stop");
   const nextCommand: TimelineCommand = {
-    id: `${type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     frame: cleanFrame(frame, current.frameCount),
     type
   };
@@ -401,6 +434,7 @@ export function addTimelineCommand(
   const event = cleanName(String(command.event || ""), "");
   if (target) nextCommand.target = target;
   if (event) nextCommand.event = event;
+  nextCommand.id = uniqueCommandId(current, nextCommand);
   return sortTimeline({ ...current, commands: [...current.commands, nextCommand] });
 }
 

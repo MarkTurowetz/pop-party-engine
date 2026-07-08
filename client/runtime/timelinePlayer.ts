@@ -137,6 +137,15 @@ export class TimelinePlayer {
     this.timerIds.clear();
   }
 
+  private scheduleFrame(callback: () => void, delay: number): void {
+    let timerId = 0;
+    timerId = this.schedule(() => {
+      this.timerIds.delete(timerId);
+      callback();
+    }, delay);
+    this.timerIds.add(timerId);
+  }
+
   applyFrame(frame: number): void {
     if (!this.timeline) return;
     this.currentFrame = Math.max(0, Math.min(Math.max(0, this.timeline.frameCount - 1), Math.round(frame)));
@@ -193,7 +202,7 @@ export class TimelinePlayer {
     if (startRedirected) return duration;
     for (let frame = segment.startFrame + 1; frame <= segment.endFrame; frame += 1) {
       const delay = (frame - segment.startFrame) * frameDuration;
-      const timerId = this.schedule(() => {
+      this.scheduleFrame(() => {
         if (this.token !== playToken) return;
         this.applyFrame(frame);
         const redirected = this.runFrameCommands(frame, options.complete, 0);
@@ -202,7 +211,6 @@ export class TimelinePlayer {
           options.complete?.();
         }
       }, delay);
-      this.timerIds.add(timerId);
     }
     return duration;
   }

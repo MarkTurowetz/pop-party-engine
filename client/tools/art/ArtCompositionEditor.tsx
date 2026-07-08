@@ -127,7 +127,7 @@ type LayerDropTarget = {
   id: string;
   placement: LayerDropPlacement;
 };
-type TimelineMarkerSelection = { kind: "label"; name: string } | { kind: "command"; index: number };
+type TimelineMarkerSelection = { kind: "label"; name: string } | { kind: "command"; index: number; commandId?: string };
 type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
@@ -240,6 +240,16 @@ function findLastTimelineCommandIndex(timeline: TimelineDocument, predicate: (co
     if (predicate(timeline.commands[index])) return index;
   }
   return -1;
+}
+
+function commandMarkerSelection(command: TimelineCommand, index: number): TimelineMarkerSelection {
+  return { kind: "command", index, commandId: command.id };
+}
+
+function isCommandMarkerSelected(selection: TimelineMarkerSelection | null, command: TimelineCommand, index: number): boolean {
+  if (selection?.kind !== "command") return false;
+  if (selection.commandId && command.id) return selection.commandId === command.id;
+  return selection.index === index;
 }
 
 function timelineCommandFrameOrder(timeline: TimelineDocument, index: number): { position: number; total: number } {
@@ -953,8 +963,10 @@ function ArtTimelinePanel({
       const label = current.labels.find((item) => item.name === selectedMarker.name);
       return label ? { kind: "label" as const, label } : null;
     }
-    const command = current.commands[selectedMarker.index];
-    return command ? { kind: "command" as const, command, index: selectedMarker.index } : null;
+    const idIndex = selectedMarker.commandId ? current.commands.findIndex((command) => command.id === selectedMarker.commandId) : -1;
+    const index = idIndex >= 0 ? idIndex : selectedMarker.index;
+    const command = current.commands[index];
+    return command ? { kind: "command" as const, command, index } : null;
   }, [current, selectedMarker]);
   const visibleTimelineFrameCount = Math.min(current.frameCount, TIMELINE_VISIBLE_FRAME_LIMIT);
   const maxFrameWindowStart = Math.max(0, current.frameCount - visibleTimelineFrameCount);
@@ -1178,7 +1190,7 @@ function ArtTimelinePanel({
     const nextTimeline = updateTimelineCommandAt(current, selectedTimelineMarker.index, { frame: normalizedFrame });
     onChange(nextTimeline);
     const nextIndex = findTimelineCommandIndex(nextTimeline, selectedTimelineMarker.command, selectedTimelineMarker.index);
-    setSelectedMarker({ kind: "command", index: nextIndex });
+    setSelectedMarker(commandMarkerSelection(nextTimeline.commands[nextIndex], nextIndex));
     previewFrame(normalizedFrame);
   }
 
@@ -1195,7 +1207,7 @@ function ArtTimelinePanel({
     const nextTimeline = updateTimelineCommandAt(current, selectedTimelineMarker.index, patch);
     onChange(nextTimeline);
     const nextIndex = findTimelineCommandIndex(nextTimeline, selectedTimelineMarker.command, selectedTimelineMarker.index);
-    setSelectedMarker({ kind: "command", index: nextIndex });
+    setSelectedMarker(commandMarkerSelection(nextTimeline.commands[nextIndex], nextIndex));
   }
 
   function moveCommand(index: number, direction: -1 | 1): void {
@@ -1205,7 +1217,7 @@ function ArtTimelinePanel({
     const nextIndex = index + direction;
     onChange(nextTimeline);
     setSelectedKeyframe(null);
-    setSelectedMarker({ kind: "command", index: nextIndex });
+    setSelectedMarker(commandMarkerSelection(nextTimeline.commands[nextIndex], nextIndex));
     previewFrame(command.frame);
   }
 
@@ -1214,9 +1226,10 @@ function ArtTimelinePanel({
       previewFrame(commandFrame);
       return;
     }
-    const selectedCommandIndex = selectedMarker?.kind === "command" ? commands.findIndex(({ index }) => index === selectedMarker.index) : -1;
+    const selectedCommandIndex =
+      selectedMarker?.kind === "command" ? commands.findIndex(({ command, index }) => isCommandMarkerSelected(selectedMarker, command, index)) : -1;
     const nextCommand = commands[(selectedCommandIndex + 1) % commands.length] || commands[0];
-    selectTimelineMarker({ kind: "command", index: nextCommand.index }, commandFrame);
+    selectTimelineMarker(commandMarkerSelection(nextCommand.command, nextCommand.index), commandFrame);
   }
 
   function startTimelineDrag(event: ReactDragEvent<HTMLElement>, item: TimelineDragItem): void {
@@ -1248,7 +1261,7 @@ function ArtTimelinePanel({
       const nextIndex = findTimelineCommandIndex(nextTimeline, timelineDragItem.command, timelineDragItem.index);
       onChange(nextTimeline);
       setSelectedKeyframe(null);
-      setSelectedMarker({ kind: "command", index: nextIndex });
+      setSelectedMarker(commandMarkerSelection(nextTimeline.commands[nextIndex], nextIndex));
       previewFrame(normalizedFrame);
     } else {
       const nextTimeline = updateTimelineKeyframe(current, timelineDragItem.targetId, timelineDragItem.frame, { frame: normalizedFrame });
@@ -1630,7 +1643,9 @@ function ArtTimelinePanel({
                 {visibleTimelineFrames.map((frameIndex) => {
                   const commands = timelineCommandsAtFrame(current, frameIndex);
                   const selectedFrameCommand =
-                    selectedMarker?.kind === "command" ? commands.find(({ index: commandIndex }) => commandIndex === selectedMarker.index) : undefined;
+                    selectedMarker?.kind === "command"
+                      ? commands.find(({ command, index: commandIndex }) => isCommandMarkerSelected(selectedMarker, command, commandIndex))
+                      : undefined;
                   const dragCommand = selectedFrameCommand || commands[0];
                   return (
                     <button
@@ -1641,7 +1656,7 @@ function ArtTimelinePanel({
                       data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                       data-art-timeline-has-command={commands.length ? "true" : "false"}
                       data-art-timeline-marker-selected={
-                        commands.some(({ index: commandIndex }) => selectedMarker?.kind === "command" && selectedMarker.index === commandIndex) ? "true" : "false"
+                        commands.some(({ command, index: commandIndex }) => isCommandMarkerSelected(selectedMarker, command, commandIndex)) ? "true" : "false"
                       }
                       data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                       draggable={commands.length > 0}
@@ -1825,7 +1840,7 @@ function ArtTimelinePanel({
             );
             onChange(nextTimeline);
             setSelectedKeyframe(null);
-            if (selectedCommandIndex >= 0) setSelectedMarker({ kind: "command", index: selectedCommandIndex });
+            if (selectedCommandIndex >= 0) setSelectedMarker(commandMarkerSelection(nextTimeline.commands[selectedCommandIndex], selectedCommandIndex));
             setCommandEvent("");
             if (commandType === "stop") setCommandTarget("");
           }}
@@ -1896,8 +1911,8 @@ function ArtTimelinePanel({
                   <li key={command.id || `${command.type}-${command.frame}-${index}`}>
                     <button
                       type="button"
-                      aria-current={selectedMarker?.kind === "command" && selectedMarker.index === index ? "true" : undefined}
-                      onClick={() => selectTimelineMarker({ kind: "command", index }, command.frame)}
+                      aria-current={isCommandMarkerSelected(selectedMarker, command, index) ? "true" : undefined}
+                      onClick={() => selectTimelineMarker(commandMarkerSelection(command, index), command.frame)}
                     >
                       <span>{command.type}</span>
                     </button>
@@ -1917,7 +1932,7 @@ function ArtTimelinePanel({
                       type="button"
                       onClick={() => {
                         onChange(removeTimelineCommandAt(current, index));
-                        if (selectedMarker?.kind === "command" && selectedMarker.index === index) setSelectedMarker(null);
+                        if (isCommandMarkerSelected(selectedMarker, command, index)) setSelectedMarker(null);
                       }}
                     >
                       Remove

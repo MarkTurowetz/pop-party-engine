@@ -66,6 +66,25 @@ describe("TimelinePlayer", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
+  it("clears scheduled frame handles as timeline playback advances", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [{ frame: 3, type: "stop" }],
+      tracks: []
+    });
+    const player = new TimelinePlayer({ timeline });
+
+    player.gotoAndPlay("appear");
+    expect(player.timerIds.size).toBe(3);
+
+    vi.advanceTimersByTime(100);
+    expect(player.timerIds.size).toBe(2);
+    vi.advanceTimersByTime(200);
+    expect(player.timerIds.size).toBe(0);
+  });
+
   it("gotoAndStop applies the labeled frame immediately", () => {
     const timeline = normalizeTimeline({
       fps: 12,

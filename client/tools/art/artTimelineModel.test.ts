@@ -101,9 +101,9 @@ describe("artTimelineModel", () => {
       { name: "bounce settle", frame: 10 }
     ]);
     expect(duplicated.commands.slice(3)).toEqual([
-      expect.objectContaining({ frame: 8, type: "emit", target: "card", event: "started" }),
-      expect.objectContaining({ frame: 9, type: "gotoAndPlay", target: "bounce settle" }),
-      expect.objectContaining({ frame: 12, type: "stop" })
+      expect.objectContaining({ id: "emit-8-card-started", frame: 8, type: "emit", target: "card", event: "started" }),
+      expect.objectContaining({ id: "gotoandplay-9-bounce-settle", frame: 9, type: "gotoAndPlay", target: "bounce settle" }),
+      expect.objectContaining({ id: "stop-12", frame: 12, type: "stop" })
     ]);
     expect(duplicated.tracks[0].keyframes.map((keyframe) => ({ frame: keyframe.frame, props: keyframe.props }))).toEqual([
       { frame: 1, props: { scale: 0.5 } },
@@ -142,8 +142,23 @@ describe("artTimelineModel", () => {
       event: "ignored"
     });
     const withEmit = addTimelineCommand(timeline, 8, { type: "emit", event: "pop-name" });
-    expect(withEmit.commands[0]).toMatchObject({ frame: 4, type: "gotoAndPlay", target: "appear", event: "ignored" });
-    expect(withEmit.commands[1]).toMatchObject({ frame: 8, type: "emit", event: "pop-name" });
+    expect(withEmit.commands[0]).toMatchObject({
+      id: "gotoandplay-4-appear-ignored",
+      frame: 4,
+      type: "gotoAndPlay",
+      target: "appear",
+      event: "ignored"
+    });
+    expect(withEmit.commands[1]).toMatchObject({ id: "emit-8-pop-name", frame: 8, type: "emit", event: "pop-name" });
+  });
+
+  it("generates unique deterministic command ids for repeated timeline commands", () => {
+    const timeline = addTimelineCommand({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, 4, {
+      type: "stop"
+    });
+    const withDuplicate = addTimelineCommand(timeline, 4, { type: "stop" });
+
+    expect(withDuplicate.commands.map((command) => command.id)).toEqual(["stop-4", "stop-4-2"]);
   });
 
   it("preserves authored command order within a frame", () => {
@@ -274,12 +289,12 @@ describe("artTimelineModel", () => {
       { name: "settle 2", frame: 10 },
       { name: "later", frame: 13 }
     ]);
-    expect(pasted.commands.map((command) => ({ frame: command.frame, type: command.type, target: command.target }))).toEqual([
-      { frame: 3, type: "gotoAndPlay", target: "settle" },
-      { frame: 5, type: "stop", target: undefined },
-      { frame: 9, type: "gotoAndPlay", target: "settle 2" },
-      { frame: 11, type: "stop", target: undefined },
-      { frame: 14, type: "stop", target: undefined }
+    expect(pasted.commands.map((command) => ({ id: command.id, frame: command.frame, type: command.type, target: command.target }))).toEqual([
+      { id: "jump", frame: 3, type: "gotoAndPlay", target: "settle" },
+      { id: "stop", frame: 5, type: "stop", target: undefined },
+      { id: "gotoandplay-9-settle-2", frame: 9, type: "gotoAndPlay", target: "settle 2" },
+      { id: "stop-11", frame: 11, type: "stop", target: undefined },
+      { id: "later-stop", frame: 14, type: "stop", target: undefined }
     ]);
     expect(pasted.tracks[0].keyframes.map((keyframe) => ({ frame: keyframe.frame, props: keyframe.props }))).toEqual([
       { frame: 2, props: { scale: 0.4 } },
