@@ -30,7 +30,6 @@ import {
   addTimelineLabel,
   addTimelinePropertyKeyframe,
   addTransformKeyframe,
-  artTimelineOrDefault,
   copyTimelineFrameRange,
   copyTimelineKeyframe,
   createTimelineSegment,
