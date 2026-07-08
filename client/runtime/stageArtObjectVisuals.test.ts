@@ -141,6 +141,37 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(played).toEqual(["pop"]);
   });
 
+  it("routes nested timeline commands relative to the nested component view", () => {
+    const played: unknown[] = [];
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      handleTimelineCommand: (detail: unknown) => number;
+    };
+    const label = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      play: (animation: string) => number;
+    };
+    child.component = { id: "child" };
+    label.component = { id: "label" };
+    label.children = new Map();
+    label.play = (animation) => {
+      played.push(animation);
+      return 180;
+    };
+    child.children = new Map([["label", label]]);
+
+    const duration = child.handleTimelineCommand({
+      command: { type: "playComponent", frame: 4, target: "label", event: "flash" },
+      eventName: "playComponent",
+      visual: {}
+    });
+
+    expect(duration).toBe(180);
+    expect(played).toEqual(["flash"]);
+  });
+
   it("routes parent timeline stopComponent commands to targeted descendant timeline labels", () => {
     const stopped: unknown[] = [];
     const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
@@ -172,6 +203,28 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
 
     expect(duration).toBe(0);
     expect(stopped).toEqual(["stego"]);
+  });
+
+  it("calculates nested timeline command duration relative to the nested component view", () => {
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      timelineCommandDuration: (command: unknown) => number;
+    };
+    const label = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      durationForAnimation: (animation: string) => number;
+    };
+    child.component = { id: "child" };
+    label.component = { id: "label" };
+    label.children = new Map();
+    label.durationForAnimation = (animation) => (animation === "flash" ? 420 : 0);
+    child.children = new Map([["label", label]]);
+
+    const duration = child.timelineCommandDuration({ type: "playComponent", frame: 4, target: "label", event: "flash" });
+
+    expect(duration).toBe(420);
   });
 
   it("plays renderer root timelines before falling back to component timelines", () => {

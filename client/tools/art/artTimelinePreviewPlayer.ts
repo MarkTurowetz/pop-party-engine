@@ -1,8 +1,8 @@
 import { frameForTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument, type TimelineProperties } from "../../../shared/timeline-model";
 import { TimelinePlayer } from "../../runtime/timelinePlayer";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
+import { artComponentTargetPathId, findArtComponentTargetPath } from "../shared/artComponentTargets";
 import { artTimelineOrDefault } from "./artTimelineModel";
-import { findTimelineTargetComponent } from "./artTimelineTargets";
 
 export type TimelinePreviewOverrides = Record<string, TimelineProperties>;
 
@@ -27,6 +27,18 @@ export interface ArtTimelineReferenceOptions {
 
 const MAX_NESTED_PREVIEW_DEPTH = 20;
 
+interface TimelinePreviewContext {
+  rootComponent: ArtComponent;
+  timelineComponent: ArtComponent;
+  outputTargetId: string;
+  options: ArtTimelineReferenceOptions;
+}
+
+interface TimelinePreviewTarget {
+  component: ArtComponent;
+  outputTargetId: string;
+}
+
 function nestedAnimationForCommand(command: { type?: string; target?: string; event?: string }): { targetId: string; animation: string; mode: "play" | "stop" } | null {
   if (command.type !== "emit" && command.type !== "playComponent" && command.type !== "stopComponent") return null;
   const targetId = String(command.target || "").trim();
@@ -48,19 +60,80 @@ function scopedNestedOverrides(parentTargetId: string, parentRawId: string, over
   return scoped;
 }
 
+function previewPathId(path: string[], options: ArtTimelineReferenceOptions): string {
+  const scopedPath = options.scopeRootPath === false ? path.slice(1) : path;
+  return artComponentTargetPathId(scopedPath);
+}
+
+function rootPreviewTargetId(component: ArtComponent, options: ArtTimelineReferenceOptions): string {
+  if (options.scopeRootPath === false) return "";
+  return String(component.id || "").trim();
+}
+
+function appendPreviewTargetId(parentTargetId: string, suffix: string[]): string {
+  return artComponentTargetPathId([...cleanPreviewTargetParts(parentTargetId), ...suffix]);
+}
+
+function cleanPreviewTargetParts(id: string): string[] {
+  return String(id || "").split("/").map((part) => part.trim()).filter(Boolean);
+}
+
+function resolvePreviewTarget(context: TimelinePreviewContext, targetId: string): TimelinePreviewTarget | null {
+  const cleanTargetId = String(targetId || "").trim();
+  if (!cleanTargetId) return null;
+  const localMatch = findArtComponentTargetPath([context.timelineComponent], cleanTargetId, context.options);
+  if (localMatch) {
+    const localSuffix = localMatch.path.slice(1).filter(Boolean);
+    const isRootContext = context.timelineComponent === context.rootComponent;
+    return {
+      component: localMatch.component,
+      outputTargetId: isRootContext ? cleanTargetId : appendPreviewTargetId(context.outputTargetId, localSuffix) || cleanTargetId
+    };
+  }
+  const rootMatch = findArtComponentTargetPath([context.rootComponent], cleanTargetId, context.options);
+  if (!rootMatch) return null;
+  return {
+    component: rootMatch.component,
+    outputTargetId: previewPathId(rootMatch.path, context.options) || cleanTargetId
+  };
+}
+
 export function artTimelineCommandDuration(
   rootComponent: ArtComponent | undefined,
   command: TimelineCommand,
   depth = 0,
   options: ArtTimelineReferenceOptions = {}
 ): number {
+  if (!rootComponent) return 0;
+  return artTimelineCommandDurationForContext(
+    {
+      rootComponent,
+      timelineComponent: rootComponent,
+      outputTargetId: rootPreviewTargetId(rootComponent, options),
+      options
+    },
+    command,
+    depth
+  );
+}
+
+function artTimelineCommandDurationForContext(context: TimelinePreviewContext, command: TimelineCommand, depth = 0): number {
   const nestedAnimation = nestedAnimationForCommand(command);
-  if (!rootComponent || !nestedAnimation || nestedAnimation.mode === "stop" || depth >= MAX_NESTED_PREVIEW_DEPTH) return 0;
-  const target = findTimelineTargetComponent([rootComponent], nestedAnimation.targetId, options);
+  if (!nestedAnimation || nestedAnimation.mode === "stop" || depth >= MAX_NESTED_PREVIEW_DEPTH) return 0;
+  const target = resolvePreviewTarget(context, nestedAnimation.targetId);
   if (!target) return 0;
-  const targetTimeline = artTimelineOrDefault((target.timeline || null) as TimelineDocument | null);
+  const targetTimeline = artTimelineOrDefault((target.component.timeline || null) as TimelineDocument | null);
   if (!new TimelinePlayer({ timeline: targetTimeline }).hasLabel(nestedAnimation.animation)) return 0;
-  return artTimelinePlaybackDuration(targetTimeline, target, nestedAnimation.animation, depth + 1, options);
+  return artTimelinePlaybackDurationForContext(
+    {
+      ...context,
+      timelineComponent: target.component,
+      outputTargetId: target.outputTargetId
+    },
+    targetTimeline,
+    nestedAnimation.animation,
+    depth + 1
+  );
 }
 
 export function artTimelinePlaybackDuration(
@@ -70,8 +143,30 @@ export function artTimelinePlaybackDuration(
   depth = 0,
   options: ArtTimelineReferenceOptions = {}
 ): number {
+  if (!component) {
+    return timelinePlaybackDuration(timeline, start);
+  }
+  return artTimelinePlaybackDurationForContext(
+    {
+      rootComponent: component,
+      timelineComponent: component,
+      outputTargetId: rootPreviewTargetId(component, options),
+      options
+    },
+    timeline,
+    start,
+    depth
+  );
+}
+
+function artTimelinePlaybackDurationForContext(
+  context: TimelinePreviewContext,
+  timeline: TimelineDocument,
+  start: string | number,
+  depth = 0
+): number {
   return timelinePlaybackDuration(timeline, start, {
-    commandDuration: (command) => artTimelineCommandDuration(component, command, depth, options)
+    commandDuration: (command) => artTimelineCommandDurationForContext(context, command, depth)
   });
 }
 
@@ -107,23 +202,42 @@ export function playArtTimelinePreview({
     onPreview(parentFrame, { ...latestParentOverrides, ...nestedOverrides });
   };
 
-  const playNestedTargetTimeline = (targetId: string, animation: string, mode: "play" | "stop" = "play"): void => {
-    if (!component || stopped) return;
-    const target = findTimelineTargetComponent([component], targetId, { scopeRootPath, resolveReference });
-    const nestedTimeline = artTimelineOrDefault((target?.timeline || null) as TimelineDocument | null);
+  const rootContext: TimelinePreviewContext | null = component
+    ? {
+        rootComponent: component,
+        timelineComponent: component,
+        outputTargetId: rootPreviewTargetId(component, { scopeRootPath, resolveReference }),
+        options: { scopeRootPath, resolveReference }
+      }
+    : null;
+
+  const playNestedTargetTimeline = (
+    context: TimelinePreviewContext,
+    targetId: string,
+    animation: string,
+    mode: "play" | "stop" = "play"
+  ): void => {
+    if (stopped) return;
+    const target = resolvePreviewTarget(context, targetId);
+    const nestedTimeline = artTimelineOrDefault((target?.component.timeline || null) as TimelineDocument | null);
     if (!target || !new TimelinePlayer({ timeline: nestedTimeline }).hasLabel(animation)) return;
-    const targetRawId = String(target.id || "").trim();
+    const targetRawId = String(target.component.id || "").trim();
+    const nestedContext: TimelinePreviewContext = {
+      ...context,
+      timelineComponent: target.component,
+      outputTargetId: target.outputTargetId
+    };
     const childPlayer = new TimelinePlayer({
       timeline: nestedTimeline,
       onFrame: (snapshot) => {
-        Object.assign(nestedOverrides, scopedNestedOverrides(targetId, targetRawId, snapshot.targets));
+        Object.assign(nestedOverrides, scopedNestedOverrides(target.outputTargetId, targetRawId, snapshot.targets));
         publishPreview(parentFrame);
       },
       onCommand: (command) => {
         const nestedAnimation = nestedAnimationForCommand(command);
-        if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
+        if (nestedAnimation) playNestedTargetTimeline(nestedContext, nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
       },
-      commandDuration: (command) => artTimelineCommandDuration(component, command, 0, { scopeRootPath, resolveReference })
+      commandDuration: (command) => artTimelineCommandDurationForContext(nestedContext, command, 0)
     });
     childPlayers.push(childPlayer);
     if (mode === "stop") {
@@ -139,9 +253,11 @@ export function playArtTimelinePreview({
     onFrame: (snapshot) => publishPreview(snapshot.frame, snapshot.targets),
     onCommand: (command) => {
       const nestedAnimation = nestedAnimationForCommand(command);
-      if (nestedAnimation) playNestedTargetTimeline(nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
+      if (nestedAnimation && rootContext) {
+        playNestedTargetTimeline(rootContext, nestedAnimation.targetId, nestedAnimation.animation, nestedAnimation.mode);
+      }
     },
-    commandDuration: (command) => artTimelineCommandDuration(component, command, 0, { scopeRootPath, resolveReference })
+    commandDuration: (command) => (rootContext ? artTimelineCommandDurationForContext(rootContext, command, 0) : 0)
   });
 
   parentPlayer.gotoAndPlay(start, {

@@ -213,6 +213,112 @@ describe("playArtTimelinePreview", () => {
     expect(frames.some((frame) => (frame["player/answer-bubble-slot/answer-text"] as { scale?: number } | undefined)?.scale === 1)).toBe(true);
   });
 
+  it("resolves commands inside nested timelines relative to the nested component", () => {
+    const label: ArtComponent = {
+      id: "label",
+      kind: "text",
+      timeline: {
+        fps: 10,
+        frameCount: 2,
+        labels: [{ name: "flash", frame: 0 }],
+        commands: [{ frame: 1, type: "stop" }],
+        tracks: [{ targetId: "self", keyframes: [{ frame: 0, props: { defaultText: "A" } }, { frame: 1, props: { defaultText: "B" } }] }]
+      }
+    };
+    const child: ArtComponent = {
+      id: "child",
+      kind: "container",
+      children: [label],
+      timeline: {
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "pop", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "label", event: "flash" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      }
+    };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const frames: Array<Record<string, unknown>> = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      timeline: {
+        fps: 10,
+        frameCount: 4,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "child", event: "pop" },
+          { frame: 3, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (_frame, overrides) => frames.push(overrides)
+    });
+
+    vi.advanceTimersByTime(300);
+    playback.stop();
+
+    expect(frames.some((frame) => (frame["child/label"] as { defaultText?: string } | undefined)?.defaultText === "A")).toBe(true);
+    expect(frames.some((frame) => (frame["child/label"] as { defaultText?: string } | undefined)?.defaultText === "B")).toBe(true);
+    expect(frames.every((frame) => frame.label === undefined && frame["root/child/label"] === undefined)).toBe(true);
+  });
+
+  it("preserves scoped parent target ids while resolving nested local commands", () => {
+    const label: ArtComponent = {
+      id: "label",
+      kind: "text",
+      timeline: {
+        fps: 10,
+        frameCount: 2,
+        labels: [{ name: "flash", frame: 0 }],
+        commands: [{ frame: 1, type: "stop" }],
+        tracks: [{ targetId: "self", keyframes: [{ frame: 0, props: { defaultText: "A" } }, { frame: 1, props: { defaultText: "B" } }] }]
+      }
+    };
+    const child: ArtComponent = {
+      id: "child",
+      kind: "container",
+      children: [label],
+      timeline: {
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "pop", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "label", event: "flash" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      }
+    };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const frames: Array<Record<string, unknown>> = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      timeline: {
+        fps: 10,
+        frameCount: 4,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "root/child", event: "pop" },
+          { frame: 3, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (_frame, overrides) => frames.push(overrides)
+    });
+
+    vi.advanceTimersByTime(300);
+    playback.stop();
+
+    expect(frames.some((frame) => (frame["root/child/label"] as { defaultText?: string } | undefined)?.defaultText === "A")).toBe(true);
+    expect(frames.some((frame) => (frame["root/child/label"] as { defaultText?: string } | undefined)?.defaultText === "B")).toBe(true);
+    expect(frames.every((frame) => frame.label === undefined && frame["child/label"] === undefined)).toBe(true);
+  });
+
   it("includes nested component command durations in preview playback duration", () => {
     const child: ArtComponent = {
       id: "child",
@@ -238,6 +344,48 @@ describe("playArtTimelinePreview", () => {
     };
 
     expect(artTimelinePlaybackDuration(timeline, root, "appear")).toBe(600);
+  });
+
+  it("includes local commands inside nested component timelines in preview duration", () => {
+    const label: ArtComponent = {
+      id: "label",
+      kind: "text",
+      timeline: {
+        fps: 10,
+        frameCount: 7,
+        labels: [{ name: "flash", frame: 1 }],
+        commands: [{ frame: 6, type: "stop" }],
+        tracks: []
+      }
+    };
+    const child: ArtComponent = {
+      id: "child",
+      kind: "container",
+      children: [label],
+      timeline: {
+        fps: 10,
+        frameCount: 4,
+        labels: [{ name: "pop", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "label", event: "flash" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      }
+    };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const timeline = {
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 1, type: "playComponent", target: "child", event: "pop" },
+        { frame: 2, type: "stop" }
+      ],
+      tracks: []
+    };
+
+    expect(artTimelinePlaybackDuration(timeline, root, "appear")).toBe(700);
   });
 
   it("plays nested component timelines from commands on the starting frame", () => {

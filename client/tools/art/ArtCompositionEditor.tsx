@@ -1856,7 +1856,7 @@ function ArtTimelinePanel({
             </div>
           ) : null}
           {current.tracks.map((track) => {
-            const trackLabel = timelineTargetLabel(track.targetId, component);
+            const trackLabel = timelineTargetLabel(track.targetId, component, { scopeRootPath, resolveReference });
             return (
               <div className="art-timeline-lane" key={track.targetId}>
                 <div className="art-timeline-lane-label" title={`${trackLabel.label} (${track.targetId})`}>
@@ -2240,7 +2240,7 @@ function ArtTimelinePanel({
           <h4>Keyframes</h4>
           <ol className="flow-react-list art-timeline-list">
             {current.tracks.flatMap((track) => {
-              const targetLabel = timelineTargetLabel(track.targetId, component);
+              const targetLabel = timelineTargetLabel(track.targetId, component, { scopeRootPath, resolveReference });
               return track.keyframes.map((keyframe) => (
                 <li key={`${track.targetId}-${keyframe.frame}`}>
                   <button
