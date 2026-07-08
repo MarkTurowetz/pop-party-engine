@@ -4,6 +4,9 @@
 // deps + artComposition are read lazily via globalThis at call time
 // (PartyGameStageDebugRuntime comes from the still-legacy stage-runtime.js).
 
+import { effectiveVisibilityTimeline } from "./effectiveTimeline";
+import type { TimelineDocument } from "../../shared/timeline-model";
+
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
 
@@ -102,7 +105,7 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
   renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
     defaultAnimation: "on",
     instant: true,
-    timeline: composition.timeline || null,
+    timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
     respectDefaultAnimationState: false
   });
   return renderer;

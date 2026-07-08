@@ -692,6 +692,13 @@ export function mergeDefaultArtVisibilityTimeline(
   return sortTimeline(mergeDefaultVisibilityTrack(withMarkers, defaults, targetComponent?.id || ""));
 }
 
+export function effectiveArtVisibilityTimeline(
+  timeline: TimelineDocument | null | undefined,
+  targetComponent?: Pick<ArtComponent, "id"> | null
+): TimelineDocument {
+  return mergeDefaultArtVisibilityTimeline(timeline, targetComponent);
+}
+
 function cleanTimelineValue(value: unknown): TimelinePropertyValue | undefined {
   if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
   return undefined;

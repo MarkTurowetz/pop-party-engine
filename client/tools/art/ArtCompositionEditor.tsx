@@ -36,6 +36,7 @@ import {
   createTimelineSegment,
   cutTimelineFrameRange,
   duplicateTimelineSegment,
+  effectiveArtVisibilityTimeline,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
   moveTimelineCommandAt,
@@ -322,7 +323,7 @@ function timelineTargetAnimationLabels(
   resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined
 ): TimelineLabel[] {
   const target = component && targetId ? findTimelineTargetComponent([component], targetId, { scopeRootPath, resolveReference }) : undefined;
-  const targetTimeline = artTimelineOrDefault((target?.timeline || null) as TimelineDocument | null);
+  const targetTimeline = effectiveArtVisibilityTimeline((target?.timeline || null) as TimelineDocument | null, target);
   return targetTimeline.labels;
 }
 
@@ -510,11 +511,14 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       ? findTimelineTargetComponent(composition.components || [], [...selectedComponentIds][0])
       : undefined;
   const activeTimeline = (selectedComponent?.timeline || composition?.timeline || null) as TimelineDocument | null;
+  const effectiveActiveTimeline = useMemo(
+    () => effectiveArtVisibilityTimeline(activeTimeline, selectedComponent || null),
+    [activeTimeline, selectedComponent]
+  );
   const baseTimelineFrameOverrides = useMemo(() => {
-    const timeline = artTimelineOrDefault(activeTimeline);
-    if (!activeTimeline || timeline.tracks.length === 0) return null;
-    return timelineSnapshotAt(timeline, timelinePreviewFrame).targets;
-  }, [activeTimeline, timelinePreviewFrame]);
+    if (effectiveActiveTimeline.tracks.length === 0) return null;
+    return timelineSnapshotAt(effectiveActiveTimeline, timelinePreviewFrame).targets;
+  }, [effectiveActiveTimeline, timelinePreviewFrame]);
   const timelineFrameOverrides = timelinePreviewOverrides || baseTimelineFrameOverrides;
   const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
     setTimelinePreviewFrame(frame);
@@ -964,7 +968,7 @@ function ArtTimelinePanel({
   onChange: (timeline: TimelineDocument) => void;
   onPreviewFrame?: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
 }) {
-  const current = useMemo(() => artTimelineOrDefault(timeline), [timeline]);
+  const current = useMemo(() => effectiveArtVisibilityTimeline(timeline, includeRootTarget ? component : null), [component, includeRootTarget, timeline]);
   const [frame, setFrame] = useState(0);
   const [labelName, setLabelName] = useState("");
   const [segmentName, setSegmentName] = useState("");

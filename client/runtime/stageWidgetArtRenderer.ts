@@ -2,6 +2,9 @@
 // window.PartyGameStageWidgetArt for the legacy stage runtime. PartyGame* deps +
 // visualAnimation are read lazily via globalThis at call time.
 
+import { effectiveVisibilityTimeline } from "./effectiveTimeline";
+import type { TimelineDocument } from "../../shared/timeline-model";
+
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
 
@@ -97,7 +100,7 @@ function createRenderer(options: Dict = {}) {
     renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
       defaultAnimation: "on",
       instant: renderOptions.instant !== false,
-      timeline: composition.timeline || null,
+      timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
       respectDefaultAnimationState: false
     });
     return { composition, renderer };

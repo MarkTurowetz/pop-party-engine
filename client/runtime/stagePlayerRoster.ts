@@ -4,6 +4,8 @@
 // globalThis at call time.
 
 import { distributedContainerItemPositions, type DistributedItemSize } from "./distributedContainerLayout";
+import { effectiveVisibilityTimeline } from "./effectiveTimeline";
+import type { TimelineDocument } from "../../shared/timeline-model";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -301,7 +303,7 @@ class PlayerRosterRenderer {
     renderer.render(runtimePlayerObjectComponents(composition, player, answerState), canvas, {
       defaultAnimation: "on",
       instant: true,
-      timeline: composition.timeline || null,
+      timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
       respectDefaultAnimationState: true
     });
 
@@ -603,7 +605,12 @@ class PlayerRosterRenderer {
       });
       this.pointPopupRenderers.set(node, renderer);
     }
-    renderer.render(components, canvas, { defaultAnimation: "on", instant: true, timeline: composition.timeline || null, respectDefaultAnimationState: false });
+    renderer.render(components, canvas, {
+      defaultAnimation: "on",
+      instant: true,
+      timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
+      respectDefaultAnimationState: false
+    });
     return true;
   }
 
