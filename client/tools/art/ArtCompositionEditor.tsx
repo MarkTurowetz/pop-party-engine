@@ -1006,6 +1006,41 @@ function ArtTimelinePanel({
     [activePlayStart, cleanFrame, component, current]
   );
 
+  function defaultCommandTargetForType(type: string): string {
+    if (type === "stop") return "";
+    if (timelineCommandUsesComponentTarget(type)) return activeKeyframeTargetId || keyframeTargets[0]?.id || "";
+    return activePlayStart || current.labels[0]?.name || "";
+  }
+
+  function defaultCommandEventForType(type: string, targetId: string, previousEvent = ""): string {
+    if (type === "playComponent" || type === "stopComponent") {
+      const labels = timelineTargetAnimationLabels(component, targetId);
+      if (labels.some((label) => label.name === previousEvent)) return previousEvent;
+      return labels[0]?.name || "appear";
+    }
+    if (type === "emit") return previousEvent;
+    return "";
+  }
+
+  function commandDefaultsForType(type: string, previousTarget = "", previousEvent = ""): { target: string; event: string } {
+    const target = type === "stop" ? "" : previousTarget || defaultCommandTargetForType(type);
+    return { target, event: defaultCommandEventForType(type, target, previousEvent) };
+  }
+
+  function setNewCommandType(nextType: string): void {
+    const defaults = commandDefaultsForType(nextType, "", commandEvent);
+    setCommandType(nextType);
+    setCommandTarget(defaults.target);
+    setCommandEvent(defaults.event);
+  }
+
+  function setNewCommandTarget(nextTarget: string): void {
+    setCommandTarget(nextTarget);
+    if (commandType === "playComponent" || commandType === "stopComponent") {
+      setCommandEvent(defaultCommandEventForType(commandType, nextTarget, commandEvent));
+    }
+  }
+
   useEffect(() => {
     return () => {
       playbackRef.current?.stop();
@@ -1274,6 +1309,20 @@ function ArtTimelinePanel({
     onChange(nextTimeline);
     const nextIndex = findTimelineCommandIndex(nextTimeline, selectedTimelineMarker.command, selectedTimelineMarker.index);
     setSelectedMarker(commandMarkerSelection(nextTimeline.commands[nextIndex], nextIndex));
+  }
+
+  function setSelectedCommandType(nextType: string): void {
+    if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "command") return;
+    updateSelectedCommand({ type: nextType, ...commandDefaultsForType(nextType, "", selectedTimelineMarker.command.event || "") });
+  }
+
+  function setSelectedCommandTarget(nextTarget: string): void {
+    if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "command") return;
+    const type = selectedTimelineMarker.command.type;
+    updateSelectedCommand({
+      target: nextTarget,
+      event: defaultCommandEventForType(type, nextTarget, selectedTimelineMarker.command.event || "")
+    });
   }
 
   function moveCommand(index: number, direction: -1 | 1): void {
@@ -1864,7 +1913,7 @@ function ArtTimelinePanel({
       <div className="art-timeline-command-editor">
         <label className="flow-react-field">
           <span>Command</span>
-          <select value={commandType} onChange={(event) => setCommandType(event.target.value)}>
+          <select value={commandType} onChange={(event) => setNewCommandType(event.target.value)}>
             <option value="stop">Stop</option>
             <option value="gotoAndPlay">Go To And Play</option>
             <option value="gotoAndStop">Go To And Stop</option>
@@ -1880,7 +1929,7 @@ function ArtTimelinePanel({
             list={timelineCommandUsesComponentTarget(commandType) ? "art-timeline-target-components" : "art-timeline-labels"}
             value={commandTarget}
             placeholder={commandTargetPlaceholder}
-            onChange={(event) => setCommandTarget(event.target.value)}
+            onChange={(event) => setNewCommandTarget(event.target.value)}
           />
         </label>
         <label className="flow-react-field">
@@ -2070,7 +2119,7 @@ function ArtTimelinePanel({
               })()}
               <label className="flow-react-field">
                 <span>Command</span>
-                <select value={selectedTimelineMarker.command.type} onChange={(event) => updateSelectedCommand({ type: event.target.value })}>
+                <select value={selectedTimelineMarker.command.type} onChange={(event) => setSelectedCommandType(event.target.value)}>
                   <option value="stop">Stop</option>
                   <option value="gotoAndPlay">Go To And Play</option>
                   <option value="gotoAndStop">Go To And Stop</option>
@@ -2095,7 +2144,7 @@ function ArtTimelinePanel({
                   type="text"
                   list={timelineCommandUsesComponentTarget(selectedTimelineMarker.command.type) ? "art-timeline-target-components" : "art-timeline-labels"}
                   value={selectedTimelineMarker.command.target || ""}
-                  onChange={(event) => updateSelectedCommand({ target: event.target.value })}
+                  onChange={(event) => setSelectedCommandTarget(event.target.value)}
                 />
               </label>
               <label className="flow-react-field">
