@@ -167,6 +167,12 @@ function isEditableTimelineShortcutTarget(target: EventTarget | null): boolean {
   return Boolean(element.closest("input, textarea, select, [contenteditable='true']"));
 }
 
+function isButtonTimelineShortcutTarget(target: EventTarget | null): boolean {
+  const element = target instanceof HTMLElement ? target : null;
+  if (!element) return false;
+  return Boolean(element.closest("button, [role='button']"));
+}
+
 function findTimelineKeyframe(
   timeline: TimelineDocument,
   selection: { targetId: string; frame: number } | null
@@ -1154,6 +1160,23 @@ function ArtTimelinePanel({
       }
       return;
     }
+    if (event.key === " " || event.key === "Spacebar") {
+      if (isButtonTimelineShortcutTarget(event.target)) return;
+      event.preventDefault();
+      if (isPlaying) stopPlayback();
+      else if (current.frameCount > 1) playTimeline();
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      previewFrame(0);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      previewFrame(Math.max(0, current.frameCount - 1));
+      return;
+    }
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       event.preventDefault();
       const delta = event.key === "ArrowLeft" ? -1 : 1;
@@ -1374,7 +1397,7 @@ function ArtTimelinePanel({
       className="art-timeline-panel"
       data-art-timeline-panel
       tabIndex={0}
-      aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
+      aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
       onKeyDown={handleTimelineKeyDown}
     >
       <div className="art-timeline-header">
