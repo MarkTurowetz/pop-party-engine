@@ -348,6 +348,23 @@ export function addTransformKeyframe(
   });
 }
 
+export function replaceTransformKeyframeFromComponent(
+  timeline: TimelineDocument | null | undefined,
+  component: ArtComponent,
+  frame: number
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const cleanTargetId = String(component.id || "").trim();
+  if (!cleanTargetId) return current;
+  const cleanFrameValue = cleanFrame(frame, current.frameCount);
+  const existing = keyframeAt(current, cleanTargetId, cleanFrameValue);
+  if (!existing) return addTransformKeyframe(current, component, cleanFrameValue);
+  return updateTimelineKeyframe(current, cleanTargetId, cleanFrameValue, {
+    props: componentTimelinePropsFor(component),
+    easing: existing.easing
+  });
+}
+
 export function updateTimelineKeyframe(
   timeline: TimelineDocument | null | undefined,
   targetId: string,

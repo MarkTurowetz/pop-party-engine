@@ -36,6 +36,7 @@ import {
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineFrames,
+  replaceTransformKeyframeFromComponent,
   updateTimelineCommandAt,
   updateTimelineKeyframe,
   updateTimelineLabel,
@@ -1135,6 +1136,16 @@ function ArtTimelinePanel({
     previewFrame(nextFrame);
   }
 
+  function recaptureSelectedKeyframe(): void {
+    if (!selectedTimelineKeyframe || !component) return;
+    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId);
+    if (!target) return;
+    const nextTimeline = replaceTransformKeyframeFromComponent(current, target, selectedTimelineKeyframe.keyframe.frame);
+    onChange(nextTimeline);
+    setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: selectedTimelineKeyframe.keyframe.frame });
+    previewFrame(selectedTimelineKeyframe.keyframe.frame);
+  }
+
   return (
     <section className="art-timeline-panel" data-art-timeline-panel>
       <div className="art-timeline-header">
@@ -1738,6 +1749,9 @@ function ArtTimelinePanel({
             </select>
           </label>
           <div className="art-timeline-keyframe-actions">
+            <button type="button" disabled={!component} onClick={recaptureSelectedKeyframe}>
+              Recapture Current State
+            </button>
             <button type="button" onClick={copySelectedKeyframe}>
               Copy Keyframe
             </button>

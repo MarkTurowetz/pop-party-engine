@@ -9,6 +9,7 @@ import {
   copyTimelineKeyframe,
   defaultArtVisibilityTimeline,
   insertTimelineFrames,
+  replaceTransformKeyframeFromComponent,
   removeTimelineFrames,
   removeTimelineKeyframe,
   removeTimelineLabel,
@@ -235,6 +236,31 @@ describe("artTimelineModel", () => {
         props: timeline.tracks[0].keyframes[0].props
       }
     ]);
+  });
+
+  it("recaptures an existing keyframe from component state while preserving easing", () => {
+    const timeline = addTransformKeyframe(
+      { fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] },
+      { id: "title", kind: "text", defaultText: "One", width: 100, height: 40, fontSize: 24 } as ArtComponent,
+      2
+    );
+    const eased = updateTimelineKeyframe(timeline, "title", 2, { easing: "easeInOut" });
+    const result = replaceTransformKeyframeFromComponent(
+      eased,
+      { id: "title", kind: "text", defaultText: "Two", width: 240, height: 80, fontSize: 36, autoFitText: true } as ArtComponent,
+      2
+    );
+    expect(result.tracks[0].keyframes[0]).toMatchObject({
+      frame: 2,
+      easing: "easeInOut",
+      props: {
+        defaultText: "Two",
+        width: 240,
+        height: 80,
+        fontSize: 36,
+        autoFitText: true
+      }
+    });
   });
 
   it("creates a default visibility timeline with known animation labels", () => {
