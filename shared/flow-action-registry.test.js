@@ -27,33 +27,33 @@ function registry() {
 }
 
 describe("flow action registry", () => {
-  it("preserves nested component target paths for game object timeline actions", () => {
+  it("preserves exact nested component target paths for game object timeline actions", () => {
     const action = registry().normalizeAction(
       "playGameObjectAnimation",
       {
         targetLayoutElementId: "Player Object",
-        targetComponentId: "Answer Bubble Slot / Answer Text",
+        targetComponentId: "answerBubbleSlot / answerText",
         animationName: "pop"
       },
       { id: "a", name: "A", type: "playGameObjectAnimation" }
     );
 
     expect(action.targetLayoutElementId).toBe("player-object");
-    expect(action.targetComponentId).toBe("answer-bubble-slot/answer-text");
+    expect(action.targetComponentId).toBe("answerBubbleSlot/answerText");
   });
 
-  it("preserves nested component target paths when serializing public actions", () => {
+  it("preserves exact nested component target paths when serializing public actions", () => {
     const action = registry().publicAction(
       {
         type: "stopGameObjectAnimation",
         targetLayoutElementId: "avatar",
-        componentId: "Dino Mask / Pose",
+        componentId: "dinoMask / poseFrame",
         animationName: "stego"
       },
       { id: "a", name: "A" }
     );
 
-    expect(action.targetComponentId).toBe("dino-mask/pose");
+    expect(action.targetComponentId).toBe("dinoMask/poseFrame");
     expect(action.timelinePlaybackMode).toBe("stop");
   });
 });

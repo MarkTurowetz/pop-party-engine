@@ -459,4 +459,72 @@ describe("Flow selectors", () => {
       ).map((option) => option.id)
     ).toContain("pulse");
   });
+
+  it("keeps exact referenced prefab component ids for animation targets", () => {
+    const stageLayouts = {
+      states: [
+        {
+          id: "intro",
+          elements: [{ id: "player", name: "Player", artCompositionId: "player-object" }]
+        }
+      ]
+    };
+    const compositions = [
+      {
+        id: "player-object",
+        name: "Player Object",
+        components: [
+          {
+            id: "answerBubbleSlot",
+            name: "Answer Bubble Slot",
+            kind: "reference",
+            artCompositionId: "answer-bubble"
+          }
+        ]
+      },
+      {
+        id: "answer-bubble",
+        name: "Answer Bubble",
+        components: [
+          {
+            id: "answerText",
+            name: "Answer Text",
+            kind: "text",
+            timeline: {
+              fps: 30,
+              frameCount: 12,
+              labels: [{ name: "pulse", frame: 4 }],
+              commands: [],
+              tracks: []
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(
+      flowGameObjectComponentTargetOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "moment:player"
+      )
+    ).toEqual([
+      { id: "", name: "Whole Game Object" },
+      { id: "answerBubbleSlot", name: "Answer Bubble Slot (answerBubbleSlot)" },
+      { id: "answerBubbleSlot/answerText", name: "  Answer Text (answerBubbleSlot/answerText)" }
+    ]);
+    expect(
+      flowGameObjectAnimationLabelOptions(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "moment:player",
+        "answerBubbleSlot/answerText",
+        ""
+      ).map((option) => option.id)
+    ).toContain("pulse");
+  });
 });
