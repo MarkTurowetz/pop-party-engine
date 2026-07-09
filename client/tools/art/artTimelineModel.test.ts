@@ -626,18 +626,17 @@ describe("artTimelineModel", () => {
       { id: "title" } as ArtComponent
     );
     const track = timeline.tracks.find((item) => item.targetId === "title");
-    expect(track?.keyframes.map((keyframe) => keyframe.frame)).toEqual([0, 1, 2, 17, 18, 24, 25, 40]);
+    expect(track?.keyframes.map((keyframe) => keyframe.frame)).toEqual([2, 3, 4, 5, 20, 21, 27, 28, 43]);
     expect(track?.keyframes.find((keyframe) => keyframe.frame === 2)?.props).toEqual({
       opacity: 0.5,
-      visible: true,
       scale: 1.25
     });
-    expect(track?.keyframes.find((keyframe) => keyframe.frame === 17)?.props).toEqual({ opacity: 1, visible: true });
-    expect(track?.keyframes.find((keyframe) => keyframe.frame === 40)?.props).toEqual({ opacity: 0, visible: false });
+    expect(track?.keyframes.find((keyframe) => keyframe.frame === 20)?.props).toEqual({ opacity: 1, visible: true });
+    expect(track?.keyframes.find((keyframe) => keyframe.frame === 43)?.props).toEqual({ opacity: 0, visible: false });
     expect(track?.keyframes.some((keyframe) => "x" in keyframe.props || "width" in keyframe.props)).toBe(false);
   });
 
-  it("uses default visibility timelines only when no authored timeline exists", () => {
+  it("uses default visibility timelines while preserving authored timeline data", () => {
     const missing = effectiveArtVisibilityTimeline(null, { id: "title" } as ArtComponent);
     expect(missing.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
     expect(missing.tracks.find((track) => track.targetId === "title")?.keyframes.some((keyframe) => keyframe.props.visible === false)).toBe(true);
@@ -649,7 +648,7 @@ describe("artTimelineModel", () => {
       commands: [{ frame: 0, type: "stop" }],
       tracks: []
     });
-    expect(authored.labels).toEqual([{ name: "custom", frame: 0 }]);
-    expect(authored.commands).toEqual([{ frame: 0, type: "stop" }]);
+    expect(authored.labels).toEqual(expect.arrayContaining([{ name: "custom", frame: 0 }, { name: "appear", frame: 4 }]));
+    expect(authored.commands).toEqual(expect.arrayContaining([{ frame: 0, type: "stop" }]));
   });
 });

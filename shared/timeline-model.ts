@@ -367,19 +367,36 @@ export function timelineWithDefaultVisibility(
   targetId = ""
 ): TimelineDocument {
   const current = normalizeTimeline(timeline) || { fps: DEFAULT_FPS, frameCount: DEFAULT_FRAME_COUNT, labels: [], commands: [], tracks: [] };
-  const defaults = defaultVisibilityTimeline(durations);
+  const rawDefaults = defaultVisibilityTimeline(durations);
+  const hasAuthoredContent = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
+  const defaultFrameOffset = hasAuthoredContent ? current.frameCount : 0;
+  const defaults: TimelineDocument =
+    defaultFrameOffset > 0
+      ? {
+          ...rawDefaults,
+          frameCount: rawDefaults.frameCount + defaultFrameOffset,
+          labels: rawDefaults.labels.map((label) => ({ ...label, frame: label.frame + defaultFrameOffset })),
+          commands: rawDefaults.commands.map((command) => ({ ...command, frame: command.frame + defaultFrameOffset })),
+          tracks: rawDefaults.tracks.map((track) => ({
+            ...track,
+            keyframes: track.keyframes.map((keyframe) => ({ ...keyframe, frame: keyframe.frame + defaultFrameOffset }))
+          }))
+        }
+      : rawDefaults;
   const existingLabelNames = new Set(current.labels.map((label) => label.name));
   const existingCommandKeys = new Set(current.commands.map(defaultVisibilityCommandKey));
+  const missingDefaultLabels = defaults.labels.filter((label) => !existingLabelNames.has(label.name));
+  const shouldMergeDefaultCommands = !hasAuthoredContent || missingDefaultLabels.length > 0;
   const withDefaults = {
     ...current,
     frameCount: Math.max(current.frameCount, defaults.frameCount),
     labels: [
       ...current.labels,
-      ...defaults.labels.filter((label) => !existingLabelNames.has(label.name))
+      ...missingDefaultLabels
     ].sort((a, b) => a.frame - b.frame || a.name.localeCompare(b.name)),
     commands: [
       ...current.commands,
-      ...defaults.commands.filter((command) => !existingCommandKeys.has(defaultVisibilityCommandKey(command)))
+      ...(shouldMergeDefaultCommands ? defaults.commands.filter((command) => !existingCommandKeys.has(defaultVisibilityCommandKey(command))) : [])
     ].sort((a, b) => a.frame - b.frame)
   };
   return mergeDefaultVisibilityTrack(withDefaults, defaults, targetId);
