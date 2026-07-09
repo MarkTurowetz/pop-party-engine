@@ -1,10 +1,11 @@
-import { frameForTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument, type TimelineProperties } from "../../../shared/timeline-model";
+import { frameForTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument } from "../../../shared/timeline-model";
 import { TimelinePlayer } from "../../runtime/timelinePlayer";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import { artComponentTargetPathId, findArtComponentTargetPath } from "../shared/artComponentTargets";
 import { effectiveArtVisibilityTimeline } from "./artTimelineModel";
+import { scopeTimelinePreviewOverridesToComponent, type TimelinePreviewOverrides } from "./artTimelinePreviewMapping";
 
-export type TimelinePreviewOverrides = Record<string, TimelineProperties>;
+export type { TimelinePreviewOverrides } from "./artTimelinePreviewMapping";
 
 export interface ArtTimelinePreviewPlayback {
   stop: () => void;
@@ -44,20 +45,6 @@ function nestedAnimationForCommand(command: { type?: string; target?: string; ev
   const targetId = String(command.target || "").trim();
   const animation = String(command.event || "").trim();
   return targetId && animation ? { targetId, animation, mode: command.type === "stopComponent" ? "stop" : "play" } : null;
-}
-
-function scopedNestedOverrides(parentTargetId: string, parentRawId: string, overrides: TimelinePreviewOverrides): TimelinePreviewOverrides {
-  const scoped: TimelinePreviewOverrides = {};
-  for (const [targetId, props] of Object.entries(overrides || {})) {
-    if (targetId === "self" || targetId === parentRawId || targetId === parentTargetId) {
-      scoped[parentTargetId] = props;
-    } else if (targetId.includes("/")) {
-      scoped[targetId.startsWith(`${parentTargetId}/`) ? targetId : `${parentTargetId}/${targetId}`] = props;
-    } else {
-      scoped[`${parentTargetId}/${targetId}`] = props;
-    }
-  }
-  return scoped;
 }
 
 function previewPathId(path: string[], options: ArtTimelineReferenceOptions): string {
@@ -232,7 +219,10 @@ export function playArtTimelinePreview({
     const childPlayer = new TimelinePlayer({
       timeline: nestedTimeline,
       onFrame: (snapshot) => {
-        Object.assign(nestedOverrides, scopedNestedOverrides(target.outputTargetId, targetRawId, snapshot.targets));
+        Object.assign(
+          nestedOverrides,
+          scopeTimelinePreviewOverridesToComponent(snapshot.targets, { id: targetRawId }, cleanPreviewTargetParts(target.outputTargetId)) || {}
+        );
         publishPreview(parentFrame);
       },
       onCommand: (command) => {
