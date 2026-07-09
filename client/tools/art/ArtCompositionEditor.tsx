@@ -55,6 +55,7 @@ import {
   updateTimelineSettings
 } from "./artTimelineModel";
 import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
+import { scopeTimelinePreviewOverridesToComponent } from "./artTimelinePreviewMapping";
 import {
   artTimelinePlaybackDuration,
   playArtTimelinePreview,
@@ -73,6 +74,7 @@ import {
   type TimelinePropertyValue
 } from "../../../shared/timeline-model";
 import { timelineSnapshotAt } from "../../runtime/timelinePlayer";
+import { findArtComponentTargetPath } from "../shared/artComponentTargets";
 
 export interface ArtCompositionEditorProps {
   controller: ArtCompositionsController;
@@ -527,10 +529,13 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     document.addEventListener("pointerup", up);
   };
 
-  const selectedComponent =
-    composition && selectedComponentIds.size === 1
-      ? findTimelineTargetComponent(composition.components || [], [...selectedComponentIds][0])
-      : undefined;
+  const selectedComponentId = selectedComponentIds.size === 1 ? [...selectedComponentIds][0] : "";
+  const selectedComponentMatch = useMemo(
+    () => (composition && selectedComponentId ? findArtComponentTargetPath(composition.components || [], selectedComponentId) : null),
+    [composition, selectedComponentId]
+  );
+  const selectedComponent = selectedComponentMatch?.component;
+  const selectedComponentPath = selectedComponentMatch?.path || null;
   const activeTimeline = (selectedComponent ? selectedComponent.timeline || null : composition?.timeline || null) as TimelineDocument | null;
   const effectiveActiveTimeline = useMemo(
     () => effectiveArtVisibilityTimeline(activeTimeline, selectedComponent || null),
@@ -538,9 +543,13 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   );
   const baseTimelineFrameOverrides = useMemo(() => {
     if (effectiveActiveTimeline.tracks.length === 0) return null;
-    return timelineSnapshotAt(effectiveActiveTimeline, timelinePreviewFrame).targets;
-  }, [effectiveActiveTimeline, timelinePreviewFrame]);
-  const timelineFrameOverrides = timelinePreviewOverrides || baseTimelineFrameOverrides;
+    const snapshotOverrides = timelineSnapshotAt(effectiveActiveTimeline, timelinePreviewFrame).targets;
+    return scopeTimelinePreviewOverridesToComponent(snapshotOverrides, selectedComponent || null, selectedComponentPath);
+  }, [effectiveActiveTimeline, selectedComponent, selectedComponentPath, timelinePreviewFrame]);
+  const timelineFrameOverrides = useMemo(
+    () => scopeTimelinePreviewOverridesToComponent(timelinePreviewOverrides || baseTimelineFrameOverrides, selectedComponent || null, selectedComponentPath),
+    [baseTimelineFrameOverrides, selectedComponent, selectedComponentPath, timelinePreviewOverrides]
+  );
   const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
     setTimelinePreviewFrame(frame);
     setTimelinePreviewOverrides(overrides || null);
