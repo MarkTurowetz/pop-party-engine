@@ -21,7 +21,7 @@ function fail(message) {
 }
 
 function main() {
-  const tsSources = fs.readdirSync(sharedDir).filter((name) => name.endsWith(".ts"));
+  const tsSources = fs.readdirSync(sharedDir).filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"));
   if (tsSources.length === 0) {
     console.log("shared/*.js freshness check passed (no shared/*.ts yet).");
     return;

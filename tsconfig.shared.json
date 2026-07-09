@@ -14,5 +14,6 @@
     "declaration": false,
     "noEmitOnError": true
   },
-  "include": ["shared/**/*.ts"]
+  "include": ["shared/**/*.ts"],
+  "exclude": ["shared/**/*.test.ts"]
 }
