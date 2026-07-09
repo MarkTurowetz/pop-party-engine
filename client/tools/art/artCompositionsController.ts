@@ -3,6 +3,9 @@ import type { ArtComponent, ArtComposition, JsonObject } from "../../types/game-
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import {
   artCompositionSnapshot,
+  hydrateArtCompositionForEditing,
+  hydrateArtCompositionsForEditing,
+  hydrateArtComponentForEditing,
   normalizeArtCompositionKind,
   normalizeArtCompositionSurface,
   serializeArtCompositionForSave,
@@ -204,9 +207,7 @@ export function createArtCompositionsController(
 ): ArtCompositionsController {
   const { api } = options;
   const listeners = new Set<() => void>();
-  let compositions = (options.initialCompositions || []).map(
-    (composition) => JSON.parse(JSON.stringify(composition)) as ArtComposition
-  );
+  let compositions = hydrateArtCompositionsForEditing(options.initialCompositions || []);
   const savedSnapshots = new Map<string, string>();
   for (const composition of compositions) savedSnapshots.set(composition.id, artCompositionSnapshot(composition));
   const sessionDraftPublisher = options.postDraft
@@ -327,7 +328,7 @@ export function createArtCompositionsController(
       if (index < 0) return;
       mutateAll(() => {
         const current = compositions[index];
-        compositions[index] = {
+        compositions[index] = hydrateArtCompositionForEditing({
           ...current,
           ...patch,
           id: current.id,
@@ -336,7 +337,7 @@ export function createArtCompositionsController(
           compositionKind: normalizeArtCompositionKind(patch.compositionKind, normalizeArtCompositionKind(current.compositionKind)),
           canvas: patch.canvas || current.canvas,
           components: patch.components || current.components
-        };
+        });
       });
     },
     selectComposition: (compositionId) => {
@@ -389,6 +390,7 @@ export function createArtCompositionsController(
           return;
         }
         Object.assign(component, patch);
+        Object.assign(component, hydrateArtComponentForEditing(component));
       }),
     moveComponent: (componentId, x, y) =>
       mutateSelected((composition) => {
@@ -448,7 +450,7 @@ export function createArtCompositionsController(
           if (!composition) continue;
           const payload = serializeArtCompositionForSave(composition);
           const response = await api.saveArtComposition(id, payload);
-          const saved = response.composition || payload;
+          const saved = hydrateArtCompositionForEditing(response.composition || payload);
           const index = compositions.findIndex((item) => item.id === id);
           if (index >= 0) compositions[index] = saved;
           savedSnapshots.set(id, artCompositionSnapshot(saved));

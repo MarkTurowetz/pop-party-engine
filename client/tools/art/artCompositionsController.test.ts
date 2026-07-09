@@ -28,6 +28,29 @@ describe("createArtCompositionsController", () => {
     expect(state.selectedCompositionId).toBe("a");
   });
 
+  it("hydrates legacy compositions and components with default timelines without marking dirty", () => {
+    const initial = composition("legacy");
+    initial.components = [
+      {
+        id: "legacy-text",
+        name: "Legacy Text",
+        kind: "text",
+        children: [{ id: "legacy-child", name: "Legacy Child", kind: "shape" }]
+      }
+    ] as never;
+
+    const controller = createArtCompositionsController({ initialCompositions: [initial], api: fakeApi() });
+    const hydrated = controller.getState().compositions[0];
+
+    expect(controller.getState().dirty).toBe(false);
+    expect(hydrated.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
+    expect(hydrated.components[0].timeline?.labels.map((label) => label.name)).toEqual(
+      expect.arrayContaining(["park", "on", "appear", "update", "disappear"])
+    );
+    expect(hydrated.components[0].timeline?.tracks.map((track) => track.targetId)).toContain("legacy-text");
+    expect(hydrated.components[0].children?.[0].timeline?.tracks.map((track) => track.targetId)).toContain("legacy-child");
+  });
+
   it("creates a top-level prefab composition as an undoable local edit", () => {
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
 
@@ -234,19 +257,22 @@ describe("createArtCompositionsController", () => {
       "timeline-host",
       expect.objectContaining({
         timeline: expect.objectContaining({
-          labels: [expect.objectContaining({ name: "pulse", frame: 1 })],
-          tracks: [expect.objectContaining({ targetId: "card" })]
+          labels: expect.arrayContaining([expect.objectContaining({ name: "pulse", frame: 1 })]),
+          tracks: expect.arrayContaining([expect.objectContaining({ targetId: "card" })])
         }),
         components: [
           expect.objectContaining({
             id: "card",
-            timeline: expect.objectContaining({ labels: [expect.objectContaining({ name: "pop", frame: 2 })] }),
+            timeline: expect.objectContaining({
+              labels: expect.arrayContaining([expect.objectContaining({ name: "pop", frame: 2 })]),
+              tracks: expect.arrayContaining([expect.objectContaining({ targetId: "card" })])
+            }),
             children: [
               expect.objectContaining({
                 id: "name",
                 timeline: expect.objectContaining({
-                  labels: [expect.objectContaining({ name: "swap", frame: 1 })],
-                  tracks: [expect.objectContaining({ targetId: "name" })]
+                  labels: expect.arrayContaining([expect.objectContaining({ name: "swap", frame: 1 })]),
+                  tracks: expect.arrayContaining([expect.objectContaining({ targetId: "name" })])
                 })
               })
             ]

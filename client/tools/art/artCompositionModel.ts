@@ -9,6 +9,7 @@ import {
   normalizeImageObjectFit,
   normalizeShapeStyle
 } from "./artComponentSchema";
+import { mergeDefaultArtVisibilityTimeline } from "./artTimelineModel";
 
 /**
  * Typed port of serializeArtCompositionsForSave / serializeArtComponentForSave so
@@ -106,6 +107,31 @@ export function serializeArtCompositionForSave(raw: ArtComposition): ArtComposit
 
 export function serializeArtCompositionsForSave(source: ArtComposition[] | null | undefined): ArtComposition[] {
   return (source || []).map(serializeArtCompositionForSave);
+}
+
+export function hydrateArtComponentForEditing(raw: ArtComponent): ArtComponent {
+  const component = raw as Record<string, unknown>;
+  const id = String(component.id || "");
+  return {
+    ...(JSON.parse(JSON.stringify(raw || {})) as ArtComponent),
+    timeline: mergeDefaultArtVisibilityTimeline((component.timeline || null) as ArtComponent["timeline"], id ? { id } : null),
+    children: (Array.isArray(component.children) ? component.children : []).map((child) =>
+      hydrateArtComponentForEditing(child as ArtComponent)
+    )
+  };
+}
+
+export function hydrateArtCompositionForEditing(raw: ArtComposition): ArtComposition {
+  const composition = JSON.parse(JSON.stringify(raw || {})) as ArtComposition;
+  return {
+    ...composition,
+    timeline: mergeDefaultArtVisibilityTimeline((composition.timeline || null) as ArtComposition["timeline"]),
+    components: (Array.isArray(composition.components) ? composition.components : []).map(hydrateArtComponentForEditing)
+  };
+}
+
+export function hydrateArtCompositionsForEditing(source: ArtComposition[] | null | undefined): ArtComposition[] {
+  return (source || []).map(hydrateArtCompositionForEditing);
 }
 
 /** Per-composition snapshot for dirty tracking (matches the legacy save shape). */
