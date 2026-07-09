@@ -279,6 +279,69 @@ describe("TimelinePlayer", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
+  it("passes frame timing context to timeline command handlers", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 5,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 0, type: "emit", event: "start" },
+        { frame: 2, type: "playComponent", target: "child", event: "pop" },
+        { frame: 4, type: "stop" }
+      ],
+      tracks: []
+    });
+    const contexts: Array<{ event: string; frame: number; elapsedMs: number }> = [];
+    const player = new TimelinePlayer({
+      timeline,
+      onCommand: (command, context) =>
+        contexts.push({
+          event: command.event || command.type,
+          frame: context.frame,
+          elapsedMs: context.elapsedMs
+        })
+    });
+
+    player.gotoAndPlay("appear");
+    expect(contexts).toEqual([{ event: "start", frame: 0, elapsedMs: 0 }]);
+
+    vi.advanceTimersByTime(200);
+    expect(contexts).toEqual([
+      { event: "start", frame: 0, elapsedMs: 0 },
+      { event: "pop", frame: 2, elapsedMs: 200 }
+    ]);
+  });
+
+  it("passes end-frame timing context to instant timeline commands", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 5,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 4, type: "playComponent", target: "child", event: "settle" },
+        { frame: 4, type: "stop" }
+      ],
+      tracks: []
+    });
+    const contexts: Array<{ event: string; frame: number; elapsedMs: number }> = [];
+    const player = new TimelinePlayer({
+      timeline,
+      onCommand: (command, context) =>
+        contexts.push({
+          event: command.event || command.type,
+          frame: context.frame,
+          elapsedMs: context.elapsedMs
+        })
+    });
+
+    player.gotoAndPlay("appear", { instant: true });
+
+    expect(contexts).toEqual([
+      { event: "settle", frame: 4, elapsedMs: 400 },
+      { event: "stop", frame: 4, elapsedMs: 400 }
+    ]);
+  });
+
   it("passes normalized command ids through runtime command callbacks", () => {
     const timeline = normalizeTimeline({
       fps: 10,

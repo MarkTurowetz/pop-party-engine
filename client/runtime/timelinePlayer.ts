@@ -18,7 +18,7 @@ export interface TimelineFrameSnapshot {
 export interface TimelinePlayerOptions {
   timeline?: TimelineDocument | null;
   onFrame?: (snapshot: TimelineFrameSnapshot) => void;
-  onCommand?: (command: TimelineCommand) => void;
+  onCommand?: (command: TimelineCommand, context: { frame: number; elapsedMs: number }) => void;
   commandDuration?: (command: TimelineCommand, context: { frame: number; elapsedMs: number }) => number;
   onCommandLimit?: (detail: { frame: number; commandCount: number; maxCommandRedirects: number }) => void;
   maxCommandRedirects?: number;
@@ -210,7 +210,7 @@ export class TimelinePlayer {
     const duration = this.durationForFrameCommands(frame, commandCount);
     const stopToken = this.token;
     this.applyFrame(frame);
-    if (!this.runFrameCommands(frame, options.complete, commandCount)) {
+    if (!this.runFrameCommands(frame, options.complete, commandCount, 0)) {
       this.completeAfterDuration(duration, stopToken, options.complete);
     }
     return duration;
@@ -235,7 +235,7 @@ export class TimelinePlayer {
     const playToken = this.token;
     if (options.instant === true || segment.durationMs === 0) {
       this.applyFrame(segment.endFrame);
-      if (!this.runFrameCommands(segment.endFrame, options.complete, commandCount)) {
+      if (!this.runFrameCommands(segment.endFrame, options.complete, commandCount, segment.durationMs)) {
         this.completeAfterDuration(duration, playToken, options.complete);
       }
       return duration;
@@ -243,14 +243,14 @@ export class TimelinePlayer {
     this.isPlaying = true;
     const frameDuration = 1000 / this.timeline.fps;
     this.applyFrame(segment.startFrame);
-    const startRedirected = this.runFrameCommands(segment.startFrame, options.complete, commandCount);
+    const startRedirected = this.runFrameCommands(segment.startFrame, options.complete, commandCount, 0);
     if (startRedirected) return duration;
     for (let frame = segment.startFrame + 1; frame <= segment.endFrame; frame += 1) {
       const delay = (frame - segment.startFrame) * frameDuration;
       this.scheduleFrame(() => {
         if (this.token !== playToken) return;
         this.applyFrame(frame);
-        const redirected = this.runFrameCommands(frame, options.complete, 0);
+        const redirected = this.runFrameCommands(frame, options.complete, 0, delay);
         if (!redirected && frame === segment.endFrame) {
           this.completeAfterDuration(duration - delay, playToken, options.complete);
         }
@@ -259,10 +259,10 @@ export class TimelinePlayer {
     return duration;
   }
 
-  runFrameCommands(frame: number, complete?: () => void, commandCount = 0): boolean {
+  runFrameCommands(frame: number, complete?: () => void, commandCount = 0, elapsedMs = 0): boolean {
     if (!this.timeline) return false;
     for (const command of this.timeline.commands.filter((entry) => entry.frame === frame)) {
-      this.onCommand?.(command);
+      this.onCommand?.(command, { frame, elapsedMs });
       if (command.type === "gotoAndStop" && command.target) {
         if (!this.canRedirectFrameCommand(frame, commandCount + 1)) return false;
         this.gotoAndStopInternal(command.target, { complete }, commandCount + 1);
