@@ -4,6 +4,25 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const { createArtAssetsRuntime } = require("../../../server/art-assets-runtime");
 
+const pointPopupTimeline = {
+  fps: 30,
+  frameCount: 12,
+  labels: [
+    { name: "appear", frame: 1 },
+    { name: "on", frame: 11 }
+  ],
+  commands: [{ frame: 11, type: "stop" }],
+  tracks: [
+    {
+      targetId: "point-text",
+      keyframes: [
+        { frame: 1, props: { opacity: 0, scale: 0.5 } },
+        { frame: 11, props: { opacity: 1, scale: 1 } }
+      ]
+    }
+  ]
+};
+
 function createRuntime(options = {}) {
   return createArtAssetsRuntime({
     acceptedArtTypes: [],
@@ -155,6 +174,79 @@ describe("art composition child persistence", () => {
     ]);
 
     expect(composition.components[0].locked).toBe(true);
+  });
+
+  it("persists composition timelines through the save handler", async () => {
+    let responseBody = null;
+    const runtime = createArtAssetsRuntime({
+      acceptedArtTypes: [],
+      artCompositions: [
+        {
+          id: "player-point-popup",
+          name: "Player Point Popup",
+          canvas: { width: 200, height: 120 },
+          components: [{ id: "point-text", name: "Point Text", kind: "text", x: 100, y: 50, width: 160, height: 60 }]
+        }
+      ],
+      artAssets: [],
+      artGroups: [],
+      artRoot: "/tmp/party-game-art-test",
+      contentTypeForFile: () => "application/octet-stream",
+      customDir: "/tmp/party-game-art-test/custom",
+      defaultDir: "/tmp/party-game-art-test/default",
+      manifestFile: "/tmp/party-game-art-test/manifest.json",
+      loadArtManifestSource: async () => ({}),
+      readJson: async () => ({
+        composition: {
+          id: "player-point-popup",
+          name: "Player Point Popup",
+          canvas: { width: 200, height: 120 },
+          components: [{ id: "point-text", name: "Point Text", kind: "text", x: 100, y: 50, width: 160, height: 60 }],
+          timeline: pointPopupTimeline
+        }
+      }),
+      sendJson: (_res, _status, body) => {
+        responseBody = body;
+      },
+      writeArtManifestSource: async (manifest) => manifest
+    });
+
+    await runtime.handleSaveArtComposition({}, {}, "player-point-popup");
+
+    expect(responseBody?.composition?.timeline).toMatchObject({
+      fps: 30,
+      frameCount: 12,
+      labels: expect.arrayContaining([{ name: "appear", frame: 1 }]),
+      tracks: [expect.objectContaining({ targetId: "point-text" })]
+    });
+  });
+
+  it("hydrates missing saved composition timelines from default composition timelines", () => {
+    const runtime = createRuntime({
+      artCompositions: [
+        {
+          id: "player-point-popup",
+          name: "Player Point Popup",
+          canvas: { width: 200, height: 120 },
+          components: [{ id: "point-text", name: "Point Text", kind: "text", x: 100, y: 50, width: 160, height: 60 }],
+          timeline: pointPopupTimeline
+        }
+      ]
+    });
+
+    const [composition] = runtime.normalizeArtCompositionsDraft([
+      {
+        id: "player-point-popup",
+        name: "Saved Point Popup",
+        components: [{ id: "point-text", name: "Point Text", kind: "text", x: 100, y: 50, width: 160, height: 60 }]
+      }
+    ]);
+
+    expect(composition.timeline).toMatchObject({
+      frameCount: 12,
+      labels: expect.arrayContaining([{ name: "appear", frame: 1 }]),
+      tracks: [expect.objectContaining({ targetId: "point-text" })]
+    });
   });
 });
 

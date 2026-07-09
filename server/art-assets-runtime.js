@@ -748,6 +748,7 @@ function createArtAssetsRuntime({
       isCustom: normalized.isCustom,
       canvas: normalized.canvas,
       components: normalized.components,
+      ...(normalized.timeline ? { timeline: normalized.timeline } : {}),
       updatedAt: new Date().toISOString()
     };
     const savedManifest = await saveArtManifest(manifest);
