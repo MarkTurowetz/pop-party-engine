@@ -598,6 +598,11 @@ class ArtObjectTreeRenderer {
     this.rootTimelinePlayer.updateTimeline(timeline);
   }
 
+  syncRootTimelineFrame(): void {
+    if (!this.rootTimelinePlayer) return;
+    this.rootTimelinePlayer.applyFrame(this.rootTimelinePlayer.currentFrame);
+  }
+
   render(components: Component[] = [], canvas?: CanvasSize, options: Dict = {}): void {
     if (!this.host) return;
     this.updateRootTimeline((options.timeline || null) as TimelineDocument | null);
@@ -638,6 +643,7 @@ class ArtObjectTreeRenderer {
       this.views.delete(componentKey);
       view.remove({ instant: options.instant === true });
     }
+    this.syncRootTimelineFrame();
   }
 
   playAll(animation: string, options: Dict = {}): number {

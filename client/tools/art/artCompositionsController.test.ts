@@ -187,6 +187,75 @@ describe("createArtCompositionsController", () => {
     );
   });
 
+  it("persists root and nested component timelines through save payloads", async () => {
+    const api = fakeApi();
+    const initial = composition("timeline-host");
+    initial.timeline = {
+      fps: 30,
+      frameCount: 12,
+      labels: [{ name: "pulse", frame: 1 }],
+      commands: [{ frame: 11, type: "stop" }],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 1, props: { scale: 1.2 } }] }]
+    };
+    initial.components = [
+      {
+        id: "card",
+        name: "Card",
+        kind: "container",
+        timeline: {
+          fps: 30,
+          frameCount: 8,
+          labels: [{ name: "pop", frame: 2 }],
+          commands: [{ frame: 7, type: "stop" }],
+          tracks: [{ targetId: "name", keyframes: [{ frame: 2, props: { opacity: 1 } }] }]
+        },
+        children: [
+          {
+            id: "name",
+            name: "Name",
+            kind: "text",
+            timeline: {
+              fps: 24,
+              frameCount: 4,
+              labels: [{ name: "swap", frame: 1 }],
+              commands: [{ frame: 3, type: "stop" }],
+              tracks: [{ targetId: "name", keyframes: [{ frame: 1, props: { defaultText: "Ava" } }] }]
+            }
+          }
+        ]
+      }
+    ] as never;
+    const controller = createArtCompositionsController({ initialCompositions: [initial], api });
+    controller.updateComposition("timeline-host", { description: "dirty" });
+
+    await controller.save();
+
+    expect(api.saveArtComposition).toHaveBeenCalledWith(
+      "timeline-host",
+      expect.objectContaining({
+        timeline: expect.objectContaining({
+          labels: [expect.objectContaining({ name: "pulse", frame: 1 })],
+          tracks: [expect.objectContaining({ targetId: "card" })]
+        }),
+        components: [
+          expect.objectContaining({
+            id: "card",
+            timeline: expect.objectContaining({ labels: [expect.objectContaining({ name: "pop", frame: 2 })] }),
+            children: [
+              expect.objectContaining({
+                id: "name",
+                timeline: expect.objectContaining({
+                  labels: [expect.objectContaining({ name: "swap", frame: 1 })],
+                  tracks: [expect.objectContaining({ targetId: "name" })]
+                })
+              })
+            ]
+          })
+        ]
+      })
+    );
+  });
+
   it("saves only dirty compositions and clears dirty", async () => {
     const api = fakeApi();
     const controller = createArtCompositionsController({ initialCompositions: [composition("a"), composition("b")], api });

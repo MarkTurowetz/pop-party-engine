@@ -5,6 +5,8 @@
 // default"; we replicate that with a NO_OVERRIDE sentinel.
 
 import { normalizeGameTextFontFamily } from "../textFonts";
+import { effectiveVisibilityTimeline } from "./effectiveTimeline";
+import type { TimelineDocument } from "../../shared/timeline-model";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -31,6 +33,10 @@ declare global {
 const w = () => globalThis as typeof globalThis & Window;
 const visualBridge = (): VisualBridgeApi | undefined => w().PartyGameVisualBridge as unknown as VisualBridgeApi | undefined;
 const NO_OVERRIDE = Symbol("no-override");
+
+export function votingCardArtTimeline(timeline: unknown): TimelineDocument {
+  return effectiveVisibilityTimeline(timeline as TimelineDocument | null | undefined);
+}
 
 const KNOWN_COMPONENT_IDS = new Set(["current-card", "answer-text", "author-heading", "voter-container", "vote-count", "vote-widget"]);
 const FALLBACK_VOTING_CARD_COMPOSITION: Dict = {
@@ -281,7 +287,10 @@ class VotingCardView {
   }
 
   renderRootArtObjects(canvas: Dict): void {
-    this.rootArtRenderer?.render(this.rootArtComponents(), canvas, { defaultAnimation: "on" });
+    this.rootArtRenderer?.render(this.rootArtComponents(), canvas, {
+      defaultAnimation: "on",
+      timeline: votingCardArtTimeline(this.composition()?.timeline)
+    });
   }
 
   renderComponentChildren(componentId: string, parentElement: El): void {
@@ -302,7 +311,7 @@ class VotingCardView {
     }
     renderer.render((component!.children as Dict[]) || [], { width: Number(component!.width || 1), height: Number(component!.height || 1) }, {
       defaultAnimation: "on",
-      timeline: component!.timeline || null
+      timeline: votingCardArtTimeline(component!.timeline)
     });
   }
 

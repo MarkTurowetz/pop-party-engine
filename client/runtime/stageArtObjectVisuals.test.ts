@@ -301,6 +301,22 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     ]);
   });
 
+  it("reapplies the active root timeline frame after tree reconciliation", () => {
+    const appliedFrames: unknown[] = [];
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      rootTimelinePlayer: { currentFrame: number; applyFrame: (frame: number) => void };
+      syncRootTimelineFrame: () => void;
+    };
+    renderer.rootTimelinePlayer = {
+      currentFrame: 7,
+      applyFrame: (frame) => appliedFrames.push(frame)
+    };
+
+    renderer.syncRootTimelineFrame();
+
+    expect(appliedFrames).toEqual([7]);
+  });
+
   it("includes nested component timeline command durations in renderer root playback", () => {
     const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
       views: Map<string, unknown>;
