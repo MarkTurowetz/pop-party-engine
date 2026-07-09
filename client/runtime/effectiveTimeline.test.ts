@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { effectiveVisibilityTimeline } from "./effectiveTimeline";
+import { effectiveArtComponentVisibilityTimeline, effectiveVisibilityTimeline } from "./effectiveTimeline";
 
 describe("effectiveVisibilityTimeline", () => {
   it("supplies standard visibility labels for missing timelines", () => {
@@ -35,5 +35,25 @@ describe("effectiveVisibilityTimeline", () => {
 
     expect(timeline.labels.filter((label) => label.name === "appear")).toHaveLength(1);
     expect(timeline.commands.filter((command) => command.frame === 5 && command.type === "stop")).toHaveLength(1);
+  });
+
+  it("adds component visibility tracks while preserving authored component timelines", () => {
+    const timeline = effectiveArtComponentVisibilityTimeline(
+      {
+        fps: 24,
+        frameCount: 4,
+        labels: [{ name: "pulse", frame: 2 }],
+        commands: [{ frame: 2, type: "emit", target: "label", event: "flash" }],
+        tracks: [{ targetId: "card", keyframes: [{ frame: 2, props: { scale: 1.2 } }] }]
+      },
+      "card"
+    );
+
+    expect(timeline.fps).toBe(24);
+    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["pulse", "appear", "disappear"]));
+    expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 2, type: "emit", target: "label", event: "flash" }]));
+    const cardTrack = timeline.tracks.find((track) => track.targetId === "card");
+    expect(cardTrack?.keyframes.some((keyframe) => keyframe.props.scale === 1.2)).toBe(true);
+    expect(cardTrack?.keyframes.some((keyframe) => keyframe.props.visible === false)).toBe(true);
   });
 });

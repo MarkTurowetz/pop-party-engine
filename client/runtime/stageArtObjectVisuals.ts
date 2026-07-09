@@ -6,6 +6,7 @@
 
 import { normalizeGameTextFontFamily } from "../textFonts";
 import { distributedContainerItemPositions } from "./distributedContainerLayout";
+import { effectiveArtComponentVisibilityTimeline } from "./effectiveTimeline";
 import type { TimelineCommandEventDetail } from "./visualObject";
 import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
 import { hasTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument } from "../../shared/timeline-model";
@@ -344,6 +345,13 @@ class ArtObjectView {
     return ids;
   }
 
+  componentTimeline(): TimelineDocument {
+    return effectiveArtComponentVisibilityTimeline(
+      (this.component?.timeline || null) as TimelineDocument | null,
+      String(this.component?.id || "").trim()
+    );
+  }
+
   createVisual(): Dict | null {
     const id = this.gameObjectId();
     const bridge = w().PartyGameVisualBridge?.createVisualForTarget?.({
@@ -363,7 +371,7 @@ class ArtObjectView {
           updateClass: UPDATE_CLASS,
           instantClass: INSTANT_CLASS,
           layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS],
-          timeline: this.component?.timeline || null,
+          timeline: this.componentTimeline(),
           timelineCanvas: this.canvas || null,
           timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
           timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail),
@@ -376,7 +384,7 @@ class ArtObjectView {
         exitingClass: EXITING_CLASS,
         updateClass: UPDATE_CLASS,
         instantClass: INSTANT_CLASS,
-        timeline: this.component?.timeline || null,
+        timeline: this.componentTimeline(),
         timelineCanvas: this.canvas || null,
         timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
         timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail),
@@ -421,7 +429,7 @@ class ArtObjectView {
   durationForAnimation(animation: string): number {
     const cleanAnimation = String(animation || "").trim();
     if (!cleanAnimation) return 0;
-    const timeline = (this.component?.timeline || null) as TimelineDocument | null;
+    const timeline = this.componentTimeline();
     if (timeline && hasTimelineLabel(timeline, cleanAnimation)) {
       return timelinePlaybackDuration(timeline, cleanAnimation, {
         commandDuration: (command) => this.timelineCommandDuration(command)
