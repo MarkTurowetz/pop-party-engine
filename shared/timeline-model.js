@@ -9,6 +9,7 @@ exports.timelineStopFrame = timelineStopFrame;
 exports.timelineSegmentFor = timelineSegmentFor;
 exports.timelinePlaybackDuration = timelinePlaybackDuration;
 exports.defaultVisibilityTimeline = defaultVisibilityTimeline;
+exports.timelineWithDefaultVisibility = timelineWithDefaultVisibility;
 const DEFAULT_FPS = 30;
 const DEFAULT_FRAME_COUNT = 1;
 const MAX_FRAME_COUNT = 60 * 60 * 10;
@@ -236,4 +237,79 @@ function defaultVisibilityTimeline(durations) {
         ],
         tracks: []
     };
+}
+function defaultVisibilityCommandKey(command) {
+    return [command.frame, command.type, command.target || "", command.event || ""].join("|");
+}
+function defaultVisibilityLabelFrame(timeline, name) {
+    return timeline.labels.find((label) => label.name === name)?.frame ?? 0;
+}
+function mergeDefaultVisibilityKeyframeProps(track, frame, props, easing) {
+    const existingIndex = track.keyframes.findIndex((keyframe) => keyframe.frame === frame);
+    if (existingIndex >= 0) {
+        const keyframes = track.keyframes.slice();
+        const existing = keyframes[existingIndex];
+        keyframes[existingIndex] = {
+            ...existing,
+            props: { ...props, ...existing.props },
+            easing: existing.easing || easing
+        };
+        return { ...track, keyframes: keyframes.sort((a, b) => a.frame - b.frame) };
+    }
+    return {
+        ...track,
+        keyframes: [
+            ...track.keyframes,
+            {
+                id: `key-${track.targetId}-${frame}`,
+                frame,
+                props,
+                easing
+            }
+        ].sort((a, b) => a.frame - b.frame)
+    };
+}
+function mergeDefaultVisibilityTrack(timeline, defaults, targetId) {
+    const cleanTargetId = String(targetId || "").trim();
+    if (!cleanTargetId)
+        return timeline;
+    const appearFrame = defaultVisibilityLabelFrame(defaults, "appear");
+    const appearStopFrame = timelineStopFrame(defaults, appearFrame);
+    const updateFrame = defaultVisibilityLabelFrame(defaults, "update");
+    const updateStopFrame = timelineStopFrame(defaults, updateFrame);
+    const disappearFrame = defaultVisibilityLabelFrame(defaults, "disappear");
+    const disappearStopFrame = timelineStopFrame(defaults, disappearFrame);
+    const existingTrack = timeline.tracks.find((track) => track.targetId === cleanTargetId);
+    let nextTrack = existingTrack || { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [] };
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, "park"), { opacity: 0, visible: false }, "hold");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, "on"), { opacity: 1, visible: true }, "hold");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, appearFrame, { opacity: 0, visible: true }, "easeOut");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, appearStopFrame, { opacity: 1, visible: true }, "hold");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, updateFrame, { opacity: 1, visible: true }, "hold");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, updateStopFrame, { opacity: 1, visible: true }, "hold");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, disappearFrame, { opacity: 1, visible: true }, "easeIn");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, disappearStopFrame, { opacity: 0, visible: false }, "hold");
+    return {
+        ...timeline,
+        tracks: [...timeline.tracks.filter((track) => track.targetId !== cleanTargetId), nextTrack].sort((a, b) => a.targetId.localeCompare(b.targetId))
+    };
+}
+function timelineWithDefaultVisibility(timeline, durations, targetId = "") {
+    const current = normalizeTimeline(timeline) || { fps: DEFAULT_FPS, frameCount: DEFAULT_FRAME_COUNT, labels: [], commands: [], tracks: [] };
+    const defaults = defaultVisibilityTimeline(durations);
+    const existingLabelNames = new Set(current.labels.map((label) => label.name));
+    const existingCommandKeys = new Set(current.commands.map(defaultVisibilityCommandKey));
+    const withDefaults = {
+        ...current,
+        frameCount: Math.max(current.frameCount, defaults.frameCount),
+        labels: [
+            ...current.labels,
+            ...defaults.labels.filter((label) => !existingLabelNames.has(label.name))
+        ].sort((a, b) => a.frame - b.frame || a.name.localeCompare(b.name)),
+        commands: [
+            ...current.commands,
+            ...defaults.commands.filter((command) => !existingCommandKeys.has(defaultVisibilityCommandKey(command)))
+        ].sort((a, b) => a.frame - b.frame)
+    };
+    return mergeDefaultVisibilityTrack(withDefaults, defaults, targetId);
 }
