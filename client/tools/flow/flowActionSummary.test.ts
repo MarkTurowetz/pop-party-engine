@@ -82,4 +82,23 @@ describe("Flow action summary", () => {
       } as FlowAction)
     ).toBe("Stop at stego on Object avatar / E+ 0.0s / Instant");
   });
+
+  it("includes nested component names in game object animation summaries", () => {
+    const runtime = createActionSummary({
+      ...context(),
+      gameObjectComponentTargetName: (_elementId, _scope, componentId) =>
+        componentId ? `Component ${String(componentId)}` : ""
+    });
+
+    expect(
+      runtime.actionSummary({
+        id: "play-bubble-text",
+        type: "playGameObjectAnimation",
+        targetLayoutElementId: "player",
+        targetComponentId: "answer-bubble-slot/answer-text",
+        animationName: "pulse",
+        timing: { mode: "E+", seconds: 0.5 }
+      } as FlowAction)
+    ).toBe("Play pulse on Object player > Component answer-bubble-slot/answer-text / E+ 0.5s");
+  });
 });

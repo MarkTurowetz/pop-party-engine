@@ -468,8 +468,10 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(dispatched.map((event) => event.type)).toEqual(["party-game:timeline-command", "party-game:timeline:pop-name"]);
     expect((handled[0] as { eventName: string }).eventName).toBe("pop-name");
     expect((handled[0] as { command: { id?: string } }).command.id).toBe("emit-pop-name");
+    expect(handled[0]).toMatchObject({ frame: 1, elapsedMs: 100 });
     expect((dispatched[0].detail as { eventName: string }).eventName).toBe("pop-name");
     expect((dispatched[0].detail as { command: { id?: string } }).command.id).toBe("emit-pop-name");
+    expect(dispatched[0].detail).toMatchObject({ frame: 1, elapsedMs: 100 });
   });
 
   it("dispatches authored timeline emit commands on the starting frame", () => {
@@ -502,6 +504,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(handled).toHaveLength(1);
     expect(dispatched.map((event) => event.type)).toEqual(["party-game:timeline-command", "party-game:timeline:pop-name"]);
     expect((handled[0] as { eventName: string }).eventName).toBe("pop-name");
+    expect(handled[0]).toMatchObject({ frame: 0, elapsedMs: 0 });
   });
 
   it("notifies timeline frame handlers after applying authored snapshots", () => {

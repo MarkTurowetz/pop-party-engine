@@ -184,7 +184,9 @@ function timelineDomEvent(type: string, detail: TimelineCommandEventDetail): Eve
 
 export interface TimelineCommandEventDetail {
   command: TimelineCommand;
+  elapsedMs: number;
   eventName: string;
+  frame: number;
   visual: CssVisualObject;
 }
 
@@ -279,7 +281,7 @@ class CssVisualObject {
             this.applyTimelineSnapshot(snapshot);
             this.timelineFrameHandler?.(snapshot);
           },
-          onCommand: (command) => this.handleTimelineCommand(command),
+          onCommand: (command, context) => this.handleTimelineCommand(command, context),
           commandDuration: (command, context) => this.timelineCommandDurationHandler?.(command, context) || 0,
           schedule: (callback, delay) => {
             const timerId = this.schedule(delay, callback);
@@ -401,10 +403,16 @@ class CssVisualObject {
     return canvasSize > 0 ? `${(value / canvasSize) * 100}%` : `${value}px`;
   }
 
-  handleTimelineCommand(command: TimelineCommand): void {
+  handleTimelineCommand(command: TimelineCommand, context: { frame: number; elapsedMs: number } = { frame: command.frame, elapsedMs: 0 }): void {
     const eventName = String(command.event || command.type || "").trim();
     if (!eventName) return;
-    const detail: TimelineCommandEventDetail = { command, eventName, visual: this };
+    const detail: TimelineCommandEventDetail = {
+      command,
+      elapsedMs: context.elapsedMs,
+      eventName,
+      frame: context.frame,
+      visual: this
+    };
     this.timelineCommandHandler?.(detail);
     this.element?.dispatchEvent?.(timelineDomEvent("party-game:timeline-command", detail));
     if (command.type === "emit") {

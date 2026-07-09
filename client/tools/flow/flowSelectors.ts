@@ -392,6 +392,27 @@ export function flowGameObjectComponentTargetOptions(
   return options;
 }
 
+export function flowGameObjectComponentTargetName(
+  stageLayouts: Partial<StageLayoutCollection> | null | undefined,
+  artCompositions: Partial<ArtComposition>[] | null | undefined,
+  state: Partial<FlowState> | null | undefined,
+  selectedFlowStateId = "",
+  selectedTarget = "",
+  selectedComponentId = ""
+): string {
+  const componentId = String(selectedComponentId || "");
+  if (!componentId) return "";
+  const match = flowGameObjectComponentTargetOptions(
+    stageLayouts,
+    artCompositions,
+    state,
+    selectedFlowStateId,
+    selectedTarget,
+    componentId
+  ).find((option) => option.id === componentId);
+  return match ? match.name.trim() : componentId;
+}
+
 function flowGameObjectComponentForTarget(
   artCompositions: Partial<ArtComposition>[] | null | undefined,
   composition: Partial<ArtComposition> | null | undefined,

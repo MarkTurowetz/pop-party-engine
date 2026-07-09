@@ -8,6 +8,7 @@ export interface FlowActionSummaryContext {
   ensureActionTiming: (action: FlowAction, isSubAction?: boolean) => FlowTiming;
   flowStateName: (stateId?: unknown) => string;
   flowTargetActionName: (actionId?: unknown) => string;
+  gameObjectComponentTargetName?: (elementId?: unknown, scope?: unknown, componentId?: unknown) => string;
   gameObjectTargetName?: (elementId?: unknown, scope?: unknown) => string;
   hostAudioDisplayName: (hostAudioId?: unknown) => string;
   textTargetName: (target?: unknown) => string;
@@ -137,6 +138,20 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
     return context.flowTargetActionName(target);
   }
 
+  function gameObjectTimelineTargetName(action: FlowAction): string {
+    const baseName = (context.gameObjectTargetName || context.artAssetTargetName)?.(
+      action.targetLayoutElementId,
+      action.targetLayoutScope
+    );
+    const componentName = context.gameObjectComponentTargetName?.(
+      action.targetLayoutElementId,
+      action.targetLayoutScope,
+      action.targetComponentId
+    );
+    if (baseName && componentName) return `${baseName} > ${componentName}`;
+    return componentName || baseName || "game object";
+  }
+
   function actionSummary(action: FlowAction, isSubAction = false): string {
     if (action.type === "jumpNode") {
       return jumpTargetIsMissing(action)
@@ -216,12 +231,10 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
       return `${action.isShown === false ? "Hide" : "Show"} ${targetName || "game object"} / ${timingText}${instantText}`;
     }
     if (action.type === "playGameObjectAnimation") {
-      const targetName = (context.gameObjectTargetName || context.artAssetTargetName)?.(action.targetLayoutElementId, action.targetLayoutScope);
-      return `Play ${text(action.animationName, "appear")} on ${targetName || "game object"} / ${timingText}${instantText}`;
+      return `Play ${text(action.animationName, "appear")} on ${gameObjectTimelineTargetName(action)} / ${timingText}${instantText}`;
     }
     if (action.type === "stopGameObjectAnimation") {
-      const targetName = (context.gameObjectTargetName || context.artAssetTargetName)?.(action.targetLayoutElementId, action.targetLayoutScope);
-      return `Stop at ${text(action.animationName, "appear")} on ${targetName || "game object"} / ${timingText}${instantText}`;
+      return `Stop at ${text(action.animationName, "appear")} on ${gameObjectTimelineTargetName(action)} / ${timingText}${instantText}`;
     }
     if (action.type === "revealPlayerAnswerCorrectness") return `Reveal answer correctness / ${timingText}`;
     if (action.type === "showPoints") return `Show points for ${text(action.playerFilter, "correct")} players / ${timingText}`;

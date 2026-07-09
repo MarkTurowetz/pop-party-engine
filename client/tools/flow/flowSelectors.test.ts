@@ -7,6 +7,7 @@ import {
   flowActionTargetOptions,
   flowGameObjectLayoutElements,
   flowGameObjectAnimationLabelOptions,
+  flowGameObjectComponentTargetName,
   flowGameObjectComponentTargetOptions,
   flowGameObjectTargetLabel,
   flowGameObjectTargetName,
@@ -458,6 +459,16 @@ describe("Flow selectors", () => {
         ""
       ).map((option) => option.id)
     ).toContain("pulse");
+    expect(
+      flowGameObjectComponentTargetName(
+        stageLayouts,
+        compositions,
+        { id: "intro" },
+        "intro",
+        "moment:player",
+        "answer-bubble-slot/answer-text"
+      )
+    ).toBe("Answer Text (answer-bubble-slot/answer-text)");
   });
 
   it("keeps exact referenced prefab component ids for animation targets", () => {
