@@ -3,6 +3,7 @@
 // CommonJS (require + module.exports) — no client global. Every other shared/*.ts is
 // scope-isolated, so this module's top-level names don't collide in the shared compilation.
 const { availableFlowActionTypes } = require("./flow-action-registry");
+const { defaultPlayerPointPopupTimeline } = require("./player-point-popup-timeline");
 
 const availableFlowTransitions = [
   { id: "horizontalWipe", name: "Horizontal Wipe" }
@@ -819,6 +820,7 @@ const defaultArtCompositions = [
     name: "Player Point Popup",
     description: "Shared editable scoring popup art spawned when points are shown.",
     canvas: { width: 150, height: 60 },
+    timeline: defaultPlayerPointPopupTimeline(),
     components: playerPointPopupComponents()
   },
   {
