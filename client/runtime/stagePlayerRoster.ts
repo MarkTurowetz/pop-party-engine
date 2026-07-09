@@ -20,6 +20,7 @@ interface GameObjectApi {
 interface TreeRenderer {
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
   isComponentVisible?: (componentId: string) => boolean;
+  playAll?: (animation: string, options?: Dict) => number;
   playComponentTree?: (componentId: string, animation: string, options?: Dict) => number;
 }
 
@@ -58,6 +59,44 @@ function cloneArtComposition(composition: Dict, apply?: (component: Dict) => voi
     canvas: { ...((composition.canvas as Dict) || {}) },
     components: ((composition.components as Dict[]) || []).map((component) => cloneArtComponent(component, apply))
   };
+}
+
+function pointPopupFallbackTimeline(): TimelineDocument {
+  const popupFrames = { start: 1, pop: 5, hold: 22, end: 45 };
+  const trackFor = (targetId: string, baseX: number, baseY: number) => ({
+    targetId,
+    keyframes: [
+      { frame: 0, props: { opacity: 0, scale: 0, x: baseX, y: baseY + 16 }, easing: "hold" },
+      { frame: popupFrames.start, props: { opacity: 0, scale: 0, x: baseX, y: baseY + 16 }, easing: "easeOut" },
+      { frame: popupFrames.pop, props: { opacity: 1, scale: 1.2, x: baseX, y: baseY }, easing: "easeOut" },
+      { frame: popupFrames.hold, props: { opacity: 1, scale: 1, x: baseX, y: baseY - 8 }, easing: "easeInOut" },
+      { frame: popupFrames.end, props: { opacity: 0, scale: 0, x: baseX, y: baseY - 26 }, easing: "easeIn" }
+    ]
+  });
+  return {
+    fps: 30,
+    frameCount: popupFrames.end + 1,
+    labels: [
+      { name: "park", frame: 0 },
+      { name: "off", frame: 0 },
+      { name: "on", frame: 0 },
+      { name: "appear", frame: popupFrames.start },
+      { name: "update", frame: popupFrames.start },
+      { name: "disappear", frame: popupFrames.end }
+    ],
+    commands: [
+      { frame: 0, type: "stop" },
+      { frame: popupFrames.end, type: "stop" }
+    ],
+    tracks: [trackFor("point-text", 75, 30), trackFor("point-shadow", 79, 34)]
+  };
+}
+
+function pointPopupTimeline(composition: Dict): TimelineDocument {
+  const authored = composition.timeline as TimelineDocument | null | undefined;
+  return authored && ((authored.labels || []).length > 0 || (authored.commands || []).length > 0 || (authored.tracks || []).length > 0)
+    ? effectiveVisibilityTimeline(authored)
+    : pointPopupFallbackTimeline();
 }
 
 function usesCurrentColor(component: Dict): boolean {
@@ -182,7 +221,6 @@ class PlayerRosterRenderer {
   tileGameObjects = new Map<string, GameObjectLike>();
   tileRenderers = new WeakMap<El, TreeRenderer>();
   tilePlayers = new WeakMap<El, Dict>();
-  pointPopupGameObjects = new Map<string, GameObjectLike>();
   pointPopupRenderers = new WeakMap<El, TreeRenderer>();
   resizeObserver: ResizeObserver | null = null;
   renderedAnswersShown = true;
@@ -608,7 +646,7 @@ class PlayerRosterRenderer {
     renderer.render(components, canvas, {
       defaultAnimation: "on",
       instant: true,
-      timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
+      timeline: pointPopupTimeline(composition),
       respectDefaultAnimationState: false
     });
     return true;
@@ -616,47 +654,19 @@ class PlayerRosterRenderer {
 
   playPointPopup(node: El, popup: Dict): number {
     if (!node || !popup?.id) return 0;
-    const id = String(popup.id);
-    const gameObject = createGameObject(this.gameObjectApi, {
-      id: `point-popup-${id}`,
-      target: node,
-      visibilityKey: `point-popup:${id}`,
-      visualOptions: {
-        hiddenClasses: ["point-popup-hidden"],
-        motionHiddenClasses: ["point-popup-hidden"],
-        instantClass: "point-popup-instant",
-        layoutHiddenClasses: ["point-popup-hidden"],
-        durations: { appear: 1500, disappear: 0 },
-        animationHandlers: {
-          appear: (api: Dict) => {
-            (api.applyShownState as () => void)();
-            (api.removeClasses as (c: unknown) => void)(["is-floating"]);
-            void (api.element as El).offsetWidth;
-            (api.addClasses as (c: unknown) => void)(["is-floating"]);
-            (api.schedule as (d: number, cb: () => void) => void)(1500, () => {
-              if (!(api.tokenMatches as () => boolean)()) return;
-              this.pointPopupGameObjects.delete(id);
-              (api.element as El).remove();
-            });
-            return 1500;
-          }
-        },
-        transformOrigin: "center center"
-      },
-      getVisible: () => !node.classList.contains("point-popup-hidden"),
-      setVisible: (isVisible: boolean) => {
-        node.dataset.visualVisible = isVisible ? "true" : "false";
-      },
-      timerSink: this.timerSink
-    });
-    if (!gameObject) {
+    const renderer = this.pointPopupRenderers.get(node);
+    if (!renderer?.playAll) {
       node.classList.remove("point-popup-hidden");
       node.classList.add("is-floating");
       setTimeout(() => node.remove(), 1600);
       return 1500;
     }
-    this.pointPopupGameObjects.set(id, gameObject);
-    return gameObject.playVisibility(true);
+    node.classList.remove("point-popup-hidden");
+    const duration = renderer.playAll("appear", { instant: false });
+    const removeDelay = Math.max(0, duration || 0);
+    const timeoutId = globalThis.setTimeout(() => node.remove(), removeDelay);
+    this.timerSink?.(Number(timeoutId));
+    return removeDelay;
   }
 
   clearPointPopupIds(): void {
@@ -665,7 +675,6 @@ class PlayerRosterRenderer {
 
   clearPointPopups(): void {
     this.clearPointPopupIds();
-    this.pointPopupGameObjects.clear();
     this.host?.querySelectorAll(".point-popup").forEach((node) => node.remove());
   }
 }

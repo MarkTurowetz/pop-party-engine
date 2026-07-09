@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   PartyGamePlayerRoster,
   playerAnswerBubbleRuntimeState,
@@ -190,5 +190,71 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       fillColor: "currentColor",
       fontColor: "#ff4d8d"
     });
+  });
+
+  it("renders point popup prefabs with a timeline fallback when no authored timeline exists", () => {
+    const rendered: Record<string, unknown>[] = [];
+    class FakeTreeRenderer {
+      render(components: Record<string, unknown>[], canvas: Record<string, unknown>, options: Record<string, unknown>) {
+        rendered.push({ components, canvas, options });
+      }
+    }
+    const host = globalThis as typeof globalThis & { PartyGameArtObject?: unknown };
+    const previous = host.PartyGameArtObject;
+    host.PartyGameArtObject = { ArtObjectTreeRenderer: FakeTreeRenderer };
+    const node = {
+      classList: { add: () => undefined },
+      style: {},
+      dataset: {}
+    };
+    const roster = PartyGamePlayerRoster.createRenderer({
+      getComposition: () => ({
+        id: "player-point-popup",
+        canvas: { width: 150, height: 60 },
+        components: [
+          { id: "point-text", kind: "text", defaultText: "+200" },
+          { id: "point-shadow", kind: "text", defaultText: "+200" }
+        ]
+      })
+    });
+
+    expect(roster.renderPointPopupPrefab(node as unknown as HTMLElement, { points: 50 })).toBe(true);
+    host.PartyGameArtObject = previous;
+
+    expect(rendered[0].components).toEqual([
+      expect.objectContaining({ id: "point-text", defaultText: "+50" }),
+      expect.objectContaining({ id: "point-shadow", defaultText: "+50" })
+    ]);
+    expect((rendered[0].options as { timeline: { labels: { name: string }[]; tracks: { targetId: string }[] } }).timeline.labels.map((label) => label.name)).toContain(
+      "appear"
+    );
+    expect((rendered[0].options as { timeline: { tracks: { targetId: string }[] } }).timeline.tracks.map((track) => track.targetId)).toEqual([
+      "point-text",
+      "point-shadow"
+    ]);
+  });
+
+  it("plays point popup prefab timelines through the art renderer", () => {
+    const node = {
+      classList: {
+        remove: (name: string) => {
+          (node as { removedClass?: string }).removedClass = name;
+        },
+        add: () => undefined
+      },
+      remove: () => {
+        (node as { removed?: boolean }).removed = true;
+      }
+    };
+    const playAll = vi.fn(() => 250);
+    const timers: number[] = [];
+    const roster = PartyGamePlayerRoster.createRenderer({ timerSink: (id: number) => timers.push(id) });
+    roster.pointPopupRenderers.set(node as unknown as HTMLElement, { render: vi.fn(), playAll });
+
+    expect(roster.playPointPopup(node as unknown as HTMLElement, { id: "popup-1" })).toBe(250);
+
+    expect((node as { removedClass?: string }).removedClass).toBe("point-popup-hidden");
+    expect(playAll).toHaveBeenCalledWith("appear", { instant: false });
+    expect(timers).toHaveLength(1);
   });
 });
