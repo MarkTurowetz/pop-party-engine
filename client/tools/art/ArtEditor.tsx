@@ -4,7 +4,6 @@ import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
 import type { OrgSurface } from "./organizationModel";
 import { ToolWorkspace } from "../common/ToolWorkspace";
-import { ArtAssetManager } from "./ArtAssetManager";
 import { ArtCompositionBrowser } from "./ArtCompositionBrowser";
 import { ArtCompositionEditor } from "./ArtCompositionEditor";
 import { useArtAssets } from "./useArtAssets";
@@ -33,6 +32,7 @@ export function ArtEditor({
   organizationController,
   surface = "art"
 }: ArtEditorProps) {
+  void assetsController;
   const [surfaceFilter, setSurfaceFilter] = useState<OrgSurface>(() => {
     const initialState = compositionsController.getState();
     const selectedComposition = initialState.compositions.find(
@@ -86,10 +86,6 @@ export function ArtEditor({
     >
       <div className="art-workspace-content">
         <ArtCompositionEditor controller={compositionsController} assets={assets} />
-        <details className="art-replacement-drawer">
-          <summary>Replacement Assets</summary>
-          <ArtAssetManager controller={assetsController} />
-        </details>
       </div>
     </ToolWorkspace>
   );

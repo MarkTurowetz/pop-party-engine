@@ -753,7 +753,6 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           composition={composition}
           compositions={compositions}
           component={selectedComponent ?? null}
-          onPreviewTimelineOverrides={previewTimelineFrame}
           tree={
             composition ? (
               <ComponentTree
@@ -771,6 +770,25 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           }
         />
       </div>
+      <div className="art-timeline-dock" data-art-timeline-dock>
+        {composition ? (
+          <ArtTimelinePanel
+            title={selectedComponent ? `${selectedComponent.name || selectedComponent.kind} Timeline` : `${composition.name} Timeline`}
+            timeline={(selectedComponent ? selectedComponent.timeline : composition.timeline) as TimelineDocument | null | undefined}
+            component={selectedComponent || compositionTimelineTargetRoot(composition)}
+            compositions={compositions}
+            includeRootTarget={selectedComponent ? true : false}
+            scopeRootPath={selectedComponent ? true : false}
+            onChange={(timeline) => {
+              if (selectedComponent) controller.updateComponent(selectedComponent.id, { timeline } as Partial<ArtComponent>);
+              else controller.updateComposition(composition.id, { timeline });
+            }}
+            onPreviewFrame={previewTimelineFrame}
+          />
+        ) : (
+          <p>No timeline selected.</p>
+        )}
+      </div>
     </section>
   );
 }
@@ -780,16 +798,15 @@ function ArtComponentInspector({
   composition,
   compositions,
   component,
-  onPreviewTimelineOverrides,
   tree
 }: {
   controller: ArtCompositionsController;
   composition: ArtComposition | null;
   compositions: ArtComposition[];
   component: ArtComponent | null;
-  onPreviewTimelineOverrides: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
   tree: ReactNode;
 }) {
+  void compositions;
   if (!component) {
     return (
       <section className="flow-react-panel flow-react-inspector art-component-inspector" data-art-react-component="component-inspector" data-empty="true">
@@ -799,18 +816,6 @@ function ArtComponentInspector({
         </div>
         <h3>Composition</h3>
         <p>Select a component.</p>
-        {composition ? (
-          <ArtTimelinePanel
-            title={`${composition.name} Timeline`}
-            timeline={composition.timeline as TimelineDocument | null | undefined}
-            component={compositionTimelineTargetRoot(composition)}
-            compositions={compositions}
-            includeRootTarget={false}
-            scopeRootPath={false}
-            onChange={(timeline) => controller.updateComposition(composition.id, { timeline })}
-            onPreviewFrame={onPreviewTimelineOverrides}
-          />
-        ) : null}
       </section>
     );
   }
@@ -967,14 +972,6 @@ function ArtComponentInspector({
           />
         </label>
       ) : null}
-      <ArtTimelinePanel
-        title={`${component.name || component.kind} Timeline`}
-        timeline={component.timeline as TimelineDocument | null | undefined}
-        component={component}
-        compositions={compositions}
-        onChange={(timeline) => commit({ timeline } as Partial<ArtComponent>)}
-        onPreviewFrame={onPreviewTimelineOverrides}
-      />
     </section>
   );
 }

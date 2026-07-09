@@ -1187,7 +1187,7 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-workspace-content {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
   width: 100%;
   height: 100%;
@@ -1196,7 +1196,7 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-composition-editor {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(220px, 32vh);
   min-height: 0;
   background: #fff;
 }
@@ -1244,6 +1244,19 @@ body.tool-dashboard-mode .layout-react-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 420px);
   min-height: 0;
+}
+
+.art-timeline-dock {
+  min-height: 0;
+  overflow: auto;
+  border-top: 4px solid var(--ink);
+  background: #fffdf2;
+}
+
+.art-timeline-dock > .art-timeline-panel {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border-top: 0;
 }
 
 .art-preview-panel {
