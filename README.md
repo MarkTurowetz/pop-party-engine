@@ -32,11 +32,14 @@ http://localhost:3000/l
 
 This app is ready for Render as a Node web service.
 
-- Build command: `npm run build-info`
+- Build command: `npm run build`
 - Start command: `node server.js`
 - Health check path: `/api/health`
 
 The included `render.yaml` defines the same settings as a Render Blueprint.
+`npm run build-info` also rebuilds the Vite client assets before stamping
+`build-info.json`, so older Render services still configured to call
+`build-info` deploy the current tool UI instead of reusing stale bundles.
 
 ## Durable Game Flow Storage
 
