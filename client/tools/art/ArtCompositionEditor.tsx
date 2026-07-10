@@ -185,6 +185,12 @@ function isButtonTimelineShortcutTarget(target: EventTarget | null): boolean {
   return Boolean(element.closest("button, [role='button']"));
 }
 
+function isTimelineFrameShortcutTarget(target: EventTarget | null): boolean {
+  const element = target instanceof HTMLElement ? target : null;
+  if (!element) return false;
+  return Boolean(element.closest(".art-timeline-ruler button, .art-timeline-lane-frame"));
+}
+
 function findTimelineKeyframe(
   timeline: TimelineDocument,
   selection: { targetId: string; frame: number } | null
@@ -1270,7 +1276,8 @@ function ArtTimelinePanel({
   useEffect(() => {
     function handleGlobalTimelineKeyDown(event: KeyboardEvent): void {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isEditableTimelineShortcutTarget(event.target) || isButtonTimelineShortcutTarget(event.target)) return;
+      if (isEditableTimelineShortcutTarget(event.target)) return;
+      if (isButtonTimelineShortcutTarget(event.target) && !isTimelineFrameShortcutTarget(event.target)) return;
       if (event.key === " " || event.key === "Spacebar") {
         event.preventDefault();
         playbackControlsRef.current.toggle();
@@ -1405,13 +1412,13 @@ function ArtTimelinePanel({
       return;
     }
     if (event.key === " " || event.key === "Spacebar") {
-      if (isButtonTimelineShortcutTarget(event.target)) return;
+      if (isButtonTimelineShortcutTarget(event.target) && !isTimelineFrameShortcutTarget(event.target)) return;
       event.preventDefault();
       toggleTimelinePlayback();
       return;
     }
     if (event.key === "Enter") {
-      if (isButtonTimelineShortcutTarget(event.target)) return;
+      if (isButtonTimelineShortcutTarget(event.target) && !isTimelineFrameShortcutTarget(event.target)) return;
       event.preventDefault();
       if (current.frameCount > 1) playTimelineFromBeginning();
       return;

@@ -191,9 +191,35 @@ export class TimelinePlayer {
     return Math.max(0, duration);
   }
 
+  private cleanTimelineFrame(frame: number): number {
+    if (!this.timeline) return 0;
+    return Math.max(0, Math.min(Math.max(0, this.timeline.frameCount - 1), Math.round(Number(frame) || 0)));
+  }
+
+  private nextStopFrameAfter(startFrame: number): number {
+    if (!this.timeline) return 0;
+    const cleanStartFrame = this.cleanTimelineFrame(startFrame);
+    const maxFrame = Math.max(0, this.timeline.frameCount - 1);
+    const stop = this.timeline.commands.find((command) => command.type === "stop" && command.frame > cleanStartFrame);
+    return stop ? stop.frame : maxFrame;
+  }
+
+  private durationFromFrame(startFrame: number, endFrame: number): number {
+    if (!this.timeline) return 0;
+    const cleanStartFrame = this.cleanTimelineFrame(startFrame);
+    const cleanEndFrame = this.cleanTimelineFrame(endFrame);
+    const frameDuration = 1000 / this.timeline.fps;
+    let duration = Math.max(0, (cleanEndFrame - cleanStartFrame) * frameDuration);
+    for (let frame = cleanStartFrame; frame <= cleanEndFrame; frame += 1) {
+      const elapsedMs = Math.max(0, (frame - cleanStartFrame) * frameDuration);
+      duration = Math.max(duration, elapsedMs + this.durationForFrameCommands(frame, 0));
+    }
+    return duration;
+  }
+
   applyFrame(frame: number): void {
     if (!this.timeline) return;
-    this.currentFrame = Math.max(0, Math.min(Math.max(0, this.timeline.frameCount - 1), Math.round(frame)));
+    this.currentFrame = this.cleanTimelineFrame(frame);
     this.onFrame?.(timelineSnapshotAt(this.timeline, this.currentFrame));
   }
 
@@ -219,6 +245,43 @@ export class TimelinePlayer {
 
   gotoAndPlay(labelOrFrame: string | number, options: TimelinePlayOptions = {}): number {
     return this.gotoAndPlayInternal(labelOrFrame, options, 0);
+  }
+
+  playFromFrame(frame: number, options: TimelinePlayOptions = {}): number {
+    this.stop();
+    if (!this.timeline) {
+      options.complete?.();
+      return 0;
+    }
+    const startFrame = this.cleanTimelineFrame(frame);
+    const endFrame = this.nextStopFrameAfter(startFrame);
+    const duration = this.durationFromFrame(startFrame, endFrame);
+    const playToken = this.token;
+    if (options.instant === true || endFrame <= startFrame) {
+      this.applyFrame(endFrame);
+      if (!this.runFrameCommands(endFrame, options.complete, 0, duration)) {
+        this.completeAfterDuration(duration, playToken, options.complete);
+      }
+      return duration;
+    }
+    this.isPlaying = true;
+    const frameDuration = 1000 / this.timeline.fps;
+    this.applyFrame(startFrame);
+    const startRedirected = this.runFrameCommands(startFrame, options.complete, 0, 0);
+    if (startRedirected) return duration;
+    for (let nextFrame = startFrame + 1; nextFrame <= endFrame; nextFrame += 1) {
+      const scheduledFrame = nextFrame;
+      const delay = (scheduledFrame - startFrame) * frameDuration;
+      this.scheduleFrame(() => {
+        if (this.token !== playToken) return;
+        this.applyFrame(scheduledFrame);
+        const redirected = this.runFrameCommands(scheduledFrame, options.complete, 0, delay);
+        if (!redirected && scheduledFrame === endFrame) {
+          this.completeAfterDuration(duration - delay, playToken, options.complete);
+        }
+      }, delay);
+    }
+    return duration;
   }
 
   private gotoAndPlayInternal(labelOrFrame: string | number, options: TimelinePlayOptions = {}, commandCount = 0): number {

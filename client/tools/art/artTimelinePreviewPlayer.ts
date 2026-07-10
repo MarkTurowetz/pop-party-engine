@@ -252,9 +252,15 @@ export function playArtTimelinePreview({
     commandDuration: (command) => (rootContext ? artTimelineCommandDurationForContext(rootContext, command, 0) : 0)
   });
 
-  parentPlayer.gotoAndPlay(start, {
-    complete: completePlayback
-  });
+  if (typeof start === "number") {
+    parentPlayer.playFromFrame(start, {
+      complete: completePlayback
+    });
+  } else {
+    parentPlayer.gotoAndPlay(start, {
+      complete: completePlayback
+    });
+  }
 
   return {
     stop: () => {

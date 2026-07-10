@@ -100,6 +100,32 @@ describe("TimelinePlayer", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
+  it("plays editor preview from the current frame to the next future stop", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 8,
+      labels: [{ name: "park", frame: 0 }],
+      commands: [
+        { frame: 0, type: "stop" },
+        { frame: 4, type: "stop" }
+      ],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 0, props: { x: 0 } }, { frame: 4, props: { x: 40 } }] }]
+    });
+    const frames: number[] = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      onFrame: (snapshot) => frames.push(snapshot.frame)
+    });
+
+    expect(player.playFromFrame(0, { complete })).toBe(400);
+    expect(frames).toEqual([0]);
+
+    vi.advanceTimersByTime(400);
+    expect(frames).toEqual([0, 1, 2, 3, 4]);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
   it("clears scheduled frame handles as timeline playback advances", () => {
     const timeline = normalizeTimeline({
       fps: 10,
