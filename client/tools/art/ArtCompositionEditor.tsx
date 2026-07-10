@@ -51,7 +51,13 @@ import {
   upsertTimelineKeyframeProps
 } from "./artTimelineModel";
 import { parseTimelineActionScript, timelineCommandsToActionScript } from "./artTimelineActionScript";
-import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor, timelineTrackRowsFor } from "./artTimelineTargets";
+import {
+  findTimelineTargetComponent,
+  timelineTargetLabel,
+  timelineTargetOptionsFor,
+  timelineTrackRowsFor,
+  timelineWithScopedComponentTracks
+} from "./artTimelineTargets";
 import { scopeTimelinePreviewOverridesToComponent } from "./artTimelinePreviewMapping";
 import {
   artTimelinePlaybackDuration,
@@ -491,8 +497,14 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const timelineRootComponent = composition ? timelineScopeComponent || compositionTimelineTargetRoot(composition) : null;
   const activeTimeline = (timelineScopeComponent ? timelineScopeComponent.timeline || null : composition?.timeline || null) as TimelineDocument | null;
   const effectiveActiveTimeline = useMemo(
-    () => effectiveArtVisibilityTimeline(activeTimeline, timelineScopeComponent || null),
-    [activeTimeline, timelineScopeComponent]
+    () =>
+      timelineWithScopedComponentTracks(effectiveArtVisibilityTimeline(activeTimeline, timelineScopeComponent || null), timelineRootComponent || undefined, {
+        includeRoot: timelineScopeComponent ? true : false,
+        useScopedIds: true,
+        scopeRootPath: timelineScopeComponent ? true : false,
+        resolveReference: artCompositionReferenceResolver(compositions)
+      }),
+    [activeTimeline, compositions, timelineRootComponent, timelineScopeComponent]
   );
   const baseTimelineFrameOverrides = useMemo(() => {
     if (effectiveActiveTimeline.tracks.length === 0) return null;
@@ -767,6 +779,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           <ArtTimelinePanel
             title={timelineScopeComponent ? `${timelineScopeComponent.name || timelineScopeComponent.kind} Timeline` : `${composition.name} Timeline`}
             timeline={activeTimeline}
+            displayTimeline={effectiveActiveTimeline}
             component={timelineRootComponent || compositionTimelineTargetRoot(composition)}
             compositions={compositions}
             includeRootTarget={timelineScopeComponent ? true : false}
@@ -1016,6 +1029,7 @@ function ArtComponentInspector({
 function ArtTimelinePanel({
   title,
   timeline,
+  displayTimeline,
   component,
   compositions = [],
   includeRootTarget = true,
@@ -1026,6 +1040,7 @@ function ArtTimelinePanel({
 }: {
   title: string;
   timeline: TimelineDocument | null | undefined;
+  displayTimeline?: TimelineDocument | null | undefined;
   component?: ArtComponent;
   compositions?: ArtComposition[];
   includeRootTarget?: boolean;
@@ -1034,7 +1049,10 @@ function ArtTimelinePanel({
   onExitScope?: () => void;
   onPreviewFrame?: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
 }) {
-  const current = useMemo(() => effectiveArtVisibilityTimeline(timeline, includeRootTarget ? component : null), [component, includeRootTarget, timeline]);
+  const current = useMemo(
+    () => effectiveArtVisibilityTimeline(displayTimeline ?? timeline, includeRootTarget ? component : null),
+    [component, displayTimeline, includeRootTarget, timeline]
+  );
   const [frame, setFrame] = useState(0);
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [frameRangeAnchor, setFrameRangeAnchor] = useState<number | null>(null);
@@ -1194,6 +1212,7 @@ function ArtTimelinePanel({
 
   function playTimeline(): void {
     stopPlayback();
+    let completedSynchronously = false;
     const playback = playArtTimelinePreview({
       timeline: current,
       component,
@@ -1202,10 +1221,16 @@ function ArtTimelinePanel({
       resolveReference,
       onPreview: (previewFrameValue, overrides) => previewFrameWithOverrides(previewFrameValue, overrides),
       onComplete: () => {
+        completedSynchronously = true;
         playbackRef.current = null;
         setIsPlaying(false);
       }
     });
+    if (completedSynchronously) {
+      playback.stop();
+      setIsPlaying(false);
+      return;
+    }
     playbackRef.current = playback;
     setIsPlaying(true);
   }

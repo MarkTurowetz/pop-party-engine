@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
-import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor, timelineTrackRowsFor } from "./artTimelineTargets";
+import {
+  findTimelineTargetComponent,
+  timelineTargetLabel,
+  timelineTargetOptionsFor,
+  timelineTrackRowsFor,
+  timelineWithScopedComponentTracks
+} from "./artTimelineTargets";
 
 const tree = {
   id: "player",
@@ -153,5 +159,83 @@ describe("artTimelineTargets", () => {
     expect(rows.map((row) => row.target.id)).toEqual(["avatar", "bubble", "bubble/answer-text", "legacy-target"]);
     expect(rows[3].target).toMatchObject({ label: "legacy-target", detail: "track target" });
     expect(rows[3].track?.keyframes[0].props).toEqual({ scale: 2 });
+  });
+
+  it("maps child-owned timelines into the parent timeline scope", () => {
+    const parent = {
+      id: "join-widget",
+      name: "Join Widget",
+      kind: "container",
+      children: [
+        {
+          id: "join-text",
+          name: "Join Text",
+          kind: "text",
+          timeline: {
+            fps: 30,
+            frameCount: 20,
+            labels: [{ name: "appear", frame: 2 }],
+            commands: [{ frame: 17, type: "stop" }],
+            tracks: [{ targetId: "join-text", keyframes: [{ frame: 2, props: { scale: 0 } }, { frame: 17, props: { scale: 1 } }] }]
+          }
+        },
+        {
+          id: "join-pill",
+          name: "Join Pill",
+          kind: "shape",
+          timeline: {
+            fps: 30,
+            frameCount: 20,
+            labels: [{ name: "appear", frame: 2 }],
+            commands: [{ frame: 17, type: "stop" }],
+            tracks: [{ targetId: "self", keyframes: [{ frame: 2, props: { opacity: 0 } }, { frame: 17, props: { opacity: 1 } }] }]
+          }
+        }
+      ]
+    } as ArtComponent;
+
+    const timeline = timelineWithScopedComponentTracks(
+      { fps: 30, frameCount: 20, labels: [{ name: "appear", frame: 2 }], commands: [{ frame: 17, type: "stop" }], tracks: [] },
+      parent,
+      { includeRoot: false, useScopedIds: true, scopeRootPath: false }
+    );
+
+    expect(timeline.tracks.map((track) => track.targetId)).toEqual(["join-pill", "join-text"]);
+    expect(timeline.tracks.find((track) => track.targetId === "join-text")?.keyframes[0].props.scale).toBe(0);
+    expect(timeline.tracks.find((track) => track.targetId === "join-pill")?.keyframes[1].props.opacity).toBe(1);
+  });
+
+  it("maps nested child-owned timelines under their parent path", () => {
+    const parent = {
+      id: "card",
+      kind: "container",
+      children: [
+        {
+          id: "label",
+          kind: "container",
+          children: [
+            {
+              id: "text",
+              kind: "text",
+              timeline: {
+                fps: 30,
+                frameCount: 10,
+                labels: [],
+                commands: [],
+                tracks: [{ targetId: "text", keyframes: [{ frame: 3, props: { defaultText: "Nested" } }] }]
+              }
+            }
+          ]
+        }
+      ]
+    } as ArtComponent;
+
+    const timeline = timelineWithScopedComponentTracks(
+      { fps: 30, frameCount: 10, labels: [], commands: [], tracks: [] },
+      parent,
+      { includeRoot: false, useScopedIds: true, scopeRootPath: false }
+    );
+
+    expect(timeline.tracks.map((track) => track.targetId)).toEqual(["label/text"]);
   });
 });
