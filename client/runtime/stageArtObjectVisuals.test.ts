@@ -287,7 +287,7 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
       frameCount: 3,
       labels: [{ name: "pulse", frame: 0 }],
       commands: [{ frame: 2, type: "stop" }],
-      tracks: [{ targetId: "child", keyframes: [{ frame: 0, props: { x: 10 } }, { frame: 2, props: { x: 30 } }] }]
+      tracks: [{ targetId: "child", keyframes: [{ frame: 0, easing: "linear", props: { x: 10 } }, { frame: 2, props: { x: 30 } }] }]
     });
 
     const duration = renderer.playAll("pulse", {});

@@ -673,7 +673,8 @@ export function addTransformKeyframe(
   const keyframe: TimelineKeyframe = {
     id: `key-${cleanTargetId}-${cleanFrameValue}`,
     frame: cleanFrameValue,
-    props: componentTimelinePropsFor(component)
+    props: componentTimelinePropsFor(component),
+    easing: "hold"
   };
   const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
   const nextTrack = existingTrack
@@ -704,7 +705,7 @@ export function addTimelinePropertyKeyframe(
     frame: cleanFrameValue,
     props: cleanTimelineProps({ ...(existingKeyframe?.props || {}), ...props })
   };
-  if (existingKeyframe?.easing) keyframe.easing = existingKeyframe.easing;
+  keyframe.easing = existingKeyframe?.easing || "hold";
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, keyframe)
     : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };
@@ -735,7 +736,7 @@ export function upsertTimelineKeyframeProps(
     props: cleanTimelineProps({ ...(existingKeyframe?.props || {}), ...cleanProps })
   };
   const easing = cleanTimelineEasing(existingKeyframe?.easing || options.defaultEasing);
-  if (easing && easing !== "linear") keyframe.easing = easing;
+  if (easing) keyframe.easing = easing;
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, keyframe)
     : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };
@@ -787,7 +788,7 @@ export function updateTimelineKeyframe(
     };
     if (patch.easing !== undefined) {
       const easing = cleanTimelineEasing(patch.easing);
-      if (easing && easing !== "linear") nextKeyframe.easing = easing;
+      if (easing) nextKeyframe.easing = easing;
       else delete nextKeyframe.easing;
     }
     return upsertKeyframe({ ...track, keyframes: track.keyframes.filter((keyframe) => keyframe.frame !== currentFrame) }, nextKeyframe);

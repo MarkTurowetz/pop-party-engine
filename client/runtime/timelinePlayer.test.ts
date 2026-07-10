@@ -17,7 +17,7 @@ describe("TimelinePlayer", () => {
       frameCount: 20,
       labels: [{ name: "appear", frame: 2 }],
       commands: [{ frame: 8, type: "stop" }],
-      tracks: [{ targetId: "card", keyframes: [{ frame: 2, props: { scale: 0.5 } }, { frame: 8, props: { scale: 1 } }] }]
+      tracks: [{ targetId: "card", keyframes: [{ frame: 2, easing: "linear", props: { scale: 0.5 } }, { frame: 8, props: { scale: 1 } }] }]
     });
 
     expect(timeline?.labels).toEqual([{ name: "appear", frame: 2 }]);
@@ -150,13 +150,35 @@ describe("TimelinePlayer", () => {
     expect(timelineSnapshotAt(timeline!, 2).targets.card.x).toBe(25);
   });
 
+  it("holds values from the previous keyframe unless easing is explicitly tweened", () => {
+    const held = normalizeTimeline({
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [],
+      tracks: [{ targetId: "text", keyframes: [{ frame: 2, props: { scale: 1 } }, { frame: 17, props: { scale: 2 } }] }]
+    });
+    const tweened = normalizeTimeline({
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [],
+      tracks: [{ targetId: "text", keyframes: [{ frame: 2, easing: "linear", props: { scale: 1 } }, { frame: 17, props: { scale: 2 } }] }]
+    });
+
+    expect(timelineSnapshotAt(held!, 4).targets.text.scale).toBe(1);
+    expect(timelineSnapshotAt(held!, 16).targets.text.scale).toBe(1);
+    expect(timelineSnapshotAt(held!, 17).targets.text.scale).toBe(2);
+    expect(timelineSnapshotAt(tweened!, 4).targets.text.scale).toBe(1.133);
+  });
+
   it("does not apply future keyframes before a track starts", () => {
     const timeline = normalizeTimeline({
       fps: 10,
       frameCount: 8,
       labels: [],
       commands: [],
-      tracks: [{ targetId: "card", keyframes: [{ frame: 3, props: { x: 30 } }, { frame: 6, props: { x: 60 } }] }]
+      tracks: [{ targetId: "card", keyframes: [{ frame: 3, easing: "linear", props: { x: 30 } }, { frame: 6, props: { x: 60 } }] }]
     });
 
     expect(timelineSnapshotAt(timeline!, 2).targets.card).toEqual({});
@@ -194,7 +216,7 @@ describe("TimelinePlayer", () => {
         {
           targetId: "card",
           keyframes: [
-            { frame: 4, props: { scale: 1.4 } },
+            { frame: 4, easing: "linear", props: { scale: 1.4 } },
             { frame: 7, props: { scale: 1 } }
           ]
         }

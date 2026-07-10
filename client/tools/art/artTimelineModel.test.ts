@@ -413,6 +413,7 @@ describe("artTimelineModel", () => {
       keyframes: [
         {
           frame: 5,
+          easing: "hold",
           props: {
             x: 10,
             y: 20,
@@ -463,6 +464,7 @@ describe("artTimelineModel", () => {
           {
             id: "key-card-5",
             frame: 5,
+            easing: "hold",
             props: { scale: 1.2, opacity: 1, fillColor: "#ffe156" }
           }
         ]
@@ -542,6 +544,7 @@ describe("artTimelineModel", () => {
       opacity: 1,
       visible: true
     });
+    expect(timeline.tracks[0].keyframes[0].easing).toBe("hold");
   });
 
   it("updates keyframe frames, properties, and easing", () => {
@@ -564,7 +567,7 @@ describe("artTimelineModel", () => {
       }
     ]);
     const linear = updateTimelineKeyframe(result, "title", 6, { easing: "linear" });
-    expect(linear.tracks[0].keyframes[0].easing).toBeUndefined();
+    expect(linear.tracks[0].keyframes[0].easing).toBe("linear");
   });
 
   it("copies keyframe properties and easing to another frame", () => {

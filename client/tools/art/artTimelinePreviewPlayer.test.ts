@@ -20,7 +20,7 @@ describe("playArtTimelinePreview", () => {
         frameCount: 3,
         labels: [{ name: "pop", frame: 0 }],
         commands: [{ frame: 2, type: "stop" }],
-        tracks: [{ targetId: "child", keyframes: [{ frame: 0, props: { x: 10 } }, { frame: 2, props: { x: 30 } }] }]
+        tracks: [{ targetId: "child", keyframes: [{ frame: 0, easing: "linear", props: { x: 10 } }, { frame: 2, props: { x: 30 } }] }]
       }
     };
     const root: ArtComponent = { id: "root", kind: "container", children: [child] };
@@ -36,7 +36,7 @@ describe("playArtTimelinePreview", () => {
           { frame: 1, type: "emit", target: "child", event: "pop" },
           { frame: 3, type: "stop" }
         ],
-        tracks: [{ targetId: "root", keyframes: [{ frame: 0, props: { opacity: 0 } }, { frame: 3, props: { opacity: 1 } }] }]
+        tracks: [{ targetId: "root", keyframes: [{ frame: 0, easing: "linear", props: { opacity: 0 } }, { frame: 3, props: { opacity: 1 } }] }]
       },
       onPreview: (frame, overrides) => {
         previews.push({

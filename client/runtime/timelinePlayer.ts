@@ -63,11 +63,12 @@ function interpolateValue(
 
 function easedProgress(progress: number, easing?: string): number {
   const t = Math.max(0, Math.min(1, progress));
-  if (easing === "hold") return 0;
+  if (!easing || easing === "hold") return 0;
+  if (easing === "linear") return t;
   if (easing === "easeIn") return t * t;
   if (easing === "easeOut") return 1 - (1 - t) * (1 - t);
   if (easing === "easeInOut") return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  return t;
+  return 0;
 }
 
 function keyframeSnapshotForTrack(track: TimelineTrack, frame: number): TimelineProperties {
