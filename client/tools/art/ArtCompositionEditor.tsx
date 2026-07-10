@@ -32,9 +32,7 @@ import {
   addTransformKeyframe,
   copyTimelineFrameRange,
   copyTimelineKeyframe,
-  createTimelineSegment,
   cutTimelineFrameRange,
-  duplicateTimelineSegment,
   effectiveArtVisibilityTimeline,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
@@ -44,10 +42,8 @@ import {
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineFrames,
-  removeTimelineSegment,
   replaceTransformKeyframeFromComponent,
   timelineFrameRangeFromAnchor,
-  timelineSegmentsForArt,
   type TimelineFrameClipboard,
   updateTimelineCommandAt,
   updateTimelineKeyframe,
@@ -997,11 +993,6 @@ function ArtTimelinePanel({
 }) {
   const current = useMemo(() => effectiveArtVisibilityTimeline(timeline, includeRootTarget ? component : null), [component, includeRootTarget, timeline]);
   const [frame, setFrame] = useState(0);
-  const [labelName, setLabelName] = useState("");
-  const [segmentName, setSegmentName] = useState("");
-  const [segmentDurationFrames, setSegmentDurationFrames] = useState(15);
-  const [duplicateSegmentSource, setDuplicateSegmentSource] = useState("");
-  const [duplicateSegmentName, setDuplicateSegmentName] = useState("");
   const [commandType, setCommandType] = useState("stop");
   const [commandTarget, setCommandTarget] = useState("");
   const [commandEvent, setCommandEvent] = useState("");
@@ -1011,7 +1002,6 @@ function ArtTimelinePanel({
   const [frameWindowStart, setFrameWindowStart] = useState(0);
   const [keyframeTargetId, setKeyframeTargetId] = useState("");
   const [keyframePropertyNames, setKeyframePropertyNames] = useState("scale");
-  const [playStartLabel, setPlayStartLabel] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
@@ -1046,7 +1036,12 @@ function ArtTimelinePanel({
   const selectedFrameRangeCount = Math.max(1, Math.min(Math.max(1, current.frameCount - cleanFrame), Math.round(Number(frameEditCount) || 1)));
   const selectedFrameRangeEnd = Math.min(current.frameCount - 1, cleanFrame + selectedFrameRangeCount - 1);
   const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
-  const timelineSegments = useMemo(() => timelineSegmentsForArt(current), [current]);
+  const currentFrameLabels = useMemo(() => timelineLabelsAtFrame(current, cleanFrame), [current, cleanFrame]);
+  const currentFrameLabel =
+    selectedMarker?.kind === "label"
+      ? currentFrameLabels.find((label) => label.name === selectedMarker.name) || currentFrameLabels[0] || null
+      : currentFrameLabels[0] || null;
+  const currentFrameAnimationName = currentFrameLabel?.name || "";
   const keyframeTargets = useMemo(
     () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true, scopeRootPath, resolveReference }),
     [component, includeRootTarget, scopeRootPath, resolveReference]
@@ -1069,19 +1064,15 @@ function ArtTimelinePanel({
     selectedTimelineMarker?.kind === "command"
       ? timelineCommandTargetSummary(selectedTimelineMarker.command, component, { scopeRootPath, resolveReference })
       : null;
-  const activePlayStart = current.labels.some((label) => label.name === playStartLabel) ? playStartLabel : "";
-  const activeDuplicateSegmentSource = current.labels.some((label) => label.name === duplicateSegmentSource)
-    ? duplicateSegmentSource
-    : current.labels[0]?.name || "";
   const activePlaybackDuration = useMemo(
-    () => artTimelinePlaybackDuration(current, component, activePlayStart || cleanFrame, 0, { scopeRootPath, resolveReference }),
-    [activePlayStart, cleanFrame, component, current, scopeRootPath, resolveReference]
+    () => artTimelinePlaybackDuration(current, component, currentFrameAnimationName || cleanFrame, 0, { scopeRootPath, resolveReference }),
+    [cleanFrame, component, current, currentFrameAnimationName, scopeRootPath, resolveReference]
   );
 
   function defaultCommandTargetForType(type: string): string {
     if (type === "stop") return "";
     if (timelineCommandUsesComponentTarget(type)) return activeKeyframeTargetId || keyframeTargets[0]?.id || "";
-    return activePlayStart || current.labels[0]?.name || "";
+    return currentFrameAnimationName || current.labels[0]?.name || "";
   }
 
   function defaultCommandEventForType(type: string, targetId: string, previousEvent = ""): string {
@@ -1185,7 +1176,7 @@ function ArtTimelinePanel({
     const playback = playArtTimelinePreview({
       timeline: current,
       component,
-      start: activePlayStart || cleanFrame,
+      start: currentFrameAnimationName || cleanFrame,
       scopeRootPath,
       resolveReference,
       onPreview: (previewFrameValue, overrides) => previewFrameWithOverrides(previewFrameValue, overrides),
@@ -1198,41 +1189,23 @@ function ArtTimelinePanel({
     setIsPlaying(true);
   }
 
-  function createSegmentAtCurrentFrame(): void {
-    const nextTimeline = createTimelineSegment(current, cleanFrame, segmentName, segmentDurationFrames);
-    const existingNames = new Set(current.labels.map((label) => label.name));
-    const nextLabel = nextTimeline.labels.find((label) => !existingNames.has(label.name) && label.frame === cleanFrame);
-    applyTimelineFrameEdit(nextTimeline, cleanFrame);
-    if (nextLabel) {
-      setSelectedKeyframe(null);
-      setSelectedMarker({ kind: "label", name: nextLabel.name });
-      setPlayStartLabel(nextLabel.name);
+  function updateCurrentFrameAnimationName(name: string): void {
+    const nextName = String(name || "").trim();
+    if (!nextName) {
+      if (!currentFrameLabel) return;
+      const nextTimeline = removeTimelineLabel(current, currentFrameLabel.name);
+      onChange(nextTimeline);
+      setSelectedMarker(null);
+      previewFrame(cleanFrame);
+      return;
     }
-    setSegmentName("");
-  }
-
-  function duplicateSelectedSegment(): void {
-    if (!activeDuplicateSegmentSource) return;
-    const nextTimeline = duplicateTimelineSegment(current, activeDuplicateSegmentSource, duplicateSegmentName || `${activeDuplicateSegmentSource} Copy`);
-    const previousNames = new Set(current.labels.map((label) => label.name));
-    const nextLabel = nextTimeline.labels.find((label) => !previousNames.has(label.name));
-    if (nextLabel) {
-      applyTimelineFrameEdit(nextTimeline, nextLabel.frame);
-      setSelectedKeyframe(null);
-      setSelectedMarker({ kind: "label", name: nextLabel.name });
-      setPlayStartLabel(nextLabel.name);
-    } else {
-      applyTimelineFrameEdit(nextTimeline, cleanFrame);
-    }
-    setDuplicateSegmentName("");
-  }
-
-  function deleteSegment(label: string): void {
-    const nextTimeline = removeTimelineSegment(current, label);
-    if (selectedMarker?.kind === "label" && selectedMarker.name === label) setSelectedMarker(null);
-    if (activePlayStart === label) setPlayStartLabel("");
-    if (duplicateSegmentSource === label) setDuplicateSegmentSource("");
-    applyTimelineFrameEdit(nextTimeline, Math.min(cleanFrame, Math.max(0, nextTimeline.frameCount - 1)));
+    const nextTimeline = currentFrameLabel
+      ? updateTimelineLabel(current, currentFrameLabel.name, { name: nextName })
+      : addTimelineLabel(current, cleanFrame, nextName);
+    onChange(nextTimeline);
+    setSelectedKeyframe(null);
+    setSelectedMarker({ kind: "label", name: nextName });
+    previewFrame(cleanFrame);
   }
 
   function applyTimelineFrameEdit(nextTimeline: TimelineDocument, nextFrame = cleanFrame): void {
@@ -1353,7 +1326,6 @@ function ArtTimelinePanel({
     stopPlayback();
     setSelectedKeyframe(null);
     setSelectedMarker(selection);
-    if (selection.kind === "label") setPlayStartLabel(selection.name);
     previewFrame(markerFrame);
   }
 
@@ -1594,16 +1566,6 @@ function ArtTimelinePanel({
       </div>
       <div className="art-timeline-settings">
         <label className="flow-react-field">
-          <span>FPS</span>
-          <input
-            type="number"
-            min={1}
-            max={120}
-            value={current.fps}
-            onChange={(event) => onChange(updateTimelineSettings(current, { fps: Number(event.target.value) }))}
-          />
-        </label>
-        <label className="flow-react-field">
           <span>Frames</span>
           <input
             type="number"
@@ -1628,17 +1590,9 @@ function ArtTimelinePanel({
         </label>
       </div>
       <div className="art-timeline-playback">
-        <label className="flow-react-field">
-          <span>Play From</span>
-          <select value={activePlayStart} onChange={(event) => setPlayStartLabel(event.target.value)}>
-            <option value="">Current Frame</option>
-            {current.labels.map((label) => (
-              <option key={label.name} value={label.name}>
-                {label.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <span className="art-timeline-playback-source">
+          Play from {currentFrameAnimationName ? `"${currentFrameAnimationName}"` : `frame ${cleanFrame}`}
+        </span>
         <button type="button" onClick={playTimeline} disabled={isPlaying || current.frameCount <= 1}>
           Play
         </button>
@@ -1653,71 +1607,14 @@ function ArtTimelinePanel({
       <div className="art-timeline-segment-editor">
         <label className="flow-react-field">
           <span>Animation Name</span>
-          <input type="text" value={segmentName} placeholder="pop" onChange={(event) => setSegmentName(event.target.value)} />
-        </label>
-        <label className="flow-react-field">
-          <span>Duration Frames</span>
-          <input
-            type="number"
-            min={1}
-            max={1000}
-            value={segmentDurationFrames}
-            onChange={(event) => setSegmentDurationFrames(Math.max(1, Math.min(1000, Math.round(Number(event.target.value) || 1))))}
-          />
-        </label>
-        <button type="button" onClick={createSegmentAtCurrentFrame}>
-          New Animation
-        </button>
-        <label className="flow-react-field">
-          <span>Duplicate</span>
-          <select value={activeDuplicateSegmentSource} disabled={!current.labels.length} onChange={(event) => setDuplicateSegmentSource(event.target.value)}>
-            {current.labels.map((label) => (
-              <option key={label.name} value={label.name}>
-                {label.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flow-react-field">
-          <span>New Name</span>
           <input
             type="text"
-            value={duplicateSegmentName}
-            placeholder={activeDuplicateSegmentSource ? `${activeDuplicateSegmentSource} Copy` : "Animation Copy"}
-            onChange={(event) => setDuplicateSegmentName(event.target.value)}
+            value={currentFrameAnimationName}
+            placeholder="None"
+            onChange={(event) => updateCurrentFrameAnimationName(event.target.value)}
           />
         </label>
-        <button type="button" disabled={!activeDuplicateSegmentSource} onClick={duplicateSelectedSegment}>
-          Duplicate Animation
-        </button>
       </div>
-      {timelineSegments.length ? (
-        <div className="art-timeline-segment-list" aria-label="Timeline animation segments">
-          {timelineSegments.map((segment) => (
-            <div
-              key={segment.label}
-              className="art-timeline-segment-item"
-              data-art-timeline-segment-active={activePlayStart === segment.label ? "true" : "false"}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setPlayStartLabel(segment.label);
-                  selectTimelineMarker({ kind: "label", name: segment.label }, segment.startFrame);
-                }}
-              >
-                <span>{segment.label}</span>
-                <small>
-                  {segment.startFrame}-{segment.endFrame} / {Math.round(artTimelinePlaybackDuration(current, component, segment.label, 0, { scopeRootPath, resolveReference }))}ms
-                </small>
-              </button>
-              <button type="button" onClick={() => deleteSegment(segment.label)}>
-                Delete
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
       <div className="art-timeline-frame-editor">
         <label className="flow-react-field">
           <span>Range Frames</span>
@@ -1967,22 +1864,6 @@ function ArtTimelinePanel({
             onChange={(event) => setKeyframePropertyNames(event.target.value)}
           />
         </label>
-        <label className="flow-react-field">
-          <span>Label</span>
-          <input type="text" value={labelName} placeholder="appear" onChange={(event) => setLabelName(event.target.value)} />
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            const nextLabel = labelName.trim() || `Frame ${cleanFrame}`;
-            onChange(addTimelineLabel(current, cleanFrame, nextLabel));
-            setSelectedKeyframe(null);
-            setSelectedMarker({ kind: "label", name: nextLabel });
-            setLabelName("");
-          }}
-        >
-          Add Label
-        </button>
         <button
           type="button"
           disabled={!activeKeyframeTarget}

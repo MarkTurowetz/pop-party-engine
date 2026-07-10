@@ -196,7 +196,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "0",
       opacity: Number(timelineValue("opacity", 1)),
       outline: selected ? "2px solid #22d3ee" : "none",
-      display: timelineValue("visible", true) === false ? "none" : "flex",
+      display: "flex",
       alignItems: "center",
       justifyContent: "center",
       color:
