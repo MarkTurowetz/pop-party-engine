@@ -480,6 +480,23 @@ export function addTimelineCommand(
   return sortTimeline({ ...current, commands: [...current.commands, cleanCommand] });
 }
 
+export function replaceTimelineCommandsAtFrame(
+  timeline: TimelineDocument | null | undefined,
+  frame: number,
+  commands: Partial<Pick<TimelineCommand, "type" | "target" | "event">>[]
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const normalizedFrame = cleanFrame(frame, current.frameCount);
+  let nextTimeline = sortTimeline({
+    ...current,
+    commands: current.commands.filter((command) => command.frame !== normalizedFrame)
+  });
+  for (const command of commands) {
+    nextTimeline = addTimelineCommand(nextTimeline, normalizedFrame, command);
+  }
+  return nextTimeline;
+}
+
 export function removeTimelineCommand(timeline: TimelineDocument | null | undefined, commandId: string): TimelineDocument {
   const current = artTimelineOrDefault(timeline);
   return { ...current, commands: current.commands.filter((command) => command.id !== commandId) };

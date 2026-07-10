@@ -23,6 +23,7 @@ import {
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineSegment,
+  replaceTimelineCommandsAtFrame,
   timelineFrameRangeFromAnchor,
   timelineSegmentsForArt,
   updateTimelineCommandAt,
@@ -198,6 +199,32 @@ describe("artTimelineModel", () => {
     const third = addTimelineCommand(second, 2, { type: "stop" });
 
     expect(third.commands.map((command) => command.type)).toEqual(["stop", "gotoAndPlay", "emit"]);
+  });
+
+  it("replaces all commands on a single frame while preserving other commands", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [
+        { id: "before", frame: 1, type: "stop" },
+        { id: "old", frame: 4, type: "stop" },
+        { id: "after", frame: 9, type: "emit", event: "done" }
+      ],
+      tracks: []
+    };
+
+    const replaced = replaceTimelineCommandsAtFrame(timeline, 4, [
+      { type: "gotoAndPlay", target: "appear" },
+      { type: "emit", event: "entered" }
+    ]);
+
+    expect(replaced.commands).toEqual([
+      { id: "before", frame: 1, type: "stop" },
+      { id: "gotoandplay-4-appear", frame: 4, type: "gotoAndPlay", target: "appear" },
+      { id: "emit-4-entered", frame: 4, type: "emit", event: "entered" },
+      { id: "after", frame: 9, type: "emit", event: "done" }
+    ]);
   });
 
   it("updates timeline commands by normalized list index", () => {

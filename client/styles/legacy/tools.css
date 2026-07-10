@@ -1521,13 +1521,42 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-segment-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.45fr) auto minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr);
   gap: 8px;
   align-items: end;
   padding: 8px;
   border: 3px solid rgba(23, 19, 31, 0.18);
   border-radius: 6px;
   background: rgba(255, 225, 86, 0.18);
+}
+
+.art-timeline-script-editor {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+  background: rgba(185, 244, 255, 0.38);
+}
+
+.art-timeline-script-editor textarea {
+  min-height: 74px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.art-timeline-script-help {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.art-timeline-script-error {
+  color: #d91f54;
+  font-size: 11px;
+  font-weight: 1000;
 }
 
 .art-timeline-segment-list {
@@ -1695,6 +1724,12 @@ body.tool-dashboard-mode .layout-react-shell {
 .art-timeline-lane-frame[aria-current="true"] {
   outline: 2px solid var(--cyan);
   outline-offset: -2px;
+}
+
+.art-timeline-lane-frame[data-art-timeline-active-cell="true"] {
+  outline: 3px solid #ffe156;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 2px var(--ink);
 }
 
 .art-timeline-lane-frame[data-art-timeline-has-keyframe="true"] {

@@ -26,7 +26,6 @@ import {
   validateImageFile
 } from "./artComponentSchema";
 import {
-  addTimelineCommand,
   addTimelineLabel,
   addTimelinePropertyKeyframe,
   addTransformKeyframe,
@@ -36,12 +35,12 @@ import {
   effectiveArtVisibilityTimeline,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
-  moveTimelineCommandAt,
   pasteTimelineFrameRange,
   removeTimelineCommandAt,
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineFrames,
+  replaceTimelineCommandsAtFrame,
   replaceTransformKeyframeFromComponent,
   timelineFrameRangeFromAnchor,
   type TimelineFrameClipboard,
@@ -51,6 +50,7 @@ import {
   updateTimelineSettings,
   upsertTimelineKeyframeProps
 } from "./artTimelineModel";
+import { parseTimelineActionScript, timelineCommandsToActionScript } from "./artTimelineActionScript";
 import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
 import { scopeTimelinePreviewOverridesToComponent } from "./artTimelinePreviewMapping";
 import {
@@ -61,8 +61,6 @@ import {
 } from "./artTimelinePreviewPlayer";
 import { useArtCompositions } from "./useArtCompositions";
 import {
-  timelineCommandAcceptsEvent,
-  timelineCommandAcceptsTarget,
   type TimelineCommand,
   type TimelineDocument,
   type TimelineKeyframe,
@@ -131,6 +129,11 @@ type LayerDropTarget = {
   placement: LayerDropPlacement;
 };
 type TimelineMarkerSelection = { kind: "label"; name: string } | { kind: "command"; index: number; commandId?: string };
+type TimelineCellSelection =
+  | { kind: "frame"; frame: number }
+  | { kind: "label"; frame: number }
+  | { kind: "command"; frame: number }
+  | { kind: "keyframe"; frame: number; targetId: string };
 type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
@@ -235,28 +238,6 @@ function timelineCommandTitle(command: TimelineCommand): string {
   return details ? `${command.type} (${details})` : command.type;
 }
 
-function timelineCommandTargetSummary(
-  command: Pick<TimelineCommand, "type" | "target" | "event">,
-  component: ArtComponent | undefined,
-  options: { scopeRootPath?: boolean; resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined } = {}
-): { label: string; detail: string } | null {
-  const target = String(command.target || "").trim();
-  if (!timelineCommandUsesTarget(command.type || "") || !target) return null;
-  if (!timelineCommandUsesComponentTarget(command.type || "")) {
-    return { label: target, detail: command.event ? `label / ${command.event}` : "timeline label" };
-  }
-  const targetLabel = timelineTargetLabel(target, component, {
-    useScopedIds: true,
-    scopeRootPath: options.scopeRootPath,
-    resolveReference: options.resolveReference
-  });
-  const event = String(command.event || "").trim();
-  return {
-    label: targetLabel.label,
-    detail: [targetLabel.detail, event ? `animation: ${event}` : ""].filter(Boolean).join(" / ")
-  };
-}
-
 function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: TimelineCommand, fallbackIndex: number): number {
   if (previousCommand.id) {
     const idIndex = timeline.commands.findIndex((command) => command.id === previousCommand.id);
@@ -272,13 +253,6 @@ function findTimelineCommandIndex(timeline: TimelineDocument, previousCommand: T
   return matchingIndex >= 0 ? matchingIndex : Math.max(0, Math.min(timeline.commands.length - 1, fallbackIndex));
 }
 
-function findLastTimelineCommandIndex(timeline: TimelineDocument, predicate: (command: TimelineCommand) => boolean): number {
-  for (let index = timeline.commands.length - 1; index >= 0; index -= 1) {
-    if (predicate(timeline.commands[index])) return index;
-  }
-  return -1;
-}
-
 function commandMarkerSelection(command: TimelineCommand, index: number): TimelineMarkerSelection {
   return { kind: "command", index, commandId: command.id };
 }
@@ -287,65 +261,6 @@ function isCommandMarkerSelected(selection: TimelineMarkerSelection | null, comm
   if (selection?.kind !== "command") return false;
   if (selection.commandId && command.id) return selection.commandId === command.id;
   return selection.index === index;
-}
-
-function timelineCommandFrameOrder(timeline: TimelineDocument, index: number): { position: number; total: number } {
-  const command = timeline.commands[index];
-  if (!command) return { position: 0, total: 0 };
-  const sameFrame = timeline.commands.map((item, commandIndex) => ({ command: item, index: commandIndex })).filter(({ command: item }) => item.frame === command.frame);
-  return {
-    position: sameFrame.findIndex((item) => item.index === index) + 1,
-    total: sameFrame.length
-  };
-}
-
-function canMoveTimelineCommandInFrame(timeline: TimelineDocument, index: number, direction: -1 | 1): boolean {
-  const command = timeline.commands[index];
-  const target = timeline.commands[index + direction];
-  return Boolean(command && target && command.frame === target.frame);
-}
-
-function timelineCommandUsesComponentTarget(type: string): boolean {
-  return type === "emit" || type === "playComponent" || type === "stopComponent";
-}
-
-function timelineCommandUsesTarget(type: string): boolean {
-  return timelineCommandAcceptsTarget(type);
-}
-
-function timelineCommandUsesEvent(type: string): boolean {
-  return timelineCommandAcceptsEvent(type);
-}
-
-function timelineCommandTargetLabel(type: string): string {
-  return timelineCommandUsesComponentTarget(type) ? "Target Component" : "Target Label";
-}
-
-function timelineCommandTargetPlaceholder(type: string, fallbackComponentId = ""): string {
-  return timelineCommandUsesComponentTarget(type) ? fallbackComponentId || "component-id" : "appear";
-}
-
-function timelineCommandEventLabel(type: string): string {
-  if (type === "playComponent" || type === "stopComponent") return "Animation Label";
-  if (type === "emit") return "Event";
-  return "Event";
-}
-
-function timelineCommandEventPlaceholder(type: string): string {
-  if (type === "playComponent" || type === "stopComponent") return "appear";
-  if (type === "emit") return "pop-name";
-  return "";
-}
-
-function timelineTargetAnimationLabels(
-  component: ArtComponent | undefined,
-  targetId: string,
-  scopeRootPath?: boolean,
-  resolveReference?: (component: ArtComponent) => ArtComposition | null | undefined
-): TimelineLabel[] {
-  const target = component && targetId ? findTimelineTargetComponent([component], targetId, { scopeRootPath, resolveReference }) : undefined;
-  const targetTimeline = effectiveArtVisibilityTimeline((target?.timeline || null) as TimelineDocument | null, target);
-  return targetTimeline.labels;
 }
 
 function layerDropPlacement(event: ReactDragEvent<HTMLElement>): LayerDropPlacement {
@@ -1063,9 +978,6 @@ function ArtTimelinePanel({
 }) {
   const current = useMemo(() => effectiveArtVisibilityTimeline(timeline, includeRootTarget ? component : null), [component, includeRootTarget, timeline]);
   const [frame, setFrame] = useState(0);
-  const [commandType, setCommandType] = useState("stop");
-  const [commandTarget, setCommandTarget] = useState("");
-  const [commandEvent, setCommandEvent] = useState("");
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [frameRangeAnchor, setFrameRangeAnchor] = useState<number | null>(null);
   const [frameRangeFocus, setFrameRangeFocus] = useState<number | null>(null);
@@ -1075,10 +987,13 @@ function ArtTimelinePanel({
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
+  const [selectedTimelineCell, setSelectedTimelineCell] = useState<TimelineCellSelection>({ kind: "frame", frame: 0 });
   const [timelineDragItem, setTimelineDragItem] = useState<TimelineDragItem | null>(null);
   const [timelineDropFrame, setTimelineDropFrame] = useState<number | null>(null);
   const [copiedKeyframe, setCopiedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [copiedFrameRange, setCopiedFrameRange] = useState<TimelineFrameClipboard | null>(null);
+  const [commandScriptDraft, setCommandScriptDraft] = useState("");
+  const [commandScriptError, setCommandScriptError] = useState("");
   const [newPropertyName, setNewPropertyName] = useState("");
   const [newPropertyType, setNewPropertyType] = useState<"number" | "boolean" | "string">("number");
   const [newPropertyValue, setNewPropertyValue] = useState("");
@@ -1105,8 +1020,22 @@ function ArtTimelinePanel({
   const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
   const selectedFrameRangeCount = Math.max(1, Math.min(Math.max(1, current.frameCount - cleanFrame), Math.round(Number(frameEditCount) || 1)));
   const selectedFrameRangeEnd = Math.min(current.frameCount - 1, cleanFrame + selectedFrameRangeCount - 1);
-  const hasTimelineLanes = current.labels.length > 0 || current.commands.length > 0 || current.tracks.length > 0;
   const currentFrameLabels = useMemo(() => timelineLabelsAtFrame(current, cleanFrame), [current, cleanFrame]);
+  const selectedLabelFrame = selectedTimelineCell.kind === "label" ? cleanTimelineFrame(selectedTimelineCell.frame) : null;
+  const selectedCommandFrame = selectedTimelineCell.kind === "command" ? cleanTimelineFrame(selectedTimelineCell.frame) : null;
+  const selectedLabelFrameLabels = useMemo(
+    () => (selectedLabelFrame === null ? [] : timelineLabelsAtFrame(current, selectedLabelFrame)),
+    [current, selectedLabelFrame]
+  );
+  const selectedCommandFrameCommands = useMemo(
+    () => (selectedCommandFrame === null ? [] : timelineCommandsAtFrame(current, selectedCommandFrame)),
+    [current, selectedCommandFrame]
+  );
+  const selectedLabelFrameLabel =
+    selectedMarker?.kind === "label" && selectedLabelFrame !== null
+      ? selectedLabelFrameLabels.find((label) => label.name === selectedMarker.name) || selectedLabelFrameLabels[0] || null
+      : selectedLabelFrameLabels[0] || null;
+  const selectedLabelAnimationName = selectedLabelFrameLabel?.name || "";
   const currentFrameLabel =
     selectedMarker?.kind === "label"
       ? currentFrameLabels.find((label) => label.name === selectedMarker.name) || currentFrameLabels[0] || null
@@ -1120,62 +1049,13 @@ function ArtTimelinePanel({
     ? keyframeTargetId
     : keyframeTargets[0]?.id || component?.id || "";
   const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId, { scopeRootPath, resolveReference }) : undefined;
-  const commandTargetLabel = timelineCommandTargetLabel(commandType);
-  const commandTargetPlaceholder = timelineCommandTargetPlaceholder(commandType, activeKeyframeTargetId);
-  const commandEventLabel = timelineCommandEventLabel(commandType);
-  const commandEventPlaceholder = timelineCommandEventPlaceholder(commandType);
-  const commandTargetAnimationLabels = timelineTargetAnimationLabels(component, commandTarget, scopeRootPath, resolveReference);
-  const newCommandTargetSummary = timelineCommandTargetSummary(
-    { type: commandType, target: commandTarget, event: commandEvent },
-    component,
-    { scopeRootPath, resolveReference }
-  );
-  const selectedCommandTargetSummary =
-    selectedTimelineMarker?.kind === "command"
-      ? timelineCommandTargetSummary(selectedTimelineMarker.command, component, { scopeRootPath, resolveReference })
-      : null;
   const activePlaybackDuration = useMemo(
     () => artTimelinePlaybackDuration(current, component, currentFrameAnimationName || cleanFrame, 0, { scopeRootPath, resolveReference }),
     [cleanFrame, component, current, currentFrameAnimationName, scopeRootPath, resolveReference]
   );
 
-  function defaultCommandTargetForType(type: string): string {
-    if (type === "stop") return "";
-    if (timelineCommandUsesComponentTarget(type)) return activeKeyframeTargetId || keyframeTargets[0]?.id || "";
-    return currentFrameAnimationName || current.labels[0]?.name || "";
-  }
-
-  function defaultCommandEventForType(type: string, targetId: string, previousEvent = ""): string {
-    if (type === "playComponent" || type === "stopComponent") {
-      const labels = timelineTargetAnimationLabels(component, targetId, scopeRootPath, resolveReference);
-      if (labels.some((label) => label.name === previousEvent)) return previousEvent;
-      return labels[0]?.name || "appear";
-    }
-    if (type === "emit") return previousEvent;
-    return "";
-  }
-
-  function commandDefaultsForType(type: string, previousTarget = "", previousEvent = ""): { target: string; event: string } {
-    const target = type === "stop" ? "" : previousTarget || defaultCommandTargetForType(type);
-    return { target, event: defaultCommandEventForType(type, target, previousEvent) };
-  }
-
   function componentWithTimelineTargetId(target: ArtComponent, targetId: string): ArtComponent {
     return target.id === targetId ? target : { ...target, id: targetId };
-  }
-
-  function setNewCommandType(nextType: string): void {
-    const defaults = commandDefaultsForType(nextType, "", commandEvent);
-    setCommandType(nextType);
-    setCommandTarget(defaults.target);
-    setCommandEvent(defaults.event);
-  }
-
-  function setNewCommandTarget(nextTarget: string): void {
-    setCommandTarget(nextTarget);
-    if (commandType === "playComponent" || commandType === "stopComponent") {
-      setCommandEvent(defaultCommandEventForType(commandType, nextTarget, commandEvent));
-    }
   }
 
   useEffect(() => {
@@ -1203,6 +1083,16 @@ function ArtTimelinePanel({
     setFrameRangeFocus(null);
     setFrameWindowStart(windowStartForFrame(normalizedFrame));
     onPreviewFrame?.(normalizedFrame);
+  }
+
+  function selectTimelineCell(selection: TimelineCellSelection): void {
+    setSelectedTimelineCell({ ...selection, frame: cleanTimelineFrame(selection.frame) } as TimelineCellSelection);
+  }
+
+  function timelineCellIsActive(kind: TimelineCellSelection["kind"], frameIndex: number, targetId?: string): boolean {
+    if (selectedTimelineCell.kind !== kind || cleanTimelineFrame(selectedTimelineCell.frame) !== frameIndex) return false;
+    if (kind !== "keyframe") return true;
+    return selectedTimelineCell.kind === "keyframe" && selectedTimelineCell.targetId === targetId;
   }
 
   function setManualFrameRangeCount(nextCount: number): void {
@@ -1260,22 +1150,44 @@ function ArtTimelinePanel({
   }
 
   function updateCurrentFrameAnimationName(name: string): void {
+    if (selectedLabelFrame === null) return;
     const nextName = String(name || "").trim();
     if (!nextName) {
-      if (!currentFrameLabel) return;
-      const nextTimeline = removeTimelineLabel(current, currentFrameLabel.name);
+      if (!selectedLabelFrameLabel) return;
+      const nextTimeline = removeTimelineLabel(current, selectedLabelFrameLabel.name);
       onChange(nextTimeline);
       setSelectedMarker(null);
-      previewFrame(cleanFrame);
+      previewFrame(selectedLabelFrame);
+      selectTimelineCell({ kind: "label", frame: selectedLabelFrame });
       return;
     }
-    const nextTimeline = currentFrameLabel
-      ? updateTimelineLabel(current, currentFrameLabel.name, { name: nextName })
-      : addTimelineLabel(current, cleanFrame, nextName);
+    const nextTimeline = selectedLabelFrameLabel
+      ? updateTimelineLabel(current, selectedLabelFrameLabel.name, { name: nextName })
+      : addTimelineLabel(current, selectedLabelFrame, nextName);
     onChange(nextTimeline);
     setSelectedKeyframe(null);
     setSelectedMarker({ kind: "label", name: nextName });
-    previewFrame(cleanFrame);
+    previewFrame(selectedLabelFrame);
+    selectTimelineCell({ kind: "label", frame: selectedLabelFrame });
+  }
+
+  function commitCommandScriptDraft(): boolean {
+    if (selectedCommandFrame === null) return true;
+    const result = parseTimelineActionScript(commandScriptDraft);
+    if (result.error) {
+      setCommandScriptError(result.error);
+      return false;
+    }
+    const nextTimeline = replaceTimelineCommandsAtFrame(current, selectedCommandFrame, result.commands);
+    onChange(nextTimeline);
+    setSelectedKeyframe(null);
+    const commands = timelineCommandsAtFrame(nextTimeline, selectedCommandFrame);
+    setSelectedMarker(commands[0] ? commandMarkerSelection(commands[0].command, commands[0].index) : null);
+    setCommandScriptDraft(timelineCommandsToActionScript(commands.map(({ command }) => command)));
+    setCommandScriptError("");
+    previewFrame(selectedCommandFrame);
+    selectTimelineCell({ kind: "command", frame: selectedCommandFrame });
+    return true;
   }
 
   function applyTimelineFrameEdit(nextTimeline: TimelineDocument, nextFrame = cleanFrame): void {
@@ -1389,6 +1301,7 @@ function ArtTimelinePanel({
     stopPlayback();
     setSelectedMarker(null);
     setSelectedKeyframe({ targetId, frame: keyframeFrame });
+    selectTimelineCell({ kind: "keyframe", targetId, frame: keyframeFrame });
     previewFrame(keyframeFrame);
   }
 
@@ -1396,68 +1309,18 @@ function ArtTimelinePanel({
     stopPlayback();
     setSelectedKeyframe(null);
     setSelectedMarker(selection);
+    selectTimelineCell({ kind: selection.kind, frame: markerFrame });
     previewFrame(markerFrame);
   }
 
-  function updateSelectedMarkerFrame(nextFrame: number): void {
-    if (!selectedTimelineMarker) return;
-    const normalizedFrame = Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(nextFrame) || 0)));
-    if (selectedTimelineMarker.kind === "label") {
-      const nextTimeline = updateTimelineLabel(current, selectedTimelineMarker.label.name, { frame: normalizedFrame });
-      onChange(nextTimeline);
-      previewFrame(normalizedFrame);
-      return;
-    }
-    const nextTimeline = updateTimelineCommandAt(current, selectedTimelineMarker.index, { frame: normalizedFrame });
-    onChange(nextTimeline);
-    const nextIndex = findTimelineCommandIndex(nextTimeline, selectedTimelineMarker.command, selectedTimelineMarker.index);
-    setSelectedMarker(commandMarkerSelection(nextTimeline.commands[nextIndex], nextIndex));
-    previewFrame(normalizedFrame);
-  }
-
-  function updateSelectedLabelName(name: string): void {
-    if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "label") return;
-    const nextTimeline = updateTimelineLabel(current, selectedTimelineMarker.label.name, { name });
-    const nextName = name.trim() || selectedTimelineMarker.label.name;
-    onChange(nextTimeline);
-    setSelectedMarker({ kind: "label", name: nextName });
-  }
-
-  function updateSelectedCommand(patch: Partial<Pick<TimelineCommand, "type" | "target" | "event">>): void {
-    if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "command") return;
-    const nextTimeline = updateTimelineCommandAt(current, selectedTimelineMarker.index, patch);
-    onChange(nextTimeline);
-    const nextIndex = findTimelineCommandIndex(nextTimeline, selectedTimelineMarker.command, selectedTimelineMarker.index);
-    setSelectedMarker(commandMarkerSelection(nextTimeline.commands[nextIndex], nextIndex));
-  }
-
-  function setSelectedCommandType(nextType: string): void {
-    if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "command") return;
-    updateSelectedCommand({ type: nextType, ...commandDefaultsForType(nextType, "", selectedTimelineMarker.command.event || "") });
-  }
-
-  function setSelectedCommandTarget(nextTarget: string): void {
-    if (!selectedTimelineMarker || selectedTimelineMarker.kind !== "command") return;
-    const type = selectedTimelineMarker.command.type;
-    updateSelectedCommand({
-      target: nextTarget,
-      event: defaultCommandEventForType(type, nextTarget, selectedTimelineMarker.command.event || "")
-    });
-  }
-
-  function moveCommand(index: number, direction: -1 | 1): void {
-    const command = current.commands[index];
-    if (!command || !canMoveTimelineCommandInFrame(current, index, direction)) return;
-    const nextTimeline = moveTimelineCommandAt(current, index, direction);
-    const nextIndex = index + direction;
-    onChange(nextTimeline);
-    setSelectedKeyframe(null);
-    setSelectedMarker(commandMarkerSelection(nextTimeline.commands[nextIndex], nextIndex));
-    previewFrame(command.frame);
-  }
-
   function selectCommandFrame(commands: { command: TimelineCommand; index: number }[], commandFrame: number): void {
+    selectTimelineCell({ kind: "command", frame: commandFrame });
+    setCommandScriptDraft(timelineCommandsToActionScript(commands.map(({ command }) => command)));
+    setCommandScriptError("");
     if (!commands.length) {
+      stopPlayback();
+      setSelectedKeyframe(null);
+      setSelectedMarker(null);
       previewFrame(commandFrame);
       return;
     }
@@ -1674,17 +1537,53 @@ function ArtTimelinePanel({
         </button>
         <span className="art-timeline-playback-duration">{Math.round(activePlaybackDuration)}ms</span>
       </div>
-      <div className="art-timeline-segment-editor">
-        <label className="flow-react-field">
-          <span>Animation Name</span>
-          <input
-            type="text"
-            value={currentFrameAnimationName}
-            placeholder="None"
-            onChange={(event) => updateCurrentFrameAnimationName(event.target.value)}
-          />
-        </label>
-      </div>
+      {selectedTimelineCell.kind === "label" ? (
+        <div className="art-timeline-segment-editor">
+          <label className="flow-react-field">
+            <span>Animation Name</span>
+            <input
+              type="text"
+              value={selectedLabelAnimationName}
+              placeholder="None"
+              onChange={(event) => updateCurrentFrameAnimationName(event.target.value)}
+            />
+          </label>
+        </div>
+      ) : null}
+      {selectedTimelineCell.kind === "command" ? (
+        <div className="art-timeline-script-editor">
+          <label className="flow-react-field">
+            <span>Actions</span>
+            <textarea
+              value={commandScriptDraft}
+              placeholder={'stop();\ngotoAndPlay("appear");'}
+              spellCheck={false}
+              onChange={(event) => {
+                setCommandScriptDraft(event.target.value);
+                setCommandScriptError("");
+              }}
+              onBlur={() => {
+                commitCommandScriptDraft();
+              }}
+              onKeyDown={(event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                  event.preventDefault();
+                  commitCommandScriptDraft();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setCommandScriptDraft(timelineCommandsToActionScript(selectedCommandFrameCommands.map(({ command }) => command)));
+                  setCommandScriptError("");
+                }
+              }}
+            />
+          </label>
+          <small className="art-timeline-script-help">
+            Frame {selectedCommandFrame ?? cleanFrame}: use stop(), gotoAndPlay("label"), gotoAndStop("label"), emit("event"), or playComponent("component", "label").
+          </small>
+          {commandScriptError ? <strong className="art-timeline-script-error">{commandScriptError}</strong> : null}
+        </div>
+      ) : null}
       <div className="art-timeline-frame-editor">
         <label className="flow-react-field">
           <span>Range Frames</span>
@@ -1759,7 +1658,10 @@ function ArtTimelinePanel({
             onClick={(event) => {
               stopPlayback();
               if (event.shiftKey) selectFrameRangeTo(frameIndex);
-              else previewFrame(frameIndex);
+              else {
+                previewFrame(frameIndex);
+                selectTimelineCell({ kind: "frame", frame: frameIndex });
+              }
             }}
             title={`Frame ${frameIndex}${frameInSelectedRange(frameIndex) ? " / selected range" : ""}`}
           >
@@ -1767,9 +1669,7 @@ function ArtTimelinePanel({
           </button>
         ))}
       </div>
-      {hasTimelineLanes ? (
-        <div className="art-timeline-lanes" data-art-timeline-lanes>
-          {current.labels.length ? (
+      <div className="art-timeline-lanes" data-art-timeline-lanes>
             <div className="art-timeline-lane" data-art-timeline-lane-kind="labels">
               <div className="art-timeline-lane-label" title="Timeline labels">
                 Labels
@@ -1788,10 +1688,20 @@ function ArtTimelinePanel({
                       data-art-timeline-marker-selected={
                         labels.some((label) => selectedMarker?.kind === "label" && selectedMarker.name === label.name) ? "true" : "false"
                       }
+                      data-art-timeline-active-cell={timelineCellIsActive("label", frameIndex) ? "true" : "false"}
                       data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                       draggable={labels.length > 0}
                       title={labels.length ? `Frame ${frameIndex}: ${labels.map((label) => label.name).join(", ")}` : `Preview frame ${frameIndex}`}
-                      onClick={() => (labels[0] ? selectTimelineMarker({ kind: "label", name: labels[0].name }, frameIndex) : previewFrame(frameIndex))}
+                      onClick={() => {
+                        if (labels[0]) selectTimelineMarker({ kind: "label", name: labels[0].name }, frameIndex);
+                        else {
+                          stopPlayback();
+                          setSelectedKeyframe(null);
+                          setSelectedMarker(null);
+                          previewFrame(frameIndex);
+                          selectTimelineCell({ kind: "label", frame: frameIndex });
+                        }
+                      }}
                       onDragStart={(event) => {
                         if (!labels[0]) return;
                         startTimelineDrag(event, { kind: "label", name: labels[0].name });
@@ -1809,8 +1719,6 @@ function ArtTimelinePanel({
                 })}
               </div>
             </div>
-          ) : null}
-          {current.commands.length ? (
             <div className="art-timeline-lane" data-art-timeline-lane-kind="commands">
               <div className="art-timeline-lane-label" title="Timeline commands">
                 Commands
@@ -1834,6 +1742,7 @@ function ArtTimelinePanel({
                       data-art-timeline-marker-selected={
                         commands.some(({ command, index: commandIndex }) => isCommandMarkerSelected(selectedMarker, command, commandIndex)) ? "true" : "false"
                       }
+                      data-art-timeline-active-cell={timelineCellIsActive("command", frameIndex) ? "true" : "false"}
                       data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                       draggable={commands.length > 0}
                       title={
@@ -1861,7 +1770,6 @@ function ArtTimelinePanel({
                 })}
               </div>
             </div>
-          ) : null}
           {current.tracks.map((track) => {
             const trackLabel = timelineTargetLabel(track.targetId, component, { scopeRootPath, resolveReference });
             return (
@@ -1883,10 +1791,20 @@ function ArtTimelinePanel({
                         data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                         data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
                         data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
+                        data-art-timeline-active-cell={timelineCellIsActive("keyframe", frameIndex, track.targetId) ? "true" : "false"}
                         data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                         draggable={Boolean(keyframe)}
                         title={keyframe ? `${track.targetId} keyframe ${frameIndex}` : `Preview frame ${frameIndex}`}
-                        onClick={() => (keyframe ? selectKeyframe(track.targetId, keyframe.frame) : previewFrame(frameIndex))}
+                        onClick={() => {
+                          if (keyframe) selectKeyframe(track.targetId, keyframe.frame);
+                          else {
+                            stopPlayback();
+                            setSelectedMarker(null);
+                            setSelectedKeyframe(null);
+                            previewFrame(frameIndex);
+                            selectTimelineCell({ kind: "keyframe", targetId: track.targetId, frame: frameIndex });
+                          }
+                        }}
                         onDragStart={(event) => {
                           if (!keyframe) return;
                           startTimelineDrag(event, { kind: "keyframe", targetId: track.targetId, frame: keyframe.frame });
@@ -1912,7 +1830,6 @@ function ArtTimelinePanel({
             </small>
           ) : null}
         </div>
-      ) : null}
       <div className="art-timeline-actions">
         <label className="flow-react-field">
           <span>Keyframe Target</span>
@@ -1954,294 +1871,11 @@ function ArtTimelinePanel({
           Paste Keyframe
         </button>
       </div>
-      <div className="art-timeline-command-editor">
-        <label className="flow-react-field">
-          <span>Command</span>
-          <select value={commandType} onChange={(event) => setNewCommandType(event.target.value)}>
-            <option value="stop">Stop</option>
-            <option value="gotoAndPlay">Go To And Play</option>
-            <option value="gotoAndStop">Go To And Stop</option>
-            <option value="playComponent">Play Component Timeline</option>
-            <option value="stopComponent">Stop Component Timeline</option>
-            <option value="emit">Emit Event</option>
-          </select>
-        </label>
-        {timelineCommandUsesTarget(commandType) ? (
-          <label className="flow-react-field">
-            <span>{commandTargetLabel}</span>
-            <input
-              type="text"
-              list={timelineCommandUsesComponentTarget(commandType) ? "art-timeline-target-components" : "art-timeline-labels"}
-              value={commandTarget}
-              placeholder={commandTargetPlaceholder}
-              onChange={(event) => setNewCommandTarget(event.target.value)}
-            />
-          </label>
-        ) : null}
-        {timelineCommandUsesEvent(commandType) ? (
-          <label className="flow-react-field">
-            <span>{commandEventLabel}</span>
-            <input
-              type="text"
-              list={commandType === "playComponent" || commandType === "stopComponent" ? "art-timeline-command-target-labels" : undefined}
-              value={commandEvent}
-              placeholder={commandEventPlaceholder}
-              onChange={(event) => setCommandEvent(event.target.value)}
-            />
-          </label>
-        ) : null}
-        {newCommandTargetSummary ? (
-          <div className="art-timeline-command-target-summary" title={newCommandTargetSummary.detail}>
-            <span>{newCommandTargetSummary.label}</span>
-            <small>{newCommandTargetSummary.detail}</small>
-          </div>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            const nextTimeline = addTimelineCommand(current, cleanFrame, { type: commandType, target: commandTarget, event: commandEvent });
-            const selectedCommandIndex = findLastTimelineCommandIndex(
-              nextTimeline,
-              (command) =>
-                command.frame === cleanFrame &&
-                command.type === commandType &&
-                (command.target || "") === (timelineCommandUsesTarget(commandType) ? commandTarget.trim() : "") &&
-                (command.event || "") === (timelineCommandUsesEvent(commandType) ? commandEvent.trim() : "")
-            );
-            onChange(nextTimeline);
-            setSelectedKeyframe(null);
-            if (selectedCommandIndex >= 0) setSelectedMarker(commandMarkerSelection(nextTimeline.commands[selectedCommandIndex], selectedCommandIndex));
-            setCommandEvent("");
-            if (commandType === "stop") setCommandTarget("");
-          }}
-        >
-          Add Command
-        </button>
-        <datalist id="art-timeline-labels">
-          {current.labels.map((label) => (
-            <option value={label.name} key={label.name} />
-          ))}
-        </datalist>
-        <datalist id="art-timeline-target-components">
-          {keyframeTargets.map((target) => (
-            <option value={target.id} key={target.id}>
-              {target.label}
-            </option>
-          ))}
-        </datalist>
-        <datalist id="art-timeline-command-target-labels">
-          {commandTargetAnimationLabels.map((label) => (
-            <option value={label.name} key={label.name} />
-          ))}
-        </datalist>
-        <datalist id="art-timeline-property-suggestions">
-          {TIMELINE_PROPERTY_SUGGESTIONS.map((property) => (
-            <option value={property} key={property} />
-          ))}
-        </datalist>
-      </div>
-      <div className="art-timeline-lists">
-        <div>
-          <h4>Labels</h4>
-          {current.labels.length ? (
-            <ol className="flow-react-list art-timeline-list">
-              {current.labels.map((label) => (
-                <li key={label.name}>
-                  <button
-                    type="button"
-                    aria-current={selectedMarker?.kind === "label" && selectedMarker.name === label.name ? "true" : undefined}
-                    onClick={() => selectTimelineMarker({ kind: "label", name: label.name }, label.frame)}
-                  >
-                    <span>{label.name}</span>
-                  </button>
-                  <small>Frame {label.frame}</small>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(removeTimelineLabel(current, label.name));
-                      if (selectedMarker?.kind === "label" && selectedMarker.name === label.name) setSelectedMarker(null);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p>No labels.</p>
-          )}
-        </div>
-        <div>
-          <h4>Commands</h4>
-          {current.commands.length ? (
-            <ol className="flow-react-list art-timeline-list">
-              {current.commands.map((command, index) => {
-                const order = timelineCommandFrameOrder(current, index);
-                return (
-                  <li key={command.id || `${command.type}-${command.frame}-${index}`}>
-                    <button
-                      type="button"
-                      aria-current={isCommandMarkerSelected(selectedMarker, command, index) ? "true" : undefined}
-                      onClick={() => selectTimelineMarker(commandMarkerSelection(command, index), command.frame)}
-                    >
-                      <span>{command.type}</span>
-                    </button>
-                    <small>
-                      Frame {command.frame}
-                      {order.total > 1 ? ` / Order ${order.position} of ${order.total}` : ""}
-                      {(() => {
-                        const summary = timelineCommandTargetSummary(command, component, { scopeRootPath, resolveReference });
-                        if (summary) return ` / ${summary.label}: ${summary.detail}`;
-                        return command.target ? ` -> ${command.target}` : "";
-                      })()}
-                      {command.event && !timelineCommandUsesComponentTarget(command.type) ? ` / ${command.event}` : ""}
-                    </small>
-                    <button type="button" disabled={!canMoveTimelineCommandInFrame(current, index, -1)} onClick={() => moveCommand(index, -1)}>
-                      Earlier
-                    </button>
-                    <button type="button" disabled={!canMoveTimelineCommandInFrame(current, index, 1)} onClick={() => moveCommand(index, 1)}>
-                      Later
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange(removeTimelineCommandAt(current, index));
-                        if (isCommandMarkerSelected(selectedMarker, command, index)) setSelectedMarker(null);
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : (
-            <p>No commands.</p>
-          )}
-        </div>
-      </div>
-      {selectedTimelineMarker ? (
-        <div className="art-timeline-marker-editor">
-          <h4>{selectedTimelineMarker.kind === "label" ? "Selected Label" : "Selected Command"}</h4>
-          {selectedTimelineMarker.kind === "label" ? (
-            <>
-              <label className="flow-react-field">
-                <span>Name</span>
-                <input type="text" value={selectedTimelineMarker.label.name} onChange={(event) => updateSelectedLabelName(event.target.value)} />
-              </label>
-              <label className="flow-react-field">
-                <span>Frame</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={Math.max(0, current.frameCount - 1)}
-                  value={selectedTimelineMarker.label.frame}
-                  onChange={(event) => updateSelectedMarkerFrame(Number(event.target.value))}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(removeTimelineLabel(current, selectedTimelineMarker.label.name));
-                  setSelectedMarker(null);
-                }}
-              >
-                Remove Label
-              </button>
-            </>
-          ) : (
-            <>
-              {(() => {
-                const order = timelineCommandFrameOrder(current, selectedTimelineMarker.index);
-                return order.total > 1 ? (
-                  <div className="art-timeline-command-order-actions">
-                    <span>
-                      Order {order.position} of {order.total} on frame {selectedTimelineMarker.command.frame}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!canMoveTimelineCommandInFrame(current, selectedTimelineMarker.index, -1)}
-                      onClick={() => moveCommand(selectedTimelineMarker.index, -1)}
-                    >
-                      Earlier
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!canMoveTimelineCommandInFrame(current, selectedTimelineMarker.index, 1)}
-                      onClick={() => moveCommand(selectedTimelineMarker.index, 1)}
-                    >
-                      Later
-                    </button>
-                  </div>
-                ) : null;
-              })()}
-              <label className="flow-react-field">
-                <span>Command</span>
-                <select value={selectedTimelineMarker.command.type} onChange={(event) => setSelectedCommandType(event.target.value)}>
-                  <option value="stop">Stop</option>
-                  <option value="gotoAndPlay">Go To And Play</option>
-                  <option value="gotoAndStop">Go To And Stop</option>
-                  <option value="playComponent">Play Component Timeline</option>
-                  <option value="stopComponent">Stop Component Timeline</option>
-                  <option value="emit">Emit Event</option>
-                </select>
-              </label>
-              <label className="flow-react-field">
-                <span>Frame</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={Math.max(0, current.frameCount - 1)}
-                  value={selectedTimelineMarker.command.frame}
-                  onChange={(event) => updateSelectedMarkerFrame(Number(event.target.value))}
-                />
-              </label>
-              {timelineCommandUsesTarget(selectedTimelineMarker.command.type) ? (
-                <label className="flow-react-field">
-                  <span>{timelineCommandTargetLabel(selectedTimelineMarker.command.type)}</span>
-                  <input
-                    type="text"
-                    list={timelineCommandUsesComponentTarget(selectedTimelineMarker.command.type) ? "art-timeline-target-components" : "art-timeline-labels"}
-                    value={selectedTimelineMarker.command.target || ""}
-                    onChange={(event) => setSelectedCommandTarget(event.target.value)}
-                  />
-                </label>
-              ) : null}
-              {timelineCommandUsesEvent(selectedTimelineMarker.command.type) ? (
-                <label className="flow-react-field">
-                  <span>{timelineCommandEventLabel(selectedTimelineMarker.command.type)}</span>
-                  <input
-                    type="text"
-                    list={selectedTimelineMarker.command.type === "playComponent" || selectedTimelineMarker.command.type === "stopComponent" ? "art-timeline-selected-command-target-labels" : undefined}
-                    value={selectedTimelineMarker.command.event || ""}
-                    onChange={(event) => updateSelectedCommand({ event: event.target.value })}
-                  />
-                </label>
-              ) : null}
-              {selectedCommandTargetSummary ? (
-                <div className="art-timeline-command-target-summary" title={selectedCommandTargetSummary.detail}>
-                  <span>{selectedCommandTargetSummary.label}</span>
-                  <small>{selectedCommandTargetSummary.detail}</small>
-                </div>
-              ) : null}
-              <datalist id="art-timeline-selected-command-target-labels">
-                {timelineTargetAnimationLabels(component, selectedTimelineMarker.command.target || "", scopeRootPath, resolveReference).map((label) => (
-                  <option value={label.name} key={label.name} />
-                ))}
-              </datalist>
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(removeTimelineCommandAt(current, selectedTimelineMarker.index));
-                  setSelectedMarker(null);
-                }}
-              >
-                Remove Command
-              </button>
-            </>
-          )}
-        </div>
-      ) : null}
+      <datalist id="art-timeline-property-suggestions">
+        {TIMELINE_PROPERTY_SUGGESTIONS.map((property) => (
+          <option value={property} key={property} />
+        ))}
+      </datalist>
       {current.tracks.length ? (
         <div className="art-timeline-keyframes">
           <h4>Keyframes</h4>
