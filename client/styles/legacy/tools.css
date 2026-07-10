@@ -1297,7 +1297,7 @@ body.tool-dashboard-mode .layout-react-shell {
   user-select: none;
 }
 
-.art-canvas-component > span {
+.art-canvas-component-text {
   display: block;
   width: 100%;
   min-width: 0;

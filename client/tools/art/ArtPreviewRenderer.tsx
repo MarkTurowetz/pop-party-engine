@@ -120,7 +120,14 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
 
   const renderComponent = (
     component: ArtComponent,
-    layer: { index: number; total: number; interactive?: boolean; referencePath?: Set<string>; targetPath?: string[] } = { index: 0, total: 1 }
+    layer: {
+      contentOpacity?: number;
+      index: number;
+      total: number;
+      interactive?: boolean;
+      referencePath?: Set<string>;
+      targetPath?: string[];
+    } = { index: 0, total: 1 }
   ): ReactElement => {
     const targetPath = [...(layer.targetPath || []), component.id].filter(Boolean);
     const scopedTargetId = targetPath.join("/");
@@ -144,6 +151,9 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const borderWidth = Number(timelineValue("borderWidth", get(component, "borderWidth") || 0));
     const scale = Number(timelineValue("scale", get(component, "scale") || 1));
     const rotation = liveTx?.rotation ?? Number(timelineValue("rotation", get(component, "rotation") || 0));
+    const ownOpacity = Number(timelineValue("opacity", 1));
+    const inheritedContentOpacity = Number(layer.contentOpacity ?? 1);
+    const contentOpacity = Math.max(0, Math.min(1, inheritedContentOpacity * ownOpacity));
     const imageUrl = componentSupportsImageMask(component) ? imageSourceFor(component, timelineOverride) : "";
     const objectFit = String(timelineValue("imageObjectFit", get(component, "imageObjectFit") || "cover"));
     const selected = interactive && selectedIds.has(component.id);
@@ -168,6 +178,8 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
         : fillCss || (fill === "transparent" ? (transparentBase ? "transparent" : "rgba(255,255,255,0.06)") : fill);
     const fontColor = String(textFieldFor(component, props, "fontColor", timelineValue("fontColor", get(component, "fontColor") || "#17131f")));
 
+    const chromeVisible = interactive && (selected || contentOpacity <= 0.01);
+
     const style: CSSProperties = {
       position: "absolute",
       left: x - width / 2,
@@ -176,6 +188,15 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       height,
       transform: `scale(${scale}) rotate(${rotation}deg)`,
       transformOrigin: "center",
+      boxSizing: "border-box",
+      zIndex: Math.max(1, layer.total - layer.index),
+      pointerEvents: interactive ? "auto" : "none",
+      userSelect: "none"
+    };
+
+    const visualStyle: CSSProperties = {
+      position: "absolute",
+      inset: 0,
       borderRadius: shapeBorderRadius(
         String(timelineValue("shapeStyle", get(component, "shapeStyle") || "rounded")),
         Number(timelineValue("borderRadius", get(component, "borderRadius") || 0))
@@ -194,8 +215,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       WebkitMaskRepeat: tintWithCurrentColor ? "no-repeat" : undefined,
       maskRepeat: tintWithCurrentColor ? "no-repeat" : undefined,
       border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "0",
-      opacity: Number(timelineValue("opacity", 1)),
-      outline: selected ? "2px solid #22d3ee" : "none",
+      opacity: contentOpacity,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -210,8 +230,18 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       textTransform: isTextual ? "uppercase" : undefined,
       overflow: clipsOwnContent ? "hidden" : "visible",
       boxSizing: "border-box",
-      zIndex: Math.max(1, layer.total - layer.index),
-      pointerEvents: interactive ? "auto" : "none"
+      pointerEvents: "none"
+    };
+
+    const chromeStyle: CSSProperties = {
+      position: "absolute",
+      inset: 0,
+      borderRadius: visualStyle.borderRadius,
+      border: selected ? "2px solid #22d3ee" : "1.5px solid rgba(34, 211, 238, 0.82)",
+      boxShadow: selected ? "0 0 0 2px rgba(34, 211, 238, 0.18)" : "none",
+      pointerEvents: "none",
+      boxSizing: "border-box",
+      opacity: 1
     };
 
     return (
@@ -233,50 +263,55 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
             : undefined
         }
       >
-        {isTextual ? (
-          <span
-            style={{
-              overflowWrap:
-                textFieldFor(component, props, "autoFitText", timelineOverride.autoFitText ?? get(component, "autoFitText") !== false) !== false
-                  ? "normal"
-                  : "anywhere",
-              wordBreak:
-                textFieldFor(component, props, "autoFitText", timelineOverride.autoFitText ?? get(component, "autoFitText") !== false) !== false
-                  ? "keep-all"
-                  : "normal"
-            }}
-          >
-            {textValue}
-          </span>
-        ) : null}
-        {referencedComposition ? (
-          <div
-            className="art-reference-canvas"
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              width: Number(referenceCanvas.width || width),
-              height: Number(referenceCanvas.height || height),
-              transform: `scale(${referenceScaleX}, ${referenceScaleY})`,
-              transformOrigin: "top left",
-              pointerEvents: "none"
-            }}
-          >
-            {(referencedComposition.components || []).map((child, index) =>
-              renderComponent(child, {
-                index,
-                total: referencedComposition.components?.length || 1,
-                interactive: false,
-                referencePath: new Set([...referencePath, referencedComposition.id]),
-                targetPath: scopedTargetId ? [scopedTargetId] : []
-              })
-            )}
-          </div>
-        ) : null}
+        <div className="art-canvas-component-visual" style={visualStyle}>
+          {isTextual ? (
+            <span
+              className="art-canvas-component-text"
+              style={{
+                overflowWrap:
+                  textFieldFor(component, props, "autoFitText", timelineOverride.autoFitText ?? get(component, "autoFitText") !== false) !== false
+                    ? "normal"
+                    : "anywhere",
+                wordBreak:
+                  textFieldFor(component, props, "autoFitText", timelineOverride.autoFitText ?? get(component, "autoFitText") !== false) !== false
+                    ? "keep-all"
+                    : "normal"
+              }}
+            >
+              {textValue}
+            </span>
+          ) : null}
+          {referencedComposition ? (
+            <div
+              className="art-reference-canvas"
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: Number(referenceCanvas.width || width),
+                height: Number(referenceCanvas.height || height),
+                transform: `scale(${referenceScaleX}, ${referenceScaleY})`,
+                transformOrigin: "top left",
+                pointerEvents: "none"
+              }}
+            >
+              {(referencedComposition.components || []).map((child, index) =>
+                renderComponent(child, {
+                  index,
+                  total: referencedComposition.components?.length || 1,
+                  interactive: false,
+                  referencePath: new Set([...referencePath, referencedComposition.id]),
+                  targetPath: scopedTargetId ? [scopedTargetId] : [],
+                  contentOpacity
+                })
+              )}
+            </div>
+          ) : null}
+        </div>
         {(component.children || []).map((child, index) =>
-          renderComponent(child, { index, total: component.children?.length || 1, interactive, referencePath, targetPath })
+          renderComponent(child, { index, total: component.children?.length || 1, interactive, referencePath, targetPath, contentOpacity })
         )}
+        {chromeVisible ? <div className="art-canvas-component-chrome" style={chromeStyle} /> : null}
         {selected && props.showHandles !== false ? (
           <>
             <div
