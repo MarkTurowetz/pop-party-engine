@@ -873,6 +873,12 @@ function ArtComponentInspector({
   const supportsShape = componentSupportsShapeStyle(component);
   const supportsImage = componentSupportsImageMask(component);
   const referenceOptions = compositions.filter((item) => item.id !== composition?.id);
+  const commitNumberInput = (key: string, value: string) => {
+    if (value.trim() === "") return;
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue)) return;
+    commit({ [key]: numberValue } as Partial<ArtComponent>);
+  };
 
   const numberField = (key: string, label: string, step?: string) => (
     <label className="flow-react-field" data-art-field={key} key={key}>
@@ -880,10 +886,11 @@ function ArtComponentInspector({
       <input
         type="number"
         step={step}
-        key={`${component.id}-${timelineContext?.frame ?? "base"}-${key}-${String(frameValue(key) ?? "")}`}
+        key={`${component.id}-${timelineContext?.frame ?? "base"}-${key}`}
         defaultValue={String(frameValue(key) ?? 0)}
         data-art-component-field={key}
-        onBlur={(event) => commit({ [key]: Number(event.target.value) } as Partial<ArtComponent>)}
+        onChange={(event) => commitNumberInput(key, event.target.value)}
+        onBlur={(event) => commitNumberInput(key, event.target.value)}
       />
     </label>
   );
@@ -892,9 +899,10 @@ function ArtComponentInspector({
       <span>{label}</span>
       <input
         type="text"
-        key={`${component.id}-${timelineContext?.frame ?? "base"}-${key}-${String(frameValue(key) ?? "")}`}
+        key={`${component.id}-${timelineContext?.frame ?? "base"}-${key}`}
         defaultValue={String(frameValue(key) ?? "")}
         data-art-component-field={key}
+        onChange={(event) => commit({ [key]: event.target.value } as Partial<ArtComponent>)}
         onBlur={(event) => commit({ [key]: event.target.value } as Partial<ArtComponent>)}
       />
     </label>
