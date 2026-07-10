@@ -1060,6 +1060,7 @@ function ArtTimelinePanel({
     [component, displayTimeline, includeRootTarget, timeline]
   );
   const [frame, setFrame] = useState(0);
+  const [playheadFrame, setPlayheadFrame] = useState(0);
   const [frameEditCount, setFrameEditCount] = useState(1);
   const [frameRangeAnchor, setFrameRangeAnchor] = useState<number | null>(null);
   const [frameRangeFocus, setFrameRangeFocus] = useState<number | null>(null);
@@ -1088,6 +1089,7 @@ function ArtTimelinePanel({
   const resolveReference = useMemo(() => artCompositionReferenceResolver(compositions), [compositions]);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const cleanTimelineFrame = (value: number): number => Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(value) || 0)));
+  const cleanPlayheadFrame = cleanTimelineFrame(playheadFrame);
   const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
   const selectedTimelineMarker = useMemo(() => {
     if (!selectedMarker) return null;
@@ -1146,11 +1148,14 @@ function ArtTimelinePanel({
     return () => {
       playbackRef.current?.stop();
       playbackRef.current = null;
+      setIsPlaying(false);
     };
-  }, [component?.id, current]);
+  }, [component?.id, includeRootTarget, scopeRootPath]);
 
   useEffect(() => {
-    if (!isPlaying) playbackFrameRef.current = cleanFrame;
+    if (!isPlaying) {
+      playbackFrameRef.current = cleanFrame;
+    }
   }, [cleanFrame, isPlaying]);
 
   function windowStartForFrame(nextFrame: number, currentWindowStart = cleanFrameWindowStart): number {
@@ -1167,6 +1172,7 @@ function ArtTimelinePanel({
     const normalizedFrame = cleanTimelineFrame(nextFrame);
     playbackFrameRef.current = normalizedFrame;
     setFrame(normalizedFrame);
+    setPlayheadFrame(normalizedFrame);
     setFrameEditCount(1);
     setFrameRangeAnchor(null);
     setFrameRangeFocus(null);
@@ -1184,6 +1190,10 @@ function ArtTimelinePanel({
     return selectedTimelineCell.kind === "keyframe" && selectedTimelineCell.targetId === targetId;
   }
 
+  function timelineFrameIsPlayhead(frameIndex: number): boolean {
+    return cleanPlayheadFrame === frameIndex;
+  }
+
   function setManualFrameRangeCount(nextCount: number): void {
     setFrameEditCount(Math.max(1, Math.min(1000, Math.round(Number(nextCount) || 1))));
     setFrameRangeAnchor(null);
@@ -1199,6 +1209,7 @@ function ArtTimelinePanel({
     const anchorFrame = cleanTimelineFrame(frameRangeAnchor ?? cleanFrame);
     const range = timelineFrameRangeFromAnchor(current.frameCount, anchorFrame, normalizedFrame);
     setFrame(range.startFrame);
+    setPlayheadFrame(range.startFrame);
     setFrameRangeAnchor(anchorFrame);
     setFrameRangeFocus(normalizedFrame);
     setFrameEditCount(range.frameCount);
@@ -1210,6 +1221,7 @@ function ArtTimelinePanel({
     const normalizedFrame = cleanTimelineFrame(nextFrame);
     playbackFrameRef.current = normalizedFrame;
     setFrame(normalizedFrame);
+    setPlayheadFrame(normalizedFrame);
     setFrameWindowStart(windowStartForFrame(normalizedFrame));
     onPreviewFrame?.(normalizedFrame, overrides);
   }
@@ -1220,6 +1232,7 @@ function ArtTimelinePanel({
     playbackRef.current = null;
     playbackFrameRef.current = stoppedFrame;
     setFrame(stoppedFrame);
+    setPlayheadFrame(stoppedFrame);
     setFrameWindowStart(windowStartForFrame(stoppedFrame));
     onPreviewFrame?.(stoppedFrame, null);
     setIsPlaying(false);
@@ -1806,6 +1819,7 @@ function ArtTimelinePanel({
             type="button"
             key={frameIndex}
             aria-current={cleanFrame === frameIndex ? "true" : undefined}
+            data-art-timeline-playhead={timelineFrameIsPlayhead(frameIndex) ? "true" : "false"}
             data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
             onClick={(event) => {
               stopPlayback();
@@ -1835,6 +1849,7 @@ function ArtTimelinePanel({
                       key={frameIndex}
                       className="art-timeline-lane-frame"
                       aria-current={cleanFrame === frameIndex ? "true" : undefined}
+                      data-art-timeline-playhead={timelineFrameIsPlayhead(frameIndex) ? "true" : "false"}
                       data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                       data-art-timeline-has-label={labels.length ? "true" : "false"}
                       data-art-timeline-marker-selected={
@@ -1889,6 +1904,7 @@ function ArtTimelinePanel({
                       key={frameIndex}
                       className="art-timeline-lane-frame"
                       aria-current={cleanFrame === frameIndex ? "true" : undefined}
+                      data-art-timeline-playhead={timelineFrameIsPlayhead(frameIndex) ? "true" : "false"}
                       data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                       data-art-timeline-has-command={commands.length ? "true" : "false"}
                       data-art-timeline-marker-selected={
@@ -1939,6 +1955,7 @@ function ArtTimelinePanel({
                         key={frameIndex}
                         className="art-timeline-lane-frame"
                         aria-current={cleanFrame === frameIndex ? "true" : undefined}
+                        data-art-timeline-playhead={timelineFrameIsPlayhead(frameIndex) ? "true" : "false"}
                         data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                         data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
                         data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}

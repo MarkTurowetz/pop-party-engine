@@ -1758,6 +1758,16 @@ body.tool-dashboard-mode .layout-react-shell {
   outline-offset: -3px;
 }
 
+.art-timeline-ruler button[data-art-timeline-playhead="true"],
+.art-timeline-lane-frame[data-art-timeline-playhead="true"] {
+  position: relative;
+  z-index: 2;
+  border-color: var(--ink);
+  background: #ff4fa3;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px #ffe156, 0 0 0 1px var(--ink), 0 0 10px rgba(255, 79, 163, 0.75);
+}
+
 .art-timeline-lane-frame[data-art-timeline-drop-target="true"] {
   box-shadow: inset 0 0 0 3px var(--ink), 0 0 0 2px var(--cyan);
 }

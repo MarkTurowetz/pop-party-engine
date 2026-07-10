@@ -61,6 +61,31 @@ describe("playArtTimelinePreview", () => {
     ]);
   });
 
+  it("plays from a numeric frame until the next future stop command", () => {
+    const frames: number[] = [];
+    const playback = playArtTimelinePreview({
+      start: 0,
+      timeline: {
+        fps: 10,
+        frameCount: 5,
+        labels: [],
+        commands: [
+          { frame: 0, type: "stop" },
+          { frame: 4, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (frame) => {
+        frames.push(frame);
+      }
+    });
+
+    vi.advanceTimersByTime(400);
+    playback.stop();
+
+    expect(frames).toEqual([0, 1, 2, 3, 4]);
+  });
+
   it("plays nested component timelines from playComponent commands", () => {
     const child: ArtComponent = {
       id: "child",
