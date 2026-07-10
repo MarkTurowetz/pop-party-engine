@@ -1,4 +1,5 @@
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
+import type { TimelineDocument, TimelineTrack } from "../../../shared/timeline-model";
 import {
   artComponentTargetIdFor,
   artComponentTargetLabel,
@@ -10,6 +11,11 @@ export type TimelineTargetOption = {
   id: string;
   label: string;
   detail: string;
+};
+
+export type TimelineTrackRow = {
+  target: TimelineTargetOption;
+  track: TimelineTrack | null;
 };
 
 export type TimelineTargetOptions = {
@@ -37,4 +43,26 @@ export function timelineTargetOptionsFor(component: ArtComponent | undefined, ta
 
 export function timelineTargetLabel(targetId: string, component: ArtComponent | undefined, targetOptions: TimelineTargetOptions = {}): TimelineTargetOption {
   return artComponentTargetLabel(targetId, component, targetOptions);
+}
+
+export function timelineTrackRowsFor(
+  timeline: TimelineDocument,
+  component: ArtComponent | undefined,
+  targetOptions: TimelineTargetOptions = {}
+): TimelineTrackRow[] {
+  const targets = timelineTargetOptionsFor(component, targetOptions);
+  const targetById = new Map(targets.map((target) => [target.id, target]));
+  const trackByTargetId = new Map((timeline.tracks || []).map((track) => [track.targetId, track]));
+  const rows = targets.map((target) => ({
+    target,
+    track: trackByTargetId.get(target.id) || null
+  }));
+  for (const track of timeline.tracks || []) {
+    if (targetById.has(track.targetId)) continue;
+    rows.push({
+      target: timelineTargetLabel(track.targetId, component, targetOptions),
+      track
+    });
+  }
+  return rows;
 }

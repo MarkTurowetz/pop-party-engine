@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
-import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
+import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor, timelineTrackRowsFor } from "./artTimelineTargets";
 
 const tree = {
   id: "player",
@@ -124,5 +124,34 @@ describe("artTimelineTargets", () => {
     expect(findTimelineTargetComponent([referenceTree], "bubble-slot/answer-text", { scopeRootPath: false, resolveReference })?.name).toBe(
       "Answer Text"
     );
+  });
+
+  it("creates timeline rows for every animatable target even before keyframes exist", () => {
+    const rows = timelineTrackRowsFor(
+      { fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] },
+      tree,
+      { includeRoot: false, useScopedIds: true, scopeRootPath: false }
+    );
+
+    expect(rows.map((row) => row.target.id)).toEqual(["avatar", "bubble", "bubble/answer-text"]);
+    expect(rows.map((row) => row.track)).toEqual([null, null, null]);
+  });
+
+  it("keeps legacy timeline tracks visible even when their target is no longer in the art tree", () => {
+    const rows = timelineTrackRowsFor(
+      {
+        fps: 30,
+        frameCount: 20,
+        labels: [],
+        commands: [],
+        tracks: [{ targetId: "legacy-target", keyframes: [{ frame: 5, props: { scale: 2 } }] }]
+      },
+      tree,
+      { includeRoot: false, useScopedIds: true, scopeRootPath: false }
+    );
+
+    expect(rows.map((row) => row.target.id)).toEqual(["avatar", "bubble", "bubble/answer-text", "legacy-target"]);
+    expect(rows[3].target).toMatchObject({ label: "legacy-target", detail: "track target" });
+    expect(rows[3].track?.keyframes[0].props).toEqual({ scale: 2 });
   });
 });

@@ -51,7 +51,7 @@ import {
   upsertTimelineKeyframeProps
 } from "./artTimelineModel";
 import { parseTimelineActionScript, timelineCommandsToActionScript } from "./artTimelineActionScript";
-import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
+import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor, timelineTrackRowsFor } from "./artTimelineTargets";
 import { scopeTimelinePreviewOverridesToComponent } from "./artTimelinePreviewMapping";
 import {
   artTimelinePlaybackDuration,
@@ -1045,6 +1045,9 @@ function ArtTimelinePanel({
     () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true, scopeRootPath, resolveReference }),
     [component, includeRootTarget, scopeRootPath, resolveReference]
   );
+  const timelineTrackRows = useMemo(() => {
+    return timelineTrackRowsFor(current, component, { includeRoot: includeRootTarget, useScopedIds: true, scopeRootPath, resolveReference });
+  }, [component, current, includeRootTarget, resolveReference, scopeRootPath]);
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
     : keyframeTargets[0]?.id || component?.id || "";
@@ -1300,6 +1303,7 @@ function ArtTimelinePanel({
   function selectKeyframe(targetId: string, keyframeFrame: number): void {
     stopPlayback();
     setSelectedMarker(null);
+    setKeyframeTargetId(targetId);
     setSelectedKeyframe({ targetId, frame: keyframeFrame });
     selectTimelineCell({ kind: "keyframe", targetId, frame: keyframeFrame });
     previewFrame(keyframeFrame);
@@ -1770,18 +1774,17 @@ function ArtTimelinePanel({
                 })}
               </div>
             </div>
-          {current.tracks.map((track) => {
-            const trackLabel = timelineTargetLabel(track.targetId, component, { scopeRootPath, resolveReference });
+          {timelineTrackRows.map(({ target: trackLabel, track }) => {
             return (
-              <div className="art-timeline-lane" key={track.targetId}>
-                <div className="art-timeline-lane-label" title={`${trackLabel.label} (${track.targetId})`}>
+              <div className="art-timeline-lane" key={trackLabel.id}>
+                <div className="art-timeline-lane-label" title={`${trackLabel.label} (${trackLabel.id})`}>
                   <span>{trackLabel.label}</span>
                   <small>{trackLabel.detail}</small>
                 </div>
                 <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
                   {visibleTimelineFrames.map((frameIndex) => {
-                    const keyframe = track.keyframes.find((item) => item.frame === frameIndex);
-                    const isSelected = selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === frameIndex;
+                    const keyframe = track?.keyframes.find((item) => item.frame === frameIndex) || null;
+                    const isSelected = selectedKeyframe?.targetId === trackLabel.id && selectedKeyframe.frame === frameIndex;
                     return (
                       <button
                         type="button"
@@ -1791,23 +1794,24 @@ function ArtTimelinePanel({
                         data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                         data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
                         data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
-                        data-art-timeline-active-cell={timelineCellIsActive("keyframe", frameIndex, track.targetId) ? "true" : "false"}
+                        data-art-timeline-active-cell={timelineCellIsActive("keyframe", frameIndex, trackLabel.id) ? "true" : "false"}
                         data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                         draggable={Boolean(keyframe)}
-                        title={keyframe ? `${track.targetId} keyframe ${frameIndex}` : `Preview frame ${frameIndex}`}
+                        title={keyframe ? `${trackLabel.label} keyframe ${frameIndex}` : `Frame ${frameIndex}: add/select ${trackLabel.label} keyframe target`}
                         onClick={() => {
-                          if (keyframe) selectKeyframe(track.targetId, keyframe.frame);
+                          setKeyframeTargetId(trackLabel.id);
+                          if (keyframe) selectKeyframe(trackLabel.id, keyframe.frame);
                           else {
                             stopPlayback();
                             setSelectedMarker(null);
                             setSelectedKeyframe(null);
                             previewFrame(frameIndex);
-                            selectTimelineCell({ kind: "keyframe", targetId: track.targetId, frame: frameIndex });
+                            selectTimelineCell({ kind: "keyframe", targetId: trackLabel.id, frame: frameIndex });
                           }
                         }}
                         onDragStart={(event) => {
                           if (!keyframe) return;
-                          startTimelineDrag(event, { kind: "keyframe", targetId: track.targetId, frame: keyframe.frame });
+                          startTimelineDrag(event, { kind: "keyframe", targetId: trackLabel.id, frame: keyframe.frame });
                         }}
                         onDragOver={(event) => handleTimelineFrameDragOver(event, frameIndex)}
                         onDrop={(event) => handleTimelineFrameDrop(event, frameIndex)}
@@ -1876,39 +1880,6 @@ function ArtTimelinePanel({
           <option value={property} key={property} />
         ))}
       </datalist>
-      {current.tracks.length ? (
-        <div className="art-timeline-keyframes">
-          <h4>Keyframes</h4>
-          <ol className="flow-react-list art-timeline-list">
-            {current.tracks.flatMap((track) => {
-              const targetLabel = timelineTargetLabel(track.targetId, component, { scopeRootPath, resolveReference });
-              return track.keyframes.map((keyframe) => (
-                <li key={`${track.targetId}-${keyframe.frame}`}>
-                  <button
-                    type="button"
-                    aria-current={selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === keyframe.frame ? "true" : undefined}
-                    onClick={() => selectKeyframe(track.targetId, keyframe.frame)}
-                  >
-                    <span>{targetLabel.label}</span>
-                    <small>
-                      Frame {keyframe.frame} / {targetLabel.detail}
-                    </small>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(removeTimelineKeyframe(current, track.targetId, keyframe.frame));
-                      if (selectedKeyframe?.targetId === track.targetId && selectedKeyframe.frame === keyframe.frame) setSelectedKeyframe(null);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </li>
-              ));
-            })}
-          </ol>
-        </div>
-      ) : null}
       {selectedTimelineKeyframe ? (
         <div className="art-timeline-keyframe-editor">
           <h4>Selected Keyframe</h4>
@@ -1965,6 +1936,9 @@ function ArtTimelinePanel({
             </button>
             <button type="button" disabled={!copiedKeyframe || !component} onClick={() => pasteCopiedKeyframe(cleanFrame)}>
               Paste At Current Frame
+            </button>
+            <button type="button" onClick={removeSelectedTimelineItem}>
+              Remove Keyframe
             </button>
           </div>
           <ol className="flow-react-list art-timeline-property-list">
