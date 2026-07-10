@@ -1074,6 +1074,11 @@ function ArtTimelinePanel({
   const [newPropertyType, setNewPropertyType] = useState<"number" | "boolean" | "string">("number");
   const [newPropertyValue, setNewPropertyValue] = useState("");
   const playbackRef = useRef<ArtTimelinePreviewPlayback | null>(null);
+  const playbackFrameRef = useRef(0);
+  const playbackControlsRef = useRef<{ toggle: () => void; playFromBeginning: () => void }>({
+    toggle: () => {},
+    playFromBeginning: () => {}
+  });
   const resolveReference = useMemo(() => artCompositionReferenceResolver(compositions), [compositions]);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const cleanTimelineFrame = (value: number): number => Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(value) || 0)));
@@ -1096,7 +1101,6 @@ function ArtTimelinePanel({
   const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
   const selectedFrameRangeCount = Math.max(1, Math.min(Math.max(1, current.frameCount - cleanFrame), Math.round(Number(frameEditCount) || 1)));
   const selectedFrameRangeEnd = Math.min(current.frameCount - 1, cleanFrame + selectedFrameRangeCount - 1);
-  const currentFrameLabels = useMemo(() => timelineLabelsAtFrame(current, cleanFrame), [current, cleanFrame]);
   const selectedLabelFrame = selectedTimelineCell.kind === "label" ? cleanTimelineFrame(selectedTimelineCell.frame) : null;
   const selectedCommandFrame = selectedTimelineCell.kind === "command" ? cleanTimelineFrame(selectedTimelineCell.frame) : null;
   const selectedLabelFrameLabels = useMemo(
@@ -1112,11 +1116,6 @@ function ArtTimelinePanel({
       ? selectedLabelFrameLabels.find((label) => label.name === selectedMarker.name) || selectedLabelFrameLabels[0] || null
       : selectedLabelFrameLabels[0] || null;
   const selectedLabelAnimationName = selectedLabelFrameLabel?.name || "";
-  const currentFrameLabel =
-    selectedMarker?.kind === "label"
-      ? currentFrameLabels.find((label) => label.name === selectedMarker.name) || currentFrameLabels[0] || null
-      : currentFrameLabels[0] || null;
-  const currentFrameAnimationName = currentFrameLabel?.name || "";
   const keyframeTargets = useMemo(
     () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true, scopeRootPath, resolveReference }),
     [component, includeRootTarget, scopeRootPath, resolveReference]
@@ -1129,8 +1128,8 @@ function ArtTimelinePanel({
     : keyframeTargets[0]?.id || component?.id || "";
   const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId, { scopeRootPath, resolveReference }) : undefined;
   const activePlaybackDuration = useMemo(
-    () => artTimelinePlaybackDuration(current, component, currentFrameAnimationName || cleanFrame, 0, { scopeRootPath, resolveReference }),
-    [cleanFrame, component, current, currentFrameAnimationName, scopeRootPath, resolveReference]
+    () => artTimelinePlaybackDuration(current, component, cleanFrame, 0, { scopeRootPath, resolveReference }),
+    [cleanFrame, component, current, scopeRootPath, resolveReference]
   );
 
   function componentWithTimelineTargetId(target: ArtComponent, targetId: string): ArtComponent {
@@ -1144,6 +1143,10 @@ function ArtTimelinePanel({
     };
   }, [component?.id, current]);
 
+  useEffect(() => {
+    if (!isPlaying) playbackFrameRef.current = cleanFrame;
+  }, [cleanFrame, isPlaying]);
+
   function windowStartForFrame(nextFrame: number, currentWindowStart = cleanFrameWindowStart): number {
     if (nextFrame < currentWindowStart) return Math.max(0, Math.min(maxFrameWindowStart, nextFrame));
     if (nextFrame > currentWindowStart + visibleTimelineFrameCount - 1) return Math.max(0, Math.min(maxFrameWindowStart, nextFrame - visibleTimelineFrameCount + 1));
@@ -1156,6 +1159,7 @@ function ArtTimelinePanel({
 
   function previewFrame(nextFrame: number): void {
     const normalizedFrame = cleanTimelineFrame(nextFrame);
+    playbackFrameRef.current = normalizedFrame;
     setFrame(normalizedFrame);
     setFrameEditCount(1);
     setFrameRangeAnchor(null);
@@ -1198,25 +1202,32 @@ function ArtTimelinePanel({
 
   function previewFrameWithOverrides(nextFrame: number, overrides: TimelinePreviewOverrides | null): void {
     const normalizedFrame = cleanTimelineFrame(nextFrame);
+    playbackFrameRef.current = normalizedFrame;
     setFrame(normalizedFrame);
     setFrameWindowStart(windowStartForFrame(normalizedFrame));
     onPreviewFrame?.(normalizedFrame, overrides);
   }
 
   function stopPlayback(): void {
+    const stoppedFrame = cleanTimelineFrame(playbackFrameRef.current);
     playbackRef.current?.stop();
     playbackRef.current = null;
-    onPreviewFrame?.(cleanFrame, null);
+    playbackFrameRef.current = stoppedFrame;
+    setFrame(stoppedFrame);
+    setFrameWindowStart(windowStartForFrame(stoppedFrame));
+    onPreviewFrame?.(stoppedFrame, null);
     setIsPlaying(false);
   }
 
-  function playTimeline(): void {
+  function playTimelineFromFrame(startFrame = cleanFrame): void {
+    const normalizedStartFrame = cleanTimelineFrame(startFrame);
     stopPlayback();
+    playbackFrameRef.current = normalizedStartFrame;
     let completedSynchronously = false;
     const playback = playArtTimelinePreview({
       timeline: current,
       component,
-      start: currentFrameAnimationName || cleanFrame,
+      start: normalizedStartFrame,
       scopeRootPath,
       resolveReference,
       onPreview: (previewFrameValue, overrides) => previewFrameWithOverrides(previewFrameValue, overrides),
@@ -1234,6 +1245,43 @@ function ArtTimelinePanel({
     playbackRef.current = playback;
     setIsPlaying(true);
   }
+
+  function playTimeline(): void {
+    playTimelineFromFrame(cleanFrame);
+  }
+
+  function playTimelineFromBeginning(): void {
+    previewFrame(0);
+    playTimelineFromFrame(0);
+  }
+
+  function toggleTimelinePlayback(): void {
+    if (isPlaying) stopPlayback();
+    else if (current.frameCount > 1) playTimeline();
+  }
+
+  useEffect(() => {
+    playbackControlsRef.current = {
+      toggle: toggleTimelinePlayback,
+      playFromBeginning: playTimelineFromBeginning
+    };
+  });
+
+  useEffect(() => {
+    function handleGlobalTimelineKeyDown(event: KeyboardEvent): void {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isEditableTimelineShortcutTarget(event.target) || isButtonTimelineShortcutTarget(event.target)) return;
+      if (event.key === " " || event.key === "Spacebar") {
+        event.preventDefault();
+        playbackControlsRef.current.toggle();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        playbackControlsRef.current.playFromBeginning();
+      }
+    }
+    window.addEventListener("keydown", handleGlobalTimelineKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalTimelineKeyDown);
+  }, []);
 
   function updateCurrentFrameAnimationName(name: string): void {
     if (selectedLabelFrame === null) return;
@@ -1359,8 +1407,13 @@ function ArtTimelinePanel({
     if (event.key === " " || event.key === "Spacebar") {
       if (isButtonTimelineShortcutTarget(event.target)) return;
       event.preventDefault();
-      if (isPlaying) stopPlayback();
-      else if (current.frameCount > 1) playTimeline();
+      toggleTimelinePlayback();
+      return;
+    }
+    if (event.key === "Enter") {
+      if (isButtonTimelineShortcutTarget(event.target)) return;
+      event.preventDefault();
+      if (current.frameCount > 1) playTimelineFromBeginning();
       return;
     }
     if (event.key === "Home") {
@@ -1569,7 +1622,7 @@ function ArtTimelinePanel({
       className="art-timeline-panel"
       data-art-timeline-panel
       tabIndex={0}
-      aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
+      aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
       onKeyDown={handleTimelineKeyDown}
     >
       <div className="art-timeline-header">
@@ -1616,7 +1669,7 @@ function ArtTimelinePanel({
       </div>
       <div className="art-timeline-playback">
         <span className="art-timeline-playback-source">
-          Play from {currentFrameAnimationName ? `"${currentFrameAnimationName}"` : `frame ${cleanFrame}`}
+          Play from frame {cleanFrame}
         </span>
         <button type="button" onClick={playTimeline} disabled={isPlaying || current.frameCount <= 1}>
           Play
