@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement
 } from "react";
@@ -29,6 +30,7 @@ export interface ArtPreviewRendererProps {
   onBeginDrag?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBeginResize?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBeginRotate?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onOpenTimelineScope?: (component: ArtComponent, event: ReactMouseEvent<HTMLDivElement>) => void;
   onSelect?: (id: string, additive: boolean) => void;
   selectedIds?: Set<string>;
   showHandles?: boolean;
@@ -262,6 +264,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
               }
             : undefined
         }
+        onDoubleClick={interactive && props.onOpenTimelineScope ? (event) => props.onOpenTimelineScope?.(component, event) : undefined}
       >
         <div className="art-canvas-component-visual" style={visualStyle}>
           {isTextual ? (
