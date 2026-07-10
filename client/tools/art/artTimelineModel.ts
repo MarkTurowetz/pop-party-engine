@@ -714,6 +714,37 @@ export function addTimelinePropertyKeyframe(
   });
 }
 
+export function upsertTimelineKeyframeProps(
+  timeline: TimelineDocument | null | undefined,
+  targetId: string,
+  frame: number,
+  props: TimelineProperties,
+  options: { defaultEasing?: string } = {}
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const cleanTargetId = String(targetId || "").trim();
+  if (!cleanTargetId) return current;
+  const cleanProps = cleanTimelineProps(props);
+  if (Object.keys(cleanProps).length === 0) return current;
+  const cleanFrameValue = cleanFrame(frame, current.frameCount);
+  const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
+  const existingKeyframe = existingTrack?.keyframes.find((keyframe) => keyframe.frame === cleanFrameValue);
+  const keyframe: TimelineKeyframe = {
+    id: existingKeyframe?.id || `key-${cleanTargetId}-${cleanFrameValue}`,
+    frame: cleanFrameValue,
+    props: cleanTimelineProps({ ...(existingKeyframe?.props || {}), ...cleanProps })
+  };
+  const easing = cleanTimelineEasing(existingKeyframe?.easing || options.defaultEasing);
+  if (easing && easing !== "linear") keyframe.easing = easing;
+  const nextTrack = existingTrack
+    ? upsertKeyframe(existingTrack, keyframe)
+    : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };
+  return sortTimeline({
+    ...current,
+    tracks: [...current.tracks.filter((track) => track.targetId !== cleanTargetId), nextTrack]
+  });
+}
+
 export function replaceTransformKeyframeFromComponent(
   timeline: TimelineDocument | null | undefined,
   component: ArtComponent,

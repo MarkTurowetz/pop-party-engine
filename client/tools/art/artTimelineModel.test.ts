@@ -28,7 +28,8 @@ import {
   updateTimelineCommandAt,
   updateTimelineKeyframe,
   updateTimelineLabel,
-  updateTimelineSettings
+  updateTimelineSettings,
+  upsertTimelineKeyframeProps
 } from "./artTimelineModel";
 
 describe("artTimelineModel", () => {
@@ -489,6 +490,34 @@ describe("artTimelineModel", () => {
       easing: "easeOut",
       props: { scale: 0.5, defaultText: "Two", fontSize: 36 }
     });
+  });
+
+  it("upserts inspector-authored keyframe properties with hold defaults", () => {
+    const timeline = upsertTimelineKeyframeProps(
+      { fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] },
+      "title",
+      4,
+      { scale: 1, x: 100 },
+      { defaultEasing: "hold" }
+    );
+
+    expect(timeline.tracks[0].keyframes[0]).toEqual({
+      id: "key-title-4",
+      frame: 4,
+      easing: "hold",
+      props: { scale: 1, x: 100 }
+    });
+
+    const merged = upsertTimelineKeyframeProps(timeline, "title", 4, { scale: 0.8, y: 120 }, { defaultEasing: "linear" });
+    expect(merged.tracks[0].keyframes[0]).toEqual({
+      id: "key-title-4",
+      frame: 4,
+      easing: "hold",
+      props: { scale: 0.8, x: 100, y: 120 }
+    });
+
+    const tweened = updateTimelineKeyframe(merged, "title", 4, { easing: "easeInOut" });
+    expect(tweened.tracks[0].keyframes[0].easing).toBe("easeInOut");
   });
 
   it("captures text state when adding keyframes", () => {

@@ -48,7 +48,8 @@ import {
   updateTimelineCommandAt,
   updateTimelineKeyframe,
   updateTimelineLabel,
-  updateTimelineSettings
+  updateTimelineSettings,
+  upsertTimelineKeyframeProps
 } from "./artTimelineModel";
 import { findTimelineTargetComponent, timelineTargetLabel, timelineTargetOptionsFor } from "./artTimelineTargets";
 import { scopeTimelinePreviewOverridesToComponent } from "./artTimelinePreviewMapping";
@@ -70,7 +71,7 @@ import {
   type TimelinePropertyValue
 } from "../../../shared/timeline-model";
 import { timelineSnapshotAt } from "../../runtime/timelinePlayer";
-import { findArtComponentTargetPath } from "../shared/artComponentTargets";
+import { artComponentTargetPathId, findArtComponentTargetPath } from "../shared/artComponentTargets";
 
 export interface ArtCompositionEditorProps {
   controller: ArtCompositionsController;
@@ -114,6 +115,7 @@ const TIMELINE_PROPERTY_SUGGESTIONS = [
   "imageTint",
   "imageObjectFit"
 ];
+const TIMELINE_INSPECTOR_FIELDS = new Set(TIMELINE_PROPERTY_SUGGESTIONS);
 const TIMELINE_VISIBLE_FRAME_LIMIT = 60;
 const TIMELINE_EASING_OPTIONS = [
   { value: "linear", label: "Linear" },
@@ -546,6 +548,21 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     () => scopeTimelinePreviewOverridesToComponent(timelinePreviewOverrides || baseTimelineFrameOverrides, selectedComponent || null, selectedComponentPath),
     [baseTimelineFrameOverrides, selectedComponent, selectedComponentPath, timelinePreviewOverrides]
   );
+  const selectedComponentScopedId = selectedComponentPath ? artComponentTargetPathId(selectedComponentPath) : selectedComponent?.id || "";
+  const selectedComponentTimelineValues = selectedComponent
+    ? timelineFrameOverrides?.[selectedComponentScopedId] || timelineFrameOverrides?.[selectedComponent.id] || {}
+    : {};
+  const commitSelectedTimelineFrameProps = (patch: TimelineProperties) => {
+    if (!selectedComponent) return;
+    const nextTimeline = upsertTimelineKeyframeProps(
+      (selectedComponent.timeline || null) as TimelineDocument | null,
+      selectedComponent.id,
+      timelinePreviewFrame,
+      patch,
+      { defaultEasing: "hold" }
+    );
+    controller.updateComponent(selectedComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
+  };
   const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
     setTimelinePreviewFrame(frame);
     setTimelinePreviewOverrides(overrides || null);
@@ -749,6 +766,15 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           composition={composition}
           compositions={compositions}
           component={selectedComponent ?? null}
+          timelineContext={
+            selectedComponent
+              ? {
+                  frame: timelinePreviewFrame,
+                  values: selectedComponentTimelineValues,
+                  onCommit: commitSelectedTimelineFrameProps
+                }
+              : null
+          }
           tree={
             composition ? (
               <ComponentTree
@@ -794,12 +820,18 @@ function ArtComponentInspector({
   composition,
   compositions,
   component,
+  timelineContext,
   tree
 }: {
   controller: ArtCompositionsController;
   composition: ArtComposition | null;
   compositions: ArtComposition[];
   component: ArtComponent | null;
+  timelineContext?: {
+    frame: number;
+    values: Record<string, unknown>;
+    onCommit: (patch: TimelineProperties) => void;
+  } | null;
   tree: ReactNode;
 }) {
   void compositions;
@@ -815,7 +847,28 @@ function ArtComponentInspector({
       </section>
     );
   }
-  const commit = (patch: Partial<ArtComponent>) => controller.updateComponent(component.id, patch);
+  const frameValue = (key: string): unknown =>
+    timelineContext && TIMELINE_INSPECTOR_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(timelineContext.values || {}, key)
+      ? timelineContext.values[key]
+      : get(component, key);
+  const commitBase = (patch: Partial<ArtComponent>) => controller.updateComponent(component.id, patch);
+  const commit = (patch: Partial<ArtComponent>) => {
+    if (!timelineContext) {
+      commitBase(patch);
+      return;
+    }
+    const timelinePatch: TimelineProperties = {};
+    const basePatch: Partial<ArtComponent> = {};
+    for (const [key, value] of Object.entries(patch)) {
+      if (TIMELINE_INSPECTOR_FIELDS.has(key) && (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null)) {
+        timelinePatch[key] = value;
+      } else {
+        (basePatch as Record<string, unknown>)[key] = value;
+      }
+    }
+    if (Object.keys(timelinePatch).length > 0) timelineContext.onCommit(timelinePatch);
+    if (Object.keys(basePatch).length > 0) commitBase(basePatch);
+  };
   const isTextual = component.kind === "text" || component.kind === "badge";
   const supportsShape = componentSupportsShapeStyle(component);
   const supportsImage = componentSupportsImageMask(component);
@@ -827,8 +880,8 @@ function ArtComponentInspector({
       <input
         type="number"
         step={step}
-        key={`${component.id}-${key}-${String(get(component, key) ?? "")}`}
-        defaultValue={String(get(component, key) ?? 0)}
+        key={`${component.id}-${timelineContext?.frame ?? "base"}-${key}-${String(frameValue(key) ?? "")}`}
+        defaultValue={String(frameValue(key) ?? 0)}
         data-art-component-field={key}
         onBlur={(event) => commit({ [key]: Number(event.target.value) } as Partial<ArtComponent>)}
       />
@@ -839,8 +892,8 @@ function ArtComponentInspector({
       <span>{label}</span>
       <input
         type="text"
-        key={`${component.id}-${key}`}
-        defaultValue={String(get(component, key) ?? "")}
+        key={`${component.id}-${timelineContext?.frame ?? "base"}-${key}-${String(frameValue(key) ?? "")}`}
+        defaultValue={String(frameValue(key) ?? "")}
         data-art-component-field={key}
         onBlur={(event) => commit({ [key]: event.target.value } as Partial<ArtComponent>)}
       />
@@ -857,7 +910,7 @@ function ArtComponentInspector({
       reader.addEventListener("error", () => reject(reader.error));
       reader.readAsDataURL(file);
     });
-    commit({ imageDataUrl: dataUrl, imageName: file.name, imageMimeType: file.type, imageAssetId: "" } as Partial<ArtComponent>);
+    commitBase({ imageDataUrl: dataUrl, imageName: file.name, imageMimeType: file.type, imageAssetId: "" } as Partial<ArtComponent>);
   };
 
   return (
@@ -867,7 +920,16 @@ function ArtComponentInspector({
         {tree}
       </div>
       <h3>{component.name}</h3>
-      {textField("name", "Name")}
+      <label className="flow-react-field" data-art-field="name">
+        <span>Name</span>
+        <input
+          type="text"
+          key={`${component.id}-name-${String(get(component, "name") ?? "")}`}
+          defaultValue={String(get(component, "name") ?? "")}
+          data-art-component-field="name"
+          onBlur={(event) => commitBase({ name: event.target.value } as Partial<ArtComponent>)}
+        />
+      </label>
       {SCALAR_FIELDS.map((field) => numberField(field.key, field.label))}
       {numberField("scale", "Scale", "0.01")}
       {numberField("rotation", "Rotation", "0.1")}
@@ -877,7 +939,7 @@ function ArtComponentInspector({
           <select
             value={String(get(component, "artCompositionId") || "")}
             data-art-component-field="artCompositionId"
-            onChange={(event) => commit({ artCompositionId: event.target.value } as Partial<ArtComponent>)}
+            onChange={(event) => commitBase({ artCompositionId: event.target.value } as Partial<ArtComponent>)}
           >
             <option value="">Choose prefab</option>
             {referenceOptions.map((option) => (
@@ -893,7 +955,7 @@ function ArtComponentInspector({
           <label className="flow-react-field" data-art-field="shapeStyle">
             <span>Shape Style</span>
             <select
-              value={String(get(component, "shapeStyle") || "rounded")}
+              value={String(frameValue("shapeStyle") || "rounded")}
               data-art-component-field="shapeStyle"
               onChange={(event) => commit({ shapeStyle: event.target.value } as Partial<ArtComponent>)}
             >
@@ -917,7 +979,7 @@ function ArtComponentInspector({
           <select
             value={String(get(component, "childDistribution") || "none")}
             data-art-component-field="childDistribution"
-            onChange={(event) => commit({ childDistribution: event.target.value } as Partial<ArtComponent>)}
+            onChange={(event) => commitBase({ childDistribution: event.target.value } as Partial<ArtComponent>)}
           >
             {containerDistributionOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -933,7 +995,7 @@ function ArtComponentInspector({
           <label className="flow-react-field" data-art-field="fontFamily">
             <span>Font</span>
             <select
-              value={normalizeGameTextFontFamily(get(component, "fontFamily"))}
+              value={normalizeGameTextFontFamily(frameValue("fontFamily"))}
               data-art-component-field="fontFamily"
               onChange={(event) => commit({ fontFamily: event.target.value } as Partial<ArtComponent>)}
             >
@@ -949,7 +1011,7 @@ function ArtComponentInspector({
             <span>Auto Fit Text</span>
             <input
               type="checkbox"
-              checked={get(component, "autoFitText") !== false}
+              checked={frameValue("autoFitText") !== false}
               data-art-component-field="autoFitText"
               onChange={(event) => commit({ autoFitText: event.target.checked } as Partial<ArtComponent>)}
             />
@@ -2240,6 +2302,9 @@ function ArtTimelinePanel({
             </select>
           </label>
           <div className="art-timeline-keyframe-actions">
+            <button type="button" onClick={() => updateSelectedKeyframe({ easing: "easeInOut" })}>
+              Tween
+            </button>
             <button type="button" disabled={!component} onClick={recaptureSelectedKeyframe}>
               Recapture Current State
             </button>
