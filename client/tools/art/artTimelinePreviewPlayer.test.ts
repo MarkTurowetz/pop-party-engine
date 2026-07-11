@@ -124,6 +124,45 @@ describe("playArtTimelinePreview", () => {
     expect(scales).toEqual([0.5, 0.5, 1]);
   });
 
+  it("plays nested component timelines by instance label", () => {
+    const child: ArtComponent = {
+      id: "answer-bubble-slot",
+      name: "bubble",
+      kind: "shape",
+      timeline: {
+        fps: 10,
+        frameCount: 2,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [{ frame: 1, type: "stop" }],
+        tracks: [{ targetId: "answer-bubble-slot", keyframes: [{ frame: 0, props: { opacity: 0 } }, { frame: 1, props: { opacity: 1 } }] }]
+      }
+    };
+    const root: ArtComponent = { id: "root", kind: "container", children: [child] };
+    const opacities: unknown[] = [];
+    const playback = playArtTimelinePreview({
+      component: root,
+      start: "appear",
+      timeline: {
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [
+          { frame: 1, type: "playComponent", target: "bubble", event: "appear" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      },
+      onPreview: (_frame, overrides) => {
+        if (overrides.bubble?.opacity !== undefined) opacities.push(overrides.bubble.opacity);
+      }
+    });
+
+    vi.advanceTimersByTime(200);
+    playback.stop();
+
+    expect(opacities).toEqual([0, 0, 1]);
+  });
+
   it("previews default visibility timelines for nested components without authored timelines", () => {
     const child: ArtComponent = { id: "child", kind: "shape" };
     const root: ArtComponent = { id: "root", kind: "container", children: [child] };

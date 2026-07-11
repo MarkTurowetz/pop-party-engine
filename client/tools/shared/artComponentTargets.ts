@@ -33,6 +33,15 @@ function componentLabel(component: ArtComponent): string {
   return String(component.name || component.kind || component.id);
 }
 
+function componentTargetAliases(component: ArtComponent): Set<string> {
+  const aliases = new Set<string>();
+  const componentId = String(component.id || "").trim();
+  const componentName = String(component.name || "").trim();
+  if (componentId) aliases.add(componentId);
+  if (componentName) aliases.add(componentName);
+  return aliases;
+}
+
 function componentDetail(component: ArtComponent): string {
   return [String(component.kind || "component"), component.id].filter(Boolean).join(" / ");
 }
@@ -64,7 +73,7 @@ export function findArtComponentTargetPath(
       const componentId = String(component.id || "").trim();
       const nextPath = [...path, componentId].filter(Boolean);
       const matchPath = options.scopeRootPath === false ? nextPath.slice(1) : nextPath;
-      const matches = usesPath ? artComponentTargetPathId(matchPath) === cleanId : componentId === cleanId;
+      const matches = usesPath ? artComponentTargetPathId(matchPath) === cleanId : componentTargetAliases(component).has(cleanId);
       if (matches) return { component, path: nextPath };
       const children = referencedChildren(component, options) || component.children || [];
       const found = visit(children, nextPath);

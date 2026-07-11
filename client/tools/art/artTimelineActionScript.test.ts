@@ -27,6 +27,13 @@ describe("artTimelineActionScript", () => {
         { type: "playComponent", target: "avatar", event: "pop" }
       ]
     });
+    expect(parseTimelineActionScript('bubble.gotoAndPlay("appear");\nbubble.gotoAndStop("park");\nbubble.gotoAndPlay disappear;')).toEqual({
+      commands: [
+        { type: "playComponent", target: "bubble", event: "appear" },
+        { type: "stopComponent", target: "bubble", event: "park" },
+        { type: "playComponent", target: "bubble", event: "disappear" }
+      ]
+    });
     expect(parseTimelineActionScript("visible = false;\nvisible = true;")).toEqual({
       commands: [
         { type: "setVisible", target: "false" },

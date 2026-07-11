@@ -534,6 +534,16 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   };
   const openTimelineScope = (component: ArtComponent) => {
     if (!composition) return;
+    if (String(component.kind || "").toLowerCase() === "reference" && component.artCompositionId) {
+      const referenced = compositionById.get(String(component.artCompositionId));
+      if (referenced) {
+        dismissTimelineContext();
+        setTimelineScope(null);
+        controller.selectComposition(referenced.id);
+        setTimelinePreview({ compositionId: referenced.id, frame: 0, overrides: null });
+        return;
+      }
+    }
     if (!componentHasNestedTimelineTargets(component, compositionById)) return;
     setTimelineScope({ compositionId: composition.id, componentId: component.id });
     controller.selectComponent(component.id, false);
@@ -1087,7 +1097,7 @@ function ArtComponentInspector({
       </div>
       <h3>{component.name}</h3>
       <label className="flow-react-field" data-art-field="name">
-        <span>Name</span>
+        <span>Label</span>
         <input
           type="text"
           key={`${component.id}-name-${String(get(component, "name") ?? "")}`}
@@ -1225,7 +1235,7 @@ function ArtTimelineCommandOverlay({ overlay }: { overlay: TimelineCommandOverla
         />
       </label>
       <small className="art-timeline-script-help">
-        Use stop(), gotoAndPlay("label"), gotoAndStop("label"), emit("event"), playComponent("component", "label"), or visible = false.
+        Use stop(), gotoAndPlay("label"), bubble.gotoAndPlay("label"), bubble.gotoAndStop("label"), emit("event"), or visible = false.
       </small>
       {overlay.error ? <strong className="art-timeline-script-error">{overlay.error}</strong> : null}
     </aside>

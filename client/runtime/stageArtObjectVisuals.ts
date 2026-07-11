@@ -346,13 +346,22 @@ class ArtObjectView {
   componentTargetIds(): Set<string> {
     const ids = new Set<string>();
     const componentId = String(this.component?.id || "").trim();
+    const componentName = String(this.component?.name || "").trim();
     const pathId = this.componentPathId();
     if (componentId) ids.add(componentId);
+    if (componentName) ids.add(componentName);
     if (pathId) ids.add(pathId);
     return ids;
   }
 
   componentTimeline(): TimelineDocument {
+    const referencedComposition = referencedCompositionFor(this.component, this.getComposition, this.referencePath);
+    if (referencedComposition?.timeline) {
+      return effectiveArtComponentVisibilityTimeline(
+        (referencedComposition.timeline || null) as TimelineDocument | null,
+        String(this.component?.id || "").trim()
+      );
+    }
     return effectiveArtComponentVisibilityTimeline(
       (this.component?.timeline || null) as TimelineDocument | null,
       String(this.component?.id || "").trim()

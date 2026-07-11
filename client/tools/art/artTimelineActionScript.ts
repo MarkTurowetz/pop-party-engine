@@ -8,6 +8,9 @@ export interface TimelineActionScriptParseResult {
 }
 
 const QUOTED_ARGS_PATTERN = /"([^"]*)"|'([^']*)'/g;
+const MEMBER_CALL_PATTERN = /^([a-zA-Z_$][\w$]*)\s*\.\s*(gotoAndPlay|gotoAndStop)\s*\((.*)\)$/;
+const MEMBER_LABEL_PATTERN = /^([a-zA-Z_$][\w$]*)\s*\.\s*(gotoAndPlay|gotoAndStop)\s+(.+)$/;
+const SCRIPT_IDENTIFIER_PATTERN = /^[a-zA-Z_$][\w$]*$/;
 
 function quoteScriptString(value: string): string {
   return `"${String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -19,9 +22,15 @@ function scriptCommandToLine(command: TimelineCommand): string {
   if (command.type === "gotoAndPlay") return `gotoAndPlay(${quoteScriptString(command.target || "")});`;
   if (command.type === "gotoAndStop") return `gotoAndStop(${quoteScriptString(command.target || "")});`;
   if (command.type === "playComponent") {
+    if (command.target && SCRIPT_IDENTIFIER_PATTERN.test(command.target)) {
+      return `${command.target}.gotoAndPlay(${quoteScriptString(command.event || "")});`;
+    }
     return `playComponent(${quoteScriptString(command.target || "")}, ${quoteScriptString(command.event || "")});`;
   }
   if (command.type === "stopComponent") {
+    if (command.target && SCRIPT_IDENTIFIER_PATTERN.test(command.target)) {
+      return `${command.target}.gotoAndStop(${quoteScriptString(command.event || "")});`;
+    }
     return `stopComponent(${quoteScriptString(command.target || "")}, ${quoteScriptString(command.event || "")});`;
   }
   if (command.type === "emit") {
@@ -51,11 +60,36 @@ function parseQuotedArgs(statement: string): string[] {
   return args;
 }
 
+function cleanLooseLabel(value: string): string {
+  return String(value || "").trim().replace(/^["']|["']$/g, "").trim();
+}
+
+function memberCommandFor(target: string, method: string, animation: string): ScriptCommand | string {
+  const cleanTarget = String(target || "").trim();
+  const cleanAnimation = String(animation || "").trim();
+  if (!cleanTarget || !cleanAnimation) return `${method} needs a target instance and animation label.`;
+  return {
+    type: method === "gotoAndStop" ? "stopComponent" : "playComponent",
+    target: cleanTarget,
+    event: cleanAnimation
+  };
+}
+
 function parseScriptStatement(statement: string): ScriptCommand | string {
   const visibleAssignment = statement.match(/^visible\s*=\s*(true|false)$/i);
   if (visibleAssignment) return { type: "setVisible", target: visibleAssignment[1].toLowerCase() };
+  const memberCall = statement.match(MEMBER_CALL_PATTERN);
+  if (memberCall) {
+    const args = parseQuotedArgs(memberCall[3].trim());
+    const hasUnquotedArgs = memberCall[3].trim().length > 0 && args.length === 0;
+    if (hasUnquotedArgs) return `Arguments for ${memberCall[2]} must be quoted.`;
+    if (args.length !== 1 || !args[0]) return `${memberCall[1]}.${memberCall[2]}() needs one quoted animation label.`;
+    return memberCommandFor(memberCall[1], memberCall[2], args[0]);
+  }
+  const memberLabel = statement.match(MEMBER_LABEL_PATTERN);
+  if (memberLabel) return memberCommandFor(memberLabel[1], memberLabel[2], cleanLooseLabel(memberLabel[3]));
   const call = statement.match(/^([a-zA-Z_$][\w$]*)\s*\((.*)\)$/);
-  if (!call) return `Use function-call syntax, like stop(); or gotoAndPlay("appear"), or assign visibility with visible = false;`;
+  if (!call) return `Use function-call syntax, like stop();, gotoAndPlay("appear"), bubble.gotoAndPlay("appear"), or assign visibility with visible = false;`;
   const type = call[1];
   const rawArgs = call[2].trim();
   const args = parseQuotedArgs(rawArgs);

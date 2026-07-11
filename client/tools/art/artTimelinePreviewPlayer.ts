@@ -47,6 +47,11 @@ function nestedAnimationForCommand(command: { type?: string; target?: string; ev
   return targetId && animation ? { targetId, animation, mode: command.type === "stopComponent" ? "stop" : "play" } : null;
 }
 
+function timelineForPreviewComponent(component: ArtComponent, options: ArtTimelineReferenceOptions): TimelineDocument {
+  const referenced = String(component.kind || "").toLowerCase() === "reference" ? options.resolveReference?.(component) || null : null;
+  return effectiveArtVisibilityTimeline(((referenced?.timeline || component.timeline || null) as TimelineDocument | null), component);
+}
+
 function previewPathId(path: string[], options: ArtTimelineReferenceOptions): string {
   const scopedPath = options.scopeRootPath === false ? path.slice(1) : path;
   return artComponentTargetPathId(scopedPath);
@@ -109,7 +114,7 @@ function artTimelineCommandDurationForContext(context: TimelinePreviewContext, c
   if (!nestedAnimation || nestedAnimation.mode === "stop" || depth >= MAX_NESTED_PREVIEW_DEPTH) return 0;
   const target = resolvePreviewTarget(context, nestedAnimation.targetId);
   if (!target) return 0;
-  const targetTimeline = effectiveArtVisibilityTimeline((target.component.timeline || null) as TimelineDocument | null, target.component);
+  const targetTimeline = timelineForPreviewComponent(target.component, context.options);
   if (!new TimelinePlayer({ timeline: targetTimeline }).hasLabel(nestedAnimation.animation)) return 0;
   return artTimelinePlaybackDurationForContext(
     {
@@ -206,9 +211,7 @@ export function playArtTimelinePreview({
   ): void => {
     if (stopped) return;
     const target = resolvePreviewTarget(context, targetId);
-    const nestedTimeline = target
-      ? effectiveArtVisibilityTimeline((target.component.timeline || null) as TimelineDocument | null, target.component)
-      : null;
+    const nestedTimeline = target ? timelineForPreviewComponent(target.component, context.options) : null;
     if (!target || !new TimelinePlayer({ timeline: nestedTimeline }).hasLabel(animation)) return;
     const targetRawId = String(target.component.id || "").trim();
     const nestedContext: TimelinePreviewContext = {

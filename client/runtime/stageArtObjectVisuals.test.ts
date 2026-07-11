@@ -141,6 +141,68 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(played).toEqual(["pop"]);
   });
 
+  it("routes parent timeline playComponent commands to targeted descendant instance labels", () => {
+    const played: unknown[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      handleTimelineCommand: (detail: unknown) => number;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string; name: string };
+      componentPath: string[];
+      children: Map<string, unknown>;
+      play: (animation: string) => number;
+    };
+    parent.component = { id: "parent" };
+    child.component = { id: "answer-bubble-slot", name: "bubble" };
+    child.componentPath = ["player", "answer-bubble-slot"];
+    child.children = new Map();
+    child.play = (animation) => {
+      played.push(animation);
+      return 240;
+    };
+    parent.children = new Map([["answer-bubble-slot", child]]);
+
+    const duration = parent.handleTimelineCommand({
+      command: { type: "playComponent", frame: 12, target: "bubble", event: "appear" },
+      eventName: "playComponent",
+      visual: {}
+    });
+
+    expect(duration).toBe(240);
+    expect(played).toEqual(["appear"]);
+  });
+
+  it("uses the referenced prefab timeline when a reference component is played", () => {
+    const view = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string; kind: string; artCompositionId: string; timeline: null };
+      getComposition: (id: string) => unknown;
+      referencePath: Set<string>;
+      componentTimeline: () => { labels: Array<{ name: string; frame: number }> };
+    };
+    view.component = { id: "answer-bubble-slot", kind: "reference", artCompositionId: "prefab-answer-bubble", timeline: null };
+    view.referencePath = new Set();
+    view.getComposition = () => ({
+      id: "prefab-answer-bubble",
+      timeline: {
+        fps: 10,
+        frameCount: 2,
+        labels: [{ name: "appear", frame: 0 }],
+        commands: [],
+        tracks: []
+      }
+    });
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousSchema = globals.PartyGameArtComponentSchema;
+    globals.PartyGameArtComponentSchema = { normalizeComponentKind: (kind: unknown) => String(kind || "") };
+    try {
+      expect(view.componentTimeline().labels.map((label) => label.name)).toContain("appear");
+    } finally {
+      globals.PartyGameArtComponentSchema = previousSchema;
+    }
+  });
+
   it("routes parent timeline playComponent commands by scoped component path", () => {
     const played: unknown[] = [];
     const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
