@@ -19,6 +19,7 @@ import {
   mergeDefaultArtVisibilityTimeline,
   moveTimelineCommandAt,
   normalizeAnimationKeyframePropsForEditing,
+  overwriteTimelineFrameRange,
   pasteTimelineFrameRange,
   replaceTransformKeyframeFromComponent,
   removeTimelineFrames,
@@ -361,6 +362,52 @@ describe("artTimelineModel", () => {
       { frame: 5, props: { scale: 1 } },
       { frame: 8, props: { scale: 0.4 } },
       { frame: 11, props: { scale: 1 } }
+    ]);
+  });
+
+  it("overwrites frame ranges in place without inserting time", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 12,
+      labels: [
+        { name: "pop", frame: 2 },
+        { name: "old", frame: 8 },
+        { name: "later", frame: 10 }
+      ],
+      commands: [
+        { id: "source-stop", frame: 3, type: "stop" },
+        { id: "old-stop", frame: 8, type: "stop" },
+        { id: "later-stop", frame: 10, type: "stop" }
+      ],
+      tracks: [
+        {
+          targetId: "card",
+          keyframes: [
+            { id: "source", frame: 2, props: { scale: 0.4 } },
+            { id: "old", frame: 8, props: { scale: 9 } },
+            { id: "later", frame: 10, props: { scale: 2 } }
+          ]
+        }
+      ]
+    };
+
+    const overwritten = overwriteTimelineFrameRange(timeline, copyTimelineFrameRange(timeline, 2, 2), 8);
+
+    expect(overwritten.frameCount).toBe(12);
+    expect(overwritten.labels).toEqual([
+      { name: "pop", frame: 2 },
+      { name: "pop 2", frame: 8 },
+      { name: "later", frame: 10 }
+    ]);
+    expect(overwritten.commands.map((command) => ({ id: command.id, frame: command.frame, type: command.type }))).toEqual([
+      { id: "source-stop", frame: 3, type: "stop" },
+      { id: "stop-9", frame: 9, type: "stop" },
+      { id: "later-stop", frame: 10, type: "stop" }
+    ]);
+    expect(overwritten.tracks[0].keyframes.map((keyframe) => ({ id: keyframe.id, frame: keyframe.frame, props: keyframe.props }))).toEqual([
+      { id: "source", frame: 2, props: { scale: 0.4 } },
+      { id: "key-card-8", frame: 8, props: { scale: 0.4 } },
+      { id: "later", frame: 10, props: { scale: 2 } }
     ]);
   });
 

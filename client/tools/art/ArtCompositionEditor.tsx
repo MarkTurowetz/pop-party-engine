@@ -30,11 +30,10 @@ import {
   addTransformKeyframe,
   copyTimelineFrameRange,
   copyTimelineKeyframe,
-  cutTimelineFrameRange,
   effectiveArtVisibilityTimeline,
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
-  pasteTimelineFrameRange,
+  overwriteTimelineFrameRange,
   removeTimelineCommandAt,
   removeTimelineKeyframe,
   removeTimelineLabel,
@@ -62,7 +61,6 @@ import {
 } from "./artTimelineTargets";
 import { scopeTimelinePreviewOverridesToComponent } from "./artTimelinePreviewMapping";
 import {
-  artTimelinePlaybackDuration,
   playArtTimelinePreview,
   type ArtTimelinePreviewPlayback,
   type TimelinePreviewOverrides
@@ -1215,8 +1213,10 @@ function ArtTimelinePanel({
   const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
   const selectedFrameRangeCount = Math.max(1, Math.min(Math.max(1, current.frameCount - cleanFrame), Math.round(Number(frameEditCount) || 1)));
   const selectedFrameRangeEnd = Math.min(current.frameCount - 1, cleanFrame + selectedFrameRangeCount - 1);
-  const selectedLabelFrame = selectedTimelineCell.kind === "label" ? cleanTimelineFrame(selectedTimelineCell.frame) : null;
+  const selectedTimelineCellFrame = cleanTimelineFrame(selectedTimelineCell.frame ?? cleanFrame);
+  const selectedLabelFrame = selectedTimelineCell.kind === "label" ? selectedTimelineCellFrame : null;
   const selectedCommandFrame = selectedTimelineCell.kind === "command" ? cleanTimelineFrame(selectedTimelineCell.frame) : null;
+  const selectedFrameLabels = useMemo(() => timelineLabelsAtFrame(current, selectedTimelineCellFrame), [current, selectedTimelineCellFrame]);
   const selectedLabelFrameLabels = useMemo(
     () => (selectedLabelFrame === null ? [] : timelineLabelsAtFrame(current, selectedLabelFrame)),
     [current, selectedLabelFrame]
@@ -1229,7 +1229,9 @@ function ArtTimelinePanel({
     selectedMarker?.kind === "label" && selectedLabelFrame !== null
       ? selectedLabelFrameLabels.find((label) => label.name === selectedMarker.name) || selectedLabelFrameLabels[0] || null
       : selectedLabelFrameLabels[0] || null;
-  const selectedLabelAnimationName = selectedLabelFrameLabel?.name || "";
+  const selectedFrameAnimationName =
+    (selectedLabelFrame !== null ? selectedLabelFrameLabel?.name : selectedFrameLabels[0]?.name) || "";
+  const animationNameIsEditable = selectedTimelineCell.kind === "label";
   const keyframeTargets = useMemo(
     () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true, scopeRootPath, resolveReference }),
     [component, includeRootTarget, scopeRootPath, resolveReference]
@@ -1241,11 +1243,6 @@ function ArtTimelinePanel({
     ? keyframeTargetId
     : keyframeTargets[0]?.id || component?.id || "";
   const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId, { scopeRootPath, resolveReference }) : undefined;
-  const activePlaybackDuration = useMemo(
-    () => artTimelinePlaybackDuration(current, component, cleanFrame, 0, { scopeRootPath, resolveReference }),
-    [cleanFrame, component, current, scopeRootPath, resolveReference]
-  );
-
   function componentWithTimelineTargetId(target: ArtComponent, targetId: string): ArtComponent {
     return target.id === targetId ? target : { ...target, id: targetId };
   }
@@ -1567,23 +1564,62 @@ function ArtTimelinePanel({
 
   function copyFrameRangeAtCurrentFrame(): void {
     setCopiedKeyframe(null);
-    setCopiedFrameRange(copyTimelineFrameRange(current, cleanFrame, selectedFrameRangeCount));
+    setCopiedFrameRange(copyTimelineFrameRange(current, selectedTimelineCellFrame, selectedFrameRangeCount));
   }
 
-  function cutFrameRangeAtCurrentFrame(): void {
-    const result = cutTimelineFrameRange(current, cleanFrame, selectedFrameRangeCount);
-    setCopiedKeyframe(null);
-    setCopiedFrameRange(result.clipboard);
-    setSelectedKeyframe(null);
-    setSelectedMarker(null);
-    applyTimelineFrameEdit(result.timeline, cleanFrame);
-  }
-
-  function pasteFrameRangeAtCurrentFrame(): void {
+  function overwriteFrameRangeAtCurrentFrame(): void {
     if (!copiedFrameRange) return;
     setSelectedKeyframe(null);
     setSelectedMarker(null);
-    applyTimelineFrameEdit(pasteTimelineFrameRange(current, copiedFrameRange, cleanFrame), cleanFrame);
+    applyTimelineFrameEdit(overwriteTimelineFrameRange(current, copiedFrameRange, selectedTimelineCellFrame), selectedTimelineCellFrame);
+  }
+
+  function insertFramesAtCurrentSelection(): void {
+    applyTimelineFrameEdit(insertTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame);
+  }
+
+  function removeFramesAtCurrentSelection(): void {
+    if (current.frameCount <= 1) return;
+    setSelectedKeyframe(null);
+    setSelectedMarker(null);
+    applyTimelineFrameEdit(removeTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame);
+  }
+
+  function keyframeTargetForSelection(): { targetId: string; target?: ArtComponent } {
+    const targetId =
+      selectedTimelineCell.kind === "keyframe"
+        ? selectedTimelineCell.targetId
+        : selectedTimelineKeyframe?.trackTargetId || activeKeyframeTargetId;
+    const target =
+      component && targetId
+        ? findTimelineTargetComponent([component], targetId, { scopeRootPath, resolveReference })
+        : undefined;
+    return { targetId, target };
+  }
+
+  function convertSelectionToKeyframe(): void {
+    const { targetId, target } = keyframeTargetForSelection();
+    if (!target || !targetId) return;
+    const normalizedFrame = selectedTimelineCellFrame;
+    const nextTimeline = addTransformKeyframe(current, componentWithTimelineTargetId(target, targetId), normalizedFrame);
+    onChange(nextTimeline);
+    setKeyframeTargetId(targetId);
+    setSelectedMarker(null);
+    setSelectedKeyframe({ targetId, frame: normalizedFrame });
+    selectTimelineCell({ kind: "keyframe", targetId, frame: normalizedFrame });
+    previewFrame(normalizedFrame);
+  }
+
+  function clearKeyframeAtCurrentSelection(): void {
+    const { targetId } = keyframeTargetForSelection();
+    if (!targetId) return;
+    const normalizedFrame = selectedTimelineCellFrame;
+    const nextTimeline = removeTimelineKeyframe(current, targetId, normalizedFrame);
+    onChange(nextTimeline);
+    setSelectedKeyframe(null);
+    setSelectedMarker(null);
+    selectTimelineCell({ kind: "keyframe", targetId, frame: normalizedFrame });
+    previewFrame(normalizedFrame);
   }
 
   function removeSelectedTimelineItem(): boolean {
@@ -1607,6 +1643,28 @@ function ArtTimelinePanel({
     if (isEditableTimelineShortcutTarget(event.target)) return;
     const usesModifier = event.metaKey || event.ctrlKey;
     const key = event.key.toLowerCase();
+    if (event.altKey && event.metaKey && key === "c") {
+      event.preventDefault();
+      copyFrameRangeAtCurrentFrame();
+      return;
+    }
+    if (event.altKey && event.metaKey && key === "v") {
+      event.preventDefault();
+      overwriteFrameRangeAtCurrentFrame();
+      return;
+    }
+    if (!usesModifier && !event.altKey && event.key === "F5") {
+      event.preventDefault();
+      if (event.shiftKey) removeFramesAtCurrentSelection();
+      else insertFramesAtCurrentSelection();
+      return;
+    }
+    if (!usesModifier && !event.altKey && event.key === "F6") {
+      event.preventDefault();
+      if (event.shiftKey) clearKeyframeAtCurrentSelection();
+      else convertSelectionToKeyframe();
+      return;
+    }
     if (usesModifier && key === "c") {
       event.preventDefault();
       if (selectedTimelineKeyframe) copySelectedKeyframe();
@@ -1620,12 +1678,15 @@ function ArtTimelinePanel({
         removeSelectedTimelineItem();
         return;
       }
-      if (current.frameCount > 1) cutFrameRangeAtCurrentFrame();
+      if (current.frameCount > 1) {
+        copyFrameRangeAtCurrentFrame();
+        removeFramesAtCurrentSelection();
+      }
       return;
     }
     if (usesModifier && key === "v") {
       event.preventDefault();
-      if (copiedFrameRange) pasteFrameRangeAtCurrentFrame();
+      if (copiedFrameRange) overwriteFrameRangeAtCurrentFrame();
       else if (copiedKeyframe) pasteCopiedKeyframe(cleanFrame);
       return;
     }
@@ -1637,11 +1698,7 @@ function ArtTimelinePanel({
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
       if (removeSelectedTimelineItem()) return;
-      if (current.frameCount > 1) {
-        setSelectedKeyframe(null);
-        setSelectedMarker(null);
-        applyTimelineFrameEdit(removeTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame);
-      }
+      removeFramesAtCurrentSelection();
       return;
     }
     if (event.key === " " || event.key === "Spacebar") {
@@ -1818,7 +1875,7 @@ function ArtTimelinePanel({
       className="art-timeline-panel"
       data-art-timeline-panel
       tabIndex={0}
-      aria-keyshortcuts="T ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
+      aria-keyshortcuts="T F5 F6 Shift+F5 Shift+F6 ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+Alt+C Meta+Alt+V Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
       onKeyDown={handleTimelineKeyDown}
     >
       <div className="art-timeline-header">
@@ -1863,34 +1920,21 @@ function ArtTimelinePanel({
           />
         </label>
       </div>
-      <div className="art-timeline-playback">
-        <span className="art-timeline-playback-source">
-          Play from frame {cleanFrame}
-        </span>
-        <button type="button" onClick={playTimeline} disabled={isPlaying || current.frameCount <= 1}>
-          Play
-        </button>
-        <button type="button" onClick={stopPlayback} disabled={!isPlaying}>
-          Stop
-        </button>
-        <button type="button" onClick={() => previewFrame(0)}>
-          First
-        </button>
-        <span className="art-timeline-playback-duration">{Math.round(activePlaybackDuration)}ms</span>
+      <div className="art-timeline-segment-editor">
+        <label className="flow-react-field">
+          <span>Animation Name</span>
+          <input
+            type="text"
+            value={selectedFrameAnimationName}
+            placeholder="None"
+            readOnly={!animationNameIsEditable}
+            aria-readonly={!animationNameIsEditable}
+            onChange={(event) => {
+              if (animationNameIsEditable) updateCurrentFrameAnimationName(event.target.value);
+            }}
+          />
+        </label>
       </div>
-      {selectedTimelineCell.kind === "label" ? (
-        <div className="art-timeline-segment-editor">
-          <label className="flow-react-field">
-            <span>Animation Name</span>
-            <input
-              type="text"
-              value={selectedLabelAnimationName}
-              placeholder="None"
-              onChange={(event) => updateCurrentFrameAnimationName(event.target.value)}
-            />
-          </label>
-        </div>
-      ) : null}
       {selectedTimelineCell.kind === "command" ? (
         <div className="art-timeline-script-editor">
           <label className="flow-react-field">
@@ -1936,25 +1980,6 @@ function ArtTimelinePanel({
             onChange={(event) => setManualFrameRangeCount(Number(event.target.value))}
           />
         </label>
-        <button type="button" onClick={() => applyTimelineFrameEdit(insertTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame)}>
-          Insert Frames
-        </button>
-        <button
-          type="button"
-          onClick={() => applyTimelineFrameEdit(removeTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame)}
-          disabled={current.frameCount <= 1}
-        >
-          Delete Frames
-        </button>
-        <button type="button" onClick={copyFrameRangeAtCurrentFrame}>
-          Copy Frames
-        </button>
-        <button type="button" onClick={cutFrameRangeAtCurrentFrame} disabled={current.frameCount <= 1}>
-          Cut Frames
-        </button>
-        <button type="button" onClick={pasteFrameRangeAtCurrentFrame} disabled={!copiedFrameRange}>
-          Paste Frames
-        </button>
         {copiedFrameRange ? (
           <span className="art-timeline-frame-clipboard-summary">
             Clipboard: {copiedFrameRange.frameCount} frame{copiedFrameRange.frameCount === 1 ? "" : "s"}

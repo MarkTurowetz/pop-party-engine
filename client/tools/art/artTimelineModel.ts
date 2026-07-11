@@ -315,6 +315,76 @@ export function pasteTimelineFrameRange(
   });
 }
 
+export function overwriteTimelineFrameRange(
+  timeline: TimelineDocument | null | undefined,
+  clipboard: TimelineFrameClipboard | null | undefined,
+  frame: number
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  if (!clipboard) return current;
+  const destinationFrame = cleanFrame(frame, current.frameCount);
+  const pasteFrameCount = cleanFrameDelta(clipboard.frameCount || 1);
+  const nextFrameCount = cleanFrameCount(Math.max(current.frameCount, destinationFrame + pasteFrameCount), current.frameCount);
+  const pasteEnd = destinationFrame + pasteFrameCount;
+  const isInsideDestinationRange = (value: number) => value >= destinationFrame && value < pasteEnd;
+  const labelNameBySource = new Map<string, string>();
+  const nextLabels = current.labels.filter((label) => !isInsideDestinationRange(label.frame));
+  const nextCommands = current.commands.filter((command) => !isInsideDestinationRange(command.frame));
+
+  for (const label of clipboard.labels || []) {
+    const labelFrame = cleanFrame(destinationFrame + label.frame, nextFrameCount);
+    const labelName =
+      nextLabels.some((entry) => entry.name === label.name && entry.frame !== labelFrame)
+        ? uniqueLabelName({ ...current, labels: nextLabels }, label.name, label.name || "Label")
+        : cleanName(label.name, "Label");
+    labelNameBySource.set(label.name, labelName);
+    nextLabels.push({ name: labelName, frame: labelFrame });
+  }
+
+  const copiedCommands = (clipboard.commands || []).reduce<TimelineCommand[]>((commands, command) => {
+    const target = remappedTimelineCommandTarget(command, labelNameBySource);
+    const copiedCommand: TimelineCommand = {
+      ...command,
+      frame: cleanFrame(destinationFrame + command.frame, nextFrameCount)
+    };
+    if (target) copiedCommand.target = target;
+    else delete copiedCommand.target;
+    copiedCommand.id = uniqueCommandId({ commands: [...nextCommands, ...commands] }, copiedCommand);
+    commands.push(copiedCommand);
+    return commands;
+  }, []);
+
+  const tracksByTargetId = new Map<string, TimelineTrack>();
+  for (const track of current.tracks) {
+    tracksByTargetId.set(track.targetId, {
+      ...track,
+      keyframes: track.keyframes.filter((keyframe) => !isInsideDestinationRange(keyframe.frame))
+    });
+  }
+  for (const track of clipboard.tracks || []) {
+    const copiedKeyframes = track.keyframes.map((keyframe) => {
+      const keyframeFrame = cleanFrame(destinationFrame + keyframe.frame, nextFrameCount);
+      return {
+        ...keyframe,
+        id: `key-${track.targetId}-${keyframeFrame}`,
+        frame: keyframeFrame,
+        props: cleanTimelineProps(keyframe.props),
+        easing: cleanTimelineEasing(keyframe.easing)
+      };
+    });
+    const existing = tracksByTargetId.get(track.targetId);
+    tracksByTargetId.set(track.targetId, existing ? upsertManyKeyframes(existing, copiedKeyframes) : { ...track, keyframes: copiedKeyframes });
+  }
+
+  return sortTimeline({
+    ...current,
+    frameCount: nextFrameCount,
+    labels: nextLabels,
+    commands: [...nextCommands, ...copiedCommands],
+    tracks: [...tracksByTargetId.values()].filter((track) => track.keyframes.length > 0)
+  });
+}
+
 export function cutTimelineFrameRange(
   timeline: TimelineDocument | null | undefined,
   frame: number,
@@ -717,6 +787,10 @@ function componentTimelinePropsForKeys(component: ArtComponent, keys: Iterable<u
 function upsertKeyframe(track: TimelineTrack, keyframe: TimelineKeyframe): TimelineTrack {
   const withoutFrame = track.keyframes.filter((item) => item.frame !== keyframe.frame);
   return { ...track, keyframes: [...withoutFrame, keyframe].sort((a, b) => a.frame - b.frame) };
+}
+
+function upsertManyKeyframes(track: TimelineTrack, keyframes: TimelineKeyframe[]): TimelineTrack {
+  return keyframes.reduce((nextTrack, keyframe) => upsertKeyframe(nextTrack, keyframe), track);
 }
 
 export function mergeDefaultArtVisibilityTimeline(
