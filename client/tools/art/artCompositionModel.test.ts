@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { gameTextDefaultFontFamily, gameTextFontOptions } from "../../textFonts";
-import { serializeArtComponentForSave, serializeArtCompositionForSave } from "./artCompositionModel";
+import { hydrateArtCompositionForEditing, serializeArtComponentForSave, serializeArtCompositionForSave } from "./artCompositionModel";
 import { componentKindLabel, normalizeShapeStyle } from "./artComponentSchema";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 
@@ -59,5 +59,66 @@ describe("artCompositionModel serialization", () => {
   it("keeps layer lock state in serialized components", () => {
     const serialized = serializeArtComponentForSave({ id: "locked", kind: "shape", locked: true } as unknown as ArtComponent);
     expect(serialized.locked).toBe(true);
+  });
+
+  it("migrates composition shadow tracks into the targeted component timeline", () => {
+    const hydrated = hydrateArtCompositionForEditing({
+      id: "layout-text-field",
+      name: "Layout Text Field",
+      surface: "stage",
+      canvas: { width: 1000, height: 240 },
+      timeline: {
+        fps: 30,
+        frameCount: 45,
+        labels: [{ name: "update", frame: 18 }],
+        commands: [{ frame: 24, type: "stop" }],
+        tracks: [{ targetId: "text", keyframes: [{ frame: 18, props: { scale: 1.2 } }] }]
+      },
+      components: [
+        {
+          id: "text",
+          name: "Text",
+          kind: "text",
+          x: 500,
+          y: 120,
+          width: 1000,
+          height: 240,
+          scale: 1,
+          rotation: 0,
+          opacity: 1,
+          visible: true,
+          timeline: {
+            fps: 30,
+            frameCount: 45,
+            labels: [{ name: "appear", frame: 2 }],
+            commands: [{ frame: 32, type: "stop" }],
+            tracks: [
+              {
+                targetId: "text",
+                keyframes: [
+                  { frame: 2, props: { scale: 0, opacity: 0 } },
+                  { frame: 17, props: { scale: 1, opacity: 1 } },
+                  { frame: 32, props: { scale: 1, opacity: 1 } }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    } as ArtComposition);
+
+    expect(hydrated.timeline?.tracks.some((track) => track.targetId === "text")).toBe(false);
+    const textTrack = hydrated.components[0].timeline?.tracks.find((track) => track.targetId === "text");
+    expect(textTrack?.keyframes.map((keyframe) => keyframe.frame)).toEqual(expect.arrayContaining([2, 17, 18, 32]));
+    expect(textTrack?.keyframes.find((keyframe) => keyframe.frame === 18)?.props).toMatchObject({
+      x: 500,
+      y: 120,
+      width: 1000,
+      height: 240,
+      scale: 1.2,
+      rotation: 0,
+      opacity: 1,
+      visible: true
+    });
   });
 });

@@ -257,15 +257,17 @@ describe("createArtCompositionsController", () => {
       "timeline-host",
       expect.objectContaining({
         timeline: expect.objectContaining({
-          labels: expect.arrayContaining([expect.objectContaining({ name: "pulse", frame: 1 })]),
-          tracks: expect.arrayContaining([expect.objectContaining({ targetId: "card" })])
+          labels: expect.arrayContaining([expect.objectContaining({ name: "pulse", frame: 1 })])
         }),
         components: [
           expect.objectContaining({
             id: "card",
             timeline: expect.objectContaining({
               labels: expect.arrayContaining([expect.objectContaining({ name: "pop", frame: 2 })]),
-              tracks: expect.arrayContaining([expect.objectContaining({ targetId: "card" })])
+              tracks: expect.arrayContaining([
+                expect.objectContaining({ targetId: "card" }),
+                expect.objectContaining({ targetId: "name" })
+              ])
             }),
             children: [
               expect.objectContaining({

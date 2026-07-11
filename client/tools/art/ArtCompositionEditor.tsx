@@ -212,23 +212,8 @@ function compositionTimelineTargetRoot(composition: ArtComposition): ArtComponen
   } as ArtComponent;
 }
 
-function pathStartsWith(path: string[], prefix: string[]): boolean {
-  return prefix.length > 0 && prefix.every((part, index) => path[index] === part);
-}
-
-function timelineTargetIdForComponentPath(
-  selectedPath: string[] | null,
-  scopePath: string[] | null,
-  scopeComponent: ArtComponent | null | undefined
-): string {
-  const cleanSelectedPath = (selectedPath || []).map((part) => String(part || "").trim()).filter(Boolean);
-  if (scopeComponent && scopePath?.length) {
-    const cleanScopePath = scopePath.map((part) => String(part || "").trim()).filter(Boolean);
-    if (!pathStartsWith(cleanSelectedPath, cleanScopePath)) return "";
-    const relativePath = cleanSelectedPath.slice(cleanScopePath.length);
-    return artComponentTargetPathId([String(scopeComponent.id || "").trim(), ...relativePath].filter(Boolean));
-  }
-  return artComponentTargetPathId(cleanSelectedPath);
+function componentTimelineLocalTargetId(component: ArtComponent | null | undefined): string {
+  return String(component?.id || "").trim() || "self";
 }
 
 function componentHasNestedTimelineTargets(component: ArtComponent, compositions: Map<string, ArtComposition>): boolean {
@@ -466,21 +451,20 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     [baseTimelineFrameOverrides, timelineScopeComponent, timelineScopeComponentPath, timelinePreviewOverrides]
   );
   const selectedComponentScopedId = selectedComponentPath ? artComponentTargetPathId(selectedComponentPath) : selectedComponent?.id || "";
-  const selectedTimelineTargetId = timelineTargetIdForComponentPath(selectedComponentPath, timelineScopeComponentPath, timelineScopeComponent);
+  const selectedTimelineEditTargetId = componentTimelineLocalTargetId(selectedComponent);
   const selectedComponentTimelineValues = selectedComponent
     ? timelineFrameOverrides?.[selectedComponentScopedId] || timelineFrameOverrides?.[selectedComponent.id] || {}
     : {};
   const commitSelectedTimelineFrameProps = (patch: TimelineProperties) => {
-    if (!selectedComponent || !selectedTimelineTargetId || !composition) return;
+    if (!selectedComponent || !selectedTimelineEditTargetId || !composition) return;
     const nextTimeline = upsertTimelineKeyframeProps(
-      activeTimeline,
-      selectedTimelineTargetId,
+      selectedComponent.timeline || null,
+      selectedTimelineEditTargetId,
       timelinePreviewFrame,
       patch,
-      { defaultEasing: "hold", rootComponent: timelineRootComponent || compositionTimelineTargetRoot(composition) }
+      { defaultEasing: "hold", rootComponent: selectedComponent }
     );
-    if (timelineScopeComponent) controller.updateComponent(timelineScopeComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
-    else controller.updateComposition(composition.id, { timeline: nextTimeline });
+    controller.updateComponent(selectedComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
     setTimelinePreview((current) =>
       composition
         ? {
@@ -493,10 +477,6 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   };
   const componentPathForTimelineEdit = (componentId: string): string[] | null =>
     composition ? findArtComponentTargetPath(composition.components || [], componentId)?.path || null : null;
-  const timelineTargetIdForCanvasEdit = (componentId: string): string => {
-    const componentPath = componentPathForTimelineEdit(componentId);
-    return timelineTargetIdForComponentPath(componentPath, timelineScopeComponentPath, timelineScopeComponent);
-  };
   const componentTimelineValuesForCanvasEdit = (component: ArtComponent): Record<string, unknown> => {
     const componentPath = componentPathForTimelineEdit(component.id);
     const scopedId = componentPath ? artComponentTargetPathId(componentPath) : component.id;
@@ -509,13 +489,11 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     return Number.isFinite(numberValue) ? numberValue : fallback;
   };
   const commitCanvasComponentPatch = (component: ArtComponent, patch: TimelineProperties): void => {
-    const targetId = timelineTargetIdForCanvasEdit(component.id);
     const shouldCommitToTimeline = Boolean(
       composition &&
         selectedComponentIds.has(component.id) &&
-        selectedTimelineTargetId &&
-        targetId &&
-        targetId === selectedTimelineTargetId
+        selectedComponent?.id === component.id &&
+        selectedTimelineEditTargetId
     );
     if (!shouldCommitToTimeline) {
       controller.updateComponent(component.id, patch as Partial<ArtComponent>);
@@ -882,7 +860,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           compositions={compositions}
           component={selectedComponent ?? null}
           timelineContext={
-            selectedComponent && selectedTimelineTargetId
+            selectedComponent && selectedTimelineEditTargetId
               ? {
                   frame: timelinePreviewFrame,
                   values: selectedComponentTimelineValues,
