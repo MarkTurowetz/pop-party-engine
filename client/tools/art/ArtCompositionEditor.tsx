@@ -142,9 +142,28 @@ type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
   | { kind: "keyframe"; targetId: string; frame: number };
+type MarqueeBox = { x: number; y: number; width: number; height: number };
+type ArtSelectionBox = { id: string; minX: number; minY: number; maxX: number; maxY: number };
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
+}
+
+function finiteNumber(value: unknown, fallback: number): number {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
+function normalizedMarqueeBox(start: { x: number; y: number }, end: { x: number; y: number }): MarqueeBox {
+  const x = Math.min(start.x, end.x);
+  const y = Math.min(start.y, end.y);
+  return { x, y, width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
+}
+
+function selectionBoxesIntersect(box: MarqueeBox, target: ArtSelectionBox): boolean {
+  const boxMaxX = box.x + box.width;
+  const boxMaxY = box.y + box.height;
+  return box.x <= target.maxX && boxMaxX >= target.minX && box.y <= target.maxY && boxMaxY >= target.minY;
 }
 
 function isEditableTimelineShortcutTarget(target: EventTarget | null): boolean {
@@ -378,8 +397,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const dragRef = useRef<{ id: string; originX: number; originY: number; startX: number; startY: number; moved: boolean } | null>(
     null
   );
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
   const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; rotation?: number } | null>(null);
+  const [previewMarquee, setPreviewMarquee] = useState<MarqueeBox | null>(null);
   const [layerDragId, setLayerDragId] = useState<string | null>(null);
   const [layerDropTarget, setLayerDropTarget] = useState<LayerDropTarget | null>(null);
   const [timelineScope, setTimelineScope] = useState<{ compositionId: string; componentId: string } | null>(null);
@@ -515,6 +536,82 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const updateComposition = (patch: Partial<ArtComposition>) => {
     if (!composition) return;
     controller.updateComposition(composition.id, patch);
+  };
+
+  const artCanvasPointFromEvent = (event: PointerEvent | ReactPointerEvent<HTMLElement>): { x: number; y: number } => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) / previewScale,
+      y: (event.clientY - rect.top) / previewScale
+    };
+  };
+
+  const collectSelectableComponentBoxes = (
+    components: ArtComponent[],
+    parent: { left: number; top: number; scale: number } = { left: 0, top: 0, scale: 1 },
+    boxes: ArtSelectionBox[] = []
+  ): ArtSelectionBox[] => {
+    for (const component of components || []) {
+      const frameValues = componentTimelineValuesForCanvasEdit(component);
+      const x = finiteNumber(frameValues.x ?? get(component, "x"), 0);
+      const y = finiteNumber(frameValues.y ?? get(component, "y"), 0);
+      const width = Math.max(1, finiteNumber(frameValues.width ?? get(component, "width"), 1));
+      const height = Math.max(1, finiteNumber(frameValues.height ?? get(component, "height"), 1));
+      const scale = finiteNumber(frameValues.scale ?? get(component, "scale"), 1);
+      const visualScale = parent.scale * Math.max(1, Math.abs(scale));
+      const left = parent.left + (x - width / 2) * parent.scale;
+      const top = parent.top + (y - height / 2) * parent.scale;
+      if (component.locked !== true) {
+        boxes.push({
+          id: component.id,
+          minX: left,
+          minY: top,
+          maxX: left + width * visualScale,
+          maxY: top + height * visualScale
+        });
+      }
+      if (component.children?.length) {
+        collectSelectableComponentBoxes(
+          component.children,
+          { left, top, scale: parent.scale * (Number.isFinite(scale) ? scale : 1) },
+          boxes
+        );
+      }
+    }
+    return boxes;
+  };
+
+  const beginPreviewMarquee = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !composition) return;
+    event.preventDefault();
+    const start = artCanvasPointFromEvent(event);
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+    let moved = false;
+    let latest = normalizedMarqueeBox(start, start);
+    const move = (e: PointerEvent) => {
+      if (Math.abs(e.clientX - startClientX) > 3 || Math.abs(e.clientY - startClientY) > 3) moved = true;
+      latest = normalizedMarqueeBox(start, artCanvasPointFromEvent(e));
+      setPreviewMarquee(latest);
+    };
+    const up = (e: PointerEvent) => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      latest = normalizedMarqueeBox(start, artCanvasPointFromEvent(e));
+      setPreviewMarquee(null);
+      if (!moved) {
+        controller.clearComponentSelection();
+        return;
+      }
+      const selectedIds = collectSelectableComponentBoxes(composition.components || [])
+        .filter((box) => selectionBoxesIntersect(latest, box))
+        .map((box) => box.id);
+      controller.selectComponents(selectedIds, e.metaKey || e.ctrlKey || e.shiftKey);
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
   };
 
   const beginLayerDrag = (id: string, event: ReactDragEvent<HTMLDivElement>) => {
@@ -724,6 +821,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                 style={{ width: visualBounds.width * previewScale, height: visualBounds.height * previewScale }}
               >
                 <div
+                  ref={canvasRef}
                   className="art-canvas"
                   data-art-canvas={composition.id}
                   style={{
@@ -736,7 +834,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                     transformOrigin: "top left",
                     overflow: "visible"
                   }}
-                  onClick={() => controller.clearComponentSelection()}
+                  onPointerDown={beginPreviewMarquee}
                 >
                   <ArtPreviewRenderer
                     assetUrlById={assetUrlById}
@@ -756,6 +854,17 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                     onSelect={(id, additive) => controller.selectComponent(id, additive)}
                     selectedIds={selectedComponentIds}
                   />
+                  {previewMarquee ? (
+                    <div
+                      className="art-selection-marquee"
+                      style={{
+                        left: previewMarquee.x,
+                        top: previewMarquee.y,
+                        width: previewMarquee.width,
+                        height: previewMarquee.height
+                      }}
+                    />
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -1098,6 +1207,8 @@ function ArtTimelinePanel({
     toggle: () => {},
     playFromBeginning: () => {}
   });
+  const timelineRangeDragRef = useRef<{ anchorFrame: number; moved: boolean } | null>(null);
+  const suppressTimelineClickRef = useRef(false);
   const resolveReference = useMemo(() => artCompositionReferenceResolver(compositions), [compositions]);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const cleanTimelineFrame = (value: number): number => Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(value) || 0)));
@@ -1219,6 +1330,12 @@ function ArtTimelinePanel({
   function selectFrameRangeTo(nextFrame: number): void {
     const normalizedFrame = cleanTimelineFrame(nextFrame);
     const anchorFrame = cleanTimelineFrame(frameRangeAnchor ?? cleanFrame);
+    selectFrameRangeFrom(anchorFrame, normalizedFrame);
+  }
+
+  function selectFrameRangeFrom(anchorFrameInput: number, nextFrameInput: number): void {
+    const normalizedFrame = cleanTimelineFrame(nextFrameInput);
+    const anchorFrame = cleanTimelineFrame(anchorFrameInput);
     const range = timelineFrameRangeFromAnchor(current.frameCount, anchorFrame, normalizedFrame);
     setFrame(range.startFrame);
     setPlayheadFrame(range.startFrame);
@@ -1227,6 +1344,51 @@ function ArtTimelinePanel({
     setFrameEditCount(range.frameCount);
     setFrameWindowStart(windowStartForFrame(normalizedFrame));
     onPreviewFrame?.(range.startFrame);
+  }
+
+  function consumeTimelineRangeDragClick(): boolean {
+    if (!suppressTimelineClickRef.current) return false;
+    suppressTimelineClickRef.current = false;
+    return true;
+  }
+
+  function timelineFrameFromPointer(container: HTMLElement, event: PointerEvent): number {
+    const rect = container.getBoundingClientRect();
+    const relativeX = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+    const frameOffset = Math.max(0, Math.min(visibleTimelineFrameCount - 1, Math.floor(relativeX * visibleTimelineFrameCount)));
+    return cleanTimelineFrame(cleanFrameWindowStart + frameOffset);
+  }
+
+  function beginTimelineFrameRangeDrag(frameIndex: number, event: ReactPointerEvent<HTMLElement>): void {
+    if (event.button !== 0) return;
+    const container = event.currentTarget.parentElement;
+    if (!container) return;
+    timelineRangeDragRef.current = { anchorFrame: frameIndex, moved: false };
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+    const move = (e: PointerEvent) => {
+      const drag = timelineRangeDragRef.current;
+      if (!drag) return;
+      const nextFrame = timelineFrameFromPointer(container, e);
+      const hasMoved = Math.abs(e.clientX - startClientX) > 3 || Math.abs(e.clientY - startClientY) > 3 || nextFrame !== drag.anchorFrame;
+      if (!hasMoved) return;
+      drag.moved = true;
+      suppressTimelineClickRef.current = true;
+      stopPlayback();
+      setSelectedKeyframe(null);
+      setSelectedMarker(null);
+      selectTimelineCell({ kind: "frame", frame: Math.min(drag.anchorFrame, nextFrame) });
+      selectFrameRangeFrom(drag.anchorFrame, nextFrame);
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      const moved = timelineRangeDragRef.current?.moved === true;
+      timelineRangeDragRef.current = null;
+      if (moved) suppressTimelineClickRef.current = true;
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
   }
 
   function previewFrameWithOverrides(nextFrame: number, overrides: TimelinePreviewOverrides | null): void {
@@ -1789,7 +1951,9 @@ function ArtTimelinePanel({
             aria-current={cleanFrame === frameIndex ? "true" : undefined}
             data-art-timeline-playhead={timelineFrameIsPlayhead(frameIndex) ? "true" : "false"}
             data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
+            onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
             onClick={(event) => {
+              if (consumeTimelineRangeDragClick()) return;
               stopPlayback();
               if (event.shiftKey) selectFrameRangeTo(frameIndex);
               else {
@@ -1827,7 +1991,9 @@ function ArtTimelinePanel({
                       data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                       draggable={labels.length > 0}
                       title={labels.length ? `Frame ${frameIndex}: ${labels.map((label) => label.name).join(", ")}` : `Preview frame ${frameIndex}`}
+                      onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
                       onClick={() => {
+                        if (consumeTimelineRangeDragClick()) return;
                         if (labels[0]) selectTimelineMarker({ kind: "label", name: labels[0].name }, frameIndex);
                         else {
                           stopPlayback();
@@ -1886,7 +2052,11 @@ function ArtTimelinePanel({
                           ? `Frame ${frameIndex}: ${commands.map(({ command }) => timelineCommandTitle(command)).join(", ")}`
                           : `Preview frame ${frameIndex}`
                       }
-                      onClick={() => selectCommandFrame(commands, frameIndex)}
+                      onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
+                      onClick={() => {
+                        if (consumeTimelineRangeDragClick()) return;
+                        selectCommandFrame(commands, frameIndex);
+                      }}
                       onDragStart={(event) => {
                         if (!dragCommand) return;
                         startTimelineDrag(event, { kind: "command", index: dragCommand.index, command: dragCommand.command });
@@ -1931,7 +2101,9 @@ function ArtTimelinePanel({
                         data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
                         draggable={Boolean(keyframe)}
                         title={keyframe ? `${trackLabel.label} keyframe ${frameIndex}` : `Frame ${frameIndex}: add/select ${trackLabel.label} keyframe target`}
+                        onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
                         onClick={() => {
+                          if (consumeTimelineRangeDragClick()) return;
                           setKeyframeTargetId(trackLabel.id);
                           if (keyframe) selectKeyframe(trackLabel.id, keyframe.frame);
                           else {

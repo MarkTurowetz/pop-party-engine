@@ -2721,7 +2721,7 @@ button.controller-widget-art-host.has-controller-widget-art:disabled,
 }
 
 .art-composition-component.is-selected {
-  outline: calc(4px * var(--art-composition-editor-scale, 1)) solid var(--cyan);
+  outline: calc(4px * var(--art-composition-editor-scale, 1)) solid var(--yellow);
   box-shadow: 0 0 0 calc(4px * var(--art-composition-editor-scale, 1)) rgba(23, 19, 31, 0.45);
   z-index: 4;
 }
@@ -2729,9 +2729,9 @@ button.controller-widget-art-host.has-controller-widget-art:disabled,
 .art-selection-marquee {
   position: absolute;
   z-index: 30;
-  border: 3px dashed var(--cyan);
+  border: 3px dashed var(--yellow);
   border-radius: 8px;
-  background: rgba(34, 211, 238, 0.16);
+  background: rgba(255, 225, 86, 0.18);
   pointer-events: none;
 }
 

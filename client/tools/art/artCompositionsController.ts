@@ -45,6 +45,7 @@ export interface ArtCompositionsController {
   updateComposition(compositionId: string, patch: Partial<ArtComposition>): void;
   selectComposition(compositionId: string): void;
   selectComponent(componentId: string, additive?: boolean): void;
+  selectComponents(componentIds: Iterable<string>, additive?: boolean): void;
   clearComponentSelection(): void;
   addComponent(kind: string): void;
   removeSelectedComponents(): void;
@@ -352,6 +353,11 @@ export function createArtCompositionsController(
       } else {
         selectedComponentIds = new Set([componentId]);
       }
+      emit();
+    },
+    selectComponents: (componentIds, additive = false) => {
+      const nextIds = new Set(Array.from(componentIds).filter(Boolean));
+      selectedComponentIds = additive ? new Set([...selectedComponentIds, ...nextIds]) : nextIds;
       emit();
     },
     clearComponentSelection: () => {

@@ -239,8 +239,8 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       position: "absolute",
       inset: 0,
       borderRadius: visualStyle.borderRadius,
-      border: selected ? "2px solid #22d3ee" : "1.5px solid rgba(34, 211, 238, 0.82)",
-      boxShadow: selected ? "0 0 0 2px rgba(34, 211, 238, 0.18)" : "none",
+      border: selected ? "2px solid #ffe156" : "1.5px solid rgba(255, 225, 86, 0.86)",
+      boxShadow: selected ? "0 0 0 2px rgba(23, 19, 31, 0.26), 0 0 0 5px rgba(255, 225, 86, 0.2)" : "none",
       pointerEvents: "none",
       boxSizing: "border-box",
       opacity: 1
@@ -326,7 +326,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
                 bottom: -6,
                 width: 12,
                 height: 12,
-                background: "#22d3ee",
+                background: "#ffe156",
                 border: "1px solid #17131f",
                 cursor: "nwse-resize"
               }}
