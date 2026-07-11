@@ -433,60 +433,6 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const timelinePreviewFrame = timelinePreview?.compositionId === selectedCompositionId ? timelinePreview.frame : 0;
   const timelinePreviewOverrides = timelinePreview?.compositionId === selectedCompositionId ? timelinePreview.overrides : null;
 
-  const beginResize = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.stopPropagation();
-    const originW = Number(get(component, "width") || 1);
-    const originH = Number(get(component, "height") || 1);
-    const startX = event.clientX;
-    const startY = event.clientY;
-    let next = { width: originW, height: originH };
-    const dimensionsForEvent = (e: PointerEvent) =>
-      artResizeDimensions({
-        originWidth: originW,
-        originHeight: originH,
-        deltaX: (e.clientX - startX) / previewScale,
-        deltaY: (e.clientY - startY) / previewScale,
-        preserveAspectRatio: e.shiftKey,
-        snapToInteger: e.metaKey || e.ctrlKey
-      });
-    const move = (e: PointerEvent) => {
-      next = dimensionsForEvent(e);
-      setLiveTransform({ id: component.id, width: next.width, height: next.height });
-    };
-    const up = (e: PointerEvent) => {
-      document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", up);
-      next = dimensionsForEvent(e);
-      setLiveTransform(null);
-      controller.updateComponent(component.id, { width: next.width, height: next.height } as Partial<ArtComponent>);
-    };
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", up);
-  };
-
-  const beginRotate = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.stopPropagation();
-    const box = (event.currentTarget.closest("[data-art-canvas-component]") as HTMLElement)?.getBoundingClientRect();
-    if (!box) return;
-    const cx = box.left + box.width / 2;
-    const cy = box.top + box.height / 2;
-    let rotation = Number(get(component, "rotation") || 0);
-    const move = (e: PointerEvent) => {
-      rotation = Number(((Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI + 90).toFixed(1));
-      setLiveTransform({ id: component.id, rotation });
-    };
-    const up = () => {
-      document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", up);
-      setLiveTransform(null);
-      controller.updateComponent(component.id, { rotation } as Partial<ArtComponent>);
-    };
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", up);
-  };
-
   const selectedComponentId = selectedComponentIds.size === 1 ? [...selectedComponentIds][0] : "";
   const selectedComponentMatch = useMemo(
     () => (composition && selectedComponentId ? findArtComponentTargetPath(composition.components || [], selectedComponentId) : null),
@@ -537,6 +483,47 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     );
     if (timelineScopeComponent) controller.updateComponent(timelineScopeComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
     else controller.updateComposition(composition.id, { timeline: nextTimeline });
+    setTimelinePreview((current) =>
+      composition
+        ? {
+            compositionId: composition.id,
+            frame: current?.compositionId === composition.id ? current.frame : timelinePreviewFrame,
+            overrides: null
+          }
+        : current
+    );
+  };
+  const componentPathForTimelineEdit = (componentId: string): string[] | null =>
+    composition ? findArtComponentTargetPath(composition.components || [], componentId)?.path || null : null;
+  const timelineTargetIdForCanvasEdit = (componentId: string): string => {
+    const componentPath = componentPathForTimelineEdit(componentId);
+    return timelineTargetIdForComponentPath(componentPath, timelineScopeComponentPath, timelineScopeComponent);
+  };
+  const componentTimelineValuesForCanvasEdit = (component: ArtComponent): Record<string, unknown> => {
+    const componentPath = componentPathForTimelineEdit(component.id);
+    const scopedId = componentPath ? artComponentTargetPathId(componentPath) : component.id;
+    return timelineFrameOverrides?.[scopedId] || timelineFrameOverrides?.[component.id] || {};
+  };
+  const timelineAwareComponentValue = (component: ArtComponent, key: string, fallback: number): number => {
+    const frameValues = componentTimelineValuesForCanvasEdit(component);
+    const value = Object.prototype.hasOwnProperty.call(frameValues, key) ? frameValues[key] : get(component, key);
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : fallback;
+  };
+  const commitCanvasComponentPatch = (component: ArtComponent, patch: TimelineProperties): void => {
+    const targetId = timelineTargetIdForCanvasEdit(component.id);
+    const shouldCommitToTimeline = Boolean(
+      composition &&
+        selectedComponentIds.has(component.id) &&
+        selectedTimelineTargetId &&
+        targetId &&
+        targetId === selectedTimelineTargetId
+    );
+    if (!shouldCommitToTimeline) {
+      controller.updateComponent(component.id, patch as Partial<ArtComponent>);
+      return;
+    }
+    commitSelectedTimelineFrameProps(patch);
   };
   const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
     if (!composition) return;
@@ -586,13 +573,67 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     setLayerDropTarget(null);
   };
 
+  const beginResize = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    const originW = timelineAwareComponentValue(component, "width", 1);
+    const originH = timelineAwareComponentValue(component, "height", 1);
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let next = { width: originW, height: originH };
+    const dimensionsForEvent = (e: PointerEvent) =>
+      artResizeDimensions({
+        originWidth: originW,
+        originHeight: originH,
+        deltaX: (e.clientX - startX) / previewScale,
+        deltaY: (e.clientY - startY) / previewScale,
+        preserveAspectRatio: e.shiftKey,
+        snapToInteger: e.metaKey || e.ctrlKey
+      });
+    const move = (e: PointerEvent) => {
+      next = dimensionsForEvent(e);
+      setLiveTransform({ id: component.id, width: next.width, height: next.height });
+    };
+    const up = (e: PointerEvent) => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      next = dimensionsForEvent(e);
+      setLiveTransform(null);
+      commitCanvasComponentPatch(component, { width: next.width, height: next.height });
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  };
+
+  const beginRotate = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    const box = (event.currentTarget.closest("[data-art-canvas-component]") as HTMLElement)?.getBoundingClientRect();
+    if (!box) return;
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    let rotation = timelineAwareComponentValue(component, "rotation", 0);
+    const move = (e: PointerEvent) => {
+      rotation = Number(((Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI + 90).toFixed(1));
+      setLiveTransform({ id: component.id, rotation });
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      setLiveTransform(null);
+      commitCanvasComponentPatch(component, { rotation });
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  };
+
   const beginDrag = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.stopPropagation();
     dragRef.current = {
       id: component.id,
-      originX: Number(get(component, "x") || 0),
-      originY: Number(get(component, "y") || 0),
+      originX: timelineAwareComponentValue(component, "x", 0),
+      originY: timelineAwareComponentValue(component, "y", 0),
       startX: event.clientX,
       startY: event.clientY,
       moved: false
@@ -637,7 +678,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           },
           modifierState
         );
-        controller.moveComponent(drag.id, next.x, next.y);
+        commitCanvasComponentPatch(component, { x: next.x, y: next.y });
       }
     };
     document.addEventListener("pointermove", move);
