@@ -1495,7 +1495,7 @@ function ArtTimelinePanel({
     setSelectedKeyframe(null);
     setSelectedMarker(null);
     const normalizedFrame = cleanTimelineFrame(nextFrame);
-    const anchorFrame = shiftFrameRangeAnchorRef.current ?? normalizedFrame;
+    const anchorFrame = shiftFrameRangeAnchorRef.current ?? frameRangeAnchor ?? cleanFrame;
     shiftFrameRangeAnchorRef.current = anchorFrame;
     selectTimelineCell({ kind: "frame", frame: Math.min(anchorFrame, normalizedFrame) });
     selectFrameRangeFrom(anchorFrame, normalizedFrame);
