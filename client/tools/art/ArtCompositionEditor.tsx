@@ -1209,6 +1209,7 @@ function ArtTimelinePanel({
   });
   const timelineRangeDragRef = useRef<{ anchorFrame: number; moved: boolean } | null>(null);
   const suppressTimelineClickRef = useRef(false);
+  const shiftFrameRangeAnchorRef = useRef<number | null>(null);
   const resolveReference = useMemo(() => artCompositionReferenceResolver(compositions), [compositions]);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const cleanTimelineFrame = (value: number): number => Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(value) || 0)));
@@ -1293,6 +1294,7 @@ function ArtTimelinePanel({
 
   function previewFrame(nextFrame: number): void {
     const normalizedFrame = cleanTimelineFrame(nextFrame);
+    shiftFrameRangeAnchorRef.current = null;
     playbackFrameRef.current = normalizedFrame;
     setFrame(normalizedFrame);
     setPlayheadFrame(normalizedFrame);
@@ -1346,6 +1348,17 @@ function ArtTimelinePanel({
     onPreviewFrame?.(range.startFrame);
   }
 
+  function selectFrameRangeByShiftClick(nextFrame: number): void {
+    stopPlayback();
+    setSelectedKeyframe(null);
+    setSelectedMarker(null);
+    const normalizedFrame = cleanTimelineFrame(nextFrame);
+    const anchorFrame = shiftFrameRangeAnchorRef.current ?? normalizedFrame;
+    shiftFrameRangeAnchorRef.current = anchorFrame;
+    selectTimelineCell({ kind: "frame", frame: Math.min(anchorFrame, normalizedFrame) });
+    selectFrameRangeFrom(anchorFrame, normalizedFrame);
+  }
+
   function consumeTimelineRangeDragClick(): boolean {
     if (!suppressTimelineClickRef.current) return false;
     suppressTimelineClickRef.current = false;
@@ -1385,7 +1398,13 @@ function ArtTimelinePanel({
       document.removeEventListener("pointerup", up);
       const moved = timelineRangeDragRef.current?.moved === true;
       timelineRangeDragRef.current = null;
-      if (moved) suppressTimelineClickRef.current = true;
+      if (moved) {
+        shiftFrameRangeAnchorRef.current = null;
+        suppressTimelineClickRef.current = true;
+        window.setTimeout(() => {
+          suppressTimelineClickRef.current = false;
+        }, 0);
+      }
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
@@ -1475,6 +1494,14 @@ function ArtTimelinePanel({
     }
     window.addEventListener("keydown", handleGlobalTimelineKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalTimelineKeyDown);
+  }, []);
+
+  useEffect(() => {
+    function handleGlobalTimelineKeyUp(event: KeyboardEvent): void {
+      if (event.key === "Shift") shiftFrameRangeAnchorRef.current = null;
+    }
+    window.addEventListener("keyup", handleGlobalTimelineKeyUp);
+    return () => window.removeEventListener("keyup", handleGlobalTimelineKeyUp);
   }, []);
 
   function updateCurrentFrameAnimationName(name: string): void {
@@ -1955,7 +1982,7 @@ function ArtTimelinePanel({
             onClick={(event) => {
               if (consumeTimelineRangeDragClick()) return;
               stopPlayback();
-              if (event.shiftKey) selectFrameRangeTo(frameIndex);
+              if (event.shiftKey) selectFrameRangeByShiftClick(frameIndex);
               else {
                 previewFrame(frameIndex);
                 selectTimelineCell({ kind: "frame", frame: frameIndex });
@@ -1992,8 +2019,12 @@ function ArtTimelinePanel({
                       draggable={labels.length > 0}
                       title={labels.length ? `Frame ${frameIndex}: ${labels.map((label) => label.name).join(", ")}` : `Preview frame ${frameIndex}`}
                       onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
-                      onClick={() => {
+                      onClick={(event) => {
                         if (consumeTimelineRangeDragClick()) return;
+                        if (event.shiftKey) {
+                          selectFrameRangeByShiftClick(frameIndex);
+                          return;
+                        }
                         if (labels[0]) selectTimelineMarker({ kind: "label", name: labels[0].name }, frameIndex);
                         else {
                           stopPlayback();
@@ -2053,8 +2084,12 @@ function ArtTimelinePanel({
                           : `Preview frame ${frameIndex}`
                       }
                       onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
-                      onClick={() => {
+                      onClick={(event) => {
                         if (consumeTimelineRangeDragClick()) return;
+                        if (event.shiftKey) {
+                          selectFrameRangeByShiftClick(frameIndex);
+                          return;
+                        }
                         selectCommandFrame(commands, frameIndex);
                       }}
                       onDragStart={(event) => {
@@ -2102,8 +2137,12 @@ function ArtTimelinePanel({
                         draggable={Boolean(keyframe)}
                         title={keyframe ? `${trackLabel.label} keyframe ${frameIndex}` : `Frame ${frameIndex}: add/select ${trackLabel.label} keyframe target`}
                         onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
-                        onClick={() => {
+                        onClick={(event) => {
                           if (consumeTimelineRangeDragClick()) return;
+                          if (event.shiftKey) {
+                            selectFrameRangeByShiftClick(frameIndex);
+                            return;
+                          }
                           setKeyframeTargetId(trackLabel.id);
                           if (keyframe) selectKeyframe(trackLabel.id, keyframe.frame);
                           else {
