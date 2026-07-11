@@ -817,7 +817,7 @@ export function upsertTimelineKeyframeProps(
   targetId: string,
   frame: number,
   props: TimelineProperties,
-  options: { defaultEasing?: string } = {}
+  options: { defaultEasing?: string; rootComponent?: ArtComponent | null } = {}
 ): TimelineDocument {
   const current = artTimelineOrDefault(timeline);
   const cleanTargetId = String(targetId || "").trim();
@@ -837,10 +837,11 @@ export function upsertTimelineKeyframeProps(
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, keyframe)
     : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };
-  return sortTimeline({
+  const nextTimeline = sortTimeline({
     ...current,
     tracks: [...current.tracks.filter((track) => track.targetId !== cleanTargetId), nextTrack]
   });
+  return options.rootComponent ? normalizeAnimationKeyframePropsForEditing(nextTimeline, options.rootComponent) : nextTimeline;
 }
 
 export function replaceTransformKeyframeFromComponent(

@@ -453,7 +453,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       selectedTimelineTargetId,
       timelinePreviewFrame,
       patch,
-      { defaultEasing: "hold" }
+      { defaultEasing: "hold", rootComponent: timelineRootComponent || compositionTimelineTargetRoot(composition) }
     );
     if (timelineScopeComponent) controller.updateComponent(timelineScopeComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
     else controller.updateComposition(composition.id, { timeline: nextTimeline });

@@ -598,6 +598,59 @@ describe("artTimelineModel", () => {
     expect(keyframes[1].props.defaultText).toBeUndefined();
   });
 
+  it("keeps edited child keyframes complete after sparse inspector updates", () => {
+    const root = {
+      id: "prompt-field",
+      kind: "container",
+      children: [{ id: "text", kind: "text", x: 100, y: 80, width: 300, height: 90, scale: 1, rotation: 0, opacity: 1 }]
+    } as ArtComponent;
+    const timeline: TimelineDocument = normalizeAnimationKeyframePropsForEditing(
+      {
+        fps: 30,
+        frameCount: 40,
+        labels: [{ name: "appear", frame: 2 }],
+        commands: [{ frame: 32, type: "stop" }],
+        tracks: [
+          {
+            targetId: "prompt-field/text",
+            keyframes: [
+              { frame: 2, easing: "hold", props: { x: 100, y: 80, width: 300, height: 90, scale: 1, rotation: 0, opacity: 0, visible: true } },
+              { frame: 17, easing: "easeOut", props: { scale: 1 } },
+              { frame: 32, easing: "hold", props: { scale: 1, opacity: 1 } }
+            ]
+          }
+        ]
+      },
+      root
+    );
+
+    const edited = upsertTimelineKeyframeProps(timeline, "prompt-field/text", 17, { x: 150 }, { defaultEasing: "hold", rootComponent: root });
+    const track = edited.tracks.find((item) => item.targetId === "prompt-field/text");
+    const frames = track?.keyframes || [];
+
+    expect(frames.map((keyframe) => keyframe.frame)).toEqual([2, 17, 32]);
+    expect(frames[1].props).toMatchObject({
+      x: 150,
+      y: 80,
+      width: 300,
+      height: 90,
+      scale: 1,
+      rotation: 0,
+      opacity: 0,
+      visible: true
+    });
+    expect(frames[2].props).toMatchObject({
+      x: 100,
+      y: 80,
+      width: 300,
+      height: 90,
+      scale: 1,
+      rotation: 0,
+      opacity: 1,
+      visible: true
+    });
+  });
+
   it("captures text state when adding keyframes", () => {
     const component = {
       id: "title",
