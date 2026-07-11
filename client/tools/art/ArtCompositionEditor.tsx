@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useCallback,
   useRef,
   useMemo,
   useState,
@@ -39,7 +40,6 @@ import {
   removeTimelineLabel,
   removeTimelineFrames,
   replaceTimelineCommandsAtFrame,
-  replaceTransformKeyframeFromComponent,
   timelineFrameIsTweened,
   timelineFrameRangeFromAnchor,
   timelineTweenSpanAtFrame,
@@ -54,7 +54,6 @@ import {
 import { parseTimelineActionScript, timelineCommandsToActionScript } from "./artTimelineActionScript";
 import {
   findTimelineTargetComponent,
-  timelineTargetLabel,
   timelineTargetOptionsFor,
   timelineTrackRowsFor,
   timelineWithScopedComponentTracks
@@ -138,6 +137,14 @@ type TimelineCellSelection =
   | { kind: "label"; frame: number }
   | { kind: "command"; frame: number }
   | { kind: "keyframe"; frame: number; targetId: string };
+type TimelineCommandOverlay = {
+  frame: number;
+  draft: string;
+  error: string;
+  onDraftChange: (value: string) => void;
+  onCommit: () => void;
+  onReset: () => void;
+};
 type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
@@ -232,6 +239,26 @@ function timelineLabelsAtFrame(timeline: TimelineDocument, frame: number): Timel
 
 function timelineCommandsAtFrame(timeline: TimelineDocument, frame: number): { command: TimelineCommand; index: number }[] {
   return timeline.commands.map((command, index) => ({ command, index })).filter(({ command }) => command.frame === frame);
+}
+
+function inferredVisibilityCommandsAtFrame(timeline: TimelineDocument, frame: number): TimelineCommand[] {
+  const visibleValues = new Set<boolean>();
+  for (const track of timeline.tracks || []) {
+    for (const keyframe of track.keyframes || []) {
+      if (keyframe.frame !== frame) continue;
+      const visible = keyframe.props?.visible;
+      if (typeof visible === "boolean") visibleValues.add(visible);
+    }
+  }
+  if (visibleValues.size !== 1) return [];
+  const [visible] = [...visibleValues];
+  return [{ frame, type: "setVisible", target: visible ? "true" : "false" }];
+}
+
+function timelineActionScriptForFrame(timeline: TimelineDocument, frame: number, commands: TimelineCommand[]): string {
+  const hasExplicitVisibility = commands.some((command) => command.type === "setVisible");
+  const displayCommands = hasExplicitVisibility ? commands : [...commands, ...inferredVisibilityCommandsAtFrame(timeline, frame)];
+  return timelineCommandsToActionScript(displayCommands);
 }
 
 function timelineCommandLabel(command: TimelineCommand): string {
@@ -390,6 +417,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const [layerDragId, setLayerDragId] = useState<string | null>(null);
   const [layerDropTarget, setLayerDropTarget] = useState<LayerDropTarget | null>(null);
   const [timelineScope, setTimelineScope] = useState<{ compositionId: string; componentId: string } | null>(null);
+  const [timelineDismissSignal, setTimelineDismissSignal] = useState(0);
+  const [timelineCommandOverlay, setTimelineCommandOverlay] = useState<TimelineCommandOverlay | null>(null);
   const [timelinePreview, setTimelinePreview] = useState<{
     compositionId: string;
     frame: number;
@@ -512,6 +541,32 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       current?.compositionId === composition.id ? { ...current, overrides: null } : { compositionId: composition.id, frame: 0, overrides: null }
     );
   };
+  const dismissTimelineContext = useCallback(() => {
+    setTimelineDismissSignal((value) => value + 1);
+    setTimelineCommandOverlay(null);
+  }, []);
+  const selectArtComponent = useCallback(
+    (id: string, additive: boolean) => {
+      dismissTimelineContext();
+      controller.selectComponent(id, additive);
+    },
+    [controller, dismissTimelineContext]
+  );
+  const exitTimelineScopeOneLevel = () => {
+    if (!composition || !timelineScopeComponentPath?.length) return;
+    const parentPath = timelineScopeComponentPath.slice(0, -1);
+    dismissTimelineContext();
+    if (!parentPath.length) {
+      setTimelineScope(null);
+      controller.clearComponentSelection();
+      setTimelinePreview({ compositionId: composition.id, frame: 0, overrides: null });
+      return;
+    }
+    const parentId = parentPath[parentPath.length - 1];
+    setTimelineScope({ compositionId: composition.id, componentId: parentId });
+    controller.selectComponent(parentId, false);
+    setTimelinePreview({ compositionId: composition.id, frame: 0, overrides: null });
+  };
   const updateComposition = (patch: Partial<ArtComposition>) => {
     if (!composition) return;
     controller.updateComposition(composition.id, patch);
@@ -582,11 +637,13 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       setPreviewMarquee(null);
       if (!moved) {
         controller.clearComponentSelection();
+        dismissTimelineContext();
         return;
       }
       const selectedIds = collectSelectableComponentBoxes(composition.components || [])
         .filter((box) => selectionBoxesIntersect(latest, box))
         .map((box) => box.id);
+      dismissTimelineContext();
       controller.selectComponents(selectedIds, e.metaKey || e.ctrlKey || e.shiftKey);
     };
     document.addEventListener("pointermove", move);
@@ -814,6 +871,11 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                     overflow: "visible"
                   }}
                   onPointerDown={beginPreviewMarquee}
+                  onDoubleClick={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    event.preventDefault();
+                    exitTimelineScopeOneLevel();
+                  }}
                 >
                   <ArtPreviewRenderer
                     assetUrlById={assetUrlById}
@@ -830,7 +892,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                       event.stopPropagation();
                       openTimelineScope(component);
                     }}
-                    onSelect={(id, additive) => controller.selectComponent(id, additive)}
+                    onSelect={selectArtComponent}
                     selectedIds={selectedComponentIds}
                   />
                   {previewMarquee ? (
@@ -871,7 +933,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
               <ComponentTree
                 components={composition.components || []}
                 selectedIds={selectedComponentIds}
-                onSelect={(id, additive) => controller.selectComponent(id, additive)}
+                onSelect={selectArtComponent}
                 onToggleLocked={(id, locked) => controller.updateComponent(id, { locked } as Partial<ArtComponent>)}
                 onDragStart={beginLayerDrag}
                 onDragOver={updateLayerDropTarget}
@@ -882,6 +944,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             ) : null
           }
         />
+        {timelineCommandOverlay ? <ArtTimelineCommandOverlay overlay={timelineCommandOverlay} /> : null}
       </div>
       <div className="art-timeline-dock" data-art-timeline-dock>
         {composition ? (
@@ -899,6 +962,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             }}
             onExitScope={timelineScopeComponent ? () => setTimelineScope(null) : undefined}
             onPreviewFrame={previewTimelineFrame}
+            dismissSelectionSignal={timelineDismissSignal}
+            onCommandOverlayChange={setTimelineCommandOverlay}
           />
         ) : (
           <p>No timeline selected.</p>
@@ -1136,6 +1201,37 @@ function ArtComponentInspector({
   );
 }
 
+function ArtTimelineCommandOverlay({ overlay }: { overlay: TimelineCommandOverlay }) {
+  return (
+    <aside className="art-timeline-command-overlay" data-art-timeline-command-overlay>
+      <label className="flow-react-field">
+        <span>Actions · Frame {overlay.frame}</span>
+        <textarea
+          value={overlay.draft}
+          placeholder={'stop();\ngotoAndPlay("appear");'}
+          spellCheck={false}
+          onChange={(event) => overlay.onDraftChange(event.target.value)}
+          onBlur={overlay.onCommit}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+              event.preventDefault();
+              overlay.onCommit();
+            }
+            if (event.key === "Escape") {
+              event.preventDefault();
+              overlay.onReset();
+            }
+          }}
+        />
+      </label>
+      <small className="art-timeline-script-help">
+        Use stop(), gotoAndPlay("label"), gotoAndStop("label"), emit("event"), playComponent("component", "label"), or visible = false.
+      </small>
+      {overlay.error ? <strong className="art-timeline-script-error">{overlay.error}</strong> : null}
+    </aside>
+  );
+}
+
 function ArtTimelinePanel({
   title,
   timeline,
@@ -1146,7 +1242,9 @@ function ArtTimelinePanel({
   scopeRootPath = true,
   onChange,
   onExitScope,
-  onPreviewFrame
+  onPreviewFrame,
+  dismissSelectionSignal,
+  onCommandOverlayChange
 }: {
   title: string;
   timeline: TimelineDocument | null | undefined;
@@ -1158,6 +1256,8 @@ function ArtTimelinePanel({
   onChange: (timeline: TimelineDocument) => void;
   onExitScope?: () => void;
   onPreviewFrame?: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
+  dismissSelectionSignal?: number;
+  onCommandOverlayChange?: (overlay: TimelineCommandOverlay | null) => void;
 }) {
   const current = useMemo(
     () => effectiveArtVisibilityTimeline(displayTimeline ?? timeline, includeRootTarget ? component : null),
@@ -1179,6 +1279,7 @@ function ArtTimelinePanel({
   const [copiedKeyframe, setCopiedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [copiedFrameRange, setCopiedFrameRange] = useState<TimelineFrameClipboard | null>(null);
   const [commandScriptDraft, setCommandScriptDraft] = useState("");
+  const [commandScriptInitialDraft, setCommandScriptInitialDraft] = useState("");
   const [commandScriptError, setCommandScriptError] = useState("");
   const playbackRef = useRef<ArtTimelinePreviewPlayback | null>(null);
   const playbackFrameRef = useRef(0);
@@ -1187,9 +1288,11 @@ function ArtTimelinePanel({
     playFromBeginning: () => {}
   });
   const timelineTweenControlsRef = useRef<{ toggle: () => void }>({ toggle: () => {} });
+  const commitCommandScriptDraftRef = useRef<() => boolean>(() => true);
   const timelineRangeDragRef = useRef<{ anchorFrame: number; moved: boolean } | null>(null);
   const suppressTimelineClickRef = useRef(false);
   const shiftFrameRangeAnchorRef = useRef<number | null>(null);
+  const dismissSelectionSignalRef = useRef(dismissSelectionSignal);
   const resolveReference = useMemo(() => artCompositionReferenceResolver(compositions), [compositions]);
   const cleanFrame = Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(frame) || 0)));
   const cleanTimelineFrame = (value: number): number => Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(value) || 0)));
@@ -1225,6 +1328,16 @@ function ArtTimelinePanel({
     () => (selectedCommandFrame === null ? [] : timelineCommandsAtFrame(current, selectedCommandFrame)),
     [current, selectedCommandFrame]
   );
+  const selectedTweenSpan = useMemo(() => {
+    const targetId =
+      selectedTimelineCell.kind === "keyframe"
+        ? selectedTimelineCell.targetId
+        : selectedTimelineKeyframe?.trackTargetId || "";
+    if (!targetId) return null;
+    const span = timelineTweenSpanAtFrame(current, targetId, selectedTimelineCellFrame);
+    if (!span || span.easing === "hold" || selectedTimelineCellFrame >= span.endFrame) return null;
+    return span;
+  }, [current, selectedTimelineCell, selectedTimelineCellFrame, selectedTimelineKeyframe]);
   const selectedLabelFrameLabel =
     selectedMarker?.kind === "label" && selectedLabelFrame !== null
       ? selectedLabelFrameLabels.find((label) => label.name === selectedMarker.name) || selectedLabelFrameLabels[0] || null
@@ -1252,8 +1365,20 @@ function ArtTimelinePanel({
       playbackRef.current?.stop();
       playbackRef.current = null;
       setIsPlaying(false);
+      onCommandOverlayChange?.(null);
     };
-  }, [component?.id, includeRootTarget, scopeRootPath]);
+  }, [component?.id, includeRootTarget, onCommandOverlayChange, scopeRootPath]);
+
+  useEffect(() => {
+    if (dismissSelectionSignalRef.current === dismissSelectionSignal) return;
+    dismissSelectionSignalRef.current = dismissSelectionSignal;
+    setSelectedMarker(null);
+    setSelectedTimelineCell({ kind: "frame", frame: cleanFrame });
+    setCommandScriptDraft("");
+    setCommandScriptInitialDraft("");
+    setCommandScriptError("");
+    onCommandOverlayChange?.(null);
+  }, [cleanFrame, dismissSelectionSignal, onCommandOverlayChange]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -1475,6 +1600,20 @@ function ArtTimelinePanel({
     return true;
   }
 
+  function updateSelectedTweenEasing(easing: string): void {
+    if (!selectedTweenSpan) return;
+    const selectionFrame = selectedTimelineCellFrame;
+    const nextTimeline = updateTimelineKeyframe(current, selectedTweenSpan.targetId, selectedTweenSpan.startFrame, { easing });
+    if (nextTimeline === current) return;
+    stopPlayback();
+    onChange(nextTimeline);
+    setKeyframeTargetId(selectedTweenSpan.targetId);
+    setSelectedMarker(null);
+    setSelectedKeyframe({ targetId: selectedTweenSpan.targetId, frame: selectedTweenSpan.startFrame });
+    selectTimelineCell({ kind: "keyframe", targetId: selectedTweenSpan.targetId, frame: selectionFrame });
+    previewFrame(selectionFrame);
+  }
+
   useEffect(() => {
     playbackControlsRef.current = {
       toggle: toggleTimelinePlayback,
@@ -1539,6 +1678,10 @@ function ArtTimelinePanel({
 
   function commitCommandScriptDraft(): boolean {
     if (selectedCommandFrame === null) return true;
+    if (commandScriptDraft === commandScriptInitialDraft) {
+      setCommandScriptError("");
+      return true;
+    }
     const result = parseTimelineActionScript(commandScriptDraft);
     if (result.error) {
       setCommandScriptError(result.error);
@@ -1549,12 +1692,48 @@ function ArtTimelinePanel({
     setSelectedKeyframe(null);
     const commands = timelineCommandsAtFrame(nextTimeline, selectedCommandFrame);
     setSelectedMarker(commands[0] ? commandMarkerSelection(commands[0].command, commands[0].index) : null);
-    setCommandScriptDraft(timelineCommandsToActionScript(commands.map(({ command }) => command)));
+    const nextDraft = timelineActionScriptForFrame(nextTimeline, selectedCommandFrame, commands.map(({ command }) => command));
+    setCommandScriptDraft(nextDraft);
+    setCommandScriptInitialDraft(nextDraft);
     setCommandScriptError("");
     previewFrame(selectedCommandFrame);
     selectTimelineCell({ kind: "command", frame: selectedCommandFrame });
     return true;
   }
+
+  useEffect(() => {
+    commitCommandScriptDraftRef.current = commitCommandScriptDraft;
+  });
+
+  useEffect(() => {
+    if (!onCommandOverlayChange) return;
+    if (selectedCommandFrame === null) {
+      onCommandOverlayChange(null);
+      return;
+    }
+    onCommandOverlayChange({
+      frame: selectedCommandFrame,
+      draft: commandScriptDraft,
+      error: commandScriptError,
+      onDraftChange: (value: string) => {
+        setCommandScriptDraft(value);
+        setCommandScriptError("");
+      },
+      onCommit: () => {
+        commitCommandScriptDraftRef.current();
+      },
+      onReset: () => {
+        const nextDraft = timelineActionScriptForFrame(
+          current,
+          selectedCommandFrame,
+          selectedCommandFrameCommands.map(({ command }) => command)
+        );
+        setCommandScriptDraft(nextDraft);
+        setCommandScriptInitialDraft(nextDraft);
+        setCommandScriptError("");
+      }
+    });
+  }, [commandScriptDraft, commandScriptError, current, onCommandOverlayChange, selectedCommandFrame, selectedCommandFrameCommands]);
 
   function applyTimelineFrameEdit(nextTimeline: TimelineDocument, nextFrame = cleanFrame): void {
     stopPlayback();
@@ -1752,7 +1931,9 @@ function ArtTimelinePanel({
 
   function selectCommandFrame(commands: { command: TimelineCommand; index: number }[], commandFrame: number): void {
     selectTimelineCell({ kind: "command", frame: commandFrame });
-    setCommandScriptDraft(timelineCommandsToActionScript(commands.map(({ command }) => command)));
+    const nextDraft = timelineActionScriptForFrame(current, commandFrame, commands.map(({ command }) => command));
+    setCommandScriptDraft(nextDraft);
+    setCommandScriptInitialDraft(nextDraft);
     setCommandScriptError("");
     if (!commands.length) {
       stopPlayback();
@@ -1814,14 +1995,6 @@ function ArtTimelinePanel({
     setTimelineDropFrame(null);
   }
 
-  function updateSelectedKeyframe(patch: Partial<Pick<TimelineKeyframe, "frame" | "props" | "easing">>): void {
-    if (!selectedTimelineKeyframe) return;
-    const nextFrame = patch.frame === undefined ? selectedTimelineKeyframe.keyframe.frame : Math.max(0, Math.min(current.frameCount - 1, Math.round(Number(patch.frame) || 0)));
-    const nextTimeline = updateTimelineKeyframe(current, selectedTimelineKeyframe.trackTargetId, selectedTimelineKeyframe.keyframe.frame, patch);
-    setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: nextFrame });
-    applyTimelineFrameEdit(nextTimeline, nextFrame);
-  }
-
   function copySelectedKeyframe(): void {
     if (!selectedTimelineKeyframe) return;
     setCopiedFrameRange(null);
@@ -1838,36 +2011,6 @@ function ArtTimelinePanel({
     onChange(nextTimeline);
     setSelectedKeyframe({ targetId: activeKeyframeTargetId, frame: normalizedFrame });
     previewFrame(normalizedFrame);
-  }
-
-  function duplicateSelectedKeyframe(): void {
-    if (!selectedTimelineKeyframe) return;
-    const nextFrame = Math.min(current.frameCount - 1, selectedTimelineKeyframe.keyframe.frame + 1);
-    const nextTimeline = copyTimelineKeyframe(
-      current,
-      selectedTimelineKeyframe.trackTargetId,
-      selectedTimelineKeyframe.keyframe.frame,
-      selectedTimelineKeyframe.trackTargetId,
-      nextFrame
-    );
-    onChange(nextTimeline);
-    setCopiedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: selectedTimelineKeyframe.keyframe.frame });
-    setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: nextFrame });
-    previewFrame(nextFrame);
-  }
-
-  function recaptureSelectedKeyframe(): void {
-    if (!selectedTimelineKeyframe || !component) return;
-    const target = findTimelineTargetComponent([component], selectedTimelineKeyframe.trackTargetId, { scopeRootPath, resolveReference });
-    if (!target) return;
-    const nextTimeline = replaceTransformKeyframeFromComponent(
-      current,
-      componentWithTimelineTargetId(target, selectedTimelineKeyframe.trackTargetId),
-      selectedTimelineKeyframe.keyframe.frame
-    );
-    onChange(nextTimeline);
-    setSelectedKeyframe({ targetId: selectedTimelineKeyframe.trackTargetId, frame: selectedTimelineKeyframe.keyframe.frame });
-    previewFrame(selectedTimelineKeyframe.keyframe.frame);
   }
 
   return (
@@ -1935,38 +2078,21 @@ function ArtTimelinePanel({
           />
         </label>
       </div>
-      {selectedTimelineCell.kind === "command" ? (
-        <div className="art-timeline-script-editor">
+      {selectedTweenSpan ? (
+        <div className="art-timeline-tween-editor">
           <label className="flow-react-field">
-            <span>Actions</span>
-            <textarea
-              value={commandScriptDraft}
-              placeholder={'stop();\ngotoAndPlay("appear");'}
-              spellCheck={false}
-              onChange={(event) => {
-                setCommandScriptDraft(event.target.value);
-                setCommandScriptError("");
-              }}
-              onBlur={() => {
-                commitCommandScriptDraft();
-              }}
-              onKeyDown={(event) => {
-                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                  event.preventDefault();
-                  commitCommandScriptDraft();
-                }
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  setCommandScriptDraft(timelineCommandsToActionScript(selectedCommandFrameCommands.map(({ command }) => command)));
-                  setCommandScriptError("");
-                }
-              }}
-            />
+            <span>Tween Easing</span>
+            <select value={selectedTweenSpan.easing} onChange={(event) => updateSelectedTweenEasing(event.target.value)}>
+              {TIMELINE_EASING_OPTIONS.filter((option) => option.value !== "hold").map((option) => (
+                <option value={option.value} key={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
-          <small className="art-timeline-script-help">
-      Frame {selectedCommandFrame ?? cleanFrame}: use stop(), gotoAndPlay("label"), gotoAndStop("label"), emit("event"), playComponent("component", "label"), or visible = false.
+          <small>
+            {selectedTweenSpan.startFrame}-{selectedTweenSpan.endFrame} · {selectedTweenSpan.targetId}
           </small>
-          {commandScriptError ? <strong className="art-timeline-script-error">{commandScriptError}</strong> : null}
         </div>
       ) : null}
       <div className="art-timeline-frame-editor">
@@ -2224,87 +2350,6 @@ function ArtTimelinePanel({
             </small>
           ) : null}
         </div>
-      <div className="art-timeline-actions">
-        <label className="flow-react-field">
-          <span>Keyframe Target</span>
-          <select value={activeKeyframeTargetId} disabled={keyframeTargets.length === 0} onChange={(event) => setKeyframeTargetId(event.target.value)}>
-            {keyframeTargets.map((target) => (
-              <option key={target.id} value={target.id}>
-                {target.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          disabled={!activeKeyframeTarget}
-          onClick={() => {
-            if (!activeKeyframeTarget) return;
-            const nextTimeline = addTransformKeyframe(current, componentWithTimelineTargetId(activeKeyframeTarget, activeKeyframeTargetId), cleanFrame);
-            onChange(nextTimeline);
-            setSelectedMarker(null);
-            setSelectedKeyframe({ targetId: activeKeyframeTargetId, frame: cleanFrame });
-          }}
-        >
-          Add Keyframe
-        </button>
-        <button type="button" disabled={!activeKeyframeTarget || !copiedKeyframe} onClick={() => pasteCopiedKeyframe(cleanFrame)}>
-          Paste Keyframe
-        </button>
-      </div>
-      {selectedTimelineKeyframe ? (
-        <div className="art-timeline-keyframe-editor">
-          <h4>Selected Keyframe</h4>
-          <label className="flow-react-field">
-            <span>Target</span>
-            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component, { scopeRootPath, resolveReference }).label} readOnly />
-          </label>
-          <label className="flow-react-field">
-            <span>Target Detail</span>
-            <input type="text" value={timelineTargetLabel(selectedTimelineKeyframe.trackTargetId, component, { scopeRootPath, resolveReference }).detail} readOnly />
-          </label>
-          <label className="flow-react-field">
-            <span>Frame</span>
-            <input
-              type="number"
-              min={0}
-              max={Math.max(0, current.frameCount - 1)}
-              value={selectedTimelineKeyframe.keyframe.frame}
-              onChange={(event) => updateSelectedKeyframe({ frame: Number(event.target.value) })}
-            />
-          </label>
-          <label className="flow-react-field">
-            <span>Easing</span>
-            <select
-              value={selectedTimelineKeyframe.keyframe.easing || "linear"}
-              onChange={(event) => updateSelectedKeyframe({ easing: event.target.value })}
-            >
-              {TIMELINE_EASING_OPTIONS.map((option) => (
-                <option value={option.value} key={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="art-timeline-keyframe-actions">
-            <button type="button" disabled={!component} onClick={recaptureSelectedKeyframe}>
-              Recapture Current State
-            </button>
-            <button type="button" onClick={copySelectedKeyframe}>
-              Copy Keyframe
-            </button>
-            <button type="button" onClick={duplicateSelectedKeyframe} disabled={current.frameCount <= 1}>
-              Duplicate Next Frame
-            </button>
-            <button type="button" disabled={!copiedKeyframe || !component} onClick={() => pasteCopiedKeyframe(cleanFrame)}>
-              Paste At Current Frame
-            </button>
-            <button type="button" onClick={removeSelectedTimelineItem}>
-              Remove Keyframe
-            </button>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }
