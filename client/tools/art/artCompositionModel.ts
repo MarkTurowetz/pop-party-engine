@@ -9,7 +9,7 @@ import {
   normalizeImageObjectFit,
   normalizeShapeStyle
 } from "./artComponentSchema";
-import { mergeDefaultArtVisibilityTimeline } from "./artTimelineModel";
+import { mergeDefaultArtVisibilityTimeline, normalizeAnimationKeyframePropsForEditing } from "./artTimelineModel";
 
 /**
  * Typed port of serializeArtCompositionsForSave / serializeArtComponentForSave so
@@ -56,6 +56,8 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
     height: num(component.height, 1),
     scale: num(component.scale, 1),
     rotation: num(component.rotation, 0),
+    opacity: num(component.opacity, 1),
+    visible: component.visible !== false,
     locked: component.locked === true,
     defaultAnimationState: String(component.defaultAnimationState || ""),
     childDistribution: kind === "container" ? normalizeContainerDistribution(component.childDistribution) : "none",
@@ -112,21 +114,41 @@ export function serializeArtCompositionsForSave(source: ArtComposition[] | null 
 export function hydrateArtComponentForEditing(raw: ArtComponent): ArtComponent {
   const component = raw as Record<string, unknown>;
   const id = String(component.id || "");
-  return {
+  const hydrated = {
     ...(JSON.parse(JSON.stringify(raw || {})) as ArtComponent),
-    timeline: mergeDefaultArtVisibilityTimeline((component.timeline || null) as ArtComponent["timeline"], id ? { id } : null),
     children: (Array.isArray(component.children) ? component.children : []).map((child) =>
       hydrateArtComponentForEditing(child as ArtComponent)
+    )
+  };
+  return {
+    ...hydrated,
+    timeline: normalizeAnimationKeyframePropsForEditing(
+      mergeDefaultArtVisibilityTimeline((component.timeline || null) as ArtComponent["timeline"], id ? { id } : null),
+      hydrated
     )
   };
 }
 
 export function hydrateArtCompositionForEditing(raw: ArtComposition): ArtComposition {
   const composition = JSON.parse(JSON.stringify(raw || {})) as ArtComposition;
+  const components = (Array.isArray(composition.components) ? composition.components : []).map(hydrateArtComponentForEditing);
+  const rootComponent = {
+    id: composition.id || "composition",
+    name: composition.name || "Composition",
+    kind: "container",
+    x: 0,
+    y: 0,
+    width: Number(composition.canvas?.width || 1),
+    height: Number(composition.canvas?.height || 1),
+    children: components
+  } as ArtComponent;
   return {
     ...composition,
-    timeline: mergeDefaultArtVisibilityTimeline((composition.timeline || null) as ArtComposition["timeline"]),
-    components: (Array.isArray(composition.components) ? composition.components : []).map(hydrateArtComponentForEditing)
+    timeline: normalizeAnimationKeyframePropsForEditing(
+      mergeDefaultArtVisibilityTimeline((composition.timeline || null) as ArtComposition["timeline"]),
+      rootComponent
+    ),
+    components
   };
 }
 

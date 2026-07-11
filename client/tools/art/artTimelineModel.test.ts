@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArtComponent } from "../../types/game-data";
+import type { TimelineDocument } from "../../../shared/timeline-model";
 import {
   addTimelineCommand,
   addStopCommand,
@@ -17,6 +18,7 @@ import {
   insertTimelineFrames,
   mergeDefaultArtVisibilityTimeline,
   moveTimelineCommandAt,
+  normalizeAnimationKeyframePropsForEditing,
   pasteTimelineFrameRange,
   replaceTransformKeyframeFromComponent,
   removeTimelineFrames,
@@ -58,7 +60,7 @@ describe("artTimelineModel", () => {
   });
 
   it("updates labels by name and keeps label names unique", () => {
-    const timeline = {
+    const timeline: TimelineDocument = {
       fps: 30,
       frameCount: 20,
       labels: [
@@ -88,7 +90,7 @@ describe("artTimelineModel", () => {
   });
 
   it("duplicates animation segments with relative markers, commands, and keyframes", () => {
-    const timeline = {
+    const timeline: TimelineDocument = {
       fps: 10,
       frameCount: 8,
       labels: [
@@ -125,7 +127,7 @@ describe("artTimelineModel", () => {
   });
 
   it("removes a whole animation segment and shifts later timeline data back", () => {
-    const timeline = {
+    const timeline: TimelineDocument = {
       fps: 10,
       frameCount: 12,
       labels: [
@@ -547,6 +549,53 @@ describe("artTimelineModel", () => {
 
     const tweened = updateTimelineKeyframe(merged, "title", 4, { easing: "easeInOut" });
     expect(tweened.tracks[0].keyframes[0].easing).toBe("easeInOut");
+  });
+
+  it("normalizes animation keyframes with complete editable transform values while preserving text props", () => {
+    const timeline: TimelineDocument = {
+      fps: 30,
+      frameCount: 20,
+      labels: [{ name: "appear", frame: 2 }],
+      commands: [{ frame: 17, type: "stop" }],
+      tracks: [
+        {
+          targetId: "title",
+          keyframes: [
+            { frame: 2, easing: "hold", props: { scale: 1, defaultText: "Start" } },
+            { frame: 17, props: { scale: 2 } }
+          ]
+        }
+      ]
+    };
+    const normalized = normalizeAnimationKeyframePropsForEditing(timeline, {
+      id: "root",
+      kind: "container",
+      children: [{ id: "title", kind: "text", x: 100, y: 80, width: 300, height: 90, rotation: 5, opacity: 0.5 }]
+    } as ArtComponent);
+    const keyframes = normalized.tracks[0].keyframes;
+
+    expect(keyframes[0].props).toMatchObject({
+      x: 100,
+      y: 80,
+      width: 300,
+      height: 90,
+      scale: 1,
+      rotation: 5,
+      opacity: 0.5,
+      visible: true,
+      defaultText: "Start"
+    });
+    expect(keyframes[1].props).toMatchObject({
+      x: 100,
+      y: 80,
+      width: 300,
+      height: 90,
+      scale: 2,
+      rotation: 5,
+      opacity: 0.5,
+      visible: true
+    });
+    expect(keyframes[1].props.defaultText).toBeUndefined();
   });
 
   it("captures text state when adding keyframes", () => {

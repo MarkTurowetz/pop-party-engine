@@ -124,6 +124,8 @@ export interface ArtComponent extends JsonObject {
   height?: number;
   scale?: number;
   rotation?: number;
+  opacity?: number;
+  visible?: boolean;
   artCompositionId?: string;
   childDistribution?: "none" | "horizontal" | "vertical" | string;
   locked?: boolean;

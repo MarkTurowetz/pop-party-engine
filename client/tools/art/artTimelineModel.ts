@@ -13,6 +13,7 @@ import {
   type TimelineTrack
 } from "../../../shared/timeline-model";
 import type { ArtComponent } from "../../types/game-data";
+import { findArtComponentTarget } from "../shared/artComponentTargets";
 
 const DEFAULT_TIMELINE: TimelineDocument = Object.freeze({
   fps: 30,
@@ -22,6 +23,7 @@ const DEFAULT_TIMELINE: TimelineDocument = Object.freeze({
   tracks: []
 });
 const MAX_FRAME_COUNT = 60 * 60 * 10;
+const ANIMATION_KEYFRAME_PROPERTY_KEYS = ["x", "y", "width", "height", "scale", "rotation", "opacity", "visible"] as const;
 
 export interface TimelineFrameClipboard {
   frameCount: number;
@@ -613,6 +615,84 @@ function componentTimelinePropsFor(component: ArtComponent): TimelineProperties 
   }
 
   return props;
+}
+
+function componentAnimationTimelinePropsFor(component: ArtComponent): TimelineProperties {
+  const props = componentTimelinePropsFor(component);
+  const animationProps: TimelineProperties = {};
+  for (const key of ANIMATION_KEYFRAME_PROPERTY_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(props, key)) animationProps[key] = props[key];
+  }
+  return animationProps;
+}
+
+function fallbackAnimationTimelineProps(): TimelineProperties {
+  return {
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+    scale: 1,
+    rotation: 0,
+    opacity: 1,
+    visible: true
+  };
+}
+
+function timelineTargetForAnimationProps(rootComponent: ArtComponent, targetId: string): ArtComponent | undefined {
+  const cleanTargetId = String(targetId || "").trim();
+  const rootId = String(rootComponent.id || "").trim();
+  if (!cleanTargetId || cleanTargetId === "self" || cleanTargetId === rootId) return rootComponent;
+  return (
+    findArtComponentTarget([rootComponent], cleanTargetId, { includeRoot: true }) ||
+    findArtComponentTarget([rootComponent], cleanTargetId, { includeRoot: true, scopeRootPath: false })
+  );
+}
+
+function normalizeTrackAnimationProps(track: TimelineTrack, rootComponent: ArtComponent): { track: TimelineTrack; changed: boolean } {
+  const target = timelineTargetForAnimationProps(rootComponent, track.targetId);
+  const carriedProps: TimelineProperties = {
+    ...fallbackAnimationTimelineProps(),
+    ...(target ? componentAnimationTimelinePropsFor(target) : {})
+  };
+  let changed = false;
+  const keyframes = track.keyframes.map((keyframe) => {
+    const sourceProps = cleanTimelineProps(keyframe.props);
+    const nextProps: TimelineProperties = { ...sourceProps };
+    let keyframeChanged = false;
+    for (const key of ANIMATION_KEYFRAME_PROPERTY_KEYS) {
+      const nextValue = Object.prototype.hasOwnProperty.call(sourceProps, key) ? sourceProps[key] : carriedProps[key];
+      if (nextValue !== undefined) nextProps[key] = nextValue;
+      carriedProps[key] = nextProps[key];
+    }
+    if (Object.keys(nextProps).length !== Object.keys(sourceProps).length) keyframeChanged = true;
+    else {
+      for (const [key, value] of Object.entries(nextProps)) {
+        if (sourceProps[key] !== value) {
+          keyframeChanged = true;
+          break;
+        }
+      }
+    }
+    if (keyframeChanged) changed = true;
+    return keyframeChanged ? { ...keyframe, props: nextProps } : keyframe;
+  });
+  return { track: changed ? { ...track, keyframes } : track, changed };
+}
+
+export function normalizeAnimationKeyframePropsForEditing(
+  timeline: TimelineDocument | null | undefined,
+  rootComponent?: ArtComponent | null
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  if (!rootComponent || current.tracks.length === 0) return current;
+  let changed = false;
+  const tracks = current.tracks.map((track) => {
+    const result = normalizeTrackAnimationProps(track, rootComponent);
+    if (result.changed) changed = true;
+    return result.track;
+  });
+  return changed ? sortTimeline({ ...current, tracks }) : current;
 }
 
 function cleanPropertyKeys(keys: Iterable<unknown>): string[] {

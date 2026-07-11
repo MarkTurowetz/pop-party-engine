@@ -21,6 +21,8 @@ describe("artCompositionModel serialization", () => {
     expect(serialized.name).toBe("Shape");
     expect(serialized.x).toBe(1.235);
     expect(serialized.width).toBe(10);
+    expect(serialized.opacity).toBe(1);
+    expect(serialized.visible).toBe(true);
     expect(serialized.locked).toBe(false);
     expect(serialized.shapeStyle).toBe("rounded");
     expect(serialized.children).toEqual([]);

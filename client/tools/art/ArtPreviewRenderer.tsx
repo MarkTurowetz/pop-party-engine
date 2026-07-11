@@ -153,7 +153,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const borderWidth = Number(timelineValue("borderWidth", get(component, "borderWidth") || 0));
     const scale = Number(timelineValue("scale", get(component, "scale") || 1));
     const rotation = liveTx?.rotation ?? Number(timelineValue("rotation", get(component, "rotation") || 0));
-    const ownOpacity = Number(timelineValue("opacity", 1));
+    const ownOpacity = Number(timelineValue("opacity", get(component, "opacity") ?? 1));
     const inheritedContentOpacity = Number(layer.contentOpacity ?? 1);
     const contentOpacity = Math.max(0, Math.min(1, inheritedContentOpacity * ownOpacity));
     const imageUrl = componentSupportsImageMask(component) ? imageSourceFor(component, timelineOverride) : "";
