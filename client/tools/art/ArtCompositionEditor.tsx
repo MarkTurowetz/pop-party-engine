@@ -7,6 +7,7 @@ import {
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
   type ReactNode
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
@@ -33,7 +34,6 @@ import {
   copyTimelineKeyframe,
   effectiveArtVisibilityTimeline,
   insertTimelineFrames,
-  mergeDefaultArtVisibilityTimeline,
   overwriteTimelineFrameRange,
   removeTimelineCommandAt,
   removeTimelineKeyframe,
@@ -145,6 +145,11 @@ type TimelineCommandOverlay = {
   onCommit: () => void;
   onReset: () => void;
 };
+type TimelineNavigationEntry = {
+  compositionId: string;
+  componentId?: string;
+  frame?: number;
+};
 type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
@@ -171,6 +176,10 @@ function selectionBoxesIntersect(box: MarqueeBox, target: ArtSelectionBox): bool
   const boxMaxX = box.x + box.width;
   const boxMaxY = box.y + box.height;
   return box.x <= target.maxX && boxMaxX >= target.minX && box.y <= target.maxY && boxMaxY >= target.minY;
+}
+
+function cleanTimelineNavigationFrame(value: unknown): number {
+  return Math.max(0, Math.round(Number(value) || 0));
 }
 
 function isEditableTimelineShortcutTarget(target: EventTarget | null): boolean {
@@ -417,6 +426,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const [layerDragId, setLayerDragId] = useState<string | null>(null);
   const [layerDropTarget, setLayerDropTarget] = useState<LayerDropTarget | null>(null);
   const [timelineScope, setTimelineScope] = useState<{ compositionId: string; componentId: string } | null>(null);
+  const [timelineNavigationStack, setTimelineNavigationStack] = useState<TimelineNavigationEntry[]>([]);
   const [timelineDismissSignal, setTimelineDismissSignal] = useState(0);
   const [timelineCommandOverlay, setTimelineCommandOverlay] = useState<TimelineCommandOverlay | null>(null);
   const [timelinePreview, setTimelinePreview] = useState<{
@@ -538,6 +548,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       const referenced = compositionById.get(String(component.artCompositionId));
       if (referenced) {
         dismissTimelineContext();
+        setTimelineNavigationStack((stack) => [
+          ...stack,
+          { compositionId: composition.id, componentId: component.id, frame: timelinePreviewFrame }
+        ]);
         setTimelineScope(null);
         controller.selectComposition(referenced.id);
         setTimelinePreview({ compositionId: referenced.id, frame: 0, overrides: null });
@@ -563,7 +577,18 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     [controller, dismissTimelineContext]
   );
   const exitTimelineScopeOneLevel = () => {
-    if (!composition || !timelineScopeComponentPath?.length) return;
+    if (!composition) return;
+    if (!timelineScopeComponentPath?.length) {
+      const previous = timelineNavigationStack[timelineNavigationStack.length - 1] || null;
+      if (!previous) return;
+      dismissTimelineContext();
+      setTimelineNavigationStack((stack) => stack.slice(0, -1));
+      setTimelineScope(null);
+      controller.selectComposition(previous.compositionId);
+      if (previous.componentId) controller.selectComponent(previous.componentId, false);
+      setTimelinePreview({ compositionId: previous.compositionId, frame: cleanTimelineNavigationFrame(previous.frame), overrides: null });
+      return;
+    }
     const parentPath = timelineScopeComponentPath.slice(0, -1);
     dismissTimelineContext();
     if (!parentPath.length) {
@@ -865,6 +890,12 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
               <div
                 className="art-canvas-shell"
                 style={{ width: visualBounds.width * previewScale, height: visualBounds.height * previewScale }}
+                onPointerDown={beginPreviewMarquee}
+                onDoubleClick={(event) => {
+                  if ((event.target as HTMLElement | null)?.closest("[data-art-canvas-component]")) return;
+                  event.preventDefault();
+                  exitTimelineScopeOneLevel();
+                }}
               >
                 <div
                   ref={canvasRef}
@@ -879,12 +910,6 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                     transform: `scale(${previewScale})`,
                     transformOrigin: "top left",
                     overflow: "visible"
-                  }}
-                  onPointerDown={beginPreviewMarquee}
-                  onDoubleClick={(event) => {
-                    if (event.target !== event.currentTarget) return;
-                    event.preventDefault();
-                    exitTimelineScopeOneLevel();
                   }}
                 >
                   <ArtPreviewRenderer
@@ -1406,6 +1431,15 @@ function ArtTimelinePanel({
     setFrameWindowStart(Math.max(0, Math.min(maxFrameWindowStart, Math.round(Number(nextStart) || 0))));
   }
 
+  function scrollTimelineWindowByWheel(event: ReactWheelEvent<HTMLElement>): void {
+    if (maxFrameWindowStart <= 0) return;
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (Math.abs(delta) < 1) return;
+    event.preventDefault();
+    const step = Math.max(1, Math.round(Math.abs(delta) / 24));
+    setTimelineWindowStart(cleanFrameWindowStart + Math.sign(delta) * step);
+  }
+
   function previewFrame(nextFrame: number): void {
     const normalizedFrame = cleanTimelineFrame(nextFrame);
     shiftFrameRangeAnchorRef.current = null;
@@ -1431,12 +1465,6 @@ function ArtTimelinePanel({
 
   function timelineFrameIsPlayhead(frameIndex: number): boolean {
     return cleanPlayheadFrame === frameIndex;
-  }
-
-  function setManualFrameRangeCount(nextCount: number): void {
-    setFrameEditCount(Math.max(1, Math.min(1000, Math.round(Number(nextCount) || 1))));
-    setFrameRangeAnchor(null);
-    setFrameRangeFocus(null);
   }
 
   function frameInSelectedRange(frameIndex: number): boolean {
@@ -2038,15 +2066,6 @@ function ArtTimelinePanel({
             Back To Parent Timeline
           </button>
         ) : null}
-        <button
-          type="button"
-          disabled={!activeKeyframeTarget}
-          onClick={() => {
-            if (activeKeyframeTarget) onChange(mergeDefaultArtVisibilityTimeline(current, componentWithTimelineTargetId(activeKeyframeTarget, activeKeyframeTargetId)));
-          }}
-        >
-          Add Visibility Defaults
-        </button>
       </div>
       <div className="art-timeline-settings">
         <label className="flow-react-field">
@@ -2088,34 +2107,28 @@ function ArtTimelinePanel({
           />
         </label>
       </div>
-      {selectedTweenSpan ? (
-        <div className="art-timeline-tween-editor">
-          <label className="flow-react-field">
-            <span>Tween Easing</span>
-            <select value={selectedTweenSpan.easing} onChange={(event) => updateSelectedTweenEasing(event.target.value)}>
-              {TIMELINE_EASING_OPTIONS.filter((option) => option.value !== "hold").map((option) => (
-                <option value={option.value} key={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <small>
-            {selectedTweenSpan.startFrame}-{selectedTweenSpan.endFrame} · {selectedTweenSpan.targetId}
-          </small>
-        </div>
-      ) : null}
       <div className="art-timeline-frame-editor">
-        <label className="flow-react-field">
-          <span>Range Frames</span>
-          <input
-            type="number"
-            min={1}
-            max={1000}
-            value={frameEditCount}
-            onChange={(event) => setManualFrameRangeCount(Number(event.target.value))}
-          />
-        </label>
+        <div className="art-timeline-tween-slot" data-art-tween-selected={selectedTweenSpan ? "true" : "false"}>
+          {selectedTweenSpan ? (
+            <>
+              <label className="flow-react-field">
+                <span>Tween Easing</span>
+                <select value={selectedTweenSpan.easing} onChange={(event) => updateSelectedTweenEasing(event.target.value)}>
+                  {TIMELINE_EASING_OPTIONS.filter((option) => option.value !== "hold").map((option) => (
+                    <option value={option.value} key={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <small>
+                {selectedTweenSpan.startFrame}-{selectedTweenSpan.endFrame} · {selectedTweenSpan.targetId}
+              </small>
+            </>
+          ) : (
+            <span aria-hidden="true">Tween easing</span>
+          )}
+        </div>
         {copiedFrameRange ? (
           <span className="art-timeline-frame-clipboard-summary">
             Clipboard: {copiedFrameRange.frameCount} frame{copiedFrameRange.frameCount === 1 ? "" : "s"}
@@ -2150,7 +2163,11 @@ function ArtTimelinePanel({
           Next Frames
         </button>
       </div>
-      <div className="art-timeline-ruler" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
+      <div
+        className="art-timeline-ruler"
+        style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}
+        onWheel={scrollTimelineWindowByWheel}
+      >
         {visibleTimelineFrames.map((frameIndex) => (
           <button
             type="button"
@@ -2174,7 +2191,7 @@ function ArtTimelinePanel({
           </button>
         ))}
       </div>
-      <div className="art-timeline-lanes" data-art-timeline-lanes>
+      <div className="art-timeline-lanes" data-art-timeline-lanes onWheel={scrollTimelineWindowByWheel}>
             <div className="art-timeline-lane" data-art-timeline-lane-kind="labels">
               <div className="art-timeline-lane-label" title="Timeline labels">
                 Labels

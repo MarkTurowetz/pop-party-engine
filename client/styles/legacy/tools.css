@@ -1531,29 +1531,6 @@ body.tool-dashboard-mode .layout-react-shell {
   background: rgba(255, 225, 86, 0.18);
 }
 
-.art-timeline-tween-editor {
-  display: grid;
-  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
-  gap: 8px;
-  align-items: end;
-  padding: 8px;
-  border: 3px solid var(--ink);
-  border-radius: 6px;
-  background: rgba(255, 79, 163, 0.16);
-}
-
-.art-timeline-tween-editor small {
-  align-self: center;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 1000;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .art-timeline-command-overlay {
   position: absolute;
   top: 12px;
@@ -1648,9 +1625,42 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-frame-editor {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: minmax(260px, 420px) minmax(100px, auto) minmax(100px, auto) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 54px;
+}
+
+.art-timeline-tween-slot {
+  display: grid;
+  grid-template-columns: minmax(170px, 240px) minmax(0, 1fr);
   gap: 8px;
   align-items: end;
+  min-height: 42px;
+  padding: 6px;
+  border: 3px solid transparent;
+  border-radius: 6px;
+}
+
+.art-timeline-tween-slot[data-art-tween-selected="true"] {
+  border-color: var(--ink);
+  background: rgba(255, 79, 163, 0.16);
+}
+
+.art-timeline-tween-slot[data-art-tween-selected="false"] {
+  visibility: hidden;
+}
+
+.art-timeline-tween-slot small {
+  align-self: center;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 1000;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .art-timeline-frame-clipboard-summary {
