@@ -8,11 +8,12 @@ describe("artTimelineActionScript", () => {
       { frame: 4, type: "stop" },
       { frame: 5, type: "gotoAndPlay", target: "appear" },
       { frame: 6, type: "emit", event: "done" },
-      { frame: 7, type: "playComponent", target: "name-card", event: "pop" }
+      { frame: 7, type: "playComponent", target: "name-card", event: "pop" },
+      { frame: 8, type: "setVisible", target: "false" }
     ];
 
     expect(timelineCommandsToActionScript(commands)).toBe(
-      ['stop();', 'gotoAndPlay("appear");', 'emit("done");', 'playComponent("name-card", "pop");'].join("\n")
+      ['stop();', 'gotoAndPlay("appear");', 'emit("done");', 'playComponent("name-card", "pop");', "visible = false;"].join("\n")
     );
   });
 
@@ -24,6 +25,12 @@ describe("artTimelineActionScript", () => {
       commands: [
         { type: "emit", target: "card", event: "started" },
         { type: "playComponent", target: "avatar", event: "pop" }
+      ]
+    });
+    expect(parseTimelineActionScript("visible = false;\nvisible = true;")).toEqual({
+      commands: [
+        { type: "setVisible", target: "false" },
+        { type: "setVisible", target: "true" }
       ]
     });
   });

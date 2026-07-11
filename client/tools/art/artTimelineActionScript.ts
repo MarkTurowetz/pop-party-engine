@@ -15,6 +15,7 @@ function quoteScriptString(value: string): string {
 
 function scriptCommandToLine(command: TimelineCommand): string {
   if (command.type === "stop") return "stop();";
+  if (command.type === "setVisible") return `visible = ${command.target === "false" ? "false" : "true"};`;
   if (command.type === "gotoAndPlay") return `gotoAndPlay(${quoteScriptString(command.target || "")});`;
   if (command.type === "gotoAndStop") return `gotoAndStop(${quoteScriptString(command.target || "")});`;
   if (command.type === "playComponent") {
@@ -51,8 +52,10 @@ function parseQuotedArgs(statement: string): string[] {
 }
 
 function parseScriptStatement(statement: string): ScriptCommand | string {
+  const visibleAssignment = statement.match(/^visible\s*=\s*(true|false)$/i);
+  if (visibleAssignment) return { type: "setVisible", target: visibleAssignment[1].toLowerCase() };
   const call = statement.match(/^([a-zA-Z_$][\w$]*)\s*\((.*)\)$/);
-  if (!call) return `Use function-call syntax, like stop(); or gotoAndPlay("appear");`;
+  if (!call) return `Use function-call syntax, like stop(); or gotoAndPlay("appear"), or assign visibility with visible = false;`;
   const type = call[1];
   const rawArgs = call[2].trim();
   const args = parseQuotedArgs(rawArgs);

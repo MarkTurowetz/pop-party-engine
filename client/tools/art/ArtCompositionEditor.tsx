@@ -41,7 +41,10 @@ import {
   removeTimelineFrames,
   replaceTimelineCommandsAtFrame,
   replaceTransformKeyframeFromComponent,
+  timelineFrameIsTweened,
   timelineFrameRangeFromAnchor,
+  timelineTweenSpanAtFrame,
+  toggleTimelineTweenAtFrame,
   type TimelineFrameClipboard,
   updateTimelineCommandAt,
   updateTimelineKeyframe,
@@ -100,7 +103,6 @@ const TIMELINE_PROPERTY_SUGGESTIONS = [
   "scale",
   "rotation",
   "opacity",
-  "visible",
   "defaultText",
   "text",
   "fontSize",
@@ -250,6 +252,7 @@ function timelineCommandsAtFrame(timeline: TimelineDocument, frame: number): { c
 }
 
 function timelineCommandLabel(command: TimelineCommand): string {
+  if (command.type === "setVisible") return command.target === "false" ? "visible false" : "visible true";
   if (command.type === "gotoAndPlay") return command.target ? `play ${command.target}` : "play";
   if (command.type === "gotoAndStop") return command.target ? `stop at ${command.target}` : "stop at";
   if (command.type === "playComponent") {
@@ -1207,6 +1210,7 @@ function ArtTimelinePanel({
     toggle: () => {},
     playFromBeginning: () => {}
   });
+  const timelineTweenControlsRef = useRef<{ toggle: () => void }>({ toggle: () => {} });
   const timelineRangeDragRef = useRef<{ anchorFrame: number; moved: boolean } | null>(null);
   const suppressTimelineClickRef = useRef(false);
   const shiftFrameRangeAnchorRef = useRef<number | null>(null);
@@ -1472,10 +1476,39 @@ function ArtTimelinePanel({
     else if (current.frameCount > 1) playTimeline();
   }
 
+  function tweenTargetForSelection(): string {
+    if (selectedTimelineCell.kind === "keyframe") return selectedTimelineCell.targetId;
+    if (selectedTimelineKeyframe) return selectedTimelineKeyframe.trackTargetId;
+    return activeKeyframeTargetId;
+  }
+
+  function toggleTweenAtCurrentSelection(): boolean {
+    const targetId = tweenTargetForSelection();
+    if (!targetId) return false;
+    const selectionFrame = cleanTimelineFrame(selectedTimelineCell.frame ?? cleanFrame);
+    const span = timelineTweenSpanAtFrame(current, targetId, selectionFrame);
+    if (!span) return false;
+    const nextTimeline = toggleTimelineTweenAtFrame(current, targetId, selectionFrame);
+    if (nextTimeline === current) return false;
+    stopPlayback();
+    onChange(nextTimeline);
+    setKeyframeTargetId(targetId);
+    setSelectedMarker(null);
+    setSelectedKeyframe({ targetId, frame: span.startFrame });
+    selectTimelineCell({ kind: "keyframe", targetId, frame: selectionFrame });
+    previewFrame(selectionFrame);
+    return true;
+  }
+
   useEffect(() => {
     playbackControlsRef.current = {
       toggle: toggleTimelinePlayback,
       playFromBeginning: playTimelineFromBeginning
+    };
+    timelineTweenControlsRef.current = {
+      toggle: () => {
+        toggleTweenAtCurrentSelection();
+      }
     };
   });
 
@@ -1490,6 +1523,9 @@ function ArtTimelinePanel({
       } else if (event.key === "Enter") {
         event.preventDefault();
         playbackControlsRef.current.playFromBeginning();
+      } else if (event.key.toLowerCase() === "t") {
+        event.preventDefault();
+        timelineTweenControlsRef.current.toggle();
       }
     }
     window.addEventListener("keydown", handleGlobalTimelineKeyDown);
@@ -1613,6 +1649,11 @@ function ArtTimelinePanel({
       event.preventDefault();
       if (copiedFrameRange) pasteFrameRangeAtCurrentFrame();
       else if (copiedKeyframe) pasteCopiedKeyframe(cleanFrame);
+      return;
+    }
+    if (!usesModifier && !event.altKey && key === "t") {
+      event.preventDefault();
+      toggleTweenAtCurrentSelection();
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {
@@ -1799,7 +1840,7 @@ function ArtTimelinePanel({
       className="art-timeline-panel"
       data-art-timeline-panel
       tabIndex={0}
-      aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
+      aria-keyshortcuts="T ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
       onKeyDown={handleTimelineKeyDown}
     >
       <div className="art-timeline-header">
@@ -1901,7 +1942,7 @@ function ArtTimelinePanel({
             />
           </label>
           <small className="art-timeline-script-help">
-            Frame {selectedCommandFrame ?? cleanFrame}: use stop(), gotoAndPlay("label"), gotoAndStop("label"), emit("event"), or playComponent("component", "label").
+      Frame {selectedCommandFrame ?? cleanFrame}: use stop(), gotoAndPlay("label"), gotoAndStop("label"), emit("event"), playComponent("component", "label"), or visible = false.
           </small>
           {commandScriptError ? <strong className="art-timeline-script-error">{commandScriptError}</strong> : null}
         </div>
@@ -2122,6 +2163,7 @@ function ArtTimelinePanel({
                   {visibleTimelineFrames.map((frameIndex) => {
                     const keyframe = track?.keyframes.find((item) => item.frame === frameIndex) || null;
                     const isSelected = selectedKeyframe?.targetId === trackLabel.id && selectedKeyframe.frame === frameIndex;
+                    const isTweened = timelineFrameIsTweened(current, trackLabel.id, frameIndex);
                     return (
                       <button
                         type="button"
@@ -2131,6 +2173,7 @@ function ArtTimelinePanel({
                         data-art-timeline-playhead={timelineFrameIsPlayhead(frameIndex) ? "true" : "false"}
                         data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                         data-art-timeline-has-keyframe={keyframe ? "true" : "false"}
+                        data-art-timeline-tweened={isTweened ? "true" : "false"}
                         data-art-timeline-keyframe-selected={isSelected ? "true" : "false"}
                         data-art-timeline-active-cell={timelineCellIsActive("keyframe", frameIndex, trackLabel.id) ? "true" : "false"}
                         data-art-timeline-drop-target={timelineDropFrame === frameIndex ? "true" : "false"}
@@ -2241,9 +2284,6 @@ function ArtTimelinePanel({
             </select>
           </label>
           <div className="art-timeline-keyframe-actions">
-            <button type="button" onClick={() => updateSelectedKeyframe({ easing: "easeInOut" })}>
-              Tween
-            </button>
             <button type="button" disabled={!component} onClick={recaptureSelectedKeyframe}>
               Recapture Current State
             </button>

@@ -422,4 +422,29 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(parent.handleTimelineCommand({ command: { type: "emit", frame: 1, target: "name-card" }, eventName: "emit", visual: {} })).toBe(0);
     expect(parent.handleTimelineCommand({ command: { type: "gotoAndPlay", frame: 1, target: "appear" }, eventName: "gotoAndPlay", visual: {} })).toBe(0);
   });
+
+  it("routes timeline visible assignment commands to the whole rendered tree", () => {
+    const toggles: boolean[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      createVisual: () => { setVisibleState: (isVisible: boolean) => void };
+      handleTimelineCommand: (detail: unknown) => number;
+    };
+    const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      createVisual: () => { setVisibleState: (isVisible: boolean) => void };
+    };
+    parent.component = { id: "parent" };
+    child.component = { id: "child" };
+    parent.createVisual = () => ({ setVisibleState: (isVisible) => toggles.push(isVisible) });
+    child.createVisual = () => ({ setVisibleState: (isVisible) => toggles.push(isVisible) });
+    child.children = new Map();
+    parent.children = new Map([["child", child]]);
+
+    expect(parent.handleTimelineCommand({ command: { type: "setVisible", frame: 1, target: "false" } })).toBe(0);
+    expect(parent.handleTimelineCommand({ command: { type: "setVisible", frame: 2, target: "true" } })).toBe(0);
+    expect(toggles).toEqual([false, false, true, true]);
+  });
 });

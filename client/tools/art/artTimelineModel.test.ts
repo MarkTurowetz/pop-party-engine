@@ -26,8 +26,11 @@ import {
   removeTimelineLabel,
   removeTimelineSegment,
   replaceTimelineCommandsAtFrame,
+  timelineFrameIsTweened,
   timelineFrameRangeFromAnchor,
   timelineSegmentsForArt,
+  timelineTweenSpanAtFrame,
+  toggleTimelineTweenAtFrame,
   updateTimelineCommandAt,
   updateTimelineKeyframe,
   updateTimelineLabel,
@@ -697,6 +700,61 @@ describe("artTimelineModel", () => {
     ]);
     const linear = updateTimelineKeyframe(result, "title", 6, { easing: "linear" });
     expect(linear.tracks[0].keyframes[0].easing).toBe("linear");
+  });
+
+  it("toggles a tween from the previous keyframe through the next keyframe on the selected layer", () => {
+    const timeline: TimelineDocument = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [],
+      tracks: [
+        {
+          targetId: "title",
+          keyframes: [
+            { frame: 1, easing: "hold", props: { scale: 1 } },
+            { frame: 10, easing: "hold", props: { scale: 2 } }
+          ]
+        },
+        {
+          targetId: "pill",
+          keyframes: [
+            { frame: 1, easing: "hold", props: { scale: 1 } },
+            { frame: 10, easing: "hold", props: { scale: 3 } }
+          ]
+        }
+      ]
+    };
+
+    expect(timelineTweenSpanAtFrame(timeline, "title", 4)).toEqual({
+      targetId: "title",
+      startFrame: 1,
+      endFrame: 10,
+      easing: "hold"
+    });
+
+    const tweened = toggleTimelineTweenAtFrame(timeline, "title", 4);
+    expect(tweened.tracks.find((track) => track.targetId === "title")?.keyframes[0].easing).toBe("easeInOut");
+    expect(tweened.tracks.find((track) => track.targetId === "pill")?.keyframes[0].easing).toBe("hold");
+    expect(timelineFrameIsTweened(tweened, "title", 1)).toBe(true);
+    expect(timelineFrameIsTweened(tweened, "title", 5)).toBe(true);
+    expect(timelineFrameIsTweened(tweened, "title", 10)).toBe(true);
+    expect(timelineFrameIsTweened(tweened, "pill", 5)).toBe(false);
+
+    const untweened = toggleTimelineTweenAtFrame(tweened, "title", 5);
+    expect(untweened.tracks.find((track) => track.targetId === "title")?.keyframes[0].easing).toBe("hold");
+  });
+
+  it("does not toggle a tween when the selected keyframe has no future keyframe on that layer", () => {
+    const timeline: TimelineDocument = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [],
+      tracks: [{ targetId: "title", keyframes: [{ frame: 10, easing: "hold", props: { scale: 2 } }] }]
+    };
+    expect(toggleTimelineTweenAtFrame(timeline, "title", 10)).toEqual(timeline);
+    expect(timelineTweenSpanAtFrame(timeline, "title", 10)).toBe(null);
   });
 
   it("copies keyframe properties and easing to another frame", () => {

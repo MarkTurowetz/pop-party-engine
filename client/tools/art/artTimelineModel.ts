@@ -24,6 +24,7 @@ const DEFAULT_TIMELINE: TimelineDocument = Object.freeze({
 });
 const MAX_FRAME_COUNT = 60 * 60 * 10;
 const ANIMATION_KEYFRAME_PROPERTY_KEYS = ["x", "y", "width", "height", "scale", "rotation", "opacity", "visible"] as const;
+const DEFAULT_TWEEN_EASING = "easeInOut";
 
 export interface TimelineFrameClipboard {
   frameCount: number;
@@ -749,6 +750,72 @@ function cleanTimelineProps(props: TimelineProperties): TimelineProperties {
 function cleanTimelineEasing(value: unknown): string | undefined {
   const easing = String(value || "").trim();
   return ["linear", "easeIn", "easeOut", "easeInOut", "hold"].includes(easing) ? easing : undefined;
+}
+
+export type TimelineTweenSpan = {
+  targetId: string;
+  startFrame: number;
+  endFrame: number;
+  easing: string;
+};
+
+export function timelineTweenSpanAtFrame(
+  timeline: TimelineDocument | null | undefined,
+  targetId: string,
+  frame: number
+): TimelineTweenSpan | null {
+  const current = artTimelineOrDefault(timeline);
+  const cleanTargetId = String(targetId || "").trim();
+  if (!cleanTargetId) return null;
+  const track = current.tracks.find((item) => item.targetId === cleanTargetId);
+  if (!track) return null;
+  const selectedFrame = cleanFrame(frame, current.frameCount);
+  const keyframes = [...track.keyframes].sort((a, b) => a.frame - b.frame);
+  const previous = [...keyframes].reverse().find((keyframe) => keyframe.frame <= selectedFrame);
+  if (!previous) return null;
+  const next = keyframes.find((keyframe) => keyframe.frame > previous.frame);
+  if (!next) return null;
+  return {
+    targetId: cleanTargetId,
+    startFrame: previous.frame,
+    endFrame: next.frame,
+    easing: cleanTimelineEasing(previous.easing) || "hold"
+  };
+}
+
+export function timelineFrameIsTweened(
+  timeline: TimelineDocument | null | undefined,
+  targetId: string,
+  frame: number
+): boolean {
+  const current = artTimelineOrDefault(timeline);
+  const cleanTargetId = String(targetId || "").trim();
+  const selectedFrame = cleanFrame(frame, current.frameCount);
+  const track = current.tracks.find((item) => item.targetId === cleanTargetId);
+  if (!track) return false;
+  const keyframes = [...track.keyframes].sort((a, b) => a.frame - b.frame);
+  for (let index = 0; index < keyframes.length - 1; index += 1) {
+    const start = keyframes[index];
+    const end = keyframes[index + 1];
+    const easing = cleanTimelineEasing(start?.easing) || "hold";
+    if (easing === "hold") continue;
+    if (selectedFrame >= start.frame && selectedFrame <= end.frame) return true;
+  }
+  return false;
+}
+
+export function toggleTimelineTweenAtFrame(
+  timeline: TimelineDocument | null | undefined,
+  targetId: string,
+  frame: number,
+  tweenEasing = DEFAULT_TWEEN_EASING
+): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const span = timelineTweenSpanAtFrame(current, targetId, frame);
+  if (!span) return current;
+  const currentEasing = cleanTimelineEasing(span.easing) || "hold";
+  const nextEasing = currentEasing === "hold" ? cleanTimelineEasing(tweenEasing) || DEFAULT_TWEEN_EASING : "hold";
+  return updateTimelineKeyframe(current, span.targetId, span.startFrame, { easing: nextEasing });
 }
 
 function keyframeAt(timeline: TimelineDocument, targetId: string, frame: number): TimelineKeyframe | null {

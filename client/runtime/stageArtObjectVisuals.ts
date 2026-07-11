@@ -257,10 +257,12 @@ type TimelineComponentCommandTarget = {
   play?: (animation: string, options?: Dict) => number;
   stopAt?: (animation: string, options?: Dict) => number;
   durationForAnimation?: (animation: string) => number;
+  setVisibleTree?: (isVisible: boolean) => void;
 };
 
 type TimelineComponentCommandHost = {
   viewForComponentId: (componentId: string) => TimelineComponentCommandTarget | null;
+  setVisibleTree?: (isVisible: boolean) => void;
 };
 
 function timelineComponentCommandPayload(command: TimelineCommand | { type?: unknown; target?: unknown; event?: unknown }): { targetId: string; animation: string; stop: boolean } | null {
@@ -273,6 +275,11 @@ function timelineComponentCommandPayload(command: TimelineCommand | { type?: unk
 }
 
 function playTimelineComponentCommand(host: TimelineComponentCommandHost, command: TimelineCommand | { type?: unknown; target?: unknown; event?: unknown }, options: Dict = {}): number {
+  if (String(command?.type || "") === "setVisible") {
+    const isVisible = String(command.target || "").trim().toLowerCase() !== "false";
+    host.setVisibleTree?.(isVisible);
+    return 0;
+  }
   const payload = timelineComponentCommandPayload(command);
   if (!payload) return 0;
   const target = host.viewForComponentId(payload.targetId);
@@ -398,6 +405,16 @@ class ArtObjectView {
 
   isVisible(): boolean {
     return (this.createVisual() as { isVisible?: () => boolean } | null)?.isVisible?.() === true;
+  }
+
+  setVisibleTree(isVisible: boolean): void {
+    const visual = this.createVisual() as { setVisibleState?: (nextVisible: boolean) => void } | null;
+    visual?.setVisibleState?.(isVisible === true);
+    if (!visual?.setVisibleState) {
+      this.element.dataset.visualVisible = isVisible ? "true" : "false";
+      this.element.classList.toggle(HIDDEN_CLASS, isVisible !== true);
+    }
+    for (const child of this.children.values()) child.setVisibleTree(isVisible);
   }
 
   viewForComponentId(componentId: string): ArtObjectView | null {
@@ -694,6 +711,10 @@ class ArtObjectTreeRenderer {
 
   isComponentVisible(componentId: string): boolean {
     return this.viewForComponentId(componentId)?.isVisible() === true;
+  }
+
+  setVisibleTree(isVisible: boolean): void {
+    for (const view of this.views.values()) view.setVisibleTree(isVisible);
   }
 
   playComponent(componentId: string, animation: string, options: Dict = {}): number {
