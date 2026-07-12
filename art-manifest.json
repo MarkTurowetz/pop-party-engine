@@ -6271,6 +6271,278 @@
         ]
       },
       "updatedAt": "2026-07-12T08:15:46.776Z"
+    },
+    "prefab-vip-mc": {
+      "name": "VIP MC",
+      "description": "Reusable VIP wrapper with shared lifecycle animations.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 560,
+        "height": 230
+      },
+      "components": [
+        {
+          "id": "reference-player-vip-widget",
+          "name": "Player VIP Widget",
+          "instanceLabel": "playerVIPWidget",
+          "kind": "reference",
+          "x": 0,
+          "y": 0,
+          "width": 52,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "bottom",
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "player-vip-widget"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 33,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 13
+          },
+          {
+            "name": "Disappear",
+            "frame": 17
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-0-false",
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "id": "stop-1",
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
+            "type": "stop"
+          },
+          {
+            "id": "stop-32",
+            "frame": 32,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-reference-player-vip-widget",
+            "targetId": "reference-player-vip-widget",
+            "keyframes": [
+              {
+                "id": "key-reference-player-vip-widget-0",
+                "frame": 0,
+                "props": {
+                  "opacity": 1,
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 1,
+                  "rotation": 0
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-player-vip-widget-2",
+                "frame": 2,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-player-vip-widget-9",
+                "frame": 9,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-player-vip-widget-12",
+                "frame": 12,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-player-vip-widget-13",
+                "frame": 13,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeInOut"
+              },
+              {
+                "id": "key-reference-player-vip-widget-16",
+                "frame": 16,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-player-vip-widget-17",
+                "frame": 17,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-reference-player-vip-widget-22",
+                "frame": 22,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-reference-player-vip-widget-32",
+                "frame": 32,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 52,
+                  "height": 28,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-12T08:36:20.748Z"
     }
   },
   "deletedCompositionIds": [],
