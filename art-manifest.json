@@ -6808,6 +6808,495 @@
         ]
       },
       "updatedAt": "2026-07-12T21:45:00.000Z"
+    },
+    "prefab-player-name-mc": {
+      "name": "Player Name MC",
+      "description": "Reusable player-name wrapper with the canonical centered lifecycle animations.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 560,
+        "height": 230
+      },
+      "components": [
+        {
+          "id": "reference-player-name-widget",
+          "name": "Player Name Widget",
+          "instanceLabel": "playerNameWidget",
+          "kind": "reference",
+          "x": 0,
+          "y": 0,
+          "width": 122,
+          "height": 38,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "player-name-widget"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 33,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 13
+          },
+          {
+            "name": "Disappear",
+            "frame": 17
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-0-false",
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "id": "stop-1",
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
+            "type": "stop"
+          },
+          {
+            "id": "stop-32",
+            "frame": 32,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-reference-player-name-widget",
+            "targetId": "reference-player-name-widget",
+            "keyframes": [
+              {
+                "id": "key-reference-player-name-widget-0",
+                "frame": 0,
+                "props": {
+                  "opacity": 1,
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 1,
+                  "rotation": 0
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-player-name-widget-2",
+                "frame": 2,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-player-name-widget-9",
+                "frame": 9,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-player-name-widget-12",
+                "frame": 12,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-player-name-widget-13",
+                "frame": 13,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeInOut"
+              },
+              {
+                "id": "key-reference-player-name-widget-16",
+                "frame": 16,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-player-name-widget-17",
+                "frame": 17,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-reference-player-name-widget-22",
+                "frame": 22,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-reference-player-name-widget-32",
+                "frame": 32,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 122,
+                  "height": 38,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-12T22:00:00.000Z"
+    },
+    "prefab-player-widget-mc": {
+      "name": "Player Widget MC",
+      "description": "Reusable player composite with independently addressable bubble, avatar, name, and VIP instances.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 300,
+        "height": 370
+      },
+      "components": [
+        {
+          "id": "player-answer-bubble-mc",
+          "name": "Player Answer Bubble MC",
+          "instanceLabel": "playerAnswerBubbleMC",
+          "kind": "reference",
+          "x": 150,
+          "y": 96,
+          "width": 300,
+          "height": 180,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "bottom",
+          "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "prefab-untitled-prefab-2"
+        },
+        {
+          "id": "avatar",
+          "name": "Avatars",
+          "instanceLabel": "avatar",
+          "kind": "reference",
+          "x": 150,
+          "y": 234,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Rex",
+          "artCompositionId": "avatars"
+        },
+        {
+          "id": "avatar-background",
+          "name": "Avatar Background",
+          "instanceLabel": "avatarBackground",
+          "kind": "shape",
+          "x": 150,
+          "y": 234,
+          "width": 100,
+          "height": 100,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rectangle",
+          "fillColor": "transparent",
+          "fillCss": "",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0,
+          "imageAssetId": "avatar-frame",
+          "imageName": "avatar-frame",
+          "imageMimeType": "",
+          "imageObjectFit": "contain",
+          "imageTint": ""
+        },
+        {
+          "id": "player-name-mc",
+          "name": "Player Name MC",
+          "instanceLabel": "playerNameMC",
+          "kind": "reference",
+          "x": 150,
+          "y": 309,
+          "width": 126,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "artCompositionId": "prefab-player-name-mc"
+        },
+        {
+          "id": "vip-mc",
+          "name": "VIP MC",
+          "instanceLabel": "vipMC",
+          "kind": "reference",
+          "x": 150,
+          "y": 345,
+          "width": 52,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "prefab-vip-mc"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 33,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 13
+          },
+          {
+            "name": "Disappear",
+            "frame": 17
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-0-false",
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "id": "stop-1",
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
+            "type": "stop"
+          },
+          {
+            "id": "stop-32",
+            "frame": 32,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T22:00:00.000Z"
     }
   },
   "deletedCompositionIds": [],
@@ -6857,6 +7346,7 @@
         ],
         "folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb": [
           "composition:avatars",
+          "composition:prefab-player-widget-mc",
           "composition:player-avatar-rex",
           "composition:player-avatar-stego",
           "composition:player-avatar-trike",
@@ -6881,7 +7371,9 @@
           "composition:voting-card",
           "composition:crafting-timer-widget"
         ],
-        "folder-fc45b1fa-922d-4073-a707-9b4995172227": [],
+        "folder-fc45b1fa-922d-4073-a707-9b4995172227": [
+          "composition:prefab-player-name-mc"
+        ],
         "folder-b44c7441-4209-415b-87ff-4aaf25716ad2": [
           "folder:folder-fc45b1fa-922d-4073-a707-9b4995172227",
           "folder:folder-b7f8ddd4-47ff-4eb7-a10b-b29759d998ed"
