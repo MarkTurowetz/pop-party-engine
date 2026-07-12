@@ -399,6 +399,36 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.style.height).toBe("70%");
   });
 
+  it("routes a reference timeline to descendants without blocking parent snapshots on the reference", () => {
+    const element = createFakeElement();
+    element.dataset.artComponentId = "avatar";
+    const descendantSnapshots: unknown[] = [];
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      timelineApplySelf: false,
+      timelineCanvas: { width: 100, height: 100, minX: -50, minY: -50 },
+      timelineFrameHandler: (snapshot) => descendantSnapshots.push(snapshot),
+      timeline: normalizeTimeline({
+        fps: 30,
+        frameCount: 1,
+        labels: [{ name: "Raptor", frame: 0 }],
+        commands: [{ frame: 0, type: "stop" }],
+        tracks: [{ targetId: "avatar", keyframes: [{ frame: 0, props: { x: 0, y: 0, imageAssetId: "avatar-raptor" } }] }]
+      })
+    });
+
+    visual.stopAt("Raptor");
+
+    expect(element.style.left).toBe("");
+    expect(descendantSnapshots).toEqual([
+      { frame: 0, targets: { avatar: { x: 0, y: 0, imageAssetId: "avatar-raptor" } } }
+    ]);
+
+    visual.applyTimelineSnapshot({ frame: 0, targets: { avatar: { x: 0, y: 0 } } });
+    expect(element.style.left).toBe("50%");
+    expect(element.style.top).toBe("50%");
+  });
+
   it("fits authored timeline text through the shared text renderer", () => {
     const label = createFakeLabel();
     const element = createFakeElement(["hidden"]);

@@ -382,6 +382,7 @@ class ArtObjectView {
 
   createVisual(): Dict | null {
     const id = this.gameObjectId();
+    const timelineApplySelf = !referencedCompositionFor(this.component, this.getComposition, this.referencePath);
     const bridge = w().PartyGameVisualBridge?.createVisualForTarget?.({
       gameObjectApi: this.gameObjectApi,
       visualAnimation: this.visualAnimation,
@@ -400,6 +401,7 @@ class ArtObjectView {
           instantClass: INSTANT_CLASS,
           layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS],
           timeline: this.componentTimeline(),
+          timelineApplySelf,
           timelineCanvas: this.canvas || null,
           timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
           timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail),
@@ -413,6 +415,7 @@ class ArtObjectView {
         updateClass: UPDATE_CLASS,
         instantClass: INSTANT_CLASS,
         timeline: this.componentTimeline(),
+        timelineApplySelf,
         timelineCanvas: this.canvas || null,
         timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
         timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail),
