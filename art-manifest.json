@@ -4793,7 +4793,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 3898,
+        "frameCount": 4318,
         "labels": [
           {
             "name": "Off",
@@ -4832,11 +4832,19 @@
           },
           {
             "frame": 1,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
           },
           {
             "frame": 12,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-12"
           },
           {
             "frame": 16,
@@ -4997,7 +5005,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-12T07:51:13.380Z"
+      "updatedAt": "2026-07-12T07:53:30.318Z"
     }
   },
   "deletedCompositionIds": [],
