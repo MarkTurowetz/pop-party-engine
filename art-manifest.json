@@ -4793,7 +4793,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 4906,
+        "frameCount": 5200,
         "labels": [
           {
             "name": "Off",
@@ -5026,7 +5026,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-12T08:06:58.571Z"
+      "updatedAt": "2026-07-12T08:15:46.776Z"
     }
   },
   "deletedCompositionIds": [],
