@@ -4888,7 +4888,7 @@
       "updatedAt": "2026-07-12T05:12:19.491Z"
     },
     "prefab-untitled-prefab-2": {
-      "name": "Player Answer Bubble MC",
+      "name": "Player Answer Bubble MC2",
       "description": "Reusable art prefab.",
       "surface": "stage",
       "compositionKind": "prefab",
@@ -4917,7 +4917,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 1176,
+        "frameCount": 1260,
         "labels": [
           {
             "name": "Off",
@@ -5043,7 +5043,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-12T05:32:14.998Z"
+      "updatedAt": "2026-07-12T05:32:44.227Z"
     }
   },
   "deletedCompositionIds": [],
