@@ -118,6 +118,54 @@ describe("createArtCompositionsController", () => {
     expect(reference.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
   });
 
+  it("adds an explicit composition reference as a nested child at the requested position", () => {
+    const prefab = composition("answer-bubble");
+    prefab.name = "Answer Bubble";
+    prefab.compositionKind = "prefab";
+    prefab.canvas = { width: 300, height: 180 };
+    const controller = createArtCompositionsController({ initialCompositions: [composition("host"), prefab], api: fakeApi() });
+
+    const parent = controller.addComponent("container");
+    controller.addComponent("reference", {
+      parentComponentId: parent?.id,
+      referencedCompositionId: "answer-bubble",
+      x: 42,
+      y: 21
+    });
+
+    const child = controller.getState().compositions[0].components[0].children?.[0];
+    expect(child).toEqual(
+      expect.objectContaining({
+        kind: "reference",
+        artCompositionId: "answer-bubble",
+        name: "Answer Bubble",
+        x: 42,
+        y: 21,
+        width: 300,
+        height: 180
+      })
+    );
+  });
+
+  it("creates a prefab from selected components without sharing component ids", () => {
+    const initial = composition("stage");
+    initial.components = [
+      { id: "card", name: "Card", kind: "shape", x: 100, y: 60, width: 200, height: 80 },
+      { id: "label", name: "Label", kind: "text", x: 100, y: 60, width: 160, height: 40 }
+    ] as never;
+    const controller = createArtCompositionsController({ initialCompositions: [initial], api: fakeApi() });
+
+    const prefab = controller.createPrefabFromComponents("stage", ["card", "label"], "Card Prefab");
+
+    expect(prefab).toEqual(expect.objectContaining({ name: "Card Prefab", compositionKind: "prefab" }));
+    const created = controller.getState().compositions.find((item) => item.id === prefab?.id);
+    expect(created?.components).toHaveLength(2);
+    expect(created?.components.map((component) => component.id)).not.toContain("card");
+    expect(created?.components.map((component) => component.id)).not.toContain("label");
+    expect(created?.canvas.width).toBeGreaterThanOrEqual(280);
+    expect(controller.getState().selectedCompositionId).toBe(prefab?.id);
+  });
+
   it("refreshes reference overrides when the referenced prefab changes", () => {
     const first = composition("first");
     first.compositionKind = "prefab";

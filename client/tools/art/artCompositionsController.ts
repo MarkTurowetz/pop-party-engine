@@ -42,12 +42,13 @@ export interface ArtCompositionsController {
   getState(): ArtCompositionsEditorState;
   subscribe(listener: () => void): () => void;
   createComposition(kind: ArtCompositionKind, surface: string, name?: string): ArtComposition;
+  createPrefabFromComponents(sourceCompositionId: string, componentIds: Iterable<string>, name: string): ArtComposition | null;
   updateComposition(compositionId: string, patch: Partial<ArtComposition>): void;
   selectComposition(compositionId: string): void;
   selectComponent(componentId: string, additive?: boolean): void;
   selectComponents(componentIds: Iterable<string>, additive?: boolean): void;
   clearComponentSelection(): void;
-  addComponent(kind: string): void;
+  addComponent(kind: string, options?: AddArtComponentOptions): ArtComponent | null;
   removeSelectedComponents(): void;
   updateComponent(componentId: string, patch: Partial<ArtComponent>): void;
   moveComponent(componentId: string, x: number, y: number): void;
@@ -55,6 +56,13 @@ export interface ArtCompositionsController {
   undo(): void;
   redo(): void;
   save(): Promise<boolean>;
+}
+
+export interface AddArtComponentOptions {
+  parentComponentId?: string;
+  referencedCompositionId?: string;
+  x?: number;
+  y?: number;
 }
 
 const HISTORY_LIMIT = 50;
@@ -147,6 +155,94 @@ function createComponent(kind: string, bounds: { width: number; height: number }
     component.fontFamily = defaultTextFontFamily;
   }
   return component as ArtComponent;
+}
+
+function cloneTimelineWithIds(timeline: ArtComponent["timeline"], idMap: Map<string, string>): ArtComponent["timeline"] {
+  if (!timeline) return timeline;
+  const clone = JSON.parse(JSON.stringify(timeline)) as NonNullable<ArtComponent["timeline"]>;
+  clone.tracks = (clone.tracks || []).map((track) => {
+    const targetId = String(track.targetId || "");
+    return {
+      ...track,
+      targetId: idMap.get(targetId) || targetId
+    };
+  });
+  clone.commands = (clone.commands || []).map((command) => {
+    const target = String(command.target || "");
+    return {
+      ...command,
+      target: idMap.get(target) || command.target
+    };
+  });
+  return clone;
+}
+
+function cloneComponentForPrefab(component: ArtComponent, idMap: Map<string, string>): ArtComponent {
+  const clone = JSON.parse(JSON.stringify(component)) as ArtComponent;
+  const nextId = makeArtId(String(clone.kind || "component"));
+  idMap.set(String(component.id || ""), nextId);
+  clone.id = nextId;
+  clone.children = (component.children || []).map((child) => cloneComponentForPrefab(child, idMap));
+  return clone;
+}
+
+function applyClonedTimelineIds(component: ArtComponent, idMap: Map<string, string>): ArtComponent {
+  component.timeline = cloneTimelineWithIds(component.timeline, idMap);
+  component.children = (component.children || []).map((child) => applyClonedTimelineIds(child, idMap));
+  return hydrateArtComponentForEditing(component);
+}
+
+function componentBounds(component: ArtComponent): { minX: number; minY: number; maxX: number; maxY: number } {
+  const width = Math.max(1, Number(component.width || 1));
+  const height = Math.max(1, Number(component.height || 1));
+  const scale = Math.max(0.001, Math.abs(Number(component.scale || 1)));
+  const x = Number(component.x || 0);
+  const y = Number(component.y || 0);
+  return {
+    minX: x - (width * scale) / 2,
+    minY: y - (height * scale) / 2,
+    maxX: x + (width * scale) / 2,
+    maxY: y + (height * scale) / 2
+  };
+}
+
+function selectedRootComponents(sourceComponents: ArtComponent[], ids: Set<string>): ArtComponent[] {
+  const output: ArtComponent[] = [];
+  const visit = (components: ArtComponent[], ancestorSelected: boolean): void => {
+    for (const component of components || []) {
+      const selected = ids.has(component.id);
+      if (selected && !ancestorSelected) output.push(component);
+      visit(component.children || [], ancestorSelected || selected);
+    }
+  };
+  visit(sourceComponents, false);
+  return output;
+}
+
+function canvasForComponents(components: ArtComponent[]): { canvas: { width: number; height: number }; offsetX: number; offsetY: number } {
+  const padding = 40;
+  if (!components.length) return { canvas: { ...DEFAULT_COMPOSITION_CANVAS }, offsetX: 0, offsetY: 0 };
+  const first = componentBounds(components[0]);
+  const total = components.slice(1).reduce(
+    (bounds, component) => {
+      const next = componentBounds(component);
+      return {
+        minX: Math.min(bounds.minX, next.minX),
+        minY: Math.min(bounds.minY, next.minY),
+        maxX: Math.max(bounds.maxX, next.maxX),
+        maxY: Math.max(bounds.maxY, next.maxY)
+      };
+    },
+    first
+  );
+  return {
+    canvas: {
+      width: Math.max(1, Number((total.maxX - total.minX + padding * 2).toFixed(3))),
+      height: Math.max(1, Number((total.maxY - total.minY + padding * 2).toFixed(3)))
+    },
+    offsetX: -total.minX + padding,
+    offsetY: -total.minY + padding
+  };
 }
 
 function findComponent(components: ArtComponent[], id: string): ArtComponent | undefined {
@@ -324,6 +420,30 @@ export function createArtCompositionsController(
       });
       return next;
     },
+    createPrefabFromComponents: (sourceCompositionId, componentIds, name) => {
+      const source = compositions.find((composition) => composition.id === sourceCompositionId);
+      const selected = selectedRootComponents(source?.components || [], new Set(componentIds));
+      if (!source || selected.length === 0) return null;
+      const { canvas, offsetX, offsetY } = canvasForComponents(selected);
+      const idMap = new Map<string, string>();
+      const cloned = selected.map((component) => cloneComponentForPrefab(component, idMap));
+      const shifted = cloned.map((component) => {
+        component.x = Number((Number(component.x || 0) + offsetX).toFixed(3));
+        component.y = Number((Number(component.y || 0) + offsetY).toFixed(3));
+        return applyClonedTimelineIds(component, idMap);
+      });
+      const next = {
+        ...createComposition("prefab", source.surface, name, compositions),
+        canvas,
+        components: shifted
+      };
+      mutateAll(() => {
+        compositions = [...compositions, hydrateArtCompositionForEditing(next)];
+        selectedCompositionId = next.id;
+        selectedComponentIds = new Set(shifted.map((component) => component.id));
+      });
+      return next;
+    },
     updateComposition: (compositionId, patch) => {
       const index = compositions.findIndex((composition) => composition.id === compositionId);
       if (index < 0) return;
@@ -365,22 +485,31 @@ export function createArtCompositionsController(
       emit();
     },
 
-    addComponent: (kind) =>
+    addComponent: (kind, options = {}) => {
+      let created: ArtComponent | null = null;
       mutateSelected((composition) => {
-        const parentId = [...selectedComponentIds][0];
+        const parentId = options.parentComponentId || [...selectedComponentIds][0];
         const parent = parentId ? findComponent(composition.components || [], parentId) : undefined;
         const bounds = parent
           ? { width: Number(parent.width || 1), height: Number(parent.height || 1) }
           : { width: Number(composition.canvas?.width || 560), height: Number(composition.canvas?.height || 230) };
-        const reference = normalizeCreatableComponentKind(kind) === "reference" ? referencedCompositionFor(composition) : null;
+        const reference =
+          normalizeCreatableComponentKind(kind) === "reference"
+            ? referencedCompositionFor(composition, options.referencedCompositionId)
+            : null;
         const child = createComponent(kind, bounds, reference);
-        if (parent && (parent.kind === "container")) {
+        if (Number.isFinite(options.x)) child.x = Number(Number(options.x).toFixed(3));
+        if (Number.isFinite(options.y)) child.y = Number(Number(options.y).toFixed(3));
+        if (parent) {
           parent.children = [...(parent.children || []), child];
         } else {
           composition.components = [...(composition.components || []), child];
         }
         selectedComponentIds = new Set([child.id]);
-      }),
+        created = child;
+      });
+      return created;
+    },
     removeSelectedComponents: () =>
       mutateSelected((composition) => {
         composition.components = removeFromList(composition.components || [], selectedComponentIds);

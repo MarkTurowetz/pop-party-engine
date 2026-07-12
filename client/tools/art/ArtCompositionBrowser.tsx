@@ -13,10 +13,10 @@ export interface ArtCompositionBrowserProps {
   onSurfaceChange(surface: OrgSurface): void;
 }
 
-const DND_TYPE = "application/x-art-composition-browser-key";
+export const ART_COMPOSITION_BROWSER_DND_TYPE = "application/x-art-composition-browser-key";
 const COLLAPSED_STORAGE_KEY = "partyTemplate.artCompositionBrowserCollapsedFolders";
 
-function compositionIdFromKey(key: string): string {
+export function compositionIdFromBrowserKey(key: string): string {
   return String(key || "").startsWith("composition:") ? String(key).slice("composition:".length) : "";
 }
 
@@ -77,9 +77,9 @@ export function ArtCompositionBrowser({
 
   const onDragStart = (event: DragEvent, key: string) => {
     event.stopPropagation();
-    event.dataTransfer.setData(DND_TYPE, key);
+    event.dataTransfer.setData(ART_COMPOSITION_BROWSER_DND_TYPE, key);
   };
-  const dragKey = (event: DragEvent) => event.dataTransfer.getData(DND_TYPE);
+  const dragKey = (event: DragEvent) => event.dataTransfer.getData(ART_COMPOSITION_BROWSER_DND_TYPE);
   const onDropBeside = (event: DragEvent, targetKey: string) => {
     event.preventDefault();
     event.stopPropagation();
@@ -130,7 +130,7 @@ export function ArtCompositionBrowser({
   };
 
   const renderCompositionItem = (key: string) => {
-    const compositionId = compositionIdFromKey(key);
+    const compositionId = compositionIdFromBrowserKey(key);
     if (!compositionId || !validCompositionKeys.has(key)) return null;
     if (search.active && !search.visibleKeys.has(key)) return null;
     return (

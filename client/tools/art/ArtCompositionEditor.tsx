@@ -13,6 +13,7 @@ import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-da
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
 import { artCompositionKindOptions, normalizeArtCompositionKind } from "./artCompositionModel";
+import { ART_COMPOSITION_BROWSER_DND_TYPE, compositionIdFromBrowserKey } from "./ArtCompositionBrowser";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import { ArtPreviewRenderer, assetUrlMap, compositionMap } from "./ArtPreviewRenderer";
 import {
@@ -154,6 +155,7 @@ type TimelineDragItem =
   | { kind: "keyframe"; targetId: string; frame: number };
 type MarqueeBox = { x: number; y: number; width: number; height: number };
 type ArtSelectionBox = { id: string; minX: number; minY: number; maxX: number; maxY: number };
+type PrefabCreationDialogState = { defaultName: string } | null;
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -432,6 +434,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     frame: number;
     overrides: TimelinePreviewOverrides | null;
   } | null>(null);
+  const [draftStageCompositionIds, setDraftStageCompositionIds] = useState<Record<string, string>>({});
+  const [prefabCreationDialog, setPrefabCreationDialog] = useState<PrefabCreationDialogState>(null);
   const assetUrlById = useMemo(() => assetUrlMap(assets || []), [assets]);
   const compositionById = useMemo(() => compositionMap(compositions), [compositions]);
   const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
@@ -642,15 +646,96 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     controller.updateComposition(composition.id, patch);
   };
 
-  const artCanvasPointFromEvent = (event: PointerEvent | ReactPointerEvent<HTMLElement>): { x: number; y: number } => {
+  const artCanvasPointFromClient = (clientX: number, clientY: number): { x: number; y: number } => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     return {
-      x: (event.clientX - rect.left) / previewScale,
-      y: (event.clientY - rect.top) / previewScale
+      x: (clientX - rect.left) / previewScale,
+      y: (clientY - rect.top) / previewScale
     };
   };
+  const artCanvasPointFromEvent = (event: PointerEvent | ReactPointerEvent<HTMLElement>): { x: number; y: number } =>
+    artCanvasPointFromClient(event.clientX, event.clientY);
+
+  const openBlankPrefabStage = useCallback(() => {
+    const surface = String(composition?.surface || "stage");
+    const draftId = draftStageCompositionIds[surface];
+    const existingDraft = draftId ? compositions.find((item) => item.id === draftId) : null;
+    dismissTimelineContext();
+    setTimelineScope(null);
+    setTimelineNavigationStack([]);
+    if (existingDraft) {
+      controller.selectComposition(existingDraft.id);
+      controller.clearComponentSelection();
+      setTimelinePreview({ compositionId: existingDraft.id, frame: 0, overrides: null });
+      return;
+    }
+    const draft = controller.createComposition("prefab", surface, "Untitled Prefab");
+    setDraftStageCompositionIds((current) => ({ ...current, [surface]: draft.id }));
+    setTimelinePreview({ compositionId: draft.id, frame: 0, overrides: null });
+  }, [composition?.surface, compositions, controller, dismissTimelineContext, draftStageCompositionIds]);
+
+  const activeDropParentId = activeTimelineScopeComponentId || "";
+
+  const pointForDroppedChild = (point: { x: number; y: number }): { x: number; y: number } => {
+    if (!composition || !activeDropParentId) return point;
+    const parent = findArtComponentTargetPath(composition.components || [], activeDropParentId)?.component;
+    if (!parent) return point;
+    const parentWidth = Math.max(1, Number(parent.width || 1));
+    const parentHeight = Math.max(1, Number(parent.height || 1));
+    return {
+      x: Number((point.x - (Number(parent.x || 0) - parentWidth / 2)).toFixed(3)),
+      y: Number((point.y - (Number(parent.y || 0) - parentHeight / 2)).toFixed(3))
+    };
+  };
+
+  const addDroppedCompositionReference = (event: ReactDragEvent<HTMLDivElement>): void => {
+    if (!composition) return;
+    const browserKey = event.dataTransfer.getData(ART_COMPOSITION_BROWSER_DND_TYPE);
+    const referencedCompositionId = compositionIdFromBrowserKey(browserKey);
+    if (!referencedCompositionId || referencedCompositionId === composition.id) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = pointForDroppedChild(artCanvasPointFromClient(event.clientX, event.clientY));
+    controller.addComponent("reference", {
+      parentComponentId: activeDropParentId || undefined,
+      referencedCompositionId,
+      x: point.x,
+      y: point.y
+    });
+    dismissTimelineContext();
+  };
+
+  const beginCreatePrefabFromSelection = useCallback(() => {
+    if (!composition || selectedComponentIds.size === 0) return;
+    setPrefabCreationDialog({ defaultName: `${composition.name || "Selection"} Prefab` });
+  }, [composition, selectedComponentIds]);
+
+  const createPrefabFromSelection = (name: string): void => {
+    if (!composition || selectedComponentIds.size === 0) return;
+    const created = controller.createPrefabFromComponents(composition.id, selectedComponentIds, name);
+    if (created) {
+      setPrefabCreationDialog(null);
+      setDraftStageCompositionIds((current) => {
+        const surface = String(composition.surface || "stage");
+        return current[surface] === composition.id ? { ...current, [surface]: created.id } : current;
+      });
+      setTimelinePreview({ compositionId: created.id, frame: 0, overrides: null });
+    }
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTimelineShortcutTarget(event.target)) return;
+      if (event.key !== "F8") return;
+      if (!composition || selectedComponentIds.size === 0) return;
+      event.preventDefault();
+      beginCreatePrefabFromSelection();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [beginCreatePrefabFromSelection, composition, selectedComponentIds.size]);
 
   const collectSelectableComponentBoxes = (
     components: ArtComponent[],
@@ -924,11 +1009,16 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           {composition ? (
             <div
               className="art-canvas-viewport"
+              onDragOver={(event) => {
+                if (event.dataTransfer.types.includes(ART_COMPOSITION_BROWSER_DND_TYPE)) event.preventDefault();
+              }}
+              onDrop={addDroppedCompositionReference}
               onPointerDown={beginPreviewMarquee}
               onDoubleClick={(event) => {
                 if ((event.target as HTMLElement | null)?.closest("[data-art-canvas-component]")) return;
                 event.preventDefault();
-                exitTimelineScopeOneLevel();
+                if (timelineScopeComponentPath?.length || timelineNavigationStack.length) exitTimelineScopeOneLevel();
+                else openBlankPrefabStage();
               }}
             >
               <div
@@ -1043,7 +1133,56 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           <p>No timeline selected.</p>
         )}
       </div>
+      {prefabCreationDialog ? (
+        <CreatePrefabDialog
+          defaultName={prefabCreationDialog.defaultName}
+          onCancel={() => setPrefabCreationDialog(null)}
+          onCreate={createPrefabFromSelection}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function CreatePrefabDialog({
+  defaultName,
+  onCancel,
+  onCreate
+}: {
+  defaultName: string;
+  onCancel: () => void;
+  onCreate: (name: string) => void;
+}) {
+  const [name, setName] = useState(defaultName);
+  const cleanName = name.trim();
+  return (
+    <div className="art-prefab-dialog-backdrop" role="presentation" onMouseDown={onCancel}>
+      <form
+        className="flow-react-panel art-prefab-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Create prefab"
+        onMouseDown={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (cleanName) onCreate(cleanName);
+        }}
+      >
+        <h3>Create Prefab</h3>
+        <label className="flow-react-field">
+          <span>Name</span>
+          <input autoFocus type="text" value={name} onChange={(event) => setName(event.target.value)} />
+        </label>
+        <div className="flow-editor-controls">
+          <button type="button" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="submit" disabled={!cleanName}>
+            Save Prefab
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -1429,7 +1568,6 @@ function ArtTimelinePanel({
   const maxFrameWindowStart = Math.max(0, current.frameCount - visibleTimelineFrameCount);
   const cleanFrameWindowStart = Math.max(0, Math.min(maxFrameWindowStart, Math.round(Number(frameWindowStart) || 0)));
   const visibleTimelineFrames = Array.from({ length: visibleTimelineFrameCount }, (_, index) => cleanFrameWindowStart + index);
-  const visibleFrameEnd = visibleTimelineFrames.length ? visibleTimelineFrames[visibleTimelineFrames.length - 1] : 0;
   const selectedFrameRangeCount = Math.max(1, Math.min(Math.max(1, current.frameCount - cleanFrame), Math.round(Number(frameEditCount) || 1)));
   const selectedFrameRangeEnd = Math.min(current.frameCount - 1, cleanFrame + selectedFrameRangeCount - 1);
   const selectedTimelineCellFrame = cleanTimelineFrame(selectedTimelineCell.frame ?? cleanFrame);
@@ -2231,14 +2369,8 @@ function ArtTimelinePanel({
             Clipboard: {copiedFrameRange.frameCount} frame{copiedFrameRange.frameCount === 1 ? "" : "s"}
           </span>
         ) : null}
-        <span className="art-timeline-frame-clipboard-summary">
-          Selected: {cleanFrame}-{selectedFrameRangeEnd}
-        </span>
       </div>
       <div className="art-timeline-window-controls">
-        <button type="button" onClick={() => setTimelineWindowStart(cleanFrameWindowStart - visibleTimelineFrameCount)} disabled={cleanFrameWindowStart <= 0}>
-          Prev Frames
-        </button>
         <label className="flow-react-field">
           <span>Window Start</span>
           <input
@@ -2249,9 +2381,6 @@ function ArtTimelinePanel({
             onChange={(event) => setTimelineWindowStart(Number(event.target.value))}
           />
         </label>
-        <span className="art-timeline-window-summary">
-          Frames {cleanFrameWindowStart}-{visibleFrameEnd} of {Math.max(0, current.frameCount - 1)}
-        </span>
         <button
           type="button"
           onClick={() => setTimelineWindowStart(cleanFrameWindowStart + visibleTimelineFrameCount)}
@@ -2468,11 +2597,6 @@ function ArtTimelinePanel({
               </div>
             );
           })}
-          {current.frameCount > visibleTimelineFrameCount ? (
-            <small className="art-timeline-lane-note">
-              Showing frames {cleanFrameWindowStart}-{visibleFrameEnd}; use the window controls for the rest of the timeline.
-            </small>
-          ) : null}
         </div>
     </section>
   );
