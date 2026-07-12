@@ -65,11 +65,20 @@ function isShownLifecycleState(state: VisualLifecycleState): boolean {
   return state === "shown" || state === "appearing" || state === "disappearing";
 }
 
-function normalizeTimelineCanvas(value: CssVisualObjectOptions["timelineCanvas"]): { width: number; height: number } | null {
+function normalizeTimelineCanvas(
+  value: CssVisualObjectOptions["timelineCanvas"]
+): { width: number; height: number; minX: number; minY: number } | null {
   const width = Number(value?.width);
   const height = Number(value?.height);
   if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return null;
-  return { width, height };
+  const minX = Number(value?.minX);
+  const minY = Number(value?.minY);
+  return {
+    width,
+    height,
+    minX: Number.isFinite(minX) ? minX : 0,
+    minY: Number.isFinite(minY) ? minY : 0
+  };
 }
 
 function numericTimelineValue(value: TimelinePropertyValue | undefined): number | null {
@@ -231,7 +240,7 @@ export interface CssVisualObjectOptions {
   timerSink?: (timerId: number) => void;
   durations?: Partial<Record<AnimationName, number>>;
   timeline?: TimelineDocument | null;
-  timelineCanvas?: { width?: number; height?: number } | null;
+  timelineCanvas?: { width?: number; height?: number; minX?: number; minY?: number } | null;
   timelineFrameHandler?: (snapshot: TimelineFrameSnapshot) => void;
   timelineCommandHandler?: (detail: TimelineCommandEventDetail) => void;
   timelineCommandDurationHandler?: (command: TimelineCommand, context: { frame: number; elapsedMs: number }) => number;
@@ -257,7 +266,7 @@ class CssVisualObject {
   timerSink: ((timerId: number) => void) | null;
   durations: Record<string, number>;
   timeline: TimelineDocument | null;
-  timelineCanvas: { width: number; height: number } | null;
+  timelineCanvas: { width: number; height: number; minX: number; minY: number } | null;
   timelineFrameHandler: ((snapshot: TimelineFrameSnapshot) => void) | null;
   timelineCommandHandler: ((detail: TimelineCommandEventDetail) => void) | null;
   timelineCommandDurationHandler: ((command: TimelineCommand, context: { frame: number; elapsedMs: number }) => number) | null;
@@ -346,8 +355,8 @@ class CssVisualObject {
     const borderRadius = numericTimelineValue(props.borderRadius);
     if (width !== null) this.element.style.width = this.canvasUnit(width, "width");
     if (height !== null) this.element.style.height = this.canvasUnit(height, "height");
-    if (x !== null) this.element.style.left = this.canvasUnit(x, "width");
-    if (y !== null) this.element.style.top = this.canvasUnit(y, "height");
+    if (x !== null) this.element.style.left = this.canvasUnit(x, "width", true);
+    if (y !== null) this.element.style.top = this.canvasUnit(y, "height", true);
     if (scale !== null) setStyleProperty(this.element, "--component-scale", String(scale));
     if (rotation !== null) setStyleProperty(this.element, "--component-rotation", `${rotation}deg`);
     if (opacity !== null) this.element.style.opacity = String(Math.max(0, Math.min(1, opacity)));
@@ -417,9 +426,10 @@ class CssVisualObject {
     }
   }
 
-  canvasUnit(value: number, axis: "width" | "height"): string {
+  canvasUnit(value: number, axis: "width" | "height", position = false): string {
     const canvasSize = this.timelineCanvas?.[axis] || 0;
-    return canvasSize > 0 ? `${(value / canvasSize) * 100}%` : `${value}px`;
+    const canvasOrigin = position ? (axis === "width" ? this.timelineCanvas?.minX || 0 : this.timelineCanvas?.minY || 0) : 0;
+    return canvasSize > 0 ? `${((value - canvasOrigin) / canvasSize) * 100}%` : `${value}px`;
   }
 
   handleTimelineCommand(command: TimelineCommand, context: { frame: number; elapsedMs: number } = { frame: command.frame, elapsedMs: 0 }): void {

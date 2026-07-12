@@ -375,6 +375,30 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect((element.style as unknown as Record<string, string>)["--component-border-radius"]).toBe("12px");
   });
 
+  it("maps nested timeline positions through the canvas content origin", () => {
+    const element = createFakeElement(["hidden"]);
+    element.dataset.artComponentId = "avatar";
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      timelineCanvas: { width: 100, height: 100, minX: -50, minY: -50 },
+      timeline: normalizeTimeline({
+        fps: 30,
+        frameCount: 1,
+        labels: [{ name: "Rex", frame: 0 }],
+        commands: [{ frame: 0, type: "stop" }],
+        tracks: [{ targetId: "avatar", keyframes: [{ frame: 0, props: { x: 0, y: 0, width: 70, height: 70 } }] }]
+      })
+    });
+
+    visual.stopAt("Rex");
+
+    expect(element.style.left).toBe("50%");
+    expect(element.style.top).toBe("50%");
+    expect(element.style.width).toBe("70%");
+    expect(element.style.height).toBe("70%");
+  });
+
   it("fits authored timeline text through the shared text renderer", () => {
     const label = createFakeLabel();
     const element = createFakeElement(["hidden"]);
