@@ -5,6 +5,7 @@ import {
   type ReactElement
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
+import type { ArtCanvasLivePositions } from "./artCanvasTransformTransaction";
 import { artCompositionContentBounds } from "./artCompositionBounds";
 import { PartyGameTextFit } from "../../runtime/textFit";
 import {
@@ -31,7 +32,7 @@ export interface ArtPreviewRendererProps {
   compositionById: Map<string, ArtComposition>;
   currentColor?: string;
   interactive?: boolean;
-  livePosition?: { id: string; x: number; y: number } | null;
+  livePositions?: ArtCanvasLivePositions | null;
   liveTransform?: { id: string; width?: number; height?: number; scale?: number; rotation?: number } | null;
   liveTransformOrigin?: { id: string; value: string } | null;
   timelineFrameOverrides?: Record<string, Record<string, unknown>> | null;
@@ -145,7 +146,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const locked = component.locked === true;
     const interactive = props.interactive !== false && layer.interactive !== false && !locked;
     const referencePath = layer.referencePath || new Set<string>();
-    const livePos = props.livePosition?.id === component.id ? props.livePosition : null;
+    const livePos = props.livePositions?.[component.id] || null;
     const liveTx = props.liveTransform?.id === component.id ? props.liveTransform : null;
     const liveOrigin = props.liveTransformOrigin?.id === component.id ? props.liveTransformOrigin.value : null;
     const timelineOverride = props.timelineFrameOverrides?.[scopedTargetId] || props.timelineFrameOverrides?.[component.id] || {};

@@ -11,6 +11,15 @@ import {
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
+import {
+  applyArtCanvasTransformKeyframes,
+  artCanvasDragSelection,
+  captureArtCanvasTransformTargets,
+  translatedArtCanvasPositions,
+  type ArtCanvasLivePositions,
+  type ArtCanvasTransformPatch,
+  type ArtCanvasTransformTarget
+} from "./artCanvasTransformTransaction";
 import { artCompositionKindOptions, normalizeArtCompositionKind, normalizeArtCompositionSurface } from "./artCompositionModel";
 import { ART_COMPOSITION_BROWSER_DND_TYPE, compositionIdFromBrowserKey } from "./ArtCompositionBrowser";
 import type { ArtCompositionsController } from "./artCompositionsController";
@@ -335,11 +344,21 @@ function isCommandMarkerSelected(selection: TimelineMarkerSelection | null, comm
 export function ArtCompositionEditor({ controller, assets }: ArtCompositionEditorProps) {
   const { compositions, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo, migrationSummary } =
     useArtCompositions(controller);
-  const dragRef = useRef<{ id: string; originX: number; originY: number; startX: number; startY: number; moved: boolean } | null>(
-    null
-  );
+  const dragRef = useRef<{
+    targets: ArtCanvasTransformTarget[];
+    anchorId: string;
+    anchorWasSelected: boolean;
+    additive: boolean;
+    initialSelection: Set<string>;
+    initialSelectionSize: number;
+    modifierOriginX: number;
+    modifierOriginY: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
-  const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [livePositions, setLivePositions] = useState<ArtCanvasLivePositions | null>(null);
   const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; scale?: number; rotation?: number } | null>(null);
   const [liveTransformOrigin, setLiveTransformOrigin] = useState<{ id: string; value: string } | null>(null);
   const [previewMarquee, setPreviewMarquee] = useState<MarqueeBox | null>(null);
@@ -413,7 +432,6 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     () => scopeTimelinePreviewOverridesToComponent(timelinePreviewOverrides || baseTimelineFrameOverrides, timelineScopeComponent || null, timelineScopeComponentPath),
     [baseTimelineFrameOverrides, timelineScopeComponent, timelineScopeComponentPath, timelinePreviewOverrides]
   );
-  const selectedTimelineEditTargetId = componentTimelineLocalTargetId(selectedComponent);
   const selectedComponentTimelineValuesById = useMemo(() => {
     const values = new Map<string, Record<string, unknown>>();
     for (const match of selectedComponentMatches) {
@@ -457,10 +475,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   };
   const componentPathForTimelineEdit = (componentId: string): string[] | null =>
     composition ? findArtComponentTargetPath(composition.components || [], componentId)?.path || null : null;
-  const componentTimelineValuesForCanvasEdit = (component: ArtComponent): Record<string, unknown> => {
+  const componentTimelineValuesForCanvasEdit = (component: ArtComponent): TimelineProperties => {
     const componentPath = componentPathForTimelineEdit(component.id);
     const scopedId = componentPath ? artComponentTargetPathId(componentPath) : component.id;
-    return timelineFrameOverrides?.[scopedId] || timelineFrameOverrides?.[component.id] || {};
+    return (timelineFrameOverrides?.[scopedId] || timelineFrameOverrides?.[component.id] || {}) as TimelineProperties;
   };
   const timelineAwareComponentValue = (component: ArtComponent, key: string, fallback: number): number => {
     const frameValues = componentTimelineValuesForCanvasEdit(component);
@@ -468,27 +486,21 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     const numberValue = Number(value);
     return Number.isFinite(numberValue) ? numberValue : fallback;
   };
-  const commitCanvasComponentPatch = (component: ArtComponent, patch: TimelineProperties): void => {
-    const shouldCommitToTimeline = Boolean(
-      composition &&
-        selectedComponentIds.has(component.id) &&
-        selectedComponent?.id === component.id &&
-        selectedTimelineEditTargetId
-    );
-    if (!shouldCommitToTimeline || !composition) {
-      controller.updateComponent(component.id, patch as Partial<ArtComponent>);
-      return;
-    }
-    const displayedProps = timelineSnapshotAt(effectiveActiveTimeline, timelinePreviewFrame).targets[component.id] || {};
-    const stampedComponent = {
-      ...component,
-      ...displayedProps,
-      ...patch,
-      id: component.id
-    } as ArtComponent;
-    const nextTimeline = addTransformKeyframe(activeTimeline, stampedComponent, timelinePreviewFrame);
+  const commitCanvasTransformPatches = (patches: ArtCanvasTransformPatch[]): void => {
+    if (!composition || patches.length === 0) return;
+    const nextTimeline = applyArtCanvasTransformKeyframes(activeTimeline, patches, timelinePreviewFrame);
     controller.updateComposition(composition.id, { timeline: nextTimeline });
     setTimelinePreview({ compositionId: composition.id, frame: timelinePreviewFrame, overrides: null });
+  };
+  const commitCanvasComponentPatch = (component: ArtComponent, patch: TimelineProperties): void => {
+    if (!composition) return;
+    const target = captureArtCanvasTransformTargets(
+      composition.components || [],
+      new Set([component.id]),
+      componentTimelineValuesForCanvasEdit
+    )[0];
+    if (!target) return;
+    commitCanvasTransformPatches([{ target, patch }]);
   };
   const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
     if (!composition) return;
@@ -815,10 +827,27 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const beginDrag = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.stopPropagation();
+    if (!composition) return;
+    const currentSelection = controller.getState().selectedComponentIds;
+    const additive = event.metaKey || event.ctrlKey || event.shiftKey;
+    const dragSelection = artCanvasDragSelection(currentSelection, component.id, additive);
+    controller.selectComponents(dragSelection, false);
+    const targets = captureArtCanvasTransformTargets(
+      composition.components || [],
+      dragSelection,
+      componentTimelineValuesForCanvasEdit
+    );
+    const anchor = targets.find((target) => target.id === component.id);
+    if (!anchor) return;
     dragRef.current = {
-      id: component.id,
-      originX: timelineAwareComponentValue(component, "x", 0),
-      originY: timelineAwareComponentValue(component, "y", 0),
+      targets,
+      anchorId: component.id,
+      anchorWasSelected: currentSelection.has(component.id),
+      additive,
+      initialSelection: new Set(currentSelection),
+      initialSelectionSize: currentSelection.size,
+      modifierOriginX: anchor.originX,
+      modifierOriginY: anchor.originY,
       startX: event.clientX,
       startY: event.clientY,
       moved: false
@@ -832,8 +861,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       if (Math.abs(rawDeltaX) > 3 || Math.abs(rawDeltaY) > 3) drag.moved = true;
       const next = applyDragModifiers(
         {
-          originX: drag.originX,
-          originY: drag.originY,
+          originX: drag.modifierOriginX,
+          originY: drag.modifierOriginY,
           deltaX: rawDeltaX / previewScale,
           deltaY: rawDeltaY / previewScale,
           shiftKey: e.shiftKey,
@@ -842,19 +871,28 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         },
         modifierState
       );
-      setLive({ id: drag.id, x: next.x, y: next.y });
+      setLivePositions(
+        translatedArtCanvasPositions(
+          drag.targets,
+          next.x - drag.modifierOriginX,
+          next.y - drag.modifierOriginY
+        )
+      );
     };
-    const up = (e: PointerEvent) => {
+    const finish = (e: PointerEvent, cancelled = false) => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
+      document.removeEventListener("pointercancel", cancel);
       const drag = dragRef.current;
       dragRef.current = null;
-      setLive(null);
-      if (drag && drag.moved) {
+      setLivePositions(null);
+      if (cancelled && drag) {
+        controller.selectComponents(drag.initialSelection, false);
+      } else if (drag && drag.moved) {
         const next = applyDragModifiers(
           {
-            originX: drag.originX,
-            originY: drag.originY,
+            originX: drag.modifierOriginX,
+            originY: drag.modifierOriginY,
             deltaX: (e.clientX - drag.startX) / previewScale,
             deltaY: (e.clientY - drag.startY) / previewScale,
             shiftKey: e.shiftKey,
@@ -863,11 +901,27 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           },
           modifierState
         );
-        commitCanvasComponentPatch(component, { x: next.x, y: next.y });
+        const positions = translatedArtCanvasPositions(
+          drag.targets,
+          next.x - drag.modifierOriginX,
+          next.y - drag.modifierOriginY
+        );
+        commitCanvasTransformPatches(
+          drag.targets.map((target) => ({ target, patch: positions[target.id] }))
+        );
+      } else if (drag) {
+        if (drag.additive && drag.anchorWasSelected) {
+          controller.selectComponent(drag.anchorId, true);
+        } else if (!drag.additive && drag.anchorWasSelected && drag.initialSelectionSize > 1) {
+          controller.selectComponent(drag.anchorId, false);
+        }
       }
     };
+    const up = (e: PointerEvent) => finish(e);
+    const cancel = (e: PointerEvent) => finish(e, true);
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
+    document.addEventListener("pointercancel", cancel);
   };
 
   return (
@@ -994,7 +1048,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                     components={composition.components || []}
                     compositionById={compositionById}
                     interactive
-                    livePosition={live}
+                    livePositions={livePositions}
                     liveTransform={liveTransform}
                     liveTransformOrigin={liveTransformOrigin}
                     timelineFrameOverrides={timelineFrameOverrides}
@@ -1006,7 +1060,6 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                       event.stopPropagation();
                       openTimelineScope(component);
                     }}
-                    onSelect={selectArtComponent}
                     selectedIds={selectedComponentIds}
                   />
                   {previewMarquee ? (

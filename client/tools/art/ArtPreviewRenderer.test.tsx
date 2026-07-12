@@ -75,4 +75,22 @@ describe("ArtPreviewRenderer transform origins", () => {
 
     expect(markup).toContain("scale(1, 1) translate(0px, 0px)");
   });
+
+  it("renders live positions for every component in a group drag", () => {
+    const components = [
+      { id: "vip", name: "VIP", kind: "shape", x: 10, y: 10, width: 20, height: 20 },
+      { id: "bubble", name: "Bubble", kind: "shape", x: 20, y: 20, width: 20, height: 20 }
+    ] as ArtComponent[];
+
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer
+        components={components}
+        compositionById={new Map()}
+        livePositions={{ vip: { x: 100, y: 110 }, bubble: { x: 200, y: 210 } }}
+      />
+    );
+
+    expect(markup).toContain("left:90px;top:100px");
+    expect(markup).toContain("left:190px;top:200px");
+  });
 });

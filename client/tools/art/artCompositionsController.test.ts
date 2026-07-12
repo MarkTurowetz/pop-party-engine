@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { createArtCompositionsController } from "./artCompositionsController";
 import type { ArtApi } from "../../api/artApi";
 import type { ArtComposition, ArtCompositionSaveResponse } from "../../types/game-data";
+import {
+  applyArtCanvasTransformKeyframes,
+  captureArtCanvasTransformTargets,
+  translatedArtCanvasPositions
+} from "./artCanvasTransformTransaction";
 
 function composition(id: string): ArtComposition {
   return { id, name: id, surface: "stage", timelineArchitectureVersion: 2, canvas: { width: 560, height: 230 }, components: [] };
@@ -120,6 +125,29 @@ describe("createArtCompositionsController", () => {
     expect(updated.find((component) => component.id === vipInstance?.id)?.x).toBe(-75);
     expect(updated.find((component) => component.id === bubbleInstance?.id)?.x).toBe(-50);
     expect(updated.find((component) => component.id === avatarInstance?.id)?.x).toBe(50);
+  });
+
+  it("commits a group transform as one undoable composition update", () => {
+    const host = composition("host");
+    host.components = [
+      { id: "vip", name: "VIP", kind: "reference", x: -50, y: 0, width: 44, height: 22 },
+      { id: "bubble", name: "Bubble", kind: "reference", x: 0, y: 0, width: 300, height: 180 }
+    ] as never;
+    const controller = createArtCompositionsController({ initialCompositions: [host], api: fakeApi() });
+    const targets = captureArtCanvasTransformTargets(host.components, new Set(["vip", "bubble"]), () => ({}));
+    const positions = translatedArtCanvasPositions(targets, 20, 10);
+    const timeline = applyArtCanvasTransformKeyframes(
+      host.timeline,
+      targets.map((target) => ({ target, patch: positions[target.id] })),
+      0
+    );
+
+    controller.updateComposition(host.id, { timeline });
+
+    expect(controller.getState().compositions[0].timeline?.tracks).toHaveLength(2);
+    expect(controller.getState().canUndo).toBe(true);
+    controller.undo();
+    expect(controller.getState().compositions[0].timeline?.tracks).toEqual([]);
   });
 
   it("adds a prefab reference component with the referenced composition dimensions", () => {
