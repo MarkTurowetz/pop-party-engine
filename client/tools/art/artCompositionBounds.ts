@@ -13,6 +13,8 @@ export interface ArtCompositionBoundsOptions {
   padding?: number;
 }
 
+type ArtCompositionResolver = (id: string) => ArtComposition | null;
+
 function num(value: unknown, fallback = 0): number {
   const n = Number(value ?? fallback);
   return Number.isFinite(n) ? n : fallback;
@@ -58,13 +60,13 @@ function componentBox(component: ArtComponent): ArtBounds {
 
 function referencedCompositionFor(
   component: ArtComponent,
-  compositionById: Map<string, ArtComposition>,
+  resolveComposition: ArtCompositionResolver,
   referencePath: Set<string>
 ): ArtComposition | null {
   if (component.kind !== "reference") return null;
   const id = String(component.artCompositionId || "");
   if (!id || referencePath.has(id)) return null;
-  return compositionById.get(id) || null;
+  return resolveComposition(id);
 }
 
 function translateBounds(source: ArtBounds, left: number, top: number, scaleX = 1, scaleY = 1): ArtBounds {
@@ -78,42 +80,73 @@ function translateBounds(source: ArtBounds, left: number, top: number, scaleX = 
 
 function componentsBounds(
   components: ArtComponent[],
-  compositionById: Map<string, ArtComposition>,
-  referencePath: Set<string>
+  resolveComposition: ArtCompositionResolver,
+  referencePath: Set<string>,
+  contentOnly = false
 ): ArtBounds | null {
   return components.reduce<ArtBounds | null>(
-    (current, component) => expand(current, componentBounds(component, compositionById, referencePath)),
+    (current, component) => expand(current, componentBounds(component, resolveComposition, referencePath, contentOnly)),
     null
+  );
+}
+
+function transformedReferenceBounds(source: ArtBounds, component: ArtComponent, canvas: { width?: number; height?: number } | null | undefined): ArtBounds {
+  const canvasWidth = Math.max(1, num(canvas?.width, 1));
+  const canvasHeight = Math.max(1, num(canvas?.height, 1));
+  const width = Math.max(1, num(component.width, 1));
+  const height = Math.max(1, num(component.height, 1));
+  const scale = Math.max(0.001, num(component.scale, 1));
+  const rotation = (num(component.rotation, 0) * Math.PI) / 180;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const x = num(component.x, 0);
+  const y = num(component.y, 0);
+  const corners = [
+    [source.minX, source.minY],
+    [source.maxX, source.minY],
+    [source.maxX, source.maxY],
+    [source.minX, source.maxY]
+  ].map(([sourceX, sourceY]) => {
+    const localX = ((sourceX / canvasWidth) - 0.5) * width * scale;
+    const localY = ((sourceY / canvasHeight) - 0.5) * height * scale;
+    return { x: x + localX * cos - localY * sin, y: y + localX * sin + localY * cos };
+  });
+  return bounds(
+    Math.min(...corners.map((corner) => corner.x)),
+    Math.min(...corners.map((corner) => corner.y)),
+    Math.max(...corners.map((corner) => corner.x)),
+    Math.max(...corners.map((corner) => corner.y))
   );
 }
 
 function componentBounds(
   component: ArtComponent,
-  compositionById: Map<string, ArtComposition>,
-  referencePath: Set<string>
+  resolveComposition: ArtCompositionResolver,
+  referencePath: Set<string>,
+  contentOnly = false
 ): ArtBounds {
   const own = componentBox(component);
   const width = Math.max(1, num(component.width, 1));
   const height = Math.max(1, num(component.height, 1));
   const left = num(component.x, 0) - width / 2;
   const top = num(component.y, 0) - height / 2;
-  let output: ArtBounds | null = own;
+  const isTransparentGroup = component.kind === "container";
+  let output: ArtBounds | null = contentOnly && isTransparentGroup ? null : own;
 
-  const referenced = referencedCompositionFor(component, compositionById, referencePath);
-  if (referenced) {
-    const canvasWidth = Math.max(1, num(referenced.canvas?.width, width));
-    const canvasHeight = Math.max(1, num(referenced.canvas?.height, height));
+  const referenced = referencedCompositionFor(component, resolveComposition, referencePath);
+  if (referenced && !contentOnly) {
     const referencedBounds = componentsBounds(
       referenced.components || [],
-      compositionById,
-      new Set([...referencePath, String(referenced.id || "")])
+      resolveComposition,
+      new Set([...referencePath, String(referenced.id || "")]),
+      true
     );
     if (referencedBounds) {
-      output = expand(output, translateBounds(referencedBounds, left, top, width / canvasWidth, height / canvasHeight));
+      output = expand(output, transformedReferenceBounds(referencedBounds, component, referenced.canvas));
     }
   }
 
-  const childBounds = componentsBounds(component.children || [], compositionById, referencePath);
+  const childBounds = componentsBounds(component.children || [], resolveComposition, referencePath, contentOnly);
   if (childBounds) output = expand(output, translateBounds(childBounds, left, top));
 
   return output || own;
@@ -124,11 +157,29 @@ export function artCompositionVisualBounds(
   compositionById: Map<string, ArtComposition>,
   options: ArtCompositionBoundsOptions = {}
 ): ArtBounds {
+  const resolveComposition = (id: string) => compositionById.get(id) || null;
   const canvasWidth = Math.max(1, num(composition.canvas?.width, 1));
   const canvasHeight = Math.max(1, num(composition.canvas?.height, 1));
   const padding = Math.max(0, num(options.padding, 0));
   let output: ArtBounds | null = bounds(0, 0, canvasWidth, canvasHeight);
-  output = expand(output, componentsBounds(composition.components || [], compositionById, new Set([String(composition.id || "")])));
+  output = expand(output, componentsBounds(composition.components || [], resolveComposition, new Set([String(composition.id || "")])));
   output = output || bounds(0, 0, canvasWidth, canvasHeight);
   return bounds(output.minX - padding, output.minY - padding, output.maxX + padding, output.maxY + padding);
+}
+
+export function artCompositionContentBoundsWithResolver(
+  composition: ArtComposition,
+  resolveComposition: ArtCompositionResolver
+): ArtBounds {
+  return (
+    componentsBounds(composition.components || [], resolveComposition, new Set([String(composition.id || "")]), true) ||
+    bounds(0, 0, Math.max(1, num(composition.canvas?.width, 1)), Math.max(1, num(composition.canvas?.height, 1)))
+  );
+}
+
+export function artCompositionContentBounds(
+  composition: ArtComposition,
+  compositionById: Map<string, ArtComposition>
+): ArtBounds {
+  return artCompositionContentBoundsWithResolver(composition, (id) => compositionById.get(id) || null);
 }

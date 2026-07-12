@@ -12,6 +12,7 @@ import {
   type ArtCompositionKind
 } from "./artCompositionModel";
 import { componentKindLabel, defaultTextFontFamily, normalizeCreatableComponentKind } from "./artComponentSchema";
+import { artCompositionContentBounds } from "./artCompositionBounds";
 import { mergeDefaultArtVisibilityTimeline } from "./artTimelineModel";
 import {
   ART_TIMELINE_ARCHITECTURE_VERSION,
@@ -130,18 +131,26 @@ function createComposition(kind: ArtCompositionKind, surface: string, name: stri
   };
 }
 
-function referenceComponentPatch(composition: ArtComposition): Partial<ArtComponent> {
+function referenceComponentPatch(composition: ArtComposition, compositions: ArtComposition[] = []): Partial<ArtComponent> {
+  const compositionById = new Map(compositions.map((item) => [String(item.id || ""), item]));
+  compositionById.set(String(composition.id || ""), composition);
+  const contentBounds = artCompositionContentBounds(composition, compositionById);
   return {
     name: composition.name,
-    width: Number(composition.canvas?.width || DEFAULT_COMPOSITION_CANVAS.width),
-    height: Number(composition.canvas?.height || DEFAULT_COMPOSITION_CANVAS.height),
+    width: Number(contentBounds.width || composition.canvas?.width || DEFAULT_COMPOSITION_CANVAS.width),
+    height: Number(contentBounds.height || composition.canvas?.height || DEFAULT_COMPOSITION_CANVAS.height),
     artCompositionId: composition.id
   };
 }
 
-function createComponent(kind: string, bounds: { width: number; height: number }, referencedComposition: ArtComposition | null = null): ArtComponent {
+function createComponent(
+  kind: string,
+  bounds: { width: number; height: number },
+  referencedComposition: ArtComposition | null = null,
+  compositions: ArtComposition[] = []
+): ArtComponent {
   const cleanKind = normalizeCreatableComponentKind(kind);
-  const referencePatch = cleanKind === "reference" && referencedComposition ? referenceComponentPatch(referencedComposition) : null;
+  const referencePatch = cleanKind === "reference" && referencedComposition ? referenceComponentPatch(referencedComposition, compositions) : null;
   const width =
     Number(referencePatch?.width || 0) || (cleanKind === "text" ? 220 : cleanKind === "container" ? 320 : cleanKind === "reference" ? 220 : 180);
   const height =
@@ -595,7 +604,7 @@ export function createArtCompositionsController(
           normalizeCreatableComponentKind(kind) === "reference"
             ? referencedCompositionFor(composition, options.referencedCompositionId)
             : null;
-        const child = createComponent(kind, bounds, reference);
+        const child = createComponent(kind, bounds, reference, compositions);
         if (Number.isFinite(options.x)) child.x = Number(Number(options.x).toFixed(3));
         if (Number.isFinite(options.y)) child.y = Number(Number(options.y).toFixed(3));
         if (parent) {
@@ -666,7 +675,7 @@ export function createArtCompositionsController(
             return;
           }
           const referenced = referencedCompositionFor(composition, String(patch.artCompositionId || ""));
-          Object.assign(component, referenced ? referenceComponentPatch(referenced) : patch);
+          Object.assign(component, referenced ? referenceComponentPatch(referenced, compositions) : patch);
           return;
         }
         Object.assign(component, patch);

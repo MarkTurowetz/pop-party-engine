@@ -110,6 +110,40 @@ describe("createArtCompositionsController", () => {
     expect(reference.timeline).toBeUndefined();
   });
 
+  it("sizes nested references from tight visual content instead of the editor canvas", () => {
+    const vip = composition("player-vip-widget");
+    vip.name = "Player VIP Widget";
+    vip.compositionKind = "gameObject";
+    vip.canvas = { width: 52, height: 28 };
+    vip.components = [
+      { id: "vip-card", name: "VIP Card", kind: "shape", x: 22, y: 11, width: 44, height: 22 }
+    ] as never;
+    const vipMc = composition("prefab-vip-mc");
+    vipMc.name = "VIP MC";
+    vipMc.compositionKind = "prefab";
+    vipMc.canvas = { width: 560, height: 230 };
+    vipMc.components = [
+      {
+        id: "vip-widget-reference",
+        name: "Player VIP Widget",
+        kind: "reference",
+        artCompositionId: vip.id,
+        x: 0,
+        y: 0,
+        width: 44,
+        height: 22
+      }
+    ] as never;
+    const host = composition("host");
+    const controller = createArtCompositionsController({ initialCompositions: [host, vip, vipMc], api: fakeApi() });
+
+    controller.addComponent("reference", { referencedCompositionId: vipMc.id });
+
+    expect(controller.getState().compositions[0].components[0]).toEqual(
+      expect.objectContaining({ artCompositionId: vipMc.id, width: 44, height: 22 })
+    );
+  });
+
   it("adds an explicit composition reference as a nested child at the requested position", () => {
     const prefab = composition("answer-bubble");
     prefab.name = "Answer Bubble";

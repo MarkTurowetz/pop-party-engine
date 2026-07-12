@@ -5,6 +5,7 @@ import {
   type ReactElement
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
+import { artCompositionContentBounds } from "./artCompositionBounds";
 import { PartyGameTextFit } from "../../runtime/textFit";
 import {
   componentSupportsImageMask,
@@ -175,8 +176,11 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const tintWithCurrentColor = Boolean(imageUrl && imageTint === "currentColor");
     const referencedComposition = referencedCompositionFor(component, referencePath);
     const referenceCanvas = referencedComposition?.canvas || { width, height };
-    const referenceScaleX = width / Math.max(1, Number(referenceCanvas.width || width));
-    const referenceScaleY = height / Math.max(1, Number(referenceCanvas.height || height));
+    const referenceBounds = referencedComposition
+      ? artCompositionContentBounds(referencedComposition, props.compositionById)
+      : { minX: 0, minY: 0, width, height };
+    const referenceScaleX = width / Math.max(1, referenceBounds.width);
+    const referenceScaleY = height / Math.max(1, referenceBounds.height);
     const maskSize = objectFit === "fill" ? "100% 100%" : objectFit;
     const transparentBase = kind === "container" || kind === "reference";
     const clipsOwnContent = Boolean(imageUrl || isTextual);
@@ -306,7 +310,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
                 top: 0,
                 width: Number(referenceCanvas.width || width),
                 height: Number(referenceCanvas.height || height),
-                transform: `scale(${referenceScaleX}, ${referenceScaleY})`,
+                transform: `scale(${referenceScaleX}, ${referenceScaleY}) translate(${-referenceBounds.minX}px, ${-referenceBounds.minY}px)`,
                 transformOrigin: "top left",
                 pointerEvents: "none"
               }}

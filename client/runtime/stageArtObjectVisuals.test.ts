@@ -45,6 +45,32 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     }
   });
 
+  it("lays out referenced children against a tight content view box", () => {
+    const globals = globalThis as typeof globalThis & { PartyGameArtComponentSchema?: Record<string, unknown> };
+    const previousSchema = globals.PartyGameArtComponentSchema;
+    const style = { setProperty: vi.fn() } as unknown as CSSStyleDeclaration;
+    globals.PartyGameArtComponentSchema = {
+      normalizeComponentKind: (kind: unknown) => String(kind || "shape"),
+      componentLabel: () => "",
+      normalizeFillCss: () => "",
+      normalizeImageObjectFit: () => "cover",
+      transformOriginCss: () => "50% 50%"
+    };
+    try {
+      PartyGameArtObject.applyComponentLayout(
+        { style } as unknown as HTMLElement,
+        { id: "vip", kind: "shape", x: 22, y: 11, width: 44, height: 22 },
+        { width: 44, height: 22, minX: 0, minY: 0 }
+      );
+      expect(style.left).toBe("50%");
+      expect(style.top).toBe("50%");
+      expect(style.width).toBe("100%");
+      expect(style.height).toBe("100%");
+    } finally {
+      globals.PartyGameArtComponentSchema = previousSchema;
+    }
+  });
+
   it("renderComponentText returns null without a target", () => {
     expect(PartyGameArtObject.renderComponentText(null, { id: "x" })).toBe(null);
   });

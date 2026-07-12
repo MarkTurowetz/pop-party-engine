@@ -5,6 +5,8 @@
 // module's import-time install).
 
 import { normalizeGameTextFontFamily } from "../textFonts";
+import type { ArtComposition } from "../types/game-data";
+import { artCompositionContentBoundsWithResolver } from "../tools/art/artCompositionBounds";
 import { distributedContainerItemPositions } from "./distributedContainerLayout";
 import { effectiveArtComponentVisibilityTimeline, effectiveVisibilityTimeline } from "./effectiveTimeline";
 import type { TimelineCommandEventDetail } from "./visualObject";
@@ -13,7 +15,7 @@ import { hasTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type 
 
 type Dict = Record<string, unknown>;
 type Component = Dict;
-type CanvasSize = { width?: number; height?: number } | undefined;
+type CanvasSize = { width?: number; height?: number; minX?: number; minY?: number } | undefined;
 
 interface ArtComponentSchema {
   normalizeComponentKind: (kind?: unknown) => string;
@@ -56,11 +58,13 @@ function applyComponentLayout(element: HTMLElement | null, component: Component 
   const kind = s.normalizeComponentKind(component.kind);
   const canvasWidth = Math.max(1, num(canvas?.width, 1));
   const canvasHeight = Math.max(1, num(canvas?.height, 1));
+  const canvasMinX = num(canvas?.minX, 0);
+  const canvasMinY = num(canvas?.minY, 0);
   const labelText = Object.prototype.hasOwnProperty.call(options, "labelText")
     ? String(options.labelText || "")
     : s.componentLabel(component);
-  element.style.left = `${(num(component.x) / canvasWidth) * 100}%`;
-  element.style.top = `${(num(component.y) / canvasHeight) * 100}%`;
+  element.style.left = `${((num(component.x) - canvasMinX) / canvasWidth) * 100}%`;
+  element.style.top = `${((num(component.y) - canvasMinY) / canvasHeight) * 100}%`;
   element.style.width = `${(num(component.width, 1) / canvasWidth) * 100}%`;
   element.style.height = `${(num(component.height, 1) / canvasHeight) * 100}%`;
   element.style.setProperty("--component-scale", String(num(component.scale, 1)));
@@ -491,8 +495,15 @@ class ArtObjectView {
     const referencedId =
       schema().normalizeComponentKind(this.component?.kind) === "reference" ? String(this.component?.artCompositionId || "") : "";
     const referencedComposition = referencedCompositionFor(this.component, this.getComposition, this.referencePath);
-    const childCanvas =
-      (referencedComposition?.canvas as CanvasSize) || { width: num(this.component?.width, 1), height: num(this.component?.height, 1) };
+    const referencedBounds = referencedComposition
+      ? artCompositionContentBoundsWithResolver(
+          referencedComposition as unknown as ArtComposition,
+          (id) => this.getComposition(id) as unknown as ArtComposition | null
+        )
+      : null;
+    const childCanvas = referencedBounds
+      ? { width: referencedBounds.width, height: referencedBounds.height, minX: referencedBounds.minX, minY: referencedBounds.minY }
+      : { width: num(this.component?.width, 1), height: num(this.component?.height, 1) };
     const renderList =
       (referencedComposition?.components as Component[]) || distributedContainerChildren(this.component || {}, children || []);
     const childReferencePath = referencedComposition ? new Set([...this.referencePath, referencedId]) : this.referencePath;

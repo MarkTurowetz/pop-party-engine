@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArtComposition } from "../../types/game-data";
-import { artCompositionVisualBounds } from "./artCompositionBounds";
+import { artCompositionContentBounds, artCompositionVisualBounds } from "./artCompositionBounds";
 
 function composition(id: string, overrides: Partial<ArtComposition> = {}): ArtComposition {
   return {
@@ -80,5 +80,38 @@ describe("artCompositionVisualBounds", () => {
 
     expect(result.minX).toBe(-50);
     expect(result.maxX).toBe(270);
+  });
+});
+
+describe("artCompositionContentBounds", () => {
+  it("uses the actual child artwork instead of the authored canvas", () => {
+    const vip = composition("vip", {
+      canvas: { width: 52, height: 28 },
+      components: [
+        { id: "label", name: "VIP", kind: "text", x: 22, y: 11, width: 34, height: 12 },
+        { id: "card", name: "Card", kind: "shape", x: 22, y: 11, width: 44, height: 22 }
+      ]
+    });
+
+    const result = artCompositionContentBounds(vip, new Map([[vip.id, vip]]));
+
+    expect(result).toEqual({ minX: 0, minY: 0, maxX: 44, maxY: 22, width: 44, height: 22 });
+  });
+
+  it("treats a tight reference box as the intrinsic size through another nesting level", () => {
+    const vip = composition("vip", {
+      canvas: { width: 52, height: 28 },
+      components: [{ id: "card", name: "Card", kind: "shape", x: 22, y: 11, width: 44, height: 22 }]
+    });
+    const vipMc = composition("vip-mc", {
+      canvas: { width: 560, height: 230 },
+      components: [{ id: "vip-ref", name: "VIP", kind: "reference", artCompositionId: "vip", x: 0, y: 0, width: 44, height: 22 }]
+    });
+    const map = new Map([[vip.id, vip], [vipMc.id, vipMc]]);
+
+    const result = artCompositionContentBounds(vipMc, map);
+
+    expect(result.width).toBe(44);
+    expect(result.height).toBe(22);
   });
 });

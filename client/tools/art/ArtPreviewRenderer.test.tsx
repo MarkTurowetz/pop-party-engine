@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ArtPreviewRenderer } from "./ArtPreviewRenderer";
-import type { ArtComponent } from "../../types/game-data";
+import type { ArtComponent, ArtComposition } from "../../types/game-data";
 
 describe("ArtPreviewRenderer transform origins", () => {
   it("renders the persisted nine-point origin and its selected drag handle", () => {
@@ -48,5 +48,31 @@ describe("ArtPreviewRenderer transform origins", () => {
 
     expect(markup).toContain("visibility:hidden");
     expect(component.visible).toBe(true);
+  });
+
+  it("normalizes referenced artwork to its tight visual bounds", () => {
+    const vip = {
+      id: "player-vip-widget",
+      name: "Player VIP Widget",
+      surface: "stage",
+      canvas: { width: 52, height: 28 },
+      components: [{ id: "card", name: "VIP Card", kind: "shape", x: 22, y: 11, width: 44, height: 22 }]
+    } as ArtComposition;
+    const reference = {
+      id: "vip-reference",
+      name: "Player VIP Widget",
+      kind: "reference",
+      artCompositionId: vip.id,
+      x: 22,
+      y: 11,
+      width: 44,
+      height: 22
+    } as ArtComponent;
+
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer components={[reference]} compositionById={new Map([[vip.id, vip]])} />
+    );
+
+    expect(markup).toContain("scale(1, 1) translate(0px, 0px)");
   });
 });
