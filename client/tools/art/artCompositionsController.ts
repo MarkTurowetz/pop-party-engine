@@ -595,8 +595,9 @@ export function createArtCompositionsController(
         return null;
       }
       mutateSelected((composition) => {
-        const parentId = options.parentComponentId || [...selectedComponentIds][0];
-        const parent = parentId ? findComponent(composition.components || [], parentId) : undefined;
+        const requestedParentId = options.parentComponentId || [...selectedComponentIds][0];
+        const requestedParent = requestedParentId ? findComponent(composition.components || [], requestedParentId) : undefined;
+        const parent = requestedParent?.kind === "container" ? requestedParent : undefined;
         const bounds = parent
           ? { width: Number(parent.width || 1), height: Number(parent.height || 1) }
           : { width: Number(composition.canvas?.width || 560), height: Number(composition.canvas?.height || 230) };

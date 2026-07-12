@@ -91,6 +91,37 @@ describe("createArtCompositionsController", () => {
     expect(container.children?.[0].timeline).toBeUndefined();
   });
 
+  it("keeps consecutively added composition references as independent sibling layers", () => {
+    const host = composition("host");
+    const vip = composition("vip-mc");
+    vip.name = "VIP MC";
+    vip.compositionKind = "prefab";
+    const bubble = composition("answer-bubble-mc");
+    bubble.name = "Player Answer Bubble MC";
+    bubble.compositionKind = "prefab";
+    const avatar = composition("stego-avatar");
+    avatar.name = "Stego Avatar";
+    avatar.compositionKind = "gameObject";
+    const controller = createArtCompositionsController({ initialCompositions: [host, vip, bubble, avatar], api: fakeApi() });
+
+    const vipInstance = controller.addComponent("reference", { referencedCompositionId: vip.id, x: -50, y: 0 });
+    const bubbleInstance = controller.addComponent("reference", { referencedCompositionId: bubble.id, x: 0, y: 0 });
+    const avatarInstance = controller.addComponent("reference", { referencedCompositionId: avatar.id, x: 50, y: 0 });
+
+    const components = controller.getState().compositions[0].components;
+    expect(components).toHaveLength(3);
+    expect(components.map((component) => component.artCompositionId)).toEqual([vip.id, bubble.id, avatar.id]);
+    expect(components.every((component) => component.children?.length === 0)).toBe(true);
+
+    controller.updateComponent(vipInstance?.id || "", { x: -75 });
+    controller.updateComponent(bubbleInstance?.id || "", { x: -50 });
+
+    const updated = controller.getState().compositions[0].components;
+    expect(updated.find((component) => component.id === vipInstance?.id)?.x).toBe(-75);
+    expect(updated.find((component) => component.id === bubbleInstance?.id)?.x).toBe(-50);
+    expect(updated.find((component) => component.id === avatarInstance?.id)?.x).toBe(50);
+  });
+
   it("adds a prefab reference component with the referenced composition dimensions", () => {
     const prefab = composition("answer-bubble");
     prefab.name = "Answer Bubble";
