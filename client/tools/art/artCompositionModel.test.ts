@@ -61,7 +61,7 @@ describe("artCompositionModel serialization", () => {
     expect(serialized.locked).toBe(true);
   });
 
-  it("migrates composition shadow tracks into the targeted component timeline", () => {
+  it("keeps composition tracks in the composition and removes component-local timelines", () => {
     const hydrated = hydrateArtCompositionForEditing({
       id: "layout-text-field",
       name: "Layout Text Field",
@@ -107,18 +107,8 @@ describe("artCompositionModel serialization", () => {
       ]
     } as ArtComposition);
 
-    expect(hydrated.timeline?.tracks.some((track) => track.targetId === "text")).toBe(false);
-    const textTrack = hydrated.components[0].timeline?.tracks.find((track) => track.targetId === "text");
-    expect(textTrack?.keyframes.map((keyframe) => keyframe.frame)).toEqual(expect.arrayContaining([2, 17, 18, 32]));
-    expect(textTrack?.keyframes.find((keyframe) => keyframe.frame === 18)?.props).toMatchObject({
-      x: 500,
-      y: 120,
-      width: 1000,
-      height: 240,
-      scale: 1.2,
-      rotation: 0,
-      opacity: 1,
-      visible: true
-    });
+    expect(hydrated.timeline?.tracks.some((track) => track.targetId === "text")).toBe(true);
+    expect(hydrated.components[0].timeline).toBeUndefined();
+    expect(hydrated.timeline?.tracks.find((track) => track.targetId === "text")?.keyframes[0]?.props).toMatchObject({ scale: 1.2 });
   });
 });

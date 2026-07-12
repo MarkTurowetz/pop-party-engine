@@ -5,7 +5,7 @@ describe("defaultPlayerPointPopupTimeline", () => {
   it("defines a complete point popup appear timeline for editable prefab art", () => {
     const timeline = defaultPlayerPointPopupTimeline();
 
-    expect(timeline.labels.map((label) => label.name)).toEqual(["park", "off", "on", "appear", "update", "disappear"]);
+    expect(timeline.labels.map((label) => label.name)).toEqual(["Park", "Off", "On", "Appear", "Update", "Disappear"]);
     expect(timeline.commands).toContainEqual({ frame: 0, type: "setVisible", target: "false" });
     expect(timeline.commands).toContainEqual({ frame: 45, type: "stop" });
     expect(timeline.tracks.map((track) => track.targetId)).toEqual(["point-text", "point-shadow"]);

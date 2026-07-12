@@ -54,8 +54,7 @@ import { parseTimelineActionScript, timelineCommandsToActionScript } from "./art
 import {
   findTimelineTargetComponent,
   timelineTargetOptionsFor,
-  timelineTrackRowsFor,
-  timelineWithScopedComponentTracks
+  timelineTrackRowsFor
 } from "./artTimelineTargets";
 import { scopeTimelinePreviewOverridesToComponent } from "./artTimelinePreviewMapping";
 import {
@@ -230,13 +229,6 @@ function componentTimelineLocalTargetId(component: ArtComponent | null | undefin
   return String(component?.id || "").trim() || "self";
 }
 
-function componentHasNestedTimelineTargets(component: ArtComponent, compositions: Map<string, ArtComposition>): boolean {
-  if ((component.children || []).length > 0) return true;
-  if (String(component.kind || "").toLowerCase() !== "reference") return false;
-  const referenced = compositions.get(String(component.artCompositionId || ""));
-  return Boolean(referenced?.components?.length);
-}
-
 function artCompositionReferenceResolver(compositions: ArtComposition[]) {
   const byId = new Map(compositions.map((item) => [String(item.id || ""), item]));
   return (component: ArtComponent) => byId.get(String(component.artCompositionId || "")) || null;
@@ -264,10 +256,14 @@ function inferredVisibilityCommandsAtFrame(timeline: TimelineDocument, frame: nu
   return [{ frame, type: "setVisible", target: visible ? "true" : "false" }];
 }
 
-function timelineActionScriptForFrame(timeline: TimelineDocument, frame: number, commands: TimelineCommand[]): string {
+function timelineActionScriptForFrame(timeline: TimelineDocument, frame: number, commands: TimelineCommand[], component?: ArtComponent): string {
   const hasExplicitVisibility = commands.some((command) => command.type === "setVisible");
   const displayCommands = hasExplicitVisibility ? commands : [...commands, ...inferredVisibilityCommandsAtFrame(timeline, frame)];
-  return timelineCommandsToActionScript(displayCommands);
+  return timelineCommandsToActionScript(displayCommands.map((command) => {
+    if ((command.type !== "playComponent" && command.type !== "stopComponent") || !command.target || !component) return command;
+    const target = findTimelineTargetComponent([component], command.target, { scopeRootPath: false });
+    return target?.instanceLabel ? { ...command, target: target.instanceLabel } : command;
+  }));
 }
 
 function timelineCommandLabel(command: TimelineCommand): string {
@@ -414,7 +410,7 @@ function ComponentTree({
 }
 
 export function ArtCompositionEditor({ controller, assets }: ArtCompositionEditorProps) {
-  const { compositions, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo } =
+  const { compositions, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo, migrationSummary } =
     useArtCompositions(controller);
   const dragRef = useRef<{ id: string; originX: number; originY: number; startX: number; startY: number; moved: boolean } | null>(
     null
@@ -478,16 +474,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const timelineScopeComponent = timelineScopeComponentMatch?.component || null;
   const timelineScopeComponentPath = timelineScopeComponentMatch?.path || null;
   const timelineRootComponent = composition ? timelineScopeComponent || compositionTimelineTargetRoot(composition) : null;
-  const activeTimeline = (timelineScopeComponent ? timelineScopeComponent.timeline || null : composition?.timeline || null) as TimelineDocument | null;
+  const activeTimeline = (composition?.timeline || null) as TimelineDocument | null;
   const effectiveActiveTimeline = useMemo(
-    () =>
-      timelineWithScopedComponentTracks(effectiveArtVisibilityTimeline(activeTimeline, timelineScopeComponent || null), timelineRootComponent || undefined, {
-        includeRoot: timelineScopeComponent ? true : false,
-        useScopedIds: true,
-        scopeRootPath: timelineScopeComponent ? true : false,
-        resolveReference: artCompositionReferenceResolver(compositions)
-      }),
-    [activeTimeline, compositions, timelineRootComponent, timelineScopeComponent]
+    () => effectiveArtVisibilityTimeline(activeTimeline),
+    [activeTimeline]
   );
   const baseTimelineFrameOverrides = useMemo(() => {
     if (effectiveActiveTimeline.tracks.length === 0) return null;
@@ -510,13 +500,13 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const commitSelectedTimelineFrameProps = (patch: TimelineProperties) => {
     if (!selectedComponent || !selectedTimelineEditTargetId || !composition) return;
     const nextTimeline = upsertTimelineKeyframeProps(
-      selectedComponent.timeline || null,
+      activeTimeline,
       selectedTimelineEditTargetId,
       timelinePreviewFrame,
       patch,
-      { defaultEasing: "hold", rootComponent: selectedComponent }
+      { defaultEasing: "hold", rootComponent: timelineRootComponent || compositionTimelineTargetRoot(composition) }
     );
-    controller.updateComponent(selectedComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
+    controller.updateComposition(composition.id, { timeline: nextTimeline });
     setTimelinePreview((current) =>
       composition
         ? {
@@ -529,18 +519,19 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   };
   const commitTimelineFramePropsForComponents = (componentsToUpdate: ArtComponent[], patch: TimelineProperties) => {
     if (!composition) return;
+    let nextTimeline = activeTimeline;
     for (const targetComponent of componentsToUpdate) {
       const targetId = componentTimelineLocalTargetId(targetComponent);
       if (!targetId) continue;
-      const nextTimeline = upsertTimelineKeyframeProps(
-        targetComponent.timeline || null,
+      nextTimeline = upsertTimelineKeyframeProps(
+        nextTimeline,
         targetId,
         timelinePreviewFrame,
         patch,
-        { defaultEasing: "hold", rootComponent: targetComponent }
+        { defaultEasing: "hold", rootComponent: timelineRootComponent || compositionTimelineTargetRoot(composition) }
       );
-      controller.updateComponent(targetComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
     }
+    controller.updateComposition(composition.id, { timeline: nextTimeline });
     setTimelinePreview((current) =>
       composition
         ? {
@@ -565,16 +556,19 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     return Number.isFinite(numberValue) ? numberValue : fallback;
   };
   const commitCanvasComponentPatch = (component: ArtComponent, patch: TimelineProperties): void => {
+    const componentTrack = effectiveActiveTimeline.tracks.find((track) => track.targetId === component.id);
+    const currentKeyframe = componentTrack?.keyframes.find((keyframe) => keyframe.frame === timelinePreviewFrame);
     const shouldCommitToTimeline = Boolean(
       composition &&
         selectedComponentIds.has(component.id) &&
         selectedComponent?.id === component.id &&
         selectedTimelineEditTargetId
     );
-    if (!shouldCommitToTimeline) {
+    if (!shouldCommitToTimeline || !componentTrack) {
       controller.updateComponent(component.id, patch as Partial<ArtComponent>);
       return;
     }
+    if (!currentKeyframe) return;
     commitSelectedTimelineFrameProps(patch);
   };
   const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
@@ -597,12 +591,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         return;
       }
     }
-    if (!componentHasNestedTimelineTargets(component, compositionById)) return;
-    setTimelineScope({ compositionId: composition.id, componentId: component.id });
-    controller.selectComponent(component.id, false);
-    setTimelinePreview((current) =>
-      current?.compositionId === composition.id ? { ...current, overrides: null } : { compositionId: composition.id, frame: 0, overrides: null }
-    );
+    return;
   };
   const dismissTimelineContext = useCallback(() => {
     setTimelineDismissSignal((value) => value + 1);
@@ -960,6 +949,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                   type="text"
                   key={`${composition.id}-composition-name`}
                   defaultValue={composition.name}
+                  disabled={Boolean(migrationSummary)}
                   data-art-composition-field="name"
                   onBlur={(event) => updateComposition({ name: event.target.value })}
                 />
@@ -968,6 +958,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                 <span>Type</span>
                 <select
                   value={normalizeArtCompositionKind(composition.compositionKind)}
+                  disabled={Boolean(migrationSummary)}
                   data-art-composition-field="compositionKind"
                   onChange={(event) => updateComposition({ compositionKind: event.target.value })}
                 >
@@ -984,24 +975,44 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           )}
           <span data-art-compositions-status>{dirty ? "Unsaved changes" : "Saved"}</span>
         </div>
-        <div className="flow-editor-controls">
-          <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
+      <div className="flow-editor-controls">
+          <button type="button" disabled={!canUndo || Boolean(migrationSummary)} onClick={() => controller.undo()}>
             Undo
           </button>
-          <button type="button" disabled={!canRedo} onClick={() => controller.redo()}>
+          <button type="button" disabled={!canRedo || Boolean(migrationSummary)} onClick={() => controller.redo()}>
             Redo
           </button>
-          <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
+          <button
+            type="button"
+            disabled={!dirty || saving}
+            onClick={() => {
+              if (
+                migrationSummary &&
+                !window.confirm(
+                  `Migrate ${migrationSummary.compositionCount} Art Manager compositions? This permanently removes ${migrationSummary.removedTrackCount} tracks and ${migrationSummary.removedKeyframeCount} keyframes. Labels and commands are preserved.`
+                )
+              ) return;
+              void controller.save();
+            }}
+          >
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
+      {migrationSummary ? (
+        <div className="flow-react-panel" data-art-migration-summary role="status">
+          <strong>Timeline architecture migration ready</strong>
+          <span>
+            {migrationSummary.compositionCount} compositions · {migrationSummary.removedTrackCount} tracks · {migrationSummary.removedKeyframeCount} keyframes will be removed. Save once to commit the clean timeline architecture.
+          </span>
+        </div>
+      ) : null}
 
       <div className="art-studio-layout">
         <section className="art-preview-panel" data-art-react-component="canvas">
           <div className="flow-editor-controls">
             {creatableComponentKinds.map((kind) => (
-              <button type="button" data-art-add-component={kind} key={kind} onClick={() => controller.addComponent(kind)}>
+              <button type="button" disabled={Boolean(migrationSummary)} data-art-add-component={kind} key={kind} onClick={() => controller.addComponent(kind)}>
                 Add {ADD_COMPONENT_LABELS[kind] || kind}
               </button>
             ))}
@@ -1118,13 +1129,12 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             displayTimeline={effectiveActiveTimeline}
             component={timelineRootComponent || compositionTimelineTargetRoot(composition)}
             compositions={compositions}
-            includeRootTarget={timelineScopeComponent ? true : false}
-            scopeRootPath={timelineScopeComponent ? true : false}
+            includeRootTarget={false}
+            scopeRootPath={false}
             onChange={(timeline) => {
-              if (timelineScopeComponent) controller.updateComponent(timelineScopeComponent.id, { timeline } as Partial<ArtComponent>);
-              else controller.updateComposition(composition.id, { timeline });
+              controller.updateComposition(composition.id, { timeline });
             }}
-            onExitScope={timelineScopeComponent ? () => setTimelineScope(null) : undefined}
+            onExitScope={timelineNavigationStack.length ? exitTimelineScopeOneLevel : undefined}
             onPreviewFrame={previewTimelineFrame}
             dismissSelectionSignal={timelineDismissSignal}
             onCommandOverlayChange={setTimelineCommandOverlay}
@@ -1350,6 +1360,18 @@ function ArtComponentInspector({
           />
         </label>
       ) : null}
+      {!isMultiSelect ? (
+        <label className="flow-react-field" data-art-field="instanceLabel">
+          <span>Instance Label</span>
+          <input
+            type="text"
+            key={`${primaryComponent.id}-instance-label-${primaryComponent.instanceLabel || ""}`}
+            defaultValue={String(primaryComponent.instanceLabel || "")}
+            data-art-component-field="instanceLabel"
+            onBlur={(event) => commitBase({ instanceLabel: event.target.value } as Partial<ArtComponent>)}
+          />
+        </label>
+      ) : null}
       {SCALAR_FIELDS.map((field) => numberField(field.key, field.label))}
       {numberField("scale", "Scale", "0.01")}
       {numberField("rotation", "Rotation", "0.1")}
@@ -1462,7 +1484,7 @@ function ArtTimelineCommandOverlay({ overlay }: { overlay: TimelineCommandOverla
         <span>Actions · Frame {overlay.frame}</span>
         <textarea
           value={overlay.draft}
-          placeholder={'stop();\ngotoAndPlay("appear");'}
+          placeholder={'stop();\ngotoAndPlay("Appear");'}
           spellCheck={false}
           onChange={(event) => overlay.onDraftChange(event.target.value)}
           onBlur={overlay.onCommit}
@@ -1600,16 +1622,16 @@ function ArtTimelinePanel({
     (selectedLabelFrame !== null ? selectedLabelFrameLabel?.name : selectedFrameLabels[0]?.name) || "";
   const animationNameIsEditable = selectedTimelineCell.kind === "label";
   const keyframeTargets = useMemo(
-    () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: true, scopeRootPath, resolveReference }),
-    [component, includeRootTarget, scopeRootPath, resolveReference]
+    () => timelineTargetOptionsFor(component, { includeRoot: includeRootTarget, useScopedIds: false, scopeRootPath }),
+    [component, includeRootTarget, scopeRootPath]
   );
   const timelineTrackRows = useMemo(() => {
-    return timelineTrackRowsFor(current, component, { includeRoot: includeRootTarget, useScopedIds: true, scopeRootPath, resolveReference });
-  }, [component, current, includeRootTarget, resolveReference, scopeRootPath]);
+    return timelineTrackRowsFor(current, component, { includeRoot: includeRootTarget, useScopedIds: false, scopeRootPath });
+  }, [component, current, includeRootTarget, scopeRootPath]);
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
     : keyframeTargets[0]?.id || component?.id || "";
-  const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId, { scopeRootPath, resolveReference }) : undefined;
+  const activeKeyframeTarget = component && activeKeyframeTargetId ? findTimelineTargetComponent([component], activeKeyframeTargetId, { scopeRootPath }) : undefined;
   function componentWithTimelineTargetId(target: ArtComponent, targetId: string): ArtComponent {
     return target.id === targetId ? target : { ...target, id: targetId };
   }
@@ -1960,12 +1982,17 @@ function ArtTimelinePanel({
       setCommandScriptError(result.error);
       return false;
     }
-    const nextTimeline = replaceTimelineCommandsAtFrame(current, selectedCommandFrame, result.commands);
+    const normalizedCommands = result.commands.map((command) => {
+      if ((command.type !== "playComponent" && command.type !== "stopComponent") || !command.target || !component) return command;
+      const target = findTimelineTargetComponent([component], command.target, { scopeRootPath: false });
+      return target?.kind === "reference" ? { ...command, target: target.id } : command;
+    });
+    const nextTimeline = replaceTimelineCommandsAtFrame(current, selectedCommandFrame, normalizedCommands);
     onChange(nextTimeline);
     setSelectedKeyframe(null);
     const commands = timelineCommandsAtFrame(nextTimeline, selectedCommandFrame);
     setSelectedMarker(commands[0] ? commandMarkerSelection(commands[0].command, commands[0].index) : null);
-    const nextDraft = timelineActionScriptForFrame(nextTimeline, selectedCommandFrame, commands.map(({ command }) => command));
+    const nextDraft = timelineActionScriptForFrame(nextTimeline, selectedCommandFrame, commands.map(({ command }) => command), component);
     setCommandScriptDraft(nextDraft);
     setCommandScriptInitialDraft(nextDraft);
     setCommandScriptError("");
@@ -1999,14 +2026,15 @@ function ArtTimelinePanel({
         const nextDraft = timelineActionScriptForFrame(
           current,
           selectedCommandFrame,
-          selectedCommandFrameCommands.map(({ command }) => command)
+          selectedCommandFrameCommands.map(({ command }) => command),
+          component
         );
         setCommandScriptDraft(nextDraft);
         setCommandScriptInitialDraft(nextDraft);
         setCommandScriptError("");
       }
     });
-  }, [commandScriptDraft, commandScriptError, current, onCommandOverlayChange, selectedCommandFrame, selectedCommandFrameCommands]);
+  }, [commandScriptDraft, commandScriptError, component, current, onCommandOverlayChange, selectedCommandFrame, selectedCommandFrameCommands]);
 
   function applyTimelineFrameEdit(nextTimeline: TimelineDocument, nextFrame = cleanFrame): void {
     stopPlayback();
@@ -2204,7 +2232,7 @@ function ArtTimelinePanel({
 
   function selectCommandFrame(commands: { command: TimelineCommand; index: number }[], commandFrame: number): void {
     selectTimelineCell({ kind: "command", frame: commandFrame });
-    const nextDraft = timelineActionScriptForFrame(current, commandFrame, commands.map(({ command }) => command));
+    const nextDraft = timelineActionScriptForFrame(current, commandFrame, commands.map(({ command }) => command), component);
     setCommandScriptDraft(nextDraft);
     setCommandScriptInitialDraft(nextDraft);
     setCommandScriptError("");

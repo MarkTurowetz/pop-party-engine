@@ -853,8 +853,8 @@ describe("artTimelineModel", () => {
 
   it("creates a default visibility timeline with known animation labels", () => {
     const timeline = defaultArtVisibilityTimeline();
-    expect(timeline.labels.map((label) => label.name)).toContain("appear");
-    expect(timeline.labels.map((label) => label.name)).toContain("disappear");
+    expect(timeline.labels.map((label) => label.name)).toContain("Appear");
+    expect(timeline.labels.map((label) => label.name)).toContain("Disappear");
     expect(timeline.commands.some((command) => command.type === "stop")).toBe(true);
   });
 
@@ -874,7 +874,7 @@ describe("artTimelineModel", () => {
     });
     expect(timeline.frameCount).toBeGreaterThan(3);
     expect(timeline.labels).toEqual(expect.arrayContaining([{ name: "appear", frame: 1 }, { name: "custom-pop", frame: 2 }]));
-    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "update", "disappear"]));
+    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Park", "On", "Update", "Disappear"]));
     expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 2, type: "emit", target: "title", event: "pop" }]));
     expect(timeline.commands.filter((command) => command.frame === 0 && command.type === "stop")).toHaveLength(1);
     expect(timeline.tracks).toEqual([{ targetId: "title", keyframes: [{ frame: 2, props: { scale: 1.25 } }] }]);
@@ -906,7 +906,7 @@ describe("artTimelineModel", () => {
 
   it("uses default visibility timelines while preserving authored timeline data", () => {
     const missing = effectiveArtVisibilityTimeline(null, { id: "title" } as ArtComponent);
-    expect(missing.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
+    expect(missing.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Park", "On", "Appear", "Update", "Disappear"]));
     expect(missing.commands).toEqual(expect.arrayContaining([{ frame: 0, type: "setVisible", target: "false" }]));
     expect(missing.tracks.find((track) => track.targetId === "title")?.keyframes.some((keyframe) => keyframe.frame === 0 && keyframe.props.opacity === 1 && keyframe.props.visible === undefined)).toBe(true);
 
@@ -917,7 +917,7 @@ describe("artTimelineModel", () => {
       commands: [{ frame: 0, type: "stop" }],
       tracks: []
     });
-    expect(authored.labels).toEqual(expect.arrayContaining([{ name: "custom", frame: 0 }, { name: "appear", frame: 4 }]));
+    expect(authored.labels).toEqual(expect.arrayContaining([{ name: "custom", frame: 0 }, { name: "Appear", frame: 4 }]));
     expect(authored.commands).toEqual(expect.arrayContaining([{ frame: 0, type: "stop" }]));
   });
 });

@@ -37,8 +37,10 @@ function componentTargetAliases(component: ArtComponent): Set<string> {
   const aliases = new Set<string>();
   const componentId = String(component.id || "").trim();
   const componentName = String(component.name || "").trim();
+  const instanceLabel = String(component.instanceLabel || "").trim();
   if (componentId) aliases.add(componentId);
   if (componentName) aliases.add(componentName);
+  if (instanceLabel) aliases.add(instanceLabel);
   return aliases;
 }
 

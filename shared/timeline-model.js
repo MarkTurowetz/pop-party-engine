@@ -4,12 +4,14 @@ exports.timelineCommandAcceptsTarget = timelineCommandAcceptsTarget;
 exports.timelineCommandAcceptsEvent = timelineCommandAcceptsEvent;
 exports.normalizeTimeline = normalizeTimeline;
 exports.hasTimelineLabel = hasTimelineLabel;
+exports.tryFrameForTimelineLabel = tryFrameForTimelineLabel;
 exports.frameForTimelineLabel = frameForTimelineLabel;
 exports.timelineStopFrame = timelineStopFrame;
 exports.timelineSegmentFor = timelineSegmentFor;
 exports.timelinePlaybackDuration = timelinePlaybackDuration;
 exports.defaultVisibilityTimeline = defaultVisibilityTimeline;
 exports.timelineWithDefaultVisibility = timelineWithDefaultVisibility;
+const lifecycle_labels_1 = require("./lifecycle-labels");
 const DEFAULT_FPS = 30;
 const DEFAULT_FRAME_COUNT = 1;
 const MAX_FRAME_COUNT = 60 * 60 * 10;
@@ -129,7 +131,8 @@ function normalizeTimeline(raw, fallback = null) {
     return normalizeOffAnimationVisibility({ fps, frameCount, labels, commands, tracks });
 }
 function normalizeOffAnimationVisibility(timeline) {
-    const offFrames = new Set(timeline.labels.filter((label) => label.name.toLowerCase() === "off").map((label) => label.frame));
+    const offMatch = (0, lifecycle_labels_1.uniqueTimelineLabelMatch)(timeline.labels, lifecycle_labels_1.lifecycleLabels.off);
+    const offFrames = new Set(offMatch ? [offMatch.frame] : []);
     if (offFrames.size === 0)
         return timeline;
     const commands = [
@@ -161,13 +164,15 @@ function normalizeOffAnimationVisibility(timeline) {
     return { ...timeline, commands, tracks };
 }
 function hasTimelineLabel(timeline, label) {
-    return Boolean(timeline?.labels.some((entry) => entry.name === label));
+    return Boolean(timeline && (0, lifecycle_labels_1.uniqueTimelineLabelMatch)(timeline.labels, label));
 }
-function frameForTimelineLabel(timeline, labelOrFrame) {
+function tryFrameForTimelineLabel(timeline, labelOrFrame) {
     if (typeof labelOrFrame === "number")
         return cleanFrame(labelOrFrame, 0, Math.max(0, timeline.frameCount - 1));
-    const label = timeline.labels.find((entry) => entry.name === labelOrFrame);
-    return label ? label.frame : 0;
+    return (0, lifecycle_labels_1.uniqueTimelineLabelMatch)(timeline.labels, labelOrFrame)?.frame ?? null;
+}
+function frameForTimelineLabel(timeline, labelOrFrame) {
+    return tryFrameForTimelineLabel(timeline, labelOrFrame) ?? 0;
 }
 function timelineStopFrame(timeline, startFrame) {
     const maxFrame = Math.max(0, timeline.frameCount - 1);
@@ -252,12 +257,12 @@ function defaultVisibilityTimeline(durations) {
         fps,
         frameCount,
         labels: [
-            { name: "park", frame: park },
-            { name: "off", frame: park },
-            { name: "on", frame: on },
-            { name: "appear", frame: appear },
-            { name: "update", frame: update },
-            { name: "disappear", frame: disappear }
+            { name: lifecycle_labels_1.lifecycleLabels.park, frame: park },
+            { name: lifecycle_labels_1.lifecycleLabels.off, frame: park },
+            { name: lifecycle_labels_1.lifecycleLabels.on, frame: on },
+            { name: lifecycle_labels_1.lifecycleLabels.appear, frame: appear },
+            { name: lifecycle_labels_1.lifecycleLabels.update, frame: update },
+            { name: lifecycle_labels_1.lifecycleLabels.disappear, frame: disappear }
         ],
         commands: [
             { frame: park, type: "stop" },
@@ -305,16 +310,16 @@ function mergeDefaultVisibilityTrack(timeline, defaults, targetId) {
     const cleanTargetId = String(targetId || "").trim();
     if (!cleanTargetId)
         return timeline;
-    const appearFrame = defaultVisibilityLabelFrame(defaults, "appear");
+    const appearFrame = defaultVisibilityLabelFrame(defaults, lifecycle_labels_1.lifecycleLabels.appear);
     const appearStopFrame = timelineStopFrame(defaults, appearFrame);
-    const updateFrame = defaultVisibilityLabelFrame(defaults, "update");
+    const updateFrame = defaultVisibilityLabelFrame(defaults, lifecycle_labels_1.lifecycleLabels.update);
     const updateStopFrame = timelineStopFrame(defaults, updateFrame);
-    const disappearFrame = defaultVisibilityLabelFrame(defaults, "disappear");
+    const disappearFrame = defaultVisibilityLabelFrame(defaults, lifecycle_labels_1.lifecycleLabels.disappear);
     const disappearStopFrame = timelineStopFrame(defaults, disappearFrame);
     const existingTrack = timeline.tracks.find((track) => track.targetId === cleanTargetId);
     let nextTrack = existingTrack || { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [] };
-    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, "park"), { opacity: 0, visible: false }, "hold");
-    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, "on"), { opacity: 1, visible: true }, "hold");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, lifecycle_labels_1.lifecycleLabels.park), { opacity: 0, visible: false }, "hold");
+    nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, lifecycle_labels_1.lifecycleLabels.on), { opacity: 1, visible: true }, "hold");
     nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, appearFrame, { opacity: 0, visible: true }, "easeOut");
     nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, appearStopFrame, { opacity: 1, visible: true }, "hold");
     nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, updateFrame, { opacity: 1, visible: true }, "hold");
@@ -343,9 +348,8 @@ function timelineWithDefaultVisibility(timeline, durations, targetId = "") {
             }))
         }
         : rawDefaults;
-    const existingLabelNames = new Set(current.labels.map((label) => label.name));
     const existingCommandKeys = new Set(current.commands.map(defaultVisibilityCommandKey));
-    const missingDefaultLabels = defaults.labels.filter((label) => !existingLabelNames.has(label.name));
+    const missingDefaultLabels = defaults.labels.filter((label) => !hasTimelineLabel(current, label.name));
     const shouldMergeDefaultCommands = !hasAuthoredContent || missingDefaultLabels.length > 0;
     const withDefaults = {
         ...current,

@@ -127,20 +127,30 @@ describe("playArtTimelinePreview", () => {
   it("plays nested component timelines by instance label", () => {
     const child: ArtComponent = {
       id: "answer-bubble-slot",
-      name: "bubble",
-      kind: "shape",
+      name: "Answer Bubble",
+      instanceLabel: "bubble",
+      kind: "reference",
+      artCompositionId: "answer-bubble"
+    };
+    const referenced: ArtComposition = {
+      id: "answer-bubble",
+      name: "Answer Bubble",
+      surface: "stage",
+      canvas: { width: 100, height: 100 },
+      components: [{ id: "inner", name: "Inner", kind: "shape" }],
       timeline: {
         fps: 10,
         frameCount: 2,
         labels: [{ name: "appear", frame: 0 }],
         commands: [{ frame: 1, type: "stop" }],
-        tracks: [{ targetId: "answer-bubble-slot", keyframes: [{ frame: 0, props: { opacity: 0 } }, { frame: 1, props: { opacity: 1 } }] }]
+        tracks: [{ targetId: "inner", keyframes: [{ frame: 0, props: { opacity: 0 } }, { frame: 1, props: { opacity: 1 } }] }]
       }
     };
     const root: ArtComponent = { id: "root", kind: "container", children: [child] };
     const opacities: unknown[] = [];
     const playback = playArtTimelinePreview({
       component: root,
+      resolveReference: (component) => component.artCompositionId === referenced.id ? referenced : null,
       start: "appear",
       timeline: {
         fps: 10,
@@ -153,7 +163,8 @@ describe("playArtTimelinePreview", () => {
         tracks: []
       },
       onPreview: (_frame, overrides) => {
-        if (overrides.bubble?.opacity !== undefined) opacities.push(overrides.bubble.opacity);
+        const inner = Object.entries(overrides).find(([targetId]) => targetId.endsWith("/inner") || targetId === "inner")?.[1];
+        if (inner?.opacity !== undefined) opacities.push(inner.opacity);
       }
     });
 

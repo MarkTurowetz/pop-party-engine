@@ -55,7 +55,7 @@ type FlowLayoutStateWithVisibility = Partial<LayoutState> & {
 };
 
 const LAYOUT_TEXT_ART_COMPOSITION_ID = "layout-text-field";
-const BASE_ANIMATION_LABELS = ["appear", "disappear", "on", "off", "park", "update"];
+const BASE_ANIMATION_LABELS = ["Appear", "Disappear", "On", "Off", "Park", "Update"];
 const LEGACY_LAYOUT_TEXT_ELEMENT_IDS = new Set([
   "stagetitle",
   "stageintrotitle",

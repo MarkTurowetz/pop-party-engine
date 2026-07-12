@@ -23,6 +23,7 @@ function createRouterRuntime({
   handleReplaceArtAsset,
   handleSaveArtOrganization,
   handleSaveArtComposition,
+  handleSaveArtCompositions,
   handleSaveControllerLayouts,
   handleSaveGameConstants,
   handleSaveGameFlow,
@@ -71,6 +72,13 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/art-organization") {
       handleSaveArtOrganization(req, res).catch((error) => {
+        sendJson(res, 500, { ok: false, error: error.message });
+      });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/art-compositions") {
+      handleSaveArtCompositions(req, res).catch((error) => {
         sendJson(res, 500, { ok: false, error: error.message });
       });
       return;

@@ -1,8 +1,11 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const artComponentSchema = require("../shared/art-component-schema");
 const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
+const { ART_TIMELINE_ARCHITECTURE_VERSION, collectArtArchitectureIssues } = require("../shared/art-timeline-architecture");
+const { canonicalLifecycleLabel } = require("../shared/lifecycle-labels");
 
 function createArtAssetsRuntime({
   acceptedArtTypes,
@@ -23,6 +26,15 @@ function createArtAssetsRuntime({
 }) {
   const knownCompositionIds = new Set(artCompositions.map((composition) => composition.id));
 
+  function manifestRevision(manifest) {
+    return crypto.createHash("sha256").update(JSON.stringify(manifest || {})).digest("hex");
+  }
+
+  function revisionMatches(payload, manifest) {
+    const expected = cleanText(payload?.revision, "", 128);
+    return !expected || expected === manifestRevision(manifest);
+  }
+
   function readArtManifest() {
     try {
       return JSON.parse(fs.readFileSync(manifestFile, "utf8"));
@@ -34,7 +46,16 @@ function createArtAssetsRuntime({
   function writeArtManifest(manifest) {
     fs.mkdirSync(artRoot, { recursive: true });
     fs.mkdirSync(customDir, { recursive: true });
-    fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
+    const body = `${JSON.stringify(manifest, null, 2)}\n`;
+    const tempFile = `${manifestFile}.${process.pid}.${Date.now()}.tmp`;
+    const fd = fs.openSync(tempFile, "w", 0o600);
+    try {
+      fs.writeFileSync(fd, body);
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(tempFile, manifestFile);
   }
 
   async function loadArtManifest() {
@@ -209,6 +230,7 @@ function createArtAssetsRuntime({
     const normalized = {
       id,
       name: cleanText(source.name, base.name || defaultComponentName(kind)),
+      instanceLabel: cleanText(source.instanceLabel, base.instanceLabel || "", 80),
       kind,
       x: cleanNumber(source.x, Number(base.x || 0)),
       y: cleanNumber(source.y, Number(base.y || 0)),
@@ -217,10 +239,9 @@ function createArtAssetsRuntime({
       scale: cleanNumber(source.scale, Number(base.scale || 1), 0.05, 8),
       rotation: cleanNumber(source.rotation, Number(base.rotation || 0), -3600, 3600),
       locked: typeof source.locked === "boolean" ? source.locked : base.locked === true,
-      defaultAnimationState: cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24)
+      defaultAnimationState: canonicalLifecycleLabel(cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24))
+        || cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24)
     };
-    const timeline = normalizeTimeline(source.timeline, base.timeline);
-    if (timeline) normalized.timeline = timeline;
     if (kind === "reference") {
       normalized.artCompositionId = cleanId(source.artCompositionId, base.artCompositionId || "");
     }
@@ -332,6 +353,12 @@ function createArtAssetsRuntime({
       surface: normalizeCompositionSurface(override?.surface || composition.surface),
       compositionKind: normalizeCompositionKind(override?.compositionKind || composition.compositionKind),
       isCustom: Boolean(composition.isCustom || override?.isCustom),
+      timelineArchitectureVersion: cleanNumber(
+        override?.timelineArchitectureVersion,
+        Number(composition.timelineArchitectureVersion || 0),
+        0,
+        ART_TIMELINE_ARCHITECTURE_VERSION
+      ),
       canvas,
       components,
       updatedAt: override?.updatedAt || null
@@ -633,7 +660,8 @@ function createArtAssetsRuntime({
       groups: artGroups,
       assets: artAssets.map((asset) => publicArtAsset(asset, manifest)),
       compositions: allPublicArtCompositions(manifest),
-      organization: normalizeArtOrganization(localDraftStore?.artOrganization || manifest.organization)
+      organization: normalizeArtOrganization(localDraftStore?.artOrganization || manifest.organization),
+      revision: manifestRevision(manifest)
     });
   }
 
@@ -646,11 +674,15 @@ function createArtAssetsRuntime({
       return;
     }
     const manifest = await loadArtManifest();
+    if (!revisionMatches(payload, manifest)) {
+      sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before saving", revision: manifestRevision(manifest) });
+      return;
+    }
     manifest.organization = normalizeArtOrganization(payload.organization || payload);
     const savedManifest = await saveArtManifest(manifest);
     if (localDraftStore) localDraftStore.artOrganization = null;
     onArtAssetsChanged({ type: "organization", updatedAt: new Date().toISOString() });
-    sendJson(res, 200, { ok: true, organization: normalizeArtOrganization(savedManifest.organization) });
+    sendJson(res, 200, { ok: true, organization: normalizeArtOrganization(savedManifest.organization), revision: manifestRevision(savedManifest) });
   }
 
   function normalizeArtCompositionsDraft(source = []) {
@@ -723,6 +755,10 @@ function createArtAssetsRuntime({
     }
 
     const manifest = await loadArtManifest();
+    if (!revisionMatches(payload, manifest)) {
+      sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before saving", revision: manifestRevision(manifest) });
+      return;
+    }
     const incoming = payload.composition || payload;
     const savedDefinition = manifest.compositions?.[safeCompositionId] || null;
     const definition = artCompositions.find((item) => item.id === safeCompositionId) || {
@@ -746,18 +782,87 @@ function createArtAssetsRuntime({
       surface: normalized.surface,
       compositionKind: normalized.compositionKind,
       isCustom: normalized.isCustom,
+      timelineArchitectureVersion: normalized.timelineArchitectureVersion,
       canvas: normalized.canvas,
       components: normalized.components,
       ...(normalized.timeline ? { timeline: normalized.timeline } : {}),
       updatedAt: new Date().toISOString()
     };
+    const validationIssues = collectArtArchitectureIssues(allPublicArtCompositions(manifest));
+    if (validationIssues.length) {
+      sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
+      return;
+    }
     const savedManifest = await saveArtManifest(manifest);
     if (Array.isArray(localDraftStore?.artCompositions)) {
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => composition?.id !== definition.id);
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
     }
     onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: savedManifest.compositions?.[definition.id]?.updatedAt || manifest.compositions[definition.id].updatedAt });
-    sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, savedManifest) });
+    sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, savedManifest), revision: manifestRevision(savedManifest) });
+  }
+
+  async function handleSaveArtCompositions(req, res) {
+    let payload;
+    try {
+      payload = await readJson(req, 32 * 1024 * 1024);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+      return;
+    }
+    if (!Array.isArray(payload.compositions) || !payload.compositions.length) {
+      sendJson(res, 400, { ok: false, error: "Art compositions are required" });
+      return;
+    }
+    const manifest = await loadArtManifest();
+    if (!revisionMatches(payload, manifest)) {
+      sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before saving", revision: manifestRevision(manifest) });
+      return;
+    }
+    let normalized;
+    try {
+      normalized = normalizeArtCompositionsDraft(payload.compositions);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message });
+      return;
+    }
+    const candidate = JSON.parse(JSON.stringify(manifest));
+    candidate.compositions = candidate.compositions && typeof candidate.compositions === "object" ? candidate.compositions : {};
+    const updatedAt = new Date().toISOString();
+    for (const composition of normalized) {
+      candidate.deletedCompositionIds = Array.isArray(candidate.deletedCompositionIds)
+        ? candidate.deletedCompositionIds.filter((id) => cleanId(id) !== composition.id)
+        : [];
+      candidate.compositions[composition.id] = {
+        name: composition.name,
+        description: composition.description,
+        surface: composition.surface,
+        compositionKind: composition.compositionKind,
+        isCustom: composition.isCustom,
+        timelineArchitectureVersion: composition.timelineArchitectureVersion,
+        canvas: composition.canvas,
+        components: composition.components,
+        ...(composition.timeline ? { timeline: composition.timeline } : {}),
+        updatedAt
+      };
+    }
+    const validationIssues = collectArtArchitectureIssues(allPublicArtCompositions(candidate));
+    if (validationIssues.length) {
+      sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
+      return;
+    }
+    const savedManifest = await saveArtManifest(candidate);
+    if (Array.isArray(localDraftStore?.artCompositions)) {
+      const savedIds = new Set(normalized.map((composition) => composition.id));
+      localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => !savedIds.has(composition?.id));
+      if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
+    }
+    onArtAssetsChanged({ type: "composition-batch", ids: normalized.map((composition) => composition.id), updatedAt });
+    sendJson(res, 200, {
+      ok: true,
+      compositions: normalized.map((composition) => publicArtComposition(composition, savedManifest)),
+      revision: manifestRevision(savedManifest)
+    });
   }
 
   async function handleDeleteArtComposition(req, res, compositionId) {
@@ -768,6 +873,12 @@ function createArtAssetsRuntime({
     }
 
     const manifest = await loadArtManifest();
+    const requestUrl = new URL(req.url || "", "http://localhost");
+    const revision = requestUrl.searchParams.get("revision") || "";
+    if (revision && revision !== manifestRevision(manifest)) {
+      sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before deleting", revision: manifestRevision(manifest) });
+      return;
+    }
     manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
     delete manifest.compositions[safeCompositionId];
     const deletedIds = deletedCompositionIds(manifest);
@@ -779,7 +890,7 @@ function createArtAssetsRuntime({
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
     }
     onArtAssetsChanged({ type: "composition-delete", id: safeCompositionId, updatedAt: new Date().toISOString() });
-    sendJson(res, 200, { ok: true, compositions: allPublicArtCompositions(savedManifest) });
+    sendJson(res, 200, { ok: true, compositions: allPublicArtCompositions(savedManifest), revision: manifestRevision(savedManifest) });
   }
 
   async function handleReplaceArtAsset(req, res, assetId) {
@@ -822,20 +933,16 @@ function createArtAssetsRuntime({
 
     fs.mkdirSync(customDir, { recursive: true });
     const manifest = await loadArtManifest();
-    const previousFile = manifest[asset.id]?.fileName;
-    if (previousFile) {
-      const previousPath = path.join(customDir, path.basename(previousFile));
-      if (fs.existsSync(previousPath)) {
-        try {
-          fs.unlinkSync(previousPath);
-        } catch (error) {
-          // A stale file is harmless; keep saving the new active asset.
-        }
-      }
+    if (!revisionMatches(payload, manifest)) {
+      sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before saving", revision: manifestRevision(manifest) });
+      return;
     }
-
-    const savedFileName = `${asset.id}${expectedExt}`;
-    fs.writeFileSync(path.join(customDir, savedFileName), buffer);
+    const previousFile = manifest[asset.id]?.fileName;
+    const savedFileName = `${asset.id}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}${expectedExt}`;
+    const savedFilePath = path.join(customDir, savedFileName);
+    const stagedFilePath = `${savedFilePath}.tmp`;
+    fs.writeFileSync(stagedFilePath, buffer, { mode: 0o600 });
+    fs.renameSync(stagedFilePath, savedFilePath);
     const updatedAt = new Date().toISOString();
     manifest[asset.id] = {
       fileName: savedFileName,
@@ -843,13 +950,23 @@ function createArtAssetsRuntime({
       mimeType,
       updatedAt
     };
-    const savedManifest = await saveArtManifest(manifest);
+    let savedManifest;
+    try {
+      savedManifest = await saveArtManifest(manifest);
+    } catch (error) {
+      try { fs.unlinkSync(savedFilePath); } catch (cleanupError) { /* Best-effort rollback of a staged replacement. */ }
+      throw error;
+    }
+    if (previousFile && previousFile !== savedFileName) {
+      const previousPath = path.join(customDir, path.basename(previousFile));
+      try { if (fs.existsSync(previousPath)) fs.unlinkSync(previousPath); } catch (error) { /* Stale inactive files are harmless. */ }
+    }
     if (localDraftStore?.artAssetReplacements) {
       delete localDraftStore.artAssetReplacements[asset.id];
       if (!Object.keys(localDraftStore.artAssetReplacements).length) localDraftStore.artAssetReplacements = null;
     }
     onArtAssetsChanged({ type: "asset", id: asset.id, updatedAt });
-    sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, savedManifest) });
+    sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, savedManifest), revision: manifestRevision(savedManifest) });
   }
 
   function serveArtFile(res, kind, fileName) {
@@ -878,6 +995,7 @@ function createArtAssetsRuntime({
     handleDeleteArtComposition,
     handleSaveArtOrganization,
     handleSaveArtComposition,
+    handleSaveArtCompositions,
     handleReplaceArtAsset,
     normalizeArtAssetReplacementsDraft,
     normalizeArtCompositionsDraft,

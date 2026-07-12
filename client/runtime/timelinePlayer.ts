@@ -1,5 +1,6 @@
 import {
   frameForTimelineLabel,
+  hasTimelineLabel,
   normalizeTimeline,
   timelinePlaybackDuration,
   type TimelineCommand,
@@ -135,7 +136,7 @@ export class TimelinePlayer {
   }
 
   hasLabel(label: string): boolean {
-    return Boolean(this.timeline?.labels.some((entry) => entry.name === label));
+    return hasTimelineLabel(this.timeline, label);
   }
 
   stop(): void {
@@ -233,6 +234,10 @@ export class TimelinePlayer {
       options.complete?.();
       return 0;
     }
+    if (typeof labelOrFrame === "string" && !this.hasLabel(labelOrFrame)) {
+      options.complete?.();
+      return 0;
+    }
     const frame = frameForTimelineLabel(this.timeline, labelOrFrame);
     const duration = this.durationForFrameCommands(frame, commandCount);
     const stopToken = this.token;
@@ -287,6 +292,10 @@ export class TimelinePlayer {
   private gotoAndPlayInternal(labelOrFrame: string | number, options: TimelinePlayOptions = {}, commandCount = 0): number {
     this.stop();
     if (!this.timeline) {
+      options.complete?.();
+      return 0;
+    }
+    if (typeof labelOrFrame === "string" && !this.hasLabel(labelOrFrame)) {
       options.complete?.();
       return 0;
     }

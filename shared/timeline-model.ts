@@ -1,3 +1,5 @@
+import { lifecycleLabels, uniqueTimelineLabelMatch } from "./lifecycle-labels";
+
 export type TimelinePrimitive = string | number | boolean | null;
 export type TimelinePropertyValue = TimelinePrimitive;
 export type TimelineProperties = Record<string, TimelinePropertyValue>;
@@ -170,7 +172,8 @@ export function normalizeTimeline(raw: unknown, fallback: unknown = null): Timel
 }
 
 function normalizeOffAnimationVisibility(timeline: TimelineDocument): TimelineDocument {
-  const offFrames = new Set(timeline.labels.filter((label) => label.name.toLowerCase() === "off").map((label) => label.frame));
+  const offMatch = uniqueTimelineLabelMatch(timeline.labels, lifecycleLabels.off);
+  const offFrames = new Set(offMatch ? [offMatch.frame] : []);
   if (offFrames.size === 0) return timeline;
 
   const commands = [
@@ -203,13 +206,16 @@ function normalizeOffAnimationVisibility(timeline: TimelineDocument): TimelineDo
 }
 
 export function hasTimelineLabel(timeline: TimelineDocument | null | undefined, label: string): boolean {
-  return Boolean(timeline?.labels.some((entry) => entry.name === label));
+  return Boolean(timeline && uniqueTimelineLabelMatch(timeline.labels, label));
+}
+
+export function tryFrameForTimelineLabel(timeline: TimelineDocument, labelOrFrame: string | number): number | null {
+  if (typeof labelOrFrame === "number") return cleanFrame(labelOrFrame, 0, Math.max(0, timeline.frameCount - 1));
+  return uniqueTimelineLabelMatch(timeline.labels, labelOrFrame)?.frame ?? null;
 }
 
 export function frameForTimelineLabel(timeline: TimelineDocument, labelOrFrame: string | number): number {
-  if (typeof labelOrFrame === "number") return cleanFrame(labelOrFrame, 0, Math.max(0, timeline.frameCount - 1));
-  const label = timeline.labels.find((entry) => entry.name === labelOrFrame);
-  return label ? label.frame : 0;
+  return tryFrameForTimelineLabel(timeline, labelOrFrame) ?? 0;
 }
 
 export function timelineStopFrame(timeline: TimelineDocument, startFrame: number): number {
@@ -311,12 +317,12 @@ export function defaultVisibilityTimeline(durations: Record<string, number>): Ti
     fps,
     frameCount,
     labels: [
-      { name: "park", frame: park },
-      { name: "off", frame: park },
-      { name: "on", frame: on },
-      { name: "appear", frame: appear },
-      { name: "update", frame: update },
-      { name: "disappear", frame: disappear }
+      { name: lifecycleLabels.park, frame: park },
+      { name: lifecycleLabels.off, frame: park },
+      { name: lifecycleLabels.on, frame: on },
+      { name: lifecycleLabels.appear, frame: appear },
+      { name: lifecycleLabels.update, frame: update },
+      { name: lifecycleLabels.disappear, frame: disappear }
     ],
     commands: [
       { frame: park, type: "stop" },
@@ -372,16 +378,16 @@ function mergeDefaultVisibilityKeyframeProps(
 function mergeDefaultVisibilityTrack(timeline: TimelineDocument, defaults: TimelineDocument, targetId: string): TimelineDocument {
   const cleanTargetId = String(targetId || "").trim();
   if (!cleanTargetId) return timeline;
-  const appearFrame = defaultVisibilityLabelFrame(defaults, "appear");
+  const appearFrame = defaultVisibilityLabelFrame(defaults, lifecycleLabels.appear);
   const appearStopFrame = timelineStopFrame(defaults, appearFrame);
-  const updateFrame = defaultVisibilityLabelFrame(defaults, "update");
+  const updateFrame = defaultVisibilityLabelFrame(defaults, lifecycleLabels.update);
   const updateStopFrame = timelineStopFrame(defaults, updateFrame);
-  const disappearFrame = defaultVisibilityLabelFrame(defaults, "disappear");
+  const disappearFrame = defaultVisibilityLabelFrame(defaults, lifecycleLabels.disappear);
   const disappearStopFrame = timelineStopFrame(defaults, disappearFrame);
   const existingTrack = timeline.tracks.find((track) => track.targetId === cleanTargetId);
   let nextTrack: TimelineTrack = existingTrack || { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [] };
-  nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, "park"), { opacity: 0, visible: false }, "hold");
-  nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, "on"), { opacity: 1, visible: true }, "hold");
+  nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, lifecycleLabels.park), { opacity: 0, visible: false }, "hold");
+  nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, defaultVisibilityLabelFrame(defaults, lifecycleLabels.on), { opacity: 1, visible: true }, "hold");
   nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, appearFrame, { opacity: 0, visible: true }, "easeOut");
   nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, appearStopFrame, { opacity: 1, visible: true }, "hold");
   nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, updateFrame, { opacity: 1, visible: true }, "hold");
@@ -416,9 +422,8 @@ export function timelineWithDefaultVisibility(
           }))
         }
       : rawDefaults;
-  const existingLabelNames = new Set(current.labels.map((label) => label.name));
   const existingCommandKeys = new Set(current.commands.map(defaultVisibilityCommandKey));
-  const missingDefaultLabels = defaults.labels.filter((label) => !existingLabelNames.has(label.name));
+  const missingDefaultLabels = defaults.labels.filter((label) => !hasTimelineLabel(current, label.name));
   const shouldMergeDefaultCommands = !hasAuthoredContent || missingDefaultLabels.length > 0;
   const withDefaults = {
     ...current,

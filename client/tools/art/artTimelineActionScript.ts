@@ -89,7 +89,7 @@ function parseScriptStatement(statement: string): ScriptCommand | string {
   const memberLabel = statement.match(MEMBER_LABEL_PATTERN);
   if (memberLabel) return memberCommandFor(memberLabel[1], memberLabel[2], cleanLooseLabel(memberLabel[3]));
   const call = statement.match(/^([a-zA-Z_$][\w$]*)\s*\((.*)\)$/);
-  if (!call) return `Use function-call syntax, like stop();, gotoAndPlay("appear"), bubble.gotoAndPlay("appear"), or assign visibility with visible = false;`;
+  if (!call) return `Use function-call syntax, like stop();, gotoAndPlay("Appear"), bubble.gotoAndPlay("Appear"), or assign visibility with visible = false;`;
   const type = call[1];
   const rawArgs = call[2].trim();
   const args = parseQuotedArgs(rawArgs);

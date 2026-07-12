@@ -13,6 +13,13 @@ import {
 } from "./artCompositionModel";
 import { componentKindLabel, defaultTextFontFamily, normalizeCreatableComponentKind } from "./artComponentSchema";
 import { mergeDefaultArtVisibilityTimeline } from "./artTimelineModel";
+import {
+  ART_TIMELINE_ARCHITECTURE_VERSION,
+  assignUniqueArtInstanceLabels,
+  migrateArtTimelineArchitecture,
+  suggestedArtInstanceLabel,
+  validArtInstanceLabel
+} from "../../../shared/art-timeline-architecture";
 
 /**
  * Controller for the Art composition editor: a list of compositions, each a nested
@@ -29,6 +36,12 @@ export interface ArtCompositionsEditorState {
   canUndo: boolean;
   canRedo: boolean;
   error: string | null;
+  migrationSummary: {
+    compositionCount: number;
+    removedTrackCount: number;
+    removedKeyframeCount: number;
+    removedComponentTimelineCount: number;
+  } | null;
 }
 
 export interface ArtCompositionsControllerOptions {
@@ -108,6 +121,7 @@ function createComposition(kind: ArtCompositionKind, surface: string, name: stri
     surface: normalizeArtCompositionSurface(surface),
     compositionKind: cleanKind,
     isCustom: true,
+    timelineArchitectureVersion: ART_TIMELINE_ARCHITECTURE_VERSION,
     canvas: { ...DEFAULT_COMPOSITION_CANVAS },
     timeline: mergeDefaultArtVisibilityTimeline(null),
     components: []
@@ -133,6 +147,7 @@ function createComponent(kind: string, bounds: { width: number; height: number }
   const component: Record<string, unknown> = {
     id: makeArtId(cleanKind),
     name: referencePatch?.name || componentKindLabel(cleanKind),
+    instanceLabel: suggestedArtInstanceLabel(referencePatch?.name || componentKindLabel(cleanKind)),
     kind: cleanKind,
     x: Number(bounds.width || 560) / 2,
     y: Number(bounds.height || 230) / 2,
@@ -140,10 +155,8 @@ function createComponent(kind: string, bounds: { width: number; height: number }
     height,
     scale: 1,
     rotation: 0,
-    timeline: null,
     children: []
   };
-  component.timeline = mergeDefaultArtVisibilityTimeline(null, { id: String(component.id || "") });
   if (cleanKind === "reference") {
     component.artCompositionId = String(referencePatch?.artCompositionId || "");
   }
@@ -304,9 +317,26 @@ export function createArtCompositionsController(
 ): ArtCompositionsController {
   const { api } = options;
   const listeners = new Set<() => void>();
-  let compositions = hydrateArtCompositionsForEditing(options.initialCompositions || []);
+  const sourceCompositions = options.initialCompositions || [];
+  const migration = migrateArtTimelineArchitecture(sourceCompositions);
+  let pendingMigrationSummary = migration.migratedCompositionIds.length
+    ? {
+        compositionCount: migration.migratedCompositionIds.length,
+        removedTrackCount: migration.removedTrackCount,
+        removedKeyframeCount: migration.removedKeyframeCount,
+        removedComponentTimelineCount: migration.removedComponentTimelineCount
+      }
+    : null;
+  let compositions = hydrateArtCompositionsForEditing(migration.compositions);
   const savedSnapshots = new Map<string, string>();
-  for (const composition of compositions) savedSnapshots.set(composition.id, artCompositionSnapshot(composition));
+  const migratedIds = new Set(migration.migratedCompositionIds);
+  for (const composition of sourceCompositions) {
+    const hydrated = compositions.find((item) => item.id === composition.id);
+    savedSnapshots.set(
+      composition.id,
+      artCompositionSnapshot(migratedIds.has(composition.id) || !hydrated ? composition : hydrated)
+    );
+  }
   const sessionDraftPublisher = options.postDraft
     ? createSessionDraftPublisher({
         postDraft: options.postDraft,
@@ -330,7 +360,7 @@ export function createArtCompositionsController(
   }
 
   function referencedCompositionFor(composition: ArtComposition, preferredId = ""): ArtComposition | null {
-    const candidates = compositions.filter((item) => item.id !== composition.id);
+    const candidates = compositions.filter((item) => item.id !== composition.id && !referenceWouldCreateCycle(composition.id, item.id));
     if (preferredId) return candidates.find((item) => item.id === preferredId) || null;
     const sameSurface = candidates.filter((item) => normalizeArtCompositionSurface(item.surface) === normalizeArtCompositionSurface(composition.surface));
     return (
@@ -340,6 +370,25 @@ export function createArtCompositionsController(
       candidates[0] ||
       null
     );
+  }
+
+  function referenceWouldCreateCycle(ownerId: string, referencedId: string): boolean {
+    const visit = (compositionId: string, visiting: Set<string>): boolean => {
+      if (compositionId === ownerId) return true;
+      if (visiting.has(compositionId)) return false;
+      const composition = compositions.find((item) => item.id === compositionId);
+      if (!composition) return false;
+      const nextVisiting = new Set([...visiting, compositionId]);
+      const stack = [...(composition.components || [])];
+      while (stack.length) {
+        const component = stack.pop();
+        if (!component) continue;
+        if (component.kind === "reference" && component.artCompositionId && visit(component.artCompositionId, nextVisiting)) return true;
+        stack.push(...(component.children || []));
+      }
+      return false;
+    };
+    return Boolean(referencedId) && visit(referencedId, new Set());
   }
 
   function dirtyIds(): Set<string> {
@@ -361,7 +410,8 @@ export function createArtCompositionsController(
       saving,
       canUndo: undoStack.length > 0,
       canRedo: redoStack.length > 0,
-      error
+      error,
+      migrationSummary: pendingMigrationSummary
     };
   }
 
@@ -386,6 +436,7 @@ export function createArtCompositionsController(
   }
 
   function mutateAll(apply: () => void): void {
+    if (pendingMigrationSummary) return;
     undoStack.push(snapshot());
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
     redoStack.length = 0;
@@ -487,6 +538,17 @@ export function createArtCompositionsController(
 
     addComponent: (kind, options = {}) => {
       let created: ArtComponent | null = null;
+      const selected = selectedComposition();
+      if (
+        selected &&
+        normalizeCreatableComponentKind(kind) === "reference" &&
+        options.referencedCompositionId &&
+        referenceWouldCreateCycle(selected.id, options.referencedCompositionId)
+      ) {
+        error = `Prefab reference would create a cycle: ${selected.id} -> ${options.referencedCompositionId}`;
+        emit();
+        return null;
+      }
       mutateSelected((composition) => {
         const parentId = options.parentComponentId || [...selectedComponentIds][0];
         const parent = parentId ? findComponent(composition.components || [], parentId) : undefined;
@@ -505,6 +567,7 @@ export function createArtCompositionsController(
         } else {
           composition.components = [...(composition.components || []), child];
         }
+        assignUniqueArtInstanceLabels(composition.components);
         selectedComponentIds = new Set([child.id]);
         created = child;
       });
@@ -519,7 +582,29 @@ export function createArtCompositionsController(
       mutateSelected((composition) => {
         const component = findComponent(composition.components || [], componentId);
         if (!component) return;
+        if (Object.prototype.hasOwnProperty.call(patch, "instanceLabel")) {
+          const requested = String(patch.instanceLabel || "").trim();
+          const duplicate = (() => {
+            const stack = [...(composition.components || [])];
+            while (stack.length) {
+              const candidate = stack.pop();
+              if (!candidate) continue;
+              if (candidate.id !== componentId && candidate.instanceLabel === requested) return true;
+              stack.push(...(candidate.children || []));
+            }
+            return false;
+          })();
+          if (!validArtInstanceLabel(requested) || duplicate) {
+            error = `Instance label must be a unique lower-camel identifier. Try ${suggestedArtInstanceLabel(component.name || component.id)}.`;
+            return;
+          }
+          error = null;
+        }
         if (Object.prototype.hasOwnProperty.call(patch, "artCompositionId")) {
+          if (referenceWouldCreateCycle(composition.id, String(patch.artCompositionId || ""))) {
+            error = `Prefab reference would create a cycle: ${composition.id} -> ${String(patch.artCompositionId || "")}`;
+            return;
+          }
           const referenced = referencedCompositionFor(composition, String(patch.artCompositionId || ""));
           Object.assign(component, referenced ? referenceComponentPatch(referenced) : patch);
           return;
@@ -536,6 +621,7 @@ export function createArtCompositionsController(
         }
       }),
     reorderComponent: (componentId, targetComponentId, placement) => {
+      if (pendingMigrationSummary) return;
       const composition = selectedComposition();
       if (!composition) return;
       const sourceGroup = findSiblingGroup(composition.components || [], componentId);
@@ -553,6 +639,7 @@ export function createArtCompositionsController(
     },
 
     undo: () => {
+      if (pendingMigrationSummary) return;
       const previous = undoStack.pop();
       if (!previous) return;
       redoStack.push(snapshot());
@@ -562,6 +649,7 @@ export function createArtCompositionsController(
       scheduleDraft();
     },
     redo: () => {
+      if (pendingMigrationSummary) return;
       const next = redoStack.pop();
       if (!next) return;
       undoStack.push(snapshot());
@@ -580,6 +668,24 @@ export function createArtCompositionsController(
       error = null;
       emit();
       try {
+        if (pendingMigrationSummary && api.saveArtCompositions) {
+          const payloads = [...dirty]
+            .map((id) => compositions.find((item) => item.id === id))
+            .filter((composition): composition is ArtComposition => Boolean(composition))
+            .map(serializeArtCompositionForSave);
+          const response = await api.saveArtCompositions(payloads);
+          for (const savedPayload of response.compositions) {
+            const saved = hydrateArtCompositionForEditing(savedPayload);
+            const index = compositions.findIndex((item) => item.id === saved.id);
+            if (index >= 0) compositions[index] = saved;
+            savedSnapshots.set(saved.id, artCompositionSnapshot(saved));
+          }
+          sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
+          pendingMigrationSummary = null;
+          saving = false;
+          emit();
+          return true;
+        }
         for (const id of dirty) {
           const composition = compositions.find((item) => item.id === id);
           if (!composition) continue;
@@ -591,6 +697,7 @@ export function createArtCompositionsController(
           savedSnapshots.set(id, artCompositionSnapshot(saved));
         }
         sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
+        pendingMigrationSummary = null;
         saving = false;
         emit();
         return true;

@@ -5,7 +5,7 @@ describe("effectiveVisibilityTimeline", () => {
   it("supplies standard visibility labels for missing timelines", () => {
     const timeline = effectiveVisibilityTimeline(null);
 
-    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
+    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Park", "On", "Appear", "Update", "Disappear"]));
     expect(timeline.commands.some((command) => command.type === "stop")).toBe(true);
   });
 
@@ -50,7 +50,7 @@ describe("effectiveVisibilityTimeline", () => {
     );
 
     expect(timeline.fps).toBe(24);
-    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["pulse", "appear", "disappear"]));
+    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["pulse", "Appear", "Disappear"]));
     expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 2, type: "emit", target: "label", event: "flash" }]));
     const cardTrack = timeline.tracks.find((track) => track.targetId === "card");
     expect(cardTrack?.keyframes.some((keyframe) => keyframe.props.scale === 1.2)).toBe(true);

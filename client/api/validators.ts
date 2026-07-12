@@ -221,6 +221,7 @@ export function validateArtAssetsResponse(value: unknown, endpoint = "/api/art-a
     assertArtComposition(composition, endpoint, `compositions[${index}]`);
   });
   if (response.organization !== undefined) assertRecord(response.organization, endpoint, "organization");
+  if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
   return value as ArtAssetsResponse;
 }
 
@@ -228,6 +229,7 @@ export function validateArtOrganizationSaveResponse(value: unknown, endpoint = "
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
   assertRecord(response.organization, endpoint, "organization");
+  if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
   return value as ArtOrganizationSaveResponse;
 }
 
@@ -235,6 +237,7 @@ export function validateArtCompositionSaveResponse(value: unknown, endpoint = "/
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
   assertArtComposition(response.composition, endpoint, "composition");
+  if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
   return value as ArtCompositionSaveResponse;
 }
 
@@ -244,6 +247,7 @@ export function validateArtCompositionDeleteResponse(value: unknown, endpoint = 
   assertArray(response.compositions, endpoint, "compositions").forEach((composition, index) => {
     assertArtComposition(composition, endpoint, `compositions[${index}]`);
   });
+  if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
   return value as ArtCompositionDeleteResponse;
 }
 
@@ -251,5 +255,6 @@ export function validateArtAssetReplaceResponse(value: unknown, endpoint = "/api
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
   assertArtAsset(response.asset, endpoint, "asset");
+  if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
   return value as ArtAssetReplaceResponse;
 }

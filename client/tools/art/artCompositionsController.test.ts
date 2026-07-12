@@ -4,7 +4,7 @@ import type { ArtApi } from "../../api/artApi";
 import type { ArtComposition, ArtCompositionSaveResponse } from "../../types/game-data";
 
 function composition(id: string): ArtComposition {
-  return { id, name: id, surface: "stage", canvas: { width: 560, height: 230 }, components: [] };
+  return { id, name: id, surface: "stage", timelineArchitectureVersion: 2, canvas: { width: 560, height: 230 }, components: [] };
 }
 
 function fakeApi(overrides: Partial<ArtApi> = {}): ArtApi {
@@ -28,8 +28,9 @@ describe("createArtCompositionsController", () => {
     expect(state.selectedCompositionId).toBe("a");
   });
 
-  it("hydrates legacy compositions and components with default timelines without marking dirty", () => {
+  it("projects the one-time legacy reset as a dirty migration without component timelines", () => {
     const initial = composition("legacy");
+    delete initial.timelineArchitectureVersion;
     initial.components = [
       {
         id: "legacy-text",
@@ -42,13 +43,11 @@ describe("createArtCompositionsController", () => {
     const controller = createArtCompositionsController({ initialCompositions: [initial], api: fakeApi() });
     const hydrated = controller.getState().compositions[0];
 
-    expect(controller.getState().dirty).toBe(false);
-    expect(hydrated.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
-    expect(hydrated.components[0].timeline?.labels.map((label) => label.name)).toEqual(
-      expect.arrayContaining(["park", "on", "appear", "update", "disappear"])
-    );
-    expect(hydrated.components[0].timeline?.tracks.map((track) => track.targetId)).toContain("legacy-text");
-    expect(hydrated.components[0].children?.[0].timeline?.tracks.map((track) => track.targetId)).toContain("legacy-child");
+    expect(controller.getState().dirty).toBe(true);
+    expect(controller.getState().migrationSummary?.compositionCount).toBe(1);
+    expect(hydrated.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Park", "On", "Appear", "Update", "Disappear"]));
+    expect(hydrated.components[0].timeline).toBeUndefined();
+    expect(hydrated.components[0].children?.[0].timeline).toBeUndefined();
   });
 
   it("creates a top-level prefab composition as an undoable local edit", () => {
@@ -58,7 +57,7 @@ describe("createArtCompositionsController", () => {
 
     expect(created.id).toBe("prefab-answer-bubble");
     expect(created.compositionKind).toBe("prefab");
-    expect(created.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
+    expect(created.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Park", "On", "Appear", "Update", "Disappear"]));
     expect(controller.getState().selectedCompositionId).toBe(created.id);
     expect(controller.getState().dirtyCompositionIds.has(created.id)).toBe(true);
 
@@ -72,12 +71,7 @@ describe("createArtCompositionsController", () => {
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
     controller.addComponent("shape");
     expect(controller.getState().compositions[0].components).toHaveLength(1);
-    expect(controller.getState().compositions[0].components[0].timeline?.labels.map((label) => label.name)).toEqual(
-      expect.arrayContaining(["park", "on", "appear", "update", "disappear"])
-    );
-    expect(controller.getState().compositions[0].components[0].timeline?.tracks[0].targetId).toBe(
-      controller.getState().compositions[0].components[0].id
-    );
+    expect(controller.getState().compositions[0].components[0].timeline).toBeUndefined();
     expect(controller.getState().dirty).toBe(true);
     expect(controller.getState().dirtyCompositionIds.has("a")).toBe(true);
     controller.undo();
@@ -94,9 +88,7 @@ describe("createArtCompositionsController", () => {
     const container = controller.getState().compositions[0].components[0];
     expect(container.children).toHaveLength(1);
     expect(container.children?.[0].kind).toBe("text");
-    expect(container.children?.[0].timeline?.labels.map((label) => label.name)).toEqual(
-      expect.arrayContaining(["park", "on", "appear", "update", "disappear"])
-    );
+    expect(container.children?.[0].timeline).toBeUndefined();
   });
 
   it("adds a prefab reference component with the referenced composition dimensions", () => {
@@ -115,7 +107,7 @@ describe("createArtCompositionsController", () => {
     expect(reference.name).toBe("Answer Bubble");
     expect(reference.width).toBe(300);
     expect(reference.height).toBe(180);
-    expect(reference.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
+    expect(reference.timeline).toBeUndefined();
   });
 
   it("adds an explicit composition reference as a nested child at the requested position", () => {
@@ -145,6 +137,17 @@ describe("createArtCompositionsController", () => {
         height: 180
       })
     );
+  });
+
+  it("rejects transitive prefab reference cycles", () => {
+    const a = composition("a");
+    const b = composition("b");
+    b.components = [{ id: "b-to-a", instanceLabel: "aRef", name: "A", kind: "reference", artCompositionId: "a" }];
+    const controller = createArtCompositionsController({ initialCompositions: [a, b], api: fakeApi() });
+
+    expect(controller.addComponent("reference", { referencedCompositionId: "b" })).toBeNull();
+    expect(controller.getState().compositions[0].components).toEqual([]);
+    expect(controller.getState().error).toContain("cycle");
   });
 
   it("creates a prefab from selected components without sharing component ids", () => {
@@ -258,7 +261,7 @@ describe("createArtCompositionsController", () => {
     );
   });
 
-  it("persists root and nested component timelines through save payloads", async () => {
+  it("persists composition tracks and strips obsolete component-local timelines", async () => {
     const api = fakeApi();
     const initial = composition("timeline-host");
     initial.timeline = {
@@ -310,26 +313,18 @@ describe("createArtCompositionsController", () => {
         components: [
           expect.objectContaining({
             id: "card",
-            timeline: expect.objectContaining({
-              labels: expect.arrayContaining([expect.objectContaining({ name: "pop", frame: 2 })]),
-              tracks: expect.arrayContaining([
-                expect.objectContaining({ targetId: "card" }),
-                expect.objectContaining({ targetId: "name" })
-              ])
-            }),
             children: [
               expect.objectContaining({
-                id: "name",
-                timeline: expect.objectContaining({
-                  labels: expect.arrayContaining([expect.objectContaining({ name: "swap", frame: 1 })]),
-                  tracks: expect.arrayContaining([expect.objectContaining({ targetId: "name" })])
-                })
+                id: "name"
               })
             ]
           })
         ]
       })
     );
+    const saved = vi.mocked(api.saveArtComposition).mock.calls[0][1];
+    expect(saved.components[0].timeline).toBeUndefined();
+    expect(saved.components[0].children?.[0].timeline).toBeUndefined();
   });
 
   it("saves only dirty compositions and clears dirty", async () => {

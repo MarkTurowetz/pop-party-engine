@@ -1,5 +1,5 @@
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
-import { normalizeTimeline, type TimelineDocument, type TimelineKeyframe, type TimelineTrack } from "../../../shared/timeline-model";
+import { normalizeTimeline } from "../../../shared/timeline-model";
 import {
   componentKindLabel,
   componentSupportsImageMask,
@@ -45,10 +45,10 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
   const kind = String(component.kind || "shape");
   const supportsImage = componentSupportsImageMask(raw);
   const isTextual = kind === "text" || kind === "badge";
-  const timeline = normalizeTimeline(component.timeline);
   const serialized = {
     id: String(component.id || ""),
     name: String(component.name || componentKindLabel(kind)),
+    instanceLabel: String(component.instanceLabel || ""),
     kind,
     x: num(component.x, 0),
     y: num(component.y, 0),
@@ -83,7 +83,6 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
       serializeArtComponentForSave(child as ArtComponent)
     )
   } as ArtComponent;
-  if (timeline) serialized.timeline = timeline as ArtComponent["timeline"];
   return serialized;
 }
 
@@ -98,6 +97,7 @@ export function serializeArtCompositionForSave(raw: ArtComposition): ArtComposit
     surface: normalizeArtCompositionSurface(composition.surface),
     compositionKind: normalizeArtCompositionKind(composition.compositionKind),
     isCustom: Boolean(composition.isCustom),
+    timelineArchitectureVersion: Number(composition.timelineArchitectureVersion || 0),
     canvas: { width: Number(canvas.width || 1), height: Number(canvas.height || 1) },
     components: (Array.isArray(composition.components) ? composition.components : []).map((component) =>
       serializeArtComponentForSave(component as ArtComponent)
@@ -113,130 +113,19 @@ export function serializeArtCompositionsForSave(source: ArtComposition[] | null 
 
 export function hydrateArtComponentForEditing(raw: ArtComponent): ArtComponent {
   const component = raw as Record<string, unknown>;
-  const id = String(component.id || "");
   const hydrated = {
     ...(JSON.parse(JSON.stringify(raw || {})) as ArtComponent),
     children: (Array.isArray(component.children) ? component.children : []).map((child) =>
       hydrateArtComponentForEditing(child as ArtComponent)
     )
   };
-  return {
-    ...hydrated,
-    timeline: normalizeAnimationKeyframePropsForEditing(
-      mergeDefaultArtVisibilityTimeline((component.timeline || null) as ArtComponent["timeline"], id ? { id } : null),
-      hydrated
-    )
-  };
-}
-
-function cleanTargetParts(id: string): string[] {
-  return String(id || "")
-    .split("/")
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
-function findComponentByTargetPath(components: ArtComponent[], targetId: string): ArtComponent | null {
-  const parts = cleanTargetParts(targetId);
-  if (parts.length === 0) return null;
-  if (parts.length === 1) {
-    for (const component of components || []) {
-      if (String(component.id || "").trim() === parts[0]) return component;
-      const found = findComponentByTargetPath(component.children || [], targetId);
-      if (found) return found;
-    }
-    return null;
-  }
-  let candidates = components || [];
-  let current: ArtComponent | null = null;
-  for (const part of parts) {
-    current = candidates.find((component) => String(component.id || "").trim() === part) || null;
-    if (!current) return null;
-    candidates = current.children || [];
-  }
-  return current;
-}
-
-function mergeKeyframeLists(base: TimelineKeyframe[], incoming: TimelineKeyframe[]): TimelineKeyframe[] {
-  const byFrame = new Map<number, TimelineKeyframe>();
-  for (const keyframe of base || []) {
-    byFrame.set(keyframe.frame, {
-      ...keyframe,
-      props: { ...(keyframe.props || {}) }
-    });
-  }
-  for (const keyframe of incoming || []) {
-    const existing = byFrame.get(keyframe.frame);
-    byFrame.set(keyframe.frame, {
-      ...(existing || {}),
-      ...keyframe,
-      props: {
-        ...(existing?.props || {}),
-        ...(keyframe.props || {})
-      },
-      easing: keyframe.easing || existing?.easing
-    });
-  }
-  return [...byFrame.values()].sort((a, b) => a.frame - b.frame);
-}
-
-function mergeTrackIntoComponentTimeline(component: ArtComponent, track: TimelineTrack, parentTimeline: TimelineDocument): void {
-  const localTargetId = String(component.id || "").trim() || "self";
-  const current = normalizeTimeline(component.timeline) || {
-    fps: parentTimeline.fps,
-    frameCount: parentTimeline.frameCount,
-    labels: [],
-    commands: [],
-    tracks: []
-  };
-  const existingTrack = current.tracks.find((item) => item.targetId === localTargetId || item.targetId === "self");
-  const incomingTrack = {
-    ...track,
-    id: existingTrack?.id || `track-${localTargetId}`,
-    targetId: localTargetId,
-    keyframes: (track.keyframes || []).map((keyframe) => ({ ...keyframe, props: { ...(keyframe.props || {}) } }))
-  };
-  const mergedTrack = existingTrack
-    ? {
-        ...existingTrack,
-        targetId: localTargetId,
-        keyframes: mergeKeyframeLists(existingTrack.keyframes || [], incomingTrack.keyframes || [])
-      }
-    : incomingTrack;
-  const nextTimeline = {
-    ...current,
-    fps: current.fps || parentTimeline.fps,
-    frameCount: Math.max(current.frameCount || 1, parentTimeline.frameCount || 1),
-    tracks: [...(current.tracks || []).filter((item) => item !== existingTrack && item.targetId !== localTargetId && item.targetId !== "self"), mergedTrack]
-  };
-  component.timeline = normalizeAnimationKeyframePropsForEditing(nextTimeline, component);
-}
-
-function migrateComponentTargetTracksToComponentTimelines(
-  timeline: TimelineDocument | null,
-  components: ArtComponent[]
-): TimelineDocument | null {
-  const current = normalizeTimeline(timeline);
-  if (!current || current.tracks.length === 0) return current;
-  const remainingTracks: TimelineTrack[] = [];
-  for (const track of current.tracks || []) {
-    const targetComponent = findComponentByTargetPath(components, track.targetId);
-    if (!targetComponent) {
-      remainingTracks.push(track);
-      continue;
-    }
-    mergeTrackIntoComponentTimeline(targetComponent, track, current);
-  }
-  return {
-    ...current,
-    tracks: remainingTracks
-  };
+  delete (hydrated as Record<string, unknown>).timeline;
+  return hydrated;
 }
 
 export function hydrateArtCompositionForEditing(raw: ArtComposition): ArtComposition {
   const composition = JSON.parse(JSON.stringify(raw || {})) as ArtComposition;
   const components = (Array.isArray(composition.components) ? composition.components : []).map(hydrateArtComponentForEditing);
-  const compositionTimeline = migrateComponentTargetTracksToComponentTimelines(normalizeTimeline(composition.timeline), components);
   const rootComponent = {
     id: composition.id || "composition",
     name: composition.name || "Composition",
@@ -250,7 +139,7 @@ export function hydrateArtCompositionForEditing(raw: ArtComposition): ArtComposi
   return {
     ...composition,
     timeline: normalizeAnimationKeyframePropsForEditing(
-      mergeDefaultArtVisibilityTimeline(compositionTimeline as ArtComposition["timeline"]),
+      mergeDefaultArtVisibilityTimeline(normalizeTimeline(composition.timeline) as ArtComposition["timeline"]),
       rootComponent
     ),
     components

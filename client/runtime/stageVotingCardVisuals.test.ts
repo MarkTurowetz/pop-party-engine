@@ -29,6 +29,6 @@ describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
     };
 
     expect(votingCardArtTimeline(timeline).labels).toEqual([expect.objectContaining({ name: "custom", frame: 1 })]);
-    expect(votingCardArtTimeline(null).labels.map((label) => label.name)).toEqual(expect.arrayContaining(["appear", "disappear"]));
+    expect(votingCardArtTimeline(null).labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Appear", "Disappear"]));
   });
 });

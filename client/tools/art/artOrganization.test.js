@@ -105,6 +105,56 @@ describe("art organization folders", () => {
 });
 
 describe("art composition child persistence", () => {
+  it("saves a migration batch in one manifest write and rejects stale revisions", async () => {
+    let payload = {
+      compositions: [{
+        id: "prefab-child",
+        name: "Child",
+        surface: "stage",
+        compositionKind: "prefab",
+        timelineArchitectureVersion: 2,
+        canvas: { width: 100, height: 100 },
+        components: [{ id: "shape-id", instanceLabel: "shape", name: "Shape", kind: "shape" }],
+        timeline: { fps: 30, frameCount: 2, labels: [{ name: "Appear", frame: 0 }], commands: [], tracks: [] }
+      }]
+    };
+    let writes = 0;
+    let responseStatus = 0;
+    let responseBody = null;
+    const runtime = createArtAssetsRuntime({
+      acceptedArtTypes: [],
+      artCompositions: [],
+      artAssets: [],
+      artGroups: [],
+      artRoot: "/tmp/party-game-art-test",
+      contentTypeForFile: () => "application/octet-stream",
+      customDir: "/tmp/party-game-art-test/custom",
+      defaultDir: "/tmp/party-game-art-test/default",
+      manifestFile: "/tmp/party-game-art-test/manifest.json",
+      loadArtManifestSource: async () => ({}),
+      readJson: async () => payload,
+      sendJson: (_res, status, body) => {
+        responseStatus = status;
+        responseBody = body;
+      },
+      writeArtManifestSource: async (manifest) => {
+        writes += 1;
+        return manifest;
+      }
+    });
+
+    await runtime.handleSaveArtCompositions({}, {});
+    expect(responseStatus).toBe(200);
+    expect(responseBody?.compositions).toHaveLength(1);
+    expect(responseBody?.revision).toMatch(/^[a-f0-9]{64}$/);
+    expect(writes).toBe(1);
+
+    payload = { ...payload, revision: "stale" };
+    await runtime.handleSaveArtCompositions({}, {});
+    expect(responseStatus).toBe(409);
+    expect(writes).toBe(1);
+  });
+
   it("treats saved component children as authoritative", () => {
     const runtime = createRuntime({
       artCompositions: [

@@ -6,7 +6,7 @@
 
 import { normalizeGameTextFontFamily } from "../textFonts";
 import { distributedContainerItemPositions } from "./distributedContainerLayout";
-import { effectiveArtComponentVisibilityTimeline } from "./effectiveTimeline";
+import { effectiveArtComponentVisibilityTimeline, effectiveVisibilityTimeline } from "./effectiveTimeline";
 import type { TimelineCommandEventDetail } from "./visualObject";
 import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
 import { hasTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument } from "../../shared/timeline-model";
@@ -347,9 +347,11 @@ class ArtObjectView {
     const ids = new Set<string>();
     const componentId = String(this.component?.id || "").trim();
     const componentName = String(this.component?.name || "").trim();
+    const instanceLabel = String(this.component?.instanceLabel || "").trim();
     const pathId = this.componentPathId();
     if (componentId) ids.add(componentId);
     if (componentName) ids.add(componentName);
+    if (instanceLabel) ids.add(instanceLabel);
     if (pathId) ids.add(pathId);
     return ids;
   }
@@ -357,10 +359,7 @@ class ArtObjectView {
   componentTimeline(): TimelineDocument {
     const referencedComposition = referencedCompositionFor(this.component, this.getComposition, this.referencePath);
     if (referencedComposition?.timeline) {
-      return effectiveArtComponentVisibilityTimeline(
-        (referencedComposition.timeline || null) as TimelineDocument | null,
-        String(this.component?.id || "").trim()
-      );
+      return effectiveVisibilityTimeline((referencedComposition.timeline || null) as TimelineDocument | null);
     }
     return effectiveArtComponentVisibilityTimeline(
       (this.component?.timeline || null) as TimelineDocument | null,

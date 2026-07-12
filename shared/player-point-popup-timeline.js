@@ -17,12 +17,12 @@ function defaultPlayerPointPopupTimeline() {
         fps: 30,
         frameCount: popupFrames.end + 1,
         labels: [
-            { name: "park", frame: 0 },
-            { name: "off", frame: 0 },
-            { name: "on", frame: 0 },
-            { name: "appear", frame: popupFrames.start },
-            { name: "update", frame: popupFrames.start },
-            { name: "disappear", frame: popupFrames.end }
+            { name: "Park", frame: 0 },
+            { name: "Off", frame: 0 },
+            { name: "On", frame: 0 },
+            { name: "Appear", frame: popupFrames.start },
+            { name: "Update", frame: popupFrames.start },
+            { name: "Disappear", frame: popupFrames.end }
         ],
         commands: [
             { frame: 0, type: "stop" },

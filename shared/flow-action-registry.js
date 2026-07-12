@@ -10,6 +10,17 @@
     const microphoneAccessActions = typeof require === "function"
         ? require("./microphone-access-action-config")
         : globalThis.PartyMicrophoneAccessActions;
+    function normalizeFlowLifecycleLabel(value) {
+        const labels = {
+            park: "Park",
+            on: "On",
+            off: "Off",
+            appear: "Appear",
+            update: "Update",
+            disappear: "Disappear"
+        };
+        return labels[value] || value;
+    }
     function normalizeVoteRevealStaggerSeconds(value) {
         const number = Number(value);
         return Number(Math.max(0, Math.min(60, Number.isFinite(number) ? number : 1)).toFixed(2));
@@ -48,7 +59,7 @@
             targetLayoutScope: normalizeLayoutTargetScope(action?.targetLayoutScope),
             targetLayoutSurface: normalizeLayoutTargetSurface(action?.targetLayoutSurface),
             targetComponentId: normalizeComponentTargetId(action?.targetComponentId || action?.componentId),
-            animationName: context.cleanFlowText(action?.animationName || action?.timelineLabel || action?.animation, "appear"),
+            animationName: normalizeFlowLifecycleLabel(context.cleanFlowText(action?.animationName || action?.timelineLabel || action?.animation, "Appear")),
             timelinePlaybackMode: playbackMode,
             instant: action?.instant === true
         };
@@ -61,7 +72,7 @@
             targetLayoutScope: normalizeLayoutTargetScope(action.targetLayoutScope),
             targetLayoutSurface: normalizeLayoutTargetSurface(action.targetLayoutSurface),
             targetComponentId: normalizeComponentTargetId(action.targetComponentId || action.componentId),
-            animationName: context.cleanFlowText(action.animationName || action.timelineLabel || action.animation, "appear"),
+            animationName: normalizeFlowLifecycleLabel(context.cleanFlowText(action.animationName || action.timelineLabel || action.animation, "Appear")),
             timelinePlaybackMode: playbackMode,
             instant: action.instant === true
         };

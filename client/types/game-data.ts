@@ -117,6 +117,7 @@ export interface ArtAsset extends JsonObject {
 export interface ArtComponent extends JsonObject {
   id: string;
   name?: string;
+  instanceLabel?: string;
   kind: string;
   x?: number;
   y?: number;
@@ -145,6 +146,7 @@ export interface ArtComposition extends JsonObject {
   surface: "stage" | "controller" | string;
   compositionKind?: "gameObject" | "prefab" | string;
   isCustom?: boolean;
+  timelineArchitectureVersion?: number;
   canvas: {
     width: number;
     height: number;
@@ -226,6 +228,7 @@ export interface HostAudiosSaveResponse {
 
 export interface ArtAssetsResponse {
   ok: true;
+  revision?: string;
   groups: JsonObject[];
   assets: ArtAsset[];
   compositions: ArtComposition[];
@@ -234,22 +237,32 @@ export interface ArtAssetsResponse {
 
 export interface ArtOrganizationSaveResponse {
   ok: true;
+  revision?: string;
   organization: ArtOrganization;
 }
 
 export interface ArtCompositionSaveResponse {
   ok: true;
+  revision?: string;
   composition: ArtComposition;
 }
 
 export interface ArtCompositionDeleteResponse {
   ok: true;
+  revision?: string;
   compositions: ArtComposition[];
 }
 
 export interface ArtAssetReplaceResponse {
   ok: true;
+  revision?: string;
   asset: ArtAsset;
+}
+
+export interface ArtCompositionsSaveResponse {
+  ok: true;
+  revision?: string;
+  compositions: ArtComposition[];
 }
 
 export interface HealthResponse {

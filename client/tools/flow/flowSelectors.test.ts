@@ -344,7 +344,7 @@ describe("Flow selectors", () => {
         "",
         "custom-label"
       ).map((option) => option.id)
-    ).toEqual(["appear", "disappear", "on", "off", "park", "update", "pop", "custom-label"]);
+    ).toEqual(["Appear", "Disappear", "On", "Off", "Park", "Update", "pop", "custom-label"]);
     expect(
       flowGameObjectComponentTargetOptions(
         stageLayouts,

@@ -226,7 +226,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       expect.objectContaining({ id: "point-shadow", defaultText: "+50" })
     ]);
     expect((rendered[0].options as { timeline: { labels: { name: string }[]; tracks: { targetId: string }[] } }).timeline.labels.map((label) => label.name)).toContain(
-      "appear"
+      "Appear"
     );
     expect((rendered[0].options as { timeline: { tracks: { targetId: string }[] } }).timeline.tracks.map((track) => track.targetId)).toEqual([
       "point-text",

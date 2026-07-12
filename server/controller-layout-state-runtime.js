@@ -43,7 +43,7 @@ function createControllerLayoutStateRuntime({
             width: 280,
             height: 82,
             scale: 1,
-            defaultAnimationState: "on"
+            defaultAnimationState: "On"
           },
           {
             id: "controllerMicAccessStatus",
@@ -135,7 +135,7 @@ function createControllerLayoutStateRuntime({
             width: 330,
             height: 64,
             scale: 1,
-            defaultAnimationState: "on"
+            defaultAnimationState: "On"
           },
           {
             id: "controllerTextInput",
@@ -148,7 +148,7 @@ function createControllerLayoutStateRuntime({
             width: 330,
             height: 128,
             scale: 1,
-            defaultAnimationState: "on"
+            defaultAnimationState: "On"
           },
           {
             id: "controllerTextSubmitButton",
@@ -161,7 +161,7 @@ function createControllerLayoutStateRuntime({
             width: 300,
             height: 70,
             scale: 1,
-            defaultAnimationState: "on"
+            defaultAnimationState: "On"
           },
           {
             id: "controllerVoiceButton",
@@ -174,7 +174,7 @@ function createControllerLayoutStateRuntime({
             width: 300,
             height: 110,
             scale: 1,
-            defaultAnimationState: "on"
+            defaultAnimationState: "On"
           },
           {
             id: "controllerVoiceStatus",

@@ -5,6 +5,7 @@ const {
   controllerLayoutWidgetArtCompositionId
 } = require("../shared/controller-layout-art-widgets");
 const artComponentSchema = require("../shared/art-component-schema");
+const { canonicalLifecycleLabel } = require("../shared/lifecycle-labels");
 const {
   isLayoutTextArtElementId,
   isLayoutTextArtSelector,
@@ -52,7 +53,7 @@ function createLayoutNormalizationRuntime({
     const artCompositionId = normalizeFlowId(element.artCompositionId, "") || widgetArtCompositionId || (shouldPromoteTextToArt ? layoutTextArtCompositionId : "");
     const textDefaultsEnabled = kind === "text" || shouldPromoteTextToArt;
     const defaultAnimationState = normalizeLayoutDefaultAnimationState(element.defaultAnimationState)
-      || (id === "startpopup" ? "park" : controllerWidgetArtCompositionId ? "on" : "");
+      || (id === "startpopup" ? "Park" : controllerWidgetArtCompositionId ? "On" : "");
     return {
       id,
       name: cleanFlowText(element.name, element.id || fallbackId),
@@ -83,8 +84,7 @@ function createLayoutNormalizationRuntime({
   }
 
   function normalizeLayoutDefaultAnimationState(value) {
-    const cleanValue = String(value || "").trim().toLowerCase();
-    return ["park", "on", "off", "appear", "disappear", "update"].includes(cleanValue) ? cleanValue : "";
+    return canonicalLifecycleLabel(value) || "";
   }
 
   function dedupeLayoutElements(elements) {
