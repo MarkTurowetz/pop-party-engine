@@ -443,6 +443,10 @@ class ArtObjectView {
 
   viewForComponentId(componentId: string): ArtObjectView | null {
     if (this.componentTargetIds().has(componentId)) return this;
+    return this.viewForDescendantComponentId(componentId);
+  }
+
+  viewForDescendantComponentId(componentId: string): ArtObjectView | null {
     for (const child of this.children.values()) {
       const match = child.viewForComponentId(componentId);
       if (match) return match;
@@ -452,19 +456,28 @@ class ArtObjectView {
 
   applyTimelineSnapshotToDescendants(snapshot: TimelineFrameSnapshot): void {
     for (const targetId of Object.keys(snapshot.targets || {})) {
-      const view = this.viewForComponentId(targetId);
-      if (!view || view === this) continue;
+      const view = this.viewForDescendantComponentId(targetId);
+      if (!view) continue;
       const visual = view.createVisual() as { applyTimelineSnapshot?: (nextSnapshot: TimelineFrameSnapshot) => void } | null;
       visual?.applyTimelineSnapshot?.(snapshot);
     }
   }
 
+  timelineCommandHost(): TimelineComponentCommandHost {
+    if (String(this.component?.kind || "").trim().toLowerCase() !== "reference") return this;
+    if (!referencedCompositionFor(this.component, this.getComposition, this.referencePath)) return this;
+    return {
+      viewForComponentId: (componentId) => this.viewForDescendantComponentId(componentId),
+      setVisibleTree: (isVisible) => this.setVisibleTree(isVisible)
+    };
+  }
+
   handleTimelineCommand(detail: TimelineCommandEventDetail): number {
-    return playTimelineComponentCommand(this, detail.command || {});
+    return playTimelineComponentCommand(this.timelineCommandHost(), detail.command || {});
   }
 
   timelineCommandDuration(command: TimelineCommand): number {
-    return timelineComponentCommandDuration(this, command);
+    return timelineComponentCommandDuration(this.timelineCommandHost(), command);
   }
 
   durationForAnimation(animation: string): number {

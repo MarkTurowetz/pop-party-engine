@@ -104,6 +104,30 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(snapshots).toEqual([snapshot]);
   });
 
+  it("routes referenced timeline snapshots past a same-id wrapper to the nested component", () => {
+    const snapshots: unknown[] = [];
+    const reference = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      applyTimelineSnapshotToDescendants: (snapshot: unknown) => void;
+    };
+    const sprite = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      children: Map<string, unknown>;
+      createVisual: () => { applyTimelineSnapshot: (snapshot: unknown) => void };
+    };
+    reference.component = { id: "avatar" };
+    sprite.component = { id: "avatar" };
+    sprite.children = new Map();
+    sprite.createVisual = () => ({ applyTimelineSnapshot: (snapshot) => snapshots.push(snapshot) });
+    reference.children = new Map([["avatar", sprite]]);
+
+    const snapshot = { frame: 3, targets: { avatar: { imageAssetId: "avatar-raptor" } } };
+    reference.applyTimelineSnapshotToDescendants(snapshot);
+
+    expect(snapshots).toEqual([snapshot]);
+  });
+
   it("routes parent timeline snapshots by scoped component path", () => {
     const snapshots: unknown[] = [];
     const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
