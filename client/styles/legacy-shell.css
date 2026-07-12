@@ -1085,18 +1085,21 @@ body.tool-dashboard-mode .layout-shell {
   border-radius: 0;
 }
 
+.art-runtime-object.has-sprite-source,
 .art-runtime-object.has-image-mask {
   overflow: hidden;
   background: transparent;
 }
 
+.art-runtime-object.is-sprite-tinted,
 .art-runtime-object.has-tinted-image-mask {
   background: transparent;
 }
 
+.art-runtime-object.is-sprite-tinted > .art-runtime-object-image,
 .art-runtime-object.has-tinted-image-mask > .art-runtime-object-image {
   display: block;
-  background: currentColor;
+  background: var(--component-sprite-tint, currentColor);
   -webkit-mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
   mask: var(--component-mask-url) center / var(--component-image-fit, cover) no-repeat;
 }
@@ -1111,6 +1114,7 @@ body.tool-dashboard-mode .layout-shell {
   pointer-events: none;
 }
 
+.art-runtime-object.has-sprite-source > .art-runtime-object-label,
 .art-runtime-object.has-image-mask > .art-runtime-object-label {
   display: none;
 }
@@ -1422,10 +1426,20 @@ body.tool-dashboard-mode .layout-shell {
   box-sizing: border-box;
 }
 
+.avatar-art-component.is-shape {
+  background: var(--avatar-component-fill, transparent);
+  border: var(--avatar-component-border-width, 0) solid var(--avatar-component-border-color, transparent);
+  border-radius: max(12px, var(--avatar-component-border-radius, 0px));
+}
+
+.avatar-art-component.is-style-circle { border-radius: 50%; }
+.avatar-art-component.is-style-pill { border-radius: 9999px; }
+.avatar-art-component.is-style-rectangle { border-radius: 0; }
+
 .avatar-art-mask-image {
   position: absolute;
   inset: 0;
-  background: currentColor;
+  background: var(--avatar-component-tint, currentColor);
   -webkit-mask: var(--avatar-mask-url) center / var(--avatar-component-fit, contain) no-repeat;
   mask: var(--avatar-mask-url) center / var(--avatar-component-fit, contain) no-repeat;
   filter: drop-shadow(3px 3px 0 rgba(23, 19, 31, 0.5));

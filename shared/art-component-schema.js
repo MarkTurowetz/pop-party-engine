@@ -4,8 +4,8 @@
 // an IIFE so declarations stay local to the shared compilation's script scope.
 (function () {
     "use strict";
-    const componentKinds = ["text", "shape", "container", "badge", "reference"];
-    const creatableComponentKinds = ["text", "shape", "container", "reference"];
+    const componentKinds = ["text", "shape", "sprite", "container", "badge", "reference"];
+    const creatableComponentKinds = ["text", "shape", "sprite", "container", "reference"];
     const shapeStyleOptions = [
         { value: "rounded", label: "Rounded" },
         { value: "rectangle", label: "Rectangle" },
@@ -15,6 +15,7 @@
     const shapeStyleValues = shapeStyleOptions.map((option) => option.value);
     const imageMimeTypes = ["image/png", "image/svg+xml", "image/jpeg", "image/webp"];
     const imageObjectFits = ["cover", "contain", "fill"];
+    const spriteRenderModes = ["original", "tinted"];
     const containerDistributionOptions = [
         { value: "none", label: "None" },
         { value: "horizontal", label: "Horizontal Distribution" },
@@ -74,6 +75,8 @@
             return "Badge";
         if (cleanKind === "reference")
             return "Reference";
+        if (cleanKind === "sprite")
+            return "Sprite";
         return "Shape";
     }
     function componentSupportsShapeStyle(componentOrKind) {
@@ -87,15 +90,18 @@
         const style = normalizeValue(value || defaultShapeStyle(kind));
         return shapeStyleValues.includes(style) ? style : defaultShapeStyle(kind);
     }
-    function componentSupportsImageMask(componentOrKind) {
-        return componentKindFrom(componentOrKind) === "shape";
+    function componentSupportsSpriteSource(componentOrKind) {
+        return componentKindFrom(componentOrKind) === "sprite";
     }
-    function componentHasImageMask(component) {
-        return componentSupportsImageMask(component) && Boolean(component?.imageDataUrl || component?.imageAssetId);
+    function componentHasSpriteSource(component) {
+        return componentSupportsSpriteSource(component) && Boolean(component?.imageDataUrl || component?.imageAssetId);
     }
-    function componentImageMaskDataUrl(component) {
-        return componentSupportsImageMask(component) ? String(component?.imageDataUrl || "") : "";
+    function componentSpriteDataUrl(component) {
+        return componentSupportsSpriteSource(component) ? String(component?.imageDataUrl || "") : "";
     }
+    const componentSupportsImageMask = componentSupportsSpriteSource;
+    const componentHasImageMask = componentHasSpriteSource;
+    const componentImageMaskDataUrl = componentSpriteDataUrl;
     function componentLabel(component) {
         const kind = componentKindFrom(component);
         if (kind === "text" || kind === "badge") {
@@ -106,8 +112,12 @@
         return "";
     }
     function normalizeImageObjectFit(value) {
-        const fit = normalizeValue(value || "cover");
-        return imageObjectFits.includes(fit) ? fit : "cover";
+        const fit = normalizeValue(value || "contain");
+        return imageObjectFits.includes(fit) ? fit : "contain";
+    }
+    function normalizeSpriteRenderMode(value) {
+        const mode = normalizeValue(value || "original");
+        return spriteRenderModes.includes(mode) ? mode : "original";
     }
     function normalizeContainerDistribution(value) {
         const distribution = normalizeValue(value || "none");
@@ -156,7 +166,7 @@
         if (!isSupportedImageMimeType(file.type))
             return "Use PNG, SVG, JPG, or WEBP.";
         if (Number(file.size || 0) <= 0 || Number(file.size || 0) > componentImageMaxBytes)
-            return "Image masks must be under 5 MB.";
+            return "Sprite images must be under 5 MB.";
         return "";
     }
     function normalizeFillCss(value) {
@@ -173,13 +183,16 @@
     }
     const exportedSchema = {
         componentHasImageMask,
+        componentHasSpriteSource,
         componentImageMaskDataUrl,
+        componentSpriteDataUrl,
         componentImageMaxBytes,
         componentKindFrom,
         componentKindLabel,
         componentKinds,
         componentLabel,
         componentSupportsImageMask,
+        componentSupportsSpriteSource,
         componentSupportsShapeStyle,
         containerDistributionOptions,
         containerDistributionValues,
@@ -199,9 +212,11 @@
         normalizeTransformOrigin,
         normalizeImageObjectFit,
         normalizeShapeStyle,
+        normalizeSpriteRenderMode,
         parseImageDataUrl,
         shapeStyleOptions,
         shapeStyleValues,
+        spriteRenderModes,
         textFontFamilyOptions,
         textFontFamilyValues,
         transformOriginCss,

@@ -9,8 +9,10 @@ import type { ArtCanvasLivePositions } from "./artCanvasTransformTransaction";
 import { artCompositionContentBounds } from "./artCompositionBounds";
 import { PartyGameTextFit } from "../../runtime/textFit";
 import {
-  componentSupportsImageMask,
+  componentSupportsShapeStyle,
+  componentSupportsSpriteSource,
   normalizeGameTextFontFamily,
+  normalizeSpriteRenderMode,
   normalizeTransformOrigin,
   transformOriginCss,
   transformOriginOptions
@@ -170,11 +172,13 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const ownOpacity = Number(timelineValue("opacity", get(component, "opacity") ?? 1));
     const inheritedContentOpacity = Number(layer.contentOpacity ?? 1);
     const contentOpacity = Math.max(0, Math.min(1, inheritedContentOpacity * ownOpacity));
-    const imageUrl = componentSupportsImageMask(component) ? imageSourceFor(component, timelineOverride) : "";
-    const objectFit = String(timelineValue("imageObjectFit", get(component, "imageObjectFit") || "cover"));
+    const imageUrl = componentSupportsSpriteSource(component) ? imageSourceFor(component, timelineOverride) : "";
+    const objectFit = String(timelineValue("imageObjectFit", get(component, "imageObjectFit") || "contain"));
     const selected = selectedIds.has(component.id);
     const imageTint = String(timelineValue("imageTint", get(component, "imageTint") || ""));
-    const tintWithCurrentColor = Boolean(imageUrl && imageTint === "currentColor");
+    const spriteRenderMode = normalizeSpriteRenderMode(timelineValue("spriteRenderMode", get(component, "spriteRenderMode")));
+    const tintedSprite = Boolean(imageUrl && kind === "sprite" && spriteRenderMode === "tinted");
+    const spriteTint = imageTint === "currentColor" ? "var(--art-preview-current-color)" : imageTint || "currentColor";
     const referencedComposition = referencedCompositionFor(component, referencePath);
     const referenceCanvas = referencedComposition?.canvas || { width, height };
     const referenceBounds = referencedComposition
@@ -190,8 +194,8 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const fontFamily = normalizeGameTextFontFamily(textFieldFor(component, props, "fontFamily", timelineValue("fontFamily", get(component, "fontFamily"))));
     const fontSize = isTextual ? artPreviewFontSize(component, props, textValue, width, height, timelineOverride) : 11;
     const fill = fillColor === "currentColor" ? "currentColor" : fillColor;
-    const background = tintWithCurrentColor
-      ? (fill === "transparent" ? "currentColor" : fill || "currentColor")
+    const background = tintedSprite
+      ? spriteTint
       : imageUrl
         ? "transparent"
         : fillCss || (fill === "transparent" ? (transparentBase ? "transparent" : "rgba(255,255,255,0.06)") : fill);
@@ -217,24 +221,26 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const visualStyle: CSSProperties = {
       position: "absolute",
       inset: 0,
-      borderRadius: shapeBorderRadius(
-        String(timelineValue("shapeStyle", get(component, "shapeStyle") || "rounded")),
-        Number(timelineValue("borderRadius", get(component, "borderRadius") || 0))
-      ),
+      borderRadius: componentSupportsShapeStyle(component)
+        ? shapeBorderRadius(
+            String(timelineValue("shapeStyle", get(component, "shapeStyle") || "rounded")),
+            Number(timelineValue("borderRadius", get(component, "borderRadius") || 0))
+          )
+        : "0",
       background,
-      backgroundImage: imageUrl && !tintWithCurrentColor ? `url(${imageUrl})` : undefined,
-      backgroundSize: imageUrl && !tintWithCurrentColor ? objectFit : undefined,
+      backgroundImage: imageUrl && !tintedSprite ? `url(${imageUrl})` : undefined,
+      backgroundSize: imageUrl && !tintedSprite ? objectFit : undefined,
       backgroundPosition: "center",
       backgroundRepeat: "no-repeat",
-      WebkitMaskImage: tintWithCurrentColor ? `url(${imageUrl})` : undefined,
-      maskImage: tintWithCurrentColor ? `url(${imageUrl})` : undefined,
-      WebkitMaskSize: tintWithCurrentColor ? maskSize : undefined,
-      maskSize: tintWithCurrentColor ? maskSize : undefined,
-      WebkitMaskPosition: tintWithCurrentColor ? "center" : undefined,
-      maskPosition: tintWithCurrentColor ? "center" : undefined,
-      WebkitMaskRepeat: tintWithCurrentColor ? "no-repeat" : undefined,
-      maskRepeat: tintWithCurrentColor ? "no-repeat" : undefined,
-      border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "0",
+      WebkitMaskImage: tintedSprite ? `url(${imageUrl})` : undefined,
+      maskImage: tintedSprite ? `url(${imageUrl})` : undefined,
+      WebkitMaskSize: tintedSprite ? maskSize : undefined,
+      maskSize: tintedSprite ? maskSize : undefined,
+      WebkitMaskPosition: tintedSprite ? "center" : undefined,
+      maskPosition: tintedSprite ? "center" : undefined,
+      WebkitMaskRepeat: tintedSprite ? "no-repeat" : undefined,
+      maskRepeat: tintedSprite ? "no-repeat" : undefined,
+      border: componentSupportsShapeStyle(component) && borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : "0",
       opacity: contentOpacity,
       display: "flex",
       alignItems: "center",

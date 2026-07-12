@@ -137,6 +137,13 @@ export interface ArtComponent extends JsonObject {
   fontSize?: number;
   fontColor?: string;
   autoFitText?: boolean;
+  imageDataUrl?: string;
+  imageAssetId?: string;
+  imageName?: string;
+  imageMimeType?: string;
+  imageObjectFit?: "cover" | "contain" | "fill" | string;
+  imageTint?: string;
+  spriteRenderMode?: "original" | "tinted" | string;
   timeline?: TimelineDocument | null;
   children?: ArtComponent[];
 }

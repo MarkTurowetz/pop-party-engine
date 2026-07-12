@@ -36,13 +36,15 @@ import { ART_COMPOSITION_BROWSER_DND_TYPE, compositionIdFromBrowserKey } from ".
 import type { ArtCompositionsController } from "./artCompositionsController";
 import { ArtPreviewRenderer, assetUrlMap, compositionMap } from "./ArtPreviewRenderer";
 import {
-  componentSupportsImageMask,
+  componentSupportsSpriteSource,
   componentSupportsShapeStyle,
   containerDistributionOptions,
   creatableComponentKinds,
   normalizeGameTextFontFamily,
+  normalizeSpriteRenderMode,
   normalizeTransformOrigin,
   shapeStyleOptions,
+  spriteRenderModeOptions,
   textFontFamilyOptions,
   transformOriginOptions,
   validateImageFile
@@ -113,6 +115,7 @@ const SCALAR_FIELDS: { key: string; label: string }[] = [
 const ADD_COMPONENT_LABELS: Record<string, string> = {
   text: "Text",
   shape: "Shape",
+  sprite: "Sprite",
   container: "Container",
   reference: "Prefab Ref"
 };
@@ -137,8 +140,10 @@ const TIMELINE_PROPERTY_SUGGESTIONS = [
   "borderRadius",
   "shapeStyle",
   "imageAssetId",
+  "imageDataUrl",
   "imageTint",
-  "imageObjectFit"
+  "imageObjectFit",
+  "spriteRenderMode"
 ];
 const TIMELINE_INSPECTOR_FIELDS = new Set(TIMELINE_PROPERTY_SUGGESTIONS);
 const TIMELINE_VISIBLE_FRAME_LIMIT = 60;
@@ -1223,6 +1228,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
 
         <ArtComponentInspector
           controller={controller}
+          assets={assets}
           composition={composition}
           compositions={compositions}
           component={selectedComponent ?? selectedComponents[0] ?? null}
@@ -1389,6 +1395,7 @@ function SwapGameObjectControl({
 
 function ArtComponentInspector({
   controller,
+  assets,
   composition,
   compositions,
   component,
@@ -1396,6 +1403,7 @@ function ArtComponentInspector({
   timelineContext,
 }: {
   controller: ArtCompositionsController;
+  assets: ArtAsset[];
   composition: ArtComposition | null;
   compositions: ArtComposition[];
   component: ArtComponent | null;
@@ -1452,7 +1460,7 @@ function ArtComponentInspector({
   const commit = (patch: Partial<ArtComponent>) => commitForComponents(editableComponents, patch);
   const isTextual = editableComponents.every((target) => target.kind === "text" || target.kind === "badge");
   const supportsShape = editableComponents.every((target) => componentSupportsShapeStyle(target));
-  const supportsImage = editableComponents.length === 1 && componentSupportsImageMask(primaryComponent);
+  const supportsSprite = editableComponents.length === 1 && componentSupportsSpriteSource(primaryComponent);
   const commitNumberInput = (key: string, value: string): string | null => {
     if (value.trim() === "") return null;
     const targets = editableComponents
@@ -1502,6 +1510,20 @@ function ArtComponentInspector({
     </label>
   );
 
+  const initialSpriteSourceIsEmpty = !primaryComponent.imageAssetId && !primaryComponent.imageDataUrl;
+  const fitInitialSpriteBounds = async (url: string): Promise<Partial<ArtComponent>> => {
+    if (!initialSpriteSourceIsEmpty || !url || !composition) return {};
+    const dimensions = await new Promise<{ width: number; height: number } | null>((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve(image.naturalWidth > 0 && image.naturalHeight > 0 ? { width: image.naturalWidth, height: image.naturalHeight } : null);
+      image.onerror = () => resolve(null);
+      image.src = url;
+    });
+    if (!dimensions) return {};
+    const longestSide = Math.max(32, Math.min(180, 0.5 * Math.min(Number(composition.canvas?.width || 560), Number(composition.canvas?.height || 230))));
+    const ratio = dimensions.width / dimensions.height;
+    return ratio >= 1 ? { width: longestSide, height: longestSide / ratio } : { width: longestSide * ratio, height: longestSide };
+  };
   const onPickImage = async (file: File | undefined) => {
     if (!file) return;
     const message = validateImageFile(file);
@@ -1512,7 +1534,14 @@ function ArtComponentInspector({
       reader.addEventListener("error", () => reject(reader.error));
       reader.readAsDataURL(file);
     });
-    commitBase({ imageDataUrl: dataUrl, imageName: file.name, imageMimeType: file.type, imageAssetId: "" } as Partial<ArtComponent>);
+    const bounds = await fitInitialSpriteBounds(dataUrl);
+    commit({ imageDataUrl: dataUrl, imageName: file.name, imageMimeType: file.type, imageAssetId: "", ...bounds } as Partial<ArtComponent>);
+  };
+
+  const onPickLibraryAsset = async (assetId: string) => {
+    const asset = assets.find((item) => item.id === assetId);
+    const bounds = await fitInitialSpriteBounds(asset?.currentUrl || "");
+    commit({ imageAssetId: assetId, imageDataUrl: "", imageName: asset?.name || assetId, imageMimeType: "", ...bounds } as Partial<ArtComponent>);
   };
 
   return (
@@ -1632,16 +1661,47 @@ function ArtComponentInspector({
           {textField("fontColor", "Font Color")}
         </>
       ) : null}
-      {supportsImage ? (
-        <label className="flow-react-field" data-art-field="imageMask">
-          <span>Image Mask</span>
-          <input
-            type="file"
-            accept="image/*"
-            data-art-component-image
-            onChange={(event) => void onPickImage(event.target.files?.[0])}
-          />
-        </label>
+      {supportsSprite ? (
+        <>
+          <label className="flow-react-field" data-art-field="imageAssetId">
+            <span>Library Asset</span>
+            <select
+              value={String(frameValue("imageAssetId") || "")}
+              data-art-component-field="imageAssetId"
+              onChange={(event) => void onPickLibraryAsset(event.target.value)}
+            >
+              <option value="">Embedded / None</option>
+              {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+            </select>
+          </label>
+          <label className="flow-react-field" data-art-field="spriteImage">
+            <span>Sprite Image</span>
+            <input type="file" accept="image/*" data-art-component-image onChange={(event) => void onPickImage(event.target.files?.[0])} />
+          </label>
+          <label className="flow-react-field" data-art-field="spriteRenderMode">
+            <span>Render Mode</span>
+            <select
+              value={normalizeSpriteRenderMode(frameValue("spriteRenderMode"))}
+              data-art-component-field="spriteRenderMode"
+              onChange={(event) => commit({ spriteRenderMode: event.target.value } as Partial<ArtComponent>)}
+            >
+              {spriteRenderModeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="flow-react-field" data-art-field="imageObjectFit">
+            <span>Object Fit</span>
+            <select
+              value={String(frameValue("imageObjectFit") || "contain")}
+              data-art-component-field="imageObjectFit"
+              onChange={(event) => commit({ imageObjectFit: event.target.value } as Partial<ArtComponent>)}
+            >
+              <option value="contain">Contain</option>
+              <option value="cover">Cover</option>
+              <option value="fill">Fill</option>
+            </select>
+          </label>
+          {normalizeSpriteRenderMode(frameValue("spriteRenderMode")) === "tinted" ? textField("imageTint", "Tint") : null}
+        </>
       ) : null}
     </section>
   );

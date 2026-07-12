@@ -23,7 +23,8 @@ interface ArtComponentSchema {
   normalizeFillCss: (css?: unknown) => string;
   normalizeImageObjectFit: (fit?: unknown) => string;
   normalizeShapeStyle: (style: unknown, kind: string) => string;
-  componentImageMaskDataUrl: (component: Component) => string;
+  componentSpriteDataUrl: (component: Component) => string;
+  normalizeSpriteRenderMode: (value?: unknown) => string;
   normalizeContainerDistribution?: (value?: unknown) => string;
   transformOriginCss?: (value?: unknown) => string;
 }
@@ -108,7 +109,7 @@ function componentTextLayout(component: Component, labelText: string = schema().
 }
 
 function componentImageSource(component: Component): string {
-  return schema().componentImageMaskDataUrl(component) || w().artAssetUrl?.(component?.imageAssetId as string) || "";
+  return schema().componentSpriteDataUrl(component) || w().artAssetUrl?.(component?.imageAssetId as string) || "";
 }
 
 function syncComponentElement(options: Dict = {}): void {
@@ -124,22 +125,28 @@ function syncComponentElement(options: Dict = {}): void {
   const imageSource = Object.prototype.hasOwnProperty.call(options, "imageSource")
     ? String(options.imageSource || "")
     : componentImageSource(component);
-  element.className = `${baseClass} is-${kind} is-style-${s.normalizeShapeStyle(component.shapeStyle, kind)}`;
+  const spriteRenderMode = s.normalizeSpriteRenderMode(component.spriteRenderMode);
+  const tintedSprite = kind === "sprite" && spriteRenderMode === "tinted" && Boolean(imageSource);
+  element.className = `${baseClass} is-${kind}${kind === "sprite" ? "" : ` is-style-${s.normalizeShapeStyle(component.shapeStyle, kind)}`}`;
   element.classList.toggle("is-art-root-container", Boolean(options.isRootContainer));
   element.classList.toggle("is-selected", Boolean(options.isSelected));
+  element.classList.toggle("has-sprite-source", Boolean(imageSource));
+  element.classList.toggle("is-sprite-tinted", tintedSprite);
   element.classList.toggle("has-image-mask", Boolean(imageSource));
-  element.classList.toggle("has-tinted-image-mask", Boolean(imageSource && component.imageTint === "currentColor"));
+  element.classList.toggle("has-tinted-image-mask", tintedSprite);
   element.dataset.artComponentId = (component.id as string) || "";
   element.dataset.componentId = (component.id as string) || "";
+  element.dataset.spriteSource = imageSource;
   element.style.zIndex = String(componentLayerIndex(options.layerIndex, options.layerTotal));
   if (imageSource) element.style.setProperty("--component-mask-url", `url('${String(imageSource).replaceAll("'", "%27")}')`);
   else element.style.removeProperty("--component-mask-url");
+  element.style.setProperty("--component-sprite-tint", String(component.imageTint || "currentColor"));
   applyComponentLayout(element, component, options.canvas as CanvasSize, { labelText });
 
   const image = options.imageElement as HTMLImageElement | undefined;
   if (image) {
     image.hidden = !imageSource;
-    if (imageSource) {
+    if (imageSource && !tintedSprite) {
       if (image.getAttribute("src") !== imageSource) image.src = imageSource;
     } else {
       image.removeAttribute("src");

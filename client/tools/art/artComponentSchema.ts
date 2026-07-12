@@ -6,8 +6,8 @@
 import type { ArtComponent } from "../../types/game-data";
 import { gameTextDefaultFontFamily, gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
 
-export const componentKinds = ["text", "shape", "container", "badge", "reference"] as const;
-export const creatableComponentKinds = ["text", "shape", "container", "reference"] as const;
+export const componentKinds = ["text", "shape", "sprite", "container", "badge", "reference"] as const;
+export const creatableComponentKinds = ["text", "shape", "sprite", "container", "reference"] as const;
 export const shapeStyleOptions = [
   { value: "rounded", label: "Rounded" },
   { value: "rectangle", label: "Rectangle" },
@@ -17,6 +17,11 @@ export const shapeStyleOptions = [
 const shapeStyleValues = shapeStyleOptions.map((option) => option.value as string);
 const imageMimeTypes = ["image/png", "image/svg+xml", "image/jpeg", "image/webp"];
 const imageObjectFits = ["cover", "contain", "fill"];
+export const spriteRenderModeOptions = [
+  { value: "original", label: "Original" },
+  { value: "tinted", label: "Tinted" }
+] as const;
+const spriteRenderModes = spriteRenderModeOptions.map((option) => option.value as string);
 export const containerDistributionOptions = [
   { value: "none", label: "None" },
   { value: "horizontal", label: "Horizontal Distribution" },
@@ -69,6 +74,7 @@ export function componentKindLabel(kind: unknown): string {
   if (cleanKind === "container") return "Container";
   if (cleanKind === "badge") return "Badge";
   if (cleanKind === "reference") return "Reference";
+  if (cleanKind === "sprite") return "Sprite";
   return "Shape";
 }
 
@@ -86,20 +92,28 @@ export function normalizeShapeStyle(value: unknown, kind: unknown = "shape"): st
   return shapeStyleValues.includes(style) ? style : defaultShapeStyle(kind);
 }
 
-export function componentSupportsImageMask(componentOrKind: ComponentLike): boolean {
-  return componentKindFrom(componentOrKind) === "shape";
+export function componentSupportsSpriteSource(componentOrKind: ComponentLike): boolean {
+  return componentKindFrom(componentOrKind) === "sprite";
 }
 
-export function componentHasImageMask(component: Partial<ArtComponent> | null | undefined): boolean {
+export function componentHasSpriteSource(component: Partial<ArtComponent> | null | undefined): boolean {
   return (
-    componentSupportsImageMask(component) &&
+    componentSupportsSpriteSource(component) &&
     Boolean((component as Record<string, unknown>)?.imageDataUrl || (component as Record<string, unknown>)?.imageAssetId)
   );
 }
 
+export const componentSupportsImageMask = componentSupportsSpriteSource;
+export const componentHasImageMask = componentHasSpriteSource;
+
 export function normalizeImageObjectFit(value: unknown): string {
-  const fit = normalizeValue(value || "cover");
-  return imageObjectFits.includes(fit) ? fit : "cover";
+  const fit = normalizeValue(value || "contain");
+  return imageObjectFits.includes(fit) ? fit : "contain";
+}
+
+export function normalizeSpriteRenderMode(value: unknown): string {
+  const mode = normalizeValue(value || "original");
+  return spriteRenderModes.includes(mode) ? mode : "original";
 }
 
 export function normalizeContainerDistribution(value: unknown): string {
@@ -126,7 +140,7 @@ export function validateImageFile(file: File | null | undefined): string {
   if (!file) return "Choose an image file first.";
   if (!isSupportedImageMimeType(file.type)) return "Use PNG, SVG, JPG, or WEBP.";
   const size = Number(file.size || 0);
-  if (size <= 0 || size > componentImageMaxBytes) return "Image masks must be under 5 MB.";
+  if (size <= 0 || size > componentImageMaxBytes) return "Sprite images must be under 5 MB.";
   return "";
 }
 

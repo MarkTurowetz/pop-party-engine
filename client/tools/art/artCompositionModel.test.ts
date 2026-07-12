@@ -26,8 +26,8 @@ describe("artCompositionModel serialization", () => {
     expect(serialized.locked).toBe(false);
     expect(serialized.shapeStyle).toBe("rounded");
     expect(serialized.children).toEqual([]);
-    // non-shape image fields are blanked
-    expect(serialized.imageDataUrl).toBe("");
+    // Shape records do not persist Sprite fields.
+    expect(serialized.imageDataUrl).toBeUndefined();
   });
 
   it("normalizes surface and nested components", () => {

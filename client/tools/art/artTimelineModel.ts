@@ -769,10 +769,11 @@ function componentTimelinePropsFor(component: ArtComponent): TimelineProperties 
     addOptionalNumber(props, component, "borderRadius");
   }
 
-  if (component.kind === "shape") {
+  if (component.kind === "sprite") {
     addOptionalString(props, component, "imageAssetId");
     addOptionalString(props, component, "imageTint");
     addOptionalString(props, component, "imageObjectFit");
+    addOptionalString(props, component, "spriteRenderMode");
   }
 
   return props;

@@ -4,6 +4,42 @@ import { ArtPreviewRenderer } from "./ArtPreviewRenderer";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 
 describe("ArtPreviewRenderer transform origins", () => {
+  it("renders Shape styling as the visible artwork even when stale image fields are present", () => {
+    const component = {
+      id: "background",
+      kind: "shape",
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 100,
+      shapeStyle: "circle",
+      fillColor: "#fff6d8",
+      borderColor: "#17131f",
+      borderWidth: 6,
+      imageAssetId: "avatar-frame"
+    } as ArtComponent;
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer components={[component]} compositionById={new Map()} assetUrlById={new Map([["avatar-frame", "/frame.svg"]])} />
+    );
+    expect(markup).toContain("border-radius:50%");
+    expect(markup).toContain("background:#fff6d8");
+    expect(markup).not.toContain("/frame.svg");
+  });
+
+  it("renders Original and Tinted Sprites without Shape styling", () => {
+    const components = [
+      { id: "original", kind: "sprite", x: 40, y: 40, width: 40, height: 40, imageAssetId: "rex", imageObjectFit: "contain", spriteRenderMode: "original" },
+      { id: "tinted", kind: "sprite", x: 90, y: 40, width: 40, height: 40, imageAssetId: "rex", imageObjectFit: "contain", imageTint: "#22d3ee", spriteRenderMode: "tinted" }
+    ] as ArtComponent[];
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer components={components} compositionById={new Map()} assetUrlById={new Map([["rex", "/rex.svg"]])} />
+    );
+    expect(markup).toContain("background-image:url(/rex.svg)");
+    expect(markup).toContain("mask-image:url(/rex.svg)");
+    expect(markup).toContain("background:#22d3ee");
+    expect(markup).toContain("border-radius:0");
+  });
+
   it("renders the persisted nine-point origin and its selected drag handle", () => {
     const component = {
       id: "card",

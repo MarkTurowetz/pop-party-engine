@@ -180,6 +180,13 @@ function createComponent(
     component.fontColor = "#17131f";
     component.fontFamily = defaultTextFontFamily;
   }
+  if (cleanKind === "sprite") {
+    component.imageAssetId = "";
+    component.imageDataUrl = "";
+    component.imageObjectFit = "contain";
+    component.imageTint = "currentColor";
+    component.spriteRenderMode = "original";
+  }
   return component as ArtComponent;
 }
 

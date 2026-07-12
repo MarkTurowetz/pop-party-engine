@@ -542,8 +542,6 @@ describe("artTimelineModel", () => {
       borderColor: "#17131f",
       borderWidth: 4,
       borderRadius: 12,
-      imageAssetId: "rex",
-      imageObjectFit: "contain"
     } as ArtComponent;
     const timeline = addTransformKeyframe({ fps: 30, frameCount: 20, labels: [], commands: [], tracks: [] }, component, 5);
     expect(timeline.tracks).toHaveLength(1);
@@ -565,14 +563,36 @@ describe("artTimelineModel", () => {
             fillColor: "#ffe156",
             borderColor: "#17131f",
             borderWidth: 4,
-            borderRadius: 12,
-            imageAssetId: "rex",
-            imageObjectFit: "contain"
+            borderRadius: 12
           }
         }
       ]
     });
     expect(removeTimelineKeyframe(timeline, "card", 5).tracks).toEqual([]);
+  });
+
+  it("captures Sprite source properties without Shape styling", () => {
+    const component = {
+      id: "avatar",
+      kind: "sprite",
+      x: 0,
+      y: 0,
+      width: 70,
+      height: 70,
+      imageAssetId: "avatar-rex",
+      imageObjectFit: "contain",
+      imageTint: "currentColor",
+      spriteRenderMode: "tinted",
+      fillColor: "should-not-persist"
+    } as ArtComponent;
+    const timeline = addTransformKeyframe({ fps: 30, frameCount: 6, labels: [], commands: [], tracks: [] }, component, 0);
+    expect(timeline.tracks[0].keyframes[0].props).toMatchObject({
+      imageAssetId: "avatar-rex",
+      imageObjectFit: "contain",
+      imageTint: "currentColor",
+      spriteRenderMode: "tinted"
+    });
+    expect(timeline.tracks[0].keyframes[0].props.fillColor).toBeUndefined();
   });
 
   it("splits an existing tween and mirrors its easing onto the inserted keyframe", () => {

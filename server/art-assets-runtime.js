@@ -2,6 +2,11 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const artComponentSchema = require("../shared/art-component-schema");
+const {
+  ART_COMPONENT_SCHEMA_VERSION,
+  migrateLegacyArtCompositionSchema,
+  migrateLegacyArtManifestSchema
+} = require("../shared/art-component-schema-migration");
 const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
 const { ART_TIMELINE_ARCHITECTURE_VERSION, collectArtArchitectureIssues } = require("../shared/art-timeline-architecture");
@@ -24,6 +29,7 @@ function createArtAssetsRuntime({
   sendJson,
   writeArtManifestSource = null
 }) {
+  artCompositions = artCompositions.map((composition) => migrateLegacyArtCompositionSchema(JSON.parse(JSON.stringify(composition))));
   const knownCompositionIds = new Set(artCompositions.map((composition) => composition.id));
 
   function manifestRevision(manifest) {
@@ -37,7 +43,7 @@ function createArtAssetsRuntime({
 
   function readArtManifest() {
     try {
-      return JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+      return migrateLegacyArtManifestSchema(JSON.parse(fs.readFileSync(manifestFile, "utf8"))).manifest;
     } catch (error) {
       return {};
     }
@@ -61,7 +67,8 @@ function createArtAssetsRuntime({
   async function loadArtManifest() {
     if (typeof loadArtManifestSource === "function") {
       const manifest = await loadArtManifestSource();
-      return manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {};
+      const source = manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {};
+      return migrateLegacyArtManifestSchema(source).manifest;
     }
     return readArtManifest();
   }
@@ -84,6 +91,12 @@ function createArtAssetsRuntime({
   function cleanColor(value, fallback) {
     const text = String(value ?? "").trim();
     if (text === "transparent") return text;
+    return normalizeColor(text) || fallback;
+  }
+
+  function cleanSpriteTint(value, fallback = "currentColor") {
+    const text = String(value ?? "").trim();
+    if (text === "currentColor") return text;
     return normalizeColor(text) || fallback;
   }
 
@@ -199,12 +212,13 @@ function createArtAssetsRuntime({
     const dataUrl = String(source.imageDataUrl || base.imageDataUrl || "").trim();
     if (!dataUrl) {
       if (!imageAssetId) return null;
+      if (!artAssets.some((asset) => asset.id === imageAssetId)) return null;
       return {
         imageAssetId,
         imageName: cleanImageName(source.imageName, base.imageName || imageAssetId),
         imageMimeType: "",
         imageObjectFit: artComponentSchema.normalizeImageObjectFit(source.imageObjectFit || base.imageObjectFit),
-        imageTint: cleanText(source.imageTint, base.imageTint || "", 40)
+        imageTint: cleanSpriteTint(source.imageTint, base.imageTint || "currentColor")
       };
     }
     const parsed = artComponentSchema.parseImageDataUrl(dataUrl);
@@ -217,7 +231,7 @@ function createArtAssetsRuntime({
       imageName: cleanImageName(source.imageName, base.imageName || "Uploaded image"),
       imageMimeType: parsed.mimeType,
       imageObjectFit: artComponentSchema.normalizeImageObjectFit(source.imageObjectFit || base.imageObjectFit),
-      imageTint: cleanText(source.imageTint, base.imageTint || "", 40)
+      imageTint: cleanSpriteTint(source.imageTint, base.imageTint || "currentColor")
     };
   }
 
@@ -267,9 +281,10 @@ function createArtAssetsRuntime({
       normalized.borderWidth = cleanNumber(source.borderWidth, Number(base.borderWidth || 0), 0, 80);
       normalized.borderRadius = cleanNumber(source.borderRadius, Number(base.borderRadius || 0), 0, 999);
     }
-    if (artComponentSchema.componentSupportsImageMask(kind)) {
+    if (artComponentSchema.componentSupportsSpriteSource(kind)) {
       const imageMask = normalizeComponentImageMask(source, base);
       if (imageMask) Object.assign(normalized, imageMask);
+      normalized.spriteRenderMode = artComponentSchema.normalizeSpriteRenderMode(source.spriteRenderMode || base.spriteRenderMode);
     }
 
     const fallbackChildren = new Map((Array.isArray(base.children) ? base.children : []).map((child) => [child.id, child]));
@@ -336,6 +351,7 @@ function createArtAssetsRuntime({
   }
 
   function normalizeComposition(composition, override = null) {
+    if (override) migrateLegacyArtCompositionSchema(override);
     const components = normalizeCompositionComponents(composition.components || [], override?.components);
     migrateGeneratedStageCodePanelDefaults(composition.id, components);
     migrateGeneratedWidgetDefaults(composition.id, components);
@@ -792,6 +808,7 @@ function createArtAssetsRuntime({
       ...(normalized.timeline ? { timeline: normalized.timeline } : {}),
       updatedAt: new Date().toISOString()
     };
+    manifest.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
     const validationIssues = collectArtArchitectureIssues(allPublicArtCompositions(manifest));
     if (validationIssues.length) {
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
@@ -850,6 +867,7 @@ function createArtAssetsRuntime({
         updatedAt
       };
     }
+    candidate.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
     const validationIssues = collectArtArchitectureIssues(allPublicArtCompositions(candidate));
     if (validationIssues.length) {
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });

@@ -2,11 +2,13 @@ import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import { normalizeTimeline } from "../../../shared/timeline-model";
 import {
   componentKindLabel,
-  componentSupportsImageMask,
+  componentSupportsShapeStyle,
+  componentSupportsSpriteSource,
   normalizeContainerDistribution,
   normalizeFillCss,
   normalizeGameTextFontFamily,
   normalizeImageObjectFit,
+  normalizeSpriteRenderMode,
   normalizeTransformOrigin,
   normalizeShapeStyle
 } from "./artComponentSchema";
@@ -44,7 +46,8 @@ export function artCompositionKindLabel(value: unknown): string {
 export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
   const component = raw as Record<string, unknown>;
   const kind = String(component.kind || "shape");
-  const supportsImage = componentSupportsImageMask(raw);
+  const supportsImage = componentSupportsSpriteSource(raw);
+  const supportsShape = componentSupportsShapeStyle(raw);
   const isTextual = kind === "text" || kind === "badge";
   const serialized = {
     id: String(component.id || ""),
@@ -69,23 +72,29 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
     autoFitText: isTextual ? component.autoFitText !== false : false,
     fontColor: String(component.fontColor || "#17131f"),
     fontFamily: isTextual ? normalizeGameTextFontFamily(component.fontFamily) : "",
-    shapeStyle: normalizeShapeStyle(component.shapeStyle, kind),
-    fillColor: String(component.fillColor || "transparent"),
-    fillCss: normalizeFillCss(component.fillCss),
-    borderColor: String(component.borderColor || "transparent"),
-    borderWidth: num(component.borderWidth, 0),
-    borderRadius: num(component.borderRadius, 0),
-    imageDataUrl: supportsImage ? String(component.imageDataUrl || "") : "",
-    imageAssetId: supportsImage ? String(component.imageAssetId || "") : "",
-    imageName: supportsImage ? String(component.imageName || "") : "",
-    imageMimeType: supportsImage ? String(component.imageMimeType || "") : "",
-    imageObjectFit: supportsImage ? normalizeImageObjectFit(component.imageObjectFit) : "cover",
-    imageTint: supportsImage ? String(component.imageTint || "") : "",
     artCompositionId: kind === "reference" ? String(component.artCompositionId || "") : "",
     children: (Array.isArray(component.children) ? component.children : []).map((child) =>
       serializeArtComponentForSave(child as ArtComponent)
     )
   } as ArtComponent;
+  const output = serialized as Record<string, unknown>;
+  if (supportsShape) {
+    output.shapeStyle = normalizeShapeStyle(component.shapeStyle, kind);
+    output.fillColor = String(component.fillColor || "transparent");
+    output.fillCss = normalizeFillCss(component.fillCss);
+    output.borderColor = String(component.borderColor || "transparent");
+    output.borderWidth = num(component.borderWidth, 0);
+    output.borderRadius = num(component.borderRadius, 0);
+  }
+  if (supportsImage) {
+    output.imageDataUrl = String(component.imageDataUrl || "");
+    output.imageAssetId = String(component.imageAssetId || "");
+    output.imageName = String(component.imageName || "");
+    output.imageMimeType = String(component.imageMimeType || "");
+    output.imageObjectFit = normalizeImageObjectFit(component.imageObjectFit);
+    output.imageTint = String(component.imageTint || "currentColor");
+    output.spriteRenderMode = normalizeSpriteRenderMode(component.spriteRenderMode);
+  }
   return serialized;
 }
 

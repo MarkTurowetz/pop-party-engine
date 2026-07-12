@@ -280,8 +280,8 @@ function defaultPlayerAvatarComposition(species, label, assetId) {
     components: [
       {
         id: "dino-mask",
-        name: "Dino Image Mask",
-        kind: "shape",
+        name: "Dino Sprite",
+        kind: "sprite",
         x: 50,
         y: 50,
         width: 70,
@@ -289,14 +289,10 @@ function defaultPlayerAvatarComposition(species, label, assetId) {
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        shapeStyle: "rectangle",
-        fillColor: "currentColor",
-        borderColor: "transparent",
-        borderWidth: 0,
-        borderRadius: 0,
         imageAssetId: assetId,
         imageObjectFit: "contain",
-        imageTint: "currentColor"
+        imageTint: "currentColor",
+        spriteRenderMode: "tinted"
       },
       {
         id: "avatar-frame",
@@ -309,13 +305,11 @@ function defaultPlayerAvatarComposition(species, label, assetId) {
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        shapeStyle: "rectangle",
-        fillColor: "transparent",
-        borderColor: "transparent",
-        borderWidth: 0,
-        borderRadius: 0,
-        imageAssetId: "avatar-frame",
-        imageObjectFit: "contain"
+        shapeStyle: "rounded",
+        fillColor: "#fff6d8",
+        borderColor: "#17131f",
+        borderWidth: 6,
+        borderRadius: 13
       }
     ]
   };
@@ -545,8 +539,8 @@ function defaultPlayerObjectComposition(species, label, assetId) {
         children: [
           {
             id: "dino-mask",
-            name: "Dino Image Mask",
-            kind: "shape",
+            name: "Dino Sprite",
+            kind: "sprite",
             x: 50,
             y: 50,
             width: 70,
@@ -554,14 +548,10 @@ function defaultPlayerObjectComposition(species, label, assetId) {
             scale: 1,
             rotation: 0,
             defaultAnimationState: "on",
-            shapeStyle: "rectangle",
-            fillColor: "currentColor",
-            borderColor: "transparent",
-            borderWidth: 0,
-            borderRadius: 0,
             imageAssetId: assetId,
             imageObjectFit: "contain",
-            imageTint: "currentColor"
+            imageTint: "currentColor",
+            spriteRenderMode: "tinted"
           },
           {
             id: "avatar-frame",
@@ -574,13 +564,11 @@ function defaultPlayerObjectComposition(species, label, assetId) {
             scale: 1,
             rotation: 0,
             defaultAnimationState: "on",
-            shapeStyle: "rectangle",
-            fillColor: "transparent",
-            borderColor: "transparent",
-            borderWidth: 0,
-            borderRadius: 0,
-            imageAssetId: "avatar-frame",
-            imageObjectFit: "contain"
+            shapeStyle: "rounded",
+            fillColor: "#fff6d8",
+            borderColor: "#17131f",
+            borderWidth: 6,
+            borderRadius: 13
           }
         ]
       },
@@ -950,8 +938,8 @@ const defaultArtCompositions = [
     components: [
       {
         id: "cursor-shape",
-        name: "Cursor Shape",
-        kind: "shape",
+        name: "Cursor Sprite",
+        kind: "sprite",
         x: 46,
         y: 46,
         width: 72,
@@ -959,14 +947,10 @@ const defaultArtCompositions = [
         scale: 1,
         rotation: 0,
         defaultAnimationState: "on",
-        shapeStyle: "rectangle",
-        fillColor: "currentColor",
-        borderColor: "transparent",
-        borderWidth: 0,
-        borderRadius: 0,
         imageAssetId: "presentation-click-cursor",
         imageObjectFit: "contain",
-        imageTint: "currentColor"
+        imageTint: "currentColor",
+        spriteRenderMode: "tinted"
       }
     ]
   },

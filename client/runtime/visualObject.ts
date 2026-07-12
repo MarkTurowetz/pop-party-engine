@@ -374,27 +374,37 @@ class CssVisualObject {
     ) {
       renderTimelineLabelText(this.element, props, width, height, fontSize);
     }
-    if (hasTimelineProperty(props, "imageAssetId") || hasTimelineProperty(props, "imageDataUrl")) {
-      const imageSource = timelineImageSource(props);
+    if (
+      hasTimelineProperty(props, "imageAssetId") ||
+      hasTimelineProperty(props, "imageDataUrl") ||
+      hasTimelineProperty(props, "imageTint") ||
+      hasTimelineProperty(props, "spriteRenderMode")
+    ) {
+      const changedSource = hasTimelineProperty(props, "imageAssetId") || hasTimelineProperty(props, "imageDataUrl");
+      const imageSource = changedSource ? timelineImageSource(props) || "" : this.element.dataset?.spriteSource || "";
+      const requestedMode = timelineTextValue(props.spriteRenderMode);
+      const tinted = requestedMode
+        ? requestedMode === "tinted"
+        : this.element.classList?.contains?.("is-sprite-tinted") === true;
+      const hasSource = Boolean(imageSource);
       const imageTint = timelineTextValue(props.imageTint);
-      this.element.classList?.toggle?.("has-image-mask", Boolean(imageSource));
-      this.element.classList?.toggle?.("has-tinted-image-mask", Boolean(imageSource && imageTint === "currentColor"));
+      this.element.classList?.toggle?.("has-sprite-source", hasSource);
+      this.element.classList?.toggle?.("has-image-mask", hasSource);
+      this.element.classList?.toggle?.("is-sprite-tinted", hasSource && tinted);
+      this.element.classList?.toggle?.("has-tinted-image-mask", hasSource && tinted);
+      if (this.element.dataset) this.element.dataset.spriteSource = imageSource;
       if (imageSource) setStyleProperty(this.element, "--component-mask-url", cssUrl(imageSource));
       else removeStyleProperty(this.element, "--component-mask-url");
+      if (imageTint) setStyleProperty(this.element, "--component-sprite-tint", imageTint);
       const image = this.element.querySelector?.(".art-runtime-object-image") as HTMLImageElement | null | undefined;
       if (image) {
-        image.hidden = !imageSource;
-        if (imageSource) {
+        image.hidden = !hasSource;
+        if (imageSource && !tinted) {
           if (image.getAttribute("src") !== imageSource) image.src = imageSource;
         } else {
           image.removeAttribute("src");
         }
       }
-    }
-    if (hasTimelineProperty(props, "imageTint") && !hasTimelineProperty(props, "imageAssetId") && !hasTimelineProperty(props, "imageDataUrl")) {
-      const imageTint = timelineTextValue(props.imageTint);
-      const hasImageMask = this.element.classList?.contains?.("has-image-mask") === true;
-      this.element.classList?.toggle?.("has-tinted-image-mask", Boolean(hasImageMask && imageTint === "currentColor"));
     }
   }
 

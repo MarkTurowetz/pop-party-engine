@@ -460,8 +460,12 @@ function avatarComponentStyle(component: Dict, canvas: Dict | undefined, layerIn
     `width:${(Number(component.width || 1) / canvasWidth) * 100}%`,
     `height:${(Number(component.height || 1) / canvasHeight) * 100}%`,
     `transform:translate(-50%, -50%) rotate(${Number(component.rotation || 0)}deg) scale(${Number(component.scale || 1)})`,
-    `--avatar-component-fit:${component.imageObjectFit || "cover"}`,
-    `--avatar-component-fill:${component.fillColor || "transparent"}`
+    `--avatar-component-fit:${component.imageObjectFit || "contain"}`,
+    `--avatar-component-fill:${component.fillCss || component.fillColor || "transparent"}`,
+    `--avatar-component-border-color:${component.borderColor || "transparent"}`,
+    `--avatar-component-border-width:${Number(component.borderWidth || 0)}px`,
+    `--avatar-component-border-radius:${Number(component.borderRadius || 0)}px`,
+    `--avatar-component-tint:${component.imageTint || "currentColor"}`
   ].join(";");
 }
 
@@ -477,8 +481,9 @@ function avatarCompositionComponentMarkup(component: Dict, canvas: Dict | undefi
     w.PartyGameArtComponentSchema?.normalizeShapeStyle?.(component?.shapeStyle as string, kind as string) ||
     component?.shapeStyle ||
     "rounded";
-  const classes = `avatar-art-component is-${kind} is-style-${shapeStyle}${imageSource ? " has-image-mask" : ""}${component.imageTint === "currentColor" && imageSource ? " has-tinted-image-mask" : ""}`;
-  if (component.imageTint === "currentColor" && imageSource) {
+  const tinted = kind === "sprite" && component.spriteRenderMode === "tinted" && Boolean(imageSource);
+  const classes = `avatar-art-component is-${kind} is-style-${shapeStyle}${imageSource ? " has-sprite-source" : ""}${tinted ? " is-sprite-tinted" : ""}`;
+  if (tinted) {
     return `<span class="${classes}" style="${style};--avatar-mask-url:${cssUrl(imageSource)}"><span class="avatar-art-mask-image"></span></span>`;
   }
   if (imageSource) {
