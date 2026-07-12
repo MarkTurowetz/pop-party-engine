@@ -4886,6 +4886,164 @@
         ]
       },
       "updatedAt": "2026-07-12T05:12:19.491Z"
+    },
+    "prefab-untitled-prefab-2": {
+      "name": "Player Answer Bubble MC",
+      "description": "Reusable art prefab.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 560,
+        "height": 230
+      },
+      "components": [
+        {
+          "id": "reference-e949124bb2d7",
+          "name": "Player Answer Bubble",
+          "instanceLabel": "playerAnswerBubble",
+          "kind": "reference",
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "height": 180,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "player-answer-bubble"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1176,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-reference-e949124bb2d7",
+            "targetId": "reference-e949124bb2d7",
+            "keyframes": [
+              {
+                "id": "key-reference-e949124bb2d7-0",
+                "frame": 0,
+                "props": {
+                  "opacity": 1,
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-e949124bb2d7-2",
+                "frame": 2,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-e949124bb2d7-13",
+                "frame": 13,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-e949124bb2d7-17",
+                "frame": 17,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-12T05:32:14.998Z"
     }
   },
   "deletedCompositionIds": [],
