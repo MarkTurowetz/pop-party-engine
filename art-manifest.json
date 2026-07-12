@@ -6291,8 +6291,8 @@
           "kind": "reference",
           "x": 0,
           "y": 0,
-          "width": 52,
-          "height": 28,
+          "width": 44,
+          "height": 22,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -6411,8 +6411,8 @@
                   "opacity": 1,
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1,
                   "rotation": 0
                 },
@@ -6424,8 +6424,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 0,
                   "rotation": 0,
                   "opacity": 1,
@@ -6439,8 +6439,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -6454,8 +6454,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -6469,8 +6469,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -6484,8 +6484,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -6499,8 +6499,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -6514,8 +6514,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -6529,8 +6529,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 52,
-                  "height": 28,
+                  "width": 44,
+                  "height": 22,
                   "scale": 0,
                   "rotation": 0,
                   "opacity": 1,
@@ -6542,7 +6542,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-12T08:36:20.748Z"
+      "updatedAt": "2026-07-12T18:30:30.000Z"
     }
   },
   "deletedCompositionIds": [],
