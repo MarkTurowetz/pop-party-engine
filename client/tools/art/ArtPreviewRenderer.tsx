@@ -25,7 +25,7 @@ export interface ArtPreviewRendererProps {
   currentColor?: string;
   interactive?: boolean;
   livePosition?: { id: string; x: number; y: number } | null;
-  liveTransform?: { id: string; width?: number; height?: number; rotation?: number } | null;
+  liveTransform?: { id: string; width?: number; height?: number; scale?: number; rotation?: number } | null;
   timelineFrameOverrides?: Record<string, Record<string, unknown>> | null;
   onBeginDrag?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBeginResize?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -151,7 +151,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const fillColor = String(timelineValue("fillColor", get(component, "fillColor") || "transparent"));
     const borderColor = String(timelineValue("borderColor", get(component, "borderColor") || "transparent"));
     const borderWidth = Number(timelineValue("borderWidth", get(component, "borderWidth") || 0));
-    const scale = Number(timelineValue("scale", get(component, "scale") || 1));
+    const scale = liveTx?.scale ?? Number(timelineValue("scale", get(component, "scale") || 1));
     const rotation = liveTx?.rotation ?? Number(timelineValue("rotation", get(component, "rotation") || 0));
     const ownOpacity = Number(timelineValue("opacity", get(component, "opacity") ?? 1));
     const inheritedContentOpacity = Number(layer.contentOpacity ?? 1);

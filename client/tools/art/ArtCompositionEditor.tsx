@@ -7,14 +7,12 @@ import {
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
   type ReactNode
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
 import { artCompositionKindOptions, normalizeArtCompositionKind } from "./artCompositionModel";
-import { artResizeDimensions } from "./artResize";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import { ArtPreviewRenderer, assetUrlMap, compositionMap } from "./ArtPreviewRenderer";
 import {
@@ -421,7 +419,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   );
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; rotation?: number } | null>(null);
+  const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; scale?: number; rotation?: number } | null>(null);
   const [previewMarquee, setPreviewMarquee] = useState<MarqueeBox | null>(null);
   const [layerDragId, setLayerDragId] = useState<string | null>(null);
   const [layerDropTarget, setLayerDropTarget] = useState<LayerDropTarget | null>(null);
@@ -458,8 +456,17 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     () => (composition && selectedComponentId ? findArtComponentTargetPath(composition.components || [], selectedComponentId) : null),
     [composition, selectedComponentId]
   );
+  const selectedComponentMatches = useMemo(
+    () =>
+      composition
+        ? [...selectedComponentIds]
+            .map((id) => findArtComponentTargetPath(composition.components || [], id))
+            .filter((match): match is NonNullable<typeof match> => Boolean(match?.component))
+        : [],
+    [composition, selectedComponentIds]
+  );
+  const selectedComponents = useMemo(() => selectedComponentMatches.map((match) => match.component), [selectedComponentMatches]);
   const selectedComponent = selectedComponentMatch?.component;
-  const selectedComponentPath = selectedComponentMatch?.path || null;
   const timelineScopeComponentMatch = useMemo(
     () => (composition && activeTimelineScopeComponentId ? findArtComponentTargetPath(composition.components || [], activeTimelineScopeComponentId) : null),
     [activeTimelineScopeComponentId, composition]
@@ -487,11 +494,15 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     () => scopeTimelinePreviewOverridesToComponent(timelinePreviewOverrides || baseTimelineFrameOverrides, timelineScopeComponent || null, timelineScopeComponentPath),
     [baseTimelineFrameOverrides, timelineScopeComponent, timelineScopeComponentPath, timelinePreviewOverrides]
   );
-  const selectedComponentScopedId = selectedComponentPath ? artComponentTargetPathId(selectedComponentPath) : selectedComponent?.id || "";
   const selectedTimelineEditTargetId = componentTimelineLocalTargetId(selectedComponent);
-  const selectedComponentTimelineValues = selectedComponent
-    ? timelineFrameOverrides?.[selectedComponentScopedId] || timelineFrameOverrides?.[selectedComponent.id] || {}
-    : {};
+  const selectedComponentTimelineValuesById = useMemo(() => {
+    const values = new Map<string, Record<string, unknown>>();
+    for (const match of selectedComponentMatches) {
+      const scopedId = artComponentTargetPathId(match.path);
+      values.set(match.component.id, timelineFrameOverrides?.[scopedId] || timelineFrameOverrides?.[match.component.id] || {});
+    }
+    return values;
+  }, [selectedComponentMatches, timelineFrameOverrides]);
   const commitSelectedTimelineFrameProps = (patch: TimelineProperties) => {
     if (!selectedComponent || !selectedTimelineEditTargetId || !composition) return;
     const nextTimeline = upsertTimelineKeyframeProps(
@@ -502,6 +513,30 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       { defaultEasing: "hold", rootComponent: selectedComponent }
     );
     controller.updateComponent(selectedComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
+    setTimelinePreview((current) =>
+      composition
+        ? {
+            compositionId: composition.id,
+            frame: current?.compositionId === composition.id ? current.frame : timelinePreviewFrame,
+            overrides: null
+          }
+        : current
+    );
+  };
+  const commitTimelineFramePropsForComponents = (componentsToUpdate: ArtComponent[], patch: TimelineProperties) => {
+    if (!composition) return;
+    for (const targetComponent of componentsToUpdate) {
+      const targetId = componentTimelineLocalTargetId(targetComponent);
+      if (!targetId) continue;
+      const nextTimeline = upsertTimelineKeyframeProps(
+        targetComponent.timeline || null,
+        targetId,
+        timelinePreviewFrame,
+        patch,
+        { defaultEasing: "hold", rootComponent: targetComponent }
+      );
+      controller.updateComponent(targetComponent.id, { timeline: nextTimeline } as Partial<ArtComponent>);
+    }
     setTimelinePreview((current) =>
       composition
         ? {
@@ -720,28 +755,29 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     event.stopPropagation();
     const originW = timelineAwareComponentValue(component, "width", 1);
     const originH = timelineAwareComponentValue(component, "height", 1);
+    const originScale = timelineAwareComponentValue(component, "scale", 1);
     const startX = event.clientX;
     const startY = event.clientY;
-    let next = { width: originW, height: originH };
-    const dimensionsForEvent = (e: PointerEvent) =>
-      artResizeDimensions({
-        originWidth: originW,
-        originHeight: originH,
-        deltaX: (e.clientX - startX) / previewScale,
-        deltaY: (e.clientY - startY) / previewScale,
-        preserveAspectRatio: e.shiftKey,
-        snapToInteger: e.metaKey || e.ctrlKey
-      });
+    let nextScale = originScale;
+    const scaleForEvent = (e: PointerEvent) => {
+      const deltaX = (e.clientX - startX) / previewScale;
+      const deltaY = (e.clientY - startY) / previewScale;
+      const widthFactor = originW !== 0 ? deltaX / Math.max(1, Math.abs(originW)) : 0;
+      const heightFactor = originH !== 0 ? deltaY / Math.max(1, Math.abs(originH)) : 0;
+      const dominantFactor = Math.abs(widthFactor) >= Math.abs(heightFactor) ? widthFactor : heightFactor;
+      const rawScale = Math.max(0, originScale * (1 + dominantFactor));
+      return e.metaKey || e.ctrlKey ? Math.max(0, Math.round(rawScale * 100) / 100) : Math.max(0, Number(rawScale.toFixed(4)));
+    };
     const move = (e: PointerEvent) => {
-      next = dimensionsForEvent(e);
-      setLiveTransform({ id: component.id, width: next.width, height: next.height });
+      nextScale = scaleForEvent(e);
+      setLiveTransform({ id: component.id, scale: nextScale });
     };
     const up = (e: PointerEvent) => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
-      next = dimensionsForEvent(e);
+      nextScale = scaleForEvent(e);
       setLiveTransform(null);
-      commitCanvasComponentPatch(component, { width: next.width, height: next.height });
+      commitCanvasComponentPatch(component, { scale: nextScale });
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
@@ -886,16 +922,18 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             ))}
           </div>
           {composition ? (
-            <div className="art-canvas-viewport">
+            <div
+              className="art-canvas-viewport"
+              onPointerDown={beginPreviewMarquee}
+              onDoubleClick={(event) => {
+                if ((event.target as HTMLElement | null)?.closest("[data-art-canvas-component]")) return;
+                event.preventDefault();
+                exitTimelineScopeOneLevel();
+              }}
+            >
               <div
                 className="art-canvas-shell"
                 style={{ width: visualBounds.width * previewScale, height: visualBounds.height * previewScale }}
-                onPointerDown={beginPreviewMarquee}
-                onDoubleClick={(event) => {
-                  if ((event.target as HTMLElement | null)?.closest("[data-art-canvas-component]")) return;
-                  event.preventDefault();
-                  exitTimelineScopeOneLevel();
-                }}
               >
                 <div
                   ref={canvasRef}
@@ -953,13 +991,14 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           controller={controller}
           composition={composition}
           compositions={compositions}
-          component={selectedComponent ?? null}
+          component={selectedComponent ?? selectedComponents[0] ?? null}
+          selectedComponents={selectedComponents}
           timelineContext={
-            selectedComponent && selectedTimelineEditTargetId
+            selectedComponents.length > 0
               ? {
                   frame: timelinePreviewFrame,
-                  values: selectedComponentTimelineValues,
-                  onCommit: commitSelectedTimelineFrameProps
+                  valuesById: selectedComponentTimelineValuesById,
+                  onCommit: commitTimelineFramePropsForComponents
                 }
               : null
           }
@@ -1013,6 +1052,7 @@ function ArtComponentInspector({
   composition,
   compositions,
   component,
+  selectedComponents,
   timelineContext,
   tree
 }: {
@@ -1020,15 +1060,19 @@ function ArtComponentInspector({
   composition: ArtComposition | null;
   compositions: ArtComposition[];
   component: ArtComponent | null;
+  selectedComponents?: ArtComponent[];
   timelineContext?: {
     frame: number;
-    values: Record<string, unknown>;
-    onCommit: (patch: TimelineProperties) => void;
+    valuesById: Map<string, Record<string, unknown>>;
+    onCommit: (components: ArtComponent[], patch: TimelineProperties) => void;
   } | null;
   tree: ReactNode;
 }) {
   void compositions;
-  if (!component) {
+  const editableComponents = selectedComponents?.length ? selectedComponents : component ? [component] : [];
+  const primaryComponent = editableComponents[0] || null;
+  const isMultiSelect = editableComponents.length > 1;
+  if (!primaryComponent) {
     return (
       <section className="flow-react-panel flow-react-inspector art-component-inspector" data-art-react-component="component-inspector" data-empty="true">
         <div className="art-component-tree-panel">
@@ -1040,14 +1084,24 @@ function ArtComponentInspector({
       </section>
     );
   }
-  const frameValue = (key: string): unknown =>
-    timelineContext && TIMELINE_INSPECTOR_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(timelineContext.values || {}, key)
-      ? timelineContext.values[key]
-      : get(component, key);
-  const commitBase = (patch: Partial<ArtComponent>) => controller.updateComponent(component.id, patch);
-  const commit = (patch: Partial<ArtComponent>) => {
+  const componentFrameValue = (target: ArtComponent, key: string): unknown => {
+    const values = timelineContext?.valuesById.get(target.id) || {};
+    return timelineContext && TIMELINE_INSPECTOR_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)
+      ? values[key]
+      : get(target, key);
+  };
+  const valuesMatch = (left: unknown, right: unknown): boolean => String(left ?? "") === String(right ?? "");
+  const frameValue = (key: string): unknown => {
+    const firstValue = componentFrameValue(primaryComponent, key);
+    return editableComponents.every((target) => valuesMatch(componentFrameValue(target, key), firstValue)) ? firstValue : "";
+  };
+  const commitBaseFor = (targets: ArtComponent[], patch: Partial<ArtComponent>) => {
+    for (const target of targets) controller.updateComponent(target.id, patch);
+  };
+  const commitBase = (patch: Partial<ArtComponent>) => commitBaseFor(editableComponents, patch);
+  const commitForComponents = (targets: ArtComponent[], patch: Partial<ArtComponent>) => {
     if (!timelineContext) {
-      commitBase(patch);
+      commitBaseFor(targets, patch);
       return;
     }
     const timelinePatch: TimelineProperties = {};
@@ -1059,18 +1113,42 @@ function ArtComponentInspector({
         (basePatch as Record<string, unknown>)[key] = value;
       }
     }
-    if (Object.keys(timelinePatch).length > 0) timelineContext.onCommit(timelinePatch);
-    if (Object.keys(basePatch).length > 0) commitBase(basePatch);
+    if (Object.keys(timelinePatch).length > 0) timelineContext.onCommit(targets, timelinePatch);
+    if (Object.keys(basePatch).length > 0) commitBaseFor(targets, basePatch);
   };
-  const isTextual = component.kind === "text" || component.kind === "badge";
-  const supportsShape = componentSupportsShapeStyle(component);
-  const supportsImage = componentSupportsImageMask(component);
+  const commit = (patch: Partial<ArtComponent>) => commitForComponents(editableComponents, patch);
+  const isTextual = editableComponents.every((target) => target.kind === "text" || target.kind === "badge");
+  const supportsShape = editableComponents.every((target) => componentSupportsShapeStyle(target));
+  const supportsImage = editableComponents.length === 1 && componentSupportsImageMask(primaryComponent);
   const referenceOptions = compositions.filter((item) => item.id !== composition?.id);
+  const relativeNumberValue = (raw: string, currentValue: unknown): number | null => {
+    const trimmed = raw.trim();
+    const match = trimmed.match(/^([+\-*/])\s*(-?\d+(?:\.\d+)?)$/);
+    if (!match) {
+      const numberValue = Number(trimmed);
+      return Number.isFinite(numberValue) ? numberValue : null;
+    }
+    const currentNumber = Number(currentValue);
+    const delta = Number(match[2]);
+    if (!Number.isFinite(currentNumber) || !Number.isFinite(delta)) return null;
+    if (match[1] === "+") return currentNumber + delta;
+    if (match[1] === "-") return currentNumber - delta;
+    if (match[1] === "*") return currentNumber * delta;
+    if (delta === 0) return null;
+    return currentNumber / delta;
+  };
   const commitNumberInput = (key: string, value: string) => {
     if (value.trim() === "") return;
-    const numberValue = Number(value);
-    if (!Number.isFinite(numberValue)) return;
-    commit({ [key]: numberValue } as Partial<ArtComponent>);
+    const targets = editableComponents
+      .map((target) => ({ target, value: relativeNumberValue(value, componentFrameValue(target, key)) }))
+      .filter((entry): entry is { target: ArtComponent; value: number } => entry.value !== null);
+    if (targets.length !== editableComponents.length) return;
+    const firstValue = targets[0]?.value;
+    if (targets.every((entry) => entry.value === firstValue)) {
+      commit({ [key]: firstValue } as Partial<ArtComponent>);
+      return;
+    }
+    for (const entry of targets) commitForComponents([entry.target], { [key]: entry.value } as Partial<ArtComponent>);
   };
 
   const numberField = (key: string, label: string, step?: string) => (
@@ -1079,7 +1157,7 @@ function ArtComponentInspector({
       <input
         type="number"
         step={step}
-        key={`${component.id}-${timelineContext?.frame ?? "base"}-${key}`}
+        key={`${editableComponents.map((target) => target.id).join(":")}-${timelineContext?.frame ?? "base"}-${key}`}
         defaultValue={String(frameValue(key) ?? 0)}
         data-art-component-field={key}
         onChange={(event) => commitNumberInput(key, event.target.value)}
@@ -1092,7 +1170,7 @@ function ArtComponentInspector({
       <span>{label}</span>
       <input
         type="text"
-        key={`${component.id}-${timelineContext?.frame ?? "base"}-${key}`}
+        key={`${editableComponents.map((target) => target.id).join(":")}-${timelineContext?.frame ?? "base"}-${key}`}
         defaultValue={String(frameValue(key) ?? "")}
         data-art-component-field={key}
         onChange={(event) => commit({ [key]: event.target.value } as Partial<ArtComponent>)}
@@ -1115,31 +1193,33 @@ function ArtComponentInspector({
   };
 
   return (
-    <section className="flow-react-panel flow-react-inspector art-component-inspector" data-art-react-component="component-inspector" data-art-component-id={component.id}>
+    <section className="flow-react-panel flow-react-inspector art-component-inspector" data-art-react-component="component-inspector" data-art-component-id={primaryComponent.id}>
       <div className="art-component-tree-panel">
         <h3>Layers</h3>
         {tree}
       </div>
-      <h3>{component.name}</h3>
-      <label className="flow-react-field" data-art-field="name">
-        <span>Label</span>
-        <input
-          type="text"
-          key={`${component.id}-name-${String(get(component, "name") ?? "")}`}
-          defaultValue={String(get(component, "name") ?? "")}
-          data-art-component-field="name"
-          onBlur={(event) => commitBase({ name: event.target.value } as Partial<ArtComponent>)}
-        />
-      </label>
+      <h3>{isMultiSelect ? `${editableComponents.length} Components` : primaryComponent.name}</h3>
+      {!isMultiSelect ? (
+        <label className="flow-react-field" data-art-field="name">
+          <span>Label</span>
+          <input
+            type="text"
+            key={`${primaryComponent.id}-name-${String(get(primaryComponent, "name") ?? "")}`}
+            defaultValue={String(get(primaryComponent, "name") ?? "")}
+            data-art-component-field="name"
+            onBlur={(event) => commitBase({ name: event.target.value } as Partial<ArtComponent>)}
+          />
+        </label>
+      ) : null}
       {SCALAR_FIELDS.map((field) => numberField(field.key, field.label))}
       {numberField("scale", "Scale", "0.01")}
       {numberField("rotation", "Rotation", "0.1")}
       {numberField("opacity", "Opacity", "0.01")}
-      {component.kind === "reference" ? (
+      {editableComponents.every((target) => target.kind === "reference") ? (
         <label className="flow-react-field" data-art-field="artCompositionId">
           <span>Prefab</span>
           <select
-            value={String(get(component, "artCompositionId") || "")}
+            value={String(frameValue("artCompositionId") || "")}
             data-art-component-field="artCompositionId"
             onChange={(event) => commitBase({ artCompositionId: event.target.value } as Partial<ArtComponent>)}
           >
@@ -1175,11 +1255,11 @@ function ArtComponentInspector({
           {numberField("borderRadius", "Border Radius")}
         </>
       ) : null}
-      {component.kind === "container" ? (
+      {editableComponents.every((target) => target.kind === "container") ? (
         <label className="flow-react-field" data-art-field="childDistribution">
           <span>Child Distribution</span>
           <select
-            value={String(get(component, "childDistribution") || "none")}
+            value={String(frameValue("childDistribution") || "none")}
             data-art-component-field="childDistribution"
             onChange={(event) => commitBase({ childDistribution: event.target.value } as Partial<ArtComponent>)}
           >
@@ -1325,6 +1405,7 @@ function ArtTimelinePanel({
   const timelineTweenControlsRef = useRef<{ toggle: () => void }>({ toggle: () => {} });
   const commitCommandScriptDraftRef = useRef<() => boolean>(() => true);
   const timelineRangeDragRef = useRef<{ anchorFrame: number; moved: boolean } | null>(null);
+  const timelineWindowPanRef = useRef<{ startX: number; startWindowStart: number; frameWidth: number } | null>(null);
   const suppressTimelineClickRef = useRef(false);
   const shiftFrameRangeAnchorRef = useRef<number | null>(null);
   const dismissSelectionSignalRef = useRef(dismissSelectionSignal);
@@ -1429,15 +1510,6 @@ function ArtTimelinePanel({
 
   function setTimelineWindowStart(nextStart: number): void {
     setFrameWindowStart(Math.max(0, Math.min(maxFrameWindowStart, Math.round(Number(nextStart) || 0))));
-  }
-
-  function scrollTimelineWindowByWheel(event: ReactWheelEvent<HTMLElement>): void {
-    if (maxFrameWindowStart <= 0) return;
-    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-    if (Math.abs(delta) < 1) return;
-    event.preventDefault();
-    const step = Math.max(1, Math.round(Math.abs(delta) / 24));
-    setTimelineWindowStart(cleanFrameWindowStart + Math.sign(delta) * step);
   }
 
   function previewFrame(nextFrame: number): void {
@@ -1547,6 +1619,31 @@ function ArtTimelinePanel({
           suppressTimelineClickRef.current = false;
         }, 0);
       }
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  }
+
+  function beginTimelineWindowPan(event: ReactPointerEvent<HTMLElement>): void {
+    if (event.button !== 1 || maxFrameWindowStart <= 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    timelineWindowPanRef.current = {
+      startX: event.clientX,
+      startWindowStart: cleanFrameWindowStart,
+      frameWidth: Math.max(1, rect.width / Math.max(1, visibleTimelineFrameCount))
+    };
+    const move = (e: PointerEvent) => {
+      const pan = timelineWindowPanRef.current;
+      if (!pan) return;
+      const frameDelta = Math.round((pan.startX - e.clientX) / pan.frameWidth);
+      setTimelineWindowStart(pan.startWindowStart + frameDelta);
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      timelineWindowPanRef.current = null;
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
@@ -2166,7 +2263,7 @@ function ArtTimelinePanel({
       <div
         className="art-timeline-ruler"
         style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}
-        onWheel={scrollTimelineWindowByWheel}
+        onPointerDownCapture={beginTimelineWindowPan}
       >
         {visibleTimelineFrames.map((frameIndex) => (
           <button
@@ -2191,7 +2288,7 @@ function ArtTimelinePanel({
           </button>
         ))}
       </div>
-      <div className="art-timeline-lanes" data-art-timeline-lanes onWheel={scrollTimelineWindowByWheel}>
+      <div className="art-timeline-lanes" data-art-timeline-lanes onPointerDownCapture={beginTimelineWindowPan}>
             <div className="art-timeline-lane" data-art-timeline-lane-kind="labels">
               <div className="art-timeline-lane-label" title="Timeline labels">
                 Labels
