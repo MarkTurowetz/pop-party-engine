@@ -6542,6 +6542,272 @@
         ]
       },
       "updatedAt": "2026-07-12T18:36:32.906Z"
+    },
+    "avatars": {
+      "name": "Avatars",
+      "description": "Reusable stopped sprite timeline for selecting a player dinosaur avatar by frame label.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 70,
+        "height": 70
+      },
+      "components": [
+        {
+          "id": "avatar",
+          "name": "Avatar",
+          "instanceLabel": "avatar",
+          "kind": "shape",
+          "x": 0,
+          "y": 0,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "shapeStyle": "rectangle",
+          "fillColor": "currentColor",
+          "fillCss": "",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0,
+          "imageAssetId": "avatar-rex",
+          "imageName": "avatar-rex",
+          "imageMimeType": "",
+          "imageObjectFit": "contain",
+          "imageTint": "currentColor"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 6,
+        "labels": [
+          {
+            "name": "Rex",
+            "frame": 0
+          },
+          {
+            "name": "Stego",
+            "frame": 1
+          },
+          {
+            "name": "Trike",
+            "frame": 2
+          },
+          {
+            "name": "Raptor",
+            "frame": 3
+          },
+          {
+            "name": "Bronto",
+            "frame": 4
+          },
+          {
+            "name": "Cleo",
+            "frame": 5
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "stop-1",
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "id": "stop-2",
+            "frame": 2,
+            "type": "stop"
+          },
+          {
+            "id": "stop-3",
+            "frame": 3,
+            "type": "stop"
+          },
+          {
+            "id": "stop-4",
+            "frame": 4,
+            "type": "stop"
+          },
+          {
+            "id": "stop-5",
+            "frame": 5,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-avatar",
+            "targetId": "avatar",
+            "keyframes": [
+              {
+                "id": "key-avatar-0",
+                "frame": 0,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 70,
+                  "height": 70,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rectangle",
+                  "fillColor": "currentColor",
+                  "fillCss": "",
+                  "borderColor": "transparent",
+                  "borderWidth": 0,
+                  "borderRadius": 0,
+                  "imageAssetId": "avatar-rex",
+                  "imageTint": "currentColor",
+                  "imageObjectFit": "contain"
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-avatar-1",
+                "frame": 1,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 70,
+                  "height": 70,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rectangle",
+                  "fillColor": "currentColor",
+                  "fillCss": "",
+                  "borderColor": "transparent",
+                  "borderWidth": 0,
+                  "borderRadius": 0,
+                  "imageAssetId": "avatar-stego",
+                  "imageTint": "currentColor",
+                  "imageObjectFit": "contain"
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-avatar-2",
+                "frame": 2,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 70,
+                  "height": 70,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rectangle",
+                  "fillColor": "currentColor",
+                  "fillCss": "",
+                  "borderColor": "transparent",
+                  "borderWidth": 0,
+                  "borderRadius": 0,
+                  "imageAssetId": "avatar-trike",
+                  "imageTint": "currentColor",
+                  "imageObjectFit": "contain"
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-avatar-3",
+                "frame": 3,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 70,
+                  "height": 70,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rectangle",
+                  "fillColor": "currentColor",
+                  "fillCss": "",
+                  "borderColor": "transparent",
+                  "borderWidth": 0,
+                  "borderRadius": 0,
+                  "imageAssetId": "avatar-raptor",
+                  "imageTint": "currentColor",
+                  "imageObjectFit": "contain"
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-avatar-4",
+                "frame": 4,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 70,
+                  "height": 70,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rectangle",
+                  "fillColor": "currentColor",
+                  "fillCss": "",
+                  "borderColor": "transparent",
+                  "borderWidth": 0,
+                  "borderRadius": 0,
+                  "imageAssetId": "avatar-bronto",
+                  "imageTint": "currentColor",
+                  "imageObjectFit": "contain"
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-avatar-5",
+                "frame": 5,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 70,
+                  "height": 70,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rectangle",
+                  "fillColor": "currentColor",
+                  "fillCss": "",
+                  "borderColor": "transparent",
+                  "borderWidth": 0,
+                  "borderRadius": 0,
+                  "imageAssetId": "avatar-ankylo",
+                  "imageTint": "currentColor",
+                  "imageObjectFit": "contain"
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-12T21:45:00.000Z"
     }
   },
   "deletedCompositionIds": [],
@@ -6590,6 +6856,7 @@
           "composition:art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c"
         ],
         "folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb": [
+          "composition:avatars",
           "composition:player-avatar-rex",
           "composition:player-avatar-stego",
           "composition:player-avatar-trike",
