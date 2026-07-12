@@ -190,6 +190,60 @@ describe("createArtCompositionsController", () => {
     expect(reference.height).toBe(210);
   });
 
+  it("swaps a referenced game object while preserving every authored instance property and timeline target", () => {
+    const host = composition("host");
+    host.compositionKind = "prefab";
+    host.components = [{
+      id: "slot",
+      name: "VIP Slot",
+      instanceLabel: "vipSlot",
+      kind: "reference",
+      artCompositionId: "first",
+      x: 41,
+      y: 72,
+      width: 133,
+      height: 47,
+      scale: 1.2,
+      rotation: 18,
+      opacity: 0.75,
+      visible: false,
+      transformOrigin: "bottomRight",
+      locked: true,
+      defaultAnimationState: "Appear"
+    }] as never;
+    host.timeline = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [],
+      tracks: [{ targetId: "slot", keyframes: [{ frame: 4, props: { scale: 1.4 }, easing: "easeOut" }] }]
+    };
+    const first = composition("first");
+    first.name = "First Game Object";
+    first.compositionKind = "gameObject";
+    first.canvas = { width: 20, height: 10 };
+    const second = composition("second");
+    second.name = "Second Game Object";
+    second.compositionKind = "gameObject";
+    second.canvas = { width: 500, height: 300 };
+    const controller = createArtCompositionsController({ initialCompositions: [host, first, second], api: fakeApi() });
+    const before = JSON.parse(JSON.stringify(controller.getState().compositions[0]));
+
+    controller.swapReferenceGameObject("slot", "second");
+
+    const after = controller.getState().compositions[0];
+    expect(after.components[0]).toEqual({ ...before.components[0], artCompositionId: "second" });
+    expect(after.timeline).toEqual(before.timeline);
+    expect(after.components[0].name).toBe("VIP Slot");
+    expect(after.components[0].instanceLabel).toBe("vipSlot");
+    expect(after.components[0].width).toBe(133);
+    expect(after.components[0].height).toBe(47);
+    expect(controller.getState().canUndo).toBe(true);
+
+    controller.undo();
+    expect(controller.getState().compositions[0]).toEqual(before);
+  });
+
   it("updates a component property and removes it", () => {
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
     controller.addComponent("shape");

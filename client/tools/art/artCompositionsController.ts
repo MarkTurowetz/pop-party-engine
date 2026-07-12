@@ -65,6 +65,7 @@ export interface ArtCompositionsController {
   removeSelectedComponents(): void;
   removeSelectedComposition(): void;
   updateComponent(componentId: string, patch: Partial<ArtComponent>): void;
+  swapReferenceGameObject(componentId: string, compositionId: string): void;
   moveComponent(componentId: string, x: number, y: number): void;
   reorderComponent(componentId: string, targetComponentId: string, placement: "before" | "after"): void;
   undo(): void;
@@ -670,6 +671,30 @@ export function createArtCompositionsController(
         }
         Object.assign(component, patch);
         Object.assign(component, hydrateArtComponentForEditing(component));
+      }),
+    swapReferenceGameObject: (componentId, compositionId) =>
+      mutateSelected((composition) => {
+        const component = findComponent(composition.components || [], componentId);
+        if (!component || component.kind !== "reference") {
+          error = "Select one referenced game object to swap.";
+          return;
+        }
+        const referenced = compositions.find((item) => item.id === String(compositionId || ""));
+        if (!referenced || normalizeArtCompositionKind(referenced.compositionKind) !== "gameObject") {
+          error = "Choose a game object from the library.";
+          return;
+        }
+        if (normalizeArtCompositionSurface(referenced.surface) !== normalizeArtCompositionSurface(composition.surface)) {
+          error = "The replacement game object must use the same surface.";
+          return;
+        }
+        if (referenceWouldCreateCycle(composition.id, referenced.id)) {
+          error = `Game object swap would create a cycle: ${composition.id} -> ${referenced.id}`;
+          return;
+        }
+        component.artCompositionId = referenced.id;
+        Object.assign(component, hydrateArtComponentForEditing(component));
+        error = null;
       }),
     moveComponent: (componentId, x, y) =>
       mutateSelected((composition) => {

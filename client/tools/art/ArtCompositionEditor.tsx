@@ -11,7 +11,7 @@ import {
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
-import { artCompositionKindOptions, normalizeArtCompositionKind } from "./artCompositionModel";
+import { artCompositionKindOptions, normalizeArtCompositionKind, normalizeArtCompositionSurface } from "./artCompositionModel";
 import { ART_COMPOSITION_BROWSER_DND_TYPE, compositionIdFromBrowserKey } from "./ArtCompositionBrowser";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import { ArtPreviewRenderer, assetUrlMap, compositionMap } from "./ArtPreviewRenderer";
@@ -268,6 +268,22 @@ export function timelineActionScriptForFrame(_timeline: TimelineDocument, _frame
 export function timelineActionScriptPlaceholderForFrame(timeline: TimelineDocument, frame: number): string {
   const inferred = timelineCommandsToActionScript(inferredVisibilityCommandsAtFrame(timeline, frame));
   return inferred || 'stop();\ngotoAndPlay("Appear");';
+}
+
+export function swappableGameObjectOptions(
+  compositions: ArtComposition[],
+  owner: ArtComposition | null,
+  component: ArtComponent
+): ArtComposition[] {
+  return compositions
+    .filter(
+      (item) =>
+        item.id !== owner?.id &&
+        item.id !== component.artCompositionId &&
+        normalizeArtCompositionKind(item.compositionKind) === "gameObject" &&
+        normalizeArtCompositionSurface(item.surface) === normalizeArtCompositionSurface(owner?.surface)
+    )
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function timelineCommandLabel(command: TimelineCommand): string {
@@ -1109,6 +1125,75 @@ function CreatePrefabDialog({
   );
 }
 
+function SwapGameObjectControl({
+  controller,
+  owner,
+  component,
+  compositions
+}: {
+  controller: ArtCompositionsController;
+  owner: ArtComposition | null;
+  component: ArtComponent;
+  compositions: ArtComposition[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [replacementId, setReplacementId] = useState("");
+  const currentSource = compositions.find((item) => item.id === component.artCompositionId) || null;
+  const options = swappableGameObjectOptions(compositions, owner, component);
+  const beginSwap = () => {
+    setReplacementId(options[0]?.id || "");
+    setOpen(true);
+  };
+  const closeSwap = () => {
+    setOpen(false);
+    setReplacementId("");
+  };
+
+  return (
+    <div className="art-swap-game-object-control" data-art-swap-game-object>
+      <div className="flow-react-field">
+        <span>Game Object</span>
+        <strong>{currentSource?.name || "Missing library object"}</strong>
+      </div>
+      <button type="button" onClick={beginSwap} disabled={options.length === 0}>
+        Swap Game Object
+      </button>
+      {open ? (
+        <div className="art-prefab-dialog-backdrop" role="presentation" onMouseDown={closeSwap}>
+          <form
+            className="flow-react-panel art-prefab-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Swap game object"
+            onMouseDown={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!replacementId) return;
+              controller.swapReferenceGameObject(component.id, replacementId);
+              closeSwap();
+            }}
+          >
+            <h3>Swap Game Object</h3>
+            <p>Position, size, scale, rotation, pivot, instance label, visibility, and timeline animation will be preserved.</p>
+            <label className="flow-react-field">
+              <span>Replacement</span>
+              <select autoFocus value={replacementId} onChange={(event) => setReplacementId(event.target.value)}>
+                {options.map((option) => (
+                  <option key={option.id} value={option.id}>{option.name}</option>
+                ))}
+              </select>
+            </label>
+            <div className="flow-editor-controls">
+              <button type="button" onClick={closeSwap}>Cancel</button>
+              <button type="submit" disabled={!replacementId}>Swap</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ArtComponentInspector({
   controller,
   composition,
@@ -1128,7 +1213,6 @@ function ArtComponentInspector({
     onCommit: (components: ArtComponent[], patch: TimelineProperties) => void;
   } | null;
 }) {
-  void compositions;
   const editableComponents = selectedComponents?.length ? selectedComponents : component ? [component] : [];
   const primaryComponent = editableComponents[0] || null;
   const isMultiSelect = editableComponents.length > 1;
@@ -1176,7 +1260,6 @@ function ArtComponentInspector({
   const isTextual = editableComponents.every((target) => target.kind === "text" || target.kind === "badge");
   const supportsShape = editableComponents.every((target) => componentSupportsShapeStyle(target));
   const supportsImage = editableComponents.length === 1 && componentSupportsImageMask(primaryComponent);
-  const referenceOptions = compositions.filter((item) => item.id !== composition?.id);
   const relativeNumberValue = (raw: string, currentValue: unknown): number | null => {
     const trimmed = raw.trim();
     const match = trimmed.match(/^([+\-*/])\s*(-?\d+(?:\.\d+)?)$/);
@@ -1293,22 +1376,8 @@ function ArtComponentInspector({
         </label>
       ) : null}
       {numberField("opacity", "Opacity", "0.01")}
-      {editableComponents.every((target) => target.kind === "reference") ? (
-        <label className="flow-react-field" data-art-field="artCompositionId">
-          <span>Prefab</span>
-          <select
-            value={String(frameValue("artCompositionId") || "")}
-            data-art-component-field="artCompositionId"
-            onChange={(event) => commitBase({ artCompositionId: event.target.value } as Partial<ArtComponent>)}
-          >
-            <option value="">Choose prefab</option>
-            {referenceOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name} ({normalizeArtCompositionKind(option.compositionKind) === "prefab" ? "Prefab" : "Game Object"})
-              </option>
-            ))}
-          </select>
-        </label>
+      {!isMultiSelect && primaryComponent.kind === "reference" ? (
+        <SwapGameObjectControl controller={controller} owner={composition} component={primaryComponent} compositions={compositions} />
       ) : null}
       {supportsShape ? (
         <>

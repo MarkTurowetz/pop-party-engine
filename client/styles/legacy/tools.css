@@ -1325,6 +1325,22 @@ body.tool-dashboard-mode .layout-react-shell {
   box-shadow: none;
 }
 
+.art-swap-game-object-control {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  background: rgba(45, 211, 208, 0.16);
+}
+
+.art-swap-game-object-control .flow-react-field strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .art-component-tree-panel {
   display: grid;
   gap: 8px;
