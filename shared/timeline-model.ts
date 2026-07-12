@@ -166,7 +166,40 @@ export function normalizeTimeline(raw: unknown, fallback: unknown = null): Timel
     })
     .filter((track) => track.targetId && track.keyframes.length > 0);
 
-  return { fps, frameCount, labels, commands, tracks };
+  return normalizeOffAnimationVisibility({ fps, frameCount, labels, commands, tracks });
+}
+
+function normalizeOffAnimationVisibility(timeline: TimelineDocument): TimelineDocument {
+  const offFrames = new Set(timeline.labels.filter((label) => label.name.toLowerCase() === "off").map((label) => label.frame));
+  if (offFrames.size === 0) return timeline;
+
+  const commands = [
+    ...timeline.commands.filter((command) => !(offFrames.has(command.frame) && command.type === "setVisible")),
+    ...[...offFrames].map((frame) => ({ frame, type: "setVisible", target: "false" }))
+  ].sort((a, b) => a.frame - b.frame);
+
+  const tracks = timeline.tracks.map((track) => {
+    let keyframes = track.keyframes.map((keyframe) => {
+      if (!offFrames.has(keyframe.frame)) return keyframe;
+      const props: TimelineProperties = { ...keyframe.props, opacity: 1 };
+      delete props.visible;
+      return { ...keyframe, props };
+    });
+    const existingFrames = new Set(keyframes.map((keyframe) => keyframe.frame));
+    for (const frame of offFrames) {
+      if (existingFrames.has(frame)) continue;
+      keyframes.push({
+        id: `key-${track.targetId}-${frame}`,
+        frame,
+        props: { opacity: 1 },
+        easing: "hold"
+      });
+    }
+    keyframes = keyframes.sort((a, b) => a.frame - b.frame);
+    return { ...track, keyframes };
+  });
+
+  return { ...timeline, commands, tracks };
 }
 
 export function hasTimelineLabel(timeline: TimelineDocument | null | undefined, label: string): boolean {
@@ -274,7 +307,7 @@ export function defaultVisibilityTimeline(durations: Record<string, number>): Ti
   const disappear = update + updateFrames + 1;
   const off = disappear + disappearFrames + 1;
   const frameCount = off + 1;
-  return {
+  return normalizeOffAnimationVisibility({
     fps,
     frameCount,
     labels: [
@@ -294,7 +327,7 @@ export function defaultVisibilityTimeline(durations: Record<string, number>): Ti
       { frame: off, type: "stop" }
     ],
     tracks: []
-  };
+  });
 }
 
 function defaultVisibilityCommandKey(command: TimelineCommand): string {
@@ -355,10 +388,10 @@ function mergeDefaultVisibilityTrack(timeline: TimelineDocument, defaults: Timel
   nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, updateStopFrame, { opacity: 1, visible: true }, "hold");
   nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, disappearFrame, { opacity: 1, visible: true }, "easeIn");
   nextTrack = mergeDefaultVisibilityKeyframeProps(nextTrack, disappearStopFrame, { opacity: 0, visible: false }, "hold");
-  return {
+  return normalizeOffAnimationVisibility({
     ...timeline,
     tracks: [...timeline.tracks.filter((track) => track.targetId !== cleanTargetId), nextTrack].sort((a, b) => a.targetId.localeCompare(b.targetId))
-  };
+  });
 }
 
 export function timelineWithDefaultVisibility(

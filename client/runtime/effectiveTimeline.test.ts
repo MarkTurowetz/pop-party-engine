@@ -54,6 +54,7 @@ describe("effectiveVisibilityTimeline", () => {
     expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 2, type: "emit", target: "label", event: "flash" }]));
     const cardTrack = timeline.tracks.find((track) => track.targetId === "card");
     expect(cardTrack?.keyframes.some((keyframe) => keyframe.props.scale === 1.2)).toBe(true);
-    expect(cardTrack?.keyframes.some((keyframe) => keyframe.props.visible === false)).toBe(true);
+    expect(timeline.commands.some((command) => command.type === "setVisible" && command.target === "false")).toBe(true);
+    expect(cardTrack?.keyframes.some((keyframe) => keyframe.props.opacity === 1 && keyframe.props.visible === undefined)).toBe(true);
   });
 });

@@ -5,7 +5,7 @@ export function defaultPlayerPointPopupTimeline(): TimelineDocument {
   const trackFor = (targetId: string, baseX: number, baseY: number) => ({
     targetId,
     keyframes: [
-      { frame: 0, props: { opacity: 0, scale: 0, x: baseX, y: baseY + 16 }, easing: "hold" },
+      { frame: 0, props: { opacity: 1, scale: 0, x: baseX, y: baseY + 16 }, easing: "hold" },
       { frame: popupFrames.start, props: { opacity: 0, scale: 0, x: baseX, y: baseY + 16 }, easing: "easeOut" },
       { frame: popupFrames.pop, props: { opacity: 1, scale: 1.2, x: baseX, y: baseY }, easing: "easeOut" },
       { frame: popupFrames.hold, props: { opacity: 1, scale: 1, x: baseX, y: baseY - 8 }, easing: "easeInOut" },
@@ -25,6 +25,7 @@ export function defaultPlayerPointPopupTimeline(): TimelineDocument {
     ],
     commands: [
       { frame: 0, type: "stop" },
+      { frame: 0, type: "setVisible", target: "false" },
       { frame: popupFrames.end, type: "stop" }
     ],
     tracks: [trackFor("point-text", 75, 30), trackFor("point-shadow", 79, 34)]

@@ -897,15 +897,18 @@ describe("artTimelineModel", () => {
       opacity: 0.5,
       scale: 1.25
     });
+    expect(track?.keyframes.find((keyframe) => keyframe.frame === 3)?.props).toEqual({ opacity: 1 });
     expect(track?.keyframes.find((keyframe) => keyframe.frame === 20)?.props).toEqual({ opacity: 1, visible: true });
     expect(track?.keyframes.find((keyframe) => keyframe.frame === 43)?.props).toEqual({ opacity: 0, visible: false });
+    expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 3, type: "setVisible", target: "false" }]));
     expect(track?.keyframes.some((keyframe) => "x" in keyframe.props || "width" in keyframe.props)).toBe(false);
   });
 
   it("uses default visibility timelines while preserving authored timeline data", () => {
     const missing = effectiveArtVisibilityTimeline(null, { id: "title" } as ArtComponent);
     expect(missing.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["park", "on", "appear", "update", "disappear"]));
-    expect(missing.tracks.find((track) => track.targetId === "title")?.keyframes.some((keyframe) => keyframe.props.visible === false)).toBe(true);
+    expect(missing.commands).toEqual(expect.arrayContaining([{ frame: 0, type: "setVisible", target: "false" }]));
+    expect(missing.tracks.find((track) => track.targetId === "title")?.keyframes.some((keyframe) => keyframe.frame === 0 && keyframe.props.opacity === 1 && keyframe.props.visible === undefined)).toBe(true);
 
     const authored = effectiveArtVisibilityTimeline({
       fps: 12,
