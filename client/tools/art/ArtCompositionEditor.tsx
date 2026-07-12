@@ -1,16 +1,19 @@
 import {
   useEffect,
+  useLayoutEffect,
   useCallback,
   useRef,
   useMemo,
   useState,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
+import { artPreviewScaleFromWheel, artPreviewScrollForCursorZoom, artPreviewScrollForPan } from "./artPreviewCamera";
 import {
   applyArtCanvasTransformKeyframes,
   artCanvasDragSelection,
@@ -358,6 +361,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     moved: boolean;
   } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const previewViewportRef = useRef<HTMLDivElement | null>(null);
+  const pendingPreviewZoomRef = useRef<{ viewport: HTMLDivElement; scrollLeft: number; scrollTop: number } | null>(null);
+  const [previewCamera, setPreviewCamera] = useState<{ compositionId: string; scale: number } | null>(null);
+  const [previewPanning, setPreviewPanning] = useState(false);
   const [livePositions, setLivePositions] = useState<ArtCanvasLivePositions | null>(null);
   const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; scale?: number; rotation?: number } | null>(null);
   const [liveTransformOrigin, setLiveTransformOrigin] = useState<{ id: string; value: string } | null>(null);
@@ -388,14 +395,31 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         : { minX: 0, minY: 0, maxX: canvasWidth, maxY: canvasHeight, width: canvasWidth, height: canvasHeight },
     [composition, compositionById, canvasWidth, canvasHeight]
   );
-  const previewScale = composition
+  const fitPreviewScale = composition
     ? Math.min(3.5, Math.max(0.35, Math.min(940 / visualBounds.width, 620 / visualBounds.height)))
     : 1;
+  const previewScale = previewCamera && previewCamera.compositionId === composition?.id ? previewCamera.scale : fitPreviewScale;
   const activeTimelineScopeComponentId = timelineScope?.compositionId === selectedCompositionId ? timelineScope.componentId : null;
   const timelinePreviewFrame = timelinePreview?.compositionId === selectedCompositionId ? timelinePreview.frame : 0;
   const timelinePreviewOverrides = timelinePreview?.compositionId === selectedCompositionId ? timelinePreview.overrides : null;
 
   const selectedComponentId = selectedComponentIds.size === 1 ? [...selectedComponentIds][0] : "";
+
+  useEffect(() => {
+    pendingPreviewZoomRef.current = null;
+    if (previewViewportRef.current) {
+      previewViewportRef.current.scrollLeft = 0;
+      previewViewportRef.current.scrollTop = 0;
+    }
+  }, [selectedCompositionId]);
+
+  useLayoutEffect(() => {
+    const pending = pendingPreviewZoomRef.current;
+    if (!pending) return;
+    pendingPreviewZoomRef.current = null;
+    pending.viewport.scrollLeft = pending.scrollLeft;
+    pending.viewport.scrollTop = pending.scrollTop;
+  }, [previewScale]);
   const selectedComponentMatch = useMemo(
     () => (composition && selectedComponentId ? findArtComponentTargetPath(composition.components || [], selectedComponentId) : null),
     [composition, selectedComponentId]
@@ -705,6 +729,67 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     return boxes;
   };
 
+  const zoomPreviewAtPointer = (event: ReactWheelEvent<HTMLDivElement>): void => {
+    if (!composition) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const viewport = event.currentTarget;
+    const rect = viewport.getBoundingClientRect();
+    const pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const normalizedDeltaY =
+      event.deltaMode === 1
+        ? event.deltaY * 16
+        : event.deltaMode === 2
+          ? event.deltaY * Math.max(1, viewport.clientHeight)
+          : event.deltaY;
+    const nextScale = artPreviewScaleFromWheel(previewScale, normalizedDeltaY);
+    if (nextScale === previewScale) return;
+    const nextScroll = artPreviewScrollForCursorZoom(
+      { left: viewport.scrollLeft, top: viewport.scrollTop },
+      pointer,
+      previewScale,
+      nextScale
+    );
+    pendingPreviewZoomRef.current = {
+      viewport,
+      scrollLeft: nextScroll.left,
+      scrollTop: nextScroll.top
+    };
+    setPreviewCamera({ compositionId: composition.id, scale: nextScale });
+  };
+
+  const beginPreviewPan = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (event.button !== 1) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const viewport = event.currentTarget;
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+    const startScroll = { left: viewport.scrollLeft, top: viewport.scrollTop };
+    const previousCursor = document.body.style.cursor;
+    document.body.style.cursor = "grabbing";
+    setPreviewPanning(true);
+    const move = (nextEvent: PointerEvent) => {
+      nextEvent.preventDefault();
+      const nextScroll = artPreviewScrollForPan(startScroll, {
+        x: nextEvent.clientX - startClientX,
+        y: nextEvent.clientY - startClientY
+      });
+      viewport.scrollLeft = nextScroll.left;
+      viewport.scrollTop = nextScroll.top;
+    };
+    const finish = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", finish);
+      document.removeEventListener("pointercancel", finish);
+      document.body.style.cursor = previousCursor;
+      setPreviewPanning(false);
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", finish);
+    document.addEventListener("pointercancel", finish);
+  };
+
   const beginPreviewMarquee = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || !composition) return;
     event.preventDefault();
@@ -1011,12 +1096,22 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           </div>
           {composition ? (
             <div
+              ref={previewViewportRef}
               className="art-canvas-viewport"
+              data-art-preview-panning={previewPanning ? "true" : "false"}
+              style={{ cursor: previewPanning ? "grabbing" : undefined }}
               onDragOver={(event) => {
                 if (event.dataTransfer.types.includes(ART_COMPOSITION_BROWSER_DND_TYPE)) event.preventDefault();
               }}
               onDrop={addDroppedCompositionReference}
-              onPointerDown={beginPreviewMarquee}
+              onWheel={zoomPreviewAtPointer}
+              onAuxClick={(event) => {
+                if (event.button === 1) event.preventDefault();
+              }}
+              onPointerDown={(event) => {
+                if (event.button === 1) beginPreviewPan(event);
+                else beginPreviewMarquee(event);
+              }}
               onDoubleClick={(event) => {
                 if ((event.target as HTMLElement | null)?.closest("[data-art-canvas-component]")) return;
                 event.preventDefault();
