@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent, type MouseEvent } from "react";
+import { useMemo, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
 import { searchArtHierarchy } from "./artHierarchySearch";
@@ -133,6 +133,13 @@ export function ArtCompositionBrowser({
     const compositionId = compositionIdFromBrowserKey(key);
     if (!compositionId || !validCompositionKeys.has(key)) return null;
     if (search.active && !search.visibleKeys.has(key)) return null;
+    const deleteCompositionFromKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      event.preventDefault();
+      event.stopPropagation();
+      compositionsController.selectComposition(compositionId);
+      compositionsController.removeSelectedComposition();
+    };
     return (
       <li
         className="art-browser-item"
@@ -147,9 +154,23 @@ export function ArtCompositionBrowser({
           type="button"
           aria-current={compositionId === selectedCompositionId ? "true" : undefined}
           onClick={() => compositionsController.selectComposition(compositionId)}
+          onKeyDown={deleteCompositionFromKey}
         >
           <span>{nameByKey.get(key) || compositionId}</span>
           <small>{kindByKey.get(key) === "prefab" ? "Prefab" : "Game Object"}</small>
+        </button>
+        <button
+          type="button"
+          className="art-browser-composition-delete"
+          aria-label={`Delete ${nameByKey.get(key) || compositionId}`}
+          title="Delete composition"
+          onClick={(event) => {
+            event.stopPropagation();
+            compositionsController.selectComposition(compositionId);
+            compositionsController.removeSelectedComposition();
+          }}
+        >
+          Delete
         </button>
       </li>
     );

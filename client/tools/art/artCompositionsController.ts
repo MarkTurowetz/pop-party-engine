@@ -63,6 +63,7 @@ export interface ArtCompositionsController {
   clearComponentSelection(): void;
   addComponent(kind: string, options?: AddArtComponentOptions): ArtComponent | null;
   removeSelectedComponents(): void;
+  removeSelectedComposition(): void;
   updateComponent(componentId: string, patch: Partial<ArtComponent>): void;
   moveComponent(componentId: string, x: number, y: number): void;
   reorderComponent(componentId: string, targetComponentId: string, placement: "before" | "after"): void;
@@ -155,6 +156,8 @@ function createComponent(kind: string, bounds: { width: number; height: number }
     height,
     scale: 1,
     rotation: 0,
+    transformOrigin: "center",
+    editorHidden: false,
     children: []
   };
   if (cleanKind === "reference") {
@@ -299,13 +302,40 @@ function reorderedSiblings(
   return next.map((item) => item.id).join("\u0000") === originalOrder ? null : next;
 }
 
-function removeFromList(components: ArtComponent[], ids: Set<string>): ArtComponent[] {
-  return components
-    .filter((component) => !ids.has(component.id))
-    .map((component) => ({
+function collectComponentTreeIds(component: ArtComponent, ids: Set<string>): void {
+  ids.add(component.id);
+  for (const child of component.children || []) collectComponentTreeIds(child, ids);
+}
+
+function removeComponentsMatching(
+  components: ArtComponent[],
+  shouldRemove: (component: ArtComponent) => boolean,
+  removedIds: Set<string>
+): ArtComponent[] {
+  return components.flatMap((component) => {
+    if (shouldRemove(component)) {
+      collectComponentTreeIds(component, removedIds);
+      return [];
+    }
+    return [{
       ...component,
-      children: component.children ? removeFromList(component.children, ids) : component.children
-    }));
+      children: component.children ? removeComponentsMatching(component.children, shouldRemove, removedIds) : component.children
+    }];
+  });
+}
+
+function withoutRemovedTimelineTargets(composition: ArtComposition, removedIds: Set<string>): ArtComposition {
+  if (!removedIds.size || !composition.timeline) return composition;
+  return {
+    ...composition,
+    timeline: {
+      ...composition.timeline,
+      tracks: (composition.timeline.tracks || []).filter((track) => !removedIds.has(track.targetId)),
+      commands: (composition.timeline.commands || []).filter((command) =>
+        (command.type !== "playComponent" && command.type !== "stopComponent") || !removedIds.has(String(command.target || ""))
+      )
+    }
+  };
 }
 
 function compositionsDraftSnapshot(compositions: ArtComposition[]): string {
@@ -399,6 +429,11 @@ export function createArtCompositionsController(
     return ids;
   }
 
+  function deletedIds(): Set<string> {
+    const currentIds = new Set(compositions.map((composition) => composition.id));
+    return new Set([...savedSnapshots.keys()].filter((id) => !currentIds.has(id)));
+  }
+
   function buildState(): ArtCompositionsEditorState {
     const dirtyCompositionIds = dirtyIds();
     return {
@@ -406,7 +441,7 @@ export function createArtCompositionsController(
       selectedCompositionId,
       selectedComponentIds: new Set(selectedComponentIds),
       dirtyCompositionIds,
-      dirty: dirtyCompositionIds.size > 0,
+      dirty: dirtyCompositionIds.size > 0 || deletedIds().size > 0,
       saving,
       canUndo: undoStack.length > 0,
       canRedo: redoStack.length > 0,
@@ -575,9 +610,33 @@ export function createArtCompositionsController(
     },
     removeSelectedComponents: () =>
       mutateSelected((composition) => {
-        composition.components = removeFromList(composition.components || [], selectedComponentIds);
+        const removedIds = new Set<string>();
+        composition.components = removeComponentsMatching(
+          composition.components || [],
+          (component) => selectedComponentIds.has(component.id),
+          removedIds
+        );
+        Object.assign(composition, withoutRemovedTimelineTargets(composition, removedIds));
         selectedComponentIds = new Set();
       }),
+    removeSelectedComposition: () => {
+      const removedCompositionId = selectedCompositionId;
+      if (!removedCompositionId) return;
+      mutateAll(() => {
+        compositions = compositions
+          .filter((composition) => composition.id !== removedCompositionId)
+          .map((composition) => {
+            const removedIds = new Set<string>();
+            const components = removeComponentsMatching(
+              composition.components || [],
+              (component) => component.kind === "reference" && component.artCompositionId === removedCompositionId,
+              removedIds
+            );
+            return withoutRemovedTimelineTargets({ ...composition, components }, removedIds);
+          });
+        selectedComponentIds = new Set();
+      });
+    },
     updateComponent: (componentId, patch) =>
       mutateSelected((composition) => {
         const component = findComponent(composition.components || [], componentId);
@@ -660,7 +719,8 @@ export function createArtCompositionsController(
     },
     save: async () => {
       const dirty = dirtyIds();
-      if (!dirty.size) {
+      const deleted = deletedIds();
+      if (!dirty.size && !deleted.size) {
         sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
         return true;
       }
@@ -695,6 +755,10 @@ export function createArtCompositionsController(
           const index = compositions.findIndex((item) => item.id === id);
           if (index >= 0) compositions[index] = saved;
           savedSnapshots.set(id, artCompositionSnapshot(saved));
+        }
+        for (const id of deleted) {
+          await api.deleteArtComposition(id);
+          savedSnapshots.delete(id);
         }
         sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
         pendingMigrationSummary = null;

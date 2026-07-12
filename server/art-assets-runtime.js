@@ -238,6 +238,10 @@ function createArtAssetsRuntime({
       height: cleanNumber(source.height, Number(base.height || 1), 1),
       scale: cleanNumber(source.scale, Number(base.scale || 1), 0.05, 8),
       rotation: cleanNumber(source.rotation, Number(base.rotation || 0), -3600, 3600),
+      opacity: cleanNumber(source.opacity, Number(base.opacity ?? 1), 0, 1),
+      visible: typeof source.visible === "boolean" ? source.visible : base.visible !== false,
+      editorHidden: typeof source.editorHidden === "boolean" ? source.editorHidden : base.editorHidden === true,
+      transformOrigin: artComponentSchema.normalizeTransformOrigin(source.transformOrigin || base.transformOrigin),
       locked: typeof source.locked === "boolean" ? source.locked : base.locked === true,
       defaultAnimationState: canonicalLifecycleLabel(cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24))
         || cleanText(source.defaultAnimationState, base.defaultAnimationState || "", 24)

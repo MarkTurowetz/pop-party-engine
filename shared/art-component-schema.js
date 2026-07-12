@@ -20,7 +20,19 @@
         { value: "horizontal", label: "Horizontal Distribution" },
         { value: "vertical", label: "Vertical Distribution" }
     ];
+    const transformOriginOptions = [
+        { value: "topLeft", label: "Top Left", x: 0, y: 0 },
+        { value: "top", label: "Top", x: 50, y: 0 },
+        { value: "topRight", label: "Top Right", x: 100, y: 0 },
+        { value: "right", label: "Right", x: 100, y: 50 },
+        { value: "bottomRight", label: "Bottom Right", x: 100, y: 100 },
+        { value: "bottom", label: "Bottom", x: 50, y: 100 },
+        { value: "bottomLeft", label: "Bottom Left", x: 0, y: 100 },
+        { value: "left", label: "Left", x: 0, y: 50 },
+        { value: "center", label: "Center", x: 50, y: 50 }
+    ];
     const containerDistributionValues = containerDistributionOptions.map((option) => option.value);
+    const transformOriginValues = transformOriginOptions.map((option) => option.value);
     const defaultTextFontFamily = 'ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif';
     const textFontFamilyOptions = [
         { value: defaultTextFontFamily, label: "Game UI" },
@@ -101,6 +113,15 @@
         const distribution = normalizeValue(value || "none");
         return containerDistributionValues.includes(distribution) ? distribution : "none";
     }
+    function normalizeTransformOrigin(value) {
+        const origin = String(value || "center").trim();
+        return transformOriginValues.includes(origin) ? origin : "center";
+    }
+    function transformOriginCss(value) {
+        const origin = normalizeTransformOrigin(value);
+        const option = transformOriginOptions.find((item) => item.value === origin) || transformOriginOptions[8];
+        return `${option.x}% ${option.y}%`;
+    }
     function normalizeTextFontFamily(value, fallback = defaultTextFontFamily) {
         const text = String(value || "").trim();
         if (textFontFamilyValues.includes(text))
@@ -175,6 +196,7 @@
         normalizeCreatableComponentKind,
         normalizeFillCss,
         normalizeTextFontFamily,
+        normalizeTransformOrigin,
         normalizeImageObjectFit,
         normalizeShapeStyle,
         parseImageDataUrl,
@@ -182,6 +204,9 @@
         shapeStyleValues,
         textFontFamilyOptions,
         textFontFamilyValues,
+        transformOriginCss,
+        transformOriginOptions,
+        transformOriginValues,
         validateImageFile
     };
     if (typeof module !== "undefined" && module.exports) {

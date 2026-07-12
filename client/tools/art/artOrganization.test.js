@@ -219,11 +219,24 @@ describe("art composition child persistence", () => {
     const [composition] = runtime.normalizeArtCompositionsDraft([
       {
         id: "locked-composition",
-        components: [{ id: "root", name: "Root", kind: "shape", x: 50, y: 50, width: 80, height: 80, locked: true }]
+        components: [{
+          id: "root",
+          name: "Root",
+          kind: "shape",
+          x: 50,
+          y: 50,
+          width: 80,
+          height: 80,
+          locked: true,
+          editorHidden: true,
+          transformOrigin: "bottomRight"
+        }]
       }
     ]);
 
     expect(composition.components[0].locked).toBe(true);
+    expect(composition.components[0].editorHidden).toBe(true);
+    expect(composition.components[0].transformOrigin).toBe("bottomRight");
   });
 
   it("persists composition timelines through the save handler", async () => {

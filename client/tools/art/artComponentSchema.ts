@@ -22,10 +22,22 @@ export const containerDistributionOptions = [
   { value: "horizontal", label: "Horizontal Distribution" },
   { value: "vertical", label: "Vertical Distribution" }
 ] as const;
+export const transformOriginOptions = [
+  { value: "topLeft", label: "Top Left", x: 0, y: 0 },
+  { value: "top", label: "Top", x: 50, y: 0 },
+  { value: "topRight", label: "Top Right", x: 100, y: 0 },
+  { value: "right", label: "Right", x: 100, y: 50 },
+  { value: "bottomRight", label: "Bottom Right", x: 100, y: 100 },
+  { value: "bottom", label: "Bottom", x: 50, y: 100 },
+  { value: "bottomLeft", label: "Bottom Left", x: 0, y: 100 },
+  { value: "left", label: "Left", x: 0, y: 50 },
+  { value: "center", label: "Center", x: 50, y: 50 }
+] as const;
 export const textFontFamilyOptions = gameTextFontOptions;
 export const defaultTextFontFamily = gameTextDefaultFontFamily;
 export { normalizeGameTextFontFamily };
 const containerDistributionValues = containerDistributionOptions.map((option) => option.value as string);
+const transformOriginValues = transformOriginOptions.map((option) => option.value as string);
 const componentImageMaxBytes = 5 * 1024 * 1024;
 const fillCssMaxLength = 240;
 
@@ -93,6 +105,17 @@ export function normalizeImageObjectFit(value: unknown): string {
 export function normalizeContainerDistribution(value: unknown): string {
   const distribution = normalizeValue(value || "none");
   return containerDistributionValues.includes(distribution) ? distribution : "none";
+}
+
+export function normalizeTransformOrigin(value: unknown): string {
+  const origin = String(value || "center").trim();
+  return transformOriginValues.includes(origin) ? origin : "center";
+}
+
+export function transformOriginCss(value: unknown): string {
+  const origin = normalizeTransformOrigin(value);
+  const option = transformOriginOptions.find((item) => item.value === origin) || transformOriginOptions[8];
+  return `${option.x}% ${option.y}%`;
 }
 
 export function isSupportedImageMimeType(mimeType: unknown): boolean {

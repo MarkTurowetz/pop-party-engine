@@ -18,6 +18,33 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(PartyGameArtObject.syncComponentElement).toBeTypeOf("function");
   });
 
+  it("applies persisted transform origins to runtime art objects", () => {
+    const globals = globalThis as typeof globalThis & { PartyGameArtComponentSchema?: Record<string, unknown> };
+    const previousSchema = globals.PartyGameArtComponentSchema;
+    const properties = new Map<string, string>();
+    const style = {
+      setProperty: (name: string, value: string) => properties.set(name, value),
+      transformOrigin: ""
+    } as unknown as CSSStyleDeclaration;
+    globals.PartyGameArtComponentSchema = {
+      normalizeComponentKind: (kind: unknown) => String(kind || "shape"),
+      componentLabel: () => "",
+      normalizeFillCss: () => "",
+      normalizeImageObjectFit: () => "cover",
+      transformOriginCss: (value: unknown) => value === "bottomRight" ? "100% 100%" : "50% 50%"
+    };
+    try {
+      PartyGameArtObject.applyComponentLayout(
+        { style } as unknown as HTMLElement,
+        { id: "card", kind: "shape", x: 50, y: 50, width: 100, height: 60, transformOrigin: "bottomRight" },
+        { width: 200, height: 100 }
+      );
+      expect(style.transformOrigin).toBe("100% 100%");
+    } finally {
+      globals.PartyGameArtComponentSchema = previousSchema;
+    }
+  });
+
   it("renderComponentText returns null without a target", () => {
     expect(PartyGameArtObject.renderComponentText(null, { id: "x" })).toBe(null);
   });

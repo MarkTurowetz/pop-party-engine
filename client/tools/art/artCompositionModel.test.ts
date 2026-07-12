@@ -57,8 +57,16 @@ describe("artCompositionModel serialization", () => {
   });
 
   it("keeps layer lock state in serialized components", () => {
-    const serialized = serializeArtComponentForSave({ id: "locked", kind: "shape", locked: true } as unknown as ArtComponent);
+    const serialized = serializeArtComponentForSave({
+      id: "locked",
+      kind: "shape",
+      locked: true,
+      editorHidden: true,
+      transformOrigin: "bottomRight"
+    } as unknown as ArtComponent);
     expect(serialized.locked).toBe(true);
+    expect(serialized.editorHidden).toBe(true);
+    expect(serialized.transformOrigin).toBe("bottomRight");
   });
 
   it("keeps composition tracks in the composition and removes component-local timelines", () => {

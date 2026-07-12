@@ -23,6 +23,7 @@ interface ArtComponentSchema {
   normalizeShapeStyle: (style: unknown, kind: string) => string;
   componentImageMaskDataUrl: (component: Component) => string;
   normalizeContainerDistribution?: (value?: unknown) => string;
+  transformOriginCss?: (value?: unknown) => string;
 }
 
 declare global {
@@ -64,6 +65,7 @@ function applyComponentLayout(element: HTMLElement | null, component: Component 
   element.style.height = `${(num(component.height, 1) / canvasHeight) * 100}%`;
   element.style.setProperty("--component-scale", String(num(component.scale, 1)));
   element.style.setProperty("--component-rotation", `${num(component.rotation)}deg`);
+  element.style.transformOrigin = s.transformOriginCss?.(component.transformOrigin) || "50% 50%";
   const fontScale = Number.isFinite(Number(options.fontScale)) && Number(options.fontScale) > 0 ? Number(options.fontScale) : 1;
   const textLayout = isTextBearingComponentKind(kind) ? componentTextLayout(component, labelText) : null;
   (element as unknown as Dict).__partyGameTextLayout = textLayout;

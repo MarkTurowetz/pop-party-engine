@@ -6,7 +6,13 @@ import {
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { PartyGameTextFit } from "../../runtime/textFit";
-import { componentSupportsImageMask, normalizeGameTextFontFamily } from "./artComponentSchema";
+import {
+  componentSupportsImageMask,
+  normalizeGameTextFontFamily,
+  normalizeTransformOrigin,
+  transformOriginCss,
+  transformOriginOptions
+} from "./artComponentSchema";
 
 const ART_PREVIEW_TEXT_INSET = 4;
 
@@ -26,10 +32,12 @@ export interface ArtPreviewRendererProps {
   interactive?: boolean;
   livePosition?: { id: string; x: number; y: number } | null;
   liveTransform?: { id: string; width?: number; height?: number; scale?: number; rotation?: number } | null;
+  liveTransformOrigin?: { id: string; value: string } | null;
   timelineFrameOverrides?: Record<string, Record<string, unknown>> | null;
   onBeginDrag?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBeginResize?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBeginRotate?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onBeginTransformOrigin?: (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => void;
   onOpenTimelineScope?: (component: ArtComponent, event: ReactMouseEvent<HTMLDivElement>) => void;
   onSelect?: (id: string, additive: boolean) => void;
   selectedIds?: Set<string>;
@@ -138,6 +146,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const referencePath = layer.referencePath || new Set<string>();
     const livePos = props.livePosition?.id === component.id ? props.livePosition : null;
     const liveTx = props.liveTransform?.id === component.id ? props.liveTransform : null;
+    const liveOrigin = props.liveTransformOrigin?.id === component.id ? props.liveTransformOrigin.value : null;
     const timelineOverride = props.timelineFrameOverrides?.[scopedTargetId] || props.timelineFrameOverrides?.[component.id] || {};
     const timelineValue = (key: string, fallback: unknown): unknown =>
       Object.prototype.hasOwnProperty.call(timelineOverride, key) ? timelineOverride[key] : fallback;
@@ -153,12 +162,15 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const borderWidth = Number(timelineValue("borderWidth", get(component, "borderWidth") || 0));
     const scale = liveTx?.scale ?? Number(timelineValue("scale", get(component, "scale") || 1));
     const rotation = liveTx?.rotation ?? Number(timelineValue("rotation", get(component, "rotation") || 0));
+    const transformOrigin = normalizeTransformOrigin(liveOrigin || get(component, "transformOrigin"));
+    const transformOriginOption = transformOriginOptions.find((option) => option.value === transformOrigin) || transformOriginOptions[8];
+    const editorHidden = component.editorHidden === true && layer.interactive !== false;
     const ownOpacity = Number(timelineValue("opacity", get(component, "opacity") ?? 1));
     const inheritedContentOpacity = Number(layer.contentOpacity ?? 1);
     const contentOpacity = Math.max(0, Math.min(1, inheritedContentOpacity * ownOpacity));
     const imageUrl = componentSupportsImageMask(component) ? imageSourceFor(component, timelineOverride) : "";
     const objectFit = String(timelineValue("imageObjectFit", get(component, "imageObjectFit") || "cover"));
-    const selected = interactive && selectedIds.has(component.id);
+    const selected = selectedIds.has(component.id);
     const imageTint = String(timelineValue("imageTint", get(component, "imageTint") || ""));
     const tintWithCurrentColor = Boolean(imageUrl && imageTint === "currentColor");
     const referencedComposition = referencedCompositionFor(component, referencePath);
@@ -180,7 +192,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
         : fillCss || (fill === "transparent" ? (transparentBase ? "transparent" : "rgba(255,255,255,0.06)") : fill);
     const fontColor = String(textFieldFor(component, props, "fontColor", timelineValue("fontColor", get(component, "fontColor") || "#17131f")));
 
-    const chromeVisible = interactive && (selected || contentOpacity <= 0.01);
+    const chromeVisible = layer.interactive !== false && (selected || contentOpacity <= 0.01);
 
     const style: CSSProperties = {
       position: "absolute",
@@ -189,10 +201,11 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       width,
       height,
       transform: `scale(${scale}) rotate(${rotation}deg)`,
-      transformOrigin: "center",
+      transformOrigin: transformOriginCss(transformOrigin),
       boxSizing: "border-box",
       zIndex: Math.max(1, layer.total - layer.index),
-      pointerEvents: interactive ? "auto" : "none",
+      pointerEvents: interactive && !editorHidden ? "auto" : "none",
+      visibility: editorHidden ? "hidden" : "visible",
       userSelect: "none"
     };
 
@@ -315,7 +328,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
           renderComponent(child, { index, total: component.children?.length || 1, interactive, referencePath, targetPath, contentOpacity })
         )}
         {chromeVisible ? <div className="art-canvas-component-chrome" style={chromeStyle} /> : null}
-        {selected && props.showHandles !== false ? (
+        {selected && interactive && props.showHandles !== false ? (
           <>
             <div
               data-art-resize-handle={component.id}
@@ -345,6 +358,26 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
                 background: "#ffe156",
                 border: "1px solid #17131f",
                 cursor: "grab"
+              }}
+            />
+            <div
+              data-art-transform-origin-handle={component.id}
+              data-art-transform-origin={transformOrigin}
+              title={`Transform origin: ${transformOriginOption.label}`}
+              onPointerDown={props.onBeginTransformOrigin ? (event) => props.onBeginTransformOrigin?.(component, event) : undefined}
+              style={{
+                position: "absolute",
+                left: `${transformOriginOption.x}%`,
+                top: `${transformOriginOption.y}%`,
+                width: 13,
+                height: 13,
+                transform: "translate(-50%, -50%)",
+                borderRadius: "50%",
+                background: "#22d3ee",
+                border: "2px solid #17131f",
+                boxShadow: "0 0 0 2px rgba(255,255,255,0.8)",
+                cursor: "move",
+                pointerEvents: "auto"
               }}
             />
           </>

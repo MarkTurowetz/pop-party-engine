@@ -1772,6 +1772,82 @@ body.tool-dashboard-mode .layout-react-shell {
   text-overflow: ellipsis;
 }
 
+.art-timeline-component-label {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 2px;
+}
+
+.art-timeline-component-label[data-art-timeline-target-selected="true"] {
+  background: var(--cyan);
+}
+
+.art-timeline-component-label[data-art-timeline-target-hidden="true"] .art-timeline-target-select {
+  opacity: 0.55;
+}
+
+.art-timeline-target-select {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 5px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.art-timeline-target-controls {
+  display: flex;
+  gap: 3px;
+}
+
+.art-timeline-target-controls button {
+  display: grid;
+  width: 28px;
+  min-height: 28px;
+  padding: 2px;
+  place-items: center;
+}
+
+.art-timeline-visibility-icon {
+  position: relative;
+  display: block;
+  width: 17px;
+  height: 11px;
+  border: 2px solid var(--ink);
+  border-radius: 50% / 60%;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.art-timeline-visibility-icon[data-eye-state="open"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+}
+
+.art-timeline-visibility-icon[data-eye-state="closed"]::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 3px;
+  width: 20px;
+  height: 2px;
+  background: var(--ink);
+  transform: rotate(-35deg);
+}
+
+.art-timeline-target-controls .art-component-layer-lock-icon {
+  transform: scale(0.72);
+}
+
 .art-timeline-lane-label small {
   color: var(--muted);
   font-size: 8px;
@@ -2075,7 +2151,13 @@ body.tool-dashboard-mode .layout-react-shell {
   display: none;
 }
 
-.art-browser-item button {
+.art-browser-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+}
+
+.art-browser-item button:not(.art-browser-composition-delete) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 2px;
@@ -2083,6 +2165,14 @@ body.tool-dashboard-mode .layout-react-shell {
   width: 100%;
   text-align: left;
   background: var(--cream);
+}
+
+.art-browser-item .art-browser-composition-delete {
+  width: auto;
+  padding: 0 7px;
+  color: #9f1239;
+  background: #fff1f2;
+  font-size: 9px;
 }
 
 .art-browser-item button[aria-current="true"] {

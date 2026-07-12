@@ -7,6 +7,7 @@ import {
   normalizeFillCss,
   normalizeGameTextFontFamily,
   normalizeImageObjectFit,
+  normalizeTransformOrigin,
   normalizeShapeStyle
 } from "./artComponentSchema";
 import { mergeDefaultArtVisibilityTimeline, normalizeAnimationKeyframePropsForEditing } from "./artTimelineModel";
@@ -58,6 +59,8 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
     rotation: num(component.rotation, 0),
     opacity: num(component.opacity, 1),
     visible: component.visible !== false,
+    editorHidden: component.editorHidden === true,
+    transformOrigin: normalizeTransformOrigin(component.transformOrigin),
     locked: component.locked === true,
     defaultAnimationState: String(component.defaultAnimationState || ""),
     childDistribution: kind === "container" ? normalizeContainerDistribution(component.childDistribution) : "none",

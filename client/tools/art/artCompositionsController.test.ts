@@ -201,6 +201,67 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().compositions[0].components).toHaveLength(0);
   });
 
+  it("removes selected component descendants plus their tracks and nested commands", () => {
+    const initial = composition("a");
+    initial.components = [{
+      id: "bubble",
+      name: "Bubble",
+      kind: "reference",
+      artCompositionId: "bubble-source",
+      children: [{ id: "bubble-child", name: "Child", kind: "shape" }]
+    }] as never;
+    initial.timeline = {
+      fps: 30,
+      frameCount: 10,
+      labels: [],
+      commands: [{ frame: 1, type: "playComponent", target: "bubble", event: "Appear" }],
+      tracks: [
+        { targetId: "bubble", keyframes: [{ frame: 1, props: { x: 10 } }] },
+        { targetId: "bubble-child", keyframes: [{ frame: 1, props: { x: 20 } }] }
+      ]
+    };
+    const controller = createArtCompositionsController({ initialCompositions: [initial], api: fakeApi() });
+
+    controller.selectComponent("bubble");
+    controller.removeSelectedComponents();
+
+    expect(controller.getState().compositions[0].components).toEqual([]);
+    expect(controller.getState().compositions[0].timeline?.tracks).toEqual([]);
+    expect(controller.getState().compositions[0].timeline?.commands.some((command) => command.type === "playComponent")).toBe(false);
+    controller.undo();
+    expect(controller.getState().compositions[0].components[0].id).toBe("bubble");
+  });
+
+  it("deletes a composition locally, cascades placed references, and persists on save", async () => {
+    const api = fakeApi();
+    const source = composition("source");
+    source.compositionKind = "prefab";
+    const host = composition("host");
+    host.components = [{ id: "source-instance", name: "Source", kind: "reference", artCompositionId: "source" }] as never;
+    host.timeline = {
+      fps: 30,
+      frameCount: 10,
+      labels: [],
+      commands: [{ frame: 1, type: "playComponent", target: "source-instance", event: "Appear" }],
+      tracks: [{ targetId: "source-instance", keyframes: [{ frame: 1, props: { scale: 1 } }] }]
+    };
+    const controller = createArtCompositionsController({ initialCompositions: [host, source], api });
+    controller.selectComposition("source");
+
+    controller.removeSelectedComposition();
+
+    expect(controller.getState().compositions.map((item) => item.id)).toEqual(["host"]);
+    expect(controller.getState().compositions[0].components).toEqual([]);
+    expect(controller.getState().compositions[0].timeline?.tracks).toEqual([]);
+    expect(controller.getState().dirty).toBe(true);
+
+    await controller.save();
+
+    expect(api.saveArtComposition).toHaveBeenCalledWith("host", expect.anything());
+    expect(api.deleteArtComposition).toHaveBeenCalledWith("source");
+    expect(controller.getState().dirty).toBe(false);
+  });
+
   it("reorders root and nested component siblings with undo support", () => {
     const initial = composition("a");
     initial.components = [
