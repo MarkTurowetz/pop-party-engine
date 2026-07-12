@@ -13,7 +13,15 @@ import {
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
-import { artPreviewScaleFromWheel, artPreviewScrollForCursorZoom, artPreviewScrollForPan } from "./artPreviewCamera";
+import {
+  artPreviewScaleFromWheel,
+  artPreviewScrollCenteringWorldOrigin,
+  artPreviewScrollForCursorZoom,
+  artPreviewScrollForPan,
+  artPreviewScrollPreservingWorldFocalPoint,
+  type ArtPreviewCameraLayout
+} from "./artPreviewCamera";
+import { artInspectorNumberExpressionValue } from "./artInspectorNumberExpression";
 import {
   applyArtCanvasTransformKeyframes,
   artCanvasDragSelection,
@@ -363,7 +371,9 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const previewViewportRef = useRef<HTMLDivElement | null>(null);
   const pendingPreviewZoomRef = useRef<{ viewport: HTMLDivElement; scrollLeft: number; scrollTop: number } | null>(null);
+  const previewCameraLayoutRef = useRef<ArtPreviewCameraLayout | null>(null);
   const [previewCamera, setPreviewCamera] = useState<{ compositionId: string; scale: number } | null>(null);
+  const [previewViewportSize, setPreviewViewportSize] = useState({ width: 0, height: 0 });
   const [previewPanning, setPreviewPanning] = useState(false);
   const [livePositions, setLivePositions] = useState<ArtCanvasLivePositions | null>(null);
   const [liveTransform, setLiveTransform] = useState<{ id: string; width?: number; height?: number; scale?: number; rotation?: number } | null>(null);
@@ -406,20 +416,51 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const selectedComponentId = selectedComponentIds.size === 1 ? [...selectedComponentIds][0] : "";
 
   useEffect(() => {
-    pendingPreviewZoomRef.current = null;
-    if (previewViewportRef.current) {
-      previewViewportRef.current.scrollLeft = 0;
-      previewViewportRef.current.scrollTop = 0;
-    }
-  }, [selectedCompositionId]);
+    const viewport = previewViewportRef.current;
+    if (!viewport || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const width = Math.max(0, Math.round(entry.contentRect.width));
+      const height = Math.max(0, Math.round(entry.contentRect.height));
+      setPreviewViewportSize((current) => current.width === width && current.height === height ? current : { width, height });
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [composition?.id]);
 
   useLayoutEffect(() => {
+    const viewport = previewViewportRef.current;
+    if (!viewport || !composition || previewViewportSize.width <= 0 || previewViewportSize.height <= 0) return;
+    const nextLayout: ArtPreviewCameraLayout = {
+      compositionId: composition.id,
+      origin: {
+        x: previewViewportSize.width / 2 + (0 - visualBounds.minX) * previewScale,
+        y: previewViewportSize.height / 2 + (0 - visualBounds.minY) * previewScale
+      },
+      viewportCenter: { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 },
+      scale: previewScale
+    };
+    const previousLayout = previewCameraLayoutRef.current;
     const pending = pendingPreviewZoomRef.current;
-    if (!pending) return;
-    pendingPreviewZoomRef.current = null;
-    pending.viewport.scrollLeft = pending.scrollLeft;
-    pending.viewport.scrollTop = pending.scrollTop;
-  }, [previewScale]);
+    let nextScroll;
+    if (!previousLayout || previousLayout.compositionId !== composition.id) {
+      pendingPreviewZoomRef.current = null;
+      nextScroll = artPreviewScrollCenteringWorldOrigin(nextLayout);
+    } else if (pending) {
+      pendingPreviewZoomRef.current = null;
+      nextScroll = { left: pending.scrollLeft, top: pending.scrollTop };
+    } else {
+      nextScroll = artPreviewScrollPreservingWorldFocalPoint(
+        { left: viewport.scrollLeft, top: viewport.scrollTop },
+        previousLayout,
+        nextLayout
+      );
+    }
+    viewport.scrollLeft = nextScroll.left;
+    viewport.scrollTop = nextScroll.top;
+    previewCameraLayoutRef.current = nextLayout;
+  }, [composition, previewScale, previewViewportSize, visualBounds.minX, visualBounds.minY]);
   const selectedComponentMatch = useMemo(
     () => (composition && selectedComponentId ? findArtComponentTargetPath(composition.components || [], selectedComponentId) : null),
     [composition, selectedComponentId]
@@ -748,7 +789,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       { left: viewport.scrollLeft, top: viewport.scrollTop },
       pointer,
       previewScale,
-      nextScale
+      nextScale,
+      { x: previewViewportSize.width / 2, y: previewViewportSize.height / 2 }
     );
     pendingPreviewZoomRef.current = {
       viewport,
@@ -1121,7 +1163,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             >
               <div
                 className="art-canvas-shell"
-                style={{ width: visualBounds.width * previewScale, height: visualBounds.height * previewScale }}
+                style={{
+                  width: visualBounds.width * previewScale + previewViewportSize.width,
+                  height: visualBounds.height * previewScale + previewViewportSize.height
+                }}
               >
                 <div
                   ref={canvasRef}
@@ -1129,8 +1174,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                   data-art-canvas={composition.id}
                   style={{
                     position: "absolute",
-                    left: (0 - visualBounds.minX) * previewScale,
-                    top: (0 - visualBounds.minY) * previewScale,
+                    left: previewViewportSize.width / 2 + (0 - visualBounds.minX) * previewScale,
+                    top: previewViewportSize.height / 2 + (0 - visualBounds.minY) * previewScale,
                     width: canvasWidth,
                     height: canvasHeight,
                     transform: `scale(${previewScale})`,
@@ -1408,47 +1453,38 @@ function ArtComponentInspector({
   const isTextual = editableComponents.every((target) => target.kind === "text" || target.kind === "badge");
   const supportsShape = editableComponents.every((target) => componentSupportsShapeStyle(target));
   const supportsImage = editableComponents.length === 1 && componentSupportsImageMask(primaryComponent);
-  const relativeNumberValue = (raw: string, currentValue: unknown): number | null => {
-    const trimmed = raw.trim();
-    const match = trimmed.match(/^([+\-*/])\s*(-?\d+(?:\.\d+)?)$/);
-    if (!match) {
-      const numberValue = Number(trimmed);
-      return Number.isFinite(numberValue) ? numberValue : null;
-    }
-    const currentNumber = Number(currentValue);
-    const delta = Number(match[2]);
-    if (!Number.isFinite(currentNumber) || !Number.isFinite(delta)) return null;
-    if (match[1] === "+") return currentNumber + delta;
-    if (match[1] === "-") return currentNumber - delta;
-    if (match[1] === "*") return currentNumber * delta;
-    if (delta === 0) return null;
-    return currentNumber / delta;
-  };
-  const commitNumberInput = (key: string, value: string) => {
-    if (value.trim() === "") return;
+  const commitNumberInput = (key: string, value: string): string | null => {
+    if (value.trim() === "") return null;
     const targets = editableComponents
-      .map((target) => ({ target, value: relativeNumberValue(value, componentFrameValue(target, key)) }))
+      .map((target) => ({ target, value: artInspectorNumberExpressionValue(value, componentFrameValue(target, key)) }))
       .filter((entry): entry is { target: ArtComponent; value: number } => entry.value !== null);
-    if (targets.length !== editableComponents.length) return;
+    if (targets.length !== editableComponents.length) return null;
     const firstValue = targets[0]?.value;
     if (targets.every((entry) => entry.value === firstValue)) {
       commit({ [key]: firstValue } as Partial<ArtComponent>);
-      return;
+      return String(firstValue);
     }
     for (const entry of targets) commitForComponents([entry.target], { [key]: entry.value } as Partial<ArtComponent>);
+    return "";
   };
 
   const numberField = (key: string, label: string, step?: string) => (
     <label className="flow-react-field" data-art-field={key} key={key}>
       <span>{label}</span>
       <input
-        type="number"
+        type="text"
+        inputMode="decimal"
         step={step}
         key={`${editableComponents.map((target) => target.id).join(":")}-${timelineContext?.frame ?? "base"}-${key}`}
         defaultValue={String(frameValue(key) ?? 0)}
         data-art-component-field={key}
-        onChange={(event) => commitNumberInput(key, event.target.value)}
-        onBlur={(event) => commitNumberInput(key, event.target.value)}
+        onBlur={(event) => {
+          const displayValue = commitNumberInput(key, event.target.value);
+          if (displayValue !== null) event.target.value = displayValue;
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
       />
     </label>
   );
