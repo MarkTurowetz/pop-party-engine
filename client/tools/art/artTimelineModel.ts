@@ -1,7 +1,5 @@
 import {
-  defaultVisibilityTimeline,
   normalizeTimeline,
-  timelineWithDefaultVisibility,
   timelineCommandAcceptsEvent,
   timelineCommandAcceptsTarget,
   timelineSegmentFor,
@@ -38,8 +36,32 @@ export interface TimelineCommandFrameClipboard {
   commands: TimelineCommand[];
 }
 
-export const defaultArtVisibilityTimeline = (): TimelineDocument =>
-  defaultVisibilityTimeline({ appear: 500, update: 200, disappear: 500 });
+export const defaultArtVisibilityTimeline = (): TimelineDocument => ({
+  fps: 30,
+  frameCount: 33,
+  labels: [
+    { name: "Off", frame: 0 },
+    { name: "Park", frame: 0 },
+    { name: "On", frame: 1 },
+    { name: "Appear", frame: 2 },
+    { name: "Update", frame: 13 },
+    { name: "Disappear", frame: 17 }
+  ],
+  commandFrames: [0, 1, 2, 12, 13, 16, 32],
+  commands: [
+    { id: "stop-0", frame: 0, type: "stop" },
+    { id: "setvisible-0-false", frame: 0, type: "setVisible", target: "false" },
+    { id: "stop-1", frame: 1, type: "stop" },
+    { id: "setvisible-1-true", frame: 1, type: "setVisible", target: "true" },
+    { id: "setvisible-2-true", frame: 2, type: "setVisible", target: "true" },
+    { id: "stop-12", frame: 12, type: "stop" },
+    { id: "setvisible-13-true", frame: 13, type: "setVisible", target: "true" },
+    { id: "stop-16", frame: 16, type: "stop" },
+    { id: "stop-32", frame: 32, type: "stop" },
+    { id: "setvisible-32-false", frame: 32, type: "setVisible", target: "false" }
+  ],
+  tracks: []
+});
 
 export function artTimelineOrDefault(timeline: TimelineDocument | null | undefined): TimelineDocument {
   return normalizeTimeline(timeline) || JSON.parse(JSON.stringify(DEFAULT_TIMELINE));
@@ -865,7 +887,28 @@ export function mergeDefaultArtVisibilityTimeline(
   timeline: TimelineDocument | null | undefined,
   targetComponent?: Pick<ArtComponent, "id"> | null
 ): TimelineDocument {
-  return timelineWithDefaultVisibility(timeline, { appear: 500, update: 200, disappear: 500 }, targetComponent?.id || "");
+  const current = normalizeTimeline(timeline);
+  if (current) return current;
+  const defaults = defaultArtVisibilityTimeline();
+  const targetId = String(targetComponent?.id || "").trim();
+  if (!targetId) return defaults;
+  return {
+    ...defaults,
+    tracks: [{
+      id: `track-${targetId}`,
+      targetId,
+      keyframes: [
+        { id: `key-${targetId}-0`, frame: 0, props: { opacity: 0, visible: false }, easing: "hold" },
+        { id: `key-${targetId}-1`, frame: 1, props: { opacity: 1, visible: true }, easing: "hold" },
+        { id: `key-${targetId}-2`, frame: 2, props: { opacity: 0, visible: true }, easing: "easeOut" },
+        { id: `key-${targetId}-12`, frame: 12, props: { opacity: 1, visible: true }, easing: "hold" },
+        { id: `key-${targetId}-13`, frame: 13, props: { opacity: 1, visible: true }, easing: "hold" },
+        { id: `key-${targetId}-16`, frame: 16, props: { opacity: 1, visible: true }, easing: "hold" },
+        { id: `key-${targetId}-17`, frame: 17, props: { opacity: 1, visible: true }, easing: "easeIn" },
+        { id: `key-${targetId}-32`, frame: 32, props: { opacity: 0, visible: false }, easing: "hold" }
+      ]
+    }]
+  };
 }
 
 export function effectiveArtVisibilityTimeline(

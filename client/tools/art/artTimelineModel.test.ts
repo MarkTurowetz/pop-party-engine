@@ -965,64 +965,55 @@ describe("artTimelineModel", () => {
     });
   });
 
-  it("creates a default visibility timeline with known animation labels", () => {
+  it("uses the Player Answer Bubble MC timing and command structure for new timelines", () => {
     const timeline = defaultArtVisibilityTimeline();
-    expect(timeline.labels.map((label) => label.name)).toContain("Appear");
-    expect(timeline.labels.map((label) => label.name)).toContain("Disappear");
-    expect(timeline.commands.some((command) => command.type === "stop")).toBe(true);
+    expect(timeline.frameCount).toBe(33);
+    expect(timeline.labels).toEqual([
+      { name: "Off", frame: 0 },
+      { name: "Park", frame: 0 },
+      { name: "On", frame: 1 },
+      { name: "Appear", frame: 2 },
+      { name: "Update", frame: 13 },
+      { name: "Disappear", frame: 17 }
+    ]);
+    expect(timeline.commandFrames).toEqual([0, 1, 2, 12, 13, 16, 32]);
+    expect(timeline.commands.map(({ frame, type, target }) => ({ frame, type, target }))).toEqual([
+      { frame: 0, type: "stop", target: undefined },
+      { frame: 0, type: "setVisible", target: "false" },
+      { frame: 1, type: "stop", target: undefined },
+      { frame: 1, type: "setVisible", target: "true" },
+      { frame: 2, type: "setVisible", target: "true" },
+      { frame: 12, type: "stop", target: undefined },
+      { frame: 13, type: "setVisible", target: "true" },
+      { frame: 16, type: "stop", target: undefined },
+      { frame: 32, type: "stop", target: undefined },
+      { frame: 32, type: "setVisible", target: "false" }
+    ]);
   });
 
-  it("merges visibility defaults without replacing authored timeline data", () => {
-    const timeline = mergeDefaultArtVisibilityTimeline({
+  it("preserves authored timelines without repeatedly growing their frame count", () => {
+    const authored: TimelineDocument = {
       fps: 12,
       frameCount: 3,
-      labels: [
-        { name: "appear", frame: 1 },
-        { name: "custom-pop", frame: 2 }
-      ],
-      commands: [
-        { frame: 2, type: "emit", target: "title", event: "pop" },
-        { frame: 0, type: "stop" }
-      ],
+      labels: [{ name: "custom-pop", frame: 2 }],
+      commands: [{ frame: 2, type: "emit", target: "title", event: "pop" }],
       tracks: [{ targetId: "title", keyframes: [{ frame: 2, props: { scale: 1.25 } }] }]
-    });
-    expect(timeline.frameCount).toBeGreaterThan(3);
-    expect(timeline.labels).toEqual(expect.arrayContaining([{ name: "appear", frame: 1 }, { name: "custom-pop", frame: 2 }]));
-    expect(timeline.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Park", "On", "Update", "Disappear"]));
-    expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 2, type: "emit", target: "title", event: "pop" }]));
-    expect(timeline.commands.filter((command) => command.frame === 0 && command.type === "stop")).toHaveLength(1);
-    expect(timeline.tracks).toEqual([{ targetId: "title", keyframes: [{ frame: 2, props: { scale: 1.25 } }] }]);
-  });
-
-  it("adds default visibility keyframes for a selected target without locking layout props", () => {
-    const timeline = mergeDefaultArtVisibilityTimeline(
-      {
-        fps: 30,
-        frameCount: 3,
-        labels: [],
-        commands: [],
-        tracks: [{ targetId: "title", keyframes: [{ frame: 2, props: { scale: 1.25, opacity: 0.5 } }] }]
-      },
-      { id: "title" } as ArtComponent
-    );
-    const track = timeline.tracks.find((item) => item.targetId === "title");
-    expect(track?.keyframes.map((keyframe) => keyframe.frame)).toEqual([2, 3, 4, 5, 20, 21, 27, 28, 43]);
-    expect(track?.keyframes.find((keyframe) => keyframe.frame === 2)?.props).toEqual({
-      opacity: 0.5,
-      scale: 1.25
-    });
-    expect(track?.keyframes.find((keyframe) => keyframe.frame === 3)?.props).toEqual({ opacity: 1 });
-    expect(track?.keyframes.find((keyframe) => keyframe.frame === 20)?.props).toEqual({ opacity: 1, visible: true });
-    expect(track?.keyframes.find((keyframe) => keyframe.frame === 43)?.props).toEqual({ opacity: 0, visible: false });
-    expect(timeline.commands).toEqual(expect.arrayContaining([{ frame: 3, type: "setVisible", target: "false" }]));
-    expect(track?.keyframes.some((keyframe) => "x" in keyframe.props || "width" in keyframe.props)).toBe(false);
+    };
+    const once = mergeDefaultArtVisibilityTimeline(authored, { id: "title" } as ArtComponent);
+    const twice = mergeDefaultArtVisibilityTimeline(once, { id: "title" } as ArtComponent);
+    expect(twice).toEqual(once);
+    expect(twice.frameCount).toBe(3);
+    expect(twice.labels).toEqual([{ name: "custom-pop", frame: 2 }]);
+    expect(twice.commands).toEqual([{ frame: 2, type: "emit", target: "title", event: "pop" }]);
+    expect(twice.tracks[0].keyframes).toHaveLength(1);
   });
 
   it("uses default visibility timelines while preserving authored timeline data", () => {
     const missing = effectiveArtVisibilityTimeline(null, { id: "title" } as ArtComponent);
-    expect(missing.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Park", "On", "Appear", "Update", "Disappear"]));
-    expect(missing.commands).toEqual(expect.arrayContaining([{ frame: 0, type: "setVisible", target: "false" }]));
-    expect(missing.tracks.find((track) => track.targetId === "title")?.keyframes.some((keyframe) => keyframe.frame === 0 && keyframe.props.opacity === 1 && keyframe.props.visible === undefined)).toBe(true);
+    expect(missing.labels).toEqual(defaultArtVisibilityTimeline().labels);
+    expect(missing.commandFrames).toEqual(defaultArtVisibilityTimeline().commandFrames);
+    expect(missing.tracks[0].targetId).toBe("title");
+    expect(missing.tracks[0].keyframes.map((keyframe) => keyframe.frame)).toEqual([0, 1, 2, 12, 13, 16, 17, 32]);
 
     const authored = effectiveArtVisibilityTimeline({
       fps: 12,
@@ -1031,7 +1022,8 @@ describe("artTimelineModel", () => {
       commands: [{ frame: 0, type: "stop" }],
       tracks: []
     });
-    expect(authored.labels).toEqual(expect.arrayContaining([{ name: "custom", frame: 0 }, { name: "Appear", frame: 4 }]));
-    expect(authored.commands).toEqual(expect.arrayContaining([{ frame: 0, type: "stop" }]));
+    expect(authored.frameCount).toBe(2);
+    expect(authored.labels).toEqual([{ name: "custom", frame: 0 }]);
+    expect(authored.commands).toEqual([{ frame: 0, type: "stop" }]);
   });
 });
