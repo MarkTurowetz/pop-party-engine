@@ -4888,7 +4888,7 @@
       "updatedAt": "2026-07-12T05:12:19.491Z"
     },
     "prefab-untitled-prefab-2": {
-      "name": "Player Answer Bubble MC2",
+      "name": "Player Answer Bubble MC",
       "description": "Reusable art prefab.",
       "surface": "stage",
       "compositionKind": "prefab",
@@ -4910,6 +4910,10 @@
           "height": 180,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "bottom",
           "locked": false,
           "defaultAnimationState": "",
           "artCompositionId": "player-answer-bubble"
@@ -4917,7 +4921,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 1260,
+        "frameCount": 3898,
         "labels": [
           {
             "name": "Off",
@@ -4937,11 +4941,11 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
@@ -4959,20 +4963,23 @@
             "type": "stop"
           },
           {
-            "frame": 17,
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
-            "type": "stop"
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
           }
         ],
         "tracks": [
@@ -5011,7 +5018,7 @@
               },
               {
                 "id": "key-reference-e949124bb2d7-13",
-                "frame": 13,
+                "frame": 9,
                 "props": {
                   "x": 0,
                   "y": 0,
@@ -5026,7 +5033,7 @@
               },
               {
                 "id": "key-reference-e949124bb2d7-17",
-                "frame": 17,
+                "frame": 12,
                 "props": {
                   "x": 0,
                   "y": 0,
@@ -5038,12 +5045,87 @@
                   "visible": true
                 },
                 "easing": "hold"
+              },
+              {
+                "id": "key-reference-e949124bb2d7-13",
+                "frame": 13,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeInOut"
+              },
+              {
+                "id": "key-reference-e949124bb2d7-19",
+                "frame": 16,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-e949124bb2d7-17",
+                "frame": 17,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-reference-e949124bb2d7-20",
+                "frame": 22,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-reference-e949124bb2d7-32",
+                "frame": 32,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 300,
+                  "height": 180,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
               }
             ]
           }
         ]
       },
-      "updatedAt": "2026-07-12T05:32:44.227Z"
+      "updatedAt": "2026-07-12T07:51:13.380Z"
     }
   },
   "deletedCompositionIds": [],
