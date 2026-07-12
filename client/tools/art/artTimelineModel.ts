@@ -908,13 +908,23 @@ export function addTransformKeyframe(
   const cleanTargetId = String(component.id || "").trim();
   if (!cleanTargetId) return current;
   const cleanFrameValue = cleanFrame(frame, current.frameCount);
+  const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
+  const existingKeyframe = existingTrack?.keyframes.find((keyframe) => keyframe.frame === cleanFrameValue);
+  const previousKeyframe = existingTrack?.keyframes
+    .filter((keyframe) => keyframe.frame < cleanFrameValue)
+    .sort((left, right) => right.frame - left.frame)[0];
+  const nextKeyframe = existingTrack?.keyframes
+    .filter((keyframe) => keyframe.frame > cleanFrameValue)
+    .sort((left, right) => left.frame - right.frame)[0];
+  const splitTweenEasing = previousKeyframe && nextKeyframe && cleanTimelineEasing(previousKeyframe.easing) !== "hold"
+    ? cleanTimelineEasing(previousKeyframe.easing)
+    : undefined;
   const keyframe: TimelineKeyframe = {
-    id: `key-${cleanTargetId}-${cleanFrameValue}`,
+    id: existingKeyframe?.id || `key-${cleanTargetId}-${cleanFrameValue}`,
     frame: cleanFrameValue,
     props: componentTimelinePropsFor(component),
-    easing: "hold"
+    easing: cleanTimelineEasing(existingKeyframe?.easing) || splitTweenEasing || "hold"
   };
-  const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, keyframe)
     : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };

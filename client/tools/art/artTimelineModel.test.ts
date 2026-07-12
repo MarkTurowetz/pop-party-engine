@@ -515,6 +515,60 @@ describe("artTimelineModel", () => {
     expect(removeTimelineKeyframe(timeline, "card", 5).tracks).toEqual([]);
   });
 
+  it("splits an existing tween and mirrors its easing onto the inserted keyframe", () => {
+    const timeline: TimelineDocument = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [],
+      tracks: [{
+        targetId: "card",
+        keyframes: [
+          { frame: 0, easing: "easeOut", props: { x: 0, y: 0, scale: 1 } },
+          { frame: 10, easing: "hold", props: { x: 100, y: 50, scale: 2 } }
+        ]
+      }]
+    };
+
+    const result = addTransformKeyframe(
+      timeline,
+      { id: "card", kind: "shape", x: 75, y: 37.5, width: 100, height: 50, scale: 1.75 } as ArtComponent,
+      5
+    );
+    const keyframes = result.tracks[0].keyframes;
+
+    expect(keyframes.map((keyframe) => ({ frame: keyframe.frame, easing: keyframe.easing }))).toEqual([
+      { frame: 0, easing: "easeOut" },
+      { frame: 5, easing: "easeOut" },
+      { frame: 10, easing: "hold" }
+    ]);
+    expect(keyframes[1].props).toMatchObject({ x: 75, y: 37.5, scale: 1.75 });
+  });
+
+  it("recaptures an existing transform keyframe without losing its outgoing easing", () => {
+    const timeline: TimelineDocument = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [],
+      tracks: [{
+        targetId: "card",
+        keyframes: [
+          { frame: 5, easing: "linear", props: { x: 10, y: 20, scale: 1 } },
+          { frame: 10, easing: "hold", props: { x: 100, y: 50, scale: 2 } }
+        ]
+      }]
+    };
+
+    const result = addTransformKeyframe(
+      timeline,
+      { id: "card", kind: "shape", x: 25, y: 30, width: 100, height: 50, scale: 1.2 } as ArtComponent,
+      5
+    );
+
+    expect(result.tracks[0].keyframes[0]).toMatchObject({ frame: 5, easing: "linear", props: { x: 25, y: 30, scale: 1.2 } });
+  });
+
   it("adds property-specific keyframes without capturing unrelated component state", () => {
     const component = {
       id: "card",

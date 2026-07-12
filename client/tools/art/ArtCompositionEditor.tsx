@@ -435,6 +435,9 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const assetUrlById = useMemo(() => assetUrlMap(assets || []), [assets]);
   const compositionById = useMemo(() => compositionMap(compositions), [compositions]);
   const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
+  const currentSurface = String(composition?.surface || "stage");
+  const prefabStageCompositionId = draftStageCompositionIds[currentSurface] || "";
+  const canReturnToPrefabStage = Boolean(prefabStageCompositionId && composition?.id !== prefabStageCompositionId);
   const canvasWidth = Number(composition?.canvas?.width || 560);
   const canvasHeight = Number(composition?.canvas?.height || 230);
   const visualBounds = useMemo(
@@ -497,32 +500,19 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     }
     return values;
   }, [selectedComponentMatches, timelineFrameOverrides]);
-  const commitSelectedTimelineFrameProps = (patch: TimelineProperties) => {
-    if (!selectedComponent || !selectedTimelineEditTargetId || !composition) return;
-    const nextTimeline = upsertTimelineKeyframeProps(
-      activeTimeline,
-      selectedTimelineEditTargetId,
-      timelinePreviewFrame,
-      patch,
-      { defaultEasing: "hold", rootComponent: timelineRootComponent || compositionTimelineTargetRoot(composition) }
-    );
-    controller.updateComposition(composition.id, { timeline: nextTimeline });
-    setTimelinePreview((current) =>
-      composition
-        ? {
-            compositionId: composition.id,
-            frame: current?.compositionId === composition.id ? current.frame : timelinePreviewFrame,
-            overrides: null
-          }
-        : current
-    );
-  };
   const commitTimelineFramePropsForComponents = (componentsToUpdate: ArtComponent[], patch: TimelineProperties) => {
     if (!composition) return;
     let nextTimeline = activeTimeline;
+    let timelineChanged = false;
     for (const targetComponent of componentsToUpdate) {
       const targetId = componentTimelineLocalTargetId(targetComponent);
       if (!targetId) continue;
+      const track = nextTimeline?.tracks.find((item) => item.targetId === targetId);
+      if (!track) {
+        controller.updateComponent(targetComponent.id, patch as Partial<ArtComponent>);
+        continue;
+      }
+      if (!track.keyframes.some((keyframe) => keyframe.frame === timelinePreviewFrame)) continue;
       nextTimeline = upsertTimelineKeyframeProps(
         nextTimeline,
         targetId,
@@ -530,8 +520,9 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         patch,
         { defaultEasing: "hold", rootComponent: timelineRootComponent || compositionTimelineTargetRoot(composition) }
       );
+      timelineChanged = true;
     }
-    controller.updateComposition(composition.id, { timeline: nextTimeline });
+    if (timelineChanged) controller.updateComposition(composition.id, { timeline: nextTimeline });
     setTimelinePreview((current) =>
       composition
         ? {
@@ -556,20 +547,26 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     return Number.isFinite(numberValue) ? numberValue : fallback;
   };
   const commitCanvasComponentPatch = (component: ArtComponent, patch: TimelineProperties): void => {
-    const componentTrack = effectiveActiveTimeline.tracks.find((track) => track.targetId === component.id);
-    const currentKeyframe = componentTrack?.keyframes.find((keyframe) => keyframe.frame === timelinePreviewFrame);
     const shouldCommitToTimeline = Boolean(
       composition &&
         selectedComponentIds.has(component.id) &&
         selectedComponent?.id === component.id &&
         selectedTimelineEditTargetId
     );
-    if (!shouldCommitToTimeline || !componentTrack) {
+    if (!shouldCommitToTimeline || !composition) {
       controller.updateComponent(component.id, patch as Partial<ArtComponent>);
       return;
     }
-    if (!currentKeyframe) return;
-    commitSelectedTimelineFrameProps(patch);
+    const displayedProps = timelineSnapshotAt(effectiveActiveTimeline, timelinePreviewFrame).targets[component.id] || {};
+    const stampedComponent = {
+      ...component,
+      ...displayedProps,
+      ...patch,
+      id: component.id
+    } as ArtComponent;
+    const nextTimeline = addTransformKeyframe(activeTimeline, stampedComponent, timelinePreviewFrame);
+    controller.updateComposition(composition.id, { timeline: nextTimeline });
+    setTimelinePreview({ compositionId: composition.id, frame: timelinePreviewFrame, overrides: null });
   };
   const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
     if (!composition) return;
@@ -706,10 +703,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     const created = controller.createPrefabFromComponents(composition.id, selectedComponentIds, name);
     if (created) {
       setPrefabCreationDialog(null);
-      setDraftStageCompositionIds((current) => {
-        const surface = String(composition.surface || "stage");
-        return current[surface] === composition.id ? { ...current, [surface]: created.id } : current;
-      });
+      setTimelineNavigationStack((stack) => [
+        ...stack,
+        { compositionId: composition.id, componentId: "", frame: timelinePreviewFrame }
+      ]);
       setTimelinePreview({ compositionId: created.id, frame: 0, overrides: null });
     }
   };
@@ -976,6 +973,11 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           <span data-art-compositions-status>{dirty ? "Unsaved changes" : "Saved"}</span>
         </div>
       <div className="flow-editor-controls">
+          {canReturnToPrefabStage ? (
+            <button type="button" data-art-back-to-stage onClick={openBlankPrefabStage}>
+              Back to Stage
+            </button>
+          ) : null}
           <button type="button" disabled={!canUndo || Boolean(migrationSummary)} onClick={() => controller.undo()}>
             Undo
           </button>
@@ -2081,7 +2083,9 @@ function ArtTimelinePanel({
     const { targetId, target } = keyframeTargetForSelection();
     if (!target || !targetId) return;
     const normalizedFrame = selectedTimelineCellFrame;
-    const nextTimeline = addTransformKeyframe(current, componentWithTimelineTargetId(target, targetId), normalizedFrame);
+    const displayedProps = timelineSnapshotAt(current, normalizedFrame).targets[targetId] || {};
+    const displayedTarget = componentWithTimelineTargetId({ ...target, ...displayedProps } as ArtComponent, targetId);
+    const nextTimeline = addTransformKeyframe(current, displayedTarget, normalizedFrame);
     onChange(nextTimeline);
     setKeyframeTargetId(targetId);
     setSelectedMarker(null);
