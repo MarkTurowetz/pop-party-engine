@@ -29,6 +29,7 @@ const DEFAULT_TWEEN_EASING = "easeInOut";
 export interface TimelineFrameClipboard {
   frameCount: number;
   labels: TimelineDocument["labels"];
+  commandFrames?: number[];
   commands: TimelineCommand[];
   tracks: TimelineTrack[];
 }
@@ -117,10 +118,12 @@ function uniqueCommandId(
 }
 
 function sortTimeline(timeline: TimelineDocument): TimelineDocument {
+  const commands = [...timeline.commands].sort((a, b) => a.frame - b.frame);
   return {
     ...timeline,
     labels: [...timeline.labels].sort((a, b) => a.frame - b.frame || a.name.localeCompare(b.name)),
-    commands: [...timeline.commands].sort((a, b) => a.frame - b.frame),
+    commandFrames: [...new Set([...(timeline.commandFrames || []), ...commands.map((command) => command.frame)])].sort((a, b) => a - b),
+    commands,
     tracks: timeline.tracks.map((track) => ({
       ...track,
       keyframes: [...track.keyframes].sort((a, b) => a.frame - b.frame)
@@ -156,6 +159,7 @@ export function updateTimelineSettings(
     fps,
     frameCount,
     labels: current.labels.map((label) => ({ ...label, frame: cleanFrame(label.frame, frameCount) })),
+    commandFrames: [...new Set((current.commandFrames || []).map((frame) => cleanFrame(frame, frameCount)))].sort((a, b) => a - b),
     commands: current.commands.map((command) => ({ ...command, frame: cleanFrame(command.frame, frameCount) })),
     tracks: current.tracks.map((track) => ({
       ...track,
@@ -177,6 +181,9 @@ export function insertTimelineFrames(
     ...current,
     frameCount,
     labels: current.labels.map((label) => ({ ...label, frame: cleanFrame(label.frame >= insertAt ? label.frame + delta : label.frame, frameCount) })),
+    commandFrames: (current.commandFrames || []).map((commandFrame) =>
+      cleanFrame(commandFrame >= insertAt ? commandFrame + delta : commandFrame, frameCount)
+    ),
     commands: current.commands.map((command) => ({
       ...command,
       frame: cleanFrame(command.frame >= insertAt ? command.frame + delta : command.frame, frameCount)
@@ -210,6 +217,9 @@ export function removeTimelineFrames(
     labels: current.labels
       .filter((label) => !isInsideRemovedRange(label.frame) || (frameCount === 1 && removeAt === 0))
       .map((label) => ({ ...label, frame: cleanFrame(shiftFrame(label.frame), frameCount) })),
+    commandFrames: (current.commandFrames || [])
+      .filter((commandFrame) => !isInsideRemovedRange(commandFrame))
+      .map((commandFrame) => cleanFrame(shiftFrame(commandFrame), frameCount)),
     commands: current.commands
       .filter((command) => !isInsideRemovedRange(command.frame))
       .map((command) => ({ ...command, frame: cleanFrame(shiftFrame(command.frame), frameCount) })),
@@ -239,6 +249,9 @@ export function copyTimelineFrameRange(
     labels: current.labels
       .filter((label) => isInsideRange(label.frame))
       .map((label) => ({ ...label, frame: label.frame - startFrame })),
+    commandFrames: (current.commandFrames || [])
+      .filter((commandFrame) => isInsideRange(commandFrame))
+      .map((commandFrame) => commandFrame - startFrame),
     commands: current.commands
       .filter((command) => isInsideRange(command.frame))
       .map((command) => ({ ...command, frame: command.frame - startFrame })),
@@ -289,6 +302,9 @@ export function pasteTimelineFrameRange(
     commands.push(copiedCommand);
     return commands;
   }, []);
+  const copiedCommandFrames = (clipboard.commandFrames || []).map((commandFrame) =>
+    cleanFrame(destinationFrame + commandFrame, withSpace.frameCount)
+  );
   const copiedTracks = (clipboard.tracks || []).map((track) => ({
     ...track,
     keyframes: track.keyframes.map((keyframe) => ({
@@ -310,6 +326,7 @@ export function pasteTimelineFrameRange(
   return sortTimeline({
     ...withSpace,
     labels: [...withSpace.labels, ...copiedLabels],
+    commandFrames: [...(withSpace.commandFrames || []), ...copiedCommandFrames],
     commands: [...withSpace.commands, ...copiedCommands],
     tracks: [...tracksByTargetId.values()].filter((track) => track.keyframes.length > 0)
   });
@@ -329,6 +346,7 @@ export function overwriteTimelineFrameRange(
   const isInsideDestinationRange = (value: number) => value >= destinationFrame && value < pasteEnd;
   const labelNameBySource = new Map<string, string>();
   const nextLabels = current.labels.filter((label) => !isInsideDestinationRange(label.frame));
+  const nextCommandFrames = (current.commandFrames || []).filter((commandFrame) => !isInsideDestinationRange(commandFrame));
   const nextCommands = current.commands.filter((command) => !isInsideDestinationRange(command.frame));
 
   for (const label of clipboard.labels || []) {
@@ -353,6 +371,9 @@ export function overwriteTimelineFrameRange(
     commands.push(copiedCommand);
     return commands;
   }, []);
+  const copiedCommandFrames = (clipboard.commandFrames || []).map((commandFrame) =>
+    cleanFrame(destinationFrame + commandFrame, nextFrameCount)
+  );
 
   const tracksByTargetId = new Map<string, TimelineTrack>();
   for (const track of current.tracks) {
@@ -380,6 +401,7 @@ export function overwriteTimelineFrameRange(
     ...current,
     frameCount: nextFrameCount,
     labels: nextLabels,
+    commandFrames: [...nextCommandFrames, ...copiedCommandFrames],
     commands: [...nextCommands, ...copiedCommands],
     tracks: [...tracksByTargetId.values()].filter((track) => track.keyframes.length > 0)
   });
@@ -504,6 +526,9 @@ export function duplicateTimelineSegment(
       commands.push(nextCommand);
       return commands;
     }, []);
+  const copiedCommandFrames = (current.commandFrames || [])
+    .filter((commandFrame) => commandFrame >= segment.startFrame && commandFrame <= segment.endFrame)
+    .map((commandFrame) => destinationStartFrame + (commandFrame - segment.startFrame));
   const copiedTracks = current.tracks.map((track) => {
     const copiedKeyframes = track.keyframes
       .filter((keyframe) => keyframe.frame >= segment.startFrame && keyframe.frame <= segment.endFrame)
@@ -522,6 +547,7 @@ export function duplicateTimelineSegment(
     ...current,
     frameCount,
     labels: [...current.labels, ...copiedLabels],
+    commandFrames: [...(current.commandFrames || []), ...copiedCommandFrames],
     commands: [...current.commands, ...copiedCommands],
     tracks: copiedTracks
   });
@@ -553,6 +579,22 @@ export function addTimelineCommand(
   return sortTimeline({ ...current, commands: [...current.commands, cleanCommand] });
 }
 
+export function addTimelineCommandFrame(timeline: TimelineDocument | null | undefined, frame: number): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const normalizedFrame = cleanFrame(frame, current.frameCount);
+  return sortTimeline({ ...current, commandFrames: [...(current.commandFrames || []), normalizedFrame] });
+}
+
+export function removeTimelineCommandFrame(timeline: TimelineDocument | null | undefined, frame: number): TimelineDocument {
+  const current = artTimelineOrDefault(timeline);
+  const normalizedFrame = cleanFrame(frame, current.frameCount);
+  return sortTimeline({
+    ...current,
+    commandFrames: (current.commandFrames || []).filter((commandFrame) => commandFrame !== normalizedFrame),
+    commands: current.commands.filter((command) => command.frame !== normalizedFrame)
+  });
+}
+
 export function replaceTimelineCommandsAtFrame(
   timeline: TimelineDocument | null | undefined,
   frame: number,
@@ -562,6 +604,7 @@ export function replaceTimelineCommandsAtFrame(
   const normalizedFrame = cleanFrame(frame, current.frameCount);
   let nextTimeline = sortTimeline({
     ...current,
+    commandFrames: [...(current.commandFrames || []), normalizedFrame],
     commands: current.commands.filter((command) => command.frame !== normalizedFrame)
   });
   for (const command of commands) {

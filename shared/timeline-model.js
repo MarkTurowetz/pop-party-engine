@@ -17,6 +17,7 @@ const DEFAULT_FRAME_COUNT = 1;
 const MAX_FRAME_COUNT = 60 * 60 * 10;
 const MAX_LABELS = 500;
 const MAX_COMMANDS = 1000;
+const MAX_COMMAND_FRAMES = 2000;
 const MAX_TRACKS = 1000;
 const MAX_KEYFRAMES_PER_TRACK = 2000;
 function cleanText(value, fallback = "", maxLength = 120) {
@@ -107,6 +108,10 @@ function normalizeTimeline(raw, fallback = null) {
         return normalizedCommand;
     })
         .sort((a, b) => a.frame - b.frame);
+    const commandFrames = [...new Set([
+            ...(Array.isArray(input.commandFrames) ? input.commandFrames.slice(0, MAX_COMMAND_FRAMES).map((frame) => cleanFrame(frame, 0, maxFrame)) : []),
+            ...commands.map((command) => command.frame)
+        ])].sort((a, b) => a - b);
     const tracks = (Array.isArray(input.tracks) ? input.tracks : [])
         .slice(0, MAX_TRACKS)
         .map((track) => {
@@ -128,7 +133,7 @@ function normalizeTimeline(raw, fallback = null) {
         return { id: cleanText(entry.id, "", 80) || undefined, targetId, keyframes };
     })
         .filter((track) => track.targetId && track.keyframes.length > 0);
-    return normalizeOffAnimationVisibility({ fps, frameCount, labels, commands, tracks });
+    return normalizeOffAnimationVisibility({ fps, frameCount, labels, commandFrames, commands, tracks });
 }
 function normalizeOffAnimationVisibility(timeline) {
     const offMatch = (0, lifecycle_labels_1.uniqueTimelineLabelMatch)(timeline.labels, lifecycle_labels_1.lifecycleLabels.off);
@@ -161,7 +166,8 @@ function normalizeOffAnimationVisibility(timeline) {
         keyframes = keyframes.sort((a, b) => a.frame - b.frame);
         return { ...track, keyframes };
     });
-    return { ...timeline, commands, tracks };
+    const commandFrames = [...new Set([...(timeline.commandFrames || []), ...commands.map((command) => command.frame)])].sort((a, b) => a - b);
+    return { ...timeline, commandFrames, commands, tracks };
 }
 function hasTimelineLabel(timeline, label) {
     return Boolean(timeline && (0, lifecycle_labels_1.uniqueTimelineLabelMatch)(timeline.labels, label));

@@ -28,6 +28,7 @@ import {
   validateImageFile
 } from "./artComponentSchema";
 import {
+  addTimelineCommandFrame,
   addTimelineLabel,
   addTransformKeyframe,
   copyTimelineFrameRange,
@@ -36,6 +37,7 @@ import {
   insertTimelineFrames,
   overwriteTimelineFrameRange,
   removeTimelineCommandAt,
+  removeTimelineCommandFrame,
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineFrames,
@@ -133,6 +135,7 @@ type TimelineCellSelection =
 type TimelineCommandOverlay = {
   frame: number;
   draft: string;
+  placeholder: string;
   error: string;
   onDraftChange: (value: string) => void;
   onCommit: () => void;
@@ -251,14 +254,17 @@ function inferredVisibilityCommandsAtFrame(timeline: TimelineDocument, frame: nu
   return [{ frame, type: "setVisible", target: visible ? "true" : "false" }];
 }
 
-function timelineActionScriptForFrame(timeline: TimelineDocument, frame: number, commands: TimelineCommand[], component?: ArtComponent): string {
-  const hasExplicitVisibility = commands.some((command) => command.type === "setVisible");
-  const displayCommands = hasExplicitVisibility ? commands : [...commands, ...inferredVisibilityCommandsAtFrame(timeline, frame)];
-  return timelineCommandsToActionScript(displayCommands.map((command) => {
+export function timelineActionScriptForFrame(_timeline: TimelineDocument, _frame: number, commands: TimelineCommand[], component?: ArtComponent): string {
+  return timelineCommandsToActionScript(commands.map((command) => {
     if ((command.type !== "playComponent" && command.type !== "stopComponent") || !command.target || !component) return command;
     const target = findTimelineTargetComponent([component], command.target, { scopeRootPath: false });
     return target?.instanceLabel ? { ...command, target: target.instanceLabel } : command;
   }));
+}
+
+export function timelineActionScriptPlaceholderForFrame(timeline: TimelineDocument, frame: number): string {
+  const inferred = timelineCommandsToActionScript(inferredVisibilityCommandsAtFrame(timeline, frame));
+  return inferred || 'stop();\ngotoAndPlay("Appear");';
 }
 
 function timelineCommandLabel(command: TimelineCommand): string {
@@ -1392,7 +1398,7 @@ function ArtTimelineCommandOverlay({ overlay }: { overlay: TimelineCommandOverla
         <span>Actions · Frame {overlay.frame}</span>
         <textarea
           value={overlay.draft}
-          placeholder={'stop();\ngotoAndPlay("Appear");'}
+          placeholder={overlay.placeholder}
           spellCheck={false}
           onChange={(event) => overlay.onDraftChange(event.target.value)}
           onBlur={overlay.onCommit}
@@ -1930,6 +1936,7 @@ function ArtTimelinePanel({
     onCommandOverlayChange({
       frame: selectedCommandFrame,
       draft: commandScriptDraft,
+      placeholder: timelineActionScriptPlaceholderForFrame(current, selectedCommandFrame),
       error: commandScriptError,
       onDraftChange: (value: string) => {
         setCommandScriptDraft(value);
@@ -1994,6 +2001,16 @@ function ArtTimelinePanel({
   }
 
   function convertSelectionToKeyframe(): void {
+    if (selectedTimelineCell.kind === "command") {
+      const normalizedFrame = selectedTimelineCellFrame;
+      stopPlayback();
+      onChange(addTimelineCommandFrame(current, normalizedFrame));
+      setSelectedKeyframe(null);
+      setSelectedMarker(null);
+      selectTimelineCell({ kind: "command", frame: normalizedFrame });
+      previewFrame(normalizedFrame);
+      return;
+    }
     const { targetId, target } = keyframeTargetForSelection();
     if (!target || !targetId) return;
     const normalizedFrame = selectedTimelineCellFrame;
@@ -2009,6 +2026,19 @@ function ArtTimelinePanel({
   }
 
   function clearKeyframeAtCurrentSelection(): void {
+    if (selectedTimelineCell.kind === "command") {
+      const normalizedFrame = selectedTimelineCellFrame;
+      stopPlayback();
+      onChange(removeTimelineCommandFrame(current, normalizedFrame));
+      setSelectedKeyframe(null);
+      setSelectedMarker(null);
+      setCommandScriptDraft("");
+      setCommandScriptInitialDraft("");
+      setCommandScriptError("");
+      selectTimelineCell({ kind: "command", frame: normalizedFrame });
+      previewFrame(normalizedFrame);
+      return;
+    }
     const { targetId } = keyframeTargetForSelection();
     if (!targetId) return;
     const normalizedFrame = selectedTimelineCellFrame;
@@ -2026,7 +2056,14 @@ function ArtTimelinePanel({
       setSelectedKeyframe(null);
       return true;
     }
-    if (!selectedTimelineMarker) return false;
+    if (!selectedTimelineMarker) {
+      if (selectedTimelineCell.kind !== "command" || !(current.commandFrames || []).includes(selectedTimelineCellFrame)) return false;
+      onChange(removeTimelineCommandFrame(current, selectedTimelineCellFrame));
+      setCommandScriptDraft("");
+      setCommandScriptInitialDraft("");
+      setCommandScriptError("");
+      return true;
+    }
     if (selectedTimelineMarker.kind === "label") {
       onChange(removeTimelineLabel(current, selectedTimelineMarker.label.name));
       setSelectedMarker(null);
@@ -2427,6 +2464,7 @@ function ArtTimelinePanel({
               <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
                 {visibleTimelineFrames.map((frameIndex) => {
                   const commands = timelineCommandsAtFrame(current, frameIndex);
+                  const hasCommandFrame = (current.commandFrames || []).includes(frameIndex) || commands.length > 0;
                   const selectedFrameCommand =
                     selectedMarker?.kind === "command"
                       ? commands.find(({ command, index: commandIndex }) => isCommandMarkerSelected(selectedMarker, command, commandIndex))
@@ -2441,6 +2479,7 @@ function ArtTimelinePanel({
                       data-art-timeline-playhead={timelineFrameIsPlayhead(frameIndex) ? "true" : "false"}
                       data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
                       data-art-timeline-has-command={commands.length ? "true" : "false"}
+                      data-art-timeline-has-command-keyframe={hasCommandFrame ? "true" : "false"}
                       data-art-timeline-marker-selected={
                         commands.some(({ command, index: commandIndex }) => isCommandMarkerSelected(selectedMarker, command, commandIndex)) ? "true" : "false"
                       }
@@ -2450,7 +2489,9 @@ function ArtTimelinePanel({
                       title={
                         commands.length
                           ? `Frame ${frameIndex}: ${commands.map(({ command }) => timelineCommandTitle(command)).join(", ")}`
-                          : `Preview frame ${frameIndex}`
+                          : hasCommandFrame
+                            ? `Frame ${frameIndex}: empty command keyframe`
+                            : `Preview frame ${frameIndex}`
                       }
                       onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
                       onClick={(event) => {
@@ -2474,7 +2515,7 @@ function ArtTimelinePanel({
                     >
                       {commands.length ? (
                         <span className="art-timeline-marker-pill">{commands.map(({ command }) => timelineCommandLabel(command)).join(", ")}</span>
-                      ) : null}
+                      ) : hasCommandFrame ? <span className="art-timeline-keyframe-dot" aria-label="Empty command keyframe" /> : null}
                     </button>
                   );
                 })}

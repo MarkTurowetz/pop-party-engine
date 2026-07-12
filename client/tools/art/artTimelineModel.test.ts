@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ArtComponent } from "../../types/game-data";
 import type { TimelineDocument } from "../../../shared/timeline-model";
 import {
+  addTimelineCommandFrame,
   addTimelineCommand,
   addStopCommand,
   addTimelineLabel,
@@ -23,6 +24,7 @@ import {
   pasteTimelineFrameRange,
   replaceTransformKeyframeFromComponent,
   removeTimelineFrames,
+  removeTimelineCommandFrame,
   removeTimelineKeyframe,
   removeTimelineLabel,
   removeTimelineSegment,
@@ -231,6 +233,36 @@ describe("artTimelineModel", () => {
       { id: "emit-4-entered", frame: 4, type: "emit", event: "entered" },
       { id: "after", frame: 9, type: "emit", event: "done" }
     ]);
+    expect(replaced.commandFrames).toEqual([1, 4, 9]);
+  });
+
+  it("creates and clears empty command keyframes independently from animation tracks", () => {
+    const timeline = addTimelineCommandFrame(
+      { fps: 30, frameCount: 20, labels: [], commands: [{ frame: 12, type: "stop" }], tracks: [] },
+      13
+    );
+
+    expect(timeline.commandFrames).toEqual([12, 13]);
+    expect(timeline.commands).toEqual([{ frame: 12, type: "stop" }]);
+    expect(timeline.tracks).toEqual([]);
+
+    const cleared = removeTimelineCommandFrame(
+      { ...timeline, commands: [...timeline.commands, { frame: 13, type: "setVisible", target: "true" }] },
+      13
+    );
+    expect(cleared.commandFrames).toEqual([12]);
+    expect(cleared.commands).toEqual([{ frame: 12, type: "stop" }]);
+  });
+
+  it("keeps a deliberately blank command keyframe when an empty script is committed", () => {
+    const timeline = replaceTimelineCommandsAtFrame(
+      { fps: 30, frameCount: 20, labels: [], commands: [{ frame: 12, type: "stop" }], tracks: [] },
+      13,
+      []
+    );
+
+    expect(timeline.commandFrames).toEqual([12, 13]);
+    expect(timeline.commands).toEqual([{ frame: 12, type: "stop" }]);
   });
 
   it("updates timeline commands by normalized list index", () => {
@@ -459,10 +491,11 @@ describe("artTimelineModel", () => {
       commands: [{ frame: 1, type: "emit", event: "inside" }],
       tracks: [{ targetId: "card", keyframes: [{ frame: 0, props: { x: 1 } }] }]
     });
-    expect(result.timeline).toEqual({
+    expect(result.timeline).toMatchObject({
       fps: 30,
       frameCount: 5,
       labels: [{ name: "keep", frame: 3 }],
+      commandFrames: [4],
       commands: [{ frame: 4, type: "stop" }],
       tracks: [{ targetId: "card", keyframes: [{ frame: 3, props: { x: 2 } }] }]
     });
@@ -854,7 +887,7 @@ describe("artTimelineModel", () => {
       commands: [],
       tracks: [{ targetId: "title", keyframes: [{ frame: 10, easing: "hold", props: { scale: 2 } }] }]
     };
-    expect(toggleTimelineTweenAtFrame(timeline, "title", 10)).toEqual(timeline);
+    expect(toggleTimelineTweenAtFrame(timeline, "title", 10)).toEqual(artTimelineOrDefault(timeline));
     expect(timelineTweenSpanAtFrame(timeline, "title", 10)).toBe(null);
   });
 
