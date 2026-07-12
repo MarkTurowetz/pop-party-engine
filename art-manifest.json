@@ -144,7 +144,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -164,45 +164,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -271,7 +306,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -291,45 +326,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -398,7 +468,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -418,45 +488,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -525,7 +630,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -545,45 +650,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -652,7 +792,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -672,45 +812,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -779,7 +954,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -799,45 +974,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -906,7 +1116,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -926,45 +1136,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1042,7 +1287,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1062,45 +1307,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1144,7 +1424,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1164,45 +1444,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1279,7 +1594,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1299,45 +1614,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1414,7 +1764,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1434,45 +1784,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1530,7 +1915,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1550,45 +1935,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1646,7 +2066,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1666,45 +2086,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1762,7 +2217,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1782,45 +2237,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1878,7 +2368,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1898,45 +2388,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -1974,7 +2499,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -1994,45 +2519,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -2090,7 +2650,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -2110,45 +2670,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -2206,7 +2801,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -2226,45 +2821,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -2341,7 +2971,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -2361,45 +2991,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -2476,7 +3141,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -2496,45 +3161,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -2592,7 +3292,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -2612,45 +3312,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -2689,7 +3424,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -2709,45 +3444,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -2805,7 +3575,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -2825,45 +3595,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -2921,7 +3726,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -2941,45 +3746,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -3040,7 +3880,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -3060,45 +3900,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -3235,7 +4110,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -3255,45 +4130,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -3430,7 +4340,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -3450,45 +4360,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -3625,7 +4570,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -3645,45 +4590,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -3820,7 +4800,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -3840,45 +4820,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -3956,7 +4971,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -3976,45 +4991,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -4151,7 +5201,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -4171,45 +5221,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -4346,7 +5431,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -4366,45 +5451,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -4461,14 +5581,10 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 88,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
-            "frame": 0
-          },
-          {
-            "name": "On",
             "frame": 0
           },
           {
@@ -4476,34 +5592,89 @@
             "frame": 0
           },
           {
-            "name": "Appear",
+            "name": "On",
             "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
           },
           {
             "name": "Update",
-            "frame": 1
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 45
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
-            "frame": 45,
+            "id": "stop-1",
+            "frame": 1,
             "type": "stop"
+          },
+          {
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
+            "type": "stop"
+          },
+          {
+            "id": "stop-32",
+            "frame": 32,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -4581,7 +5752,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -4601,45 +5772,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -4697,7 +5903,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 42,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -4717,45 +5923,80 @@
           },
           {
             "name": "Update",
-            "frame": 18
+            "frame": 13
           },
           {
             "name": "Disappear",
-            "frame": 25
+            "frame": 17
           }
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "frame": 17,
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
             "type": "stop"
           },
           {
-            "frame": 24,
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
             "type": "stop"
           },
           {
-            "frame": 40,
+            "id": "stop-32",
+            "frame": 32,
             "type": "stop"
           },
           {
-            "frame": 41,
-            "type": "stop"
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
           }
         ],
-        "tracks": []
+        "tracks": [],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
@@ -4793,7 +6034,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 5200,
+        "frameCount": 33,
         "labels": [
           {
             "name": "Off",
@@ -4831,55 +6072,58 @@
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
             "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
-            "type": "stop",
-            "id": "stop-1"
+            "type": "stop"
           },
           {
+            "id": "setvisible-1-true",
             "frame": 1,
             "type": "setVisible",
-            "id": "setvisible-1-true",
             "target": "true"
           },
           {
+            "id": "setvisible-2-true",
             "frame": 2,
             "type": "setVisible",
-            "id": "setvisible-2-true",
             "target": "true"
           },
           {
+            "id": "stop-12",
             "frame": 12,
-            "type": "stop",
-            "id": "stop-12"
+            "type": "stop"
           },
           {
+            "id": "setvisible-13-true",
             "frame": 13,
             "type": "setVisible",
-            "id": "setvisible-13-true",
             "target": "true"
           },
           {
+            "id": "stop-16",
             "frame": 16,
             "type": "stop"
           },
           {
+            "id": "stop-32",
             "frame": 32,
-            "type": "stop",
-            "id": "stop-32"
+            "type": "stop"
           },
           {
+            "id": "setvisible-32-false",
             "frame": 32,
             "type": "setVisible",
-            "id": "setvisible-32-false",
             "target": "false"
           }
         ],
