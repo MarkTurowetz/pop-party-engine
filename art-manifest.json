@@ -4,7 +4,9 @@
       "name": "Voting Card",
       "description": "Composed from a current card, answer text, author heading, voter container, vote count, and voter widgets.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 560,
         "height": 230
@@ -13,6 +15,7 @@
         {
           "id": "answer-text",
           "name": "Answer Text",
+          "instanceLabel": "answerText",
           "kind": "text",
           "x": 280,
           "y": 86,
@@ -20,15 +23,18 @@
           "height": 78,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "",
           "defaultText": "ANSWER TEXT",
           "fontSize": 32,
           "autoFitText": true,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "author-heading",
           "name": "Author Heading Widget",
+          "instanceLabel": "authorHeadingWidget",
           "kind": "text",
           "x": 280,
           "y": 32,
@@ -36,15 +42,18 @@
           "height": 28,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "",
           "defaultText": "AUTHOR NAME",
           "fontSize": 15,
           "autoFitText": true,
-          "fontColor": "#6b5a80"
+          "fontColor": "#6b5a80",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "voter-container",
           "name": "Player Vote Widget Container",
+          "instanceLabel": "playerVoteWidgetContainer",
           "kind": "container",
           "x": 278,
           "y": 188,
@@ -52,8 +61,9 @@
           "height": 48,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "",
-          "childDistribution": "none",
+          "childDistribution": "horizontal",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -64,6 +74,7 @@
         {
           "id": "vote-count",
           "name": "Vote Count Widget",
+          "instanceLabel": "voteCountWidget",
           "kind": "badge",
           "x": 30.927,
           "y": 28,
@@ -71,11 +82,13 @@
           "height": 48,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "",
           "defaultText": "",
           "fontSize": 10,
           "autoFitText": true,
           "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "shapeStyle": "rounded",
           "fillColor": "#fff8d6",
           "fillCss": "",
@@ -86,6 +99,7 @@
         {
           "id": "vote-widget",
           "name": "Player Vote Widget",
+          "instanceLabel": "playerVoteWidget",
           "kind": "badge",
           "x": 280,
           "y": 188,
@@ -93,11 +107,13 @@
           "height": 32,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "",
           "defaultText": "",
           "fontSize": 15,
           "autoFitText": true,
           "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "shapeStyle": "rounded",
           "fillColor": "#fff8d6",
           "fillCss": "",
@@ -108,6 +124,7 @@
         {
           "id": "current-card",
           "name": "Current Card",
+          "instanceLabel": "currentCard",
           "kind": "shape",
           "x": 280,
           "y": 86,
@@ -115,6 +132,7 @@
           "height": 150,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "",
           "shapeStyle": "rounded",
           "fillColor": "#fff8d6",
@@ -124,13 +142,77 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-06-28T00:01:28.051Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-avatar-rex": {
       "name": "Rex Avatar",
       "description": "Editable player avatar art composed from a frame and masked dino image.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 100,
         "height": 100
@@ -139,6 +221,7 @@
         {
           "id": "dino-mask",
           "name": "Dino Image Mask",
+          "instanceLabel": "dinoImageMask",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -146,7 +229,8 @@
           "height": 70,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
           "fillCss": "",
@@ -162,6 +246,7 @@
         {
           "id": "avatar-frame",
           "name": "Avatar Frame",
+          "instanceLabel": "avatarFrame",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -169,7 +254,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -183,13 +269,77 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-28T01:28:30.197Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-avatar-stego": {
       "name": "Stego Avatar",
       "description": "Editable player avatar art composed from a frame and masked dino image.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 100,
         "height": 100
@@ -198,6 +348,7 @@
         {
           "id": "dino-mask",
           "name": "Dino Image Mask",
+          "instanceLabel": "dinoImageMask",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -205,7 +356,8 @@
           "height": 70,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
           "fillCss": "",
@@ -221,6 +373,7 @@
         {
           "id": "avatar-frame",
           "name": "Avatar Frame",
+          "instanceLabel": "avatarFrame",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -228,7 +381,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -242,13 +396,77 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-28T01:28:32.980Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-avatar-trike": {
       "name": "Trike Avatar",
       "description": "Editable player avatar art composed from a frame and masked dino image.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 100,
         "height": 100
@@ -257,6 +475,7 @@
         {
           "id": "dino-mask",
           "name": "Dino Image Mask",
+          "instanceLabel": "dinoImageMask",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -264,7 +483,8 @@
           "height": 70,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
           "fillCss": "",
@@ -280,6 +500,7 @@
         {
           "id": "avatar-frame",
           "name": "Avatar Frame",
+          "instanceLabel": "avatarFrame",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -287,7 +508,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -301,13 +523,77 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-28T00:00:59.405Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-avatar-raptor": {
       "name": "Raptor Avatar",
       "description": "Editable player avatar art composed from a frame and masked dino image.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 100,
         "height": 100
@@ -316,6 +602,7 @@
         {
           "id": "dino-mask",
           "name": "Dino Image Mask",
+          "instanceLabel": "dinoImageMask",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -323,7 +610,8 @@
           "height": 70,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
           "fillCss": "",
@@ -339,6 +627,7 @@
         {
           "id": "avatar-frame",
           "name": "Avatar Frame",
+          "instanceLabel": "avatarFrame",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -346,7 +635,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -360,13 +650,77 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-28T01:28:36.658Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-avatar-bronto": {
       "name": "Bronto Avatar",
       "description": "Editable player avatar art composed from a frame and masked dino image.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 100,
         "height": 100
@@ -375,6 +729,7 @@
         {
           "id": "dino-mask",
           "name": "Dino Image Mask",
+          "instanceLabel": "dinoImageMask",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -382,7 +737,8 @@
           "height": 70,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
           "fillCss": "",
@@ -398,6 +754,7 @@
         {
           "id": "avatar-frame",
           "name": "Avatar Frame",
+          "instanceLabel": "avatarFrame",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -405,7 +762,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -419,13 +777,77 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-27T21:01:52.239Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-avatar-ankylo": {
       "name": "Ankylo Avatar",
       "description": "Editable player avatar art composed from a frame and masked dino image.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 100,
         "height": 100
@@ -434,6 +856,7 @@
         {
           "id": "dino-mask",
           "name": "Dino Image Mask",
+          "instanceLabel": "dinoImageMask",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -441,7 +864,8 @@
           "height": 70,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
           "fillCss": "",
@@ -457,6 +881,7 @@
         {
           "id": "avatar-frame",
           "name": "Avatar Frame",
+          "instanceLabel": "avatarFrame",
           "kind": "shape",
           "x": 50,
           "y": 50,
@@ -464,7 +889,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
           "fillCss": "",
@@ -478,13 +904,77 @@
           "imageTint": ""
         }
       ],
-      "updatedAt": "2026-06-28T01:28:40.865Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "join-qr-code": {
       "name": "Join QR Code",
       "description": "Editable QR join card art used by the lobby layout.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 260,
         "height": 300
@@ -493,6 +983,7 @@
         {
           "id": "qr-label",
           "name": "QR Label",
+          "instanceLabel": "qRLabel",
           "kind": "text",
           "x": 130,
           "y": 258,
@@ -500,15 +991,18 @@
           "height": 60,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "SCAN TO JOIN",
           "fontSize": 30,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "qr-placeholder",
           "name": "QR Placeholder",
+          "instanceLabel": "qRPlaceholder",
           "kind": "shape",
           "x": 130,
           "y": 124,
@@ -516,7 +1010,8 @@
           "height": 212,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -527,6 +1022,7 @@
         {
           "id": "qr-card",
           "name": "QR Card",
+          "instanceLabel": "qRCard",
           "kind": "shape",
           "x": 130,
           "y": 150,
@@ -534,7 +1030,8 @@
           "height": 300,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -543,13 +1040,77 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-28T00:01:49.868Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "presentation-click-prompt": {
       "name": "Presentation Click Prompt",
       "description": "Editable prompt art shown when the VIP can advance presented text.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 92,
         "height": 92
@@ -558,6 +1119,7 @@
         {
           "id": "cursor-shape",
           "name": "Cursor Shape",
+          "instanceLabel": "cursorShape",
           "kind": "shape",
           "x": 46,
           "y": 46,
@@ -565,7 +1127,8 @@
           "height": 72,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rectangle",
           "fillColor": "currentColor",
           "fillCss": "",
@@ -579,13 +1142,77 @@
           "imageTint": "currentColor"
         }
       ],
-      "updatedAt": "2026-06-28T01:29:03.081Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "stage-code-panel": {
       "name": "Stage Code Panel",
       "description": "Editable lobby card that displays the current stage code.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 560,
         "height": 190
@@ -594,6 +1221,7 @@
         {
           "id": "panel-code",
           "name": "Panel Code",
+          "instanceLabel": "panelCode",
           "kind": "text",
           "x": 280,
           "y": 100,
@@ -601,15 +1229,18 @@
           "height": 105,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "NUZ7",
           "fontSize": 112,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "panel-label",
           "name": "Panel Label",
+          "instanceLabel": "panelLabel",
           "kind": "text",
           "x": 277.29,
           "y": 33.988,
@@ -617,15 +1248,18 @@
           "height": 34,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "STAGE CODE",
           "fontSize": 22,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "panel-card",
           "name": "Panel Card",
+          "instanceLabel": "panelCard",
           "kind": "shape",
           "x": 280,
           "y": 95,
@@ -633,7 +1267,8 @@
           "height": 190,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#ffe256",
           "fillCss": "",
@@ -642,13 +1277,77 @@
           "borderRadius": 24
         }
       ],
-      "updatedAt": "2026-06-28T00:01:35.899Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "stage-code-widget": {
       "name": "Small Room Code Widget",
       "description": "Editable small global stage-code badge.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 170,
         "height": 82
@@ -657,6 +1356,7 @@
         {
           "id": "badge-code",
           "name": "Badge Code",
+          "instanceLabel": "badgeCode",
           "kind": "text",
           "x": 85.178,
           "y": 50.97,
@@ -664,15 +1364,18 @@
           "height": 32,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "NUZ7",
           "fontSize": 32,
           "autoFitText": true,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "badge-label",
           "name": "Badge Label",
+          "instanceLabel": "badgeLabel",
           "kind": "text",
           "x": 85,
           "y": 22,
@@ -680,15 +1383,18 @@
           "height": 14,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "STAGE",
           "fontSize": 10,
           "autoFitText": true,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "badge-card",
           "name": "Badge Card",
+          "instanceLabel": "badgeCard",
           "kind": "shape",
           "x": 85,
           "y": 41,
@@ -696,7 +1402,8 @@
           "height": 82,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#ffe256",
           "fillCss": "",
@@ -705,13 +1412,77 @@
           "borderRadius": 14
         }
       ],
-      "updatedAt": "2026-06-28T01:29:07.530Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "join-widget": {
       "name": "Join Widget",
       "description": "Editable lobby instruction text.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 740,
         "height": 76
@@ -720,6 +1491,7 @@
         {
           "id": "join-text",
           "name": "Join Text",
+          "instanceLabel": "joinText",
           "kind": "text",
           "x": 370,
           "y": 38,
@@ -727,15 +1499,18 @@
           "height": 52,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "Join the Lobby at bit.ly/popcontroller",
           "fontSize": 28,
           "autoFitText": true,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "join-pill",
           "name": "Join Pill",
+          "instanceLabel": "joinPill",
           "kind": "shape",
           "x": 370,
           "y": 38,
@@ -743,7 +1518,8 @@
           "height": 76,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "pill",
           "fillColor": "#fff6d8",
           "fillCss": "",
@@ -752,13 +1528,77 @@
           "borderRadius": 999
         }
       ],
-      "updatedAt": "2026-06-28T00:01:40.790Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "countdown-popup": {
       "name": "Countdown Popup",
       "description": "Editable popup shown while the lobby countdown is running.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 200,
         "height": 200
@@ -767,6 +1607,7 @@
         {
           "id": "popup-text",
           "name": "Popup Text",
+          "instanceLabel": "popupText",
           "kind": "text",
           "x": 100,
           "y": 100,
@@ -774,7 +1615,8 @@
           "height": 200,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "Starting Game",
           "fontSize": 32,
           "autoFitText": true,
@@ -784,6 +1626,7 @@
         {
           "id": "popup-card",
           "name": "Popup Card",
+          "instanceLabel": "popupCard",
           "kind": "shape",
           "x": 100,
           "y": 100,
@@ -791,7 +1634,8 @@
           "height": 200,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#60d394",
           "fillCss": "",
@@ -800,13 +1644,77 @@
           "borderRadius": 99
         }
       ],
-      "updatedAt": "2026-07-02T01:14:19.998Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer",
       "description": "Editable timer art used during timed input moments.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 180,
         "height": 180
@@ -815,6 +1723,7 @@
         {
           "id": "timer-value",
           "name": "Timer Value",
+          "instanceLabel": "timerValue",
           "kind": "text",
           "x": 90,
           "y": 92,
@@ -822,15 +1731,18 @@
           "height": 82,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "30",
           "fontSize": 60,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "timer-ring",
           "name": "Timer Ring",
+          "instanceLabel": "timerRing",
           "kind": "shape",
           "x": 90,
           "y": 90,
@@ -838,7 +1750,8 @@
           "height": 180,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "radial-gradient(circle at center, #fffdf4 0 54%, transparent 55%), conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)",
@@ -847,13 +1760,77 @@
           "borderRadius": 36
         }
       ],
-      "updatedAt": "2026-06-28T01:29:16.556Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "waiting-status-widget": {
       "name": "Waiting Status",
       "description": "Editable lobby status pill.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 700,
         "height": 82
@@ -862,6 +1839,7 @@
         {
           "id": "status-text",
           "name": "Status Text",
+          "instanceLabel": "statusText",
           "kind": "text",
           "x": 350,
           "y": 41,
@@ -869,15 +1847,18 @@
           "height": 48,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "Waiting for Ava to start the game",
           "fontSize": 30,
           "autoFitText": true,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "status-pill",
           "name": "Status Pill",
+          "instanceLabel": "statusPill",
           "kind": "shape",
           "x": 350,
           "y": 41,
@@ -885,7 +1866,8 @@
           "height": 76,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "pill",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -894,13 +1876,77 @@
           "borderRadius": 999
         }
       ],
-      "updatedAt": "2026-06-28T01:29:11.872Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
       "description": "Transparent single-text art asset used for stage and controller layout text.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 1000,
         "height": 240
@@ -909,6 +1955,7 @@
         {
           "id": "text",
           "name": "Text",
+          "instanceLabel": "text",
           "kind": "text",
           "x": 500,
           "y": 120,
@@ -916,20 +1963,86 @@
           "height": 240,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "TEXT",
           "fontSize": 58,
           "autoFitText": false,
-          "fontColor": "#ffffff"
+          "fontColor": "#ffffff",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         }
       ],
-      "updatedAt": "2026-06-28T00:49:40.160Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-primary-button": {
       "name": "Controller Primary Button",
       "description": "Editable controller button art used by join, start, present, next, submit, and microphone buttons.",
       "surface": "controller",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 300,
         "height": 78
@@ -938,6 +2051,7 @@
         {
           "id": "button-text",
           "name": "Button Text",
+          "instanceLabel": "buttonText",
           "kind": "text",
           "x": 150,
           "y": 39,
@@ -945,15 +2059,18 @@
           "height": 44,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "BUTTON",
           "fontSize": 24,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "button-card",
           "name": "Button Card",
+          "instanceLabel": "buttonCard",
           "kind": "shape",
           "x": 150,
           "y": 39,
@@ -961,7 +2078,8 @@
           "height": 78,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#22d3ee",
           "fillCss": "",
@@ -970,13 +2088,77 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-28T01:42:20.812Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-text-input-field": {
       "name": "Controller Text Input Field",
       "description": "Editable controller text-entry field art.",
       "surface": "controller",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 330,
         "height": 128
@@ -985,6 +2167,7 @@
         {
           "id": "placeholder-text",
           "name": "Placeholder Text",
+          "instanceLabel": "placeholderText",
           "kind": "text",
           "x": 165,
           "y": 64,
@@ -992,15 +2175,18 @@
           "height": 58,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "Answer here",
           "fontSize": 24,
           "autoFitText": false,
-          "fontColor": "#6b5a80"
+          "fontColor": "#6b5a80",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "input-card",
           "name": "Input Card",
+          "instanceLabel": "inputCard",
           "kind": "shape",
           "x": 165,
           "y": 64,
@@ -1008,7 +2194,8 @@
           "height": 128,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -1017,13 +2204,77 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-28T01:42:23.396Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-stage-code-field": {
       "name": "Controller Stage Code Field",
       "description": "Editable controller stage-code entry field art.",
       "surface": "controller",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 320,
         "height": 96
@@ -1032,6 +2283,7 @@
         {
           "id": "field-label",
           "name": "Field Label",
+          "instanceLabel": "fieldLabel",
           "kind": "text",
           "x": 160,
           "y": 18,
@@ -1039,15 +2291,18 @@
           "height": 22,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "STAGE CODE",
           "fontSize": 16,
           "autoFitText": false,
-          "fontColor": "#6b5a80"
+          "fontColor": "#6b5a80",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "field-value",
           "name": "Field Value",
+          "instanceLabel": "fieldValue",
           "kind": "text",
           "x": 160,
           "y": 56,
@@ -1055,15 +2310,18 @@
           "height": 42,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "ABCD",
           "fontSize": 34,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "field-card",
           "name": "Field Card",
+          "instanceLabel": "fieldCard",
           "kind": "shape",
           "x": 160,
           "y": 48,
@@ -1071,7 +2329,8 @@
           "height": 96,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -1080,13 +2339,77 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-28T01:28:15.573Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-player-name-field": {
       "name": "Controller Player Name Field",
       "description": "Editable controller player-name entry field art.",
       "surface": "controller",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 320,
         "height": 96
@@ -1095,6 +2418,7 @@
         {
           "id": "field-label",
           "name": "Field Label",
+          "instanceLabel": "fieldLabel",
           "kind": "text",
           "x": 160,
           "y": 18,
@@ -1102,15 +2426,18 @@
           "height": 22,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "PLAYER NAME",
           "fontSize": 16,
           "autoFitText": false,
-          "fontColor": "#6b5a80"
+          "fontColor": "#6b5a80",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "field-value",
           "name": "Field Value",
+          "instanceLabel": "fieldValue",
           "kind": "text",
           "x": 160,
           "y": 56,
@@ -1118,15 +2445,18 @@
           "height": 42,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "Your name",
           "fontSize": 30,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "field-card",
           "name": "Field Card",
+          "instanceLabel": "fieldCard",
           "kind": "shape",
           "x": 160,
           "y": 48,
@@ -1134,7 +2464,8 @@
           "height": 96,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -1143,13 +2474,77 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:01:32.783Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-player-banner": {
       "name": "Controller Player Banner",
       "description": "Editable controller top player banner art.",
       "surface": "controller",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 338,
         "height": 78
@@ -1158,6 +2553,7 @@
         {
           "id": "banner-name",
           "name": "Banner Name",
+          "instanceLabel": "bannerName",
           "kind": "text",
           "x": 190,
           "y": 39,
@@ -1165,15 +2561,18 @@
           "height": 42,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "PLAYER",
           "fontSize": 30,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "banner-card",
           "name": "Banner Card",
+          "instanceLabel": "bannerCard",
           "kind": "shape",
           "x": 169,
           "y": 39,
@@ -1181,7 +2580,8 @@
           "height": 78,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -1190,13 +2590,77 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-28T01:28:20.941Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-avatar-button": {
       "name": "Controller Avatar Button",
       "description": "Editable controller avatar button background art.",
       "surface": "controller",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 104,
         "height": 104
@@ -1205,6 +2669,7 @@
         {
           "id": "avatar-card",
           "name": "Avatar Card",
+          "instanceLabel": "avatarCard",
           "kind": "shape",
           "x": 52,
           "y": 52,
@@ -1212,7 +2677,8 @@
           "height": 104,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -1221,13 +2687,77 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-27T21:01:37.480Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-choice-option": {
       "name": "Controller Choice Option",
       "description": "Editable controller multiple-choice option button art.",
       "surface": "controller",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 320,
         "height": 72
@@ -1236,6 +2766,7 @@
         {
           "id": "option-text",
           "name": "Option Text",
+          "instanceLabel": "optionText",
           "kind": "text",
           "x": 160,
           "y": 36,
@@ -1243,15 +2774,18 @@
           "height": 40,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "Option",
           "fontSize": 24,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "option-card",
           "name": "Option Card",
+          "instanceLabel": "optionCard",
           "kind": "shape",
           "x": 160,
           "y": 36,
@@ -1259,7 +2793,8 @@
           "height": 72,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -1268,7 +2803,69 @@
           "borderRadius": 18
         }
       ],
-      "updatedAt": "2026-06-28T01:28:25.574Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-invalid-banner": {
       "name": "Controller Invalid Banner",
@@ -1276,6 +2873,7 @@
       "surface": "controller",
       "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 330,
         "height": 64
@@ -1284,6 +2882,7 @@
         {
           "id": "invalid-text",
           "name": "Invalid Text",
+          "instanceLabel": "invalidText",
           "kind": "text",
           "x": 165,
           "y": 32,
@@ -1292,7 +2891,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "defaultText": "Your submission was invalid",
           "fontSize": 20,
           "autoFitText": false,
@@ -1302,6 +2901,7 @@
         {
           "id": "invalid-card",
           "name": "Invalid Card",
+          "instanceLabel": "invalidCard",
           "kind": "shape",
           "x": 165,
           "y": 32,
@@ -1310,7 +2910,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#ff9e2c",
           "fillCss": "",
@@ -1319,13 +2919,77 @@
           "borderRadius": 16
         }
       ],
-      "updatedAt": "2026-07-03T19:55:00.558Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c": {
       "name": "Prompt Text Field",
       "description": "Editable art asset.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": true,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 1000,
         "height": 80
@@ -1334,6 +2998,7 @@
         {
           "id": "root-ed35100e-6eef-4cde-a6d9-2320f3697956",
           "name": "Art Root",
+          "instanceLabel": "artRoot",
           "kind": "container",
           "x": 500,
           "y": 40,
@@ -1341,6 +3006,7 @@
           "height": 80,
           "scale": 1,
           "rotation": 0,
+          "locked": false,
           "defaultAnimationState": "",
           "childDistribution": "none",
           "shapeStyle": "rectangle",
@@ -1353,6 +3019,7 @@
             {
               "id": "text-d148279c-855e-427b-bb40-651dde7cd7bc",
               "name": "Text",
+              "instanceLabel": "text",
               "kind": "text",
               "x": 500,
               "y": 40,
@@ -1360,22 +3027,88 @@
               "height": 80,
               "scale": 1,
               "rotation": 0,
+              "locked": false,
               "defaultAnimationState": "",
               "defaultText": "This is the Prompt Text",
               "fontSize": 24,
               "autoFitText": true,
-              "fontColor": "#ffffff"
+              "fontColor": "#ffffff",
+              "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
             }
           ]
         }
       ],
-      "updatedAt": "2026-06-28T01:29:20.831Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-object-rex": {
       "name": "Rex Player Object",
       "description": "Editable player object composed from the answer bubble and avatar art.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 300,
         "height": 370
@@ -1384,6 +3117,7 @@
         {
           "id": "answer-bubble",
           "name": "Answer Bubble Slot",
+          "instanceLabel": "answerBubbleSlot",
           "kind": "reference",
           "x": 150,
           "y": 96,
@@ -1392,12 +3126,13 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "park",
+          "defaultAnimationState": "Park",
           "artCompositionId": "player-answer-bubble"
         },
         {
           "id": "avatar",
           "name": "Player Avatar",
+          "instanceLabel": "playerAvatar",
           "kind": "container",
           "x": 150,
           "y": 234,
@@ -1406,7 +3141,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
@@ -1418,6 +3153,7 @@
             {
               "id": "dino-mask",
               "name": "Dino Image Mask",
+              "instanceLabel": "dinoImageMask",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1426,7 +3162,7 @@
               "scale": 1,
               "rotation": 0,
               "locked": false,
-              "defaultAnimationState": "on",
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "currentColor",
               "fillCss": "",
@@ -1442,6 +3178,7 @@
             {
               "id": "avatar-frame",
               "name": "Avatar Frame",
+              "instanceLabel": "avatarFrame",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1450,7 +3187,7 @@
               "scale": 1,
               "rotation": 0,
               "locked": false,
-              "defaultAnimationState": "on",
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "transparent",
               "fillCss": "",
@@ -1468,6 +3205,7 @@
         {
           "id": "player-name",
           "name": "Player Name Widget",
+          "instanceLabel": "playerNameWidget",
           "kind": "reference",
           "x": 150,
           "y": 309,
@@ -1476,12 +3214,13 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "artCompositionId": "player-name-widget"
         },
         {
           "id": "vip-badge",
           "name": "VIP Badge Widget",
+          "instanceLabel": "vIPBadgeWidget",
           "kind": "reference",
           "x": 150,
           "y": 345,
@@ -1490,25 +3229,90 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "park",
+          "defaultAnimationState": "Park",
           "artCompositionId": "player-vip-widget"
         }
       ],
-      "updatedAt": "2026-07-03T01:10:31.114Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-object-stego": {
       "name": "Stego Player Object",
       "description": "Editable player object composed from the answer bubble and avatar art.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 300,
-        "height": 300
+        "height": 370
       },
       "components": [
         {
           "id": "answer-bubble",
           "name": "Answer Bubble Slot",
+          "instanceLabel": "answerBubbleSlot",
           "kind": "reference",
           "x": 150,
           "y": 96,
@@ -1516,12 +3320,14 @@
           "height": 180,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "park",
+          "locked": false,
+          "defaultAnimationState": "Park",
           "artCompositionId": "player-answer-bubble"
         },
         {
           "id": "avatar",
           "name": "Player Avatar",
+          "instanceLabel": "playerAvatar",
           "kind": "container",
           "x": 150,
           "y": 234,
@@ -1529,7 +3335,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
@@ -1541,6 +3348,7 @@
             {
               "id": "dino-mask",
               "name": "Dino Image Mask",
+              "instanceLabel": "dinoImageMask",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1548,7 +3356,8 @@
               "height": 70,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "currentColor",
               "fillCss": "",
@@ -1564,6 +3373,7 @@
             {
               "id": "avatar-frame",
               "name": "Avatar Frame",
+              "instanceLabel": "avatarFrame",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1571,7 +3381,8 @@
               "height": 100,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "transparent",
               "fillCss": "",
@@ -1585,23 +3396,118 @@
               "imageTint": ""
             }
           ]
+        },
+        {
+          "id": "player-name",
+          "name": "Player Name Widget",
+          "instanceLabel": "playerNameWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 309,
+          "width": 126,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "artCompositionId": "player-name-widget"
+        },
+        {
+          "id": "vip-badge",
+          "name": "VIP Badge Widget",
+          "instanceLabel": "vIPBadgeWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 345,
+          "width": 52,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "player-vip-widget"
         }
       ],
-      "updatedAt": "2026-06-28T01:28:50.635Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-object-raptor": {
       "name": "Raptor Player Object",
       "description": "Editable player object composed from the answer bubble and avatar art.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 300,
-        "height": 300
+        "height": 370
       },
       "components": [
         {
           "id": "answer-bubble",
           "name": "Answer Bubble Slot",
+          "instanceLabel": "answerBubbleSlot",
           "kind": "reference",
           "x": 150,
           "y": 96,
@@ -1609,12 +3515,14 @@
           "height": 180,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "park",
+          "locked": false,
+          "defaultAnimationState": "Park",
           "artCompositionId": "player-answer-bubble"
         },
         {
           "id": "avatar",
           "name": "Player Avatar",
+          "instanceLabel": "playerAvatar",
           "kind": "container",
           "x": 150,
           "y": 234,
@@ -1622,7 +3530,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
@@ -1634,6 +3543,7 @@
             {
               "id": "dino-mask",
               "name": "Dino Image Mask",
+              "instanceLabel": "dinoImageMask",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1641,7 +3551,8 @@
               "height": 70,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "currentColor",
               "fillCss": "",
@@ -1657,6 +3568,7 @@
             {
               "id": "avatar-frame",
               "name": "Avatar Frame",
+              "instanceLabel": "avatarFrame",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1664,7 +3576,8 @@
               "height": 100,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "transparent",
               "fillCss": "",
@@ -1678,23 +3591,118 @@
               "imageTint": ""
             }
           ]
+        },
+        {
+          "id": "player-name",
+          "name": "Player Name Widget",
+          "instanceLabel": "playerNameWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 309,
+          "width": 126,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "artCompositionId": "player-name-widget"
+        },
+        {
+          "id": "vip-badge",
+          "name": "VIP Badge Widget",
+          "instanceLabel": "vIPBadgeWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 345,
+          "width": 52,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "player-vip-widget"
         }
       ],
-      "updatedAt": "2026-06-28T01:28:54.028Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-object-ankylo": {
       "name": "Ankylo Player Object",
       "description": "Editable player object composed from the answer bubble and avatar art.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 300,
-        "height": 300
+        "height": 370
       },
       "components": [
         {
           "id": "answer-bubble",
           "name": "Answer Bubble Slot",
+          "instanceLabel": "answerBubbleSlot",
           "kind": "reference",
           "x": 150,
           "y": 96,
@@ -1702,12 +3710,14 @@
           "height": 180,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "park",
+          "locked": false,
+          "defaultAnimationState": "Park",
           "artCompositionId": "player-answer-bubble"
         },
         {
           "id": "avatar",
           "name": "Player Avatar",
+          "instanceLabel": "playerAvatar",
           "kind": "container",
           "x": 150,
           "y": 234,
@@ -1715,7 +3725,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
@@ -1727,6 +3738,7 @@
             {
               "id": "dino-mask",
               "name": "Dino Image Mask",
+              "instanceLabel": "dinoImageMask",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1734,7 +3746,8 @@
               "height": 70,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "currentColor",
               "fillCss": "",
@@ -1750,6 +3763,7 @@
             {
               "id": "avatar-frame",
               "name": "Avatar Frame",
+              "instanceLabel": "avatarFrame",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1757,7 +3771,8 @@
               "height": 100,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "transparent",
               "fillCss": "",
@@ -1771,15 +3786,109 @@
               "imageTint": ""
             }
           ]
+        },
+        {
+          "id": "player-name",
+          "name": "Player Name Widget",
+          "instanceLabel": "playerNameWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 309,
+          "width": 126,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "artCompositionId": "player-name-widget"
+        },
+        {
+          "id": "vip-badge",
+          "name": "VIP Badge Widget",
+          "instanceLabel": "vIPBadgeWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 345,
+          "width": 52,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "player-vip-widget"
         }
       ],
-      "updatedAt": "2026-06-28T01:28:58.444Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-answer-bubble": {
       "name": "Player Answer Bubble",
       "description": "Shared editable answer bubble art used by every player object.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 300,
         "height": 180
@@ -1788,6 +3897,7 @@
         {
           "id": "answer-text",
           "name": "Answer Text",
+          "instanceLabel": "answerText",
           "kind": "text",
           "x": 150,
           "y": 92,
@@ -1796,7 +3906,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "park",
+          "defaultAnimationState": "Park",
           "defaultText": "ANSWER",
           "fontSize": 28,
           "autoFitText": false,
@@ -1806,6 +3916,7 @@
         {
           "id": "answer-bubble-card",
           "name": "Answer Bubble Card",
+          "instanceLabel": "answerBubbleCard",
           "kind": "shape",
           "x": 150,
           "y": 92,
@@ -1814,7 +3925,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "park",
+          "defaultAnimationState": "Park",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -1825,6 +3936,7 @@
         {
           "id": "answer-bubble-tail",
           "name": "Answer Bubble Tail",
+          "instanceLabel": "answerBubbleTail",
           "kind": "shape",
           "x": 150,
           "y": 153.193,
@@ -1833,7 +3945,7 @@
           "scale": 1,
           "rotation": 45,
           "locked": false,
-          "defaultAnimationState": "park",
+          "defaultAnimationState": "Park",
           "shapeStyle": "rectangle",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -1842,21 +3954,86 @@
           "borderRadius": 3
         }
       ],
-      "updatedAt": "2026-07-03T01:06:36.438Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-object-trike": {
       "name": "Trike Player Object",
       "description": "Editable player object composed from the answer bubble and avatar art.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 300,
-        "height": 300
+        "height": 370
       },
       "components": [
         {
           "id": "answer-bubble",
           "name": "Answer Bubble Slot",
+          "instanceLabel": "answerBubbleSlot",
           "kind": "reference",
           "x": 150,
           "y": 96,
@@ -1864,12 +4041,14 @@
           "height": 180,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "park",
+          "locked": false,
+          "defaultAnimationState": "Park",
           "artCompositionId": "player-answer-bubble"
         },
         {
           "id": "avatar",
           "name": "Player Avatar",
+          "instanceLabel": "playerAvatar",
           "kind": "container",
           "x": 150,
           "y": 234,
@@ -1877,7 +4056,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
@@ -1889,6 +4069,7 @@
             {
               "id": "dino-mask",
               "name": "Dino Image Mask",
+              "instanceLabel": "dinoImageMask",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1896,7 +4077,8 @@
               "height": 70,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "currentColor",
               "fillCss": "",
@@ -1912,6 +4094,7 @@
             {
               "id": "avatar-frame",
               "name": "Avatar Frame",
+              "instanceLabel": "avatarFrame",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1919,7 +4102,8 @@
               "height": 100,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "transparent",
               "fillCss": "",
@@ -1933,23 +4117,118 @@
               "imageTint": ""
             }
           ]
+        },
+        {
+          "id": "player-name",
+          "name": "Player Name Widget",
+          "instanceLabel": "playerNameWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 309,
+          "width": 126,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "artCompositionId": "player-name-widget"
+        },
+        {
+          "id": "vip-badge",
+          "name": "VIP Badge Widget",
+          "instanceLabel": "vIPBadgeWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 345,
+          "width": 52,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "player-vip-widget"
         }
       ],
-      "updatedAt": "2026-06-28T00:01:19.510Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-object-bronto": {
       "name": "Bronto Player Object",
       "description": "Editable player object composed from the answer bubble and avatar art.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 300,
-        "height": 300
+        "height": 370
       },
       "components": [
         {
           "id": "answer-bubble",
           "name": "Answer Bubble Slot",
+          "instanceLabel": "answerBubbleSlot",
           "kind": "reference",
           "x": 150,
           "y": 96,
@@ -1957,12 +4236,14 @@
           "height": 180,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "park",
+          "locked": false,
+          "defaultAnimationState": "Park",
           "artCompositionId": "player-answer-bubble"
         },
         {
           "id": "avatar",
           "name": "Player Avatar",
+          "instanceLabel": "playerAvatar",
           "kind": "container",
           "x": 150,
           "y": 234,
@@ -1970,7 +4251,8 @@
           "height": 100,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "childDistribution": "none",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
@@ -1982,6 +4264,7 @@
             {
               "id": "dino-mask",
               "name": "Dino Image Mask",
+              "instanceLabel": "dinoImageMask",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -1989,7 +4272,8 @@
               "height": 70,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "currentColor",
               "fillCss": "",
@@ -2005,6 +4289,7 @@
             {
               "id": "avatar-frame",
               "name": "Avatar Frame",
+              "instanceLabel": "avatarFrame",
               "kind": "shape",
               "x": 50,
               "y": 50,
@@ -2012,7 +4297,8 @@
               "height": 100,
               "scale": 1,
               "rotation": 0,
-              "defaultAnimationState": "on",
+              "locked": false,
+              "defaultAnimationState": "On",
               "shapeStyle": "rectangle",
               "fillColor": "transparent",
               "fillCss": "",
@@ -2026,15 +4312,109 @@
               "imageTint": ""
             }
           ]
+        },
+        {
+          "id": "player-name",
+          "name": "Player Name Widget",
+          "instanceLabel": "playerNameWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 309,
+          "width": 126,
+          "height": 42,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "artCompositionId": "player-name-widget"
+        },
+        {
+          "id": "vip-badge",
+          "name": "VIP Badge Widget",
+          "instanceLabel": "vIPBadgeWidget",
+          "kind": "reference",
+          "x": 150,
+          "y": 345,
+          "width": 52,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "player-vip-widget"
         }
       ],
-      "updatedAt": "2026-06-28T00:01:24.577Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-point-popup": {
       "name": "Player Point Popup",
       "description": "Shared editable scoring popup art spawned when points are shown.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 154,
         "height": 64
@@ -2043,6 +4423,7 @@
         {
           "id": "point-text",
           "name": "Point Text",
+          "instanceLabel": "pointText",
           "kind": "text",
           "x": 75,
           "y": 30,
@@ -2050,15 +4431,18 @@
           "height": 60,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "+200",
           "fontSize": 34,
           "autoFitText": false,
-          "fontColor": "#ffe256"
+          "fontColor": "#ffe256",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
         {
           "id": "point-shadow",
           "name": "Point Shadow",
+          "instanceLabel": "pointShadow",
           "kind": "text",
           "x": 79,
           "y": 34,
@@ -2066,20 +4450,70 @@
           "height": 60,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "on",
+          "locked": false,
+          "defaultAnimationState": "On",
           "defaultText": "+200",
           "fontSize": 34,
           "autoFitText": false,
-          "fontColor": "#17131f"
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         }
       ],
-      "updatedAt": "2026-06-28T00:01:10.632Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 88,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "Appear",
+            "frame": 1
+          },
+          {
+            "name": "Update",
+            "frame": 1
+          },
+          {
+            "name": "Disappear",
+            "frame": 45
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 45,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-name-widget": {
       "name": "Player Name Widget",
       "description": "Shared editable player name pill nested inside every player object.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 126,
         "height": 42
@@ -2088,6 +4522,7 @@
         {
           "id": "name-text",
           "name": "Name Text",
+          "instanceLabel": "nameText",
           "kind": "text",
           "x": 61,
           "y": 19,
@@ -2096,7 +4531,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "defaultText": "Player",
           "fontSize": 17,
           "autoFitText": true,
@@ -2106,6 +4541,7 @@
         {
           "id": "name-card",
           "name": "Name Card",
+          "instanceLabel": "nameCard",
           "kind": "shape",
           "x": 61,
           "y": 19,
@@ -2114,7 +4550,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#fffdf4",
           "fillCss": "",
@@ -2125,6 +4561,7 @@
         {
           "id": "name-shadow",
           "name": "Name Shadow",
+          "instanceLabel": "nameShadow",
           "kind": "shape",
           "x": 65,
           "y": 23,
@@ -2133,7 +4570,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "rgba(23, 19, 31, 0.42)",
           "fillCss": "",
@@ -2142,13 +4579,77 @@
           "borderRadius": 999
         }
       ],
-      "updatedAt": "2026-07-03T01:04:00.623Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "player-vip-widget": {
       "name": "Player VIP Widget",
       "description": "Shared editable VIP badge nested inside every player object.",
       "surface": "stage",
+      "compositionKind": "gameObject",
       "isCustom": false,
+      "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 52,
         "height": 28
@@ -2157,6 +4658,7 @@
         {
           "id": "vip-text",
           "name": "VIP Text",
+          "instanceLabel": "vIPText",
           "kind": "text",
           "x": 22,
           "y": 11,
@@ -2165,7 +4667,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "defaultText": "VIP",
           "fontSize": 11,
           "autoFitText": false,
@@ -2175,6 +4677,7 @@
         {
           "id": "vip-card",
           "name": "VIP Card",
+          "instanceLabel": "vIPCard",
           "kind": "shape",
           "x": 22,
           "y": 11,
@@ -2183,7 +4686,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "on",
+          "defaultAnimationState": "On",
           "shapeStyle": "rounded",
           "fillColor": "#ffe256",
           "fillCss": "",
@@ -2192,7 +4695,69 @@
           "borderRadius": 999
         }
       ],
-      "updatedAt": "2026-07-03T01:04:24.051Z"
+      "timeline": {
+        "fps": 30,
+        "frameCount": 42,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 18
+          },
+          {
+            "name": "Disappear",
+            "frame": 25
+          }
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "frame": 17,
+            "type": "stop"
+          },
+          {
+            "frame": 24,
+            "type": "stop"
+          },
+          {
+            "frame": 40,
+            "type": "stop"
+          },
+          {
+            "frame": 41,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     }
   },
   "deletedCompositionIds": [],
