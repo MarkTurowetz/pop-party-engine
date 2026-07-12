@@ -34,6 +34,10 @@ export interface TimelineFrameClipboard {
   tracks: TimelineTrack[];
 }
 
+export interface TimelineCommandFrameClipboard {
+  commands: TimelineCommand[];
+}
+
 export const defaultArtVisibilityTimeline = (): TimelineDocument =>
   defaultVisibilityTimeline({ appear: 500, update: 200, disappear: 500 });
 
@@ -583,6 +587,27 @@ export function addTimelineCommandFrame(timeline: TimelineDocument | null | unde
   const current = artTimelineOrDefault(timeline);
   const normalizedFrame = cleanFrame(frame, current.frameCount);
   return sortTimeline({ ...current, commandFrames: [...(current.commandFrames || []), normalizedFrame] });
+}
+
+export function copyTimelineCommandFrame(
+  timeline: TimelineDocument | null | undefined,
+  frame: number
+): TimelineCommandFrameClipboard {
+  const current = artTimelineOrDefault(timeline);
+  const normalizedFrame = cleanFrame(frame, current.frameCount);
+  return {
+    commands: current.commands
+      .filter((command) => command.frame === normalizedFrame)
+      .map((command) => ({ ...command }))
+  };
+}
+
+export function pasteTimelineCommandFrame(
+  timeline: TimelineDocument | null | undefined,
+  clipboard: TimelineCommandFrameClipboard,
+  frame: number
+): TimelineDocument {
+  return replaceTimelineCommandsAtFrame(timeline, frame, clipboard.commands || []);
 }
 
 export function removeTimelineCommandFrame(timeline: TimelineDocument | null | undefined, frame: number): TimelineDocument {

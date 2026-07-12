@@ -10,6 +10,7 @@ import {
   addTransformKeyframe,
   artTimelineOrDefault,
   copyTimelineFrameRange,
+  copyTimelineCommandFrame,
   copyTimelineKeyframe,
   createTimelineSegment,
   cutTimelineFrameRange,
@@ -21,6 +22,7 @@ import {
   moveTimelineCommandAt,
   normalizeAnimationKeyframePropsForEditing,
   overwriteTimelineFrameRange,
+  pasteTimelineCommandFrame,
   pasteTimelineFrameRange,
   replaceTransformKeyframeFromComponent,
   removeTimelineFrames,
@@ -263,6 +265,31 @@ describe("artTimelineModel", () => {
 
     expect(timeline.commandFrames).toEqual([12, 13]);
     expect(timeline.commands).toEqual([{ frame: 12, type: "stop" }]);
+  });
+
+  it("copies and pastes only command-frame code without labels or animation keyframes", () => {
+    const timeline: TimelineDocument = {
+      fps: 30,
+      frameCount: 24,
+      labels: [{ name: "Source Label", frame: 12 }, { name: "Destination Label", frame: 18 }],
+      commands: [
+        { frame: 12, type: "stop" },
+        { frame: 12, type: "setVisible", target: "true" },
+        { frame: 18, type: "emit", event: "old" }
+      ],
+      tracks: [{ targetId: "bubble", keyframes: [{ frame: 12, props: { x: 20 } }, { frame: 18, props: { x: 40 } }] }]
+    };
+
+    const pasted = pasteTimelineCommandFrame(timeline, copyTimelineCommandFrame(timeline, 12), 18);
+
+    expect(pasted.labels).toEqual(timeline.labels);
+    expect(pasted.tracks).toEqual(artTimelineOrDefault(timeline).tracks);
+    expect(pasted.commands.map(({ frame, type, target, event }) => ({ frame, type, target, event }))).toEqual([
+      { frame: 12, type: "stop", target: undefined, event: undefined },
+      { frame: 12, type: "setVisible", target: "true", event: undefined },
+      { frame: 18, type: "stop", target: undefined, event: undefined },
+      { frame: 18, type: "setVisible", target: "true", event: undefined }
+    ]);
   });
 
   it("updates timeline commands by normalized list index", () => {

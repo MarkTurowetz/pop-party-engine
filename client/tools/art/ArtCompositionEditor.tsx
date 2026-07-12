@@ -31,11 +31,13 @@ import {
   addTimelineCommandFrame,
   addTimelineLabel,
   addTransformKeyframe,
+  copyTimelineCommandFrame,
   copyTimelineFrameRange,
   copyTimelineKeyframe,
   effectiveArtVisibilityTimeline,
   insertTimelineFrames,
   overwriteTimelineFrameRange,
+  pasteTimelineCommandFrame,
   removeTimelineCommandAt,
   removeTimelineCommandFrame,
   removeTimelineKeyframe,
@@ -47,6 +49,7 @@ import {
   timelineTweenSpanAtFrame,
   toggleTimelineTweenAtFrame,
   type TimelineFrameClipboard,
+  type TimelineCommandFrameClipboard,
   updateTimelineCommandAt,
   updateTimelineKeyframe,
   updateTimelineLabel,
@@ -1476,6 +1479,7 @@ function ArtTimelinePanel({
   const [timelineDropFrame, setTimelineDropFrame] = useState<number | null>(null);
   const [copiedKeyframe, setCopiedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [copiedFrameRange, setCopiedFrameRange] = useState<TimelineFrameClipboard | null>(null);
+  const [copiedCommandFrame, setCopiedCommandFrame] = useState<TimelineCommandFrameClipboard | null>(null);
   const [commandScriptDraft, setCommandScriptDraft] = useState("");
   const [commandScriptInitialDraft, setCommandScriptInitialDraft] = useState("");
   const [commandScriptError, setCommandScriptError] = useState("");
@@ -1967,7 +1971,30 @@ function ArtTimelinePanel({
 
   function copyFrameRangeAtCurrentFrame(): void {
     setCopiedKeyframe(null);
+    setCopiedCommandFrame(null);
     setCopiedFrameRange(copyTimelineFrameRange(current, selectedTimelineCellFrame, selectedFrameRangeCount));
+  }
+
+  function copyCommandFrameAtCurrentSelection(): void {
+    setCopiedKeyframe(null);
+    setCopiedFrameRange(null);
+    setCopiedCommandFrame(copyTimelineCommandFrame(current, selectedTimelineCellFrame));
+  }
+
+  function pasteCommandFrameAtCurrentSelection(): void {
+    if (!copiedCommandFrame || selectedTimelineCell.kind !== "command") return;
+    const normalizedFrame = selectedTimelineCellFrame;
+    const nextTimeline = pasteTimelineCommandFrame(current, copiedCommandFrame, normalizedFrame);
+    const commands = timelineCommandsAtFrame(nextTimeline, normalizedFrame);
+    onChange(nextTimeline);
+    setSelectedKeyframe(null);
+    setSelectedMarker(commands[0] ? commandMarkerSelection(commands[0].command, commands[0].index) : null);
+    const nextDraft = timelineActionScriptForFrame(nextTimeline, normalizedFrame, commands.map(({ command }) => command), component);
+    setCommandScriptDraft(nextDraft);
+    setCommandScriptInitialDraft(nextDraft);
+    setCommandScriptError("");
+    previewFrame(normalizedFrame);
+    selectTimelineCell({ kind: "command", frame: normalizedFrame });
   }
 
   function overwriteFrameRangeAtCurrentFrame(): void {
@@ -2102,12 +2129,22 @@ function ArtTimelinePanel({
     }
     if (usesModifier && key === "c") {
       event.preventDefault();
-      if (selectedTimelineKeyframe) copySelectedKeyframe();
+      if (selectedTimelineCell.kind === "command") copyCommandFrameAtCurrentSelection();
+      else if (selectedTimelineKeyframe) copySelectedKeyframe();
       else copyFrameRangeAtCurrentFrame();
       return;
     }
     if (usesModifier && key === "x") {
       event.preventDefault();
+      if (selectedTimelineCell.kind === "command") {
+        copyCommandFrameAtCurrentSelection();
+        onChange(removeTimelineCommandFrame(current, selectedTimelineCellFrame));
+        setSelectedMarker(null);
+        setCommandScriptDraft("");
+        setCommandScriptInitialDraft("");
+        setCommandScriptError("");
+        return;
+      }
       if (selectedTimelineKeyframe) {
         copySelectedKeyframe();
         removeSelectedTimelineItem();
@@ -2121,7 +2158,8 @@ function ArtTimelinePanel({
     }
     if (usesModifier && key === "v") {
       event.preventDefault();
-      if (copiedFrameRange) overwriteFrameRangeAtCurrentFrame();
+      if (selectedTimelineCell.kind === "command" && copiedCommandFrame) pasteCommandFrameAtCurrentSelection();
+      else if (copiedFrameRange) overwriteFrameRangeAtCurrentFrame();
       else if (copiedKeyframe) pasteCopiedKeyframe(cleanFrame);
       return;
     }
@@ -2254,6 +2292,7 @@ function ArtTimelinePanel({
   function copySelectedKeyframe(): void {
     if (!selectedTimelineKeyframe) return;
     setCopiedFrameRange(null);
+    setCopiedCommandFrame(null);
     setCopiedKeyframe({
       targetId: selectedTimelineKeyframe.trackTargetId,
       frame: selectedTimelineKeyframe.keyframe.frame
