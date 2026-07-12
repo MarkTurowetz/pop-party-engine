@@ -4793,7 +4793,7 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 4612,
+        "frameCount": 4906,
         "labels": [
           {
             "name": "Off",
@@ -4823,6 +4823,7 @@
         "commandFrames": [
           0,
           1,
+          2,
           12,
           13,
           16,
@@ -4847,6 +4848,12 @@
             "frame": 1,
             "type": "setVisible",
             "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
             "target": "true"
           },
           {
@@ -5019,7 +5026,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-12T08:06:01.647Z"
+      "updatedAt": "2026-07-12T08:06:58.571Z"
     }
   },
   "deletedCompositionIds": [],
