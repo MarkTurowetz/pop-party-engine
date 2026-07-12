@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  PLAYER_WIDGET_COMPOSITION_ID,
   PartyGamePlayerRoster,
+  avatarTimelineLabelForShape,
+  legacyPlayerObjectCompositionIdForShape,
   playerAnswerBubbleRuntimeState,
   playerNameRuntimeText,
-  playerObjectCompositionIdForShape,
   playerVipRuntimeState,
   runtimeAnswerBubbleComposition,
+  runtimeAvatarsComposition,
+  runtimePlayerAvatarMcComposition,
   runtimePlayerNameWidgetComposition,
   runtimePlayerVipWidgetComposition,
-  runtimePlayerObjectComponents
+  runtimePlayerWidgetComponents
 } from "./stagePlayerRoster";
 
 describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
@@ -35,9 +39,17 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(host.PartyGamePlayerRoster).toBeTypeOf("object");
   });
 
-  it("maps avatar species to player-object compositions with a rex fallback", () => {
-    expect(playerObjectCompositionIdForShape("stego")).toBe("player-object-stego");
-    expect(playerObjectCompositionIdForShape("")).toBe("player-object-rex");
+  it("selects the shared player widget and maps species onto the nested avatar timeline", () => {
+    const widget = { id: PLAYER_WIDGET_COMPOSITION_ID };
+    const roster = PartyGamePlayerRoster.createRenderer({
+      getComposition: (id: string) => (id === PLAYER_WIDGET_COMPOSITION_ID ? widget : null)
+    });
+
+    expect(roster.playerObjectCompositionFor({ avatar: { shape: "stego" } })).toBe(widget);
+    expect(legacyPlayerObjectCompositionIdForShape("stego")).toBe("player-object-stego");
+    expect(avatarTimelineLabelForShape("stego")).toBe("Stego");
+    expect(avatarTimelineLabelForShape("ankylo")).toBe("Cleo");
+    expect(avatarTimelineLabelForShape("")).toBe("Rex");
   });
 
   it("lays out player object tiles by their origin centers inside the roster container", () => {
@@ -160,7 +172,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       ]
     };
 
-    const components = runtimePlayerObjectComponents(
+    const components = runtimePlayerWidgetComponents(
       playerObject,
       { avatar: { color: "#ff4d8d" }, isVip: true },
       { hasAnswer: true, visible: true, text: "ARCTIC", nonce: "answer-1", correctness: "" }
@@ -171,25 +183,130 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       artCompositionId: "player-answer-bubble",
       width: 225,
       height: 135,
-      defaultAnimationState: "on"
+      defaultAnimationState: "On"
     });
     expect(components[1]).toMatchObject({
       id: "player-name",
       artCompositionId: "player-name-widget",
       width: 118,
       height: 34,
-      defaultAnimationState: "on"
+      defaultAnimationState: "On"
     });
     expect(components[2]).toMatchObject({
       id: "vip-badge",
       artCompositionId: "player-vip-widget",
-      defaultAnimationState: "on"
+      defaultAnimationState: "On"
     });
     expect((components[3].children as Record<string, unknown>[])[0]).toMatchObject({
       id: "dino-mask",
       fillColor: "currentColor",
       fontColor: "#ff4d8d"
     });
+  });
+
+  it("configures the nested player avatar MC with the selected frame and player color", () => {
+    const playerAvatarMc = {
+      components: [
+        { id: "avatar", kind: "reference", artCompositionId: "avatars", defaultAnimationState: "Rex" },
+        { id: "avatar-background", kind: "shape", defaultAnimationState: "Park" }
+      ]
+    };
+
+    const runtime = runtimePlayerAvatarMcComposition(playerAvatarMc, {
+      avatar: { shape: "ankylo", color: "#ff4d8d" }
+    });
+
+    expect(runtime.components).toEqual([
+      expect.objectContaining({ id: "avatar", defaultAnimationState: "Cleo" }),
+      expect.objectContaining({ id: "avatar-background", defaultAnimationState: "On" })
+    ]);
+
+    const avatars = runtimeAvatarsComposition(
+      { components: [{ id: "avatar", kind: "sprite", imageTint: "currentColor" }] },
+      { avatar: { color: "#ff4d8d" } }
+    );
+    expect((avatars.components as Record<string, unknown>[])[0]).toMatchObject({
+      id: "avatar",
+      imageTint: "currentColor",
+      fontColor: "#ff4d8d"
+    });
+  });
+
+  it("routes player-widget lifecycle calls to the MC layer and avatar selection one level deeper", () => {
+    const roster = PartyGamePlayerRoster.createRenderer({});
+    const tile = {
+      dataset: { playerObjectCompositionId: PLAYER_WIDGET_COMPOSITION_ID }
+    } as unknown as HTMLElement;
+    const playComponent = vi.fn((_componentId: string, _animation: string, options?: { instant?: boolean }) =>
+      options?.instant ? 0 : 333
+    );
+    const playComponentTree = vi.fn(() => 999);
+    const stopAtComponent = vi.fn(() => 0);
+    const renderer = {
+      render: vi.fn(),
+      isComponentVisible: vi.fn(() => false),
+      playComponent,
+      playComponentTree,
+      stopAtComponent
+    };
+
+    expect(
+      roster.syncAnswerBubbleComponent(
+        tile,
+        renderer,
+        { hasAnswer: true, visible: true, text: "YES", nonce: "1", correctness: "" },
+        { previousVisible: false }
+      )
+    ).toBe(333);
+    roster.syncAvatarComponent(tile, renderer, { avatar: { shape: "raptor" } });
+    roster.syncPlayerLabelComponents(renderer, { name: "Ava", isVip: true }, { tile, instant: true });
+
+    expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("vip-mc", "On", { instant: true });
+    expect(playComponentTree).not.toHaveBeenCalled();
+    expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
+  });
+
+  it("shows and hides roster players through the avatar, name, and VIP MC children", () => {
+    const classes = new Set(["players-hidden"]);
+    const tile = {
+      dataset: { playerId: "p1", playerObjectCompositionId: PLAYER_WIDGET_COMPOSITION_ID }
+    } as unknown as HTMLElement;
+    const host = {
+      classList: {
+        add: (name: string) => classes.add(name),
+        contains: (name: string) => classes.has(name),
+        remove: (name: string) => classes.delete(name),
+        toggle: (name: string, force?: boolean) => {
+          const enabled = force === undefined ? !classes.has(name) : force;
+          if (enabled) classes.add(name);
+          else classes.delete(name);
+          return enabled;
+        }
+      },
+      dataset: { visualVisible: "false" },
+      offsetWidth: 0,
+      querySelectorAll: () => [tile]
+    } as unknown as HTMLElement;
+    const playComponent = vi.fn((_componentId: string, _animation: string, options?: { instant?: boolean }) =>
+      options?.instant ? 0 : 333
+    );
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    roster.tileRenderers.set(tile, { render: vi.fn(), playComponent });
+    roster.tilePlayers.set(tile, { isVip: true });
+
+    expect(roster.setShown(true)).toBe(333);
+    expect(classes.has("players-hidden")).toBe(false);
+    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Appear", { instant: false });
+
+    playComponent.mockClear();
+    expect(roster.setShown(false, { instant: true })).toBe(0);
+    expect(classes.has("players-hidden")).toBe(true);
+    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Park", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Park", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Park", { instant: true });
   });
 
   it("renders point popup prefabs with a timeline fallback when no authored timeline exists", () => {

@@ -12,6 +12,7 @@ import {
   type TimelineProperties,
   type TimelinePropertyValue
 } from "../../shared/timeline-model";
+import { lifecycleLabelsMatch } from "../../shared/lifecycle-labels";
 import { PartyGameTextFit, type PartyGameTextFitApi } from "./textFit";
 import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
 
@@ -42,6 +43,14 @@ function instantAnimation(animation: string, instant: boolean): string {
   if (animation === "appear" || animation === "update") return "on";
   if (animation === "disappear" || animation === "park") return "off";
   return animation;
+}
+
+function normalizeLifecycleAnimation(animation: unknown): string {
+  const cleanAnimation = String(animation || "").trim();
+  for (const lifecycle of ["park", "on", "off", "appear", "disappear", "update"] as AnimationName[]) {
+    if (lifecycleLabelsMatch(cleanAnimation, lifecycle)) return lifecycle;
+  }
+  return cleanAnimation;
 }
 
 function animationToken(): string {
@@ -497,12 +506,13 @@ class CssVisualObject {
   }
 
   durationForAnimation(animation: string): number {
-    if (this.timeline && hasTimelineLabel(this.timeline, animation)) {
-      return timelinePlaybackDuration(this.timeline, animation, {
+    const cleanAnimation = normalizeLifecycleAnimation(animation);
+    if (this.timeline && hasTimelineLabel(this.timeline, cleanAnimation)) {
+      return timelinePlaybackDuration(this.timeline, cleanAnimation, {
         commandDuration: (command, context) => this.timelineCommandDurationHandler?.(command, context) || 0
       });
     }
-    return this.durations[animation] || 0;
+    return this.durations[cleanAnimation] || 0;
   }
 
   markNewAnimation(): string {
@@ -569,7 +579,7 @@ class CssVisualObject {
   play(animation: string, options: PlayOptions = {}): number {
     if (!this.element) return 0;
     const instant = options.instant === true;
-    const effectiveAnimation = instantAnimation(animation, instant);
+    const effectiveAnimation = instantAnimation(normalizeLifecycleAnimation(animation), instant);
     const duration = this.durationForAnimation(effectiveAnimation);
     const lifecycleState = this.readLifecycleState();
     const wasVisible = isShownLifecycleState(lifecycleState);
@@ -675,7 +685,7 @@ class CssVisualObject {
 
   stopAt(animation: string, options: PlayOptions = {}): number {
     if (!this.element) return 0;
-    const cleanAnimation = String(animation || "").trim();
+    const cleanAnimation = normalizeLifecycleAnimation(animation);
     if (!cleanAnimation) return 0;
     if (this.timelinePlayer?.hasLabel(cleanAnimation)) {
       return this.timelinePlayer.gotoAndStop(cleanAnimation, {

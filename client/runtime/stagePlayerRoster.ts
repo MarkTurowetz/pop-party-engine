@@ -22,7 +22,9 @@ interface TreeRenderer {
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
   isComponentVisible?: (componentId: string) => boolean;
   playAll?: (animation: string, options?: Dict) => number;
+  playComponent?: (componentId: string, animation: string, options?: Dict) => number;
   playComponentTree?: (componentId: string, animation: string, options?: Dict) => number;
+  stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
 }
 
 declare global {
@@ -32,6 +34,23 @@ declare global {
 }
 
 const w = () => globalThis as typeof globalThis & Window;
+
+export const PLAYER_WIDGET_COMPOSITION_ID = "prefab-player-widget-mc";
+const PLAYER_ANSWER_BUBBLE_MC_ID = "player-answer-bubble-mc";
+const PLAYER_AVATAR_MC_ID = "player-avatar-mc";
+const PLAYER_NAME_MC_ID = "player-name-mc";
+const PLAYER_VIP_MC_ID = "vip-mc";
+const AVATAR_FRAME_ID = "avatar";
+
+const avatarTimelineLabels: Record<string, string> = {
+  rex: "Rex",
+  stego: "Stego",
+  trike: "Trike",
+  raptor: "Raptor",
+  bronto: "Bronto",
+  ankylo: "Cleo",
+  cleo: "Cleo"
+};
 
 function createGameObject(gameObjectApi: GameObjectApi | undefined, options: Dict = {}): GameObjectLike | null {
   return typeof gameObjectApi?.create === "function" ? gameObjectApi.create(options) : null;
@@ -110,9 +129,14 @@ export interface PlayerVipRuntimeState {
   visible: boolean;
 }
 
-export function playerObjectCompositionIdForShape(shape?: unknown): string {
+export function legacyPlayerObjectCompositionIdForShape(shape?: unknown): string {
   const species = String(shape || "rex").trim().toLowerCase() || "rex";
   return `player-object-${species}`;
+}
+
+export function avatarTimelineLabelForShape(shape?: unknown): string {
+  const species = String(shape || "rex").trim().toLowerCase() || "rex";
+  return avatarTimelineLabels[species] || avatarTimelineLabels.rex;
 }
 
 export function playerNameRuntimeText(player: Dict | null): string {
@@ -167,17 +191,37 @@ export function runtimePlayerVipWidgetComposition(composition: Dict, state: Play
   });
 }
 
-export function runtimePlayerObjectComponents(composition: Dict, player: Dict, answerState: PlayerAnswerBubbleRuntimeState): Dict[] {
+export function runtimePlayerWidgetComponents(composition: Dict, player: Dict, answerState: PlayerAnswerBubbleRuntimeState): Dict[] {
   const color = String((player.avatar as Dict)?.color || "#22d3ee");
   const vipState = playerVipRuntimeState(player);
   return ((composition.components as Dict[]) || []).map((component) =>
     cloneArtComponent(component, (clone) => {
       applyRuntimePlayerColor(clone, color);
-      if (clone.id === "answer-bubble") clone.defaultAnimationState = answerState.visible ? "on" : "park";
-      if (clone.id === "player-name") clone.defaultAnimationState = "on";
-      if (clone.id === "vip-badge") clone.defaultAnimationState = vipState.visible ? "on" : "park";
+      if (clone.id === PLAYER_ANSWER_BUBBLE_MC_ID || clone.id === "answer-bubble") {
+        clone.defaultAnimationState = answerState.visible ? "On" : "Park";
+      }
+      if (clone.id === PLAYER_AVATAR_MC_ID || clone.id === "avatar") clone.defaultAnimationState = "On";
+      if (clone.id === PLAYER_NAME_MC_ID || clone.id === "player-name") clone.defaultAnimationState = "On";
+      if (clone.id === PLAYER_VIP_MC_ID || clone.id === "vip-badge") {
+        clone.defaultAnimationState = vipState.visible ? "On" : "Park";
+      }
     })
   );
+}
+
+export function runtimePlayerAvatarMcComposition(composition: Dict, player: Dict): Dict {
+  const color = String((player.avatar as Dict)?.color || "#22d3ee");
+  const avatarLabel = avatarTimelineLabelForShape((player.avatar as Dict)?.shape);
+  return cloneArtComposition(composition, (component) => {
+    applyRuntimePlayerColor(component, color);
+    if (component.id === AVATAR_FRAME_ID) component.defaultAnimationState = avatarLabel;
+    if (component.id === "avatar-background") component.defaultAnimationState = "On";
+  });
+}
+
+export function runtimeAvatarsComposition(composition: Dict, player: Dict): Dict {
+  const color = String((player.avatar as Dict)?.color || "#22d3ee");
+  return cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
 }
 
 class PlayerRosterRenderer {
@@ -195,6 +239,7 @@ class PlayerRosterRenderer {
   resizeObserver: ResizeObserver | null = null;
   renderedAnswersShown = true;
   answerAnimationEndsAt = 0;
+  rosterHideTimer: number | null = null;
 
   constructor(options: Dict = {}) {
     this.host = options.host as El | undefined;
@@ -238,8 +283,16 @@ class PlayerRosterRenderer {
   }
 
   playerObjectCompositionFor(player: Dict): Dict | null {
-    const requestedId = playerObjectCompositionIdForShape((player.avatar as Dict)?.shape);
-    return this.getComposition(requestedId) || this.getComposition("player-object-rex");
+    const legacyId = legacyPlayerObjectCompositionIdForShape((player.avatar as Dict)?.shape);
+    return this.getComposition(PLAYER_WIDGET_COMPOSITION_ID) || this.getComposition(legacyId) || this.getComposition("player-object-rex");
+  }
+
+  usesPlayerWidgetMc(tile: El): boolean {
+    return tile.dataset.playerObjectCompositionId === PLAYER_WIDGET_COMPOSITION_ID;
+  }
+
+  componentId(tile: El, modernId: string, legacyId: string): string {
+    return this.usesPlayerWidgetMc(tile) ? modernId : legacyId;
   }
 
   answerStateFor(player: Dict): PlayerAnswerBubbleRuntimeState {
@@ -255,6 +308,8 @@ class PlayerRosterRenderer {
       if (id === "player-answer-bubble") return runtimeAnswerBubbleComposition(composition, this.answerStateFor(player));
       if (id === "player-name-widget") return runtimePlayerNameWidgetComposition(composition, player);
       if (id === "player-vip-widget") return runtimePlayerVipWidgetComposition(composition, playerVipRuntimeState(player));
+      if (id === "prefab-player-avatar-mc") return runtimePlayerAvatarMcComposition(composition, player);
+      if (id === "avatars") return runtimeAvatarsComposition(composition, player);
       return cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
     };
   }
@@ -308,12 +363,14 @@ class PlayerRosterRenderer {
     const previousPlayerName = tile.dataset.playerName || "";
     const previousPlayerVip = tile.dataset.playerVip === "true";
 
-    renderer.render(runtimePlayerObjectComponents(composition, player, answerState), canvas, {
-      defaultAnimation: "on",
+    renderer.render(runtimePlayerWidgetComponents(composition, player, answerState), canvas, {
+      defaultAnimation: "On",
       instant: true,
       timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
       respectDefaultAnimationState: true
     });
+
+    const avatarDuration = this.syncAvatarComponent(tile, renderer, player);
 
     const duration = this.syncAnswerBubbleComponent(tile, renderer, answerState, {
       ...options,
@@ -324,6 +381,7 @@ class PlayerRosterRenderer {
     });
     const labelDuration = this.syncPlayerLabelComponents(renderer, player, {
       ...options,
+      tile,
       previousPlayerName,
       previousPlayerVip
     });
@@ -334,8 +392,15 @@ class PlayerRosterRenderer {
     tile.dataset.answerBubbleCorrectness = answerState.correctness;
     tile.dataset.playerName = playerNameRuntimeText(player);
     tile.dataset.playerVip = playerVipRuntimeState(player).visible ? "true" : "false";
+    tile.dataset.playerAvatarShape = String((player.avatar as Dict)?.shape || "rex");
     this.layoutTiles();
-    return Math.max(duration, labelDuration);
+    return Math.max(duration, labelDuration, avatarDuration);
+  }
+
+  syncAvatarComponent(tile: El, renderer: TreeRenderer, player: Dict): number {
+    if (!this.usesPlayerWidgetMc(tile)) return 0;
+    const label = avatarTimelineLabelForShape((player.avatar as Dict)?.shape);
+    return renderer.stopAtComponent?.(AVATAR_FRAME_ID, label, { instant: true }) || 0;
   }
 
   syncAnswerBubbleComponent(tile: El, renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {
@@ -344,33 +409,44 @@ class PlayerRosterRenderer {
     const previousNonce = String(options.previousNonce || "");
     const previousText = String(options.previousText || "");
     const previousCorrectness = String(options.previousCorrectness || "");
-    const play = (animation: string) => renderer.playComponentTree?.("answer-bubble", animation, { instant }) || 0;
+    const targetId = this.componentId(tile, PLAYER_ANSWER_BUBBLE_MC_ID, "answer-bubble");
+    const play = (animation: string) =>
+      (this.usesPlayerWidgetMc(tile)
+        ? renderer.playComponent?.(targetId, animation, { instant })
+        : renderer.playComponentTree?.(targetId, animation, { instant })) || 0;
 
     if (!state.visible) {
-      if (previousVisible || renderer.isComponentVisible?.("answer-bubble")) return play(instant ? "park" : "disappear");
-      return play("park");
+      if (previousVisible || renderer.isComponentVisible?.(targetId)) return play(instant ? "Park" : "Disappear");
+      return play("Park");
     }
-    if (!previousVisible || !renderer.isComponentVisible?.("answer-bubble")) return play("appear");
-    if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) return play("update");
+    if (!previousVisible || !renderer.isComponentVisible?.(targetId)) return play("Appear");
+    if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) return play("Update");
     return 0;
   }
 
   syncPlayerLabelComponents(renderer: TreeRenderer, player: Dict, options: Dict = {}): number {
+    const tile = options.tile as El | undefined;
+    if (!tile) return 0;
     const instant = options.instant === true;
     const previousPlayerName = String(options.previousPlayerName || "");
     const previousPlayerVip = options.previousPlayerVip === true;
     const playerName = playerNameRuntimeText(player);
     const vipState = playerVipRuntimeState(player);
-    const play = (componentId: string, animation: string) => renderer.playComponentTree?.(componentId, animation, { instant }) || 0;
+    const nameId = this.componentId(tile, PLAYER_NAME_MC_ID, "player-name");
+    const vipId = this.componentId(tile, PLAYER_VIP_MC_ID, "vip-badge");
+    const play = (componentId: string, animation: string) =>
+      (this.usesPlayerWidgetMc(tile)
+        ? renderer.playComponent?.(componentId, animation, { instant })
+        : renderer.playComponentTree?.(componentId, animation, { instant })) || 0;
     let duration = 0;
-    if (previousPlayerName && previousPlayerName !== playerName && renderer.isComponentVisible?.("player-name")) {
-      duration = Math.max(duration, play("player-name", "update"));
+    if (previousPlayerName && previousPlayerName !== playerName && renderer.isComponentVisible?.(nameId)) {
+      duration = Math.max(duration, play(nameId, "Update"));
     }
-    const vipVisible = renderer.isComponentVisible?.("vip-badge") === true;
+    const vipVisible = renderer.isComponentVisible?.(vipId) === true;
     if (vipState.visible) {
-      if (!previousPlayerVip || !vipVisible) duration = Math.max(duration, play("vip-badge", "appear"));
+      if (!previousPlayerVip || !vipVisible) duration = Math.max(duration, play(vipId, instant ? "On" : "Appear"));
     } else if (previousPlayerVip || vipVisible) {
-      duration = Math.max(duration, play("vip-badge", instant ? "park" : "disappear"));
+      duration = Math.max(duration, play(vipId, instant ? "Park" : "Disappear"));
     }
     return duration;
   }
@@ -470,6 +546,38 @@ class PlayerRosterRenderer {
     return 1000 + Math.max(0, playerCount - 1) * 45;
   }
 
+  playerWidgetTiles(): El[] {
+    if (!this.host) return [];
+    return (Array.from(this.host.querySelectorAll(":scope > .player-tile[data-player-id]")) as El[]).filter((tile) =>
+      this.usesPlayerWidgetMc(tile)
+    );
+  }
+
+  setRosterHostHidden(hidden: boolean): void {
+    if (!this.host) return;
+    this.host.classList.add("players-instant");
+    this.host.classList.toggle("players-hidden", hidden);
+    void this.host.offsetWidth;
+    this.host.classList.remove("players-instant");
+    this.host.dataset.visualVisible = hidden ? "false" : "true";
+  }
+
+  playPlayerWidgetVisibility(tile: El, isShown: boolean, options: Dict = {}): number {
+    const renderer = this.tileRenderers.get(tile);
+    const player = this.tilePlayers.get(tile);
+    if (!renderer || !player) return 0;
+    const instant = options.instant === true;
+    const animation = isShown ? (instant ? "On" : "Appear") : instant ? "Park" : "Disappear";
+    let duration = 0;
+    for (const componentId of [PLAYER_AVATAR_MC_ID, PLAYER_NAME_MC_ID]) {
+      duration = Math.max(duration, renderer.playComponent?.(componentId, animation, { instant }) || 0);
+    }
+    if (playerVipRuntimeState(player).visible) {
+      duration = Math.max(duration, renderer.playComponent?.(PLAYER_VIP_MC_ID, animation, { instant }) || 0);
+    }
+    return duration;
+  }
+
   gameObjectForRoster(options: Dict = {}): GameObjectLike | null {
     if (!this.host) return null;
     const duration = this.visibilityDuration(options);
@@ -501,12 +609,40 @@ class PlayerRosterRenderer {
   setShown(isShown: boolean, options: Dict = {}): number {
     if (!this.host) return 0;
     const targetShown = isShown !== false;
-    const alreadyShown = !this.host.classList.contains("players-hidden");
+    const widgetTiles = this.playerWidgetTiles();
+    const alreadyShown = widgetTiles.length > 0 && this.host.dataset.visualVisible
+      ? this.host.dataset.visualVisible === "true"
+      : !this.host.classList.contains("players-hidden");
     if (alreadyShown === targetShown) {
       this.host.dataset.visualVisible = targetShown ? "true" : "false";
       return 0;
     }
     const instant = options.instant === true;
+    if (widgetTiles.length > 0) {
+      if (this.rosterHideTimer !== null) {
+        globalThis.clearTimeout(this.rosterHideTimer);
+        this.rosterHideTimer = null;
+      }
+      if (targetShown) this.setRosterHostHidden(false);
+      let duration = 0;
+      for (const tile of widgetTiles) {
+        duration = Math.max(duration, this.playPlayerWidgetVisibility(tile, targetShown, { instant }));
+      }
+      if (!targetShown) {
+        if (duration > 0 && !instant) {
+          const timerId = globalThis.setTimeout(() => {
+            this.rosterHideTimer = null;
+            this.setRosterHostHidden(true);
+          }, duration);
+          this.rosterHideTimer = Number(timerId);
+          this.timerSink?.(Number(timerId));
+        } else {
+          this.setRosterHostHidden(true);
+        }
+      }
+      this.host.dataset.visualVisible = targetShown ? "true" : "false";
+      return duration;
+    }
     const gameObject = this.gameObjectForRoster(options);
     if (gameObject) return gameObject.playVisibility(targetShown, { instant });
     this.host.classList.toggle("players-hidden", !targetShown);
@@ -526,7 +662,8 @@ class PlayerRosterRenderer {
     if (!this.currentAnswerBubblesShown() || !this.host) return false;
     return Array.from(this.host.querySelectorAll(".player-tile[data-answer-bubble-has-answer='true']")).some((node) => {
       const tile = node as El;
-      return this.tileRenderers.get(tile)?.isComponentVisible?.("answer-bubble") !== true;
+      const targetId = this.componentId(tile, PLAYER_ANSWER_BUBBLE_MC_ID, "answer-bubble");
+      return this.tileRenderers.get(tile)?.isComponentVisible?.(targetId) !== true;
     });
   }
 

@@ -141,6 +141,24 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(visual.play("appear")).toBe(0);
   });
 
+  it("treats canonical uppercase lifecycle labels as lifecycle animations", () => {
+    const element = createFakeElement(["hidden"]);
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      durations: { appear: 100 }
+    });
+
+    expect(visual.play("On", { instant: true })).toBe(0);
+    expect(element.dataset.visualState).toBe("shown");
+    expect(visual.play("Disappear")).toBe(500);
+    expect(element.dataset.visualState).toBe("disappearing");
+
+    vi.advanceTimersByTime(500);
+    expect(element.dataset.visualState).toBe("hidden");
+  });
+
   it("keeps an object logically shown while it is appearing and ignores duplicate appear calls", () => {
     const element = createFakeElement(["hidden"]);
     const visual = PartyGameVisualObject.createCssVisualObject({
