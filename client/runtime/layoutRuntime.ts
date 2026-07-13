@@ -40,6 +40,7 @@ const normalizeUiColor = (value: unknown): string => w().normalizeUiColor?.(valu
 const lgo = w().PartyGameLayoutGameObjects!;
 const {
   activeDynamicLayoutArtInstanceIds,
+  activateLayoutEntity,
   applyLayoutElementBoxStyles,
   attachRenderedLayoutArtEntity,
   beginLayoutElementTargetApplication,
@@ -348,7 +349,7 @@ function applyControllerElementLayout(element: Dict, isGlobal = false): void {
       })
     );
   }
-  applyControllerLayoutArtVisibilityOverride(entity);
+  activateLayoutEntity(entity, { visibilityOverrides: controllerLayoutVisibilityOverrides });
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "controller-layout-transition-suppressed");
 }
 
@@ -533,7 +534,10 @@ function setControllerLayoutButtonText(target: El | null, value: unknown, spec: 
     ...controllerWidgetTextRenderOptions(compositionId, text),
     keepElements: controllerLayoutArtKeepElements(target)
   });
-  if (renderer) return true;
+  if (renderer) {
+    (renderer as { playAll?: (animation: string, options?: Dict) => number }).playAll?.("On", { instant: true });
+    return true;
+  }
   target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
   return false;
 }

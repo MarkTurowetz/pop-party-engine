@@ -3,8 +3,12 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     const choiceAnswer = room.choiceInputAnswers?.get(player.id) || null;
     const textAnswer = room.textInputAnswers?.get(player.id) || null;
     const displayedAnswer = room.displayedPlayerAnswers?.get(player.id) || null;
-    const answer = choiceAnswer || textAnswer || null;
-    const needsChoiceInput = Boolean(room.choiceInputActionId) && (
+    const currentActionId = String(currentAction?.id || "");
+    const hasActiveChoiceInput = Boolean(room.choiceInputActionId) && room.choiceInputActionId === currentActionId;
+    const hasActiveTextInput = Boolean(room.textInputActionId) && room.textInputActionId === currentActionId;
+    const hasActiveMicrophoneAccess = Boolean(room.microphoneAccessActionId) && room.microphoneAccessActionId === currentActionId;
+    const answer = hasActiveChoiceInput ? choiceAnswer : hasActiveTextInput ? textAnswer : null;
+    const needsChoiceInput = hasActiveChoiceInput && (
       room.choiceInputMode === "continuous" || !choiceAnswer
     );
     const textInputIsForPlayer = room.textInputMode === "voiceVip"
@@ -13,8 +17,8 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     const microphoneAccessIsForPlayer = room.microphoneAccessMode === "all"
       ? true
       : player.id === room.vipPlayerId;
-    const needsTextInput = Boolean(room.textInputActionId) && textInputIsForPlayer && textAnswer?.done !== true;
-    const needsMicrophoneAccess = Boolean(room.microphoneAccessActionId)
+    const needsTextInput = hasActiveTextInput && textInputIsForPlayer && textAnswer?.done !== true;
+    const needsMicrophoneAccess = hasActiveMicrophoneAccess
       && microphoneAccessIsForPlayer
       && room.microphoneAccessAnswers?.get(player.id)?.done !== true;
     const serializeAnswer = (value) => value ? {

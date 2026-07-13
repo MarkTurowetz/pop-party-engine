@@ -2,6 +2,28 @@ import { describe, expect, it, vi } from "vitest";
 import { PartyGameLayoutGameObjects } from "./layoutGameObjectRuntime";
 
 describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () => {
+  it("activates an active-layout entity with its On timeline", () => {
+    const playAnimation = vi.fn(() => 125);
+    const entity = { playAnimation, visibilityKey: "crafting:choice-grid" };
+
+    expect(PartyGameLayoutGameObjects.activateLayoutEntity(entity)).toBe(125);
+    expect(playAnimation).toHaveBeenCalledWith("On", { instant: true });
+  });
+
+  it("preserves an explicit visibility override instead of forcing On", () => {
+    const applyVisibilityOverride = vi.fn();
+    const playAnimation = vi.fn();
+    const entity = { applyVisibilityOverride, playAnimation, visibilityKey: "crafting:choice-grid" };
+
+    expect(
+      PartyGameLayoutGameObjects.activateLayoutEntity(entity, {
+        visibilityOverrides: new Map([["crafting:choice-grid", false]])
+      })
+    ).toBe(0);
+    expect(applyVisibilityOverride).toHaveBeenCalledOnce();
+    expect(playAnimation).not.toHaveBeenCalled();
+  });
+
   it("exposes the layout game-object helpers", () => {
     expect(PartyGameLayoutGameObjects.activeDynamicLayoutArtInstanceIds).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver).toBeTypeOf("function");

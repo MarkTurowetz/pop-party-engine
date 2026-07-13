@@ -548,6 +548,22 @@ function setLayoutGameObjectShownForAction(action: Dict, options: Dict = {}): un
   return setLayoutEntityShownForAction(action, options);
 }
 
+function activateLayoutEntity(entity: Dict | null, options: Dict = {}): number {
+  if (!entity) return 0;
+  const visibilityKey = String(entity.visibilityKey || "");
+  const overrides = options.visibilityOverrides as Map<string, boolean> | undefined;
+  if (visibilityKey && overrides?.has(visibilityKey)) {
+    if (typeof entity.applyVisibilityOverride === "function") {
+      (entity.applyVisibilityOverride as () => void).call(entity);
+    }
+    return 0;
+  }
+  if (typeof entity.playAnimation !== "function") return 0;
+  return Number(
+    (entity.playAnimation as (animation: string, playOptions: Dict) => number).call(entity, lifecycleLabels.on, { instant: true }) || 0
+  );
+}
+
 function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): unknown {
   const elementId = (action?.targetLayoutElementId as string) || "";
   const result = (duration: unknown, missing = false, reason = "") =>
@@ -584,6 +600,7 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
 
 export const PartyGameLayoutGameObjects = {
   activeDynamicLayoutArtInstanceIds,
+  activateLayoutEntity,
   applyLayoutElementBoxStyles,
   attachRenderedLayoutArtEntity,
   beginLayoutElementTargetApplication,
