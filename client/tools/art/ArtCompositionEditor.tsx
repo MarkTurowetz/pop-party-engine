@@ -1572,11 +1572,12 @@ function ArtComponentInspector({
 
   const numberField = (key: string, label: string, step?: string) => (
     <label className="flow-react-field" data-art-field={key} key={key}>
-      <span>{label}</span>
+      <span>{label}{(key === "width" || key === "height") && editableComponents.every((target) => target.kind === "reference") ? " (Inherited)" : ""}</span>
       <input
         type="text"
         inputMode="decimal"
         step={step}
+        disabled={(key === "width" || key === "height") && editableComponents.every((target) => target.kind === "reference")}
         key={`${editableComponents.map((target) => target.id).join(":")}-${timelineContext?.frame ?? "base"}-${key}`}
         defaultValue={String(frameValue(key) ?? 0)}
         data-art-component-field={key}

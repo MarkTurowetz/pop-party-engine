@@ -158,15 +158,9 @@ function compositionIntrinsicSizes(compositions: ArtComposition[]): Map<string, 
   }));
 }
 
-function sameInheritedDimension(value: unknown, inherited: number): boolean {
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) && Math.abs(numberValue - inherited) <= 0.001;
-}
-
-function reconcileTimelineReferenceDimensions(
+function synchronizeTimelineReferenceDimensions(
   composition: ArtComposition,
   referenceId: string,
-  previousSize: ArtCompositionIntrinsicSize,
   nextSize: ArtCompositionIntrinsicSize
 ): boolean {
   if (!composition.timeline) return false;
@@ -176,19 +170,11 @@ function reconcileTimelineReferenceDimensions(
     const keyframes = (track.keyframes || []).map((keyframe) => {
       const props = { ...(keyframe.props || {}) };
       let keyframeChanged = false;
-      if (
-        nextSize.width !== previousSize.width &&
-        Object.prototype.hasOwnProperty.call(props, "width") &&
-        sameInheritedDimension(props.width, previousSize.width)
-      ) {
+      if (Object.prototype.hasOwnProperty.call(props, "width") && Number(props.width) !== nextSize.width) {
         props.width = nextSize.width;
         keyframeChanged = true;
       }
-      if (
-        nextSize.height !== previousSize.height &&
-        Object.prototype.hasOwnProperty.call(props, "height") &&
-        sameInheritedDimension(props.height, previousSize.height)
-      ) {
+      if (Object.prototype.hasOwnProperty.call(props, "height") && Number(props.height) !== nextSize.height) {
         props.height = nextSize.height;
         keyframeChanged = true;
       }
@@ -203,15 +189,15 @@ function reconcileTimelineReferenceDimensions(
 }
 
 /**
- * Existing references follow source bounds while their dimensions still match
- * the source's previous intrinsic size. A differing value is an intentional
- * per-instance override and remains untouched. Repeating the pass carries a
- * source change through parents and grandparents.
+ * Reference width and height are intrinsic source geometry. Placed instances
+ * animate their apparent size through scale, so stale base values and stamped
+ * keyframe dimensions are always synchronized to the referenced composition.
+ * Repeating the pass carries a source change through parents and grandparents.
  */
-function reconcileInheritedReferenceDimensions(
-  compositions: ArtComposition[],
-  previousSizes: Map<string, ArtCompositionIntrinsicSize>
-): void {
+function synchronizeReferenceDimensions(compositions: ArtComposition[]): void {
+  const measurableCompositionIds = new Set(
+    compositions.filter((composition) => (composition.components || []).length > 0).map((composition) => composition.id)
+  );
   for (let pass = 0; pass < Math.max(1, compositions.length); pass += 1) {
     const nextSizes = compositionIntrinsicSizes(compositions);
     let changed = false;
@@ -219,18 +205,17 @@ function reconcileInheritedReferenceDimensions(
       const visit = (components: ArtComponent[]): void => {
         for (const component of components || []) {
           if (component.kind === "reference" && component.artCompositionId) {
-            const previousSize = previousSizes.get(component.artCompositionId);
             const nextSize = nextSizes.get(component.artCompositionId);
-            if (previousSize && nextSize) {
-              if (sameInheritedDimension(component.width, previousSize.width) && component.width !== nextSize.width) {
+            if (nextSize && measurableCompositionIds.has(component.artCompositionId)) {
+              if (Number(component.width) !== nextSize.width) {
                 component.width = nextSize.width;
                 changed = true;
               }
-              if (sameInheritedDimension(component.height, previousSize.height) && component.height !== nextSize.height) {
+              if (Number(component.height) !== nextSize.height) {
                 component.height = nextSize.height;
                 changed = true;
               }
-              if (reconcileTimelineReferenceDimensions(owner, component.id, previousSize, nextSize)) changed = true;
+              if (synchronizeTimelineReferenceDimensions(owner, component.id, nextSize)) changed = true;
             }
           }
           visit(component.children || []);
@@ -483,10 +468,12 @@ export function createArtCompositionsController(
       artCompositionSnapshot(migratedIds.has(composition.id) || !hydrated ? composition : hydrated)
     );
   }
+  const savedCompositionsDraftSnapshot = compositionsDraftSnapshot(compositions);
+  synchronizeReferenceDimensions(compositions);
   const sessionDraftPublisher = options.postDraft
     ? createSessionDraftPublisher({
         postDraft: options.postDraft,
-        savedSnapshot: compositionsDraftSnapshot(compositions),
+        savedSnapshot: savedCompositionsDraftSnapshot,
         delayMs: options.draftPublishDelayMs,
         clearMessage: { clearArtCompositions: true },
         draftMessage: (snapshot) => ({ artCompositions: JSON.parse(snapshot) as ArtComposition[] })
@@ -588,12 +575,11 @@ export function createArtCompositionsController(
 
   function mutateAll(apply: () => void): void {
     if (pendingMigrationSummary) return;
-    const previousIntrinsicSizes = compositionIntrinsicSizes(compositions);
     undoStack.push(snapshot());
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
     redoStack.length = 0;
     apply();
-    reconcileInheritedReferenceDimensions(compositions, previousIntrinsicSizes);
+    synchronizeReferenceDimensions(compositions);
     compositions = compositions.slice();
     ensureSelectedComposition();
     emit();

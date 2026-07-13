@@ -234,28 +234,40 @@ describe("createArtCompositionsController", () => {
     expect(state.dirtyCompositionIds).toEqual(new Set([parent.id, source.id, grandparent.id]));
   });
 
-  it("preserves explicit instance dimensions when the referenced source changes", () => {
-    const source = composition("source");
-    source.components = [{ id: "text", name: "Text", kind: "text", x: 110, y: 30, width: 220, height: 60 }] as never;
-    const parent = composition("parent");
+  it("repairs stale loaded reference and keyframe dimensions from the current source", () => {
+    const source = composition("voting-card-answer-text");
+    source.components = [
+      { id: "shape", name: "Shape", kind: "shape", x: 0, y: 0, width: 180, height: 96 },
+      { id: "text", name: "Text", kind: "text", x: 0, y: 0, width: 220, height: 60 }
+    ] as never;
+    source.timeline = {
+      fps: 30,
+      frameCount: 3,
+      labels: [],
+      commands: [],
+      tracks: [
+        { targetId: "shape", keyframes: [{ frame: 0, props: { x: 0, y: 0, width: 520, height: 150 } }] },
+        { targetId: "text", keyframes: [{ frame: 0, props: { x: 0, y: 0, width: 420, height: 78 } }] }
+      ]
+    };
+    const parent = composition("voting-card-answer");
     parent.components = [
-      { id: "custom", name: "Custom", kind: "reference", artCompositionId: source.id, x: 0, y: 0, width: 300, height: 90 }
+      { id: "answer-text", name: "Answer Text", kind: "reference", artCompositionId: source.id, x: 0, y: 0, width: 220, height: 60 }
     ] as never;
     parent.timeline = {
       fps: 30,
       frameCount: 2,
       labels: [],
       commands: [],
-      tracks: [{ targetId: "custom", keyframes: [{ frame: 0, props: { width: 300, height: 90 } }] }]
+      tracks: [{ targetId: "answer-text", keyframes: [{ frame: 0, props: { width: 420, height: 78, scale: 1 } }] }]
     };
     const controller = createArtCompositionsController({ initialCompositions: [parent, source], api: fakeApi() });
 
-    controller.selectComposition(source.id);
-    controller.updateComponent("text", { width: 420, height: 78 });
-
-    const preservedParent = controller.getState().compositions.find((item) => item.id === parent.id);
-    expect(preservedParent?.components[0]).toMatchObject({ width: 300, height: 90 });
-    expect(preservedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ width: 300, height: 90 });
+    const state = controller.getState();
+    const repairedParent = state.compositions.find((item) => item.id === parent.id);
+    expect(repairedParent?.components[0]).toMatchObject({ width: 520, height: 150 });
+    expect(repairedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ width: 520, height: 150, scale: 1 });
+    expect(state.dirtyCompositionIds).toEqual(new Set([parent.id]));
   });
 
   it("sizes nested references from tight visual content instead of the editor canvas", () => {
