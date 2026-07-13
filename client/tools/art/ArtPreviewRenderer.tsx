@@ -2,11 +2,14 @@ import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
-  type ReactElement
+  type ReactElement,
+  useMemo
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
+import { gameTextHtml } from "../../runtime/gameTextMarkup";
 import type { ArtCanvasLivePositions } from "./artCanvasTransformTransaction";
 import { artCompositionContentBounds } from "./artCompositionBounds";
+import { artReferenceFrameZeroOverrides } from "./artReferenceFrameOverrides";
 import { PartyGameTextFit } from "../../runtime/textFit";
 import {
   componentSupportsShapeStyle,
@@ -118,6 +121,10 @@ function artPreviewFontSize(
 export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement {
   const assetUrls = props.assetUrlById || new Map<string, string>();
   const selectedIds = props.selectedIds || new Set<string>();
+  const referenceFrameOverrides = useMemo(
+    () => artReferenceFrameZeroOverrides(props.components || [], props.compositionById),
+    [props.components, props.compositionById]
+  );
 
   const imageSourceFor = (component: ArtComponent, timelineOverride: Record<string, unknown> = {}): string => {
     const imageDataUrl = String(timelineOverride.imageDataUrl ?? get(component, "imageDataUrl") ?? "");
@@ -151,7 +158,9 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const livePos = props.livePositions?.[component.id] || null;
     const liveTx = props.liveTransform?.id === component.id ? props.liveTransform : null;
     const liveOrigin = props.liveTransformOrigin?.id === component.id ? props.liveTransformOrigin.value : null;
-    const timelineOverride = props.timelineFrameOverrides?.[scopedTargetId] || props.timelineFrameOverrides?.[component.id] || {};
+    const unscopedTimelineOverride = targetPath.length === 1 ? props.timelineFrameOverrides?.[component.id] : undefined;
+    const explicitTimelineOverride = props.timelineFrameOverrides?.[scopedTargetId] || unscopedTimelineOverride || {};
+    const timelineOverride = { ...(referenceFrameOverrides[scopedTargetId] || {}), ...explicitTimelineOverride };
     const timelineValue = (key: string, fallback: unknown): unknown =>
       Object.prototype.hasOwnProperty.call(timelineOverride, key) ? timelineOverride[key] : fallback;
     const x = livePos ? livePos.x : Number(timelineValue("x", get(component, "x") || 0));
@@ -294,6 +303,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
           {isTextual ? (
             <span
               className="art-canvas-component-text"
+              dangerouslySetInnerHTML={{ __html: gameTextHtml(textValue) }}
               style={{
                 overflowWrap:
                   textFieldFor(component, props, "autoFitText", timelineOverride.autoFitText ?? get(component, "autoFitText") !== false) !== false
@@ -304,9 +314,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
                     ? "keep-all"
                     : "normal"
               }}
-            >
-              {textValue}
-            </span>
+            />
           ) : null}
           {referencedComposition ? (
             <div

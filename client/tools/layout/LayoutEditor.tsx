@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from "react";
 import type { ArtAsset, ArtComposition, LayoutElement } from "../../types/game-data";
+import { gameTextHtml } from "../../runtime/gameTextMarkup";
 import { gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
 import { ArtPreviewRenderer, assetUrlMap, compositionMap, type ArtTextOverride } from "../art/ArtPreviewRenderer";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
@@ -282,6 +283,7 @@ export function LayoutEditor({
           </div>
         ) : (
           <span
+            dangerouslySetInnerHTML={isText ? { __html: gameTextHtml(textValue) } : undefined}
             style={
               isText
                 ? {
@@ -299,7 +301,7 @@ export function LayoutEditor({
                 : undefined
             }
           >
-            {isText ? textValue : element.name || element.kind || "art"}
+            {isText ? null : element.name || element.kind || "art"}
           </span>
         )}
       </div>

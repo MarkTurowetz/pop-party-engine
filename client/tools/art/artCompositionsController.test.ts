@@ -337,6 +337,32 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().compositions[0]).toEqual(before);
   });
 
+  it("allows a selected reference to swap to a prefab", () => {
+    const host = composition("host");
+    host.compositionKind = "prefab";
+    host.components = [{ id: "slot", name: "Slot", kind: "reference", artCompositionId: "first" }] as never;
+    const first = composition("first");
+    first.compositionKind = "gameObject";
+    const replacement = composition("replacement");
+    replacement.compositionKind = "prefab";
+    const controller = createArtCompositionsController({ initialCompositions: [host, first, replacement], api: fakeApi() });
+
+    controller.swapReferenceGameObject("slot", "replacement");
+
+    expect(controller.getState().compositions[0].components[0].artCompositionId).toBe("replacement");
+    expect(controller.getState().error).toBeNull();
+  });
+
+  it("publishes a new compositions array for every mutation so dependent library views refresh", () => {
+    const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
+    const before = controller.getState().compositions;
+
+    controller.updateComposition("a", { name: "Renamed" });
+
+    expect(controller.getState().compositions).not.toBe(before);
+    expect(controller.getState().compositions[0].name).toBe("Renamed");
+  });
+
   it("updates a component property and removes it", () => {
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
     controller.addComponent("shape");

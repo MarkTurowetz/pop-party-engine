@@ -493,6 +493,7 @@ export function createArtCompositionsController(
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
     redoStack.length = 0;
     apply();
+    compositions = compositions.slice();
     ensureSelectedComposition();
     emit();
     scheduleDraft();
@@ -697,8 +698,8 @@ export function createArtCompositionsController(
           return;
         }
         const referenced = compositions.find((item) => item.id === String(compositionId || ""));
-        if (!referenced || normalizeArtCompositionKind(referenced.compositionKind) !== "gameObject") {
-          error = "Choose a game object from the library.";
+        if (!referenced) {
+          error = "Choose a game object or prefab from the library.";
           return;
         }
         if (normalizeArtCompositionSurface(referenced.surface) !== normalizeArtCompositionSurface(composition.surface)) {
@@ -802,6 +803,7 @@ export function createArtCompositionsController(
           await api.deleteArtComposition(id);
           savedSnapshots.delete(id);
         }
+        compositions = compositions.slice();
         sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
         pendingMigrationSummary = null;
         saving = false;

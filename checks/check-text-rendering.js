@@ -84,7 +84,7 @@ if (!/display: "flex"/.test(textFitSource)
   || !/justifyContent: "center"/.test(textFitSource)
   || !/overflow: "hidden"/.test(textFitSource)
   || !/whiteSpace: "pre-wrap"/.test(textFitSource)
-  || !/target\.textContent = textValue/.test(textFitSource)) {
+  || !/setGameTextHtml\(target, transformedMarkup\)/.test(textFitSource)) {
   console.error("Text rendering regression check failed:");
   console.error("- plain text mode must render centered clipped HTML text");
   process.exit(1);

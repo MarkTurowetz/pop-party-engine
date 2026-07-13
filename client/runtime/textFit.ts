@@ -1,4 +1,5 @@
 import { gameTextDefaultFontFamily, normalizeGameTextFontFamily } from "../textFonts";
+import { gameTextPlainText, setGameTextHtml, transformGameTextMarkup } from "./gameTextMarkup";
 
 // Typed port of the legacy client/text-fit.js IIFE. Behaviour is preserved 1:1;
 // the public API is both exported (for TS consumers) and assigned to window
@@ -68,13 +69,6 @@ function fittingHeight(element: Dict | undefined, options: Dict): number {
   return Math.max(1, rawHeight - padding * 2);
 }
 
-function applyTextTransform(text: string, transform: unknown): string {
-  if (transform === "uppercase") return text.toUpperCase();
-  if (transform === "lowercase") return text.toLowerCase();
-  if (transform === "capitalize") return text.replace(/\b\p{L}/gu, (match) => match.toUpperCase());
-  return text;
-}
-
 function computedStyleFor(target: TextTarget): CSSStyleDeclaration | null {
   if (!target || typeof window === "undefined" || typeof window.getComputedStyle !== "function") return null;
   try {
@@ -141,7 +135,7 @@ function domSizeFor(text: string, fontSize: number, spec: TextFitSpec): { width:
     fontWeight: spec.fontWeight,
     textTransform: "none"
   });
-  node.textContent = applyTextTransform(text, spec.textTransform);
+  node.textContent = text;
   const range = document.createRange();
   range.selectNodeContents(node);
   const rect = range.getBoundingClientRect();
@@ -226,7 +220,7 @@ function fixedTextLayout(element: Dict | undefined, text: unknown, fontSize: unk
   const width = Math.max(1, num(element?.width || 1));
   const height = Math.max(1, num(element?.height || 1));
   const lineHeight = normalizeLineHeight(options.lineHeight, defaultOptions.lineHeight);
-  const lines = String(text ?? "").split("\n");
+  const lines = gameTextPlainText(text).split("\n");
   return {
     fontSize: size,
     fontFamily: normalizeGameTextFontFamily(options.fontFamily),
@@ -281,7 +275,7 @@ function fitTextLayout(element: Dict | undefined, text: unknown, fallbackSize: u
   }
 
   const spec = textFitSpec(element, options);
-  const textValue = String(text ?? "");
+  const textValue = gameTextPlainText(transformGameTextMarkup(text, spec.textTransform));
   const minSize = Math.max(1, optionNumber(options, "minSize", positiveNumber(element?.minFontSize, defaultOptions.minSize)));
   const maxSize = Math.max(minSize, optionNumber(options, "maxSize", positiveNumber(element?.maxFontSize, defaultOptions.maxSize)));
   let low = minSize;
@@ -337,7 +331,8 @@ function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, 
   const fontFamily = normalizeGameTextFontFamily(options.fontFamily || spec.fontFamily || computed?.fontFamily);
   const fontStyle = (options.fontStyle || spec.fontStyle || computed?.fontStyle || defaultOptions.fontStyle) as string;
   const fontWeight = String(options.fontWeight || spec.fontWeight || computed?.fontWeight || defaultOptions.fontWeight);
-  const textValue = applyTextTransform(String(text ?? ""), options.textTransform || computed?.textTransform || "none");
+  const transformedMarkup = transformGameTextMarkup(text, options.textTransform || computed?.textTransform || "none");
+  const textValue = gameTextPlainText(transformedMarkup);
   const layout = fitTextLayout(
     { ...spec, fontSize, fontFamily, fontStyle, fontWeight, lineHeight },
     textValue,
@@ -346,7 +341,7 @@ function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, 
   );
 
   if (target.dataset) target.dataset.textFitSource = String(text ?? "");
-  target.setAttribute?.("aria-label", String(text ?? ""));
+  target.setAttribute?.("aria-label", textValue);
   if (fontColor) target.style.setProperty("color", fontColor, "important");
   Object.assign(target.style, {
     display: "flex",
@@ -363,7 +358,7 @@ function renderPlainTextBox(target: TextTarget, text: unknown, spec: Dict = {}, 
     fontStyle,
     fontWeight
   });
-  target.textContent = textValue;
+  setGameTextHtml(target, transformedMarkup);
   return layout;
 }
 

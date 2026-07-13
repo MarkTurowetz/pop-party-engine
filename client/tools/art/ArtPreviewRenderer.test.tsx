@@ -151,4 +151,73 @@ describe("ArtPreviewRenderer transform origins", () => {
     expect(markup).toContain("left:90px;top:100px");
     expect(markup).toContain("left:190px;top:200px");
   });
+
+  it("renders every placed child from frame zero of its own referenced timeline", () => {
+    const answer = {
+      id: "voting-card-answer",
+      name: "Voting Card Answer",
+      surface: "stage",
+      compositionKind: "prefab",
+      canvas: { width: 200, height: 60 },
+      components: [{ id: "answer-text", kind: "text", x: 100, y: 30, width: 200, height: 60, defaultText: "Text" }],
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [],
+        commands: [],
+        tracks: [{ targetId: "answer-text", keyframes: [{ frame: 0, props: { defaultText: "Answer Text Answer Text" } }] }]
+      }
+    } as ArtComposition;
+    const reference = {
+      id: "answer-instance",
+      kind: "reference",
+      artCompositionId: answer.id,
+      x: 100,
+      y: 30,
+      width: 200,
+      height: 60
+    } as ArtComponent;
+
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer components={[reference]} compositionById={new Map([[answer.id, answer]])} />
+    );
+
+    expect(markup).toContain("Answer Text Answer Text");
+    expect(markup).not.toContain(">Text<");
+  });
+
+  it("does not leak an unscoped parent override into a same-named nested child", () => {
+    const child = {
+      id: "child",
+      canvas: { width: 100, height: 40 },
+      components: [{ id: "label", kind: "text", x: 50, y: 20, width: 100, height: 40, defaultText: "Child" }]
+    } as ArtComposition;
+    const reference = { id: "slot", kind: "reference", artCompositionId: child.id, x: 50, y: 20, width: 100, height: 40 } as ArtComponent;
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer
+        components={[reference]}
+        compositionById={new Map([[child.id, child]])}
+        timelineFrameOverrides={{ label: { defaultText: "Wrong Parent Frame" } }}
+      />
+    );
+
+    expect(markup).toContain("Child");
+    expect(markup).not.toContain("Wrong Parent Frame");
+  });
+
+  it("renders escaped newlines and safe inline HTML in text fields", () => {
+    const component = {
+      id: "text",
+      kind: "text",
+      x: 100,
+      y: 30,
+      width: 200,
+      height: 60,
+      defaultText: "First\\n<strong>Second</strong>"
+    } as ArtComponent;
+
+    const markup = renderToStaticMarkup(<ArtPreviewRenderer components={[component]} compositionById={new Map()} />);
+
+    expect(markup).toContain("First<br /><strong>Second</strong>");
+  });
 });

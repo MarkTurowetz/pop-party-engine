@@ -5,6 +5,7 @@ import {
   swappableGameObjectOptions,
   timelineActionScriptForFrame,
   timelineActionScriptPlaceholderForFrame,
+  timelineWithActionScriptAtFrame,
   timelineLayerDropPlacement,
   timelineLayerSiblingOwnerIds
 } from "./ArtCompositionEditor";
@@ -27,7 +28,27 @@ describe("ArtCompositionEditor command scripts", () => {
     expect(timelineActionScriptForFrame(timeline, 12, timeline.commands)).toBe("stop();\nvisible = true;");
   });
 
-  it("offers only replacement game objects on the selected reference surface", () => {
+  it("persists command deletion even when the latest textarea value is committed directly", () => {
+    const timeline: TimelineDocument = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commandFrames: [12],
+      commands: [
+        { frame: 12, type: "stop" },
+        { frame: 12, type: "setVisible", target: "false" }
+      ],
+      tracks: []
+    };
+
+    const result = timelineWithActionScriptAtFrame(timeline, 12, "stop();");
+
+    expect(result.error).toBe("");
+    expect(result.timeline.commandFrames).toContain(12);
+    expect(result.timeline.commands).toEqual([expect.objectContaining({ frame: 12, type: "stop" })]);
+  });
+
+  it("offers replacement game objects and prefabs on the selected reference surface", () => {
     const owner = { id: "owner", name: "Owner", surface: "stage", compositionKind: "prefab", canvas: { width: 560, height: 230 }, components: [] } as ArtComposition;
     const component = { id: "slot", kind: "reference", artCompositionId: "current" } as ArtComponent;
     const options = swappableGameObjectOptions(
@@ -43,7 +64,7 @@ describe("ArtCompositionEditor command scripts", () => {
       component
     );
 
-    expect(options.map((option) => option.id)).toEqual(["a", "z"]);
+    expect(options.map((option) => option.id)).toEqual(["a", "prefab", "z"]);
   });
 });
 

@@ -30,6 +30,16 @@ describe("PartyGameTextFit (ported text-fit)", () => {
     expect(layout.ascent).toBe(30);
   });
 
+  it("measures escaped newlines and safe HTML as their visible text", () => {
+    const layout = PartyGameTextFit.fixedTextLayout(
+      { width: 200, height: 100 },
+      "Hi\\n<strong>there</strong><br>again",
+      40,
+      {}
+    );
+    expect(layout.lines).toEqual(["Hi", "there", "again"]);
+  });
+
   it("layout text fields auto-fit unless autoFitText is explicitly false (regression guard)", () => {
     const implicit = PartyGameTextFit.normalizeTextFieldElement({ kind: "text", width: 400, height: 80 });
     const manual = PartyGameTextFit.normalizeTextFieldElement({ kind: "text", width: 400, height: 80, autoFitText: false, fontSize: 48 });

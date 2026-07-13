@@ -167,7 +167,7 @@ type TimelineCommandOverlay = {
   placeholder: string;
   error: string;
   onDraftChange: (value: string) => void;
-  onCommit: () => void;
+  onCommit: (value?: string) => void;
   onReset: () => void;
 };
 type TimelineNavigationEntry = {
@@ -349,6 +349,23 @@ export function timelineActionScriptPlaceholderForFrame(timeline: TimelineDocume
   return inferred || 'stop();\ngotoAndPlay("Appear");';
 }
 
+export function timelineWithActionScriptAtFrame(
+  timeline: TimelineDocument,
+  frame: number,
+  source: string,
+  component?: ArtComponent,
+  scopeRootPath = false
+): { timeline: TimelineDocument; error: string } {
+  const parsed = parseTimelineActionScript(source);
+  if (parsed.error) return { timeline, error: parsed.error };
+  const commands = parsed.commands.map((command) => {
+    if ((command.type !== "playComponent" && command.type !== "stopComponent") || !command.target || !component) return command;
+    const target = findTimelineTargetComponent([component], command.target, { scopeRootPath });
+    return target?.kind === "reference" ? { ...command, target: target.id } : command;
+  });
+  return { timeline: replaceTimelineCommandsAtFrame(timeline, frame, commands), error: "" };
+}
+
 export function swappableGameObjectOptions(
   compositions: ArtComposition[],
   owner: ArtComposition | null,
@@ -359,7 +376,6 @@ export function swappableGameObjectOptions(
       (item) =>
         item.id !== owner?.id &&
         item.id !== component.artCompositionId &&
-        normalizeArtCompositionKind(item.compositionKind) === "gameObject" &&
         normalizeArtCompositionSurface(item.surface) === normalizeArtCompositionSurface(owner?.surface)
     )
     .sort((left, right) => left.name.localeCompare(right.name));
@@ -1410,7 +1426,7 @@ function SwapGameObjectControl({
   return (
     <div className="art-swap-game-object-control" data-art-swap-game-object>
       <div className="flow-react-field">
-        <span>Game Object</span>
+        <span>Library Object</span>
         <strong>{currentSource?.name || "Missing library object"}</strong>
       </div>
       <button type="button" onClick={beginSwap} disabled={options.length === 0}>
@@ -1437,7 +1453,9 @@ function SwapGameObjectControl({
               <span>Replacement</span>
               <select autoFocus value={replacementId} onChange={(event) => setReplacementId(event.target.value)}>
                 {options.map((option) => (
-                  <option key={option.id} value={option.id}>{option.name}</option>
+                  <option key={option.id} value={option.id}>
+                    {option.name} — {normalizeArtCompositionKind(option.compositionKind) === "prefab" ? "Prefab" : "Game Object"}
+                  </option>
                 ))}
               </select>
             </label>
@@ -1785,11 +1803,11 @@ function ArtTimelineCommandOverlay({ overlay }: { overlay: TimelineCommandOverla
           placeholder={overlay.placeholder}
           spellCheck={false}
           onChange={(event) => overlay.onDraftChange(event.target.value)}
-          onBlur={overlay.onCommit}
+          onBlur={(event) => overlay.onCommit(event.currentTarget.value)}
           onKeyDown={(event) => {
             if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
               event.preventDefault();
-              overlay.onCommit();
+              overlay.onCommit(event.currentTarget.value);
             }
             if (event.key === "Escape") {
               event.preventDefault();
@@ -1875,7 +1893,7 @@ function ArtTimelinePanel({
     playFromBeginning: () => {}
   });
   const timelineTweenControlsRef = useRef<{ toggle: () => void }>({ toggle: () => {} });
-  const commitCommandScriptDraftRef = useRef<() => boolean>(() => true);
+  const commitCommandScriptDraftRef = useRef<(value?: string) => boolean>(() => true);
   const timelineRangeDragRef = useRef<{ anchorFrame: number; moved: boolean } | null>(null);
   const timelineWindowPanRef = useRef<{ startX: number; startWindowStart: number; frameWidth: number } | null>(null);
   const suppressTimelineClickRef = useRef(false);
@@ -2283,23 +2301,18 @@ function ArtTimelinePanel({
     selectTimelineCell({ kind: "label", frame: selectedLabelFrame });
   }
 
-  function commitCommandScriptDraft(): boolean {
+  function commitCommandScriptDraft(value = commandScriptDraft): boolean {
     if (selectedCommandFrame === null) return true;
-    if (commandScriptDraft === commandScriptInitialDraft) {
+    if (value === commandScriptInitialDraft) {
       setCommandScriptError("");
       return true;
     }
-    const result = parseTimelineActionScript(commandScriptDraft);
+    const result = timelineWithActionScriptAtFrame(current, selectedCommandFrame, value, component, false);
     if (result.error) {
       setCommandScriptError(result.error);
       return false;
     }
-    const normalizedCommands = result.commands.map((command) => {
-      if ((command.type !== "playComponent" && command.type !== "stopComponent") || !command.target || !component) return command;
-      const target = findTimelineTargetComponent([component], command.target, { scopeRootPath: false });
-      return target?.kind === "reference" ? { ...command, target: target.id } : command;
-    });
-    const nextTimeline = replaceTimelineCommandsAtFrame(current, selectedCommandFrame, normalizedCommands);
+    const nextTimeline = result.timeline;
     onChange(nextTimeline);
     setSelectedKeyframe(null);
     const commands = timelineCommandsAtFrame(nextTimeline, selectedCommandFrame);
@@ -2332,8 +2345,8 @@ function ArtTimelinePanel({
         setCommandScriptDraft(value);
         setCommandScriptError("");
       },
-      onCommit: () => {
-        commitCommandScriptDraftRef.current();
+      onCommit: (value?: string) => {
+        commitCommandScriptDraftRef.current(value);
       },
       onReset: () => {
         const nextDraft = timelineActionScriptForFrame(
