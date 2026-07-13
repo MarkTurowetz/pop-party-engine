@@ -9249,7 +9249,7 @@
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
-                  "defaultText": "Answer Text Answer Text",
+                  "defaultText": "Answer Text\\nAnswer Text",
                   "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
                   "fontSize": 48,
                   "fontColor": "#17131f",
@@ -9262,7 +9262,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T06:28:50.028Z"
+      "updatedAt": "2026-07-13T17:06:55.361Z"
     },
     "prefab-voting-card-bg": {
       "name": "Voting Card Bg",
