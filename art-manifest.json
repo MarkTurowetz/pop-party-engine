@@ -9173,6 +9173,176 @@
         "tracks": []
       },
       "updatedAt": "2026-07-13T05:01:33.684Z"
+    },
+    "prefab-untitled-prefab": {
+      "name": "Untitled Prefab",
+      "description": "Reusable art prefab.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 560,
+        "height": 230
+      },
+      "components": [
+        {
+          "id": "reference-a12f976b9ab1",
+          "name": "Voting Card Answer MC",
+          "instanceLabel": "votingCardAnswerMC",
+          "kind": "reference",
+          "x": 28.238,
+          "y": 17.836,
+          "width": 420,
+          "height": 78,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "prefab-voting-card-answer-mc"
+        },
+        {
+          "id": "reference-4d5ffd173b11",
+          "name": "Voting Card Bg",
+          "instanceLabel": "votingCardBg",
+          "kind": "reference",
+          "x": 0,
+          "y": 0,
+          "width": 520,
+          "height": 150,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "prefab-voting-card-bg"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 33,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 13
+          },
+          {
+            "name": "Disappear",
+            "frame": 17
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-reference-a12f976b9ab1",
+            "targetId": "reference-a12f976b9ab1",
+            "keyframes": [
+              {
+                "id": "key-reference-a12f976b9ab1-0",
+                "frame": 0,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 420,
+                  "height": 78,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-13T06:17:57.545Z"
     }
   },
   "deletedCompositionIds": [],
