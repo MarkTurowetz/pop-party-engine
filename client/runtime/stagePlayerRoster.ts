@@ -164,7 +164,6 @@ export function runtimeAnswerBubbleComposition(composition: Dict, state: PlayerA
   const fillColor = state.correctness === "correct" ? "#60d394" : state.correctness === "wrong" ? "#d7d3c7" : "";
   const textColor = state.correctness === "wrong" ? "rgba(23, 19, 31, 0.68)" : "";
   return cloneArtComposition(composition, (component) => {
-    component.defaultAnimationState = state.visible ? "on" : "park";
     if (component.id === "answer-text") {
       if (state.hasAnswer) component.defaultText = state.text;
       if (textColor) component.fontColor = textColor;
@@ -191,15 +190,12 @@ export function runtimePlayerVipWidgetComposition(composition: Dict, state: Play
   });
 }
 
-export function runtimePlayerWidgetComponents(composition: Dict, player: Dict, answerState: PlayerAnswerBubbleRuntimeState): Dict[] {
+export function runtimePlayerWidgetComponents(composition: Dict, player: Dict): Dict[] {
   const color = String((player.avatar as Dict)?.color || "#22d3ee");
   const vipState = playerVipRuntimeState(player);
   return ((composition.components as Dict[]) || []).map((component) =>
     cloneArtComponent(component, (clone) => {
       applyRuntimePlayerColor(clone, color);
-      if (clone.id === PLAYER_ANSWER_BUBBLE_MC_ID || clone.id === "answer-bubble") {
-        clone.defaultAnimationState = answerState.visible ? "On" : "Park";
-      }
       if (clone.id === PLAYER_AVATAR_MC_ID || clone.id === "avatar") clone.defaultAnimationState = "On";
       if (clone.id === PLAYER_NAME_MC_ID || clone.id === "player-name") clone.defaultAnimationState = "On";
       if (clone.id === PLAYER_VIP_MC_ID || clone.id === "vip-badge") {
@@ -363,10 +359,9 @@ class PlayerRosterRenderer {
     const previousPlayerName = tile.dataset.playerName || "";
     const previousPlayerVip = tile.dataset.playerVip === "true";
 
-    renderer.render(runtimePlayerWidgetComponents(composition, player, answerState), canvas, {
+    renderer.render(runtimePlayerWidgetComponents(composition, player), canvas, {
       defaultAnimation: "On",
       instant: true,
-      timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
       respectDefaultAnimationState: true
     });
 
@@ -670,7 +665,6 @@ class PlayerRosterRenderer {
   resetAnswerBubbles(): void {
     this.renderedAnswersShown = true;
     this.answerAnimationEndsAt = 0;
-    this.host?.classList.remove("answers-hidden");
   }
 
   setAnswerBubblesShown(isShown: boolean, options: Dict = {}): number {
@@ -679,7 +673,6 @@ class PlayerRosterRenderer {
     const remainingDuration = this.answerBubbleAnimationRemaining();
     const wasShown = this.currentAnswerBubblesShown();
     this.renderedAnswersShown = isShown !== false;
-    this.host.classList.toggle("answers-hidden", !this.renderedAnswersShown);
     if (!instant && wasShown === this.renderedAnswersShown && remainingDuration > 0) return remainingDuration;
 
     let duration = 0;

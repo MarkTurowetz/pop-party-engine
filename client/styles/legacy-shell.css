@@ -1346,11 +1346,6 @@ body.tool-dashboard-mode .layout-shell {
   100% { transform: translate(-50%, -26px) scale(0); opacity: 0; }
 }
 
-@keyframes answerBubbleUpdate {
-  from { transform: translateX(-50%) scale(1.2); }
-  to { transform: translateX(-50%) scale(1); }
-}
-
 .player-lobby.players-hidden .player-tile {
   transform: scale(0);
   opacity: 0;

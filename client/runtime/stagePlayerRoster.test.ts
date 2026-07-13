@@ -134,9 +134,9 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     const sharedBubble = {
       canvas: { width: 300, height: 180 },
       components: [
-        { id: "answer-text", kind: "text", defaultText: "ANSWER", fontColor: "#17131f" },
-        { id: "answer-bubble-card", kind: "shape", fillColor: "#fffdf4" },
-        { id: "answer-bubble-tail", kind: "shape", fillColor: "#fffdf4" }
+        { id: "answer-text", kind: "text", defaultText: "ANSWER", fontColor: "#17131f", defaultAnimationState: "Park" },
+        { id: "answer-bubble-card", kind: "shape", fillColor: "#fffdf4", defaultAnimationState: "Park" },
+        { id: "answer-bubble-tail", kind: "shape", fillColor: "#fffdf4", defaultAnimationState: "Park" }
       ]
     };
 
@@ -150,9 +150,9 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
 
     expect(sharedBubble.components[0].defaultText).toBe("ANSWER");
     expect(runtime.components).toEqual([
-      expect.objectContaining({ id: "answer-text", defaultAnimationState: "on", defaultText: "ARCTIC", fontColor: "rgba(23, 19, 31, 0.68)" }),
-      expect.objectContaining({ id: "answer-bubble-card", defaultAnimationState: "on", fillColor: "#d7d3c7" }),
-      expect.objectContaining({ id: "answer-bubble-tail", defaultAnimationState: "on", fillColor: "#d7d3c7" })
+      expect.objectContaining({ id: "answer-text", defaultAnimationState: "Park", defaultText: "ARCTIC", fontColor: "rgba(23, 19, 31, 0.68)" }),
+      expect.objectContaining({ id: "answer-bubble-card", defaultAnimationState: "Park", fillColor: "#d7d3c7" }),
+      expect.objectContaining({ id: "answer-bubble-tail", defaultAnimationState: "Park", fillColor: "#d7d3c7" })
     ]);
   });
 
@@ -160,7 +160,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     const playerObject = {
       canvas: { width: 260, height: 260 },
       components: [
-        { id: "answer-bubble", kind: "reference", artCompositionId: "player-answer-bubble", x: 130, y: 80, width: 225, height: 135 },
+        { id: "answer-bubble", kind: "reference", artCompositionId: "player-answer-bubble", x: 130, y: 80, width: 225, height: 135, defaultAnimationState: "Park" },
         { id: "player-name", kind: "reference", artCompositionId: "player-name-widget", x: 130, y: 300, width: 118, height: 34 },
         { id: "vip-badge", kind: "reference", artCompositionId: "player-vip-widget", x: 130, y: 334, width: 44, height: 22 },
         {
@@ -174,8 +174,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
 
     const components = runtimePlayerWidgetComponents(
       playerObject,
-      { avatar: { color: "#ff4d8d" }, isVip: true },
-      { hasAnswer: true, visible: true, text: "ARCTIC", nonce: "answer-1", correctness: "" }
+      { avatar: { color: "#ff4d8d" }, isVip: true }
     );
 
     expect(components[0]).toMatchObject({
@@ -183,7 +182,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       artCompositionId: "player-answer-bubble",
       width: 225,
       height: 135,
-      defaultAnimationState: "On"
+      defaultAnimationState: "Park"
     });
     expect(components[1]).toMatchObject({
       id: "player-name",
@@ -265,6 +264,62 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(playComponent).toHaveBeenCalledWith("vip-mc", "On", { instant: true });
     expect(playComponentTree).not.toHaveBeenCalled();
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
+  });
+
+  it("prepares answer content before playing the nested MC without attaching the parent timeline", () => {
+    const order: string[] = [];
+    const composition = {
+      id: PLAYER_WIDGET_COMPOSITION_ID,
+      canvas: { width: 300, height: 370 },
+      timeline: { fps: 30, frameCount: 33, labels: [{ name: "Park", frame: 0 }], commands: [], tracks: [] },
+      components: [
+        {
+          id: "player-answer-bubble-mc",
+          kind: "reference",
+          artCompositionId: "prefab-player-answer-bubble-mc",
+          defaultAnimationState: "Park"
+        }
+      ]
+    };
+    const objectHost = { style: { width: "", height: "", color: "" } } as unknown as HTMLElement;
+    const tile = {
+      dataset: { playerId: "p1" },
+      style: { setProperty: vi.fn() },
+      querySelector: () => objectHost
+    } as unknown as HTMLElement;
+    const renderer = {
+      render: vi.fn(
+        (_components: Record<string, unknown>[], _canvas: Record<string, unknown>, _options: Record<string, unknown>) =>
+          order.push("render")
+      ),
+      isComponentVisible: vi.fn(() => false),
+      playComponent: vi.fn((componentId: string, animation: string) => {
+        order.push(`${componentId}:${animation}`);
+        return 333;
+      }),
+      stopAtComponent: vi.fn(() => 0)
+    };
+    const roster = PartyGamePlayerRoster.createRenderer({
+      getComposition: (id: string) => (id === PLAYER_WIDGET_COMPOSITION_ID ? composition : null)
+    });
+    roster.tileRenderers.set(tile, renderer);
+
+    expect(
+      roster.syncPlayerObject(tile, {
+        id: "p1",
+        name: "Ava",
+        avatar: { shape: "rex", color: "#22d3ee" },
+        displayedAnswer: { text: "ARCTIC", nonce: "answer-1" }
+      })
+    ).toBe(333);
+
+    const [renderedComponents, , renderOptions] = renderer.render.mock.calls[0];
+    expect(renderedComponents[0]).toMatchObject({
+      id: "player-answer-bubble-mc",
+      defaultAnimationState: "Park"
+    });
+    expect(renderOptions).not.toHaveProperty("timeline");
+    expect(order).toEqual(["render", "player-answer-bubble-mc:Appear"]);
   });
 
   it("shows and hides roster players through the avatar, name, and VIP MC children", () => {
