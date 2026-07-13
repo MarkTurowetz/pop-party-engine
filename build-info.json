@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.180",
+  "version": "1.0.17.752",
   "baseVersion": "1.0.17",
-  "buildNumber": 180,
-  "commit": "10b08e2",
-  "branch": "codex/add-global-controller-layout",
-  "generatedAt": "2026-06-23T19:05:30.771Z"
+  "buildNumber": 752,
+  "commit": "3b31e333",
+  "branch": "codex/voting-card-data",
+  "generatedAt": "2026-07-13T03:11:39.763Z"
 }
