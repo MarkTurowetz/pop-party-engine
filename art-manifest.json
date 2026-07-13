@@ -9343,6 +9343,160 @@
         ]
       },
       "updatedAt": "2026-07-13T06:17:57.545Z"
+    },
+    "prefab-voting-card-bg": {
+      "name": "Voting Card Bg",
+      "description": "Reusable art prefab.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 600,
+        "height": 230
+      },
+      "components": [
+        {
+          "id": "shape-4dd0ececeb4c",
+          "name": "Voting Card Surface",
+          "instanceLabel": "cardSurface",
+          "kind": "shape",
+          "x": 300,
+          "y": 115,
+          "width": 520,
+          "height": 150,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rounded",
+          "fillColor": "#e4a295",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 5,
+          "borderRadius": 16
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 3,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "Correct",
+            "frame": 1
+          },
+          {
+            "name": "Incorrect",
+            "frame": 2
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 2,
+            "type": "stop",
+            "id": "stop-2"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-shape-4dd0ececeb4c",
+            "targetId": "shape-4dd0ececeb4c",
+            "keyframes": [
+              {
+                "id": "key-shape-4dd0ececeb4c-0",
+                "frame": 0,
+                "props": {
+                  "x": 300,
+                  "y": 115,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rounded",
+                  "fillColor": "#fff8d6",
+                  "fillCss": "",
+                  "borderColor": "#17131f",
+                  "borderWidth": 5,
+                  "borderRadius": 16
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-shape-4dd0ececeb4c-1",
+                "frame": 1,
+                "props": {
+                  "x": 300,
+                  "y": 115,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rounded",
+                  "fillColor": "#8fd685",
+                  "fillCss": "",
+                  "borderColor": "#17131f",
+                  "borderWidth": 5,
+                  "borderRadius": 16
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-shape-4dd0ececeb4c-2",
+                "frame": 2,
+                "props": {
+                  "x": 300,
+                  "y": 115,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "shapeStyle": "rounded",
+                  "fillColor": "#e4a295",
+                  "fillCss": "",
+                  "borderColor": "#17131f",
+                  "borderWidth": 5,
+                  "borderRadius": 16
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-13T06:18:03.868Z"
     }
   },
   "deletedCompositionIds": [],
