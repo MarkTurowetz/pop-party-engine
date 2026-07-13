@@ -26,12 +26,13 @@ export interface ControllerGlobalActionViewOptions {
   elements: Record<string, HTMLButtonElement & HTMLElement> & Record<string, HTMLElement>;
   hideViews: () => void;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
+  setShown?: (target: HTMLElement, isShown: boolean, options?: Dict) => void;
   setText?: (target: HTMLElement, value: unknown) => void;
   showView: (viewId: string) => void;
 }
 
 export function createControllerGlobalActionView(options: ControllerGlobalActionViewOptions) {
-  const { advanceStageClick, applyLayoutForPhase, elements, hideViews, setButtonText, setText, showView } = options;
+  const { advanceStageClick, applyLayoutForPhase, elements, hideViews, setButtonText, setShown, setText, showView } = options;
 
   const writeText =
     typeof setText === "function"
@@ -92,7 +93,8 @@ export function createControllerGlobalActionView(options: ControllerGlobalAction
     elements.button.dataset.optionId = config.optionId || "global.action";
     elements.button.dataset.actionId = config.actionId || "";
     elements.button.dataset.eventType = config.eventType || "";
-    elements.button.classList.toggle("hidden", config.showButton !== true);
+    if (setShown) setShown(elements.button, config.showButton === true, { instant: true });
+    else elements.button.classList.toggle("hidden", config.showButton !== true);
     elements.button.onclick = null;
 
     if (config.showButton === true) {

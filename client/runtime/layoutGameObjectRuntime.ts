@@ -564,6 +564,13 @@ function activateLayoutEntity(entity: Dict | null, options: Dict = {}): number {
   );
 }
 
+function deactivateLayoutEntity(entity: Dict | null): number {
+  if (!entity || typeof entity.playAnimation !== "function") return 0;
+  return Number(
+    (entity.playAnimation as (animation: string, playOptions: Dict) => number).call(entity, lifecycleLabels.off, { instant: true }) || 0
+  );
+}
+
 function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): unknown {
   const elementId = (action?.targetLayoutElementId as string) || "";
   const result = (duration: unknown, missing = false, reason = "") =>
@@ -601,6 +608,7 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
 export const PartyGameLayoutGameObjects = {
   activeDynamicLayoutArtInstanceIds,
   activateLayoutEntity,
+  deactivateLayoutEntity,
   applyLayoutElementBoxStyles,
   attachRenderedLayoutArtEntity,
   beginLayoutElementTargetApplication,

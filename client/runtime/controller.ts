@@ -95,11 +95,17 @@ function setControllerText(target: TextTarget | undefined, value: unknown): void
 
 function setControllerTextShown(target: TextTarget | undefined, isShown: boolean, options: Dict = {}): void {
   if (!target) return;
-  if (typeof target === "string" && typeof w.PartyGameLayoutText?.setControllerTextShown === "function") {
-    w.PartyGameLayoutText.setControllerTextShown(target, isShown, options);
+  const element = typeof target === "string" ? null : (target as HTMLElement);
+  const layoutHost = element?.closest?.("[data-controller-layout-element-id]") as HTMLElement | null;
+  const layoutTargetId =
+    typeof target === "string"
+      ? target
+      : layoutHost?.dataset.controllerLayoutElementId || element?.dataset.controllerLayoutElementId || "";
+  if (layoutTargetId && typeof w.PartyGameLayoutText?.setControllerTextShown === "function") {
+    w.PartyGameLayoutText.setControllerTextShown(layoutTargetId, isShown, options);
     return;
   }
-  (target as HTMLElement).classList?.toggle("hidden", isShown === false);
+  element?.classList?.toggle("hidden", isShown === false);
 }
 
 function setControllerButtonText(target: HTMLElement | undefined, value: unknown, spec: Dict = {}): void {
@@ -248,6 +254,7 @@ function getControllerGlobalActionView() {
       },
       hideViews: hideControllerViews,
       setButtonText: setControllerButtonText,
+      setShown: setControllerTextShown,
       setText: setControllerText,
       showView: (viewId: string) => getControllerViewState().show(viewId)
     })
@@ -304,6 +311,8 @@ function getControllerLobbyView() {
         startButton: el(w.startGameButton)
       },
       hideViews: hideControllerViews,
+      setButtonText: setControllerButtonText,
+      setShown: setControllerTextShown,
       setText: setControllerText,
       showView: (viewId: string) => getControllerViewState().show(viewId),
       setAvatar: setControllerAvatar
@@ -329,6 +338,7 @@ function getControllerTextInputView() {
       getVoiceInput: getControllerVoiceInput,
       hideViews: hideControllerViews,
       setText: setControllerText,
+      setTextShown: setControllerTextShown,
       showView: (viewId: string) => getControllerViewState().show(viewId),
       setPhaseActionId: (actionId: string) => {
         if (w.controllerState) w.controllerState.phaseActionId = actionId;
@@ -398,8 +408,8 @@ async function closeAvatarPicker({ commit = true }: { commit?: boolean } = {}): 
 
 function hideControllerViews(): void {
   getControllerViewState().hideAll();
-  w.controllerGlobalActionButton?.classList.add("hidden");
-  w.introPresentButton?.classList.add("hidden");
+  setControllerTextShown(w.controllerGlobalActionButton, false, { instant: true });
+  setControllerTextShown(w.introPresentButton, false, { instant: true });
 }
 
 async function submitControllerChoice(actionId: string, optionIndex: number, cardId = ""): Promise<void> {
@@ -424,7 +434,7 @@ async function submitControllerText(actionId: string, textOverride: string | nul
     if (result.lobby) renderControllerState(result.lobby as Dict);
   } catch (error) {
     setControllerText(w.controllerInvalidBanner, (error as Error).message);
-    w.controllerInvalidBanner?.classList.remove("hidden");
+    setControllerTextShown(w.controllerInvalidBanner, true, { instant: true });
     input.value = "";
     el<HTMLButtonElement>(w.controllerTextSubmitButton).disabled = true;
     el<HTMLButtonElement>(w.controllerVoiceButton).disabled = false;
@@ -528,6 +538,7 @@ function setupController(): void {
     normalizeStageCode: w.normalizeStageCode!,
     removeSessionValue: w.removeSessionValue!,
     setButtonText: setControllerButtonText,
+    setShown: setControllerTextShown,
     setLocalValue: w.setLocalValue!,
     setDismissedInvalidKey: (value: string) => {
       w.dismissedTextInvalidKey = value;

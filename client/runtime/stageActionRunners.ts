@@ -128,17 +128,13 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
     },
     setPlayerAnswersShown(action, runtime) {
       const existingDuration = (c.playerAnswerBubbleAnimationRemaining as () => number)();
-      const duration =
-        action.playerFilter && action.playerFilter !== "all"
-          ? action.instant
-            ? 0
-            : 500
-          : Math.max(
-              (c.setPlayerAnswerBubblesShown as (shown: boolean, o: Dict) => number)(action.isShown !== false, {
-                instant: action.instant === true
-              }),
-              existingDuration
-            );
+      const duration = Math.max(
+        (c.setPlayerAnswerBubblesShown as (shown: boolean, o: Dict) => number)(action.isShown !== false, {
+          instant: action.instant === true,
+          playerFilter: action.playerFilter || "all"
+        }),
+        existingDuration
+      );
       if (!runtime.isPrimary) runtime.applyEffect(action);
       if (runtime.isPrimary) completeAfter(action, runtime, duration);
     },

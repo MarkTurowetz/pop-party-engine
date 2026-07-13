@@ -43,13 +43,14 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
     applyLayoutForPhase((lobby.phase as string) || "lobby");
     showView("choice");
     writeText(elements.prompt, input.prompt || "Answer this question by tapping an answer");
+    showText(elements.prompt, true, { instant: true });
     elements.grid.replaceChildren();
 
     const answer = me.answer as Dict | undefined;
     const selectedIndex = Number.isFinite(Number(answer?.optionIndex)) ? Number(answer?.optionIndex) : -1;
     const isDone = input.mode === "submitOnce" && answer?.done === true;
     showText(elements.done, isDone as boolean, { instant: true });
-    elements.grid.classList.toggle("hidden", isDone as boolean);
+    showText(elements.grid, !isDone, { instant: true });
     if (isDone) {
       writeText(elements.done, `You chose: ${answer?.text || ""}`);
     }

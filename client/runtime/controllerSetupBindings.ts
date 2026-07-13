@@ -15,6 +15,7 @@ export interface ControllerSetupBindingsOptions {
   normalizeStageCode: (value: string) => string;
   removeSessionValue: (key: string) => void;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
+  setShown?: (target: HTMLElement, isShown: boolean, options?: Dict) => void;
   setLocalValue?: (key: string, value: string) => void;
   setDismissedInvalidKey: (key: string) => void;
   shouldAutoJoin: () => boolean;
@@ -30,6 +31,7 @@ export function createControllerSetupBindings(options: ControllerSetupBindingsOp
     normalizeStageCode,
     removeSessionValue,
     setButtonText,
+    setShown,
     setLocalValue,
     setDismissedInvalidKey,
     shouldAutoJoin,
@@ -95,7 +97,8 @@ export function createControllerSetupBindings(options: ControllerSetupBindingsOp
       if (answer?.invalid) {
         setDismissedInvalidKey(`${state?.phaseActionId || ""}:${answer.nonce || 0}`);
       }
-      elements.invalidBanner.classList.add("hidden");
+      if (setShown) setShown(elements.invalidBanner, false, { instant: true });
+      else elements.invalidBanner.classList.add("hidden");
       (elements.textSubmitButton as HTMLButtonElement).disabled = textInput.value.trim().length === 0;
     });
     textInput.addEventListener("keydown", (event) => {

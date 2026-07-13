@@ -10,6 +10,8 @@ function context() {
     runStageWipe: vi.fn(),
     playStageAudioAction: vi.fn(),
     playStageLayoutGameObjectAnimationForAction: vi.fn(() => 250),
+    playerAnswerBubbleAnimationRemaining: vi.fn(() => 0),
+    setPlayerAnswerBubblesShown: vi.fn(() => 500),
     voteRevealDurationMs: () => 0
   };
 }
@@ -66,6 +68,25 @@ describe("PartyGameStageActionRunners (ported)", () => {
     expect(c.completeFlowAction).not.toHaveBeenCalled();
     vi.advanceTimersByTime(250);
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a4");
+    vi.useRealTimers();
+  });
+
+  it("plays filtered player-answer lifecycle animations explicitly", () => {
+    vi.useFakeTimers();
+    const c = context();
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    runner.run(
+      { id: "hide-wrong", type: "setPlayerAnswersShown", isShown: false, instant: false, playerFilter: "wrong" },
+      { isPrimary: true, actionKey: "k" }
+    );
+
+    expect(c.setPlayerAnswerBubblesShown).toHaveBeenCalledWith(false, {
+      instant: false,
+      playerFilter: "wrong"
+    });
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(500);
+    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "hide-wrong");
     vi.useRealTimers();
   });
 });

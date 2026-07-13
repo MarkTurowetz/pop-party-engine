@@ -150,14 +150,30 @@ export function playerVipRuntimeState(player: Dict | null): PlayerVipRuntimeStat
 export function playerAnswerBubbleRuntimeState(player: Dict | null, answersShown = true): PlayerAnswerBubbleRuntimeState {
   const displayedAnswer = (player?.displayedAnswer as Dict) || null;
   const text = String(displayedAnswer?.text || "");
-  const hasAnswer = Boolean(text && displayedAnswer?.hidden !== true);
+  const hasAnswer = Boolean(text);
   return {
     hasAnswer,
-    visible: hasAnswer && answersShown !== false,
+    visible: hasAnswer && displayedAnswer?.hidden !== true && answersShown !== false,
     text,
     nonce: String(displayedAnswer?.nonce || ""),
     correctness: displayedAnswer?.correct === true ? "correct" : displayedAnswer?.correct === false ? "wrong" : ""
   };
+}
+
+export function playerMatchesAnswerFilter(player: Dict | null, playerFilter: unknown): boolean {
+  const filter = String(playerFilter || "all").trim().toLowerCase();
+  const answer = (player?.displayedAnswer as Dict) || null;
+  if (filter === "correct") return answer?.correct === true;
+  if (filter === "wrong") return answer?.correct === false;
+  return true;
+}
+
+function tileMatchesAnswerFilter(tile: El, player: Dict | null, playerFilter: string): boolean {
+  if (playerFilter === "correct" || playerFilter === "wrong") {
+    const renderedCorrectness = String(tile.dataset.answerBubbleCorrectness || "");
+    if (renderedCorrectness) return renderedCorrectness === playerFilter;
+  }
+  return playerMatchesAnswerFilter(player, playerFilter);
 }
 
 export function runtimeAnswerBubbleComposition(composition: Dict, state: PlayerAnswerBubbleRuntimeState): Dict {
@@ -475,7 +491,7 @@ class PlayerRosterRenderer {
     );
   }
 
-  render(players: Dict[] = []): void {
+  render(players: Dict[] = [], options: Dict = {}): void {
     if (!this.host) return;
     const existingTiles = this.existingTilesByPlayerId();
     const desiredIds = new Set(players.map((player) => player.id as string));
@@ -497,7 +513,7 @@ class PlayerRosterRenderer {
       } else {
         this.host!.insertBefore(tile, cursor);
       }
-      this.syncPlayerObject(tile, player);
+      this.syncPlayerObject(tile, player, options);
     });
     Array.from(this.host.querySelectorAll(".player-tile[data-player-id]")).forEach((node) => {
       const tile = node as El;
@@ -663,16 +679,37 @@ class PlayerRosterRenderer {
   setAnswerBubblesShown(isShown: boolean, options: Dict = {}): number {
     if (!this.host) return 0;
     const instant = options.instant === true;
+    const playerFilter = String(options.playerFilter || "all").trim().toLowerCase() || "all";
     const remainingDuration = this.answerBubbleAnimationRemaining();
     const wasShown = this.currentAnswerBubblesShown();
-    this.renderedAnswersShown = isShown !== false;
-    if (!instant && wasShown === this.renderedAnswersShown && remainingDuration > 0) return remainingDuration;
+    if (playerFilter === "all") this.renderedAnswersShown = isShown !== false;
+    if (playerFilter === "all" && !instant && wasShown === this.renderedAnswersShown && remainingDuration > 0) return remainingDuration;
 
     let duration = 0;
     for (const node of Array.from(this.host.querySelectorAll(".player-tile[data-player-id]"))) {
       const tile = node as El;
       const player = this.tilePlayers.get(tile);
-      if (player) duration = Math.max(duration, this.syncPlayerObject(tile, player, { instant }));
+      if (!player || !tileMatchesAnswerFilter(tile, player, playerFilter)) continue;
+      if (playerFilter === "all") {
+        duration = Math.max(duration, this.syncPlayerObject(tile, player, { instant }));
+        continue;
+      }
+      const renderer = this.tileRenderers.get(tile);
+      if (!renderer) continue;
+      const state = playerAnswerBubbleRuntimeState(player, true);
+      state.visible = state.hasAnswer && isShown !== false;
+      duration = Math.max(
+        duration,
+        this.syncAnswerBubbleComponent(tile, renderer, state, {
+          instant,
+          previousVisible: tile.dataset.answerBubbleVisible === "true",
+          previousNonce: tile.dataset.answerBubbleNonce || "",
+          previousText: tile.dataset.answerBubbleText || "",
+          previousCorrectness: tile.dataset.answerBubbleCorrectness || ""
+        })
+      );
+      tile.dataset.answerBubbleHasAnswer = state.hasAnswer ? "true" : "false";
+      tile.dataset.answerBubbleVisible = state.visible ? "true" : "false";
     }
     this.answerAnimationEndsAt = duration > 0 ? Date.now() + duration : 0;
     return duration;

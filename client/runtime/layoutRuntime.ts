@@ -47,6 +47,7 @@ const {
   createDynamicLayoutArtInstanceApi,
   createPlacedLayoutEntityRegistrar,
   createPlacedLayoutGameObjectTargetResolver,
+  deactivateLayoutEntity,
   finishLayoutElementTargetApplication,
   layoutElementTargetMatchesSelector,
   layoutElementVisibilityKey,
@@ -196,7 +197,7 @@ function createLayoutGameObjectRegistry(visibilityOverrides: Map<string, boolean
 function stageLayoutGameObjectRegistry(): Dict | null {
   if (stageLayoutGameObjects) return stageLayoutGameObjects;
   stageLayoutGameObjects = createLayoutGameObjectRegistry(stageLayoutGameObjectVisibilityOverrides, {
-    hiddenClasses: ["stage-layout-visual-hidden"], motionHiddenClasses: ["stage-layout-visual-hidden"], exitingClass: "stage-layout-visual-exiting", updateClass: "stage-layout-visual-update", instantClass: "stage-layout-visual-instant"
+    hiddenClasses: ["stage-layout-visual-hidden", "hidden"], motionHiddenClasses: ["stage-layout-visual-hidden", "hidden"], exitingClass: "stage-layout-visual-exiting", updateClass: "stage-layout-visual-update", instantClass: "stage-layout-visual-instant"
   });
   return stageLayoutGameObjects;
 }
@@ -204,7 +205,7 @@ function stageLayoutGameObjectRegistry(): Dict | null {
 function controllerLayoutGameObjectRegistry(): Dict | null {
   if (!controllerLayoutGameObjects) {
     controllerLayoutGameObjects = createLayoutGameObjectRegistry(controllerLayoutVisibilityOverrides, {
-      hiddenClasses: ["controller-layout-visual-hidden"], motionHiddenClasses: ["controller-layout-visual-hidden"], exitingClass: "controller-layout-visual-exiting", updateClass: "controller-layout-visual-update", instantClass: "controller-layout-visual-instant", layoutHiddenClasses: ["controller-layout-hidden"]
+      hiddenClasses: ["controller-layout-visual-hidden", "hidden"], motionHiddenClasses: ["controller-layout-visual-hidden", "hidden"], exitingClass: "controller-layout-visual-exiting", updateClass: "controller-layout-visual-update", instantClass: "controller-layout-visual-instant", layoutHiddenClasses: ["controller-layout-hidden"]
     });
   }
   return controllerLayoutGameObjects;
@@ -286,6 +287,9 @@ function clearControllerLayoutTargets(): void {
       continue;
     }
     const elementId = target.dataset.controllerLayoutElementId || "";
+    if (elementId) {
+      deactivateLayoutEntity(controllerLayoutEntityForElementId(elementId, target));
+    }
     if (elementId) clearControllerArtInstanceRenderer(elementId, target);
     target.classList.remove("controller-layout-target", "controller-widget-art-host", "has-controller-widget-art", "controller-layout-visual-hidden", "controller-layout-visual-exiting", "controller-layout-visual-update", "controller-layout-visual-instant", "controller-layout-transition-suppressed", "controller-global-layout-target");
     target.classList.add("controller-layout-hidden");
@@ -680,6 +684,10 @@ function clearStageLayoutTargets(): void {
     if (target) targets.add(target);
   }
   for (const target of targets) {
+    const elementId = target.dataset.stageLayoutElementId || "";
+    if (elementId) {
+      deactivateLayoutEntity(stageLayoutEntityForElementId(elementId, target));
+    }
     target.classList.remove("stage-layout-target", "stage-global-layout-target", "stage-layout-hidden", "stage-layout-visual-update", "stage-layout-visual-instant", "stage-layout-transition-suppressed");
     for (const prop of ["--stage-layout-x", "--stage-layout-y", "--stage-layout-w", "--stage-layout-h", "--stage-layout-scale", "--stage-layout-rotation", "--stage-object-visible-scale", "--stage-text-color", "--stage-text-font-size", "color", "font-size"]) {
       target.style.removeProperty(prop);
@@ -714,14 +722,14 @@ function applyStageLayoutForPhase(phase: string): void {
   if (globalLayout.hiddenInStates === true) {
     for (const element of (globalLayout.elements as Dict[]) || []) {
       const target = stageLayoutTargetElement(element);
-      if (target) target.classList.add("stage-layout-hidden");
+      if (target) deactivateLayoutEntity(registerStageLayoutEntity(element, target, true));
     }
     return;
   }
   for (const element of (globalLayout.elements as Dict[]) || []) {
     if (hiddenGlobals.has(element.id as string)) {
       const target = stageLayoutTargetElement(element);
-      if (target) target.classList.add("stage-layout-hidden");
+      if (target) deactivateLayoutEntity(registerStageLayoutEntity(element, target, true));
       continue;
     }
     applyStageElementLayout(element, true);

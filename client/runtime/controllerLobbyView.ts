@@ -11,6 +11,7 @@ export interface ControllerLobbyViewOptions {
   elements: Record<string, HTMLButtonElement & HTMLElement> & Record<string, HTMLElement>;
   hideViews: () => void;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
+  setShown?: (target: HTMLElement, isShown: boolean, options?: Dict) => void;
   setText?: (target: HTMLElement, value: unknown) => void;
   setAvatar: (me: Dict) => void;
   showView: (viewId: string) => void;
@@ -23,7 +24,7 @@ export interface ControllerLobbyView {
 }
 
 export function createControllerLobbyView(options: ControllerLobbyViewOptions): ControllerLobbyView {
-  const { applyLayoutForPhase, elements, hideViews, setButtonText, setText, setAvatar, showView } = options;
+  const { applyLayoutForPhase, elements, hideViews, setButtonText, setShown, setText, setAvatar, showView } = options;
 
   const writeText =
     typeof setText === "function"
@@ -32,33 +33,37 @@ export function createControllerLobbyView(options: ControllerLobbyViewOptions): 
           PartyGameControllerText.setText(target, value);
         };
   const writeButtonText = typeof setButtonText === "function" ? setButtonText : (writeText as (t: HTMLElement, v: unknown, s?: Dict) => void);
+  const showButton = (target: HTMLElement, isShown: boolean) => {
+    if (setShown) setShown(target, isShown, { instant: true });
+    else target.classList.toggle("hidden", !isShown);
+  };
 
   function renderMissingPlayer(): void {
     writeText(elements.meta, "Reconnecting to lobby");
     hideViews();
-    elements.introPresentButton.classList.add("hidden");
+    showButton(elements.introPresentButton, false);
     applyLayoutForPhase("lobby");
     showView("lobby");
-    elements.startButton.classList.add("hidden");
+    showButton(elements.startButton, false);
   }
 
   function renderInGamePhase(me: Dict, phase: string): void {
     hideViews();
     applyLayoutForPhase(phase);
     if (phase === "intro") showView("intro");
-    elements.introPresentButton.classList.toggle("hidden", !(me.isVip && phase === "intro"));
+    showButton(elements.introPresentButton, me.isVip === true && phase === "intro");
     elements.introPresentButton.disabled = !(me.isVip && phase === "intro");
   }
 
   function renderLobby(lobby: Dict, me: Dict, phase: string): number | null {
     hideViews();
-    elements.introPresentButton.classList.add("hidden");
+    showButton(elements.introPresentButton, false);
     applyLayoutForPhase(phase);
     showView("lobby");
     writeText(elements.playerName, me.name);
     setAvatar(me);
     writeText(elements.meta, me.isVip ? "VIP Player" : "Waiting for the VIP");
-    elements.startButton.classList.toggle("hidden", !me.isVip);
+    showButton(elements.startButton, me.isVip === true);
     elements.startButton.classList.toggle("danger-button", phase === "starting");
     writeButtonText(elements.startButton, phase === "starting" ? "Cancel" : "Start Game", { width: 260, height: 64, fontSize: 24 });
     elements.startButton.dataset.optionId = phase === "starting" ? "lobby.cancelStart" : "lobby.startGame";

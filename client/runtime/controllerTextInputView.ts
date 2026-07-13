@@ -62,11 +62,11 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
 
   function setVisibility({ isDone, isVoiceInput, showInvalid }: { isDone: boolean; isVoiceInput: boolean; showInvalid: boolean }): void {
     showText(elements.done, isDone, { instant: true });
-    elements.input.classList.toggle("hidden", isDone || isVoiceInput);
-    elements.submitButton.classList.toggle("hidden", isDone || isVoiceInput);
-    elements.voiceButton.classList.toggle("hidden", isDone || !isVoiceInput);
+    showText(elements.input, !isDone && !isVoiceInput, { instant: true });
+    showText(elements.submitButton, !isDone && !isVoiceInput, { instant: true });
+    showText(elements.voiceButton, !isDone && isVoiceInput, { instant: true });
     showText(elements.voiceStatus, !isDone && isVoiceInput, { instant: true });
-    elements.invalidBanner.classList.toggle("hidden", !showInvalid || isDone);
+    showText(elements.invalidBanner, showInvalid && !isDone, { instant: true });
   }
 
   function render(lobby: Dict, me: Dict): boolean {
@@ -84,6 +84,7 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
     applyLayoutForPhase((lobby.phase as string) || "lobby");
     showView("textInput");
     writeText(elements.prompt, input.prompt || (isVoiceInput ? "Say your answer" : "Write your answer"));
+    showText(elements.prompt, true, { instant: true });
     writeText(elements.invalidBanner, "Your submission was invalid");
     (elements.input as HTMLInputElement).placeholder = (input.placeholder as string) || "Answer here";
     setInputLimit(Number(input.characterLimit || 0));

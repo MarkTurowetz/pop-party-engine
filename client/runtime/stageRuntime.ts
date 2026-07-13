@@ -206,8 +206,8 @@ function playerAnswerBubbleAnimationRemaining(): number {
   return ((playerRosterRenderer() as { answerBubbleAnimationRemaining?: () => number } | null)?.answerBubbleAnimationRemaining?.() as number) || 0;
 }
 
-function renderStagePlayers(players: Dict[]): void {
-  (playerRosterRenderer() as { render?: (p: Dict[]) => void } | null)?.render?.(players);
+function renderStagePlayers(players: Dict[], options: Dict = {}): void {
+  (playerRosterRenderer() as { render?: (p: Dict[], o?: Dict) => void } | null)?.render?.(players, options);
 }
 
 function setPlayersShown(isShown: boolean, options: Dict = {}): number {
@@ -622,7 +622,9 @@ function applyStageState(lobby: Dict): void {
   renderStageWidgetBinding("presentationClickPrompt");
   setStageWidgetGameObjectShown("presentationClickPrompt", isPresentedTextAction(action) && (action?.timing as Dict)?.mode !== "S+", { scope: "global" });
   clearStageDecisionDebug(lobby);
-  renderStagePlayers(players);
+  renderStagePlayers(players, {
+    instant: action?.type === "setPlayerAnswersShown" && action.instant === true
+  });
   setPlayersShown(lobby.playersShown !== false);
   const nextAnswersShown = lobby.playerAnswersShown !== false;
   const answersAreStillAnimating = playerAnswerBubbleAnimationRemaining() > 0;

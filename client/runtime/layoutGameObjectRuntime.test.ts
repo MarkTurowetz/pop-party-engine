@@ -24,6 +24,13 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(playAnimation).not.toHaveBeenCalled();
   });
 
+  it("deactivates removed layout entities through their Off timeline", () => {
+    const playAnimation = vi.fn(() => 0);
+
+    expect(PartyGameLayoutGameObjects.deactivateLayoutEntity({ playAnimation })).toBe(0);
+    expect(playAnimation).toHaveBeenCalledWith("Off", { instant: true });
+  });
+
   it("exposes the layout game-object helpers", () => {
     expect(PartyGameLayoutGameObjects.activeDynamicLayoutArtInstanceIds).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver).toBeTypeOf("function");

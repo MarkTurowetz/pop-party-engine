@@ -90,9 +90,39 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       correctness: "wrong"
     });
     expect(playerAnswerBubbleRuntimeState({ displayedAnswer: { text: "HIDDEN", hidden: true } })).toMatchObject({
-      hasAnswer: false,
+      hasAnswer: true,
       visible: false
     });
+  });
+
+  it("plays Disappear for filtered answer bubbles instead of relying on hidden state", () => {
+    const tile = {
+      dataset: {
+        answerBubbleCorrectness: "wrong",
+        answerBubbleHasAnswer: "true",
+        answerBubbleNonce: "answer-1",
+        answerBubbleText: "ARCTIC",
+        answerBubbleVisible: "true",
+        playerId: "p1",
+        playerObjectCompositionId: PLAYER_WIDGET_COMPOSITION_ID
+      }
+    } as unknown as HTMLElement;
+    const host = { querySelectorAll: () => [tile] } as unknown as HTMLElement;
+    const playComponent = vi.fn(() => 333);
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    roster.tilePlayers.set(tile, {
+      displayedAnswer: { correct: null, hidden: true, nonce: "answer-1", text: "ARCTIC" }
+    });
+    roster.tileRenderers.set(tile, {
+      render: vi.fn(),
+      isComponentVisible: vi.fn(() => true),
+      playComponent
+    });
+
+    expect(roster.setAnswerBubblesShown(false, { playerFilter: "wrong" })).toBe(333);
+    expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Disappear", { instant: false });
+    expect(tile.dataset.answerBubbleVisible).toBe("false");
+    expect(tile.dataset.answerBubbleHasAnswer).toBe("true");
   });
 
   it("injects player names without changing authored lifecycle states", () => {
