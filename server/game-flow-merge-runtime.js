@@ -1,8 +1,8 @@
-function createGameFlowMergeRuntime({ readGameFlowSource }) {
+function createGameFlowMergeRuntime({ readGameFlowSource, requiredFlowStates = [] }) {
   function mergeFlowWithExistingSubActions(incomingFlow, existingFlow = null) {
-    const incomingStates = Array.isArray(incomingFlow?.states) ? incomingFlow.states : [];
-    if (incomingStates.length === 0) return incomingFlow;
     const existing = existingFlow || readGameFlowSource();
+    const submittedStates = Array.isArray(incomingFlow?.states) ? incomingFlow.states : [];
+    const incomingStates = submittedStates.length > 0 ? submittedStates : existing?.states || [];
 
     const existingActionsById = new Map();
     for (const state of existing?.states || []) {
@@ -11,15 +11,42 @@ function createGameFlowMergeRuntime({ readGameFlowSource }) {
       }
     }
 
+    const mergedStates = incomingStates.map((state) => ({
+      ...state,
+      actions: Array.isArray(state.actions)
+        ? state.actions.map((action) => mergeActionSubActions(action, existingActionsById))
+        : state.actions
+    }));
+
+    restoreRequiredStates(mergedStates, existing?.states || []);
+
     return {
       ...incomingFlow,
-      states: incomingStates.map((state) => ({
-        ...state,
-        actions: Array.isArray(state.actions)
-          ? state.actions.map((action) => mergeActionSubActions(action, existingActionsById))
-          : state.actions
-      }))
+      states: mergedStates
     };
+  }
+
+  function restoreRequiredStates(states, existingStates) {
+    const requiredIds = requiredFlowStates.map((state) => state?.id).filter(Boolean);
+    const existingById = new Map(existingStates.map((state) => [state?.id, state]));
+    const fallbackById = new Map(requiredFlowStates.map((state) => [state?.id, state]));
+
+    for (const [requiredIndex, requiredId] of requiredIds.entries()) {
+      if (states.some((state) => state?.id === requiredId)) continue;
+      const restoredState = existingById.get(requiredId) || fallbackById.get(requiredId);
+      if (!restoredState) continue;
+
+      const nextRequiredIds = requiredIds.slice(requiredIndex + 1);
+      const nextRequiredIndex = states.findIndex((state) => nextRequiredIds.includes(state?.id));
+      if (nextRequiredIndex >= 0) {
+        states.splice(nextRequiredIndex, 0, restoredState);
+        continue;
+      }
+
+      const previousRequiredIds = requiredIds.slice(0, requiredIndex).reverse();
+      const previousRequiredIndex = states.findIndex((state) => previousRequiredIds.includes(state?.id));
+      states.splice(previousRequiredIndex >= 0 ? previousRequiredIndex + 1 : 0, 0, restoredState);
+    }
   }
 
   function indexActionTree(action, actionsById) {

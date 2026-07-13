@@ -354,7 +354,10 @@ const {
 
 const {
   mergeFlowWithExistingSubActions
-} = createGameFlowMergeRuntime({ readGameFlowSource });
+} = createGameFlowMergeRuntime({
+  readGameFlowSource,
+  requiredFlowStates: defaultGameFlow.states.filter((state) => state.id === "lobby" || state.id === "intro")
+});
 
 const {
   createLayoutStateForFlowState
