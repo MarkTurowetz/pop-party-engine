@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
+import { ColorPickerField } from "../common/ColorPickerField";
 import { artCompositionVisualBounds } from "./artCompositionBounds";
 import {
   artPreviewScaleFromWheel,
@@ -1567,6 +1568,15 @@ function ArtComponentInspector({
       />
     </label>
   );
+  const colorField = (key: string, label: string) => (
+    <ColorPickerField
+      key={`${editableComponents.map((target) => target.id).join(":")}-${timelineContext?.frame ?? "base"}-${key}`}
+      dataField={key}
+      label={label}
+      value={frameValue(key)}
+      onCommit={(value) => commit({ [key]: value } as Partial<ArtComponent>)}
+    />
+  );
 
   const initialSpriteSourceIsEmpty = !primaryComponent.imageAssetId && !primaryComponent.imageDataUrl;
   const fitInitialSpriteBounds = async (url: string): Promise<Partial<ArtComponent>> => {
@@ -1666,9 +1676,9 @@ function ArtComponentInspector({
               ))}
             </select>
           </label>
-          {textField("fillColor", "Fill Color")}
+          {colorField("fillColor", "Fill Color")}
           {textField("fillCss", "Fill CSS (gradient)")}
-          {textField("borderColor", "Border Color")}
+          {colorField("borderColor", "Border Color")}
           {numberField("borderWidth", "Border Width")}
           {numberField("borderRadius", "Border Radius")}
         </>
@@ -1716,7 +1726,7 @@ function ArtComponentInspector({
               onChange={(event) => commit({ autoFitText: event.target.checked } as Partial<ArtComponent>)}
             />
           </label>
-          {textField("fontColor", "Font Color")}
+          {colorField("fontColor", "Font Color")}
         </>
       ) : null}
       {supportsSprite ? (
@@ -1758,7 +1768,7 @@ function ArtComponentInspector({
               <option value="fill">Fill</option>
             </select>
           </label>
-          {normalizeSpriteRenderMode(frameValue("spriteRenderMode")) === "tinted" ? textField("imageTint", "Tint") : null}
+          {normalizeSpriteRenderMode(frameValue("spriteRenderMode")) === "tinted" ? colorField("imageTint", "Tint") : null}
         </>
       ) : null}
     </section>
