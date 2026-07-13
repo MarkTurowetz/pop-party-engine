@@ -7286,6 +7286,10 @@
           "height": 150,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "shapeStyle": "rounded",
@@ -7293,11 +7297,7 @@
           "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 5,
-          "borderRadius": 16,
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center"
+          "borderRadius": 16
         }
       ],
       "timeline": {
@@ -7319,25 +7319,25 @@
         ],
         "commands": [
           {
-            "id": "stop-0",
             "frame": 0,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-0"
           },
           {
-            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
+            "id": "setvisible-0-false",
             "target": "false"
           },
           {
-            "id": "stop-1",
             "frame": 1,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-1"
           },
           {
-            "id": "setvisible-1-true",
             "frame": 1,
             "type": "setVisible",
+            "id": "setvisible-1-true",
             "target": "true"
           }
         ],
@@ -7358,7 +7358,7 @@
                   "rotation": 0,
                   "opacity": 1,
                   "visible": false,
-                  "fillColor": "#60d394"
+                  "fillColor": "#fff8d6"
                 },
                 "easing": "hold"
               },
@@ -7382,7 +7382,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T03:08:11.232Z"
+      "updatedAt": "2026-07-13T06:17:49.716Z"
     },
     "prefab-voting-card-art-mc": {
       "name": "Voting Card Art MC",
