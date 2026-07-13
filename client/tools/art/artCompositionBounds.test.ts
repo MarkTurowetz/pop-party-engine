@@ -114,4 +114,19 @@ describe("artCompositionContentBounds", () => {
     expect(result.width).toBe(44);
     expect(result.height).toBe(22);
   });
+
+  it("uses the same scoped frame values as referenced artwork rendering", () => {
+    const answer = composition("answer", {
+      components: [{ id: "text", name: "Text", kind: "text", x: 100, y: 50, width: 200, height: 40 }]
+    });
+
+    const result = artCompositionContentBounds(answer, new Map([[answer.id, answer]]), {
+      targetPath: ["answer-instance"],
+      timelineFrameOverrides: {
+        "answer-instance/text": { x: -100, y: -50, width: 400, height: 80 }
+      }
+    });
+
+    expect(result).toEqual({ minX: -300, minY: -90, maxX: 100, maxY: -10, width: 400, height: 80 });
+  });
 });

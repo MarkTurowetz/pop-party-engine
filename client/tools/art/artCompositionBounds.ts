@@ -13,6 +13,11 @@ export interface ArtCompositionBoundsOptions {
   padding?: number;
 }
 
+export interface ArtCompositionContentBoundsOptions {
+  targetPath?: string[];
+  timelineFrameOverrides?: Record<string, Record<string, unknown>> | null;
+}
+
 type ArtCompositionResolver = (id: string) => ArtComposition | null;
 
 function num(value: unknown, fallback = 0): number {
@@ -82,10 +87,15 @@ function componentsBounds(
   components: ArtComponent[],
   resolveComposition: ArtCompositionResolver,
   referencePath: Set<string>,
-  contentOnly = false
+  contentOnly = false,
+  options: ArtCompositionContentBoundsOptions = {},
+  targetPath: string[] = options.targetPath || []
 ): ArtBounds | null {
   return components.reduce<ArtBounds | null>(
-    (current, component) => expand(current, componentBounds(component, resolveComposition, referencePath, contentOnly)),
+    (current, component) => {
+      const componentPath = [...targetPath, String(component.id || "").trim()].filter(Boolean);
+      return expand(current, componentBounds(component, resolveComposition, referencePath, contentOnly, options, componentPath));
+    },
     null
   );
 }
@@ -123,30 +133,38 @@ function componentBounds(
   component: ArtComponent,
   resolveComposition: ArtCompositionResolver,
   referencePath: Set<string>,
-  contentOnly = false
+  contentOnly = false,
+  options: ArtCompositionContentBoundsOptions = {},
+  componentPath: string[] = [String(component.id || "").trim()].filter(Boolean)
 ): ArtBounds {
-  const own = componentBox(component);
-  const width = Math.max(1, num(component.width, 1));
-  const height = Math.max(1, num(component.height, 1));
-  const left = num(component.x, 0) - width / 2;
-  const top = num(component.y, 0) - height / 2;
-  const isTransparentGroup = component.kind === "container";
+  const scopedId = componentPath.join("/");
+  const unscopedOverride = componentPath.length === 1 ? options.timelineFrameOverrides?.[component.id] : undefined;
+  const override = options.timelineFrameOverrides?.[scopedId] || unscopedOverride || {};
+  const resolved = { ...component, ...override } as ArtComponent;
+  const own = componentBox(resolved);
+  const width = Math.max(1, num(resolved.width, 1));
+  const height = Math.max(1, num(resolved.height, 1));
+  const left = num(resolved.x, 0) - width / 2;
+  const top = num(resolved.y, 0) - height / 2;
+  const isTransparentGroup = resolved.kind === "container";
   let output: ArtBounds | null = contentOnly && isTransparentGroup ? null : own;
 
-  const referenced = referencedCompositionFor(component, resolveComposition, referencePath);
+  const referenced = referencedCompositionFor(resolved, resolveComposition, referencePath);
   if (referenced && !contentOnly) {
     const referencedBounds = componentsBounds(
       referenced.components || [],
       resolveComposition,
       new Set([...referencePath, String(referenced.id || "")]),
-      true
+      true,
+      options,
+      componentPath
     );
     if (referencedBounds) {
-      output = expand(output, transformedReferenceBounds(referencedBounds, component, referenced.canvas));
+      output = expand(output, transformedReferenceBounds(referencedBounds, resolved, referenced.canvas));
     }
   }
 
-  const childBounds = componentsBounds(component.children || [], resolveComposition, referencePath, contentOnly);
+  const childBounds = componentsBounds(resolved.children || [], resolveComposition, referencePath, contentOnly, options, componentPath);
   if (childBounds) output = expand(output, translateBounds(childBounds, left, top));
 
   return output || own;
@@ -169,17 +187,26 @@ export function artCompositionVisualBounds(
 
 export function artCompositionContentBoundsWithResolver(
   composition: ArtComposition,
-  resolveComposition: ArtCompositionResolver
+  resolveComposition: ArtCompositionResolver,
+  options: ArtCompositionContentBoundsOptions = {}
 ): ArtBounds {
   return (
-    componentsBounds(composition.components || [], resolveComposition, new Set([String(composition.id || "")]), true) ||
+    componentsBounds(
+      composition.components || [],
+      resolveComposition,
+      new Set([String(composition.id || "")]),
+      true,
+      options,
+      options.targetPath || []
+    ) ||
     bounds(0, 0, Math.max(1, num(composition.canvas?.width, 1)), Math.max(1, num(composition.canvas?.height, 1)))
   );
 }
 
 export function artCompositionContentBounds(
   composition: ArtComposition,
-  compositionById: Map<string, ArtComposition>
+  compositionById: Map<string, ArtComposition>,
+  options: ArtCompositionContentBoundsOptions = {}
 ): ArtBounds {
-  return artCompositionContentBoundsWithResolver(composition, (id) => compositionById.get(id) || null);
+  return artCompositionContentBoundsWithResolver(composition, (id) => compositionById.get(id) || null, options);
 }

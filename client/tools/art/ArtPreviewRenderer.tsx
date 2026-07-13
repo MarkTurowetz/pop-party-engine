@@ -191,7 +191,10 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const referencedComposition = referencedCompositionFor(component, referencePath);
     const referenceCanvas = referencedComposition?.canvas || { width, height };
     const referenceBounds = referencedComposition
-      ? artCompositionContentBounds(referencedComposition, props.compositionById)
+      ? artCompositionContentBounds(referencedComposition, props.compositionById, {
+          targetPath,
+          timelineFrameOverrides: referenceFrameOverrides
+        })
       : { minX: 0, minY: 0, width, height };
     const referenceScaleX = width / Math.max(1, referenceBounds.width);
     const referenceScaleY = height / Math.max(1, referenceBounds.height);

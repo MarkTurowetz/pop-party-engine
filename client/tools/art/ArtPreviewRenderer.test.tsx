@@ -186,6 +186,31 @@ describe("ArtPreviewRenderer transform origins", () => {
     expect(markup).not.toContain(">Text<");
   });
 
+  it("normalizes frame-zero artwork into the placed reference bounds", () => {
+    const answer = {
+      id: "answer",
+      name: "Answer",
+      surface: "stage",
+      canvas: { width: 200, height: 40 },
+      components: [{ id: "text", kind: "text", x: 100, y: 20, width: 200, height: 40, defaultText: "Answer" }],
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [],
+        commands: [],
+        tracks: [{ targetId: "text", keyframes: [{ frame: 0, props: { x: -100, y: -50, width: 400, height: 80 } }] }]
+      }
+    } as ArtComposition;
+    const reference = { id: "slot", kind: "reference", artCompositionId: answer.id, x: 300, y: 200, width: 200, height: 40 } as ArtComponent;
+
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer components={[reference]} compositionById={new Map([[answer.id, answer]])} />
+    );
+
+    expect(markup).toContain("scale(0.5, 0.5) translate(300px, 90px)");
+    expect(markup).toContain("left:-300px;top:-90px;width:400px;height:80px");
+  });
+
   it("does not leak an unscoped parent override into a same-named nested child", () => {
     const child = {
       id: "child",
