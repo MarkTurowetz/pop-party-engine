@@ -7843,17 +7843,17 @@
           "height": 78,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "defaultText": "ANSWER TEXT",
           "fontSize": 32,
           "autoFitText": true,
           "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center"
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         }
       ],
       "timeline": {
@@ -7965,7 +7965,8 @@
                   "width": 420,
                   "height": 78,
                   "scale": 1,
-                  "rotation": 0
+                  "rotation": 0,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "hold"
               },
@@ -7980,7 +7981,8 @@
                   "scale": 0,
                   "rotation": 0,
                   "opacity": 1,
-                  "visible": true
+                  "visible": true,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "easeOut"
               },
@@ -7995,7 +7997,8 @@
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
-                  "visible": true
+                  "visible": true,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "easeOut"
               },
@@ -8010,7 +8013,8 @@
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
-                  "visible": true
+                  "visible": true,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "hold"
               },
@@ -8025,7 +8029,8 @@
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
-                  "visible": true
+                  "visible": true,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "easeInOut"
               },
@@ -8040,7 +8045,8 @@
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
-                  "visible": true
+                  "visible": true,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "hold"
               },
@@ -8055,7 +8061,8 @@
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
-                  "visible": true
+                  "visible": true,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "easeIn"
               },
@@ -8070,7 +8077,8 @@
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
-                  "visible": true
+                  "visible": true,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "easeIn"
               },
@@ -8085,7 +8093,8 @@
                   "scale": 0,
                   "rotation": 0,
                   "opacity": 1,
-                  "visible": true
+                  "visible": true,
+                  "defaultText": "ANSWER TEXT ANSWER TEXT"
                 },
                 "easing": "hold"
               }
@@ -8093,7 +8102,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T03:08:11.234Z"
+      "updatedAt": "2026-07-13T06:17:54.373Z"
     },
     "prefab-voting-card-author-mc": {
       "name": "Voting Card Author MC",
