@@ -7407,6 +7407,10 @@
           "height": 150,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "shapeStyle": "rounded",
@@ -7414,18 +7418,9 @@
           "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 5,
-          "borderRadius": 16,
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center"
+          "borderRadius": 16
         },
         {
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center",
-          "locked": false,
           "id": "voting-card-correctness-state",
           "name": "Voting Card Correctness State",
           "instanceLabel": "correctnessState",
@@ -7436,6 +7431,11 @@
           "height": 150,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": true,
           "defaultAnimationState": "Neutral",
           "artCompositionId": "prefab-voting-card-correctness-state"
         }
@@ -7535,146 +7535,6 @@
           }
         ],
         "tracks": [
-          {
-            "id": "track-voting-card-surface",
-            "targetId": "voting-card-surface",
-            "keyframes": [
-              {
-                "id": "key-voting-card-surface-0",
-                "frame": 0,
-                "props": {
-                  "opacity": 1,
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 1,
-                  "rotation": 0
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "key-voting-card-surface-2",
-                "frame": 2,
-                "props": {
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 0,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "key-voting-card-surface-9",
-                "frame": 9,
-                "props": {
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 1.2,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "key-voting-card-surface-12",
-                "frame": 12,
-                "props": {
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "key-voting-card-surface-13",
-                "frame": 13,
-                "props": {
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 1.2,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeInOut"
-              },
-              {
-                "id": "key-voting-card-surface-16",
-                "frame": 16,
-                "props": {
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "key-voting-card-surface-17",
-                "frame": 17,
-                "props": {
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeIn"
-              },
-              {
-                "id": "key-voting-card-surface-22",
-                "frame": 22,
-                "props": {
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 1.2,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeIn"
-              },
-              {
-                "id": "key-voting-card-surface-32",
-                "frame": 32,
-                "props": {
-                  "x": 280,
-                  "y": 86,
-                  "width": 520,
-                  "height": 150,
-                  "scale": 0,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "hold"
-              }
-            ]
-          },
           {
             "id": "track-voting-card-correctness-state",
             "targetId": "voting-card-correctness-state",
@@ -7814,10 +7674,151 @@
                 "easing": "hold"
               }
             ]
+          },
+          {
+            "id": "track-voting-card-surface",
+            "targetId": "voting-card-surface",
+            "keyframes": [
+              {
+                "id": "key-voting-card-surface-0",
+                "frame": 0,
+                "props": {
+                  "opacity": 1,
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1,
+                  "rotation": 0,
+                  "fillColor": "#fff8d6"
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-voting-card-surface-2",
+                "frame": 2,
+                "props": {
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-voting-card-surface-9",
+                "frame": 9,
+                "props": {
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-voting-card-surface-12",
+                "frame": 12,
+                "props": {
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-voting-card-surface-13",
+                "frame": 13,
+                "props": {
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeInOut"
+              },
+              {
+                "id": "key-voting-card-surface-16",
+                "frame": 16,
+                "props": {
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-voting-card-surface-17",
+                "frame": 17,
+                "props": {
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-voting-card-surface-22",
+                "frame": 22,
+                "props": {
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-voting-card-surface-32",
+                "frame": 32,
+                "props": {
+                  "x": 280,
+                  "y": 86,
+                  "width": 520,
+                  "height": 150,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
           }
         ]
       },
-      "updatedAt": "2026-07-13T03:08:11.234Z"
+      "updatedAt": "2026-07-13T06:17:52.226Z"
     },
     "prefab-voting-card-answer-mc": {
       "name": "Voting Card Answer MC",
