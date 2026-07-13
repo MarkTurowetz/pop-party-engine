@@ -8971,30 +8971,6 @@
       },
       "components": [
         {
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center",
-          "locked": false,
-          "id": "voting-card-art-mc",
-          "name": "Voting Card Art MC",
-          "instanceLabel": "cardArt",
-          "kind": "reference",
-          "x": 280,
-          "y": 115,
-          "width": 560,
-          "height": 230,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "Park",
-          "artCompositionId": "prefab-voting-card-art-mc"
-        },
-        {
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center",
-          "locked": false,
           "id": "voting-card-answer-mc",
           "name": "Voting Card Answer MC",
           "instanceLabel": "answer",
@@ -9005,15 +8981,15 @@
           "height": 78,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "Park",
-          "artCompositionId": "prefab-voting-card-answer-mc"
-        },
-        {
           "opacity": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
           "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "prefab-voting-card-answer-mc"
+        },
+        {
           "id": "voting-card-author-mc",
           "name": "Voting Card Author MC",
           "instanceLabel": "author",
@@ -9024,15 +9000,15 @@
           "height": 28,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "Park",
-          "artCompositionId": "prefab-voting-card-author-mc"
-        },
-        {
           "opacity": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
           "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "prefab-voting-card-author-mc"
+        },
+        {
           "id": "voting-card-voters-mc",
           "name": "Voting Card Voters MC",
           "instanceLabel": "voters",
@@ -9043,15 +9019,15 @@
           "height": 48,
           "scale": 1,
           "rotation": 0,
-          "defaultAnimationState": "Park",
-          "artCompositionId": "prefab-voting-card-voters-mc"
-        },
-        {
           "opacity": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
           "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "prefab-voting-card-voters-mc"
+        },
+        {
           "id": "voting-card-vote-count-mc",
           "name": "Voting Card Vote Count MC",
           "instanceLabel": "voteCount",
@@ -9062,8 +9038,32 @@
           "height": 48,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
           "defaultAnimationState": "Park",
           "artCompositionId": "prefab-voting-card-vote-count-mc"
+        },
+        {
+          "id": "voting-card-art-mc",
+          "name": "Voting Card Art MC",
+          "instanceLabel": "cardArt",
+          "kind": "reference",
+          "x": 280,
+          "y": 115,
+          "width": 560,
+          "height": 230,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Park",
+          "artCompositionId": "prefab-voting-card-art-mc"
         }
       ],
       "timeline": {
@@ -9162,7 +9162,7 @@
         ],
         "tracks": []
       },
-      "updatedAt": "2026-07-13T03:08:11.234Z"
+      "updatedAt": "2026-07-13T05:01:33.684Z"
     }
   },
   "deletedCompositionIds": [],
