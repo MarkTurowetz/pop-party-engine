@@ -9175,7 +9175,7 @@
       "updatedAt": "2026-07-13T05:01:33.684Z"
     },
     "prefab-untitled-prefab": {
-      "name": "Untitled Prefab",
+      "name": "Vote Answer Text",
       "description": "Reusable art prefab.",
       "surface": "stage",
       "compositionKind": "prefab",
@@ -9187,14 +9187,14 @@
       },
       "components": [
         {
-          "id": "reference-a12f976b9ab1",
-          "name": "Voting Card Answer MC",
-          "instanceLabel": "votingCardAnswerMC",
-          "kind": "reference",
-          "x": 28.238,
-          "y": 17.836,
-          "width": 420,
-          "height": 78,
+          "id": "text-5dbbd4a7d096",
+          "name": "Text",
+          "instanceLabel": "text",
+          "kind": "text",
+          "x": 280,
+          "y": 115,
+          "width": 220,
+          "height": 60,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -9203,26 +9203,11 @@
           "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "",
-          "artCompositionId": "prefab-voting-card-answer-mc"
-        },
-        {
-          "id": "reference-4d5ffd173b11",
-          "name": "Voting Card Bg",
-          "instanceLabel": "votingCardBg",
-          "kind": "reference",
-          "x": 0,
-          "y": 0,
-          "width": 520,
-          "height": 150,
-          "scale": 1,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center",
-          "locked": false,
-          "defaultAnimationState": "",
-          "artCompositionId": "prefab-voting-card-bg"
+          "defaultText": "TEXT",
+          "fontSize": 48,
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         }
       ],
       "timeline": {
@@ -9230,7 +9215,7 @@
         "frameCount": 33,
         "labels": [
           {
-            "name": "Off",
+            "name": "Default",
             "frame": 0
           },
           {
@@ -9268,11 +9253,6 @@
             "frame": 0,
             "type": "stop",
             "id": "stop-0"
-          },
-          {
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
           },
           {
             "frame": 1,
@@ -9321,11 +9301,11 @@
         ],
         "tracks": [
           {
-            "id": "track-reference-a12f976b9ab1",
-            "targetId": "reference-a12f976b9ab1",
+            "id": "track-text-5dbbd4a7d096",
+            "targetId": "text-5dbbd4a7d096",
             "keyframes": [
               {
-                "id": "key-reference-a12f976b9ab1-0",
+                "id": "key-text-5dbbd4a7d096-0",
                 "frame": 0,
                 "props": {
                   "x": 0,
@@ -9334,7 +9314,33 @@
                   "height": 78,
                   "scale": 1,
                   "rotation": 0,
-                  "opacity": 1
+                  "opacity": 1,
+                  "defaultText": "Answer Text Answer Text",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 48,
+                  "fontColor": "#17131f",
+                  "autoFitText": true,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-text-5dbbd4a7d096-1",
+                "frame": 1,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 420,
+                  "height": 78,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "defaultText": "Answer Text Answer Text",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 48,
+                  "fontColor": "#17131f",
+                  "autoFitText": true
                 },
                 "easing": "hold"
               }
@@ -9342,7 +9348,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T06:17:57.545Z"
+      "updatedAt": "2026-07-13T06:22:38.630Z"
     },
     "prefab-voting-card-bg": {
       "name": "Voting Card Bg",
