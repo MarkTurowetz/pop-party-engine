@@ -1,6 +1,120 @@
 {
   "states": [
     {
+      "id": "lobby",
+      "name": "Lobby Game State",
+      "nodePosition": {
+        "x": 625,
+        "y": 70
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1530
+      },
+      "entryTargetActionId": "lobby-action-mqojohry",
+      "nextStateTargetId": "intro",
+      "actions": [
+        {
+          "id": "lobby-countdown-complete",
+          "name": "On Countdown Complete",
+          "type": "transitionState",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "lobby-action-mqprlx3p",
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          },
+          "subActions": [],
+          "trigger": "onCountdownComplete",
+          "targetState": "intro"
+        },
+        {
+          "id": "lobby-action-mqojohry",
+          "name": "Setup Game",
+          "type": "setupGame",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "lobby-action-mqpt9z90"
+        },
+        {
+          "id": "lobby-action-mqprlx3p",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          },
+          "nextTargetActionId": "return"
+        },
+        {
+          "id": "lobby-action-mqpt9z90",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "nextTargetActionId": "lobby-action-mqw4vt62"
+        },
+        {
+          "id": "lobby-action-mqw4vt62",
+          "name": "Display Text",
+          "type": "displayText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Party Game Template",
+          "textTarget": "stagetitle",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "lobby-countdown-complete"
+        }
+      ]
+    },
+    {
       "id": "intro",
       "name": "Game Intro Game State",
       "nodePosition": {
