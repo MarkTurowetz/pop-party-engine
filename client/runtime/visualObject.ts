@@ -609,7 +609,8 @@ class CssVisualObject {
       (effectiveAnimation === "appear" || effectiveAnimation === "on") &&
       (lifecycleState === "shown" || lifecycleState === "appearing")
     ) {
-      this.setVisibleState(true);
+      if (lifecycleState === "shown") this.applyShownState();
+      else this.setVisibleState(true);
       this.completeAfter(0, options.complete);
       return 0;
     }

@@ -211,7 +211,9 @@ function renderStagePlayers(players: Dict[], options: Dict = {}): void {
 }
 
 function setPlayersShown(isShown: boolean, options: Dict = {}): number {
-  return ((playerRosterRenderer() as { setShown?: (s: boolean, o: Dict) => number } | null)?.setShown?.(isShown, options) as number) || 0;
+  const layoutDuration = setStageLayoutElementGameObjectShown("playerLobby", w().playerLobby, isShown, { ...options, scope: "global" });
+  const rosterDuration = ((playerRosterRenderer() as { setShown?: (s: boolean, o: Dict) => number } | null)?.setShown?.(isShown, options) as number) || 0;
+  return Math.max(layoutDuration, rosterDuration);
 }
 
 function setPlayersShownForAction(action: Dict): number {
@@ -501,8 +503,6 @@ function renderStageWidgetBinding(bindingId: string, context: Dict = {}): Dict |
 function setStageLayoutElementGameObjectShown(elementId: string, host: El | null, isShown: boolean, options: Dict = {}): number {
   const shown = isShown !== false;
   const targetElementId = w().normalizeTextTargetId!(elementId);
-  if (host && shown) host.classList.remove("hidden");
-  if (host && !shown && options.instant === true && !host.classList.contains("stage-layout-target")) host.classList.add("hidden");
   if (!targetElementId || typeof w().setStageLayoutGameObjectShownForAction !== "function") {
     if (host) host.classList.toggle("hidden", !shown);
     return 0;
@@ -511,7 +511,6 @@ function setStageLayoutElementGameObjectShown(elementId: string, host: El | null
     { targetLayoutElementId: targetElementId, targetLayoutScope: options.scope || "moment", targetLayoutSurface: "stage", isShown: shown, instant: options.instant === true },
     { returnResult: true, suppressMissingWarning: true }
   ) as Dict;
-  if (host && result?.missing) host.classList.add("hidden");
   return Number(result?.duration || 0);
 }
 

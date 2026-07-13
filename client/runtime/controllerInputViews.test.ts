@@ -7,7 +7,7 @@ describe("createControllerChoiceInputView (ported)", () => {
     const view = createControllerChoiceInputView({
       applyLayoutForPhase: vi.fn(),
       bindPress: vi.fn(),
-      elements: {} as Record<string, HTMLElement>,
+      elements: {} as never,
       hideViews: vi.fn(),
       showView: vi.fn(),
       submitChoice: vi.fn()
@@ -22,7 +22,12 @@ describe("createControllerChoiceInputView (ported)", () => {
       grid: { replaceChildren: vi.fn() },
       prompt: {},
       state: {}
-    } as unknown as Record<string, HTMLElement>;
+    } as unknown as {
+      done: HTMLElement;
+      grid: HTMLElement;
+      prompt: HTMLElement;
+      state: HTMLElement;
+    };
     const view = createControllerChoiceInputView({
       applyLayoutForPhase: vi.fn(),
       bindPress: vi.fn(),
@@ -42,6 +47,34 @@ describe("createControllerChoiceInputView (ported)", () => {
     ).toBe(true);
     expect(setTextShown).toHaveBeenCalledWith(elements.prompt, true, { instant: true });
     expect(setTextShown).toHaveBeenCalledWith(elements.grid, true, { instant: true });
+  });
+
+  it("resolves dynamic prompt fields by layout id after the Crafting layout is applied", () => {
+    const calls: string[] = [];
+    const view = createControllerChoiceInputView({
+      applyLayoutForPhase: () => calls.push("layout"),
+      bindPress: vi.fn(),
+      elements: {
+        done: "controllerChoiceDone",
+        grid: { replaceChildren: vi.fn() } as unknown as HTMLElement,
+        prompt: "controllerChoicePrompt",
+        state: {} as HTMLElement
+      },
+      hideViews: vi.fn(),
+      setText: (target) => calls.push(`text:${String(target)}`),
+      setTextShown: (target, shown) => calls.push(`shown:${String(target)}:${shown}`),
+      showView: vi.fn(),
+      submitChoice: vi.fn()
+    });
+
+    expect(view.render({ input: { actionId: "choice", options: [], prompt: "Choose a fossil" }, phase: "crafting-game-state" }, {})).toBe(true);
+    expect(calls).toEqual([
+      "layout",
+      "text:controllerChoicePrompt",
+      "shown:controllerChoicePrompt:true",
+      "shown:controllerChoiceDone:false",
+      "shown:[object Object]:true"
+    ]);
   });
 
   it("installs the global bridge on import", () => {

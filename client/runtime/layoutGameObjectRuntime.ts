@@ -331,12 +331,12 @@ function createPlacedLayoutEntityRegistrar(options: Dict = {}) {
   return (element: Dict | null, target: El | null, isGlobal = false) => registerPlacedLayoutEntity(element, target, isGlobal, options);
 }
 
-function attachRenderedLayoutArtEntity(entity: Dict | null, renderInstance: unknown): unknown {
+function attachRenderedLayoutArtEntity(entity: Dict | null, renderInstance: unknown, options: Dict = {}): unknown {
   const renderer = typeof renderInstance === "function" ? (renderInstance as () => unknown)() : null;
   if (typeof entity?.update === "function") {
     (entity.update as (o: Dict) => void).call(entity, { artRenderer: renderer, syncArtRendererOnShow: Boolean(renderer) });
   }
-  if (renderer && typeof entity?.applyVisibilityState === "function") {
+  if (renderer && options.initializeVisibility !== false && typeof entity?.applyVisibilityState === "function") {
     (entity.applyVisibilityState as () => void).call(entity);
   }
   return renderer;
@@ -446,10 +446,24 @@ function applyLayoutVisibilityOverride(entity: Dict | null, options: Dict = {}):
 }
 
 function playLayoutEntityVisibility(entity: Dict | null, isShown: boolean, options: Dict = {}): number {
+  const target = (entity?.target as El) || null;
+  const lifecycleState = String(target?.dataset?.visualState || "");
+  if (!lifecycleState && typeof entity?.playAnimation === "function") {
+    return Number(
+      (entity.playAnimation as (animation: string, playOptions: Dict) => number)(
+        isShown ? lifecycleLabels.on : lifecycleLabels.off,
+        { instant: true }
+      ) || 0
+    );
+  }
+  if ((isShown && lifecycleState === "appearing") || (!isShown && lifecycleState === "disappearing")) return 0;
+  if ((isShown && lifecycleState === "shown") || (!isShown && lifecycleState === "hidden")) {
+    const visual = layoutGameObjectVisualFor(entity) as { play?: (animation: string, playOptions: Dict) => number } | null;
+    return Number(visual?.play?.(isShown ? lifecycleLabels.on : lifecycleLabels.off, { instant: true }) || 0);
+  }
   if (typeof entity?.playVisibility === "function") {
     return (entity.playVisibility as (s: boolean, o: Dict) => number)(isShown, { instant: options.instant === true });
   }
-  const target = (entity?.target as El) || null;
   const visual = layoutGameObjectVisualFor(entity);
   if (!target || !visual) {
     (options.warn as ((r: string) => void) | undefined)?.("visual object unavailable");

@@ -71,4 +71,15 @@ describe("PartyGameGameObject (ported game-object)", () => {
     expect(playAll).toHaveBeenCalledWith("appear", {});
     expect(play).toHaveBeenCalledWith("appear", {});
   });
+
+  it("does not turn timeline visibility updates into persistent layout overrides", () => {
+    const target = { dataset: {} } as unknown as HTMLElement;
+    const visibilityOverrides = new Map<string, boolean>();
+    const object = PartyGameGameObject.create({ id: "animated", target, visibilityKey: "moment:animated", visibilityOverrides });
+
+    object.setVisible(true);
+
+    expect(target.dataset.visualVisible).toBe("true");
+    expect(visibilityOverrides.has("moment:animated")).toBe(false);
+  });
 });

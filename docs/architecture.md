@@ -148,6 +148,13 @@ concepts into focused modules.
   scale, or motion. The owning game object must explicitly play `Appear`, `On`, `Update`,
   `Disappear`, or `Off` after its content is ready; authored timeline commands are the sole
   authority for how those lifecycle states look and when their component trees become visible.
+- Layout reconciliation is state-preserving. It may initialize a newly entered entity or send
+  `Off` to an entity that actually exited, but it must not replay defaults or lifecycle commands
+  for retained entities. Heartbeats and stage-event renders are reconciliation, not transitions.
+- Visibility override maps record deliberate layout actions only. Timeline command callbacks and
+  lifecycle completion must update rendered state without silently creating persistent overrides.
+- Repeated `On` and `Off` requests are idempotent state normalization: they repair stale lifecycle
+  classes without restarting authored `Appear`, `Disappear`, or `Update` animations.
 - `Park` remains a compatibility label for older authored timelines, but runtime defaults and
   immediate hides use `Off`. A newly rendered object stays hidden until an explicit reveal call.
 - Art Manager compositions are prefab/source assets. Stage layout entries are placed

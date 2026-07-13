@@ -274,7 +274,34 @@ function allControllerLayoutSelectors(): Set<string> {
   return selectors;
 }
 
-function clearControllerLayoutTargets(): void {
+function activeLayoutElementTokens(state: Dict, globalLayout: Dict): Set<string> {
+  const tokens = new Set<string>();
+  for (const element of (state.elements as Dict[]) || []) {
+    if (element.id) tokens.add(`moment:${element.id}`);
+  }
+  if (globalLayout.hiddenInStates === true) return tokens;
+  const hiddenGlobals = new Set((state.hiddenGlobals as string[]) || []);
+  for (const element of (globalLayout.elements as Dict[]) || []) {
+    if (element.id && !hiddenGlobals.has(element.id as string)) tokens.add(`global:${element.id}`);
+  }
+  return tokens;
+}
+
+function controllerLayoutTargetToken(target: El): string {
+  const elementId = target.dataset.controllerLayoutElementId || "";
+  return elementId ? `${target.classList.contains("controller-global-layout-target") ? "global" : "moment"}:${elementId}` : "";
+}
+
+function currentControllerLayoutTokens(): Set<string> {
+  const tokens = new Set<string>();
+  for (const node of Array.from(w().controllerPanel.querySelectorAll(".controller-layout-target"))) {
+    const token = controllerLayoutTargetToken(node as El);
+    if (token) tokens.add(token);
+  }
+  return tokens;
+}
+
+function clearControllerLayoutTargets(retainedTokens: Set<string> = new Set()): void {
   const controllerPanel = w().controllerPanel;
   const targets = new Set<El>(Array.from(controllerPanel.querySelectorAll(".controller-layout-target")) as El[]);
   for (const selector of allControllerLayoutSelectors()) {
@@ -282,13 +309,15 @@ function clearControllerLayoutTargets(): void {
     if (target) targets.add(controllerLayoutHostForExistingTarget(target));
   }
   for (const target of targets) {
-    if (target.classList.contains("controller-dynamic-text")) {
-      target.remove();
-      continue;
-    }
+    const targetToken = controllerLayoutTargetToken(target);
+    if (targetToken && retainedTokens.has(targetToken)) continue;
     const elementId = target.dataset.controllerLayoutElementId || "";
     if (elementId) {
       deactivateLayoutEntity(controllerLayoutEntityForElementId(elementId, target));
+    }
+    if (target.classList.contains("controller-dynamic-text")) {
+      target.remove();
+      continue;
     }
     if (elementId) clearControllerArtInstanceRenderer(elementId, target);
     target.classList.remove("controller-layout-target", "controller-widget-art-host", "has-controller-widget-art", "controller-layout-visual-hidden", "controller-layout-visual-exiting", "controller-layout-visual-update", "controller-layout-visual-instant", "controller-layout-transition-suppressed", "controller-global-layout-target");
@@ -308,10 +337,12 @@ function applyControllerLayoutForPhase(phase: string): void {
   if (!controllerScreen || !controllerPanel) return;
   const state = controllerLayoutStateForPhase(phase);
   if (!state) return;
-  currentControllerLayoutStateId = state.id as string;
+  const previousTokens = currentControllerLayoutTokens();
+  const retainedTokens = activeLayoutElementTokens(state, globalControllerLayout());
   (controllerLayoutGameObjectRegistry() as { beginFrame?: () => void } | null)?.beginFrame?.();
   removeInactiveControllerArtInstances(activeControllerArtInstanceIds(state));
-  clearControllerLayoutTargets();
+  clearControllerLayoutTargets(retainedTokens);
+  currentControllerLayoutStateId = state.id as string;
   const canvas = w().controllerLayouts.canvas || { width: 390, height: 844 };
   const screenRect = controllerScreen.getBoundingClientRect();
   const fitScale = Math.min(screenRect.width / canvas.width!, screenRect.height / canvas.height!);
@@ -319,18 +350,18 @@ function applyControllerLayoutForPhase(phase: string): void {
   controllerPanel.style.height = `${canvas.height}px`;
   controllerPanel.style.setProperty("--controller-board-scale", `${fitScale}`);
   for (const element of (state.elements as Dict[]) || []) {
-    applyControllerElementLayout(element, false);
+    applyControllerElementLayout(element, false, !previousTokens.has(`moment:${element.id}`));
   }
   const hiddenGlobals = new Set((state.hiddenGlobals as string[]) || []);
   const globalLayout = globalControllerLayout();
   if (globalLayout.hiddenInStates === true) return;
   for (const element of (globalLayout.elements as Dict[]) || []) {
     if (hiddenGlobals.has(element.id as string)) continue;
-    applyControllerElementLayout(element, true);
+    applyControllerElementLayout(element, true, !previousTokens.has(`global:${element.id}`));
   }
 }
 
-function applyControllerElementLayout(element: Dict, isGlobal = false): void {
+function applyControllerElementLayout(element: Dict, isGlobal = false, shouldActivate = true): void {
   const target = controllerLayoutTargetElement(element);
   if (!target) return;
   const entity = registerControllerLayoutEntity(element, target, isGlobal);
@@ -346,14 +377,17 @@ function applyControllerElementLayout(element: Dict, isGlobal = false): void {
     applyControllerLayoutTextProperties(target, element);
   } else if (isControllerLayoutArtElement(element)) {
     target.classList.add("controller-widget-art-host", "has-controller-widget-art");
-    attachRenderedLayoutArtEntity(entity, () =>
-      renderControllerArtInstance(element, target, entity.visibilityKey as string, {
-        ...controllerLayoutArtRenderOptions(element, target),
-        keepElements: controllerLayoutArtKeepElements(target)
-      })
+    attachRenderedLayoutArtEntity(
+      entity,
+      () =>
+        renderControllerArtInstance(element, target, entity.visibilityKey as string, {
+          ...controllerLayoutArtRenderOptions(element, target),
+          keepElements: controllerLayoutArtKeepElements(target)
+        }),
+      { initializeVisibility: false }
     );
   }
-  activateLayoutEntity(entity, { visibilityOverrides: controllerLayoutVisibilityOverrides });
+  if (shouldActivate) activateLayoutEntity(entity, { visibilityOverrides: controllerLayoutVisibilityOverrides });
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "controller-layout-transition-suppressed");
 }
 
@@ -676,7 +710,21 @@ function removeInactiveStageArtInstances(activeIds: Set<string>): void {
   stageDynamicArtInstances.removeInactive(activeIds, stageLayoutGameObjectRegistry());
 }
 
-function clearStageLayoutTargets(): void {
+function stageLayoutTargetToken(target: El): string {
+  const elementId = target.dataset.stageLayoutElementId || "";
+  return elementId ? `${target.classList.contains("stage-global-layout-target") ? "global" : "moment"}:${elementId}` : "";
+}
+
+function currentStageLayoutTokens(): Set<string> {
+  const tokens = new Set<string>();
+  for (const node of Array.from(w().stageBoard.querySelectorAll(".stage-layout-target"))) {
+    const token = stageLayoutTargetToken(node as El);
+    if (token) tokens.add(token);
+  }
+  return tokens;
+}
+
+function clearStageLayoutTargets(retainedTokens: Set<string> = new Set()): void {
   const stageBoard = w().stageBoard;
   const targets = new Set<El>(Array.from(stageBoard.querySelectorAll(".stage-layout-target")) as El[]);
   for (const selector of allStageLayoutSelectors()) {
@@ -684,6 +732,8 @@ function clearStageLayoutTargets(): void {
     if (target) targets.add(target);
   }
   for (const target of targets) {
+    const targetToken = stageLayoutTargetToken(target);
+    if (targetToken && retainedTokens.has(targetToken)) continue;
     const elementId = target.dataset.stageLayoutElementId || "";
     if (elementId) {
       deactivateLayoutEntity(stageLayoutEntityForElementId(elementId, target));
@@ -703,10 +753,12 @@ function applyStageLayoutForPhase(phase: string): void {
   const stageBoard = w().stageBoard;
   const state = stageLayoutStateForPhase(phase);
   if (!state || !stageScreen || !stageBoard) return;
-  w().currentStageLayoutStateId = state.id as string;
+  const previousTokens = currentStageLayoutTokens();
+  const retainedTokens = activeLayoutElementTokens(state, globalStageLayout());
   (stageLayoutGameObjectRegistry() as { beginFrame?: () => void } | null)?.beginFrame?.();
   hideStageMomentTextOutsideLayout(state);
-  clearStageLayoutTargets();
+  clearStageLayoutTargets(retainedTokens);
+  w().currentStageLayoutStateId = state.id as string;
   removeInactiveStageArtInstances(activeStageArtInstanceIds(state));
   const canvas = w().stageLayouts.canvas || { width: 1920, height: 1080 };
   const stageRect = stageScreen.getBoundingClientRect();
@@ -715,7 +767,7 @@ function applyStageLayoutForPhase(phase: string): void {
   stageBoard.style.height = `${canvas.height}px`;
   stageBoard.style.setProperty("--stage-board-scale", `${fitScale}`);
   for (const element of (state.elements as Dict[]) || []) {
-    applyStageElementLayout(element, false);
+    applyStageElementLayout(element, false, !previousTokens.has(`moment:${element.id}`));
   }
   const hiddenGlobals = new Set((state.hiddenGlobals as string[]) || []);
   const globalLayout = globalStageLayout();
@@ -732,11 +784,11 @@ function applyStageLayoutForPhase(phase: string): void {
       if (target) deactivateLayoutEntity(registerStageLayoutEntity(element, target, true));
       continue;
     }
-    applyStageElementLayout(element, true);
+    applyStageElementLayout(element, true, !previousTokens.has(`global:${element.id}`));
   }
 }
 
-function applyStageElementLayout(element: Dict, isGlobal: boolean): void {
+function applyStageElementLayout(element: Dict, isGlobal: boolean, shouldInitialize = true): void {
   const target = stageLayoutTargetElement(element);
   if (!target) return;
   const entity = registerStageLayoutEntity(element, target, isGlobal);
@@ -752,11 +804,19 @@ function applyStageElementLayout(element: Dict, isGlobal: boolean): void {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
   } else if (isDynamicStageArtInstance(element)) {
-    attachRenderedLayoutArtEntity(entity, () =>
-      renderStageArtInstance(element, target, entity.visibilityKey as string, isLayoutTextArtElement(element) ? layoutTextArtRenderOptions(element, target.dataset.textFitSource) : {})
+    attachRenderedLayoutArtEntity(
+      entity,
+      () =>
+        renderStageArtInstance(
+          element,
+          target,
+          entity.visibilityKey as string,
+          isLayoutTextArtElement(element) ? layoutTextArtRenderOptions(element, target.dataset.textFitSource) : {}
+        ),
+      { initializeVisibility: false }
     );
   }
-  applyStageLayoutArtVisibilityOverride(entity);
+  if (shouldInitialize) applyStageLayoutArtVisibilityOverride(entity);
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "stage-layout-transition-suppressed");
 }
 

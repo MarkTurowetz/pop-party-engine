@@ -31,6 +31,35 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(playAnimation).toHaveBeenCalledWith("Off", { instant: true });
   });
 
+  it("does not restart visibility animations when a placed entity already matches the requested state", () => {
+    const visualPlay = vi.fn(() => 0);
+    const playVisibility = vi.fn(() => 300);
+    const target = { dataset: { visualState: "shown" } } as unknown as HTMLElement;
+    const resolver = PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver({
+      registry: () => ({
+        get: () => ({
+          id: "player-roster",
+          target,
+          visibilityKey: "global:player-roster",
+          createVisual: () => ({ play: visualPlay }),
+          playVisibility
+        })
+      }),
+      visibilityKeyForTarget: () => "global:player-roster",
+      visibilityOverrides: new Map<string, boolean>()
+    });
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousVisualRuntime = globals.PartyGameVisualObject;
+    globals.PartyGameVisualObject = {};
+    try {
+      expect(resolver.setShownForAction({ targetLayoutElementId: "player-roster", isShown: true, instant: false })).toBe(0);
+      expect(playVisibility).not.toHaveBeenCalled();
+      expect(visualPlay).toHaveBeenCalledWith("On", { instant: true });
+    } finally {
+      globals.PartyGameVisualObject = previousVisualRuntime;
+    }
+  });
+
   it("exposes the layout game-object helpers", () => {
     expect(PartyGameLayoutGameObjects.activeDynamicLayoutArtInstanceIds).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver).toBeTypeOf("function");
@@ -65,6 +94,20 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(PartyGameLayoutGameObjects.attachRenderedLayoutArtEntity(entity, () => renderer)).toBe(renderer);
     expect(entity.update).toHaveBeenCalledWith({ artRenderer: renderer, syncArtRendererOnShow: true });
     expect(entity.applyVisibilityState).toHaveBeenCalledOnce();
+  });
+
+  it("preserves a retained art entity timeline instead of reapplying its default state", () => {
+    const renderer = { playAll: vi.fn() };
+    const entity = {
+      update: vi.fn(),
+      applyVisibilityState: vi.fn()
+    };
+
+    expect(
+      PartyGameLayoutGameObjects.attachRenderedLayoutArtEntity(entity, () => renderer, { initializeVisibility: false })
+    ).toBe(renderer);
+    expect(entity.update).toHaveBeenCalledWith({ artRenderer: renderer, syncArtRendererOnShow: true });
+    expect(entity.applyVisibilityState).not.toHaveBeenCalled();
   });
 
   it("plays named animations through placed layout target resolvers", () => {

@@ -159,6 +159,23 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualState).toBe("hidden");
   });
 
+  it("repairs stale hidden classes when On is repeated for a logically shown object", () => {
+    const element = createFakeElement();
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["visual-hidden", "hidden"]
+    });
+
+    visual.play("On", { instant: true });
+    element.classList.add("visual-hidden", "hidden");
+    expect(element.dataset.visualState).toBe("shown");
+
+    expect(visual.play("On", { instant: true })).toBe(0);
+    expect(element.classList.contains("visual-hidden")).toBe(false);
+    expect(element.classList.contains("hidden")).toBe(false);
+    expect(element.dataset.visualVisible).toBe("true");
+  });
+
   it("applies timeline visibility commands to the rendered lifecycle state", () => {
     const element = createFakeElement(["hidden"]);
     const visual = PartyGameVisualObject.createCssVisualObject({

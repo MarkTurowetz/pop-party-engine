@@ -5,15 +5,21 @@
 import { PartyGameControllerText } from "./controllerTextRenderer";
 
 type Dict = Record<string, unknown>;
+type TextTarget = HTMLElement | string;
 
 export interface ControllerChoiceInputViewOptions {
   applyLayoutForPhase: (phase: string) => void;
   bindPress: (button: HTMLElement) => void;
-  elements: Record<string, HTMLElement>;
+  elements: {
+    done: TextTarget;
+    grid: HTMLElement;
+    prompt: TextTarget;
+    state: HTMLElement;
+  };
   hideViews: () => void;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
-  setText?: (target: HTMLElement, value: unknown) => void;
-  setTextShown?: (target: HTMLElement, isShown: boolean, options?: Dict) => void;
+  setText?: (target: TextTarget, value: unknown) => void;
+  setTextShown?: (target: TextTarget, isShown: boolean, options?: Dict) => void;
   showView: (viewId: string) => void;
   submitChoice: (actionId: string, optionIndex: number, cardId: string) => void;
 }
@@ -27,14 +33,17 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
   const writeText =
     typeof setText === "function"
       ? setText
-      : (target: HTMLElement, value: unknown) => {
+      : (target: TextTarget, value: unknown) => {
+          if (typeof target === "string") return;
           PartyGameControllerText.setText(target, value);
         };
   const writeButtonText = typeof setButtonText === "function" ? setButtonText : (writeText as (t: HTMLElement, v: unknown, s?: Dict) => void);
   const showText =
     typeof setTextShown === "function"
       ? setTextShown
-      : (target: HTMLElement, isShown: boolean) => target?.classList?.toggle("hidden", !isShown);
+      : (target: TextTarget, isShown: boolean) => {
+          if (typeof target !== "string") target?.classList?.toggle("hidden", !isShown);
+        };
 
   function render(lobby: Dict, me: Dict): boolean {
     const input = (me.input || lobby.input || null) as Dict | null;

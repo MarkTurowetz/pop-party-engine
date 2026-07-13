@@ -158,7 +158,6 @@ class GameObject {
 
   setVisible(isVisible: boolean): void {
     if (!this.target) return;
-    this.visibilityOverrides.set(this.visibilityKey, isVisible === true);
     this.target.dataset.visualVisible = isVisible ? "true" : "false";
     if (this.setVisibleHandler) this.setVisibleHandler(isVisible === true);
   }
