@@ -83,6 +83,7 @@ let stageDebugPanelInstance: Dict | null = null;
 let stageWipeControllerInstance: Dict | null = null;
 let stageRenderOrchestratorInstance: Dict | null = null;
 let stageWidgetArtRendererInstance: Dict | null = null;
+const stageWidgetTimelineRenderers = new Map<string, { playAll?: (animation: string, options?: Dict) => number }>();
 let renderedStageJoinQrUrl = "";
 
 function stageVisualControllers(): StageVisualControllersApi | null {
@@ -490,6 +491,9 @@ function renderStageWidgetBinding(bindingId: string, context: Dict = {}): Dict |
   const host = binding.host?.();
   if (!host) return null;
   const result = ((stageWidgetArtRenderer() as { renderBound?: (h: El, b: Dict, c: Dict) => Dict } | null)?.renderBound?.(host, binding, context) as Dict) || null;
+  if (result?.renderer) {
+    stageWidgetTimelineRenderers.set(bindingId, result.renderer as { playAll?: (animation: string, options?: Dict) => number });
+  }
   registerRenderedStageWidgetEntity(definition, host, result);
   return result;
 }
@@ -513,7 +517,12 @@ function setStageLayoutElementGameObjectShown(elementId: string, host: El | null
 
 function setStageWidgetGameObjectShown(bindingId: string, isShown: boolean, options: Dict = {}): number {
   const definition = stageWidgetArtDefinition(bindingId);
-  return setStageLayoutElementGameObjectShown((definition?.layoutElementId as string) || "", stageWidgetHosts[bindingId]?.() || null, isShown, options);
+  const host = stageWidgetHosts[bindingId]?.() || null;
+  const duration = setStageLayoutElementGameObjectShown((definition?.layoutElementId as string) || "", host, isShown, options);
+  const instant = options.instant === true;
+  const animation = isShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
+  const artDuration = stageWidgetTimelineRenderers.get(bindingId)?.playAll?.(animation, { instant }) || 0;
+  return Math.max(duration, artDuration);
 }
 
 function registerRenderedStageWidgetEntity(definition: Dict | null, host: El, renderResult: Dict | null): void {
@@ -521,7 +530,12 @@ function registerRenderedStageWidgetEntity(definition: Dict | null, host: El, re
   const renderer = renderResult?.renderer || null;
   if (!elementId || !renderer || typeof w().stageLayoutEntityForElementId !== "function") return;
   const entity = w().stageLayoutEntityForElementId!(elementId, host);
-  (entity?.update as ((o: Dict) => void) | undefined)?.({ artRenderer: renderer, syncArtRendererOnShow: true });
+  if (typeof entity?.update === "function") {
+    (entity.update as (o: Dict) => void).call(entity, { artRenderer: renderer, syncArtRendererOnShow: true });
+  }
+  if (typeof entity?.applyVisibilityState === "function") {
+    (entity.applyVisibilityState as () => void).call(entity);
+  }
 }
 
 function renderStageActionDebug(lobby: Dict): void {

@@ -24,6 +24,20 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(host.PartyGameLayoutGameObjects).toBeTypeOf("object");
   });
 
+  it("replays an entity timeline state after its rendered art tree is attached", () => {
+    const renderer = { playAll: vi.fn() };
+    const entity = {
+      update: vi.fn(function (this: Record<string, unknown>, patch: Record<string, unknown>) {
+        Object.assign(this, patch);
+      }),
+      applyVisibilityState: vi.fn()
+    };
+
+    expect(PartyGameLayoutGameObjects.attachRenderedLayoutArtEntity(entity, () => renderer)).toBe(renderer);
+    expect(entity.update).toHaveBeenCalledWith({ artRenderer: renderer, syncArtRendererOnShow: true });
+    expect(entity.applyVisibilityState).toHaveBeenCalledOnce();
+  });
+
   it("plays named animations through placed layout target resolvers", () => {
     const target = {} as HTMLElement;
     const playAnimation = vi.fn(() => 360);
@@ -222,6 +236,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     const overlay = new FakeElement();
     root.appendChild(overlay);
     const renderCalls: unknown[] = [];
+    const playCalls: unknown[] = [];
     const host = globalThis as typeof globalThis & {
       artComposition?: (id: string) => unknown;
       PartyGameArtObject?: unknown;
@@ -236,6 +251,9 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
       ArtObjectTreeRenderer: class {
         render(...args: unknown[]) {
           renderCalls.push(args);
+        }
+        playAll(...args: unknown[]) {
+          playCalls.push(args);
         }
         clear() {}
       }
@@ -257,6 +275,9 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
       expect(root.contains(overlay)).toBe(true);
       expect(overlay.hidden).toBe(false);
       expect(renderCalls.length).toBe(1);
+      expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("defaultAnimation");
+      expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("respectDefaultAnimationState");
+      expect(playCalls).toEqual([["Off", { instant: true }]]);
     } finally {
       globals.document = previousDocument;
       host.artComposition = previousComposition;

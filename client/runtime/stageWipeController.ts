@@ -240,7 +240,7 @@ class StageWipeController {
     this.visibilityRequest = null;
     this.activeTransitionToken = transitionToken();
     const visual = this.visualObject();
-    if (visual) visual.play?.("park", { instant: true });
+    if (visual) visual.play?.("off", { instant: true });
     else this.resetHidden();
   }
 }

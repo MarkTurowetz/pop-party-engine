@@ -334,11 +334,16 @@ export function defaultVisibilityTimeline(durations: Record<string, number>): Ti
     ],
     commands: [
       { frame: park, type: "stop" },
+      { frame: park, type: "setVisible", target: "false" },
       { frame: on, type: "stop" },
+      { frame: on, type: "setVisible", target: "true" },
+      { frame: appear, type: "setVisible", target: "true" },
       { frame: appear + appearFrames, type: "stop" },
+      { frame: update, type: "setVisible", target: "true" },
       { frame: update + updateFrames, type: "stop" },
       { frame: disappear + disappearFrames, type: "stop" },
-      { frame: off, type: "stop" }
+      { frame: off, type: "stop" },
+      { frame: off, type: "setVisible", target: "false" }
     ],
     tracks: []
   });

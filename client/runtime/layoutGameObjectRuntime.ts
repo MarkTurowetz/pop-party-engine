@@ -6,6 +6,7 @@
 
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
 import type { TimelineDocument } from "../../shared/timeline-model";
+import { lifecycleLabels } from "../../shared/lifecycle-labels";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -22,6 +23,7 @@ interface DebugRuntime {
 interface TreeRenderer {
   render: (c: Dict[], canvas: Dict, o: Dict) => void;
   clear: (o: Dict) => void;
+  playAll?: (animation: string, options?: Dict) => number;
 }
 
 declare global {
@@ -34,6 +36,7 @@ declare global {
 const w = () => globalThis as typeof globalThis & Window;
 const visualBridge = (): VisualBridgeApi | undefined => w().PartyGameVisualBridge as unknown as VisualBridgeApi | undefined;
 const artComposition = (id: string): Dict | null => w().artComposition?.(id) || null;
+const layoutArtRendererByHost = new WeakMap<El, TreeRenderer>();
 
 function getOrCreateLayoutArtInstance(element: Dict | null, root: El | null, selector: string, className: string): El | null {
   const id = String(element?.id || "");
@@ -90,6 +93,7 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
   if (missingKey) delete host.dataset[missingKey];
   host.dataset.layoutRendererKey = rendererKey;
   let renderer = renderers.get(rendererKey);
+  const isNewRenderer = !renderer;
   const layer = layoutArtLayer(host, options.layerClassName as string, (options.keepElements as El[]) || []);
   if (!renderer) {
     renderer = new artRuntime.ArtObjectTreeRenderer({
@@ -103,11 +107,18 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
   }
   const components = ((composition.components as Dict[]) || []).map((component) => cloneLayoutArtComponent(component, options));
   renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
-    defaultAnimation: "on",
     instant: true,
-    timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
-    respectDefaultAnimationState: false
+    timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined)
   });
+  const hostState = String(host.dataset.visualState || "");
+  if (hostState === "shown" || hostState === "appearing") {
+    renderer.playAll?.(lifecycleLabels.on, { instant: true });
+  } else if (hostState === "hidden") {
+    renderer.playAll?.(lifecycleLabels.off, { instant: true });
+  } else if (isNewRenderer) {
+    renderer.playAll?.(lifecycleLabels.off, { instant: true });
+  }
+  layoutArtRendererByHost.set(host, renderer);
   return renderer;
 }
 
@@ -132,6 +143,7 @@ function clearLayoutArtInstanceRenderer(renderers: Map<string, { clear: (o: Dict
   const renderer = renderers.get(rendererKey);
   if (renderer) renderer.clear({ instant: true });
   renderers.delete(rendererKey);
+  if (host) layoutArtRendererByHost.delete(host);
   if (host) {
     for (const layer of Array.from(host.querySelectorAll(":scope > .stage-widget-art-layer, :scope > .controller-widget-art-layer, :scope > .layout-art-layer"))) {
       layer.remove();
@@ -265,7 +277,13 @@ function layoutEntityForElementId(elementId: string, target: El | null = null, o
   const registryKey = (options.registryKeyFor as ((id: string, scope: string, t: El | null) => string) | undefined)?.(elementId, (options.scope as string) || "", target) || elementId;
   const registry = options.registry as { get?: (id: string, o: Dict) => Dict | null; register?: (e: Dict) => Dict } | undefined;
   const entity = registry?.get?.(elementId, { registryKey });
-  if (entity && (!options.scope || (options.scope === "global") === entity.isGlobal)) return entity;
+  if (entity && (!options.scope || (options.scope === "global") === entity.isGlobal)) {
+    const renderer = entity.target ? layoutArtRendererByHost.get(entity.target as El) : null;
+    if (renderer && entity.artRenderer !== renderer && typeof entity.update === "function") {
+      (entity.update as (o: Dict) => void).call(entity, { artRenderer: renderer, syncArtRendererOnShow: true });
+    }
+    return entity;
+  }
   const resolvedTarget = target || (options.targetByElementId as ((id: string, scope: string) => El | null) | undefined)?.(elementId, (options.scope as string) || "");
   if (!resolvedTarget) return null;
   const resolvedRegistryKey = (options.registryKeyFor as ((id: string, scope: string, t: El) => string) | undefined)?.(elementId, (options.scope as string) || "", resolvedTarget) || registryKey;
@@ -277,7 +295,9 @@ function layoutEntityForElementId(elementId: string, target: El | null = null, o
     isDynamic: (options.isDynamicTarget as ((t: El) => boolean) | undefined)?.(resolvedTarget) === true,
     isGlobal: (options.isGlobalTarget as ((t: El) => boolean) | undefined)?.(resolvedTarget) === true,
     target: resolvedTarget,
-    visibilityKey: (options.visibilityKeyForTarget as ((id: string, t: El, scope: string) => string) | undefined)?.(elementId, resolvedTarget, (options.scope as string) || "") || ""
+    visibilityKey: (options.visibilityKeyForTarget as ((id: string, t: El, scope: string) => string) | undefined)?.(elementId, resolvedTarget, (options.scope as string) || "") || "",
+    artRenderer: layoutArtRendererByHost.get(resolvedTarget) || null,
+    syncArtRendererOnShow: layoutArtRendererByHost.has(resolvedTarget)
   };
   return registry?.register?.(fallbackEntity) || fallbackEntity;
 }
@@ -313,7 +333,12 @@ function createPlacedLayoutEntityRegistrar(options: Dict = {}) {
 
 function attachRenderedLayoutArtEntity(entity: Dict | null, renderInstance: unknown): unknown {
   const renderer = typeof renderInstance === "function" ? (renderInstance as () => unknown)() : null;
-  (entity?.update as ((o: Dict) => void) | undefined)?.({ artRenderer: renderer, syncArtRendererOnShow: Boolean(renderer) });
+  if (typeof entity?.update === "function") {
+    (entity.update as (o: Dict) => void).call(entity, { artRenderer: renderer, syncArtRendererOnShow: Boolean(renderer) });
+  }
+  if (renderer && typeof entity?.applyVisibilityState === "function") {
+    (entity.applyVisibilityState as () => void).call(entity);
+  }
   return renderer;
 }
 

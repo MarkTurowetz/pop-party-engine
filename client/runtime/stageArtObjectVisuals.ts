@@ -12,6 +12,7 @@ import { effectiveArtComponentVisibilityTimeline, effectiveVisibilityTimeline } 
 import type { TimelineCommandEventDetail } from "./visualObject";
 import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
 import { hasTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument } from "../../shared/timeline-model";
+import { lifecycleLabels } from "../../shared/lifecycle-labels";
 
 type Dict = Record<string, unknown>;
 type Component = Dict;
@@ -47,6 +48,10 @@ const EXITING_CLASS = "art-runtime-object-exiting";
 const UPDATE_CLASS = "art-runtime-object-update";
 const INSTANT_CLASS = "art-runtime-object-instant";
 let artTreeInstanceCounter = 1;
+
+export function artRuntimeInitialAnimation(): string {
+  return lifecycleLabels.off;
+}
 
 function num(value: unknown, fallback = 0): number {
   const n = Number(value);
@@ -432,9 +437,13 @@ class ArtObjectView {
   }
 
   setVisibleTree(isVisible: boolean): void {
-    const visual = this.createVisual() as { setVisibleState?: (nextVisible: boolean) => void } | null;
-    visual?.setVisibleState?.(isVisible === true);
-    if (!visual?.setVisibleState) {
+    const visual = this.createVisual() as {
+      applyCommandVisibility?: (nextVisible: boolean) => void;
+      setVisibleState?: (nextVisible: boolean) => void;
+    } | null;
+    if (visual?.applyCommandVisibility) visual.applyCommandVisibility(isVisible === true);
+    else visual?.setVisibleState?.(isVisible === true);
+    if (!visual?.applyCommandVisibility && !visual?.setVisibleState) {
       this.element.dataset.visualVisible = isVisible ? "true" : "false";
       this.element.classList.toggle(HIDDEN_CLASS, isVisible !== true);
     }
@@ -549,7 +558,7 @@ class ArtObjectView {
           layer: { index, total: renderList.length }
         });
         this.children.set(key, view);
-        view.play((child.defaultAnimationState as string) || "on", { instant: true });
+        view.play(artRuntimeInitialAnimation(), { instant: true });
       } else {
         view.update(child, childCanvas, { index, total: renderList.length, isRootContainer: false });
       }
@@ -584,7 +593,7 @@ class ArtObjectView {
   }
 
   park(options: Dict = {}): number {
-    return this.play("park", options);
+    return this.play(lifecycleLabels.off, options);
   }
   on(options: Dict = {}): number {
     return this.play("on", options);
@@ -675,8 +684,6 @@ class ArtObjectTreeRenderer {
   render(components: Component[] = [], canvas?: CanvasSize, options: Dict = {}): void {
     if (!this.host) return;
     this.updateRootTimeline((options.timeline || null) as TimelineDocument | null);
-    const defaultAnimation = (options.defaultAnimation as string) || "on";
-    const respectDefaultAnimationState = options.respectDefaultAnimationState !== false;
     const counts = new Map<string, number>();
     const keyedComponents = (components || []).map((component, index) => ({
       component,
@@ -699,9 +706,7 @@ class ArtObjectTreeRenderer {
           layer: { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) }
         });
         this.views.set(key, view);
-        view.play(respectDefaultAnimationState ? (component.defaultAnimationState as string) || defaultAnimation : defaultAnimation, {
-          instant: options.instant !== false
-        });
+        view.play(artRuntimeInitialAnimation(), { instant: true });
       } else {
         view.update(component, canvas, { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) });
       }

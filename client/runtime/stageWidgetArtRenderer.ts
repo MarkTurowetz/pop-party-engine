@@ -19,6 +19,7 @@ const w = () => globalThis as typeof globalThis & Window;
 
 interface TreeRenderer {
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
+  playAll?: (animation: string, options?: Dict) => number;
 }
 
 function createRenderer(options: Dict = {}) {
@@ -98,11 +99,12 @@ function createRenderer(options: Dict = {}) {
     if (!renderer) return null;
     const components = ((composition.components as Dict[]) || []).map((component) => cloneComponent(component, textOverrides));
     renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
-      defaultAnimation: "on",
       instant: renderOptions.instant !== false,
-      timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined),
-      respectDefaultAnimationState: false
+      timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined)
     });
+    const hostState = String(host.dataset.visualState || "");
+    if (hostState === "shown" || hostState === "appearing") renderer.playAll?.("On", { instant: true });
+    else if (hostState === "hidden") renderer.playAll?.("Off", { instant: true });
     return { composition, renderer };
   }
 

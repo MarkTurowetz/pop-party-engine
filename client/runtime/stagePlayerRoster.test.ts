@@ -6,7 +6,6 @@ import {
   legacyPlayerObjectCompositionIdForShape,
   playerAnswerBubbleRuntimeState,
   playerNameRuntimeText,
-  playerVipRuntimeState,
   runtimeAnswerBubbleComposition,
   runtimeAvatarsComposition,
   runtimePlayerAvatarMcComposition,
@@ -96,7 +95,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     });
   });
 
-  it("injects player names into a cloned shared name widget composition", () => {
+  it("injects player names without changing authored lifecycle states", () => {
     const sharedName = {
       components: [
         { id: "name-card", kind: "shape", fillColor: "#fffdf4" },
@@ -109,12 +108,13 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(playerNameRuntimeText({ name: "Ava" })).toBe("Ava");
     expect(sharedName.components[1].defaultText).toBe("Player");
     expect(runtime.components).toEqual([
-      expect.objectContaining({ id: "name-card", defaultAnimationState: "on" }),
-      expect.objectContaining({ id: "name-text", defaultAnimationState: "on", defaultText: "Ava" })
+      expect.objectContaining({ id: "name-card" }),
+      expect.objectContaining({ id: "name-text", defaultText: "Ava" })
     ]);
+    expect((runtime.components as Record<string, unknown>[]).some((component) => "defaultAnimationState" in component)).toBe(false);
   });
 
-  it("parks a cloned shared VIP widget when the player is not VIP", () => {
+  it("injects VIP text without changing authored lifecycle states", () => {
     const sharedVip = {
       components: [
         { id: "vip-card", kind: "shape", fillColor: "#ffe256" },
@@ -122,12 +122,13 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       ]
     };
 
-    const runtime = runtimePlayerVipWidgetComposition(sharedVip, playerVipRuntimeState({ isVip: false }));
+    const runtime = runtimePlayerVipWidgetComposition(sharedVip);
 
     expect(runtime.components).toEqual([
-      expect.objectContaining({ id: "vip-card", defaultAnimationState: "park" }),
-      expect.objectContaining({ id: "vip-text", defaultAnimationState: "park", defaultText: "VIP" })
+      expect.objectContaining({ id: "vip-card" }),
+      expect.objectContaining({ id: "vip-text", defaultText: "VIP" })
     ]);
+    expect((runtime.components as Record<string, unknown>[]).some((component) => "defaultAnimationState" in component)).toBe(false);
   });
 
   it("injects runtime answer text and correctness into a cloned shared bubble composition", () => {
@@ -161,8 +162,8 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       canvas: { width: 260, height: 260 },
       components: [
         { id: "answer-bubble", kind: "reference", artCompositionId: "player-answer-bubble", x: 130, y: 80, width: 225, height: 135, defaultAnimationState: "Park" },
-        { id: "player-name", kind: "reference", artCompositionId: "player-name-widget", x: 130, y: 300, width: 118, height: 34 },
-        { id: "vip-badge", kind: "reference", artCompositionId: "player-vip-widget", x: 130, y: 334, width: 44, height: 22 },
+        { id: "player-name", kind: "reference", artCompositionId: "player-name-widget", x: 130, y: 300, width: 118, height: 34, defaultAnimationState: "Off" },
+        { id: "vip-badge", kind: "reference", artCompositionId: "player-vip-widget", x: 130, y: 334, width: 44, height: 22, defaultAnimationState: "Off" },
         {
           id: "avatar",
           kind: "container",
@@ -189,12 +190,12 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       artCompositionId: "player-name-widget",
       width: 118,
       height: 34,
-      defaultAnimationState: "On"
+      defaultAnimationState: "Off"
     });
     expect(components[2]).toMatchObject({
       id: "vip-badge",
       artCompositionId: "player-vip-widget",
-      defaultAnimationState: "On"
+      defaultAnimationState: "Off"
     });
     expect((components[3].children as Record<string, unknown>[])[0]).toMatchObject({
       id: "dino-mask",
@@ -203,7 +204,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     });
   });
 
-  it("configures the nested player avatar MC with the selected frame and player color", () => {
+  it("configures nested player avatar color without changing authored lifecycle states", () => {
     const playerAvatarMc = {
       components: [
         { id: "avatar", kind: "reference", artCompositionId: "avatars", defaultAnimationState: "Rex" },
@@ -216,8 +217,8 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     });
 
     expect(runtime.components).toEqual([
-      expect.objectContaining({ id: "avatar", defaultAnimationState: "Cleo" }),
-      expect.objectContaining({ id: "avatar-background", defaultAnimationState: "On" })
+      expect.objectContaining({ id: "avatar", defaultAnimationState: "Rex" }),
+      expect.objectContaining({ id: "avatar-background", defaultAnimationState: "Park" })
     ]);
 
     const avatars = runtimeAvatarsComposition(
@@ -261,6 +262,8 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     roster.syncPlayerLabelComponents(renderer, { name: "Ava", isVip: true }, { tile, instant: true });
 
     expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "On", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "On", { instant: true });
     expect(playComponent).toHaveBeenCalledWith("vip-mc", "On", { instant: true });
     expect(playComponentTree).not.toHaveBeenCalled();
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
@@ -319,7 +322,12 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       defaultAnimationState: "Park"
     });
     expect(renderOptions).not.toHaveProperty("timeline");
-    expect(order).toEqual(["render", "player-answer-bubble-mc:Appear"]);
+    expect(order).toEqual([
+      "render",
+      "player-avatar-mc:On",
+      "player-answer-bubble-mc:Appear",
+      "player-name-mc:Appear"
+    ]);
   });
 
   it("shows and hides roster players through the avatar, name, and VIP MC children", () => {
@@ -359,9 +367,9 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     playComponent.mockClear();
     expect(roster.setShown(false, { instant: true })).toBe(0);
     expect(classes.has("players-hidden")).toBe(true);
-    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Park", { instant: true });
-    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Park", { instant: true });
-    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Park", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Off", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Off", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Off", { instant: true });
   });
 
   it("renders point popup prefabs with a timeline fallback when no authored timeline exists", () => {

@@ -4,6 +4,7 @@
 // PartyGameVisualBridge for the still-legacy stage runtime.
 
 import { PartyGameVisualObject } from "./visualObject";
+import { canonicalLifecycleLabel, lifecycleLabels } from "../../shared/lifecycle-labels";
 
 type Dict = Record<string, unknown>;
 type VisualInstance = ReturnType<typeof PartyGameVisualObject.createCssVisualObject>;
@@ -186,14 +187,14 @@ class GameObject {
 
   applyVisibilityOverride(): void {
     if (!this.target || !this.visibilityOverrides.has(this.visibilityKey)) return;
-    this.applyTargetVisibility(this.visibilityOverrides.get(this.visibilityKey) !== false);
+    this.playVisibility(this.visibilityOverrides.get(this.visibilityKey) !== false, { instant: true });
   }
 
   applyDefaultVisibility(): boolean {
     if (!this.target || this.visibilityOverrides.has(this.visibilityKey)) return false;
-    const isShown = this.defaultVisible();
-    if (isShown === null) return false;
-    this.applyTargetVisibility(isShown);
+    const animation = defaultAnimationFor(this as unknown as Dict);
+    if (!animation) return false;
+    this.playAnimation(animation, { instant: true });
     return true;
   }
 
@@ -207,13 +208,16 @@ class GameObject {
   }
 
   playVisibility(isShown: boolean, options: Dict = {}): number {
-    if (isShown === true && this.syncArtRendererOnShow && fn(this.artRenderer?.playAll)) {
-      (this.artRenderer!.playAll as (a: string, o: Dict) => void)("on", { instant: true });
-    }
     const visual = this.createVisual();
-    if (!visual) return 0;
-    const animation = PartyGameVisualObject.animationForVisibility(isShown === true, visual.isVisible());
-    return visual.play(animation, options);
+    const animation = PartyGameVisualObject.animationForVisibility(isShown === true, visual?.isVisible() ?? this.isVisible());
+    let duration = 0;
+    if (this.syncArtRendererOnShow && fn(this.artRenderer?.playAll)) {
+      duration = Math.max(
+        duration,
+        Number((this.artRenderer!.playAll as (a: string, o: Dict) => number)(animation, options) || 0)
+      );
+    }
+    return visual ? Math.max(duration, visual.play(animation, options)) : duration;
   }
 
   playAnimation(animation: string, options: Dict = {}): number {
@@ -306,12 +310,24 @@ function createGameObjectRegistry(options: Dict = {}): GameObjectRegistry {
 }
 
 function defaultVisibleFor(options: Dict = {}): boolean | null {
+  const animation = defaultAnimationFor(options);
+  if (!animation) return null;
+  const state = animation.toLowerCase();
+  if (["on", "appear", "update"].includes(state)) return true;
+  if (["off", "disappear"].includes(state)) return false;
+  return null;
+}
+
+function defaultAnimationFor(options: Dict = {}): string | null {
   const element = options.element as Dict | undefined;
-  if (options.hidden === true || element?.hidden === true) return false;
-  const state = String(options.defaultAnimationState ?? element?.defaultAnimationState ?? "").trim().toLowerCase();
-  if (["on", "appear", "update", "visible", "shown"].includes(state)) return true;
-  if (["park", "off", "disappear", "hidden", "hide"].includes(state)) return false;
-  if (options.isDynamic && options.isArt) return false;
+  if (options.hidden === true || element?.hidden === true) return lifecycleLabels.off;
+  const requested = String(options.defaultAnimationState ?? element?.defaultAnimationState ?? "").trim();
+  const lifecycle = canonicalLifecycleLabel(requested);
+  if (lifecycle === lifecycleLabels.park || lifecycle === lifecycleLabels.off) return lifecycleLabels.off;
+  if (lifecycle) return lifecycle;
+  if (["hidden", "hide"].includes(requested.toLowerCase())) return lifecycleLabels.off;
+  if (["visible", "shown"].includes(requested.toLowerCase())) return lifecycleLabels.on;
+  if (options.isArt === true || options.isDynamic === true) return lifecycleLabels.off;
   return null;
 }
 
@@ -407,6 +423,7 @@ const api = {
   createRegistry: createGameObjectRegistry,
   createGameObjectRegistry,
   createVisualForTarget,
+  defaultAnimationFor,
   defaultVisibleFor,
   playAnimationForTarget,
   stopAtAnimationForTarget,

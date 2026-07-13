@@ -34,7 +34,7 @@ function asArray(value: unknown): string[] {
 }
 
 function animationForVisibility(isShown: boolean, wasVisible: boolean): AnimationName {
-  if (!isShown) return wasVisible ? "disappear" : "park";
+  if (!isShown) return wasVisible ? "disappear" : "off";
   return wasVisible ? "update" : "appear";
 }
 
@@ -479,6 +479,14 @@ class CssVisualObject {
       return;
     }
     if (this.element) this.element.dataset.visualVisible = isVisible ? "true" : "false";
+  }
+
+  applyCommandVisibility(isVisible: boolean): void {
+    // A timeline visibility command is authoritative over any lifecycle animation
+    // that was queued before this frame (including the initial Off stamp).
+    this.markNewAnimation();
+    if (isVisible) this.applyShownState();
+    else this.applyParkedState();
   }
 
   schedule(delay: number, callback?: () => void): number | null {

@@ -177,41 +177,29 @@ export function runtimeAnswerBubbleComposition(composition: Dict, state: PlayerA
 export function runtimePlayerNameWidgetComposition(composition: Dict, player: Dict | null): Dict {
   const name = playerNameRuntimeText(player);
   return cloneArtComposition(composition, (component) => {
-    component.defaultAnimationState = "on";
     if (component.id === "name-text") component.defaultText = name;
   });
 }
 
-export function runtimePlayerVipWidgetComposition(composition: Dict, state: PlayerVipRuntimeState): Dict {
-  const animationState = state.visible ? "on" : "park";
+export function runtimePlayerVipWidgetComposition(composition: Dict): Dict {
   return cloneArtComposition(composition, (component) => {
-    component.defaultAnimationState = animationState;
     if (component.id === "vip-text") component.defaultText = "VIP";
   });
 }
 
 export function runtimePlayerWidgetComponents(composition: Dict, player: Dict): Dict[] {
   const color = String((player.avatar as Dict)?.color || "#22d3ee");
-  const vipState = playerVipRuntimeState(player);
   return ((composition.components as Dict[]) || []).map((component) =>
     cloneArtComponent(component, (clone) => {
       applyRuntimePlayerColor(clone, color);
-      if (clone.id === PLAYER_AVATAR_MC_ID || clone.id === "avatar") clone.defaultAnimationState = "On";
-      if (clone.id === PLAYER_NAME_MC_ID || clone.id === "player-name") clone.defaultAnimationState = "On";
-      if (clone.id === PLAYER_VIP_MC_ID || clone.id === "vip-badge") {
-        clone.defaultAnimationState = vipState.visible ? "On" : "Park";
-      }
     })
   );
 }
 
 export function runtimePlayerAvatarMcComposition(composition: Dict, player: Dict): Dict {
   const color = String((player.avatar as Dict)?.color || "#22d3ee");
-  const avatarLabel = avatarTimelineLabelForShape((player.avatar as Dict)?.shape);
   return cloneArtComposition(composition, (component) => {
     applyRuntimePlayerColor(component, color);
-    if (component.id === AVATAR_FRAME_ID) component.defaultAnimationState = avatarLabel;
-    if (component.id === "avatar-background") component.defaultAnimationState = "On";
   });
 }
 
@@ -303,7 +291,7 @@ class PlayerRosterRenderer {
       const color = String((player.avatar as Dict)?.color || "#22d3ee");
       if (id === "player-answer-bubble") return runtimeAnswerBubbleComposition(composition, this.answerStateFor(player));
       if (id === "player-name-widget") return runtimePlayerNameWidgetComposition(composition, player);
-      if (id === "player-vip-widget") return runtimePlayerVipWidgetComposition(composition, playerVipRuntimeState(player));
+      if (id === "player-vip-widget") return runtimePlayerVipWidgetComposition(composition);
       if (id === "prefab-player-avatar-mc") return runtimePlayerAvatarMcComposition(composition, player);
       if (id === "avatars") return runtimeAvatarsComposition(composition, player);
       return cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
@@ -360,9 +348,7 @@ class PlayerRosterRenderer {
     const previousPlayerVip = tile.dataset.playerVip === "true";
 
     renderer.render(runtimePlayerWidgetComponents(composition, player), canvas, {
-      defaultAnimation: "On",
-      instant: true,
-      respectDefaultAnimationState: true
+      instant: true
     });
 
     const avatarDuration = this.syncAvatarComponent(tile, renderer, player);
@@ -395,7 +381,11 @@ class PlayerRosterRenderer {
   syncAvatarComponent(tile: El, renderer: TreeRenderer, player: Dict): number {
     if (!this.usesPlayerWidgetMc(tile)) return 0;
     const label = avatarTimelineLabelForShape((player.avatar as Dict)?.shape);
-    return renderer.stopAtComponent?.(AVATAR_FRAME_ID, label, { instant: true }) || 0;
+    const showDuration = renderer.isComponentVisible?.(PLAYER_AVATAR_MC_ID)
+      ? 0
+      : renderer.playComponent?.(PLAYER_AVATAR_MC_ID, "On", { instant: true }) || 0;
+    const frameDuration = renderer.stopAtComponent?.(AVATAR_FRAME_ID, label, { instant: true }) || 0;
+    return Math.max(showDuration, frameDuration);
   }
 
   syncAnswerBubbleComponent(tile: El, renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {
@@ -411,8 +401,8 @@ class PlayerRosterRenderer {
         : renderer.playComponentTree?.(targetId, animation, { instant })) || 0;
 
     if (!state.visible) {
-      if (previousVisible || renderer.isComponentVisible?.(targetId)) return play(instant ? "Park" : "Disappear");
-      return play("Park");
+      if (previousVisible || renderer.isComponentVisible?.(targetId)) return play(instant ? "Off" : "Disappear");
+      return play("Off");
     }
     if (!previousVisible || !renderer.isComponentVisible?.(targetId)) return play("Appear");
     if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) return play("Update");
@@ -434,14 +424,17 @@ class PlayerRosterRenderer {
         ? renderer.playComponent?.(componentId, animation, { instant })
         : renderer.playComponentTree?.(componentId, animation, { instant })) || 0;
     let duration = 0;
-    if (previousPlayerName && previousPlayerName !== playerName && renderer.isComponentVisible?.(nameId)) {
+    const nameVisible = renderer.isComponentVisible?.(nameId) === true;
+    if (!nameVisible) {
+      duration = Math.max(duration, play(nameId, instant ? "On" : "Appear"));
+    } else if (previousPlayerName && previousPlayerName !== playerName) {
       duration = Math.max(duration, play(nameId, "Update"));
     }
     const vipVisible = renderer.isComponentVisible?.(vipId) === true;
     if (vipState.visible) {
       if (!previousPlayerVip || !vipVisible) duration = Math.max(duration, play(vipId, instant ? "On" : "Appear"));
     } else if (previousPlayerVip || vipVisible) {
-      duration = Math.max(duration, play(vipId, instant ? "Park" : "Disappear"));
+      duration = Math.max(duration, play(vipId, instant ? "Off" : "Disappear"));
     }
     return duration;
   }
@@ -562,7 +555,7 @@ class PlayerRosterRenderer {
     const player = this.tilePlayers.get(tile);
     if (!renderer || !player) return 0;
     const instant = options.instant === true;
-    const animation = isShown ? (instant ? "On" : "Appear") : instant ? "Park" : "Disappear";
+    const animation = isShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
     let duration = 0;
     for (const componentId of [PLAYER_AVATAR_MC_ID, PLAYER_NAME_MC_ID]) {
       duration = Math.max(duration, renderer.playComponent?.(componentId, animation, { instant }) || 0);
@@ -744,10 +737,8 @@ class PlayerRosterRenderer {
       this.pointPopupRenderers.set(node, renderer);
     }
     renderer.render(components, canvas, {
-      defaultAnimation: "on",
       instant: true,
-      timeline: pointPopupTimeline(composition),
-      respectDefaultAnimationState: false
+      timeline: pointPopupTimeline(composition)
     });
     return true;
   }

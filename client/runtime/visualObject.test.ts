@@ -114,7 +114,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
 
   it("animationForVisibility maps the visibility transitions", () => {
     const { animationForVisibility } = PartyGameVisualObject;
-    expect(animationForVisibility(false, false)).toBe("park");
+    expect(animationForVisibility(false, false)).toBe("off");
     expect(animationForVisibility(false, true)).toBe("disappear");
     expect(animationForVisibility(true, false)).toBe("appear");
     expect(animationForVisibility(true, true)).toBe("update");
@@ -157,6 +157,28 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
 
     vi.advanceTimersByTime(500);
     expect(element.dataset.visualState).toBe("hidden");
+  });
+
+  it("applies timeline visibility commands to the rendered lifecycle state", () => {
+    const element = createFakeElement(["hidden"]);
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      durations: { off: 100 }
+    });
+
+    visual.play("Off");
+    visual.applyCommandVisibility(true);
+    vi.advanceTimersByTime(100);
+    expect(element.classList.contains("hidden")).toBe(false);
+    expect(element.dataset.visualState).toBe("shown");
+    expect(element.dataset.visualVisible).toBe("true");
+
+    visual.applyCommandVisibility(false);
+    expect(element.classList.contains("hidden")).toBe(true);
+    expect(element.dataset.visualState).toBe("hidden");
+    expect(element.dataset.visualVisible).toBe("false");
   });
 
   it("keeps an object logically shown while it is appearing and ignores duplicate appear calls", () => {

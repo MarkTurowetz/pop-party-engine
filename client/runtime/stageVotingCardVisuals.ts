@@ -18,6 +18,8 @@ interface TreeRenderer {
   host?: unknown;
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
   clear: (options: Dict) => void;
+  playAll?: (animation: string, options?: Dict) => number;
+  playComponent?: (componentId: string, animation: string, options?: Dict) => number;
 }
 interface VisualLike {
   play: (animation: string, options?: Dict) => number;
@@ -288,9 +290,9 @@ class VotingCardView {
 
   renderRootArtObjects(canvas: Dict): void {
     this.rootArtRenderer?.render(this.rootArtComponents(), canvas, {
-      defaultAnimation: "on",
       timeline: votingCardArtTimeline(this.composition()?.timeline)
     });
+    this.rootArtRenderer?.playAll?.("On", { instant: true });
   }
 
   renderComponentChildren(componentId: string, parentElement: El): void {
@@ -310,9 +312,9 @@ class VotingCardView {
       this.componentChildRenderers.set(componentId, renderer);
     }
     renderer.render((component!.children as Dict[]) || [], { width: Number(component!.width || 1), height: Number(component!.height || 1) }, {
-      defaultAnimation: "on",
       timeline: votingCardArtTimeline(component!.timeline)
     });
+    renderer.playAll?.("On", { instant: true });
   }
 
   syncAuthor(cardData: Dict): void {
@@ -320,7 +322,7 @@ class VotingCardView {
     if (cardData.authorsRevealed === true) {
       this.authorVisual.play("appear");
     } else {
-      this.authorVisual.play("park", { instant: true });
+      this.authorVisual.play("off", { instant: true });
     }
   }
 
@@ -339,7 +341,7 @@ class VotingCardView {
     if (count > 0) {
       this.voteCountVisual?.play(wasVisible ? "update" : "appear");
     } else {
-      this.voteCountVisual?.play("park", { instant: true });
+      this.voteCountVisual?.play("off", { instant: true });
     }
   }
 
@@ -357,7 +359,6 @@ class VotingCardView {
       clone.defaultText = voter?.name || "Player";
       clone.x = width / 2;
       clone.y = height / 2;
-      clone.defaultAnimationState = "appear";
       return clone;
     });
     const distribution = container.childDistribution === "vertical" ? "vertical" : "horizontal";
@@ -381,6 +382,7 @@ class VotingCardView {
   }
 
   renderVoterArt(voters: Dict[] = [], options: Dict = {}): void {
+    const previousVoterIds = new Set(this.currentVisibleVoters.map((voter) => String(voter?.id || "")));
     this.currentVisibleVoters = Array.isArray(voters) ? voters : [];
     const host = this.ensureVoterArtHost();
     if (!host) return;
@@ -393,7 +395,16 @@ class VotingCardView {
       this.syncVoteCount(0);
       return;
     }
-    this.voterArtRenderer.render([root], { width: Math.max(1, Number(container.width || 1)), height: Math.max(1, Number(container.height || 1)) }, { defaultAnimation: "appear", instant: options.instant === true });
+    this.voterArtRenderer.render([root], { width: Math.max(1, Number(container.width || 1)), height: Math.max(1, Number(container.height || 1)) }, { instant: true });
+    this.voterArtRenderer.playComponent?.("voter-container-runtime", "On", { instant: true });
+    this.currentVisibleVoters.forEach((voter, index) => {
+      const voterId = safeComponentId(voter?.id, `voter-${index}`);
+      if (!previousVoterIds.has(String(voter?.id || ""))) {
+        this.voterArtRenderer?.playComponent?.(`vote-widget-${voterId}`, options.instant === true ? "On" : "Appear", {
+          instant: options.instant === true
+        });
+      }
+    });
     if (options.syncCount !== false) this.syncVoteCount(this.currentVisibleVoters.length);
   }
 
@@ -409,7 +420,7 @@ class VotingCardView {
       this.renderVoterArt([], { instant: true });
       this.voterArtRenderer?.clear({ instant: true });
       this.syncVoteCount(0);
-      this.votersVisual.play("park", { instant: true });
+      this.votersVisual.play("off", { instant: true });
     }
   }
 
@@ -452,7 +463,7 @@ class VotingCardView {
       renderer.clear({ instant: options.instant === true });
     }
     this.componentChildRenderers.clear();
-    const duration = this.groupVisual.play(options.instant ? "park" : "disappear", { instant: options.instant === true });
+    const duration = this.groupVisual.play(options.instant ? "off" : "disappear", { instant: options.instant === true });
     const element = this.element;
     const token = element.dataset.visualAnimationToken || "";
     const removeElement = () => {

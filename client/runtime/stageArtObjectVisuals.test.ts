@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PartyGameArtObject } from "./stageArtObjectVisuals";
+import { PartyGameArtObject, artRuntimeInitialAnimation } from "./stageArtObjectVisuals";
+import { effectiveVisibilityTimeline } from "./effectiveTimeline";
 
 describe("PartyGameArtObject (ported art-object-visuals)", () => {
   beforeEach(() => {
@@ -16,6 +17,27 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(PartyGameArtObject.applyComponentLayout).toBeTypeOf("function");
     expect(PartyGameArtObject.renderComponentText).toBeTypeOf("function");
     expect(PartyGameArtObject.syncComponentElement).toBeTypeOf("function");
+  });
+
+  it("always constructs runtime art at Off until an animation is explicitly played", () => {
+    expect(artRuntimeInitialAnimation()).toBe("Off");
+  });
+
+  it("reveals a rendered tree through the fallback timeline On command", () => {
+    const visibility: boolean[] = [];
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      views: Map<string, { setVisibleTree: (visible: boolean) => void }>;
+      rootTimelinePlayer: unknown;
+      updateRootTimeline: (timeline: unknown) => void;
+      playAll: (animation: string, options?: unknown) => number;
+    };
+    renderer.views = new Map([["child", { setVisibleTree: (visible) => visibility.push(visible) }]]);
+    renderer.rootTimelinePlayer = null;
+    renderer.updateRootTimeline(effectiveVisibilityTimeline(null));
+
+    renderer.playAll("On", { instant: true });
+
+    expect(visibility).toEqual([true]);
   });
 
   it("applies persisted transform origins to runtime art objects", () => {

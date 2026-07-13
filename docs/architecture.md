@@ -143,6 +143,13 @@ concepts into focused modules.
 - New visible stage/controller elements should use `PartyGameVisualBridge.createVisualForTarget`
   or a registry-backed layout entity rather than calling `PartyGameVisualObject` directly.
   Direct visual-object creation should be limited to the bridge/core animation layer.
+- Timeline-backed art is constructed at `Off`. Rendering and reconciliation may inject dynamic
+  content, colors, and data, but must not infer or assign lifecycle state, visibility, opacity,
+  scale, or motion. The owning game object must explicitly play `Appear`, `On`, `Update`,
+  `Disappear`, or `Off` after its content is ready; authored timeline commands are the sole
+  authority for how those lifecycle states look and when their component trees become visible.
+- `Park` remains a compatibility label for older authored timelines, but runtime defaults and
+  immediate hides use `Off`. A newly rendered object stays hidden until an explicit reveal call.
 - Art Manager compositions are prefab/source assets. Stage layout entries are placed
   instances of those prefabs. Runtime visibility actions should target the layout
   instance identity (`targetLayoutScope` plus `targetLayoutElementId`), not the
