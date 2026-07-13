@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { TimelineDocument } from "../../../shared/timeline-model";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
-import { swappableGameObjectOptions, timelineActionScriptForFrame, timelineActionScriptPlaceholderForFrame } from "./ArtCompositionEditor";
+import {
+  swappableGameObjectOptions,
+  timelineActionScriptForFrame,
+  timelineActionScriptPlaceholderForFrame,
+  timelineLayerDropPlacement,
+  timelineLayerSiblingOwnerIds
+} from "./ArtCompositionEditor";
 
 describe("ArtCompositionEditor command scripts", () => {
   it("shows animation visibility as placeholder text instead of authored command text", () => {
@@ -38,5 +44,39 @@ describe("ArtCompositionEditor command scripts", () => {
     );
 
     expect(options.map((option) => option.id)).toEqual(["a", "z"]);
+  });
+});
+
+describe("ArtCompositionEditor layer ordering", () => {
+  it("chooses a before or after drop without mutating lane order during hover", () => {
+    expect(timelineLayerDropPlacement(109, { top: 100, height: 20 })).toBe("before");
+    expect(timelineLayerDropPlacement(111, { top: 100, height: 20 })).toBe("after");
+  });
+
+  it("identifies sibling groups so layers cannot be dragged across containers", () => {
+    const root = {
+      id: "root",
+      kind: "container",
+      children: [
+        { id: "card", kind: "reference" },
+        { id: "answer", kind: "reference" },
+        {
+          id: "group",
+          kind: "container",
+          children: [
+            { id: "author", kind: "reference" },
+            { id: "votes", kind: "reference" }
+          ]
+        }
+      ]
+    } as ArtComponent;
+
+    expect(Object.fromEntries(timelineLayerSiblingOwnerIds(root))).toEqual({
+      card: "root",
+      answer: "root",
+      group: "root",
+      author: "group",
+      votes: "group"
+    });
   });
 });

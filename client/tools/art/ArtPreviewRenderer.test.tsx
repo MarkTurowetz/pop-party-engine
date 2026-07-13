@@ -86,6 +86,28 @@ describe("ArtPreviewRenderer transform origins", () => {
     expect(component.visible).toBe(true);
   });
 
+  it("keeps locked components visible while removing preview pointer interaction", () => {
+    const component = {
+      id: "card",
+      name: "Card",
+      kind: "shape",
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 60,
+      locked: true,
+      editorHidden: false
+    } as ArtComponent;
+
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer components={[component]} compositionById={new Map()} interactive />
+    );
+
+    expect(markup).toContain("visibility:visible");
+    expect(markup).toContain("pointer-events:none");
+    expect(markup).toContain('data-art-component-locked="true"');
+  });
+
   it("normalizes referenced artwork to its tight visual bounds", () => {
     const vip = {
       id: "player-vip-widget",

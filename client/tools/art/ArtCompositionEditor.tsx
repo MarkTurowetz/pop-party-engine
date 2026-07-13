@@ -178,6 +178,8 @@ type TimelineDragItem =
   | { kind: "label"; name: string }
   | { kind: "command"; index: number; command: TimelineCommand }
   | { kind: "keyframe"; targetId: string; frame: number };
+type TimelineLayerDropPlacement = "before" | "after";
+type TimelineLayerDropTarget = { id: string; placement: TimelineLayerDropPlacement };
 type MarqueeBox = { x: number; y: number; width: number; height: number };
 type ArtSelectionBox = { id: string; minX: number; minY: number; maxX: number; maxY: number };
 type PrefabCreationDialogState = { defaultName: string } | null;
@@ -201,6 +203,57 @@ function selectionBoxesIntersect(box: MarqueeBox, target: ArtSelectionBox): bool
   const boxMaxX = box.x + box.width;
   const boxMaxY = box.y + box.height;
   return box.x <= target.maxX && boxMaxX >= target.minX && box.y <= target.maxY && boxMaxY >= target.minY;
+}
+
+export function timelineLayerDropPlacement(
+  pointerY: number,
+  bounds: Pick<DOMRect, "top" | "height">
+): TimelineLayerDropPlacement {
+  return pointerY > bounds.top + bounds.height / 2 ? "after" : "before";
+}
+
+export function timelineLayerSiblingOwnerIds(component: ArtComponent | undefined): Map<string, string> {
+  const owners = new Map<string, string>();
+  if (!component) return owners;
+  const visit = (owner: ArtComponent): void => {
+    for (const child of owner.children || []) {
+      owners.set(String(child.id || ""), String(owner.id || ""));
+      visit(child);
+    }
+  };
+  visit(component);
+  return owners;
+}
+
+function TimelineLayerVisibilityIcon({ hidden }: { hidden: boolean }) {
+  return hidden ? (
+    <svg className="art-timeline-visibility-icon" data-eye-state="closed" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 3l18 18" />
+      <path d="M10.6 10.7a2 2 0 002.7 2.7" />
+      <path d="M9.9 4.4A10.6 10.6 0 0112 4c5.5 0 9 5.1 9 5.1a16 16 0 01-2.3 2.7M6.1 6.1C4.2 7.4 3 9.1 3 9.1S6.5 14.2 12 14.2c1 0 2-.2 2.8-.5" />
+    </svg>
+  ) : (
+    <svg className="art-timeline-visibility-icon" data-eye-state="open" viewBox="0 0 24 18" aria-hidden="true">
+      <path d="M2 9s3.8-6 10-6 10 6 10 6-3.8 6-10 6S2 9 2 9z" />
+      <circle cx="12" cy="9" r="3" />
+    </svg>
+  );
+}
+
+function TimelineLayerLockIcon({ locked }: { locked: boolean }) {
+  return (
+    <svg
+      className="art-timeline-lock-icon"
+      data-art-layer-lock-icon={locked ? "locked" : "unlocked"}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      {locked ? <path className="art-timeline-lock-shackle" d="M7 10V7a5 5 0 0110 0v3" /> : <path className="art-timeline-lock-shackle" d="M17 10V7.5a5 5 0 00-9.8-1.4" />}
+      <rect x="4" y="10" width="16" height="11" rx="2" />
+      <circle cx="12" cy="15" r="1.6" />
+      <path className="art-timeline-lock-keyway" d="M12 16.4v2" />
+    </svg>
+  );
 }
 
 function cleanTimelineNavigationFrame(value: unknown): number {
@@ -743,9 +796,11 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const collectSelectableComponentBoxes = (
     components: ArtComponent[],
     parent: { left: number; top: number; scale: number } = { left: 0, top: 0, scale: 1 },
-    boxes: ArtSelectionBox[] = []
+    boxes: ArtSelectionBox[] = [],
+    ancestorInteractive = true
   ): ArtSelectionBox[] => {
     for (const component of components || []) {
+      if (component.editorHidden === true) continue;
       const frameValues = componentTimelineValuesForCanvasEdit(component);
       const x = finiteNumber(frameValues.x ?? get(component, "x"), 0);
       const y = finiteNumber(frameValues.y ?? get(component, "y"), 0);
@@ -755,7 +810,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       const visualScale = parent.scale * Math.max(1, Math.abs(scale));
       const left = parent.left + (x - width / 2) * parent.scale;
       const top = parent.top + (y - height / 2) * parent.scale;
-      if (component.locked !== true) {
+      const interactive = ancestorInteractive && component.locked !== true;
+      if (interactive) {
         boxes.push({
           id: component.id,
           minX: left,
@@ -768,7 +824,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         collectSelectableComponentBoxes(
           component.children,
           { left, top, scale: parent.scale * (Number.isFinite(scale) ? scale : 1) },
-          boxes
+          boxes,
+          interactive
         );
       }
     }
@@ -1259,6 +1316,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             onSelectTarget={selectArtComponent}
             onToggleEditorHidden={(id, hidden) => controller.updateComponent(id, { editorHidden: hidden } as Partial<ArtComponent>)}
             onToggleLocked={(id, locked) => controller.updateComponent(id, { locked } as Partial<ArtComponent>)}
+            onReorderTarget={(sourceId, targetId, placement) => controller.reorderComponent(sourceId, targetId, placement)}
             onChange={(timeline) => {
               controller.updateComposition(composition.id, { timeline });
             }}
@@ -1750,6 +1808,7 @@ function ArtTimelinePanel({
   onSelectTarget,
   onToggleEditorHidden,
   onToggleLocked,
+  onReorderTarget,
   onChange,
   onExitScope,
   onPreviewFrame,
@@ -1767,6 +1826,7 @@ function ArtTimelinePanel({
   onSelectTarget?: (id: string, additive: boolean) => void;
   onToggleEditorHidden?: (id: string, hidden: boolean) => void;
   onToggleLocked?: (id: string, locked: boolean) => void;
+  onReorderTarget?: (sourceId: string, targetId: string, placement: TimelineLayerDropPlacement) => void;
   onChange: (timeline: TimelineDocument) => void;
   onExitScope?: () => void;
   onPreviewFrame?: (frame: number, overrides?: TimelinePreviewOverrides | null) => void;
@@ -1790,6 +1850,8 @@ function ArtTimelinePanel({
   const [selectedTimelineCell, setSelectedTimelineCell] = useState<TimelineCellSelection>({ kind: "frame", frame: 0 });
   const [timelineDragItem, setTimelineDragItem] = useState<TimelineDragItem | null>(null);
   const [timelineDropFrame, setTimelineDropFrame] = useState<number | null>(null);
+  const [timelineLayerDragTargetId, setTimelineLayerDragTargetId] = useState<string | null>(null);
+  const [timelineLayerDropTarget, setTimelineLayerDropTarget] = useState<TimelineLayerDropTarget | null>(null);
   const [copiedKeyframe, setCopiedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
   const [copiedFrameRange, setCopiedFrameRange] = useState<TimelineFrameClipboard | null>(null);
   const [copiedCommandFrame, setCopiedCommandFrame] = useState<TimelineCommandFrameClipboard | null>(null);
@@ -1867,6 +1929,7 @@ function ArtTimelinePanel({
   const timelineTrackRows = useMemo(() => {
     return timelineTrackRowsFor(current, component, { includeRoot: includeRootTarget, useScopedIds: false, scopeRootPath });
   }, [component, current, includeRootTarget, scopeRootPath]);
+  const timelineLayerOwners = useMemo(() => timelineLayerSiblingOwnerIds(component), [component]);
   const activeKeyframeTargetId = keyframeTargets.some((target) => target.id === keyframeTargetId)
     ? keyframeTargetId
     : keyframeTargets[0]?.id || component?.id || "";
@@ -2602,6 +2665,48 @@ function ArtTimelinePanel({
     setTimelineDropFrame(null);
   }
 
+  function timelineLayersShareOwner(sourceId: string, targetId: string): boolean {
+    const sourceOwner = timelineLayerOwners.get(sourceId);
+    return Boolean(sourceOwner && sourceOwner === timelineLayerOwners.get(targetId));
+  }
+
+  function beginTimelineLayerDrag(event: ReactDragEvent<HTMLElement>, targetId: string): void {
+    if (!onReorderTarget || !timelineLayerOwners.has(targetId)) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-art-timeline-layer", targetId);
+    setTimelineLayerDragTargetId(targetId);
+    setTimelineLayerDropTarget(null);
+  }
+
+  function updateTimelineLayerDropTarget(event: ReactDragEvent<HTMLElement>, targetId: string): void {
+    const sourceId = timelineLayerDragTargetId || event.dataTransfer.getData("application/x-art-timeline-layer");
+    if (!sourceId || sourceId === targetId || !timelineLayersShareOwner(sourceId, targetId)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setTimelineLayerDropTarget({
+      id: targetId,
+      placement: timelineLayerDropPlacement(event.clientY, event.currentTarget.getBoundingClientRect())
+    });
+  }
+
+  function dropTimelineLayer(event: ReactDragEvent<HTMLElement>, targetId: string): void {
+    const sourceId = timelineLayerDragTargetId || event.dataTransfer.getData("application/x-art-timeline-layer");
+    const placement = timelineLayerDropPlacement(event.clientY, event.currentTarget.getBoundingClientRect());
+    setTimelineLayerDragTargetId(null);
+    setTimelineLayerDropTarget(null);
+    if (!sourceId || sourceId === targetId || !timelineLayersShareOwner(sourceId, targetId)) return;
+    event.preventDefault();
+    onReorderTarget?.(sourceId, targetId, placement);
+  }
+
+  function endTimelineLayerDrag(): void {
+    setTimelineLayerDragTargetId(null);
+    setTimelineLayerDropTarget(null);
+  }
+
   function copySelectedKeyframe(): void {
     if (!selectedTimelineKeyframe) return;
     setCopiedFrameRange(null);
@@ -2887,12 +2992,20 @@ function ArtTimelinePanel({
                   data-art-timeline-target-selected={selectedTargetIds?.has(trackLabel.id) ? "true" : "false"}
                   data-art-timeline-target-hidden={editorHidden ? "true" : "false"}
                   data-art-timeline-target-locked={locked ? "true" : "false"}
+                  data-art-layer-dragging={timelineLayerDragTargetId === trackLabel.id ? "true" : "false"}
+                  data-art-layer-drop-placement={timelineLayerDropTarget?.id === trackLabel.id ? timelineLayerDropTarget.placement : undefined}
                 >
                   <button
                     type="button"
                     className="art-timeline-target-select"
                     aria-current={selectedTargetIds?.has(trackLabel.id) ? "true" : undefined}
+                    draggable={Boolean(onReorderTarget && timelineLayerOwners.has(trackLabel.id))}
+                    title={`${trackLabel.label} (${trackLabel.id}) — drag to change layer order`}
                     onClick={(event) => onSelectTarget?.(trackLabel.id, event.metaKey || event.ctrlKey || event.shiftKey)}
+                    onDragStart={(event) => beginTimelineLayerDrag(event, trackLabel.id)}
+                    onDragOver={(event) => updateTimelineLayerDropTarget(event, trackLabel.id)}
+                    onDrop={(event) => dropTimelineLayer(event, trackLabel.id)}
+                    onDragEnd={endTimelineLayerDrag}
                   >
                     <span>{trackLabel.label}</span>
                     <small>{trackLabel.detail}</small>
@@ -2905,9 +3018,12 @@ function ArtTimelinePanel({
                         aria-label={editorHidden ? `Show ${trackLabel.label} in editor` : `Hide ${trackLabel.label} in editor`}
                         aria-pressed={!editorHidden}
                         title={editorHidden ? "Show in editor" : "Hide in editor"}
-                        onClick={() => onToggleEditorHidden?.(trackLabel.id, !editorHidden)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onToggleEditorHidden?.(trackLabel.id, !editorHidden);
+                        }}
                       >
-                        <span className="art-timeline-visibility-icon" data-eye-state={editorHidden ? "closed" : "open"} aria-hidden="true" />
+                        <TimelineLayerVisibilityIcon hidden={editorHidden} />
                       </button>
                       <button
                         type="button"
@@ -2915,9 +3031,12 @@ function ArtTimelinePanel({
                         aria-label={locked ? `Unlock ${trackLabel.label}` : `Lock ${trackLabel.label}`}
                         aria-pressed={locked}
                         title={locked ? "Unlock canvas selection" : "Lock canvas selection"}
-                        onClick={() => onToggleLocked?.(trackLabel.id, !locked)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onToggleLocked?.(trackLabel.id, !locked);
+                        }}
                       >
-                        <span className="art-component-layer-lock-icon" data-art-layer-lock-icon={locked ? "locked" : "unlocked"} aria-hidden="true" />
+                        <TimelineLayerLockIcon locked={locked} />
                       </button>
                     </span>
                   ) : null}

@@ -1802,6 +1802,18 @@ body.tool-dashboard-mode .layout-react-shell {
   opacity: 0.55;
 }
 
+.art-timeline-component-label[data-art-layer-dragging="true"] {
+  opacity: 0.56;
+}
+
+.art-timeline-component-label[data-art-layer-drop-placement="before"] {
+  box-shadow: 0 -4px 0 var(--cyan);
+}
+
+.art-timeline-component-label[data-art-layer-drop-placement="after"] {
+  box-shadow: 0 4px 0 var(--cyan);
+}
+
 .art-timeline-target-select {
   display: grid;
   gap: 2px;
@@ -1811,6 +1823,14 @@ body.tool-dashboard-mode .layout-react-shell {
   background: transparent;
   color: inherit;
   text-align: left;
+}
+
+.art-timeline-target-select[draggable="true"] {
+  cursor: grab;
+}
+
+.art-timeline-target-select[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .art-timeline-target-controls {
@@ -1826,42 +1846,35 @@ body.tool-dashboard-mode .layout-react-shell {
   place-items: center;
 }
 
-.art-timeline-visibility-icon {
-  position: relative;
+.art-timeline-visibility-icon,
+.art-timeline-lock-icon {
   display: block;
-  width: 17px;
-  height: 11px;
-  border: 2px solid var(--ink);
-  border-radius: 50% / 60%;
-  background: #fff;
-  box-sizing: border-box;
+  width: 21px;
+  height: 21px;
+  overflow: visible;
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
 }
 
-.art-timeline-visibility-icon[data-eye-state="open"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--ink);
-  transform: translate(-50%, -50%);
+.art-timeline-visibility-icon circle,
+.art-timeline-lock-icon circle {
+  fill: var(--ink);
+  stroke: none;
 }
 
-.art-timeline-visibility-icon[data-eye-state="closed"]::after {
-  content: "";
-  position: absolute;
-  left: -3px;
-  top: 3px;
-  width: 20px;
-  height: 2px;
-  background: var(--ink);
-  transform: rotate(-35deg);
+.art-timeline-lock-icon rect {
+  fill: #fff;
 }
 
-.art-timeline-target-controls .art-component-layer-lock-icon {
-  transform: scale(0.72);
+.art-timeline-lock-icon[data-art-layer-lock-icon="locked"] rect {
+  fill: var(--yellow);
+}
+
+.art-timeline-lock-icon .art-timeline-lock-keyway {
+  stroke-width: 2;
 }
 
 .art-timeline-lane-label small {
