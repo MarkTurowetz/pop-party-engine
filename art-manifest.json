@@ -9175,7 +9175,7 @@
       "updatedAt": "2026-07-13T05:01:33.684Z"
     },
     "prefab-untitled-prefab": {
-      "name": "Vote Answer Text",
+      "name": "Voting Card Answer Text",
       "description": "Reusable art prefab.",
       "surface": "stage",
       "compositionKind": "prefab",
@@ -9348,7 +9348,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T06:22:38.630Z"
+      "updatedAt": "2026-07-13T06:23:09.251Z"
     },
     "prefab-voting-card-bg": {
       "name": "Voting Card Bg",
