@@ -1,10 +1,7 @@
-// Typed port of the legacy client/stage/voting-card-visuals.js IIFE — the stage
-// voting card renderer. Installs window.PartyGameVotingCardVisuals for the legacy
-// stage runtime. PartyGame* deps are read lazily via globalThis at call time. The
-// legacy used arguments.length to distinguish "text override passed" from "use
-// default"; we replicate that with a NO_OVERRIDE sentinel.
+// Timeline-driven voting-card renderer. Voting cards mirror the Player Widget MC
+// architecture: a parent MC owns independently addressable child MCs, while the
+// card-art child owns a deeper stopped correctness-state timeline.
 
-import { normalizeGameTextFontFamily } from "../textFonts";
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
 import type { TimelineDocument } from "../../shared/timeline-model";
 
@@ -14,16 +11,17 @@ type El = HTMLElement;
 interface VisualBridgeApi {
   createVisualForTarget?: (options: Dict) => Dict | undefined;
 }
+
 interface TreeRenderer {
-  host?: unknown;
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
   clear: (options: Dict) => void;
-  playAll?: (animation: string, options?: Dict) => number;
+  isComponentVisible?: (componentId: string) => boolean;
   playComponent?: (componentId: string, animation: string, options?: Dict) => number;
+  stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
 }
+
 interface VisualLike {
   play: (animation: string, options?: Dict) => number;
-  isVisible?: () => boolean;
 }
 
 declare global {
@@ -34,44 +32,41 @@ declare global {
 
 const w = () => globalThis as typeof globalThis & Window;
 const visualBridge = (): VisualBridgeApi | undefined => w().PartyGameVisualBridge as unknown as VisualBridgeApi | undefined;
-const NO_OVERRIDE = Symbol("no-override");
+
+export const VOTING_CARD_MC_ID = "prefab-voting-card-mc";
+export const VOTING_CARD_ART_MC_ID = "prefab-voting-card-art-mc";
+export const VOTING_CARD_ANSWER_MC_ID = "prefab-voting-card-answer-mc";
+export const VOTING_CARD_AUTHOR_MC_ID = "prefab-voting-card-author-mc";
+export const VOTING_CARD_VOTE_COUNT_MC_ID = "prefab-voting-card-vote-count-mc";
+export const VOTING_CARD_VOTERS_MC_ID = "prefab-voting-card-voters-mc";
+export const VOTING_CARD_CORRECTNESS_STATE_ID = "prefab-voting-card-correctness-state";
+
+export const VOTING_CARD_ART_COMPONENT_ID = "voting-card-art-mc";
+export const VOTING_CARD_ANSWER_COMPONENT_ID = "voting-card-answer-mc";
+export const VOTING_CARD_AUTHOR_COMPONENT_ID = "voting-card-author-mc";
+export const VOTING_CARD_VOTE_COUNT_COMPONENT_ID = "voting-card-vote-count-mc";
+export const VOTING_CARD_VOTERS_COMPONENT_ID = "voting-card-voters-mc";
+export const VOTING_CARD_CORRECTNESS_COMPONENT_ID = "voting-card-correctness-state";
+export const VOTING_CARD_VOTER_CONTAINER_ID = "voting-card-voter-container";
+export const VOTING_CARD_VOTE_WIDGET_ID = "voting-card-vote-widget";
 
 export function votingCardArtTimeline(timeline: unknown): TimelineDocument {
   return effectiveVisibilityTimeline(timeline as TimelineDocument | null | undefined);
 }
 
-const KNOWN_COMPONENT_IDS = new Set(["current-card", "answer-text", "author-heading", "voter-container", "vote-count", "vote-widget"]);
-const FALLBACK_VOTING_CARD_COMPOSITION: Dict = {
-  canvas: { width: 560, height: 230 },
-  components: [
-    { id: "current-card", x: 280, y: 96, width: 520, height: 118, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 5, borderRadius: 16 },
-    { id: "answer-text", x: 280, y: 96, width: 420, height: 78, scale: 1, fontSize: 32, fontColor: "#17131f" },
-    { id: "author-heading", x: 280, y: 22, width: 340, height: 28, scale: 1, fontSize: 15, fontColor: "#6b5a80" },
-    { id: "voter-container", x: 278, y: 188, width: 500, height: 48, scale: 1, childDistribution: "horizontal", fillColor: "transparent", borderColor: "transparent", borderWidth: 0, borderRadius: 0 },
-    { id: "vote-count", x: 72, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" },
-    { id: "vote-widget", x: 280, y: 188, width: 112, height: 32, scale: 1, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999, fontSize: 15, fontColor: "#17131f" }
-  ]
-};
-
-function createVotingCardElement(documentRef: Document, cardId: string): El {
-  const group = documentRef.createElement("article");
-  group.className = "voting-card-group voting-card-group-hidden";
-  group.dataset.cardId = cardId;
-  group.innerHTML = `
-      <div class="voting-card"></div>
-      <div class="voting-card-answer"></div>
-      <div class="voting-card-votes voting-card-widget-hidden"></div>
-      <div class="voting-card-author voting-card-widget-hidden"></div>
-      <div class="voting-card-voters voting-card-widget-hidden"></div>
-      <div class="voting-card-art-objects"></div>
-    `;
-  return group;
+function cloneComponent(component: Dict): Dict {
+  return {
+    ...component,
+    children: Array.isArray(component.children) ? (component.children as Dict[]).map(cloneComponent) : []
+  };
 }
 
-function cloneComponentTree(component: Dict): Dict {
+function cloneComposition(composition: Dict): Dict {
   return {
-    ...(component || {}),
-    children: Array.isArray(component?.children) ? (component.children as Dict[]).map(cloneComponentTree) : []
+    ...composition,
+    canvas: { ...((composition.canvas as Dict) || {}) },
+    components: ((composition.components as Dict[]) || []).map(cloneComponent),
+    timeline: composition.timeline ? structuredClone(composition.timeline) : composition.timeline
   };
 }
 
@@ -83,247 +78,277 @@ function safeComponentId(value: unknown, fallback: string): string {
   return clean || fallback;
 }
 
+function componentById(composition: Dict | null, id: string): Dict | null {
+  return ((composition?.components as Dict[]) || []).find((component) => component.id === id) || null;
+}
+
+function legacyVotingCardComponent(legacy: Dict | null, id: string, fallback: Dict): Dict {
+  return cloneComponent(componentById(legacy, id) || fallback);
+}
+
+const fallbackLifecycle = (): TimelineDocument => votingCardArtTimeline(null);
+
+function fallbackComposition(id: string, legacy: Dict | null): Dict | null {
+  if (id === VOTING_CARD_MC_ID) {
+    return {
+      id,
+      name: "Voting Card MC",
+      canvas: { width: 560, height: 230 },
+      components: [
+        { id: VOTING_CARD_ART_COMPONENT_ID, instanceLabel: "cardArt", kind: "reference", artCompositionId: VOTING_CARD_ART_MC_ID, x: 280, y: 115, width: 560, height: 230, scale: 1 },
+        { id: VOTING_CARD_ANSWER_COMPONENT_ID, instanceLabel: "answer", kind: "reference", artCompositionId: VOTING_CARD_ANSWER_MC_ID, x: 280, y: 86, width: 420, height: 78, scale: 1 },
+        { id: VOTING_CARD_AUTHOR_COMPONENT_ID, instanceLabel: "author", kind: "reference", artCompositionId: VOTING_CARD_AUTHOR_MC_ID, x: 280, y: 32, width: 340, height: 28, scale: 1 },
+        { id: VOTING_CARD_VOTERS_COMPONENT_ID, instanceLabel: "voters", kind: "reference", artCompositionId: VOTING_CARD_VOTERS_MC_ID, x: 278, y: 188, width: 500, height: 48, scale: 1 },
+        { id: VOTING_CARD_VOTE_COUNT_COMPONENT_ID, instanceLabel: "voteCount", kind: "reference", artCompositionId: VOTING_CARD_VOTE_COUNT_MC_ID, x: 30.927, y: 28, width: 48, height: 48, scale: 1 }
+      ],
+      timeline: fallbackLifecycle()
+    };
+  }
+  if (id === VOTING_CARD_ART_MC_ID) {
+    const surface = legacyVotingCardComponent(legacy, "current-card", { id: "voting-card-surface", kind: "shape", x: 280, y: 86, width: 520, height: 150, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 5, borderRadius: 16 });
+    surface.id = "voting-card-surface";
+    surface.instanceLabel = "cardSurface";
+    return {
+      id,
+      name: "Voting Card Art MC",
+      canvas: { width: 560, height: 230 },
+      components: [
+        surface,
+        { id: VOTING_CARD_CORRECTNESS_COMPONENT_ID, instanceLabel: "correctnessState", kind: "reference", artCompositionId: VOTING_CARD_CORRECTNESS_STATE_ID, x: 280, y: 86, width: 520, height: 150, scale: 1 }
+      ],
+      timeline: fallbackLifecycle()
+    };
+  }
+  if (id === VOTING_CARD_ANSWER_MC_ID) {
+    const text = legacyVotingCardComponent(legacy, "answer-text", { id: "voting-card-answer-text", kind: "text", x: 210, y: 39, width: 420, height: 78, defaultText: "ANSWER", fontSize: 32, fontColor: "#17131f" });
+    text.id = "voting-card-answer-text";
+    text.instanceLabel = "answerText";
+    text.x = 210;
+    text.y = 39;
+    return { id, name: "Voting Card Answer MC", canvas: { width: 420, height: 78 }, components: [text], timeline: fallbackLifecycle() };
+  }
+  if (id === VOTING_CARD_AUTHOR_MC_ID) {
+    const text = legacyVotingCardComponent(legacy, "author-heading", { id: "voting-card-author-text", kind: "text", x: 170, y: 14, width: 340, height: 28, defaultText: "AUTHOR", fontSize: 15, fontColor: "#6b5a80" });
+    text.id = "voting-card-author-text";
+    text.instanceLabel = "authorText";
+    text.x = 170;
+    text.y = 14;
+    return { id, name: "Voting Card Author MC", canvas: { width: 340, height: 28 }, components: [text], timeline: fallbackLifecycle() };
+  }
+  if (id === VOTING_CARD_VOTE_COUNT_MC_ID) {
+    const badge = legacyVotingCardComponent(legacy, "vote-count", { id: "voting-card-vote-count", kind: "badge", x: 24, y: 24, width: 48, height: 48, defaultText: "", fontSize: 10, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999 });
+    badge.id = "voting-card-vote-count";
+    badge.instanceLabel = "voteCountText";
+    badge.x = 24;
+    badge.y = 24;
+    return { id, name: "Voting Card Vote Count MC", canvas: { width: 48, height: 48 }, components: [badge], timeline: fallbackLifecycle() };
+  }
+  if (id === VOTING_CARD_VOTERS_MC_ID) {
+    const container = legacyVotingCardComponent(legacy, "voter-container", { id: VOTING_CARD_VOTER_CONTAINER_ID, kind: "container", x: 250, y: 24, width: 500, height: 48, childDistribution: "horizontal", fillColor: "transparent", borderColor: "transparent" });
+    const widget = legacyVotingCardComponent(legacy, "vote-widget", { id: VOTING_CARD_VOTE_WIDGET_ID, kind: "badge", x: 250, y: 24, width: 112, height: 32, defaultText: "PLAYER", fontSize: 15, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999 });
+    container.id = VOTING_CARD_VOTER_CONTAINER_ID;
+    container.instanceLabel = "voterContainer";
+    container.x = 250;
+    container.y = 24;
+    widget.id = VOTING_CARD_VOTE_WIDGET_ID;
+    widget.instanceLabel = "voteWidget";
+    widget.x = 250;
+    widget.y = 24;
+    container.children = [widget];
+    return { id, name: "Voting Card Voters MC", canvas: { width: 500, height: 48 }, components: [container], timeline: fallbackLifecycle() };
+  }
+  if (id === VOTING_CARD_CORRECTNESS_STATE_ID) {
+    return {
+      id,
+      name: "Voting Card Correctness State",
+      canvas: { width: 520, height: 150 },
+      components: [{ id: "voting-card-correct-surface", instanceLabel: "correctSurface", kind: "shape", x: 260, y: 75, width: 520, height: 150, fillColor: "#60d394", borderColor: "#17131f", borderWidth: 5, borderRadius: 16 }],
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [{ name: "Neutral", frame: 0 }, { name: "Correct", frame: 1 }],
+        commands: [{ id: "stop-0", frame: 0, type: "stop" }, { id: "visible-0", frame: 0, type: "setVisible", target: "false" }, { id: "stop-1", frame: 1, type: "stop" }, { id: "visible-1", frame: 1, type: "setVisible", target: "true" }],
+        commandFrames: [0, 1],
+        tracks: []
+      }
+    };
+  }
+  return null;
+}
+
+export interface VotingCardRuntimeState {
+  answerText: string;
+  authorText: string;
+  voteCount: number;
+  voters: Dict[];
+}
+
+export function runtimeVotingCardComposition(composition: Dict, compositionId: string, state: VotingCardRuntimeState): Dict {
+  const runtime = cloneComposition(composition);
+  const components = (runtime.components as Dict[]) || [];
+  if (compositionId === VOTING_CARD_ANSWER_MC_ID) {
+    const text = components.find((component) => component.id === "voting-card-answer-text");
+    if (text) text.defaultText = state.answerText;
+  } else if (compositionId === VOTING_CARD_AUTHOR_MC_ID) {
+    const text = components.find((component) => component.id === "voting-card-author-text");
+    if (text) text.defaultText = state.authorText;
+  } else if (compositionId === VOTING_CARD_VOTE_COUNT_MC_ID) {
+    const text = components.find((component) => component.id === "voting-card-vote-count");
+    if (text) text.defaultText = state.voteCount > 0 ? String(state.voteCount) : "";
+  } else if (compositionId === VOTING_CARD_VOTERS_MC_ID) {
+    const container = components.find((component) => component.id === VOTING_CARD_VOTER_CONTAINER_ID);
+    const template = ((container?.children as Dict[]) || []).find((component) => component.id === VOTING_CARD_VOTE_WIDGET_ID);
+    if (container && template) {
+      container.children = state.voters.map((voter, index) => ({
+        ...cloneComponent(template),
+        id: `${VOTING_CARD_VOTE_WIDGET_ID}-${safeComponentId(voter.id, `voter-${index}`)}`,
+        instanceLabel: `vote${index + 1}`,
+        name: voter.name ? `Vote ${voter.name}` : `Vote ${index + 1}`,
+        defaultText: String(voter.name || "Player")
+      }));
+    }
+  }
+  return runtime;
+}
+
+function createVotingCardElement(documentRef: Document, cardId: string): El {
+  const group = documentRef.createElement("article");
+  group.className = "voting-card-group voting-card-group-hidden";
+  group.dataset.cardId = cardId;
+  const artHost = documentRef.createElement("div");
+  artHost.className = "voting-card-art-objects";
+  group.appendChild(artHost);
+  return group;
+}
+
 class VotingCardView {
   document: Document;
   visualAnimation: unknown;
-  avatarClass: unknown;
-  avatarFrameImage: () => string;
-  dinoIcon: (shape?: string) => string;
-  playerAvatarArt: (shape?: string) => string;
-  getComposition: unknown;
   gameObjectApi: unknown;
+  getComposition: (id: string) => Dict | null;
   cardId: string;
-  visualGameObjects = new WeakMap<El, Dict>();
-  visualFallbacks = new WeakMap<El, Dict>();
   element: El;
-  authorElement: El;
-  cardElement: El;
-  answerElement: El;
-  voteBadgeElement: El;
-  votersElement: El;
-  artObjectsElement: El;
-  artObjectRuntime: { ArtObjectTreeRenderer?: new (o: Dict) => TreeRenderer } | null;
-  rootArtRenderer: TreeRenderer | null;
-  componentChildRenderers = new Map<string, TreeRenderer>();
-  voterArtRenderer: TreeRenderer | null = null;
+  artHost: El;
+  rootRenderer: TreeRenderer | null;
+  groupVisual: VisualLike;
+  cardData: Dict = {};
   currentVisibleVoters: Dict[] = [];
   voteRevealKey = "";
-  voteRevealBadgeCount = 0;
   voteRevealTimers: number[] = [];
-  visibleVoteCount = 0;
-  groupVisual: VisualLike;
-  authorVisual: VisualLike;
-  votersVisual: VisualLike;
-  voteCountVisual: VisualLike | null;
-  answerText = "";
-  authorText = "";
-  voteCountText?: string;
 
   constructor(options: Dict) {
     this.document = options.document as Document;
     this.visualAnimation = options.visualAnimation;
-    this.avatarClass = options.avatarClass;
-    this.avatarFrameImage = (options.avatarFrameImage as () => string) || (() => "");
-    this.dinoIcon = (options.dinoIcon as (s?: string) => string) || (() => "");
-    this.playerAvatarArt = (options.playerAvatarArt as (s?: string) => string) || ((shape?: string) => `${this.avatarFrameImage()}${this.dinoIcon(shape)}`);
-    this.getComposition = options.getComposition;
     this.gameObjectApi = options.gameObjectApi || w().PartyGameGameObject || w().PartyGameStageGameObject;
-    this.cardId = options.cardId as string;
-    this.element = createVotingCardElement(this.document, options.cardId as string);
-    this.authorElement = this.element.querySelector(".voting-card-author") as El;
-    this.cardElement = this.element.querySelector(".voting-card") as El;
-    this.answerElement = this.element.querySelector(".voting-card-answer") as El;
-    this.voteBadgeElement = this.element.querySelector(".voting-card-votes") as El;
-    this.votersElement = this.element.querySelector(".voting-card-voters") as El;
-    this.artObjectsElement = this.element.querySelector(".voting-card-art-objects") as El;
-    this.artObjectRuntime = (w().PartyGameArtObject as { ArtObjectTreeRenderer?: new (o: Dict) => TreeRenderer }) || null;
-    this.rootArtRenderer = this.createArtTreeRenderer(this.artObjectsElement);
-    this.groupVisual = this.createVisual(
-      this.element,
-      { hiddenClasses: ["voting-card-group-hidden"], motionHiddenClasses: ["voting-card-group-hidden"], exitingClass: "voting-card-group-exiting", updateClass: "voting-card-update", instantClass: "voting-card-instant" },
-      "group"
-    ) as VisualLike;
-    this.authorVisual = this.createVisual(
-      this.authorElement,
-      { hiddenClasses: ["voting-card-widget-hidden"], motionHiddenClasses: ["voting-card-widget-hidden"], instantClass: "voting-card-widget-instant" },
-      "author"
-    ) as VisualLike;
-    this.votersVisual = this.createVisual(
-      this.votersElement,
-      { hiddenClasses: ["voting-card-widget-hidden"], motionHiddenClasses: ["voting-card-widget-hidden"], instantClass: "voting-card-widget-instant" },
-      "voters"
-    ) as VisualLike;
-    this.voteCountVisual = this.createVisual(
-      this.voteBadgeElement,
-      { hiddenClasses: ["voting-card-widget-hidden"], motionHiddenClasses: ["voting-card-widget-hidden"], instantClass: "voting-card-widget-instant", updateClass: "voting-card-update" },
-      "vote-count"
-    );
-  }
-
-  createVisual(element: El | null, options: Dict = {}, key = ""): VisualLike | null {
-    if (!element) return null;
-    const id = `voting-card:${this.cardId || this.element?.dataset.cardId || "card"}:${key || element.dataset.voterId || element.className || "visual"}`;
-    const hidden = Array.isArray(options.hiddenClasses) ? (options.hiddenClasses as unknown[]) : [options.hiddenClasses];
+    this.getComposition = options.getComposition as (id: string) => Dict | null;
+    this.cardId = String(options.cardId || "card");
+    this.element = createVotingCardElement(this.document, this.cardId);
+    this.artHost = this.element.querySelector(".voting-card-art-objects") as El;
+    this.rootRenderer = this.createRenderer();
+    const parent = this.composition(VOTING_CARD_MC_ID);
     const bridge = visualBridge()?.createVisualForTarget?.({
       gameObjectApi: this.gameObjectApi,
       visualAnimation: this.visualAnimation,
-      target: element,
-      gameObject: this.visualGameObjects.get(element),
-      legacyVisual: this.visualFallbacks.get(element),
+      target: this.element,
       gameObjectOptions: {
-        id,
-        visibilityKey: id,
+        id: `voting-card:${this.cardId}`,
+        visibilityKey: `voting-card:${this.cardId}`,
         isArt: true,
         isDynamic: true,
         visualOptions: {
-          ...options,
-          layoutHiddenClasses: [...hidden.filter(Boolean), ...(options.exitingClass ? [options.exitingClass] : [])]
+          hiddenClasses: ["voting-card-group-hidden"],
+          motionHiddenClasses: ["voting-card-group-hidden"],
+          exitingClass: "voting-card-group-exiting",
+          instantClass: "voting-card-instant",
+          layoutHiddenClasses: ["voting-card-group-hidden", "voting-card-group-exiting"],
+          timeline: votingCardArtTimeline(parent?.timeline),
+          timelineApplySelf: true,
+          timelineCanvas: (parent?.canvas as Dict) || { width: 560, height: 230 }
         }
-      },
-      legacyVisualOptions: options
+      }
     });
-    if (bridge?.gameObject) this.visualGameObjects.set(element, bridge.gameObject as Dict);
-    if (bridge?.legacyVisual) this.visualFallbacks.set(element, bridge.legacyVisual as Dict);
-    return (bridge?.visual as VisualLike) || null;
+    this.groupVisual = ((bridge?.visual as VisualLike) || (bridge?.legacyVisual as VisualLike))!;
   }
 
-  createArtTreeRenderer(host: El | null): TreeRenderer | null {
-    if (!this.artObjectRuntime || !host || !this.artObjectRuntime.ArtObjectTreeRenderer) return null;
-    const hostKey = host.dataset?.artChildHostFor || host.className || "root";
-    return new this.artObjectRuntime.ArtObjectTreeRenderer({
-      host,
+  composition(id: string): Dict | null {
+    const authored = this.getComposition?.(id) || null;
+    if (authored) return authored;
+    const legacy = this.getComposition?.("voting-card") || null;
+    return fallbackComposition(id, legacy);
+  }
+
+  runtimeState(): VotingCardRuntimeState {
+    return {
+      answerText: String(this.cardData.text || ""),
+      authorText: String(this.cardData.authorName || ""),
+      voteCount: this.currentVisibleVoters.length,
+      voters: this.currentVisibleVoters
+    };
+  }
+
+  runtimeComposition(id: string): Dict | null {
+    const composition = this.composition(id);
+    return composition ? runtimeVotingCardComposition(composition, id, this.runtimeState()) : null;
+  }
+
+  createRenderer(): TreeRenderer | null {
+    const artRuntime = w().PartyGameArtObject as { ArtObjectTreeRenderer?: new (options: Dict) => TreeRenderer } | undefined;
+    if (!artRuntime?.ArtObjectTreeRenderer) return null;
+    return new artRuntime.ArtObjectTreeRenderer({
+      host: this.artHost,
       document: this.document,
-      instanceId: `voting-card:${this.cardId}:${hostKey}`,
+      instanceId: `voting-card:${this.cardId}:mc`,
       gameObjectApi: this.gameObjectApi,
-      visualAnimation: this.visualAnimation
+      visualAnimation: w().PartyGameVisualObject,
+      getComposition: (id: string) => this.runtimeComposition(id)
     });
+  }
+
+  renderArt(): void {
+    const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
+    if (!parent || !this.rootRenderer) return;
+    const canvas = (parent.canvas as Dict) || { width: 560, height: 230 };
+    this.element.style.width = `${Number(canvas.width || 560)}px`;
+    this.element.style.height = `${Number(canvas.height || 230)}px`;
+    this.rootRenderer.render((parent.components as Dict[]) || [], canvas, { instant: true });
+  }
+
+  playChild(componentId: string, animation: string, options: Dict = {}): number {
+    return this.rootRenderer?.playComponent?.(componentId, animation, options) || 0;
   }
 
   sync(cardData: Dict, options: Dict = {}): void {
-    this.element.dataset.cardIndex = String(cardData.index ?? "");
-    this.answerText = (cardData.text as string) || "";
-    this.cardElement.classList.toggle("is-winner", cardData.isWinner === true);
-    this.cardElement.classList.toggle("is-loser", cardData.isLoser === true);
-    this.syncAuthor(cardData);
-    this.applyComposition();
+    const firstRender = this.element.dataset.votingCardInitialized !== "true";
+    const previousAuthorsRevealed = this.element.dataset.authorsRevealed === "true";
+    const previousWinner = this.element.dataset.winnerRevealed === "true";
+    this.cardData = cardData;
+    if (cardData.votesRevealed !== true) this.currentVisibleVoters = [];
+    this.renderArt();
+
+    if (firstRender) {
+      this.groupVisual.play(options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+      this.playChild(VOTING_CARD_ART_COMPONENT_ID, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+      this.playChild(VOTING_CARD_ANSWER_COMPONENT_ID, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+      this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, "Off", { instant: true });
+      this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "Off", { instant: true });
+      this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, "Off", { instant: true });
+      this.element.dataset.votingCardInitialized = "true";
+    }
+
+    if (cardData.authorsRevealed === true && !previousAuthorsRevealed) {
+      this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+    } else if (cardData.authorsRevealed !== true) {
+      this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, "Off", { instant: true });
+    }
+
+    const correctnessLabel = cardData.isWinner === true ? "Correct" : "Neutral";
+    if (!previousWinner || cardData.isWinner !== true) {
+      this.rootRenderer?.stopAtComponent?.(VOTING_CARD_CORRECTNESS_COMPONENT_ID, correctnessLabel, { instant: true });
+    }
+
     this.syncVoters(cardData, options);
-    this.groupVisual.play("on");
-  }
-
-  composition(): Dict {
-    return ((typeof this.getComposition === "function" ? (this.getComposition as () => Dict | null)() : null) as Dict) || FALLBACK_VOTING_CARD_COMPOSITION;
-  }
-
-  component(componentId: string, fallbackId = ""): Dict | null {
-    const components = (this.composition()?.components as Dict[]) || [];
-    return components.find((item) => item.id === componentId) || (fallbackId ? components.find((item) => item.id === fallbackId) : null) || null;
-  }
-
-  rootArtComponents(): Dict[] {
-    return ((this.composition()?.components as Dict[]) || []).filter((component) => !KNOWN_COMPONENT_IDS.has(component.id as string));
-  }
-
-  applyComponentLayout(element: El | null, component: Dict | null, canvas: Dict | undefined, textOverride: unknown = NO_OVERRIDE): void {
-    if (!element || !component) return;
-    const canvasWidth = Math.max(1, Number(canvas?.width || 1));
-    const canvasHeight = Math.max(1, Number(canvas?.height || 1));
-    element.style.left = `${(Number(component.x || 0) / canvasWidth) * 100}%`;
-    element.style.top = `${(Number(component.y || 0) / canvasHeight) * 100}%`;
-    element.style.width = `${(Number(component.width || 1) / canvasWidth) * 100}%`;
-    element.style.height = `${(Number(component.height || 1) / canvasHeight) * 100}%`;
-    element.style.setProperty("--component-scale", String(Number(component.scale || 1)));
-    element.style.setProperty("--component-rotation", `${Number(component.rotation || 0)}deg`);
-    const labelText = textOverride !== NO_OVERRIDE ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
-    const fontSize = (w().PartyGameArtObject as { componentFontSize?: (c: Dict, t: string) => number } | undefined)?.componentFontSize?.(component, labelText) || Number(component.fontSize || 16);
-    element.style.setProperty("--component-font-size", `${fontSize}px`);
-    element.style.setProperty("--component-font-family", normalizeGameTextFontFamily(component.fontFamily));
-    element.style.setProperty("--component-text-color", (component.fontColor as string) || "#17131f");
-    element.style.setProperty("--component-fill-color", (component.fillColor as string) || "transparent");
-    element.style.setProperty("--component-border-color", (component.borderColor as string) || "transparent");
-    element.style.setProperty("--component-border-width", `${Number(component.borderWidth || 0)}px`);
-    element.style.setProperty("--component-border-radius", `${Number(component.borderRadius || 0)}px`);
-  }
-
-  applyComposition(): void {
-    const composition = this.composition();
-    if (!composition) return;
-    const canvas = (composition.canvas as Dict) || { width: 560, height: 230 };
-    this.element.style.width = `${Number(canvas.width || 560)}px`;
-    this.element.style.height = `${Number(canvas.height || 230)}px`;
-    this.applyComponentLayout(this.cardElement, this.component("current-card"), canvas);
-    this.applyComponentLayout(this.answerElement, this.component("answer-text"), canvas, this.answerText);
-    this.renderComponentText(this.answerElement, this.component("answer-text"), this.answerText);
-    this.applyComponentLayout(this.authorElement, this.component("author-heading"), canvas, this.authorText);
-    this.renderComponentText(this.authorElement, this.component("author-heading"), this.authorText);
-    this.applyComponentLayout(this.votersElement, this.component("voter-container"), canvas);
-    this.applyComponentLayout(this.voteBadgeElement, this.component("vote-count", "vote-widget"), canvas, this.voteCountText);
-    this.renderComponentText(this.voteBadgeElement, this.component("vote-count", "vote-widget"), this.voteCountText);
-    this.renderRootArtObjects(canvas);
-    this.renderComponentChildren("current-card", this.cardElement);
-    this.renderComponentChildren("answer-text", this.answerElement);
-    this.renderComponentChildren("author-heading", this.authorElement);
-    this.renderComponentChildren("vote-count", this.voteBadgeElement);
-    this.renderVoterArt(this.currentVisibleVoters, { instant: true, syncCount: false });
-  }
-
-  ensureChildHost(parentElement: El | null, componentId: string): El | null {
-    if (!parentElement || !componentId) return null;
-    let host = parentElement.querySelector(`:scope > .voting-card-component-children[data-component-id="${componentId}"]`) as El | null;
-    if (!host) {
-      host = this.document.createElement("div");
-      host.className = "voting-card-component-children";
-      host.dataset.componentId = componentId;
-      parentElement.appendChild(host);
-    }
-    return host;
-  }
-
-  ensureVoterArtHost(): El {
-    let host = this.votersElement.querySelector(":scope > .voting-card-voter-art-host") as El | null;
-    if (!host) {
-      host = this.document.createElement("div");
-      host.className = "voting-card-voter-art-host";
-      this.votersElement.appendChild(host);
-    }
-    return host;
-  }
-
-  renderRootArtObjects(canvas: Dict): void {
-    this.rootArtRenderer?.render(this.rootArtComponents(), canvas, {
-      timeline: votingCardArtTimeline(this.composition()?.timeline)
-    });
-    this.rootArtRenderer?.playAll?.("On", { instant: true });
-  }
-
-  renderComponentChildren(componentId: string, parentElement: El): void {
-    const component = this.component(componentId);
-    if (!(component?.children as Dict[])?.length) {
-      const renderer = this.componentChildRenderers.get(componentId);
-      if (renderer) renderer.clear({ instant: true });
-      return;
-    }
-    const host = this.ensureChildHost(parentElement, componentId);
-    if (!host) return;
-    let renderer = this.componentChildRenderers.get(componentId);
-    if (!renderer || renderer.host !== host) {
-      const created = this.createArtTreeRenderer(host);
-      if (!created) return;
-      renderer = created;
-      this.componentChildRenderers.set(componentId, renderer);
-    }
-    renderer.render((component!.children as Dict[]) || [], { width: Number(component!.width || 1), height: Number(component!.height || 1) }, {
-      timeline: votingCardArtTimeline(component!.timeline)
-    });
-    renderer.playAll?.("On", { instant: true });
-  }
-
-  syncAuthor(cardData: Dict): void {
-    this.authorText = (cardData.authorName as string) || "";
-    if (cardData.authorsRevealed === true) {
-      this.authorVisual.play("appear");
-    } else {
-      this.authorVisual.play("off", { instant: true });
-    }
+    this.element.dataset.authorsRevealed = cardData.authorsRevealed === true ? "true" : "false";
+    this.element.dataset.winnerRevealed = cardData.isWinner === true ? "true" : "false";
   }
 
   clearVoteRevealTimers(): void {
@@ -331,143 +356,52 @@ class VotingCardView {
     this.voteRevealTimers = [];
   }
 
-  syncVoteCount(visibleVoteCount: unknown): void {
-    const count = Math.max(0, Math.floor(Number(visibleVoteCount || 0)));
-    const wasVisible = this.voteCountVisual?.isVisible?.() === true;
-    this.visibleVoteCount = count;
-    this.voteCountText = count > 0 ? String(count) : "";
-    this.renderComponentText(this.voteBadgeElement, this.component("vote-count", "vote-widget"), this.voteCountText);
-    this.renderComponentChildren("vote-count", this.voteBadgeElement);
-    if (count > 0) {
-      this.voteCountVisual?.play(wasVisible ? "update" : "appear");
-    } else {
-      this.voteCountVisual?.play("off", { instant: true });
-    }
-  }
-
-  voterArtRoot(voters: Dict[] = []): Dict | null {
-    const container = this.component("voter-container");
-    const widget = this.component("vote-widget");
-    if (!container || !widget) return null;
-    const width = Math.max(1, Number(container.width || 1));
-    const height = Math.max(1, Number(container.height || 1));
-    const children = voters.map((voter, index) => {
-      const voterId = safeComponentId(voter?.id, `voter-${index}`);
-      const clone = cloneComponentTree(widget);
-      clone.id = `vote-widget-${voterId}`;
-      clone.name = voter?.name ? `Vote Widget ${voter.name}` : `Vote Widget ${index + 1}`;
-      clone.defaultText = voter?.name || "Player";
-      clone.x = width / 2;
-      clone.y = height / 2;
-      return clone;
-    });
-    const distribution = container.childDistribution === "vertical" ? "vertical" : "horizontal";
-    return {
-      ...cloneComponentTree(container),
-      id: "voter-container-runtime",
-      name: "Runtime Voter Container",
-      x: width / 2,
-      y: height / 2,
-      width,
-      height,
-      scale: 1,
-      rotation: 0,
-      fillColor: "transparent",
-      borderColor: "transparent",
-      borderWidth: 0,
-      borderRadius: 0,
-      childDistribution: distribution,
-      children
-    };
-  }
-
-  renderVoterArt(voters: Dict[] = [], options: Dict = {}): void {
-    const previousVoterIds = new Set(this.currentVisibleVoters.map((voter) => String(voter?.id || "")));
-    this.currentVisibleVoters = Array.isArray(voters) ? voters : [];
-    const host = this.ensureVoterArtHost();
-    if (!host) return;
-    if (!this.voterArtRenderer || this.voterArtRenderer.host !== host) {
-      this.voterArtRenderer = this.createArtTreeRenderer(host);
-    }
-    const container = this.component("voter-container");
-    const root = this.voterArtRoot(this.currentVisibleVoters);
-    if (!this.voterArtRenderer || !container || !root) {
-      this.syncVoteCount(0);
-      return;
-    }
-    this.voterArtRenderer.render([root], { width: Math.max(1, Number(container.width || 1)), height: Math.max(1, Number(container.height || 1)) }, { instant: true });
-    this.voterArtRenderer.playComponent?.("voter-container-runtime", "On", { instant: true });
-    this.currentVisibleVoters.forEach((voter, index) => {
-      const voterId = safeComponentId(voter?.id, `voter-${index}`);
-      if (!previousVoterIds.has(String(voter?.id || ""))) {
-        this.voterArtRenderer?.playComponent?.(`vote-widget-${voterId}`, options.instant === true ? "On" : "Appear", {
-          instant: options.instant === true
-        });
-      }
-    });
-    if (options.syncCount !== false) this.syncVoteCount(this.currentVisibleVoters.length);
-  }
-
   syncVoters(cardData: Dict, options: Dict = {}): void {
-    const voters = cardData.votesRevealed === true ? (cardData.voters as Dict[]) || [] : [];
-    if (cardData.votesRevealed === true) {
-      this.votersVisual.play("on");
-      this.scheduleVoteReveal(voters, options);
-    } else {
+    if (cardData.votesRevealed !== true) {
       this.clearVoteRevealTimers();
       this.voteRevealKey = "";
-      this.voteRevealBadgeCount = 0;
-      this.renderVoterArt([], { instant: true });
-      this.voterArtRenderer?.clear({ instant: true });
-      this.syncVoteCount(0);
-      this.votersVisual.play("off", { instant: true });
+      this.currentVisibleVoters = [];
+      this.renderArt();
+      this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "Off", { instant: true });
+      this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, "Off", { instant: true });
+      return;
     }
-  }
-
-  scheduleVoteReveal(voters: Dict[], options: Dict = {}): void {
-    const revealKey = (options.voteRevealKey as string) || "instant";
-    const staggerMs = Math.max(0, Number(options.voteRevealStaggerMs || 0));
-    const voterKey = `${revealKey}:${voters.map((voter, index) => voter?.id || `voter-${index}`).join("|")}`;
-    if (voterKey === this.voteRevealKey && voters.length === this.voteRevealBadgeCount) return;
+    const voters = (cardData.voters as Dict[]) || [];
+    const revealKey = `${String(options.voteRevealKey || "instant")}:${voters.map((voter) => voter.id).join("|")}`;
+    if (revealKey === this.voteRevealKey) return;
     this.clearVoteRevealTimers();
-    this.voteRevealKey = voterKey;
-    this.voteRevealBadgeCount = voters.length;
-    this.renderVoterArt([], { instant: true });
-    if (!voters.length) return;
+    this.voteRevealKey = revealKey;
+    this.currentVisibleVoters = [];
+    this.renderArt();
+    this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
     voters.forEach((voter, index) => {
-      const visibleVoteCount = index + 1;
-      const delayMs = staggerMs > 0 ? visibleVoteCount * staggerMs : 0;
-      if (delayMs === 0) {
-        this.renderVoterArt(voters.slice(0, visibleVoteCount), { instant: options.instant === true });
-        return;
-      }
-      const timerId = setTimeout(() => {
-        if (this.voteRevealKey !== voterKey) return;
-        this.renderVoterArt(voters.slice(0, visibleVoteCount), { instant: false });
-      }, delayMs) as unknown as number;
-      this.voteRevealTimers.push(timerId);
+      const delay = Math.max(0, Number(options.voteRevealStaggerMs || 0)) * (index + 1);
+      const reveal = () => {
+        if (this.voteRevealKey !== revealKey) return;
+        const wasEmpty = this.currentVisibleVoters.length === 0;
+        this.currentVisibleVoters = voters.slice(0, index + 1);
+        this.renderArt();
+        const voterId = `${VOTING_CARD_VOTE_WIDGET_ID}-${safeComponentId(voter.id, `voter-${index}`)}`;
+        this.playChild(voterId, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+        this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, wasEmpty ? (options.instant === true ? "On" : "Appear") : "Update", { instant: options.instant === true });
+      };
+      if (delay > 0) this.voteRevealTimers.push(setTimeout(reveal, delay) as unknown as number);
+      else reveal();
     });
-  }
-
-  renderComponentText(target: El | null, component: Dict | null, textOverride: unknown = NO_OVERRIDE): void {
-    if (!target || !component) return;
-    const text = textOverride !== NO_OVERRIDE ? String(textOverride ?? "") : String(component.defaultText || component.name || "");
-    (w().PartyGameArtObject as { renderComponentText?: (t: El, c: Dict, text: string) => void } | undefined)?.renderComponentText?.(target, component, text);
   }
 
   remove(options: Dict = {}): number {
     this.clearVoteRevealTimers();
-    this.rootArtRenderer?.clear({ instant: options.instant === true });
-    this.voterArtRenderer?.clear({ instant: options.instant === true });
-    for (const renderer of this.componentChildRenderers.values()) {
-      renderer.clear({ instant: options.instant === true });
+    const instant = options.instant === true;
+    let duration = 0;
+    for (const componentId of [VOTING_CARD_AUTHOR_COMPONENT_ID, VOTING_CARD_VOTERS_COMPONENT_ID, VOTING_CARD_VOTE_COUNT_COMPONENT_ID, VOTING_CARD_ANSWER_COMPONENT_ID, VOTING_CARD_ART_COMPONENT_ID]) {
+      duration = Math.max(duration, this.playChild(componentId, instant ? "Off" : "Disappear", { instant }));
     }
-    this.componentChildRenderers.clear();
-    const duration = this.groupVisual.play(options.instant ? "off" : "disappear", { instant: options.instant === true });
+    duration = Math.max(duration, this.groupVisual.play(instant ? "Off" : "Disappear", { instant }));
     const element = this.element;
-    const token = element.dataset.visualAnimationToken || "";
     const removeElement = () => {
-      if (element.parentElement && element.dataset.visualAnimationToken === token) element.remove();
+      this.rootRenderer?.clear({ instant: true });
+      element.remove();
     };
     if (duration > 0) setTimeout(removeElement, duration);
     else removeElement();
@@ -479,11 +413,7 @@ class VotingCardRenderer {
   layer?: El;
   document: Document;
   visualAnimation: unknown;
-  avatarClass: unknown;
-  avatarFrameImage: unknown;
-  dinoIcon: unknown;
-  playerAvatarArt: unknown;
-  getComposition: unknown;
+  getComposition: (id: string) => Dict | null;
   gameObjectApi: unknown;
   cards = new Map<string, VotingCardView>();
   hideLayerTimer: number | null = null;
@@ -492,11 +422,7 @@ class VotingCardRenderer {
     this.layer = options.layer as El | undefined;
     this.document = (options.document as Document) || globalThis.document;
     this.visualAnimation = options.visualAnimation;
-    this.avatarClass = options.avatarClass;
-    this.avatarFrameImage = options.avatarFrameImage;
-    this.dinoIcon = options.dinoIcon;
-    this.playerAvatarArt = options.playerAvatarArt;
-    this.getComposition = options.getComposition;
+    this.getComposition = options.getComposition as (id: string) => Dict | null;
     this.gameObjectApi = options.gameObjectApi || w().PartyGameGameObject || w().PartyGameStageGameObject;
   }
 
@@ -504,22 +430,19 @@ class VotingCardRenderer {
     if (!this.layer) return;
     const list = Array.isArray(cards) ? cards : [];
     if (list.length) this.showLayer();
-    const desiredIds = new Set(list.map((card) => card.id as string));
+    const desiredIds = new Set(list.map((card) => String(card.id || "")));
     for (const cardData of list) {
-      let view = this.cards.get(cardData.id as string);
+      const cardId = String(cardData.id || "");
+      let view = this.cards.get(cardId);
       if (!view) {
         view = new VotingCardView({
           document: this.document,
           visualAnimation: this.visualAnimation,
-          avatarClass: this.avatarClass,
-          avatarFrameImage: this.avatarFrameImage,
-          dinoIcon: this.dinoIcon,
-          playerAvatarArt: this.playerAvatarArt,
           getComposition: this.getComposition,
           gameObjectApi: this.gameObjectApi,
-          cardId: cardData.id
+          cardId
         });
-        this.cards.set(cardData.id as string, view);
+        this.cards.set(cardId, view);
         this.layer.appendChild(view.element);
       }
       view.sync(cardData, options);
@@ -528,18 +451,14 @@ class VotingCardRenderer {
     for (const [cardId, view] of Array.from(this.cards.entries())) {
       if (desiredIds.has(cardId)) continue;
       this.cards.delete(cardId);
-      removalDuration = Math.max(removalDuration, view.remove());
+      removalDuration = Math.max(removalDuration, view.remove({ instant: options.instant === true }));
     }
-    if (!list.length && !this.cards.size) {
-      this.scheduleLayerHide(removalDuration);
-    }
+    if (!list.length && !this.cards.size) this.scheduleLayerHide(removalDuration);
   }
 
   clear(options: Dict = {}): void {
     let removalDuration = 0;
-    for (const [, view] of Array.from(this.cards.entries())) {
-      removalDuration = Math.max(removalDuration, view.remove({ instant: options.instant !== false }));
-    }
+    for (const view of this.cards.values()) removalDuration = Math.max(removalDuration, view.remove({ instant: options.instant !== false }));
     this.cards.clear();
     this.scheduleLayerHide(removalDuration);
   }

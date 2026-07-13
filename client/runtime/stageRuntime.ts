@@ -188,7 +188,7 @@ function votingCardRenderer(): Dict | null {
   if (!votingCardVisualRenderer && w().votingCardLayer && w().PartyGameVotingCardVisuals) {
     votingCardVisualRenderer = (w().PartyGameVotingCardVisuals as unknown as { createRenderer: (o: Dict) => Dict }).createRenderer({
       layer: w().votingCardLayer, visualAnimation: visualAnimation(), avatarClass: w().avatarClass, avatarFrameImage: w().avatarFrameImage, dinoIcon: w().dinoIcon, playerAvatarArt: w().playerAvatarArt,
-      gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject, getComposition: () => artComposition("voting-card")
+      gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject, getComposition: (id: string) => artComposition(id)
     });
   }
   return votingCardVisualRenderer;
@@ -230,10 +230,13 @@ function revealVoteStaggerMs(action: Dict): number {
 }
 
 function voteRevealDurationMs(action: Dict, cards: Dict[] = ((w().currentStageState as Dict)?.votingCards as Dict[]) || []): number {
-  if (action?.type !== "revealVotes") return 0;
+  const authoredBeatDuration = (action?.timing as Dict)?.mode === "E+"
+    ? Math.max(0, Number((action.timing as Dict)?.seconds || 0) * 1000)
+    : 0;
+  if (action?.type !== "revealVotes") return authoredBeatDuration;
   const maxVotes = Math.max(0, ...(Array.isArray(cards) ? cards.map((card) => ((card.voters as unknown[]) || []).length) : [0]));
-  if (maxVotes <= 0) return 0;
-  return Math.round(maxVotes * revealVoteStaggerMs(action) + 220);
+  if (maxVotes <= 0) return authoredBeatDuration;
+  return Math.max(authoredBeatDuration, Math.round(maxVotes * revealVoteStaggerMs(action) + 220));
 }
 
 function votingCardRenderOptions(lobby: Dict): Dict {

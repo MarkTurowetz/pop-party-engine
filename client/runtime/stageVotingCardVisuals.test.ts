@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { PartyGameVotingCardVisuals, votingCardArtTimeline } from "./stageVotingCardVisuals";
+import {
+  PartyGameVotingCardVisuals,
+  VOTING_CARD_ANSWER_MC_ID,
+  VOTING_CARD_VOTERS_MC_ID,
+  runtimeVotingCardComposition,
+  votingCardArtTimeline
+} from "./stageVotingCardVisuals";
 
 describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
   it("createRenderer returns the render surface", () => {
@@ -30,5 +36,46 @@ describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
 
     expect(votingCardArtTimeline(timeline).labels).toEqual([expect.objectContaining({ name: "custom", frame: 1 })]);
     expect(votingCardArtTimeline(null).labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Appear", "Disappear"]));
+  });
+
+  it("injects runtime answer text without changing the authored child prefab", () => {
+    const authored = {
+      canvas: { width: 420, height: 78 },
+      components: [{ id: "voting-card-answer-text", kind: "text", defaultText: "ANSWER" }]
+    };
+    const runtime = runtimeVotingCardComposition(authored, VOTING_CARD_ANSWER_MC_ID, {
+      answerText: "DINOSAUR PARK",
+      authorText: "Ava",
+      voteCount: 0,
+      voters: []
+    });
+
+    expect(authored.components[0].defaultText).toBe("ANSWER");
+    expect((runtime.components as Record<string, unknown>[])[0].defaultText).toBe("DINOSAUR PARK");
+  });
+
+  it("expands the voter template into independently addressable vote children", () => {
+    const authored = {
+      canvas: { width: 500, height: 48 },
+      components: [
+        {
+          id: "voting-card-voter-container",
+          kind: "container",
+          children: [{ id: "voting-card-vote-widget", kind: "badge", defaultText: "PLAYER" }]
+        }
+      ]
+    };
+    const runtime = runtimeVotingCardComposition(authored, VOTING_CARD_VOTERS_MC_ID, {
+      answerText: "",
+      authorText: "",
+      voteCount: 2,
+      voters: [{ id: "p1", name: "Ava" }, { id: "p2", name: "Max" }]
+    });
+    const container = (runtime.components as Record<string, unknown>[])[0];
+
+    expect(container.children).toEqual([
+      expect.objectContaining({ id: "voting-card-vote-widget-p1", instanceLabel: "vote1", defaultText: "Ava" }),
+      expect.objectContaining({ id: "voting-card-vote-widget-p2", instanceLabel: "vote2", defaultText: "Max" })
+    ]);
   });
 });

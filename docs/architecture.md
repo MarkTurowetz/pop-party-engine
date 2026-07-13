@@ -155,6 +155,10 @@ concepts into focused modules.
   lifecycle completion must update rendered state without silently creating persistent overrides.
 - Repeated `On` and `Off` requests are idempotent state normalization: they repair stale lifecycle
   classes without restarting authored `Appear`, `Disappear`, or `Update` animations.
+- Composite reveal widgets follow the same ownership model as Player Widget MC. Voting Card MC
+  owns labeled `cardArt`, `answer`, `author`, `voters`, and `voteCount` child prefabs; runtime code
+  reveals those children through their timelines. `cardArt` owns the deeper stopped
+  `correctnessState` (`Neutral`/`Correct`) instead of runtime code assigning presentation colors.
 - `Park` remains a compatibility label for older authored timelines, but runtime defaults and
   immediate hides use `Off`. A newly rendered object stays hidden until an explicit reveal call.
 - Art Manager compositions are prefab/source assets. Stage layout entries are placed
