@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TimelineDocument } from "../../../shared/timeline-model";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import {
+  reusableUntitledPrefabStage,
   swappableGameObjectOptions,
   timelineActionScriptForFrame,
   timelineActionScriptPlaceholderForFrame,
@@ -65,6 +66,19 @@ describe("ArtCompositionEditor command scripts", () => {
     );
 
     expect(options.map((option) => option.id)).toEqual(["a", "prefab", "z"]);
+  });
+});
+
+describe("ArtCompositionEditor prefab stage", () => {
+  it("reuses the saved Untitled Prefab for a surface after refresh", () => {
+    const compositions = [
+      { id: "other", name: "Untitled Prefab", surface: "controller", compositionKind: "prefab" },
+      { id: "game-object", name: "Untitled Prefab", surface: "stage", compositionKind: "gameObject" },
+      { id: "stage-draft", name: "Untitled Prefab", surface: "stage", compositionKind: "prefab" }
+    ] as ArtComposition[];
+
+    expect(reusableUntitledPrefabStage(compositions, "stage")?.id).toBe("stage-draft");
+    expect(reusableUntitledPrefabStage(compositions, "controller")?.id).toBe("other");
   });
 });
 

@@ -65,3 +65,22 @@ export function artReferenceFrameZeroOverrides(
   for (const component of components || []) visit(component, [], new Set(), 0);
   return output;
 }
+
+/**
+ * Resolves the complete resting frame for a composition: its own frame-zero
+ * tracks plus the independent frame-zero timelines of every referenced child.
+ * Consumers that measure prefab content must use this same snapshot as the
+ * renderer or newly placed references will inherit stale base dimensions.
+ */
+export function artCompositionFrameZeroOverrides(
+  composition: ArtComposition,
+  compositionById: Map<string, ArtComposition>
+): TimelinePreviewOverrides {
+  const output = artReferenceFrameZeroOverrides(composition.components || [], compositionById);
+  const timeline = normalizeTimeline(composition.timeline);
+  if (!timeline) return output;
+  for (const [targetId, props] of Object.entries(timelineSnapshotAt(timeline, 0).targets)) {
+    mergeTargetProps(output, scopedReferenceTargetId([], String(composition.id || ""), targetId), props);
+  }
+  return output;
+}

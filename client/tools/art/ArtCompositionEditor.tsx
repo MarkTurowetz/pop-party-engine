@@ -185,6 +185,20 @@ type MarqueeBox = { x: number; y: number; width: number; height: number };
 type ArtSelectionBox = { id: string; minX: number; minY: number; maxX: number; maxY: number };
 type PrefabCreationDialogState = { defaultName: string } | null;
 
+const UNTITLED_PREFAB_NAME = "Untitled Prefab";
+
+export function reusableUntitledPrefabStage(
+  compositions: ArtComposition[],
+  surface: string
+): ArtComposition | null {
+  const cleanSurface = String(surface || "stage");
+  return compositions.find((item) =>
+    normalizeArtCompositionKind(item.compositionKind) === "prefab" &&
+    String(item.surface || "stage") === cleanSurface &&
+    String(item.name || "").trim().toLowerCase() === UNTITLED_PREFAB_NAME.toLowerCase()
+  ) || null;
+}
+
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
 }
@@ -721,17 +735,20 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const openBlankPrefabStage = useCallback(() => {
     const surface = String(composition?.surface || "stage");
     const draftId = draftStageCompositionIds[surface];
-    const existingDraft = draftId ? compositions.find((item) => item.id === draftId) : null;
+    const existingDraft =
+      (draftId ? compositions.find((item) => item.id === draftId) : null) ||
+      reusableUntitledPrefabStage(compositions, surface);
     dismissTimelineContext();
     setTimelineScope(null);
     setTimelineNavigationStack([]);
     if (existingDraft) {
+      setDraftStageCompositionIds((current) => current[surface] === existingDraft.id ? current : { ...current, [surface]: existingDraft.id });
       controller.selectComposition(existingDraft.id);
       controller.clearComponentSelection();
       setTimelinePreview({ compositionId: existingDraft.id, frame: 0, overrides: null });
       return;
     }
-    const draft = controller.createComposition("prefab", surface, "Untitled Prefab");
+    const draft = controller.createComposition("prefab", surface, UNTITLED_PREFAB_NAME);
     setDraftStageCompositionIds((current) => ({ ...current, [surface]: draft.id }));
     setTimelinePreview({ compositionId: draft.id, frame: 0, overrides: null });
   }, [composition?.surface, compositions, controller, dismissTimelineContext, draftStageCompositionIds]);

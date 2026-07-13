@@ -169,6 +169,31 @@ describe("createArtCompositionsController", () => {
     expect(reference.timeline).toBeUndefined();
   });
 
+  it("sizes a dropped prefab reference from its visible frame-zero values", () => {
+    const prefab = composition("voting-card-answer");
+    prefab.name = "Voting Card Answer";
+    prefab.compositionKind = "prefab";
+    prefab.components = [
+      { id: "answer", name: "Answer", kind: "text", x: 110, y: 30, width: 220, height: 60 }
+    ] as never;
+    prefab.timeline = {
+      fps: 30,
+      frameCount: 2,
+      labels: [],
+      commands: [],
+      tracks: [{ targetId: "answer", keyframes: [{ frame: 0, props: { x: 210, y: 39, width: 420, height: 78 } }] }]
+    };
+    const host = composition("host");
+    const controller = createArtCompositionsController({ initialCompositions: [host, prefab], api: fakeApi() });
+
+    controller.addComponent("reference", { referencedCompositionId: prefab.id });
+
+    const reference = controller.getState().compositions[0].components[0];
+    expect(reference.artCompositionId).toBe(prefab.id);
+    expect(reference.width).toBe(420);
+    expect(reference.height).toBe(78);
+  });
+
   it("sizes nested references from tight visual content instead of the editor canvas", () => {
     const vip = composition("player-vip-widget");
     vip.name = "Player VIP Widget";

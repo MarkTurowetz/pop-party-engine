@@ -13,6 +13,7 @@ import {
 } from "./artCompositionModel";
 import { componentKindLabel, defaultTextFontFamily, normalizeCreatableComponentKind } from "./artComponentSchema";
 import { artCompositionContentBounds } from "./artCompositionBounds";
+import { artCompositionFrameZeroOverrides } from "./artReferenceFrameOverrides";
 import { mergeDefaultArtVisibilityTimeline } from "./artTimelineModel";
 import {
   ART_TIMELINE_ARCHITECTURE_VERSION,
@@ -134,7 +135,9 @@ function createComposition(kind: ArtCompositionKind, surface: string, name: stri
 function referenceComponentPatch(composition: ArtComposition, compositions: ArtComposition[] = []): Partial<ArtComponent> {
   const compositionById = new Map(compositions.map((item) => [String(item.id || ""), item]));
   compositionById.set(String(composition.id || ""), composition);
-  const contentBounds = artCompositionContentBounds(composition, compositionById);
+  const contentBounds = artCompositionContentBounds(composition, compositionById, {
+    timelineFrameOverrides: artCompositionFrameZeroOverrides(composition, compositionById)
+  });
   return {
     name: composition.name,
     width: Number(contentBounds.width || composition.canvas?.width || DEFAULT_COMPOSITION_CANVAS.width),
