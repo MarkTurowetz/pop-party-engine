@@ -9151,8 +9151,8 @@
           "kind": "reference",
           "x": 278,
           "y": 188,
-          "width": 500,
-          "height": 48,
+          "width": 112,
+          "height": 32,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -9189,8 +9189,8 @@
           "kind": "reference",
           "x": 280,
           "y": 115,
-          "width": 560,
-          "height": 230,
+          "width": 520,
+          "height": 150,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -9298,7 +9298,7 @@
         ],
         "tracks": []
       },
-      "updatedAt": "2026-07-13T05:01:33.684Z"
+      "updatedAt": "2026-07-14T06:21:20.555Z"
     },
     "prefab-untitled-prefab": {
       "name": "Voting Card Answer Text",
