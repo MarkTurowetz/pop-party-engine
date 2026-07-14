@@ -9103,6 +9103,25 @@
       },
       "components": [
         {
+          "id": "voting-card-vote-count-mc",
+          "name": "Voting Card Vote Count MC",
+          "instanceLabel": "voteCount",
+          "kind": "reference",
+          "x": 30.927,
+          "y": 43,
+          "width": 48,
+          "height": 48,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Off",
+          "artCompositionId": "prefab-voting-card-vote-count-mc"
+        },
+        {
           "id": "voting-card-author-mc",
           "name": "Voting Card Author MC",
           "instanceLabel": "author",
@@ -9139,25 +9158,6 @@
           "locked": false,
           "defaultAnimationState": "Off",
           "artCompositionId": "prefab-untitled-prefab-3"
-        },
-        {
-          "id": "voting-card-vote-count-mc",
-          "name": "Voting Card Vote Count MC",
-          "instanceLabel": "voteCount",
-          "kind": "reference",
-          "x": 30.927,
-          "y": 28,
-          "width": 48,
-          "height": 48,
-          "scale": 1,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center",
-          "locked": false,
-          "defaultAnimationState": "Off",
-          "artCompositionId": "prefab-voting-card-vote-count-mc"
         }
       ],
       "timeline": {
@@ -9214,7 +9214,7 @@
                 "frame": 0,
                 "props": {
                   "x": 280,
-                  "y": 43.706,
+                  "y": 43,
                   "width": 340,
                   "height": 32,
                   "scale": 1,
@@ -9227,7 +9227,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-14T07:27:07.774Z"
+      "updatedAt": "2026-07-14T07:27:52.857Z"
     },
     "prefab-untitled-prefab": {
       "name": "Voting Card Answer Text",
