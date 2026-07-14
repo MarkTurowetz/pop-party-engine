@@ -10134,17 +10134,41 @@
           "height": 28,
           "scale": 1,
           "rotation": 0,
-          "locked": false,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": true,
           "defaultAnimationState": "Default",
           "defaultText": "AUTHOR NAME",
           "fontSize": 15,
           "autoFitText": true,
           "fontColor": "#6b5a80",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "shape-033db10aa4bc",
+          "name": "Shape",
+          "instanceLabel": "shape",
+          "kind": "shape",
+          "x": 170,
+          "y": 14,
+          "width": 340,
+          "height": 32,
+          "scale": 1,
+          "rotation": 0,
           "opacity": 1,
           "visible": true,
           "editorHidden": false,
-          "transformOrigin": "center"
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "shapeStyle": "rounded",
+          "fillColor": "#fcc579",
+          "fillCss": "",
+          "borderColor": "#777777",
+          "borderWidth": 3,
+          "borderRadius": 15
         }
       ],
       "timeline": {
@@ -10165,9 +10189,9 @@
         ],
         "commands": [
           {
-            "id": "stop-0",
             "frame": 0,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-0"
           }
         ],
         "tracks": [
@@ -10190,7 +10214,8 @@
                   "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
                   "fontSize": 15,
                   "fontColor": "#6b5a80",
-                  "autoFitText": true
+                  "autoFitText": true,
+                  "visible": true
                 },
                 "easing": "hold"
               }
@@ -10198,7 +10223,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-14T06:45:18.599Z"
+      "updatedAt": "2026-07-14T07:27:10.208Z"
     },
     "prefab-voting-card-vote": {
       "name": "Voting Card Vote",
