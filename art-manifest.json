@@ -9710,8 +9710,8 @@
           "kind": "reference",
           "x": 0,
           "y": 0,
-          "width": 220,
-          "height": 60,
+          "width": 520,
+          "height": 150,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -9828,8 +9828,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1
@@ -9842,8 +9842,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 0,
                   "rotation": 0,
                   "opacity": 1,
@@ -9857,8 +9857,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -9872,8 +9872,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -9887,8 +9887,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -9902,8 +9902,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -9917,8 +9917,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -9932,8 +9932,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -9947,8 +9947,8 @@
                 "props": {
                   "x": 0,
                   "y": 0,
-                  "width": 420,
-                  "height": 78,
+                  "width": 520,
+                  "height": 150,
                   "scale": 0,
                   "rotation": 0,
                   "opacity": 1,
@@ -9960,7 +9960,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T17:15:04.744Z"
+      "updatedAt": "2026-07-14T06:21:24.709Z"
     },
     "prefab-untitled-prefab-4": {
       "name": "Untitled Prefab",
