@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
 import { searchArtHierarchy } from "./artHierarchySearch";
@@ -27,12 +27,31 @@ export interface BrowserCompositionSelection {
   primaryId: string;
 }
 
+export interface BrowserCompositionSelectionModifiers {
+  additive: boolean;
+  orderedIds?: Iterable<string>;
+  range: boolean;
+}
+
 export function browserCompositionSelectionAfterClick(
   currentIds: Iterable<string>,
   primaryId: string,
   clickedId: string,
-  additive: boolean
+  modifiers: BrowserCompositionSelectionModifiers
 ): BrowserCompositionSelection {
+  const { additive, range } = modifiers;
+  if (range) {
+    const orderedIds = [...new Set([...(modifiers.orderedIds || [])].map(String).filter(Boolean))];
+    const anchorIndex = orderedIds.indexOf(primaryId);
+    const clickedIndex = orderedIds.indexOf(clickedId);
+    if (anchorIndex >= 0 && clickedIndex >= 0) {
+      const ids = new Set(additive ? currentIds : []);
+      const start = Math.min(anchorIndex, clickedIndex);
+      const end = Math.max(anchorIndex, clickedIndex);
+      for (const id of orderedIds.slice(start, end + 1)) ids.add(id);
+      return { ids, primaryId: clickedId };
+    }
+  }
   if (!additive) return { ids: new Set([clickedId]), primaryId: clickedId };
   const ids = new Set(currentIds);
   if (!ids.has(clickedId)) {
@@ -103,6 +122,8 @@ export function ArtCompositionBrowser({
   const [cleanupSelection, setCleanupSelection] = useState<Set<string>>(new Set());
   const [reviewTrash, setReviewTrash] = useState(false);
   const [collapsedFolders, setCollapsedFolders] = useState(readCollapsedFolders);
+  const browserListRef = useRef<HTMLOListElement | null>(null);
+  const pendingSelectionScrollTopRef = useRef<number | null>(null);
   const state = organization[surface];
   const compositionItems = surfaceItems[surface].filter((item: OrgItem) => item.type === "composition");
   const activeCompositionItems = compositionItems.filter((item) => !trashedCompositionIds.has(compositionIdFromBrowserKey(item.key)));
@@ -159,16 +180,67 @@ export function ArtCompositionBrowser({
     return keys;
   })();
 
+  const folderIsCollapsed = (folderId: string): boolean => search.active
+    ? !search.expandedFolderIds.has(folderId)
+    : collapsedFolders.has(collapsedKey(surface, folderId));
+  const selectableCompositionIds = (() => {
+    const ids: string[] = [];
+    const visitedFolders = new Set<string>();
+    const visit = (key: string) => {
+      if (validCompositionKeys.has(key)) {
+        if (!search.active || search.visibleKeys.has(key)) ids.push(compositionIdFromBrowserKey(key));
+        return;
+      }
+      const folderId = folderIdFromKey(key);
+      if (!folderId || visitedFolders.has(folderId) || folderIsCollapsed(folderId)) return;
+      if (search.active && !search.visibleKeys.has(`folder:${folderId}`)) return;
+      visitedFolders.add(folderId);
+      for (const childKey of state.folderItems[folderId] || []) visit(childKey);
+    };
+    for (const key of state.order) visit(key);
+    for (const item of unfiled) {
+      if (!search.active || search.visibleKeys.has(item.key)) ids.push(compositionIdFromBrowserKey(item.key));
+    }
+    return ids.filter(Boolean);
+  })();
+
+  useLayoutEffect(() => {
+    const scrollTop = pendingSelectionScrollTopRef.current;
+    const list = browserListRef.current;
+    if (scrollTop === null || !list) return;
+    const restoreScrollPosition = () => {
+      list.scrollTop = Math.min(scrollTop, Math.max(0, list.scrollHeight - list.clientHeight));
+    };
+    restoreScrollPosition();
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        restoreScrollPosition();
+        pendingSelectionScrollTopRef.current = null;
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [compositionSelectionState, selectedCompositionId]);
+
   const selectedCompositionKeys = () => visualCompositionKeys.filter((key) => compositionSelection.has(compositionIdFromBrowserKey(key)));
   const selectCompositionFromClick = (event: MouseEvent<HTMLButtonElement>, compositionId: string): void => {
+    pendingSelectionScrollTopRef.current = browserListRef.current?.scrollTop ?? null;
     const next = browserCompositionSelectionAfterClick(
       compositionSelection,
       selectedCompositionId,
       compositionId,
-      event.metaKey || event.ctrlKey
+      {
+        additive: event.metaKey || event.ctrlKey,
+        orderedIds: selectableCompositionIds,
+        range: event.shiftKey
+      }
     );
     setCompositionSelectionState({ surface, primaryId: next.primaryId, ids: next.ids });
     if (next.primaryId && next.primaryId !== selectedCompositionId) compositionsController.selectComposition(next.primaryId);
+    browserListRef.current?.focus({ preventScroll: true });
   };
   const moveCompositionIdsToTrash = (compositionIds: Iterable<string>): void => {
     const ids = [...new Set([...compositionIds].map(String).filter(Boolean))];
@@ -177,6 +249,11 @@ export function ArtCompositionBrowser({
     setCompositionSelectionState(ids.includes(selectedCompositionId)
       ? { surface, primaryId: "", ids: new Set() }
       : { surface, primaryId: selectedCompositionId, ids: new Set([selectedCompositionId]) });
+  };
+  const deleteCompositionSelectionFromKey = (event: KeyboardEvent<HTMLOListElement>): void => {
+    if (event.key !== "Delete" && event.key !== "Backspace") return;
+    event.preventDefault();
+    moveCompositionIdsToTrash(compositionSelection);
   };
 
   const onDragStart = (event: DragEvent, key: string) => {
@@ -300,7 +377,7 @@ export function ArtCompositionBrowser({
           type="button"
           aria-current={compositionId === selectedCompositionId ? "true" : undefined}
           aria-pressed={selected}
-          title="Select composition. Command-click adds or removes it from the group. Option+Command+D duplicates the active composition."
+          title="Select composition. Command-click adds or removes it; Shift-click selects a range. Option+Command+D duplicates the active composition."
           onClick={(event) => selectCompositionFromClick(event, compositionId)}
           onKeyDown={deleteCompositionFromKey}
         >
@@ -335,9 +412,7 @@ export function ArtCompositionBrowser({
 
   const renderFolder = (folderId: string) => {
     if (search.active && !search.visibleKeys.has(`folder:${folderId}`)) return null;
-    const collapsed = search.active
-      ? !search.expandedFolderIds.has(folderId)
-      : collapsedFolders.has(collapsedKey(surface, folderId));
+    const collapsed = folderIsCollapsed(folderId);
     return (
     <li
       className={`art-browser-folder${collapsed ? " is-collapsed" : ""}`}
@@ -432,15 +507,6 @@ export function ArtCompositionBrowser({
           </button>
         ) : null}
       </div>
-      {!cleanupMode && compositionSelection.size > 1 ? (
-        <div className="art-browser-selection-tools" aria-label="Composition selection">
-          <strong>{compositionSelection.size} selected</strong>
-          <small>Drag any selected asset into a folder to move the group.</small>
-          <button type="button" onClick={() => moveCompositionIdsToTrash(compositionSelection)}>
-            Move {compositionSelection.size} to Trash
-          </button>
-        </div>
-      ) : null}
       {trashedCompositions.length ? (
         <section className="art-browser-trash" aria-label="Art Trash">
           <strong>Trash</strong>
@@ -515,7 +581,14 @@ export function ArtCompositionBrowser({
         </button>
         <span>{dirty ? "Unsaved" : "Saved"}</span>
       </div>
-      <ol className="art-browser-list art-browser-root" onDragOver={(event) => event.preventDefault()} onDrop={onDropRoot}>
+      <ol
+        ref={browserListRef}
+        className="art-browser-list art-browser-root"
+        tabIndex={-1}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={onDropRoot}
+        onKeyDown={deleteCompositionSelectionFromKey}
+      >
         {state.order.map((key) => (key.startsWith("folder:") ? renderFolder(folderIdFromKey(key)) : renderCompositionItem(key)))}
         {unfiled.filter((item) => !search.active || search.visibleKeys.has(item.key)).length ? (
           <li className="art-browser-unfiled">

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TimelineDocument } from "../../../shared/timeline-model";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import {
+  artTimelineDockHeightFromPointer,
   swappableGameObjectOptions,
   timelineFrameForStepShortcut,
   timelineActionScriptForFrame,
@@ -81,6 +82,15 @@ describe("ArtCompositionEditor timeline frame stepping", () => {
   it("ignores unrelated keys and timelines with nowhere to move", () => {
     expect(timelineFrameForStepShortcut("/", 2, 5)).toBeNull();
     expect(timelineFrameForStepShortcut(".", 0, 1)).toBeNull();
+  });
+});
+
+describe("ArtCompositionEditor timeline dock sizing", () => {
+  it("grows upward, shrinks downward, and respects both bounds", () => {
+    expect(artTimelineDockHeightFromPointer(320, 500, 440, 700)).toBe(380);
+    expect(artTimelineDockHeightFromPointer(320, 500, 560, 700)).toBe(260);
+    expect(artTimelineDockHeightFromPointer(320, 500, 900, 700)).toBe(140);
+    expect(artTimelineDockHeightFromPointer(320, 500, 0, 600)).toBe(600);
   });
 });
 

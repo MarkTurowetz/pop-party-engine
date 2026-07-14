@@ -1195,8 +1195,9 @@ body.tool-dashboard-mode .layout-react-shell {
 }
 
 .art-composition-editor {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) minmax(220px, 32vh);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-height: 0;
   background: #fff;
 }
@@ -1242,22 +1243,54 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-studio-layout {
   display: grid;
+  flex: 1 1 0;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 420px);
-  min-height: 0;
+  min-height: 60px;
   position: relative;
 }
 
+.art-timeline-resizer {
+  flex: 0 0 12px;
+  min-height: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: none;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.art-timeline-resizer:hover,
+.art-timeline-resizer:focus-visible,
+.art-timeline-resizer:active {
+  background: var(--cyan);
+  outline: 0;
+}
+
 .art-timeline-dock {
-  min-height: 0;
-  overflow: auto;
-  border-top: 4px solid var(--ink);
+  display: grid;
+  flex: 0 1 var(--art-timeline-dock-height, 320px);
+  min-height: 140px;
+  overflow: hidden;
   background: #fffdf2;
 }
 
 .art-timeline-dock > .art-timeline-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   margin: 0;
   padding: 10px 12px 12px;
   border-top: 0;
+}
+
+.art-timeline-dock .art-timeline-lanes {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
 }
 
 .art-preview-panel {
@@ -2291,6 +2324,7 @@ body.tool-dashboard-mode .layout-react-shell {
 .art-browser-root {
   flex: 1 1 auto;
   overflow: auto;
+  overflow-anchor: none;
 }
 
 .art-browser-folder {
@@ -2412,21 +2446,6 @@ body.tool-dashboard-mode .layout-react-shell {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-}
-
-.art-browser-selection-tools {
-  display: grid;
-  gap: 5px;
-  padding: 7px;
-  border: 3px solid var(--ink);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--cyan) 28%, var(--cream));
-}
-
-.art-browser-selection-tools small {
-  color: #5e5475;
-  font-size: 9px;
-  font-weight: 900;
 }
 
 .art-browser-trash {
@@ -3106,6 +3125,11 @@ body.is-resizing-tool-panel,
 body.is-resizing-art,
 body.is-resizing-flow {
   cursor: col-resize;
+  user-select: none;
+}
+
+body.is-resizing-art-timeline {
+  cursor: row-resize;
   user-select: none;
 }
 

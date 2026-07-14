@@ -5,6 +5,7 @@ import {
   useRef,
   useMemo,
   useState,
+  type CSSProperties,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
@@ -149,6 +150,11 @@ const TIMELINE_PROPERTY_SUGGESTIONS = [
 ];
 const TIMELINE_INSPECTOR_FIELDS = new Set(TIMELINE_PROPERTY_SUGGESTIONS);
 const TIMELINE_VISIBLE_FRAME_LIMIT = 60;
+const ART_TIMELINE_DOCK_STORAGE_KEY = "partyTemplate.artTimelineDockHeight";
+const DEFAULT_ART_TIMELINE_DOCK_HEIGHT = 320;
+const MIN_ART_TIMELINE_DOCK_HEIGHT = 140;
+const MAX_ART_TIMELINE_DOCK_HEIGHT = 1600;
+const MIN_ART_STUDIO_HEIGHT = 60;
 const TIMELINE_EASING_OPTIONS = [
   { value: "linear", label: "Linear" },
   { value: "easeIn", label: "Ease In" },
@@ -185,6 +191,26 @@ type TimelineLayerDropTarget = { id: string; placement: TimelineLayerDropPlaceme
 type MarqueeBox = { x: number; y: number; width: number; height: number };
 type ArtSelectionBox = { id: string; minX: number; minY: number; maxX: number; maxY: number };
 type PrefabCreationDialogState = { defaultName: string } | null;
+
+function readStoredArtTimelineDockHeight(): number {
+  if (typeof window === "undefined") return DEFAULT_ART_TIMELINE_DOCK_HEIGHT;
+  const stored = Number(window.localStorage.getItem(ART_TIMELINE_DOCK_STORAGE_KEY));
+  return Number.isFinite(stored) && stored > 0
+    ? Math.max(MIN_ART_TIMELINE_DOCK_HEIGHT, Math.min(MAX_ART_TIMELINE_DOCK_HEIGHT, stored))
+    : DEFAULT_ART_TIMELINE_DOCK_HEIGHT;
+}
+
+export function artTimelineDockHeightFromPointer(
+  startHeight: number,
+  startPointerY: number,
+  pointerY: number,
+  maximumHeight: number
+): number {
+  return Math.max(
+    MIN_ART_TIMELINE_DOCK_HEIGHT,
+    Math.min(Math.max(MIN_ART_TIMELINE_DOCK_HEIGHT, maximumHeight), startHeight + startPointerY - pointerY)
+  );
+}
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -454,6 +480,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     moved: boolean;
   } | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const editorRef = useRef<HTMLElement | null>(null);
+  const timelineDockRef = useRef<HTMLDivElement | null>(null);
   const previewViewportRef = useRef<HTMLDivElement | null>(null);
   const pendingPreviewZoomRef = useRef<{ viewport: HTMLDivElement; scrollLeft: number; scrollTop: number } | null>(null);
   const previewCameraLayoutRef = useRef<ArtPreviewCameraLayout | null>(null);
@@ -474,6 +502,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     overrides: TimelinePreviewOverrides | null;
   } | null>(null);
   const [prefabCreationDialog, setPrefabCreationDialog] = useState<PrefabCreationDialogState>(null);
+  const [timelineDockHeight, setTimelineDockHeight] = useState(readStoredArtTimelineDockHeight);
   const assetUrlById = useMemo(() => assetUrlMap(assets || []), [assets]);
   const compositionById = useMemo(() => compositionMap(compositions), [compositions]);
   const composition = compositions.find((item) => item.id === selectedCompositionId) ||
@@ -676,7 +705,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const dismissTimelineContext = useCallback(() => {
     setTimelineDismissSignal((value) => value + 1);
     setTimelineCommandOverlay(null);
-  }, []);
+  }, [setTimelineCommandOverlay]);
   const selectArtComponent = useCallback(
     (id: string, additive: boolean) => {
       dismissTimelineContext();
@@ -770,7 +799,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const beginCreatePrefabFromSelection = useCallback(() => {
     if (!composition || selectedComponentIds.size === 0) return;
     setPrefabCreationDialog({ defaultName: `${composition.name || "Selection"} Prefab` });
-  }, [composition, selectedComponentIds]);
+  }, [composition, selectedComponentIds, setPrefabCreationDialog]);
 
   const createPrefabFromSelection = (name: string, kind: "prefab" | "gameObject"): void => {
     if (!composition || selectedComponentIds.size === 0) return;
@@ -1126,8 +1155,65 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     document.addEventListener("pointercancel", cancel);
   };
 
+  const maximumTimelineDockHeight = (): number => {
+    const editor = editorRef.current;
+    const dock = timelineDockRef.current;
+    const studio = editor?.querySelector<HTMLElement>(".art-studio-layout");
+    if (!dock || !studio) return Math.max(MIN_ART_TIMELINE_DOCK_HEIGHT, timelineDockHeight);
+    return Math.max(
+      MIN_ART_TIMELINE_DOCK_HEIGHT,
+      dock.getBoundingClientRect().height + studio.getBoundingClientRect().height - MIN_ART_STUDIO_HEIGHT
+    );
+  };
+
+  const saveTimelineDockHeight = (height: number): void => {
+    const cleanHeight = Math.round(height);
+    setTimelineDockHeight(cleanHeight);
+    window.localStorage.setItem(ART_TIMELINE_DOCK_STORAGE_KEY, String(cleanHeight));
+  };
+
+  const beginTimelineDockResize = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (event.button !== 0 || !timelineDockRef.current) return;
+    event.preventDefault();
+    const startPointerY = event.clientY;
+    const startHeight = timelineDockRef.current.getBoundingClientRect().height;
+    const maximumHeight = maximumTimelineDockHeight();
+    let finalHeight = startHeight;
+    document.body.classList.add("is-resizing-art-timeline");
+
+    const move = (moveEvent: PointerEvent) => {
+      finalHeight = artTimelineDockHeightFromPointer(startHeight, startPointerY, moveEvent.clientY, maximumHeight);
+      setTimelineDockHeight(finalHeight);
+    };
+    const finish = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", finish);
+      document.removeEventListener("pointercancel", finish);
+      document.body.classList.remove("is-resizing-art-timeline");
+      saveTimelineDockHeight(finalHeight);
+    };
+
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", finish);
+    document.addEventListener("pointercancel", finish);
+  };
+
+  const resizeTimelineDockFromKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    const delta = event.key === "ArrowUp" ? 24 : event.key === "ArrowDown" ? -24 : 0;
+    if (!delta) return;
+    event.preventDefault();
+    saveTimelineDockHeight(
+      Math.max(MIN_ART_TIMELINE_DOCK_HEIGHT, Math.min(maximumTimelineDockHeight(), timelineDockHeight + delta))
+    );
+  };
+
   return (
-    <section className="art-composition-editor" data-art-react-component="composition-editor">
+    <section
+      ref={editorRef}
+      className="art-composition-editor"
+      data-art-react-component="composition-editor"
+      style={{ "--art-timeline-dock-height": `${timelineDockHeight}px` } as CSSProperties}
+    >
       <div className="art-editor-toolbar">
         <div className="art-editor-composition-meta">
           {composition && !activeDocumentIsWorkspace ? (
@@ -1323,7 +1409,20 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
         />
         {timelineCommandOverlay ? <ArtTimelineCommandOverlay overlay={timelineCommandOverlay} /> : null}
       </div>
-      <div className="art-timeline-dock" data-art-timeline-dock>
+      <div
+        className="art-timeline-resizer"
+        data-art-timeline-resizer
+        role="separator"
+        tabIndex={0}
+        aria-label="Resize timeline"
+        aria-orientation="horizontal"
+        aria-valuemin={MIN_ART_TIMELINE_DOCK_HEIGHT}
+        aria-valuemax={MAX_ART_TIMELINE_DOCK_HEIGHT}
+        aria-valuenow={Math.round(timelineDockHeight)}
+        onKeyDown={resizeTimelineDockFromKeyboard}
+        onPointerDown={beginTimelineDockResize}
+      />
+      <div ref={timelineDockRef} className="art-timeline-dock" data-art-timeline-dock>
         {composition ? (
           <ArtTimelinePanel
             title={timelineScopeComponent ? `${timelineScopeComponent.name || timelineScopeComponent.kind} Timeline` : `${composition.name} Timeline`}
