@@ -8947,8 +8947,8 @@
           "kind": "reference",
           "x": 278,
           "y": 188,
-          "width": 500,
-          "height": 48,
+          "width": 112,
+          "height": 32,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -8977,6 +8977,31 @@
           "locked": false,
           "defaultAnimationState": "Off",
           "artCompositionId": "prefab-untitled-prefab-3"
+        },
+        {
+          "id": "container-9cb2be9811f9",
+          "name": "Container",
+          "instanceLabel": "container",
+          "kind": "container",
+          "x": 280,
+          "y": 300,
+          "width": 450,
+          "height": 100,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "childDistribution": "horizontal",
+          "shapeStyle": "rectangle",
+          "fillColor": "transparent",
+          "fillCss": "",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0
         }
       ],
       "timeline": {
@@ -9043,10 +9068,30 @@
                 "easing": "hold"
               }
             ]
+          },
+          {
+            "id": "track-container-9cb2be9811f9",
+            "targetId": "container-9cb2be9811f9",
+            "keyframes": [
+              {
+                "id": "key-container-9cb2be9811f9-0",
+                "frame": 0,
+                "props": {
+                  "x": 280,
+                  "y": 250,
+                  "width": 450,
+                  "height": 100,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              }
+            ]
           }
         ]
       },
-      "updatedAt": "2026-07-14T07:48:38.736Z"
+      "updatedAt": "2026-07-14T07:59:01.954Z"
     },
     "prefab-untitled-prefab": {
       "name": "Voting Card Answer Text",
