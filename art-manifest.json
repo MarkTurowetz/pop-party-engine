@@ -10537,14 +10537,12 @@
         ],
         "folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb": [
           "composition:avatars",
+          "composition:player-name-widget",
+          "composition:prefab-vip-mc",
+          "composition:prefab-untitled-prefab-2",
+          "composition:player-vip-widget",
           "composition:prefab-player-avatar-mc",
-          "composition:prefab-player-widget-mc",
-          "composition:player-avatar-rex",
-          "composition:player-avatar-stego",
-          "composition:player-avatar-trike",
-          "composition:player-avatar-raptor",
-          "composition:player-avatar-bronto",
-          "composition:player-avatar-ankylo"
+          "composition:prefab-player-widget-mc"
         ],
         "folder-b5fd5048-989e-4076-917e-f37779efddbb": [
           "composition:stage-code-panel",
@@ -10571,7 +10569,6 @@
         ],
         "folder-b44c7441-4209-415b-87ff-4aaf25716ad2": [],
         "folder-ab56756918": [
-          "composition:prefab-voting-card-bg",
           "composition:prefab-untitled-prefab",
           "composition:prefab-untitled-prefab-3",
           "composition:prefab-voting-card-vote",
