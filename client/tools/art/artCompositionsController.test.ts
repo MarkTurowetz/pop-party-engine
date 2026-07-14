@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createArtCompositionsController } from "./artCompositionsController";
 import type { ArtApi } from "../../api/artApi";
+import { ApiError } from "../../api/http";
 import type { ArtComposition, ArtCompositionSaveResponse } from "../../types/game-data";
 import {
   applyArtCanvasTransformKeyframes,
@@ -20,6 +21,12 @@ function fakeApi(overrides: Partial<ArtApi> = {}): ArtApi {
     ),
     saveArtOrganization: vi.fn(),
     deleteArtComposition: vi.fn(),
+    cleanupArtCompositions: vi.fn(async () => ({
+      ok: true,
+      compositions: [],
+      dependencies: {},
+      compositionRevisions: {}
+    })),
     replaceArtAsset: vi.fn(),
     ...overrides
   } as ArtApi;
@@ -49,7 +56,7 @@ describe("createArtCompositionsController", () => {
     expect(state.workspaces.stage.components).toHaveLength(1);
     expect(state.compositions.map((item) => item.id)).toEqual(["library"]);
     expect(state.dirty).toBe(false);
-    expect(values.size).toBe(1);
+    expect(values.size).toBe(2);
   });
 
   it("only cleans empty unreferenced assets still named Untitled Prefab", () => {
@@ -222,6 +229,25 @@ describe("createArtCompositionsController", () => {
     expect(hydrated.timeline?.labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Park", "On", "Appear", "Update", "Disappear"]));
     expect(hydrated.components[0].timeline).toBeUndefined();
     expect(hydrated.components[0].children?.[0].timeline).toBeUndefined();
+  });
+
+  it("allows reversible Trash staging while a timeline migration is pending", () => {
+    const initial = composition("legacy");
+    delete initial.timelineArchitectureVersion;
+    const controller = createArtCompositionsController({
+      initialCompositions: [initial],
+      api: fakeApi(),
+      workspaceStorage: null,
+      trashStorage: null
+    });
+
+    expect(controller.getState().migrationSummary).not.toBeNull();
+    controller.trashCompositions(["legacy"]);
+    expect([...controller.getState().trashedCompositionIds]).toEqual(["legacy"]);
+
+    controller.restoreTrashedComposition("legacy");
+    expect([...controller.getState().trashedCompositionIds]).toEqual([]);
+    expect(controller.getState().migrationSummary).not.toBeNull();
   });
 
   it("creates a top-level prefab composition as an undoable local edit", () => {
@@ -755,7 +781,7 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().compositions[0].components[0].id).toBe("bubble");
   });
 
-  it("deletes a composition locally, cascades placed references, and persists on save", async () => {
+  it("moves a composition to Trash without destroying its references and requires review before save", async () => {
     const api = fakeApi();
     const source = composition("source");
     source.compositionKind = "prefab";
@@ -773,16 +799,100 @@ describe("createArtCompositionsController", () => {
 
     controller.removeSelectedComposition();
 
-    expect(controller.getState().compositions.map((item) => item.id)).toEqual(["host"]);
-    expect(controller.getState().compositions[0].components).toEqual([]);
-    expect(controller.getState().compositions[0].timeline?.tracks).toEqual([]);
+    expect(controller.getState().compositions.map((item) => item.id)).toEqual(["host", "source"]);
+    expect([...controller.getState().trashedCompositionIds]).toEqual(["source"]);
+    expect(controller.getState().compositions[0].components).toHaveLength(1);
+    expect(controller.getState().compositions[0].timeline?.tracks).toHaveLength(1);
     expect(controller.getState().dirty).toBe(true);
 
-    await controller.save();
+    expect(await controller.save()).toBe(false);
+    expect(controller.getState().error).toContain("Review 1 trashed asset");
+    expect(api.saveArtComposition).not.toHaveBeenCalled();
+    expect(api.cleanupArtCompositions).not.toHaveBeenCalled();
 
-    expect(api.saveArtComposition).toHaveBeenCalledWith("host", expect.anything());
-    expect(api.deleteArtComposition).toHaveBeenCalledWith("source");
+    controller.restoreTrashedComposition("source");
+    expect([...controller.getState().trashedCompositionIds]).toEqual([]);
     expect(controller.getState().dirty).toBe(false);
+  });
+
+  it("permanently deletes reviewed Trash as one atomic cleanup request", async () => {
+    const source = composition("source");
+    source.compositionKind = "prefab";
+    const survivor = composition("survivor");
+    const cleanupArtCompositions = vi.fn(async () => ({
+      ok: true as const,
+      compositions: [survivor],
+      dependencies: {
+        survivor: {
+          compositionId: "survivor",
+          total: 0,
+          artReferences: 0,
+          stageLayoutReferences: 0,
+          controllerLayoutReferences: 0,
+          flowReferences: 0,
+          runtimeReferences: 0,
+          details: []
+        }
+      },
+      compositionRevisions: { survivor: "survivor-revision" }
+    }));
+    const api = fakeApi({ cleanupArtCompositions });
+    const controller = createArtCompositionsController({
+      initialCompositions: [survivor, source],
+      initialCompositionRevisions: { survivor: "survivor-revision", source: "source-revision" },
+      api,
+      workspaceStorage: null,
+      trashStorage: null
+    });
+    controller.trashCompositions(["source"]);
+
+    expect(await controller.save({ commitTrash: true })).toBe(true);
+
+    expect(cleanupArtCompositions).toHaveBeenCalledTimes(1);
+    expect(cleanupArtCompositions).toHaveBeenCalledWith({
+      deleteCompositionIds: ["source"],
+      expectedCompositionRevisions: { source: "source-revision" }
+    });
+    expect(controller.getState().compositions.map((item) => item.id)).toEqual(["survivor"]);
+    expect([...controller.getState().trashedCompositionIds]).toEqual([]);
+    expect(controller.getState().dirty).toBe(false);
+  });
+
+  it("keeps reviewed Trash staged when the server reports a changed target", async () => {
+    const source = composition("source");
+    const dependency = {
+      compositionId: "source",
+      total: 1,
+      artReferences: 0,
+      stageLayoutReferences: 0,
+      controllerLayoutReferences: 0,
+      flowReferences: 0,
+      runtimeReferences: 1,
+      details: [{ kind: "runtime" as const, sourceName: "Changed runtime" }]
+    };
+    const cleanupArtCompositions = vi.fn(async () => {
+      throw new ApiError("Some trashed assets changed elsewhere", {
+        status: 409,
+        payload: {
+          dependencies: { source: dependency },
+          compositionRevisions: { source: "new-revision" }
+        }
+      });
+    });
+    const controller = createArtCompositionsController({
+      initialCompositions: [source],
+      initialCompositionRevisions: { source: "old-revision" },
+      api: fakeApi({ cleanupArtCompositions }),
+      workspaceStorage: null,
+      trashStorage: null
+    });
+    controller.trashCompositions(["source"]);
+
+    expect(await controller.save({ commitTrash: true })).toBe(false);
+    expect([...controller.getState().trashedCompositionIds]).toEqual(["source"]);
+    expect(controller.getState().compositionRevisions.source).toBe("new-revision");
+    expect(controller.getState().dependencyReport.source).toEqual(dependency);
+    expect(controller.getState().error).toContain("changed elsewhere");
   });
 
   it("reorders root and nested component siblings with undo support", () => {

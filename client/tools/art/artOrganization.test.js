@@ -313,6 +313,152 @@ describe("art composition child persistence", () => {
   });
 });
 
+describe("art composition cleanup", () => {
+  function cleanupComposition(id, components = []) {
+    return {
+      id,
+      name: id,
+      surface: "stage",
+      compositionKind: "prefab",
+      timelineArchitectureVersion: 2,
+      canvas: { width: 100, height: 100 },
+      components
+    };
+  }
+
+  function cleanupRuntime(compositions) {
+    let manifest = {};
+    let requestPayload = {};
+    let responseStatus = 0;
+    let responseBody = null;
+    let writes = 0;
+    const runtime = createArtAssetsRuntime({
+      acceptedArtTypes: [],
+      artCompositions: compositions,
+      artAssets: [],
+      artGroups: [],
+      artRoot: "/tmp/party-game-art-cleanup-test",
+      contentTypeForFile: () => "application/octet-stream",
+      customDir: "/tmp/party-game-art-cleanup-test/custom",
+      defaultDir: "/tmp/party-game-art-cleanup-test/default",
+      manifestFile: "/tmp/party-game-art-cleanup-test/manifest.json",
+      loadArtDependencySources: async () => ({}),
+      loadArtManifestSource: async () => manifest,
+      readJson: async () => requestPayload,
+      sendJson: (_res, status, body) => {
+        responseStatus = status;
+        responseBody = body;
+      },
+      writeArtManifestSource: async (nextManifest) => {
+        writes += 1;
+        manifest = nextManifest;
+        return manifest;
+      }
+    });
+    return {
+      runtime,
+      get responseStatus() { return responseStatus; },
+      get responseBody() { return responseBody; },
+      get writes() { return writes; },
+      setManifest(nextManifest) { manifest = nextManifest; },
+      setRequestPayload(nextPayload) { requestPayload = nextPayload; }
+    };
+  }
+
+  async function loadCleanupSnapshot(harness) {
+    await harness.runtime.sendArtAssetList({});
+    return harness.responseBody;
+  }
+
+  it("blocks deletion while an asset is still referenced", async () => {
+    const source = cleanupComposition("source");
+    const owner = cleanupComposition("owner", [
+      { id: "source-instance", name: "Source", kind: "reference", artCompositionId: "source" }
+    ]);
+    const harness = cleanupRuntime([owner, source]);
+    const snapshot = await loadCleanupSnapshot(harness);
+    harness.setRequestPayload({
+      deleteCompositionIds: ["source"],
+      expectedCompositionRevisions: { source: snapshot.compositionRevisions.source },
+      revision: snapshot.revision
+    });
+
+    await harness.runtime.handleCleanupArtCompositions({}, {});
+
+    expect(harness.responseStatus).toBe(409);
+    expect(harness.responseBody?.error).toContain("still referenced");
+    expect(harness.responseBody?.blockingDependencies).toEqual([
+      expect.objectContaining({ kind: "art", sourceCompositionId: "owner" })
+    ]);
+    expect(harness.writes).toBe(0);
+  });
+
+  it("allows mutually related assets to be deleted together in one write", async () => {
+    const source = cleanupComposition("source");
+    const owner = cleanupComposition("owner", [
+      { id: "source-instance", name: "Source", kind: "reference", artCompositionId: "source" }
+    ]);
+    const harness = cleanupRuntime([owner, source]);
+    const snapshot = await loadCleanupSnapshot(harness);
+    harness.setRequestPayload({
+      deleteCompositionIds: ["owner", "source"],
+      expectedCompositionRevisions: {
+        owner: snapshot.compositionRevisions.owner,
+        source: snapshot.compositionRevisions.source
+      },
+      revision: snapshot.revision
+    });
+
+    await harness.runtime.handleCleanupArtCompositions({}, {});
+
+    expect(harness.responseStatus).toBe(200);
+    expect(harness.responseBody?.compositions).toEqual([]);
+    expect(harness.writes).toBe(1);
+  });
+
+  it("rebases a reviewed cleanup over an unrelated manifest change", async () => {
+    const source = cleanupComposition("source");
+    const survivor = cleanupComposition("survivor");
+    const harness = cleanupRuntime([source, survivor]);
+    const snapshot = await loadCleanupSnapshot(harness);
+    harness.setManifest({ organization: { stage: { order: ["composition:survivor"] } } });
+    harness.setRequestPayload({
+      deleteCompositionIds: ["source"],
+      expectedCompositionRevisions: { source: snapshot.compositionRevisions.source },
+      revision: snapshot.revision
+    });
+
+    await harness.runtime.handleCleanupArtCompositions({}, {});
+
+    expect(harness.responseStatus).toBe(200);
+    expect(harness.responseBody?.compositions.map((composition) => composition.id)).toEqual(["survivor"]);
+    expect(harness.writes).toBe(1);
+  });
+
+  it("preserves Trash for review when the target asset changed", async () => {
+    const source = cleanupComposition("source");
+    const harness = cleanupRuntime([source]);
+    const snapshot = await loadCleanupSnapshot(harness);
+    harness.setManifest({
+      compositions: {
+        source: { ...source, name: "Source changed elsewhere" }
+      }
+    });
+    harness.setRequestPayload({
+      deleteCompositionIds: ["source"],
+      expectedCompositionRevisions: { source: snapshot.compositionRevisions.source },
+      revision: snapshot.revision
+    });
+
+    await harness.runtime.handleCleanupArtCompositions({}, {});
+
+    expect(harness.responseStatus).toBe(409);
+    expect(harness.responseBody?.conflictingCompositionIds).toEqual(["source"]);
+    expect(harness.responseBody?.error).toContain("changed elsewhere");
+    expect(harness.writes).toBe(0);
+  });
+});
+
 describe("legacy art composition migrations", () => {
   it("puts player answer bubble text above its card and tail", () => {
     const runtime = createRuntime({

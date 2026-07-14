@@ -429,7 +429,7 @@ function isCommandMarkerSelected(selection: TimelineMarkerSelection | null, comm
 }
 
 export function ArtCompositionEditor({ controller, assets }: ArtCompositionEditorProps) {
-  const { compositions, workspaces, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo, error, migrationSummary } =
+  const { compositions, workspaces, selectedCompositionId, selectedComponentIds, trashedCompositionIds, dirty, saving, canUndo, canRedo, error, migrationSummary } =
     useArtCompositions(controller);
   const dragRef = useRef<{
     targets: ArtCanvasTransformTarget[];
@@ -1171,7 +1171,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           </button>
           <button
             type="button"
-            disabled={!dirty || saving}
+            disabled={!dirty || saving || trashedCompositionIds.size > 0}
+            title={trashedCompositionIds.size ? "Review Trash in the Compositions sidebar before deleting permanently." : undefined}
             onClick={() => {
               if (
                 migrationSummary &&
@@ -1182,7 +1183,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
               void controller.save();
             }}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Saving..." : trashedCompositionIds.size ? `Review Trash (${trashedCompositionIds.size})` : "Save"}
           </button>
         </div>
       </div>

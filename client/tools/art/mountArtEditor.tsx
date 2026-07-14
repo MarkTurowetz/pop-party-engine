@@ -57,6 +57,8 @@ export async function mountArtEditor(options: MountArtEditorOptions): Promise<Mo
   });
   const compositionsController = createArtCompositionsController({
     initialCompositions: response.compositions || [],
+    initialDependencies: response.dependencies || {},
+    initialCompositionRevisions: response.compositionRevisions || {},
     api: options.api,
     postDraft
   });

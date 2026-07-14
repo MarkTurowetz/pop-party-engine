@@ -19,6 +19,7 @@ function createRouterRuntime({
   handlePause,
   handlePresentHi,
   handleQuitToLobby,
+  handleCleanupArtCompositions,
   handleDeleteArtComposition,
   handleReplaceArtAsset,
   handleSaveArtOrganization,
@@ -79,6 +80,13 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/art-compositions") {
       handleSaveArtCompositions(req, res).catch((error) => {
+        sendJson(res, 500, { ok: false, error: error.message });
+      });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/art-compositions/cleanup") {
+      handleCleanupArtCompositions(req, res).catch((error) => {
         sendJson(res, 500, { ok: false, error: error.message });
       });
       return;

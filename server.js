@@ -62,6 +62,12 @@ const { createToolSourceReadersRuntime } = require("./server/tool-source-readers
 const { createToolSourceStoresRuntime } = require("./server/tool-source-stores-runtime");
 const { createRouterRuntime } = require("./server/router-runtime");
 const { createTriviaContentRuntime } = require("./server/trivia-content-runtime");
+const { layoutWidgetArtCompositionIds } = require("./shared/stage-layout-art-widgets");
+const {
+  controllerChoiceOptionArtCompositionId,
+  controllerLayoutWidgetArtCompositionIds
+} = require("./shared/controller-layout-art-widgets");
+const { layoutTextArtCompositionId } = require("./shared/layout-text-art");
 const {
   cleanChoiceOptions,
   cleanFlowText,
@@ -441,6 +447,7 @@ const {
 });
 
 const {
+  handleCleanupArtCompositions,
   handleDeleteArtComposition,
   handleSaveArtOrganization,
   handleSaveArtComposition,
@@ -461,6 +468,43 @@ const {
   customDir: ART_CUSTOM_DIR,
   defaultDir: ART_DEFAULT_DIR,
   loadArtManifestSource: () => loadArtManifestSource({ refresh: artManifestStore.storageKind === "github" }),
+  loadArtDependencySources: async () => {
+    const [stageLayouts, controllerLayouts, flow] = await Promise.all([
+      loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" }),
+      loadControllerLayoutsSource({ refresh: controllerLayoutsStore.storageKind === "github" }),
+      loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" })
+    ]);
+    return {
+      stageLayouts: localDraftStore.layouts || stageLayouts,
+      controllerLayouts: localDraftStore.controllerLayouts || controllerLayouts,
+      flow: localDraftStore.flow || flow,
+      runtimeReferences: [
+        ...[...new Set([
+          ...Object.values(layoutWidgetArtCompositionIds),
+          ...Object.values(controllerLayoutWidgetArtCompositionIds),
+          controllerChoiceOptionArtCompositionId,
+          layoutTextArtCompositionId
+        ])].map((compositionId) => ({
+          compositionId,
+          sourceId: "layout-art-runtime",
+          sourceName: "Layout widget runtime"
+        })),
+        { compositionId: "prefab-player-widget-mc", sourceId: "stage-player-roster", sourceName: "Player roster runtime" },
+        ...["rex", "stego", "trike", "raptor", "bronto", "ankylo"].map((shape) => ({
+          compositionId: `player-object-${shape}`,
+          sourceId: "stage-player-roster-fallback",
+          sourceName: `Legacy ${shape} player fallback`
+        })),
+        ...["rex", "stego", "trike", "raptor", "bronto", "ankylo"].map((shape) => ({
+          compositionId: `player-avatar-${shape}`,
+          sourceId: "controller-avatar-runtime",
+          sourceName: `Controller ${shape} avatar renderer`
+        })),
+        { compositionId: "prefab-voting-card-mc", sourceId: "stage-voting-card-runtime", sourceName: "Voting card runtime" },
+        { compositionId: "voting-card", sourceId: "stage-voting-card-fallback", sourceName: "Legacy voting card fallback" }
+      ]
+    };
+  },
   localDraftStore,
   manifestFile: ART_MANIFEST_FILE,
   onArtAssetsChanged: broadcastArtAssetsChanged,
@@ -1143,6 +1187,7 @@ const {
   handlePause,
   handlePresentHi,
   handleQuitToLobby,
+  handleCleanupArtCompositions,
   handleDeleteArtComposition,
   handleReplaceArtAsset,
   handleSaveArtOrganization,

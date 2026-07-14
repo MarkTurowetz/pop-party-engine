@@ -1,5 +1,6 @@
 import type { ArtApi } from "../../api/artApi";
-import type { ArtComponent, ArtComposition, JsonObject } from "../../types/game-data";
+import type { ArtComponent, ArtComposition, ArtCompositionDependencyReport, JsonObject } from "../../types/game-data";
+import { ApiError } from "../../api/http";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import {
   artCompositionSnapshot,
@@ -42,6 +43,9 @@ export interface ArtCompositionsEditorState {
   selectedCompositionId: string;
   selectedComponentIds: Set<string>;
   dirtyCompositionIds: Set<string>;
+  trashedCompositionIds: Set<string>;
+  dependencyReport: ArtCompositionDependencyReport;
+  compositionRevisions: Record<string, string>;
   dirty: boolean;
   saving: boolean;
   canUndo: boolean;
@@ -61,6 +65,9 @@ export interface ArtCompositionsControllerOptions {
   postDraft?: (message: JsonObject) => Promise<unknown>;
   draftPublishDelayMs?: number;
   workspaceStorage?: ArtWorkspaceStorage | null;
+  initialDependencies?: ArtCompositionDependencyReport;
+  initialCompositionRevisions?: Record<string, string>;
+  trashStorage?: ArtWorkspaceStorage | null;
 }
 
 export interface ConvertArtSelectionOptions {
@@ -90,13 +97,15 @@ export interface ArtCompositionsController {
   addComponent(kind: string, options?: AddArtComponentOptions): ArtComponent | null;
   removeSelectedComponents(): void;
   removeSelectedComposition(): void;
+  trashCompositions(compositionIds: Iterable<string>): void;
+  restoreTrashedComposition(compositionId: string): void;
   updateComponent(componentId: string, patch: Partial<ArtComponent>): void;
   swapReferenceGameObject(componentId: string, compositionId: string): void;
   moveComponent(componentId: string, x: number, y: number): void;
   reorderComponent(componentId: string, targetComponentId: string, placement: "before" | "after"): void;
   undo(): void;
   redo(): void;
-  save(): Promise<boolean>;
+  save(options?: { commitTrash?: boolean }): Promise<boolean>;
 }
 
 export interface AddArtComponentOptions {
@@ -108,6 +117,7 @@ export interface AddArtComponentOptions {
 
 const HISTORY_LIMIT = 50;
 const DEFAULT_COMPOSITION_CANVAS = { width: 560, height: 230 };
+const ART_TRASH_STORAGE_KEY = "partyTemplate.artCompositionTrash.v1";
 
 function makeArtId(kind: string): string {
   const cryptoObj = typeof crypto !== "undefined" ? crypto : undefined;
@@ -519,6 +529,21 @@ function safeInitialCompositionCleanup(source: ArtComposition[]): ArtComposition
   ));
 }
 
+function readTrashedCompositionIds(storage: ArtWorkspaceStorage | null | undefined, validIds: Set<string>): Set<string> {
+  if (!storage) return new Set();
+  try {
+    const parsed = JSON.parse(storage.getItem(ART_TRASH_STORAGE_KEY) || "[]");
+    return new Set((Array.isArray(parsed) ? parsed : []).map(String).filter((id) => validIds.has(id)));
+  } catch (_error) {
+    return new Set();
+  }
+}
+
+function writeTrashedCompositionIds(storage: ArtWorkspaceStorage | null | undefined, ids: Set<string>): void {
+  if (!storage) return;
+  storage.setItem(ART_TRASH_STORAGE_KEY, JSON.stringify([...ids]));
+}
+
 function removeComponentsMatching(
   components: ArtComponent[],
   shouldRemove: (component: ArtComponent) => boolean,
@@ -575,6 +600,10 @@ export function createArtCompositionsController(
     ? (typeof window !== "undefined" ? window.localStorage : null)
     : options.workspaceStorage;
   let workspaces = readArtWorkspaces(workspaceStorage);
+  const trashStorage = options.trashStorage === undefined ? workspaceStorage : options.trashStorage;
+  let trashedCompositionIds = readTrashedCompositionIds(trashStorage, new Set(compositions.map((composition) => composition.id)));
+  let dependencyReport = { ...(options.initialDependencies || {}) };
+  let compositionRevisions = { ...(options.initialCompositionRevisions || {}) };
   const savedSnapshots = new Map<string, string>();
   const migratedIds = new Set(migration.migratedCompositionIds);
   for (const composition of sourceCompositions) {
@@ -603,6 +632,7 @@ export function createArtCompositionsController(
     workspaces: Record<ArtWorkspaceSurface, ArtComposition>;
     selectedCompositionId: string;
     selectedComponentIds: string[];
+    trashedCompositionIds: string[];
   };
   const undoStack: HistorySnapshot[] = [];
   const redoStack: HistorySnapshot[] = [];
@@ -668,7 +698,10 @@ export function createArtCompositionsController(
       selectedCompositionId,
       selectedComponentIds: new Set(selectedComponentIds),
       dirtyCompositionIds,
-      dirty: dirtyCompositionIds.size > 0 || deletedIds().size > 0,
+      trashedCompositionIds: new Set(trashedCompositionIds),
+      dependencyReport,
+      compositionRevisions,
+      dirty: dirtyCompositionIds.size > 0 || deletedIds().size > 0 || trashedCompositionIds.size > 0,
       saving,
       canUndo: undoStack.length > 0,
       canRedo: redoStack.length > 0,
@@ -691,7 +724,8 @@ export function createArtCompositionsController(
       compositions: compositions.map((composition) => JSON.parse(JSON.stringify(composition)) as ArtComposition),
       workspaces: JSON.parse(JSON.stringify(workspaces)) as Record<ArtWorkspaceSurface, ArtComposition>,
       selectedCompositionId,
-      selectedComponentIds: [...selectedComponentIds]
+      selectedComponentIds: [...selectedComponentIds],
+      trashedCompositionIds: [...trashedCompositionIds]
     };
   }
 
@@ -709,8 +743,12 @@ export function createArtCompositionsController(
     writeArtWorkspaces(workspaceStorage, workspaces);
   }
 
-  function mutateAll(apply: () => void): void {
-    if (pendingMigrationSummary) return;
+  function persistTrash(): void {
+    writeTrashedCompositionIds(trashStorage, trashedCompositionIds);
+  }
+
+  function mutateAll(apply: () => void, options: { allowDuringMigration?: boolean } = {}): void {
+    if (pendingMigrationSummary && !options.allowDuringMigration) return;
     undoStack.push(snapshot());
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
     redoStack.length = 0;
@@ -720,6 +758,7 @@ export function createArtCompositionsController(
     workspaces = { ...workspaces };
     ensureSelectedComposition();
     persistWorkspaces();
+    persistTrash();
     emit();
     scheduleDraft();
   }
@@ -729,6 +768,22 @@ export function createArtCompositionsController(
     const composition = selectedComposition();
     if (!composition) return;
     mutateAll(() => apply(composition));
+  }
+
+  async function permanentlyDeleteCompositions(ids: Set<string>): Promise<void> {
+    if (!ids.size) return;
+    const expectedCompositionRevisions = Object.fromEntries([...ids].map((id) => [id, compositionRevisions[id] || ""]));
+    const response = await api.cleanupArtCompositions({
+      deleteCompositionIds: [...ids],
+      expectedCompositionRevisions
+    });
+    compositions = hydrateArtCompositionsForEditing(response.compositions || []);
+    dependencyReport = { ...(response.dependencies || {}) };
+    compositionRevisions = { ...(response.compositionRevisions || {}) };
+    trashedCompositionIds = new Set();
+    savedSnapshots.clear();
+    for (const composition of compositions) savedSnapshots.set(composition.id, artCompositionSnapshot(composition));
+    persistTrash();
   }
 
   return {
@@ -997,19 +1052,29 @@ export function createArtCompositionsController(
       const removedCompositionId = selectedCompositionId;
       if (!removedCompositionId || isArtWorkspaceId(removedCompositionId)) return;
       mutateAll(() => {
-        compositions = compositions
-          .filter((composition) => composition.id !== removedCompositionId)
-          .map((composition) => {
-            const removedIds = new Set<string>();
-            const components = removeComponentsMatching(
-              composition.components || [],
-              (component) => component.kind === "reference" && component.artCompositionId === removedCompositionId,
-              removedIds
-            );
-            return withoutRemovedTimelineTargets({ ...composition, components }, removedIds);
-          });
+        trashedCompositionIds.add(removedCompositionId);
+        selectedCompositionId = artWorkspaceId(normalizeArtCompositionSurface(selectedComposition()?.surface));
         selectedComponentIds = new Set();
-      });
+      }, { allowDuringMigration: true });
+    },
+    trashCompositions: (compositionIds) => {
+      const validIds = new Set(compositions.map((composition) => composition.id));
+      const nextIds = [...compositionIds].map(String).filter((id) => validIds.has(id));
+      if (!nextIds.length) return;
+      mutateAll(() => {
+        for (const id of nextIds) trashedCompositionIds.add(id);
+        if (trashedCompositionIds.has(selectedCompositionId)) {
+          const selected = selectedComposition();
+          selectedCompositionId = artWorkspaceId(normalizeArtCompositionSurface(selected?.surface));
+          selectedComponentIds = new Set();
+        }
+      }, { allowDuringMigration: true });
+    },
+    restoreTrashedComposition: (compositionId) => {
+      if (!trashedCompositionIds.has(compositionId)) return;
+      mutateAll(() => {
+        trashedCompositionIds.delete(compositionId);
+      }, { allowDuringMigration: true });
     },
     updateComponent: (componentId, patch) =>
       mutateSelected((composition) => {
@@ -1107,8 +1172,10 @@ export function createArtCompositionsController(
       workspaces = previous.workspaces;
       selectedCompositionId = previous.selectedCompositionId;
       selectedComponentIds = new Set(previous.selectedComponentIds);
+      trashedCompositionIds = new Set(previous.trashedCompositionIds);
       ensureSelectedComposition();
       persistWorkspaces();
+      persistTrash();
       emit();
       scheduleDraft();
     },
@@ -1121,15 +1188,23 @@ export function createArtCompositionsController(
       workspaces = next.workspaces;
       selectedCompositionId = next.selectedCompositionId;
       selectedComponentIds = new Set(next.selectedComponentIds);
+      trashedCompositionIds = new Set(next.trashedCompositionIds);
       ensureSelectedComposition();
       persistWorkspaces();
+      persistTrash();
       emit();
       scheduleDraft();
     },
-    save: async () => {
+    save: async (saveOptions = {}) => {
+      if (trashedCompositionIds.size && !saveOptions.commitTrash) {
+        error = `Review ${trashedCompositionIds.size} trashed ${trashedCompositionIds.size === 1 ? "asset" : "assets"} before deleting permanently.`;
+        emit();
+        return false;
+      }
       const dirty = dirtyIds();
       const deleted = deletedIds();
-      if (!dirty.size && !deleted.size) {
+      const permanentlyDeleted = new Set([...deleted, ...trashedCompositionIds]);
+      if (!dirty.size && !permanentlyDeleted.size) {
         sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
         return true;
       }
@@ -1139,20 +1214,19 @@ export function createArtCompositionsController(
       try {
         if (pendingMigrationSummary && api.saveArtCompositions) {
           const payloads = [...dirty]
+            .filter((id) => !permanentlyDeleted.has(id))
             .map((id) => compositions.find((item) => item.id === id))
             .filter((composition): composition is ArtComposition => Boolean(composition))
             .map(serializeArtCompositionForSave);
           const response = await api.saveArtCompositions(payloads);
+          compositionRevisions = { ...compositionRevisions, ...(response.compositionRevisions || {}) };
           for (const savedPayload of response.compositions) {
             const saved = hydrateArtCompositionForEditing(savedPayload);
             const index = compositions.findIndex((item) => item.id === saved.id);
             if (index >= 0) compositions[index] = saved;
             savedSnapshots.set(saved.id, artCompositionSnapshot(saved));
           }
-          for (const id of deleted) {
-            await api.deleteArtComposition(id);
-            savedSnapshots.delete(id);
-          }
+          await permanentlyDeleteCompositions(permanentlyDeleted);
           sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
           pendingMigrationSummary = null;
           saving = false;
@@ -1160,19 +1234,18 @@ export function createArtCompositionsController(
           return true;
         }
         for (const id of dirty) {
+          if (permanentlyDeleted.has(id)) continue;
           const composition = compositions.find((item) => item.id === id);
           if (!composition) continue;
           const payload = serializeArtCompositionForSave(composition);
           const response = await api.saveArtComposition(id, payload);
+          compositionRevisions = { ...compositionRevisions, ...(response.compositionRevisions || {}) };
           const saved = hydrateArtCompositionForEditing(response.composition || payload);
           const index = compositions.findIndex((item) => item.id === id);
           if (index >= 0) compositions[index] = saved;
           savedSnapshots.set(id, artCompositionSnapshot(saved));
         }
-        for (const id of deleted) {
-          await api.deleteArtComposition(id);
-          savedSnapshots.delete(id);
-        }
+        await permanentlyDeleteCompositions(permanentlyDeleted);
         compositions = compositions.slice();
         sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
         pendingMigrationSummary = null;
@@ -1181,6 +1254,14 @@ export function createArtCompositionsController(
         return true;
       } catch (caught) {
         saving = false;
+        if (caught instanceof ApiError && caught.payload && typeof caught.payload === "object") {
+          const payload = caught.payload as {
+            compositionRevisions?: Record<string, string>;
+            dependencies?: ArtCompositionDependencyReport;
+          };
+          if (payload.dependencies) dependencyReport = { ...payload.dependencies };
+          if (payload.compositionRevisions) compositionRevisions = { ...payload.compositionRevisions };
+        }
         error = caught instanceof Error ? caught.message : String(caught);
         emit();
         return false;

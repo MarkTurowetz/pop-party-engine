@@ -2349,6 +2349,17 @@ body.tool-dashboard-mode .layout-react-shell {
   gap: 5px;
 }
 
+.art-browser-item.is-cleanup-mode {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.art-browser-item.is-cleanup-mode > input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
 .art-browser-stage-button {
   display: grid;
   gap: 2px;
@@ -2408,6 +2419,60 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-browser-composition-usage {
   white-space: nowrap;
+}
+
+.art-browser-composition-usage[data-art-composition-unused="true"] {
+  color: #087a55;
+}
+
+.art-browser-cleanup-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.art-browser-trash {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 3px dashed var(--ink);
+  border-radius: 10px;
+  background: #fff1f2;
+}
+
+.art-browser-trash ol,
+.art-trash-review-dialog ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.art-browser-trash li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.art-trash-review-dialog {
+  width: min(620px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+}
+
+.art-trash-review-dialog li {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--cream);
+}
+
+.art-trash-review-dialog li[data-art-trash-blocked="true"] {
+  background: #fff1f2;
 }
 
 .art-browser-unfiled {

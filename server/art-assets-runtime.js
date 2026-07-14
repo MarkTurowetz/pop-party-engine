@@ -11,6 +11,7 @@ const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
 const { ART_TIMELINE_ARCHITECTURE_VERSION, collectArtArchitectureIssues } = require("../shared/art-timeline-architecture");
 const { canonicalLifecycleLabel } = require("../shared/lifecycle-labels");
+const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 
 function createArtAssetsRuntime({
   acceptedArtTypes,
@@ -22,6 +23,7 @@ function createArtAssetsRuntime({
   customDir,
   defaultDir,
   loadArtManifestSource = null,
+  loadArtDependencySources = null,
   localDraftStore = null,
   manifestFile,
   onArtAssetsChanged = () => {},
@@ -675,11 +677,15 @@ function createArtAssetsRuntime({
 
   async function sendArtAssetList(res) {
     const manifest = await loadArtManifest();
+    const compositions = allPublicArtCompositions(manifest);
+    const dependencySources = typeof loadArtDependencySources === "function" ? await loadArtDependencySources() : {};
+    const dependencyReport = createArtCompositionDependencyReport({ compositions, ...dependencySources });
     sendJson(res, 200, {
       ok: true,
       groups: artGroups,
       assets: artAssets.map((asset) => publicArtAsset(asset, manifest)),
-      compositions: allPublicArtCompositions(manifest),
+      compositions,
+      ...dependencyReport,
       organization: normalizeArtOrganization(localDraftStore?.artOrganization || manifest.organization),
       revision: manifestRevision(manifest)
     });
@@ -820,7 +826,13 @@ function createArtAssetsRuntime({
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
     }
     onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: savedManifest.compositions?.[definition.id]?.updatedAt || manifest.compositions[definition.id].updatedAt });
-    sendJson(res, 200, { ok: true, composition: publicArtComposition(definition, savedManifest), revision: manifestRevision(savedManifest) });
+    const savedComposition = publicArtComposition(definition, savedManifest);
+    sendJson(res, 200, {
+      ok: true,
+      composition: savedComposition,
+      compositionRevisions: { [savedComposition.id]: compositionRevision(savedComposition) },
+      revision: manifestRevision(savedManifest)
+    });
   }
 
   async function handleSaveArtCompositions(req, res) {
@@ -880,9 +892,11 @@ function createArtAssetsRuntime({
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
     }
     onArtAssetsChanged({ type: "composition-batch", ids: normalized.map((composition) => composition.id), updatedAt });
+    const savedCompositions = normalized.map((composition) => publicArtComposition(composition, savedManifest));
     sendJson(res, 200, {
       ok: true,
-      compositions: normalized.map((composition) => publicArtComposition(composition, savedManifest)),
+      compositions: savedCompositions,
+      compositionRevisions: Object.fromEntries(savedCompositions.map((composition) => [composition.id, compositionRevision(composition)])),
       revision: manifestRevision(savedManifest)
     });
   }
@@ -913,6 +927,110 @@ function createArtAssetsRuntime({
     }
     onArtAssetsChanged({ type: "composition-delete", id: safeCompositionId, updatedAt: new Date().toISOString() });
     sendJson(res, 200, { ok: true, compositions: allPublicArtCompositions(savedManifest), revision: manifestRevision(savedManifest) });
+  }
+
+  function removeDeletedCompositionOrganizationKeys(organization, deletedIds) {
+    const deletedKeys = new Set([...deletedIds].map((id) => `composition:${id}`));
+    const next = JSON.parse(JSON.stringify(organization || {}));
+    for (const surface of ["stage", "controller"]) {
+      const source = next[surface] || {};
+      source.order = (source.order || []).filter((key) => !deletedKeys.has(String(key)));
+      source.folderItems = Object.fromEntries(Object.entries(source.folderItems || {}).map(([folderId, keys]) => [
+        folderId,
+        (Array.isArray(keys) ? keys : []).filter((key) => !deletedKeys.has(String(key)))
+      ]));
+      next[surface] = source;
+    }
+    return normalizeArtOrganization(next);
+  }
+
+  async function handleCleanupArtCompositions(req, res) {
+    let payload;
+    try {
+      payload = await readJson(req, 4 * 1024 * 1024);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
+      return;
+    }
+    const requestedIds = Array.isArray(payload.deleteCompositionIds)
+      ? [...new Set(payload.deleteCompositionIds.map(cleanId).filter(Boolean))]
+      : [];
+    if (!requestedIds.length) {
+      sendJson(res, 400, { ok: false, error: "At least one composition is required" });
+      return;
+    }
+
+    const manifest = await loadArtManifest();
+    const currentCompositions = allPublicArtCompositions(manifest);
+    const currentById = new Map(currentCompositions.map((composition) => [composition.id, composition]));
+    const dependencySources = typeof loadArtDependencySources === "function" ? await loadArtDependencySources() : {};
+    const currentReport = createArtCompositionDependencyReport({ compositions: currentCompositions, ...dependencySources });
+    const expectedRevisions = payload.expectedCompositionRevisions && typeof payload.expectedCompositionRevisions === "object"
+      ? payload.expectedCompositionRevisions
+      : {};
+    const requestedRevision = cleanText(payload.revision, "", 128);
+    if (requestedRevision && requestedRevision !== manifestRevision(manifest)) {
+      const conflicts = requestedIds.filter((id) => currentById.has(id) && expectedRevisions[id] !== currentReport.compositionRevisions[id]);
+      if (conflicts.length) {
+        sendJson(res, 409, {
+          ok: false,
+          error: "Some trashed assets changed elsewhere. Review them before deleting.",
+          conflictingCompositionIds: conflicts,
+          revision: manifestRevision(manifest),
+          compositions: currentCompositions,
+          ...currentReport
+        });
+        return;
+      }
+    }
+
+    const deleting = new Set(requestedIds);
+    const blockingDependencies = requestedIds.flatMap((id) => {
+      const summary = currentReport.dependencies[id];
+      return (summary?.details || []).filter((detail) => detail.kind !== "art" || !deleting.has(cleanId(detail.sourceCompositionId)));
+    });
+    if (blockingDependencies.length) {
+      sendJson(res, 409, {
+        ok: false,
+        error: "One or more trashed assets are still referenced.",
+        blockingDependencies,
+        revision: manifestRevision(manifest),
+        ...currentReport
+      });
+      return;
+    }
+
+    const candidate = JSON.parse(JSON.stringify(manifest));
+    candidate.compositions = candidate.compositions && typeof candidate.compositions === "object" ? candidate.compositions : {};
+    const deletedIds = deletedCompositionIds(candidate);
+    for (const id of requestedIds) {
+      delete candidate.compositions[id];
+      if (knownCompositionIds.has(id)) deletedIds.add(id);
+    }
+    candidate.deletedCompositionIds = [...deletedIds];
+    candidate.organization = removeDeletedCompositionOrganizationKeys(candidate.organization, deleting);
+    candidate.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
+    const remainingCompositions = allPublicArtCompositions(candidate);
+    const validationIssues = collectArtArchitectureIssues(remainingCompositions);
+    if (validationIssues.length) {
+      sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
+      return;
+    }
+    const savedManifest = await saveArtManifest(candidate);
+    if (Array.isArray(localDraftStore?.artCompositions)) {
+      localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => !deleting.has(composition?.id));
+      if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
+    }
+    const savedCompositions = allPublicArtCompositions(savedManifest);
+    const savedReport = createArtCompositionDependencyReport({ compositions: savedCompositions, ...dependencySources });
+    onArtAssetsChanged({ type: "composition-cleanup", ids: requestedIds, updatedAt: new Date().toISOString() });
+    sendJson(res, 200, {
+      ok: true,
+      compositions: savedCompositions,
+      organization: normalizeArtOrganization(savedManifest.organization),
+      revision: manifestRevision(savedManifest),
+      ...savedReport
+    });
   }
 
   async function handleReplaceArtAsset(req, res, assetId) {
@@ -1014,6 +1132,7 @@ function createArtAssetsRuntime({
   }
 
   return {
+    handleCleanupArtCompositions,
     handleDeleteArtComposition,
     handleSaveArtOrganization,
     handleSaveArtComposition,

@@ -175,6 +175,29 @@ export interface ArtOrganization extends JsonObject {
   controller: ArtOrganizationSurface;
 }
 
+export type ArtCompositionDependencyKind = "art" | "stageLayout" | "controllerLayout" | "flow" | "runtime";
+
+export interface ArtCompositionDependencyDetail extends JsonObject {
+  kind: ArtCompositionDependencyKind;
+  sourceCompositionId?: string;
+  sourceId?: string;
+  sourceName?: string;
+  sourcePath?: string;
+}
+
+export interface ArtCompositionDependencySummary extends JsonObject {
+  compositionId: string;
+  total: number;
+  artReferences: number;
+  stageLayoutReferences: number;
+  controllerLayoutReferences: number;
+  flowReferences: number;
+  runtimeReferences: number;
+  details: ArtCompositionDependencyDetail[];
+}
+
+export type ArtCompositionDependencyReport = Record<string, ArtCompositionDependencySummary>;
+
 export interface GameFlowResponse {
   ok: true;
   flow: GameFlow;
@@ -242,6 +265,8 @@ export interface ArtAssetsResponse {
   assets: ArtAsset[];
   compositions: ArtComposition[];
   organization?: ArtOrganization;
+  dependencies?: ArtCompositionDependencyReport;
+  compositionRevisions?: Record<string, string>;
 }
 
 export interface ArtOrganizationSaveResponse {
@@ -254,6 +279,7 @@ export interface ArtCompositionSaveResponse {
   ok: true;
   revision?: string;
   composition: ArtComposition;
+  compositionRevisions?: Record<string, string>;
 }
 
 export interface ArtCompositionDeleteResponse {
@@ -272,6 +298,18 @@ export interface ArtCompositionsSaveResponse {
   ok: true;
   revision?: string;
   compositions: ArtComposition[];
+  compositionRevisions?: Record<string, string>;
+}
+
+export interface ArtCompositionCleanupRequest extends JsonObject {
+  deleteCompositionIds: string[];
+  expectedCompositionRevisions: Record<string, string>;
+}
+
+export interface ArtCompositionCleanupResponse extends ArtCompositionsSaveResponse {
+  organization?: ArtOrganization;
+  dependencies: ArtCompositionDependencyReport;
+  compositionRevisions: Record<string, string>;
 }
 
 export interface HealthResponse {

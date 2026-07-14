@@ -1,8 +1,10 @@
 import type {
   ArtAssetReplaceResponse,
   ArtAssetsResponse,
+  ArtCompositionCleanupResponse,
   ArtCompositionDeleteResponse,
   ArtCompositionSaveResponse,
+  ArtCompositionsSaveResponse,
   ArtOrganizationSaveResponse,
   GameConstantsResponse,
   GameConstantsSaveResponse,
@@ -221,6 +223,8 @@ export function validateArtAssetsResponse(value: unknown, endpoint = "/api/art-a
     assertArtComposition(composition, endpoint, `compositions[${index}]`);
   });
   if (response.organization !== undefined) assertRecord(response.organization, endpoint, "organization");
+  if (response.dependencies !== undefined) assertRecord(response.dependencies, endpoint, "dependencies");
+  if (response.compositionRevisions !== undefined) assertRecord(response.compositionRevisions, endpoint, "compositionRevisions");
   if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
   return value as ArtAssetsResponse;
 }
@@ -238,6 +242,7 @@ export function validateArtCompositionSaveResponse(value: unknown, endpoint = "/
   assertOk(response, endpoint);
   assertArtComposition(response.composition, endpoint, "composition");
   if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
+  if (response.compositionRevisions !== undefined) assertRecord(response.compositionRevisions, endpoint, "compositionRevisions");
   return value as ArtCompositionSaveResponse;
 }
 
@@ -249,6 +254,19 @@ export function validateArtCompositionDeleteResponse(value: unknown, endpoint = 
   });
   if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
   return value as ArtCompositionDeleteResponse;
+}
+
+export function validateArtCompositionsSaveResponse(value: unknown, endpoint = "/api/art-compositions"): ArtCompositionsSaveResponse {
+  const response = validateArtCompositionDeleteResponse(value, endpoint) as ArtCompositionsSaveResponse;
+  if (response.compositionRevisions !== undefined) assertRecord(response.compositionRevisions, endpoint, "compositionRevisions");
+  return response;
+}
+
+export function validateArtCompositionCleanupResponse(value: unknown, endpoint = "/api/art-compositions/cleanup"): ArtCompositionCleanupResponse {
+  const response = validateArtCompositionDeleteResponse(value, endpoint) as ArtCompositionCleanupResponse;
+  assertRecord(response.dependencies, endpoint, "dependencies");
+  assertRecord(response.compositionRevisions, endpoint, "compositionRevisions");
+  return response;
 }
 
 export function validateArtAssetReplaceResponse(value: unknown, endpoint = "/api/art-assets/:id"): ArtAssetReplaceResponse {

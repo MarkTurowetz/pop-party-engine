@@ -6,7 +6,7 @@ import { folderIdFromKey, type OrgItem, type OrgSurface } from "./organizationMo
 import { useArtCompositions } from "./useArtCompositions";
 import { useArtOrganization } from "./useArtOrganization";
 import { artWorkspaceId } from "./artWorkspaceModel";
-import { artCompositionReferenceCounts, artCompositionUsageLabel } from "./artCompositionUsage";
+import { artCompositionCleanupSummary, artCompositionDependencyLabel } from "./artCompositionUsage";
 
 export interface ArtCompositionBrowserProps {
   compositionsController: ArtCompositionsController;
@@ -47,24 +47,39 @@ export function ArtCompositionBrowser({
   surface,
   onSurfaceChange
 }: ArtCompositionBrowserProps) {
-  const { compositions, workspaces, selectedCompositionId } = useArtCompositions(compositionsController);
+  const {
+    compositions,
+    workspaces,
+    selectedCompositionId,
+    trashedCompositionIds,
+    dependencyReport,
+    saving: savingCompositions
+  } = useArtCompositions(compositionsController);
   const { organization, surfaceItems, dirty, saving, canUndo, canRedo } = useArtOrganization(organizationController);
   const [folderName, setFolderName] = useState("");
   const [compositionName, setCompositionName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [cleanupMode, setCleanupMode] = useState(false);
+  const [cleanupSelection, setCleanupSelection] = useState<Set<string>>(new Set());
+  const [reviewTrash, setReviewTrash] = useState(false);
   const [collapsedFolders, setCollapsedFolders] = useState(readCollapsedFolders);
   const state = organization[surface];
   const compositionItems = surfaceItems[surface].filter((item: OrgItem) => item.type === "composition");
-  const validCompositionKeys = new Set(compositionItems.map((item) => item.key));
+  const activeCompositionItems = compositionItems.filter((item) => !trashedCompositionIds.has(compositionIdFromBrowserKey(item.key)));
+  const validCompositionKeys = new Set(activeCompositionItems.map((item) => item.key));
   const nameByKey = new Map(compositionItems.map((item) => [item.key, item.name]));
   const kindByKey = new Map(compositionItems.map((item) => [item.key, item.compositionKind || "gameObject"]));
-  const usageCounts = useMemo(
-    () => artCompositionReferenceCounts([...compositions, ...Object.values(workspaces)]),
-    [compositions, workspaces]
+  const artDocuments = useMemo(() => [...compositions, ...Object.values(workspaces)], [compositions, workspaces]);
+  const cleanupSummaryById = useMemo(
+    () => new Map(compositions.map((composition) => [
+      composition.id,
+      artCompositionCleanupSummary(composition.id, artDocuments, dependencyReport[composition.id], trashedCompositionIds)
+    ])),
+    [artDocuments, compositions, dependencyReport, trashedCompositionIds]
   );
   const search = useMemo(
-    () => searchArtHierarchy(state, compositionItems, searchQuery),
-    [state, compositionItems, searchQuery]
+    () => searchArtHierarchy(state, activeCompositionItems, searchQuery),
+    [state, activeCompositionItems, searchQuery]
   );
   const folderNameFor = (id: string) => state.folders.find((folder) => folder.id === id)?.name || "Folder";
   const visibleFolderIds = useMemo(
@@ -79,7 +94,7 @@ export function ArtCompositionBrowser({
   for (const folderId of Object.keys(state.folderItems)) {
     for (const key of state.folderItems[folderId] || []) if (validCompositionKeys.has(key)) placed.add(key);
   }
-  const unfiled = compositionItems.filter((item) => !placed.has(item.key));
+  const unfiled = activeCompositionItems.filter((item) => !placed.has(item.key));
 
   const onDragStart = (event: DragEvent, key: string) => {
     event.stopPropagation();
@@ -134,12 +149,35 @@ export function ArtCompositionBrowser({
     compositionsController.createComposition(kind, surface, compositionName);
     setCompositionName("");
   };
+  const toggleCleanupSelection = (compositionId: string): void => {
+    setCleanupSelection((current) => {
+      const next = new Set(current);
+      if (next.has(compositionId)) next.delete(compositionId);
+      else next.add(compositionId);
+      return next;
+    });
+  };
+  const surfaceCompositionIds = activeCompositionItems.map((item) => compositionIdFromBrowserKey(item.key)).filter(Boolean);
+  const unusedSurfaceCompositionIds = surfaceCompositionIds.filter((id) => cleanupSummaryById.get(id)?.total === 0);
+  const trashedCompositions = compositions.filter((composition) => trashedCompositionIds.has(composition.id));
+  const blockedTrashedCompositions = trashedCompositions.filter((composition) => (cleanupSummaryById.get(composition.id)?.total || 0) > 0);
+  const moveCleanupSelectionToTrash = (): void => {
+    compositionsController.trashCompositions(cleanupSelection);
+    setCleanupSelection(new Set());
+  };
 
   const renderCompositionItem = (key: string) => {
     const compositionId = compositionIdFromBrowserKey(key);
     if (!compositionId || !validCompositionKeys.has(key)) return null;
     if (search.active && !search.visibleKeys.has(key)) return null;
-    const usageCount = usageCounts.get(compositionId) || 0;
+    const usage = cleanupSummaryById.get(compositionId) || artCompositionCleanupSummary(compositionId, artDocuments, undefined);
+    const dependencyTitle = [
+      `Art: ${usage.artReferences}`,
+      `Stage Layout: ${usage.stageLayoutReferences}`,
+      `Controller Layout: ${usage.controllerLayoutReferences}`,
+      `Flow: ${usage.flowReferences}`,
+      `Runtime: ${usage.runtimeReferences}`
+    ].join(" · ");
     const deleteCompositionFromKey = (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       event.preventDefault();
@@ -149,7 +187,7 @@ export function ArtCompositionBrowser({
     };
     return (
       <li
-        className="art-browser-item"
+        className={`art-browser-item${cleanupMode ? " is-cleanup-mode" : ""}`}
         data-art-browser-composition={compositionId}
         key={key}
         draggable
@@ -157,6 +195,14 @@ export function ArtCompositionBrowser({
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => onDropBeside(event, key)}
       >
+        {cleanupMode ? (
+          <input
+            type="checkbox"
+            checked={cleanupSelection.has(compositionId)}
+            aria-label={`Select ${nameByKey.get(key) || compositionId} for cleanup`}
+            onChange={() => toggleCleanupSelection(compositionId)}
+          />
+        ) : null}
         <button
           type="button"
           aria-current={compositionId === selectedCompositionId ? "true" : undefined}
@@ -169,26 +215,27 @@ export function ArtCompositionBrowser({
             <small>{kindByKey.get(key) === "prefab" ? "Prefab" : "Game Object"}</small>
             <small
               className="art-browser-composition-usage"
-              data-art-composition-usage={usageCount}
-              title={`${artCompositionUsageLabel(usageCount)} as a direct child in Art Manager compositions and workspaces.`}
+              data-art-composition-usage={usage.total}
+              data-art-composition-unused={usage.total === 0 ? "true" : "false"}
+              title={dependencyTitle}
             >
-              {artCompositionUsageLabel(usageCount)}
+              {artCompositionDependencyLabel(usage)}
             </small>
           </span>
         </button>
-        <button
+        {!cleanupMode ? <button
           type="button"
           className="art-browser-composition-delete"
-          aria-label={`Delete ${nameByKey.get(key) || compositionId}`}
-          title="Delete composition"
+          aria-label={`Move ${nameByKey.get(key) || compositionId} to Trash`}
+          title="Move composition to Trash"
           onClick={(event) => {
             event.stopPropagation();
             compositionsController.selectComposition(compositionId);
             compositionsController.removeSelectedComposition();
           }}
         >
-          Delete
-        </button>
+          Trash
+        </button> : null}
       </li>
     );
   };
@@ -264,6 +311,44 @@ export function ArtCompositionBrowser({
           Controller
         </button>
       </div>
+      <div className="art-browser-cleanup-tools">
+        <button type="button" aria-pressed={cleanupMode} onClick={() => {
+          setCleanupMode((current) => !current);
+          setCleanupSelection(new Set());
+        }}>
+          {cleanupMode ? "Exit Cleanup" : "Cleanup Mode"}
+        </button>
+        {cleanupMode ? (
+          <>
+            <button type="button" disabled={!unusedSurfaceCompositionIds.length} onClick={() => setCleanupSelection(new Set(unusedSurfaceCompositionIds))}>
+              Select Unused
+            </button>
+            <button type="button" disabled={!cleanupSelection.size} onClick={moveCleanupSelectionToTrash}>
+              Move {cleanupSelection.size || ""} to Trash
+            </button>
+          </>
+        ) : null}
+        {trashedCompositions.length ? (
+          <button type="button" data-art-review-trash onClick={() => setReviewTrash(true)}>
+            Review Trash ({trashedCompositions.length})
+          </button>
+        ) : null}
+      </div>
+      {trashedCompositions.length ? (
+        <section className="art-browser-trash" aria-label="Art Trash">
+          <strong>Trash</strong>
+          <small>Pending until reviewed and permanently deleted.</small>
+          <ol>
+            {trashedCompositions.map((composition) => (
+              <li key={composition.id}>
+                <span>{composition.name}</span>
+                <small>{artCompositionDependencyLabel(cleanupSummaryById.get(composition.id) || artCompositionCleanupSummary(composition.id, artDocuments, undefined))}</small>
+                <button type="button" onClick={() => compositionsController.restoreTrashedComposition(composition.id)}>Restore</button>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
       <div className="art-browser-search">
         <input
           type="search"
@@ -337,6 +422,53 @@ export function ArtCompositionBrowser({
         ) : null}
         {search.active && !search.matchCount ? <li className="art-browser-empty">No matching assets.</li> : null}
       </ol>
+      {reviewTrash ? (
+        <div className="art-prefab-dialog-backdrop" role="presentation" onMouseDown={() => setReviewTrash(false)}>
+          <section
+            className="flow-react-panel art-prefab-dialog art-trash-review-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Review trashed art assets"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <h3>Review Trash</h3>
+            <p>{trashedCompositions.length} {trashedCompositions.length === 1 ? "asset is" : "assets are"} staged for permanent deletion.</p>
+            <ol>
+              {trashedCompositions.map((composition) => {
+                const summary = cleanupSummaryById.get(composition.id) || artCompositionCleanupSummary(composition.id, artDocuments, undefined);
+                return (
+                  <li key={composition.id} data-art-trash-blocked={summary.total ? "true" : "false"}>
+                    <strong>{composition.name}</strong>
+                    <span>{artCompositionDependencyLabel(summary)}</span>
+                    {summary.details.map((detail, index) => (
+                      <small key={`${composition.id}-${detail.kind}-${index}`}>
+                        {detail.kind}: {detail.sourceName || detail.sourcePath || detail.sourceId || detail.sourceCompositionId || "Referenced"}
+                      </small>
+                    ))}
+                  </li>
+                );
+              })}
+            </ol>
+            {blockedTrashedCompositions.length ? (
+              <p role="alert">Remove the listed references before deleting these assets.</p>
+            ) : (
+              <p>This permanently updates the Art Manifest in one atomic operation.</p>
+            )}
+            <div className="flow-editor-controls">
+              <button type="button" onClick={() => setReviewTrash(false)}>Cancel</button>
+              <button
+                type="button"
+                disabled={Boolean(blockedTrashedCompositions.length) || savingCompositions}
+                onClick={() => void compositionsController.save({ commitTrash: true }).then((saved) => {
+                  if (saved) setReviewTrash(false);
+                })}
+              >
+                {savingCompositions ? "Deleting..." : `Delete ${trashedCompositions.length} Permanently`}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }
