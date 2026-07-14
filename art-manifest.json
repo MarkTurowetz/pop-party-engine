@@ -7231,8 +7231,8 @@
           "kind": "reference",
           "x": 150,
           "y": 96,
-          "width": 300,
-          "height": 180,
+          "width": 220,
+          "height": 130.664,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -7269,8 +7269,8 @@
           "kind": "reference",
           "x": 150,
           "y": 309,
-          "width": 126,
-          "height": 42,
+          "width": 122,
+          "height": 38,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -7288,8 +7288,8 @@
           "kind": "reference",
           "x": 150,
           "y": 345,
-          "width": 52,
-          "height": 28,
+          "width": 44,
+          "height": 22,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -7341,64 +7341,63 @@
         ],
         "commands": [
           {
-            "id": "stop-0",
             "frame": 0,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-0"
           },
           {
-            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
-            "id": "stop-1",
             "frame": 1,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-1"
           },
           {
-            "id": "setvisible-1-true",
             "frame": 1,
             "type": "setVisible",
+            "id": "setvisible-1-true",
             "target": "true"
           },
           {
-            "id": "setvisible-2-true",
             "frame": 2,
             "type": "setVisible",
+            "id": "setvisible-2-true",
             "target": "true"
           },
           {
-            "id": "stop-12",
             "frame": 12,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-12"
           },
           {
-            "id": "setvisible-13-true",
             "frame": 13,
             "type": "setVisible",
+            "id": "setvisible-13-true",
             "target": "true"
           },
           {
-            "id": "stop-16",
             "frame": 16,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-16"
           },
           {
-            "id": "stop-32",
             "frame": 32,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-32"
           },
           {
-            "id": "setvisible-32-false",
             "frame": 32,
             "type": "setVisible",
+            "id": "setvisible-32-false",
             "target": "false"
           }
         ],
         "tracks": []
       },
-      "updatedAt": "2026-07-12T22:00:00.000Z"
+      "updatedAt": "2026-07-14T06:21:16.255Z"
     },
     "prefab-voting-card-correctness-state": {
       "name": "Voting Card Correctness State",
