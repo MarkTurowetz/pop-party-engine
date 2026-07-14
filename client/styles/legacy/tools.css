@@ -1603,9 +1603,9 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(140px, max-content) minmax(480px, 1fr) auto;
   gap: 8px;
-  align-items: center;
+  align-items: end;
 }
 
 .art-timeline-header h3,
@@ -1613,15 +1613,16 @@ body.tool-dashboard-mode .layout-react-shell {
   margin: 0;
 }
 
-.art-timeline-settings,
-.art-timeline-actions {
+.art-timeline-settings {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(90px, 0.35fr) minmax(120px, 0.45fr) minmax(220px, 1.2fr);
   gap: 8px;
 }
 
 .art-timeline-actions {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
   align-items: end;
 }
 
@@ -1699,17 +1700,6 @@ body.tool-dashboard-mode .layout-react-shell {
   font-size: 12px;
   font-weight: 1000;
   line-height: 1;
-}
-
-.art-timeline-segment-editor {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr);
-  gap: 8px;
-  align-items: end;
-  padding: 8px;
-  border: 3px solid rgba(23, 19, 31, 0.18);
-  border-radius: 6px;
-  background: rgba(255, 225, 86, 0.18);
 }
 
 .art-timeline-command-overlay {
@@ -1806,10 +1796,9 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-frame-editor {
   display: grid;
-  grid-template-columns: minmax(260px, 420px) minmax(100px, auto) minmax(100px, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 420px) minmax(100px, auto);
   gap: 8px;
   align-items: center;
-  min-height: 54px;
 }
 
 .art-timeline-tween-slot {
@@ -1849,20 +1838,6 @@ body.tool-dashboard-mode .layout-react-shell {
   color: var(--muted);
   font-size: 10px;
   font-weight: 900;
-}
-
-.art-timeline-window-controls {
-  display: grid;
-  grid-template-columns: minmax(120px, 0.5fr) auto;
-  gap: 8px;
-  align-items: end;
-}
-
-.art-timeline-window-summary {
-  align-self: center;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 1000;
 }
 
 .art-prefab-dialog-backdrop {

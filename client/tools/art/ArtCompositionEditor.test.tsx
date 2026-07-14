@@ -3,6 +3,7 @@ import type { TimelineDocument } from "../../../shared/timeline-model";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import {
   swappableGameObjectOptions,
+  timelineFrameForStepShortcut,
   timelineActionScriptForFrame,
   timelineActionScriptPlaceholderForFrame,
   timelineWithActionScriptAtFrame,
@@ -66,6 +67,20 @@ describe("ArtCompositionEditor command scripts", () => {
     );
 
     expect(options.map((option) => option.id)).toEqual(["a", "prefab", "z"]);
+  });
+});
+
+describe("ArtCompositionEditor timeline frame stepping", () => {
+  it("steps backward and forward with comma and period inside frame bounds", () => {
+    expect(timelineFrameForStepShortcut(",", 2, 5)).toBe(1);
+    expect(timelineFrameForStepShortcut(".", 2, 5)).toBe(3);
+    expect(timelineFrameForStepShortcut(",", 0, 5)).toBeNull();
+    expect(timelineFrameForStepShortcut(".", 4, 5)).toBeNull();
+  });
+
+  it("ignores unrelated keys and timelines with nowhere to move", () => {
+    expect(timelineFrameForStepShortcut("/", 2, 5)).toBeNull();
+    expect(timelineFrameForStepShortcut(".", 0, 1)).toBeNull();
   });
 });
 

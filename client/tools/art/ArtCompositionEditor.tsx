@@ -280,6 +280,15 @@ function isTimelineFrameShortcutTarget(target: EventTarget | null): boolean {
   return Boolean(element.closest(".art-timeline-ruler button, .art-timeline-lane-frame"));
 }
 
+export function timelineFrameForStepShortcut(key: string, currentFrame: number, frameCount: number): number | null {
+  const delta = key === "," ? -1 : key === "." ? 1 : 0;
+  if (!delta) return null;
+  const maxFrame = Math.max(0, Math.round(Number(frameCount) || 0) - 1);
+  const cleanCurrent = Math.max(0, Math.min(maxFrame, Math.round(Number(currentFrame) || 0)));
+  const nextFrame = Math.max(0, Math.min(maxFrame, cleanCurrent + delta));
+  return nextFrame === cleanCurrent ? null : nextFrame;
+}
+
 function findTimelineKeyframe(
   timeline: TimelineDocument,
   selection: { targetId: string; frame: number } | null
@@ -1909,6 +1918,7 @@ function ArtTimelinePanel({
     playFromBeginning: () => {}
   });
   const timelineTweenControlsRef = useRef<{ toggle: () => void }>({ toggle: () => {} });
+  const timelineFrameNavigationRef = useRef<{ step: (key: string) => boolean }>({ step: () => false });
   const commitCommandScriptDraftRef = useRef<(value?: string) => boolean>(() => true);
   const timelineRangeDragRef = useRef<{ anchorFrame: number; moved: boolean } | null>(null);
   const timelineWindowPanRef = useRef<{ startX: number; startWindowStart: number; frameWidth: number } | null>(null);
@@ -2265,12 +2275,25 @@ function ArtTimelinePanel({
         toggleTweenAtCurrentSelection();
       }
     };
+    timelineFrameNavigationRef.current = {
+      step: (key) => {
+        const nextFrame = timelineFrameForStepShortcut(key, cleanFrame, current.frameCount);
+        if (nextFrame === null) return false;
+        if (isPlaying) stopPlayback();
+        previewFrame(nextFrame);
+        return true;
+      }
+    };
   });
 
   useEffect(() => {
     function handleGlobalTimelineKeyDown(event: KeyboardEvent): void {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
       if (isEditableTimelineShortcutTarget(event.target)) return;
+      if (event.key === "," || event.key === ".") {
+        if (timelineFrameNavigationRef.current.step(event.key)) event.preventDefault();
+        return;
+      }
       if (isButtonTimelineShortcutTarget(event.target) && !isTimelineFrameShortcutTarget(event.target)) return;
       if (event.key === " " || event.key === "Spacebar") {
         event.preventDefault();
@@ -2770,61 +2793,59 @@ function ArtTimelinePanel({
       className="art-timeline-panel"
       data-art-timeline-panel
       tabIndex={0}
-      aria-keyshortcuts="T F5 F6 Shift+F5 Shift+F6 ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+Alt+C Meta+Alt+V Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
+      aria-keyshortcuts=", . T F5 F6 Shift+F5 Shift+F6 ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+Alt+C Meta+Alt+V Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
       onKeyDown={handleTimelineKeyDown}
     >
       <div className="art-timeline-header">
         <h3>{title}</h3>
+        <div className="art-timeline-settings">
+          <label className="flow-react-field">
+            <span>Frames</span>
+            <input
+              type="number"
+              min={1}
+              max={18000}
+              value={current.frameCount}
+              onChange={(event) => onChange(updateTimelineSettings(current, { frameCount: Number(event.target.value) }))}
+            />
+          </label>
+          <label className="flow-react-field">
+            <span>Current Frame</span>
+            <input
+              type="number"
+              min={0}
+              max={Math.max(0, current.frameCount - 1)}
+              value={cleanFrame}
+              onChange={(event) => {
+                stopPlayback();
+                previewFrame(Number(event.target.value));
+              }}
+            />
+          </label>
+          <label className="flow-react-field">
+            <span>Animation Name</span>
+            <input
+              type="text"
+              value={selectedFrameAnimationName}
+              placeholder="None"
+              readOnly={!animationNameIsEditable}
+              aria-readonly={!animationNameIsEditable}
+              onChange={(event) => {
+                if (animationNameIsEditable) updateCurrentFrameAnimationName(event.target.value);
+              }}
+            />
+          </label>
+        </div>
         {onExitScope ? (
           <button type="button" onClick={onExitScope}>
             Back To Parent Timeline
           </button>
         ) : null}
       </div>
-      <div className="art-timeline-settings">
-        <label className="flow-react-field">
-          <span>Frames</span>
-          <input
-            type="number"
-            min={1}
-            max={18000}
-            value={current.frameCount}
-            onChange={(event) => onChange(updateTimelineSettings(current, { frameCount: Number(event.target.value) }))}
-          />
-        </label>
-        <label className="flow-react-field">
-          <span>Current Frame</span>
-          <input
-            type="number"
-            min={0}
-            max={Math.max(0, current.frameCount - 1)}
-            value={cleanFrame}
-            onChange={(event) => {
-              stopPlayback();
-              previewFrame(Number(event.target.value));
-            }}
-          />
-        </label>
-      </div>
-      <div className="art-timeline-segment-editor">
-        <label className="flow-react-field">
-          <span>Animation Name</span>
-          <input
-            type="text"
-            value={selectedFrameAnimationName}
-            placeholder="None"
-            readOnly={!animationNameIsEditable}
-            aria-readonly={!animationNameIsEditable}
-            onChange={(event) => {
-              if (animationNameIsEditable) updateCurrentFrameAnimationName(event.target.value);
-            }}
-          />
-        </label>
-      </div>
-      <div className="art-timeline-frame-editor">
-        <div className="art-timeline-tween-slot" data-art-tween-selected={selectedTweenSpan ? "true" : "false"}>
+      {selectedTweenSpan || copiedFrameRange ? (
+        <div className="art-timeline-frame-editor">
           {selectedTweenSpan ? (
-            <>
+            <div className="art-timeline-tween-slot" data-art-tween-selected="true">
               <label className="flow-react-field">
                 <span>Tween Easing</span>
                 <select value={selectedTweenSpan.easing} onChange={(event) => updateSelectedTweenEasing(event.target.value)}>
@@ -2838,36 +2859,15 @@ function ArtTimelinePanel({
               <small>
                 {selectedTweenSpan.startFrame}-{selectedTweenSpan.endFrame} · {selectedTweenSpan.targetId}
               </small>
-            </>
-          ) : (
-            <span aria-hidden="true">Tween easing</span>
-          )}
+            </div>
+          ) : null}
+          {copiedFrameRange ? (
+            <span className="art-timeline-frame-clipboard-summary">
+              Clipboard: {copiedFrameRange.frameCount} frame{copiedFrameRange.frameCount === 1 ? "" : "s"}
+            </span>
+          ) : null}
         </div>
-        {copiedFrameRange ? (
-          <span className="art-timeline-frame-clipboard-summary">
-            Clipboard: {copiedFrameRange.frameCount} frame{copiedFrameRange.frameCount === 1 ? "" : "s"}
-          </span>
-        ) : null}
-      </div>
-      <div className="art-timeline-window-controls">
-        <label className="flow-react-field">
-          <span>Window Start</span>
-          <input
-            type="number"
-            min={0}
-            max={maxFrameWindowStart}
-            value={cleanFrameWindowStart}
-            onChange={(event) => setTimelineWindowStart(Number(event.target.value))}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => setTimelineWindowStart(cleanFrameWindowStart + visibleTimelineFrameCount)}
-          disabled={cleanFrameWindowStart >= maxFrameWindowStart}
-        >
-          Next Frames
-        </button>
-      </div>
+      ) : null}
       <div
         className="art-timeline-ruler"
         style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}
