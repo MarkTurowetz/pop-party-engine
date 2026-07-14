@@ -21,11 +21,6 @@ function artRuntimeReferences() {
     })),
     { compositionId: "prefab-player-widget-mc", sourceId: "stage-player-roster", sourceName: "Player roster runtime" },
     { compositionId: "prefab-player-avatar-mc", sourceId: "controller-avatar-runtime", sourceName: "Controller avatar runtime" },
-    ...["rex", "stego", "trike", "raptor", "bronto", "ankylo"].map((shape) => ({
-      compositionId: `player-object-${shape}`,
-      sourceId: "stage-player-roster-fallback",
-      sourceName: `Legacy ${shape} player fallback`
-    })),
     { compositionId: "prefab-voting-card-mc", sourceId: "stage-voting-card-runtime", sourceName: "Voting card runtime" },
     { compositionId: "voting-card", sourceId: "stage-voting-card-fallback", sourceName: "Legacy voting card fallback" }
   ];

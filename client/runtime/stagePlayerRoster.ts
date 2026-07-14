@@ -23,7 +23,6 @@ interface TreeRenderer {
   isComponentVisible?: (componentId: string) => boolean;
   playAll?: (animation: string, options?: Dict) => number;
   playComponent?: (componentId: string, animation: string, options?: Dict) => number;
-  playComponentTree?: (componentId: string, animation: string, options?: Dict) => number;
   stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
 }
 
@@ -127,11 +126,6 @@ export interface PlayerAnswerBubbleRuntimeState {
 
 export interface PlayerVipRuntimeState {
   visible: boolean;
-}
-
-export function legacyPlayerObjectCompositionIdForShape(shape?: unknown): string {
-  const species = String(shape || "rex").trim().toLowerCase() || "rex";
-  return `player-object-${species}`;
 }
 
 export function avatarTimelineLabelForShape(shape?: unknown): string {
@@ -282,17 +276,8 @@ class PlayerRosterRenderer {
     return object;
   }
 
-  playerObjectCompositionFor(player: Dict): Dict | null {
-    const legacyId = legacyPlayerObjectCompositionIdForShape((player.avatar as Dict)?.shape);
-    return this.getComposition(PLAYER_WIDGET_COMPOSITION_ID) || this.getComposition(legacyId) || this.getComposition("player-object-rex");
-  }
-
-  usesPlayerWidgetMc(tile: El): boolean {
-    return tile.dataset.playerObjectCompositionId === PLAYER_WIDGET_COMPOSITION_ID;
-  }
-
-  componentId(tile: El, modernId: string, legacyId: string): string {
-    return this.usesPlayerWidgetMc(tile) ? modernId : legacyId;
+  playerObjectCompositionFor(_player: Dict): Dict | null {
+    return this.getComposition(PLAYER_WIDGET_COMPOSITION_ID);
   }
 
   answerStateFor(player: Dict): PlayerAnswerBubbleRuntimeState {
@@ -367,9 +352,9 @@ class PlayerRosterRenderer {
       instant: true
     });
 
-    const avatarDuration = this.syncAvatarComponent(tile, renderer, player);
+    const avatarDuration = this.syncAvatarComponent(renderer, player);
 
-    const duration = this.syncAnswerBubbleComponent(tile, renderer, answerState, {
+    const duration = this.syncAnswerBubbleComponent(renderer, answerState, {
       ...options,
       previousVisible,
       previousNonce,
@@ -378,7 +363,6 @@ class PlayerRosterRenderer {
     });
     const labelDuration = this.syncPlayerLabelComponents(renderer, player, {
       ...options,
-      tile,
       previousPlayerName,
       previousPlayerVip
     });
@@ -394,8 +378,7 @@ class PlayerRosterRenderer {
     return Math.max(duration, labelDuration, avatarDuration);
   }
 
-  syncAvatarComponent(tile: El, renderer: TreeRenderer, player: Dict): number {
-    if (!this.usesPlayerWidgetMc(tile)) return 0;
+  syncAvatarComponent(renderer: TreeRenderer, player: Dict): number {
     const label = avatarTimelineLabelForShape((player.avatar as Dict)?.shape);
     const showDuration = renderer.isComponentVisible?.(PLAYER_AVATAR_MC_ID)
       ? 0
@@ -404,17 +387,15 @@ class PlayerRosterRenderer {
     return Math.max(showDuration, frameDuration);
   }
 
-  syncAnswerBubbleComponent(tile: El, renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {
+  syncAnswerBubbleComponent(renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {
     const instant = options.instant === true;
     const previousVisible = options.previousVisible === true;
     const previousNonce = String(options.previousNonce || "");
     const previousText = String(options.previousText || "");
     const previousCorrectness = String(options.previousCorrectness || "");
-    const targetId = this.componentId(tile, PLAYER_ANSWER_BUBBLE_MC_ID, "answer-bubble");
+    const targetId = PLAYER_ANSWER_BUBBLE_MC_ID;
     const play = (animation: string) =>
-      (this.usesPlayerWidgetMc(tile)
-        ? renderer.playComponent?.(targetId, animation, { instant })
-        : renderer.playComponentTree?.(targetId, animation, { instant })) || 0;
+      renderer.playComponent?.(targetId, animation, { instant }) || 0;
 
     if (!state.visible) {
       if (previousVisible || renderer.isComponentVisible?.(targetId)) return play(instant ? "Off" : "Disappear");
@@ -426,19 +407,15 @@ class PlayerRosterRenderer {
   }
 
   syncPlayerLabelComponents(renderer: TreeRenderer, player: Dict, options: Dict = {}): number {
-    const tile = options.tile as El | undefined;
-    if (!tile) return 0;
     const instant = options.instant === true;
     const previousPlayerName = String(options.previousPlayerName || "");
     const previousPlayerVip = options.previousPlayerVip === true;
     const playerName = playerNameRuntimeText(player);
     const vipState = playerVipRuntimeState(player);
-    const nameId = this.componentId(tile, PLAYER_NAME_MC_ID, "player-name");
-    const vipId = this.componentId(tile, PLAYER_VIP_MC_ID, "vip-badge");
+    const nameId = PLAYER_NAME_MC_ID;
+    const vipId = PLAYER_VIP_MC_ID;
     const play = (componentId: string, animation: string) =>
-      (this.usesPlayerWidgetMc(tile)
-        ? renderer.playComponent?.(componentId, animation, { instant })
-        : renderer.playComponentTree?.(componentId, animation, { instant })) || 0;
+      renderer.playComponent?.(componentId, animation, { instant }) || 0;
     let duration = 0;
     const nameVisible = renderer.isComponentVisible?.(nameId) === true;
     if (!nameVisible) {
@@ -552,9 +529,7 @@ class PlayerRosterRenderer {
 
   playerWidgetTiles(): El[] {
     if (!this.host) return [];
-    return (Array.from(this.host.querySelectorAll(":scope > .player-tile[data-player-id]")) as El[]).filter((tile) =>
-      this.usesPlayerWidgetMc(tile)
-    );
+    return Array.from(this.host.querySelectorAll(":scope > .player-tile[data-player-id]")) as El[];
   }
 
   setRosterHostHidden(hidden: boolean): void {
@@ -666,8 +641,7 @@ class PlayerRosterRenderer {
     if (!this.currentAnswerBubblesShown() || !this.host) return false;
     return Array.from(this.host.querySelectorAll(".player-tile[data-answer-bubble-has-answer='true']")).some((node) => {
       const tile = node as El;
-      const targetId = this.componentId(tile, PLAYER_ANSWER_BUBBLE_MC_ID, "answer-bubble");
-      return this.tileRenderers.get(tile)?.isComponentVisible?.(targetId) !== true;
+      return this.tileRenderers.get(tile)?.isComponentVisible?.(PLAYER_ANSWER_BUBBLE_MC_ID) !== true;
     });
   }
 
@@ -700,7 +674,7 @@ class PlayerRosterRenderer {
       state.visible = state.hasAnswer && isShown !== false;
       duration = Math.max(
         duration,
-        this.syncAnswerBubbleComponent(tile, renderer, state, {
+        this.syncAnswerBubbleComponent(renderer, state, {
           instant,
           previousVisible: tile.dataset.answerBubbleVisible === "true",
           previousNonce: tile.dataset.answerBubbleNonce || "",
