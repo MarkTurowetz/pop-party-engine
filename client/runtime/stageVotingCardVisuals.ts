@@ -39,6 +39,8 @@ export const VOTING_CARD_ANSWER_MC_ID = "prefab-voting-card-answer-mc";
 export const VOTING_CARD_AUTHOR_MC_ID = "prefab-voting-card-author-mc";
 export const VOTING_CARD_VOTE_COUNT_MC_ID = "prefab-voting-card-vote-count-mc";
 export const VOTING_CARD_VOTERS_MC_ID = "prefab-voting-card-voters-mc";
+export const VOTING_CARD_VOTER_MC_ID = "prefab-voting-card-voter-mc";
+export const VOTING_CARD_VOTER_ID = "prefab-voting-card-voter";
 export const VOTING_CARD_CORRECTNESS_STATE_ID = "prefab-voting-card-correctness-state";
 
 export const VOTING_CARD_ART_COMPONENT_ID = "voting-card-art-mc";
@@ -48,7 +50,9 @@ export const VOTING_CARD_VOTE_COUNT_COMPONENT_ID = "voting-card-vote-count-mc";
 export const VOTING_CARD_VOTERS_COMPONENT_ID = "voting-card-voters-mc";
 export const VOTING_CARD_CORRECTNESS_COMPONENT_ID = "voting-card-correctness-state";
 export const VOTING_CARD_VOTER_CONTAINER_ID = "voting-card-voter-container";
-export const VOTING_CARD_VOTE_WIDGET_ID = "voting-card-vote-widget";
+export const VOTING_CARD_VOTER_COMPONENT_ID = "voting-card-voter-mc";
+export const VOTING_CARD_VOTER_TEXT_ID = "voting-card-voter-text";
+export const VOTING_CARD_VOTE_WIDGET_ID = VOTING_CARD_VOTER_COMPONENT_ID;
 
 export function votingCardArtTimeline(timeline: unknown): TimelineDocument {
   return effectiveVisibilityTimeline(timeline as TimelineDocument | null | undefined);
@@ -145,17 +149,81 @@ function fallbackComposition(id: string, legacy: Dict | null): Dict | null {
   }
   if (id === VOTING_CARD_VOTERS_MC_ID) {
     const container = legacyVotingCardComponent(legacy, "voter-container", { id: VOTING_CARD_VOTER_CONTAINER_ID, kind: "container", x: 250, y: 24, width: 500, height: 48, childDistribution: "horizontal", fillColor: "transparent", borderColor: "transparent" });
-    const widget = legacyVotingCardComponent(legacy, "vote-widget", { id: VOTING_CARD_VOTE_WIDGET_ID, kind: "badge", x: 250, y: 24, width: 112, height: 32, defaultText: "PLAYER", fontSize: 15, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999 });
     container.id = VOTING_CARD_VOTER_CONTAINER_ID;
     container.instanceLabel = "voterContainer";
     container.x = 250;
     container.y = 24;
-    widget.id = VOTING_CARD_VOTE_WIDGET_ID;
-    widget.instanceLabel = "voteWidget";
-    widget.x = 250;
-    widget.y = 24;
-    container.children = [widget];
-    return { id, name: "Voting Card Voters MC", canvas: { width: 500, height: 48 }, components: [container], timeline: fallbackLifecycle() };
+    container.children = [{
+      id: VOTING_CARD_VOTER_COMPONENT_ID,
+      instanceLabel: "voter",
+      kind: "reference",
+      artCompositionId: VOTING_CARD_VOTER_MC_ID,
+      x: 56,
+      y: 16,
+      width: 112,
+      height: 32,
+      scale: 1,
+      defaultAnimationState: "Off"
+    }];
+    return {
+      id,
+      name: "Voting Card Voters MC",
+      canvas: { width: 500, height: 48 },
+      components: [container],
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [{ name: "Off", frame: 0 }, { name: "On", frame: 1 }],
+        commandFrames: [0, 1],
+        commands: [
+          { id: "stop-0", frame: 0, type: "stop" },
+          { id: "visible-0", frame: 0, type: "setVisible", target: "false" },
+          { id: "stop-1", frame: 1, type: "stop" },
+          { id: "visible-1", frame: 1, type: "setVisible", target: "true" }
+        ],
+        tracks: []
+      }
+    };
+  }
+  if (id === VOTING_CARD_VOTER_MC_ID) {
+    return {
+      id,
+      name: "Voting Card Voter MC",
+      canvas: { width: 112, height: 32 },
+      components: [{
+        id: "reference-voting-card-voter",
+        instanceLabel: "votingCardVoter",
+        kind: "reference",
+        artCompositionId: VOTING_CARD_VOTER_ID,
+        x: 56,
+        y: 16,
+        width: 112,
+        height: 32,
+        scale: 1,
+        defaultAnimationState: "Default"
+      }],
+      timeline: fallbackLifecycle()
+    };
+  }
+  if (id === VOTING_CARD_VOTER_ID) {
+    const legacyWidget = legacyVotingCardComponent(legacy, "vote-widget", { defaultText: "PLAYER", fontSize: 15, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999 });
+    return {
+      id,
+      name: "Voting Card Voter",
+      canvas: { width: 112, height: 32 },
+      components: [
+        { id: VOTING_CARD_VOTER_TEXT_ID, instanceLabel: "playerName", kind: "text", x: 56, y: 16, width: 112, height: 32, defaultText: String(legacyWidget.defaultText || "PLAYER"), fontSize: Number(legacyWidget.fontSize || 15), autoFitText: true, fontColor: String(legacyWidget.fontColor || "#17131f") },
+        { id: "voting-card-voter-background", instanceLabel: "background", kind: "shape", x: 56, y: 16, width: 112, height: 32, shapeStyle: "rounded", fillColor: String(legacyWidget.fillColor || "#fff8d6"), borderColor: String(legacyWidget.borderColor || "#17131f"), borderWidth: Number(legacyWidget.borderWidth || 2), borderRadius: Number(legacyWidget.borderRadius || 999) }
+      ],
+      timeline: {
+        fps: 30,
+        frameCount: 1,
+        labels: [{ name: "Default", frame: 0 }],
+        commandFrames: [0],
+        commands: [{ id: "stop-0", frame: 0, type: "stop" }],
+        tracks: []
+      }
+    };
   }
   if (id === VOTING_CARD_CORRECTNESS_STATE_ID) {
     return {
@@ -183,10 +251,48 @@ export interface VotingCardRuntimeState {
   voters: Dict[];
 }
 
+const voterVariantSeparator = "::";
+
+function voterVariantCompositionId(compositionId: string, voterId: unknown): string {
+  return `${compositionId}${voterVariantSeparator}${safeComponentId(voterId, "voter")}`;
+}
+
+function voterVariant(compositionId: string): { baseId: string; voterId: string } | null {
+  for (const baseId of [VOTING_CARD_VOTER_MC_ID, VOTING_CARD_VOTER_ID]) {
+    const prefix = `${baseId}${voterVariantSeparator}`;
+    if (compositionId.startsWith(prefix)) return { baseId, voterId: compositionId.slice(prefix.length) };
+  }
+  return null;
+}
+
+function runtimeVoter(state: VotingCardRuntimeState, voterId: string): Dict | null {
+  return state.voters.find((voter, index) => safeComponentId(voter.id, `voter-${index}`) === voterId) || null;
+}
+
+export function votingCardRuntimeBaseCompositionId(compositionId: string): string {
+  return voterVariant(compositionId)?.baseId || compositionId;
+}
+
 export function runtimeVotingCardComposition(composition: Dict, compositionId: string, state: VotingCardRuntimeState): Dict {
   const runtime = cloneComposition(composition);
   const components = (runtime.components as Dict[]) || [];
-  if (compositionId === VOTING_CARD_ANSWER_MC_ID) {
+  const variant = voterVariant(compositionId);
+  if (variant?.baseId === VOTING_CARD_VOTER_MC_ID) {
+    const reference = components.find((component) => component.kind === "reference");
+    if (reference) reference.artCompositionId = voterVariantCompositionId(VOTING_CARD_VOTER_ID, variant.voterId);
+  } else if (variant?.baseId === VOTING_CARD_VOTER_ID) {
+    const voter = runtimeVoter(state, variant.voterId);
+    const voterName = String(voter?.name || "Player");
+    const text = components.find((component) => component.id === VOTING_CARD_VOTER_TEXT_ID);
+    if (text) text.defaultText = voterName;
+    const timeline = runtime.timeline as Dict | undefined;
+    for (const track of (timeline?.tracks as Dict[]) || []) {
+      if (track.targetId !== VOTING_CARD_VOTER_TEXT_ID) continue;
+      for (const keyframe of (track.keyframes as Dict[]) || []) {
+        keyframe.props = { ...((keyframe.props as Dict) || {}), defaultText: voterName };
+      }
+    }
+  } else if (compositionId === VOTING_CARD_ANSWER_MC_ID) {
     const text = components.find((component) => component.id === "voting-card-answer-text");
     if (text) text.defaultText = state.answerText;
   } else if (compositionId === VOTING_CARD_AUTHOR_MC_ID) {
@@ -197,14 +303,18 @@ export function runtimeVotingCardComposition(composition: Dict, compositionId: s
     if (text) text.defaultText = state.voteCount > 0 ? String(state.voteCount) : "";
   } else if (compositionId === VOTING_CARD_VOTERS_MC_ID) {
     const container = components.find((component) => component.id === VOTING_CARD_VOTER_CONTAINER_ID);
-    const template = ((container?.children as Dict[]) || []).find((component) => component.id === VOTING_CARD_VOTE_WIDGET_ID);
+    const template = ((container?.children as Dict[]) || []).find((component) =>
+      component.id === VOTING_CARD_VOTER_COMPONENT_ID || component.artCompositionId === VOTING_CARD_VOTER_MC_ID
+    );
     if (container && template) {
       container.children = state.voters.map((voter, index) => ({
         ...cloneComponent(template),
-        id: `${VOTING_CARD_VOTE_WIDGET_ID}-${safeComponentId(voter.id, `voter-${index}`)}`,
+        id: `${VOTING_CARD_VOTER_COMPONENT_ID}-${safeComponentId(voter.id, `voter-${index}`)}`,
         instanceLabel: `vote${index + 1}`,
         name: voter.name ? `Vote ${voter.name}` : `Vote ${index + 1}`,
-        defaultText: String(voter.name || "Player")
+        kind: "reference",
+        artCompositionId: voterVariantCompositionId(VOTING_CARD_VOTER_MC_ID, safeComponentId(voter.id, `voter-${index}`)),
+        defaultAnimationState: "Off"
       }));
     }
   }
@@ -235,6 +345,7 @@ class VotingCardView {
   currentVisibleVoters: Dict[] = [];
   voteRevealKey = "";
   voteRevealTimers: number[] = [];
+  voteHideTimer: number | null = null;
 
   constructor(options: Dict) {
     this.document = options.document as Document;
@@ -287,7 +398,7 @@ class VotingCardView {
   }
 
   runtimeComposition(id: string): Dict | null {
-    const composition = this.composition(id);
+    const composition = this.composition(votingCardRuntimeBaseCompositionId(id));
     return composition ? runtimeVotingCardComposition(composition, id, this.runtimeState()) : null;
   }
 
@@ -322,7 +433,6 @@ class VotingCardView {
     const previousAuthorsRevealed = this.element.dataset.authorsRevealed === "true";
     const previousWinner = this.element.dataset.winnerRevealed === "true";
     this.cardData = cardData;
-    if (cardData.votesRevealed !== true) this.currentVisibleVoters = [];
     this.renderArt();
 
     if (firstRender) {
@@ -356,16 +466,42 @@ class VotingCardView {
     this.voteRevealTimers = [];
   }
 
+  clearVoteHideTimer(): void {
+    if (this.voteHideTimer !== null) clearTimeout(this.voteHideTimer);
+    this.voteHideTimer = null;
+  }
+
+  voterComponentId(voter: Dict, index: number): string {
+    return `${VOTING_CARD_VOTER_COMPONENT_ID}-${safeComponentId(voter.id, `voter-${index}`)}`;
+  }
+
   syncVoters(cardData: Dict, options: Dict = {}): void {
     if (cardData.votesRevealed !== true) {
       this.clearVoteRevealTimers();
       this.voteRevealKey = "";
-      this.currentVisibleVoters = [];
-      this.renderArt();
-      this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "Off", { instant: true });
-      this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, "Off", { instant: true });
+      if (this.voteHideTimer !== null) return;
+      const visibleVoters = [...this.currentVisibleVoters];
+      if (!visibleVoters.length) {
+        this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "Off", { instant: true });
+        this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, "Off", { instant: true });
+        return;
+      }
+      const instant = options.instant === true;
+      let duration = this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, instant ? "Off" : "Disappear", { instant });
+      visibleVoters.forEach((voter, index) => {
+        duration = Math.max(duration, this.playChild(this.voterComponentId(voter, index), instant ? "Off" : "Disappear", { instant }));
+      });
+      const finish = () => {
+        this.voteHideTimer = null;
+        this.currentVisibleVoters = [];
+        this.renderArt();
+        this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "Off", { instant: true });
+      };
+      if (!instant && duration > 0) this.voteHideTimer = setTimeout(finish, duration) as unknown as number;
+      else finish();
       return;
     }
+    this.clearVoteHideTimer();
     const voters = (cardData.voters as Dict[]) || [];
     const revealKey = `${String(options.voteRevealKey || "instant")}:${voters.map((voter) => voter.id).join("|")}`;
     if (revealKey === this.voteRevealKey) return;
@@ -373,7 +509,7 @@ class VotingCardView {
     this.voteRevealKey = revealKey;
     this.currentVisibleVoters = [];
     this.renderArt();
-    this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+    this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "On", { instant: true });
     voters.forEach((voter, index) => {
       const delay = Math.max(0, Number(options.voteRevealStaggerMs || 0)) * (index + 1);
       const reveal = () => {
@@ -381,7 +517,7 @@ class VotingCardView {
         const wasEmpty = this.currentVisibleVoters.length === 0;
         this.currentVisibleVoters = voters.slice(0, index + 1);
         this.renderArt();
-        const voterId = `${VOTING_CARD_VOTE_WIDGET_ID}-${safeComponentId(voter.id, `voter-${index}`)}`;
+        const voterId = this.voterComponentId(voter, index);
         this.playChild(voterId, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
         this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, wasEmpty ? (options.instant === true ? "On" : "Appear") : "Update", { instant: options.instant === true });
       };
@@ -392,8 +528,12 @@ class VotingCardView {
 
   remove(options: Dict = {}): number {
     this.clearVoteRevealTimers();
+    this.clearVoteHideTimer();
     const instant = options.instant === true;
     let duration = 0;
+    this.currentVisibleVoters.forEach((voter, index) => {
+      duration = Math.max(duration, this.playChild(this.voterComponentId(voter, index), instant ? "Off" : "Disappear", { instant }));
+    });
     for (const componentId of [VOTING_CARD_AUTHOR_COMPONENT_ID, VOTING_CARD_VOTERS_COMPONENT_ID, VOTING_CARD_VOTE_COUNT_COMPONENT_ID, VOTING_CARD_ANSWER_COMPONENT_ID, VOTING_CARD_ART_COMPONENT_ID]) {
       duration = Math.max(duration, this.playChild(componentId, instant ? "Off" : "Disappear", { instant }));
     }
