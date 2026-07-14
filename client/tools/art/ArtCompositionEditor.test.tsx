@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { TimelineDocument } from "../../../shared/timeline-model";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import {
-  reusableUntitledPrefabStage,
   swappableGameObjectOptions,
   timelineActionScriptForFrame,
   timelineActionScriptPlaceholderForFrame,
@@ -10,6 +9,7 @@ import {
   timelineLayerDropPlacement,
   timelineLayerSiblingOwnerIds
 } from "./ArtCompositionEditor";
+import { artWorkspaceId, createArtWorkspace } from "./artWorkspaceModel";
 
 describe("ArtCompositionEditor command scripts", () => {
   it("shows animation visibility as placeholder text instead of authored command text", () => {
@@ -69,16 +69,10 @@ describe("ArtCompositionEditor command scripts", () => {
   });
 });
 
-describe("ArtCompositionEditor prefab stage", () => {
-  it("reuses the saved Untitled Prefab for a surface after refresh", () => {
-    const compositions = [
-      { id: "other", name: "Untitled Prefab", surface: "controller", compositionKind: "prefab" },
-      { id: "game-object", name: "Untitled Prefab", surface: "stage", compositionKind: "gameObject" },
-      { id: "stage-draft", name: "Untitled Prefab", surface: "stage", compositionKind: "prefab" }
-    ] as ArtComposition[];
-
-    expect(reusableUntitledPrefabStage(compositions, "stage")?.id).toBe("stage-draft");
-    expect(reusableUntitledPrefabStage(compositions, "controller")?.id).toBe("other");
+describe("ArtCompositionEditor stage workspace", () => {
+  it("uses reserved workspace documents instead of Untitled Prefab compositions", () => {
+    expect(createArtWorkspace("stage")).toMatchObject({ id: artWorkspaceId("stage"), name: "Stage", components: [] });
+    expect(createArtWorkspace("controller")).toMatchObject({ id: artWorkspaceId("controller"), name: "Controller Stage", components: [] });
   });
 });
 

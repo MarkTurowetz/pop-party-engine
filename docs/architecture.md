@@ -165,6 +165,14 @@ concepts into focused modules.
   instances of those prefabs. Runtime visibility actions should target the layout
   instance identity (`targetLayoutScope` plus `targetLayoutElementId`), not the
   source art composition id.
+- The Art Manager's `Stage` and `Controller Stage` are persistent local assembly
+  workspaces, not compositions and never runtime assets. Converting contiguous sibling
+  layers with F8 creates one library composition and atomically replaces those layers
+  in the active workspace or parent composition with a single reference instance.
+- Workspace conversion preserves the active editing context and unrelated parent
+  timeline data. It removes only selected parent tracks, refuses conversions that
+  would orphan a targeted child command, and keeps source timelines of nested prefab
+  references intact.
 - `Set Game Object Shown` targets placed layout game objects by instance identity,
   including prefab art instances, text fields, and selector-backed widgets.
 - Placed layout game object targets are resolved through the shared layout target resolver

@@ -2349,6 +2349,27 @@ body.tool-dashboard-mode .layout-react-shell {
   gap: 5px;
 }
 
+.art-browser-stage-button {
+  display: grid;
+  gap: 2px;
+  justify-content: start;
+  width: 100%;
+  margin-bottom: 8px;
+  text-align: left;
+  background: var(--cream);
+}
+
+.art-browser-stage-button[aria-current="true"] {
+  background: var(--cyan);
+}
+
+.art-browser-stage-button small {
+  color: #5e5475;
+  font-size: 9px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
 .art-browser-item button:not(.art-browser-composition-delete) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

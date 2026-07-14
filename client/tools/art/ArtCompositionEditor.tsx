@@ -35,6 +35,7 @@ import {
 import { artCompositionKindOptions, normalizeArtCompositionKind, normalizeArtCompositionSurface } from "./artCompositionModel";
 import { ART_COMPOSITION_BROWSER_DND_TYPE, compositionIdFromBrowserKey } from "./ArtCompositionBrowser";
 import type { ArtCompositionsController } from "./artCompositionsController";
+import { artWorkspaceSurface, isArtWorkspaceId } from "./artWorkspaceModel";
 import { ArtPreviewRenderer, assetUrlMap, compositionMap } from "./ArtPreviewRenderer";
 import {
   componentSupportsSpriteSource,
@@ -184,20 +185,6 @@ type TimelineLayerDropTarget = { id: string; placement: TimelineLayerDropPlaceme
 type MarqueeBox = { x: number; y: number; width: number; height: number };
 type ArtSelectionBox = { id: string; minX: number; minY: number; maxX: number; maxY: number };
 type PrefabCreationDialogState = { defaultName: string } | null;
-
-const UNTITLED_PREFAB_NAME = "Untitled Prefab";
-
-export function reusableUntitledPrefabStage(
-  compositions: ArtComposition[],
-  surface: string
-): ArtComposition | null {
-  const cleanSurface = String(surface || "stage");
-  return compositions.find((item) =>
-    normalizeArtCompositionKind(item.compositionKind) === "prefab" &&
-    String(item.surface || "stage") === cleanSurface &&
-    String(item.name || "").trim().toLowerCase() === UNTITLED_PREFAB_NAME.toLowerCase()
-  ) || null;
-}
 
 function get(component: ArtComponent, key: string): unknown {
   return (component as Record<string, unknown>)[key];
@@ -442,7 +429,7 @@ function isCommandMarkerSelected(selection: TimelineMarkerSelection | null, comm
 }
 
 export function ArtCompositionEditor({ controller, assets }: ArtCompositionEditorProps) {
-  const { compositions, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo, error, migrationSummary } =
+  const { compositions, workspaces, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo, error, migrationSummary } =
     useArtCompositions(controller);
   const dragRef = useRef<{
     targets: ArtCanvasTransformTarget[];
@@ -477,14 +464,13 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     frame: number;
     overrides: TimelinePreviewOverrides | null;
   } | null>(null);
-  const [draftStageCompositionIds, setDraftStageCompositionIds] = useState<Record<string, string>>({});
   const [prefabCreationDialog, setPrefabCreationDialog] = useState<PrefabCreationDialogState>(null);
   const assetUrlById = useMemo(() => assetUrlMap(assets || []), [assets]);
   const compositionById = useMemo(() => compositionMap(compositions), [compositions]);
-  const composition = compositions.find((item) => item.id === selectedCompositionId) || null;
-  const currentSurface = String(composition?.surface || "stage");
-  const prefabStageCompositionId = draftStageCompositionIds[currentSurface] || "";
-  const canReturnToPrefabStage = Boolean(prefabStageCompositionId && composition?.id !== prefabStageCompositionId);
+  const composition = compositions.find((item) => item.id === selectedCompositionId) ||
+    Object.values(workspaces).find((item) => item.id === selectedCompositionId) || null;
+  const activeDocumentIsWorkspace = isArtWorkspaceId(composition?.id);
+  const canReturnToPrefabStage = Boolean(composition && !activeDocumentIsWorkspace);
   const canvasWidth = Number(composition?.canvas?.width || 560);
   const canvasHeight = Number(composition?.canvas?.height || 230);
   const visualBounds = useMemo(
@@ -732,26 +718,14 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const artCanvasPointFromEvent = (event: PointerEvent | ReactPointerEvent<HTMLElement>): { x: number; y: number } =>
     artCanvasPointFromClient(event.clientX, event.clientY);
 
-  const openBlankPrefabStage = useCallback(() => {
-    const surface = String(composition?.surface || "stage");
-    const draftId = draftStageCompositionIds[surface];
-    const existingDraft =
-      (draftId ? compositions.find((item) => item.id === draftId) : null) ||
-      reusableUntitledPrefabStage(compositions, surface);
+  const returnToArtWorkspace = useCallback(() => {
+    const surface = artWorkspaceSurface(composition?.surface);
     dismissTimelineContext();
     setTimelineScope(null);
     setTimelineNavigationStack([]);
-    if (existingDraft) {
-      setDraftStageCompositionIds((current) => current[surface] === existingDraft.id ? current : { ...current, [surface]: existingDraft.id });
-      controller.selectComposition(existingDraft.id);
-      controller.clearComponentSelection();
-      setTimelinePreview({ compositionId: existingDraft.id, frame: 0, overrides: null });
-      return;
-    }
-    const draft = controller.createComposition("prefab", surface, UNTITLED_PREFAB_NAME);
-    setDraftStageCompositionIds((current) => ({ ...current, [surface]: draft.id }));
-    setTimelinePreview({ compositionId: draft.id, frame: 0, overrides: null });
-  }, [composition?.surface, compositions, controller, dismissTimelineContext, draftStageCompositionIds]);
+    controller.selectWorkspace(surface);
+    setTimelinePreview({ compositionId: workspaces[surface].id, frame: 0, overrides: null });
+  }, [composition?.surface, controller, dismissTimelineContext, workspaces]);
 
   const activeDropParentId = activeTimelineScopeComponentId || "";
 
@@ -789,17 +763,13 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     setPrefabCreationDialog({ defaultName: `${composition.name || "Selection"} Prefab` });
   }, [composition, selectedComponentIds]);
 
-  const createPrefabFromSelection = (name: string): void => {
+  const createPrefabFromSelection = (name: string, kind: "prefab" | "gameObject"): void => {
     if (!composition || selectedComponentIds.size === 0) return;
-    const created = controller.createPrefabFromComponents(composition.id, selectedComponentIds, name);
+    const created = controller.convertSelectedComponentsToComposition({ name, kind, frameOverrides: timelineFrameOverrides });
     if (created) {
       setPrefabCreationDialog(null);
-      setTimelineNavigationStack((stack) => [
-        ...stack,
-        { compositionId: composition.id, componentId: "", frame: timelinePreviewFrame }
-      ]);
-      setTimelinePreview({ compositionId: created.id, frame: 0, overrides: null });
-    }
+      setTimelinePreview({ compositionId: composition.id, frame: timelinePreviewFrame, overrides: null });
+    } else setPrefabCreationDialog(null);
   };
 
   useEffect(() => {
@@ -1151,7 +1121,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     <section className="art-composition-editor" data-art-react-component="composition-editor">
       <div className="art-editor-toolbar">
         <div className="art-editor-composition-meta">
-          {composition ? (
+          {composition && !activeDocumentIsWorkspace ? (
             <>
               <label className="flow-react-field art-composition-name-field">
                 <span>Name</span>
@@ -1180,14 +1150,16 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                 </select>
               </label>
             </>
+          ) : composition ? (
+            <h3>{composition.name}</h3>
           ) : (
             <h3>Composition</h3>
           )}
-          <span data-art-compositions-status>{dirty ? "Unsaved changes" : "Saved"}</span>
+          <span data-art-compositions-status>{activeDocumentIsWorkspace ? "Workspace autosaved" : dirty ? "Unsaved changes" : "Saved"}</span>
         </div>
       <div className="flow-editor-controls">
           {canReturnToPrefabStage ? (
-            <button type="button" data-art-back-to-stage onClick={openBlankPrefabStage}>
+            <button type="button" data-art-back-to-stage onClick={returnToArtWorkspace}>
               Back to Stage
             </button>
           ) : null}
@@ -1259,7 +1231,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
                 if ((event.target as HTMLElement | null)?.closest("[data-art-canvas-component]")) return;
                 event.preventDefault();
                 if (timelineScopeComponentPath?.length || timelineNavigationStack.length) exitTimelineScopeOneLevel();
-                else openBlankPrefabStage();
+                else returnToArtWorkspace();
               }}
             >
               <div
@@ -1386,9 +1358,10 @@ function CreatePrefabDialog({
 }: {
   defaultName: string;
   onCancel: () => void;
-  onCreate: (name: string) => void;
+  onCreate: (name: string, kind: "prefab" | "gameObject") => void;
 }) {
   const [name, setName] = useState(defaultName);
+  const [kind, setKind] = useState<"prefab" | "gameObject">("prefab");
   const cleanName = name.trim();
   return (
     <div className="art-prefab-dialog-backdrop" role="presentation" onMouseDown={onCancel}>
@@ -1396,24 +1369,31 @@ function CreatePrefabDialog({
         className="flow-react-panel art-prefab-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Create prefab"
+        aria-label="Create library object"
         onMouseDown={(event) => event.stopPropagation()}
         onSubmit={(event) => {
           event.preventDefault();
-          if (cleanName) onCreate(cleanName);
+          if (cleanName) onCreate(cleanName, kind);
         }}
       >
-        <h3>Create Prefab</h3>
+        <h3>Create Library Object</h3>
         <label className="flow-react-field">
           <span>Name</span>
           <input autoFocus type="text" value={name} onChange={(event) => setName(event.target.value)} />
+        </label>
+        <label className="flow-react-field">
+          <span>Type</span>
+          <select value={kind} onChange={(event) => setKind(event.target.value === "gameObject" ? "gameObject" : "prefab")}>
+            <option value="prefab">Prefab</option>
+            <option value="gameObject">Game Object</option>
+          </select>
         </label>
         <div className="flow-editor-controls">
           <button type="button" onClick={onCancel}>
             Cancel
           </button>
           <button type="submit" disabled={!cleanName}>
-            Save Prefab
+            Create {kind === "prefab" ? "Prefab" : "Game Object"}
           </button>
         </div>
       </form>

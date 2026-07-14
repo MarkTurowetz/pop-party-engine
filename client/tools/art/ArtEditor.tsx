@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ArtAssetsController } from "./artAssetsController";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
@@ -51,9 +51,15 @@ export function ArtEditor({
     );
     return selectedComposition ? surfaceForComposition(selectedComposition.surface) : "stage";
   });
+  const openedWorkspace = useRef(false);
   const { assets } = useArtAssets(assetsController);
   const compositionsState = useArtCompositions(compositionsController);
   const organizationState = useArtOrganization(organizationController);
+  useEffect(() => {
+    if (openedWorkspace.current) return;
+    openedWorkspace.current = true;
+    compositionsController.selectWorkspace(surfaceFilter);
+  }, [compositionsController, surfaceFilter]);
   useEffect(() => {
     organizationController.setSourceItems(compositionsState.compositions, assets);
   }, [assets, compositionsState.compositions, organizationController]);

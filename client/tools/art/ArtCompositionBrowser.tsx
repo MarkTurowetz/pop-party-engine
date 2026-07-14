@@ -5,6 +5,7 @@ import { searchArtHierarchy } from "./artHierarchySearch";
 import { folderIdFromKey, type OrgItem, type OrgSurface } from "./organizationModel";
 import { useArtCompositions } from "./useArtCompositions";
 import { useArtOrganization } from "./useArtOrganization";
+import { artWorkspaceId } from "./artWorkspaceModel";
 
 export interface ArtCompositionBrowserProps {
   compositionsController: ArtCompositionsController;
@@ -225,11 +226,26 @@ export function ArtCompositionBrowser({
   return (
     <>
       <h3>Compositions</h3>
+      <button
+        type="button"
+        className="art-browser-stage-button"
+        aria-current={selectedCompositionId === artWorkspaceId(surface) ? "true" : undefined}
+        onClick={() => compositionsController.selectWorkspace(surface)}
+      >
+        <span>{surface === "controller" ? "Controller Stage" : "Stage"}</span>
+        <small>Workspace</small>
+      </button>
       <div className="tool-sidebar-switcher" role="group" aria-label="Composition surface">
-        <button type="button" aria-pressed={surface === "stage"} onClick={() => onSurfaceChange("stage")}>
+        <button type="button" aria-pressed={surface === "stage"} onClick={() => {
+          onSurfaceChange("stage");
+          compositionsController.selectWorkspace("stage");
+        }}>
           Stage
         </button>
-        <button type="button" aria-pressed={surface === "controller"} onClick={() => onSurfaceChange("controller")}>
+        <button type="button" aria-pressed={surface === "controller"} onClick={() => {
+          onSurfaceChange("controller");
+          compositionsController.selectWorkspace("controller");
+        }}>
           Controller
         </button>
       </div>

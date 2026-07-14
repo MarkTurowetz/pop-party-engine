@@ -33,6 +33,175 @@ describe("createArtCompositionsController", () => {
     expect(state.selectedCompositionId).toBe("a");
   });
 
+  it("keeps reserved workspaces outside the library and persists workspace edits", () => {
+    const values = new Map<string, string>();
+    const workspaceStorage = {
+      getItem: (key: string) => values.get(key) || null,
+      setItem: (key: string, value: string) => { values.set(key, value); }
+    };
+    const controller = createArtCompositionsController({ initialCompositions: [composition("library")], api: fakeApi(), workspaceStorage });
+
+    controller.selectWorkspace("stage");
+    controller.addComponent("shape");
+
+    const state = controller.getState();
+    expect(state.selectedCompositionId).toBe("art-workspace-stage");
+    expect(state.workspaces.stage.components).toHaveLength(1);
+    expect(state.compositions.map((item) => item.id)).toEqual(["library"]);
+    expect(state.dirty).toBe(false);
+    expect(values.size).toBe(1);
+  });
+
+  it("only cleans empty unreferenced assets still named Untitled Prefab", () => {
+    const renamed = composition("prefab-untitled-prefab");
+    renamed.name = "Voting Card Answer Text";
+    const referencedEmpty = composition("referenced-empty");
+    referencedEmpty.name = "Untitled Prefab";
+    const abandoned = composition("abandoned");
+    abandoned.name = "Untitled Prefab";
+    const owner = composition("owner");
+    owner.components = [{ id: "slot", name: "Slot", kind: "reference", artCompositionId: referencedEmpty.id }] as never;
+
+    const controller = createArtCompositionsController({
+      initialCompositions: [renamed, referencedEmpty, abandoned, owner],
+      api: fakeApi(),
+      workspaceStorage: null
+    });
+
+    expect(controller.getState().compositions.map((item) => item.id)).toEqual([renamed.id, referencedEmpty.id, owner.id]);
+    expect(controller.getState().dirty).toBe(true);
+  });
+
+  it("atomically replaces contiguous workspace layers with an exact-bounds prefab reference", () => {
+    const controller = createArtCompositionsController({ initialCompositions: [], api: fakeApi(), workspaceStorage: null });
+    controller.selectWorkspace("stage");
+    controller.updateComposition("art-workspace-stage", {
+      components: [
+        { id: "card", name: "Card", instanceLabel: "card", kind: "shape", x: 50, y: 50, width: 20, height: 20 },
+        { id: "label", name: "Label", instanceLabel: "label", kind: "text", x: 80, y: 50, width: 20, height: 20 },
+        { id: "other", name: "Other", instanceLabel: "other", kind: "shape", x: 120, y: 50, width: 20, height: 20 }
+      ] as never,
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [{ name: "Build", frame: 0 }],
+        commands: [{ frame: 0, type: "emit", event: "safe" }],
+        tracks: [
+          { targetId: "card", keyframes: [{ frame: 0, props: { x: 50 } }] },
+          { targetId: "label", keyframes: [{ frame: 0, props: { x: 80 } }] },
+          { targetId: "other", keyframes: [{ frame: 0, props: { x: 120 } }] }
+        ]
+      }
+    });
+    controller.selectComponents(["card", "label"]);
+
+    const result = controller.convertSelectedComponentsToComposition({ name: "Card MC" });
+
+    expect(result?.composition).toMatchObject({ name: "Card MC", compositionKind: "prefab", canvas: { width: 50, height: 20 } });
+    const state = controller.getState();
+    expect(state.selectedCompositionId).toBe("art-workspace-stage");
+    expect(state.workspaces.stage.components.map((item) => item.id)).toEqual([result?.reference.id, "other"]);
+    expect(result?.reference).toMatchObject({ artCompositionId: result?.composition.id, x: 65, y: 50, width: 50, height: 20 });
+    expect(result?.composition.components.map((item) => item.x)).toEqual([10, 40]);
+    expect(state.workspaces.stage.timeline?.tracks.map((track) => track.targetId)).toEqual(["other"]);
+    expect(state.workspaces.stage.timeline?.labels).toEqual([{ name: "Build", frame: 0 }]);
+    expect(state.workspaces.stage.timeline?.commands).toEqual([{ frame: 0, type: "emit", event: "safe" }]);
+
+    controller.undo();
+    expect(controller.getState().compositions).toEqual([]);
+    expect(controller.getState().workspaces.stage.components.map((item) => item.id)).toEqual(["card", "label", "other"]);
+  });
+
+  it("blocks conversion when a command targets the selection", () => {
+    const controller = createArtCompositionsController({ initialCompositions: [], api: fakeApi(), workspaceStorage: null });
+    controller.selectWorkspace("stage");
+    controller.updateComposition("art-workspace-stage", {
+      components: [{ id: "bubble", name: "Bubble", instanceLabel: "answerBubble", kind: "shape", x: 10, y: 10, width: 20, height: 20 }] as never,
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [],
+        commands: [{ frame: 0, type: "playComponent", target: "answerBubble", event: "Appear" }],
+        tracks: []
+      }
+    });
+    controller.selectComponent("bubble");
+
+    expect(controller.convertSelectedComponentsToComposition({ name: "Bubble MC" })).toBeNull();
+    expect(controller.getState().error).toContain("command targets");
+    expect(controller.getState().compositions).toEqual([]);
+  });
+
+  it("requires contiguous siblings and protects auto-distribution containers", () => {
+    const controller = createArtCompositionsController({ initialCompositions: [], api: fakeApi(), workspaceStorage: null });
+    controller.selectWorkspace("stage");
+    controller.updateComposition("art-workspace-stage", {
+      components: [
+        { id: "a", name: "A", kind: "shape" },
+        { id: "middle", name: "Middle", kind: "shape" },
+        { id: "b", name: "B", kind: "shape" },
+        {
+          id: "row",
+          name: "Row",
+          kind: "container",
+          childDistribution: "horizontal",
+          children: [
+            { id: "row-a", name: "Row A", kind: "shape" },
+            { id: "row-b", name: "Row B", kind: "shape" }
+          ]
+        }
+      ] as never
+    });
+
+    controller.selectComponents(["a", "b"]);
+    expect(controller.convertSelectedComponentsToComposition({ name: "Gap" })).toBeNull();
+    expect(controller.getState().error).toContain("contiguous");
+
+    controller.selectComponents(["row-a", "row-b"]);
+    expect(controller.convertSelectedComponentsToComposition({ name: "Distributed" })).toBeNull();
+    expect(controller.getState().error).toContain("auto-distribution");
+  });
+
+  it("bakes current-frame geometry while preserving nested source compositions", () => {
+    const nested = composition("nested-source");
+    nested.timeline = {
+      fps: 30,
+      frameCount: 5,
+      labels: [{ name: "Appear", frame: 1 }],
+      commands: [{ frame: 1, type: "stop" }],
+      tracks: []
+    };
+    const controller = createArtCompositionsController({ initialCompositions: [nested], api: fakeApi(), workspaceStorage: null });
+    controller.selectWorkspace("stage");
+    controller.updateComposition("art-workspace-stage", {
+      components: [{
+        id: "nested-instance",
+        name: "Nested",
+        instanceLabel: "nested",
+        kind: "reference",
+        artCompositionId: nested.id,
+        x: 50,
+        y: 40,
+        width: 20,
+        height: 10
+      }] as never
+    });
+    controller.selectComponent("nested-instance");
+
+    const result = controller.convertSelectedComponentsToComposition({
+      name: "Outer",
+      frameOverrides: { "nested-instance": { x: 90, y: 70, scale: 2 } }
+    });
+
+    expect(result?.reference).toMatchObject({ x: 90, y: 70, width: 40, height: 20 });
+    expect(result?.composition.components[0]).toMatchObject({ artCompositionId: nested.id, x: 20, y: 10, scale: 2 });
+    expect(controller.getState().compositions.find((item) => item.id === nested.id)?.timeline).toMatchObject({
+      labels: nested.timeline.labels,
+      commands: nested.timeline.commands,
+      tracks: nested.timeline.tracks
+    });
+  });
+
   it("projects the one-time legacy reset as a dirty migration without component timelines", () => {
     const initial = composition("legacy");
     delete initial.timelineArchitectureVersion;
