@@ -4767,11 +4767,11 @@
       },
       "updatedAt": "2026-07-14T23:12:00.000Z"
     },
-    "prefab-player-avatar-mc": {
-      "name": "Player Avatar MC",
-      "description": "Animated player-avatar component wrapping the reusable base Player Avatar visual.",
+    "player-avatar-behaviors": {
+      "name": "Player Avatar Behaviors",
+      "description": "Player input-status behavior layer that animates the base Player Avatar independently of lifecycle visibility.",
       "surface": "stage",
-      "compositionKind": "prefab",
+      "compositionKind": "gameObject",
       "isCustom": true,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -4791,12 +4791,176 @@
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
+          "brightness": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "Default",
           "artCompositionId": "player-avatar"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 23,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "ChoosingStart",
+            "frame": 1
+          },
+          {
+            "name": "ChoosingEnd",
+            "frame": 12
+          }
+        ],
+        "commandFrames": [
+          0,
+          11,
+          22
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 11,
+            "type": "stop",
+            "id": "stop-11"
+          },
+          {
+            "frame": 22,
+            "type": "gotoAndPlay",
+            "id": "gotoandplay-22-default",
+            "target": "Default"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-player-avatar",
+            "targetId": "player-avatar",
+            "keyframes": [
+              {
+                "id": "key-player-avatar-0",
+                "frame": 0,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 100,
+                  "height": 100,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-player-avatar-1",
+                "frame": 1,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 100,
+                  "height": 100,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeInOut"
+              },
+              {
+                "id": "key-player-avatar-11",
+                "frame": 11,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 100,
+                  "height": 100,
+                  "scale": 0.5,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 0.5,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-player-avatar-12",
+                "frame": 12,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 100,
+                  "height": 100,
+                  "scale": 0.5,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 0.5,
+                  "visible": true
+                },
+                "easing": "easeInOut"
+              },
+              {
+                "id": "key-player-avatar-22",
+                "frame": 22,
+                "props": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 100,
+                  "height": 100,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-14T23:55:00.000Z"
+    },
+    "prefab-player-avatar-mc": {
+      "name": "Player Avatar MC",
+      "description": "Animated player-avatar lifecycle component wrapping the independent Player Avatar Behaviors layer.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 100,
+        "height": 100
+      },
+      "components": [
+        {
+          "id": "player-avatar-behaviors",
+          "name": "Player Avatar Behaviors",
+          "instanceLabel": "playerAvatarBehaviors",
+          "kind": "reference",
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 100,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "artCompositionId": "player-avatar-behaviors"
         }
       ],
       "timeline": {
@@ -4895,8 +5059,8 @@
         ],
         "tracks": [
           {
-            "id": "track-player-avatar",
-            "targetId": "player-avatar",
+            "id": "track-player-avatar-behaviors",
+            "targetId": "player-avatar-behaviors",
             "keyframes": [
               {
                 "id": "key-player-avatar-0",
@@ -5036,7 +5200,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-14T23:12:00.000Z"
+      "updatedAt": "2026-07-14T23:55:00.000Z"
     },
     "prefab-player-widget-mc": {
       "name": "Player Widget MC",
@@ -8103,6 +8267,7 @@
         "folder-b0651c4c-89d2-409a-b160-b2afeb23aaeb": [
           "composition:avatars",
           "composition:player-avatar",
+          "composition:player-avatar-behaviors",
           "composition:player-name-widget",
           "composition:prefab-vip-mc",
           "composition:prefab-untitled-prefab-2",
