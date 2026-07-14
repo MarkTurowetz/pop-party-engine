@@ -8836,33 +8836,23 @@
       },
       "components": [
         {
-          "id": "voting-card-vote-count",
-          "name": "Voting Card Vote Count",
-          "instanceLabel": "voteCountText",
-          "kind": "badge",
+          "id": "reference-7df36bbe175b",
+          "name": "Voting Card Vote",
+          "instanceLabel": "votingCardVote",
+          "kind": "reference",
           "x": 24,
           "y": 24,
           "width": 48,
           "height": 48,
           "scale": 1,
           "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "",
-          "fontSize": 10,
-          "autoFitText": true,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
-          "shapeStyle": "rounded",
-          "fillColor": "#fff8d6",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 2,
-          "borderRadius": 999,
           "opacity": 1,
           "visible": true,
           "editorHidden": false,
-          "transformOrigin": "center"
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "prefab-voting-card-vote"
         }
       ],
       "timeline": {
@@ -8961,25 +8951,25 @@
         ],
         "tracks": [
           {
-            "id": "track-voting-card-vote-count",
-            "targetId": "voting-card-vote-count",
+            "id": "track-reference-7df36bbe175b",
+            "targetId": "reference-7df36bbe175b",
             "keyframes": [
               {
-                "id": "key-voting-card-vote-count-0",
+                "id": "key-reference-7df36bbe175b-0",
                 "frame": 0,
                 "props": {
-                  "opacity": 1,
                   "x": 24,
                   "y": 24,
                   "width": 48,
                   "height": 48,
                   "scale": 1,
-                  "rotation": 0
+                  "rotation": 0,
+                  "opacity": 1
                 },
                 "easing": "hold"
               },
               {
-                "id": "key-voting-card-vote-count-2",
+                "id": "key-reference-7df36bbe175b-2",
                 "frame": 2,
                 "props": {
                   "x": 24,
@@ -8994,7 +8984,7 @@
                 "easing": "easeOut"
               },
               {
-                "id": "key-voting-card-vote-count-9",
+                "id": "key-reference-7df36bbe175b-9",
                 "frame": 9,
                 "props": {
                   "x": 24,
@@ -9009,7 +8999,7 @@
                 "easing": "easeOut"
               },
               {
-                "id": "key-voting-card-vote-count-12",
+                "id": "key-reference-7df36bbe175b-12",
                 "frame": 12,
                 "props": {
                   "x": 24,
@@ -9024,7 +9014,7 @@
                 "easing": "hold"
               },
               {
-                "id": "key-voting-card-vote-count-13",
+                "id": "key-reference-7df36bbe175b-13",
                 "frame": 13,
                 "props": {
                   "x": 24,
@@ -9036,10 +9026,10 @@
                   "opacity": 1,
                   "visible": true
                 },
-                "easing": "easeInOut"
+                "easing": "easeOut"
               },
               {
-                "id": "key-voting-card-vote-count-16",
+                "id": "key-reference-7df36bbe175b-16",
                 "frame": 16,
                 "props": {
                   "x": 24,
@@ -9054,7 +9044,7 @@
                 "easing": "hold"
               },
               {
-                "id": "key-voting-card-vote-count-17",
+                "id": "key-reference-7df36bbe175b-17",
                 "frame": 17,
                 "props": {
                   "x": 24,
@@ -9069,7 +9059,7 @@
                 "easing": "easeIn"
               },
               {
-                "id": "key-voting-card-vote-count-22",
+                "id": "key-reference-7df36bbe175b-22",
                 "frame": 22,
                 "props": {
                   "x": 24,
@@ -9084,7 +9074,7 @@
                 "easing": "easeIn"
               },
               {
-                "id": "key-voting-card-vote-count-32",
+                "id": "key-reference-7df36bbe175b-32",
                 "frame": 32,
                 "props": {
                   "x": 24,
@@ -9102,7 +9092,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T03:08:11.234Z"
+      "updatedAt": "2026-07-14T06:21:18.555Z"
     },
     "prefab-voting-card-mc": {
       "name": "Voting Card MC",
