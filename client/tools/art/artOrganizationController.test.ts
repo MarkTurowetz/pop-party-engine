@@ -69,6 +69,41 @@ describe("createArtOrganizationController", () => {
     expect(controller.getState().organization.stage.order).toEqual(["composition:b", "composition:a"]);
   });
 
+  it("moves multiple selected compositions into a folder as one undoable group", () => {
+    const controller = createArtOrganizationController({
+      initialOrganization: emptyOrganization(),
+      compositions: comps,
+      assets: [],
+      api: fakeApi()
+    });
+    controller.createFolder("stage", "Group");
+    const folderId = controller.getState().organization.stage.folders[0].id;
+
+    controller.moveManyIntoFolder("stage", ["composition:a", "composition:c"], folderId);
+    expect(controller.getState().organization.stage.folderItems[folderId]).toEqual(["composition:a", "composition:c"]);
+
+    controller.undo();
+    expect(controller.getState().organization.stage.folderItems[folderId]).toEqual([]);
+  });
+
+  it("reorders multiple selected compositions beside a target without splitting the group", () => {
+    const controller = createArtOrganizationController({
+      initialOrganization: emptyOrganization(),
+      compositions: comps,
+      assets: [],
+      api: fakeApi()
+    });
+    controller.moveManyIntoFolder("stage", ["composition:a", "composition:b", "composition:c"], "");
+
+    controller.moveManyBeside("stage", ["composition:a", "composition:c"], "composition:b", true);
+
+    expect(controller.getState().organization.stage.order).toEqual([
+      "composition:b",
+      "composition:a",
+      "composition:c"
+    ]);
+  });
+
   it("deleting a folder orphans its items to root and can undo", () => {
     const controller = createArtOrganizationController({
       initialOrganization: emptyOrganization(),

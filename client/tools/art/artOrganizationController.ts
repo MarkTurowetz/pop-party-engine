@@ -41,8 +41,12 @@ export interface ArtOrganizationController {
   deleteFolder(surface: OrgSurface, folderId: string): void;
   /** Drop `draggedKey` before/after `targetKey` (in the target's parent list). */
   moveBeside(surface: OrgSurface, draggedKey: string, targetKey: string, placeAfter: boolean): void;
+  /** Drop multiple keys before/after `targetKey` as one ordered group. */
+  moveManyBeside(surface: OrgSurface, draggedKeys: Iterable<string>, targetKey: string, placeAfter: boolean): void;
   /** Drop `draggedKey` into a folder (or root if folderId is ""). */
   moveIntoFolder(surface: OrgSurface, draggedKey: string, folderId: string): void;
+  /** Drop multiple keys into a folder (or root) as one ordered group. */
+  moveManyIntoFolder(surface: OrgSurface, draggedKeys: Iterable<string>, folderId: string): void;
   undo(): void;
   redo(): void;
   save(): Promise<boolean>;
@@ -168,6 +172,20 @@ export function createArtOrganizationController(
         const targetIndex = list.indexOf(targetKey);
         list.splice(Math.max(0, targetIndex + (placeAfter ? 1 : 0)), 0, draggedKey);
       }),
+    moveManyBeside: (surface, draggedKeys, targetKey, placeAfter) => {
+      const keys = [...new Set([...draggedKeys].map(String).filter(Boolean))];
+      if (!keys.length || keys.includes(targetKey)) return;
+      mutate((org) => {
+        const state = org[surface];
+        const targetFolderId = Object.keys(state.folderItems).find((id) =>
+          (state.folderItems[id] || []).includes(targetKey)
+        );
+        for (const key of keys) removeKeyFromSurface(state, key);
+        const list = targetFolderId ? state.folderItems[targetFolderId] : state.order;
+        const targetIndex = list.indexOf(targetKey);
+        list.splice(Math.max(0, targetIndex + (placeAfter ? 1 : 0)), 0, ...keys);
+      });
+    },
     moveIntoFolder: (surface, draggedKey, folderId) =>
       mutate((org) => {
         const state = org[surface];
@@ -181,6 +199,24 @@ export function createArtOrganizationController(
           state.order.push(draggedKey);
         }
       }),
+    moveManyIntoFolder: (surface, draggedKeys, folderId) => {
+      const keys = [...new Set([...draggedKeys].map(String).filter(Boolean))];
+      if (!keys.length) return;
+      mutate((org) => {
+        const state = org[surface];
+        const safeKeys = keys.filter((key) => {
+          const draggedFolderId = folderIdFromKey(key);
+          return !draggedFolderId || draggedFolderId !== folderId;
+        });
+        for (const key of safeKeys) removeKeyFromSurface(state, key);
+        if (folderId) {
+          state.folderItems[folderId] = state.folderItems[folderId] || [];
+          state.folderItems[folderId].push(...safeKeys);
+        } else {
+          state.order.push(...safeKeys);
+        }
+      });
+    },
 
     undo: () => {
       const previous = undoStack.pop();

@@ -22,6 +22,41 @@ export function compositionIdFromBrowserKey(key: string): string {
   return String(key || "").startsWith("composition:") ? String(key).slice("composition:".length) : "";
 }
 
+export interface BrowserCompositionSelection {
+  ids: Set<string>;
+  primaryId: string;
+}
+
+export function browserCompositionSelectionAfterClick(
+  currentIds: Iterable<string>,
+  primaryId: string,
+  clickedId: string,
+  additive: boolean
+): BrowserCompositionSelection {
+  if (!additive) return { ids: new Set([clickedId]), primaryId: clickedId };
+  const ids = new Set(currentIds);
+  if (!ids.has(clickedId)) {
+    ids.add(clickedId);
+    return { ids, primaryId: clickedId };
+  }
+  if (ids.size === 1) return { ids, primaryId: clickedId };
+  ids.delete(clickedId);
+  return {
+    ids,
+    primaryId: primaryId === clickedId || !ids.has(primaryId) ? [...ids][0] || "" : primaryId
+  };
+}
+
+export function browserDragKeys(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return [...new Set(parsed.map(String).filter(Boolean))];
+  } catch (_error) {
+    // Older drags store one plain organizer key.
+  }
+  return value ? [value] : [];
+}
+
 function collapsedKey(surface: OrgSurface, folderId: string): string {
   return `${surface}:${folderId}`;
 }
@@ -59,6 +94,11 @@ export function ArtCompositionBrowser({
   const [folderName, setFolderName] = useState("");
   const [compositionName, setCompositionName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [compositionSelectionState, setCompositionSelectionState] = useState<{
+    surface: OrgSurface;
+    primaryId: string;
+    ids: Set<string>;
+  }>({ surface, primaryId: "", ids: new Set() });
   const [cleanupMode, setCleanupMode] = useState(false);
   const [cleanupSelection, setCleanupSelection] = useState<Set<string>>(new Set());
   const [reviewTrash, setReviewTrash] = useState(false);
@@ -95,28 +135,80 @@ export function ArtCompositionBrowser({
     for (const key of state.folderItems[folderId] || []) if (validCompositionKeys.has(key)) placed.add(key);
   }
   const unfiled = activeCompositionItems.filter((item) => !placed.has(item.key));
+  const compositionSelection = compositionSelectionState.surface === surface && compositionSelectionState.primaryId === selectedCompositionId
+    ? compositionSelectionState.ids
+    : selectedCompositionId === artWorkspaceId(surface)
+      ? new Set<string>()
+      : new Set([selectedCompositionId]);
+
+  const visualCompositionKeys = (() => {
+    const keys: string[] = [];
+    const visitedFolders = new Set<string>();
+    const visit = (key: string) => {
+      if (validCompositionKeys.has(key)) {
+        keys.push(key);
+        return;
+      }
+      const folderId = folderIdFromKey(key);
+      if (!folderId || visitedFolders.has(folderId)) return;
+      visitedFolders.add(folderId);
+      for (const childKey of state.folderItems[folderId] || []) visit(childKey);
+    };
+    for (const key of state.order) visit(key);
+    for (const item of unfiled) if (!keys.includes(item.key)) keys.push(item.key);
+    return keys;
+  })();
+
+  const selectedCompositionKeys = () => visualCompositionKeys.filter((key) => compositionSelection.has(compositionIdFromBrowserKey(key)));
+  const selectCompositionFromClick = (event: MouseEvent<HTMLButtonElement>, compositionId: string): void => {
+    const next = browserCompositionSelectionAfterClick(
+      compositionSelection,
+      selectedCompositionId,
+      compositionId,
+      event.metaKey || event.ctrlKey
+    );
+    setCompositionSelectionState({ surface, primaryId: next.primaryId, ids: next.ids });
+    if (next.primaryId && next.primaryId !== selectedCompositionId) compositionsController.selectComposition(next.primaryId);
+  };
+  const moveCompositionIdsToTrash = (compositionIds: Iterable<string>): void => {
+    const ids = [...new Set([...compositionIds].map(String).filter(Boolean))];
+    if (!ids.length) return;
+    compositionsController.trashCompositions(ids);
+    setCompositionSelectionState(ids.includes(selectedCompositionId)
+      ? { surface, primaryId: "", ids: new Set() }
+      : { surface, primaryId: selectedCompositionId, ids: new Set([selectedCompositionId]) });
+  };
 
   const onDragStart = (event: DragEvent, key: string) => {
     event.stopPropagation();
-    event.dataTransfer.setData(ART_COMPOSITION_BROWSER_DND_TYPE, key);
+    const compositionId = compositionIdFromBrowserKey(key);
+    let draggedKeys = [key];
+    if (compositionId) {
+      if (compositionSelection.has(compositionId)) draggedKeys = selectedCompositionKeys();
+      else {
+        setCompositionSelectionState({ surface, primaryId: compositionId, ids: new Set([compositionId]) });
+        compositionsController.selectComposition(compositionId);
+      }
+    }
+    event.dataTransfer.setData(ART_COMPOSITION_BROWSER_DND_TYPE, JSON.stringify(draggedKeys));
   };
-  const dragKey = (event: DragEvent) => event.dataTransfer.getData(ART_COMPOSITION_BROWSER_DND_TYPE);
+  const dragKeys = (event: DragEvent) => browserDragKeys(event.dataTransfer.getData(ART_COMPOSITION_BROWSER_DND_TYPE));
   const onDropBeside = (event: DragEvent, targetKey: string) => {
     event.preventDefault();
     event.stopPropagation();
-    const dragged = dragKey(event);
-    if (dragged) organizationController.moveBeside(surface, dragged, targetKey, false);
+    const dragged = dragKeys(event);
+    if (dragged.length) organizationController.moveManyBeside(surface, dragged, targetKey, false);
   };
   const onDropIntoFolder = (event: DragEvent, folderId: string) => {
     event.preventDefault();
     event.stopPropagation();
-    const dragged = dragKey(event);
-    if (dragged) organizationController.moveIntoFolder(surface, dragged, folderId);
+    const dragged = dragKeys(event);
+    if (dragged.length) organizationController.moveManyIntoFolder(surface, dragged, folderId);
   };
   const onDropRoot = (event: DragEvent) => {
     event.preventDefault();
-    const dragged = dragKey(event);
-    if (dragged) organizationController.moveIntoFolder(surface, dragged, "");
+    const dragged = dragKeys(event);
+    if (dragged.length) organizationController.moveManyIntoFolder(surface, dragged, "");
   };
   const updateCollapsedFolders = (apply: (draft: Set<string>) => void) => {
     setCollapsedFolders((current) => {
@@ -182,13 +274,14 @@ export function ArtCompositionBrowser({
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       event.preventDefault();
       event.stopPropagation();
-      compositionsController.selectComposition(compositionId);
-      compositionsController.removeSelectedComposition();
+      moveCompositionIdsToTrash(compositionSelection.has(compositionId) ? compositionSelection : [compositionId]);
     };
+    const selected = compositionSelection.has(compositionId);
     return (
       <li
-        className={`art-browser-item${cleanupMode ? " is-cleanup-mode" : ""}`}
+        className={`art-browser-item${cleanupMode ? " is-cleanup-mode" : ""}${selected ? " is-selected" : ""}`}
         data-art-browser-composition={compositionId}
+        data-art-browser-selected={selected ? "true" : "false"}
         key={key}
         draggable
         onDragStart={(event) => onDragStart(event, key)}
@@ -206,8 +299,9 @@ export function ArtCompositionBrowser({
         <button
           type="button"
           aria-current={compositionId === selectedCompositionId ? "true" : undefined}
-          title="Select composition. Option+Command+D duplicates it."
-          onClick={() => compositionsController.selectComposition(compositionId)}
+          aria-pressed={selected}
+          title="Select composition. Command-click adds or removes it from the group. Option+Command+D duplicates the active composition."
+          onClick={(event) => selectCompositionFromClick(event, compositionId)}
           onKeyDown={deleteCompositionFromKey}
         >
           <span>{nameByKey.get(key) || compositionId}</span>
@@ -230,8 +324,7 @@ export function ArtCompositionBrowser({
           title="Move composition to Trash"
           onClick={(event) => {
             event.stopPropagation();
-            compositionsController.selectComposition(compositionId);
-            compositionsController.removeSelectedComposition();
+            moveCompositionIdsToTrash(compositionSelection.has(compositionId) ? compositionSelection : [compositionId]);
           }}
         >
           Trash
@@ -292,19 +385,24 @@ export function ArtCompositionBrowser({
         type="button"
         className="art-browser-stage-button"
         aria-current={selectedCompositionId === artWorkspaceId(surface) ? "true" : undefined}
-        onClick={() => compositionsController.selectWorkspace(surface)}
+        onClick={() => {
+          setCompositionSelectionState({ surface, primaryId: artWorkspaceId(surface), ids: new Set() });
+          compositionsController.selectWorkspace(surface);
+        }}
       >
         <span>{surface === "controller" ? "Controller Stage" : "Stage"}</span>
         <small>Workspace</small>
       </button>
       <div className="tool-sidebar-switcher" role="group" aria-label="Composition surface">
         <button type="button" aria-pressed={surface === "stage"} onClick={() => {
+          setCompositionSelectionState({ surface: "stage", primaryId: artWorkspaceId("stage"), ids: new Set() });
           onSurfaceChange("stage");
           compositionsController.selectWorkspace("stage");
         }}>
           Stage
         </button>
         <button type="button" aria-pressed={surface === "controller"} onClick={() => {
+          setCompositionSelectionState({ surface: "controller", primaryId: artWorkspaceId("controller"), ids: new Set() });
           onSurfaceChange("controller");
           compositionsController.selectWorkspace("controller");
         }}>
@@ -334,6 +432,15 @@ export function ArtCompositionBrowser({
           </button>
         ) : null}
       </div>
+      {!cleanupMode && compositionSelection.size > 1 ? (
+        <div className="art-browser-selection-tools" aria-label="Composition selection">
+          <strong>{compositionSelection.size} selected</strong>
+          <small>Drag any selected asset into a folder to move the group.</small>
+          <button type="button" onClick={() => moveCompositionIdsToTrash(compositionSelection)}>
+            Move {compositionSelection.size} to Trash
+          </button>
+        </div>
+      ) : null}
       {trashedCompositions.length ? (
         <section className="art-browser-trash" aria-label="Art Trash">
           <strong>Trash</strong>
