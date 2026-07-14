@@ -362,7 +362,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
           {
             targetId: "component-a",
             keyframes: [
-              { frame: 0, props: { x: 50, y: 25, width: 80, height: 20, scale: 0.5, opacity: 0.25, text: "Start" } },
+              { frame: 0, props: { x: 50, y: 25, width: 80, height: 20, scale: 0.5, opacity: 0.25, brightness: 0.5, text: "Start" } },
               {
                 frame: 2,
                 props: {
@@ -372,6 +372,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
                   height: 40,
                   scale: 1,
                   opacity: 1,
+                  brightness: 1,
                   text: "Done",
                   fontSize: 42,
                   fontColor: "#ffffff",
@@ -395,6 +396,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.style.height).toBe("20%");
     expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("0.5");
     expect(element.style.opacity).toBe("0.25");
+    expect((element.style as unknown as Record<string, string>)["--component-brightness"]).toBe("0.5");
     expect(label.textContent).toBe("Start");
 
     vi.advanceTimersByTime(200);
@@ -404,6 +406,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.style.height).toBe("40%");
     expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1");
     expect(element.style.opacity).toBe("1");
+    expect((element.style as unknown as Record<string, string>)["--component-brightness"]).toBe("1");
     expect(label.textContent).toBe("Done");
     expect(Number.parseFloat((element.style as unknown as Record<string, string>)["--component-font-size"])).toBeLessThanOrEqual(42);
     expect((element.style as unknown as Record<string, string>)["--component-text-color"]).toBe("#ffffff");

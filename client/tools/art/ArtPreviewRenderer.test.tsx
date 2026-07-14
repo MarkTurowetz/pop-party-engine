@@ -86,6 +86,28 @@ describe("ArtPreviewRenderer transform origins", () => {
     expect(component.visible).toBe(true);
   });
 
+  it("previews authored brightness values from the active timeline frame", () => {
+    const component = {
+      id: "avatar",
+      kind: "reference",
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 100,
+      brightness: 1
+    } as ArtComponent;
+
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer
+        components={[component]}
+        compositionById={new Map()}
+        timelineFrameOverrides={{ avatar: { brightness: 0.5 } }}
+      />
+    );
+
+    expect(markup).toContain("filter:brightness(0.5)");
+  });
+
   it("keeps locked components visible while removing preview pointer interaction", () => {
     const component = {
       id: "card",

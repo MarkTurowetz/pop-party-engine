@@ -255,6 +255,7 @@ function createArtAssetsRuntime({
       scale: cleanNumber(source.scale, Number(base.scale || 1), 0.05, 8),
       rotation: cleanNumber(source.rotation, Number(base.rotation || 0), -3600, 3600),
       opacity: cleanNumber(source.opacity, Number(base.opacity ?? 1), 0, 1),
+      brightness: cleanNumber(source.brightness, Number(base.brightness ?? 1), 0, 4),
       visible: typeof source.visible === "boolean" ? source.visible : base.visible !== false,
       editorHidden: typeof source.editorHidden === "boolean" ? source.editorHidden : base.editorHidden === true,
       transformOrigin: artComponentSchema.normalizeTransformOrigin(source.transformOrigin || base.transformOrigin),

@@ -75,6 +75,7 @@ function applyComponentLayout(element: HTMLElement | null, component: Component 
   element.style.height = `${(num(component.height, 1) / canvasHeight) * 100}%`;
   element.style.setProperty("--component-scale", String(num(component.scale, 1)));
   element.style.setProperty("--component-rotation", `${num(component.rotation)}deg`);
+  element.style.setProperty("--component-brightness", String(Math.max(0, num(component.brightness, 1))));
   element.style.transformOrigin = s.transformOriginCss?.(component.transformOrigin) || "50% 50%";
   const fontScale = Number.isFinite(Number(options.fontScale)) && Number(options.fontScale) > 0 ? Number(options.fontScale) : 1;
   const textLayout = isTextBearingComponentKind(kind) ? componentTextLayout(component, labelText) : null;

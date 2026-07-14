@@ -21,7 +21,7 @@ const DEFAULT_TIMELINE: TimelineDocument = Object.freeze({
   tracks: []
 });
 const MAX_FRAME_COUNT = 60 * 60 * 10;
-const ANIMATION_KEYFRAME_PROPERTY_KEYS = ["x", "y", "width", "height", "scale", "rotation", "opacity", "visible"] as const;
+const ANIMATION_KEYFRAME_PROPERTY_KEYS = ["x", "y", "width", "height", "scale", "rotation", "opacity", "brightness", "visible"] as const;
 const DEFAULT_TWEEN_EASING = "easeInOut";
 
 export interface TimelineFrameClipboard {
@@ -749,6 +749,7 @@ function componentTimelinePropsFor(component: ArtComponent): TimelineProperties 
     scale: Number(component.scale || 1),
     rotation: Number(component.rotation || 0),
     opacity: numberProp(component, "opacity", 1),
+    brightness: numberProp(component, "brightness", 1),
     visible: booleanProp(component, "visible", true)
   };
 
@@ -797,6 +798,7 @@ function fallbackAnimationTimelineProps(): TimelineProperties {
     scale: 1,
     rotation: 0,
     opacity: 1,
+    brightness: 1,
     visible: true
   };
 }

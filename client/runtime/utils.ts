@@ -457,6 +457,7 @@ function avatarComponentStyle(component: Dict, canvas: Dict | undefined, layerIn
     `width:${(Number(component.width || 1) / canvasWidth) * 100}%`,
     `height:${(Number(component.height || 1) / canvasHeight) * 100}%`,
     `transform:translate(-50%, -50%) rotate(${Number(component.rotation || 0)}deg) scale(${Number(component.scale || 1)})`,
+    `filter:brightness(${Math.max(0, Number(component.brightness ?? 1))})`,
     `--avatar-component-fit:${component.imageObjectFit || "contain"}`,
     `--avatar-component-fill:${component.fillCss || component.fillColor || "transparent"}`,
     `--avatar-component-border-color:${component.borderColor || "transparent"}`,

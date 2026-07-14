@@ -37,6 +37,7 @@ const w = () => globalThis as typeof globalThis & Window;
 export const PLAYER_WIDGET_COMPOSITION_ID = "prefab-player-widget-mc";
 const PLAYER_ANSWER_BUBBLE_MC_ID = "player-answer-bubble-mc";
 const PLAYER_AVATAR_MC_ID = "player-avatar-mc";
+const PLAYER_AVATAR_BEHAVIORS_ID = "player-avatar-behaviors";
 const PLAYER_NAME_MC_ID = "player-name-mc";
 const PLAYER_VIP_MC_ID = "vip-mc";
 const AVATAR_FRAME_ID = "avatar";
@@ -347,12 +348,17 @@ class PlayerRosterRenderer {
     const previousCorrectness = tile.dataset.answerBubbleCorrectness || "";
     const previousPlayerName = tile.dataset.playerName || "";
     const previousPlayerVip = tile.dataset.playerVip === "true";
+    const previousNeedsInput = tile.dataset.playerNeedsInput;
 
     renderer.render(runtimePlayerWidgetComponents(composition, player), canvas, {
       instant: true
     });
 
     const avatarDuration = this.syncAvatarComponent(renderer, player);
+    const avatarBehaviorDuration = this.syncAvatarBehaviorComponent(renderer, player, {
+      ...options,
+      previousNeedsInput
+    });
 
     const duration = this.syncAnswerBubbleComponent(renderer, answerState, {
       ...options,
@@ -373,9 +379,10 @@ class PlayerRosterRenderer {
     tile.dataset.answerBubbleCorrectness = answerState.correctness;
     tile.dataset.playerName = playerNameRuntimeText(player);
     tile.dataset.playerVip = playerVipRuntimeState(player).visible ? "true" : "false";
+    tile.dataset.playerNeedsInput = player.needsInput === true ? "true" : "false";
     tile.dataset.playerAvatarShape = String((player.avatar as Dict)?.shape || "rex");
     this.layoutTiles();
-    return Math.max(duration, labelDuration, avatarDuration);
+    return Math.max(duration, labelDuration, avatarDuration, avatarBehaviorDuration);
   }
 
   syncAvatarComponent(renderer: TreeRenderer, player: Dict): number {
@@ -385,6 +392,22 @@ class PlayerRosterRenderer {
       : renderer.playComponent?.(PLAYER_AVATAR_MC_ID, "On", { instant: true }) || 0;
     const frameDuration = renderer.stopAtComponent?.(AVATAR_FRAME_ID, label, { instant: true }) || 0;
     return Math.max(showDuration, frameDuration);
+  }
+
+  syncAvatarBehaviorComponent(renderer: TreeRenderer, player: Dict, options: Dict = {}): number {
+    const instant = options.instant === true;
+    const previousNeedsInput = options.previousNeedsInput;
+    const needsInput = player.needsInput === true;
+    if (previousNeedsInput === undefined) {
+      if (needsInput) return renderer.playComponent?.(PLAYER_AVATAR_BEHAVIORS_ID, "ChoosingStart", { instant }) || 0;
+      return renderer.stopAtComponent?.(PLAYER_AVATAR_BEHAVIORS_ID, "Default", { instant: true }) || 0;
+    }
+    if ((previousNeedsInput === "true") === needsInput) return 0;
+    return renderer.playComponent?.(
+      PLAYER_AVATAR_BEHAVIORS_ID,
+      needsInput ? "ChoosingStart" : "ChoosingEnd",
+      { instant }
+    ) || 0;
   }
 
   syncAnswerBubbleComponent(renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {

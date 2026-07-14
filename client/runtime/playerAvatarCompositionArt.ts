@@ -118,6 +118,7 @@ function componentStyle(component: Dict, bounds: Bounds, layerIndex: number, sib
     `height:${(number(component.height, 1) / bounds.height) * 100}%`,
     `transform:translate(-50%, -50%) rotate(${number(component.rotation, 0)}deg) scale(${number(component.scale, 1)})`,
     `opacity:${number(component.opacity, 1)}`,
+    `filter:brightness(${Math.max(0, number(component.brightness, 1))})`,
     component.visible === false ? "display:none" : "",
     `--avatar-component-fit:${component.imageObjectFit || "contain"}`,
     `--avatar-component-fill:${component.fillCss || component.fillColor || "transparent"}`,

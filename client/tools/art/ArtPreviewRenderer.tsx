@@ -179,6 +179,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const transformOriginOption = transformOriginOptions.find((option) => option.value === transformOrigin) || transformOriginOptions[8];
     const editorHidden = component.editorHidden === true && layer.interactive !== false;
     const ownOpacity = Number(timelineValue("opacity", get(component, "opacity") ?? 1));
+    const brightness = Math.max(0, Number(timelineValue("brightness", get(component, "brightness") ?? 1)));
     const inheritedContentOpacity = Number(layer.contentOpacity ?? 1);
     const contentOpacity = Math.max(0, Math.min(1, inheritedContentOpacity * ownOpacity));
     const imageUrl = componentSupportsSpriteSource(component) ? imageSourceFor(component, timelineOverride) : "";
@@ -228,6 +229,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       zIndex: Math.max(1, layer.total - layer.index),
       pointerEvents: interactive && !editorHidden ? "auto" : "none",
       visibility: editorHidden ? "hidden" : "visible",
+      filter: `brightness(${brightness})`,
       userSelect: "none"
     };
 

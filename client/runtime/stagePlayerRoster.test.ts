@@ -299,6 +299,26 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
   });
 
+  it("drives choosing status through the nested avatar behavior timeline", () => {
+    const roster = PartyGamePlayerRoster.createRenderer({});
+    const playComponent = vi.fn(() => 333);
+    const stopAtComponent = vi.fn(() => 0);
+    const renderer = { render: vi.fn(), playComponent, stopAtComponent };
+
+    expect(roster.syncAvatarBehaviorComponent(renderer, { needsInput: false }, {})).toBe(0);
+    expect(stopAtComponent).toHaveBeenCalledWith("player-avatar-behaviors", "Default", { instant: true });
+
+    expect(roster.syncAvatarBehaviorComponent(renderer, { needsInput: true }, { previousNeedsInput: "false" })).toBe(333);
+    expect(playComponent).toHaveBeenCalledWith("player-avatar-behaviors", "ChoosingStart", { instant: false });
+
+    expect(roster.syncAvatarBehaviorComponent(renderer, { needsInput: false }, { previousNeedsInput: "true" })).toBe(333);
+    expect(playComponent).toHaveBeenCalledWith("player-avatar-behaviors", "ChoosingEnd", { instant: false });
+
+    playComponent.mockClear();
+    expect(roster.syncAvatarBehaviorComponent(renderer, { needsInput: false }, { previousNeedsInput: "false" })).toBe(0);
+    expect(playComponent).not.toHaveBeenCalled();
+  });
+
   it("prepares answer content before playing the nested MC without attaching the parent timeline", () => {
     const order: string[] = [];
     const composition = {

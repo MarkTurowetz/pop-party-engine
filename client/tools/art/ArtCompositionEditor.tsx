@@ -130,6 +130,7 @@ const TIMELINE_PROPERTY_SUGGESTIONS = [
   "scale",
   "rotation",
   "opacity",
+  "brightness",
   "defaultText",
   "text",
   "fontSize",
@@ -1615,9 +1616,10 @@ function ArtComponentInspector({
   }
   const componentFrameValue = (target: ArtComponent, key: string): unknown => {
     const values = timelineContext?.valuesById.get(target.id) || {};
-    return timelineContext && TIMELINE_INSPECTOR_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)
+    const value = timelineContext && TIMELINE_INSPECTOR_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)
       ? values[key]
       : get(target, key);
+    return key === "brightness" && value === undefined ? 1 : value;
   };
   const valuesMatch = (left: unknown, right: unknown): boolean => String(left ?? "") === String(right ?? "");
   const frameValue = (key: string): unknown => {
@@ -1799,6 +1801,7 @@ function ArtComponentInspector({
         </label>
       ) : null}
       {numberField("opacity", "Opacity", "0.01")}
+      {numberField("brightness", "Brightness", "0.01")}
       {!isMultiSelect && primaryComponent.kind === "reference" ? (
         <SwapGameObjectControl controller={controller} owner={composition} component={primaryComponent} compositions={compositions} />
       ) : null}

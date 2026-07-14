@@ -61,6 +61,7 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
     scale: num(component.scale, 1),
     rotation: num(component.rotation, 0),
     opacity: num(component.opacity, 1),
+    brightness: num(component.brightness, 1),
     visible: component.visible !== false,
     editorHidden: component.editorHidden === true,
     transformOrigin: normalizeTransformOrigin(component.transformOrigin),

@@ -62,10 +62,12 @@ describe("artCompositionModel serialization", () => {
       kind: "shape",
       locked: true,
       editorHidden: true,
+      brightness: 0.6,
       transformOrigin: "bottomRight"
     } as unknown as ArtComponent);
     expect(serialized.locked).toBe(true);
     expect(serialized.editorHidden).toBe(true);
+    expect(serialized.brightness).toBe(0.6);
     expect(serialized.transformOrigin).toBe("bottomRight");
   });
 

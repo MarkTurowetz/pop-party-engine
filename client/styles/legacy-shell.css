@@ -1048,10 +1048,11 @@ body.tool-dashboard-mode .layout-shell {
   transform: none;
   transform-origin: center;
   opacity: 1;
-  transition: opacity 500ms ease, scale 500ms cubic-bezier(0.19, 1, 0.22, 1);
+  filter: brightness(var(--component-brightness, 1));
+  transition: opacity 500ms ease, scale 500ms cubic-bezier(0.19, 1, 0.22, 1), filter 333ms linear;
   pointer-events: none;
   overflow: visible;
-  will-change: scale, opacity;
+  will-change: scale, opacity, filter;
 }
 
 .art-runtime-object.is-shape,
@@ -1300,10 +1301,6 @@ body.tool-dashboard-mode .layout-shell {
 
 .player-object-art-host > .art-runtime-object {
   text-shadow: none;
-}
-
-.player-tile.needs-input .player-object-art-host [data-art-component-id="avatar"] {
-  filter: brightness(0.58) saturate(0.85);
 }
 
 .point-popup {

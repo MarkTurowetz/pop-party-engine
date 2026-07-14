@@ -126,6 +126,7 @@ export interface ArtComponent extends JsonObject {
   scale?: number;
   rotation?: number;
   opacity?: number;
+  brightness?: number;
   visible?: boolean;
   editorHidden?: boolean;
   transformOrigin?: string;

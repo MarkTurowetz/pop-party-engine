@@ -295,6 +295,8 @@ function createComponent(
     height,
     scale: 1,
     rotation: 0,
+    opacity: 1,
+    brightness: 1,
     transformOrigin: "center",
     editorHidden: false,
     children: []

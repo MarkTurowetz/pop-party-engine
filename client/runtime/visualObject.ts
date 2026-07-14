@@ -353,6 +353,7 @@ class CssVisualObject {
     const scale = numericTimelineValue(props.scale);
     const rotation = numericTimelineValue(props.rotation);
     const opacity = numericTimelineValue(props.opacity);
+    const brightness = numericTimelineValue(props.brightness);
     const fontSize = numericTimelineValue(props.fontSize);
     const borderWidth = numericTimelineValue(props.borderWidth);
     const borderRadius = numericTimelineValue(props.borderRadius);
@@ -363,6 +364,7 @@ class CssVisualObject {
     if (scale !== null) setStyleProperty(this.element, "--component-scale", String(scale));
     if (rotation !== null) setStyleProperty(this.element, "--component-rotation", `${rotation}deg`);
     if (opacity !== null) this.element.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+    if (brightness !== null) setStyleProperty(this.element, "--component-brightness", String(Math.max(0, brightness)));
     if (fontSize !== null) setStyleProperty(this.element, "--component-font-size", `${fontSize}px`);
     if (borderWidth !== null) setStyleProperty(this.element, "--component-border-width", `${Math.max(0, borderWidth)}px`);
     if (borderRadius !== null) setStyleProperty(this.element, "--component-border-radius", `${Math.max(0, borderRadius)}px`);
