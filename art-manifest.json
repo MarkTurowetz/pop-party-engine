@@ -9647,8 +9647,8 @@
                 "id": "key-shape-4dd0ececeb4c-1",
                 "frame": 1,
                 "props": {
-                  "x": 300,
-                  "y": 115,
+                  "x": 0,
+                  "y": 0,
                   "width": 520,
                   "height": 150,
                   "scale": 1,
@@ -9668,8 +9668,8 @@
                 "id": "key-shape-4dd0ececeb4c-2",
                 "frame": 2,
                 "props": {
-                  "x": 300,
-                  "y": 115,
+                  "x": 0,
+                  "y": 0,
                   "width": 520,
                   "height": 150,
                   "scale": 1,
@@ -9689,7 +9689,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T06:37:44.591Z"
+      "updatedAt": "2026-07-14T06:21:22.592Z"
     },
     "prefab-untitled-prefab-3": {
       "name": "Voting Card Answer",
