@@ -10240,8 +10240,10 @@
         "folder-b44c7441-4209-415b-87ff-4aaf25716ad2": [],
         "folder-ab56756918": [
           "composition:prefab-voting-card-bg",
+          "composition:prefab-untitled-prefab-4",
           "composition:prefab-untitled-prefab",
-          "composition:prefab-untitled-prefab-3"
+          "composition:prefab-untitled-prefab-3",
+          "composition:prefab-voting-card-vote"
         ]
       }
     },
