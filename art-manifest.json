@@ -10277,7 +10277,6 @@
           "composition:prefab-voting-card-answer-mc",
           "composition:prefab-voting-card-author-mc",
           "composition:prefab-voting-card-voters-mc",
-          "composition:prefab-voting-card-vote-count-mc",
           "composition:prefab-voting-card-correctness-state"
         ],
         "folder-fc45b1fa-922d-4073-a707-9b4995172227": [
@@ -10289,7 +10288,8 @@
           "composition:prefab-untitled-prefab-4",
           "composition:prefab-untitled-prefab",
           "composition:prefab-untitled-prefab-3",
-          "composition:prefab-voting-card-vote"
+          "composition:prefab-voting-card-vote",
+          "composition:prefab-voting-card-vote-count-mc"
         ]
       }
     },
