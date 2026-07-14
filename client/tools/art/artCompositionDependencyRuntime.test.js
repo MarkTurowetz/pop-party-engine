@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { createArtCompositionDependencyReport } = require("../../../server/art-composition-dependency-runtime");
+const { artRuntimeReferences } = require("../../../server/art-runtime-dependencies");
 
 describe("art composition dependency report", () => {
   it("reports nested art, layout, flow, and runtime references", () => {
@@ -28,5 +29,14 @@ describe("art composition dependency report", () => {
     expect(report.dependencies.parent).toMatchObject({ total: 2, stageLayoutReferences: 1, runtimeReferences: 1 });
     expect(report.dependencies.child.details[0]).toMatchObject({ kind: "art", sourceCompositionId: "parent" });
     expect(report.compositionRevisions.child).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("tracks the authored Player Avatar MC without retaining legacy avatar compositions", () => {
+    const runtimeIds = artRuntimeReferences().map((reference) => reference.compositionId);
+    expect(runtimeIds).toContain("prefab-player-widget-mc");
+    expect(runtimeIds).toContain("prefab-player-avatar-mc");
+    for (const species of ["rex", "stego", "trike", "raptor", "bronto", "ankylo"]) {
+      expect(runtimeIds).not.toContain(`player-avatar-${species}`);
+    }
   });
 });

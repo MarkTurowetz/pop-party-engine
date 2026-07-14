@@ -5,6 +5,8 @@
 // (controller.js, stage-runtime.js, layout-runtime.js, app-shell.js) keep resolving
 // them as bare identifiers.
 
+import { playerAvatarCompositionArt, type PlayerAvatarArtComposition } from "./playerAvatarCompositionArt";
+
 type Dict = Record<string, unknown>;
 type ArtComposition = { id?: string; canvas?: { width?: number; height?: number }; components?: Dict[] };
 
@@ -445,11 +447,6 @@ function artAssetUrl(assetId?: string): string {
   return w.artAssetUrls.get(assetId || "") || "";
 }
 
-function avatarCompositionId(shape?: string): string {
-  const species = shape && w.avatarAssetIds[shape] ? shape : "rex";
-  return `player-avatar-${species}`;
-}
-
 function avatarComponentStyle(component: Dict, canvas: Dict | undefined, layerIndex = 0, siblingCount = 1): string {
   const canvasWidth = Math.max(1, Number(canvas?.width || 1));
   const canvasHeight = Math.max(1, Number(canvas?.height || 1));
@@ -493,14 +490,13 @@ function avatarCompositionComponentMarkup(component: Dict, canvas: Dict | undefi
 }
 
 function playerAvatarArt(shape?: string): string {
-  const composition = artComposition(avatarCompositionId(shape));
-  if (!composition) return `${avatarFrameImage()}${dinoIcon(shape)}`;
-  const canvas = composition.canvas || { width: 100, height: 100 };
-  const componentList = composition.components || [];
-  const components = componentList
-    .map((component, index) => avatarCompositionComponentMarkup(component, canvas, index, componentList.length))
-    .join("");
-  return `<span class="player-avatar-art-composition">${components}</span>`;
+  return playerAvatarCompositionArt({
+    shape,
+    getComposition: (compositionId) => artComposition(compositionId) as PlayerAvatarArtComposition | null,
+    assetUrl: artAssetUrl,
+    normalizeComponentKind: w.PartyGameArtComponentSchema?.normalizeComponentKind,
+    normalizeShapeStyle: w.PartyGameArtComponentSchema?.normalizeShapeStyle
+  }) || `${avatarFrameImage()}${dinoIcon(shape)}`;
 }
 
 function dinoIcon(shape?: string): string {
@@ -640,7 +636,6 @@ const utilsApi = {
   avatarClass,
   cssUrl,
   artAssetUrl,
-  avatarCompositionId,
   avatarComponentStyle,
   avatarComponentImageSource,
   avatarCompositionComponentMarkup,

@@ -10,6 +10,7 @@ const { createCountdownRuntime } = require("./server/countdown-runtime");
 const { createControllerLayoutNormalizationRuntime } = require("./server/controller-layout-normalization-runtime");
 const { createControllerLayoutStateRuntime } = require("./server/controller-layout-state-runtime");
 const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
+const { artRuntimeReferences } = require("./server/art-runtime-dependencies");
 const { createCraftingTimerRuntime } = require("./server/crafting-timer-runtime");
 const { createDecisionActionNormalizationRuntime } = require("./server/decision-action-normalization-runtime");
 const { createDecisionRuntime } = require("./server/decision-runtime");
@@ -62,12 +63,6 @@ const { createToolSourceReadersRuntime } = require("./server/tool-source-readers
 const { createToolSourceStoresRuntime } = require("./server/tool-source-stores-runtime");
 const { createRouterRuntime } = require("./server/router-runtime");
 const { createTriviaContentRuntime } = require("./server/trivia-content-runtime");
-const { layoutWidgetArtCompositionIds } = require("./shared/stage-layout-art-widgets");
-const {
-  controllerChoiceOptionArtCompositionId,
-  controllerLayoutWidgetArtCompositionIds
-} = require("./shared/controller-layout-art-widgets");
-const { layoutTextArtCompositionId } = require("./shared/layout-text-art");
 const {
   cleanChoiceOptions,
   cleanFlowText,
@@ -478,31 +473,7 @@ const {
       stageLayouts: localDraftStore.layouts || stageLayouts,
       controllerLayouts: localDraftStore.controllerLayouts || controllerLayouts,
       flow: localDraftStore.flow || flow,
-      runtimeReferences: [
-        ...[...new Set([
-          ...Object.values(layoutWidgetArtCompositionIds),
-          ...Object.values(controllerLayoutWidgetArtCompositionIds),
-          controllerChoiceOptionArtCompositionId,
-          layoutTextArtCompositionId
-        ])].map((compositionId) => ({
-          compositionId,
-          sourceId: "layout-art-runtime",
-          sourceName: "Layout widget runtime"
-        })),
-        { compositionId: "prefab-player-widget-mc", sourceId: "stage-player-roster", sourceName: "Player roster runtime" },
-        ...["rex", "stego", "trike", "raptor", "bronto", "ankylo"].map((shape) => ({
-          compositionId: `player-object-${shape}`,
-          sourceId: "stage-player-roster-fallback",
-          sourceName: `Legacy ${shape} player fallback`
-        })),
-        ...["rex", "stego", "trike", "raptor", "bronto", "ankylo"].map((shape) => ({
-          compositionId: `player-avatar-${shape}`,
-          sourceId: "controller-avatar-runtime",
-          sourceName: `Controller ${shape} avatar renderer`
-        })),
-        { compositionId: "prefab-voting-card-mc", sourceId: "stage-voting-card-runtime", sourceName: "Voting card runtime" },
-        { compositionId: "voting-card", sourceId: "stage-voting-card-fallback", sourceName: "Legacy voting card fallback" }
-      ]
+      runtimeReferences: artRuntimeReferences()
     };
   },
   localDraftStore,
