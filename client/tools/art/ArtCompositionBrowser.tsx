@@ -6,6 +6,7 @@ import { folderIdFromKey, type OrgItem, type OrgSurface } from "./organizationMo
 import { useArtCompositions } from "./useArtCompositions";
 import { useArtOrganization } from "./useArtOrganization";
 import { artWorkspaceId } from "./artWorkspaceModel";
+import { artCompositionReferenceCounts, artCompositionUsageLabel } from "./artCompositionUsage";
 
 export interface ArtCompositionBrowserProps {
   compositionsController: ArtCompositionsController;
@@ -46,7 +47,7 @@ export function ArtCompositionBrowser({
   surface,
   onSurfaceChange
 }: ArtCompositionBrowserProps) {
-  const { selectedCompositionId } = useArtCompositions(compositionsController);
+  const { compositions, workspaces, selectedCompositionId } = useArtCompositions(compositionsController);
   const { organization, surfaceItems, dirty, saving, canUndo, canRedo } = useArtOrganization(organizationController);
   const [folderName, setFolderName] = useState("");
   const [compositionName, setCompositionName] = useState("");
@@ -57,6 +58,10 @@ export function ArtCompositionBrowser({
   const validCompositionKeys = new Set(compositionItems.map((item) => item.key));
   const nameByKey = new Map(compositionItems.map((item) => [item.key, item.name]));
   const kindByKey = new Map(compositionItems.map((item) => [item.key, item.compositionKind || "gameObject"]));
+  const usageCounts = useMemo(
+    () => artCompositionReferenceCounts([...compositions, ...Object.values(workspaces)]),
+    [compositions, workspaces]
+  );
   const search = useMemo(
     () => searchArtHierarchy(state, compositionItems, searchQuery),
     [state, compositionItems, searchQuery]
@@ -134,6 +139,7 @@ export function ArtCompositionBrowser({
     const compositionId = compositionIdFromBrowserKey(key);
     if (!compositionId || !validCompositionKeys.has(key)) return null;
     if (search.active && !search.visibleKeys.has(key)) return null;
+    const usageCount = usageCounts.get(compositionId) || 0;
     const deleteCompositionFromKey = (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       event.preventDefault();
@@ -159,7 +165,16 @@ export function ArtCompositionBrowser({
           onKeyDown={deleteCompositionFromKey}
         >
           <span>{nameByKey.get(key) || compositionId}</span>
-          <small>{kindByKey.get(key) === "prefab" ? "Prefab" : "Game Object"}</small>
+          <span className="art-browser-item-meta">
+            <small>{kindByKey.get(key) === "prefab" ? "Prefab" : "Game Object"}</small>
+            <small
+              className="art-browser-composition-usage"
+              data-art-composition-usage={usageCount}
+              title={`${artCompositionUsageLabel(usageCount)} as a direct child in Art Manager compositions and workspaces.`}
+            >
+              {artCompositionUsageLabel(usageCount)}
+            </small>
+          </span>
         </button>
         <button
           type="button"

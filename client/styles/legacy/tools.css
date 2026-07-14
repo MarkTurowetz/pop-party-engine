@@ -2399,6 +2399,17 @@ body.tool-dashboard-mode .layout-react-shell {
   text-transform: uppercase;
 }
 
+.art-browser-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.art-browser-composition-usage {
+  white-space: nowrap;
+}
+
 .art-browser-unfiled {
   display: grid;
   gap: 7px;
