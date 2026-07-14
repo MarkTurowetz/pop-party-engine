@@ -8242,7 +8242,7 @@
     },
     "prefab-voting-card-author-mc": {
       "name": "Voting Card Author MC",
-      "description": "Independently animated author reveal child.",
+      "description": "Lifecycle-animation wrapper for the nested Voting Card Author Text prefab.",
       "surface": "stage",
       "compositionKind": "prefab",
       "isCustom": true,
@@ -8253,27 +8253,23 @@
       },
       "components": [
         {
-          "id": "voting-card-author-text",
+          "id": "reference-voting-card-author-text",
           "name": "Voting Card Author Text",
-          "instanceLabel": "authorText",
-          "kind": "text",
+          "instanceLabel": "votingCardAuthorText",
+          "kind": "reference",
           "x": 170,
           "y": 14,
           "width": 340,
           "height": 28,
           "scale": 1,
           "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "AUTHOR NAME",
-          "fontSize": 15,
-          "autoFitText": true,
-          "fontColor": "#6b5a80",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
           "opacity": 1,
           "visible": true,
           "editorHidden": false,
-          "transformOrigin": "center"
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "artCompositionId": "prefab-voting-card-author-text"
         }
       ],
       "timeline": {
@@ -8372,11 +8368,11 @@
         ],
         "tracks": [
           {
-            "id": "track-voting-card-author-text",
-            "targetId": "voting-card-author-text",
+            "id": "track-reference-voting-card-author-text",
+            "targetId": "reference-voting-card-author-text",
             "keyframes": [
               {
-                "id": "key-voting-card-author-text-0",
+                "id": "key-reference-voting-card-author-text-0",
                 "frame": 0,
                 "props": {
                   "opacity": 1,
@@ -8390,7 +8386,7 @@
                 "easing": "hold"
               },
               {
-                "id": "key-voting-card-author-text-2",
+                "id": "key-reference-voting-card-author-text-2",
                 "frame": 2,
                 "props": {
                   "x": 170,
@@ -8405,7 +8401,7 @@
                 "easing": "easeOut"
               },
               {
-                "id": "key-voting-card-author-text-9",
+                "id": "key-reference-voting-card-author-text-9",
                 "frame": 9,
                 "props": {
                   "x": 170,
@@ -8420,7 +8416,7 @@
                 "easing": "easeOut"
               },
               {
-                "id": "key-voting-card-author-text-12",
+                "id": "key-reference-voting-card-author-text-12",
                 "frame": 12,
                 "props": {
                   "x": 170,
@@ -8435,7 +8431,7 @@
                 "easing": "hold"
               },
               {
-                "id": "key-voting-card-author-text-13",
+                "id": "key-reference-voting-card-author-text-13",
                 "frame": 13,
                 "props": {
                   "x": 170,
@@ -8450,7 +8446,7 @@
                 "easing": "easeInOut"
               },
               {
-                "id": "key-voting-card-author-text-16",
+                "id": "key-reference-voting-card-author-text-16",
                 "frame": 16,
                 "props": {
                   "x": 170,
@@ -8465,7 +8461,7 @@
                 "easing": "hold"
               },
               {
-                "id": "key-voting-card-author-text-17",
+                "id": "key-reference-voting-card-author-text-17",
                 "frame": 17,
                 "props": {
                   "x": 170,
@@ -8480,7 +8476,7 @@
                 "easing": "easeIn"
               },
               {
-                "id": "key-voting-card-author-text-22",
+                "id": "key-reference-voting-card-author-text-22",
                 "frame": 22,
                 "props": {
                   "x": 170,
@@ -8495,7 +8491,7 @@
                 "easing": "easeIn"
               },
               {
-                "id": "key-voting-card-author-text-32",
+                "id": "key-reference-voting-card-author-text-32",
                 "frame": 32,
                 "props": {
                   "x": 170,
@@ -8513,7 +8509,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-13T03:08:11.234Z"
+      "updatedAt": "2026-07-14T06:45:18.599Z"
     },
     "prefab-voting-card-voters-mc": {
       "name": "Voting Card Voters MC",
@@ -9141,7 +9137,7 @@
           "editorHidden": false,
           "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "Park",
+          "defaultAnimationState": "Off",
           "artCompositionId": "prefab-voting-card-author-mc"
         },
         {
@@ -9298,7 +9294,7 @@
         ],
         "tracks": []
       },
-      "updatedAt": "2026-07-14T06:21:20.555Z"
+      "updatedAt": "2026-07-14T06:45:18.599Z"
     },
     "prefab-untitled-prefab": {
       "name": "Voting Card Answer Text",
@@ -10181,6 +10177,95 @@
         "tracks": []
       },
       "updatedAt": "2026-07-13T17:05:06.616Z"
+    },
+    "prefab-voting-card-author-text": {
+      "name": "Voting Card Author Text",
+      "description": "Base visual and semantic-state prefab for voting-card author text.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 340,
+        "height": 28
+      },
+      "components": [
+        {
+          "id": "voting-card-author-text-content",
+          "name": "Author Text",
+          "instanceLabel": "authorText",
+          "kind": "text",
+          "x": 170,
+          "y": 14,
+          "width": 340,
+          "height": 28,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "defaultText": "AUTHOR NAME",
+          "fontSize": 15,
+          "autoFitText": true,
+          "fontColor": "#6b5a80",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-voting-card-author-text-content",
+            "targetId": "voting-card-author-text-content",
+            "keyframes": [
+              {
+                "id": "key-voting-card-author-text-content-0",
+                "frame": 0,
+                "props": {
+                  "x": 170,
+                  "y": 14,
+                  "width": 340,
+                  "height": 28,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "defaultText": "AUTHOR NAME",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 15,
+                  "fontColor": "#6b5a80",
+                  "autoFitText": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-14T06:45:18.599Z"
     }
   },
   "deletedCompositionIds": [],
@@ -10263,6 +10348,7 @@
           "composition:prefab-voting-card-mc",
           "composition:prefab-voting-card-art-mc",
           "composition:prefab-voting-card-answer-mc",
+          "composition:prefab-voting-card-author-text",
           "composition:prefab-voting-card-author-mc",
           "composition:prefab-voting-card-voters-mc",
           "composition:prefab-voting-card-correctness-state"
