@@ -72,6 +72,51 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().selectedCompositionId).toBe("a");
   });
 
+  it("duplicates a composition as an independent adjacent prefab while preserving child references", () => {
+    const source = composition("vip-mc");
+    source.name = "VIP MC";
+    source.compositionKind = "prefab";
+    source.components = [{
+      id: "vip-slot",
+      name: "VIP Slot",
+      instanceLabel: "vipSlot",
+      kind: "reference",
+      artCompositionId: "vip-widget",
+      x: 22,
+      y: 11,
+      width: 44,
+      height: 22
+    }] as never;
+    source.timeline = {
+      fps: 30,
+      frameCount: 10,
+      labels: [{ name: "On", frame: 1 }],
+      commands: [{ frame: 1, type: "playComponent", target: "vip-slot", event: "On" }],
+      tracks: [{ targetId: "vip-slot", keyframes: [{ frame: 1, props: { scale: 1.2 } }] }]
+    };
+    const child = composition("vip-widget");
+    const controller = createArtCompositionsController({ initialCompositions: [source, child], api: fakeApi() });
+
+    const duplicate = controller.duplicateComposition(source.id);
+
+    expect(duplicate).toEqual(expect.objectContaining({ name: "VIP MC 1", compositionKind: "prefab" }));
+    const state = controller.getState();
+    expect(state.compositions.map((item) => item.id).slice(0, 2)).toEqual([source.id, duplicate?.id]);
+    const originalSlot = state.compositions[0].components[0];
+    const duplicateSlot = state.compositions[1].components[0];
+    expect(duplicateSlot.id).not.toBe(originalSlot.id);
+    expect(duplicateSlot.artCompositionId).toBe("vip-widget");
+    expect(state.compositions[1].timeline?.tracks[0].targetId).toBe(duplicateSlot.id);
+    expect(state.compositions[1].timeline?.commands[0].target).toBe(duplicateSlot.id);
+    expect(state.selectedCompositionId).toBe(duplicate?.id);
+
+    controller.updateComponent(duplicateSlot.id, { name: "Changed Copy" });
+    expect(controller.getState().compositions[0].components[0].name).toBe("VIP Slot");
+    expect(controller.getState().compositions[1].components[0].name).toBe("Changed Copy");
+
+    expect(controller.duplicateComposition(source.id)?.name).toBe("VIP MC 2");
+  });
+
   it("adds a component to the root, marks dirty, undoes", () => {
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
     controller.addComponent("shape");
@@ -82,6 +127,20 @@ describe("createArtCompositionsController", () => {
     controller.undo();
     expect(controller.getState().compositions[0].components).toHaveLength(0);
     expect(controller.getState().dirty).toBe(false);
+  });
+
+  it("creates new shapes with visible Party Game defaults", () => {
+    const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
+
+    controller.addComponent("shape");
+
+    expect(controller.getState().compositions[0].components[0]).toMatchObject({
+      shapeStyle: "rounded",
+      fillColor: "#fff8d6",
+      borderColor: "#17131f",
+      borderWidth: 5,
+      borderRadius: 16
+    });
   });
 
   it("nests a component into a selected container", () => {
@@ -473,6 +532,27 @@ describe("createArtCompositionsController", () => {
     controller.selectComponent(id);
     controller.removeSelectedComponents();
     expect(controller.getState().compositions[0].components).toHaveLength(0);
+  });
+
+  it("renames code-facing instance labels while rejecting invalid or duplicate names with feedback", () => {
+    const initial = composition("a");
+    initial.components = [
+      { id: "left", name: "Left Container", instanceLabel: "leftContainer", kind: "container" },
+      { id: "right", name: "Right Container", instanceLabel: "rightContainer", kind: "container" }
+    ] as never;
+    const controller = createArtCompositionsController({ initialCompositions: [initial], api: fakeApi() });
+
+    controller.updateComponent("left", { instanceLabel: "containerLeft" });
+    expect(controller.getState().compositions[0].components[0].instanceLabel).toBe("containerLeft");
+    expect(controller.getState().error).toBeNull();
+
+    controller.updateComponent("left", { instanceLabel: "container left" });
+    expect(controller.getState().compositions[0].components[0].instanceLabel).toBe("containerLeft");
+    expect(controller.getState().error).toContain("unique lower-camel identifier");
+
+    controller.updateComponent("left", { instanceLabel: "rightContainer" });
+    expect(controller.getState().compositions[0].components[0].instanceLabel).toBe("containerLeft");
+    expect(controller.getState().error).toContain("unique lower-camel identifier");
   });
 
   it("removes selected component descendants plus their tracks and nested commands", () => {

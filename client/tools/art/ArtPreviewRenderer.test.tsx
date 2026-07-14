@@ -108,6 +108,30 @@ describe("ArtPreviewRenderer transform origins", () => {
     expect(markup).toContain('data-art-component-locked="true"');
   });
 
+  it("shows faint editor-only bounds for editable containers", () => {
+    const container = {
+      id: "votes",
+      name: "Votes",
+      kind: "container",
+      x: 100,
+      y: 40,
+      width: 200,
+      height: 80,
+      opacity: 0
+    } as ArtComponent;
+
+    const editorMarkup = renderToStaticMarkup(
+      <ArtPreviewRenderer components={[container]} compositionById={new Map()} interactive />
+    );
+    const nonInteractiveMarkup = renderToStaticMarkup(
+      <ArtPreviewRenderer components={[container]} compositionById={new Map()} interactive={false} />
+    );
+
+    expect(editorMarkup).toContain("data-art-container-bounds");
+    expect(editorMarkup).toContain("rgba(34, 211, 238, 0.1)");
+    expect(nonInteractiveMarkup).not.toContain("data-art-container-bounds");
+  });
+
   it("normalizes referenced artwork to its tight visual bounds", () => {
     const vip = {
       id: "player-vip-widget",

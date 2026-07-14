@@ -153,6 +153,7 @@ export function ArtCompositionBrowser({
         <button
           type="button"
           aria-current={compositionId === selectedCompositionId ? "true" : undefined}
+          title="Select composition. Option+Command+D duplicates it."
           onClick={() => compositionsController.selectComposition(compositionId)}
           onKeyDown={deleteCompositionFromKey}
         >

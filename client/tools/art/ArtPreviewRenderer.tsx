@@ -214,6 +214,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const fontColor = String(textFieldFor(component, props, "fontColor", timelineValue("fontColor", get(component, "fontColor") || "#17131f")));
 
     const chromeVisible = layer.interactive !== false && (selected || contentOpacity <= 0.01);
+    const containerGuideVisible = kind === "container" && props.interactive !== false && layer.interactive !== false;
 
     const style: CSSProperties = {
       position: "absolute",
@@ -282,6 +283,15 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       opacity: 1
     };
 
+    const containerGuideStyle: CSSProperties = {
+      position: "absolute",
+      inset: 0,
+      background: "rgba(34, 211, 238, 0.1)",
+      border: "1px dashed rgba(23, 19, 31, 0.38)",
+      boxSizing: "border-box",
+      pointerEvents: "none"
+    };
+
     return (
       <div
         key={component.id}
@@ -302,6 +312,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
         }
         onDoubleClick={interactive && props.onOpenTimelineScope ? (event) => props.onOpenTimelineScope?.(component, event) : undefined}
       >
+        {containerGuideVisible ? <div data-art-container-bounds style={containerGuideStyle} /> : null}
         <div className="art-canvas-component-visual" style={visualStyle}>
           {isTextual ? (
             <span

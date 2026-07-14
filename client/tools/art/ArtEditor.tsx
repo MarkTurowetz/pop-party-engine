@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ArtAssetsController } from "./artAssetsController";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
-import type { OrgSurface } from "./organizationModel";
+import { itemKey, type OrgSurface } from "./organizationModel";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import { ArtCompositionBrowser } from "./ArtCompositionBrowser";
 import { ArtCompositionEditor } from "./ArtCompositionEditor";
@@ -19,6 +19,17 @@ export interface ArtEditorProps {
 
 function surfaceForComposition(surface: unknown): OrgSurface {
   return surface === "controller" ? "controller" : "stage";
+}
+
+export function isArtCompositionDuplicateShortcut(
+  event: Pick<KeyboardEvent, "altKey" | "ctrlKey" | "key" | "metaKey" | "repeat" | "shiftKey">
+): boolean {
+  return event.metaKey && event.altKey && !event.ctrlKey && !event.shiftKey && !event.repeat && event.key.toLowerCase() === "d";
+}
+
+function isEditableShortcutTarget(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null;
+  return Boolean(element?.closest?.("input, textarea, select, [contenteditable='true']"));
 }
 
 /**
@@ -46,6 +57,30 @@ export function ArtEditor({
   useEffect(() => {
     organizationController.setSourceItems(compositionsState.compositions, assets);
   }, [assets, compositionsState.compositions, organizationController]);
+  useEffect(() => {
+    const duplicateSelectedComposition = (event: KeyboardEvent) => {
+      if (!isArtCompositionDuplicateShortcut(event) || isEditableShortcutTarget(event.target)) return;
+      const source = compositionsState.compositions.find(
+        (composition) => composition.id === compositionsState.selectedCompositionId
+      );
+      if (!source) return;
+      event.preventDefault();
+      const sourceKey = itemKey(source);
+      const sourceSurface = surfaceForComposition(source.surface);
+      const organizationSurface = organizationState.organization[sourceSurface];
+      const sourceIsOrganized =
+        organizationSurface.order.includes(sourceKey) ||
+        Object.values(organizationSurface.folderItems).some((keys) => keys.includes(sourceKey));
+      const duplicate = compositionsController.duplicateComposition(source.id);
+      if (!duplicate) return;
+      if (sourceIsOrganized) {
+        organizationController.moveBeside(sourceSurface, itemKey(duplicate), sourceKey, true);
+      }
+      setSurfaceFilter(sourceSurface);
+    };
+    window.addEventListener("keydown", duplicateSelectedComposition);
+    return () => window.removeEventListener("keydown", duplicateSelectedComposition);
+  }, [compositionsController, compositionsState.compositions, compositionsState.selectedCompositionId, organizationController, organizationState.organization]);
   const sidebar = (
     <ArtCompositionBrowser
       compositionsController={compositionsController}

@@ -57,6 +57,7 @@ export interface ArtCompositionsController {
   getState(): ArtCompositionsEditorState;
   subscribe(listener: () => void): () => void;
   createComposition(kind: ArtCompositionKind, surface: string, name?: string): ArtComposition;
+  duplicateComposition(compositionId: string): ArtComposition | null;
   createPrefabFromComponents(sourceCompositionId: string, componentIds: Iterable<string>, name: string): ArtComposition | null;
   updateComposition(compositionId: string, patch: Partial<ArtComposition>): void;
   selectComposition(compositionId: string): void;
@@ -112,6 +113,17 @@ function uniqueCompositionId(name: string, kind: ArtCompositionKind, composition
   let index = 2;
   while (used.has(`${base}-${index}`)) index += 1;
   return `${base}-${index}`;
+}
+
+function duplicateCompositionName(name: string, compositions: ArtComposition[]): string {
+  const cleanName = cleanCompositionName(name, "Composition");
+  const numbered = cleanName.match(/^(.*?)(?:\s+(\d+))?$/);
+  const base = String(numbered?.[1] || cleanName).trim() || "Composition";
+  const startingNumber = numbered?.[2] ? Number(numbered[2]) + 1 : 1;
+  const usedNames = new Set(compositions.map((composition) => String(composition.name || "").trim().toLowerCase()));
+  let suffix = Math.max(1, startingNumber);
+  while (usedNames.has(`${base} ${suffix}`.toLowerCase())) suffix += 1;
+  return `${base} ${suffix}`;
 }
 
 function createComposition(kind: ArtCompositionKind, surface: string, name: string | undefined, compositions: ArtComposition[]): ArtComposition {
@@ -270,6 +282,13 @@ function createComponent(
     component.imageObjectFit = "contain";
     component.imageTint = "currentColor";
     component.spriteRenderMode = "original";
+  }
+  if (cleanKind === "shape") {
+    component.shapeStyle = "rounded";
+    component.fillColor = "#fff8d6";
+    component.borderColor = "#17131f";
+    component.borderWidth = 5;
+    component.borderRadius = 16;
   }
   return component as ArtComponent;
 }
@@ -611,6 +630,32 @@ export function createArtCompositionsController(
       });
       return next;
     },
+    duplicateComposition: (compositionId) => {
+      if (pendingMigrationSummary) return null;
+      const sourceIndex = compositions.findIndex((composition) => composition.id === compositionId);
+      const source = compositions[sourceIndex];
+      if (!source) return null;
+      const idMap = new Map<string, string>();
+      const components = (source.components || []).map((component) => cloneComponentForPrefab(component, idMap));
+      for (const component of components) applyClonedTimelineIds(component, idMap);
+      const name = duplicateCompositionName(source.name, compositions);
+      const kind = normalizeArtCompositionKind(source.compositionKind);
+      const clonedSource = JSON.parse(JSON.stringify(source)) as ArtComposition;
+      const next = hydrateArtCompositionForEditing({
+        ...clonedSource,
+        id: uniqueCompositionId(name, kind, compositions),
+        name,
+        isCustom: true,
+        components,
+        timeline: cloneTimelineWithIds(source.timeline, idMap)
+      });
+      mutateAll(() => {
+        compositions = [...compositions.slice(0, sourceIndex + 1), next, ...compositions.slice(sourceIndex + 1)];
+        selectedCompositionId = next.id;
+        selectedComponentIds = new Set();
+      });
+      return next;
+    },
     createPrefabFromComponents: (sourceCompositionId, componentIds, name) => {
       const source = compositions.find((composition) => composition.id === sourceCompositionId);
       const selected = selectedRootComponents(source?.components || [], new Set(componentIds));
@@ -772,10 +817,12 @@ export function createArtCompositionsController(
           }
           const referenced = referencedCompositionFor(composition, String(patch.artCompositionId || ""));
           Object.assign(component, referenced ? referenceComponentPatch(referenced, compositions) : patch);
+          error = null;
           return;
         }
         Object.assign(component, patch);
         Object.assign(component, hydrateArtComponentForEditing(component));
+        error = null;
       }),
     swapReferenceGameObject: (componentId, compositionId) =>
       mutateSelected((composition) => {

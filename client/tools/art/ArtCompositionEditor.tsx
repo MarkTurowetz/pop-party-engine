@@ -442,7 +442,7 @@ function isCommandMarkerSelected(selection: TimelineMarkerSelection | null, comm
 }
 
 export function ArtCompositionEditor({ controller, assets }: ArtCompositionEditorProps) {
-  const { compositions, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo, migrationSummary } =
+  const { compositions, selectedCompositionId, selectedComponentIds, dirty, saving, canUndo, canRedo, error, migrationSummary } =
     useArtCompositions(controller);
   const dragRef = useRef<{
     targets: ArtCanvasTransformTarget[];
@@ -1222,6 +1222,11 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           </span>
         </div>
       ) : null}
+      {error ? (
+        <div className="flow-react-panel" data-art-compositions-error role="alert">
+          <strong>{error}</strong>
+        </div>
+      ) : null}
 
       <div className="art-studio-layout">
         <section className="art-preview-panel" data-art-react-component="canvas">
@@ -1660,7 +1665,11 @@ function ArtComponentInspector({
             defaultValue={String(get(primaryComponent, "name") ?? "")}
             data-art-component-field="name"
             onBlur={(event) => commitBase({ name: event.target.value } as Partial<ArtComponent>)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
           />
+          <small>Display name shown in the editor.</small>
         </label>
       ) : null}
       {!isMultiSelect ? (
@@ -1671,8 +1680,16 @@ function ArtComponentInspector({
             key={`${primaryComponent.id}-instance-label-${primaryComponent.instanceLabel || ""}`}
             defaultValue={String(primaryComponent.instanceLabel || "")}
             data-art-component-field="instanceLabel"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="containerLeft"
             onBlur={(event) => commitBase({ instanceLabel: event.target.value } as Partial<ArtComponent>)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
           />
+          <small>Code name: unique lowerCamelCase, such as containerLeft.</small>
         </label>
       ) : null}
       {SCALAR_FIELDS.map((field) => numberField(field.key, field.label))}
