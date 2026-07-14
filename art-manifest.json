@@ -8513,7 +8513,7 @@
     },
     "prefab-voting-card-voters-mc": {
       "name": "Voting Card Voters MC",
-      "description": "Independently animated voter container with a reusable vote widget template.",
+      "description": "Collection gate and horizontal spawn container for independently animated Voting Card Voter MC instances.",
       "surface": "stage",
       "compositionKind": "prefab",
       "isCustom": true,
@@ -8535,7 +8535,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "On",
+          "defaultAnimationState": "",
           "childDistribution": "horizontal",
           "shapeStyle": "rectangle",
           "fillColor": "transparent",
@@ -8549,40 +8549,30 @@
           "transformOrigin": "center",
           "children": [
             {
-              "id": "voting-card-vote-widget",
-              "name": "Voting Card Vote Widget",
-              "instanceLabel": "voteWidget",
-              "kind": "badge",
-              "x": 250,
-              "y": 24,
+              "id": "voting-card-voter-mc",
+              "name": "Voting Card Voter MC Template",
+              "instanceLabel": "voter",
+              "kind": "reference",
+              "x": 56,
+              "y": 16,
               "width": 112,
               "height": 32,
               "scale": 1,
               "rotation": 0,
-              "locked": false,
-              "defaultAnimationState": "Park",
-              "defaultText": "PLAYER",
-              "fontSize": 15,
-              "autoFitText": true,
-              "fontColor": "#17131f",
-              "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
-              "shapeStyle": "rounded",
-              "fillColor": "#fff8d6",
-              "fillCss": "",
-              "borderColor": "#17131f",
-              "borderWidth": 2,
-              "borderRadius": 999,
               "opacity": 1,
               "visible": true,
               "editorHidden": false,
-              "transformOrigin": "center"
+              "transformOrigin": "center",
+              "locked": false,
+              "defaultAnimationState": "Off",
+              "artCompositionId": "prefab-voting-card-voter-mc"
             }
           ]
         }
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 33,
+        "frameCount": 2,
         "labels": [
           {
             "name": "Off",
@@ -8595,229 +8585,39 @@
           {
             "name": "On",
             "frame": 1
-          },
-          {
-            "name": "Appear",
-            "frame": 2
-          },
-          {
-            "name": "Update",
-            "frame": 13
-          },
-          {
-            "name": "Disappear",
-            "frame": 17
           }
         ],
         "commandFrames": [
           0,
-          1,
-          2,
-          12,
-          13,
-          16,
-          32
+          1
         ],
         "commands": [
           {
+            "id": "stop-0",
             "frame": 0,
-            "type": "stop",
-            "id": "stop-0"
+            "type": "stop"
           },
           {
+            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
+            "id": "stop-1",
             "frame": 1,
-            "type": "stop",
-            "id": "stop-1"
+            "type": "stop"
           },
           {
-            "frame": 1,
-            "type": "setVisible",
             "id": "setvisible-1-true",
-            "target": "true"
-          },
-          {
-            "frame": 2,
+            "frame": 1,
             "type": "setVisible",
-            "id": "setvisible-2-true",
             "target": "true"
-          },
-          {
-            "frame": 12,
-            "type": "stop",
-            "id": "stop-12"
-          },
-          {
-            "frame": 13,
-            "type": "setVisible",
-            "id": "setvisible-13-true",
-            "target": "true"
-          },
-          {
-            "frame": 16,
-            "type": "stop",
-            "id": "stop-16"
-          },
-          {
-            "frame": 32,
-            "type": "stop",
-            "id": "stop-32"
-          },
-          {
-            "frame": 32,
-            "type": "setVisible",
-            "id": "setvisible-32-false",
-            "target": "false"
           }
         ],
-        "tracks": [
-          {
-            "id": "track-voting-card-voter-container",
-            "targetId": "voting-card-voter-container",
-            "keyframes": [
-              {
-                "id": "key-voting-card-voter-container-0",
-                "frame": 0,
-                "props": {
-                  "opacity": 1,
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 1,
-                  "rotation": 0
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "key-voting-card-voter-container-2",
-                "frame": 2,
-                "props": {
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 0,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "key-voting-card-voter-container-9",
-                "frame": 9,
-                "props": {
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 1.2,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "key-voting-card-voter-container-12",
-                "frame": 12,
-                "props": {
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "key-voting-card-voter-container-13",
-                "frame": 13,
-                "props": {
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 1.2,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeInOut"
-              },
-              {
-                "id": "key-voting-card-voter-container-16",
-                "frame": 16,
-                "props": {
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "key-voting-card-voter-container-17",
-                "frame": 17,
-                "props": {
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeIn"
-              },
-              {
-                "id": "key-voting-card-voter-container-22",
-                "frame": 22,
-                "props": {
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 1.2,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "easeIn"
-              },
-              {
-                "id": "key-voting-card-voter-container-32",
-                "frame": 32,
-                "props": {
-                  "x": 250,
-                  "y": 24,
-                  "width": 500,
-                  "height": 48,
-                  "scale": 0,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true
-                },
-                "easing": "hold"
-              }
-            ]
-          }
-        ]
+        "tracks": []
       },
-      "updatedAt": "2026-07-13T03:08:11.234Z"
+      "updatedAt": "2026-07-14T07:48:38.736Z"
     },
     "prefab-voting-card-vote-count-mc": {
       "name": "Voting Card Vote Count MC",
@@ -9092,7 +8892,7 @@
     },
     "prefab-voting-card-mc": {
       "name": "Voting Card Widget MC",
-      "description": "Compound voting-card widget with independently animated answer, author, and vote-count children.",
+      "description": "Compound voting-card widget with independently animated answer, author, vote-count, and spawned voter children.",
       "surface": "stage",
       "compositionKind": "prefab",
       "isCustom": true,
@@ -9139,6 +8939,25 @@
           "locked": false,
           "defaultAnimationState": "Off",
           "artCompositionId": "prefab-voting-card-author-mc"
+        },
+        {
+          "id": "voting-card-voters-mc",
+          "name": "Voting Card Voters MC",
+          "instanceLabel": "voters",
+          "kind": "reference",
+          "x": 278,
+          "y": 188,
+          "width": 500,
+          "height": 48,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Off",
+          "artCompositionId": "prefab-voting-card-voters-mc"
         },
         {
           "id": "voting-card-answer-mc",
@@ -9227,7 +9046,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-14T07:27:52.857Z"
+      "updatedAt": "2026-07-14T07:48:38.736Z"
     },
     "prefab-untitled-prefab": {
       "name": "Voting Card Answer Text",
@@ -10361,6 +10180,414 @@
         ]
       },
       "updatedAt": "2026-07-14T07:20:41.258Z"
+    },
+    "prefab-voting-card-voter": {
+      "name": "Voting Card Voter",
+      "description": "Base visual and state prefab for one named voter.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 112,
+        "height": 32
+      },
+      "components": [
+        {
+          "x": 56,
+          "y": 16,
+          "width": 112,
+          "height": 32,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "id": "voting-card-voter-text",
+          "name": "Player Name",
+          "instanceLabel": "playerName",
+          "kind": "text",
+          "defaultText": "PLAYER",
+          "fontSize": 15,
+          "autoFitText": true,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "x": 56,
+          "y": 16,
+          "width": 112,
+          "height": 32,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "id": "voting-card-voter-background",
+          "name": "Voter Background",
+          "instanceLabel": "background",
+          "kind": "shape",
+          "shapeStyle": "rounded",
+          "fillColor": "#fff8d6",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 2,
+          "borderRadius": 999
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-voting-card-voter-text",
+            "targetId": "voting-card-voter-text",
+            "keyframes": [
+              {
+                "id": "key-voting-card-voter-text-0",
+                "frame": 0,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "defaultText": "PLAYER",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 15,
+                  "fontColor": "#17131f",
+                  "autoFitText": true
+                },
+                "easing": "hold"
+              }
+            ]
+          },
+          {
+            "id": "track-voting-card-voter-background",
+            "targetId": "voting-card-voter-background",
+            "keyframes": [
+              {
+                "id": "key-voting-card-voter-background-0",
+                "frame": 0,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "fillColor": "#fff8d6",
+                  "borderColor": "#17131f",
+                  "borderWidth": 2,
+                  "borderRadius": 999
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-14T07:48:38.736Z"
+    },
+    "prefab-voting-card-voter-mc": {
+      "name": "Voting Card Voter MC",
+      "description": "Lifecycle-animation wrapper for one spawned Voting Card Voter instance.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 112,
+        "height": 32
+      },
+      "components": [
+        {
+          "x": 56,
+          "y": 16,
+          "width": 112,
+          "height": 32,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "id": "reference-voting-card-voter",
+          "name": "Voting Card Voter",
+          "instanceLabel": "votingCardVoter",
+          "kind": "reference",
+          "artCompositionId": "prefab-voting-card-voter"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 33,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 13
+          },
+          {
+            "name": "Disappear",
+            "frame": 17
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          32
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-reference-voting-card-voter",
+            "targetId": "reference-voting-card-voter",
+            "keyframes": [
+              {
+                "id": "key-reference-voting-card-voter-0",
+                "frame": 0,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-voting-card-voter-2",
+                "frame": 2,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-voting-card-voter-9",
+                "frame": 9,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-voting-card-voter-12",
+                "frame": 12,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-voting-card-voter-13",
+                "frame": 13,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-reference-voting-card-voter-16",
+                "frame": 16,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-reference-voting-card-voter-17",
+                "frame": 17,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-reference-voting-card-voter-22",
+                "frame": 22,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-reference-voting-card-voter-32",
+                "frame": 32,
+                "props": {
+                  "x": 56,
+                  "y": 16,
+                  "width": 112,
+                  "height": 32,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-14T07:48:38.736Z"
     }
   },
   "deletedCompositionIds": [],
@@ -10442,7 +10669,6 @@
           "composition:crafting-timer-widget",
           "composition:prefab-voting-card-art-mc",
           "composition:prefab-voting-card-answer-mc",
-          "composition:prefab-voting-card-voters-mc",
           "composition:prefab-voting-card-correctness-state"
         ],
         "folder-fc45b1fa-922d-4073-a707-9b4995172227": [
@@ -10457,6 +10683,9 @@
           "composition:prefab-voting-card-vote-count-mc",
           "composition:prefab-voting-card-author-text",
           "composition:prefab-voting-card-author-mc",
+          "composition:prefab-voting-card-voter",
+          "composition:prefab-voting-card-voter-mc",
+          "composition:prefab-voting-card-voters-mc",
           "composition:prefab-voting-card-mc"
         ]
       }
