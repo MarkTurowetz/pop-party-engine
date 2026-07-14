@@ -8903,6 +8903,31 @@
       },
       "components": [
         {
+          "id": "container-9cb2be9811f9",
+          "name": "Container",
+          "instanceLabel": "container",
+          "kind": "container",
+          "x": 280,
+          "y": 300,
+          "width": 450,
+          "height": 100,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "childDistribution": "horizontal",
+          "shapeStyle": "rectangle",
+          "fillColor": "transparent",
+          "fillCss": "",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0
+        },
+        {
           "id": "voting-card-vote-count-mc",
           "name": "Voting Card Vote Count MC",
           "instanceLabel": "voteCount",
@@ -8977,31 +9002,6 @@
           "locked": false,
           "defaultAnimationState": "Off",
           "artCompositionId": "prefab-untitled-prefab-3"
-        },
-        {
-          "id": "container-9cb2be9811f9",
-          "name": "Container",
-          "instanceLabel": "container",
-          "kind": "container",
-          "x": 280,
-          "y": 300,
-          "width": 450,
-          "height": 100,
-          "scale": 1,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center",
-          "locked": false,
-          "defaultAnimationState": "",
-          "childDistribution": "horizontal",
-          "shapeStyle": "rectangle",
-          "fillColor": "transparent",
-          "fillCss": "",
-          "borderColor": "transparent",
-          "borderWidth": 0,
-          "borderRadius": 0
         }
       ],
       "timeline": {
@@ -9091,7 +9091,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-14T07:59:01.954Z"
+      "updatedAt": "2026-07-14T08:01:09.265Z"
     },
     "prefab-untitled-prefab": {
       "name": "Voting Card Answer Text",
