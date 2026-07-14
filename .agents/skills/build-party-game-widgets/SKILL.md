@@ -1,6 +1,6 @@
 ---
 name: build-party-game-widgets
-description: Construct and review layered Art Manager prefabs for Party Game Template using separate visual-state, lifecycle-animation, and compound-widget timelines. Use when creating, refactoring, migrating, wiring, or debugging text fields, voting cards, player widgets, MC-style prefab hierarchies, child timeline commands, semantic states, reveal animations, or other reusable game objects in this repository.
+description: Construct and review layered Art Manager prefabs for Party Game Template using separate visual-state, lifecycle-animation, compound-widget, and dynamic-collection responsibilities. Use when creating, refactoring, migrating, wiring, or debugging text fields, voting cards, player widgets, MC-style prefab hierarchies, layout containers, runtime-spawned item prefabs, child timeline commands, semantic states, reveal animations, or other reusable game objects in this repository.
 ---
 
 # Build Party Game Widgets
@@ -50,6 +50,28 @@ Own assembly, child independence, and optional group choreography here.
 - Add parent-level position or tween choreography only when multiple children must move as a group.
 - Keep child layers independently selectable, lockable, hideable, and sortable.
 
+## Build dynamic collections with layout containers
+
+Use a layout container when gameplay determines how many repeated items exist.
+
+```text
+Compound Widget MC
+└── Layout Container
+    ├── Spawned Item MC
+    ├── Spawned Item MC
+    └── Spawned Item MC
+```
+
+- Let the transparent container own horizontal or vertical distribution, spacing, alignment, and reflow.
+- Spawn a uniquely identified Item MC reference into the container for each runtime item. Keep the Item MC's source width and height intrinsic.
+- Set dynamic content and theme values on the spawned item's deepest base components, then play the Item MC's `Appear`, `Update`, or `Disappear` animation.
+- Play `Disappear` before removing an item. Remove it after the animation completes so the container can reflow the remaining children.
+- Keep the container at the correct layer in the compound widget; every spawned child inherits that position in the visual stack.
+- Put the layout container directly in the compound widget when it only serves that widget. Add a separate collection MC only when the collection itself needs reusable state, animation, or group choreography.
+- Use this pattern for player rosters, votes, answers, leaderboard rows, inventory items, notifications, badges, reactions, and other variable-length repeated elements.
+
+For the voting card, put a horizontal voter container directly in `Voting Card Widget MC` and spawn `Voting Card Voter MC` references into it. Each voter controls its own lifecycle; the container controls only placement and reflow.
+
 ## Order visual layers deliberately
 
 Treat the Art Manager layer list as a visual stack: layers nearer the top render above layers beneath them.
@@ -89,13 +111,14 @@ Remove runtime code that assigns lifecycle visibility, opacity, scale, rotation,
 
 ## Construction workflow
 
-1. Inventory required content, semantic states, lifecycle animations, and possible group choreography.
+1. Inventory required content, semantic states, lifecycle animations, dynamic item counts, and possible group choreography.
 2. Split those concerns across the three ownership levels.
 3. Build and verify the base visual/state prefab first.
 4. Wrap it in an animated MC and reproduce the standard lifecycle labels and commands.
 5. Add animated MCs to a compound widget with unique lower-camel instance labels and deliberate top-to-bottom visual stacking.
-6. Wire runtime code to semantic state selection and explicit lifecycle calls.
-7. Verify nested previews, frame-zero bounds, layer order, timeline commands, and runtime transitions.
+6. For variable-length groups, add a distribution container and spawn uniquely identified Item MC references into it at runtime.
+7. Wire runtime code to dynamic data, semantic state selection, and explicit lifecycle calls.
+8. Verify nested previews, frame-zero bounds, layer order, distribution/reflow, timeline commands, and runtime transitions.
 
 ## Validation checklist
 
@@ -109,6 +132,9 @@ Remove runtime code that assigns lifecycle visibility, opacity, scale, rotation,
 - Confirm foreground text, icons, counts, author labels, and badges remain visible when every intended background is shown.
 - Confirm large filled children are below the smaller overlays they could otherwise cover.
 - Confirm data-driven text and fill colors target labeled base components without competing with lifecycle animation properties.
+- Confirm a dynamic container positions its children without runtime-authored per-item coordinates.
+- Confirm every spawned item has an independent identity and lifecycle timeline.
+- Confirm disappearing items finish their animation before removal and remaining items reflow correctly.
 - Confirm game code contains no competing CSS/class visibility or animation assignments.
 - Confirm animation labels start uppercase and instance labels start lowercase.
 - Preserve existing authored data and avoid migrations or saves outside the requested widget scope.
@@ -121,6 +147,9 @@ Remove runtime code that assigns lifecycle visibility, opacity, scale, rotation,
 - Revealing all compound children implicitly from the top-level `On` state.
 - Placing an opaque background-bearing child above text, counts, author labels, or other information it can obscure.
 - Assuming creation order produces the correct visual stack without checking the fully composed preview.
+- Hard-coding positions for repeated runtime items that belong in a distribution container.
+- Animating the whole collection when each spawned item must appear or disappear independently.
+- Adding an unnecessary collection MC around a container that belongs directly to one compound widget.
 - Driving timeline-owned visuals through runtime CSS or direct opacity/visibility writes.
 - Referencing descendants by unstable generated ids.
 - Freezing parent reference dimensions so child source changes cannot propagate.
