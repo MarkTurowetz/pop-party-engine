@@ -9103,25 +9103,6 @@
       },
       "components": [
         {
-          "id": "voting-card-answer-mc",
-          "name": "Voting Card Answer",
-          "instanceLabel": "answer",
-          "kind": "reference",
-          "x": 280,
-          "y": 115,
-          "width": 560,
-          "height": 230,
-          "scale": 1,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center",
-          "locked": false,
-          "defaultAnimationState": "Off",
-          "artCompositionId": "prefab-untitled-prefab-3"
-        },
-        {
           "id": "voting-card-author-mc",
           "name": "Voting Card Author MC",
           "instanceLabel": "author",
@@ -9129,7 +9110,7 @@
           "x": 280,
           "y": 32,
           "width": 340,
-          "height": 28,
+          "height": 32,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -9139,6 +9120,25 @@
           "locked": false,
           "defaultAnimationState": "Off",
           "artCompositionId": "prefab-voting-card-author-mc"
+        },
+        {
+          "id": "voting-card-answer-mc",
+          "name": "Voting Card Answer",
+          "instanceLabel": "answer",
+          "kind": "reference",
+          "x": 280,
+          "y": 115,
+          "width": 520,
+          "height": 150,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Off",
+          "artCompositionId": "prefab-untitled-prefab-3"
         },
         {
           "id": "voting-card-vote-count-mc",
@@ -9183,31 +9183,51 @@
         ],
         "commands": [
           {
-            "id": "stop-0",
             "frame": 0,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-0"
           },
           {
-            "id": "setvisible-0-false",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
-            "id": "stop-1",
             "frame": 1,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-1"
           },
           {
-            "id": "setvisible-1-true",
             "frame": 1,
             "type": "setVisible",
+            "id": "setvisible-1-true",
             "target": "true"
           }
         ],
-        "tracks": []
+        "tracks": [
+          {
+            "id": "track-voting-card-author-mc",
+            "targetId": "voting-card-author-mc",
+            "keyframes": [
+              {
+                "id": "key-voting-card-author-mc-0",
+                "frame": 0,
+                "props": {
+                  "x": 280,
+                  "y": 43.706,
+                  "width": 340,
+                  "height": 32,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
       },
-      "updatedAt": "2026-07-14T07:20:41.258Z"
+      "updatedAt": "2026-07-14T07:27:07.774Z"
     },
     "prefab-untitled-prefab": {
       "name": "Voting Card Answer Text",
