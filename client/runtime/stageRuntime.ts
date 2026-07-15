@@ -22,6 +22,8 @@ declare global {
     normalizeTextTargetId?: (value: unknown) => string;
     applyStageLayoutTextProperties?: (target: El, element: Dict) => void;
     applyStageLayoutForPhase?: (phase: string) => void;
+    resetStageMomentLayout?: () => void;
+    stageMomentLayoutReadiness?: () => Dict;
     applyControllerLayoutForPhase?: (phase: string) => void;
     setStageLayoutGameObjectShownForAction?: (action: Dict, options?: Dict) => unknown;
     setStageLayoutArtElementShownForAction?: (action: Dict, options?: Dict) => unknown;
@@ -409,8 +411,36 @@ function resetStageObjects(options: Dict = {}): void {
   clearStageAudioPlayers();
   (craftingTimerController() as { reset?: () => void } | null)?.reset?.();
   (playerRosterRenderer() as { resetAnswerBubbles?: () => void } | null)?.resetAnswerBubbles?.();
-  (playerRosterRenderer() as { clearPointPopupIds?: () => void } | null)?.clearPointPopupIds?.();
+  (playerRosterRenderer() as { clearPointPopups?: () => void } | null)?.clearPointPopups?.();
   clearVotingCardVisuals({ instant: true });
+  initStageTextObjects();
+}
+
+async function startCurrentMomentForAction(_action: Dict, options: Dict = {}): Promise<void> {
+  const actionKey = String(options.actionKey || "");
+  await Promise.all([
+    w().loadArtAssets!(),
+    w().loadStageLayouts!({ forceServer: true })
+  ]);
+  if (actionKey && currentRenderedActionKey() !== actionKey) return;
+  const state = w().currentStageState as Dict | null;
+  if (!state) throw new Error("Current moment state unavailable");
+  applyStageState(state);
+  const readiness = w().stageMomentLayoutReadiness?.() || { ready: true, missingElementIds: [] };
+  if (readiness.ready === false) {
+    throw new Error(`Moment elements unavailable: ${((readiness.missingElementIds as string[]) || []).join(", ")}`);
+  }
+}
+
+async function endCurrentMomentForAction(_action: Dict, options: Dict = {}): Promise<void> {
+  const actionKey = String(options.actionKey || "");
+  if (actionKey && currentRenderedActionKey() !== actionKey) return;
+  clearStageAudioPlayers();
+  (craftingTimerController() as { reset?: () => void } | null)?.reset?.();
+  (playerRosterRenderer() as { resetAnswerBubbles?: () => void; clearPointPopups?: () => void } | null)?.resetAnswerBubbles?.();
+  (playerRosterRenderer() as { clearPointPopups?: () => void } | null)?.clearPointPopups?.();
+  clearVotingCardVisuals({ instant: true });
+  w().resetStageMomentLayout?.();
   initStageTextObjects();
 }
 
@@ -771,7 +801,7 @@ let stageActionRunner: Dict | null = null;
 function getStageActionRunner(): Dict | null {
   if (!stageActionRunner && w().PartyGameStageActionRunners) {
     stageActionRunner = (w().PartyGameStageActionRunners as unknown as { createRunner: (o: Dict) => Dict }).createRunner({
-      applyFlowActionEffect, completeFlowAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, revealPlayerAnswerCorrectnessForAction,
+      applyFlowActionEffect, completeFlowAction, endCurrentMomentForAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, revealPlayerAnswerCorrectnessForAction, startCurrentMomentForAction,
       playStageLayoutGameObjectAnimationForAction: playStageLayoutGameObjectAnimationForStageAction, runStageWipe, runVotingCardActionForAction, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShownForAction, setPlayersShownForAction, setPresentationClickPromptForAction, setStageWipeShownForAction, setStageTextObjectForAction, showPointPopupsForAction
     });
   }

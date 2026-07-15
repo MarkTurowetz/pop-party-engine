@@ -55,6 +55,8 @@ function completeWhenActionTargetsFinish(action: Action, runtime: Runtime, resul
 
 const fallbackRunnerDefinitions: RunnerDefinition[] = [
   { type: "doNothing", runner: "immediateComplete" },
+  { type: "startMoment", runner: "startMoment" },
+  { type: "endMoment", runner: "endMoment" },
   { type: "labelNode", runner: "immediateComplete" },
   { type: "codeNode", runner: "serverEffect" },
   { type: "subroutine", runner: "immediateComplete" },
@@ -100,6 +102,18 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
   return {
     immediateComplete(action, runtime) {
       completeWhenActionTargetsFinish(action, runtime, undefined);
+    },
+    startMoment(action, runtime) {
+      const result = c.startCurrentMomentForAction
+        ? (c.startCurrentMomentForAction as (a: Action, o: Dict) => Promise<void>)(action, { actionKey: runtime.actionKey })
+        : Promise.reject(new Error("Moment start runtime unavailable"));
+      completeWhenActionTargetsFinish(action, runtime, result);
+    },
+    endMoment(action, runtime) {
+      const result = c.endCurrentMomentForAction
+        ? (c.endCurrentMomentForAction as (a: Action, o: Dict) => Promise<void>)(action, { actionKey: runtime.actionKey })
+        : Promise.reject(new Error("Moment end runtime unavailable"));
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     playAudio(action, runtime) {
       (c.playStageAudioAction as (a: Action, p: boolean, k?: string) => void)(action, runtime.isPrimary === true, runtime.actionKey);

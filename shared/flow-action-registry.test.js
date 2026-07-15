@@ -1,11 +1,16 @@
 import { createRequire } from "node:module";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const require = createRequire(import.meta.url);
-const { createFlowActionRegistry } = require("./flow-action-registry");
+const {
+  availableFlowActionTypes,
+  createFlowActionRegistry,
+  isCompletableStageActionType,
+  stageActionRunnerDefinitions
+} = require("./flow-action-registry");
 const { normalizeFlowId } = require("../server/value-normalizers");
 
-function registry() {
+function registry(extra = {}) {
   return createFlowActionRegistry({
     availableFlowTransitions: [],
     cleanChoiceOptions: () => [],
@@ -22,11 +27,36 @@ function registry() {
     normalizeLineIndex: () => 0,
     normalizePlayerFilter: () => "all",
     normalizeTextTarget: (value) => String(value || "presentation"),
-    normalizeVotingCardFilter: () => "all"
+    normalizeVotingCardFilter: () => "all",
+    ...extra
   });
 }
 
 describe("flow action registry", () => {
+  it.each([
+    ["startMoment", "Start Moment"],
+    ["endMoment", "End Moment"]
+  ])("registers %s as a primary stage lifecycle action", (type, name) => {
+    const actionRegistry = registry();
+    const available = availableFlowActionTypes.find((action) => action.id === type);
+    const runner = stageActionRunnerDefinitions.find((definition) => definition.type === type);
+
+    expect(available).toMatchObject({ id: type, name, category: "standard", primaryOnly: true });
+    expect(runner).toEqual({ actionId: type, type, runner: type });
+    expect(isCompletableStageActionType(type)).toBe(true);
+    expect(actionRegistry.publicAction({ type }, { id: type, name })).toMatchObject({ type });
+  });
+
+  it("runs the authoritative room reset only from End Moment", () => {
+    const endGameMoment = vi.fn();
+    const room = {};
+    const actionRegistry = registry({ endGameMoment });
+
+    expect(actionRegistry.applyRoomEffect(room, { type: "startMoment" })).toBe(false);
+    expect(actionRegistry.applyRoomEffect(room, { type: "endMoment" })).toBe(true);
+    expect(endGameMoment).toHaveBeenCalledWith(room);
+  });
+
   it("preserves exact nested component target paths for game object timeline actions", () => {
     const action = registry().normalizeAction(
       "playGameObjectAnimation",

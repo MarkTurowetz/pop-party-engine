@@ -243,6 +243,31 @@
             stageRunner: "immediateComplete"
         },
         {
+            id: "startMoment",
+            name: "Start Moment",
+            category: "standard",
+            canCompleteFromStage: true,
+            primaryOnly: true,
+            stageActionType: "startMoment",
+            stageRunner: "startMoment",
+            normalize: (action, base) => ({ ...base }),
+            toPublic: (action, base) => ({ ...base, type: "startMoment" })
+        },
+        {
+            id: "endMoment",
+            name: "End Moment",
+            category: "standard",
+            canCompleteFromStage: true,
+            primaryOnly: true,
+            stageActionType: "endMoment",
+            stageRunner: "endMoment",
+            normalize: (action, base) => ({ ...base }),
+            toPublic: (action, base) => ({ ...base, type: "endMoment" }),
+            applyRoomEffect: (room, _action, context) => {
+                context.endGameMoment?.(room);
+            }
+        },
+        {
             id: "labelNode",
             name: "Label Node",
             category: "standard",

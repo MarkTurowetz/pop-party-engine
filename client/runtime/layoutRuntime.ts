@@ -795,6 +795,30 @@ function applyStageLayoutForPhase(phase: string): void {
   }
 }
 
+function resetStageMomentLayout(): void {
+  const state = stageLayoutState(w().currentStageLayoutStateId);
+  for (const element of (state?.elements as Dict[]) || []) {
+    stageLayoutGameObjectVisibilityOverrides.delete(stageLayoutGameObjectVisibilityKey(element.id as string, false));
+    const target = stageLayoutTargetElement(element);
+    if (!target) continue;
+    const entity = registerStageLayoutEntity(element, target, false);
+    if (typeof entity?.stopAtAnimation === "function") {
+      (entity.stopAtAnimation as (animation: string, options: Dict) => number)("Off", { instant: true });
+      continue;
+    }
+    deactivateLayoutEntity(entity);
+  }
+}
+
+function stageMomentLayoutReadiness(): Dict {
+  const state = stageLayoutState(w().currentStageLayoutStateId);
+  const missingElementIds = ((state?.elements as Dict[]) || [])
+    .filter((element) => !stageLayoutTargetElement(element))
+    .map((element) => String(element.id || ""))
+    .filter(Boolean);
+  return { ready: missingElementIds.length === 0, missingElementIds };
+}
+
 function applyStageElementLayout(element: Dict, isGlobal: boolean, shouldInitialize = true): void {
   const target = stageLayoutTargetElement(element);
   if (!target) return;
@@ -1099,13 +1123,13 @@ Object.assign(w(), {
   createLayoutGameObjectRegistry, dynamicStageTextElementId, getOrCreateControllerArtInstance, getOrCreateDynamicStageTextElement, getOrCreateStageArtInstance,
   globalControllerLayout, globalStageLayout, isDynamicControllerArtInstance, isDynamicStageArtInstance, isLayoutTextArtElement,
   layoutDefaultText, layoutTextArtRenderOptions, layoutTextDefault, loadControllerLayouts, loadStageLayouts, normalizeTextTargetId,
-  registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances,
+  registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances, resetStageMomentLayout,
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
   stageLayoutGameObjectTargets, stageLayoutGameObjectVisibilityKey, stageLayoutGameObjectVisibilityOverrides, stageLayoutRegistryKeyForElement, stageLayoutState, stageLayoutStateForPhase,
-  stageLayoutTargetByElementId, stageLayoutTargetElement, stageLayoutTextDefault, textFieldPadding
+  stageLayoutTargetByElementId, stageLayoutTargetElement, stageLayoutTextDefault, stageMomentLayoutReadiness, textFieldPadding
 });
 
 export {};

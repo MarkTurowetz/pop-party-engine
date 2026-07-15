@@ -18,6 +18,7 @@ function resolveStoredAnswerRound(room, roundSpec) {
 function createRoomActionEffectsRuntime({
   activePlayers,
   clearDisplayedCorrectnessForPlayers,
+  endGameMoment,
   filteredPlayerIds,
   gameConstants,
   hasAppliedActionEffect,
@@ -38,6 +39,7 @@ function createRoomActionEffectsRuntime({
   const actionRegistry = createFlowActionRegistry({
     activePlayers,
     clearDisplayedCorrectnessForPlayers,
+    endGameMoment,
     filteredPlayerIds,
     gameConstants,
     markDisplayedAnswersCorrectness,

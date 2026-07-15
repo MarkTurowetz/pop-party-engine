@@ -588,6 +588,7 @@ const {
 const {
   advanceRoomFromMomentReturn,
   advanceRoomFromRouteAction,
+  endGameMoment,
   enterGamePhase,
   enterIntroPhase,
   enterLobbyPhase,
@@ -932,6 +933,7 @@ const {
 } = createRoomActionEffectsRuntime({
   activePlayers,
   clearDisplayedCorrectnessForPlayers,
+  endGameMoment,
   filteredPlayerIds,
   gameConstants,
   hasAppliedActionEffect,

@@ -13,6 +13,8 @@ function context() {
   return {
     applyFlowActionEffect: vi.fn(),
     completeFlowAction: vi.fn(),
+    startCurrentMomentForAction: vi.fn(() => Promise.resolve()),
+    endCurrentMomentForAction: vi.fn(() => Promise.resolve()),
     isCurrentActionKey: () => true,
     setStageTextObjectForAction: vi.fn(() => Promise.resolve()),
     runStageWipe: vi.fn(),
@@ -36,6 +38,41 @@ describe("PartyGameStageActionRunners (ported)", () => {
     const runner = PartyGameStageActionRunners.createRunner(c as never);
     runner.run({ id: "a1", type: "doNothing", timing: { mode: "E+", seconds: 0 } }, { isPrimary: true, actionKey: "k" });
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a1");
+  });
+
+  it.each([
+    ["startMoment", "startCurrentMomentForAction"],
+    ["endMoment", "endCurrentMomentForAction"]
+  ] as const)("waits for the exact %s lifecycle callback", async (type, method) => {
+    const c = context();
+    const lifecycle = deferred();
+    c[method].mockReturnValueOnce(lifecycle.promise);
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+
+    runner.run({ id: type, type, timing: { mode: "E+", seconds: 0 } }, { isPrimary: true, actionKey: "moment:key" });
+
+    expect(c[method]).toHaveBeenCalledWith(expect.objectContaining({ id: type }), { actionKey: "moment:key" });
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+    lifecycle.resolve();
+    await flushPromises();
+    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", type);
+  });
+
+  it.each([
+    ["startMoment", "startCurrentMomentForAction"],
+    ["endMoment", "endCurrentMomentForAction"]
+  ] as const)("fires %s without accepting its callback in S+ mode", async (type, method) => {
+    const c = context();
+    const lifecycle = deferred();
+    c[method].mockReturnValueOnce(lifecycle.promise);
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+
+    runner.run({ id: type, type, timing: { mode: "S+", seconds: 0 } }, { isPrimary: true, actionKey: "moment:key" });
+    lifecycle.resolve();
+    await flushPromises();
+
+    expect(c[method]).toHaveBeenCalledOnce();
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
   });
 
   it.each(["E+", "S+"])("never completes a flow-event barrier from %s timing", (mode) => {

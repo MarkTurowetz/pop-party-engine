@@ -167,6 +167,19 @@ function createRoomPhaseRuntime({
     enterGamePhase(room, "intro");
   }
 
+  function endGameMoment(room) {
+    room.playersShown = false;
+    room.playerAnswersShown = false;
+    room.playerAnswersVisibleFilter = "all";
+    room.pendingPointPopups = [];
+    resetCraftingTimer(room);
+    clearChoiceInput(room);
+    clearMicrophoneAccessInput(room);
+    clearTextInput(room);
+    clearVotingData(room);
+    clearDisplayedPlayerAnswers(room);
+  }
+
   function enterGamePhase(room, phase) {
     clearCountdownTimer(room);
     clearActionTimer(room);
@@ -210,16 +223,10 @@ function createRoomPhaseRuntime({
     room.lastRouteDecisionTrace = null;
     room.pendingFlowEvents?.clear?.();
     clearAppliedActionEffects(room);
-    room.playersShown = false;
-    room.playerAnswersShown = false;
-    room.playerAnswersVisibleFilter = "all";
-    room.pendingPointPopups = [];
-    resetCraftingTimer(room);
-    clearChoiceInput(room);
-    clearMicrophoneAccessInput(room);
-    clearTextInput(room);
-    clearVotingData(room);
-    clearDisplayedPlayerAnswers(room);
+    // Legacy flows without an explicit End Moment still get a safe reset here.
+    // Authored flows invoke this same idempotent reset from their End Moment
+    // action before its stage callback advances to the next state.
+    endGameMoment(room);
     room.playerAnswerRecords = {};
     room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
     if (isRoundIntroStateId(phase) && previousPhase !== phase) {
@@ -265,7 +272,7 @@ function createRoomPhaseRuntime({
     broadcastLobby(room);
   }
 
-  return { advanceRoomFromMomentReturn, advanceRoomFromRouteAction, enterGamePhase, enterIntroPhase, enterLobbyPhase, quitRoomToLobby };
+  return { advanceRoomFromMomentReturn, advanceRoomFromRouteAction, endGameMoment, enterGamePhase, enterIntroPhase, enterLobbyPhase, quitRoomToLobby };
 }
 
 module.exports = { createRoomPhaseRuntime };
