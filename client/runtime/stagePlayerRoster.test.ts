@@ -320,6 +320,32 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
   });
 
+  it("selects the authored correctness state after the bubble lifecycle update", () => {
+    const roster = PartyGamePlayerRoster.createRenderer({});
+    const calls: string[] = [];
+    const renderer = {
+      render: vi.fn(),
+      isComponentVisible: vi.fn(() => true),
+      playComponent: vi.fn((_componentId: string, animation: string) => {
+        calls.push(`lifecycle:${animation}`);
+        return 333;
+      }),
+      stopAtComponent: vi.fn((_componentId: string, animation: string) => {
+        calls.push(`state:${animation}`);
+        return 0;
+      })
+    };
+
+    expect(
+      roster.syncAnswerBubbleComponent(
+        renderer,
+        { hasAnswer: true, visible: true, text: "YES", nonce: "2", correctness: "correct" },
+        { previousVisible: true, previousNonce: "1", previousText: "YES", previousCorrectness: "" }
+      )
+    ).toBe(333);
+    expect(calls).toEqual(["lifecycle:Update", "state:Correct"]);
+  });
+
   it("drives choosing status through the nested avatar behavior timeline", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     const playComponent = vi.fn(() => 333);

@@ -428,21 +428,26 @@ class PlayerRosterRenderer {
     const targetId = PLAYER_ANSWER_BUBBLE_MC_ID;
     const play = (animation: string) =>
       renderer.playComponent?.(targetId, animation, { instant }) || 0;
+    let lifecycleDuration = 0;
+    if (!state.visible) {
+      lifecycleDuration = previousVisible || renderer.isComponentVisible?.(targetId)
+        ? play(instant ? "Off" : "Disappear")
+        : play("Off");
+    } else if (!previousVisible || !renderer.isComponentVisible?.(targetId)) {
+      lifecycleDuration = play("Appear");
+    } else if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) {
+      lifecycleDuration = play("Update");
+    }
+
+    // Lifecycle playback can reconcile the referenced subtree. Select the base
+    // bubble's authored semantic state last so Correct/Incorrect remains the
+    // final visual frame after Appear or Update.
     const stateDuration = renderer.stopAtComponent?.(
       PLAYER_ANSWER_BUBBLE_STATE_ID,
       playerAnswerBubbleStateLabel(state),
       { instant: true }
     ) || 0;
-
-    if (!state.visible) {
-      if (previousVisible || renderer.isComponentVisible?.(targetId)) return Math.max(stateDuration, play(instant ? "Off" : "Disappear"));
-      return Math.max(stateDuration, play("Off"));
-    }
-    if (!previousVisible || !renderer.isComponentVisible?.(targetId)) return Math.max(stateDuration, play("Appear"));
-    if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) {
-      return Math.max(stateDuration, play("Update"));
-    }
-    return stateDuration;
+    return Math.max(lifecycleDuration, stateDuration);
   }
 
   syncPlayerLabelComponents(renderer: TreeRenderer, player: Dict, options: Dict = {}): number {
