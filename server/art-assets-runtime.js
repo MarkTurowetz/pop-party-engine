@@ -11,6 +11,7 @@ const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
 const { ART_TIMELINE_ARCHITECTURE_VERSION, collectArtArchitectureIssues } = require("../shared/art-timeline-architecture");
 const { canonicalLifecycleLabel } = require("../shared/lifecycle-labels");
+const { migrateLayoutTextFieldWidgetComponents } = require("../shared/layout-text-art");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 
 function createArtAssetsRuntime({
@@ -362,6 +363,7 @@ function createArtAssetsRuntime({
     migrateGeneratedWidgetLayerOrder(composition.id, components);
     migrateVotingCardVoterContainerDefaults(composition.id, components);
     migratePlayerAnswerBubbleLayerOrder(composition.id, components);
+    migrateLayoutTextFieldWidgetComponents(composition.id, components);
     const canvas = {
       width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
       height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)

@@ -157,6 +157,20 @@ async function main() {
     assertJsonOk(artAssets, "/api/art-assets");
     assert(Array.isArray(artAssets.json.assets), "/api/art-assets did not include assets");
     assert(Array.isArray(artAssets.json.compositions), "/api/art-assets did not include compositions");
+    const layoutTextField = artAssets.json.compositions.find((composition) => composition.id === "layout-text-field");
+    const layoutTextFieldText = artAssets.json.compositions.find((composition) => composition.id === "prefab-layout-text-field-text");
+    assert(layoutTextField?.compositionKind === "gameObject", "/api/art-assets did not expose Layout Text Field as a game object");
+    assert(
+      layoutTextField.components?.some(
+        (component) => component.kind === "reference" && component.artCompositionId === "prefab-layout-text-field-text",
+      ),
+      "/api/art-assets Layout Text Field did not reference its text prefab",
+    );
+    assert(layoutTextFieldText?.compositionKind === "prefab", "/api/art-assets did not expose Layout Text Field Text as a prefab");
+    assert(
+      layoutTextFieldText.components?.some((component) => component.kind === "text" && component.instanceLabel === "text"),
+      "/api/art-assets Layout Text Field Text prefab did not expose its text child",
+    );
 
     const constants = await request({ port, pathname: "/api/game-constants", parseJson: true });
     assertJsonOk(constants, "/api/game-constants");

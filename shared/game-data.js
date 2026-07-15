@@ -5,6 +5,7 @@
 // scope-isolated, so this module's top-level names don't collide in the shared compilation.
 const { availableFlowActionTypes } = require("./flow-action-registry");
 const { defaultPlayerPointPopupTimeline } = require("./player-point-popup-timeline");
+const { defaultLayoutTextFieldCompositions } = require("./layout-text-art");
 const availableFlowTransitions = [
     { id: "horizontalWipe", name: "Horizontal Wipe" }
 ];
@@ -634,30 +635,7 @@ function defaultControllerComposition(id, name, description, canvas, components)
     };
 }
 const defaultArtCompositions = [
-    {
-        id: "layout-text-field",
-        name: "Layout Text Field",
-        description: "Transparent single-text art asset used for stage and controller layout text.",
-        canvas: { width: 1000, height: 240 },
-        components: [
-            {
-                id: "text",
-                name: "Text",
-                kind: "text",
-                x: 500,
-                y: 120,
-                width: 1000,
-                height: 240,
-                scale: 1,
-                rotation: 0,
-                defaultAnimationState: "on",
-                defaultText: "TEXT",
-                fontSize: 58,
-                autoFitText: false,
-                fontColor: "#ffffff"
-            }
-        ]
-    },
+    ...defaultLayoutTextFieldCompositions(),
     defaultControllerComposition("controller-primary-button", "Controller Primary Button", "Editable controller button art used by join, start, present, next, submit, and microphone buttons.", { width: 300, height: 78 }, [
         controllerTextComponent("button-text", "Button Text", "BUTTON", 150, 39, 250, 44, 24),
         controllerShapeComponent("button-card", "Button Card", 300, 78, {
