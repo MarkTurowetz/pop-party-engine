@@ -4,6 +4,7 @@ import {
   PartyGamePlayerRoster,
   avatarTimelineLabelForShape,
   playerAnswerBubbleRuntimeState,
+  playerAnswerBubbleStateLabel,
   playerNameRuntimeText,
   runtimeAnswerBubbleComposition,
   runtimeAvatarsComposition,
@@ -168,14 +169,21 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect((runtime.components as Record<string, unknown>[]).some((component) => "defaultAnimationState" in component)).toBe(false);
   });
 
-  it("injects runtime answer text and correctness into a cloned shared bubble composition", () => {
+  it("injects runtime answer text without overriding authored semantic colors", () => {
     const sharedBubble = {
       canvas: { width: 300, height: 180 },
       components: [
         { id: "answer-text", kind: "text", defaultText: "ANSWER", fontColor: "#17131f", defaultAnimationState: "Park" },
         { id: "answer-bubble-card", kind: "shape", fillColor: "#fffdf4", defaultAnimationState: "Park" },
         { id: "answer-bubble-tail", kind: "shape", fillColor: "#fffdf4", defaultAnimationState: "Park" }
-      ]
+      ],
+      timeline: {
+        tracks: [{ targetId: "answer-text", keyframes: [
+          { frame: 0, props: { defaultText: "ANSWER", fontColor: "#17131f" } },
+          { frame: 1, props: { defaultText: "ANSWER", fontColor: "#181f13" } },
+          { frame: 2, props: { defaultText: "ANSWER", fontColor: "#17131f" } }
+        ] }]
+      }
     };
 
     const runtime = runtimeAnswerBubbleComposition(sharedBubble, {
@@ -188,10 +196,22 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
 
     expect(sharedBubble.components[0].defaultText).toBe("ANSWER");
     expect(runtime.components).toEqual([
-      expect.objectContaining({ id: "answer-text", defaultAnimationState: "Park", defaultText: "ARCTIC", fontColor: "rgba(23, 19, 31, 0.68)" }),
-      expect.objectContaining({ id: "answer-bubble-card", defaultAnimationState: "Park", fillColor: "#d7d3c7" }),
-      expect.objectContaining({ id: "answer-bubble-tail", defaultAnimationState: "Park", fillColor: "#d7d3c7" })
+      expect.objectContaining({ id: "answer-text", defaultAnimationState: "Park", defaultText: "ARCTIC", fontColor: "#17131f" }),
+      expect.objectContaining({ id: "answer-bubble-card", defaultAnimationState: "Park", fillColor: "#fffdf4" }),
+      expect.objectContaining({ id: "answer-bubble-tail", defaultAnimationState: "Park", fillColor: "#fffdf4" })
     ]);
+    expect((runtime.timeline as { tracks: { keyframes: { props: { defaultText: string; fontColor: string } }[] }[] }).tracks[0].keyframes).toEqual([
+      { frame: 0, props: { defaultText: "ARCTIC", fontColor: "#17131f" } },
+      { frame: 1, props: { defaultText: "ARCTIC", fontColor: "#181f13" } },
+      { frame: 2, props: { defaultText: "ARCTIC", fontColor: "#17131f" } }
+    ]);
+    expect(sharedBubble.timeline.tracks[0].keyframes[0].props.defaultText).toBe("ANSWER");
+  });
+
+  it("maps answer correctness onto the three authored bubble states", () => {
+    expect(playerAnswerBubbleStateLabel({ hasAnswer: true, visible: true, text: "", nonce: "", correctness: "" })).toBe("Default");
+    expect(playerAnswerBubbleStateLabel({ hasAnswer: true, visible: true, text: "", nonce: "", correctness: "correct" })).toBe("Correct");
+    expect(playerAnswerBubbleStateLabel({ hasAnswer: true, visible: true, text: "", nonce: "", correctness: "wrong" })).toBe("Incorrect");
   });
 
   it("keeps player-object reference overrides while applying player color and bubble visibility", () => {
@@ -293,6 +313,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     roster.syncPlayerLabelComponents(renderer, { name: "Ava", isVip: true }, { instant: true });
 
     expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Appear", { instant: false });
+    expect(stopAtComponent).toHaveBeenCalledWith("playerAnswerBubble", "Default", { instant: true });
     expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "On", { instant: true });
     expect(playComponent).toHaveBeenCalledWith("player-name-mc", "On", { instant: true });
     expect(playComponent).toHaveBeenCalledWith("vip-mc", "On", { instant: true });

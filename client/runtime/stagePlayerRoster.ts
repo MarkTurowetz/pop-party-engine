@@ -36,6 +36,7 @@ const w = () => globalThis as typeof globalThis & Window;
 
 export const PLAYER_WIDGET_COMPOSITION_ID = "prefab-player-widget-mc";
 const PLAYER_ANSWER_BUBBLE_MC_ID = "player-answer-bubble-mc";
+const PLAYER_ANSWER_BUBBLE_STATE_ID = "playerAnswerBubble";
 const PLAYER_AVATAR_MC_ID = "player-avatar-mc";
 const PLAYER_AVATAR_BEHAVIORS_ID = "player-avatar-behaviors";
 const PLAYER_NAME_MC_ID = "player-name-mc";
@@ -77,7 +78,8 @@ function cloneArtComposition(composition: Dict, apply?: (component: Dict) => voi
   return {
     ...composition,
     canvas: { ...((composition.canvas as Dict) || {}) },
-    components: ((composition.components as Dict[]) || []).map((component) => cloneArtComponent(component, apply))
+    components: ((composition.components as Dict[]) || []).map((component) => cloneArtComponent(component, apply)),
+    timeline: composition.timeline ? structuredClone(composition.timeline) : composition.timeline
   };
 }
 
@@ -172,17 +174,24 @@ function tileMatchesAnswerFilter(tile: El, player: Dict | null, playerFilter: st
 }
 
 export function runtimeAnswerBubbleComposition(composition: Dict, state: PlayerAnswerBubbleRuntimeState): Dict {
-  const fillColor = state.correctness === "correct" ? "#60d394" : state.correctness === "wrong" ? "#d7d3c7" : "";
-  const textColor = state.correctness === "wrong" ? "rgba(23, 19, 31, 0.68)" : "";
-  return cloneArtComposition(composition, (component) => {
-    if (component.id === "answer-text") {
-      if (state.hasAnswer) component.defaultText = state.text;
-      if (textColor) component.fontColor = textColor;
-    }
-    if (fillColor && (component.id === "answer-bubble-card" || component.id === "answer-bubble-tail")) {
-      component.fillColor = fillColor;
-    }
+  const runtime = cloneArtComposition(composition, (component) => {
+    if (component.id === "answer-text" && state.hasAnswer) component.defaultText = state.text;
   });
+  if (!state.hasAnswer) return runtime;
+  const timeline = runtime.timeline as Dict | undefined;
+  for (const track of (timeline?.tracks as Dict[]) || []) {
+    if (track.targetId !== "answer-text") continue;
+    for (const keyframe of (track.keyframes as Dict[]) || []) {
+      keyframe.props = { ...((keyframe.props as Dict) || {}), defaultText: state.text };
+    }
+  }
+  return runtime;
+}
+
+export function playerAnswerBubbleStateLabel(state: PlayerAnswerBubbleRuntimeState): "Default" | "Correct" | "Incorrect" {
+  if (state.correctness === "correct") return "Correct";
+  if (state.correctness === "wrong") return "Incorrect";
+  return "Default";
 }
 
 export function runtimePlayerNameWidgetComposition(composition: Dict, player: Dict | null): Dict {
@@ -419,14 +428,21 @@ class PlayerRosterRenderer {
     const targetId = PLAYER_ANSWER_BUBBLE_MC_ID;
     const play = (animation: string) =>
       renderer.playComponent?.(targetId, animation, { instant }) || 0;
+    const stateDuration = renderer.stopAtComponent?.(
+      PLAYER_ANSWER_BUBBLE_STATE_ID,
+      playerAnswerBubbleStateLabel(state),
+      { instant: true }
+    ) || 0;
 
     if (!state.visible) {
-      if (previousVisible || renderer.isComponentVisible?.(targetId)) return play(instant ? "Off" : "Disappear");
-      return play("Off");
+      if (previousVisible || renderer.isComponentVisible?.(targetId)) return Math.max(stateDuration, play(instant ? "Off" : "Disappear"));
+      return Math.max(stateDuration, play("Off"));
     }
-    if (!previousVisible || !renderer.isComponentVisible?.(targetId)) return play("Appear");
-    if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) return play("Update");
-    return 0;
+    if (!previousVisible || !renderer.isComponentVisible?.(targetId)) return Math.max(stateDuration, play("Appear"));
+    if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) {
+      return Math.max(stateDuration, play("Update"));
+    }
+    return stateDuration;
   }
 
   syncPlayerLabelComponents(renderer: TreeRenderer, player: Dict, options: Dict = {}): number {
