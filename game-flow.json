@@ -8,14 +8,14 @@
         "y": 70
       },
       "startNodePosition": {
-        "x": 834,
+        "x": 814,
         "y": 70
       },
       "returnNodePosition": {
-        "x": 824,
+        "x": 804,
         "y": 1654
       },
-      "entryTargetActionId": "lobby-action-mrmi772x",
+      "entryTargetActionId": "lobby-action-mqojohry",
       "nextStateTargetId": "intro",
       "actions": [
         {
@@ -29,7 +29,7 @@
           },
           "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
-            "x": 789,
+            "x": 769,
             "y": 1042
           },
           "subActions": [],
@@ -50,10 +50,10 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 789,
-            "y": 430
+            "x": 769,
+            "y": 226
           },
-          "nextTargetActionId": "lobby-action-mqpt9z90"
+          "nextTargetActionId": "lobby-action-mrmi772x"
         },
         {
           "id": "lobby-action-mqprlx3p",
@@ -69,7 +69,7 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 789,
+            "x": 769,
             "y": 1246
           },
           "nextTargetActionId": "lobby-action-mrmi8fie"
@@ -88,7 +88,7 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 789,
+            "x": 769,
             "y": 1450
           },
           "nextTargetActionId": "return"
@@ -107,7 +107,7 @@
           "isShown": false,
           "subActions": [],
           "nodePosition": {
-            "x": 789,
+            "x": 769,
             "y": 634
           },
           "nextTargetActionId": "lobby-action-mqw4vt62"
@@ -126,7 +126,7 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 789,
+            "x": 769,
             "y": 838
           },
           "nextTargetActionId": "lobby-countdown-complete"
@@ -145,10 +145,10 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 789,
-            "y": 226
+            "x": 769,
+            "y": 430
           },
-          "nextTargetActionId": "lobby-action-mqojohry"
+          "nextTargetActionId": "lobby-action-mqpt9z90"
         }
       ]
     },
