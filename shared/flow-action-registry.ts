@@ -558,8 +558,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     id: "setupGame",
     name: "Setup Game",
     category: "standard",
-    canCompleteFromStage: true,
-    stageActionType: "setupGame",
+    ...identityAction("setupGame"),
     stageRunner: "serverEffect",
     applyRoomEffect: (room) => {
       for (const player of room.players.values()) {
@@ -592,8 +591,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     id: "getPlayerAnswers",
     name: "Get Player Answers",
     category: "standard",
-    canCompleteFromStage: true,
-    stageActionType: "getPlayerAnswers",
+    ...identityAction("getPlayerAnswers"),
     stageRunner: "serverEffect",
     applyRoomEffect: (room, action, context) => {
       const inputId = String(action.inputId || "input").trim() || "input";

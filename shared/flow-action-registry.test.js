@@ -57,6 +57,15 @@ describe("flow action registry", () => {
     expect(endGameMoment).toHaveBeenCalledWith(room);
   });
 
+  it.each(["setupGame", "getPlayerAnswers"])("preserves the registered %s type in the stage payload", (type) => {
+    const actionRegistry = registry();
+    expect(actionRegistry.publicAction({ type }, { id: type, actionType: type })).toMatchObject({
+      id: type,
+      actionType: type,
+      type
+    });
+  });
+
   it("preserves exact nested component target paths for game object timeline actions", () => {
     const action = registry().normalizeAction(
       "playGameObjectAnimation",
