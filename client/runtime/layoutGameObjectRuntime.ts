@@ -126,11 +126,20 @@ function cloneLayoutArtComponent(component: Dict, options: Dict = {}): Dict {
   const clone: Dict = { ...component, children: ((component.children as Dict[]) || []).map((child) => cloneLayoutArtComponent(child, options)) };
   const textOverrides = (options.textOverrides as Dict) || {};
   const kind = String(clone.kind || "").toLowerCase();
-  if ((kind === "text" || kind === "badge") && Object.prototype.hasOwnProperty.call(textOverrides, clone.id as string)) {
-    clone.defaultText = String(textOverrides[clone.id as string] ?? "");
+  const textOverrideKey = [clone.id, clone.instanceLabel]
+    .map((value) => String(value || "").trim())
+    .find((value) => value && Object.prototype.hasOwnProperty.call(textOverrides, value));
+  if ((kind === "text" || kind === "badge") && textOverrideKey) {
+    clone.defaultText = String(textOverrides[textOverrideKey] ?? "");
   }
   const textStyle = options.textStyle as Dict | undefined;
-  if ((kind === "text" || kind === "badge") && textStyle && clone.id === textStyle.componentId) {
+  const textStyleTarget = String(textStyle?.componentId || "").trim();
+  if (
+    (kind === "text" || kind === "badge") &&
+    textStyle &&
+    textStyleTarget &&
+    [clone.id, clone.instanceLabel].some((value) => String(value || "").trim() === textStyleTarget)
+  ) {
     clone.fontSize = textStyle.fontSize;
     clone.fontColor = textStyle.fontColor;
     clone.autoFitText = false;

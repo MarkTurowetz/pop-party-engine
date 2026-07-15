@@ -68,8 +68,35 @@ describe("PartyGameGameObject (ported game-object)", () => {
     vi.spyOn(object, "createVisual").mockReturnValue({ isVisible: () => false, play } as never);
 
     expect(object.playVisibility(true)).toBe(480);
-    expect(playAll).toHaveBeenCalledWith("appear", {});
-    expect(play).toHaveBeenCalledWith("appear", {});
+    expect(play).toHaveBeenCalledWith("On", { instant: true });
+    expect(playAll).toHaveBeenCalledWith("Appear", {});
+  });
+
+  it("waits only for the authored Disappear timeline before hiding its host and completing", () => {
+    let finishTimeline: (() => void) | undefined;
+    const playAll = vi.fn((_animation: string, options: { complete?: () => void }) => {
+      finishTimeline = options.complete;
+      return 480;
+    });
+    const play = vi.fn(() => 0);
+    const complete = vi.fn();
+    const object = PartyGameGameObject.create({
+      id: "animated",
+      target: {} as HTMLElement,
+      artRenderer: { playAll },
+      syncArtRendererOnShow: true
+    });
+    vi.spyOn(object, "createVisual").mockReturnValue({ isVisible: () => true, play } as never);
+
+    expect(object.playVisibility(false, { complete })).toBe(480);
+    expect(playAll).toHaveBeenCalledWith("Disappear", { complete: expect.any(Function) });
+    expect(play).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+
+    finishTimeline?.();
+
+    expect(play).toHaveBeenCalledWith("Off", { instant: true });
+    expect(complete).toHaveBeenCalledOnce();
   });
 
   it("does not turn timeline visibility updates into persistent layout overrides", () => {

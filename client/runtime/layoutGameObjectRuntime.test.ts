@@ -318,7 +318,16 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     const previousComposition = host.artComposition;
     const previousArtObject = host.PartyGameArtObject;
     globals.document = fakeDocument;
-    host.artComposition = () => ({ canvas: { width: 100, height: 50 }, components: [] });
+    host.artComposition = () => ({
+      canvas: { width: 100, height: 50 },
+      components: [
+        {
+          id: "root",
+          kind: "container",
+          children: [{ id: "generated-text-id", instanceLabel: "text", kind: "text", defaultText: "Original" }]
+        }
+      ]
+    });
     host.PartyGameArtObject = {
       ArtObjectTreeRenderer: class {
         render(...args: unknown[]) {
@@ -340,13 +349,17 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     });
     try {
       api.render({ id: "test", artCompositionId: "controller-primary-button" }, root as unknown as HTMLElement, "test", {
-        keepElements: [overlay as unknown as HTMLElement]
+        keepElements: [overlay as unknown as HTMLElement],
+        textOverrides: { text: "Updated through label" }
       });
 
       expect(root.querySelector(".controller-widget-art-layer")).toBeTruthy();
       expect(root.contains(overlay)).toBe(true);
       expect(overlay.hidden).toBe(false);
       expect(renderCalls.length).toBe(1);
+      expect((((renderCalls[0] as unknown[])[0] as Array<Record<string, unknown>>)[0].children as Array<Record<string, unknown>>)[0].defaultText).toBe(
+        "Updated through label"
+      );
       expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("defaultAnimation");
       expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("respectDefaultAnimationState");
       expect(playCalls).toEqual([["Off", { instant: true }]]);

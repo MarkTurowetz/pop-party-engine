@@ -158,6 +158,16 @@ function layoutTextArtRenderOptions(element: Dict | null, textOverride: unknown 
   };
 }
 
+function labeledWidgetTextRenderOptions(text: unknown): Dict {
+  return { textOverrides: { text: String(text ?? "") } };
+}
+
+function stageLayoutArtRenderOptions(element: Dict | null, host: El | null): Dict {
+  if (isLayoutTextArtElement(element)) return layoutTextArtRenderOptions(element, host?.dataset.textFitSource);
+  if (host?.dataset.textFitSource !== undefined) return labeledWidgetTextRenderOptions(host.dataset.textFitSource);
+  return {};
+}
+
 function controllerWidgetTextRenderOptions(compositionId: unknown, text: unknown): Dict {
   const componentId = controllerWidgetTextComponentId(compositionId);
   return componentId ? { textOverrides: { [componentId]: String(text ?? "") } } : {};
@@ -811,7 +821,7 @@ function applyStageElementLayout(element: Dict, isGlobal: boolean, shouldInitial
           element,
           target,
           entity.visibilityKey as string,
-          isLayoutTextArtElement(element) ? layoutTextArtRenderOptions(element, target.dataset.textFitSource) : {}
+          stageLayoutArtRenderOptions(element, target)
         ),
       { initializeVisibility: false }
     );
@@ -1048,6 +1058,13 @@ function setStageLayoutText(target: El | string | null, value: unknown): void {
       renderStageArtInstance(element, host, host.dataset.stageLayoutVisibilityKey || stageLayoutGameObjectVisibilityKey(element.id as string), layoutTextArtRenderOptions(element, value));
       const targetId = normalizeTextTargetId(element.id);
       if (targetId && stageTextObjects[targetId]) stageTextObjects[targetId].text = String(value ?? "");
+    } else if (isDynamicStageArtInstance(element)) {
+      renderStageArtInstance(
+        element,
+        host,
+        host.dataset.stageLayoutVisibilityKey || stageLayoutGameObjectVisibilityKey(element.id as string),
+        labeledWidgetTextRenderOptions(value)
+      );
     }
     return;
   }

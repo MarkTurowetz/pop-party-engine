@@ -207,47 +207,59 @@ class GameObject {
     this.applyDefaultVisibility();
   }
 
+  syncAuthoredHostGate(isShown: boolean): void {
+    const visual = this.createVisual();
+    if (visual) {
+      visual.play(isShown ? lifecycleLabels.on : lifecycleLabels.off, { instant: true });
+      return;
+    }
+    this.applyTargetVisibility(isShown);
+  }
+
+  playAuthoredAnimation(animation: string, options: Dict = {}, playbackMode: "play" | "stop" = "play"): number | null {
+    const cleanAnimation = String(animation || "").trim();
+    const player = playbackMode === "stop" ? this.artRenderer?.stopAtAll : this.artRenderer?.playAll;
+    if (!cleanAnimation || !fn(player)) return null;
+    const lifecycle = canonicalLifecycleLabel(cleanAnimation);
+    const showsHost = lifecycle === lifecycleLabels.on || lifecycle === lifecycleLabels.appear || lifecycle === lifecycleLabels.update;
+    const hidesHost = lifecycle === lifecycleLabels.off || lifecycle === lifecycleLabels.park || lifecycle === lifecycleLabels.disappear;
+    if (showsHost) this.syncAuthoredHostGate(true);
+    const externalComplete = fn(options.complete) ? (options.complete as () => void) : null;
+    const finish = () => {
+      if (hidesHost) this.syncAuthoredHostGate(false);
+      externalComplete?.();
+    };
+    const playOptions = { ...options };
+    if (hidesHost || externalComplete) playOptions.complete = finish;
+    else delete playOptions.complete;
+    return Number((player as (a: string, o: Dict) => number).call(this.artRenderer, lifecycle || cleanAnimation, playOptions) || 0);
+  }
+
   playVisibility(isShown: boolean, options: Dict = {}): number {
     const visual = this.createVisual();
     const animation = PartyGameVisualObject.animationForVisibility(isShown === true, visual?.isVisible() ?? this.isVisible());
-    let duration = 0;
     if (this.syncArtRendererOnShow && fn(this.artRenderer?.playAll)) {
-      const childOptions = { ...options };
-      delete childOptions.complete;
-      duration = Math.max(
-        duration,
-        Number((this.artRenderer!.playAll as (a: string, o: Dict) => number)(animation, childOptions) || 0)
-      );
+      return this.playAuthoredAnimation(animation, options) || 0;
     }
-    return visual ? Math.max(duration, visual.play(animation, options)) : duration;
+    return visual ? visual.play(animation, options) : 0;
   }
 
   playAnimation(animation: string, options: Dict = {}): number {
     const cleanAnimation = String(animation || "").trim();
     if (!cleanAnimation) return 0;
-    let duration = 0;
-    if (fn(this.artRenderer?.playAll)) {
-      const childOptions = { ...options };
-      delete childOptions.complete;
-      duration = Math.max(duration, Number((this.artRenderer!.playAll as (a: string, o: Dict) => number)(cleanAnimation, childOptions) || 0));
-    }
+    const authoredDuration = this.playAuthoredAnimation(cleanAnimation, options);
+    if (authoredDuration !== null) return authoredDuration;
     const visual = this.createVisual();
-    if (visual) duration = Math.max(duration, Number(visual.play(cleanAnimation, options) || 0));
-    return duration;
+    return visual ? Number(visual.play(cleanAnimation, options) || 0) : 0;
   }
 
   stopAtAnimation(animation: string, options: Dict = {}): number {
     const cleanAnimation = String(animation || "").trim();
     if (!cleanAnimation) return 0;
-    let duration = 0;
-    if (fn(this.artRenderer?.stopAtAll)) {
-      const childOptions = { ...options };
-      delete childOptions.complete;
-      duration = Math.max(duration, Number((this.artRenderer!.stopAtAll as (a: string, o: Dict) => number)(cleanAnimation, childOptions) || 0));
-    }
+    const authoredDuration = this.playAuthoredAnimation(cleanAnimation, options, "stop");
+    if (authoredDuration !== null) return authoredDuration;
     const visual = this.createVisual() as (VisualInstance & { stopAt?: (a: string, o: Dict) => number }) | null;
-    if (visual) duration = Math.max(duration, Number(visual.stopAt?.(cleanAnimation, options) || visual.play(cleanAnimation, { ...options, instant: true }) || 0));
-    return duration;
+    return visual ? Number(visual.stopAt?.(cleanAnimation, options) || visual.play(cleanAnimation, { ...options, instant: true }) || 0) : 0;
   }
 }
 
