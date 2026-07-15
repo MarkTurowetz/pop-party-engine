@@ -33,7 +33,7 @@ function createRoomPhaseRuntime({
   runtimeGameFlow,
 }) {
   function advanceRoomFromMomentReturn(room) {
-    const state = runtimeGameFlow(room).states.find((item) => item.id === room.phase);
+    const state = runtimeGameFlow(room).states.find((item) => item.id === (room.flowStateId || room.phase));
     advanceRoomToMomentGraphTarget(room, state?.nextStateTargetId || "");
   }
 
@@ -114,20 +114,24 @@ function createRoomPhaseRuntime({
     clearCountdownTimer(room);
     clearActionTimer(room);
     room.phase = "lobby";
+    room.flowStateId = "lobby";
     room.controllerLayoutId = "lobby";
     room.isPaused = false;
     room.pausedAt = 0;
-    room.lobbyFlowActive = false;
     room.countdownStartedAt = 0;
     room.countdownEndsAt = 0;
     room.countdownRemainingMs = 0;
-    room.actionIndex = 0;
     room.subroutinePath = [];
     room.subroutineStack = [];
+    const entryActionIndex = entryActionIndexForPhase(room, "lobby");
+    room.actionIndex = entryActionIndex === -1
+      ? getStateActions("lobby", room).length
+      : Math.max(0, entryActionIndex);
     room.presentedAction = null;
     room.routeActionSession = null;
     room.lastDecisionTrace = null;
     room.lastRouteDecisionTrace = null;
+    room.pendingFlowEvents?.clear?.();
     clearAppliedActionEffects(room);
     room.playersShown = false;
     room.playerAnswersShown = false;
@@ -187,13 +191,13 @@ function createRoomPhaseRuntime({
       }
     }
     room.phase = phase;
+    room.flowStateId = phase;
     room.subroutinePath = [];
     room.subroutineStack = [];
     room.controllerLayoutId = phase;
     room.isPaused = false;
     room.pausedAt = 0;
     room.routeActionSession = null;
-    room.lobbyFlowActive = false;
     room.countdownStartedAt = 0;
     room.countdownEndsAt = 0;
     room.countdownRemainingMs = 0;
@@ -204,6 +208,7 @@ function createRoomPhaseRuntime({
     room.presentedAction = null;
     room.lastDecisionTrace = null;
     room.lastRouteDecisionTrace = null;
+    room.pendingFlowEvents?.clear?.();
     clearAppliedActionEffects(room);
     room.playersShown = false;
     room.playerAnswersShown = false;

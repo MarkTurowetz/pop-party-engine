@@ -15,7 +15,6 @@ function createCountdownRuntime({
     const startCountdownMs = countdownDurationMs();
     clearCountdownTimer(room);
     room.phase = "starting";
-    room.lobbyFlowActive = false;
     room.countdownStartedAt = now;
     room.countdownEndsAt = now + startCountdownMs;
     room.countdownTimerId = setTimeout(() => {

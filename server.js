@@ -324,6 +324,8 @@ let _emitInputFlowEventFn;
 const emitInputFlowEventProxy = (room, eventType) => _emitInputFlowEventFn(room, eventType);
 let _applyRoomActionEffectsFn;
 const applyRoomActionEffectsProxy = (room, action) => _applyRoomActionEffectsFn?.(room, action);
+let _releasePendingFlowEventsFn;
+const releasePendingFlowEventsProxy = (room) => _releasePendingFlowEventsFn?.(room) === true;
 
 const {
   clearActionTimer,
@@ -338,7 +340,8 @@ const {
   clearMicrophoneAccessInput,
   clearTextInput,
   currentRoomAction: currentRoomActionProxy,
-  enterGamePhase: enterGamePhaseProxy
+  enterGamePhase: enterGamePhaseProxy,
+  releasePendingFlowEvents: releasePendingFlowEventsProxy
 });
 
 const {
@@ -622,6 +625,7 @@ const {
   emitInputFlowEvent,
   jumpToAction,
   pauseAnswersSubmittedAdvanceTimer,
+  releasePendingFlowEvents,
   resumeAnswersSubmittedAdvanceTimer,
   scheduleAnswersSubmittedAdvance,
   scheduleMicrophoneAccessAdvance,
@@ -639,6 +643,7 @@ const {
   clearMicrophoneAccessInput,
   clearTextInput,
   clearVotingInput,
+  entryActionIndexForPhase,
   enterGamePhase,
   flowActionTarget,
   flowActionIndexById,
@@ -656,6 +661,7 @@ _currentRoomActionFn = currentRoomAction;
 _advanceRoomAfterActionFn = advanceRoomAfterAction;
 _completeCountdownTriggerFn = completeCountdownTrigger;
 _emitInputFlowEventFn = emitInputFlowEvent;
+_releasePendingFlowEventsFn = releasePendingFlowEvents;
 
 function randomToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;

@@ -1,6 +1,9 @@
 "use strict";
 
-const { stageCompletionCleanupForActionType } = require("../shared/flow-action-registry");
+const {
+  isFlowEventBarrierAction,
+  stageCompletionCleanupForActionType
+} = require("../shared/flow-action-registry");
 
 function createActionCompletionRuntime({
   advanceRoomAfterAction,
@@ -10,7 +13,8 @@ function createActionCompletionRuntime({
   clearMicrophoneAccessInput,
   clearTextInput,
   currentRoomAction,
-  enterGamePhase
+  enterGamePhase,
+  releasePendingFlowEvents = () => false
 }) {
   function clearCompletionInput(room, action) {
     const cleanup = stageCompletionCleanupForActionType(action?.type);
@@ -30,6 +34,11 @@ function createActionCompletionRuntime({
     room.actionTimerRemainingMs = 0;
   }
 
+  function broadcastAfterAdvance(room) {
+    currentRoomAction(room);
+    if (!releasePendingFlowEvents(room)) broadcastLobby(room);
+  }
+
   function finishPendingAction(room, expectedActionId) {
     const currentAction = currentRoomAction(room);
     if (!currentAction || currentAction.id !== expectedActionId) {
@@ -46,8 +55,7 @@ function createActionCompletionRuntime({
       const useNodeExit = Boolean(currentAction.nextTargetActionId);
       if (useNodeExit) {
         advanceRoomAfterAction(room, currentAction);
-        currentRoomAction(room);
-        broadcastLobby(room);
+        broadcastAfterAdvance(room);
         return true;
       }
       enterGamePhase(room, currentAction.targetState || "intro");
@@ -56,8 +64,7 @@ function createActionCompletionRuntime({
 
     clearCompletionInput(room, currentAction);
     advanceRoomAfterAction(room, currentAction);
-    currentRoomAction(room);
-    broadcastLobby(room);
+    broadcastAfterAdvance(room);
     return true;
   }
 
@@ -98,6 +105,7 @@ function createActionCompletionRuntime({
     if (!currentAction) return false;
     if (expectedActionId && currentAction.id !== expectedActionId) return false;
     if (room.actionCompletionPendingId === currentAction.id) return false;
+    if (isFlowEventBarrierAction(currentAction)) return false;
 
     const timing = currentAction.timing || { mode: "E+", seconds: 0 };
     if (timing.mode === "S+" && source !== "startTimer") return false;
@@ -112,8 +120,7 @@ function createActionCompletionRuntime({
       const completeTransitionState = () => {
         if (useNodeExit) {
           advanceRoomAfterAction(room, currentAction);
-          currentRoomAction(room);
-          broadcastLobby(room);
+          broadcastAfterAdvance(room);
           return;
         }
         enterGamePhase(room, currentAction.targetState || "intro");
@@ -135,8 +142,7 @@ function createActionCompletionRuntime({
 
     clearCompletionInput(room, currentAction);
     advanceRoomAfterAction(room, currentAction);
-    currentRoomAction(room);
-    broadcastLobby(room);
+    broadcastAfterAdvance(room);
     return true;
   }
 

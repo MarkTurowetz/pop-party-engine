@@ -30,13 +30,14 @@ function createFlowNavigationRuntime({
   }
 
   function roomSubroutinePath(room, stateId) {
-    if (!room || room.phase !== stateId) return [];
+    if (!room || (room.flowStateId || room.phase) !== stateId) return [];
     return Array.isArray(room.subroutinePath) ? room.subroutinePath.filter(Boolean) : [];
   }
 
-  function currentSubroutine(room, stateId = room?.phase) {
+  function currentSubroutine(room, stateId = room?.flowStateId || room?.phase) {
     if (!stateId) return null;
-    return subroutineForPath(runtimeGameFlow(room), stateId, roomSubroutinePath(room, stateId));
+    const resolvedStateId = room && stateId === room.phase ? room.flowStateId || stateId : stateId;
+    return subroutineForPath(runtimeGameFlow(room), resolvedStateId, roomSubroutinePath(room, resolvedStateId));
   }
 
   function getStateActions(stateId, room = null) {
@@ -47,7 +48,7 @@ function createFlowNavigationRuntime({
     const target = String(actionId || "");
     if (!target) return -1;
     const normalizedTarget = normalizeFlowId(target, "");
-    const actions = getStateActions(room.phase, room);
+    const actions = getStateActions(room.flowStateId || room.phase, room);
     return actions.findIndex((action) => {
       if (action.id === target) return true;
       if (normalizeFlowId(action.id, "") === normalizedTarget) return true;
@@ -64,11 +65,14 @@ function createFlowNavigationRuntime({
     if (isNoActionTarget(target)) return -1;
     if (target) {
       const previousPhase = room.phase;
+      const previousFlowStateId = room.flowStateId;
       const previousSubroutinePath = room.subroutinePath;
       room.phase = phase;
+      room.flowStateId = phase;
       room.subroutinePath = [];
       const targetIndex = flowActionIndexById(room, target);
       room.phase = previousPhase;
+      room.flowStateId = previousFlowStateId;
       room.subroutinePath = previousSubroutinePath;
       if (targetIndex >= 0) return targetIndex;
     }
@@ -76,7 +80,7 @@ function createFlowNavigationRuntime({
   }
 
   function advanceRoomAction(room) {
-    const actions = getStateActions(room.phase, room);
+    const actions = getStateActions(room.flowStateId || room.phase, room);
     if (actions.length === 0) return;
     room.actionIndex = Math.min(room.actionIndex + 1, actions.length);
   }

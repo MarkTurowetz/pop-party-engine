@@ -717,7 +717,7 @@ function scheduleActionTiming(lobby: Dict, actionKey: string): void {
   if (w().actionTimingTimer !== null) clearTimeout(w().actionTimingTimer!);
   w().actionTimingTimer = null;
   const action = lobby.action as Dict;
-  if (!action || (action.timing as Dict)?.mode !== "S+") return;
+  if (!action || action.trigger || (action.timing as Dict)?.mode !== "S+") return;
   const delayMs = Math.max(0, Number((action.timing as Dict).seconds || 0) * 1000);
   w().actionTimingTimer = setTimeout(() => {
     if (currentRenderedActionKey() !== actionKey) return;

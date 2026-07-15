@@ -961,6 +961,15 @@
     function isCompletableStageActionType(type) {
         return completableStageActionTypes.has(type);
     }
+    const flowTriggerEventTypes = {
+        onCountdownComplete: "countdownComplete"
+    };
+    function flowEventTypeForAction(action) {
+        return flowTriggerEventTypes[String(action?.trigger || "")] || "";
+    }
+    function isFlowEventBarrierAction(action) {
+        return Boolean(flowEventTypeForAction(action));
+    }
     function stageCompletionCleanupForActionType(type) {
         return definitionByStageActionType.get(type)?.completionCleanup || "";
     }
@@ -968,8 +977,10 @@
         availableFlowActionTypes,
         completableStageActionTypes,
         createFlowActionRegistry,
+        flowEventTypeForAction,
         flowActionDefinitions,
         isCompletableStageActionType,
+        isFlowEventBarrierAction,
         normalizeVoteRevealStaggerSeconds,
         stageActionRunnerDefinitions,
         stageCompletionCleanupForActionType

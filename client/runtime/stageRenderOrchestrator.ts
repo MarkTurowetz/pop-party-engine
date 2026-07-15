@@ -18,7 +18,7 @@ interface OrchestratorOptions {
 }
 
 function actionKeyForLobby(lobby: Dict = {}): string {
-  const phase = (lobby.phase as string) || "lobby";
+  const phase = (lobby.flowStateId as string) || (lobby.phase as string) || "lobby";
   const action = (lobby.action as Dict) || {};
   return `${phase}:${action.id || action.index || ""}:${action.type || ""}`;
 }

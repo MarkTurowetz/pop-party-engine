@@ -25,7 +25,10 @@ interface runnerContext {
 
 declare global {
   interface Window {
-    PartyGameFlowActionRegistry?: { stageActionRunnerDefinitions?: RunnerDefinition[] };
+    PartyGameFlowActionRegistry?: {
+      isFlowEventBarrierAction?: (action: Action) => boolean;
+      stageActionRunnerDefinitions?: RunnerDefinition[];
+    };
     PartyGameStageActionRunners?: typeof PartyGameStageActionRunners;
   }
 }
@@ -243,6 +246,10 @@ function createRunner(context: runnerContext): { run: (action: Action, runtimeOp
       complete: (targetAction: Action) => (c.completeFlowAction as (kind: string, id: unknown) => void)("callback", targetAction.id),
       isCurrent: () => (c.isCurrentActionKey as (k: unknown) => boolean)(runtimeOptions.actionKey)
     };
+    const flowRegistry = (globalThis as typeof globalThis & Window).PartyGameFlowActionRegistry;
+    const isEventBarrier = flowRegistry?.isFlowEventBarrierAction?.(action)
+      ?? Boolean(action?.trigger);
+    if (isEventBarrier) return;
     const handler = handlers.get(action?.type as string);
     if (handler) handler(action, runtime);
   }

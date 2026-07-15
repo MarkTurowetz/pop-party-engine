@@ -18,9 +18,7 @@ function createLobbyPayloadRuntime({
 }) {
   function lobbyPayload(room) {
     selectVip(room);
-    const shouldExposeAction = room.phase !== "lobby" && room.phase !== "starting"
-      || room.lobbyFlowActive === true;
-    const currentAction = shouldExposeAction ? resolveRoomActionText(currentRoomAction(room), room) : null;
+    const currentAction = resolveRoomActionText(currentRoomAction(room), room);
     applyRoomActionEffects(room, currentAction);
     const constants = gameConstants();
     const input = choiceInputPayload(room, currentAction);
@@ -34,9 +32,9 @@ function createLobbyPayloadRuntime({
       stageCode: room.stageCode,
       revision: room.revision,
       phase: room.phase,
+      flowStateId: room.flowStateId || room.phase,
       controllerLayoutId: room.controllerLayoutId || room.phase || "lobby",
       isPaused: room.isPaused === true,
-      lobbyFlowActive: room.lobbyFlowActive === true,
       countdownStartedAt: room.countdownStartedAt,
       countdownEndsAt: room.countdownEndsAt,
       action: currentAction,
@@ -66,7 +64,8 @@ function createLobbyPayloadRuntime({
   }
 
   function debugActionPayload(room, currentAction) {
-    const state = runtimeGameFlow(room).states.find((item) => item.id === room.phase) || null;
+    const flowStateId = room.flowStateId || room.phase;
+    const state = runtimeGameFlow(room).states.find((item) => item.id === flowStateId) || null;
     const players = activePlayers(room);
     let submittedInputCount = 0;
     if (room.votingInputActionId) {
@@ -88,6 +87,7 @@ function createLobbyPayloadRuntime({
     }
     return {
       phaseId: room.phase || "",
+      flowStateId,
       phaseName: state?.name || String(room.phase || "lobby").replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
       actionId: currentAction?.id || "",
       actionName: currentAction?.name || "",

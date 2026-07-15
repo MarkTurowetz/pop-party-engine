@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 const require = createRequire(import.meta.url);
 const { createActionCompletionRuntime } = require("./action-completion-runtime");
 
-function setup(action) {
+function setup(action, overrides = {}) {
   const room = {
     action,
     actionCompletionPendingId: "",
@@ -13,6 +13,7 @@ function setup(action) {
   };
   const advanceRoomAfterAction = vi.fn();
   const applyRoomActionEffects = vi.fn();
+  const releasePendingFlowEvents = vi.fn(() => false);
   const runtime = createActionCompletionRuntime({
     advanceRoomAfterAction,
     applyRoomActionEffects,
@@ -21,9 +22,11 @@ function setup(action) {
     clearMicrophoneAccessInput: vi.fn(),
     clearTextInput: vi.fn(),
     currentRoomAction: (targetRoom) => targetRoom.action,
-    enterGamePhase: vi.fn()
+    enterGamePhase: vi.fn(),
+    releasePendingFlowEvents,
+    ...overrides
   });
-  return { advanceRoomAfterAction, applyRoomActionEffects, room, runtime };
+  return { advanceRoomAfterAction, applyRoomActionEffects, releasePendingFlowEvents, room, runtime };
 }
 
 describe("action timing completion contract", () => {
@@ -49,5 +52,30 @@ describe("action timing completion contract", () => {
     expect(advanceRoomAfterAction).not.toHaveBeenCalled();
     expect(runtime.completeCurrentAction(room, action.id, "startTimer")).toBe(true);
     expect(advanceRoomAfterAction).toHaveBeenCalledWith(room, action);
+  });
+
+  it.each(["callback", "startTimer"])("does not let %s complete an event barrier", (source) => {
+    const action = {
+      id: "countdown",
+      type: "transitionState",
+      trigger: "onCountdownComplete",
+      timing: { mode: source === "startTimer" ? "S+" : "E+", seconds: 0 }
+    };
+    const { advanceRoomAfterAction, applyRoomActionEffects, room, runtime } = setup(action);
+
+    expect(runtime.completeCurrentAction(room, action.id, source)).toBe(false);
+    expect(applyRoomActionEffects).not.toHaveBeenCalled();
+    expect(advanceRoomAfterAction).not.toHaveBeenCalled();
+  });
+
+  it("releases queued events only after the preceding action advances", () => {
+    const action = { id: "header", type: "displayText", timing: { mode: "E+", seconds: 0 } };
+    const releasePendingFlowEvents = vi.fn(() => true);
+    const broadcastLobby = vi.fn();
+    const { room, runtime } = setup(action, { broadcastLobby, releasePendingFlowEvents });
+
+    expect(runtime.completeCurrentAction(room, action.id, "callback")).toBe(true);
+    expect(releasePendingFlowEvents).toHaveBeenCalledWith(room);
+    expect(broadcastLobby).not.toHaveBeenCalled();
   });
 });

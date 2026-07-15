@@ -38,6 +38,16 @@ describe("PartyGameStageActionRunners (ported)", () => {
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a1");
   });
 
+  it.each(["E+", "S+"])("never completes a flow-event barrier from %s timing", (mode) => {
+    const c = context();
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    runner.run(
+      { id: "countdown", type: "transitionState", trigger: "onCountdownComplete", timing: { mode, seconds: 0 } },
+      { isPrimary: true, actionKey: "lobby:countdown" }
+    );
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+  });
+
   it.each([0, 1])("fires an S+%s action without ever accepting its visual callback", async (seconds) => {
     const c = context();
     const animation = deferred();

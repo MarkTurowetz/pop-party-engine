@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  flowEventTypeForAction,
+  isFlowEventBarrierAction
+} = require("../shared/flow-action-registry");
+
 function createRoomFlowHelpersRuntime({
   activePlayers,
   advanceRoomFromMomentReturn,
@@ -14,6 +19,7 @@ function createRoomFlowHelpersRuntime({
   clearMicrophoneAccessInput,
   clearTextInput,
   clearVotingInput,
+  entryActionIndexForPhase,
   getStateActions,
   enterGamePhase,
   flowActionTarget,
@@ -53,9 +59,15 @@ function createRoomFlowHelpersRuntime({
     if (room.presentedAction) return room.presentedAction;
     const routeAction = currentRouteAction(room);
     if (routeAction) return routeAction;
+    if (!Number.isFinite(room.actionIndex) || room.actionIndex < 0) {
+      const flowStateId = room.flowStateId || room.phase;
+      const entryIndex = entryActionIndexForPhase(room, flowStateId);
+      const actions = getStateActions(flowStateId, room);
+      room.actionIndex = entryIndex === -1 ? actions.length : Math.max(0, entryIndex);
+    }
     let guard = 0;
     while (guard < 40) {
-      const actions = getStateActions(room.phase, room);
+      const actions = getStateActions(room.flowStateId || room.phase, room);
       if (room.actionIndex >= actions.length) return null;
       const action = actions[room.actionIndex];
       if (action?.type === "subroutine") {
@@ -224,14 +236,17 @@ function createRoomFlowHelpersRuntime({
   function emitInputFlowEvent(room, eventType) {
     clearAnswersSubmittedAdvanceTimer(room);
     const currentAction = currentRoomAction(room);
+    const barrierEventType = flowEventTypeForAction(currentAction);
     const target = flowEventTargetForAction(currentAction, eventType);
     const eventKey = `${currentAction?.id || "none"}:${eventType}`;
     if (!currentAction || room.activeInputFlowEventKey === eventKey) {
       return false;
     }
-    const canUseCountdownFallback = eventType === "countdownComplete"
+    if (barrierEventType && barrierEventType !== eventType) return false;
+    if (eventType === "countdownComplete" && barrierEventType !== eventType) return false;
+    const canUseBarrierFallback = barrierEventType === eventType
       && currentAction.type === "transitionState";
-    if (isNoActionTarget(target) && !canUseCountdownFallback) {
+    if (isNoActionTarget(target) && !canUseBarrierFallback) {
       return false;
     }
     room.activeInputFlowEventKey = eventKey;
@@ -255,6 +270,21 @@ function createRoomFlowHelpersRuntime({
     jumpToAction(room, target, currentAction);
     broadcastLobby(room);
     return true;
+  }
+
+  function pendingFlowEvents(room) {
+    if (!(room.pendingFlowEvents instanceof Set)) room.pendingFlowEvents = new Set(room.pendingFlowEvents || []);
+    return room.pendingFlowEvents;
+  }
+
+  function releasePendingFlowEvents(room) {
+    const action = currentRoomAction(room);
+    if (!isFlowEventBarrierAction(action)) return false;
+    const eventType = flowEventTypeForAction(action);
+    const pending = pendingFlowEvents(room);
+    if (!eventType || !pending.has(eventType)) return false;
+    pending.delete(eventType);
+    return emitInputFlowEvent(room, eventType);
   }
 
   function scheduleAnswersSubmittedAdvance(room) {
@@ -313,21 +343,14 @@ function createRoomFlowHelpersRuntime({
   }
 
   function completeCountdownTrigger(room) {
-    const lobbyState = getFlowState(runtimeGameFlow(room), "lobby");
-    const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
-    if (!action) {
+    const lobbyState = getFlowState(runtimeGameFlow(room), room.flowStateId || "lobby");
+    const barrier = lobbyState?.actions.find((item) => flowEventTypeForAction(item) === "countdownComplete");
+    if (!barrier) {
       enterGamePhase(room, "intro");
       return;
     }
-    room.phase = lobbyState.id;
-    room.subroutinePath = [];
-    room.subroutineStack = [];
-    room.lobbyFlowActive = true;
-    room.actionIndex = Math.max(0, lobbyState.actions.findIndex((item) => item.id === action.id));
-    room.currentPresentationActionId = "";
-    room.currentDisplayTextActionId = "";
-    clearActionTimer(room);
-    emitInputFlowEvent(room, "countdownComplete");
+    pendingFlowEvents(room).add("countdownComplete");
+    if (!releasePendingFlowEvents(room)) broadcastLobby(room);
   }
 
   return {
@@ -339,6 +362,7 @@ function createRoomFlowHelpersRuntime({
     jumpToAction,
     pauseAnswersSubmittedAdvanceTimer,
     resumeAnswersSubmittedAdvanceTimer,
+    releasePendingFlowEvents,
     scheduleAnswersSubmittedAdvance,
     scheduleMicrophoneAccessAdvance,
   };
