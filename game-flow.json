@@ -8,11 +8,11 @@
         "y": 70
       },
       "startNodePosition": {
-        "x": 814,
+        "x": 816,
         "y": 70
       },
       "returnNodePosition": {
-        "x": 804,
+        "x": 806,
         "y": 1654
       },
       "entryTargetActionId": "lobby-action-mqojohry",
@@ -29,7 +29,7 @@
           },
           "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
-            "x": 769,
+            "x": 771,
             "y": 1042
           },
           "subActions": [],
@@ -50,7 +50,7 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 769,
+            "x": 771,
             "y": 226
           },
           "nextTargetActionId": "lobby-action-mrmi772x"
@@ -69,7 +69,7 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 769,
+            "x": 771,
             "y": 1246
           },
           "nextTargetActionId": "lobby-action-mrmi8fie"
@@ -88,7 +88,7 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 769,
+            "x": 771,
             "y": 1450
           },
           "nextTargetActionId": "return"
@@ -107,7 +107,7 @@
           "isShown": false,
           "subActions": [],
           "nodePosition": {
-            "x": 769,
+            "x": 771,
             "y": 634
           },
           "nextTargetActionId": "lobby-action-mqw4vt62"
@@ -126,7 +126,7 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 769,
+            "x": 771,
             "y": 838
           },
           "nextTargetActionId": "lobby-countdown-complete"
@@ -145,7 +145,7 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 769,
+            "x": 771,
             "y": 430
           },
           "nextTargetActionId": "lobby-action-mqpt9z90"
