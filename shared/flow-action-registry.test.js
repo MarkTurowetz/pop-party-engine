@@ -5,8 +5,10 @@ const require = createRequire(import.meta.url);
 const {
   availableFlowActionTypes,
   createFlowActionRegistry,
+  flowActionDefinitions,
   isCompletableStageActionType,
-  stageActionRunnerDefinitions
+  stageActionRunnerDefinitions,
+  validateFlowActionDefinitions
 } = require("./flow-action-registry");
 const { normalizeFlowId } = require("../server/value-normalizers");
 
@@ -33,6 +35,21 @@ function registry(extra = {}) {
 }
 
 describe("flow action registry", () => {
+  it("requires complete, unique serializers for every registered action", () => {
+    expect(() => validateFlowActionDefinitions(flowActionDefinitions)).not.toThrow();
+    expect(flowActionDefinitions.every((definition) => (
+      typeof definition.normalize === "function" && typeof definition.toPublic === "function"
+    ))).toBe(true);
+  });
+
+  it("fails closed without converting an unknown action into Display Text", () => {
+    const actionRegistry = registry();
+    expect(actionRegistry.publicAction(
+      { type: "futureAction" },
+      { id: "future", actionType: "futureAction" }
+    )).toEqual({ id: "future", actionType: "futureAction", type: "futureAction" });
+  });
+
   it.each([
     ["startMoment", "Start Moment"],
     ["endMoment", "End Moment"]

@@ -944,6 +944,27 @@ const flowActionDefinitions: FlowActionDefinition[] = [
   }
 ];
 
+function validateFlowActionDefinitions(definitions: FlowActionDefinition[]): void {
+  const ids = new Set<string>();
+  const stageTypes = new Set<string>();
+  for (const definition of definitions) {
+    if (!definition.id || ids.has(definition.id)) {
+      throw new Error(`Invalid or duplicate flow action id: ${definition.id || "(missing)"}`);
+    }
+    ids.add(definition.id);
+    const stageType = definition.stageActionType || definition.id;
+    if (stageTypes.has(stageType)) {
+      throw new Error(`Duplicate stage action type: ${stageType}`);
+    }
+    stageTypes.add(stageType);
+    if (typeof definition.normalize !== "function" || typeof definition.toPublic !== "function") {
+      throw new Error(`Flow action ${definition.id} must define normalize and toPublic serializers`);
+    }
+  }
+}
+
+validateFlowActionDefinitions(flowActionDefinitions);
+
 const availableFlowActionTypes = flowActionDefinitions.map(({ id, name, category, deprecated, primaryOnly }) => ({
   id,
   name,
@@ -968,14 +989,6 @@ const stageActionRunnerDefinitions = flowActionDefinitions
     runner: definition.stageRunner
   }));
 
-function fallbackNormalizeAction(action, base, context) {
-  return normalizeTextAction(action, base, context, "Text");
-}
-
-function fallbackPublicAction(action, base, context) {
-  return publicTextAction(action, base, context, "displayText");
-}
-
 function createFlowActionRegistry(context) {
   function hasActionType(type) {
     return definitionById.has(type);
@@ -987,14 +1000,21 @@ function createFlowActionRegistry(context) {
 
   function normalizeAction(type, action, base) {
     const definition = definitionById.get(type);
-    const normalize = definition?.normalize || fallbackNormalizeAction;
-    return normalize(action, base, context);
+    if (!definition) return { ...base, type: String(type || action?.type || base?.type || "unknown") };
+    return definition.normalize!(action, base, context);
   }
 
   function publicAction(action, base) {
     const definition = definitionById.get(action?.type);
-    const toPublic = definition?.toPublic || fallbackPublicAction;
-    return toPublic(action, base, context);
+    if (!definition) {
+      return { ...base, type: String(action?.type || base?.actionType || "unknown") };
+    }
+    const publicPayload = definition.toPublic!(action, base, context);
+    const expectedStageType = definition.stageActionType || definition.id;
+    if (publicPayload?.type !== expectedStageType) {
+      throw new Error(`Flow action ${definition.id} serialized as ${publicPayload?.type || "(missing)"}; expected ${expectedStageType}`);
+    }
+    return publicPayload;
   }
 
   function applyRoomEffect(room, action) {
@@ -1043,7 +1063,8 @@ const exportedRegistry = {
   isFlowEventBarrierAction,
   normalizeVoteRevealStaggerSeconds,
   stageActionRunnerDefinitions,
-  stageCompletionCleanupForActionType
+  stageCompletionCleanupForActionType,
+  validateFlowActionDefinitions
 };
 
 if (typeof module !== "undefined" && module.exports) {
