@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PartyGameArtObject, artRuntimeInitialAnimation } from "./stageArtObjectVisuals";
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
+import { normalizeTimeline } from "../../shared/timeline-model";
 
 describe("PartyGameArtObject (ported art-object-visuals)", () => {
   beforeEach(() => {
@@ -19,8 +20,15 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(PartyGameArtObject.syncComponentElement).toBeTypeOf("function");
   });
 
-  it("always constructs runtime art at Off until an animation is explicitly played", () => {
-    expect(artRuntimeInitialAnimation()).toBe("Off");
+  it("initializes lifecycle MCs at Off and semantic prefabs at their authored default", () => {
+    expect(artRuntimeInitialAnimation(effectiveVisibilityTimeline(null), "Default")).toBe("Off");
+    expect(artRuntimeInitialAnimation(normalizeTimeline({
+      fps: 30,
+      frameCount: 1,
+      labels: [{ name: "Default", frame: 0 }],
+      commands: [{ frame: 0, type: "stop" }],
+      tracks: []
+    }), "Default")).toBe("Default");
   });
 
   it("reveals a rendered tree through the fallback timeline On command", () => {

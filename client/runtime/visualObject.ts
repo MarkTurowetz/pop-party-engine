@@ -717,7 +717,8 @@ class CssVisualObject {
     if (customDuration !== null) {
       this.updateActiveAnimationDuration(useTimelinePlayback ? Math.max(duration, customDuration) : customDuration);
       if (!useTimelinePlayback) {
-        this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
+        if (instant || customDuration <= 0) this.finishActiveAnimation(effectiveAnimation, token);
+        else this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
       }
       return useTimelinePlayback ? Math.max(duration, customDuration) : customDuration;
     }
@@ -751,7 +752,10 @@ class CssVisualObject {
       if (!instant) this.addClasses([this.updateClass].filter(Boolean));
     }
 
-    if (!useTimelinePlayback) this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
+    if (!useTimelinePlayback) {
+      if (instant || duration <= 0) this.finishActiveAnimation(effectiveAnimation, token);
+      else this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
+    }
     return duration;
   }
 

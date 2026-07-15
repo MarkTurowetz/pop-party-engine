@@ -112,9 +112,17 @@ async function main() {
       const nameSpawnStartState = componentState("player-name-mc");
       const vipSpawnStartState = componentState("vip-mc");
       await sleep(400);
+      const avatarBaseVisibleAfterSpawn = hostElement
+        .querySelector("[data-art-component-id='player-avatar']")
+        ?.dataset.visualVisible;
       const avatarSpawnFinalState = componentState("player-avatar-mc");
       const nameSpawnFinalState = componentState("player-name-mc");
       const vipSpawnFinalState = componentState("vip-mc");
+      roster.render([player], { instant: false });
+      await sleep(50);
+      const avatarBaseVisibleAfterHeartbeat = hostElement
+        .querySelector("[data-art-component-id='player-avatar']")
+        ?.dataset.visualVisible;
 
       player = makePlayer(false);
       roster.render([player], { instant: false });
@@ -169,6 +177,8 @@ async function main() {
         appearStartFrame,
         appearToken,
         appearTokenAfterReconcile,
+        avatarBaseVisibleAfterHeartbeat,
+        avatarBaseVisibleAfterSpawn,
         avatarBaseVisibleAtSpawn,
         avatarSpawnFinalState,
         avatarSpawnStartState,
@@ -188,6 +198,8 @@ async function main() {
     });
 
     assert(result.avatarBaseVisibleAtSpawn === "true", "spawned avatar base remained parked");
+    assert(result.avatarBaseVisibleAfterSpawn === "true", "avatar base was re-parked when Appear completed");
+    assert(result.avatarBaseVisibleAfterHeartbeat === "true", "avatar base was re-parked by lobby reconciliation");
     assert(result.avatarSpawnStartState === "appearing", `avatar spawn started in ${result.avatarSpawnStartState}`);
     assert(result.nameSpawnStartState === "appearing", `name spawn started in ${result.nameSpawnStartState}`);
     assert(result.vipSpawnStartState === "appearing", `VIP spawn started in ${result.vipSpawnStartState}`);

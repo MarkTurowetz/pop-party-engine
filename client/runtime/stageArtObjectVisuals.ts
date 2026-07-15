@@ -50,8 +50,14 @@ const UPDATE_CLASS = "art-runtime-object-update";
 const INSTANT_CLASS = "art-runtime-object-instant";
 let artTreeInstanceCounter = 1;
 
-export function artRuntimeInitialAnimation(): string {
-  return lifecycleLabels.off;
+export function artRuntimeInitialAnimation(
+  timeline: TimelineDocument | null | undefined,
+  defaultAnimationState: unknown = ""
+): string {
+  if (hasTimelineLabel(timeline, lifecycleLabels.off)) return lifecycleLabels.off;
+  const authoredDefault = String(defaultAnimationState || "").trim();
+  if (authoredDefault && hasTimelineLabel(timeline, authoredDefault)) return authoredDefault;
+  return "";
 }
 
 function num(value: unknown, fallback = 0): number {
@@ -511,6 +517,16 @@ class ArtObjectView {
     return Number(visual?.durationForAnimation?.(cleanAnimation) || 0);
   }
 
+  initialize(): number {
+    const initialAnimation = artRuntimeInitialAnimation(
+      this.componentTimeline(),
+      this.component?.defaultAnimationState
+    );
+    if (!initialAnimation) return 0;
+    if (initialAnimation === lifecycleLabels.off) return this.play(initialAnimation, { instant: true });
+    return this.stopAt(initialAnimation, { instant: true });
+  }
+
   update(component: Component, canvas: CanvasSize, layer: Dict = {}): void {
     this.component = component || {};
     this.canvas = canvas || null;
@@ -569,7 +585,7 @@ class ArtObjectView {
           layer: { index, total: renderList.length }
         });
         this.children.set(key, view);
-        view.play(artRuntimeInitialAnimation(), { instant: true });
+        view.initialize();
       } else {
         view.update(child, childCanvas, { index, total: renderList.length, isRootContainer: false });
       }
@@ -728,7 +744,7 @@ class ArtObjectTreeRenderer {
           layer: { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) }
         });
         this.views.set(key, view);
-        view.play(artRuntimeInitialAnimation(), { instant: true });
+        view.initialize();
       } else {
         view.update(component, canvas, { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) });
       }

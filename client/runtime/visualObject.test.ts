@@ -201,6 +201,25 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualVisible).toBe("false");
   });
 
+  it("finishes an instant zero-duration Off before a parent timeline reveals the child", async () => {
+    const element = createFakeElement();
+    const complete = vi.fn();
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"]
+    });
+
+    expect(visual.play("Off", { instant: true, complete })).toBe(0);
+    expect(complete).toHaveBeenCalledTimes(1);
+    visual.applyCommandVisibility(true);
+
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
+    expect(element.classList.contains("hidden")).toBe(false);
+    expect(element.dataset.visualState).toBe("shown");
+    expect(element.dataset.visualVisible).toBe("true");
+  });
+
   it("does not cancel an authored timeline when that timeline changes visibility", () => {
     const element = createFakeElement(["hidden"]);
     const complete = vi.fn();

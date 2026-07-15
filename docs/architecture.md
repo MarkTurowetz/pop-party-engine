@@ -143,11 +143,13 @@ concepts into focused modules.
 - New visible stage/controller elements should use `PartyGameVisualBridge.createVisualForTarget`
   or a registry-backed layout entity rather than calling `PartyGameVisualObject` directly.
   Direct visual-object creation should be limited to the bridge/core animation layer.
-- Timeline-backed art is constructed at `Off`. Rendering and reconciliation may inject dynamic
-  content, colors, and data, but must not infer or assign lifecycle state, visibility, opacity,
-  scale, or motion. The owning game object must explicitly play `Appear`, `On`, `Update`,
-  `Disappear`, or `Off` after its content is ready; authored timeline commands are the sole
-  authority for how those lifecycle states look and when their component trees become visible.
+- Lifecycle MCs with an authored `Off` label are constructed at `Off`. Semantic/base prefabs
+  without `Off` initialize at their authored default state and are gated by their animated parent;
+  the renderer must not synthesize a legacy CSS `Off` for them. Rendering and reconciliation may
+  inject dynamic content, colors, and data, but must not infer or assign lifecycle state,
+  visibility, opacity, scale, or motion. The owning game object must explicitly play `Appear`,
+  `On`, `Update`, `Disappear`, or `Off` after its content is ready; authored timeline commands are
+  the sole authority for how those lifecycle states look and when their component trees become visible.
 - Layout reconciliation is state-preserving. It may initialize a newly entered entity or send
   `Off` to an entity that actually exited, but it must not replay defaults or lifecycle commands
   for retained entities. Heartbeats and stage-event renders are reconciliation, not transitions.
