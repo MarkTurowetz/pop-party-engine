@@ -694,6 +694,10 @@ class PlayerRosterRenderer {
   revealAnswerCorrectness(options: Dict = {}): number {
     if (!this.host) return 0;
     const instant = options.instant === true;
+    const answerCorrectness = (options.answerCorrectness as Dict) || null;
+    const hasExplicitCorrectness = Boolean(answerCorrectness);
+    const correctPlayerIds = new Set(((answerCorrectness?.correctPlayerIds as unknown[]) || []).map(String));
+    const incorrectPlayerIds = new Set(((answerCorrectness?.incorrectPlayerIds as unknown[]) || []).map(String));
     let duration = 0;
     for (const node of Array.from(this.host.querySelectorAll(".player-tile[data-player-id]"))) {
       const tile = node as El;
@@ -701,15 +705,23 @@ class PlayerRosterRenderer {
       const renderer = this.tileRenderers.get(tile);
       if (!player || !renderer) continue;
       const state = playerAnswerBubbleRuntimeState(player, true);
+      const playerId = String(player.id || tile.dataset.playerId || "");
+      const stateLabel = hasExplicitCorrectness
+        ? correctPlayerIds.has(playerId)
+          ? "Correct"
+          : incorrectPlayerIds.has(playerId)
+            ? "Incorrect"
+            : "Default"
+        : playerAnswerBubbleStateLabel(state);
       const stateDuration = renderer.stopAtComponent?.(
         PLAYER_ANSWER_BUBBLE_STATE_ID,
-        playerAnswerBubbleStateLabel(state),
+        stateLabel,
         { instant: true }
       ) || 0;
       const lifecycleDuration = state.hasAnswer && renderer.isComponentVisible?.(PLAYER_ANSWER_BUBBLE_MC_ID)
         ? renderer.playComponent?.(PLAYER_ANSWER_BUBBLE_MC_ID, "Update", { instant }) || 0
         : 0;
-      tile.dataset.answerBubbleCorrectness = state.correctness;
+      tile.dataset.answerBubbleCorrectness = stateLabel === "Correct" ? "correct" : stateLabel === "Incorrect" ? "wrong" : "";
       duration = Math.max(duration, stateDuration, lifecycleDuration);
     }
     return duration;

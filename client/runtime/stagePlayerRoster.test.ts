@@ -355,8 +355,8 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     const correctUpdate = vi.fn(() => 333);
     const incorrectUpdate = vi.fn(() => 333);
     const roster = PartyGamePlayerRoster.createRenderer({ host });
-    roster.tilePlayers.set(correctTile, { displayedAnswer: { text: "YES", correct: true } });
-    roster.tilePlayers.set(incorrectTile, { displayedAnswer: { text: "NO", correct: false } });
+    roster.tilePlayers.set(correctTile, { id: "correct", displayedAnswer: { text: "YES", correct: null } });
+    roster.tilePlayers.set(incorrectTile, { id: "incorrect", displayedAnswer: { text: "NO", correct: null } });
     roster.tileRenderers.set(correctTile, {
       render: vi.fn(),
       isComponentVisible: vi.fn(() => true),
@@ -370,7 +370,12 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       playComponent: incorrectUpdate
     });
 
-    expect(roster.revealAnswerCorrectness()).toBe(333);
+    expect(roster.revealAnswerCorrectness({
+      answerCorrectness: {
+        correctPlayerIds: ["correct"],
+        incorrectPlayerIds: ["incorrect"]
+      }
+    })).toBe(333);
     expect(correctStop).toHaveBeenCalledWith("playerAnswerBubble", "Correct", { instant: true });
     expect(incorrectStop).toHaveBeenCalledWith("playerAnswerBubble", "Incorrect", { instant: true });
     expect(correctUpdate).toHaveBeenCalledWith("player-answer-bubble-mc", "Update", { instant: false });

@@ -66,6 +66,12 @@ function createFlowActionPublicRuntime({
       options: Array.isArray(action.options) ? action.options.map((option) => String(option).replaceAll("<ROUND_NUMBER>", roundNumberWord(room.currentRound || 1))) : action.options,
       subActions: (action.subActions || []).map((subAction) => resolveRoomActionText(subAction, room)).filter(Boolean)
     };
+    if (resolved.type === "revealPlayerAnswerCorrectness") {
+      resolved.answerCorrectness = {
+        correctPlayerIds: [...(room.playerAnswerGroups?.correct || [])],
+        incorrectPlayerIds: [...(room.playerAnswerGroups?.wrong || [])]
+      };
+    }
     if (resolved.type === "playHostAudio") {
       return resolveHostAudioAction(room, resolved, readHostAudios());
     }

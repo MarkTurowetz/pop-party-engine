@@ -204,7 +204,8 @@ function setPlayerAnswerBubblesShown(isShown: boolean, options: Dict = {}): numb
 
 function revealPlayerAnswerCorrectnessForAction(action: Dict): number {
   return ((playerRosterRenderer() as { revealAnswerCorrectness?: (o: Dict) => number } | null)?.revealAnswerCorrectness?.({
-    instant: action.instant === true
+    instant: action.instant === true,
+    answerCorrectness: action.answerCorrectness
   }) as number) || 0;
 }
 
