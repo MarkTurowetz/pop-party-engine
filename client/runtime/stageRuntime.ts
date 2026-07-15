@@ -172,8 +172,7 @@ function stageWipeController(): Dict | null {
 function stageRenderOrchestrator(): Dict | null {
   if (!stageRenderOrchestratorInstance && w().PartyGameStageRenderOrchestrator) {
     stageRenderOrchestratorInstance = (w().PartyGameStageRenderOrchestrator as unknown as { createOrchestrator: (o: Dict) => Dict }).createOrchestrator({
-      applyStageState, cancelStageWipe, clearPointPopups: () => (playerRosterRenderer() as { clearPointPopups?: () => void } | null)?.clearPointPopups?.(),
-      clearStageAudioPlayers, completeFlowAction, prepareNewStageAction, renderVotingCards, runStageAction, runStageWipe, scheduleSubActions, showStageDecisionHalt
+      applyStageState, cancelStageWipe, clearStageAudioPlayers, completeFlowAction, prepareNewStageAction, runStageAction, runStageWipe, scheduleSubActions, showStageDecisionHalt
     });
   }
   return stageRenderOrchestratorInstance;
@@ -898,12 +897,6 @@ async function applyControllerRuntimeTestMessage(message: Dict): Promise<void> {
   w().applyControllerLayoutForPhase!(controllerState ? (controllerState.phase as string) || "lobby" : "join");
 }
 
-function clearRuntimeTestConfigForStage(stageCode: string): void {
-  w().runtimeTestLayouts = null;
-  if (!stageCode || !w().canUseServer) return;
-  w().postJson!(`/api/stage/${stageCode}/test-config`, { clearFlow: true }).catch(() => {});
-}
-
 function setStagePaused(isPaused: boolean, _options: Dict = {}): void {
   w().isStagePaused = isPaused;
   w().pauseMenu.classList.toggle("hidden", !isPaused);
@@ -964,7 +957,6 @@ async function setupStage(): Promise<void> {
   const stageCode = w().getOrCreateStageCode!();
   setStageCodeDisplays(stageCode);
   renderStageJoinQr(stageCode, true);
-  clearRuntimeTestConfigForStage(stageCode);
   w().runtimeTestChannel?.addEventListener("message", (event: MessageEvent) => {
     applyRuntimeTestMessage(event.data);
   });

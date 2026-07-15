@@ -14,9 +14,13 @@ describe("PartyGameStageWidgetBindings (ported)", () => {
 });
 
 describe("PartyGameStageRenderOrchestrator (ported)", () => {
-  it("actionKeyForLobby encodes phase:id:type", () => {
-    expect(PartyGameStageRenderOrchestrator.actionKeyForLobby({ phase: "round", action: { id: "a1", type: "present" } })).toBe(
-      "round:a1:present"
+  it("actionKeyForLobby encodes phase, subroutine path, id, and type", () => {
+    expect(PartyGameStageRenderOrchestrator.actionKeyForLobby({
+      phase: "round",
+      subroutinePath: ["presentation", "winner"],
+      action: { id: "a1", type: "present" }
+    })).toBe(
+      "round:presentation/winner:a1:present"
     );
   });
 

@@ -16,4 +16,30 @@ describe("StageRenderOrchestrator flow identity", () => {
 
     expect(runStageAction).toHaveBeenCalledTimes(1);
   });
+
+  it("treats the same action id in different nested subroutines as distinct actions", () => {
+    const runStageAction = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({ applyStageState: vi.fn(), runStageAction });
+    const action = { id: "display", type: "displayText" };
+
+    orchestrator.render({ phase: "round", flowStateId: "round", subroutinePath: ["first"], action });
+    orchestrator.render({ phase: "round", flowStateId: "round", subroutinePath: ["second"], action });
+
+    expect(runStageAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not remove visual game objects merely because the root subroutine changes", () => {
+    const clearPointPopups = vi.fn();
+    const renderVotingCards = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({
+      applyStageState: vi.fn(),
+      ...({ clearPointPopups, renderVotingCards } as Record<string, unknown>)
+    });
+
+    orchestrator.render({ phase: "intro", action: { id: "a", type: "doNothing" } });
+    orchestrator.render({ phase: "round", action: { id: "b", type: "doNothing" } });
+
+    expect(clearPointPopups).not.toHaveBeenCalled();
+    expect(renderVotingCards).not.toHaveBeenCalled();
+  });
 });

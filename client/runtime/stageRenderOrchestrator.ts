@@ -5,8 +5,6 @@ type Dict = Record<string, unknown>;
 
 interface OrchestratorOptions {
   clearStageAudioPlayers?: () => void;
-  clearPointPopups?: () => void;
-  renderVotingCards?: (cards: unknown[]) => void;
   prepareNewStageAction?: (lobby: Dict, actionKey: string) => void;
   cancelStageWipe?: () => void;
   showStageDecisionHalt?: (lobby: Dict) => void;
@@ -19,8 +17,9 @@ interface OrchestratorOptions {
 
 function actionKeyForLobby(lobby: Dict = {}): string {
   const phase = (lobby.flowStateId as string) || (lobby.phase as string) || "lobby";
+  const subroutinePath = Array.isArray(lobby.subroutinePath) ? lobby.subroutinePath.map(String).filter(Boolean).join("/") : "";
   const action = (lobby.action as Dict) || {};
-  return `${phase}:${action.id || action.index || ""}:${action.type || ""}`;
+  return `${phase}:${subroutinePath}:${action.id || action.index || ""}:${action.type || ""}`;
 }
 
 class StageRenderOrchestrator {
@@ -50,8 +49,6 @@ class StageRenderOrchestrator {
     const haltedByDecision = (lobby.lastDecisionTrace as Dict)?.selectedTarget === "none";
     if (isNewPhase) {
       options.clearStageAudioPlayers?.();
-      options.clearPointPopups?.();
-      options.renderVotingCards?.([]);
     }
 
     this.renderedPhase = nextPhase;

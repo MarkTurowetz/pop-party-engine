@@ -34,12 +34,14 @@ describe("lobby payload flow action exposure", () => {
       revision: 1,
       phase,
       flowStateId: "lobby",
+      subroutinePath: ["nested"],
       players: new Map(),
       pendingFlowEvents: new Set()
     });
 
     expect(payload.action).toBe(action);
     expect(payload.flowStateId).toBe("lobby");
+    expect(payload.subroutinePath).toEqual(["nested"]);
     expect(payload.debugAction.actionId).toBe("header");
   });
 });
