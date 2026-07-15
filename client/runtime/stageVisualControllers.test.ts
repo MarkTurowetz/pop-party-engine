@@ -18,6 +18,16 @@ describe("PartyGameStageVisualControllers (ported)", () => {
     expect(controller.reset()).toBe(0);
   });
 
+  it("completes Hide immediately while the timer is already Off without rendering art", () => {
+    const complete = vi.fn();
+    const renderArt = vi.fn();
+    const controller = PartyGameStageVisualControllers.createCraftingTimerController({ renderArt });
+
+    expect(controller.setVisible(false, { complete })).toBe(0);
+    expect(renderArt).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledOnce();
+  });
+
   it("completes Set Timer Shown only from the authored parent timeline callback", () => {
     let timelineComplete: (() => void) | undefined;
     const complete = vi.fn();

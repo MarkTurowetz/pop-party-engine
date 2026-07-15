@@ -17,7 +17,7 @@ interface StageVisualControllersApi {
 
 declare global {
   interface Window {
-    setupStage?: () => void;
+    setupStage?: () => void | Promise<void>;
     // layout-runtime functions (installed by layoutRuntime.ts) consumed here.
     normalizeTextTargetId?: (value: unknown) => string;
     applyStageLayoutTextProperties?: (target: El, element: Dict) => void;
@@ -274,8 +274,8 @@ function runVotingCardActionForAction(action: Dict): Promise<void> {
   return renderer?.runAction?.(action) || Promise.reject(new Error("Voting card renderer unavailable"));
 }
 
-function reloadStageArtAssets(): void {
-  w().loadArtAssets!().then(() => {
+function reloadStageArtAssets(): Promise<void> {
+  return w().loadArtAssets!().then(() => {
     if (w().currentStageState) renderStageLobby(w().currentStageState as Dict);
   }).catch(() => {});
 }
@@ -952,14 +952,15 @@ function subscribeToStage(stageCode: string): void {
   stream.addEventListener("error", () => setStageWaitingStatus("Reconnecting to lobby", true));
 }
 
-function setupStage(): void {
+async function setupStage(): Promise<void> {
   w().stageScreen.classList.remove("hidden");
   initStageTextObjects();
-  reloadStageArtAssets();
   w().listenForArtAssetsChanged!(reloadStageArtAssets);
-  w().loadStageLayouts!().then(() => {
-    if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
-  }).catch(() => {});
+  await Promise.all([
+    reloadStageArtAssets(),
+    w().loadStageLayouts!().catch(() => w().stageLayouts)
+  ]);
+  if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
   const stageCode = w().getOrCreateStageCode!();
   setStageCodeDisplays(stageCode);
   renderStageJoinQr(stageCode, true);

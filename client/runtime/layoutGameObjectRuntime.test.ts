@@ -38,6 +38,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
   it("does not restart visibility animations when a placed entity already matches the requested state", () => {
     const visualPlay = vi.fn(() => 0);
     const playVisibility = vi.fn(() => 300);
+    const complete = vi.fn();
     const target = { dataset: { visualState: "shown" } } as unknown as HTMLElement;
     const resolver = PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver({
       registry: () => ({
@@ -56,9 +57,13 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     const previousVisualRuntime = globals.PartyGameVisualObject;
     globals.PartyGameVisualObject = {};
     try {
-      expect(resolver.setShownForAction({ commandSource: "flow-action", targetLayoutElementId: "player-roster", isShown: true, instant: false })).toBe(0);
+      expect(resolver.setShownForAction(
+        { commandSource: "flow-action", targetLayoutElementId: "player-roster", isShown: true, instant: false },
+        { complete }
+      )).toBe(0);
       expect(playVisibility).not.toHaveBeenCalled();
-      expect(visualPlay).toHaveBeenCalledWith("On", { instant: true });
+      expect(visualPlay).not.toHaveBeenCalled();
+      expect(complete).toHaveBeenCalledOnce();
     } finally {
       globals.PartyGameVisualObject = previousVisualRuntime;
     }

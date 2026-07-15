@@ -32,6 +32,7 @@ class StageWipeController {
   targetShown = false;
   desiredShown = false;
   activeAnimation = "";
+  activeAnimationToken = "";
   visibilityRequest: { actionKey: string; isShown: boolean } | null = null;
   activeTransitionToken = "";
 
@@ -69,20 +70,26 @@ class StageWipeController {
     const nextShown = isShown !== false;
     const instant = options.instant === true;
     const complete = typeof options.complete === "function" ? (options.complete as () => void) : null;
+    if (this.desiredShown === nextShown) {
+      complete?.();
+      return 0;
+    }
     const renderer = this.widgetRenderer();
-    this.desiredShown = nextShown;
 
     if (!renderer?.playAll) {
       this.activeAnimation = "";
       return 0;
     }
 
+    this.desiredShown = nextShown;
     const animation = nextShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
+    const token = transitionToken();
     this.activeAnimation = animation;
+    this.activeAnimationToken = token;
     if (nextShown) this.setVisibleState(true);
     let finished = false;
     const finish = () => {
-      if (finished) return;
+      if (finished || this.activeAnimationToken !== token) return;
       finished = true;
       this.activeAnimation = "";
       this.setVisibleState(nextShown);
@@ -119,6 +126,7 @@ class StageWipeController {
   cancel(): void {
     this.visibilityRequest = null;
     this.activeTransitionToken = transitionToken();
+    this.activeAnimationToken = transitionToken();
     this.activeAnimation = "";
     this.desiredShown = false;
     const renderer = this.widgetRenderer();

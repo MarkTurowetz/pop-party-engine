@@ -229,7 +229,13 @@ class GameObject {
 
   playVisibility(isShown: boolean, options: Dict = {}): number {
     const visual = this.createVisual();
+    const targetShown = visual?.isTargetShown?.() ?? visual?.isVisible?.() ?? this.isVisible();
+    if (targetShown === (isShown === true)) {
+      if (fn(options.complete)) (options.complete as () => void)();
+      return 0;
+    }
     const animation = PartyGameVisualObject.animationForVisibility(isShown === true, visual?.isVisible() ?? this.isVisible());
+    visual?.setTargetShown?.(isShown === true);
     if (this.syncArtRendererOnShow && fn(this.artRenderer?.playAll)) {
       return this.playAuthoredAnimation(animation, options) || 0;
     }
@@ -382,7 +388,17 @@ function playVisibilityForTarget(options: Dict = {}): Dict {
     return { ...bridge, duration: 0 };
   }
   const isShown = options.isShown !== false;
+  const gameObject = (bridge.gameObject as GameObject) || null;
+  if (gameObject) {
+    return { ...bridge, duration: gameObject.playVisibility(isShown, (options.playOptions as Dict) || {}) };
+  }
+  if ((visual.isTargetShown?.() ?? visual.isVisible()) === isShown) {
+    const complete = (options.playOptions as Dict | undefined)?.complete;
+    if (fn(complete)) (complete as () => void)();
+    return { ...bridge, duration: 0 };
+  }
   const animation = PartyGameVisualObject.animationForVisibility(isShown, visual.isVisible());
+  visual.setTargetShown?.(isShown);
   const duration = visual.play(animation, (options.playOptions as Dict) || {});
   return { ...bridge, duration };
 }

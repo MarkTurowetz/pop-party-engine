@@ -406,6 +406,18 @@ class PlayerRosterRenderer {
   syncAnswerBubbleComponent(renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {
     const instant = options.instant === true;
     const targetId = PLAYER_ANSWER_BUBBLE_MC_ID;
+    const lifecycleState = renderer.componentLifecycleState?.(targetId);
+    const targetShown = state.visible === true;
+    const componentTargetShown = lifecycleState === "shown" || lifecycleState === "appearing"
+      ? true
+      : lifecycleState === "hidden" || lifecycleState === "disappearing"
+        ? false
+        : renderer.isComponentVisible?.(targetId);
+    const alreadyTargetingVisibility = componentTargetShown === targetShown;
+    if (alreadyTargetingVisibility) {
+      if (typeof options.complete === "function") (options.complete as () => void)();
+      return 0;
+    }
     const play = (animation: string, playInstant = instant) => {
       const playOptions: Dict = { instant: playInstant };
       if (typeof options.complete === "function") playOptions.complete = options.complete;
@@ -543,8 +555,9 @@ class PlayerRosterRenderer {
     const alreadyShown = widgetTiles.length > 0 && this.host.dataset.visualVisible
       ? this.host.dataset.visualVisible === "true"
       : !this.host.classList.contains("players-hidden");
-    if (alreadyShown === targetShown && typeof options.complete !== "function") {
+    if (alreadyShown === targetShown) {
       this.host.dataset.visualVisible = targetShown ? "true" : "false";
+      if (typeof options.complete === "function") (options.complete as () => void)();
       return 0;
     }
     const instant = options.instant === true;
@@ -563,6 +576,8 @@ class PlayerRosterRenderer {
       this.host.dataset.visualVisible = targetShown ? "true" : "false";
       return duration;
     }
+    this.host.dataset.visualVisible = targetShown ? "true" : "false";
+    if (typeof options.complete === "function") (options.complete as () => void)();
     return 0;
   }
 

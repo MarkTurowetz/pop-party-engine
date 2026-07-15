@@ -452,6 +452,13 @@ function applyLayoutVisibilityOverride(entity: Dict | null, options: Dict = {}):
 function playLayoutEntityVisibility(entity: Dict | null, isShown: boolean, options: Dict = {}): number {
   const target = (entity?.target as El) || null;
   const lifecycleState = String(target?.dataset?.visualState || "");
+  const alreadyTargetingVisibility = isShown
+    ? lifecycleState === "shown" || lifecycleState === "appearing"
+    : lifecycleState === "hidden" || lifecycleState === "disappearing";
+  if (alreadyTargetingVisibility) {
+    if (typeof options.complete === "function") (options.complete as () => void)();
+    return 0;
+  }
   if (!lifecycleState && typeof entity?.playAnimation === "function") {
     return Number(
       (entity.playAnimation as (animation: string, playOptions: Dict) => number)(
@@ -459,14 +466,6 @@ function playLayoutEntityVisibility(entity: Dict | null, isShown: boolean, optio
         { instant: true, complete: options.complete }
       ) || 0
     );
-  }
-  if (
-    ((isShown && lifecycleState === "appearing") || (!isShown && lifecycleState === "disappearing")) &&
-    typeof options.complete !== "function"
-  ) return 0;
-  if ((isShown && lifecycleState === "shown") || (!isShown && lifecycleState === "hidden")) {
-    const visual = layoutGameObjectVisualFor(entity) as { play?: (animation: string, playOptions: Dict) => number } | null;
-    return Number(visual?.play?.(isShown ? lifecycleLabels.on : lifecycleLabels.off, { instant: true, complete: options.complete }) || 0);
   }
   if (typeof entity?.playVisibility === "function") {
     return (entity.playVisibility as (s: boolean, o: Dict) => number)(isShown, { instant: options.instant === true, complete: options.complete });

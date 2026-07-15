@@ -72,6 +72,21 @@ describe("PartyGameGameObject (ported game-object)", () => {
     expect(playAll).toHaveBeenCalledWith("Appear", {});
   });
 
+  it("completes repeated visibility targets without replaying a timeline", () => {
+    const complete = vi.fn();
+    const play = vi.fn(() => 320);
+    const object = PartyGameGameObject.create({ id: "animated", target: {} as HTMLElement });
+    vi.spyOn(object, "createVisual").mockReturnValue({
+      isTargetShown: () => true,
+      isVisible: () => true,
+      play
+    } as never);
+
+    expect(object.playVisibility(true, { complete })).toBe(0);
+    expect(play).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledOnce();
+  });
+
   it("waits only for the authored Disappear timeline before hiding its host and completing", () => {
     let finishTimeline: (() => void) | undefined;
     const playAll = vi.fn((_animation: string, options: { complete?: () => void }) => {

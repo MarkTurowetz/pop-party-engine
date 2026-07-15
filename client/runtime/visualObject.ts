@@ -65,6 +65,10 @@ function isShownLifecycleState(state: VisualLifecycleState): boolean {
   return state === "shown" || state === "appearing" || state === "disappearing";
 }
 
+function isTargetShownLifecycleState(state: VisualLifecycleState): boolean {
+  return state === "shown" || state === "appearing";
+}
+
 function normalizeTimelineCanvas(
   value: CssVisualObjectOptions["timelineCanvas"]
 ): { width: number; height: number; minX: number; minY: number } | null {
@@ -479,6 +483,17 @@ class CssVisualObject {
     return isShownLifecycleState(this.readLifecycleState());
   }
 
+  isTargetShown(): boolean {
+    if (!this.element) return false;
+    if (this.element.dataset.visualTargetShown === "true") return true;
+    if (this.element.dataset.visualTargetShown === "false") return false;
+    return isTargetShownLifecycleState(this.readLifecycleState());
+  }
+
+  setTargetShown(isShown: boolean): void {
+    if (this.element) this.element.dataset.visualTargetShown = isShown ? "true" : "false";
+  }
+
   rememberTimer(timerId: number): void {
     if (this.timerSink) this.timerSink(timerId);
   }
@@ -625,6 +640,7 @@ class CssVisualObject {
   }
 
   applyParkedState(): void {
+    this.setTargetShown(false);
     this.addClasses(this.hiddenClasses);
     if (this.exitingClass) this.element?.classList.remove(this.exitingClass);
     this.setLifecycleState("hidden");
@@ -632,17 +648,20 @@ class CssVisualObject {
   }
 
   applyShownState(): void {
+    this.setTargetShown(true);
     this.removeClasses([...this.hiddenClasses, this.exitingClass].filter(Boolean));
     this.setLifecycleState("shown");
     this.setVisibleState(true);
   }
 
   applyAppearingState(): void {
+    this.setTargetShown(true);
     this.setVisibleState(true);
     this.setLifecycleState("appearing");
   }
 
   applyDisappearingState(): void {
+    this.setTargetShown(false);
     this.setVisibleState(true);
     this.setLifecycleState("disappearing");
   }

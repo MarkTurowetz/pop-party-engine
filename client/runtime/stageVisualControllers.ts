@@ -302,6 +302,10 @@ class CraftingTimerController {
     const nextShown = isShown !== false;
     const instant = options.instant === true;
     const complete = typeof options.complete === "function" ? (options.complete as () => void) : null;
+    if (this.desiredShown === nextShown) {
+      complete?.();
+      return 0;
+    }
     const renderer = this.timelineRenderer || this.renderWidget((options.context as Dict) || {});
     if (renderer?.playAll) {
       this.element?.classList.remove("hidden", "is-instant");

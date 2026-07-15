@@ -321,7 +321,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
   });
 
-  it("uses the explicitly commanded instant answer-on state and waits for that exact callback", () => {
+  it("completes immediately when an answer bubble is already appearing", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     const complete = vi.fn();
     const playComponent = vi.fn((_componentId: string, _animation: string, options?: Record<string, unknown>) => {
@@ -342,16 +342,13 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         { hasAnswer: true, visible: true, text: "YES", nonce: "1", correctness: "" },
         { previousVisible: true, previousNonce: "1", previousText: "YES", instant: true, complete }
       )
-    ).toBe(240);
+    ).toBe(0);
 
-    expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "On", {
-      instant: true,
-      complete
-    });
+    expect(playComponent).not.toHaveBeenCalled();
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the explicitly commanded instant answer-off state and waits for that exact callback", () => {
+  it("completes immediately when an answer bubble is already disappearing", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     const complete = vi.fn();
     const playComponent = vi.fn(() => 180);
@@ -369,12 +366,10 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         { hasAnswer: true, visible: false, text: "YES", nonce: "1", correctness: "" },
         { previousVisible: false, previousNonce: "1", previousText: "YES", instant: true, complete }
       )
-    ).toBe(180);
+    ).toBe(0);
 
-    expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Off", {
-      instant: true,
-      complete
-    });
+    expect(playComponent).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledOnce();
   });
 
   it("reports answer lifecycle playback from the timeline state instead of a duration estimate", () => {
@@ -410,7 +405,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       });
       roster.tileRenderers.set(tile, {
         render: vi.fn(),
-        componentLifecycleState: vi.fn(() => "disappearing"),
+        componentLifecycleState: vi.fn(() => "shown"),
         playComponent: vi.fn((_componentId, _animation, options) => {
           timelineCompletions.push(options?.complete as () => void);
           return tile.dataset.playerId === "p1" ? 180 : 300;
@@ -429,7 +424,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
-  it("does not let lifecycle synchronization select a correctness state", () => {
+  it("does not select a correctness state while completing a duplicate lifecycle target", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     const calls: string[] = [];
     const renderer = {
@@ -451,8 +446,8 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         { hasAnswer: true, visible: true, text: "YES", nonce: "2", correctness: "correct" },
         { previousVisible: true, previousNonce: "2", previousText: "YES", previousCorrectness: "" }
       )
-    ).toBe(333);
-    expect(calls).toEqual(["lifecycle:Appear"]);
+    ).toBe(0);
+    expect(calls).toEqual([]);
   });
 
   it("lets the reveal action explicitly select Correct and Incorrect on each answer bubble", () => {

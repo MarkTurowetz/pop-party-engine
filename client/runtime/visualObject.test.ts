@@ -152,8 +152,10 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
 
     expect(visual.play("On", { instant: true })).toBe(0);
     expect(element.dataset.visualState).toBe("shown");
+    expect(visual.isTargetShown()).toBe(true);
     expect(visual.play("Disappear")).toBe(500);
     expect(element.dataset.visualState).toBe("disappearing");
+    expect(visual.isTargetShown()).toBe(false);
 
     vi.advanceTimersByTime(0);
     vi.advanceTimersByTime(0);

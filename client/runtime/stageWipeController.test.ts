@@ -14,6 +14,16 @@ describe("PartyGameStageWipe (ported wipe-controller)", () => {
     expect(controller.setShown(true)).toBe(0);
   });
 
+  it("completes Hide immediately while the wipe is already Off without rendering art", () => {
+    const complete = vi.fn();
+    const renderArt = vi.fn();
+    const controller = PartyGameStageWipe.createController({ renderArt });
+
+    expect(controller.setShownForAction({ isShown: false }, { actionKey: "wipe-off", complete })).toBe(0);
+    expect(renderArt).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledOnce();
+  });
+
   it("waits for the Wipe Widget MC parent callback", () => {
     let timelineComplete: (() => void) | undefined;
     const complete = vi.fn();

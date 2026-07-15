@@ -355,6 +355,7 @@ class VotingCardView {
   groupVisual: VisualLike;
   cardData: Dict = {};
   currentVisibleVoters: Dict[] = [];
+  desiredShown = false;
 
   constructor(options: Dict) {
     this.document = options.document as Document;
@@ -447,15 +448,18 @@ class VotingCardView {
   }
 
   setShown(isShown: boolean, options: Dict = {}): Promise<void> {
+    const nextShown = isShown !== false;
+    if (this.desiredShown === nextShown) return Promise.resolve();
+    this.desiredShown = nextShown;
     const instant = options.instant === true;
-    const animation = isShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
-    if (isShown) this.element.classList.remove("voting-card-group-hidden");
+    const animation = nextShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
+    if (nextShown) this.element.classList.remove("voting-card-group-hidden");
     const completions = [
       targetCompletion((complete) => this.groupVisual?.play?.(animation, { instant, complete }) || 0),
       targetCompletion((complete) => this.playChild(VOTING_CARD_ART_COMPONENT_ID, animation, { instant, complete })),
       targetCompletion((complete) => this.playChild(VOTING_CARD_ANSWER_COMPONENT_ID, animation, { instant, complete }))
     ];
-    if (!isShown) {
+    if (!nextShown) {
       completions.push(
         targetCompletion((complete) => this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, animation, { instant, complete })),
         targetCompletion((complete) => this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, animation, { instant, complete })),
