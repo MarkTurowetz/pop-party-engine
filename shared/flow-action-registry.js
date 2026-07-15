@@ -412,7 +412,7 @@
             category: "standard",
             canCompleteFromStage: true,
             stageActionType: "setVotingCardsShown",
-            stageRunner: "serverEffect",
+            stageRunner: "votingCardAction",
             normalize: (action, base, context) => ({
                 ...base,
                 isShown: action?.isShown !== false,
@@ -718,7 +718,6 @@
             category: "standard",
             ...identityAction("revealPlayerAnswerCorrectness"),
             stageRunner: "revealPlayerAnswerCorrectness",
-            stageRunnerDelayMs: 250,
             applyRoomEffect: (room, action, context) => {
                 context.markDisplayedAnswersCorrectness(room);
             }
@@ -729,8 +728,7 @@
             category: "standard",
             canCompleteFromStage: true,
             stageActionType: "showPoints",
-            stageRunner: "delayedComplete",
-            stageRunnerDelayMs: 1500,
+            stageRunner: "showPoints",
             normalize: (action, base, context) => ({
                 ...base,
                 playerFilter: context.normalizePlayerFilter(action?.playerFilter || "correct"),
@@ -920,8 +918,7 @@
         .map((definition) => ({
         actionId: definition.id,
         type: definition.stageActionType || definition.id,
-        runner: definition.stageRunner,
-        delayMs: Math.max(0, Number(definition.stageRunnerDelayMs || 0))
+        runner: definition.stageRunner
     }));
     function fallbackNormalizeAction(action, base, context) {
         return normalizeTextAction(action, base, context, "Text");

@@ -509,6 +509,22 @@ class CssVisualObject {
     this.schedule(delay, complete);
   }
 
+  finishWhenOwnAnimationEnds(animation: string, token: string): void {
+    const finish = () => this.finishActiveAnimation(animation, token);
+    const inspectAnimations = () => {
+      if (!this.tokenMatches(token)) return;
+      const animations = this.element?.getAnimations?.({ subtree: false }) || [];
+      const active = animations.filter((entry) => entry.playState !== "finished" && entry.playState !== "idle");
+      if (!active.length) {
+        queueMicrotask(finish);
+        return;
+      }
+      Promise.allSettled(active.map((entry) => entry.finished)).then(finish);
+    };
+    if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(inspectAnimations);
+    else queueMicrotask(inspectAnimations);
+  }
+
   customAnimationApi(animation: string, token: string, duration: number, instant: boolean, wasVisible: boolean): CustomAnimationApi {
     return {
       addClasses: (classes) => this.addClasses(asArray(classes)),
@@ -701,7 +717,7 @@ class CssVisualObject {
     if (customDuration !== null) {
       this.updateActiveAnimationDuration(useTimelinePlayback ? Math.max(duration, customDuration) : customDuration);
       if (!useTimelinePlayback) {
-        this.completeAfter(customDuration, () => this.finishActiveAnimation(effectiveAnimation, token));
+        this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
       }
       return useTimelinePlayback ? Math.max(duration, customDuration) : customDuration;
     }
@@ -735,7 +751,7 @@ class CssVisualObject {
       if (!instant) this.addClasses([this.updateClass].filter(Boolean));
     }
 
-    if (!useTimelinePlayback) this.completeAfter(duration, () => this.finishActiveAnimation(effectiveAnimation, token));
+    if (!useTimelinePlayback) this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
     return duration;
   }
 

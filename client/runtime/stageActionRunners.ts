@@ -15,7 +15,6 @@ interface Runtime {
 interface RunnerDefinition {
   type: string;
   runner: string;
-  delayMs?: number;
 }
 
 type BehaviorHandler = (action: Action, runtime: Runtime, definition?: RunnerDefinition) => void;
@@ -31,22 +30,24 @@ declare global {
   }
 }
 
-function completeAfter(action: Action, runtime: Runtime, delayMs: unknown): void {
-  setTimeout(() => {
-    if (!runtime.isCurrent()) return;
-    runtime.complete(action);
-  }, Math.max(0, Number(delayMs || 0)));
+function waitsForActionCallback(action: Action, runtime: Runtime): boolean {
+  return runtime.isPrimary === true && (action.timing as Dict)?.mode !== "S+";
 }
 
-function completeAfterResult(action: Action, runtime: Runtime, result: unknown): void {
-  if (!runtime.isPrimary) return;
+function completeWhenActionTargetsFinish(action: Action, runtime: Runtime, result: unknown): void {
+  if (!waitsForActionCallback(action, runtime)) return;
   if (result && typeof (result as Promise<unknown>).then === "function") {
     (result as Promise<unknown>)
-      .then((duration) => completeAfter(action, runtime, duration))
-      .catch(() => completeAfter(action, runtime, 0));
+      .then(() => {
+        if (runtime.isCurrent()) runtime.complete(action);
+      })
+      .catch(() => {
+        // Fail closed. A rejected target callback must never be replaced by a
+        // duration guess that advances the flow.
+      });
     return;
   }
-  completeAfter(action, runtime, result);
+  if (runtime.isCurrent()) runtime.complete(action);
 }
 
 const fallbackRunnerDefinitions: RunnerDefinition[] = [
@@ -59,7 +60,7 @@ const fallbackRunnerDefinitions: RunnerDefinition[] = [
   { type: "playHostAudio", runner: "playAudio" },
   { type: "getRandomMultipleChoiceContent", runner: "serverEffect" },
   { type: "prepareVotingCards", runner: "serverEffect" },
-  { type: "setVotingCardsShown", runner: "serverEffect" },
+  { type: "setVotingCardsShown", runner: "votingCardAction" },
   { type: "revealVotingResults", runner: "votingReveal" },
   { type: "revealAuthors", runner: "votingReveal" },
   { type: "revealVotes", runner: "votingReveal" },
@@ -74,8 +75,8 @@ const fallbackRunnerDefinitions: RunnerDefinition[] = [
   { type: "setArtAssetShown", runner: "setGameObjectShown" },
   { type: "playGameObjectAnimation", runner: "playGameObjectAnimation" },
   { type: "stopGameObjectAnimation", runner: "playGameObjectAnimation" },
-  { type: "revealPlayerAnswerCorrectness", runner: "revealPlayerAnswerCorrectness", delayMs: 250 },
-  { type: "showPoints", runner: "delayedComplete", delayMs: 1500 },
+  { type: "revealPlayerAnswerCorrectness", runner: "revealPlayerAnswerCorrectness" },
+  { type: "showPoints", runner: "showPoints" },
   { type: "givePendingPoints", runner: "serverEffect" },
   { type: "setTimerShown", runner: "setTimerShown" },
   { type: "setWipeShown", runner: "setWipeShown" },
@@ -95,46 +96,64 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
   const c = context as Record<string, (...args: never[]) => unknown>;
   return {
     immediateComplete(action, runtime) {
-      if (runtime.isPrimary) runtime.complete(action);
+      completeWhenActionTargetsFinish(action, runtime, undefined);
     },
     playAudio(action, runtime) {
       (c.playStageAudioAction as (a: Action, p: boolean, k?: string) => void)(action, runtime.isPrimary === true, runtime.actionKey);
     },
     serverEffect(action, runtime) {
-      if (runtime.isPrimary) runtime.complete(action);
+      if (runtime.isPrimary) completeWhenActionTargetsFinish(action, runtime, undefined);
       else runtime.applyEffect(action);
+    },
+    votingCardAction(action, runtime) {
+      if (!runtime.isPrimary) {
+        runtime.applyEffect(action);
+        return;
+      }
+      const result = c.runVotingCardActionForAction
+        ? (c.runVotingCardActionForAction as (a: Action) => Promise<void>)(action)
+        : Promise.resolve();
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     votingReveal(action, runtime) {
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
       }
-      completeAfter(action, runtime, (c.voteRevealDurationMs as (a: Action) => number)(action));
+      const result = c.runVotingCardActionForAction
+        ? (c.runVotingCardActionForAction as (a: Action) => Promise<void>)(action)
+        : Promise.resolve();
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
-    delayedComplete(action, runtime, definition) {
+    showPoints(action, runtime) {
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
       }
-      completeAfter(action, runtime, definition?.delayMs);
+      const result = c.showPointPopupsForAction
+        ? (c.showPointPopupsForAction as (a: Action) => Promise<void>)(action)
+        : Promise.resolve();
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
-    revealPlayerAnswerCorrectness(action, runtime, definition) {
+    revealPlayerAnswerCorrectness(action, runtime) {
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
       }
-      const duration = c.revealPlayerAnswerCorrectnessForAction
-        ? (c.revealPlayerAnswerCorrectnessForAction as (a: Action) => number)(action)
-        : 0;
-      completeAfter(action, runtime, Math.max(duration, Number(definition?.delayMs || 0)));
+      const result = c.revealPlayerAnswerCorrectnessForAction
+        ? (c.revealPlayerAnswerCorrectnessForAction as (a: Action) => Promise<void>)(action)
+        : Promise.resolve();
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     setPlayersShown(action, runtime) {
-      const duration = c.setPlayersShownForAction ? (c.setPlayersShownForAction as (a: Action) => number)(action) : 0;
+      const result = c.setPlayersShownForAction
+        ? (c.setPlayersShownForAction as (a: Action) => Promise<void>)(action)
+        : Promise.resolve();
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
       }
-      completeAfter(action, runtime, duration);
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     setPlayerAnswersShown(action, runtime) {
       const result = c.setPlayerAnswerBubblesShownForAction
@@ -142,55 +161,55 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
             instant: action.instant === true,
             playerFilter: action.playerFilter || "all"
           })
-        : (c.setPlayerAnswerBubblesShown as (shown: boolean, o: Dict) => number)(action.isShown !== false, {
-            instant: action.instant === true,
-            playerFilter: action.playerFilter || "all"
-          });
+        : Promise.resolve();
       if (!runtime.isPrimary) runtime.applyEffect(action);
-      if (runtime.isPrimary) completeAfterResult(action, runtime, result);
+      if (runtime.isPrimary) completeWhenActionTargetsFinish(action, runtime, result);
     },
     setGameObjectShown(action, runtime) {
-      const duration = c.setStageLayoutGameObjectShownForAction
+      const result = c.setStageLayoutGameObjectShownForAction
         ? (c.setStageLayoutGameObjectShownForAction as (a: Action) => unknown)(action)
         : c.setStageLayoutArtElementShownForAction
           ? (c.setStageLayoutArtElementShownForAction as (a: Action) => unknown)(action)
           : 0;
-      completeAfterResult(action, runtime, duration);
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     playGameObjectAnimation(action, runtime) {
-      const duration = c.playStageLayoutGameObjectAnimationForAction
+      const result = c.playStageLayoutGameObjectAnimationForAction
         ? (c.playStageLayoutGameObjectAnimationForAction as (a: Action) => unknown)(action)
         : 0;
-      completeAfterResult(action, runtime, duration);
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     setTimerShown(action, runtime) {
-      const duration = c.setCraftingTimerShownForAction
-        ? (c.setCraftingTimerShownForAction as (a: Action, o: Dict) => number)(action, { actionKey: runtime.actionKey })
-        : action.isShown === false && action.instant !== true
-          ? 500
-          : 0;
+      const result = c.setCraftingTimerShownForAction
+        ? (c.setCraftingTimerShownForAction as (a: Action, o: Dict) => Promise<void>)(action, { actionKey: runtime.actionKey })
+        : Promise.resolve();
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
       }
-      completeAfter(action, runtime, duration);
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     setWipeShown(action, runtime) {
-      const duration = c.setStageWipeShownForAction
-        ? (c.setStageWipeShownForAction as (a: Action, o: Dict) => number)(action, { actionKey: runtime.actionKey })
-        : 0;
+      const result = c.setStageWipeShownForAction
+        ? (c.setStageWipeShownForAction as (a: Action, o: Dict) => Promise<void>)(action, { actionKey: runtime.actionKey })
+        : Promise.resolve();
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
       }
-      completeAfter(action, runtime, duration);
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     displayText(action, runtime) {
-      const duration = (c.setStageTextObject as (target: string, spec: Dict) => unknown)(
-        (action.textTarget as string) || "presentation",
-        { text: action.text || "", isShown: action.isShown !== false, instant: action.instant === true }
-      );
-      if (runtime.isPrimary && action.type === "displayText") completeAfterResult(action, runtime, duration);
+      const result = c.setStageTextObjectForAction
+        ? (c.setStageTextObjectForAction as (target: string, spec: Dict) => Promise<void>)(
+            (action.textTarget as string) || "presentation",
+            { text: action.text || "", isShown: action.isShown !== false, instant: action.instant === true }
+          )
+        : (c.setStageTextObject as (target: string, spec: Dict) => unknown)(
+            (action.textTarget as string) || "presentation",
+            { text: action.text || "", isShown: action.isShown !== false, instant: action.instant === true }
+          );
+      if (runtime.isPrimary && action.type === "displayText") completeWhenActionTargetsFinish(action, runtime, result);
     },
     transition(action, runtime) {
       if (!runtime.isPrimary) (c.runStageWipe as (cb: () => void) => void)(() => {});

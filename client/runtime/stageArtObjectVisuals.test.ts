@@ -401,7 +401,7 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(stopped).toEqual(["stego"]);
   });
 
-  it("calculates nested timeline command duration relative to the nested component view", () => {
+  it("does not let a nested component duration affect its parent callback", () => {
     const child = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
       component: { id: string };
       children: Map<string, unknown>;
@@ -420,7 +420,7 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
 
     const duration = child.timelineCommandDuration({ type: "playComponent", frame: 4, target: "label", event: "flash" });
 
-    expect(duration).toBe(420);
+    expect(duration).toBe(0);
   });
 
   it("plays renderer root timelines before falling back to component timelines", () => {
@@ -549,7 +549,7 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(events).toEqual(["children", "reapply"]);
   });
 
-  it("includes nested component timeline command durations in renderer root playback", () => {
+  it("completes renderer root playback at its own stop even when it starts a child animation", () => {
     const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
       views: Map<string, unknown>;
       rootTimelinePlayer: unknown;
@@ -586,11 +586,11 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     const duration = renderer.playAll("appear", {});
     vi.advanceTimersByTime(100);
 
-    expect(duration).toBe(600);
+    expect(duration).toBe(200);
     expect(played).toEqual(["pop"]);
   });
 
-  it("includes scoped component timeline command durations in renderer root playback", () => {
+  it("does not include scoped child component durations in renderer root playback", () => {
     const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
       views: Map<string, unknown>;
       rootTimelinePlayer: unknown;
@@ -637,7 +637,7 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     const duration = renderer.playAll("appear", {});
     vi.advanceTimersByTime(100);
 
-    expect(duration).toBe(550);
+    expect(duration).toBe(200);
     expect(played).toEqual(["pulse"]);
   });
 

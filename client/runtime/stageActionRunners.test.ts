@@ -1,27 +1,57 @@
 import { describe, expect, it, vi } from "vitest";
 import { PartyGameStageActionRunners } from "./stageActionRunners";
 
+function deferred() {
+  let resolve: () => void = () => {};
+  const promise = new Promise<void>((finish) => {
+    resolve = finish;
+  });
+  return { promise, resolve };
+}
+
 function context() {
   return {
     applyFlowActionEffect: vi.fn(),
     completeFlowAction: vi.fn(),
     isCurrentActionKey: () => true,
-    setStageTextObject: vi.fn(() => 0),
+    setStageTextObjectForAction: vi.fn(() => Promise.resolve()),
     runStageWipe: vi.fn(),
     playStageAudioAction: vi.fn(),
-    playStageLayoutGameObjectAnimationForAction: vi.fn(() => 250),
-    revealPlayerAnswerCorrectnessForAction: vi.fn(() => 400),
-    setPlayerAnswerBubblesShown: vi.fn(() => 500),
-    voteRevealDurationMs: () => 0
+    playStageLayoutGameObjectAnimationForAction: vi.fn(() => Promise.resolve()),
+    revealPlayerAnswerCorrectnessForAction: vi.fn(() => Promise.resolve()),
+    setPlayerAnswerBubblesShownForAction: vi.fn(() => Promise.resolve()),
+    runVotingCardActionForAction: vi.fn(() => Promise.resolve()),
+    showPointPopupsForAction: vi.fn(() => Promise.resolve())
   };
 }
 
+async function flushPromises(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 describe("PartyGameStageActionRunners (ported)", () => {
-  it("immediateComplete completes the action for the primary runner", () => {
+  it("immediateComplete completes an E+ action for the primary runner", () => {
     const c = context();
     const runner = PartyGameStageActionRunners.createRunner(c as never);
-    runner.run({ id: "a1", type: "doNothing" }, { isPrimary: true, actionKey: "k" });
+    runner.run({ id: "a1", type: "doNothing", timing: { mode: "E+", seconds: 0 } }, { isPrimary: true, actionKey: "k" });
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a1");
+  });
+
+  it.each([0, 1])("fires an S+%s action without ever accepting its visual callback", async (seconds) => {
+    const c = context();
+    const animation = deferred();
+    c.playStageLayoutGameObjectAnimationForAction.mockReturnValueOnce(animation.promise);
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    runner.run(
+      { id: `s-${seconds}`, type: "playGameObjectAnimation", timing: { mode: "S+", seconds } },
+      { isPrimary: true, actionKey: "k" }
+    );
+
+    expect(c.playStageLayoutGameObjectAnimationForAction).toHaveBeenCalledTimes(1);
+    animation.resolve();
+    await flushPromises();
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
   });
 
   it("serverEffect applies the effect for a non-primary runner", () => {
@@ -37,94 +67,63 @@ describe("PartyGameStageActionRunners (ported)", () => {
     expect(host.PartyGameStageActionRunners).toBeTypeOf("object");
   });
 
-  it("waits for placed game object animation actions to complete", () => {
-    vi.useFakeTimers();
-    const c = context();
-    const runner = PartyGameStageActionRunners.createRunner(c as never);
-    runner.run({ id: "a3", type: "playGameObjectAnimation", targetLayoutElementId: "bubble", animationName: "pop" }, { isPrimary: true, actionKey: "k" });
-    expect(c.playStageLayoutGameObjectAnimationForAction).toHaveBeenCalledWith({
-      id: "a3",
-      type: "playGameObjectAnimation",
-      targetLayoutElementId: "bubble",
-      animationName: "pop"
-    });
-    expect(c.completeFlowAction).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(250);
-    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a3");
-    vi.useRealTimers();
-  });
+  it.each(["playGameObjectAnimation", "stopGameObjectAnimation"])(
+    "waits for the exact %s target callback",
+    async (type) => {
+      const c = context();
+      const animation = deferred();
+      c.playStageLayoutGameObjectAnimationForAction.mockReturnValueOnce(animation.promise);
+      const runner = PartyGameStageActionRunners.createRunner(c as never);
+      const action = { id: type, type, targetLayoutElementId: "bubble", animationName: "Appear" };
 
-  it("waits for stop-at-label game object animation actions to complete", () => {
-    vi.useFakeTimers();
-    const c = context();
-    const runner = PartyGameStageActionRunners.createRunner(c as never);
-    runner.run({ id: "a4", type: "stopGameObjectAnimation", targetLayoutElementId: "avatar", animationName: "stego" }, { isPrimary: true, actionKey: "k" });
-    expect(c.playStageLayoutGameObjectAnimationForAction).toHaveBeenCalledWith({
-      id: "a4",
-      type: "stopGameObjectAnimation",
-      targetLayoutElementId: "avatar",
-      animationName: "stego"
-    });
-    expect(c.completeFlowAction).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(250);
-    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a4");
-    vi.useRealTimers();
-  });
+      runner.run(action, { isPrimary: true, actionKey: "k" });
+      expect(c.completeFlowAction).not.toHaveBeenCalled();
+      animation.resolve();
+      await flushPromises();
+      expect(c.completeFlowAction).toHaveBeenCalledWith("callback", type);
+    }
+  );
 
-  it("plays filtered player-answer lifecycle animations explicitly", () => {
-    vi.useFakeTimers();
+  it("waits for the filtered answer-bubble barrier", async () => {
     const c = context();
+    const animation = deferred();
+    c.setPlayerAnswerBubblesShownForAction.mockReturnValueOnce(animation.promise);
     const runner = PartyGameStageActionRunners.createRunner(c as never);
     runner.run(
       { id: "hide-wrong", type: "setPlayerAnswersShown", isShown: false, instant: false, playerFilter: "wrong" },
       { isPrimary: true, actionKey: "k" }
     );
 
-    expect(c.setPlayerAnswerBubblesShown).toHaveBeenCalledWith(false, {
+    expect(c.setPlayerAnswerBubblesShownForAction).toHaveBeenCalledWith(false, {
       instant: false,
       playerFilter: "wrong"
     });
     expect(c.completeFlowAction).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(500);
+    animation.resolve();
+    await flushPromises();
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "hide-wrong");
-    vi.useRealTimers();
   });
 
-  it("waits for the answer timeline completion contract instead of its estimated duration", async () => {
-    const c = context() as ReturnType<typeof context> & {
-      setPlayerAnswerBubblesShownForAction?: ReturnType<typeof vi.fn>;
-    };
-    let finishTimeline: () => void = () => {};
-    c.setPlayerAnswerBubblesShownForAction = vi.fn(() => new Promise<void>((resolve) => {
-      finishTimeline = resolve;
-    }));
-    const runner = PartyGameStageActionRunners.createRunner(c as never);
-    const action = { id: "show-answers", type: "setPlayerAnswersShown", isShown: true, instant: false };
-
-    runner.run(action, { isPrimary: true, actionKey: "k" });
-    expect(c.completeFlowAction).not.toHaveBeenCalled();
-
-    finishTimeline();
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "show-answers");
-  });
-
-  it("explicitly reveals each player answer correctness state before completing", () => {
-    vi.useFakeTimers();
+  it("waits for every correctness state target callback without a hard-coded delay", async () => {
     const c = context();
+    const correctness = deferred();
+    c.revealPlayerAnswerCorrectnessForAction.mockReturnValueOnce(correctness.promise);
     const runner = PartyGameStageActionRunners.createRunner(c as never);
     const action = { id: "reveal-correctness", type: "revealPlayerAnswerCorrectness" };
 
     runner.run(action, { isPrimary: true, actionKey: "k" });
-
-    expect(c.revealPlayerAnswerCorrectnessForAction).toHaveBeenCalledWith(action);
     expect(c.completeFlowAction).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(399);
-    expect(c.completeFlowAction).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(1);
+    correctness.resolve();
+    await flushPromises();
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "reveal-correctness");
-    vi.useRealTimers();
+  });
+
+  it("fails closed when a target completion rejects", async () => {
+    const c = context();
+    c.playStageLayoutGameObjectAnimationForAction.mockReturnValueOnce(Promise.reject(new Error("interrupted")));
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    runner.run({ id: "broken", type: "playGameObjectAnimation" }, { isPrimary: true, actionKey: "k" });
+    await flushPromises();
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
   });
 });

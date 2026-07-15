@@ -7,6 +7,7 @@ import { distributedContainerItemPositions, type DistributedItemSize } from "./d
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
 import { defaultPlayerPointPopupTimeline } from "../../shared/player-point-popup-timeline";
 import type { TimelineDocument } from "../../shared/timeline-model";
+import { createActionCompletionBarrier } from "./actionCompletionBarrier";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -572,9 +573,8 @@ class PlayerRosterRenderer {
   }
 
   visibilityDuration(options: Dict = {}): number {
-    if (options.instant === true) return 0;
-    const playerCount = this.host?.querySelectorAll(".player-tile").length || 0;
-    return 1000 + Math.max(0, playerCount - 1) * 45;
+    void options;
+    return 0;
   }
 
   playerWidgetTiles(): El[] {
@@ -598,18 +598,32 @@ class PlayerRosterRenderer {
     const instant = options.instant === true;
     const animation = isShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
     let duration = 0;
+    const barrier = typeof options.complete === "function" ? createActionCompletionBarrier() : null;
     for (const componentId of [PLAYER_AVATAR_MC_ID, PLAYER_NAME_MC_ID]) {
-      duration = Math.max(duration, renderer.playComponent?.(componentId, animation, { instant }) || 0);
+      const targetComplete = barrier?.addTarget();
+      const playOptions: Dict = { instant };
+      if (targetComplete) playOptions.complete = targetComplete;
+      const targetDuration = renderer.playComponent?.(componentId, animation, playOptions) || 0;
+      if (targetComplete && targetDuration <= 0) queueMicrotask(targetComplete);
+      duration = Math.max(duration, targetDuration);
     }
     if (playerVipRuntimeState(player).visible) {
-      duration = Math.max(duration, renderer.playComponent?.(PLAYER_VIP_MC_ID, animation, { instant }) || 0);
+      const targetComplete = barrier?.addTarget();
+      const playOptions: Dict = { instant };
+      if (targetComplete) playOptions.complete = targetComplete;
+      const targetDuration = renderer.playComponent?.(PLAYER_VIP_MC_ID, animation, playOptions) || 0;
+      if (targetComplete && targetDuration <= 0) queueMicrotask(targetComplete);
+      duration = Math.max(duration, targetDuration);
+    }
+    if (barrier) {
+      barrier.promise.then(options.complete as () => void);
+      barrier.seal();
     }
     return duration;
   }
 
-  gameObjectForRoster(options: Dict = {}): GameObjectLike | null {
+  gameObjectForRoster(_options: Dict = {}): GameObjectLike | null {
     if (!this.host) return null;
-    const duration = this.visibilityDuration(options);
     const gameObjectOptions: Dict = {
       id: this.host.id || "playerLobby",
       target: this.host,
@@ -619,7 +633,7 @@ class PlayerRosterRenderer {
         motionHiddenClasses: ["players-hidden"],
         instantClass: "players-instant",
         layoutHiddenClasses: ["players-hidden"],
-        durations: { appear: duration, disappear: duration }
+        durations: { appear: 0, disappear: 0 }
       },
       getVisible: () => !this.host!.classList.contains("players-hidden"),
       setVisible: (isVisible: boolean) => {
@@ -636,13 +650,16 @@ class PlayerRosterRenderer {
   }
 
   setShown(isShown: boolean, options: Dict = {}): number {
-    if (!this.host) return 0;
+    if (!this.host) {
+      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
+      return 0;
+    }
     const targetShown = isShown !== false;
     const widgetTiles = this.playerWidgetTiles();
     const alreadyShown = widgetTiles.length > 0 && this.host.dataset.visualVisible
       ? this.host.dataset.visualVisible === "true"
       : !this.host.classList.contains("players-hidden");
-    if (alreadyShown === targetShown) {
+    if (alreadyShown === targetShown && typeof options.complete !== "function") {
       this.host.dataset.visualVisible = targetShown ? "true" : "false";
       return 0;
     }
@@ -654,28 +671,33 @@ class PlayerRosterRenderer {
       }
       if (targetShown) this.setRosterHostHidden(false);
       let duration = 0;
+      const barrier = typeof options.complete === "function" || !targetShown ? createActionCompletionBarrier() : null;
       for (const tile of widgetTiles) {
-        duration = Math.max(duration, this.playPlayerWidgetVisibility(tile, targetShown, { instant }));
+        const playerComplete = barrier?.addTarget();
+        const playerDuration = this.playPlayerWidgetVisibility(tile, targetShown, { instant, complete: playerComplete });
+        if (playerComplete && playerDuration <= 0) queueMicrotask(playerComplete);
+        duration = Math.max(duration, playerDuration);
       }
       if (!targetShown) {
-        if (duration > 0 && !instant) {
-          const timerId = globalThis.setTimeout(() => {
-            this.rosterHideTimer = null;
-            this.setRosterHostHidden(true);
-          }, duration);
-          this.rosterHideTimer = Number(timerId);
-          this.timerSink?.(Number(timerId));
-        } else {
-          this.setRosterHostHidden(true);
+        if (instant) this.setRosterHostHidden(true);
+        if (barrier) {
+          barrier.promise.then(() => {
+            if (!instant) this.setRosterHostHidden(true);
+          });
         }
+      }
+      if (barrier) {
+        if (typeof options.complete === "function") barrier.promise.then(options.complete as () => void);
+        barrier.seal();
       }
       this.host.dataset.visualVisible = targetShown ? "true" : "false";
       return duration;
     }
     const gameObject = this.gameObjectForRoster(options);
-    if (gameObject) return gameObject.playVisibility(targetShown, { instant });
+    if (gameObject) return gameObject.playVisibility(targetShown, { instant, complete: options.complete });
     this.host.classList.toggle("players-hidden", !targetShown);
     this.host.classList.toggle("players-instant", instant);
+    if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
     return this.visibilityDuration({ ...options, instant });
   }
 
@@ -705,12 +727,16 @@ class PlayerRosterRenderer {
   }
 
   revealAnswerCorrectness(options: Dict = {}): number {
-    if (!this.host) return 0;
+    if (!this.host) {
+      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
+      return 0;
+    }
     const answerCorrectness = (options.answerCorrectness as Dict) || null;
     const hasExplicitCorrectness = Boolean(answerCorrectness);
     const correctPlayerIds = new Set(((answerCorrectness?.correctPlayerIds as unknown[]) || []).map(String));
     const incorrectPlayerIds = new Set(((answerCorrectness?.incorrectPlayerIds as unknown[]) || []).map(String));
     let duration = 0;
+    const barrier = typeof options.complete === "function" ? createActionCompletionBarrier() : null;
     for (const node of Array.from(this.host.querySelectorAll(".player-tile[data-player-id]"))) {
       const tile = node as El;
       const player = this.tilePlayers.get(tile);
@@ -725,13 +751,21 @@ class PlayerRosterRenderer {
             ? "Incorrect"
             : "Default"
         : playerAnswerBubbleStateLabel(state);
+      const targetComplete = barrier?.addTarget();
+      const stopOptions: Dict = { instant: true };
+      if (targetComplete) stopOptions.complete = targetComplete;
       const stateDuration = renderer.stopAtComponent?.(
         PLAYER_ANSWER_BUBBLE_STATE_ID,
         stateLabel,
-        { instant: true }
+        stopOptions
       ) || 0;
+      if (targetComplete && stateDuration <= 0) queueMicrotask(targetComplete);
       tile.dataset.answerBubbleCorrectness = stateLabel === "Correct" ? "correct" : stateLabel === "Incorrect" ? "wrong" : "";
       duration = Math.max(duration, stateDuration);
+    }
+    if (barrier) {
+      barrier.promise.then(options.complete as () => void);
+      barrier.seal();
     }
     return duration;
   }
@@ -803,7 +837,7 @@ class PlayerRosterRenderer {
     return this.host.querySelector(`.player-tile[data-player-id="${CSS.escape(String(playerId))}"]`);
   }
 
-  renderPointPopups(popups: Dict[] = []): void {
+  renderPointPopups(popups: Dict[] = [], options: Dict = {}): void {
     for (const popup of popups || []) {
       if (!popup?.id || this.pointPopupIds.has(popup.id as string)) continue;
       const tile = this.tileForPlayerId(popup.playerId);
@@ -814,7 +848,11 @@ class PlayerRosterRenderer {
       node.dataset.pointPopupId = popup.id as string;
       this.renderPointPopupPrefab(node, popup);
       tile.appendChild(node);
-      this.playPointPopup(node, popup);
+      if (options.deferAnimation === true) {
+        node.dataset.pointPopupPending = "true";
+      } else {
+        this.playPointPopup(node, popup);
+      }
     }
   }
 
@@ -863,21 +901,34 @@ class PlayerRosterRenderer {
     return true;
   }
 
-  playPointPopup(node: El, popup: Dict): number {
+  playPointPopup(node: El, popup: Dict, options: Dict = {}): number {
     if (!node || !popup?.id) return 0;
+    if (node.dataset) delete node.dataset.pointPopupPending;
     const renderer = this.pointPopupRenderers.get(node);
     if (!renderer?.playAll) {
       node.classList.remove("point-popup-hidden");
       node.classList.add("is-floating");
-      setTimeout(() => node.remove(), 1600);
-      return 1500;
+      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
+      return 0;
     }
     node.classList.remove("point-popup-hidden");
-    const duration = renderer.playAll("appear", { instant: false });
-    const removeDelay = Math.max(0, duration || 0);
-    const timeoutId = globalThis.setTimeout(() => node.remove(), removeDelay);
-    this.timerSink?.(Number(timeoutId));
-    return removeDelay;
+    const finish = () => {
+      node.remove();
+      if (typeof options.complete === "function") (options.complete as () => void)();
+    };
+    return renderer.playAll("appear", { instant: false, complete: finish });
+  }
+
+  showPointPopupsForAction(): Promise<void> {
+    const barrier = createActionCompletionBarrier();
+    for (const node of Array.from(this.host?.querySelectorAll(".point-popup[data-point-popup-pending='true']") || [])) {
+      const popupNode = node as El;
+      const targetComplete = barrier.addTarget();
+      const duration = this.playPointPopup(popupNode, { id: popupNode.dataset.pointPopupId }, { complete: targetComplete });
+      if (duration <= 0) queueMicrotask(targetComplete);
+    }
+    barrier.seal();
+    return barrier.promise;
   }
 
   clearPointPopupIds(): void {

@@ -364,6 +364,7 @@ function createPlacedLayoutGameObjectTargetResolver(options: Dict = {}) {
         entityForElementId: resolver.entityForElementId,
         visibilityKeyForTarget: resolver.visibilityKeyForTarget,
         visibilityOverrides: options.visibilityOverrides,
+        complete: showOptions.complete,
         returnResult: showOptions.returnResult === true,
         suppressMissingWarning: showOptions.suppressMissingWarning === true
       });
@@ -372,6 +373,7 @@ function createPlacedLayoutGameObjectTargetResolver(options: Dict = {}) {
       return playLayoutEntityAnimationForAction(action, {
         entityForElementId: resolver.entityForElementId,
         visibilityKeyForTarget: resolver.visibilityKeyForTarget,
+        complete: playOptions.complete,
         returnResult: playOptions.returnResult === true,
         suppressMissingWarning: playOptions.suppressMissingWarning === true
       });
@@ -452,24 +454,28 @@ function playLayoutEntityVisibility(entity: Dict | null, isShown: boolean, optio
     return Number(
       (entity.playAnimation as (animation: string, playOptions: Dict) => number)(
         isShown ? lifecycleLabels.on : lifecycleLabels.off,
-        { instant: true }
+        { instant: true, complete: options.complete }
       ) || 0
     );
   }
-  if ((isShown && lifecycleState === "appearing") || (!isShown && lifecycleState === "disappearing")) return 0;
+  if (
+    ((isShown && lifecycleState === "appearing") || (!isShown && lifecycleState === "disappearing")) &&
+    typeof options.complete !== "function"
+  ) return 0;
   if ((isShown && lifecycleState === "shown") || (!isShown && lifecycleState === "hidden")) {
     const visual = layoutGameObjectVisualFor(entity) as { play?: (animation: string, playOptions: Dict) => number } | null;
-    return Number(visual?.play?.(isShown ? lifecycleLabels.on : lifecycleLabels.off, { instant: true }) || 0);
+    return Number(visual?.play?.(isShown ? lifecycleLabels.on : lifecycleLabels.off, { instant: true, complete: options.complete }) || 0);
   }
   if (typeof entity?.playVisibility === "function") {
-    return (entity.playVisibility as (s: boolean, o: Dict) => number)(isShown, { instant: options.instant === true });
+    return (entity.playVisibility as (s: boolean, o: Dict) => number)(isShown, { instant: options.instant === true, complete: options.complete });
   }
   const visual = layoutGameObjectVisualFor(entity);
   if (!target || !visual) {
     (options.warn as ((r: string) => void) | undefined)?.("visual object unavailable");
+    if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
     return 0;
   }
-  const result = visualBridge()?.playVisibilityForTarget?.({ target, visual, isShown, playOptions: { instant: options.instant === true } });
+  const result = visualBridge()?.playVisibilityForTarget?.({ target, visual, isShown, playOptions: { instant: options.instant === true, complete: options.complete } });
   return result?.duration || 0;
 }
 
@@ -487,31 +493,33 @@ function playLayoutEntityAnimation(entity: Dict | null, animation: string, optio
   if (componentId) {
     const componentPlayer = playbackMode === "stop" ? artRenderer?.stopAtComponent : artRenderer?.playComponent;
     if (typeof componentPlayer === "function") {
-      return Number(componentPlayer(componentId, cleanAnimation, { instant: options.instant === true }) || 0);
+      return Number(componentPlayer(componentId, cleanAnimation, { instant: options.instant === true, complete: options.complete }) || 0);
     }
     (options.warn as ((r: string) => void) | undefined)?.(`component target unavailable: ${componentId}`);
+    if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
     return 0;
   }
   if (playbackMode === "stop" && typeof entity?.stopAtAnimation === "function") {
-    return (entity.stopAtAnimation as (a: string, o: Dict) => number)(cleanAnimation, { instant: options.instant === true });
+    return (entity.stopAtAnimation as (a: string, o: Dict) => number)(cleanAnimation, { instant: options.instant === true, complete: options.complete });
   }
   if (playbackMode === "play" && typeof entity?.playAnimation === "function") {
-    return (entity.playAnimation as (a: string, o: Dict) => number)(cleanAnimation, { instant: options.instant === true });
+    return (entity.playAnimation as (a: string, o: Dict) => number)(cleanAnimation, { instant: options.instant === true, complete: options.complete });
   }
   let duration = 0;
   const treePlayer = playbackMode === "stop" ? artRenderer?.stopAtAll : artRenderer?.playAll;
   if (typeof treePlayer === "function") {
-    duration = Math.max(duration, Number(treePlayer(cleanAnimation, { instant: options.instant === true }) || 0));
+    duration = Math.max(duration, Number(treePlayer(cleanAnimation, { instant: options.instant === true, complete: options.complete }) || 0));
   }
   const target = (entity?.target as El) || null;
   const visual = layoutGameObjectVisualFor(entity);
   if (!target || !visual) {
     if (!duration) (options.warn as ((r: string) => void) | undefined)?.("visual object unavailable");
+    if (!duration && typeof options.complete === "function") queueMicrotask(options.complete as () => void);
     return duration;
   }
   const bridge = visualBridge();
   const bridgePlayer = playbackMode === "stop" ? bridge?.stopAtAnimationForTarget : bridge?.playAnimationForTarget;
-  const result = bridgePlayer?.({ target, visual, animation: cleanAnimation, playOptions: { instant: options.instant === true } });
+  const result = bridgePlayer?.({ target, visual, animation: cleanAnimation, playOptions: { instant: options.instant === true, complete: options.complete } });
   return Math.max(duration, Number(result?.duration || 0));
 }
 
@@ -554,7 +562,11 @@ function setLayoutEntityShownForAction(action: Dict, options: Dict = {}): unknow
   }
   if (visibilityKey) overrides?.set(visibilityKey, isShown);
   return result(
-    playLayoutEntityVisibility(entity || entityForElementId?.(elementId, target, scope) || null, isShown, { instant: action.instant === true, warn })
+    playLayoutEntityVisibility(entity || entityForElementId?.(elementId, target, scope) || null, isShown, {
+      instant: action.instant === true,
+      complete: options.complete,
+      warn
+    })
   );
 }
 
@@ -612,6 +624,7 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
   return result(
     playLayoutEntityAnimation(entity || entityForElementId?.(elementId, target, scope) || null, animation, {
       componentId,
+      complete: options.complete,
       instant: action.instant === true,
       playbackMode: action.timelinePlaybackMode === "stop" || action.type === "stopGameObjectAnimation" ? "stop" : "play",
       warn

@@ -14,7 +14,6 @@ interface FlowActionDefinition {
   completionCleanup?: string;
   stageActionType?: string;
   stageRunner?: string;
-  stageRunnerDelayMs?: number;
   normalize?: (...args: any[]) => any;
   toPublic?: (...args: any[]) => any;
   applyRoomEffect?: (...args: any[]) => any;
@@ -440,7 +439,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "setVotingCardsShown",
-    stageRunner: "serverEffect",
+    stageRunner: "votingCardAction",
     normalize: (action, base, context) => ({
       ...base,
       isShown: action?.isShown !== false,
@@ -739,7 +738,6 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     category: "standard",
     ...identityAction("revealPlayerAnswerCorrectness"),
     stageRunner: "revealPlayerAnswerCorrectness",
-    stageRunnerDelayMs: 250,
     applyRoomEffect: (room, action, context) => {
       context.markDisplayedAnswersCorrectness(room);
     }
@@ -750,8 +748,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "showPoints",
-    stageRunner: "delayedComplete",
-    stageRunnerDelayMs: 1500,
+    stageRunner: "showPoints",
     normalize: (action, base, context) => ({
       ...base,
       playerFilter: context.normalizePlayerFilter(action?.playerFilter || "correct"),
@@ -945,8 +942,7 @@ const stageActionRunnerDefinitions = flowActionDefinitions
   .map((definition) => ({
     actionId: definition.id,
     type: definition.stageActionType || definition.id,
-    runner: definition.stageRunner,
-    delayMs: Math.max(0, Number(definition.stageRunnerDelayMs || 0))
+    runner: definition.stageRunner
   }));
 
 function fallbackNormalizeAction(action, base, context) {

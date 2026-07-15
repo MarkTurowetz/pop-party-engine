@@ -60,6 +60,25 @@ class StageWipeController {
     return WipeMotionMs + Math.max(0, this.lineCount() - 1) * WipeLineStaggerMs;
   }
 
+  waitForMotionEnd(callback: () => void): void {
+    const line = Array.from(this.element?.querySelectorAll(".wipe-line") || []).at(-1) as HTMLElement | undefined;
+    if (!line) {
+      queueMicrotask(callback);
+      return;
+    }
+    let completed = false;
+    const finish = (event?: Event) => {
+      if (completed) return;
+      if (event && event.target !== line) return;
+      completed = true;
+      line.removeEventListener("transitionend", finish);
+      line.removeEventListener("transitioncancel", finish);
+      callback();
+    };
+    line.addEventListener("transitionend", finish);
+    line.addEventListener("transitioncancel", finish);
+  }
+
   setVisibleState(isVisible: boolean): void {
     this.targetShown = isVisible === true;
     if (this.element) this.element.dataset.wipeShown = this.targetShown ? "true" : "false";
@@ -144,7 +163,7 @@ class StageWipeController {
     }
     void api.element.offsetWidth;
     api.addClasses("is-entering");
-    api.schedule(api.duration, () => {
+    this.waitForMotionEnd(() => {
       if (!api.tokenMatches()) return;
       this.resetCovered();
     });
@@ -161,7 +180,7 @@ class StageWipeController {
     api.setVisibleState(true);
     api.removeClasses(["is-entering", "is-covered"]);
     api.addClasses("is-exiting");
-    api.schedule(api.duration, () => {
+    this.waitForMotionEnd(() => {
       if (!api.tokenMatches()) return;
       this.resetHidden();
     });
@@ -193,13 +212,17 @@ class StageWipeController {
     if (!visual || !this.visualAnimation) {
       this.element?.classList.toggle("hidden", isShown === false);
       this.setVisibleState(isShown !== false);
+      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
       return 0;
     }
     const nextShown = isShown !== false;
+    if (options.instant !== true && typeof options.complete === "function") {
+      this.waitForMotionEnd(options.complete as () => void);
+    }
     const result = visualBridge()?.playVisibilityForTarget?.({
       visual,
       isShown: nextShown,
-      playOptions: { complete: options.complete, instant: options.instant === true }
+      playOptions: { complete: options.instant === true ? options.complete : undefined, instant: options.instant === true }
     });
     return result?.duration || 0;
   }
@@ -207,7 +230,7 @@ class StageWipeController {
   setShownForAction(action: Dict, options: Dict = {}): number {
     const actionKey = (options.actionKey as string) || "";
     this.visibilityRequest = { actionKey, isShown: action?.isShown !== false };
-    return this.setShown(action?.isShown !== false, { instant: action?.instant === true });
+    return this.setShown(action?.isShown !== false, { instant: action?.instant === true, complete: options.complete });
   }
 
   syncShown(isShown: boolean, options: Dict = {}): number {

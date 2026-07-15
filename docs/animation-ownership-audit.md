@@ -9,7 +9,9 @@ This audit covers player widgets, player answer bubbles, player choosing/submiss
 3. Semantic state uses `stopAtComponent` / `gotoAndStop` (`Default`, `Correct`, `Incorrect`, avatar species, voting correctness).
 4. Lifecycle behavior uses `playComponent` / `gotoAndPlay` (`Off`, `On`, `Appear`, `Update`, `Disappear`, `ChoosingStart`, `ChoosingEnd`).
 5. No server payload, rerender, CSS class, or content nonce may synthesize a second animation for the same fact.
-6. Flow completion should come from the selected timeline's completion callback or an authored terminal event. Numeric duration guesses are compatibility behavior to remove.
+6. An E+ action owns a barrier containing only the objects it directly told to animate. It advances only after every target callback resolves, followed by the separately authored E+ delay.
+7. An S+ action fires immediately and ignores visual callbacks. Its start-relative timer is the only completion source, including S+0.0.
+8. Child animations started by a target's timeline do not delay or satisfy the parent's callback. Numeric animation durations never advance game flow.
 
 The intended correctness call is effectively:
 
@@ -48,7 +50,7 @@ Lifecycle playback is now joinable: a repeated request attaches its completion c
 | Avatar species | `player.avatar.shape` | `syncAvatarComponent` → `stopAtComponent("avatar", species)` | `avatars`: `Rex`, `Stego`, `Trike`, `Raptor`, `Bronto`, `Ankylo` | Semantic frame selection only. |
 | Choosing | `publicPlayer.needsInput === true` | `syncAvatarBehaviorComponent` → `ChoosingStart` | `player-avatar-behaviors` | Timeline owns scale/brightness motion. |
 | Submitted/finished choosing | `publicPlayer.needsInput === false` | `syncAvatarBehaviorComponent` → `ChoosingEnd` | `player-avatar-behaviors` | Timeline returns itself to `Default` through its authored `gotoAndPlay(Default)` command. |
-| Player widget shown/hidden | `room.playersShown` | `setShown` → player avatar/name/VIP MC lifecycle labels | nested player MC timelines | Authored child lifecycles are primary. Outer tile/host CSS classes remain a layout/fallback mechanism. |
+| Player widget shown/hidden | `room.playersShown` | `setShown` → player avatar/name/VIP MC lifecycle labels | nested player MC timelines | The action barrier waits for every directly invoked MC target; host concealment follows those callbacks. |
 | Name/VIP changes | public player payload | `syncPlayerLabelComponents` | name/VIP MC lifecycle labels | Timeline driven. |
 
 No server code calls an animation API for players. It exposes `needsInput`; `stagePlayerRoster.ts` is the only selector for the choosing behavior timeline.
@@ -73,38 +75,37 @@ The reveal action still receives authoritative `correctPlayerIds` and `incorrect
 
 | Gameplay fact | Source | Stage selector | Authored timeline | Status |
 | --- | --- | --- | --- | --- |
-| Cards shown/hidden | `room.votingCardsShown`, per-card `hidden` | create/remove `VotingCardView` | voting-card group and child MC lifecycle labels | Timeline playback, with timer-based DOM removal afterward. |
+| Cards shown/hidden | `room.votingCardsShown`, per-card `hidden` | create/remove `VotingCardView` | voting-card group and child MC lifecycle labels | The action waits for each directly targeted card group callback; DOM removal and layer hiding follow the same callbacks. |
 | Authors revealed | `room.votingAuthorsRevealed` | author child `Appear` / `Off` | `prefab-voting-card-author-mc` | Timeline driven. |
-| Votes revealed | `room.votingVotesRevealed` | voter/vote-count child lifecycle labels | voter and count MC timelines | Timeline driven, but reveal staggering is currently a code timer. |
+| Votes revealed | `room.votingVotesRevealed` | voter/vote-count child lifecycle labels | voter and count MC timelines | Stagger timers decide when each voter starts; only each voter timeline callback satisfies the action barrier. Vote-count child motion is not part of that barrier. |
 | Winner revealed | serialized `card.isWinner` | correctness `stopAtComponent("Correct" / "Neutral")` | `prefab-voting-card-correctness-state` | Semantic frame selection only. |
 | Card data rerender | recurring lobby payload | `renderArt` | current nested frames are now restored | Fixed by shared reconciliation change. |
 
 `stageVotingCardVisuals.ts` still contains a legacy composition fallback that synthesizes the newer prefab hierarchy from the old `voting-card` composition if authored prefabs are missing. It is a data/prefab compatibility path, not a server animation call, but it should be removed after all supported projects are migrated.
 
-## Remaining compatibility animation paths
+## Remaining compatibility presentation paths
 
-These paths do not set answer correctness, avatar behavior, or voting correctness, but they still prevent the entire stage from being purely event-complete:
+These paths no longer advance the action from estimated animation duration, but remain compatibility presentation code:
 
-- `stageActionRunners.ts` still completes several visual actions with `setTimeout(duration)`. Player answer visibility now preserves and awaits the real timeline completion callback; the remaining action families still need the same migration.
-- Voting-card voter staggering uses `setTimeout`, and voting-card removal/layer hiding waits for returned numeric durations.
-- The generic `CssVisualObject` retains CSS-class lifecycle fallbacks for targets without authored timelines.
+- Voting-card voter staggering uses `setTimeout` to start each independently targeted voter. Those timers do not complete or advance the action.
+- The generic `CssVisualObject` retains CSS-class lifecycle fallbacks for targets without authored timelines. Their completion observes the directly targeted element's own Web Animations promise rather than a duration estimate.
 - Player roster host/tile CSS transitions remain as fallback/layout concealment. Player widget parts use authored MC timelines when the prefab renderer is available.
 - `stageVotingCardVisuals.ts` can construct voting prefabs from the legacy `voting-card` composition.
-- The point popup still has a CSS-keyframe fallback when its authored prefab is unavailable; this is adjacent to the player audit but does not affect the requested answer/choosing states.
+- A point popup without its authored prefab is shown statically; it does not create a timer-based animation completion substitute.
 
 ## Completion-event migration
 
-The timeline engine already invokes a `complete` callback at the authored stop/end, including nested component-command duration. We should preserve that callback through `ArtObjectView`, `ArtObjectTreeRenderer`, roster/voting APIs, and `stageActionRunners` instead of returning only milliseconds.
+The timeline engine invokes a `complete` callback at the directly selected timeline's authored stop/end. Nested component commands may start their own timelines, but their duration is deliberately excluded from the parent callback. `ArtObjectView`, `ArtObjectTreeRenderer`, roster/voting APIs, and `stageActionRunners` now preserve target callbacks through Promise-based action barriers.
 
 Explicit timeline `emit` commands are also supported and dispatched as `party-game:timeline:<event>`. They are useful when completion must occur at a deliberate authored beat that is not the timeline's terminal stop. A dedicated event such as `action-complete` should be added only to those timelines; ordinary lifecycle segments can use their existing terminal stop callback.
 
-Recommended migration order:
+Completed migration:
 
-1. Introduce a `{ duration, completed }` or Promise-based playback result while retaining numeric duration compatibility.
-2. Convert the remaining player visibility actions to await actual timeline completion. Answer-bubble visibility is complete.
-3. Convert voting-card reveal, stagger, removal, and layer hiding to authored completion/beat events.
-4. Remove the CSS lifecycle and legacy voting-composition fallbacks after migration checks confirm no supported game depends on them.
-5. Add a development warning whenever a stage action falls back to numeric duration or CSS lifecycle playback.
+1. E+ visual actions now return Promise-based target barriers; action runners contain no duration-to-`setTimeout` advancement path.
+2. S+0.0 and S+N fire the action but suppress its callback; the start-relative action timer owns advancement.
+3. Display Text, players, answer bubbles, correctness, layout game objects, arbitrary game-object animations, timer, wipe, voting cards/reveals, and point popups use exact callbacks.
+4. Voting-card and point-popup removal follows the directly targeted timeline callback instead of a returned duration.
+5. Parent Art Manager timelines no longer include child component durations in their completion calculation.
 
 ## Regression coverage
 
@@ -118,4 +119,8 @@ The automated tests now verify that:
 - choosing continues to route only through `ChoosingStart`, `ChoosingEnd`, and authored return to `Default`.
 - repeated answer `Appear` / `Disappear` requests join the active timeline without restarting or snapping to `On` / `Off`;
 - answer visibility actions complete only after every targeted bubble timeline reaches its authored stop.
+- E+ runners wait for their exact target Promise, while S+0.0 and S+1.0 ignore that Promise completely;
+- rejected/interrupted target barriers fail closed instead of advancing from a fallback timer;
+- parent timelines finish at their own authored stop even when they start longer child animations;
+- E+ server timing starts only after the target callback, while S+ accepts only its start-timer event;
 - the shipped nested player-answer prefab passes a real-browser check for uninterrupted `Appear`, persistent `Correct`, uninterrupted `Disappear`, and completion at the authored stop.

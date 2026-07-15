@@ -4,6 +4,7 @@
 
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
 import type { TimelineDocument } from "../../shared/timeline-model";
+import { createActionCompletionBarrier } from "./actionCompletionBarrier";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -32,6 +33,19 @@ declare global {
 
 const w = () => globalThis as typeof globalThis & Window;
 const visualBridge = (): VisualBridgeApi | undefined => w().PartyGameVisualBridge as unknown as VisualBridgeApi | undefined;
+
+function targetCompletion(play: (complete: () => void) => number): Promise<void> {
+  return new Promise((resolve) => {
+    let completed = false;
+    const complete = () => {
+      if (completed) return;
+      completed = true;
+      resolve();
+    };
+    const duration = play(complete);
+    if (duration <= 0) queueMicrotask(complete);
+  });
+}
 
 export const VOTING_CARD_MC_ID = "prefab-voting-card-mc";
 export const VOTING_CARD_ART_MC_ID = "prefab-voting-card-art-mc";
@@ -428,15 +442,23 @@ class VotingCardView {
     return this.rootRenderer?.playComponent?.(componentId, animation, options) || 0;
   }
 
-  sync(cardData: Dict, options: Dict = {}): void {
+  sync(cardData: Dict, options: Dict = {}): Promise<void> {
     const firstRender = this.element.dataset.votingCardInitialized !== "true";
     const previousAuthorsRevealed = this.element.dataset.authorsRevealed === "true";
     const previousWinner = this.element.dataset.winnerRevealed === "true";
+    const actionType = String(options.actionType || "");
+    const trackActionCompletion = options.trackActionCompletion === true;
+    const completions: Promise<void>[] = [];
     this.cardData = cardData;
     this.renderArt();
 
     if (firstRender) {
-      this.groupVisual.play(options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+      const groupAnimation = options.instant === true ? "On" : "Appear";
+      if (trackActionCompletion) {
+        completions.push(targetCompletion((complete) => this.groupVisual.play(groupAnimation, { instant: options.instant === true, complete })));
+      } else {
+        this.groupVisual.play(groupAnimation, { instant: options.instant === true });
+      }
       this.playChild(VOTING_CARD_ART_COMPONENT_ID, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
       this.playChild(VOTING_CARD_ANSWER_COMPONENT_ID, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
       this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, "Off", { instant: true });
@@ -446,19 +468,34 @@ class VotingCardView {
     }
 
     if (cardData.authorsRevealed === true && !previousAuthorsRevealed) {
-      this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+      const animation = options.instant === true ? "On" : "Appear";
+      if (trackActionCompletion && ["revealAuthors", "revealVotingResults"].includes(actionType)) {
+        completions.push(targetCompletion((complete) => this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, animation, { instant: options.instant === true, complete })));
+      } else {
+        this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, animation, { instant: options.instant === true });
+      }
     } else if (cardData.authorsRevealed !== true) {
       this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, "Off", { instant: true });
     }
 
     const correctnessLabel = cardData.isWinner === true ? "Correct" : "Neutral";
     if (!previousWinner || cardData.isWinner !== true) {
-      this.rootRenderer?.stopAtComponent?.(VOTING_CARD_CORRECTNESS_COMPONENT_ID, correctnessLabel, { instant: true });
+      if (trackActionCompletion && ["revealWinningAnswer", "revealVotingResults"].includes(actionType)) {
+        completions.push(targetCompletion((complete) => this.rootRenderer?.stopAtComponent?.(
+          VOTING_CARD_CORRECTNESS_COMPONENT_ID,
+          correctnessLabel,
+          { instant: true, complete }
+        ) || 0));
+      } else {
+        this.rootRenderer?.stopAtComponent?.(VOTING_CARD_CORRECTNESS_COMPONENT_ID, correctnessLabel, { instant: true });
+      }
     }
 
-    this.syncVoters(cardData, options);
+    const voterCompletion = this.syncVoters(cardData, options);
+    if (trackActionCompletion && ["revealVotes", "revealVotingResults"].includes(actionType)) completions.push(voterCompletion);
     this.element.dataset.authorsRevealed = cardData.authorsRevealed === true ? "true" : "false";
     this.element.dataset.winnerRevealed = cardData.isWinner === true ? "true" : "false";
+    return Promise.all(completions).then(() => undefined);
   }
 
   clearVoteRevealTimers(): void {
@@ -475,21 +512,24 @@ class VotingCardView {
     return `${VOTING_CARD_VOTER_COMPONENT_ID}-${safeComponentId(voter.id, `voter-${index}`)}`;
   }
 
-  syncVoters(cardData: Dict, options: Dict = {}): void {
+  syncVoters(cardData: Dict, options: Dict = {}): Promise<void> {
     if (cardData.votesRevealed !== true) {
       this.clearVoteRevealTimers();
       this.voteRevealKey = "";
-      if (this.voteHideTimer !== null) return;
+      if (this.voteHideTimer !== null) return Promise.resolve();
       const visibleVoters = [...this.currentVisibleVoters];
       if (!visibleVoters.length) {
         this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "Off", { instant: true });
         this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, "Off", { instant: true });
-        return;
+        return Promise.resolve();
       }
       const instant = options.instant === true;
-      let duration = this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, instant ? "Off" : "Disappear", { instant });
+      const barrier = createActionCompletionBarrier();
+      this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, instant ? "Off" : "Disappear", { instant });
       visibleVoters.forEach((voter, index) => {
-        duration = Math.max(duration, this.playChild(this.voterComponentId(voter, index), instant ? "Off" : "Disappear", { instant }));
+        const complete = barrier.addTarget();
+        const duration = this.playChild(this.voterComponentId(voter, index), instant ? "Off" : "Disappear", { instant, complete });
+        if (duration <= 0) queueMicrotask(complete);
       });
       const finish = () => {
         this.voteHideTimer = null;
@@ -497,20 +537,22 @@ class VotingCardView {
         this.renderArt();
         this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "Off", { instant: true });
       };
-      if (!instant && duration > 0) this.voteHideTimer = setTimeout(finish, duration) as unknown as number;
-      else finish();
-      return;
+      barrier.promise.then(finish);
+      barrier.seal();
+      return barrier.promise;
     }
     this.clearVoteHideTimer();
     const voters = (cardData.voters as Dict[]) || [];
     const revealKey = `${String(options.voteRevealKey || "instant")}:${voters.map((voter) => voter.id).join("|")}`;
-    if (revealKey === this.voteRevealKey) return;
+    if (revealKey === this.voteRevealKey) return Promise.resolve();
     this.clearVoteRevealTimers();
     this.voteRevealKey = revealKey;
     this.currentVisibleVoters = [];
     this.renderArt();
     this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, "On", { instant: true });
+    const barrier = createActionCompletionBarrier();
     voters.forEach((voter, index) => {
+      const complete = barrier.addTarget();
       const delay = Math.max(0, Number(options.voteRevealStaggerMs || 0)) * (index + 1);
       const reveal = () => {
         if (this.voteRevealKey !== revealKey) return;
@@ -518,12 +560,15 @@ class VotingCardView {
         this.currentVisibleVoters = voters.slice(0, index + 1);
         this.renderArt();
         const voterId = this.voterComponentId(voter, index);
-        this.playChild(voterId, options.instant === true ? "On" : "Appear", { instant: options.instant === true });
+        const duration = this.playChild(voterId, options.instant === true ? "On" : "Appear", { instant: options.instant === true, complete });
+        if (duration <= 0) queueMicrotask(complete);
         this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, wasEmpty ? (options.instant === true ? "On" : "Appear") : "Update", { instant: options.instant === true });
       };
       if (delay > 0) this.voteRevealTimers.push(setTimeout(reveal, delay) as unknown as number);
       else reveal();
     });
+    barrier.seal();
+    return barrier.promise;
   }
 
   remove(options: Dict = {}): number {
@@ -537,14 +582,18 @@ class VotingCardView {
     for (const componentId of [VOTING_CARD_AUTHOR_COMPONENT_ID, VOTING_CARD_VOTERS_COMPONENT_ID, VOTING_CARD_VOTE_COUNT_COMPONENT_ID, VOTING_CARD_ANSWER_COMPONENT_ID, VOTING_CARD_ART_COMPONENT_ID]) {
       duration = Math.max(duration, this.playChild(componentId, instant ? "Off" : "Disappear", { instant }));
     }
-    duration = Math.max(duration, this.groupVisual.play(instant ? "Off" : "Disappear", { instant }));
     const element = this.element;
+    let removed = false;
     const removeElement = () => {
+      if (removed) return;
+      removed = true;
       this.rootRenderer?.clear({ instant: true });
       element.remove();
+      if (typeof options.complete === "function") (options.complete as () => void)();
     };
-    if (duration > 0) setTimeout(removeElement, duration);
-    else removeElement();
+    const groupDuration = this.groupVisual.play(instant ? "Off" : "Disappear", { instant, complete: removeElement });
+    duration = Math.max(duration, groupDuration);
+    if (groupDuration <= 0) queueMicrotask(removeElement);
     return duration;
   }
 }
@@ -556,6 +605,7 @@ class VotingCardRenderer {
   getComposition: (id: string) => Dict | null;
   gameObjectApi: unknown;
   cards = new Map<string, VotingCardView>();
+  actionCompletions = new Map<string, Promise<void>>();
   hideLayerTimer: number | null = null;
 
   constructor(options: Dict) {
@@ -569,6 +619,9 @@ class VotingCardRenderer {
   render(cards: Dict[] = [], options: Dict = {}): void {
     if (!this.layer) return;
     const list = Array.isArray(cards) ? cards : [];
+    const actionId = String(options.actionId || "");
+    const shouldTrackAction = Boolean(actionId && !this.actionCompletions.has(actionId));
+    const actionPromises: Promise<void>[] = [];
     if (list.length) this.showLayer();
     const desiredIds = new Set(list.map((card) => String(card.id || "")));
     for (const cardData of list) {
@@ -585,22 +638,37 @@ class VotingCardRenderer {
         this.cards.set(cardId, view);
         this.layer.appendChild(view.element);
       }
-      view.sync(cardData, options);
+      const completion = view.sync(cardData, { ...options, trackActionCompletion: shouldTrackAction });
+      if (shouldTrackAction) actionPromises.push(completion);
     }
-    let removalDuration = 0;
+    const removalPromises: Promise<void>[] = [];
     for (const [cardId, view] of Array.from(this.cards.entries())) {
       if (desiredIds.has(cardId)) continue;
       this.cards.delete(cardId);
-      removalDuration = Math.max(removalDuration, view.remove({ instant: options.instant === true }));
+      const completion = new Promise<void>((resolve) => {
+        view.remove({ instant: options.instant === true, complete: resolve });
+      });
+      removalPromises.push(completion);
+      if (shouldTrackAction) actionPromises.push(completion);
     }
-    if (!list.length && !this.cards.size) this.scheduleLayerHide(removalDuration);
+    if (!list.length && !this.cards.size) Promise.all(removalPromises).then(() => this.scheduleLayerHide());
+    if (shouldTrackAction) {
+      this.actionCompletions.set(actionId, Promise.all(actionPromises).then(() => undefined));
+    }
+  }
+
+  completionForAction(action: Dict = {}): Promise<void> {
+    const actionId = String(action.id || "");
+    return this.actionCompletions.get(actionId) || Promise.resolve();
   }
 
   clear(options: Dict = {}): void {
-    let removalDuration = 0;
-    for (const view of this.cards.values()) removalDuration = Math.max(removalDuration, view.remove({ instant: options.instant !== false }));
+    const removals: Promise<void>[] = [];
+    for (const view of this.cards.values()) {
+      removals.push(new Promise((resolve) => view.remove({ instant: options.instant !== false, complete: resolve })));
+    }
     this.cards.clear();
-    this.scheduleLayerHide(removalDuration);
+    Promise.all(removals).then(() => this.scheduleLayerHide());
   }
 
   showLayer(): void {
@@ -609,16 +677,10 @@ class VotingCardRenderer {
     this.layer?.classList.remove("hidden");
   }
 
-  scheduleLayerHide(delay = 0): void {
+  scheduleLayerHide(): void {
     if (this.hideLayerTimer !== null) clearTimeout(this.hideLayerTimer);
     if (!this.layer) return;
-    if (delay > 0) {
-      this.hideLayerTimer = setTimeout(() => {
-        if (!this.cards.size) this.layer?.classList.add("hidden");
-      }, delay) as unknown as number;
-      return;
-    }
-    this.layer.classList.add("hidden");
+    if (!this.cards.size) this.layer.classList.add("hidden");
   }
 }
 

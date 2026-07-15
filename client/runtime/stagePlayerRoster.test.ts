@@ -492,6 +492,38 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(incorrectTile.dataset.answerBubbleCorrectness).toBe("wrong");
   });
 
+  it("completes correctness only after every directly targeted bubble reports its state selection", async () => {
+    const correctTile = { dataset: { playerId: "correct" } } as unknown as HTMLElement;
+    const incorrectTile = { dataset: { playerId: "incorrect" } } as unknown as HTMLElement;
+    const host = { querySelectorAll: () => [correctTile, incorrectTile] } as unknown as HTMLElement;
+    const targetCompletions: Array<() => void> = [];
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    for (const tile of [correctTile, incorrectTile]) {
+      roster.tilePlayers.set(tile, { id: tile.dataset.playerId, displayedAnswer: { text: "ANSWER" } });
+      roster.tileRenderers.set(tile, {
+        render: vi.fn(),
+        stopAtComponent: vi.fn((_componentId, _state, options) => {
+          targetCompletions.push(options?.complete as () => void);
+          return 1;
+        })
+      });
+    }
+    const complete = vi.fn();
+
+    roster.revealAnswerCorrectness({
+      answerCorrectness: { correctPlayerIds: ["correct"], incorrectPlayerIds: ["incorrect"] },
+      complete
+    });
+
+    expect(targetCompletions).toHaveLength(2);
+    targetCompletions[0]();
+    await Promise.resolve();
+    expect(complete).not.toHaveBeenCalled();
+    targetCompletions[1]();
+    await Promise.resolve();
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
   it("drives choosing status through the nested avatar behavior timeline", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     const playComponent = vi.fn(() => 333);
@@ -610,9 +642,9 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     playComponent.mockClear();
     expect(roster.setShown(false, { instant: true })).toBe(0);
     expect(classes.has("players-hidden")).toBe(true);
-    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Off", { instant: true });
-    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Off", { instant: true });
-    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Off", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Off", expect.objectContaining({ instant: true, complete: expect.any(Function) }));
+    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Off", expect.objectContaining({ instant: true, complete: expect.any(Function) }));
+    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Off", expect.objectContaining({ instant: true, complete: expect.any(Function) }));
   });
 
   it("renders point popup prefabs with a timeline fallback when no authored timeline exists", () => {
@@ -669,15 +701,20 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         (node as { removed?: boolean }).removed = true;
       }
     };
-    const playAll = vi.fn(() => 250);
-    const timers: number[] = [];
-    const roster = PartyGamePlayerRoster.createRenderer({ timerSink: (id: number) => timers.push(id) });
+    let finishTimeline: () => void = () => {};
+    const playAll = vi.fn((_animation: string, options?: Record<string, unknown>) => {
+      finishTimeline = (options?.complete as (() => void) | undefined) || (() => {});
+      return 250;
+    });
+    const roster = PartyGamePlayerRoster.createRenderer({});
     roster.pointPopupRenderers.set(node as unknown as HTMLElement, { render: vi.fn(), playAll });
 
     expect(roster.playPointPopup(node as unknown as HTMLElement, { id: "popup-1" })).toBe(250);
 
     expect((node as { removedClass?: string }).removedClass).toBe("point-popup-hidden");
-    expect(playAll).toHaveBeenCalledWith("appear", { instant: false });
-    expect(timers).toHaveLength(1);
+    expect(playAll).toHaveBeenCalledWith("appear", { instant: false, complete: expect.any(Function) });
+    expect((node as { removed?: boolean }).removed).not.toBe(true);
+    finishTimeline();
+    expect((node as { removed?: boolean }).removed).toBe(true);
   });
 });

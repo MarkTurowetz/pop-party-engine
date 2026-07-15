@@ -89,8 +89,11 @@ class StageRenderOrchestrator {
       this.renderedAction = (lobby.action as Dict) || null;
       options.scheduleSubActions?.(lobby.action as Dict, actionKey);
       options.runStageWipe?.(() => {
+        if (this.renderedActionKey !== actionKey) return;
         options.applyStageState?.(lobby);
-        options.completeFlowAction?.("callback", (lobby.action as Dict).id);
+        if (((lobby.action as Dict).timing as Dict)?.mode !== "S+") {
+          options.completeFlowAction?.("callback", (lobby.action as Dict).id);
+        }
       });
       return;
     }

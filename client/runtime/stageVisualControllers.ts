@@ -143,7 +143,10 @@ class StageTextController {
 
   set(target: string, options: Dict = {}): number {
     const object = this.objectFor(target);
-    if (!object) return 0;
+    if (!object) {
+      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
+      return 0;
+    }
     const element = object.element as El;
     const nextText = String((options.text ?? object.text ?? "") as string);
     const isShown = options.isShown !== false;
@@ -278,12 +281,13 @@ class CraftingTimerController {
     const visual = this.visualObject();
     if (!visual) {
       this.element?.classList.toggle("hidden", !isShown);
+      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
       return 0;
     }
     const result = visualBridge()?.playVisibilityForTarget?.({
       visual,
       isShown,
-      playOptions: { instant: options.instant === true }
+      playOptions: { instant: options.instant === true, complete: options.complete }
     });
     return result?.duration || 0;
   }
@@ -292,14 +296,14 @@ class CraftingTimerController {
     const actionKey = (options.actionKey as string) || this.getRenderedActionKey();
     this.visibilityRequest = { actionKey, isShown: action?.isShown !== false };
     const timer = this.payloadWithVisibilityRequest((this.getCurrentStageState()?.craftingTimer as Dict) || {});
-    return this.render(timer, { instant: action?.instant === true });
+    return this.render(timer, { instant: action?.instant === true, complete: options.complete });
   }
 
   render(timer: Dict, options: Dict = {}): number {
     const nextTimer = this.payloadWithVisibilityRequest(timer || {});
     this.clearInterval();
     if (!this.element || !this.label || !nextTimer?.shown) {
-      return this.setVisible(false, { instant: options.instant === true });
+      return this.setVisible(false, { instant: options.instant === true, complete: options.complete });
     }
     const durationMs = Math.max(1, Number(nextTimer.durationMs || 1));
     const currentStageState = this.getCurrentStageState();
@@ -315,7 +319,7 @@ class CraftingTimerController {
       this.renderLabel(label);
       this.onTick?.({ label, progress, timer: nextTimer });
     };
-    const visibilityDuration = this.setVisible(true, { instant: options.instant === true });
+    const visibilityDuration = this.setVisible(true, { instant: options.instant === true, complete: options.complete });
     update();
     if (nextTimer.running) {
       this.intervalId = setInterval(update, 100) as unknown as number;

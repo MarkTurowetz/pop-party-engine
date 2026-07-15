@@ -118,9 +118,15 @@ async function main() {
 
       player = makePlayer(false, true);
       roster.render([player], { instant: false });
-      roster.revealAnswerCorrectness({
-        answerCorrectness: { correctPlayerIds: ["p1"], incorrectPlayerIds: [] }
-      });
+      const correctnessStartedAt = performance.now();
+      await Promise.race([
+        new Promise((resolve) => roster.revealAnswerCorrectness({
+          answerCorrectness: { correctPlayerIds: ["p1"], incorrectPlayerIds: [] },
+          complete: resolve
+        })),
+        sleep(500).then(() => { throw new Error("Correctness target callback timed out"); })
+      ]);
+      const correctnessDuration = performance.now() - correctnessStartedAt;
       const correctFill = correctnessFill();
       roster.render([player], { instant: false });
       const reconciledCorrectFill = correctnessFill();
@@ -150,6 +156,7 @@ async function main() {
         appearToken,
         appearTokenAfterReconcile,
         correctFill,
+        correctnessDuration,
         disappearDuration: performance.now() - disappearStartedAt,
         disappearFinalState: lifecycle(),
         disappearMidFrame,
@@ -164,6 +171,7 @@ async function main() {
     assert(result.appearMidFrame > result.appearStartFrame, "Appear did not advance through authored frames");
     assert(result.appearFinalState === "shown", `Appear ended in ${result.appearFinalState}`);
     assert(result.correctFill === "#8dff5f", `Correct state used ${result.correctFill || "no fill"}`);
+    assert(result.correctnessDuration < 250, `Correctness used a legacy delay (${Math.round(result.correctnessDuration)}ms)`);
     assert(result.reconciledCorrectFill === "#8dff5f", `reconciliation reset Correct to ${result.reconciledCorrectFill || "no fill"}`);
     assert(result.disappearToken && result.disappearToken === result.disappearMidToken, "repeated payload restarted Disappear");
     assert(result.disappearMidFrame > 17, "Disappear did not advance through authored frames");

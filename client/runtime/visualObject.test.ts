@@ -141,7 +141,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(visual.play("appear")).toBe(0);
   });
 
-  it("treats canonical uppercase lifecycle labels as lifecycle animations", () => {
+  it("treats canonical uppercase lifecycle labels as lifecycle animations", async () => {
     const element = createFakeElement(["hidden"]);
     const visual = PartyGameVisualObject.createCssVisualObject({
       element,
@@ -155,7 +155,10 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(visual.play("Disappear")).toBe(500);
     expect(element.dataset.visualState).toBe("disappearing");
 
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
     expect(element.dataset.visualState).toBe("hidden");
   });
 
@@ -233,7 +236,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualState).toBe("shown");
   });
 
-  it("keeps an object logically shown and joins duplicate appear calls to the active timeline", () => {
+  it("keeps an object logically shown and joins duplicate appear calls to the active timeline", async () => {
     const element = createFakeElement(["hidden"]);
     const visual = PartyGameVisualObject.createCssVisualObject({
       element,
@@ -251,13 +254,14 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(visual.play("appear", { complete: joinedComplete })).toBe(100);
     expect(element.dataset.visualState).toBe("appearing");
 
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
     expect(element.dataset.visualState).toBe("shown");
     expect(element.classList.contains("hidden")).toBe(false);
     expect(joinedComplete).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a disappearing object logically shown until the disappear finishes", () => {
+  it("keeps a disappearing object logically shown until the disappear finishes", async () => {
     const element = createFakeElement();
     const visual = PartyGameVisualObject.createCssVisualObject({
       element,
@@ -273,14 +277,15 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.classList.contains("exiting")).toBe(true);
     expect(visual.isVisible()).toBe(true);
 
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
     expect(element.dataset.visualState).toBe("hidden");
     expect(element.dataset.visualVisible).toBe("false");
     expect(element.classList.contains("hidden")).toBe(true);
     expect(visual.isVisible()).toBe(false);
   });
 
-  it("joins a duplicate disappear request without restarting the authored timeline", () => {
+  it("joins a duplicate disappear request without restarting the authored timeline", async () => {
     const element = createFakeElement();
     const visual = PartyGameVisualObject.createCssVisualObject({
       element,
@@ -292,13 +297,15 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     visual.play("disappear");
     const firstToken = element.dataset.visualAnimationToken;
 
-    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
     const joinedComplete = vi.fn();
-    expect(visual.play("disappear", { complete: joinedComplete })).toBe(50);
+    expect(visual.play("disappear", { complete: joinedComplete })).toBe(0);
     const secondToken = element.dataset.visualAnimationToken;
     expect(secondToken).toBe(firstToken);
 
-    vi.advanceTimersByTime(50);
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
     expect(element.dataset.visualState).toBe("hidden");
     expect(visual.isVisible()).toBe(false);
     expect(joinedComplete).toHaveBeenCalledTimes(1);

@@ -155,6 +155,11 @@ concepts into focused modules.
   lifecycle completion must update rendered state without silently creating persistent overrides.
 - Repeated `On` and `Off` requests are idempotent state normalization: they repair stale lifecycle
   classes without restarting authored `Appear`, `Disappear`, or `Update` animations.
+- E+ visual actions advance from an action-scoped barrier containing only the directly invoked
+  targets, then apply the separately authored E+ delay. S+ visual actions fire immediately,
+  ignore all animation callbacks, and advance only from their start-relative timer (including S+0).
+- Child component animations may be started by a parent timeline, but they cannot delay or satisfy
+  that parent's completion callback. Returned animation durations never advance game flow.
 - Composite reveal widgets follow the same ownership model as Player Widget MC. Voting Card MC
   owns labeled `cardArt`, `answer`, `author`, `voters`, and `voteCount` child prefabs; runtime code
   reveals those children through their timelines. `cardArt` owns the deeper stopped

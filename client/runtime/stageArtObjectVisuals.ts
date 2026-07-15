@@ -13,6 +13,7 @@ import type { TimelineCommandEventDetail } from "./visualObject";
 import { TimelinePlayer, type TimelineFrameSnapshot } from "./timelinePlayer";
 import { hasTimelineLabel, timelinePlaybackDuration, type TimelineCommand, type TimelineDocument } from "../../shared/timeline-model";
 import { lifecycleLabels } from "../../shared/lifecycle-labels";
+import { createActionCompletionBarrier } from "./actionCompletionBarrier";
 
 type Dict = Record<string, unknown>;
 type Component = Dict;
@@ -307,9 +308,12 @@ function playTimelineComponentCommand(host: TimelineComponentCommandHost, comman
 }
 
 function timelineComponentCommandDuration(host: TimelineComponentCommandHost, command: TimelineCommand | { type?: unknown; target?: unknown; event?: unknown }): number {
-  const payload = timelineComponentCommandPayload(command);
-  if (!payload || payload.stop) return 0;
-  return host.viewForComponentId(payload.targetId)?.durationForAnimation?.(payload.animation) || 0;
+  // A parent timeline owns only its own terminal callback. Child component
+  // animations may be fired by its commands, but their durations must never
+  // delay or satisfy the parent's completion contract.
+  void host;
+  void command;
+  return 0;
 }
 
 class ArtObjectView {
@@ -589,13 +593,17 @@ class ArtObjectView {
 
   playTree(animation: string, options: Dict = {}): number {
     let duration = this.play(animation, options);
-    for (const child of this.children.values()) duration = Math.max(duration, child.playTree(animation, options));
+    const childOptions = { ...options };
+    delete childOptions.complete;
+    for (const child of this.children.values()) duration = Math.max(duration, child.playTree(animation, childOptions));
     return duration;
   }
 
   stopAtTree(animation: string, options: Dict = {}): number {
     let duration = this.stopAt(animation, options);
-    for (const child of this.children.values()) duration = Math.max(duration, child.stopAtTree(animation, options));
+    const childOptions = { ...options };
+    delete childOptions.complete;
+    for (const child of this.children.values()) duration = Math.max(duration, child.stopAtTree(animation, childOptions));
     return duration;
   }
 
@@ -619,14 +627,21 @@ class ArtObjectView {
   }
 
   remove(options: Dict = {}): number {
-    const duration = this.disappear(options);
     const element = this.element;
-    const token = element.dataset.visualAnimationToken || "";
+    let token = "";
+    let removed = false;
     const removeElement = () => {
+      if (removed) return;
+      removed = true;
       if (element.parentElement && element.dataset.visualAnimationToken === token) element.remove();
+      if (typeof options.complete === "function") (options.complete as () => void)();
     };
-    if (duration > 0) setTimeout(removeElement, duration);
-    else removeElement();
+    // A zero-length timeline may report completion synchronously. Defer finalization
+    // until after disappear() has published the animation token we must validate.
+    const finishRemoval = () => queueMicrotask(removeElement);
+    const duration = this.disappear({ ...options, complete: finishRemoval });
+    token = element.dataset.visualAnimationToken || "";
+    if (duration <= 0) finishRemoval();
     return duration;
   }
 }
@@ -736,7 +751,17 @@ class ArtObjectTreeRenderer {
       });
     }
     let duration = 0;
-    for (const view of this.views.values()) duration = Math.max(duration, view.play(animation, options));
+    const barrier = typeof options.complete === "function" ? createActionCompletionBarrier() : null;
+    for (const view of this.views.values()) {
+      const complete = barrier?.addTarget();
+      const targetDuration = view.play(animation, { ...options, complete });
+      if (complete && targetDuration <= 0) queueMicrotask(complete);
+      duration = Math.max(duration, targetDuration);
+    }
+    if (barrier) {
+      barrier.promise.then(options.complete as () => void);
+      barrier.seal();
+    }
     return duration;
   }
 
@@ -753,7 +778,17 @@ class ArtObjectTreeRenderer {
       });
     }
     let duration = 0;
-    for (const view of this.views.values()) duration = Math.max(duration, view.stopAt(animation, options));
+    const barrier = typeof options.complete === "function" ? createActionCompletionBarrier() : null;
+    for (const view of this.views.values()) {
+      const complete = barrier?.addTarget();
+      const targetDuration = view.stopAt(animation, { ...options, complete });
+      if (complete && targetDuration <= 0) queueMicrotask(complete);
+      duration = Math.max(duration, targetDuration);
+    }
+    if (barrier) {
+      barrier.promise.then(options.complete as () => void);
+      barrier.seal();
+    }
     return duration;
   }
 

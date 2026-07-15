@@ -213,11 +213,19 @@ function setPlayerAnswerBubblesShownForAction(isShown: boolean, options: Dict = 
   });
 }
 
-function revealPlayerAnswerCorrectnessForAction(action: Dict): number {
-  return ((playerRosterRenderer() as { revealAnswerCorrectness?: (o: Dict) => number } | null)?.revealAnswerCorrectness?.({
-    instant: action.instant === true,
-    answerCorrectness: action.answerCorrectness
-  }) as number) || 0;
+function revealPlayerAnswerCorrectnessForAction(action: Dict): Promise<void> {
+  return new Promise((resolve) => {
+    const renderer = playerRosterRenderer() as { revealAnswerCorrectness?: (o: Dict) => number } | null;
+    if (!renderer?.revealAnswerCorrectness) {
+      resolve();
+      return;
+    }
+    renderer.revealAnswerCorrectness({
+      instant: action.instant === true,
+      answerCorrectness: action.answerCorrectness,
+      complete: resolve
+    });
+  });
 }
 
 function playerAnswerBubblesAnimating(): boolean {
@@ -229,17 +237,26 @@ function renderStagePlayers(players: Dict[], options: Dict = {}): void {
 }
 
 function setPlayersShown(isShown: boolean, options: Dict = {}): number {
-  const layoutDuration = setStageLayoutElementGameObjectShown("playerLobby", w().playerLobby, isShown, { ...options, scope: "global" });
-  const rosterDuration = ((playerRosterRenderer() as { setShown?: (s: boolean, o: Dict) => number } | null)?.setShown?.(isShown, options) as number) || 0;
-  return Math.max(layoutDuration, rosterDuration);
+  return ((playerRosterRenderer() as { setShown?: (s: boolean, o: Dict) => number } | null)?.setShown?.(isShown, options) as number) || 0;
 }
 
-function setPlayersShownForAction(action: Dict): number {
-  return setPlayersShown(action?.isShown !== false, { instant: action?.instant === true });
+function setPlayersShownForAction(action: Dict): Promise<void> {
+  return new Promise((resolve) => {
+    const renderer = playerRosterRenderer() as { setShown?: (s: boolean, o: Dict) => number } | null;
+    if (!renderer?.setShown) {
+      resolve();
+      return;
+    }
+    renderer.setShown(action?.isShown !== false, { instant: action?.instant === true, complete: resolve });
+  });
 }
 
-function renderPointPopups(popups: Dict[] = []): void {
-  (playerRosterRenderer() as { renderPointPopups?: (p: Dict[]) => void } | null)?.renderPointPopups?.(popups);
+function renderPointPopups(popups: Dict[] = [], options: Dict = {}): void {
+  (playerRosterRenderer() as { renderPointPopups?: (p: Dict[], o?: Dict) => void } | null)?.renderPointPopups?.(popups, options);
+}
+
+function showPointPopupsForAction(_action: Dict): Promise<void> {
+  return (playerRosterRenderer() as { showPointPopupsForAction?: () => Promise<void> } | null)?.showPointPopupsForAction?.() || Promise.resolve();
 }
 
 function revealVoteStaggerMs(action: Dict): number {
@@ -247,26 +264,23 @@ function revealVoteStaggerMs(action: Dict): number {
   return Math.max(0, Math.min(60, Number.isFinite(seconds) ? seconds : 1)) * 1000;
 }
 
-function voteRevealDurationMs(action: Dict, cards: Dict[] = ((w().currentStageState as Dict)?.votingCards as Dict[]) || []): number {
-  const authoredBeatDuration = (action?.timing as Dict)?.mode === "E+"
-    ? Math.max(0, Number((action.timing as Dict)?.seconds || 0) * 1000)
-    : 0;
-  if (action?.type !== "revealVotes") return authoredBeatDuration;
-  const maxVotes = Math.max(0, ...(Array.isArray(cards) ? cards.map((card) => ((card.voters as unknown[]) || []).length) : [0]));
-  if (maxVotes <= 0) return authoredBeatDuration;
-  return Math.max(authoredBeatDuration, Math.round(maxVotes * revealVoteStaggerMs(action) + 220));
-}
-
 function votingCardRenderOptions(lobby: Dict): Dict {
   const action = (lobby?.action as Dict) || null;
+  const actionDetails = action && ["setVotingCardsShown", "revealVotingResults", "revealAuthors", "revealVotes", "revealWinningAnswer"].includes(String(action.type || ""))
+    ? { actionId: action.id || "", actionType: action.type || "" }
+    : {};
   if (action?.type !== "revealVotes") {
-    return { voteRevealKey: "instant", voteRevealStaggerMs: 0 };
+    return { ...actionDetails, voteRevealKey: "instant", voteRevealStaggerMs: 0 };
   }
-  return { voteRevealKey: `${action.id || action.index || "reveal-votes"}:${action.voteRevealStaggerSeconds ?? 1}`, voteRevealStaggerMs: revealVoteStaggerMs(action) };
+  return { ...actionDetails, voteRevealKey: `${action.id || action.index || "reveal-votes"}:${action.voteRevealStaggerSeconds ?? 1}`, voteRevealStaggerMs: revealVoteStaggerMs(action) };
 }
 
 function renderVotingCards(cards: Dict[] = [], options: Dict = {}): void {
   (votingCardRenderer() as { render?: (c: Dict[], o: Dict) => void } | null)?.render?.(cards, options);
+}
+
+function runVotingCardActionForAction(action: Dict): Promise<void> {
+  return (votingCardRenderer() as { completionForAction?: (a: Dict) => Promise<void> } | null)?.completionForAction?.(action) || Promise.resolve();
 }
 
 function reloadStageArtAssets(): void {
@@ -275,26 +289,53 @@ function reloadStageArtAssets(): void {
   }).catch(() => {});
 }
 
-async function setStageLayoutGameObjectShownForStageAction(action: Dict): Promise<number> {
-  const showGameObject = w().setStageLayoutGameObjectShownForAction || w().setStageLayoutArtElementShownForAction;
-  if (typeof showGameObject !== "function") return 0;
-  const first = showGameObject(action, { returnResult: true, suppressMissingWarning: true }) as Dict;
-  if (!first?.missing) return (first?.duration as number) || 0;
-  await Promise.all([w().loadArtAssets!().catch(() => w().artCompositions), w().loadStageLayouts!({ forceServer: true }).catch(() => w().stageLayouts)]);
-  if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
-  const retry = showGameObject(action, { returnResult: true }) as Dict;
-  return (retry?.duration as number) || 0;
+function invokeLayoutActionWithCompletion(
+  invoke: (options: Dict) => Dict,
+  options: Dict = {}
+): Promise<Dict> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: Dict) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    let result: Dict = {};
+    result = invoke({ ...options, complete: () => finish(result) });
+    if (result?.missing) finish(result);
+  });
 }
 
-async function playStageLayoutGameObjectAnimationForStageAction(action: Dict): Promise<number> {
-  const playAnimation = w().playStageLayoutGameObjectAnimationForAction;
-  if (typeof playAnimation !== "function") return 0;
-  const first = playAnimation(action, { returnResult: true, suppressMissingWarning: true }) as Dict;
-  if (!first?.missing) return (first?.duration as number) || 0;
+async function setStageLayoutGameObjectShownForStageAction(action: Dict): Promise<void> {
+  const showGameObject = w().setStageLayoutGameObjectShownForAction || w().setStageLayoutArtElementShownForAction;
+  if (typeof showGameObject !== "function") return;
+  const first = await invokeLayoutActionWithCompletion(
+    (playOptions) => showGameObject(action, playOptions) as Dict,
+    { returnResult: true, suppressMissingWarning: true }
+  );
+  if (!first?.missing) return;
   await Promise.all([w().loadArtAssets!().catch(() => w().artCompositions), w().loadStageLayouts!({ forceServer: true }).catch(() => w().stageLayouts)]);
   if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
-  const retry = playAnimation(action, { returnResult: true }) as Dict;
-  return (retry?.duration as number) || 0;
+  await invokeLayoutActionWithCompletion(
+    (playOptions) => showGameObject(action, playOptions) as Dict,
+    { returnResult: true }
+  );
+}
+
+async function playStageLayoutGameObjectAnimationForStageAction(action: Dict): Promise<void> {
+  const playAnimation = w().playStageLayoutGameObjectAnimationForAction;
+  if (typeof playAnimation !== "function") return;
+  const first = await invokeLayoutActionWithCompletion(
+    (playOptions) => playAnimation(action, playOptions) as Dict,
+    { returnResult: true, suppressMissingWarning: true }
+  );
+  if (!first?.missing) return;
+  await Promise.all([w().loadArtAssets!().catch(() => w().artCompositions), w().loadStageLayouts!({ forceServer: true }).catch(() => w().stageLayouts)]);
+  if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
+  await invokeLayoutActionWithCompletion(
+    (playOptions) => playAnimation(action, playOptions) as Dict,
+    { returnResult: true }
+  );
 }
 
 function runStageWipe(onCovered: () => void): number {
@@ -350,12 +391,26 @@ function setCraftingTimerVisible(isShown: boolean, options: Dict = {}): number {
   return ((craftingTimerController() as { setVisible?: (s: boolean, o: Dict) => number } | null)?.setVisible?.(isShown, options) as number) || 0;
 }
 
-function setCraftingTimerShownForAction(action: Dict, options: Dict = {}): number {
-  return ((craftingTimerController() as { setShownForAction?: (a: Dict, o: Dict) => number } | null)?.setShownForAction?.(action, options) as number) || 0;
+function setCraftingTimerShownForAction(action: Dict, options: Dict = {}): Promise<void> {
+  return new Promise((resolve) => {
+    const controller = craftingTimerController() as { setShownForAction?: (a: Dict, o: Dict) => number } | null;
+    if (!controller?.setShownForAction) {
+      resolve();
+      return;
+    }
+    controller.setShownForAction(action, { ...options, complete: resolve });
+  });
 }
 
-function setStageWipeShownForAction(action: Dict, options: Dict = {}): number {
-  return ((stageWipeController() as { setShownForAction?: (a: Dict, o: Dict) => number } | null)?.setShownForAction?.(action, options) as number) || 0;
+function setStageWipeShownForAction(action: Dict, options: Dict = {}): Promise<void> {
+  return new Promise((resolve) => {
+    const controller = stageWipeController() as { setShownForAction?: (a: Dict, o: Dict) => number } | null;
+    if (!controller?.setShownForAction) {
+      resolve();
+      return;
+    }
+    controller.setShownForAction(action, { ...options, complete: resolve });
+  });
 }
 
 function syncStageWipeShown(lobby: Dict): void {
@@ -402,6 +457,31 @@ function setStageTextObject(target: unknown, options: Dict = {}): number {
     return Number(result?.duration || 0);
   }
   return (stageTextController()?.set(target, options) as number) || 0;
+}
+
+function setStageTextObjectForAction(target: unknown, options: Dict = {}): Promise<void> {
+  const targetId = w().normalizeTextTargetId!(target);
+  const layoutText = w().PartyGameLayoutText as { setStageText?: (t: string, v: unknown) => void } | undefined;
+  if (Object.prototype.hasOwnProperty.call(options, "text") && typeof layoutText?.setStageText === "function") {
+    layoutText.setStageText(targetId, options.text ?? "");
+  }
+  if (typeof w().setStageLayoutGameObjectShownForAction === "function") {
+    return setStageLayoutGameObjectShownForStageAction({
+      targetLayoutElementId: targetId,
+      targetLayoutScope: "moment",
+      targetLayoutSurface: "stage",
+      isShown: options.isShown !== false,
+      instant: options.instant === true
+    });
+  }
+  return new Promise((resolve) => {
+    const controller = stageTextController();
+    if (!controller?.set) {
+      resolve();
+      return;
+    }
+    controller.set(target, { ...options, complete: resolve });
+  });
 }
 
 function renderCraftingTimer(timer: Dict, options: Dict = {}): number {
@@ -651,7 +731,7 @@ function applyStageState(lobby: Dict): void {
   const hasParkedShownBubbles = (playerRosterRenderer() as { hasParkedShownBubbles?: () => boolean } | null)?.hasParkedShownBubbles?.() === true;
   const answersWereAlreadyShown = (playerRosterRenderer() as { currentAnswerBubblesShown?: () => boolean } | null)?.currentAnswerBubblesShown?.() === nextAnswersShown;
   setPlayerAnswerBubblesShown(nextAnswersShown, { instant: answersWereAlreadyShown && !answersAreStillAnimating && !hasParkedShownBubbles });
-  renderPointPopups((lobby.pendingPointPopups as Dict[]) || []);
+  renderPointPopups((lobby.pendingPointPopups as Dict[]) || [], { deferAnimation: action?.type === "showPoints" });
   renderVotingCards((lobby.votingCards as Dict[]) || [], votingCardRenderOptions(lobby));
   renderCraftingTimer(lobby.craftingTimer as Dict, { instant: action?.type === "setTimerShown" && action.instant === true });
   syncStageWipeShown(lobby);
@@ -743,7 +823,7 @@ function scheduleSubActions(action: Dict, actionKey: string): void {
 function playStageAudioAction(action: Dict, isPrimary: boolean, actionKey: string): void {
   const audioUrl = String(action.audioUrl || "").trim();
   if (!audioUrl) {
-    if (isPrimary) completeFlowAction("callback", action.id as string);
+    if (isPrimary && (action.timing as Dict)?.mode !== "S+") completeFlowAction("callback", action.id as string);
     return;
   }
   const audio = new Audio(audioUrl) as AudioEl;
@@ -769,7 +849,7 @@ function getStageActionRunner(): Dict | null {
   if (!stageActionRunner && w().PartyGameStageActionRunners) {
     stageActionRunner = (w().PartyGameStageActionRunners as unknown as { createRunner: (o: Dict) => Dict }).createRunner({
       applyFlowActionEffect, completeFlowAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, revealPlayerAnswerCorrectnessForAction,
-      playStageLayoutGameObjectAnimationForAction: playStageLayoutGameObjectAnimationForStageAction, runStageWipe, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShown, setPlayerAnswerBubblesShownForAction, setPlayersShownForAction, setStageWipeShownForAction, setStageTextObject, voteRevealDurationMs
+      playStageLayoutGameObjectAnimationForAction: playStageLayoutGameObjectAnimationForStageAction, runStageWipe, runVotingCardActionForAction, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShown, setPlayerAnswerBubblesShownForAction, setPlayersShownForAction, setStageWipeShownForAction, setStageTextObject, setStageTextObjectForAction, showPointPopupsForAction
     });
   }
   return stageActionRunner;
@@ -806,9 +886,8 @@ async function handleStageScreenClick(): Promise<void> {
   w().presentationAdvancePending = true;
   const action = state!.action as Dict;
   const target = action.textTarget || "presentation";
-  const delayMs = setStageTextObject(target, { isShown: false, instant: action.instant === true });
   try {
-    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    await setStageTextObjectForAction(target, { isShown: false, instant: action.instant === true });
     await emitStageInputEvent("stageClick", action.id as string);
   } catch {
     // Keep the current presented text on screen if the click cannot be saved.

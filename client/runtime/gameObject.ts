@@ -212,9 +212,11 @@ class GameObject {
     const animation = PartyGameVisualObject.animationForVisibility(isShown === true, visual?.isVisible() ?? this.isVisible());
     let duration = 0;
     if (this.syncArtRendererOnShow && fn(this.artRenderer?.playAll)) {
+      const childOptions = { ...options };
+      delete childOptions.complete;
       duration = Math.max(
         duration,
-        Number((this.artRenderer!.playAll as (a: string, o: Dict) => number)(animation, options) || 0)
+        Number((this.artRenderer!.playAll as (a: string, o: Dict) => number)(animation, childOptions) || 0)
       );
     }
     return visual ? Math.max(duration, visual.play(animation, options)) : duration;
@@ -225,7 +227,9 @@ class GameObject {
     if (!cleanAnimation) return 0;
     let duration = 0;
     if (fn(this.artRenderer?.playAll)) {
-      duration = Math.max(duration, Number((this.artRenderer!.playAll as (a: string, o: Dict) => number)(cleanAnimation, options) || 0));
+      const childOptions = { ...options };
+      delete childOptions.complete;
+      duration = Math.max(duration, Number((this.artRenderer!.playAll as (a: string, o: Dict) => number)(cleanAnimation, childOptions) || 0));
     }
     const visual = this.createVisual();
     if (visual) duration = Math.max(duration, Number(visual.play(cleanAnimation, options) || 0));
@@ -237,7 +241,9 @@ class GameObject {
     if (!cleanAnimation) return 0;
     let duration = 0;
     if (fn(this.artRenderer?.stopAtAll)) {
-      duration = Math.max(duration, Number((this.artRenderer!.stopAtAll as (a: string, o: Dict) => number)(cleanAnimation, options) || 0));
+      const childOptions = { ...options };
+      delete childOptions.complete;
+      duration = Math.max(duration, Number((this.artRenderer!.stopAtAll as (a: string, o: Dict) => number)(cleanAnimation, childOptions) || 0));
     }
     const visual = this.createVisual() as (VisualInstance & { stopAt?: (a: string, o: Dict) => number }) | null;
     if (visual) duration = Math.max(duration, Number(visual.stopAt?.(cleanAnimation, options) || visual.play(cleanAnimation, { ...options, instant: true }) || 0));
