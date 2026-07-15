@@ -320,7 +320,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
   });
 
-  it("selects the authored correctness state before the bubble lifecycle update", () => {
+  it("changes correctness only by selecting the authored semantic state", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     const calls: string[] = [];
     const renderer = {
@@ -340,10 +340,10 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       roster.syncAnswerBubbleComponent(
         renderer,
         { hasAnswer: true, visible: true, text: "YES", nonce: "2", correctness: "correct" },
-        { previousVisible: true, previousNonce: "1", previousText: "YES", previousCorrectness: "" }
+        { previousVisible: true, previousNonce: "2", previousText: "YES", previousCorrectness: "" }
       )
-    ).toBe(333);
-    expect(calls).toEqual(["state:Correct", "lifecycle:Update"]);
+    ).toBe(0);
+    expect(calls).toEqual(["state:Correct"]);
   });
 
   it("lets the reveal action explicitly select Correct and Incorrect on each answer bubble", () => {
@@ -375,11 +375,11 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         correctPlayerIds: ["correct"],
         incorrectPlayerIds: ["incorrect"]
       }
-    })).toBe(333);
+    })).toBe(0);
     expect(correctStop).toHaveBeenCalledWith("playerAnswerBubble", "Correct", { instant: true });
     expect(incorrectStop).toHaveBeenCalledWith("playerAnswerBubble", "Incorrect", { instant: true });
-    expect(correctUpdate).toHaveBeenCalledWith("player-answer-bubble-mc", "Update", { instant: false });
-    expect(incorrectUpdate).toHaveBeenCalledWith("player-answer-bubble-mc", "Update", { instant: false });
+    expect(correctUpdate).not.toHaveBeenCalled();
+    expect(incorrectUpdate).not.toHaveBeenCalled();
     expect(correctTile.dataset.answerBubbleCorrectness).toBe("correct");
     expect(incorrectTile.dataset.answerBubbleCorrectness).toBe("wrong");
   });

@@ -79,7 +79,6 @@ function createPlayerAnswersRuntime({ activePlayers, normalizePlayerFilter }) {
       const displayed = displayedAnswers.get(playerId);
       if (displayed) {
         displayed.correct = null;
-        displayed.nonce = Date.now();
       }
     }
   }
@@ -113,7 +112,6 @@ function createPlayerAnswersRuntime({ activePlayers, normalizePlayerFilter }) {
         const displayed = displayedPlayerAnswers(room).get(playerId);
         if (displayed) {
           displayed.correct = record.correct;
-          displayed.nonce = Date.now();
         }
       }
     }

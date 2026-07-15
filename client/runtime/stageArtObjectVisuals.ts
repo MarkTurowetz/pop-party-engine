@@ -522,6 +522,8 @@ class ArtObjectView {
     this.element.dataset.artComponentPath = this.componentPathId();
     if (this.visual || this.gameObject) this.createVisual();
     this.renderChildren((this.component.children as Component[]) || []);
+    const visual = this.createVisual() as { reapplyTimelineFrame?: () => void } | null;
+    visual?.reapplyTimelineFrame?.();
   }
 
   renderChildren(children: Component[]): void {

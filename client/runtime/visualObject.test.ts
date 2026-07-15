@@ -471,6 +471,50 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.style.top).toBe("50%");
   });
 
+  it("reapplies the active semantic timeline frame after static reconciliation", () => {
+    const element = createFakeElement();
+    element.dataset.artComponentId = "playerAnswerBubble";
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      timeline: normalizeTimeline({
+        fps: 30,
+        frameCount: 3,
+        labels: [
+          { name: "Default", frame: 0 },
+          { name: "Correct", frame: 1 },
+          { name: "Incorrect", frame: 2 }
+        ],
+        commands: [
+          { frame: 0, type: "stop" },
+          { frame: 1, type: "stop" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: [
+          {
+            targetId: "playerAnswerBubble",
+            keyframes: [
+              { frame: 0, props: { fillColor: "#fff7d6", scale: 1 } },
+              { frame: 1, props: { fillColor: "#63d69a", scale: 1.1 } },
+              { frame: 2, props: { fillColor: "#ff6b7a", scale: 0.9 } }
+            ]
+          }
+        ]
+      })
+    });
+
+    visual.stopAt("Correct");
+    expect((element.style as unknown as Record<string, string>)["--component-fill-color"]).toBe("#63d69a");
+    expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1.1");
+
+    // Server/SSE reconciliation reapplies the authored component defaults.
+    (element.style as unknown as Record<string, string>)["--component-fill-color"] = "#fff7d6";
+    (element.style as unknown as Record<string, string>)["--component-scale"] = "1";
+    visual.reapplyTimelineFrame();
+
+    expect((element.style as unknown as Record<string, string>)["--component-fill-color"]).toBe("#63d69a");
+    expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1.1");
+  });
+
   it("fits authored timeline text through the shared text renderer", () => {
     const label = createFakeLabel();
     const element = createFakeElement(["hidden"]);

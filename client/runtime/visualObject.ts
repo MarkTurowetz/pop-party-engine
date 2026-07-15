@@ -344,6 +344,11 @@ class CssVisualObject {
     }
   }
 
+  reapplyTimelineFrame(): void {
+    if (!this.timelinePlayer) return;
+    this.timelinePlayer.applyFrame(this.timelinePlayer.currentFrame);
+  }
+
   applyTimelineProperties(props: TimelineProperties): void {
     if (!this.element) return;
     const width = numericTimelineValue(props.width);

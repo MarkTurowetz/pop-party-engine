@@ -478,6 +478,77 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(appliedFrames).toEqual([7]);
   });
 
+  it("reapplies each nested component timeline after static tree reconciliation", () => {
+    const events: string[] = [];
+    const view = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: unknown;
+      canvas: unknown;
+      visual: unknown;
+      gameObject: unknown;
+      element: {
+        className: string;
+        classList: { add: (className: string) => void; toggle: (className: string, force?: boolean) => boolean };
+        dataset: Record<string, string>;
+        style: CSSStyleDeclaration;
+      };
+      image: unknown;
+      label: unknown;
+      componentPathId: () => string;
+      isVisible: () => boolean;
+      createVisual: () => { reapplyTimelineFrame: () => void };
+      renderChildren: (children: unknown[]) => void;
+      update: (component: unknown, canvas: unknown, layer?: unknown) => void;
+    };
+    view.component = {};
+    view.canvas = null;
+    view.visual = {};
+    view.gameObject = null;
+    const styleValues: Record<string, string> = {};
+    const style = new Proxy(styleValues, {
+      get: (target, property) => {
+        if (property === "setProperty") return (name: string, value: string) => { target[name] = value; };
+        if (property === "removeProperty") return (name: string) => { delete target[name]; };
+        return target[property as string] || "";
+      },
+      set: (target, property, value) => {
+        target[property as string] = String(value);
+        return true;
+      }
+    }) as unknown as CSSStyleDeclaration;
+    view.element = {
+      className: "",
+      classList: { add: () => undefined, toggle: (_className, force) => force === true },
+      dataset: {},
+      style
+    };
+    view.image = { getAttribute: () => null, removeAttribute: () => undefined };
+    view.label = { replaceChildren: () => undefined };
+    view.componentPathId = () => "player/answer-bubble";
+    view.isVisible = () => true;
+    view.createVisual = () => ({ reapplyTimelineFrame: () => events.push("reapply") });
+    view.renderChildren = () => events.push("children");
+
+    const globals = globalThis as unknown as Record<string, unknown>;
+    const previousSchema = globals.PartyGameArtComponentSchema;
+    globals.PartyGameArtComponentSchema = {
+      normalizeComponentKind: () => "shape",
+      componentLabel: () => "",
+      normalizeFillCss: () => "",
+      normalizeImageObjectFit: () => "cover",
+      normalizeShapeStyle: () => "rounded",
+      componentSpriteDataUrl: () => "",
+      normalizeSpriteRenderMode: () => "image",
+      transformOriginCss: () => "50% 50%"
+    };
+    try {
+      view.update({ id: "answer-bubble", kind: "shape", children: [] }, { width: 100, height: 100 }, {});
+    } finally {
+      globals.PartyGameArtComponentSchema = previousSchema;
+    }
+
+    expect(events).toEqual(["children", "reapply"]);
+  });
+
   it("includes nested component timeline command durations in renderer root playback", () => {
     const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
       views: Map<string, unknown>;

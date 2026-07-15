@@ -424,7 +424,6 @@ class PlayerRosterRenderer {
     const previousVisible = options.previousVisible === true;
     const previousNonce = String(options.previousNonce || "");
     const previousText = String(options.previousText || "");
-    const previousCorrectness = String(options.previousCorrectness || "");
     const targetId = PLAYER_ANSWER_BUBBLE_MC_ID;
     const play = (animation: string) =>
       renderer.playComponent?.(targetId, animation, { instant }) || 0;
@@ -440,7 +439,7 @@ class PlayerRosterRenderer {
         : play("Off");
     } else if (!previousVisible || !renderer.isComponentVisible?.(targetId)) {
       lifecycleDuration = play("Appear");
-    } else if (previousNonce !== state.nonce || previousText !== state.text || previousCorrectness !== state.correctness) {
+    } else if (previousNonce !== state.nonce || previousText !== state.text) {
       lifecycleDuration = play("Update");
     }
 
@@ -693,7 +692,6 @@ class PlayerRosterRenderer {
 
   revealAnswerCorrectness(options: Dict = {}): number {
     if (!this.host) return 0;
-    const instant = options.instant === true;
     const answerCorrectness = (options.answerCorrectness as Dict) || null;
     const hasExplicitCorrectness = Boolean(answerCorrectness);
     const correctPlayerIds = new Set(((answerCorrectness?.correctPlayerIds as unknown[]) || []).map(String));
@@ -718,11 +716,8 @@ class PlayerRosterRenderer {
         stateLabel,
         { instant: true }
       ) || 0;
-      const lifecycleDuration = state.hasAnswer && renderer.isComponentVisible?.(PLAYER_ANSWER_BUBBLE_MC_ID)
-        ? renderer.playComponent?.(PLAYER_ANSWER_BUBBLE_MC_ID, "Update", { instant }) || 0
-        : 0;
       tile.dataset.answerBubbleCorrectness = stateLabel === "Correct" ? "correct" : stateLabel === "Incorrect" ? "wrong" : "";
-      duration = Math.max(duration, stateDuration, lifecycleDuration);
+      duration = Math.max(duration, stateDuration);
     }
     return duration;
   }
