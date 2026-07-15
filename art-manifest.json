@@ -1187,8 +1187,8 @@
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "crafting-timer-widget": {
-      "name": "Crafting Timer",
-      "description": "Editable timer art used during timed input moments.",
+      "name": "Crafting Timer Widget MC",
+      "description": "Compound crafting timer whose parent timeline owns Set Timer Shown completion callbacks.",
       "surface": "stage",
       "compositionKind": "gameObject",
       "isCustom": false,
@@ -1199,43 +1199,23 @@
       },
       "components": [
         {
-          "id": "timer-value",
-          "name": "Timer Value",
-          "instanceLabel": "timerValue",
-          "kind": "text",
-          "x": 90,
-          "y": 92,
-          "width": 130,
-          "height": 82,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "30",
-          "fontSize": 60,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
-        },
-        {
-          "id": "timer-ring",
-          "name": "Timer Ring",
-          "instanceLabel": "timerRing",
-          "kind": "shape",
+          "id": "crafting-timer-mc-reference",
+          "name": "Crafting Timer MC",
+          "instanceLabel": "craftingTimerMC",
+          "kind": "reference",
           "x": 90,
           "y": 90,
           "width": 180,
           "height": 180,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "rounded",
-          "fillColor": "#fffdf4",
-          "fillCss": "radial-gradient(circle at center, #fffdf4 0 54%, transparent 55%), conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)",
-          "borderColor": "#17131f",
-          "borderWidth": 5,
-          "borderRadius": 36
+          "defaultAnimationState": "Off",
+          "artCompositionId": "prefab-crafting-timer-mc"
         }
       ],
       "timeline": {
@@ -1267,6 +1247,16 @@
             "frame": 17
           }
         ],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          17,
+          32
+        ],
         "commands": [
           {
             "id": "stop-0",
@@ -1280,6 +1270,13 @@
             "target": "false"
           },
           {
+            "id": "timer-mc-off",
+            "frame": 0,
+            "type": "stopComponent",
+            "target": "crafting-timer-mc-reference",
+            "event": "Off"
+          },
+          {
             "id": "stop-1",
             "frame": 1,
             "type": "stop"
@@ -1291,10 +1288,24 @@
             "target": "true"
           },
           {
+            "id": "timer-mc-on",
+            "frame": 1,
+            "type": "stopComponent",
+            "target": "crafting-timer-mc-reference",
+            "event": "On"
+          },
+          {
             "id": "setvisible-2-true",
             "frame": 2,
             "type": "setVisible",
             "target": "true"
+          },
+          {
+            "id": "timer-mc-appear",
+            "frame": 2,
+            "type": "playComponent",
+            "target": "crafting-timer-mc-reference",
+            "event": "Appear"
           },
           {
             "id": "stop-12",
@@ -1302,15 +1313,23 @@
             "type": "stop"
           },
           {
-            "id": "setvisible-13-true",
+            "id": "timer-mc-update",
             "frame": 13,
-            "type": "setVisible",
-            "target": "true"
+            "type": "playComponent",
+            "target": "crafting-timer-mc-reference",
+            "event": "Update"
           },
           {
             "id": "stop-16",
             "frame": 16,
             "type": "stop"
+          },
+          {
+            "id": "timer-mc-disappear",
+            "frame": 17,
+            "type": "playComponent",
+            "target": "crafting-timer-mc-reference",
+            "event": "Disappear"
           },
           {
             "id": "stop-32",
@@ -1324,18 +1343,9 @@
             "target": "false"
           }
         ],
-        "tracks": [],
-        "commandFrames": [
-          0,
-          1,
-          2,
-          12,
-          13,
-          16,
-          32
-        ]
+        "tracks": []
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-15T07:40:41.314Z"
     },
     "waiting-status-widget": {
       "name": "Waiting Status",
@@ -9903,6 +9913,391 @@
         "tracks": []
       },
       "updatedAt": "2026-07-15T06:59:23.883Z"
+    },
+    "crafting-timer": {
+      "name": "Crafting Timer",
+      "description": "Base visual prefab for the crafting timer value and progress ring.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 180,
+        "height": 180
+      },
+      "components": [
+        {
+          "id": "timer-value",
+          "name": "Timer Value",
+          "instanceLabel": "timerValue",
+          "kind": "text",
+          "x": 90,
+          "y": 92,
+          "width": 130,
+          "height": 82,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "defaultText": "30",
+          "fontSize": 60,
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "timer-ring",
+          "name": "Timer Ring",
+          "instanceLabel": "timerRing",
+          "kind": "shape",
+          "x": 90,
+          "y": 90,
+          "width": 180,
+          "height": 180,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "radial-gradient(circle at center, #fffdf4 0 54%, transparent 55%), conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)",
+          "borderColor": "#17131f",
+          "borderWidth": 5,
+          "borderRadius": 36
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-15T07:40:41.314Z"
+    },
+    "prefab-crafting-timer-mc": {
+      "name": "Crafting Timer MC",
+      "description": "Animated lifecycle wrapper for the Crafting Timer base visual.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 180,
+        "height": 180
+      },
+      "components": [
+        {
+          "id": "crafting-timer-reference",
+          "name": "Crafting Timer",
+          "instanceLabel": "craftingTimer",
+          "kind": "reference",
+          "x": 90,
+          "y": 90,
+          "width": 180,
+          "height": 180,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Default",
+          "artCompositionId": "crafting-timer"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 33,
+        "labels": [
+          {
+            "name": "Off",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          },
+          {
+            "name": "On",
+            "frame": 1
+          },
+          {
+            "name": "Appear",
+            "frame": 2
+          },
+          {
+            "name": "Update",
+            "frame": 13
+          },
+          {
+            "name": "Disappear",
+            "frame": 17
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          16,
+          17,
+          32
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-0-false",
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "id": "stop-1",
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-1-true",
+            "frame": 1,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "setvisible-2-true",
+            "frame": 2,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-12",
+            "frame": 12,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-13-true",
+            "frame": 13,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-16",
+            "frame": 16,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-17-true",
+            "frame": 17,
+            "type": "setVisible",
+            "target": "true"
+          },
+          {
+            "id": "stop-32",
+            "frame": 32,
+            "type": "stop"
+          },
+          {
+            "id": "setvisible-32-false",
+            "frame": 32,
+            "type": "setVisible",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-crafting-timer-reference",
+            "targetId": "crafting-timer-reference",
+            "keyframes": [
+              {
+                "id": "key-crafting-timer-0",
+                "frame": 0,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 0.72,
+                  "rotation": -8,
+                  "opacity": 0,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-crafting-timer-1",
+                "frame": 1,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-crafting-timer-2",
+                "frame": 2,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 0.72,
+                  "rotation": -8,
+                  "opacity": 0,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-crafting-timer-8",
+                "frame": 8,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 1.08,
+                  "rotation": 2,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-crafting-timer-12",
+                "frame": 12,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-crafting-timer-13",
+                "frame": 13,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-crafting-timer-14",
+                "frame": 14,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 1.08,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-crafting-timer-16",
+                "frame": 16,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-crafting-timer-17",
+                "frame": 17,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-crafting-timer-23",
+                "frame": 23,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 1.08,
+                  "rotation": 2,
+                  "opacity": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-crafting-timer-32",
+                "frame": 32,
+                "props": {
+                  "x": 90,
+                  "y": 90,
+                  "width": 180,
+                  "height": 180,
+                  "scale": 0.72,
+                  "rotation": 8,
+                  "opacity": 0,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-15T07:40:41.314Z"
     }
   },
   "deletedCompositionIds": [
@@ -9992,7 +10387,10 @@
           "composition:presentation-click-prompt",
           "composition:stage-code-widget",
           "composition:wipe-art-mc",
-          "composition:wipe-widget-mc"
+          "composition:wipe-widget-mc",
+          "composition:crafting-timer",
+          "composition:prefab-crafting-timer-mc",
+          "composition:crafting-timer-widget"
         ],
         "folder-3a090594-0d6c-406e-a758-05842b36ad51": [
           "composition:voting-card",
