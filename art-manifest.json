@@ -3002,7 +3002,7 @@
     },
     "player-answer-bubble": {
       "name": "Player Answer Bubble",
-      "description": "Shared editable answer bubble art used by every player object.",
+      "description": "Base visual and semantic-state prefab for player answers; lifecycle animation lives in Player Answer Bubble MC.",
       "surface": "stage",
       "compositionKind": "gameObject",
       "isCustom": false,
@@ -3024,7 +3024,7 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "Park",
+          "defaultAnimationState": "Default",
           "defaultText": "ANSWER",
           "fontSize": 28,
           "autoFitText": false,
@@ -3043,9 +3043,9 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "Park",
+          "defaultAnimationState": "Default",
           "shapeStyle": "rounded",
-          "fillColor": "#fffdf4",
+          "fillColor": "#fff8d6",
           "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 3,
@@ -3063,9 +3063,9 @@
           "scale": 1,
           "rotation": 45,
           "locked": false,
-          "defaultAnimationState": "Park",
+          "defaultAnimationState": "Default",
           "shapeStyle": "rectangle",
-          "fillColor": "#fffdf4",
+          "fillColor": "#fff8d6",
           "fillCss": "",
           "borderColor": "#17131f",
           "borderWidth": 3,
@@ -3074,32 +3074,25 @@
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 33,
+        "frameCount": 3,
         "labels": [
           {
-            "name": "Off",
+            "name": "Default",
             "frame": 0
           },
           {
-            "name": "Park",
-            "frame": 0
-          },
-          {
-            "name": "On",
+            "name": "Correct",
             "frame": 1
           },
           {
-            "name": "Appear",
+            "name": "Incorrect",
             "frame": 2
-          },
-          {
-            "name": "Update",
-            "frame": 13
-          },
-          {
-            "name": "Disappear",
-            "frame": 17
           }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          2
         ],
         "commands": [
           {
@@ -3108,68 +3101,212 @@
             "type": "stop"
           },
           {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
             "id": "stop-1",
             "frame": 1,
             "type": "stop"
           },
           {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
+            "id": "stop-2",
             "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
             "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
           }
         ],
-        "tracks": [],
-        "commandFrames": [
-          0,
-          1,
-          2,
-          12,
-          13,
-          16,
-          32
+        "tracks": [
+          {
+            "id": "track-answer-text",
+            "targetId": "answer-text",
+            "keyframes": [
+              {
+                "id": "key-answer-text-0",
+                "frame": 0,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 200,
+                  "height": 78,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "defaultText": "ANSWER",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 28,
+                  "fontColor": "#17131f",
+                  "autoFitText": false
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-answer-text-1",
+                "frame": 1,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 200,
+                  "height": 78,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "defaultText": "ANSWER",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 28,
+                  "fontColor": "#181f13",
+                  "autoFitText": false
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-answer-text-2",
+                "frame": 2,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 200,
+                  "height": 78,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "defaultText": "ANSWER",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 28,
+                  "fontColor": "#17131f",
+                  "autoFitText": false
+                },
+                "easing": "hold"
+              }
+            ]
+          },
+          {
+            "id": "track-answer-bubble-card",
+            "targetId": "answer-bubble-card",
+            "keyframes": [
+              {
+                "id": "key-answer-bubble-card-0",
+                "frame": 0,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 220,
+                  "height": 105,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "fillColor": "#fff8d6",
+                  "borderColor": "#17131f",
+                  "borderWidth": 3,
+                  "borderRadius": 18
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-answer-bubble-card-1",
+                "frame": 1,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 220,
+                  "height": 105,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "fillColor": "#8dff5f",
+                  "borderColor": "#17131f",
+                  "borderWidth": 3,
+                  "borderRadius": 18
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-answer-bubble-card-2",
+                "frame": 2,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 220,
+                  "height": 105,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "fillColor": "#ff5c45",
+                  "borderColor": "#17131f",
+                  "borderWidth": 3,
+                  "borderRadius": 18
+                },
+                "easing": "hold"
+              }
+            ]
+          },
+          {
+            "id": "track-answer-bubble-tail",
+            "targetId": "answer-bubble-tail",
+            "keyframes": [
+              {
+                "id": "key-answer-bubble-tail-0",
+                "frame": 0,
+                "props": {
+                  "x": 150,
+                  "y": 153.193,
+                  "width": 24,
+                  "height": 24,
+                  "scale": 1,
+                  "rotation": 45,
+                  "opacity": 1,
+                  "visible": true,
+                  "fillColor": "#fff8d6",
+                  "borderColor": "#17131f",
+                  "borderWidth": 3,
+                  "borderRadius": 3
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-answer-bubble-tail-1",
+                "frame": 1,
+                "props": {
+                  "x": 150,
+                  "y": 153.193,
+                  "width": 24,
+                  "height": 24,
+                  "scale": 1,
+                  "rotation": 45,
+                  "opacity": 1,
+                  "visible": true,
+                  "fillColor": "#8dff5f",
+                  "borderColor": "#17131f",
+                  "borderWidth": 3,
+                  "borderRadius": 3
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-answer-bubble-tail-2",
+                "frame": 2,
+                "props": {
+                  "x": 150,
+                  "y": 153.193,
+                  "width": 24,
+                  "height": 24,
+                  "scale": 1,
+                  "rotation": 45,
+                  "opacity": 1,
+                  "visible": true,
+                  "fillColor": "#ff5c45",
+                  "borderColor": "#17131f",
+                  "borderWidth": 3,
+                  "borderRadius": 3
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-15T00:23:32.598Z"
     },
     "player-point-popup": {
       "name": "Player Point Popup",
@@ -3671,7 +3808,7 @@
           "editorHidden": false,
           "transformOrigin": "bottom",
           "locked": false,
-          "defaultAnimationState": "",
+          "defaultAnimationState": "Default",
           "artCompositionId": "player-answer-bubble"
         }
       ],
