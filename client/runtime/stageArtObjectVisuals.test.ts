@@ -486,6 +486,36 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(appliedFrames).toEqual([7]);
   });
 
+  it("does not stop an active root timeline when identical authored data is reconciled", () => {
+    const timeline = {
+      fps: 30,
+      frameCount: 13,
+      labels: [{ name: "Appear", frame: 2 }],
+      commands: [{ frame: 12, type: "stop" }],
+      tracks: []
+    };
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      views: Map<string, unknown>;
+      rootTimelinePlayer: { currentFrame: number; isPlaying: boolean; updateTimeline: (value: unknown) => void } | null;
+      rootTimelineSignature: string;
+      updateRootTimeline: (value: unknown) => void;
+    };
+    renderer.views = new Map();
+    renderer.rootTimelinePlayer = null;
+    renderer.rootTimelineSignature = "";
+    renderer.updateRootTimeline(timeline);
+    const player = renderer.rootTimelinePlayer!;
+    player.currentFrame = 7;
+    player.isPlaying = true;
+    const updateTimeline = vi.spyOn(player, "updateTimeline");
+
+    renderer.updateRootTimeline(JSON.parse(JSON.stringify(timeline)));
+
+    expect(updateTimeline).not.toHaveBeenCalled();
+    expect(player.currentFrame).toBe(7);
+    expect(player.isPlaying).toBe(true);
+  });
+
   it("reapplies each nested component timeline after static tree reconciliation", () => {
     const events: string[] = [];
     const view = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {

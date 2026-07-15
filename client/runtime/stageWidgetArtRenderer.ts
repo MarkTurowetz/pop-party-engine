@@ -27,9 +27,17 @@ function createRenderer(options: Dict = {}) {
   const visualAnimation = options.visualAnimation || w().visualAnimation;
   const getComposition = typeof options.getComposition === "function" ? (options.getComposition as (id: string) => Dict | null) : () => null;
   const renderers = new Map<string, TreeRenderer>();
+  const textOverridesByRenderer = new Map<string, Dict>();
+  const anonymousHostKeys = new WeakMap<El, string>();
+  let anonymousHostCounter = 0;
 
   function rendererKey(host: El | null, compositionId: string): string {
-    return `${host?.id || host?.className || "stage-widget"}:${compositionId}`;
+    let hostKey = host?.id || "";
+    if (!hostKey && host) {
+      hostKey = anonymousHostKeys.get(host) || `stage-widget-${++anonymousHostCounter}`;
+      anonymousHostKeys.set(host, hostKey);
+    }
+    return `${hostKey || "stage-widget"}:${compositionId}`;
   }
 
   function widgetLayer(host: El | null): El | null {
@@ -85,6 +93,7 @@ function createRenderer(options: Dict = {}) {
     if (!layer) return null;
     hideLegacyWidgetContent(host, (renderOptions.keepElements as El[]) || []);
     const key = rendererKey(host, compositionId);
+    textOverridesByRenderer.set(key, textOverrides);
     let renderer = renderers.get(key);
     if (!renderer && artRuntime.ArtObjectTreeRenderer) {
       renderer = new artRuntime.ArtObjectTreeRenderer({
@@ -92,7 +101,16 @@ function createRenderer(options: Dict = {}) {
         document: documentRef,
         instanceId: `widget:${key}`,
         gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject,
-        visualAnimation
+        visualAnimation,
+        getComposition: (id: string) => {
+          const referenced = getComposition(id);
+          if (!referenced) return null;
+          const activeOverrides = textOverridesByRenderer.get(key) || {};
+          return {
+            ...referenced,
+            components: ((referenced.components as Dict[]) || []).map((component) => cloneComponent(component, activeOverrides))
+          };
+        }
       });
       renderers.set(key, renderer);
     }
@@ -102,9 +120,6 @@ function createRenderer(options: Dict = {}) {
       instant: renderOptions.instant !== false,
       timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined)
     });
-    const hostState = String(host.dataset.visualState || "");
-    if (hostState === "shown" || hostState === "appearing") renderer.playAll?.("On", { instant: true });
-    else if (hostState === "hidden") renderer.playAll?.("Off", { instant: true });
     return { composition, renderer };
   }
 

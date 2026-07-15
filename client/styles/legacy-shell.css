@@ -368,6 +368,21 @@ body.tool-dashboard-mode .layout-shell {
   --stage-object-visible-scale: 0;
 }
 
+.crafting-timer.has-stage-widget-art,
+.crafting-timer.has-stage-widget-art.stage-layout-target,
+.crafting-timer.has-stage-widget-art.hidden,
+.crafting-timer.has-stage-widget-art.stage-layout-target.hidden {
+  --stage-object-visible-scale: 1;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+  transition: none;
+  will-change: auto;
+}
+
 .version-badge,
 .stage-debug-action {
   position: absolute;

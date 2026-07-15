@@ -84,6 +84,7 @@ let stageWipeControllerInstance: Dict | null = null;
 let stageRenderOrchestratorInstance: Dict | null = null;
 let stageWidgetArtRendererInstance: Dict | null = null;
 const stageWidgetTimelineRenderers = new Map<string, { playAll?: (animation: string, options?: Dict) => number }>();
+const initializedStageWidgetEntityRenderers = new WeakMap<El, unknown>();
 let renderedStageJoinQrUrl = "";
 
 function stageVisualControllers(): StageVisualControllersApi | null {
@@ -127,7 +128,7 @@ function craftingTimerController(): Dict | null {
       getRenderedActionKey: () => currentRenderedActionKey(),
       getCurrentStageState: () => w().currentStageState,
       fallbackDurationMs: () => Math.max(1, Number((w().gameConstants as Dict).craftingTimerDuration || 30)) * 1000,
-      onTick: ({ label, timer }: Dict) => renderStageWidgetBinding("craftingTimer", { label, timer })
+      renderArt: ({ label, timer }: Dict) => renderStageWidgetBinding("craftingTimer", { label, timer })
     });
   }
   return craftingTimerControllerInstance;
@@ -635,7 +636,9 @@ function registerRenderedStageWidgetEntity(definition: Dict | null, host: El, re
   if (typeof entity?.update === "function") {
     (entity.update as (o: Dict) => void).call(entity, { artRenderer: renderer, syncArtRendererOnShow: true });
   }
-  if (typeof entity?.applyVisibilityState === "function") {
+  const isNewRenderer = initializedStageWidgetEntityRenderers.get(host) !== renderer;
+  initializedStageWidgetEntityRenderers.set(host, renderer);
+  if (isNewRenderer && typeof entity?.applyVisibilityState === "function") {
     (entity.applyVisibilityState as () => void).call(entity);
   }
 }
@@ -735,7 +738,10 @@ function applyStageState(lobby: Dict): void {
   setPlayerAnswerBubblesShown(nextAnswersShown, { instant: answersWereAlreadyShown && !answersAreStillAnimating && !hasParkedShownBubbles });
   renderPointPopups((lobby.pendingPointPopups as Dict[]) || [], { deferAnimation: action?.type === "showPoints" });
   renderVotingCards((lobby.votingCards as Dict[]) || [], votingCardRenderOptions(lobby));
-  renderCraftingTimer(lobby.craftingTimer as Dict, { instant: action?.type === "setTimerShown" && action.instant === true });
+  renderCraftingTimer(lobby.craftingTimer as Dict, {
+    instant: action?.type === "setTimerShown" && action.instant === true,
+    deferVisibility: action?.type === "setTimerShown"
+  });
   syncStageWipeShown(lobby);
   setStagePaused(lobby.isPaused === true, { localOnly: true });
   if (wasPaused && lobby.isPaused !== true && w().pausedCompletionRequest) {

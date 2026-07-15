@@ -195,10 +195,18 @@ class CraftingTimerController {
   getCurrentStageState: () => Dict | null;
   fallbackDurationMs: () => number;
   onTick: ((info: Dict) => void) | null;
+  renderArt: ((info: Dict) => Dict | null) | null;
   gameObjectInstance: Dict | null = null;
   legacyVisual: Dict | null = null;
+  timelineRenderer: { playAll?: (animation: string, options?: Dict) => number } | null = null;
   visibilityRequest: { actionKey: string; isShown: boolean } | null = null;
   intervalId: number | null = null;
+  targetShown = false;
+  desiredShown = false;
+  activeAnimation = "";
+  activeAnimationDuration = 0;
+  activeAnimationToken = "";
+  activeCompletions: Array<() => void> = [];
 
   constructor(options: Dict = {}) {
     this.visualAnimation = options.visualAnimation || w().PartyGameVisualObject;
@@ -210,6 +218,13 @@ class CraftingTimerController {
     this.getCurrentStageState = fn(options.getCurrentStageState) ? (options.getCurrentStageState as () => Dict | null) : () => null;
     this.fallbackDurationMs = fn(options.fallbackDurationMs) ? (options.fallbackDurationMs as () => number) : () => 30000;
     this.onTick = fn(options.onTick) ? (options.onTick as (i: Dict) => void) : null;
+    this.renderArt = fn(options.renderArt) ? (options.renderArt as (i: Dict) => Dict | null) : null;
+  }
+
+  renderWidget(context: Dict = {}): { playAll?: (animation: string, options?: Dict) => number } | null {
+    const result = this.renderArt?.(context) || null;
+    this.timelineRenderer = (result?.renderer as { playAll?: (animation: string, options?: Dict) => number }) || this.timelineRenderer;
+    return this.timelineRenderer;
   }
 
   visualObject(): Dict | null {
@@ -278,16 +293,57 @@ class CraftingTimerController {
   }
 
   setVisible(isShown: boolean, options: Dict = {}): number {
+    const nextShown = isShown !== false;
+    const instant = options.instant === true;
+    const complete = typeof options.complete === "function" ? (options.complete as () => void) : null;
+    const renderer = this.timelineRenderer || this.renderWidget((options.context as Dict) || {});
+    if (renderer?.playAll) {
+      this.element?.classList.remove("hidden", "is-instant");
+      if (this.element) {
+        this.element.dataset.timerShown = nextShown ? "true" : "false";
+        this.element.setAttribute("aria-hidden", nextShown ? "false" : "true");
+      }
+      if (this.activeAnimation && this.desiredShown === nextShown) {
+        if (complete) this.activeCompletions.push(complete);
+        return this.activeAnimationDuration;
+      }
+      if (!this.activeAnimation && this.targetShown === nextShown) {
+        if (complete) queueMicrotask(complete);
+        return 0;
+      }
+
+      const animation = nextShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
+      const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      this.activeAnimation = animation;
+      this.activeAnimationToken = token;
+      this.desiredShown = nextShown;
+      this.activeCompletions = complete ? [complete] : [];
+      let finished = false;
+      const finish = () => {
+        if (finished || this.activeAnimationToken !== token) return;
+        finished = true;
+        this.activeAnimation = "";
+        this.activeAnimationDuration = 0;
+        this.targetShown = nextShown;
+        const completions = this.activeCompletions.splice(0);
+        for (const callback of completions) callback();
+      };
+      const duration = Number(renderer.playAll(animation, { instant, complete: finish }) || 0);
+      this.activeAnimationDuration = duration;
+      if (duration <= 0) queueMicrotask(finish);
+      return duration;
+    }
+
     const visual = this.visualObject();
     if (!visual) {
-      this.element?.classList.toggle("hidden", !isShown);
-      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
+      this.element?.classList.toggle("hidden", !nextShown);
+      if (complete) queueMicrotask(complete);
       return 0;
     }
     const result = visualBridge()?.playVisibilityForTarget?.({
       visual,
-      isShown,
-      playOptions: { instant: options.instant === true, complete: options.complete }
+      isShown: nextShown,
+      playOptions: { instant, complete }
     });
     return result?.duration || 0;
   }
@@ -303,6 +359,8 @@ class CraftingTimerController {
     const nextTimer = this.payloadWithVisibilityRequest(timer || {});
     this.clearInterval();
     if (!this.element || !this.label || !nextTimer?.shown) {
+      this.renderWidget({ label: this.label?.dataset.timerValue || "", progress: 0, timer: nextTimer });
+      if (options.deferVisibility === true) return 0;
       return this.setVisible(false, { instant: options.instant === true, complete: options.complete });
     }
     const durationMs = Math.max(1, Number(nextTimer.durationMs || 1));
@@ -317,10 +375,13 @@ class CraftingTimerController {
       this.element!.style.setProperty("--timer-progress", progress.toFixed(4));
       const label = String(Math.ceil(remainingMs / 1000));
       this.renderLabel(label);
+      this.renderWidget({ label, progress, timer: nextTimer });
       this.onTick?.({ label, progress, timer: nextTimer });
     };
-    const visibilityDuration = this.setVisible(true, { instant: options.instant === true, complete: options.complete });
     update();
+    const visibilityDuration = options.deferVisibility === true
+      ? 0
+      : this.setVisible(true, { instant: options.instant === true, complete: options.complete });
     if (nextTimer.running) {
       this.intervalId = setInterval(update, 100) as unknown as number;
     }

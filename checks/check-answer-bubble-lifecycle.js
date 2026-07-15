@@ -72,6 +72,7 @@ async function main() {
       window.PartyGamePlayerRoster &&
       window.PartyGameArtObject &&
       window.artComposition?.("prefab-player-widget-mc") &&
+      window.artComposition?.("crafting-timer-widget") &&
       window.artComposition?.("wipe-widget-mc")
     ));
 
@@ -297,7 +298,92 @@ async function main() {
     assert(wipeResult.disappearDuration >= 550, `Wipe Disappear callback fired too early (${Math.round(wipeResult.disappearDuration)}ms)`);
     assert(wipeResult.disappearFrame === 45, `Wipe Disappear callback fired at parent frame ${wipeResult.disappearFrame}`);
     assert(wipeResult.visibleAfterDisappear === false, "Wipe remained visible after Disappear callback");
-    console.log("Player, answer bubble, and Wipe Widget MC authored lifecycle browser check passed.");
+
+    const timerResult = await page.evaluate(async () => {
+      const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+      const element = document.createElement("div");
+      element.className = "crafting-timer hidden";
+      element.style.width = "180px";
+      element.style.height = "180px";
+      const label = document.createElement("span");
+      element.appendChild(label);
+      document.body.appendChild(element);
+      const widgetArt = window.PartyGameStageWidgetArt.createRenderer({
+        document,
+        visualAnimation: window.visualAnimation,
+        getComposition: (id) => window.artComposition(id)
+      });
+      const timer = { shown: false, running: false, durationMs: 30000, remainingMs: 30000 };
+      const controller = window.PartyGameStageVisualControllers.createCraftingTimerController({
+        element,
+        label,
+        getRenderedActionKey: () => "timer-action",
+        getCurrentStageState: () => ({ craftingTimer: timer }),
+        renderArt: (context) => widgetArt.renderBound(element, {
+          compositionId: "crafting-timer-widget",
+          textOverrides: () => ({ "timer-value": context.label })
+        }, context)
+      });
+
+      const appearStartedAt = performance.now();
+      const appearCompletion = new Promise((resolve) => controller.setShownForAction(
+        { isShown: true },
+        { actionKey: "timer-action", complete: resolve }
+      ));
+      await sleep(120);
+      const appearMidFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      controller.render({ shown: true, running: false, durationMs: 30000, remainingMs: 30000 });
+      const appearFrameAfterReconcile = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      await Promise.race([
+        appearCompletion,
+        sleep(1000).then(() => { throw new Error("Timer Appear callback timed out"); })
+      ]);
+      const appearDuration = performance.now() - appearStartedAt;
+      const appearFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const renderedValue = element.querySelector("[data-art-component-id='timer-value']")?.textContent?.trim();
+
+      const disappearStartedAt = performance.now();
+      const disappearCompletion = new Promise((resolve) => controller.setShownForAction(
+        { isShown: false },
+        { actionKey: "timer-action", complete: resolve }
+      ));
+      await sleep(120);
+      const disappearMidFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      controller.render({ shown: false, running: false, durationMs: 30000, remainingMs: 30000 });
+      const disappearFrameAfterReconcile = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const disappearCompleted = await Promise.race([
+        disappearCompletion.then(() => true),
+        sleep(1200).then(() => false)
+      ]);
+
+      return {
+        activeAnimation: controller.activeAnimation,
+        appearDuration,
+        appearFrame,
+        appearFrameAfterReconcile,
+        appearMidFrame,
+        disappearDuration: performance.now() - disappearStartedAt,
+        disappearCompleted,
+        disappearFrame: controller.timelineRenderer?.rootTimelinePlayer?.currentFrame,
+        disappearFrameAfterReconcile,
+        disappearMidFrame,
+        rootIsPlaying: controller.timelineRenderer?.rootTimelinePlayer?.isPlaying,
+        rootToken: controller.timelineRenderer?.rootTimelinePlayer?.token,
+        renderedValue
+      };
+    });
+
+    assert(timerResult.appearMidFrame > 2 && timerResult.appearMidFrame < 12, `Timer Appear was not mid-animation at frame ${timerResult.appearMidFrame}`);
+    assert(timerResult.appearFrameAfterReconcile >= timerResult.appearMidFrame, `timer reconciliation restarted Appear (${JSON.stringify(timerResult)})`);
+    assert(timerResult.appearDuration >= 250, `Timer Appear callback fired too early (${Math.round(timerResult.appearDuration)}ms)`);
+    assert(timerResult.appearFrame === 12, `Timer Appear callback fired at parent frame ${timerResult.appearFrame}`);
+    assert(timerResult.renderedValue === "30", `Timer nested value rendered as ${timerResult.renderedValue || "blank"}`);
+    assert(timerResult.disappearMidFrame > 17 && timerResult.disappearMidFrame < 32, `Timer Disappear was not mid-animation at frame ${timerResult.disappearMidFrame}`);
+    assert(timerResult.disappearFrameAfterReconcile >= timerResult.disappearMidFrame, "timer reconciliation restarted Disappear");
+    assert(timerResult.disappearCompleted, `Timer Disappear callback timed out (${JSON.stringify(timerResult)})`);
+    assert(timerResult.disappearDuration >= 400, `Timer Disappear callback fired too early (${Math.round(timerResult.disappearDuration)}ms)`);
+    assert(timerResult.disappearFrame === 32, `Timer Disappear callback fired at parent frame ${timerResult.disappearFrame}`);
+    console.log("Player, answer bubble, crafting timer, and Wipe Widget MC authored lifecycle browser check passed.");
   } finally {
     await browser?.close();
     child.kill("SIGTERM");

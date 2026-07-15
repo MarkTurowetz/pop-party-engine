@@ -671,6 +671,7 @@ class ArtObjectTreeRenderer {
   getComposition: (id: string) => Dict | null;
   views = new Map<string, ArtObjectView>();
   rootTimelinePlayer: TimelinePlayer | null = null;
+  rootTimelineSignature = "";
 
   constructor(options: Dict = {}) {
     this.host = options.host as HTMLElement | undefined;
@@ -697,6 +698,9 @@ class ArtObjectTreeRenderer {
   }
 
   updateRootTimeline(timeline: TimelineDocument | null | undefined): void {
+    const signature = timeline ? JSON.stringify(timeline) : "";
+    if (signature === this.rootTimelineSignature) return;
+    this.rootTimelineSignature = signature;
     if (!timeline) {
       this.rootTimelinePlayer?.stop();
       this.rootTimelinePlayer = null;
