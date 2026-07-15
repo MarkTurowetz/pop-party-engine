@@ -150,18 +150,26 @@ concepts into focused modules.
   visibility, opacity, scale, or motion. The owning game object must explicitly play `Appear`,
   `On`, `Update`, `Disappear`, or `Off` after its content is ready; authored timeline commands are
   the sole authority for how those lifecycle states look and when their component trees become visible.
-- Layout reconciliation is state-preserving. It may initialize a newly entered entity or send
-  `Off` to an entity that actually exited, but it must not replay defaults or lifecycle commands
-  for retained entities. Heartbeats and stage-event renders are reconciliation, not transitions.
-- Visibility override maps record deliberate layout actions only. Timeline command callbacks and
-  lifecycle completion must update rendered state without silently creating persistent overrides.
-- Repeated `On` and `Off` requests are idempotent state normalization: they repair stale lifecycle
-  classes without restarting authored `Appear`, `Disappear`, or `Update` animations.
+- Layout reconciliation is data/setup only. A new renderer may silently `stopAt` its authored
+  default label, and a removed renderer may be removed immediately, but reconciliation never plays
+  `Appear`, `Disappear`, `On`, `Off`, `Update`, or a semantic reveal. Heartbeats, server snapshots,
+  layout changes, and stage-event renders are not animation commands.
+- Runtime visibility flags are snapshot data, not persistent animation instructions. A later
+  reconciliation pass must never replay a prior show/hide action or override the frame selected by
+  an explicit flow action.
+- Every flow-driven game-object command carries `commandSource: "flow-action"`. Missing targets,
+  missing authored labels, and interrupted target callbacks fail closed; they do not manufacture a
+  callback or fall back to a duration estimate.
 - E+ visual actions advance from an action-scoped barrier containing only the directly invoked
   targets, then apply the separately authored E+ delay. S+ visual actions fire immediately,
   ignore all animation callbacks, and advance only from their start-relative timer (including S+0).
 - Child component animations may be started by a parent timeline, but they cannot delay or satisfy
   that parent's completion callback. Returned animation durations never advance game flow.
+- Two deliberately fire-and-forget runtime command sources are allowed. A newly spawned dynamic
+  player may play `Appear` on its avatar MC, name MC, and VIP MC; input-state changes may play
+  `ChoosingStart` or `ChoosingEnd` on avatar behavior. Neither path attaches a callback, contributes
+  to an action barrier, or advances game flow. Consequently E+ and S+ have identical behavior for
+  the non-waiting spawn operation.
 - Composite reveal widgets follow the same ownership model as Player Widget MC. Voting Card MC
   owns labeled `cardArt`, `answer`, `author`, `voters`, and `voteCount` child prefabs; runtime code
   reveals those children through their timelines. `cardArt` owns the deeper stopped
@@ -188,14 +196,13 @@ concepts into focused modules.
 - Placed layout entities should be registered through the shared registration helper
   in `client/layout-runtime.js` so stage and controller GameObjects carry the same
   `isArt`, `isDynamic`, `isGlobal`, and `visibilityKey` semantics.
-- Layout prefab instances should let the placed layout entity own park/appear/disappear.
-  Their internal art tree is rendered into a ready `on` state by layout runtime so a
-  parked source-root component does not make `Set Game Object Shown` appear an empty host.
+- Layout prefab instances let the placed layout entity own park/appear/disappear. The internal art
+  tree is prepared at its authored setup state; only `Set Game Object Shown` or another explicit
+  flow action may play its lifecycle timeline.
 - Dynamic layout art entities should carry their `ArtObjectTreeRenderer` on the same
   registered GameObject entity that owns the placed instance host.
-- Layout art entities opt into syncing that renderer to `on` before a show animation,
-  so `Set Game Object Shown` can reliably reveal prefab instances without changing the
-  default behavior of unrelated GameObjects.
+- Layout art entities expose their renderer to the placed GameObject so an authorized flow action
+  can address the exact placed instance and receive that instance's callback.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
   reserved for controller-specific art) so future editor tabs can share the same
   composition schema rather than maintaining separate art systems.

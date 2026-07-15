@@ -129,8 +129,8 @@ function createRoomPhaseRuntime({
     room.lastDecisionTrace = null;
     room.lastRouteDecisionTrace = null;
     clearAppliedActionEffects(room);
-    room.playersShown = true;
-    room.playerAnswersShown = true;
+    room.playersShown = false;
+    room.playerAnswersShown = false;
     room.playerAnswersVisibleFilter = "all";
     room.flowVariables = {};
     room.G = {};
@@ -205,8 +205,8 @@ function createRoomPhaseRuntime({
     room.lastDecisionTrace = null;
     room.lastRouteDecisionTrace = null;
     clearAppliedActionEffects(room);
-    room.playersShown = true;
-    room.playerAnswersShown = true;
+    room.playersShown = false;
+    room.playerAnswersShown = false;
     room.playerAnswersVisibleFilter = "all";
     room.pendingPointPopups = [];
     resetCraftingTimer(room);

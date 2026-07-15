@@ -142,9 +142,6 @@ class GameObject {
     const hiddenClass = this.visualClass("hiddenClasses", "stage-layout-visual-hidden");
     const exitingClass = this.visualClass("exitingClass", "stage-layout-visual-exiting");
     const layoutHiddenClasses = this.layoutHiddenClasses || [];
-    if (this.visibilityOverrides.has(this.visibilityKey)) {
-      return this.visibilityOverrides.get(this.visibilityKey) === true;
-    }
     if (isVisualLifecycleState(this.target.dataset.visualState)) {
       return isShownLifecycleState(this.target.dataset.visualState);
     }
@@ -186,24 +183,19 @@ class GameObject {
   }
 
   applyVisibilityOverride(): void {
-    if (!this.target || !this.visibilityOverrides.has(this.visibilityKey)) return;
-    this.playVisibility(this.visibilityOverrides.get(this.visibilityKey) !== false, { instant: true });
+    this.applyDefaultVisibility();
   }
 
   applyDefaultVisibility(): boolean {
-    if (!this.target || this.visibilityOverrides.has(this.visibilityKey)) return false;
+    if (!this.target) return false;
     const animation = defaultAnimationFor(this as unknown as Dict);
     if (!animation) return false;
-    this.playAnimation(animation, { instant: true });
+    this.stopAtAnimation(animation, { instant: true });
     return true;
   }
 
   applyVisibilityState(): void {
     if (!this.target) return;
-    if (this.visibilityOverrides.has(this.visibilityKey)) {
-      this.applyVisibilityOverride();
-      return;
-    }
     this.applyDefaultVisibility();
   }
 

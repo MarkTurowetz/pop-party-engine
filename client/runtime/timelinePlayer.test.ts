@@ -438,7 +438,7 @@ describe("TimelinePlayer", () => {
     ).toBe(600);
   });
 
-  it("waits for non-redirect command durations before completing playback", () => {
+  it("completes playback at its own terminal frame without waiting for child command durations", () => {
     const timeline = normalizeTimeline({
       fps: 10,
       frameCount: 4,
@@ -462,12 +462,12 @@ describe("TimelinePlayer", () => {
     expect(commands).toEqual(["pop"]);
     expect(complete).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(100);
     expect(complete).toHaveBeenCalledTimes(1);
     expect(player.isPlaying).toBe(false);
   });
 
-  it("waits for non-redirect command durations before completing gotoAndStop", () => {
+  it("completes gotoAndStop at its own selected frame without waiting for child commands", () => {
     const timeline = normalizeTimeline({
       fps: 10,
       frameCount: 4,
@@ -485,9 +485,6 @@ describe("TimelinePlayer", () => {
 
     expect(player.gotoAndStop("parked", { complete })).toBe(300);
     expect(commands).toEqual(["park-pop"]);
-    expect(complete).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(300);
     expect(complete).toHaveBeenCalledTimes(1);
   });
 

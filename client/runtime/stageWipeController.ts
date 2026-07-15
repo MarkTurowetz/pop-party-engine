@@ -7,6 +7,7 @@ type Dict = Record<string, unknown>;
 
 interface TimelineRenderer {
   playAll?: (animation: string, options?: Dict) => number;
+  stopAtAll?: (animation: string, options?: Dict) => number;
 }
 
 declare global {
@@ -72,15 +73,7 @@ class StageWipeController {
     this.desiredShown = nextShown;
 
     if (!renderer?.playAll) {
-      this.element?.classList.toggle("hidden", !nextShown);
       this.activeAnimation = "";
-      this.setVisibleState(nextShown);
-      if (complete) queueMicrotask(complete);
-      return 0;
-    }
-
-    if (!this.activeAnimation && this.targetShown === nextShown) {
-      if (complete) queueMicrotask(complete);
       return 0;
     }
 
@@ -96,7 +89,6 @@ class StageWipeController {
       complete?.();
     };
     const duration = Number(renderer.playAll(animation, { instant, complete: finish }) || 0);
-    if (duration <= 0) queueMicrotask(finish);
     return duration;
   }
 
@@ -106,20 +98,12 @@ class StageWipeController {
     return this.setShown(action?.isShown !== false, { instant: action?.instant === true, complete: options.complete });
   }
 
-  syncShown(isShown: boolean, options: Dict = {}): number {
-    const actionKey = (options.actionKey as string) || "";
-    const request = this.visibilityRequest && this.visibilityRequest.actionKey === actionKey ? this.visibilityRequest : null;
-    const targetShown = request ? request.isShown : isShown !== false;
-    if (this.activeAnimation || this.targetShown === targetShown) return 0;
-    return this.setShown(targetShown, { instant: options.instant === true });
-  }
-
   clearRequest(actionKey = ""): void {
     if (!this.visibilityRequest) return;
     if (!actionKey || this.visibilityRequest.actionKey !== actionKey) this.visibilityRequest = null;
   }
 
-  transition(onCovered?: () => void): number {
+  transition(onCovered?: () => void, complete?: () => void): number {
     this.visibilityRequest = null;
     this.activeTransitionToken = transitionToken();
     const token = this.activeTransitionToken;
@@ -127,7 +111,7 @@ class StageWipeController {
       complete: () => {
         if (this.activeTransitionToken !== token) return;
         if (typeof onCovered === "function") onCovered();
-        this.setShown(false);
+        this.setShown(false, { complete });
       }
     });
   }
@@ -138,7 +122,7 @@ class StageWipeController {
     this.activeAnimation = "";
     this.desiredShown = false;
     const renderer = this.widgetRenderer();
-    if (renderer?.playAll) renderer.playAll("Off", { instant: true });
+    if (renderer?.stopAtAll) renderer.stopAtAll("Off", { instant: true });
     else this.element?.classList.add("hidden");
     this.setVisibleState(false);
   }

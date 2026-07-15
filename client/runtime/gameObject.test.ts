@@ -16,12 +16,12 @@ describe("PartyGameGameObject (ported game-object)", () => {
     expect(defaultAnimationFor({ isArt: true })).toBe("Off");
   });
 
-  it("applies authored defaults by explicitly playing their timeline label", () => {
+  it("applies authored defaults by silently stopping at their setup label", () => {
     const object = PartyGameGameObject.create({ id: "art", target: {} as HTMLElement, defaultAnimationState: "Park" });
-    const playAnimation = vi.spyOn(object, "playAnimation").mockReturnValue(0);
+    const stopAtAnimation = vi.spyOn(object, "stopAtAnimation").mockReturnValue(0);
 
     expect(object.applyDefaultVisibility()).toBe(true);
-    expect(playAnimation).toHaveBeenCalledWith("Off", { instant: true });
+    expect(stopAtAnimation).toHaveBeenCalledWith("Off", { instant: true });
   });
 
   it("registry registers, reuses, and removes by id", () => {

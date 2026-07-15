@@ -155,19 +155,6 @@ export class TimelinePlayer {
     this.timerIds.add(timerId);
   }
 
-  private completeAfterDuration(duration: number, token: number, complete?: () => void): void {
-    if (typeof complete !== "function") return;
-    if (duration <= 0) {
-      complete();
-      return;
-    }
-    this.scheduleFrame(() => {
-      if (this.token !== token) return;
-      this.isPlaying = false;
-      complete();
-    }, duration);
-  }
-
   private durationForFrameCommands(frame: number, commandCount = 0): number {
     if (!this.timeline) return 0;
     let duration = 0;
@@ -230,20 +217,14 @@ export class TimelinePlayer {
 
   private gotoAndStopInternal(labelOrFrame: string | number, options: TimelinePlayOptions = {}, commandCount = 0): number {
     this.stop();
-    if (!this.timeline) {
-      options.complete?.();
-      return 0;
-    }
-    if (typeof labelOrFrame === "string" && !this.hasLabel(labelOrFrame)) {
-      options.complete?.();
-      return 0;
-    }
+    if (!this.timeline) return 0;
+    if (typeof labelOrFrame === "string" && !this.hasLabel(labelOrFrame)) return 0;
     const frame = frameForTimelineLabel(this.timeline, labelOrFrame);
     const duration = this.durationForFrameCommands(frame, commandCount);
-    const stopToken = this.token;
     this.applyFrame(frame);
     if (!this.runFrameCommands(frame, options.complete, commandCount, 0)) {
-      this.completeAfterDuration(duration, stopToken, options.complete);
+      this.isPlaying = false;
+      options.complete?.();
     }
     return duration;
   }
@@ -254,10 +235,7 @@ export class TimelinePlayer {
 
   playFromFrame(frame: number, options: TimelinePlayOptions = {}): number {
     this.stop();
-    if (!this.timeline) {
-      options.complete?.();
-      return 0;
-    }
+    if (!this.timeline) return 0;
     const startFrame = this.cleanTimelineFrame(frame);
     const endFrame = this.nextStopFrameAfter(startFrame);
     const duration = this.durationFromFrame(startFrame, endFrame);
@@ -265,7 +243,8 @@ export class TimelinePlayer {
     if (options.instant === true || endFrame <= startFrame) {
       this.applyFrame(endFrame);
       if (!this.runFrameCommands(endFrame, options.complete, 0, duration)) {
-        this.completeAfterDuration(duration, playToken, options.complete);
+        this.isPlaying = false;
+        options.complete?.();
       }
       return duration;
     }
@@ -282,7 +261,8 @@ export class TimelinePlayer {
         this.applyFrame(scheduledFrame);
         const redirected = this.runFrameCommands(scheduledFrame, options.complete, 0, delay);
         if (!redirected && scheduledFrame === endFrame) {
-          this.completeAfterDuration(duration - delay, playToken, options.complete);
+          this.isPlaying = false;
+          options.complete?.();
         }
       }, delay);
     }
@@ -291,14 +271,8 @@ export class TimelinePlayer {
 
   private gotoAndPlayInternal(labelOrFrame: string | number, options: TimelinePlayOptions = {}, commandCount = 0): number {
     this.stop();
-    if (!this.timeline) {
-      options.complete?.();
-      return 0;
-    }
-    if (typeof labelOrFrame === "string" && !this.hasLabel(labelOrFrame)) {
-      options.complete?.();
-      return 0;
-    }
+    if (!this.timeline) return 0;
+    if (typeof labelOrFrame === "string" && !this.hasLabel(labelOrFrame)) return 0;
     const segment = timelineSegmentFor(this.timeline, labelOrFrame);
     const duration = timelinePlaybackDuration(this.timeline, labelOrFrame, {
       instant: options.instant,
@@ -309,7 +283,8 @@ export class TimelinePlayer {
     if (options.instant === true || segment.durationMs === 0) {
       this.applyFrame(segment.endFrame);
       if (!this.runFrameCommands(segment.endFrame, options.complete, commandCount, segment.durationMs)) {
-        this.completeAfterDuration(duration, playToken, options.complete);
+        this.isPlaying = false;
+        options.complete?.();
       }
       return duration;
     }
@@ -325,7 +300,8 @@ export class TimelinePlayer {
         this.applyFrame(frame);
         const redirected = this.runFrameCommands(frame, options.complete, 0, delay);
         if (!redirected && frame === segment.endFrame) {
-          this.completeAfterDuration(duration - delay, playToken, options.complete);
+          this.isPlaying = false;
+          options.complete?.();
         }
       }, delay);
     }

@@ -665,13 +665,17 @@ class CssVisualObject {
     const duration = this.durationForAnimation(effectiveAnimation);
     const lifecycleState = this.readLifecycleState();
     const wasVisible = isShownLifecycleState(lifecycleState);
-    const joinedDuration = this.joinActiveAnimation(effectiveAnimation, options.complete);
+    const useTimelinePlayback = Boolean(this.timelinePlayer?.hasLabel(effectiveAnimation));
+    const requiresAuthoredCallback = typeof options.complete === "function";
+    if (requiresAuthoredCallback && !useTimelinePlayback) return 0;
+    const joinedDuration = requiresAuthoredCallback ? null : this.joinActiveAnimation(effectiveAnimation, options.complete);
     if (joinedDuration !== null) {
       this.setVisibleState(lifecycleState !== "hidden");
       return joinedDuration;
     }
 
     if (
+      !useTimelinePlayback &&
       (effectiveAnimation === "appear" || effectiveAnimation === "on") &&
       (lifecycleState === "shown" || lifecycleState === "appearing")
     ) {
@@ -681,20 +685,19 @@ class CssVisualObject {
       return 0;
     }
 
-    if ((effectiveAnimation === "update" || effectiveAnimation === "on") && lifecycleState === "appearing") {
+    if (!useTimelinePlayback && (effectiveAnimation === "update" || effectiveAnimation === "on") && lifecycleState === "appearing") {
       this.setVisibleState(true);
       this.completeAfter(0, options.complete);
       return 0;
     }
 
-    if ((effectiveAnimation === "disappear" || effectiveAnimation === "off") && lifecycleState === "hidden") {
+    if (!useTimelinePlayback && (effectiveAnimation === "disappear" || effectiveAnimation === "off") && lifecycleState === "hidden") {
       this.applyParkedState();
       this.completeAfter(0, options.complete);
       return 0;
     }
 
     const token = this.markNewAnimation();
-    const useTimelinePlayback = Boolean(this.timelinePlayer?.hasLabel(effectiveAnimation));
     this.beginActiveAnimation(effectiveAnimation, duration, options.complete);
     if (useTimelinePlayback) {
       this.timelinePlayer?.gotoAndPlay(effectiveAnimation, {

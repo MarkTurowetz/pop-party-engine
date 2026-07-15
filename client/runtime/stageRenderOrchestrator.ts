@@ -8,12 +8,11 @@ interface OrchestratorOptions {
   clearPointPopups?: () => void;
   renderVotingCards?: (cards: unknown[]) => void;
   prepareNewStageAction?: (lobby: Dict, actionKey: string) => void;
-  setStageTextObject?: (target: string, spec: Dict) => void;
   cancelStageWipe?: () => void;
   showStageDecisionHalt?: (lobby: Dict) => void;
   applyStageState?: (lobby: Dict) => void;
   scheduleSubActions?: (action: Dict, actionKey: string) => void;
-  runStageWipe?: (callback: () => void) => void;
+  runStageWipe?: (onCovered: () => void, complete: () => void) => void;
   completeFlowAction?: (kind: string, actionId: unknown) => void;
   runStageAction?: (action: Dict | null, immediate: boolean, actionKey: string) => void;
 }
@@ -22,10 +21,6 @@ function actionKeyForLobby(lobby: Dict = {}): string {
   const phase = (lobby.phase as string) || "lobby";
   const action = (lobby.action as Dict) || {};
   return `${phase}:${action.id || action.index || ""}:${action.type || ""}`;
-}
-
-function isPresentedTextAction(action: Dict | null): boolean {
-  return Boolean(action && ["present", "presentText"].includes(action.type as string));
 }
 
 class StageRenderOrchestrator {
@@ -53,9 +48,6 @@ class StageRenderOrchestrator {
     const isNewAction = this.renderedActionKey !== actionKey;
     const isNewPhase = Boolean(this.renderedPhase && this.renderedPhase !== nextPhase);
     const haltedByDecision = (lobby.lastDecisionTrace as Dict)?.selectedTarget === "none";
-    const previousAction = this.renderedAction;
-    const nextAction = (lobby.action as Dict) || null;
-
     if (isNewPhase) {
       options.clearStageAudioPlayers?.();
       options.clearPointPopups?.();
@@ -64,17 +56,6 @@ class StageRenderOrchestrator {
 
     this.renderedPhase = nextPhase;
     if (isNewAction) options.prepareNewStageAction?.(lobby, actionKey);
-    if (isNewAction && isPresentedTextAction(previousAction)) {
-      const previousTarget = (previousAction!.textTarget as string) || "presentation";
-      const nextTarget = (nextAction?.textTarget as string) || "presentation";
-      if (!isPresentedTextAction(nextAction) || nextTarget !== previousTarget) {
-        options.setStageTextObject?.(previousTarget, {
-          isShown: false,
-          instant: previousAction!.instant === true
-        });
-      }
-    }
-
     if (haltedByDecision) {
       options.cancelStageWipe?.();
       options.showStageDecisionHalt?.(lobby);
@@ -88,13 +69,17 @@ class StageRenderOrchestrator {
       this.renderedActionKey = actionKey;
       this.renderedAction = (lobby.action as Dict) || null;
       options.scheduleSubActions?.(lobby.action as Dict, actionKey);
-      options.runStageWipe?.(() => {
-        if (this.renderedActionKey !== actionKey) return;
-        options.applyStageState?.(lobby);
-        if (((lobby.action as Dict).timing as Dict)?.mode !== "S+") {
+      options.runStageWipe?.(
+        () => {
+          if (this.renderedActionKey !== actionKey) return;
+          options.applyStageState?.(lobby);
+        },
+        () => {
+          if (this.renderedActionKey !== actionKey) return;
+          if (((lobby.action as Dict).timing as Dict)?.mode === "S+") return;
           options.completeFlowAction?.("callback", (lobby.action as Dict).id);
         }
-      });
+      );
       return;
     }
 

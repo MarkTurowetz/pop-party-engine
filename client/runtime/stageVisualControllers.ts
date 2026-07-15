@@ -78,8 +78,10 @@ class StageTextController {
     }
     this.objects = objects;
     this.setObjects(objects);
-    for (const target of Object.keys(objects)) {
-      this.set(target, { text: "", isShown: false, instant: true, complete: null });
+    for (const object of Object.values(objects)) {
+      object.text = "";
+      const visual = this.visualFor(object) as { stopAt?: (animation: string, options?: Dict) => number } | null;
+      visual?.stopAt?.("Off", { instant: true });
     }
   }
 
@@ -143,10 +145,7 @@ class StageTextController {
 
   set(target: string, options: Dict = {}): number {
     const object = this.objectFor(target);
-    if (!object) {
-      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
-      return 0;
-    }
+    if (!object) return 0;
     const element = object.element as El;
     const nextText = String((options.text ?? object.text ?? "") as string);
     const isShown = options.isShown !== false;
@@ -198,15 +197,13 @@ class CraftingTimerController {
   renderArt: ((info: Dict) => Dict | null) | null;
   gameObjectInstance: Dict | null = null;
   legacyVisual: Dict | null = null;
-  timelineRenderer: { playAll?: (animation: string, options?: Dict) => number } | null = null;
+  timelineRenderer: { playAll?: (animation: string, options?: Dict) => number; stopAtAll?: (animation: string, options?: Dict) => number } | null = null;
   visibilityRequest: { actionKey: string; isShown: boolean } | null = null;
   intervalId: number | null = null;
   targetShown = false;
   desiredShown = false;
   activeAnimation = "";
-  activeAnimationDuration = 0;
   activeAnimationToken = "";
-  activeCompletions: Array<() => void> = [];
 
   constructor(options: Dict = {}) {
     this.visualAnimation = options.visualAnimation || w().PartyGameVisualObject;
@@ -221,9 +218,9 @@ class CraftingTimerController {
     this.renderArt = fn(options.renderArt) ? (options.renderArt as (i: Dict) => Dict | null) : null;
   }
 
-  renderWidget(context: Dict = {}): { playAll?: (animation: string, options?: Dict) => number } | null {
+  renderWidget(context: Dict = {}): { playAll?: (animation: string, options?: Dict) => number; stopAtAll?: (animation: string, options?: Dict) => number } | null {
     const result = this.renderArt?.(context) || null;
-    this.timelineRenderer = (result?.renderer as { playAll?: (animation: string, options?: Dict) => number }) || this.timelineRenderer;
+    this.timelineRenderer = (result?.renderer as { playAll?: (animation: string, options?: Dict) => number; stopAtAll?: (animation: string, options?: Dict) => number }) || this.timelineRenderer;
     return this.timelineRenderer;
   }
 
@@ -272,7 +269,16 @@ class CraftingTimerController {
   reset(): number {
     this.clearInterval();
     this.visibilityRequest = null;
-    return this.setVisible(false, { instant: true });
+    this.activeAnimation = "";
+    this.targetShown = false;
+    this.desiredShown = false;
+    const renderer = this.timelineRenderer || this.renderWidget({});
+    renderer?.stopAtAll?.("Off", { instant: true });
+    if (this.element) {
+      this.element.dataset.timerShown = "false";
+      this.element.setAttribute("aria-hidden", "true");
+    }
+    return 0;
   }
 
   payloadWithVisibilityRequest(timer: Dict = {}): Dict {
@@ -303,65 +309,39 @@ class CraftingTimerController {
         this.element.dataset.timerShown = nextShown ? "true" : "false";
         this.element.setAttribute("aria-hidden", nextShown ? "false" : "true");
       }
-      if (this.activeAnimation && this.desiredShown === nextShown) {
-        if (complete) this.activeCompletions.push(complete);
-        return this.activeAnimationDuration;
-      }
-      if (!this.activeAnimation && this.targetShown === nextShown) {
-        if (complete) queueMicrotask(complete);
-        return 0;
-      }
-
       const animation = nextShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
       const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       this.activeAnimation = animation;
       this.activeAnimationToken = token;
       this.desiredShown = nextShown;
-      this.activeCompletions = complete ? [complete] : [];
       let finished = false;
       const finish = () => {
         if (finished || this.activeAnimationToken !== token) return;
         finished = true;
         this.activeAnimation = "";
-        this.activeAnimationDuration = 0;
         this.targetShown = nextShown;
-        const completions = this.activeCompletions.splice(0);
-        for (const callback of completions) callback();
+        complete?.();
       };
       const duration = Number(renderer.playAll(animation, { instant, complete: finish }) || 0);
-      this.activeAnimationDuration = duration;
-      if (duration <= 0) queueMicrotask(finish);
       return duration;
     }
-
-    const visual = this.visualObject();
-    if (!visual) {
-      this.element?.classList.toggle("hidden", !nextShown);
-      if (complete) queueMicrotask(complete);
-      return 0;
-    }
-    const result = visualBridge()?.playVisibilityForTarget?.({
-      visual,
-      isShown: nextShown,
-      playOptions: { instant, complete }
-    });
-    return result?.duration || 0;
+    return 0;
   }
 
   setShownForAction(action: Dict, options: Dict = {}): number {
     const actionKey = (options.actionKey as string) || this.getRenderedActionKey();
     this.visibilityRequest = { actionKey, isShown: action?.isShown !== false };
     const timer = this.payloadWithVisibilityRequest((this.getCurrentStageState()?.craftingTimer as Dict) || {});
-    return this.render(timer, { instant: action?.instant === true, complete: options.complete });
+    this.render(timer, { deferVisibility: true });
+    return this.setVisible(action?.isShown !== false, { instant: action?.instant === true, complete: options.complete, context: timer });
   }
 
-  render(timer: Dict, options: Dict = {}): number {
+  render(timer: Dict, _options: Dict = {}): number {
     const nextTimer = this.payloadWithVisibilityRequest(timer || {});
     this.clearInterval();
     if (!this.element || !this.label || !nextTimer?.shown) {
       this.renderWidget({ label: this.label?.dataset.timerValue || "", progress: 0, timer: nextTimer });
-      if (options.deferVisibility === true) return 0;
-      return this.setVisible(false, { instant: options.instant === true, complete: options.complete });
+      return 0;
     }
     const durationMs = Math.max(1, Number(nextTimer.durationMs || 1));
     const currentStageState = this.getCurrentStageState();
@@ -379,13 +359,10 @@ class CraftingTimerController {
       this.onTick?.({ label, progress, timer: nextTimer });
     };
     update();
-    const visibilityDuration = options.deferVisibility === true
-      ? 0
-      : this.setVisible(true, { instant: options.instant === true, complete: options.complete });
     if (nextTimer.running) {
       this.intervalId = setInterval(update, 100) as unknown as number;
     }
-    return visibilityDuration;
+    return 0;
   }
 
   renderLabel(label: string): void {

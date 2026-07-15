@@ -523,7 +523,6 @@ class ArtObjectView {
       this.component?.defaultAnimationState
     );
     if (!initialAnimation) return 0;
-    if (initialAnimation === lifecycleLabels.off) return this.play(initialAnimation, { instant: true });
     return this.stopAt(initialAnimation, { instant: true });
   }
 
@@ -594,7 +593,7 @@ class ArtObjectView {
     for (const [childKey, view] of Array.from(this.children.entries())) {
       if (desiredKeys.has(childKey)) continue;
       this.children.delete(childKey);
-      view.remove();
+      view.removeImmediately();
     }
   }
 
@@ -659,6 +658,12 @@ class ArtObjectView {
     token = element.dataset.visualAnimationToken || "";
     if (duration <= 0) finishRemoval();
     return duration;
+  }
+
+  removeImmediately(): void {
+    for (const child of this.children.values()) child.removeImmediately();
+    this.children.clear();
+    this.element.remove();
   }
 }
 
@@ -757,7 +762,7 @@ class ArtObjectTreeRenderer {
     for (const [componentKey, view] of Array.from(this.views.entries())) {
       if (desiredKeys.has(componentKey)) continue;
       this.views.delete(componentKey);
-      view.remove({ instant: options.instant === true });
+      view.removeImmediately();
     }
     this.syncRootTimelineFrame();
   }
@@ -772,10 +777,10 @@ class ArtObjectTreeRenderer {
     }
     let duration = 0;
     const barrier = typeof options.complete === "function" ? createActionCompletionBarrier() : null;
+    if (barrier && this.views.size === 0) return 0;
     for (const view of this.views.values()) {
       const complete = barrier?.addTarget();
       const targetDuration = view.play(animation, { ...options, complete });
-      if (complete && targetDuration <= 0) queueMicrotask(complete);
       duration = Math.max(duration, targetDuration);
     }
     if (barrier) {
@@ -799,10 +804,10 @@ class ArtObjectTreeRenderer {
     }
     let duration = 0;
     const barrier = typeof options.complete === "function" ? createActionCompletionBarrier() : null;
+    if (barrier && this.views.size === 0) return 0;
     for (const view of this.views.values()) {
       const complete = barrier?.addTarget();
       const targetDuration = view.stopAt(animation, { ...options, complete });
-      if (complete && targetDuration <= 0) queueMicrotask(complete);
       duration = Math.max(duration, targetDuration);
     }
     if (barrier) {
@@ -849,10 +854,10 @@ class ArtObjectTreeRenderer {
   }
 
   clear(options: Dict = {}): number {
-    let duration = 0;
-    for (const [, view] of Array.from(this.views.entries())) duration = Math.max(duration, view.remove(options));
+    void options;
+    for (const [, view] of Array.from(this.views.entries())) view.removeImmediately();
     this.views.clear();
-    return duration;
+    return 0;
   }
 }
 

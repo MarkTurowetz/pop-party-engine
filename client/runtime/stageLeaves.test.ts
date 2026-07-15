@@ -24,9 +24,10 @@ describe("PartyGameStageRenderOrchestrator (ported)", () => {
     const calls: string[] = [];
     const orch = PartyGameStageRenderOrchestrator.createOrchestrator({
       applyStageState: () => calls.push("apply"),
-      runStageWipe: (cb) => {
+      runStageWipe: (covered, complete) => {
         calls.push("wipe");
-        cb();
+        covered();
+        complete();
       },
       completeFlowAction: () => calls.push("complete"),
       scheduleSubActions: () => calls.push("schedule")

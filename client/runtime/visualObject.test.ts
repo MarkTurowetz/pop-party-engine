@@ -201,7 +201,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualVisible).toBe("false");
   });
 
-  it("finishes an instant zero-duration Off before a parent timeline reveals the child", async () => {
+  it("does not manufacture a callback for an unauthored instant Off", async () => {
     const element = createFakeElement();
     const complete = vi.fn();
     const visual = PartyGameVisualObject.createCssVisualObject({
@@ -210,7 +210,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     });
 
     expect(visual.play("Off", { instant: true, complete })).toBe(0);
-    expect(complete).toHaveBeenCalledTimes(1);
+    expect(complete).not.toHaveBeenCalled();
     visual.applyCommandVisibility(true);
 
     vi.advanceTimersByTime(0);
@@ -255,7 +255,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualState).toBe("shown");
   });
 
-  it("keeps an object logically shown and joins duplicate appear calls to the active timeline", async () => {
+  it("does not let an unauthored duplicate appear callback join CSS fallback motion", async () => {
     const element = createFakeElement(["hidden"]);
     const visual = PartyGameVisualObject.createCssVisualObject({
       element,
@@ -270,14 +270,14 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(visual.isVisible()).toBe(true);
 
     const joinedComplete = vi.fn();
-    expect(visual.play("appear", { complete: joinedComplete })).toBe(100);
+    expect(visual.play("appear", { complete: joinedComplete })).toBe(0);
     expect(element.dataset.visualState).toBe("appearing");
 
     vi.advanceTimersByTime(0);
     await Promise.resolve();
     expect(element.dataset.visualState).toBe("shown");
     expect(element.classList.contains("hidden")).toBe(false);
-    expect(joinedComplete).toHaveBeenCalledTimes(1);
+    expect(joinedComplete).not.toHaveBeenCalled();
   });
 
   it("keeps a disappearing object logically shown until the disappear finishes", async () => {
@@ -304,7 +304,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(visual.isVisible()).toBe(false);
   });
 
-  it("joins a duplicate disappear request without restarting the authored timeline", async () => {
+  it("does not let an unauthored duplicate disappear callback join CSS fallback motion", async () => {
     const element = createFakeElement();
     const visual = PartyGameVisualObject.createCssVisualObject({
       element,
@@ -327,7 +327,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     await Promise.resolve();
     expect(element.dataset.visualState).toBe("hidden");
     expect(visual.isVisible()).toBe(false);
-    expect(joinedComplete).toHaveBeenCalledTimes(1);
+    expect(joinedComplete).not.toHaveBeenCalled();
   });
 
   it("lets an instant disappear override an in-flight disappear immediately", () => {

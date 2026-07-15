@@ -112,7 +112,7 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       }
       const result = c.runVotingCardActionForAction
         ? (c.runVotingCardActionForAction as (a: Action) => Promise<void>)(action)
-        : Promise.resolve();
+        : Promise.reject(new Error("Voting card action runtime unavailable"));
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     votingReveal(action, runtime) {
@@ -122,7 +122,7 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       }
       const result = c.runVotingCardActionForAction
         ? (c.runVotingCardActionForAction as (a: Action) => Promise<void>)(action)
-        : Promise.resolve();
+        : Promise.reject(new Error("Voting card reveal runtime unavailable"));
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     showPoints(action, runtime) {
@@ -132,7 +132,7 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       }
       const result = c.showPointPopupsForAction
         ? (c.showPointPopupsForAction as (a: Action) => Promise<void>)(action)
-        : Promise.resolve();
+        : Promise.reject(new Error("Point popup runtime unavailable"));
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     revealPlayerAnswerCorrectness(action, runtime) {
@@ -142,13 +142,13 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       }
       const result = c.revealPlayerAnswerCorrectnessForAction
         ? (c.revealPlayerAnswerCorrectnessForAction as (a: Action) => Promise<void>)(action)
-        : Promise.resolve();
+        : Promise.reject(new Error("Player answer correctness runtime unavailable"));
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     setPlayersShown(action, runtime) {
       const result = c.setPlayersShownForAction
         ? (c.setPlayersShownForAction as (a: Action) => Promise<void>)(action)
-        : Promise.resolve();
+        : Promise.reject(new Error("Player roster runtime unavailable"));
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
@@ -161,7 +161,7 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
             instant: action.instant === true,
             playerFilter: action.playerFilter || "all"
           })
-        : Promise.resolve();
+        : Promise.reject(new Error("Player answer bubble runtime unavailable"));
       if (!runtime.isPrimary) runtime.applyEffect(action);
       if (runtime.isPrimary) completeWhenActionTargetsFinish(action, runtime, result);
     },
@@ -170,19 +170,19 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
         ? (c.setStageLayoutGameObjectShownForAction as (a: Action) => unknown)(action)
         : c.setStageLayoutArtElementShownForAction
           ? (c.setStageLayoutArtElementShownForAction as (a: Action) => unknown)(action)
-          : 0;
+          : Promise.reject(new Error("Layout game-object visibility runtime unavailable"));
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     playGameObjectAnimation(action, runtime) {
       const result = c.playStageLayoutGameObjectAnimationForAction
         ? (c.playStageLayoutGameObjectAnimationForAction as (a: Action) => unknown)(action)
-        : 0;
+        : Promise.reject(new Error("Layout game-object animation runtime unavailable"));
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     setTimerShown(action, runtime) {
       const result = c.setCraftingTimerShownForAction
         ? (c.setCraftingTimerShownForAction as (a: Action, o: Dict) => Promise<void>)(action, { actionKey: runtime.actionKey })
-        : Promise.resolve();
+        : Promise.reject(new Error("Crafting timer runtime unavailable"));
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
@@ -192,7 +192,7 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
     setWipeShown(action, runtime) {
       const result = c.setStageWipeShownForAction
         ? (c.setStageWipeShownForAction as (a: Action, o: Dict) => Promise<void>)(action, { actionKey: runtime.actionKey })
-        : Promise.resolve();
+        : Promise.reject(new Error("Stage wipe runtime unavailable"));
       if (!runtime.isPrimary) {
         runtime.applyEffect(action);
         return;
@@ -200,19 +200,20 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     displayText(action, runtime) {
+      (c.setPresentationClickPromptForAction as ((shown: boolean, spec: Dict) => void) | undefined)?.(
+        ["present", "presentText"].includes(String(action.type || "")) && action.isShown !== false,
+        { instant: action.instant === true }
+      );
       const result = c.setStageTextObjectForAction
         ? (c.setStageTextObjectForAction as (target: string, spec: Dict) => Promise<void>)(
             (action.textTarget as string) || "presentation",
             { text: action.text || "", isShown: action.isShown !== false, instant: action.instant === true }
           )
-        : (c.setStageTextObject as (target: string, spec: Dict) => unknown)(
-            (action.textTarget as string) || "presentation",
-            { text: action.text || "", isShown: action.isShown !== false, instant: action.instant === true }
-          );
+        : Promise.reject(new Error("Stage text runtime unavailable"));
       if (runtime.isPrimary && action.type === "displayText") completeWhenActionTargetsFinish(action, runtime, result);
     },
     transition(action, runtime) {
-      if (!runtime.isPrimary) (c.runStageWipe as (cb: () => void) => void)(() => {});
+      if (!runtime.isPrimary) (c.runStageWipe as (covered: () => void, complete: () => void) => void)(() => {}, () => {});
     }
   };
 }

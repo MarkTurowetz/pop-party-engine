@@ -2,7 +2,7 @@
 // stage + controller layout rendering runtime. The classic script made every
 // top-level name a global that stage-runtime.js (still legacy) reads; this module
 // installs the same names on window. App-shell state, utils, normalizeUiColor
-// (shared/color-utils) and setStageTextObject (stage-runtime) are read via window.
+// Shared runtime dependencies are read via window.
 // PRESERVED: the window.PartyGameTextFit re-assignment (its own layout text-fit) +
 // window.PartyGameLayoutText + window.fittedLayoutTextSize installs.
 
@@ -30,7 +30,6 @@ declare global {
     currentStageLayoutStateId: string;
     stageTextObjects: Record<string, Dict>;
     normalizeUiColor?: (value: unknown) => string;
-    setStageTextObject?: (target: string, spec: Dict) => unknown;
   }
 }
 
@@ -583,7 +582,6 @@ function setControllerLayoutButtonText(target: El | null, value: unknown, spec: 
     keepElements: controllerLayoutArtKeepElements(target)
   });
   if (renderer) {
-    (renderer as { playAll?: (animation: string, options?: Dict) => number }).playAll?.("On", { instant: true });
     return true;
   }
   target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
@@ -766,7 +764,6 @@ function applyStageLayoutForPhase(phase: string): void {
   const previousTokens = currentStageLayoutTokens();
   const retainedTokens = activeLayoutElementTokens(state, globalStageLayout());
   (stageLayoutGameObjectRegistry() as { beginFrame?: () => void } | null)?.beginFrame?.();
-  hideStageMomentTextOutsideLayout(state);
   clearStageLayoutTargets(retainedTokens);
   w().currentStageLayoutStateId = state.id as string;
   removeInactiveStageArtInstances(activeStageArtInstanceIds(state));
@@ -971,19 +968,6 @@ function registerStageLayoutTextTarget(layoutElement: Dict, targetElement: El, i
   };
 }
 
-function hideStageMomentTextOutsideLayout(state: Dict | null): void {
-  if (!state) return;
-  const activeMomentTextIds = new Set(
-    ((state.elements as Dict[]) || []).filter((element) => element.kind === "text").map((element) => normalizeTextTargetId(element.id)).filter(Boolean)
-  );
-  for (const [targetId, object] of Object.entries(w().stageTextObjects)) {
-    if (!object?.layoutElement || object.isGlobal) continue;
-    if (!activeMomentTextIds.has(targetId)) {
-      w().setStageTextObject?.(targetId, { isShown: false, instant: true });
-    }
-  }
-}
-
 function stageLayoutTextDefault(element: Dict | null): string {
   const id = String(element?.id || "").toLowerCase();
   if (element?.defaultText !== undefined && String(element.defaultText).length) return String(element.defaultText);
@@ -1113,7 +1097,7 @@ Object.assign(w(), {
   controllerLayoutElementVisibilityKey, controllerLayoutEntityForElementId, controllerLayoutGameObjectRegistry, controllerLayoutGameObjectTargets, controllerLayoutRegistryKeyForElement,
   controllerLayoutState, controllerLayoutStateForPhase, controllerLayoutTargetByElementId, controllerLayoutTargetElement, controllerLayoutVisibilityKey, controllerLayoutVisibilityOverrides,
   createLayoutGameObjectRegistry, dynamicStageTextElementId, getOrCreateControllerArtInstance, getOrCreateDynamicStageTextElement, getOrCreateStageArtInstance,
-  globalControllerLayout, globalStageLayout, hideStageMomentTextOutsideLayout, isDynamicControllerArtInstance, isDynamicStageArtInstance, isLayoutTextArtElement,
+  globalControllerLayout, globalStageLayout, isDynamicControllerArtInstance, isDynamicStageArtInstance, isLayoutTextArtElement,
   layoutDefaultText, layoutTextArtRenderOptions, layoutTextDefault, loadControllerLayouts, loadStageLayouts, normalizeTextTargetId,
   registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances,
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,

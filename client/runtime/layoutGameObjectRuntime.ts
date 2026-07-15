@@ -24,6 +24,7 @@ interface TreeRenderer {
   render: (c: Dict[], canvas: Dict, o: Dict) => void;
   clear: (o: Dict) => void;
   playAll?: (animation: string, options?: Dict) => number;
+  stopAtAll?: (animation: string, options?: Dict) => number;
 }
 
 declare global {
@@ -110,10 +111,8 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
     instant: true,
     timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined)
   });
-  if (isNewRenderer) {
-    const hostState = String(host.dataset.visualState || "");
-    renderer.playAll?.(hostState === "shown" || hostState === "appearing" ? lifecycleLabels.on : lifecycleLabels.off, { instant: true });
-  }
+  const authoredSetupState = String(element?.defaultAnimationState || "").trim();
+  if (isNewRenderer && authoredSetupState) renderer.stopAtAll?.(authoredSetupState, { instant: true });
   layoutArtRendererByHost.set(host, renderer);
   return renderer;
 }
@@ -254,12 +253,13 @@ function layoutTargetByElementId(options: Dict): El | null {
       : (scope === "moment" || scope === "controller") && escapedGlobalClass
         ? `:not(.${escapedGlobalClass})`
         : "";
-  return (
+  const scopedTarget =
     (root.querySelector(`[${layoutAttribute}="${escapedId}"]${scopedSuffix}`) as El | null) ||
-    (root.querySelector(`${dynamicSelector}[data-layout-element-id="${escapedId}"]${scopedSuffix}`) as El | null) ||
+    (root.querySelector(`${dynamicSelector}[data-layout-element-id="${escapedId}"]${scopedSuffix}`) as El | null);
+  if (scope) return scopedTarget;
+  return scopedTarget ||
     (root.querySelector(`[${layoutAttribute}="${escapedId}"]`) as El | null) ||
-    (root.querySelector(`${dynamicSelector}[data-layout-element-id="${escapedId}"]`) as El | null)
-  );
+    (root.querySelector(`${dynamicSelector}[data-layout-element-id="${escapedId}"]`) as El | null);
 }
 
 function layoutElementVisibilityKey(elementId: string, target: El | null, options: Dict = {}): unknown {
@@ -341,9 +341,7 @@ function attachRenderedLayoutArtEntity(entity: Dict | null, renderInstance: unkn
   if (typeof entity?.update === "function") {
     (entity.update as (o: Dict) => void).call(entity, { artRenderer: renderer, syncArtRendererOnShow: Boolean(renderer) });
   }
-  if (renderer && options.initializeVisibility !== false && typeof entity?.applyVisibilityState === "function") {
-    (entity.applyVisibilityState as () => void).call(entity);
-  }
+  void options;
   return renderer;
 }
 
@@ -368,7 +366,6 @@ function createPlacedLayoutGameObjectTargetResolver(options: Dict = {}) {
       return setLayoutEntityShownForAction(action, {
         entityForElementId: resolver.entityForElementId,
         visibilityKeyForTarget: resolver.visibilityKeyForTarget,
-        visibilityOverrides: options.visibilityOverrides,
         complete: showOptions.complete,
         returnResult: showOptions.returnResult === true,
         suppressMissingWarning: showOptions.suppressMissingWarning === true
@@ -477,7 +474,6 @@ function playLayoutEntityVisibility(entity: Dict | null, isShown: boolean, optio
   const visual = layoutGameObjectVisualFor(entity);
   if (!target || !visual) {
     (options.warn as ((r: string) => void) | undefined)?.("visual object unavailable");
-    if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
     return 0;
   }
   const result = visualBridge()?.playVisibilityForTarget?.({ target, visual, isShown, playOptions: { instant: options.instant === true, complete: options.complete } });
@@ -501,7 +497,6 @@ function playLayoutEntityAnimation(entity: Dict | null, animation: string, optio
       return Number(componentPlayer(componentId, cleanAnimation, { instant: options.instant === true, complete: options.complete }) || 0);
     }
     (options.warn as ((r: string) => void) | undefined)?.(`component target unavailable: ${componentId}`);
-    if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
     return 0;
   }
   if (playbackMode === "stop" && typeof entity?.stopAtAnimation === "function") {
@@ -519,7 +514,6 @@ function playLayoutEntityAnimation(entity: Dict | null, animation: string, optio
   const visual = layoutGameObjectVisualFor(entity);
   if (!target || !visual) {
     if (!duration) (options.warn as ((r: string) => void) | undefined)?.("visual object unavailable");
-    if (!duration && typeof options.complete === "function") queueMicrotask(options.complete as () => void);
     return duration;
   }
   const bridge = visualBridge();
@@ -531,9 +525,7 @@ function playLayoutEntityAnimation(entity: Dict | null, animation: string, optio
 function layoutGameObjectMissingTargetReason(details: Dict = {}): string {
   const actionVerb = details.isShown ? "show" : "hide";
   const scopeText = details.scope ? ` in ${details.scope} scope` : "";
-  if (details.visibilityKey) {
-    return `placed instance not active${scopeText}; saved pending ${actionVerb} for ${details.visibilityKey}`;
-  }
+  if (details.visibilityKey) return `placed instance not active${scopeText}; cannot ${actionVerb} ${details.visibilityKey}`;
   if (details.sourceArtAsset) {
     return `target id is a source prefab (${details.elementId}); add it to this layout and target the placed game object instance`;
   }
@@ -544,6 +536,7 @@ function setLayoutEntityShownForAction(action: Dict, options: Dict = {}): unknow
   const elementId = (action?.targetLayoutElementId as string) || "";
   const result = (duration: unknown, missing = false, reason = "") =>
     options.returnResult ? { duration: Math.max(0, Number(duration || 0)), missing, reason } : Math.max(0, Number(duration || 0));
+  if (action?.commandSource !== "flow-action") return result(0, true, "game object commands require an active flow action");
   if (!elementId || !w().PartyGameVisualObject) return result(0, true, "missing target id or visual runtime");
   const isShown = action.isShown !== false;
   const scope = ["global", "moment"].includes(String(action?.targetLayoutScope || "")) ? (action.targetLayoutScope as string) : "";
@@ -558,14 +551,11 @@ function setLayoutEntityShownForAction(action: Dict, options: Dict = {}): unknow
   const entity = entityForElementId?.(elementId, null, scope);
   const target = (entity?.target as El) || null;
   const visibilityKey = (entity?.visibilityKey as string) || (options.visibilityKeyForTarget as ((id: string, t: El | null, scope: string) => string) | undefined)?.(elementId, target, scope);
-  const overrides = options.visibilityOverrides as Map<string, boolean> | undefined;
   if (!target) {
-    if (visibilityKey) overrides?.set(visibilityKey, isShown);
     const reason = layoutGameObjectMissingTargetReason({ elementId, isShown, scope, sourceArtAsset, visibilityKey });
     if (options.suppressMissingWarning !== true) warn(reason);
     return result(0, true, reason);
   }
-  if (visibilityKey) overrides?.set(visibilityKey, isShown);
   return result(
     playLayoutEntityVisibility(entity || entityForElementId?.(elementId, target, scope) || null, isShown, {
       instant: action.instant === true,
@@ -581,25 +571,19 @@ function setLayoutGameObjectShownForAction(action: Dict, options: Dict = {}): un
 
 function activateLayoutEntity(entity: Dict | null, options: Dict = {}): number {
   if (!entity) return 0;
-  const visibilityKey = String(entity.visibilityKey || "");
-  const overrides = options.visibilityOverrides as Map<string, boolean> | undefined;
-  if (visibilityKey && overrides?.has(visibilityKey)) {
-    if (typeof entity.applyVisibilityOverride === "function") {
-      (entity.applyVisibilityOverride as () => void).call(entity);
-    }
-    return 0;
+  void options;
+  if (typeof entity.applyVisibilityState === "function") {
+    (entity.applyVisibilityState as () => void).call(entity);
   }
-  if (typeof entity.playAnimation !== "function") return 0;
-  return Number(
-    (entity.playAnimation as (animation: string, playOptions: Dict) => number).call(entity, lifecycleLabels.on, { instant: true }) || 0
-  );
+  return 0;
 }
 
 function deactivateLayoutEntity(entity: Dict | null): number {
-  if (!entity || typeof entity.playAnimation !== "function") return 0;
-  return Number(
-    (entity.playAnimation as (animation: string, playOptions: Dict) => number).call(entity, lifecycleLabels.off, { instant: true }) || 0
-  );
+  if (!entity) return 0;
+  if (typeof entity.applyTargetVisibility === "function") {
+    (entity.applyTargetVisibility as (shown: boolean) => void).call(entity, false);
+  }
+  return 0;
 }
 
 function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): unknown {
@@ -608,6 +592,7 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
     options.returnResult ? { duration: Math.max(0, Number(duration || 0)), missing, reason } : Math.max(0, Number(duration || 0));
   const animation = String(action?.animationName || action?.timelineLabel || action?.animation || "").trim();
   const componentId = String(action?.targetComponentId || action?.componentId || "").trim();
+  if (action?.commandSource !== "flow-action") return result(0, true, "game object commands require an active flow action");
   if (!elementId || !animation || !w().PartyGameVisualObject) return result(0, true, "missing target id, animation, or visual runtime");
   const scope = ["global", "moment", "controller"].includes(String(action?.targetLayoutScope || "")) ? (action.targetLayoutScope as string) : "";
   const sourceArtAsset = artComposition(elementId);

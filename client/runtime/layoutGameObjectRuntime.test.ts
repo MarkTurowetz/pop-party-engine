@@ -2,33 +2,37 @@ import { describe, expect, it, vi } from "vitest";
 import { PartyGameLayoutGameObjects } from "./layoutGameObjectRuntime";
 
 describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () => {
-  it("activates an active-layout entity with its On timeline", () => {
+  it("activates an active-layout entity by silently applying its authored setup state", () => {
+    const applyVisibilityState = vi.fn();
     const playAnimation = vi.fn(() => 125);
-    const entity = { playAnimation, visibilityKey: "crafting:choice-grid" };
+    const entity = { applyVisibilityState, playAnimation, visibilityKey: "crafting:choice-grid" };
 
-    expect(PartyGameLayoutGameObjects.activateLayoutEntity(entity)).toBe(125);
-    expect(playAnimation).toHaveBeenCalledWith("On", { instant: true });
+    expect(PartyGameLayoutGameObjects.activateLayoutEntity(entity)).toBe(0);
+    expect(applyVisibilityState).toHaveBeenCalledOnce();
+    expect(playAnimation).not.toHaveBeenCalled();
   });
 
-  it("preserves an explicit visibility override instead of forcing On", () => {
-    const applyVisibilityOverride = vi.fn();
+  it("does not replay a saved visibility override during reconciliation", () => {
+    const applyVisibilityState = vi.fn();
     const playAnimation = vi.fn();
-    const entity = { applyVisibilityOverride, playAnimation, visibilityKey: "crafting:choice-grid" };
+    const entity = { applyVisibilityState, playAnimation, visibilityKey: "crafting:choice-grid" };
 
     expect(
       PartyGameLayoutGameObjects.activateLayoutEntity(entity, {
         visibilityOverrides: new Map([["crafting:choice-grid", false]])
       })
     ).toBe(0);
-    expect(applyVisibilityOverride).toHaveBeenCalledOnce();
+    expect(applyVisibilityState).toHaveBeenCalledOnce();
     expect(playAnimation).not.toHaveBeenCalled();
   });
 
-  it("deactivates removed layout entities through their Off timeline", () => {
+  it("deactivates removed layout entities immediately without issuing a timeline command", () => {
+    const applyTargetVisibility = vi.fn();
     const playAnimation = vi.fn(() => 0);
 
-    expect(PartyGameLayoutGameObjects.deactivateLayoutEntity({ playAnimation })).toBe(0);
-    expect(playAnimation).toHaveBeenCalledWith("Off", { instant: true });
+    expect(PartyGameLayoutGameObjects.deactivateLayoutEntity({ applyTargetVisibility, playAnimation })).toBe(0);
+    expect(applyTargetVisibility).toHaveBeenCalledWith(false);
+    expect(playAnimation).not.toHaveBeenCalled();
   });
 
   it("does not restart visibility animations when a placed entity already matches the requested state", () => {
@@ -52,7 +56,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     const previousVisualRuntime = globals.PartyGameVisualObject;
     globals.PartyGameVisualObject = {};
     try {
-      expect(resolver.setShownForAction({ targetLayoutElementId: "player-roster", isShown: true, instant: false })).toBe(0);
+      expect(resolver.setShownForAction({ commandSource: "flow-action", targetLayoutElementId: "player-roster", isShown: true, instant: false })).toBe(0);
       expect(playVisibility).not.toHaveBeenCalled();
       expect(visualPlay).toHaveBeenCalledWith("On", { instant: true });
     } finally {
@@ -82,7 +86,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(host.PartyGameLayoutGameObjects).toBeTypeOf("object");
   });
 
-  it("replays an entity timeline state after its rendered art tree is attached", () => {
+  it("attaches a rendered art tree without replaying lifecycle state", () => {
     const renderer = { playAll: vi.fn() };
     const entity = {
       update: vi.fn(function (this: Record<string, unknown>, patch: Record<string, unknown>) {
@@ -93,7 +97,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
 
     expect(PartyGameLayoutGameObjects.attachRenderedLayoutArtEntity(entity, () => renderer)).toBe(renderer);
     expect(entity.update).toHaveBeenCalledWith({ artRenderer: renderer, syncArtRendererOnShow: true });
-    expect(entity.applyVisibilityState).toHaveBeenCalledOnce();
+    expect(entity.applyVisibilityState).not.toHaveBeenCalled();
   });
 
   it("preserves a retained art entity timeline instead of reapplying its default state", () => {
@@ -124,7 +128,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     globals.PartyGameVisualObject = {};
     try {
       const result = resolver.playAnimationForAction(
-        { targetLayoutElementId: "answer-bubble", animationName: "pop" },
+        { commandSource: "flow-action", targetLayoutElementId: "answer-bubble", animationName: "pop" },
         { returnResult: true }
       );
       expect(result).toEqual({ duration: 360, missing: false, reason: "" });
@@ -149,7 +153,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     globals.PartyGameVisualObject = {};
     try {
       const result = resolver.playAnimationForAction(
-        { type: "stopGameObjectAnimation", targetLayoutElementId: "avatar", animationName: "stego", timelinePlaybackMode: "stop", instant: true },
+        { commandSource: "flow-action", type: "stopGameObjectAnimation", targetLayoutElementId: "avatar", animationName: "stego", timelinePlaybackMode: "stop", instant: true },
         { returnResult: true }
       );
       expect(result).toEqual({ duration: 0, missing: false, reason: "" });
@@ -182,6 +186,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     try {
       const result = resolver.playAnimationForAction(
         {
+          commandSource: "flow-action",
           targetLayoutElementId: "answer-bubble",
           targetComponentId: "answer-text",
           animationName: "text-pop"
@@ -216,6 +221,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     try {
       const result = resolver.playAnimationForAction(
         {
+          commandSource: "flow-action",
           targetLayoutElementId: "player",
           targetComponentId: "answer-bubble-slot/answer-text",
           animationName: "pulse"
@@ -250,6 +256,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     try {
       const result = resolver.playAnimationForAction(
         {
+          commandSource: "flow-action",
           type: "stopGameObjectAnimation",
           targetLayoutElementId: "avatar",
           targetComponentId: "dino-mask",
@@ -362,7 +369,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
       );
       expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("defaultAnimation");
       expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("respectDefaultAnimationState");
-      expect(playCalls).toEqual([["Off", { instant: true }]]);
+      expect(playCalls).toEqual([]);
 
       root.dataset.visualState = "shown";
       api.render({ id: "test", artCompositionId: "controller-primary-button" }, root as unknown as HTMLElement, "test", {
@@ -371,7 +378,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
       });
 
       expect(renderCalls.length).toBe(2);
-      expect(playCalls).toEqual([["Off", { instant: true }]]);
+      expect(playCalls).toEqual([]);
     } finally {
       globals.document = previousDocument;
       host.artComposition = previousComposition;

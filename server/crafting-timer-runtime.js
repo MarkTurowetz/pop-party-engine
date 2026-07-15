@@ -72,11 +72,12 @@ function createCraftingTimerRuntime({
   }
 
   function startCraftingTimer(room, action) {
-    if (!room.craftingTimerShown || room.craftingTimerDurationMs <= 0 || room.craftingTimerRemainingMs <= 0) {
-      setCraftingTimerShown(room, true);
+    if (room.craftingTimerDurationMs <= 0 || room.craftingTimerRemainingMs <= 0) {
+      const timerDurationMs = durationMs();
+      room.craftingTimerDurationMs = timerDurationMs;
+      room.craftingTimerRemainingMs = timerDurationMs;
     }
     const now = Date.now();
-    room.craftingTimerShown = true;
     room.craftingTimerRunning = true;
     room.craftingTimerStartedAt = now;
     room.craftingTimerEndsAt = now + Math.max(0, room.craftingTimerRemainingMs || room.craftingTimerDurationMs);

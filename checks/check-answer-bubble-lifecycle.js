@@ -132,16 +132,22 @@ async function main() {
 
       player = makePlayer(false);
       roster.render([player], { instant: false });
+      const appearStartedAt = performance.now();
+      const appearCompletion = new Promise((resolve) => {
+        roster.setAnswerBubblesShown(true, { instant: false, complete: resolve });
+      });
       const appearToken = token();
       const appearStartFrame = frame();
-      roster.setAnswerBubblesShown(true, { instant: true });
-      const appearTokenAfterReconcile = token();
       await sleep(100);
       roster.render([player], { instant: false });
-      roster.setAnswerBubblesShown(true, { instant: false });
+      const appearTokenAfterReconcile = token();
       const appearMidFrame = frame();
       const appearMidToken = token();
-      await sleep(500);
+      await Promise.race([
+        appearCompletion,
+        sleep(1500).then(() => { throw new Error("Appear completion timed out"); })
+      ]);
+      const appearDuration = performance.now() - appearStartedAt;
       const appearFinalState = lifecycle();
 
       player = makePlayer(false, true);
@@ -161,14 +167,13 @@ async function main() {
 
       player = makePlayer(true, true);
       roster.render([player], { instant: false });
-      const disappearToken = token();
       const disappearStartedAt = performance.now();
       const disappearCompletion = new Promise((resolve) => {
         roster.setAnswerBubblesShown(false, { instant: false, complete: resolve });
       });
+      const disappearToken = token();
       await sleep(100);
       roster.render([player], { instant: false });
-      roster.setAnswerBubblesShown(false, { instant: false });
       const disappearMidToken = token();
       const disappearMidFrame = frame();
       await Promise.race([
@@ -178,6 +183,7 @@ async function main() {
 
       return {
         appearFinalState,
+        appearDuration,
         appearMidFrame,
         appearMidToken,
         appearStartFrame,
@@ -212,14 +218,18 @@ async function main() {
     assert(result.avatarSpawnFinalState === "shown", `avatar spawn ended in ${result.avatarSpawnFinalState}`);
     assert(result.nameSpawnFinalState === "shown", `name spawn ended in ${result.nameSpawnFinalState}`);
     assert(result.vipSpawnFinalState === "shown", `VIP spawn ended in ${result.vipSpawnFinalState}`);
-    assert(result.appearToken && result.appearToken === result.appearTokenAfterReconcile, "instant reconciliation interrupted Appear");
-    assert(result.appearToken === result.appearMidToken, "repeated payload restarted Appear");
+    assert(result.appearToken && result.appearToken === result.appearTokenAfterReconcile, "reconciliation interrupted Appear");
+    assert(result.appearToken === result.appearMidToken, "reconciliation restarted Appear");
     assert(result.appearMidFrame > result.appearStartFrame, "Appear did not advance through authored frames");
+    assert(result.appearDuration >= 300, `Appear completed too early (${Math.round(result.appearDuration)}ms)`);
     assert(result.appearFinalState === "shown", `Appear ended in ${result.appearFinalState}`);
     assert(result.correctFill === "#8dff5f", `Correct state used ${result.correctFill || "no fill"}`);
     assert(result.correctnessDuration < 250, `Correctness used a legacy delay (${Math.round(result.correctnessDuration)}ms)`);
     assert(result.reconciledCorrectFill === "#8dff5f", `reconciliation reset Correct to ${result.reconciledCorrectFill || "no fill"}`);
-    assert(result.disappearToken && result.disappearToken === result.disappearMidToken, "repeated payload restarted Disappear");
+    assert(
+      result.disappearToken && result.disappearToken === result.disappearMidToken,
+      `reconciliation restarted Disappear (${result.disappearToken || "none"} -> ${result.disappearMidToken || "none"})`
+    );
     assert(result.disappearMidFrame > 17, "Disappear did not advance through authored frames");
     assert(result.disappearDuration >= 350, `Disappear completed too early (${Math.round(result.disappearDuration)}ms)`);
     assert(result.disappearFinalState === "hidden", `Disappear ended in ${result.disappearFinalState}`);
