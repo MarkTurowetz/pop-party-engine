@@ -102,6 +102,22 @@ describe("art organization folders", () => {
     expect(normalized.stage.folderItems.generics).toEqual(["folder:prefabs"]);
     expect(normalized.stage.folderItems.prefabs).toEqual(["composition:player-answer-bubble"]);
   });
+
+  it("promotes an unreachable folder to the root so its compositions remain visible", () => {
+    const runtime = createRuntime();
+    const normalized = runtime.normalizeArtOrganization({
+      stage: {
+        folders: [{ id: "text-objects", name: "Text Objects" }],
+        order: [],
+        folderItems: {
+          "text-objects": ["composition:layout-text-field"]
+        }
+      }
+    });
+
+    expect(normalized.stage.order).toContain("folder:text-objects");
+    expect(normalized.stage.folderItems["text-objects"]).toContain("composition:layout-text-field");
+  });
 });
 
 describe("art composition child persistence", () => {

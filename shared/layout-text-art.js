@@ -129,9 +129,9 @@
             {
                 id: layoutTextArtCompositionId,
                 name: "Layout Text Field",
-                description: "Lifecycle game object that owns a reusable Layout Text Field Text prefab.",
+                description: "Reusable lifecycle prefab referenced by placed layout text fields.",
                 surface: "stage",
-                compositionKind: "gameObject",
+                compositionKind: "prefab",
                 isCustom: false,
                 timelineArchitectureVersion: 2,
                 canvas: { width: 1000, height: 240 },
@@ -189,6 +189,9 @@
         const hasPrefabReferenceTrack = tracks.some((track) => track?.targetId === layoutTextArtTextReferenceId);
         return hasPrefabReferenceTrack ? timeline : fallbackTimeline;
     }
+    function migrateLayoutTextFieldWidgetKind(compositionId, compositionKind) {
+        return compositionId === layoutTextArtCompositionId ? "prefab" : String(compositionKind || "gameObject");
+    }
     module.exports = {
         isLayoutTextArtElementId,
         isLayoutTextArtSelector,
@@ -198,6 +201,7 @@
         layoutTextArtTextPrefabId,
         layoutTextArtTextReferenceId,
         migrateLayoutTextFieldWidgetComponents,
+        migrateLayoutTextFieldWidgetKind,
         migrateLayoutTextFieldWidgetTimeline,
         normalizeLayoutTextArtId
     };

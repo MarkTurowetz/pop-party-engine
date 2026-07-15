@@ -7,6 +7,7 @@ const {
   layoutTextArtCompositionId,
   layoutTextArtTextPrefabId,
   migrateLayoutTextFieldWidgetComponents,
+  migrateLayoutTextFieldWidgetKind,
   migrateLayoutTextFieldWidgetTimeline
 } = require("./layout-text-art");
 
@@ -17,7 +18,7 @@ describe("layout text field widget definitions", () => {
     const prefab = compositions.find((composition) => composition.id === layoutTextArtTextPrefabId);
 
     expect(gameObject).toMatchObject({
-      compositionKind: "gameObject",
+      compositionKind: "prefab",
       timelineArchitectureVersion: 2,
       components: [expect.objectContaining({
         instanceLabel: "layoutTextFieldText",
@@ -33,6 +34,11 @@ describe("layout text field widget definitions", () => {
       compositionKind: "prefab",
       components: [expect.objectContaining({ instanceLabel: "text", kind: "text" })]
     });
+  });
+
+  it("migrates the layout-facing composition to a prefab", () => {
+    expect(migrateLayoutTextFieldWidgetKind(layoutTextArtCompositionId, "gameObject")).toBe("prefab");
+    expect(migrateLayoutTextFieldWidgetKind("another-object", "gameObject")).toBe("gameObject");
   });
 
   it("migrates the legacy direct text layer to the nested prefab reference", () => {

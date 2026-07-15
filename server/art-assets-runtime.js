@@ -11,7 +11,11 @@ const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
 const { ART_TIMELINE_ARCHITECTURE_VERSION, collectArtArchitectureIssues } = require("../shared/art-timeline-architecture");
 const { canonicalLifecycleLabel } = require("../shared/lifecycle-labels");
-const { migrateLayoutTextFieldWidgetComponents, migrateLayoutTextFieldWidgetTimeline } = require("../shared/layout-text-art");
+const {
+  migrateLayoutTextFieldWidgetComponents,
+  migrateLayoutTextFieldWidgetKind,
+  migrateLayoutTextFieldWidgetTimeline
+} = require("../shared/layout-text-art");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 
 function createArtAssetsRuntime({
@@ -192,6 +196,10 @@ function createArtAssetsRuntime({
       }
       for (let index = order.length - 1; index >= 0; index -= 1) {
         if (assignedKeys.has(order[index])) order.splice(index, 1);
+      }
+      for (const folderId of folderIds) {
+        const key = `folder:${folderId}`;
+        if (!assignedKeys.has(key) && !order.includes(key)) order.push(key);
       }
       result[surface] = { folders, order, folderItems };
     }
@@ -377,7 +385,9 @@ function createArtAssetsRuntime({
       name: cleanText(override?.name, composition.name || "Art Asset"),
       description: cleanText(override?.description, composition.description || "Editable art asset.", 240),
       surface: normalizeCompositionSurface(override?.surface || composition.surface),
-      compositionKind: normalizeCompositionKind(override?.compositionKind || composition.compositionKind),
+      compositionKind: normalizeCompositionKind(
+        migrateLayoutTextFieldWidgetKind(composition.id, override?.compositionKind || composition.compositionKind)
+      ),
       isCustom: Boolean(composition.isCustom || override?.isCustom),
       timelineArchitectureVersion: cleanNumber(
         override?.timelineArchitectureVersion,

@@ -159,7 +159,7 @@ async function main() {
     assert(Array.isArray(artAssets.json.compositions), "/api/art-assets did not include compositions");
     const layoutTextField = artAssets.json.compositions.find((composition) => composition.id === "layout-text-field");
     const layoutTextFieldText = artAssets.json.compositions.find((composition) => composition.id === "prefab-layout-text-field-text");
-    assert(layoutTextField?.compositionKind === "gameObject", "/api/art-assets did not expose Layout Text Field as a game object");
+    assert(layoutTextField?.compositionKind === "prefab", "/api/art-assets did not expose Layout Text Field as a prefab");
     assert(
       layoutTextField.components?.some(
         (component) => component.kind === "reference" && component.artCompositionId === "prefab-layout-text-field-text",

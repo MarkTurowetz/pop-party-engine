@@ -129,6 +129,15 @@ export function cleanOrganizationForSave(
         return !nestedFolderId || !folderContainsFolder(cleaned[surface], nestedFolderId, folder.id);
       });
     }
+    const nestedFolderKeys = new Set(
+      Object.values(cleaned[surface].folderItems)
+        .flat()
+        .filter((key) => key.startsWith("folder:"))
+    );
+    for (const folder of cleaned[surface].folders) {
+      const key = folderKey(folder.id);
+      if (!nestedFolderKeys.has(key) && !cleaned[surface].order.includes(key)) cleaned[surface].order.push(key);
+    }
   }
   return cleaned;
 }
