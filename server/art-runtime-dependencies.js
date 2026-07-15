@@ -20,6 +20,7 @@ function artRuntimeReferences() {
       sourceName: "Layout widget runtime"
     })),
     { compositionId: "prefab-player-widget-mc", sourceId: "stage-player-roster", sourceName: "Player roster runtime" },
+    { compositionId: "wipe-widget-mc", sourceId: "stage-wipe", sourceName: "Stage wipe runtime" },
     { compositionId: "prefab-player-avatar-mc", sourceId: "controller-avatar-runtime", sourceName: "Controller avatar runtime" },
     { compositionId: "prefab-voting-card-mc", sourceId: "stage-voting-card-runtime", sourceName: "Voting card runtime" },
     { compositionId: "voting-card", sourceId: "stage-voting-card-fallback", sourceName: "Legacy voting card fallback" }

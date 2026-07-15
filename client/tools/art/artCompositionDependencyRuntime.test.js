@@ -35,6 +35,7 @@ describe("art composition dependency report", () => {
     const runtimeIds = artRuntimeReferences().map((reference) => reference.compositionId);
     expect(runtimeIds).toContain("prefab-player-widget-mc");
     expect(runtimeIds).toContain("prefab-player-avatar-mc");
+    expect(runtimeIds).toContain("wipe-widget-mc");
     for (const species of ["rex", "stego", "trike", "raptor", "bronto", "ankylo"]) {
       expect(runtimeIds).not.toContain(`player-avatar-${species}`);
       expect(runtimeIds).not.toContain(`player-object-${species}`);

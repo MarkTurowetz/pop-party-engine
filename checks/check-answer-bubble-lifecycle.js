@@ -68,7 +68,12 @@ async function main() {
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto(`http://${host}:${port}/stage`, { waitUntil: "domcontentloaded" });
-    await page.waitForFunction(() => Boolean(window.PartyGamePlayerRoster && window.PartyGameArtObject && window.artComposition?.("prefab-player-widget-mc")));
+    await page.waitForFunction(() => Boolean(
+      window.PartyGamePlayerRoster &&
+      window.PartyGameArtObject &&
+      window.artComposition?.("prefab-player-widget-mc") &&
+      window.artComposition?.("wipe-widget-mc")
+    ));
 
     const result = await page.evaluate(async () => {
       const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
@@ -217,7 +222,82 @@ async function main() {
     assert(result.disappearMidFrame > 17, "Disappear did not advance through authored frames");
     assert(result.disappearDuration >= 350, `Disappear completed too early (${Math.round(result.disappearDuration)}ms)`);
     assert(result.disappearFinalState === "hidden", `Disappear ended in ${result.disappearFinalState}`);
-    console.log("Player spawn and answer bubble authored lifecycle browser check passed.");
+
+    const wipeResult = await page.evaluate(async () => {
+      const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+      const element = document.createElement("div");
+      element.className = "stage-wipe hidden";
+      element.style.width = "1920px";
+      element.style.height = "1080px";
+      document.body.appendChild(element);
+      const widgetArt = window.PartyGameStageWidgetArt.createRenderer({
+        document,
+        visualAnimation: window.visualAnimation,
+        getComposition: (id) => window.artComposition(id)
+      });
+      let renderResult = null;
+      const controller = window.PartyGameStageWipe.createController({
+        element,
+        renderArt: () => {
+          renderResult = widgetArt.renderBound(element, { compositionId: "wipe-widget-mc" }, {});
+          return renderResult;
+        }
+      });
+      const firstStripLeft = () => Number.parseFloat(
+        element.querySelector("[data-art-component-id='wipe-strip-1']")?.style.left || "NaN"
+      );
+
+      const appearStartedAt = performance.now();
+      const appearCompletion = new Promise((resolve) => controller.setShown(true, { complete: resolve }));
+      await sleep(250);
+      const appearMidLeft = firstStripLeft();
+      await Promise.race([
+        appearCompletion,
+        sleep(1500).then(() => { throw new Error("Wipe Appear callback timed out"); })
+      ]);
+      const appearDuration = performance.now() - appearStartedAt;
+      const appearFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const appearFinalLeft = firstStripLeft();
+
+      const disappearStartedAt = performance.now();
+      const disappearCompletion = new Promise((resolve) => controller.setShown(false, { complete: resolve }));
+      await sleep(250);
+      const disappearMidLeft = firstStripLeft();
+      await Promise.race([
+        disappearCompletion,
+        sleep(1500).then(() => { throw new Error("Wipe Disappear callback timed out"); })
+      ]);
+      return {
+        appearDuration,
+        appearFinalLeft,
+        appearFrame,
+        appearMidLeft,
+        disappearDuration: performance.now() - disappearStartedAt,
+        disappearFrame: controller.timelineRenderer?.rootTimelinePlayer?.currentFrame,
+        disappearMidLeft,
+        componentIds: Array.from(element.querySelectorAll("[data-art-component-id]"), (node) => node.dataset.artComponentId),
+        compositionComponentCount: window.artComposition("wipe-widget-mc")?.components?.length || 0,
+        renderResultPresent: Boolean(renderResult?.renderer),
+        legacyLineCount: document.querySelectorAll("#stageWipe .wipe-line").length,
+        stripCount: element.querySelectorAll("[data-art-component-id^='wipe-strip-']").length,
+        visibleAfterDisappear: controller.isVisuallyPresent()
+      };
+    });
+
+    assert(
+      wipeResult.stripCount === 7,
+      `Wipe rendered ${wipeResult.stripCount} authored strips (${wipeResult.componentIds.join(", ") || "no components"}; source ${wipeResult.compositionComponentCount}; renderer ${wipeResult.renderResultPresent})`
+    );
+    assert(wipeResult.legacyLineCount === 0, "legacy CSS wipe lines are still mounted");
+    assert(wipeResult.appearMidLeft > -60 && wipeResult.appearMidLeft < 50, "Wipe Appear did not advance through authored motion");
+    assert(Math.abs(wipeResult.appearFinalLeft - 50) < 0.1, `Wipe Appear ended at ${wipeResult.appearFinalLeft}%`);
+    assert(wipeResult.appearDuration >= 550, `Wipe Appear callback fired too early (${Math.round(wipeResult.appearDuration)}ms)`);
+    assert(wipeResult.appearFrame === 22, `Wipe Appear callback fired at parent frame ${wipeResult.appearFrame}`);
+    assert(wipeResult.disappearMidLeft > 50, "Wipe Disappear did not advance through authored motion");
+    assert(wipeResult.disappearDuration >= 550, `Wipe Disappear callback fired too early (${Math.round(wipeResult.disappearDuration)}ms)`);
+    assert(wipeResult.disappearFrame === 45, `Wipe Disappear callback fired at parent frame ${wipeResult.disappearFrame}`);
+    assert(wipeResult.visibleAfterDisappear === false, "Wipe remained visible after Disappear callback");
+    console.log("Player, answer bubble, and Wipe Widget MC authored lifecycle browser check passed.");
   } finally {
     await browser?.close();
     child.kill("SIGTERM");

@@ -45,6 +45,11 @@ const definitions: Record<string, WidgetDefinition> = {
     layoutElementId: "craftingtimer",
     previewTextOverrides: { "timer-value": "30" }
   },
+  stageWipe: {
+    compositionId: "wipe-widget-mc",
+    layoutElementId: "",
+    previewTextOverrides: {}
+  },
   presentationClickPrompt: {
     compositionId: "presentation-click-prompt",
     layoutElementId: "presentclickwidget",

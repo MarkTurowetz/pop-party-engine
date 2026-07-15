@@ -6,6 +6,7 @@ import { PartyGameStageDebug } from "./stageDebugPanel";
 describe("PartyGameStageWidgetBindings (ported)", () => {
   it("resolves widget definitions by id and by layout element id", () => {
     expect(PartyGameStageWidgetBindings.definition("joinQr")?.compositionId).toBe("join-qr-code");
+    expect(PartyGameStageWidgetBindings.definition("stageWipe")?.compositionId).toBe("wipe-widget-mc");
     expect(PartyGameStageWidgetBindings.definitionForLayoutElement("STAGECODEBADGE")?.compositionId).toBe("stage-code-widget");
     expect(PartyGameStageWidgetBindings.previewTextOverrides("waitingstatus")["status-text"]).toMatch(/Waiting/);
     expect(PartyGameStageWidgetBindings.definition("nope")).toBe(null);

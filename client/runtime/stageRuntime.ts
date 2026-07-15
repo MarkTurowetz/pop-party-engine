@@ -162,7 +162,8 @@ w().PartyGameStageDebugRuntime = PartyGameStageDebugRuntime;
 function stageWipeController(): Dict | null {
   if (!stageWipeControllerInstance && w().PartyGameStageWipe) {
     stageWipeControllerInstance = (w().PartyGameStageWipe as unknown as { createController: (o: Dict) => Dict }).createController({
-      element: w().stageWipe, gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject, visualAnimation: visualAnimation()
+      element: w().stageWipe,
+      renderArt: () => renderStageWidgetBinding("stageWipe")
     });
   }
   return stageWipeControllerInstance;
@@ -500,6 +501,7 @@ const stageWidgetHosts: Record<string, () => El | null> = {
   waitingStatus: () => w().waitingStatus,
   countdownPopup: () => w().startPopup,
   craftingTimer: () => w().craftingTimer,
+  stageWipe: () => w().stageWipe,
   presentationClickPrompt: () => w().presentClickWidget
 };
 

@@ -1,22 +1,12 @@
-// Typed port of the legacy client/stage/wipe-controller.js IIFE — the stage transition
-// wipe. Installs window.PartyGameStageWipe for the legacy stage runtime. PartyGame*
-// deps are read lazily via globalThis at call time.
+// Authored Art Manager widget controller for the full-screen stage wipe. The
+// Wipe Widget MC parent timeline is the only lifecycle callback target; its
+// command frames start the nested Wipe Art MC without letting child callbacks
+// advance the game flow.
 
 type Dict = Record<string, unknown>;
 
-interface VisualBridgeApi {
-  createVisualForTarget?: (options: Dict) => Dict | undefined;
-  playVisibilityForTarget?: (options: Dict) => { duration?: number } | undefined;
-}
-interface AnimationApi {
-  element?: HTMLElement;
-  instant?: boolean;
-  duration: number;
-  addClasses: (classes: unknown) => void;
-  removeClasses: (classes: unknown) => void;
-  setVisibleState: (isVisible: boolean) => void;
-  schedule: (delay: number, callback?: () => void) => number | null;
-  tokenMatches: () => boolean;
+interface TimelineRenderer {
+  playAll?: (animation: string, options?: Dict) => number;
 }
 
 declare global {
@@ -25,11 +15,10 @@ declare global {
   }
 }
 
-const w = () => globalThis as typeof globalThis & Window;
-const visualBridge = (): VisualBridgeApi | undefined => w().PartyGameVisualBridge as unknown as VisualBridgeApi | undefined;
-
-const WipeMotionMs = 460;
-const WipeLineStaggerMs = 24;
+// Compatibility metadata only. Runtime flow completion comes exclusively from
+// the authored parent timeline callback, never from these values.
+const WipeMotionMs = 667;
+const WipeLineStaggerMs = 33;
 
 function transitionToken(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -37,194 +26,78 @@ function transitionToken(): string {
 
 class StageWipeController {
   element: HTMLElement | null;
-  visualAnimation: unknown;
-  gameObjectApi: unknown;
-  gameObject: Dict | null = null;
-  visual: (Dict & { play?: (a: string, o: Dict) => number }) | null = null;
+  renderArt: (() => Dict | null) | null;
+  timelineRenderer: TimelineRenderer | null = null;
   targetShown = false;
+  desiredShown = false;
+  activeAnimation = "";
   visibilityRequest: { actionKey: string; isShown: boolean } | null = null;
   activeTransitionToken = "";
 
   constructor(options: Dict = {}) {
     this.element = (options.element as HTMLElement) || null;
-    this.visualAnimation = options.visualAnimation || w().PartyGameVisualObject;
-    this.gameObjectApi = options.gameObjectApi || w().PartyGameGameObject || w().PartyGameStageGameObject;
-  }
-
-  lineCount(): number {
-    return this.element?.querySelectorAll(".wipe-line").length || 7;
+    this.renderArt = typeof options.renderArt === "function" ? (options.renderArt as () => Dict | null) : null;
   }
 
   motionDuration(instant = false): number {
-    if (instant) return 0;
-    return WipeMotionMs + Math.max(0, this.lineCount() - 1) * WipeLineStaggerMs;
+    return instant ? 0 : WipeMotionMs;
   }
 
-  waitForMotionEnd(callback: () => void): void {
-    const line = Array.from(this.element?.querySelectorAll(".wipe-line") || []).at(-1) as HTMLElement | undefined;
-    if (!line) {
-      queueMicrotask(callback);
-      return;
+  widgetRenderer(): TimelineRenderer | null {
+    if (this.timelineRenderer) return this.timelineRenderer;
+    const result = this.renderArt?.() || null;
+    this.timelineRenderer = (result?.renderer as TimelineRenderer) || null;
+    if (this.timelineRenderer && this.element) {
+      this.element.classList.remove("hidden", "is-entering", "is-covered", "is-exiting", "is-instant");
     }
-    let completed = false;
-    const finish = (event?: Event) => {
-      if (completed) return;
-      if (event && event.target !== line) return;
-      completed = true;
-      line.removeEventListener("transitionend", finish);
-      line.removeEventListener("transitioncancel", finish);
-      callback();
-    };
-    line.addEventListener("transitionend", finish);
-    line.addEventListener("transitioncancel", finish);
+    return this.timelineRenderer;
   }
 
   setVisibleState(isVisible: boolean): void {
     this.targetShown = isVisible === true;
-    if (this.element) this.element.dataset.wipeShown = this.targetShown ? "true" : "false";
+    if (!this.element) return;
+    this.element.dataset.wipeShown = this.targetShown ? "true" : "false";
+    this.element.setAttribute("aria-hidden", this.targetShown ? "false" : "true");
   }
 
   isVisuallyPresent(): boolean {
-    if (!this.element || this.element.classList.contains("hidden")) return false;
-    if (this.targetShown === true) return true;
-    return (
-      this.element.classList.contains("is-entering") ||
-      this.element.classList.contains("is-covered") ||
-      this.element.classList.contains("is-exiting")
-    );
-  }
-
-  resetHidden(): void {
-    if (!this.element) return;
-    this.element.classList.add("hidden");
-    this.element.classList.remove("is-entering", "is-covered", "is-exiting", "is-instant");
-    this.setVisibleState(false);
-  }
-
-  resetCovered(): void {
-    if (!this.element) return;
-    this.element.classList.remove("hidden", "is-entering", "is-exiting", "is-instant");
-    this.element.classList.add("is-covered");
-    this.setVisibleState(true);
-  }
-
-  visualObject(): (Dict & { play?: (a: string, o: Dict) => number }) | null {
-    if (!this.element || !this.visualAnimation) return null;
-    const visualOptions = this.visualOptions();
-    const bridge = visualBridge()?.createVisualForTarget?.({
-      gameObjectApi: this.gameObjectApi,
-      visualAnimation: this.visualAnimation,
-      target: this.element,
-      gameObject: this.gameObject,
-      legacyVisual: this.visual,
-      gameObjectOptions: {
-        id: "global:wipe",
-        visibilityKey: "global:wipe",
-        isArt: true,
-        isGlobal: true,
-        visualOptions,
-        getVisible: () => this.isVisuallyPresent(),
-        setVisible: (isVisible: boolean) => this.setVisibleState(isVisible)
-      },
-      legacyVisualOptions: {
-        ...this.visualOptions(),
-        getVisible: () => this.isVisuallyPresent(),
-        setVisible: (isVisible: boolean) => this.setVisibleState(isVisible)
-      }
-    });
-    this.gameObject = (bridge?.gameObject as Dict) || this.gameObject;
-    this.visual = (bridge?.visual as Dict) || (bridge?.legacyVisual as Dict) || this.visual;
-    return this.visual;
-  }
-
-  visualOptions(): Dict {
-    return {
-      hiddenClasses: ["hidden"],
-      instantClass: "is-instant",
-      durations: { appear: this.motionDuration(false), disappear: this.motionDuration(false) },
-      animationHandlers: {
-        appear: (api: AnimationApi) => this.playAppear(api),
-        disappear: (api: AnimationApi) => this.playDisappear(api),
-        off: () => this.playOff(),
-        on: () => this.playOn(),
-        park: () => this.playOff(),
-        update: () => this.playUpdate()
-      }
-    };
-  }
-
-  playAppear(api: AnimationApi): number {
-    if (!api.element) return 0;
-    api.removeClasses(["hidden", "is-entering", "is-covered", "is-exiting"]);
-    api.setVisibleState(true);
-    if (api.instant) {
-      this.resetCovered();
-      return 0;
-    }
-    void api.element.offsetWidth;
-    api.addClasses("is-entering");
-    this.waitForMotionEnd(() => {
-      if (!api.tokenMatches()) return;
-      this.resetCovered();
-    });
-    return api.duration;
-  }
-
-  playDisappear(api: AnimationApi): number {
-    if (!api.element) return 0;
-    if (api.instant) {
-      this.resetHidden();
-      return 0;
-    }
-    api.removeClasses("hidden");
-    api.setVisibleState(true);
-    api.removeClasses(["is-entering", "is-covered"]);
-    api.addClasses("is-exiting");
-    this.waitForMotionEnd(() => {
-      if (!api.tokenMatches()) return;
-      this.resetHidden();
-    });
-    return api.duration;
-  }
-
-  playOn(): number {
-    this.resetCovered();
-    return 0;
-  }
-
-  playOff(): number {
-    this.resetHidden();
-    return 0;
-  }
-
-  playUpdate(): number {
-    if (!this.element) return 0;
-    if (this.element.classList.contains("is-entering") || this.element.classList.contains("is-covered")) {
-      this.setVisibleState(true);
-      return 0;
-    }
-    this.resetCovered();
-    return 0;
+    return this.targetShown || this.activeAnimation === "Appear" || this.activeAnimation === "Disappear";
   }
 
   setShown(isShown: boolean, options: Dict = {}): number {
-    const visual = this.visualObject();
-    if (!visual || !this.visualAnimation) {
-      this.element?.classList.toggle("hidden", isShown === false);
-      this.setVisibleState(isShown !== false);
-      if (typeof options.complete === "function") queueMicrotask(options.complete as () => void);
+    const nextShown = isShown !== false;
+    const instant = options.instant === true;
+    const complete = typeof options.complete === "function" ? (options.complete as () => void) : null;
+    const renderer = this.widgetRenderer();
+    this.desiredShown = nextShown;
+
+    if (!renderer?.playAll) {
+      this.element?.classList.toggle("hidden", !nextShown);
+      this.activeAnimation = "";
+      this.setVisibleState(nextShown);
+      if (complete) queueMicrotask(complete);
       return 0;
     }
-    const nextShown = isShown !== false;
-    if (options.instant !== true && typeof options.complete === "function") {
-      this.waitForMotionEnd(options.complete as () => void);
+
+    if (!this.activeAnimation && this.targetShown === nextShown) {
+      if (complete) queueMicrotask(complete);
+      return 0;
     }
-    const result = visualBridge()?.playVisibilityForTarget?.({
-      visual,
-      isShown: nextShown,
-      playOptions: { complete: options.instant === true ? options.complete : undefined, instant: options.instant === true }
-    });
-    return result?.duration || 0;
+
+    const animation = nextShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
+    this.activeAnimation = animation;
+    if (nextShown) this.setVisibleState(true);
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      this.activeAnimation = "";
+      this.setVisibleState(nextShown);
+      complete?.();
+    };
+    const duration = Number(renderer.playAll(animation, { instant, complete: finish }) || 0);
+    if (duration <= 0) queueMicrotask(finish);
+    return duration;
   }
 
   setShownForAction(action: Dict, options: Dict = {}): number {
@@ -237,6 +110,7 @@ class StageWipeController {
     const actionKey = (options.actionKey as string) || "";
     const request = this.visibilityRequest && this.visibilityRequest.actionKey === actionKey ? this.visibilityRequest : null;
     const targetShown = request ? request.isShown : isShown !== false;
+    if (this.activeAnimation || this.targetShown === targetShown) return 0;
     return this.setShown(targetShown, { instant: options.instant === true });
   }
 
@@ -249,22 +123,24 @@ class StageWipeController {
     this.visibilityRequest = null;
     this.activeTransitionToken = transitionToken();
     const token = this.activeTransitionToken;
-    const enterDuration = this.setShown(true, {
+    return this.setShown(true, {
       complete: () => {
         if (this.activeTransitionToken !== token) return;
         if (typeof onCovered === "function") onCovered();
         this.setShown(false);
       }
     });
-    return enterDuration + this.motionDuration(false);
   }
 
   cancel(): void {
     this.visibilityRequest = null;
     this.activeTransitionToken = transitionToken();
-    const visual = this.visualObject();
-    if (visual) visual.play?.("off", { instant: true });
-    else this.resetHidden();
+    this.activeAnimation = "";
+    this.desiredShown = false;
+    const renderer = this.widgetRenderer();
+    if (renderer?.playAll) renderer.playAll("Off", { instant: true });
+    else this.element?.classList.add("hidden");
+    this.setVisibleState(false);
   }
 }
 

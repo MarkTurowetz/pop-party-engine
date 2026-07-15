@@ -90,6 +90,7 @@ These paths no longer advance the action from estimated animation duration, but 
 - Voting-card voter staggering uses `setTimeout` to start each independently targeted voter. Those timers do not complete or advance the action.
 - The generic `CssVisualObject` retains CSS-class lifecycle fallbacks for targets without authored timelines. Their completion observes the directly targeted element's own Web Animations promise rather than a duration estimate.
 - Player roster host/tile CSS transitions remain as fallback/layout concealment. Player widget parts use authored MC timelines when the prefab renderer is available.
+- The global Wipe is a `Wipe Widget MC` compound prefab. Its parent `Appear` and `Disappear` timelines command the nested colored-strip `Wipe Art MC`, and only the parent terminal callback may complete `Set Wipe Shown`.
 - `stageVotingCardVisuals.ts` can construct voting prefabs from the legacy `voting-card` composition.
 - A point popup without its authored prefab is shown statically; it does not create a timer-based animation completion substitute.
 
