@@ -266,7 +266,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     }
   });
 
-  it("renders layout art without removing preserved overlay controls", () => {
+  it("reconciles labeled layout text without removing overlays or restarting retained lifecycle timelines", () => {
     class FakeElement {
       childNodes: FakeElement[] = [];
       dataset: Record<string, string> = {};
@@ -362,6 +362,15 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
       );
       expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("defaultAnimation");
       expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("respectDefaultAnimationState");
+      expect(playCalls).toEqual([["Off", { instant: true }]]);
+
+      root.dataset.visualState = "shown";
+      api.render({ id: "test", artCompositionId: "controller-primary-button" }, root as unknown as HTMLElement, "test", {
+        keepElements: [overlay as unknown as HTMLElement],
+        textOverrides: { text: "Reconciled while disappearing" }
+      });
+
+      expect(renderCalls.length).toBe(2);
       expect(playCalls).toEqual([["Off", { instant: true }]]);
     } finally {
       globals.document = previousDocument;

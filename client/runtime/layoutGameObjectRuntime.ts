@@ -110,13 +110,9 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
     instant: true,
     timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined)
   });
-  const hostState = String(host.dataset.visualState || "");
-  if (hostState === "shown" || hostState === "appearing") {
-    renderer.playAll?.(lifecycleLabels.on, { instant: true });
-  } else if (hostState === "hidden") {
-    renderer.playAll?.(lifecycleLabels.off, { instant: true });
-  } else if (isNewRenderer) {
-    renderer.playAll?.(lifecycleLabels.off, { instant: true });
+  if (isNewRenderer) {
+    const hostState = String(host.dataset.visualState || "");
+    renderer.playAll?.(hostState === "shown" || hostState === "appearing" ? lifecycleLabels.on : lifecycleLabels.off, { instant: true });
   }
   layoutArtRendererByHost.set(host, renderer);
   return renderer;
