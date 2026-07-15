@@ -166,6 +166,10 @@ async function main() {
       ),
       "/api/art-assets Layout Text Field did not reference its text prefab",
     );
+    assert(
+      layoutTextField.timeline?.tracks?.some((track) => track.targetId === "layout-text-field-text"),
+      "/api/art-assets Layout Text Field did not expose its authored lifecycle track",
+    );
     assert(layoutTextFieldText?.compositionKind === "prefab", "/api/art-assets did not expose Layout Text Field Text as a prefab");
     assert(
       layoutTextFieldText.components?.some((component) => component.kind === "text" && component.instanceLabel === "text"),

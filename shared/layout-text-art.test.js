@@ -6,7 +6,8 @@ const {
   defaultLayoutTextFieldCompositions,
   layoutTextArtCompositionId,
   layoutTextArtTextPrefabId,
-  migrateLayoutTextFieldWidgetComponents
+  migrateLayoutTextFieldWidgetComponents,
+  migrateLayoutTextFieldWidgetTimeline
 } = require("./layout-text-art");
 
 describe("layout text field widget definitions", () => {
@@ -49,5 +50,21 @@ describe("layout text field widget definitions", () => {
       artCompositionId: layoutTextArtTextPrefabId
     }));
     expect(components).toContainEqual(expect.objectContaining({ id: "decoration" }));
+  });
+
+  it("replaces a stale legacy timeline with the authored prefab-reference lifecycle", () => {
+    const gameObject = defaultLayoutTextFieldCompositions()
+      .find((composition) => composition.id === layoutTextArtCompositionId);
+    const staleTimeline = { fps: 30, frameCount: 33, labels: [], commands: [], tracks: [] };
+
+    const migrated = migrateLayoutTextFieldWidgetTimeline(
+      layoutTextArtCompositionId,
+      staleTimeline,
+      gameObject.timeline
+    );
+
+    expect(migrated.tracks).toContainEqual(expect.objectContaining({
+      targetId: "layout-text-field-text"
+    }));
   });
 });

@@ -11,7 +11,7 @@ const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
 const { ART_TIMELINE_ARCHITECTURE_VERSION, collectArtArchitectureIssues } = require("../shared/art-timeline-architecture");
 const { canonicalLifecycleLabel } = require("../shared/lifecycle-labels");
-const { migrateLayoutTextFieldWidgetComponents } = require("../shared/layout-text-art");
+const { migrateLayoutTextFieldWidgetComponents, migrateLayoutTextFieldWidgetTimeline } = require("../shared/layout-text-art");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 
 function createArtAssetsRuntime({
@@ -370,7 +370,8 @@ function createArtAssetsRuntime({
     };
     migrateGeneratedWidgetCanvas(composition.id, canvas);
     migratePlayerObjectCanvas(composition.id, canvas);
-    const timeline = normalizeTimeline(override?.timeline, composition.timeline);
+    const timelineOverride = migrateLayoutTextFieldWidgetTimeline(composition.id, override?.timeline, composition.timeline);
+    const timeline = normalizeTimeline(timelineOverride, composition.timeline);
     const normalized = {
       id: composition.id,
       name: cleanText(override?.name, composition.name || "Art Asset"),

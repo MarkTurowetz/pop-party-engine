@@ -182,6 +182,13 @@
         }
         return components;
     }
+    function migrateLayoutTextFieldWidgetTimeline(compositionId, timeline, fallbackTimeline) {
+        if (compositionId !== layoutTextArtCompositionId)
+            return timeline;
+        const tracks = Array.isArray(timeline?.tracks) ? timeline.tracks : [];
+        const hasPrefabReferenceTrack = tracks.some((track) => track?.targetId === layoutTextArtTextReferenceId);
+        return hasPrefabReferenceTrack ? timeline : fallbackTimeline;
+    }
     module.exports = {
         isLayoutTextArtElementId,
         isLayoutTextArtSelector,
@@ -191,6 +198,7 @@
         layoutTextArtTextPrefabId,
         layoutTextArtTextReferenceId,
         migrateLayoutTextFieldWidgetComponents,
+        migrateLayoutTextFieldWidgetTimeline,
         normalizeLayoutTextArtId
     };
 })();
