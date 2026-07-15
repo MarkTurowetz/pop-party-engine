@@ -38,6 +38,7 @@ const w = () => globalThis as typeof globalThis & Window;
 const visualBridge = (): VisualBridgeApi | undefined => w().PartyGameVisualBridge as unknown as VisualBridgeApi | undefined;
 const artComposition = (id: string): Dict | null => w().artComposition?.(id) || null;
 const layoutArtRendererByHost = new WeakMap<El, TreeRenderer>();
+const layoutArtRenderOptionsByRenderer = new WeakMap<TreeRenderer, Dict>();
 
 function getOrCreateLayoutArtInstance(element: Dict | null, root: El | null, selector: string, className: string): El | null {
   const id = String(element?.id || "");
@@ -102,11 +103,21 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
       document,
       instanceId: `layout:${rendererKey}`,
       gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject,
-      visualAnimation: w().PartyGameVisualObject
+      visualAnimation: w().PartyGameVisualObject,
+      getComposition: (compositionId: string) => {
+        const referenced = artComposition(compositionId);
+        if (!referenced) return null;
+        const activeOptions = renderer ? layoutArtRenderOptionsByRenderer.get(renderer) || {} : {};
+        return {
+          ...referenced,
+          components: ((referenced.components as Dict[]) || []).map((component) => cloneLayoutArtComponent(component, activeOptions, compositionId))
+        };
+      }
     });
     renderers.set(rendererKey, renderer);
   }
-  const components = ((composition.components as Dict[]) || []).map((component) => cloneLayoutArtComponent(component, options));
+  layoutArtRenderOptionsByRenderer.set(renderer, options);
+  const components = ((composition.components as Dict[]) || []).map((component) => cloneLayoutArtComponent(component, options, String(composition.id || element?.artCompositionId || "")));
   renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
     instant: true,
     timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined)
@@ -117,13 +128,17 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
   return renderer;
 }
 
-function cloneLayoutArtComponent(component: Dict, options: Dict = {}): Dict {
-  const clone: Dict = { ...component, children: ((component.children as Dict[]) || []).map((child) => cloneLayoutArtComponent(child, options)) };
+function cloneLayoutArtComponent(component: Dict, options: Dict = {}, compositionId = ""): Dict {
+  const clone: Dict = { ...component, children: ((component.children as Dict[]) || []).map((child) => cloneLayoutArtComponent(child, options, compositionId)) };
   const textOverrides = (options.textOverrides as Dict) || {};
   const kind = String(clone.kind || "").toLowerCase();
-  const textOverrideKey = [clone.id, clone.instanceLabel]
+  const componentTargets = [clone.id, clone.instanceLabel]
     .map((value) => String(value || "").trim())
-    .find((value) => value && Object.prototype.hasOwnProperty.call(textOverrides, value));
+    .filter(Boolean);
+  const textOverrideKey = [
+    ...componentTargets.map((value) => compositionId ? `${compositionId}/${value}` : ""),
+    ...componentTargets
+  ].find((value) => value && Object.prototype.hasOwnProperty.call(textOverrides, value));
   if ((kind === "text" || kind === "badge") && textOverrideKey) {
     clone.defaultText = String(textOverrides[textOverrideKey] ?? "");
   }
@@ -133,7 +148,10 @@ function cloneLayoutArtComponent(component: Dict, options: Dict = {}): Dict {
     (kind === "text" || kind === "badge") &&
     textStyle &&
     textStyleTarget &&
-    [clone.id, clone.instanceLabel].some((value) => String(value || "").trim() === textStyleTarget)
+    [
+      ...componentTargets.map((value) => compositionId ? `${compositionId}/${value}` : ""),
+      ...componentTargets
+    ].includes(textStyleTarget)
   ) {
     clone.fontSize = textStyle.fontSize;
     clone.fontColor = textStyle.fontColor;
@@ -628,6 +646,7 @@ export const PartyGameLayoutGameObjects = {
   applyLayoutElementBoxStyles,
   attachRenderedLayoutArtEntity,
   beginLayoutElementTargetApplication,
+  cloneLayoutArtComponent,
   createDynamicLayoutArtInstanceApi,
   createPlacedLayoutEntityRegistrar,
   createPlacedLayoutGameObjectTargetResolver,

@@ -80,6 +80,9 @@ function normalizeTextTargetId(value: unknown): string {
 
 const layoutTextArtCompositionId = "layout-text-field";
 const layoutTextArtComponentId = "text";
+const layoutTextArtNestedCompositionId = "prefab-layout-text-field-text";
+const layoutTextArtNestedComponentPath = `${layoutTextArtNestedCompositionId}/${layoutTextArtComponentId}`;
+const layoutTextArtLegacyComponentPath = `${layoutTextArtCompositionId}/${layoutTextArtComponentId}`;
 const controllerPrimaryButtonArtCompositionId = "controller-primary-button";
 const controllerChoiceOptionArtCompositionId = "controller-choice-option";
 const controllerWidgetTextComponentIds: Record<string, string> = {
@@ -151,9 +154,14 @@ function isLayoutTextArtElement(element: Dict | null): boolean {
 
 function layoutTextArtRenderOptions(element: Dict | null, textOverride: unknown = undefined): Dict {
   const text = textOverride === undefined ? layoutTextDefault(element) : String(textOverride ?? "");
+  const usesNestedTextPrefab = Boolean(w().artComposition?.(layoutTextArtNestedCompositionId));
+  const componentId = usesNestedTextPrefab ? layoutTextArtNestedComponentPath : layoutTextArtComponentId;
+  const textOverrides = usesNestedTextPrefab
+    ? { [layoutTextArtNestedComponentPath]: text, [layoutTextArtLegacyComponentPath]: "" }
+    : { [layoutTextArtComponentId]: text };
   return {
-    textOverrides: { [layoutTextArtComponentId]: text },
-    textStyle: { componentId: layoutTextArtComponentId, fontSize: Number(element?.fontSize || 58), fontColor: normalizeUiColor(element?.fontColor) || "#ffffff" }
+    textOverrides,
+    textStyle: { componentId, fontSize: Number(element?.fontSize || 58), fontColor: normalizeUiColor(element?.fontColor) || "#ffffff" }
   };
 }
 

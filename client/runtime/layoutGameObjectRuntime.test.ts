@@ -76,6 +76,38 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(PartyGameLayoutGameObjects.setLayoutGameObjectShownForAction).toBeTypeOf("function");
   });
 
+  it("applies text and style overrides to a scoped text component inside a referenced prefab", () => {
+    const options = {
+      textOverrides: {
+        "layout-text-field/text": "",
+        "prefab-layout-text-field-text/text": "Party Game Template"
+      },
+      textStyle: {
+        componentId: "prefab-layout-text-field-text/text",
+        fontSize: 92,
+        fontColor: "#ffffff"
+      }
+    };
+    const legacyText = PartyGameLayoutGameObjects.cloneLayoutArtComponent(
+      { id: "text", kind: "text", defaultText: "LEGACY" },
+      options,
+      "layout-text-field"
+    );
+    const nestedText = PartyGameLayoutGameObjects.cloneLayoutArtComponent(
+      { id: "generated-text-id", instanceLabel: "text", kind: "text", defaultText: "TEXT" },
+      options,
+      "prefab-layout-text-field-text"
+    );
+
+    expect(legacyText.defaultText).toBe("");
+    expect(nestedText).toMatchObject({
+      defaultText: "Party Game Template",
+      fontSize: 92,
+      fontColor: "#ffffff",
+      autoFitText: false
+    });
+  });
+
   it("activeDynamicLayoutArtInstanceIds collects dynamic state + non-hidden global ids", () => {
     const isDynamic = (el: { dynamic?: boolean }) => el.dynamic === true;
     const ids = PartyGameLayoutGameObjects.activeDynamicLayoutArtInstanceIds(
