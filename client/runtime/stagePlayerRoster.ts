@@ -428,6 +428,11 @@ class PlayerRosterRenderer {
     const targetId = PLAYER_ANSWER_BUBBLE_MC_ID;
     const play = (animation: string) =>
       renderer.playComponent?.(targetId, animation, { instant }) || 0;
+    const stateDuration = renderer.stopAtComponent?.(
+      PLAYER_ANSWER_BUBBLE_STATE_ID,
+      playerAnswerBubbleStateLabel(state),
+      { instant: true }
+    ) || 0;
     let lifecycleDuration = 0;
     if (!state.visible) {
       lifecycleDuration = previousVisible || renderer.isComponentVisible?.(targetId)
@@ -439,14 +444,6 @@ class PlayerRosterRenderer {
       lifecycleDuration = play("Update");
     }
 
-    // Lifecycle playback can reconcile the referenced subtree. Select the base
-    // bubble's authored semantic state last so Correct/Incorrect remains the
-    // final visual frame after Appear or Update.
-    const stateDuration = renderer.stopAtComponent?.(
-      PLAYER_ANSWER_BUBBLE_STATE_ID,
-      playerAnswerBubbleStateLabel(state),
-      { instant: true }
-    ) || 0;
     return Math.max(lifecycleDuration, stateDuration);
   }
 
@@ -692,6 +689,30 @@ class PlayerRosterRenderer {
   resetAnswerBubbles(): void {
     this.renderedAnswersShown = true;
     this.answerAnimationEndsAt = 0;
+  }
+
+  revealAnswerCorrectness(options: Dict = {}): number {
+    if (!this.host) return 0;
+    const instant = options.instant === true;
+    let duration = 0;
+    for (const node of Array.from(this.host.querySelectorAll(".player-tile[data-player-id]"))) {
+      const tile = node as El;
+      const player = this.tilePlayers.get(tile);
+      const renderer = this.tileRenderers.get(tile);
+      if (!player || !renderer) continue;
+      const state = playerAnswerBubbleRuntimeState(player, true);
+      const stateDuration = renderer.stopAtComponent?.(
+        PLAYER_ANSWER_BUBBLE_STATE_ID,
+        playerAnswerBubbleStateLabel(state),
+        { instant: true }
+      ) || 0;
+      const lifecycleDuration = state.hasAnswer && renderer.isComponentVisible?.(PLAYER_ANSWER_BUBBLE_MC_ID)
+        ? renderer.playComponent?.(PLAYER_ANSWER_BUBBLE_MC_ID, "Update", { instant }) || 0
+        : 0;
+      tile.dataset.answerBubbleCorrectness = state.correctness;
+      duration = Math.max(duration, stateDuration, lifecycleDuration);
+    }
+    return duration;
   }
 
   setAnswerBubblesShown(isShown: boolean, options: Dict = {}): number {

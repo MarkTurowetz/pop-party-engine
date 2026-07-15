@@ -202,6 +202,12 @@ function setPlayerAnswerBubblesShown(isShown: boolean, options: Dict = {}): numb
   return ((playerRosterRenderer() as { setAnswerBubblesShown?: (s: boolean, o: Dict) => number } | null)?.setAnswerBubblesShown?.(isShown, options) as number) || 0;
 }
 
+function revealPlayerAnswerCorrectnessForAction(action: Dict): number {
+  return ((playerRosterRenderer() as { revealAnswerCorrectness?: (o: Dict) => number } | null)?.revealAnswerCorrectness?.({
+    instant: action.instant === true
+  }) as number) || 0;
+}
+
 function playerAnswerBubbleAnimationRemaining(): number {
   return ((playerRosterRenderer() as { answerBubbleAnimationRemaining?: () => number } | null)?.answerBubbleAnimationRemaining?.() as number) || 0;
 }
@@ -750,7 +756,7 @@ let stageActionRunner: Dict | null = null;
 function getStageActionRunner(): Dict | null {
   if (!stageActionRunner && w().PartyGameStageActionRunners) {
     stageActionRunner = (w().PartyGameStageActionRunners as unknown as { createRunner: (o: Dict) => Dict }).createRunner({
-      applyFlowActionEffect, completeFlowAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, playerAnswerBubbleAnimationRemaining,
+      applyFlowActionEffect, completeFlowAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, playerAnswerBubbleAnimationRemaining, revealPlayerAnswerCorrectnessForAction,
       playStageLayoutGameObjectAnimationForAction: playStageLayoutGameObjectAnimationForStageAction, runStageWipe, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShown, setPlayersShownForAction, setStageWipeShownForAction, setStageTextObject, voteRevealDurationMs
     });
   }

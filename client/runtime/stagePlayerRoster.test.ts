@@ -320,7 +320,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
   });
 
-  it("selects the authored correctness state after the bubble lifecycle update", () => {
+  it("selects the authored correctness state before the bubble lifecycle update", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     const calls: string[] = [];
     const renderer = {
@@ -343,7 +343,40 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         { previousVisible: true, previousNonce: "1", previousText: "YES", previousCorrectness: "" }
       )
     ).toBe(333);
-    expect(calls).toEqual(["lifecycle:Update", "state:Correct"]);
+    expect(calls).toEqual(["state:Correct", "lifecycle:Update"]);
+  });
+
+  it("lets the reveal action explicitly select Correct and Incorrect on each answer bubble", () => {
+    const correctTile = { dataset: { playerId: "correct" } } as unknown as HTMLElement;
+    const incorrectTile = { dataset: { playerId: "incorrect" } } as unknown as HTMLElement;
+    const host = { querySelectorAll: () => [correctTile, incorrectTile] } as unknown as HTMLElement;
+    const correctStop = vi.fn(() => 0);
+    const incorrectStop = vi.fn(() => 0);
+    const correctUpdate = vi.fn(() => 333);
+    const incorrectUpdate = vi.fn(() => 333);
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    roster.tilePlayers.set(correctTile, { displayedAnswer: { text: "YES", correct: true } });
+    roster.tilePlayers.set(incorrectTile, { displayedAnswer: { text: "NO", correct: false } });
+    roster.tileRenderers.set(correctTile, {
+      render: vi.fn(),
+      isComponentVisible: vi.fn(() => true),
+      stopAtComponent: correctStop,
+      playComponent: correctUpdate
+    });
+    roster.tileRenderers.set(incorrectTile, {
+      render: vi.fn(),
+      isComponentVisible: vi.fn(() => true),
+      stopAtComponent: incorrectStop,
+      playComponent: incorrectUpdate
+    });
+
+    expect(roster.revealAnswerCorrectness()).toBe(333);
+    expect(correctStop).toHaveBeenCalledWith("playerAnswerBubble", "Correct", { instant: true });
+    expect(incorrectStop).toHaveBeenCalledWith("playerAnswerBubble", "Incorrect", { instant: true });
+    expect(correctUpdate).toHaveBeenCalledWith("player-answer-bubble-mc", "Update", { instant: false });
+    expect(incorrectUpdate).toHaveBeenCalledWith("player-answer-bubble-mc", "Update", { instant: false });
+    expect(correctTile.dataset.answerBubbleCorrectness).toBe("correct");
+    expect(incorrectTile.dataset.answerBubbleCorrectness).toBe("wrong");
   });
 
   it("drives choosing status through the nested avatar behavior timeline", () => {

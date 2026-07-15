@@ -11,6 +11,7 @@ function context() {
     playStageAudioAction: vi.fn(),
     playStageLayoutGameObjectAnimationForAction: vi.fn(() => 250),
     playerAnswerBubbleAnimationRemaining: vi.fn(() => 0),
+    revealPlayerAnswerCorrectnessForAction: vi.fn(() => 400),
     setPlayerAnswerBubblesShown: vi.fn(() => 500),
     voteRevealDurationMs: () => 0
   };
@@ -87,6 +88,23 @@ describe("PartyGameStageActionRunners (ported)", () => {
     expect(c.completeFlowAction).not.toHaveBeenCalled();
     vi.advanceTimersByTime(500);
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "hide-wrong");
+    vi.useRealTimers();
+  });
+
+  it("explicitly reveals each player answer correctness state before completing", () => {
+    vi.useFakeTimers();
+    const c = context();
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    const action = { id: "reveal-correctness", type: "revealPlayerAnswerCorrectness" };
+
+    runner.run(action, { isPrimary: true, actionKey: "k" });
+
+    expect(c.revealPlayerAnswerCorrectnessForAction).toHaveBeenCalledWith(action);
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(399);
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "reveal-correctness");
     vi.useRealTimers();
   });
 });

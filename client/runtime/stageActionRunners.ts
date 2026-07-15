@@ -74,7 +74,7 @@ const fallbackRunnerDefinitions: RunnerDefinition[] = [
   { type: "setArtAssetShown", runner: "setGameObjectShown" },
   { type: "playGameObjectAnimation", runner: "playGameObjectAnimation" },
   { type: "stopGameObjectAnimation", runner: "playGameObjectAnimation" },
-  { type: "revealPlayerAnswerCorrectness", runner: "delayedComplete", delayMs: 250 },
+  { type: "revealPlayerAnswerCorrectness", runner: "revealPlayerAnswerCorrectness", delayMs: 250 },
   { type: "showPoints", runner: "delayedComplete", delayMs: 1500 },
   { type: "givePendingPoints", runner: "serverEffect" },
   { type: "setTimerShown", runner: "setTimerShown" },
@@ -117,6 +117,16 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
         return;
       }
       completeAfter(action, runtime, definition?.delayMs);
+    },
+    revealPlayerAnswerCorrectness(action, runtime, definition) {
+      if (!runtime.isPrimary) {
+        runtime.applyEffect(action);
+        return;
+      }
+      const duration = c.revealPlayerAnswerCorrectnessForAction
+        ? (c.revealPlayerAnswerCorrectnessForAction as (a: Action) => number)(action)
+        : 0;
+      completeAfter(action, runtime, Math.max(duration, Number(definition?.delayMs || 0)));
     },
     setPlayersShown(action, runtime) {
       const duration = c.setPlayersShownForAction ? (c.setPlayersShownForAction as (a: Action) => number)(action) : 0;

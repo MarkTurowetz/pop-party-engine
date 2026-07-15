@@ -738,7 +738,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     name: "Reveal Player Answer Correctness",
     category: "standard",
     ...identityAction("revealPlayerAnswerCorrectness"),
-    stageRunner: "delayedComplete",
+    stageRunner: "revealPlayerAnswerCorrectness",
     stageRunnerDelayMs: 250,
     applyRoomEffect: (room, action, context) => {
       context.markDisplayedAnswersCorrectness(room);
