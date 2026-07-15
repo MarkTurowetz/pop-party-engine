@@ -86,6 +86,7 @@ async function main() {
         id: "p1",
         name: "Player",
         active: true,
+        isVip: true,
         avatar: { shape: "rex", color: "#22d3ee" },
         displayedAnswer: { text: "TUESDAY", nonce: "answer-1", hidden, correct }
       });
@@ -101,6 +102,19 @@ async function main() {
       const correctnessFill = () => hostElement
         .querySelector("[data-art-component-id='answer-bubble-card']")
         ?.style.getPropertyValue("--component-fill-color");
+      const componentState = (componentId) => hostElement
+        .querySelector(`[data-art-component-id='${componentId}']`)
+        ?.dataset.visualState;
+      const avatarBaseVisibleAtSpawn = hostElement
+        .querySelector("[data-art-component-id='player-avatar']")
+        ?.dataset.visualVisible;
+      const avatarSpawnStartState = componentState("player-avatar-mc");
+      const nameSpawnStartState = componentState("player-name-mc");
+      const vipSpawnStartState = componentState("vip-mc");
+      await sleep(400);
+      const avatarSpawnFinalState = componentState("player-avatar-mc");
+      const nameSpawnFinalState = componentState("player-name-mc");
+      const vipSpawnFinalState = componentState("vip-mc");
 
       player = makePlayer(false);
       roster.render([player], { instant: false });
@@ -155,6 +169,9 @@ async function main() {
         appearStartFrame,
         appearToken,
         appearTokenAfterReconcile,
+        avatarBaseVisibleAtSpawn,
+        avatarSpawnFinalState,
+        avatarSpawnStartState,
         correctFill,
         correctnessDuration,
         disappearDuration: performance.now() - disappearStartedAt,
@@ -162,10 +179,21 @@ async function main() {
         disappearMidFrame,
         disappearMidToken,
         disappearToken,
-        reconciledCorrectFill
+        nameSpawnFinalState,
+        nameSpawnStartState,
+        reconciledCorrectFill,
+        vipSpawnFinalState,
+        vipSpawnStartState
       };
     });
 
+    assert(result.avatarBaseVisibleAtSpawn === "true", "spawned avatar base remained parked");
+    assert(result.avatarSpawnStartState === "appearing", `avatar spawn started in ${result.avatarSpawnStartState}`);
+    assert(result.nameSpawnStartState === "appearing", `name spawn started in ${result.nameSpawnStartState}`);
+    assert(result.vipSpawnStartState === "appearing", `VIP spawn started in ${result.vipSpawnStartState}`);
+    assert(result.avatarSpawnFinalState === "shown", `avatar spawn ended in ${result.avatarSpawnFinalState}`);
+    assert(result.nameSpawnFinalState === "shown", `name spawn ended in ${result.nameSpawnFinalState}`);
+    assert(result.vipSpawnFinalState === "shown", `VIP spawn ended in ${result.vipSpawnFinalState}`);
     assert(result.appearToken && result.appearToken === result.appearTokenAfterReconcile, "instant reconciliation interrupted Appear");
     assert(result.appearToken === result.appearMidToken, "repeated payload restarted Appear");
     assert(result.appearMidFrame > result.appearStartFrame, "Appear did not advance through authored frames");
@@ -177,7 +205,7 @@ async function main() {
     assert(result.disappearMidFrame > 17, "Disappear did not advance through authored frames");
     assert(result.disappearDuration >= 350, `Disappear completed too early (${Math.round(result.disappearDuration)}ms)`);
     assert(result.disappearFinalState === "hidden", `Disappear ended in ${result.disappearFinalState}`);
-    console.log("Answer bubble authored lifecycle browser check passed.");
+    console.log("Player spawn and answer bubble authored lifecycle browser check passed.");
   } finally {
     await browser?.close();
     child.kill("SIGTERM");

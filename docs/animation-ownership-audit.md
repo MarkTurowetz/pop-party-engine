@@ -50,7 +50,7 @@ Lifecycle playback is now joinable: a repeated request attaches its completion c
 | Avatar species | `player.avatar.shape` | `syncAvatarComponent` → `stopAtComponent("avatar", species)` | `avatars`: `Rex`, `Stego`, `Trike`, `Raptor`, `Bronto`, `Ankylo` | Semantic frame selection only. |
 | Choosing | `publicPlayer.needsInput === true` | `syncAvatarBehaviorComponent` → `ChoosingStart` | `player-avatar-behaviors` | Timeline owns scale/brightness motion. |
 | Submitted/finished choosing | `publicPlayer.needsInput === false` | `syncAvatarBehaviorComponent` → `ChoosingEnd` | `player-avatar-behaviors` | Timeline returns itself to `Default` through its authored `gotoAndPlay(Default)` command. |
-| Player widget shown/hidden | `room.playersShown` | `setShown` → player avatar/name/VIP MC lifecycle labels | nested player MC timelines | The action barrier waits for every directly invoked MC target; host concealment follows those callbacks. |
+| Player widget shown/hidden | `room.playersShown` | prepare avatar species/behavior, then play avatar/name/VIP MC lifecycle labels | nested player MC timelines | Spawn and show call `Appear`; each player contributes only its `playerAvatarMC` callback to the action barrier. Name and VIP timelines are fire-and-forget. |
 | Name/VIP changes | public player payload | `syncPlayerLabelComponents` | name/VIP MC lifecycle labels | Timeline driven. |
 
 No server code calls an animation API for players. It exposes `needsInput`; `stagePlayerRoster.ts` is the only selector for the choosing behavior timeline.

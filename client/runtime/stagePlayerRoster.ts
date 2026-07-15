@@ -359,12 +359,13 @@ class PlayerRosterRenderer {
     const previousPlayerName = tile.dataset.playerName || "";
     const previousPlayerVip = tile.dataset.playerVip === "true";
     const previousNeedsInput = tile.dataset.playerNeedsInput;
+    const isInitialRender = previousNeedsInput === undefined;
 
     renderer.render(runtimePlayerWidgetComponents(composition, player), canvas, {
       instant: true
     });
 
-    const avatarDuration = this.syncAvatarComponent(renderer, player);
+    const avatarStateDuration = this.syncAvatarComponent(renderer, player);
     const avatarBehaviorDuration = this.syncAvatarBehaviorComponent(renderer, player, {
       ...options,
       previousNeedsInput
@@ -380,8 +381,10 @@ class PlayerRosterRenderer {
     const labelDuration = this.syncPlayerLabelComponents(renderer, player, {
       ...options,
       previousPlayerName,
-      previousPlayerVip
+      previousPlayerVip,
+      isInitialRender
     });
+    const spawnDuration = isInitialRender ? this.playSpawnedPlayerWidget(renderer, player) : 0;
     tile.dataset.answerBubbleHasAnswer = answerState.hasAnswer ? "true" : "false";
     tile.dataset.answerBubbleVisible = answerState.visible ? "true" : "false";
     tile.dataset.answerBubbleNonce = answerState.nonce;
@@ -392,16 +395,12 @@ class PlayerRosterRenderer {
     tile.dataset.playerNeedsInput = player.needsInput === true ? "true" : "false";
     tile.dataset.playerAvatarShape = String((player.avatar as Dict)?.shape || "rex");
     this.layoutTiles();
-    return Math.max(duration, labelDuration, avatarDuration, avatarBehaviorDuration);
+    return Math.max(duration, labelDuration, avatarStateDuration, avatarBehaviorDuration, spawnDuration);
   }
 
   syncAvatarComponent(renderer: TreeRenderer, player: Dict): number {
     const label = avatarTimelineLabelForShape((player.avatar as Dict)?.shape);
-    const showDuration = renderer.isComponentVisible?.(PLAYER_AVATAR_MC_ID)
-      ? 0
-      : renderer.playComponent?.(PLAYER_AVATAR_MC_ID, "On", { instant: true }) || 0;
-    const frameDuration = renderer.stopAtComponent?.(AVATAR_FRAME_ID, label, { instant: true }) || 0;
-    return Math.max(showDuration, frameDuration);
+    return renderer.stopAtComponent?.(AVATAR_FRAME_ID, label, { instant: true }) || 0;
   }
 
   syncAvatarBehaviorComponent(renderer: TreeRenderer, player: Dict, options: Dict = {}): number {
@@ -458,6 +457,7 @@ class PlayerRosterRenderer {
   }
 
   syncPlayerLabelComponents(renderer: TreeRenderer, player: Dict, options: Dict = {}): number {
+    if (options.isInitialRender === true) return 0;
     const instant = options.instant === true;
     const previousPlayerName = String(options.previousPlayerName || "");
     const previousPlayerVip = options.previousPlayerVip === true;
@@ -479,6 +479,15 @@ class PlayerRosterRenderer {
       if (!previousPlayerVip || !vipVisible) duration = Math.max(duration, play(vipId, instant ? "On" : "Appear"));
     } else if (previousPlayerVip || vipVisible) {
       duration = Math.max(duration, play(vipId, instant ? "Off" : "Disappear"));
+    }
+    return duration;
+  }
+
+  playSpawnedPlayerWidget(renderer: TreeRenderer, player: Dict): number {
+    let duration = renderer.playComponent?.(PLAYER_AVATAR_MC_ID, "Appear", { instant: false }) || 0;
+    duration = Math.max(duration, renderer.playComponent?.(PLAYER_NAME_MC_ID, "Appear", { instant: false }) || 0);
+    if (playerVipRuntimeState(player).visible) {
+      duration = Math.max(duration, renderer.playComponent?.(PLAYER_VIP_MC_ID, "Appear", { instant: false }) || 0);
     }
     return duration;
   }
@@ -597,27 +606,14 @@ class PlayerRosterRenderer {
     if (!renderer || !player) return 0;
     const instant = options.instant === true;
     const animation = isShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
-    let duration = 0;
-    const barrier = typeof options.complete === "function" ? createActionCompletionBarrier() : null;
-    for (const componentId of [PLAYER_AVATAR_MC_ID, PLAYER_NAME_MC_ID]) {
-      const targetComplete = barrier?.addTarget();
-      const playOptions: Dict = { instant };
-      if (targetComplete) playOptions.complete = targetComplete;
-      const targetDuration = renderer.playComponent?.(componentId, animation, playOptions) || 0;
-      if (targetComplete && targetDuration <= 0) queueMicrotask(targetComplete);
-      duration = Math.max(duration, targetDuration);
-    }
+    const avatarComplete = typeof options.complete === "function" ? (options.complete as () => void) : null;
+    const avatarOptions: Dict = { instant };
+    if (avatarComplete) avatarOptions.complete = avatarComplete;
+    const avatarDuration = renderer.playComponent?.(PLAYER_AVATAR_MC_ID, animation, avatarOptions) || 0;
+    if (avatarComplete && avatarDuration <= 0) queueMicrotask(avatarComplete);
+    let duration = Math.max(avatarDuration, renderer.playComponent?.(PLAYER_NAME_MC_ID, animation, { instant }) || 0);
     if (playerVipRuntimeState(player).visible) {
-      const targetComplete = barrier?.addTarget();
-      const playOptions: Dict = { instant };
-      if (targetComplete) playOptions.complete = targetComplete;
-      const targetDuration = renderer.playComponent?.(PLAYER_VIP_MC_ID, animation, playOptions) || 0;
-      if (targetComplete && targetDuration <= 0) queueMicrotask(targetComplete);
-      duration = Math.max(duration, targetDuration);
-    }
-    if (barrier) {
-      barrier.promise.then(options.complete as () => void);
-      barrier.seal();
+      duration = Math.max(duration, renderer.playComponent?.(PLAYER_VIP_MC_ID, animation, { instant }) || 0);
     }
     return duration;
   }

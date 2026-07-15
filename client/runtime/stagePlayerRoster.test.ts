@@ -314,7 +314,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
 
     expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Appear", { instant: false });
     expect(stopAtComponent).toHaveBeenCalledWith("playerAnswerBubble", "Default", { instant: true });
-    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "On", { instant: true });
+    expect(playComponent).not.toHaveBeenCalledWith("player-avatar-mc", "On", expect.anything());
     expect(playComponent).toHaveBeenCalledWith("player-name-mc", "On", { instant: true });
     expect(playComponent).toHaveBeenCalledWith("vip-mc", "On", { instant: true });
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
@@ -575,7 +575,10 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         order.push(`${componentId}:${animation}`);
         return 333;
       }),
-      stopAtComponent: vi.fn(() => 0)
+      stopAtComponent: vi.fn((componentId: string, animation: string) => {
+        order.push(`stop:${componentId}:${animation}`);
+        return 0;
+      })
     };
     const roster = PartyGamePlayerRoster.createRenderer({
       getComposition: (id: string) => (id === PLAYER_WIDGET_COMPOSITION_ID ? composition : null)
@@ -599,8 +602,11 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(renderOptions).not.toHaveProperty("timeline");
     expect(order).toEqual([
       "render",
-      "player-avatar-mc:On",
+      "stop:avatar:Rex",
+      "stop:player-avatar-behaviors:Default",
+      "stop:playerAnswerBubble:Default",
       "player-answer-bubble-mc:Appear",
+      "player-avatar-mc:Appear",
       "player-name-mc:Appear"
     ]);
   });
@@ -643,8 +649,44 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(roster.setShown(false, { instant: true })).toBe(0);
     expect(classes.has("players-hidden")).toBe(true);
     expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Off", expect.objectContaining({ instant: true, complete: expect.any(Function) }));
-    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Off", expect.objectContaining({ instant: true, complete: expect.any(Function) }));
-    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Off", expect.objectContaining({ instant: true, complete: expect.any(Function) }));
+    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Off", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Off", { instant: true });
+  });
+
+  it("waits only for each player avatar MC when changing player visibility", async () => {
+    const tiles = ["p1", "p2"].map((playerId) => ({
+      dataset: { playerId, playerObjectCompositionId: PLAYER_WIDGET_COMPOSITION_ID }
+    })) as unknown as HTMLElement[];
+    const host = {
+      classList: { add: vi.fn(), contains: vi.fn(() => true), remove: vi.fn(), toggle: vi.fn() },
+      dataset: { visualVisible: "false" },
+      offsetWidth: 0,
+      querySelectorAll: () => tiles
+    } as unknown as HTMLElement;
+    const avatarCompletions: Array<() => void> = [];
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    for (const tile of tiles) {
+      roster.tilePlayers.set(tile, { id: tile.dataset.playerId, isVip: true });
+      roster.tileRenderers.set(tile, {
+        render: vi.fn(),
+        playComponent: vi.fn((componentId, _animation, options) => {
+          if (componentId === "player-avatar-mc") avatarCompletions.push(options?.complete as () => void);
+          else expect(options).not.toHaveProperty("complete");
+          return 300;
+        })
+      });
+    }
+    const complete = vi.fn();
+
+    expect(roster.setShown(true, { complete })).toBe(300);
+    expect(avatarCompletions).toHaveLength(2);
+    avatarCompletions[0]();
+    await Promise.resolve();
+    expect(complete).not.toHaveBeenCalled();
+    avatarCompletions[1]();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(complete).toHaveBeenCalledTimes(1);
   });
 
   it("renders point popup prefabs with a timeline fallback when no authored timeline exists", () => {
