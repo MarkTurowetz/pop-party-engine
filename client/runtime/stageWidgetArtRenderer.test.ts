@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PartyGameStageWidgetArt } from "./stageWidgetArtRenderer";
+import { artComponentBoundsInComposition, PartyGameStageWidgetArt } from "./stageWidgetArtRenderer";
 
 describe("PartyGameStageWidgetArt (ported widget-art-renderer)", () => {
   it("createRenderer returns the render surface", () => {
@@ -83,6 +83,36 @@ describe("PartyGameStageWidgetArt (ported widget-art-renderer)", () => {
       globals.Node = previousNode;
       globals.PartyGameArtObject = previousArtObject;
     }
+  });
+
+  it("resolves overlay bounds through a nested lobby widget prefab", () => {
+    const compositions: Record<string, Record<string, unknown>> = {
+      parent: {
+        id: "parent",
+        canvas: { width: 260, height: 300 },
+        components: [{
+          id: "join-qr-code-art",
+          kind: "reference",
+          artCompositionId: "child",
+          x: 130,
+          y: 150,
+          width: 260,
+          height: 300,
+          scale: 1
+        }]
+      },
+      child: {
+        id: "child",
+        canvas: { width: 260, height: 300 },
+        components: [{ id: "qr-placeholder", kind: "shape", x: 130, y: 124, width: 212, height: 212, scale: 1 }]
+      }
+    };
+
+    expect(artComponentBoundsInComposition(
+      compositions.parent,
+      "qr-placeholder",
+      (id) => compositions[id] || null
+    )).toEqual({ x: 130, y: 124, width: 212, height: 212 });
   });
 
   it("installs the global bridge on import", () => {

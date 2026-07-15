@@ -175,6 +175,27 @@ async function main() {
       layoutTextFieldText.components?.some((component) => component.kind === "text" && component.instanceLabel === "text"),
       "/api/art-assets Layout Text Field Text prefab did not expose its text child",
     );
+    for (const widget of [
+      { parentId: "countdown-popup", childId: "prefab-countdown-popup-art", referenceId: "countdown-popup-art" },
+      { parentId: "stage-code-panel", childId: "prefab-stage-code-panel-art", referenceId: "stage-code-panel-art" },
+      { parentId: "join-widget", childId: "prefab-join-prompt-art", referenceId: "join-prompt-art" },
+      { parentId: "join-qr-code", childId: "prefab-join-qr-code-art", referenceId: "join-qr-code-art" },
+    ]) {
+      const parent = artAssets.json.compositions.find((composition) => composition.id === widget.parentId);
+      const child = artAssets.json.compositions.find((composition) => composition.id === widget.childId);
+      assert(parent?.compositionKind === "prefab", `/api/art-assets did not expose ${widget.parentId} as a prefab`);
+      assert(
+        parent.components?.some(
+          (component) => component.kind === "reference" && component.artCompositionId === widget.childId,
+        ),
+        `/api/art-assets ${widget.parentId} did not reference ${widget.childId}`,
+      );
+      assert(
+        parent.timeline?.tracks?.some((track) => track.targetId === widget.referenceId),
+        `/api/art-assets ${widget.parentId} did not expose its authored lifecycle track`,
+      );
+      assert(child?.compositionKind === "prefab", `/api/art-assets did not expose ${widget.childId} as a prefab`);
+    }
 
     const constants = await request({ port, pathname: "/api/game-constants", parseJson: true });
     assertJsonOk(constants, "/api/game-constants");

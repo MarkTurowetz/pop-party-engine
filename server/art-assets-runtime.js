@@ -16,6 +16,15 @@ const {
   migrateLayoutTextFieldWidgetKind,
   migrateLayoutTextFieldWidgetTimeline
 } = require("../shared/layout-text-art");
+const {
+  legacyLobbyWidgetChildOverride,
+  lobbyWidgetChildIdForParent,
+  migrateLobbyWidgetComponents,
+  migrateLobbyWidgetKind,
+  migrateLobbyWidgetName,
+  migrateLobbyWidgetReferenceBounds,
+  migrateLobbyWidgetTimeline
+} = require("../shared/lobby-widget-art");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 
 function createArtAssetsRuntime({
@@ -372,21 +381,30 @@ function createArtAssetsRuntime({
     migrateVotingCardVoterContainerDefaults(composition.id, components);
     migratePlayerAnswerBubbleLayerOrder(composition.id, components);
     migrateLayoutTextFieldWidgetComponents(composition.id, components);
+    migrateLobbyWidgetComponents(composition.id, components);
     const canvas = {
       width: cleanNumber(override?.canvas?.width, Number(composition.canvas?.width || 1), 1),
       height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
     };
     migrateGeneratedWidgetCanvas(composition.id, canvas);
     migratePlayerObjectCanvas(composition.id, canvas);
-    const timelineOverride = migrateLayoutTextFieldWidgetTimeline(composition.id, override?.timeline, composition.timeline);
+    migrateLobbyWidgetReferenceBounds(composition.id, components, canvas);
+    let timelineOverride = migrateLayoutTextFieldWidgetTimeline(composition.id, override?.timeline, composition.timeline);
+    timelineOverride = migrateLobbyWidgetTimeline(composition.id, timelineOverride, composition.timeline);
     const timeline = normalizeTimeline(timelineOverride, composition.timeline);
     const normalized = {
       id: composition.id,
-      name: cleanText(override?.name, composition.name || "Art Asset"),
+      name: cleanText(
+        migrateLobbyWidgetName(composition.id, override?.name || composition.name),
+        composition.name || "Art Asset"
+      ),
       description: cleanText(override?.description, composition.description || "Editable art asset.", 240),
       surface: normalizeCompositionSurface(override?.surface || composition.surface),
       compositionKind: normalizeCompositionKind(
-        migrateLayoutTextFieldWidgetKind(composition.id, override?.compositionKind || composition.compositionKind)
+        migrateLobbyWidgetKind(
+          composition.id,
+          migrateLayoutTextFieldWidgetKind(composition.id, override?.compositionKind || composition.compositionKind)
+        )
       ),
       isCustom: Boolean(composition.isCustom || override?.isCustom),
       timelineArchitectureVersion: cleanNumber(
@@ -601,7 +619,38 @@ function createArtAssetsRuntime({
   }
 
   function publicArtComposition(composition, manifest) {
-    return normalizeComposition(composition, manifest.compositions?.[composition.id] || null);
+    const explicitOverride = manifest.compositions?.[composition.id] || null;
+    const migratedChildOverride = explicitOverride
+      ? null
+      : legacyLobbyWidgetChildOverride(composition.id, manifest.compositions || {});
+    return normalizeComposition(composition, explicitOverride || migratedChildOverride);
+  }
+
+  function artCompositionManifestRecord(composition, updatedAt = null) {
+    return {
+      name: composition.name,
+      description: composition.description,
+      surface: composition.surface,
+      compositionKind: composition.compositionKind,
+      isCustom: composition.isCustom,
+      timelineArchitectureVersion: composition.timelineArchitectureVersion,
+      canvas: composition.canvas,
+      components: composition.components,
+      ...(composition.timeline ? { timeline: composition.timeline } : {}),
+      updatedAt: updatedAt || composition.updatedAt || new Date().toISOString()
+    };
+  }
+
+  function materializeLegacyLobbyWidgetChild(manifest, parentCompositionId) {
+    const childId = lobbyWidgetChildIdForParent(parentCompositionId);
+    if (!childId) return;
+    manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
+    if (manifest.compositions[childId]) return;
+    const derivedOverride = legacyLobbyWidgetChildOverride(childId, manifest.compositions);
+    const childDefinition = artCompositions.find((composition) => composition.id === childId);
+    if (!derivedOverride || !childDefinition) return;
+    const normalizedChild = normalizeComposition(childDefinition, derivedOverride);
+    manifest.compositions[childId] = artCompositionManifestRecord(normalizedChild, derivedOverride.updatedAt);
   }
 
   function deletedCompositionIds(manifest) {
@@ -813,21 +862,11 @@ function createArtAssetsRuntime({
     };
     const normalized = normalizeComposition(definition, incoming);
     manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
+    materializeLegacyLobbyWidgetChild(manifest, definition.id);
     manifest.deletedCompositionIds = Array.isArray(manifest.deletedCompositionIds)
       ? manifest.deletedCompositionIds.filter((id) => cleanId(id) !== definition.id)
       : [];
-    manifest.compositions[definition.id] = {
-      name: normalized.name,
-      description: normalized.description,
-      surface: normalized.surface,
-      compositionKind: normalized.compositionKind,
-      isCustom: normalized.isCustom,
-      timelineArchitectureVersion: normalized.timelineArchitectureVersion,
-      canvas: normalized.canvas,
-      components: normalized.components,
-      ...(normalized.timeline ? { timeline: normalized.timeline } : {}),
-      updatedAt: new Date().toISOString()
-    };
+    manifest.compositions[definition.id] = artCompositionManifestRecord(normalized);
     manifest.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
     const validationIssues = collectArtArchitectureIssues(allPublicArtCompositions(manifest));
     if (validationIssues.length) {
@@ -877,21 +916,11 @@ function createArtAssetsRuntime({
     candidate.compositions = candidate.compositions && typeof candidate.compositions === "object" ? candidate.compositions : {};
     const updatedAt = new Date().toISOString();
     for (const composition of normalized) {
+      materializeLegacyLobbyWidgetChild(candidate, composition.id);
       candidate.deletedCompositionIds = Array.isArray(candidate.deletedCompositionIds)
         ? candidate.deletedCompositionIds.filter((id) => cleanId(id) !== composition.id)
         : [];
-      candidate.compositions[composition.id] = {
-        name: composition.name,
-        description: composition.description,
-        surface: composition.surface,
-        compositionKind: composition.compositionKind,
-        isCustom: composition.isCustom,
-        timelineArchitectureVersion: composition.timelineArchitectureVersion,
-        canvas: composition.canvas,
-        components: composition.components,
-        ...(composition.timeline ? { timeline: composition.timeline } : {}),
-        updatedAt
-      };
+      candidate.compositions[composition.id] = artCompositionManifestRecord(composition, updatedAt);
     }
     candidate.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
     const validationIssues = collectArtArchitectureIssues(allPublicArtCompositions(candidate));

@@ -22,6 +22,58 @@ interface TreeRenderer {
   playAll?: (animation: string, options?: Dict) => number;
 }
 
+export interface ArtComponentBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export function artComponentBoundsInComposition(
+  composition: Dict | null,
+  componentId: string,
+  getComposition: (id: string) => Dict | null
+): ArtComponentBounds | null {
+  if (!composition || !componentId) return null;
+  const rootCanvas = (composition.canvas as Dict) || { width: 1, height: 1 };
+  const rootRegion = {
+    left: 0,
+    top: 0,
+    width: Math.max(1, Number(rootCanvas.width || 1)),
+    height: Math.max(1, Number(rootCanvas.height || 1))
+  };
+
+  const visit = (current: Dict, region: typeof rootRegion, referencePath: Set<string>): ArtComponentBounds | null => {
+    const canvas = (current.canvas as Dict) || { width: 1, height: 1 };
+    const canvasWidth = Math.max(1, Number(canvas.width || 1));
+    const canvasHeight = Math.max(1, Number(canvas.height || 1));
+    for (const component of (current.components as Dict[]) || []) {
+      const scale = Number.isFinite(Number(component.scale)) ? Number(component.scale) : 1;
+      const width = (Number(component.width || 1) / canvasWidth) * region.width * scale;
+      const height = (Number(component.height || 1) / canvasHeight) * region.height * scale;
+      const x = region.left + (Number(component.x || 0) / canvasWidth) * region.width;
+      const y = region.top + (Number(component.y || 0) / canvasHeight) * region.height;
+      if (component.id === componentId) return { x, y, width, height };
+      if (Array.isArray(component.children) && component.children.length) {
+        const nestedChild = visit({ ...current, components: component.children }, region, referencePath);
+        if (nestedChild) return nestedChild;
+      }
+      if (component.kind !== "reference") continue;
+      const referencedId = String(component.artCompositionId || "");
+      if (!referencedId || referencePath.has(referencedId)) continue;
+      const referenced = getComposition(referencedId);
+      if (!referenced) continue;
+      const nextPath = new Set(referencePath);
+      nextPath.add(referencedId);
+      const nested = visit(referenced, { left: x - width / 2, top: y - height / 2, width, height }, nextPath);
+      if (nested) return nested;
+    }
+    return null;
+  };
+
+  return visit(composition, rootRegion, new Set([String(composition.id || "")]));
+}
+
 function createRenderer(options: Dict = {}) {
   const documentRef = (options.document as Document) || globalThis.document;
   const visualAnimation = options.visualAnimation || w().visualAnimation;
@@ -127,25 +179,15 @@ function createRenderer(options: Dict = {}) {
     return renderResult(host, compositionId, textOverrides, renderOptions)?.composition || null;
   }
 
-  function componentById(composition: Dict | null, componentId: string): Dict | null {
-    const stack = [...((composition?.components as Dict[]) || [])];
-    while (stack.length) {
-      const component = stack.shift() as Dict;
-      if (component.id === componentId) return component;
-      stack.push(...((component.children as Dict[]) || []));
-    }
-    return null;
-  }
-
   function positionOverlay(host: El | null, composition: Dict | null, componentId: string, overlay: El | null): void {
-    const component = componentById(composition, componentId);
-    if (!host || !component || !overlay) return;
+    const bounds = artComponentBoundsInComposition(composition, componentId, getComposition);
+    if (!host || !composition || !bounds || !overlay) return;
     const canvas = (composition!.canvas as Dict) || { width: 1, height: 1 };
     overlay.classList.add("stage-widget-art-overlay");
-    overlay.style.left = `${(Number(component.x || 0) / Math.max(1, Number(canvas.width || 1))) * 100}%`;
-    overlay.style.top = `${(Number(component.y || 0) / Math.max(1, Number(canvas.height || 1))) * 100}%`;
-    overlay.style.width = `${(Number(component.width || 1) / Math.max(1, Number(canvas.width || 1))) * 100}%`;
-    overlay.style.height = `${(Number(component.height || 1) / Math.max(1, Number(canvas.height || 1))) * 100}%`;
+    overlay.style.left = `${(bounds.x / Math.max(1, Number(canvas.width || 1))) * 100}%`;
+    overlay.style.top = `${(bounds.y / Math.max(1, Number(canvas.height || 1))) * 100}%`;
+    overlay.style.width = `${(bounds.width / Math.max(1, Number(canvas.width || 1))) * 100}%`;
+    overlay.style.height = `${(bounds.height / Math.max(1, Number(canvas.height || 1))) * 100}%`;
     overlay.style.transform = "translate(-50%, -50%)";
   }
 
