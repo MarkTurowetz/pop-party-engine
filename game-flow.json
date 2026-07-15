@@ -8,14 +8,14 @@
         "y": 70
       },
       "startNodePosition": {
-        "x": 715,
+        "x": 834,
         "y": 70
       },
       "returnNodePosition": {
-        "x": 705,
-        "y": 1530
+        "x": 824,
+        "y": 1654
       },
-      "entryTargetActionId": "lobby-action-mqojohry",
+      "entryTargetActionId": "lobby-action-mrmi772x",
       "nextStateTargetId": "intro",
       "actions": [
         {
@@ -29,8 +29,8 @@
           },
           "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
-            "x": 670,
-            "y": 1022
+            "x": 789,
+            "y": 1042
           },
           "subActions": [],
           "trigger": "onCountdownComplete",
@@ -50,8 +50,8 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 670,
-            "y": 260
+            "x": 789,
+            "y": 430
           },
           "nextTargetActionId": "lobby-action-mqpt9z90"
         },
@@ -69,8 +69,27 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 670,
-            "y": 1276
+            "x": 789,
+            "y": 1246
+          },
+          "nextTargetActionId": "lobby-action-mrmi8fie"
+        },
+        {
+          "id": "lobby-action-mrmi8fie",
+          "name": "End Moment",
+          "type": "endMoment",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 789,
+            "y": 1450
           },
           "nextTargetActionId": "return"
         },
@@ -88,8 +107,8 @@
           "isShown": false,
           "subActions": [],
           "nodePosition": {
-            "x": 670,
-            "y": 514
+            "x": 789,
+            "y": 634
           },
           "nextTargetActionId": "lobby-action-mqw4vt62"
         },
@@ -107,10 +126,29 @@
           "isShown": true,
           "subActions": [],
           "nodePosition": {
-            "x": 670,
-            "y": 768
+            "x": 789,
+            "y": 838
           },
           "nextTargetActionId": "lobby-countdown-complete"
+        },
+        {
+          "id": "lobby-action-mrmi772x",
+          "name": "Start Moment",
+          "type": "startMoment",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 789,
+            "y": 226
+          },
+          "nextTargetActionId": "lobby-action-mqojohry"
         }
       ]
     },
