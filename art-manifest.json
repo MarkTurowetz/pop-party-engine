@@ -10377,6 +10377,7 @@
         "folder-b5fd5048-989e-4076-917e-f37779efddbb": [
           "composition:stage-code-panel",
           "composition:join-widget",
+          "composition:prefab-layout-text-field-text",
           "composition:waiting-status-widget",
           "composition:countdown-popup",
           "composition:join-qr-code"
@@ -10394,7 +10395,6 @@
         ],
         "folder-3a090594-0d6c-406e-a758-05842b36ad51": [
           "composition:voting-card",
-          "composition:crafting-timer-widget",
           "composition:prefab-voting-card-art-mc",
           "composition:prefab-voting-card-answer-mc",
           "composition:prefab-voting-card-correctness-state"
