@@ -10,7 +10,6 @@ function context() {
     runStageWipe: vi.fn(),
     playStageAudioAction: vi.fn(),
     playStageLayoutGameObjectAnimationForAction: vi.fn(() => 250),
-    playerAnswerBubbleAnimationRemaining: vi.fn(() => 0),
     revealPlayerAnswerCorrectnessForAction: vi.fn(() => 400),
     setPlayerAnswerBubblesShown: vi.fn(() => 500),
     voteRevealDurationMs: () => 0
@@ -89,6 +88,27 @@ describe("PartyGameStageActionRunners (ported)", () => {
     vi.advanceTimersByTime(500);
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "hide-wrong");
     vi.useRealTimers();
+  });
+
+  it("waits for the answer timeline completion contract instead of its estimated duration", async () => {
+    const c = context() as ReturnType<typeof context> & {
+      setPlayerAnswerBubblesShownForAction?: ReturnType<typeof vi.fn>;
+    };
+    let finishTimeline: () => void = () => {};
+    c.setPlayerAnswerBubblesShownForAction = vi.fn(() => new Promise<void>((resolve) => {
+      finishTimeline = resolve;
+    }));
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    const action = { id: "show-answers", type: "setPlayerAnswersShown", isShown: true, instant: false };
+
+    runner.run(action, { isPrimary: true, actionKey: "k" });
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+
+    finishTimeline();
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "show-answers");
   });
 
   it("explicitly reveals each player answer correctness state before completing", () => {

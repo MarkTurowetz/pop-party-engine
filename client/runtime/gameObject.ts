@@ -102,6 +102,7 @@ class GameObject {
       updateClass: options.updateClass || ""
     });
     if (this.visual?.element === this.target && this.visualOptionsKey === nextVisualOptionsKey) return this.visual;
+    this.visual?.cancel();
     this.visualOptionsKey = nextVisualOptionsKey;
     this.visual = PartyGameVisualObject.createCssVisualObject({
       element: this.target,

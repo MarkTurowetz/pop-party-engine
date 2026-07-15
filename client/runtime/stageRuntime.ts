@@ -202,6 +202,17 @@ function setPlayerAnswerBubblesShown(isShown: boolean, options: Dict = {}): numb
   return ((playerRosterRenderer() as { setAnswerBubblesShown?: (s: boolean, o: Dict) => number } | null)?.setAnswerBubblesShown?.(isShown, options) as number) || 0;
 }
 
+function setPlayerAnswerBubblesShownForAction(isShown: boolean, options: Dict = {}): Promise<void> {
+  return new Promise((resolve) => {
+    const renderer = playerRosterRenderer() as { setAnswerBubblesShown?: (s: boolean, o: Dict) => number } | null;
+    if (!renderer?.setAnswerBubblesShown) {
+      resolve();
+      return;
+    }
+    renderer.setAnswerBubblesShown(isShown, { ...options, complete: resolve });
+  });
+}
+
 function revealPlayerAnswerCorrectnessForAction(action: Dict): number {
   return ((playerRosterRenderer() as { revealAnswerCorrectness?: (o: Dict) => number } | null)?.revealAnswerCorrectness?.({
     instant: action.instant === true,
@@ -209,8 +220,8 @@ function revealPlayerAnswerCorrectnessForAction(action: Dict): number {
   }) as number) || 0;
 }
 
-function playerAnswerBubbleAnimationRemaining(): number {
-  return ((playerRosterRenderer() as { answerBubbleAnimationRemaining?: () => number } | null)?.answerBubbleAnimationRemaining?.() as number) || 0;
+function playerAnswerBubblesAnimating(): boolean {
+  return (playerRosterRenderer() as { answerBubblesAnimating?: () => boolean } | null)?.answerBubblesAnimating?.() === true;
 }
 
 function renderStagePlayers(players: Dict[], options: Dict = {}): void {
@@ -636,7 +647,7 @@ function applyStageState(lobby: Dict): void {
   });
   setPlayersShown(lobby.playersShown !== false);
   const nextAnswersShown = lobby.playerAnswersShown !== false;
-  const answersAreStillAnimating = playerAnswerBubbleAnimationRemaining() > 0;
+  const answersAreStillAnimating = playerAnswerBubblesAnimating();
   const hasParkedShownBubbles = (playerRosterRenderer() as { hasParkedShownBubbles?: () => boolean } | null)?.hasParkedShownBubbles?.() === true;
   const answersWereAlreadyShown = (playerRosterRenderer() as { currentAnswerBubblesShown?: () => boolean } | null)?.currentAnswerBubblesShown?.() === nextAnswersShown;
   setPlayerAnswerBubblesShown(nextAnswersShown, { instant: answersWereAlreadyShown && !answersAreStillAnimating && !hasParkedShownBubbles });
@@ -757,8 +768,8 @@ let stageActionRunner: Dict | null = null;
 function getStageActionRunner(): Dict | null {
   if (!stageActionRunner && w().PartyGameStageActionRunners) {
     stageActionRunner = (w().PartyGameStageActionRunners as unknown as { createRunner: (o: Dict) => Dict }).createRunner({
-      applyFlowActionEffect, completeFlowAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, playerAnswerBubbleAnimationRemaining, revealPlayerAnswerCorrectnessForAction,
-      playStageLayoutGameObjectAnimationForAction: playStageLayoutGameObjectAnimationForStageAction, runStageWipe, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShown, setPlayersShownForAction, setStageWipeShownForAction, setStageTextObject, voteRevealDurationMs
+      applyFlowActionEffect, completeFlowAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, revealPlayerAnswerCorrectnessForAction,
+      playStageLayoutGameObjectAnimationForAction: playStageLayoutGameObjectAnimationForStageAction, runStageWipe, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShown, setPlayerAnswerBubblesShownForAction, setPlayersShownForAction, setStageWipeShownForAction, setStageTextObject, voteRevealDurationMs
     });
   }
   return stageActionRunner;

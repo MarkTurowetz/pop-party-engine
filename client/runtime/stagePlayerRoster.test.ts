@@ -320,6 +320,114 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
   });
 
+  it("joins an in-flight answer appear so flow completion waits for its authored stop", () => {
+    const roster = PartyGamePlayerRoster.createRenderer({});
+    const complete = vi.fn();
+    const playComponent = vi.fn((_componentId: string, _animation: string, options?: Record<string, unknown>) => {
+      (options?.complete as (() => void) | undefined)?.();
+      return 240;
+    });
+    const renderer = {
+      render: vi.fn(),
+      componentLifecycleState: vi.fn(() => "appearing"),
+      isComponentVisible: vi.fn(() => true),
+      playComponent,
+      stopAtComponent: vi.fn(() => 0)
+    };
+
+    expect(
+      roster.syncAnswerBubbleComponent(
+        renderer,
+        { hasAnswer: true, visible: true, text: "YES", nonce: "1", correctness: "" },
+        { previousVisible: true, previousNonce: "1", previousText: "YES", instant: true, complete }
+      )
+    ).toBe(240);
+
+    expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Appear", {
+      instant: false,
+      complete
+    });
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it("joins an in-flight answer disappear instead of restarting it", () => {
+    const roster = PartyGamePlayerRoster.createRenderer({});
+    const complete = vi.fn();
+    const playComponent = vi.fn(() => 180);
+    const renderer = {
+      render: vi.fn(),
+      componentLifecycleState: vi.fn(() => "disappearing"),
+      isComponentVisible: vi.fn(() => true),
+      playComponent,
+      stopAtComponent: vi.fn(() => 0)
+    };
+
+    expect(
+      roster.syncAnswerBubbleComponent(
+        renderer,
+        { hasAnswer: true, visible: false, text: "YES", nonce: "1", correctness: "" },
+        { previousVisible: false, previousNonce: "1", previousText: "YES", instant: true, complete }
+      )
+    ).toBe(180);
+
+    expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Disappear", {
+      instant: false,
+      complete
+    });
+  });
+
+  it("reports answer lifecycle playback from the timeline state instead of a duration estimate", () => {
+    const tile = {} as HTMLElement;
+    const host = { querySelectorAll: () => [tile] } as unknown as HTMLElement;
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    const componentLifecycleState = vi.fn(() => "appearing");
+    roster.tileRenderers.set(tile, { render: vi.fn(), componentLifecycleState });
+
+    expect(roster.answerBubblesAnimating()).toBe(true);
+
+    componentLifecycleState.mockReturnValue("shown");
+    expect(roster.answerBubblesAnimating()).toBe(false);
+  });
+
+  it("completes an answer visibility action only after every targeted timeline finishes", () => {
+    const tiles = ["p1", "p2"].map((playerId) => ({
+      dataset: {
+        answerBubbleCorrectness: "wrong",
+        answerBubbleNonce: `answer-${playerId}`,
+        answerBubbleText: playerId,
+        answerBubbleVisible: "false",
+        playerId
+      }
+    })) as unknown as HTMLElement[];
+    const host = { querySelectorAll: () => tiles } as unknown as HTMLElement;
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    const timelineCompletions: Array<() => void> = [];
+    for (const tile of tiles) {
+      roster.tilePlayers.set(tile, {
+        id: tile.dataset.playerId,
+        displayedAnswer: { correct: false, hidden: true, nonce: tile.dataset.answerBubbleNonce, text: tile.dataset.answerBubbleText }
+      });
+      roster.tileRenderers.set(tile, {
+        render: vi.fn(),
+        componentLifecycleState: vi.fn(() => "disappearing"),
+        playComponent: vi.fn((_componentId, _animation, options) => {
+          timelineCompletions.push(options?.complete as () => void);
+          return tile.dataset.playerId === "p1" ? 180 : 300;
+        }),
+        stopAtComponent: vi.fn(() => 0)
+      });
+    }
+    const complete = vi.fn();
+
+    expect(roster.setAnswerBubblesShown(false, { playerFilter: "wrong", complete })).toBe(300);
+    expect(timelineCompletions).toHaveLength(2);
+
+    timelineCompletions[0]();
+    expect(complete).not.toHaveBeenCalled();
+    timelineCompletions[1]();
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
   it("changes correctness only by selecting the authored semantic state", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     const calls: string[] = [];

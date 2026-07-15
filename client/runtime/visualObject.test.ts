@@ -198,7 +198,42 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualVisible).toBe("false");
   });
 
-  it("keeps an object logically shown while it is appearing and ignores duplicate appear calls", () => {
+  it("does not cancel an authored timeline when that timeline changes visibility", () => {
+    const element = createFakeElement(["hidden"]);
+    const complete = vi.fn();
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      timelineCommandHandler: (detail) => {
+        if (detail.command.type === "setVisible") {
+          visual.applyCommandVisibility(detail.command.target !== "false");
+        }
+      },
+      timeline: normalizeTimeline({
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "Appear", frame: 0 }],
+        commands: [
+          { frame: 0, type: "setVisible", target: "true" },
+          { frame: 2, type: "stop" }
+        ],
+        tracks: []
+      })
+    });
+
+    expect(visual.play("Appear", { complete })).toBe(200);
+    const token = element.dataset.visualAnimationToken;
+    expect(element.dataset.visualState).toBe("appearing");
+    expect(element.dataset.visualAnimationToken).toBe(token);
+
+    vi.advanceTimersByTime(200);
+
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(element.dataset.visualAnimationToken).toBe(token);
+    expect(element.dataset.visualState).toBe("shown");
+  });
+
+  it("keeps an object logically shown and joins duplicate appear calls to the active timeline", () => {
     const element = createFakeElement(["hidden"]);
     const visual = PartyGameVisualObject.createCssVisualObject({
       element,
@@ -212,12 +247,14 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualVisible).toBe("true");
     expect(visual.isVisible()).toBe(true);
 
-    expect(visual.play("appear")).toBe(0);
+    const joinedComplete = vi.fn();
+    expect(visual.play("appear", { complete: joinedComplete })).toBe(100);
     expect(element.dataset.visualState).toBe("appearing");
 
     vi.advanceTimersByTime(100);
     expect(element.dataset.visualState).toBe("shown");
     expect(element.classList.contains("hidden")).toBe(false);
+    expect(joinedComplete).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a disappearing object logically shown until the disappear finishes", () => {
@@ -243,7 +280,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(visual.isVisible()).toBe(false);
   });
 
-  it("restarts a disappear animation when disappear is requested while already disappearing", () => {
+  it("joins a duplicate disappear request without restarting the authored timeline", () => {
     const element = createFakeElement();
     const visual = PartyGameVisualObject.createCssVisualObject({
       element,
@@ -256,17 +293,15 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     const firstToken = element.dataset.visualAnimationToken;
 
     vi.advanceTimersByTime(50);
-    expect(visual.play("disappear")).toBe(100);
+    const joinedComplete = vi.fn();
+    expect(visual.play("disappear", { complete: joinedComplete })).toBe(50);
     const secondToken = element.dataset.visualAnimationToken;
-    expect(secondToken).not.toBe(firstToken);
-
-    vi.advanceTimersByTime(50);
-    expect(element.dataset.visualState).toBe("disappearing");
-    expect(visual.isVisible()).toBe(true);
+    expect(secondToken).toBe(firstToken);
 
     vi.advanceTimersByTime(50);
     expect(element.dataset.visualState).toBe("hidden");
     expect(visual.isVisible()).toBe(false);
+    expect(joinedComplete).toHaveBeenCalledTimes(1);
   });
 
   it("lets an instant disappear override an in-flight disappear immediately", () => {

@@ -36,6 +36,10 @@ Before build 1.0.17.965, `ArtObjectView.update` reapplied the component's static
 
 `CssVisualObject.reapplyTimelineFrame` now restores the active frame without stopping, restarting, or rescheduling playback. `ArtObjectView.update` invokes it after all children reconcile. The outer renderer still reapplies its root frame last, preserving the intended parent-over-child ordering.
 
+A second interruption path was found after build 1.0.17.965. A single lobby payload could start an answer-bubble lifecycle during `renderStagePlayers`, request the same lifecycle again during answer visibility reconciliation, and then request it a third time from the action runner. Repeated `Disappear` calls restarted the timeline; repeated `Appear` calls could be converted to instant `On`, while the action runner advanced from an estimated duration. In addition, a timeline's own authored `visible = true` / `visible = false` command replaced that timeline's animation token and discarded its completion listeners.
+
+Lifecycle playback is now joinable: a repeated request attaches its completion callback to the already-running timeline without changing its token or current frame. Authored visibility commands update visibility without cancelling the timeline that emitted them. Reconciliation reads the actual `appearing` / `disappearing` lifecycle state instead of an estimated end timestamp.
+
 ## Player path
 
 | Gameplay fact | Source | Stage selector | Authored timeline | Status |
@@ -81,7 +85,7 @@ The reveal action still receives authoritative `correctPlayerIds` and `incorrect
 
 These paths do not set answer correctness, avatar behavior, or voting correctness, but they still prevent the entire stage from being purely event-complete:
 
-- `stageActionRunners.ts` completes most visual actions with `setTimeout(duration)`. The timeline player already supports a real `complete` callback, but most stage wrapper APIs reduce playback to a number before it reaches the action runner.
+- `stageActionRunners.ts` still completes several visual actions with `setTimeout(duration)`. Player answer visibility now preserves and awaits the real timeline completion callback; the remaining action families still need the same migration.
 - Voting-card voter staggering uses `setTimeout`, and voting-card removal/layer hiding waits for returned numeric durations.
 - The generic `CssVisualObject` retains CSS-class lifecycle fallbacks for targets without authored timelines.
 - Player roster host/tile CSS transitions remain as fallback/layout concealment. Player widget parts use authored MC timelines when the prefab renderer is available.
@@ -97,7 +101,7 @@ Explicit timeline `emit` commands are also supported and dispatched as `party-ga
 Recommended migration order:
 
 1. Introduce a `{ duration, completed }` or Promise-based playback result while retaining numeric duration compatibility.
-2. Convert player visibility/answer lifecycle actions to await the actual timeline completion.
+2. Convert the remaining player visibility actions to await actual timeline completion. Answer-bubble visibility is complete.
 3. Convert voting-card reveal, stagger, removal, and layer hiding to authored completion/beat events.
 4. Remove the CSS lifecycle and legacy voting-composition fallbacks after migration checks confirm no supported game depends on them.
 5. Add a development warning whenever a stage action falls back to numeric duration or CSS lifecycle playback.
@@ -112,3 +116,6 @@ The automated tests now verify that:
 - a correctness-only data change does not play the answer-content `Update` lifecycle;
 - setting or clearing displayed correctness preserves the answer-content nonce;
 - choosing continues to route only through `ChoosingStart`, `ChoosingEnd`, and authored return to `Default`.
+- repeated answer `Appear` / `Disappear` requests join the active timeline without restarting or snapping to `On` / `Off`;
+- answer visibility actions complete only after every targeted bubble timeline reaches its authored stop.
+- the shipped nested player-answer prefab passes a real-browser check for uninterrupted `Appear`, persistent `Correct`, uninterrupted `Disappear`, and completion at the authored stop.

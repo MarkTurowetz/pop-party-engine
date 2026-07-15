@@ -20,6 +20,7 @@ interface GameObjectApi {
 }
 interface TreeRenderer {
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
+  componentLifecycleState?: (componentId: string) => string;
   isComponentVisible?: (componentId: string) => boolean;
   playAll?: (animation: string, options?: Dict) => number;
   playComponent?: (componentId: string, animation: string, options?: Dict) => number;
@@ -242,7 +243,6 @@ class PlayerRosterRenderer {
   pointPopupRenderers = new WeakMap<El, TreeRenderer>();
   resizeObserver: ResizeObserver | null = null;
   renderedAnswersShown = true;
-  answerAnimationEndsAt = 0;
   rosterHideTimer: number | null = null;
 
   constructor(options: Dict = {}) {
@@ -425,8 +425,12 @@ class PlayerRosterRenderer {
     const previousNonce = String(options.previousNonce || "");
     const previousText = String(options.previousText || "");
     const targetId = PLAYER_ANSWER_BUBBLE_MC_ID;
-    const play = (animation: string) =>
-      renderer.playComponent?.(targetId, animation, { instant }) || 0;
+    const lifecycleState = renderer.componentLifecycleState?.(targetId) || (renderer.isComponentVisible?.(targetId) ? "shown" : "hidden");
+    const play = (animation: string, playInstant = instant) => {
+      const playOptions: Dict = { instant: playInstant };
+      if (typeof options.complete === "function") playOptions.complete = options.complete;
+      return renderer.playComponent?.(targetId, animation, playOptions) || 0;
+    };
     const stateDuration = renderer.stopAtComponent?.(
       PLAYER_ANSWER_BUBBLE_STATE_ID,
       playerAnswerBubbleStateLabel(state),
@@ -434,13 +438,19 @@ class PlayerRosterRenderer {
     ) || 0;
     let lifecycleDuration = 0;
     if (!state.visible) {
-      lifecycleDuration = previousVisible || renderer.isComponentVisible?.(targetId)
+      lifecycleDuration = lifecycleState === "disappearing"
+        ? play("Disappear", false)
+        : previousVisible || lifecycleState === "shown" || lifecycleState === "appearing"
         ? play(instant ? "Off" : "Disappear")
         : play("Off");
-    } else if (!previousVisible || !renderer.isComponentVisible?.(targetId)) {
+    } else if (lifecycleState === "appearing") {
+      lifecycleDuration = play("Appear", false);
+    } else if (!previousVisible || lifecycleState === "hidden") {
       lifecycleDuration = play("Appear");
     } else if (previousNonce !== state.nonce || previousText !== state.text) {
       lifecycleDuration = play("Update");
+    } else if (typeof options.complete === "function") {
+      options.complete();
     }
 
     return Math.max(lifecycleDuration, stateDuration);
@@ -673,8 +683,13 @@ class PlayerRosterRenderer {
     return this.renderedAnswersShown !== false;
   }
 
-  answerBubbleAnimationRemaining(): number {
-    return Math.max(0, this.answerAnimationEndsAt - Date.now());
+  answerBubblesAnimating(): boolean {
+    for (const tile of this.playerWidgetTiles()) {
+      const renderer = this.tileRenderers.get(tile);
+      const lifecycleState = renderer?.componentLifecycleState?.(PLAYER_ANSWER_BUBBLE_MC_ID);
+      if (lifecycleState === "appearing" || lifecycleState === "disappearing") return true;
+    }
+    return false;
   }
 
   hasParkedShownBubbles(): boolean {
@@ -687,7 +702,6 @@ class PlayerRosterRenderer {
 
   resetAnswerBubbles(): void {
     this.renderedAnswersShown = true;
-    this.answerAnimationEndsAt = 0;
   }
 
   revealAnswerCorrectness(options: Dict = {}): number {
@@ -725,39 +739,62 @@ class PlayerRosterRenderer {
   setAnswerBubblesShown(isShown: boolean, options: Dict = {}): number {
     if (!this.host) return 0;
     const instant = options.instant === true;
+    const complete = typeof options.complete === "function" ? (options.complete as () => void) : null;
     const playerFilter = String(options.playerFilter || "all").trim().toLowerCase() || "all";
-    const remainingDuration = this.answerBubbleAnimationRemaining();
-    const wasShown = this.currentAnswerBubblesShown();
     if (playerFilter === "all") this.renderedAnswersShown = isShown !== false;
-    if (playerFilter === "all" && !instant && wasShown === this.renderedAnswersShown && remainingDuration > 0) return remainingDuration;
 
     let duration = 0;
+    let pendingCompletions = 0;
+    let schedulingCompletions = true;
+    let completionSent = false;
+    const finishIfComplete = () => {
+      if (!complete || completionSent || schedulingCompletions || pendingCompletions > 0) return;
+      completionSent = true;
+      complete();
+    };
+    const nextCompletion = () => {
+      pendingCompletions += 1;
+      let completed = false;
+      return () => {
+        if (completed) return;
+        completed = true;
+        pendingCompletions = Math.max(0, pendingCompletions - 1);
+        finishIfComplete();
+      };
+    };
     for (const node of Array.from(this.host.querySelectorAll(".player-tile[data-player-id]"))) {
       const tile = node as El;
       const player = this.tilePlayers.get(tile);
       if (!player || !tileMatchesAnswerFilter(tile, player, playerFilter)) continue;
+      const bubbleComplete = complete ? nextCompletion() : undefined;
       if (playerFilter === "all") {
-        duration = Math.max(duration, this.syncPlayerObject(tile, player, { instant }));
+        const playerDuration = this.syncPlayerObject(tile, player, { instant, complete: bubbleComplete });
+        duration = Math.max(duration, playerDuration);
+        if (playerDuration <= 0) bubbleComplete?.();
         continue;
       }
       const renderer = this.tileRenderers.get(tile);
-      if (!renderer) continue;
+      if (!renderer) {
+        bubbleComplete?.();
+        continue;
+      }
       const state = playerAnswerBubbleRuntimeState(player, true);
       state.visible = state.hasAnswer && isShown !== false;
-      duration = Math.max(
-        duration,
-        this.syncAnswerBubbleComponent(renderer, state, {
+      const bubbleDuration = this.syncAnswerBubbleComponent(renderer, state, {
           instant,
           previousVisible: tile.dataset.answerBubbleVisible === "true",
           previousNonce: tile.dataset.answerBubbleNonce || "",
           previousText: tile.dataset.answerBubbleText || "",
-          previousCorrectness: tile.dataset.answerBubbleCorrectness || ""
-        })
-      );
+          previousCorrectness: tile.dataset.answerBubbleCorrectness || "",
+          complete: bubbleComplete
+        });
+      duration = Math.max(duration, bubbleDuration);
+      if (bubbleDuration <= 0) bubbleComplete?.();
       tile.dataset.answerBubbleHasAnswer = state.hasAnswer ? "true" : "false";
       tile.dataset.answerBubbleVisible = state.visible ? "true" : "false";
     }
-    this.answerAnimationEndsAt = duration > 0 ? Date.now() + duration : 0;
+    schedulingCompletions = false;
+    finishIfComplete();
     return duration;
   }
 

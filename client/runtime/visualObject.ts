@@ -274,6 +274,9 @@ class CssVisualObject {
   timelineCommandDurationHandler: ((command: TimelineCommand, context: { frame: number; elapsedMs: number }) => number) | null;
   timelinePlayer: TimelinePlayer | null;
   token: string;
+  activeAnimation = "";
+  activeAnimationEndsAt = 0;
+  activeAnimationCompletions = new Set<() => void>();
 
   constructor(options: CssVisualObjectOptions = {}) {
     this.element = options.element;
@@ -489,9 +492,8 @@ class CssVisualObject {
   }
 
   applyCommandVisibility(isVisible: boolean): void {
-    // A timeline visibility command is authoritative over any lifecycle animation
-    // that was queued before this frame (including the initial Off stamp).
-    this.markNewAnimation();
+    // This command belongs to the active authored timeline. Updating visibility
+    // must not replace that timeline's token or discard its completion listeners.
     if (isVisible) this.applyShownState();
     else this.applyParkedState();
   }
@@ -544,9 +546,45 @@ class CssVisualObject {
   }
 
   markNewAnimation(): string {
+    this.activeAnimation = "";
+    this.activeAnimationEndsAt = 0;
+    this.activeAnimationCompletions.clear();
     this.token = animationToken();
     if (this.element) this.element.dataset.visualAnimationToken = this.token;
     return this.token;
+  }
+
+  beginActiveAnimation(animation: string, duration: number, complete?: () => void): void {
+    this.activeAnimation = animation;
+    this.activeAnimationEndsAt = Date.now() + Math.max(0, duration);
+    this.activeAnimationCompletions.clear();
+    if (typeof complete === "function") this.activeAnimationCompletions.add(complete);
+  }
+
+  joinActiveAnimation(animation: string, complete?: () => void): number | null {
+    if (!this.activeAnimation || this.activeAnimation !== animation) return null;
+    if (typeof complete === "function") this.activeAnimationCompletions.add(complete);
+    return Math.max(0, this.activeAnimationEndsAt - Date.now());
+  }
+
+  updateActiveAnimationDuration(duration: number): void {
+    if (!this.activeAnimation) return;
+    this.activeAnimationEndsAt = Date.now() + Math.max(0, duration);
+  }
+
+  finishActiveAnimation(animation: string, token: string): void {
+    if (!this.tokenMatches(token) || this.activeAnimation !== animation) return;
+    this.completeLifecycleAnimation(animation, token);
+    const completions = Array.from(this.activeAnimationCompletions);
+    this.activeAnimation = "";
+    this.activeAnimationEndsAt = 0;
+    this.activeAnimationCompletions.clear();
+    for (const complete of completions) complete();
+  }
+
+  cancel(): void {
+    this.timelinePlayer?.stop();
+    this.markNewAnimation();
   }
 
   tokenMatches(token: string): boolean {
@@ -611,6 +649,11 @@ class CssVisualObject {
     const duration = this.durationForAnimation(effectiveAnimation);
     const lifecycleState = this.readLifecycleState();
     const wasVisible = isShownLifecycleState(lifecycleState);
+    const joinedDuration = this.joinActiveAnimation(effectiveAnimation, options.complete);
+    if (joinedDuration !== null) {
+      this.setVisibleState(lifecycleState !== "hidden");
+      return joinedDuration;
+    }
 
     if (
       (effectiveAnimation === "appear" || effectiveAnimation === "on") &&
@@ -636,13 +679,11 @@ class CssVisualObject {
 
     const token = this.markNewAnimation();
     const useTimelinePlayback = Boolean(this.timelinePlayer?.hasLabel(effectiveAnimation));
+    this.beginActiveAnimation(effectiveAnimation, duration, options.complete);
     if (useTimelinePlayback) {
       this.timelinePlayer?.gotoAndPlay(effectiveAnimation, {
         instant,
-        complete: () => {
-          this.completeLifecycleAnimation(effectiveAnimation, token);
-          options.complete?.();
-        }
+        complete: () => this.finishActiveAnimation(effectiveAnimation, token)
       });
     }
     this.clearTransientClasses();
@@ -658,13 +699,9 @@ class CssVisualObject {
 
     const customDuration = this.playCustomAnimation(effectiveAnimation, token, duration, instant, wasVisible);
     if (customDuration !== null) {
+      this.updateActiveAnimationDuration(useTimelinePlayback ? Math.max(duration, customDuration) : customDuration);
       if (!useTimelinePlayback) {
-        if (customDuration > 0) {
-          this.completeAfter(customDuration, () => this.completeLifecycleAnimation(effectiveAnimation, token));
-        } else {
-          this.completeLifecycleAnimation(effectiveAnimation, token);
-        }
-        this.completeAfter(customDuration, options.complete);
+        this.completeAfter(customDuration, () => this.finishActiveAnimation(effectiveAnimation, token));
       }
       return useTimelinePlayback ? Math.max(duration, customDuration) : customDuration;
     }
@@ -683,7 +720,6 @@ class CssVisualObject {
         if (!this.tokenMatches(token)) return;
         this.removeClasses(this.motionHiddenClasses);
       });
-      if (!useTimelinePlayback) this.completeAfter(duration, () => this.completeLifecycleAnimation(effectiveAnimation, token));
     } else if (effectiveAnimation === "disappear") {
       this.removeClasses([...this.hiddenClasses, ...this.displayHiddenClasses]);
       void this.element.offsetWidth;
@@ -693,22 +729,13 @@ class CssVisualObject {
       } else {
         this.addClasses(this.motionHiddenClasses);
       }
-      if (duration > 0) {
-        const timerId = window.setTimeout(() => {
-          if (!this.tokenMatches(token)) return;
-          this.applyParkedState();
-        }, duration);
-        this.rememberTimer(timerId);
-      } else {
-        this.applyParkedState();
-      }
     } else if (effectiveAnimation === "update") {
       this.applyShownState();
       void this.element.offsetWidth;
       if (!instant) this.addClasses([this.updateClass].filter(Boolean));
     }
 
-    if (!useTimelinePlayback) this.completeAfter(duration, options.complete);
+    if (!useTimelinePlayback) this.completeAfter(duration, () => this.finishActiveAnimation(effectiveAnimation, token));
     return duration;
   }
 

@@ -137,16 +137,17 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       completeAfter(action, runtime, duration);
     },
     setPlayerAnswersShown(action, runtime) {
-      const existingDuration = (c.playerAnswerBubbleAnimationRemaining as () => number)();
-      const duration = Math.max(
-        (c.setPlayerAnswerBubblesShown as (shown: boolean, o: Dict) => number)(action.isShown !== false, {
-          instant: action.instant === true,
-          playerFilter: action.playerFilter || "all"
-        }),
-        existingDuration
-      );
+      const result = c.setPlayerAnswerBubblesShownForAction
+        ? (c.setPlayerAnswerBubblesShownForAction as (shown: boolean, o: Dict) => Promise<void>)(action.isShown !== false, {
+            instant: action.instant === true,
+            playerFilter: action.playerFilter || "all"
+          })
+        : (c.setPlayerAnswerBubblesShown as (shown: boolean, o: Dict) => number)(action.isShown !== false, {
+            instant: action.instant === true,
+            playerFilter: action.playerFilter || "all"
+          });
       if (!runtime.isPrimary) runtime.applyEffect(action);
-      if (runtime.isPrimary) completeAfter(action, runtime, duration);
+      if (runtime.isPrimary) completeAfterResult(action, runtime, result);
     },
     setGameObjectShown(action, runtime) {
       const duration = c.setStageLayoutGameObjectShownForAction

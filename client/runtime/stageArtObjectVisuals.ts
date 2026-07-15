@@ -437,6 +437,10 @@ class ArtObjectView {
     return (this.createVisual() as { isVisible?: () => boolean } | null)?.isVisible?.() === true;
   }
 
+  lifecycleState(): string {
+    return String((this.createVisual() as { readLifecycleState?: () => string } | null)?.readLifecycleState?.() || "hidden");
+  }
+
   setVisibleTree(isVisible: boolean): void {
     const visual = this.createVisual() as {
       applyCommandVisibility?: (nextVisible: boolean) => void;
@@ -763,6 +767,10 @@ class ArtObjectTreeRenderer {
 
   isComponentVisible(componentId: string): boolean {
     return this.viewForComponentId(componentId)?.isVisible() === true;
+  }
+
+  componentLifecycleState(componentId: string): string {
+    return this.viewForComponentId(componentId)?.lifecycleState() || "hidden";
   }
 
   setVisibleTree(isVisible: boolean): void {
