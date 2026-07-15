@@ -381,7 +381,7 @@
           "fontColor": "#ffffff"
         },
         {
-          "id": "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c-instanc",
+          "id": "craftingprompttext",
           "name": "Prompt Text Field",
           "selector": "",
           "kind": "art",

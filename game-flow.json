@@ -388,7 +388,7 @@
               "nodePosition": null,
               "subActions": [],
               "text": "Answer the prompt on your device now!",
-              "textTarget": "stageprompttext",
+              "textTarget": "craftingprompttext",
               "isShown": true,
               "instant": false
             }
@@ -432,7 +432,7 @@
             }
           ],
           "text": "Presented text",
-          "textTarget": "stageprompttext",
+          "textTarget": "craftingprompttext",
           "isShown": false,
           "instant": false
         },
