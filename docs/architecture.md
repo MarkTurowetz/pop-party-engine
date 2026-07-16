@@ -157,6 +157,9 @@ concepts into focused modules.
 - Runtime visibility flags are snapshot data, not persistent animation instructions. A later
   reconciliation pass must never replay a prior show/hide action or override the frame selected by
   an explicit flow action.
+- Room snapshots are revision ordered. Stage reconciliation ignores duplicate or stale revisions so
+  an HTTP response or SSE delivery cannot re-render and interrupt the timeline owned by the active
+  flow action. Explicit asset reloads may force a same-revision reconciliation without replaying that action.
 - Every flow-driven game-object command carries `commandSource: "flow-action"`. Missing targets,
   missing authored labels, and interrupted target callbacks fail closed; they do not manufacture a
   callback or fall back to a duration estimate.

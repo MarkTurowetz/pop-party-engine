@@ -42,4 +42,31 @@ describe("StageRenderOrchestrator flow identity", () => {
     expect(clearPointPopups).not.toHaveBeenCalled();
     expect(renderVotingCards).not.toHaveBeenCalled();
   });
+
+  it("ignores duplicate and stale room revisions so reconciliation cannot interrupt an active action", () => {
+    const applyStageState = vi.fn();
+    const runStageAction = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({ applyStageState, runStageAction });
+
+    orchestrator.render({ revision: 10, phase: "lobby", action: { id: "display", type: "displayText" } });
+    orchestrator.render({ revision: 10, phase: "lobby", action: { id: "display", type: "displayText" } });
+    orchestrator.render({ revision: 9, phase: "lobby", action: { id: "setup", type: "setupGame" } });
+
+    expect(applyStageState).toHaveBeenCalledTimes(1);
+    expect(runStageAction).toHaveBeenCalledTimes(1);
+    expect(orchestrator.actionKey()).toBe("lobby::display:displayText");
+  });
+
+  it("allows an explicit same-revision refresh to reconcile new art without replaying the action", () => {
+    const applyStageState = vi.fn();
+    const runStageAction = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({ applyStageState, runStageAction });
+    const lobby = { revision: 12, phase: "lobby", action: { id: "display", type: "displayText" } };
+
+    orchestrator.render(lobby);
+    orchestrator.render(lobby, { force: true });
+
+    expect(applyStageState).toHaveBeenCalledTimes(2);
+    expect(runStageAction).toHaveBeenCalledTimes(1);
+  });
 });

@@ -277,7 +277,7 @@ function runVotingCardActionForAction(action: Dict): Promise<void> {
 
 function reloadStageArtAssets(): Promise<void> {
   return w().loadArtAssets!().then(() => {
-    if (w().currentStageState) renderStageLobby(w().currentStageState as Dict);
+    if (w().currentStageState) renderStageLobby(w().currentStageState as Dict, { force: true });
   }).catch(() => {});
 }
 
@@ -447,6 +447,9 @@ async function endCurrentMomentForAction(_action: Dict, options: Dict = {}): Pro
 function hardResetStageToLobby(): void {
   w().pausedCompletionRequest = null;
   w().presentationAdvancePending = false;
+  // Quit bypasses the authored End Moment action, so perform the same visual
+  // teardown before the lobby's Start Moment begins constructing its objects.
+  w().resetStageMomentLayout?.();
   resetStageObjects({ clearActionTimers: true, clearCountdownTimer: true, resetWipe: true });
 }
 
@@ -731,8 +734,8 @@ function applyStageState(lobby: Dict): void {
   }
 }
 
-function renderStageLobby(lobby: Dict): void {
-  (stageRenderOrchestrator() as { render?: (l: Dict) => void } | null)?.render?.(lobby);
+function renderStageLobby(lobby: Dict, options: Dict = {}): void {
+  (stageRenderOrchestrator() as { render?: (l: Dict, o?: Dict) => void } | null)?.render?.(lobby, options);
 }
 
 function prepareNewStageAction(lobby: Dict, actionKey: string): void {

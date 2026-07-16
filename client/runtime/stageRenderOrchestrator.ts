@@ -15,6 +15,10 @@ interface OrchestratorOptions {
   runStageAction?: (action: Dict | null, immediate: boolean, actionKey: string) => void;
 }
 
+interface RenderOptions {
+  force?: boolean;
+}
+
 function actionKeyForLobby(lobby: Dict = {}): string {
   const phase = (lobby.flowStateId as string) || (lobby.phase as string) || "lobby";
   const subroutinePath = Array.isArray(lobby.subroutinePath) ? lobby.subroutinePath.map(String).filter(Boolean).join("/") : "";
@@ -27,6 +31,7 @@ class StageRenderOrchestrator {
   renderedActionKey = "";
   renderedPhase = "";
   renderedAction: Dict | null = null;
+  renderedRevision = -1;
 
   constructor(options: OrchestratorOptions = {}) {
     this.options = options;
@@ -40,8 +45,12 @@ class StageRenderOrchestrator {
     return this.renderedPhase;
   }
 
-  render(lobby: Dict = {}): void {
+  render(lobby: Dict = {}, renderOptions: RenderOptions = {}): void {
     const options = this.options;
+    const revision = Number(lobby.revision);
+    const hasRevision = Number.isFinite(revision) && revision >= 0;
+    if (renderOptions.force !== true && hasRevision && revision <= this.renderedRevision) return;
+    if (hasRevision) this.renderedRevision = Math.max(this.renderedRevision, revision);
     const nextPhase = (lobby.phase as string) || "lobby";
     const actionKey = actionKeyForLobby(lobby);
     const isNewAction = this.renderedActionKey !== actionKey;
