@@ -1636,7 +1636,7 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-header {
   display: grid;
-  grid-template-columns: minmax(140px, max-content) minmax(480px, 1fr) auto;
+  grid-template-columns: minmax(140px, max-content) minmax(0, 1fr) auto;
   gap: 8px;
   align-items: end;
 }
@@ -1648,8 +1648,13 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-settings {
   display: grid;
-  grid-template-columns: minmax(90px, 0.35fr) minmax(120px, 0.45fr) minmax(220px, 1.2fr);
+  grid-template-columns: minmax(160px, 180px) minmax(210px, 240px) minmax(300px, 1fr) minmax(400px, 0.85fr);
   gap: 8px;
+  min-width: 0;
+}
+
+.art-timeline-settings > * {
+  min-width: 0;
 }
 
 .art-timeline-actions {
@@ -1836,13 +1841,15 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-multi-keyframe-editor {
   display: grid;
-  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 2.2fr);
-  gap: 10px;
-  align-items: center;
-  padding: 8px;
-  border: 3px solid var(--ink);
-  border-radius: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 14px;
+  padding: 14px;
+  border: 0;
+  border-left: 4px solid var(--ink);
+  border-radius: 0;
   background: rgba(34, 211, 238, 0.2);
+  overflow: auto;
 }
 
 .art-timeline-multi-keyframe-summary {
@@ -1864,8 +1871,8 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-multi-keyframe-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
 }
 
 .art-timeline-multi-keyframe-fields .flow-react-field {
@@ -1879,11 +1886,11 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-tween-slot {
   display: grid;
-  grid-template-columns: minmax(170px, 240px) minmax(0, 1fr);
+  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
   gap: 8px;
   align-items: end;
-  min-height: 42px;
-  padding: 6px;
+  min-height: 38px;
+  padding: 3px 6px;
   border: 3px solid transparent;
   border-radius: 6px;
 }

@@ -6,9 +6,11 @@ import {
   useMemo,
   useState,
   type CSSProperties,
+  type Dispatch,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type SetStateAction,
   type WheelEvent as ReactWheelEvent
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
@@ -531,6 +533,7 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const [timelineNavigationStack, setTimelineNavigationStack] = useState<TimelineNavigationEntry[]>([]);
   const [timelineDismissSignal, setTimelineDismissSignal] = useState(0);
   const [timelineCommandOverlay, setTimelineCommandOverlay] = useState<TimelineCommandOverlay | null>(null);
+  const [selectedTimelineKeyframeCells, setSelectedTimelineKeyframeCells] = useState<TimelineKeyframeSelection[]>([]);
   const [timelinePreview, setTimelinePreview] = useState<{
     compositionId: string;
     frame: number;
@@ -635,6 +638,10 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const effectiveActiveTimeline = useMemo(
     () => effectiveArtVisibilityTimeline(activeTimeline),
     [activeTimeline]
+  );
+  const selectedTimelineKeyframeEntries = useMemo(
+    () => selectedTimelineKeyframes(effectiveActiveTimeline, selectedTimelineKeyframeCells),
+    [effectiveActiveTimeline, selectedTimelineKeyframeCells]
   );
   const baseTimelineFrameOverrides = useMemo(() => {
     if (effectiveActiveTimeline.tracks.length === 0) return null;
@@ -1425,23 +1432,37 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
           )}
         </section>
 
-        <ArtComponentInspector
-          controller={controller}
-          assets={assets}
-          composition={composition}
-          compositions={compositions}
-          component={selectedComponent ?? selectedComponents[0] ?? null}
-          selectedComponents={selectedComponents}
-          timelineContext={
-            selectedComponents.length > 0
-              ? {
-                  frame: timelinePreviewFrame,
-                  valuesById: selectedComponentTimelineValuesById,
-                  onCommit: commitTimelineFramePropsForComponents
-                }
-              : null
-          }
-        />
+        {selectedTimelineKeyframeEntries.length >= 2 ? (
+          <ArtMultiKeyframeInspector
+            timeline={effectiveActiveTimeline}
+            selections={selectedTimelineKeyframeCells}
+            onChange={(timeline) => {
+              if (!composition) return;
+              controller.updateComposition(composition.id, { timeline });
+              setTimelinePreview((current) =>
+                current?.compositionId === composition.id ? { ...current, overrides: null } : current
+              );
+            }}
+          />
+        ) : (
+          <ArtComponentInspector
+            controller={controller}
+            assets={assets}
+            composition={composition}
+            compositions={compositions}
+            component={selectedComponent ?? selectedComponents[0] ?? null}
+            selectedComponents={selectedComponents}
+            timelineContext={
+              selectedComponents.length > 0
+                ? {
+                    frame: timelinePreviewFrame,
+                    valuesById: selectedComponentTimelineValuesById,
+                    onCommit: commitTimelineFramePropsForComponents
+                  }
+                : null
+            }
+          />
+        )}
         {timelineCommandOverlay ? <ArtTimelineCommandOverlay overlay={timelineCommandOverlay} /> : null}
       </div>
       <div
@@ -1468,6 +1489,8 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             includeRootTarget={false}
             scopeRootPath={false}
             selectedTargetIds={selectedComponentIds}
+            selectedKeyframeCells={selectedTimelineKeyframeCells}
+            setSelectedKeyframeCells={setSelectedTimelineKeyframeCells}
             onSelectTarget={selectArtComponent}
             onToggleEditorHidden={(id, hidden) => controller.updateComponent(id, { editorHidden: hidden } as Partial<ArtComponent>)}
             onToggleLocked={(id, locked) => controller.updateComponent(id, { locked } as Partial<ArtComponent>)}
@@ -2009,7 +2032,11 @@ function ArtMultiKeyframeInspector({
     .join("|");
 
   return (
-    <section className="art-timeline-multi-keyframe-editor" data-art-multi-keyframe-inspector>
+    <section
+      className="flow-react-panel flow-react-inspector art-component-inspector art-timeline-multi-keyframe-editor"
+      data-art-react-component="component-inspector"
+      data-art-multi-keyframe-inspector
+    >
       <div className="art-timeline-multi-keyframe-summary">
         <strong>{entries.length} Keyframes Selected</strong>
         <small>Plain values set all. +10 or -10 adjusts each current value. Use =-10 to set an absolute negative value.</small>
@@ -2057,6 +2084,8 @@ function ArtTimelinePanel({
   includeRootTarget = true,
   scopeRootPath = true,
   selectedTargetIds,
+  selectedKeyframeCells,
+  setSelectedKeyframeCells,
   onSelectTarget,
   onToggleEditorHidden,
   onToggleLocked,
@@ -2075,6 +2104,8 @@ function ArtTimelinePanel({
   includeRootTarget?: boolean;
   scopeRootPath?: boolean;
   selectedTargetIds?: Set<string>;
+  selectedKeyframeCells: TimelineKeyframeSelection[];
+  setSelectedKeyframeCells: Dispatch<SetStateAction<TimelineKeyframeSelection[]>>;
   onSelectTarget?: (id: string, additive: boolean) => void;
   onToggleEditorHidden?: (id: string, hidden: boolean) => void;
   onToggleLocked?: (id: string, locked: boolean) => void;
@@ -2098,7 +2129,6 @@ function ArtTimelinePanel({
   const [keyframeTargetId, setKeyframeTargetId] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
-  const [selectedKeyframeCells, setSelectedKeyframeCells] = useState<TimelineKeyframeSelection[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
   const [selectedTimelineCell, setSelectedTimelineCell] = useState<TimelineCellSelection>({ kind: "frame", frame: 0 });
   const [timelineDragItem, setTimelineDragItem] = useState<TimelineDragItem | null>(null);
@@ -2220,7 +2250,7 @@ function ArtTimelinePanel({
     setCommandScriptInitialDraft("");
     setCommandScriptError("");
     onCommandOverlayChange?.(null);
-  }, [cleanFrame, dismissSelectionSignal, onCommandOverlayChange]);
+  }, [cleanFrame, dismissSelectionSignal, onCommandOverlayChange, setSelectedKeyframeCells]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -3092,6 +3122,25 @@ function ArtTimelinePanel({
               }}
             />
           </label>
+          <div className="art-timeline-tween-slot" data-art-tween-selected={selectedTweenSpan ? "true" : "false"}>
+            <label className="flow-react-field">
+              <span>Tween Easing</span>
+              <select
+                disabled={!selectedTweenSpan}
+                value={selectedTweenSpan?.easing || "linear"}
+                onChange={(event) => updateSelectedTweenEasing(event.target.value)}
+              >
+                {TIMELINE_EASING_OPTIONS.filter((option) => option.value !== "hold").map((option) => (
+                  <option value={option.value} key={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <small>
+              {selectedTweenSpan ? `${selectedTweenSpan.startFrame}-${selectedTweenSpan.endFrame} · ${selectedTweenSpan.targetId}` : "No tween selected"}
+            </small>
+          </div>
         </div>
         {onExitScope ? (
           <button type="button" onClick={onExitScope}>
@@ -3099,38 +3148,11 @@ function ArtTimelinePanel({
           </button>
         ) : null}
       </div>
-      <ArtMultiKeyframeInspector
-        timeline={current}
-        selections={selectedKeyframeCells}
-        onChange={(nextTimeline) => {
-          onChange(nextTimeline);
-          previewFrame(selectedTimelineCellFrame);
-        }}
-      />
-      {selectedTweenSpan || copiedFrameRange ? (
+      {copiedFrameRange ? (
         <div className="art-timeline-frame-editor">
-          {selectedTweenSpan ? (
-            <div className="art-timeline-tween-slot" data-art-tween-selected="true">
-              <label className="flow-react-field">
-                <span>Tween Easing</span>
-                <select value={selectedTweenSpan.easing} onChange={(event) => updateSelectedTweenEasing(event.target.value)}>
-                  {TIMELINE_EASING_OPTIONS.filter((option) => option.value !== "hold").map((option) => (
-                    <option value={option.value} key={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <small>
-                {selectedTweenSpan.startFrame}-{selectedTweenSpan.endFrame} · {selectedTweenSpan.targetId}
-              </small>
-            </div>
-          ) : null}
-          {copiedFrameRange ? (
-            <span className="art-timeline-frame-clipboard-summary">
-              Clipboard: {copiedFrameRange.frameCount} frame{copiedFrameRange.frameCount === 1 ? "" : "s"}
-            </span>
-          ) : null}
+          <span className="art-timeline-frame-clipboard-summary">
+            Clipboard: {copiedFrameRange.frameCount} frame{copiedFrameRange.frameCount === 1 ? "" : "s"}
+          </span>
         </div>
       ) : null}
       <div
