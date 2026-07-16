@@ -25,6 +25,9 @@ export interface TimelinePlayerOptions {
   maxCommandRedirects?: number;
   schedule?: (callback: () => void, delay: number) => number;
   clearScheduled?: (id: number) => void;
+  requestAnimationFrame?: ((callback: (timestamp: number) => void) => number) | null;
+  cancelAnimationFrame?: ((id: number) => void) | null;
+  now?: () => number;
 }
 
 export interface TimelinePlayOptions {
@@ -38,6 +41,18 @@ function defaultSchedule(callback: () => void, delay: number): number {
 
 function defaultClearScheduled(id: number): void {
   globalThis.clearTimeout(id);
+}
+
+function defaultRequestAnimationFrame(callback: (timestamp: number) => void): number {
+  return globalThis.requestAnimationFrame(callback);
+}
+
+function defaultCancelAnimationFrame(id: number): void {
+  globalThis.cancelAnimationFrame(id);
+}
+
+function defaultNow(): number {
+  return globalThis.performance?.now?.() ?? Date.now();
 }
 
 const DEFAULT_MAX_COMMAND_REDIRECTS = 50;
@@ -98,11 +113,22 @@ function keyframeSnapshotForTrack(track: TimelineTrack, frame: number): Timeline
 
 export function timelineSnapshotAt(timeline: TimelineDocument, frame: number): TimelineFrameSnapshot {
   const cleanFrame = Math.max(0, Math.min(Math.max(0, timeline.frameCount - 1), Math.round(frame)));
+  return timelineSnapshotAtPosition(timeline, cleanFrame, cleanFrame);
+}
+
+export function timelineSnapshotAtPosition(
+  timeline: TimelineDocument,
+  framePosition: number,
+  displayFrame = Math.floor(framePosition)
+): TimelineFrameSnapshot {
+  const maxFrame = Math.max(0, timeline.frameCount - 1);
+  const cleanPosition = Math.max(0, Math.min(maxFrame, Number(framePosition) || 0));
+  const cleanDisplayFrame = Math.max(0, Math.min(maxFrame, Math.floor(Number(displayFrame) || 0)));
   const targets: Record<string, TimelineProperties> = {};
   for (const track of timeline.tracks) {
-    targets[track.targetId] = keyframeSnapshotForTrack(track, cleanFrame);
+    targets[track.targetId] = keyframeSnapshotForTrack(track, cleanPosition);
   }
-  return { frame: cleanFrame, targets };
+  return { frame: cleanDisplayFrame, targets };
 }
 
 export class TimelinePlayer {
@@ -114,7 +140,11 @@ export class TimelinePlayer {
   maxCommandRedirects: number;
   schedule: (callback: () => void, delay: number) => number;
   clearScheduled: (id: number) => void;
+  requestAnimationFrame: ((callback: (timestamp: number) => void) => number) | null;
+  cancelAnimationFrame: ((id: number) => void) | null;
+  now: () => number;
   timerIds = new Set<number>();
+  animationFrameId: number | null = null;
   token = 0;
   currentFrame = 0;
   isPlaying = false;
@@ -128,6 +158,21 @@ export class TimelinePlayer {
     this.maxCommandRedirects = Math.max(1, Math.round(Number(options.maxCommandRedirects) || DEFAULT_MAX_COMMAND_REDIRECTS));
     this.schedule = options.schedule || defaultSchedule;
     this.clearScheduled = options.clearScheduled || defaultClearScheduled;
+    const browserCanAnimate =
+      typeof globalThis.requestAnimationFrame === "function" && typeof globalThis.cancelAnimationFrame === "function";
+    this.requestAnimationFrame =
+      options.requestAnimationFrame === undefined
+        ? browserCanAnimate
+          ? defaultRequestAnimationFrame
+          : null
+        : options.requestAnimationFrame;
+    this.cancelAnimationFrame =
+      options.cancelAnimationFrame === undefined
+        ? browserCanAnimate
+          ? defaultCancelAnimationFrame
+          : null
+        : options.cancelAnimationFrame;
+    this.now = options.now || defaultNow;
   }
 
   updateTimeline(timeline: TimelineDocument | null | undefined): void {
@@ -144,6 +189,8 @@ export class TimelinePlayer {
     this.isPlaying = false;
     for (const id of this.timerIds) this.clearScheduled(id);
     this.timerIds.clear();
+    if (this.animationFrameId !== null) this.cancelAnimationFrame?.(this.animationFrameId);
+    this.animationFrameId = null;
   }
 
   private scheduleFrame(callback: () => void, delay: number): void {
@@ -211,6 +258,12 @@ export class TimelinePlayer {
     this.onFrame?.(timelineSnapshotAt(this.timeline, this.currentFrame));
   }
 
+  private applyFramePosition(framePosition: number, displayFrame = Math.floor(framePosition)): void {
+    if (!this.timeline) return;
+    this.currentFrame = this.cleanTimelineFrame(displayFrame);
+    this.onFrame?.(timelineSnapshotAtPosition(this.timeline, framePosition, this.currentFrame));
+  }
+
   gotoAndStop(labelOrFrame: string | number, options: TimelinePlayOptions = {}): number {
     return this.gotoAndStopInternal(labelOrFrame, options, 0);
   }
@@ -239,7 +292,6 @@ export class TimelinePlayer {
     const startFrame = this.cleanTimelineFrame(frame);
     const endFrame = this.nextStopFrameAfter(startFrame);
     const duration = this.durationFromFrame(startFrame, endFrame);
-    const playToken = this.token;
     if (options.instant === true || endFrame <= startFrame) {
       this.applyFrame(endFrame);
       if (!this.runFrameCommands(endFrame, options.complete, 0, duration)) {
@@ -248,24 +300,7 @@ export class TimelinePlayer {
       }
       return duration;
     }
-    this.isPlaying = true;
-    const frameDuration = 1000 / this.timeline.fps;
-    this.applyFrame(startFrame);
-    const startRedirected = this.runFrameCommands(startFrame, options.complete, 0, 0);
-    if (startRedirected) return duration;
-    for (let nextFrame = startFrame + 1; nextFrame <= endFrame; nextFrame += 1) {
-      const scheduledFrame = nextFrame;
-      const delay = (scheduledFrame - startFrame) * frameDuration;
-      this.scheduleFrame(() => {
-        if (this.token !== playToken) return;
-        this.applyFrame(scheduledFrame);
-        const redirected = this.runFrameCommands(scheduledFrame, options.complete, 0, delay);
-        if (!redirected && scheduledFrame === endFrame) {
-          this.isPlaying = false;
-          options.complete?.();
-        }
-      }, delay);
-    }
+    this.playRange(startFrame, endFrame, options, 0);
     return duration;
   }
 
@@ -279,7 +314,6 @@ export class TimelinePlayer {
       commandDuration: this.commandDuration || undefined,
       maxCommandRedirects: this.maxCommandRedirects - commandCount
     });
-    const playToken = this.token;
     if (options.instant === true || segment.durationMs === 0) {
       this.applyFrame(segment.endFrame);
       if (!this.runFrameCommands(segment.endFrame, options.complete, commandCount, segment.durationMs)) {
@@ -288,24 +322,56 @@ export class TimelinePlayer {
       }
       return duration;
     }
-    this.isPlaying = true;
+    this.playRange(segment.startFrame, segment.endFrame, options, commandCount);
+    return duration;
+  }
+
+  private playRange(startFrame: number, endFrame: number, options: TimelinePlayOptions, commandCount: number): void {
+    if (!this.timeline) return;
+    const playToken = this.token;
     const frameDuration = 1000 / this.timeline.fps;
-    this.applyFrame(segment.startFrame);
-    const startRedirected = this.runFrameCommands(segment.startFrame, options.complete, commandCount, 0);
-    if (startRedirected) return duration;
-    for (let frame = segment.startFrame + 1; frame <= segment.endFrame; frame += 1) {
-      const delay = (frame - segment.startFrame) * frameDuration;
+    this.isPlaying = true;
+    this.applyFrame(startFrame);
+    if (this.runFrameCommands(startFrame, options.complete, commandCount, 0)) return;
+
+    if (this.requestAnimationFrame && this.cancelAnimationFrame) {
+      const startedAt = this.now();
+      let lastCommandFrame = startFrame;
+      const tick = (timestamp: number) => {
+        if (this.token !== playToken || !this.timeline) return;
+        const elapsedMs = Math.max(0, timestamp - startedAt);
+        const framePosition = Math.min(endFrame, startFrame + elapsedMs / frameDuration);
+        const reachedFrame = Math.min(endFrame, Math.floor(framePosition));
+        this.applyFramePosition(framePosition, reachedFrame);
+        for (let frame = lastCommandFrame + 1; frame <= reachedFrame; frame += 1) {
+          const commandElapsedMs = (frame - startFrame) * frameDuration;
+          if (this.runFrameCommands(frame, options.complete, commandCount, commandElapsedMs)) return;
+          lastCommandFrame = frame;
+        }
+        if (framePosition >= endFrame) {
+          this.animationFrameId = null;
+          this.isPlaying = false;
+          options.complete?.();
+          return;
+        }
+        this.animationFrameId = this.requestAnimationFrame?.(tick) ?? null;
+      };
+      this.animationFrameId = this.requestAnimationFrame(tick);
+      return;
+    }
+
+    for (let frame = startFrame + 1; frame <= endFrame; frame += 1) {
+      const delay = (frame - startFrame) * frameDuration;
       this.scheduleFrame(() => {
         if (this.token !== playToken) return;
         this.applyFrame(frame);
-        const redirected = this.runFrameCommands(frame, options.complete, 0, delay);
-        if (!redirected && frame === segment.endFrame) {
+        const redirected = this.runFrameCommands(frame, options.complete, commandCount, delay);
+        if (!redirected && frame === endFrame) {
           this.isPlaying = false;
           options.complete?.();
         }
       }, delay);
     }
-    return duration;
   }
 
   runFrameCommands(frame: number, complete?: () => void, commandCount = 0, elapsedMs = 0): boolean {
@@ -336,7 +402,8 @@ export class TimelinePlayer {
 export const PartyGameTimeline = {
   TimelinePlayer,
   normalizeTimeline,
-  timelineSnapshotAt
+  timelineSnapshotAt,
+  timelineSnapshotAtPosition
 };
 
 declare global {

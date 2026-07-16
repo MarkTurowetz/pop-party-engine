@@ -504,6 +504,33 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.style.height).toBe("70%");
   });
 
+  it("moves rendered art timeline positions with compositor translation", () => {
+    const element = createFakeElement(["hidden"]);
+    element.dataset.artComponentId = "wipe-strip";
+    element.dataset.artBaseX = "50";
+    element.dataset.artBaseY = "25";
+    element.dataset.artTimelineX = "50";
+    element.dataset.artTimelineY = "25";
+    element.style.left = "25%";
+    element.style.top = "25%";
+    element.style.translate = "-50% -50%";
+    Object.defineProperty(element, "parentElement", {
+      value: { clientWidth: 400, clientHeight: 200 },
+      configurable: true
+    });
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      timelineCanvas: { width: 200, height: 100 }
+    });
+
+    visual.applyTimelineProperties({ x: 100, y: 50 });
+
+    expect(element.style.left).toBe("25%");
+    expect(element.style.top).toBe("25%");
+    expect(element.style.translate).toBe("-50% -50%");
+    expect(element.style.transform).toBe("translate3d(100px, 50px, 0)");
+  });
+
   it("routes a reference timeline to descendants without blocking parent snapshots on the reference", () => {
     const element = createFakeElement();
     element.dataset.artComponentId = "avatar";

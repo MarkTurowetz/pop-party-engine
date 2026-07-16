@@ -76,8 +76,18 @@ function applyComponentLayout(element: HTMLElement | null, component: Component 
   const labelText = Object.prototype.hasOwnProperty.call(options, "labelText")
     ? String(options.labelText || "")
     : s.componentLabel(component);
-  element.style.left = `${((num(component.x) - canvasMinX) / canvasWidth) * 100}%`;
-  element.style.top = `${((num(component.y) - canvasMinY) / canvasHeight) * 100}%`;
+  const componentX = num(component.x);
+  const componentY = num(component.y);
+  if (element.dataset) {
+    element.dataset.artBaseX = String(componentX);
+    element.dataset.artBaseY = String(componentY);
+    element.dataset.artTimelineX = String(componentX);
+    element.dataset.artTimelineY = String(componentY);
+  }
+  element.style.left = `${((componentX - canvasMinX) / canvasWidth) * 100}%`;
+  element.style.top = `${((componentY - canvasMinY) / canvasHeight) * 100}%`;
+  element.style.translate = "-50% -50%";
+  element.style.transform = "none";
   element.style.width = `${(num(component.width, 1) / canvasWidth) * 100}%`;
   element.style.height = `${(num(component.height, 1) / canvasHeight) * 100}%`;
   element.style.setProperty("--component-scale", String(num(component.scale, 1)));

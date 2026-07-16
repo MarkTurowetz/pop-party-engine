@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeTimeline, timelinePlaybackDuration, timelineSegmentFor } from "../../shared/timeline-model";
-import { TimelinePlayer, timelineSnapshotAt } from "./timelinePlayer";
+import { TimelinePlayer, timelineSnapshotAt, timelineSnapshotAtPosition } from "./timelinePlayer";
 
 describe("TimelinePlayer", () => {
   beforeEach(() => {
@@ -174,6 +174,95 @@ describe("TimelinePlayer", () => {
     });
 
     expect(timelineSnapshotAt(timeline!, 2).targets.card.x).toBe(25);
+    expect(timelineSnapshotAtPosition(timeline!, 2.5).targets.card.x).toBe(39.063);
+  });
+
+  it("interpolates browser playback from elapsed paint time", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 3,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [{ frame: 2, type: "stop" }],
+      tracks: [{ targetId: "card", keyframes: [{ frame: 0, easing: "linear", props: { x: 0 } }, { frame: 2, props: { x: 100 } }] }]
+    });
+    let now = 0;
+    let nextFrameId = 1;
+    const callbacks = new Map<number, (timestamp: number) => void>();
+    const snapshots: Array<{ frame: number; x: unknown }> = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      now: () => now,
+      requestAnimationFrame: (callback) => {
+        const id = nextFrameId++;
+        callbacks.set(id, callback);
+        return id;
+      },
+      cancelAnimationFrame: (id) => callbacks.delete(id),
+      onFrame: (snapshot) => snapshots.push({ frame: snapshot.frame, x: snapshot.targets.card.x })
+    });
+    const paintAt = (timestamp: number) => {
+      now = timestamp;
+      const pending = Array.from(callbacks.values());
+      callbacks.clear();
+      for (const callback of pending) callback(timestamp);
+    };
+
+    expect(player.gotoAndPlay("appear", { complete })).toBe(200);
+    paintAt(50);
+    paintAt(100);
+    paintAt(200);
+
+    expect(snapshots).toEqual([
+      { frame: 0, x: 0 },
+      { frame: 0, x: 25 },
+      { frame: 1, x: 50 },
+      { frame: 2, x: 100 }
+    ]);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(player.isPlaying).toBe(false);
+  });
+
+  it("fires every crossed command once when a browser paint skips authored frames", () => {
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 4,
+      labels: [{ name: "appear", frame: 0 }],
+      commands: [
+        { frame: 1, type: "emit", event: "one" },
+        { frame: 2, type: "emit", event: "two" },
+        { frame: 3, type: "stop" }
+      ],
+      tracks: []
+    });
+    let now = 0;
+    let callback: ((timestamp: number) => void) | null = null;
+    const commands: Array<{ event: string; elapsedMs: number }> = [];
+    const complete = vi.fn();
+    const player = new TimelinePlayer({
+      timeline,
+      now: () => now,
+      requestAnimationFrame: (next) => {
+        callback = next;
+        return 1;
+      },
+      cancelAnimationFrame: () => {
+        callback = null;
+      },
+      onCommand: (command, context) => commands.push({ event: command.event || command.type, elapsedMs: context.elapsedMs })
+    });
+
+    player.gotoAndPlay("appear", { complete });
+    now = 300;
+    const paint = callback as ((timestamp: number) => void) | null;
+    paint?.(now);
+
+    expect(commands).toEqual([
+      { event: "one", elapsedMs: 100 },
+      { event: "two", elapsedMs: 200 },
+      { event: "stop", elapsedMs: 300 }
+    ]);
+    expect(complete).toHaveBeenCalledTimes(1);
   });
 
   it("holds values from the previous keyframe unless easing is explicitly tweened", () => {

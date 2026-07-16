@@ -254,9 +254,14 @@ async function main() {
           return renderResult;
         }
       });
-      const firstStripLeft = () => Number.parseFloat(
-        element.querySelector("[data-art-component-id='wipe-strip-1']")?.style.left || "NaN"
-      );
+      const firstStripLeft = () => {
+        const strip = element.querySelector("[data-art-component-id='wipe-strip-1']");
+        if (!strip) return Number.NaN;
+        const hostBounds = element.getBoundingClientRect();
+        const stripBounds = strip.getBoundingClientRect();
+        if (!hostBounds.width) return Number.NaN;
+        return ((stripBounds.left + stripBounds.width / 2 - hostBounds.left) / hostBounds.width) * 100;
+      };
 
       const appearStartedAt = performance.now();
       const appearCompletion = new Promise((resolve) => controller.setShown(true, { complete: resolve }));

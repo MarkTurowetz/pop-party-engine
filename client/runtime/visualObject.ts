@@ -97,6 +97,7 @@ function timelineTextValue(value: TimelinePropertyValue | undefined): string | n
 }
 
 function setStyleProperty(element: HTMLElement, name: string, value: string): void {
+  if (element.style.getPropertyValue?.(name) === value) return;
   if (typeof element.style.setProperty === "function") {
     element.style.setProperty(name, value);
     return;
@@ -105,11 +106,19 @@ function setStyleProperty(element: HTMLElement, name: string, value: string): vo
 }
 
 function removeStyleProperty(element: HTMLElement, name: string): void {
+  if (!element.style.getPropertyValue?.(name)) return;
   if (typeof element.style.removeProperty === "function") {
     element.style.removeProperty(name);
     return;
   }
   delete (element.style as unknown as Record<string, string>)[name];
+}
+
+function setInlineStyle(element: HTMLElement, name: string, value: string): boolean {
+  const style = element.style as unknown as Record<string, string>;
+  if (style[name] === value) return false;
+  style[name] = value;
+  return true;
 }
 
 function hasTimelineProperty(props: TimelineProperties, key: string): boolean {
@@ -127,6 +136,7 @@ function timelineShapeStyle(value: TimelinePropertyValue | undefined): string | 
 }
 
 function setTimelineShapeStyleClass(element: HTMLElement, style: string): void {
+  if (element.classList?.contains?.(`is-style-${style}`)) return;
   element.classList?.remove?.(...TIMELINE_SHAPE_STYLE_CLASSES);
   element.classList?.add?.(`is-style-${style}`);
 }
@@ -310,14 +320,7 @@ class CssVisualObject {
             this.timelineFrameHandler?.(snapshot);
           },
           onCommand: (command, context) => this.handleTimelineCommand(command, context),
-          commandDuration: (command, context) => this.timelineCommandDurationHandler?.(command, context) || 0,
-          schedule: (callback, delay) => {
-            const timerId = this.schedule(delay, callback);
-            return timerId || 0;
-          },
-          clearScheduled: (id) => {
-            if (id) window.clearTimeout(id);
-          }
+          commandDuration: (command, context) => this.timelineCommandDurationHandler?.(command, context) || 0
         })
       : null;
     this.token = "";
@@ -369,13 +372,12 @@ class CssVisualObject {
     const fontSize = numericTimelineValue(props.fontSize);
     const borderWidth = numericTimelineValue(props.borderWidth);
     const borderRadius = numericTimelineValue(props.borderRadius);
-    if (width !== null) this.element.style.width = this.canvasUnit(width, "width");
-    if (height !== null) this.element.style.height = this.canvasUnit(height, "height");
-    if (x !== null) this.element.style.left = this.canvasUnit(x, "width", true);
-    if (y !== null) this.element.style.top = this.canvasUnit(y, "height", true);
+    const widthChanged = width !== null && setInlineStyle(this.element, "width", this.canvasUnit(width, "width"));
+    const heightChanged = height !== null && setInlineStyle(this.element, "height", this.canvasUnit(height, "height"));
+    this.applyTimelinePosition(x, y);
     if (scale !== null) setStyleProperty(this.element, "--component-scale", String(scale));
     if (rotation !== null) setStyleProperty(this.element, "--component-rotation", `${rotation}deg`);
-    if (opacity !== null) this.element.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+    if (opacity !== null) setInlineStyle(this.element, "opacity", String(Math.max(0, Math.min(1, opacity))));
     if (brightness !== null) setStyleProperty(this.element, "--component-brightness", String(Math.max(0, brightness)));
     if (fontSize !== null) setStyleProperty(this.element, "--component-font-size", `${fontSize}px`);
     if (borderWidth !== null) setStyleProperty(this.element, "--component-border-width", `${Math.max(0, borderWidth)}px`);
@@ -395,7 +397,7 @@ class CssVisualObject {
     if (imageFit !== null) setStyleProperty(this.element, "--component-image-fit", imageFit);
     if (shapeStyle !== null) setTimelineShapeStyleClass(this.element, shapeStyle);
     if (typeof props.visible === "boolean") {
-      this.element.style.display = props.visible ? "" : "none";
+      setInlineStyle(this.element, "display", props.visible ? "" : "none");
     }
     if (
       hasTimelineProperty(props, "text") ||
@@ -404,8 +406,8 @@ class CssVisualObject {
       hasTimelineProperty(props, "fontFamily") ||
       hasTimelineProperty(props, "fontColor") ||
       hasTimelineProperty(props, "autoFitText") ||
-      width !== null ||
-      height !== null
+      widthChanged ||
+      heightChanged
     ) {
       renderTimelineLabelText(this.element, props, width, height, fontSize);
     }
@@ -441,6 +443,43 @@ class CssVisualObject {
         }
       }
     }
+  }
+
+  applyTimelinePosition(x: number | null, y: number | null): void {
+    if (!this.element || (x === null && y === null)) return;
+    const baseX = Number(this.element.dataset.artBaseX);
+    const baseY = Number(this.element.dataset.artBaseY);
+    const parent = this.element.parentElement;
+    const parentWidth = Number(parent?.clientWidth || 0);
+    const parentHeight = Number(parent?.clientHeight || 0);
+    const canTranslateX =
+      Number.isFinite(baseX) && Boolean(this.timelineCanvas?.width) && Number.isFinite(parentWidth) && parentWidth > 0;
+    const canTranslateY =
+      Number.isFinite(baseY) && Boolean(this.timelineCanvas?.height) && Number.isFinite(parentHeight) && parentHeight > 0;
+
+    if (x !== null) this.element.dataset.artTimelineX = String(x);
+    if (y !== null) this.element.dataset.artTimelineY = String(y);
+
+    if ((x === null || canTranslateX) && (y === null || canTranslateY) && (canTranslateX || canTranslateY)) {
+      const timelineX = Number(this.element.dataset.artTimelineX);
+      const timelineY = Number(this.element.dataset.artTimelineY);
+      const offsetX = canTranslateX && Number.isFinite(timelineX)
+        ? ((timelineX - baseX) / (this.timelineCanvas?.width || 1)) * parentWidth
+        : 0;
+      const offsetY = canTranslateY && Number.isFinite(timelineY)
+        ? ((timelineY - baseY) / (this.timelineCanvas?.height || 1)) * parentHeight
+        : 0;
+      const cleanOffsetX = Number(offsetX.toFixed(3));
+      const cleanOffsetY = Number(offsetY.toFixed(3));
+      if (canTranslateX) setInlineStyle(this.element, "left", this.canvasUnit(baseX, "width", true));
+      if (canTranslateY) setInlineStyle(this.element, "top", this.canvasUnit(baseY, "height", true));
+      setInlineStyle(this.element, "translate", "-50% -50%");
+      setInlineStyle(this.element, "transform", `translate3d(${cleanOffsetX}px, ${cleanOffsetY}px, 0)`);
+      return;
+    }
+
+    if (x !== null) setInlineStyle(this.element, "left", this.canvasUnit(x, "width", true));
+    if (y !== null) setInlineStyle(this.element, "top", this.canvasUnit(y, "height", true));
   }
 
   canvasUnit(value: number, axis: "width" | "height", position = false): string {
