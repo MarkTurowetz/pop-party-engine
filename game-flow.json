@@ -20,8 +20,8 @@
       "actions": [
         {
           "id": "lobby-countdown-complete",
-          "name": "Set Game Object Shown",
-          "type": "setGameObjectShown",
+          "name": "On Countdown Complete",
+          "type": "transitionState",
           "category": "standard",
           "timing": {
             "mode": "E+",
@@ -34,160 +34,148 @@
           },
           "subActions": [],
           "trigger": "onCountdownComplete",
-          "targetState": "intro",
-          "isShown": false,
-          "targetLayoutElementId": "startpopup",
-          "targetLayoutSurface": "stage",
-          "targetLayoutScope": "moment"
+          "targetState": "intro"
         },
         {
           "id": "lobby-action-mqojohry",
           "name": "Setup Game",
           "type": "setupGame",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "lobby-action-mrmi772x",
           "nodePosition": {
             "x": 804,
             "y": 226
           },
-          "nextTargetActionId": "lobby-action-mrmi772x"
+          "subActions": []
         },
         {
           "id": "lobby-action-mqprlx3p",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "lobby-action-mrmi8fie",
           "nodePosition": {
             "x": 804,
             "y": 1348
           },
-          "nextTargetActionId": "lobby-action-mrmi8fie"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "lobby-action-mrmi8fie",
           "name": "End Moment",
           "type": "endMoment",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 804,
             "y": 1552
           },
-          "nextTargetActionId": "return"
+          "subActions": []
         },
         {
           "id": "lobby-action-mqpt9z90",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "lobby-action-mqw4vt62",
           "nodePosition": {
             "x": 804,
             "y": 634
           },
-          "nextTargetActionId": "lobby-action-mqw4vt62"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
           "id": "lobby-action-mqw4vt62",
           "name": "Display Text",
           "type": "displayText",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Party Game Template",
-          "textTarget": "stagetitle",
-          "instant": false,
-          "isShown": true,
+          "nextTargetActionId": "lobby-countdown-complete",
+          "nodePosition": {
+            "x": 804,
+            "y": 838
+          },
           "subActions": [
             {
               "id": "lobby-sub-action-mrmyli4a",
               "name": "Set Game Object Shown",
               "type": "setGameObjectShown",
+              "category": "standard",
               "timing": {
                 "mode": "S+",
                 "seconds": 0
               },
-              "text": "Presented text",
-              "textTarget": "",
-              "instant": false,
-              "isShown": true,
+              "nextTargetActionId": "",
+              "nodePosition": null,
               "subActions": [],
               "targetLayoutElementId": "stagecodepanel",
+              "targetLayoutScope": "moment",
               "targetLayoutSurface": "stage",
-              "targetLayoutScope": "moment"
+              "isShown": true,
+              "instant": false
             },
             {
               "id": "lobby-sub-action-mrmynmjp",
               "name": "Set Game Object Shown",
               "type": "setGameObjectShown",
+              "category": "standard",
               "timing": {
                 "mode": "S+",
                 "seconds": 0
               },
-              "text": "Presented text",
-              "textTarget": "",
-              "instant": false,
-              "isShown": true,
+              "nextTargetActionId": "",
+              "nodePosition": null,
               "subActions": [],
               "targetLayoutElementId": "joinprompt",
+              "targetLayoutScope": "moment",
               "targetLayoutSurface": "stage",
-              "targetLayoutScope": "moment"
+              "isShown": true,
+              "instant": false
             }
           ],
-          "nodePosition": {
-            "x": 804,
-            "y": 838
-          },
-          "nextTargetActionId": "lobby-countdown-complete"
+          "text": "Party Game Template",
+          "textTarget": "stagetitle",
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "lobby-action-mrmi772x",
           "name": "Start Moment",
           "type": "startMoment",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "lobby-action-mqpt9z90",
           "nodePosition": {
             "x": 804,
             "y": 430
           },
-          "nextTargetActionId": "lobby-action-mqpt9z90"
+          "subActions": []
         }
       ]
     },
@@ -213,57 +201,57 @@
           "id": "intro-action-mqprim01",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 768
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "intro-action-mqprm6ln",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "intro-action-mqw4c168",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "intro-action-mqw4c168"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
           "id": "intro-action-mqw4c168",
           "name": "Present Text",
           "type": "presentText",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "This is the Game Intro State",
-          "textTarget": "layout-text-field-instance-1",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "",
           "nodePosition": {
             "x": 670,
             "y": 514
           },
+          "subActions": [],
+          "text": "This is the Game Intro State",
+          "textTarget": "layout-text-field-instance-1",
+          "isShown": true,
+          "instant": false,
           "stageClickTargetActionId": "intro-action-mqprim01"
         }
       ]
@@ -311,39 +299,37 @@
           "id": "round-intro-game-state-action-mqprj88i",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "round-intro-action-mqkg361r",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "round-intro-action-mqkg361r"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
           "id": "round-intro-game-state-action-mqprjpxb",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 768
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         }
       ]
     },
@@ -608,39 +594,37 @@
           "id": "crafting-game-state-action-mqprk697",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "crafting-game-state-action-mqlafl8m",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "crafting-game-state-action-mqlafl8m"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
           "id": "crafting-game-state-action-mqprkq1k",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 3404
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         }
       ]
     },
@@ -770,39 +754,37 @@
           "id": "presentation-game-state-action-mqpt4iz8",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 1420
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "presentation-game-state-action-mqpt8zt1",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "presentation-game-state-action-mqlahhim",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "presentation-game-state-action-mqlahhim"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         }
       ]
     },
@@ -849,39 +831,37 @@
           "id": "scoreboard-game-state-action-mqpt5dmx",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "scoreboard-game-state-action-mqlaj01s",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "scoreboard-game-state-action-mqlaj01s"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
           "id": "scoreboard-game-state-action-mqpt5mx5",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 768
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         }
       ]
     },
@@ -928,210 +908,47 @@
           "id": "post-game-state-action-mqpt63ca",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "post-game-state-action-mqlak7zw",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "post-game-state-action-mqlak7zw"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
           "id": "post-game-state-action-mqpt6apm",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
             "y": 768
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         }
       ]
     },
     {
       "id": "writing-moment",
       "name": "Writing Moment",
-      "nextStateTargetId": "voting-moment",
-      "entryTargetActionId": "writing-moment-action-mqpsey1p",
-      "nodePositions": {
-        "start": {
-          "x": 360,
-          "y": 60
-        },
-        "return": {
-          "x": 360,
-          "y": 860
-        },
-        "writing-show-prompt": {
-          "x": 320,
-          "y": 190
-        },
-        "writing-show-timer": {
-          "x": 320,
-          "y": 340
-        },
-        "writing-start-timer": {
-          "x": 320,
-          "y": 490
-        },
-        "writing-text-input": {
-          "x": 320,
-          "y": 640
-        },
-        "writing-prepare-cards": {
-          "x": 700,
-          "y": 640
-        },
-        "writing-to-voting": {
-          "x": 700,
-          "y": 790
-        }
+      "nodePosition": {
+        "x": 835,
+        "y": 1990
       },
-      "actions": [
-        {
-          "id": "writing-show-prompt",
-          "name": "Display Text",
-          "type": "displayText",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "textTarget": "writing-moment-moment-text",
-          "text": "What is your favorite movie?",
-          "isShown": true,
-          "instant": false,
-          "nextTargetActionId": "writing-show-timer",
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 514
-          }
-        },
-        {
-          "id": "writing-show-timer",
-          "name": "Show Writing Timer",
-          "type": "setTimerShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "isShown": true,
-          "instant": false,
-          "nextTargetActionId": "writing-start-timer",
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 768
-          }
-        },
-        {
-          "id": "writing-start-timer",
-          "name": "Start Writing Timer",
-          "type": "startCraftingTimer",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "nextTargetActionId": "writing-text-input",
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1022
-          }
-        },
-        {
-          "id": "writing-text-input",
-          "name": "Write Favorite Movie",
-          "type": "textSubmissionInput",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "prompt": "What is your favorite movie?",
-          "placeholder": "Write a movie title",
-          "characterLimit": 80,
-          "timerEndTargetActionId": "writing-moment-action-mqork62r",
-          "answersSubmittedTargetActionId": "writing-moment-action-mqork62r",
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1276
-          }
-        },
-        {
-          "id": "writing-moment-action-mqork62r",
-          "name": "Set Timer Shown",
-          "type": "setTimerShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1530
-          },
-          "nextTargetActionId": "writing-moment-action-mqpt6uvj"
-        },
-        {
-          "id": "writing-moment-action-mqpsey1p",
-          "name": "Set Wipe Shown",
-          "type": "setWipeShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 260
-          },
-          "nextTargetActionId": "writing-show-prompt"
-        },
-        {
-          "id": "writing-moment-action-mqpt6uvj",
-          "name": "Set Wipe Shown 1",
-          "type": "setWipeShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1784
-          },
-          "nextTargetActionId": "return"
-        }
-      ],
       "startNodePosition": {
         "x": 715,
         "y": 70
@@ -1140,201 +957,147 @@
         "x": 705,
         "y": 2038
       },
-      "nodePosition": {
-        "x": 835,
-        "y": 1990
-      }
-    },
-    {
-      "id": "voice-moment",
-      "name": "Voice Moment",
+      "entryTargetActionId": "writing-moment-action-mqpsey1p",
       "nextStateTargetId": "voting-moment",
-      "entryTargetActionId": "voice-moment-action-mqpsey1p",
-      "nodePositions": {
-        "start": {
-          "x": 360,
-          "y": 60
-        },
-        "return": {
-          "x": 360,
-          "y": 860
-        },
-        "voice-mic-access": {
-          "x": 320,
-          "y": 40
-        },
-        "voice-show-prompt": {
-          "x": 320,
-          "y": 190
-        },
-        "voice-show-timer": {
-          "x": 320,
-          "y": 340
-        },
-        "voice-start-timer": {
-          "x": 320,
-          "y": 490
-        },
-        "voice-text-input": {
-          "x": 320,
-          "y": 640
-        },
-        "voice-prepare-cards": {
-          "x": 700,
-          "y": 640
-        },
-        "voice-to-voting": {
-          "x": 700,
-          "y": 790
-        }
-      },
       "actions": [
         {
-          "id": "voice-mic-access",
-          "name": "Request Microphone Access",
-          "type": "requestMicrophoneAccessInput",
+          "id": "writing-show-prompt",
+          "name": "Display Text",
+          "type": "displayText",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "prompt": "Give microphone access to the game",
-          "buttonLabel": "Yes",
-          "microphoneAccessMode": "vip",
-          "microphoneAccessGrantedTargetActionId": "voice-show-prompt",
-          "subActions": [],
+          "nextTargetActionId": "writing-show-timer",
           "nodePosition": {
             "x": 670,
             "y": 514
-          }
+          },
+          "subActions": [],
+          "text": "What is your favorite movie?",
+          "textTarget": "writing-moment-moment-text",
+          "isShown": true,
+          "instant": false
         },
         {
-          "id": "voice-show-prompt",
-          "name": "Display Text",
-          "type": "displayText",
+          "id": "writing-show-timer",
+          "name": "Show Writing Timer",
+          "type": "setTimerShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "textTarget": "voice-moment-moment-text",
-          "text": "What is your favorite movie?",
-          "isShown": true,
-          "instant": false,
-          "nextTargetActionId": "voice-show-timer",
-          "subActions": [],
+          "nextTargetActionId": "writing-start-timer",
           "nodePosition": {
             "x": 670,
             "y": 768
-          }
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         },
         {
-          "id": "voice-show-timer",
-          "name": "Show Voice Timer",
-          "type": "setTimerShown",
+          "id": "writing-start-timer",
+          "name": "Start Writing Timer",
+          "type": "startCraftingTimer",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "isShown": true,
-          "instant": false,
-          "nextTargetActionId": "voice-start-timer",
-          "subActions": [],
+          "nextTargetActionId": "writing-text-input",
           "nodePosition": {
             "x": 670,
             "y": 1022
-          }
+          },
+          "subActions": []
         },
         {
-          "id": "voice-start-timer",
-          "name": "Start Voice Timer",
-          "type": "startCraftingTimer",
+          "id": "writing-text-input",
+          "name": "Write Favorite Movie",
+          "type": "textSubmissionInput",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "voice-text-input",
-          "subActions": [],
+          "nextTargetActionId": "",
           "nodePosition": {
             "x": 670,
             "y": 1276
-          }
-        },
-        {
-          "id": "voice-text-input",
-          "name": "Say Favorite Movie",
-          "type": "voiceSubmissionInput",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
           },
-          "prompt": "What is your favorite movie?",
-          "placeholder": "Speak a movie title",
-          "characterLimit": 80,
-          "timerEndTargetActionId": "voice-moment-action-mqork62r",
-          "answersSubmittedTargetActionId": "voice-moment-action-mqork62r",
           "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 1530
-          }
+          "prompt": "What is your favorite movie?",
+          "placeholder": "Write a movie title",
+          "characterLimit": 80,
+          "timerEndTargetActionId": "writing-moment-action-mqork62r",
+          "answersSubmittedTargetActionId": "writing-moment-action-mqork62r"
         },
         {
-          "id": "voice-moment-action-mqork62r",
+          "id": "writing-moment-action-mqork62r",
           "name": "Set Timer Shown",
           "type": "setTimerShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 1
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "writing-moment-action-mqpt6uvj",
           "nodePosition": {
             "x": 670,
-            "y": 1784
+            "y": 1530
           },
-          "nextTargetActionId": "voice-moment-action-mqpt6uvj"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
-          "id": "voice-moment-action-mqpsey1p",
+          "id": "writing-moment-action-mqpsey1p",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "writing-show-prompt",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "voice-mic-access"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
-          "id": "voice-moment-action-mqpt6uvj",
+          "id": "writing-moment-action-mqpt6uvj",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
-            "y": 2038
+            "y": 1784
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         }
-      ],
+      ]
+    },
+    {
+      "id": "voice-moment",
+      "name": "Voice Moment",
+      "nodePosition": {
+        "x": 415,
+        "y": 1990
+      },
       "startNodePosition": {
         "x": 715,
         "y": 70
@@ -1343,294 +1106,167 @@
         "x": 705,
         "y": 2292
       },
-      "nodePosition": {
-        "x": 415,
-        "y": 1990
-      }
-    },
-    {
-      "id": "voting-moment",
-      "name": "Voting Moment",
-      "entryTargetActionId": "voting-moment-action-mqpt7alu",
-      "nodePositions": {
-        "start": {
-          "x": 420,
-          "y": 60
-        },
-        "return": {
-          "x": 420,
-          "y": 1180
-        },
-        "voting-show-cards": {
-          "x": 380,
-          "y": 190
-        },
-        "voting-show-timer": {
-          "x": 380,
-          "y": 340
-        },
-        "voting-start-timer": {
-          "x": 380,
-          "y": 490
-        },
-        "voting-input": {
-          "x": 380,
-          "y": 640
-        },
-        "voting-reveal-results": {
-          "x": 380,
-          "y": 790
-        },
-        "voting-hide-losing-cards": {
-          "x": 380,
-          "y": 940
-        },
-        "voting-show-winner-points": {
-          "x": 120,
-          "y": 1090
-        },
-        "voting-bank-points": {
-          "x": 640,
-          "y": 1090
-        }
-      },
+      "entryTargetActionId": "voice-moment-action-mqpsey1p",
+      "nextStateTargetId": "voting-moment",
       "actions": [
         {
-          "id": "voting-show-cards",
-          "name": "Set Voting Cards Shown 1",
-          "type": "setVotingCardsShown",
+          "id": "voice-mic-access",
+          "name": "Request Microphone Access",
+          "type": "requestMicrophoneAccessInput",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "isShown": true,
-          "cardFilter": "all",
-          "instant": false,
-          "nextTargetActionId": "voting-show-timer",
-          "subActions": [],
+          "nextTargetActionId": "",
           "nodePosition": {
             "x": 670,
             "y": 514
-          }
+          },
+          "subActions": [],
+          "prompt": "Give microphone access to the game",
+          "buttonLabel": "Yes",
+          "microphoneAccessMode": "vip",
+          "microphoneAccessGrantedTargetActionId": "voice-show-prompt"
         },
         {
-          "id": "voting-show-timer",
-          "name": "Show Voting Timer",
-          "type": "setTimerShown",
+          "id": "voice-show-prompt",
+          "name": "Display Text",
+          "type": "displayText",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "isShown": true,
-          "instant": false,
-          "nextTargetActionId": "voting-start-timer",
-          "subActions": [],
+          "nextTargetActionId": "voice-show-timer",
           "nodePosition": {
             "x": 670,
             "y": 768
-          }
+          },
+          "subActions": [],
+          "text": "What is your favorite movie?",
+          "textTarget": "voice-moment-moment-text",
+          "isShown": true,
+          "instant": false
         },
         {
-          "id": "voting-start-timer",
-          "name": "Start Voting Timer",
-          "type": "startCraftingTimer",
+          "id": "voice-show-timer",
+          "name": "Show Voice Timer",
+          "type": "setTimerShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "voting-input",
-          "subActions": [],
+          "nextTargetActionId": "voice-start-timer",
           "nodePosition": {
             "x": 670,
             "y": 1022
-          }
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         },
         {
-          "id": "voting-input",
-          "name": "Vote On Favorite Answer",
-          "type": "voteOnAnswersInput",
+          "id": "voice-start-timer",
+          "name": "Start Voice Timer",
+          "type": "startCraftingTimer",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "prompt": "Vote for your favorite movie answer",
-          "timerEndTargetActionId": "voting-moment-action-mqoipyj9",
-          "answersSubmittedTargetActionId": "voting-moment-action-mqoipyj9",
-          "subActions": [],
+          "nextTargetActionId": "voice-text-input",
           "nodePosition": {
             "x": 670,
             "y": 1276
           },
-          "nextTargetActionId": "voting-moment-action-mqoipyj9"
+          "subActions": []
         },
         {
-          "id": "voting-show-winner-points",
-          "name": "Show Winner Points",
-          "type": "showPoints",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "playerFilter": "votingWinner",
-          "points": 500,
-          "nextTargetActionId": "voting-bank-points",
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 2546
-          }
-        },
-        {
-          "id": "voting-bank-points",
-          "name": "Bank Winner Points",
-          "type": "givePendingPoints",
+          "id": "voice-text-input",
+          "name": "Say Favorite Movie",
+          "type": "voiceSubmissionInput",
+          "category": "input",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "voting-moment-action-mqoit5wq",
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 2800
-          }
-        },
-        {
-          "id": "voting-moment-action-mqoipyj9",
-          "name": "Set Timer Shown",
-          "type": "setTimerShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "",
           "nodePosition": {
             "x": 670,
             "y": 1530
           },
-          "nextTargetActionId": "voting-moment-action-mqoir6xh"
+          "subActions": [],
+          "prompt": "What is your favorite movie?",
+          "placeholder": "Speak a movie title",
+          "characterLimit": 80,
+          "timerEndTargetActionId": "voice-moment-action-mqork62r",
+          "answersSubmittedTargetActionId": "voice-moment-action-mqork62r"
         },
         {
-          "id": "voting-moment-action-mqoir6xh",
-          "name": "Reveal Authors",
-          "type": "revealAuthors",
+          "id": "voice-moment-action-mqork62r",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 1
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "voice-moment-action-mqpt6uvj",
           "nodePosition": {
             "x": 670,
             "y": 1784
           },
-          "nextTargetActionId": "voting-moment-action-mqoirmjb"
-        },
-        {
-          "id": "voting-moment-action-mqoirmjb",
-          "name": "Reveal Votes",
-          "type": "revealVotes",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
           "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 2038
-          },
-          "nextTargetActionId": "voting-moment-action-mqoirt4e"
-        },
-        {
-          "id": "voting-moment-action-mqoirt4e",
-          "name": "Reveal Winning Answer",
-          "type": "revealWinningAnswer",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1.5
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 2292
-          },
-          "nextTargetActionId": "voting-show-winner-points"
-        },
-        {
-          "id": "voting-moment-action-mqoit5wq",
-          "name": "Set Voting Cards Shown",
-          "type": "setVotingCardsShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 1
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
           "isShown": false,
-          "subActions": [],
-          "nodePosition": {
-            "x": 670,
-            "y": 3054
-          },
-          "cardFilter": "all",
-          "nextTargetActionId": "voting-moment-action-mqpt7iwq"
+          "instant": false
         },
         {
-          "id": "voting-moment-action-mqpt7alu",
+          "id": "voice-moment-action-mqpsey1p",
           "name": "Set Wipe Shown",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
+          "nextTargetActionId": "voice-mic-access",
           "nodePosition": {
             "x": 670,
             "y": 260
           },
-          "nextTargetActionId": "voting-show-cards"
+          "subActions": [],
+          "isShown": false,
+          "instant": false
         },
         {
-          "id": "voting-moment-action-mqpt7iwq",
+          "id": "voice-moment-action-mqpt6uvj",
           "name": "Set Wipe Shown 1",
           "type": "setWipeShown",
+          "category": "standard",
           "timing": {
             "mode": "E+",
             "seconds": 0
           },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": true,
-          "subActions": [],
+          "nextTargetActionId": "return",
           "nodePosition": {
             "x": 670,
-            "y": 3308
+            "y": 2038
           },
-          "nextTargetActionId": "return"
+          "subActions": [],
+          "isShown": true,
+          "instant": false
         }
-      ],
-      "nextStateTargetId": "post-game-state",
+      ]
+    },
+    {
+      "id": "voting-moment",
+      "name": "Voting Moment",
+      "nodePosition": {
+        "x": 625,
+        "y": 2230
+      },
       "startNodePosition": {
         "x": 715,
         "y": 70
@@ -1639,32 +1275,257 @@
         "x": 705,
         "y": 3562
       },
-      "nodePosition": {
-        "x": 625,
-        "y": 2230
-      }
+      "entryTargetActionId": "voting-moment-action-mqpt7alu",
+      "nextStateTargetId": "post-game-state",
+      "actions": [
+        {
+          "id": "voting-show-cards",
+          "name": "Set Voting Cards Shown 1",
+          "type": "setVotingCardsShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voting-show-timer",
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false,
+          "cardFilter": "all"
+        },
+        {
+          "id": "voting-show-timer",
+          "name": "Show Voting Timer",
+          "type": "setTimerShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voting-start-timer",
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false
+        },
+        {
+          "id": "voting-start-timer",
+          "name": "Start Voting Timer",
+          "type": "startCraftingTimer",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voting-input",
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          },
+          "subActions": []
+        },
+        {
+          "id": "voting-input",
+          "name": "Vote On Favorite Answer",
+          "type": "voteOnAnswersInput",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voting-moment-action-mqoipyj9",
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          },
+          "subActions": [],
+          "prompt": "Vote for your favorite movie answer",
+          "inputMode": "submitOnce",
+          "timerEndTargetActionId": "voting-moment-action-mqoipyj9",
+          "answersSubmittedTargetActionId": "voting-moment-action-mqoipyj9"
+        },
+        {
+          "id": "voting-show-winner-points",
+          "name": "Show Winner Points",
+          "type": "showPoints",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "voting-bank-points",
+          "nodePosition": {
+            "x": 670,
+            "y": 2546
+          },
+          "subActions": [],
+          "playerFilter": "votingWinner",
+          "points": 500
+        },
+        {
+          "id": "voting-bank-points",
+          "name": "Bank Winner Points",
+          "type": "givePendingPoints",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voting-moment-action-mqoit5wq",
+          "nodePosition": {
+            "x": 670,
+            "y": 2800
+          },
+          "subActions": []
+        },
+        {
+          "id": "voting-moment-action-mqoipyj9",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "voting-moment-action-mqoir6xh",
+          "nodePosition": {
+            "x": 670,
+            "y": 1530
+          },
+          "subActions": [],
+          "isShown": false,
+          "instant": false
+        },
+        {
+          "id": "voting-moment-action-mqoir6xh",
+          "name": "Reveal Authors",
+          "type": "revealAuthors",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "voting-moment-action-mqoirmjb",
+          "nodePosition": {
+            "x": 670,
+            "y": 1784
+          },
+          "subActions": []
+        },
+        {
+          "id": "voting-moment-action-mqoirmjb",
+          "name": "Reveal Votes",
+          "type": "revealVotes",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "voting-moment-action-mqoirt4e",
+          "nodePosition": {
+            "x": 670,
+            "y": 2038
+          },
+          "subActions": [],
+          "voteRevealStaggerSeconds": 1
+        },
+        {
+          "id": "voting-moment-action-mqoirt4e",
+          "name": "Reveal Winning Answer",
+          "type": "revealWinningAnswer",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1.5
+          },
+          "nextTargetActionId": "voting-show-winner-points",
+          "nodePosition": {
+            "x": 670,
+            "y": 2292
+          },
+          "subActions": []
+        },
+        {
+          "id": "voting-moment-action-mqoit5wq",
+          "name": "Set Voting Cards Shown",
+          "type": "setVotingCardsShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "voting-moment-action-mqpt7iwq",
+          "nodePosition": {
+            "x": 670,
+            "y": 3054
+          },
+          "subActions": [],
+          "isShown": false,
+          "instant": false,
+          "cardFilter": "all"
+        },
+        {
+          "id": "voting-moment-action-mqpt7alu",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voting-show-cards",
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "subActions": [],
+          "isShown": false,
+          "instant": false
+        },
+        {
+          "id": "voting-moment-action-mqpt7iwq",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 670,
+            "y": 3308
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false
+        }
+      ]
     }
   ],
   "routeNodes": [
     {
       "id": "route-action-mqqwadxk-oji3m",
-      "routeNodeType": "action",
       "name": "Decision",
       "type": "decision",
+      "category": "standard",
       "timing": {
         "mode": "E+",
         "seconds": 0
       },
-      "text": "Presented text",
-      "textTarget": "",
-      "instant": false,
-      "isShown": true,
-      "subActions": [],
-      "nextTargetNodeId": "",
+      "nextTargetActionId": "",
       "nodePosition": {
         "x": 595,
         "y": 1510
       },
+      "subActions": [],
       "variable": "activePlayerCount",
       "valueType": "int",
       "branches": [
@@ -1682,49 +1543,48 @@
           "code": "x < 3",
           "targetNodeId": "writing-moment"
         }
-      ]
+      ],
+      "routeNodeType": "action",
+      "nextTargetNodeId": ""
     },
     {
       "id": "route-action-mqrd9i6n-8mb29",
-      "routeNodeType": "action",
       "name": "Jump Node",
       "type": "jumpNode",
+      "category": "standard",
       "timing": {
         "mode": "E+",
         "seconds": 0
       },
-      "text": "Presented text",
-      "textTarget": "",
-      "instant": false,
-      "isShown": true,
-      "subActions": [],
-      "nextTargetNodeId": "",
+      "nextTargetActionId": "",
       "nodePosition": {
         "x": 625,
         "y": 2950
       },
+      "subActions": [],
       "jumpTargetActionId": "lobby",
-      "nextTargetActionId": ""
+      "routeNodeType": "action",
+      "nextTargetNodeId": ""
     },
     {
       "id": "route-action-mqrd9q26-4rz7m",
-      "routeNodeType": "action",
       "name": "Set Wipe Shown",
       "type": "setWipeShown",
+      "category": "standard",
       "timing": {
         "mode": "E+",
         "seconds": 0
       },
-      "text": "Presented text",
-      "textTarget": "",
-      "instant": false,
-      "isShown": false,
-      "subActions": [],
-      "nextTargetNodeId": "route-action-mqrd9i6n-8mb29",
+      "nextTargetActionId": "",
       "nodePosition": {
         "x": 625,
         "y": 2710
-      }
+      },
+      "subActions": [],
+      "isShown": false,
+      "instant": false,
+      "routeNodeType": "action",
+      "nextTargetNodeId": "route-action-mqrd9i6n-8mb29"
     }
   ]
 }
