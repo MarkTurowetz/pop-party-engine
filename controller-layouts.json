@@ -785,7 +785,7 @@
           "kind": "art",
           "artCompositionId": "layout-text-field",
           "hidden": false,
-          "locked": true,
+          "locked": false,
           "x": 195,
           "y": 190,
           "width": 330,
