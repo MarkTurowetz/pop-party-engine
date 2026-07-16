@@ -13,7 +13,7 @@
       },
       "returnNodePosition": {
         "x": 839,
-        "y": 1960
+        "y": 1756
       },
       "entryTargetActionId": "lobby-action-mqojohry",
       "nextStateTargetId": "intro",
@@ -27,7 +27,7 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "lobby-action-mrn02b9x",
+          "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
             "x": 804,
             "y": 1144
@@ -39,29 +39,6 @@
           "targetLayoutElementId": "startpopup",
           "targetLayoutSurface": "stage",
           "targetLayoutScope": "moment"
-        },
-        {
-          "id": "lobby-action-mrn02b9x",
-          "name": "Set Game Object Shown",
-          "type": "setGameObjectShown",
-          "timing": {
-            "mode": "E+",
-            "seconds": 0
-          },
-          "text": "Presented text",
-          "textTarget": "",
-          "instant": false,
-          "isShown": false,
-          "subActions": [],
-          "nodePosition": {
-            "x": 804,
-            "y": 1348
-          },
-          "stageClickTargetActionId": "lobby-action-mqprlx3p",
-          "targetLayoutElementId": "startpopup",
-          "targetLayoutSurface": "stage",
-          "targetLayoutScope": "moment",
-          "nextTargetActionId": "lobby-action-mqprlx3p"
         },
         {
           "id": "lobby-action-mqojohry",
@@ -97,7 +74,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 804,
-            "y": 1552
+            "y": 1348
           },
           "nextTargetActionId": "lobby-action-mrmi8fie"
         },
@@ -116,7 +93,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 804,
-            "y": 1756
+            "y": 1552
           },
           "nextTargetActionId": "return"
         },
