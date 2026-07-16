@@ -1312,7 +1312,7 @@
       "name": "Countdown Popup",
       "description": "Editable popup shown while the lobby countdown is running.",
       "surface": "stage",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -1321,43 +1321,24 @@
       },
       "components": [
         {
-          "id": "popup-text",
-          "name": "Popup Text",
-          "instanceLabel": "popupText",
-          "kind": "text",
+          "id": "countdown-popup-art",
+          "name": "Countdown Popup Art",
+          "instanceLabel": "countdownPopupArt",
+          "kind": "reference",
           "x": 100,
           "y": 100,
           "width": 200,
           "height": 200,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "Starting Game",
-          "fontSize": 32,
-          "autoFitText": true,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
-        },
-        {
-          "id": "popup-card",
-          "name": "Popup Card",
-          "instanceLabel": "popupCard",
-          "kind": "shape",
-          "x": 100,
-          "y": 100,
-          "width": 200,
-          "height": 200,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "rounded",
-          "fillColor": "#60d394",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 5,
-          "borderRadius": 99
+          "defaultAnimationState": "",
+          "artCompositionId": "prefab-countdown-popup-art"
         }
       ],
       "timeline": {
@@ -1389,64 +1370,6 @@
             "frame": 17
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
@@ -1455,9 +1378,232 @@
           13,
           16,
           32
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-countdown-popup-art",
+            "targetId": "countdown-popup-art",
+            "keyframes": [
+              {
+                "id": "countdown-popup-art-0",
+                "frame": 0,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "countdown-popup-art-1",
+                "frame": 1,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "countdown-popup-art-2",
+                "frame": 2,
+                "props": {
+                  "scale": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "countdown-popup-art-8",
+                "frame": 8,
+                "props": {
+                  "scale": 1.2,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "countdown-popup-art-12",
+                "frame": 12,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "countdown-popup-art-13",
+                "frame": 13,
+                "props": {
+                  "scale": 1.2,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "countdown-popup-art-16",
+                "frame": 16,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "countdown-popup-art-17",
+                "frame": 17,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "countdown-popup-art-21",
+                "frame": 21,
+                "props": {
+                  "scale": 1.2,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "countdown-popup-art-32",
+                "frame": 32,
+                "props": {
+                  "scale": 0,
+                  "opacity": 1,
+                  "visible": false,
+                  "x": 100,
+                  "y": 100,
+                  "width": 200,
+                  "height": 200,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-16T02:35:52.923Z"
     },
     "crafting-timer-widget": {
       "name": "Crafting Timer Widget MC",
@@ -1964,7 +2110,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-16T01:58:36.152Z"
+      "updatedAt": "2026-07-16T02:35:52.923Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
@@ -11029,6 +11175,95 @@
           "borderColor": "#17131f",
           "borderWidth": 4,
           "borderRadius": 999
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
+    },
+    "prefab-countdown-popup-art": {
+      "name": "Countdown Popup Art",
+      "description": "Migrated visual prefab used by Countdown Popup.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 200,
+        "height": 200
+      },
+      "components": [
+        {
+          "id": "popup-text",
+          "name": "Popup Text",
+          "instanceLabel": "popupText",
+          "kind": "text",
+          "x": 100,
+          "y": 100,
+          "width": 200,
+          "height": 200,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "defaultText": "Starting Game",
+          "fontSize": 32,
+          "autoFitText": true,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "popup-card",
+          "name": "Popup Card",
+          "instanceLabel": "popupCard",
+          "kind": "shape",
+          "x": 100,
+          "y": 100,
+          "width": 200,
+          "height": 200,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rounded",
+          "fillColor": "#60d394",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 5,
+          "borderRadius": 99
         }
       ],
       "timeline": {
