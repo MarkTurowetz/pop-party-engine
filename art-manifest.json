@@ -1805,7 +1805,7 @@
                 "id": "waiting-status-art-0",
                 "frame": 0,
                 "props": {
-                  "scale": 0.92,
+                  "scale": 1,
                   "opacity": 1,
                   "x": 350,
                   "y": 41,
@@ -1836,8 +1836,8 @@
                 "id": "waiting-status-art-2",
                 "frame": 2,
                 "props": {
-                  "scale": 0.92,
-                  "opacity": 0,
+                  "scale": 0,
+                  "opacity": 1,
                   "visible": true,
                   "x": 350,
                   "y": 41,
@@ -1852,7 +1852,7 @@
                 "id": "waiting-status-art-8",
                 "frame": 8,
                 "props": {
-                  "scale": 1.04,
+                  "scale": 1.2,
                   "opacity": 1,
                   "visible": true,
                   "x": 350,
@@ -1884,7 +1884,7 @@
                 "id": "waiting-status-art-13",
                 "frame": 13,
                 "props": {
-                  "scale": 1.03,
+                  "scale": 1.2,
                   "opacity": 1,
                   "visible": true,
                   "x": 350,
@@ -1932,7 +1932,7 @@
                 "id": "waiting-status-art-21",
                 "frame": 21,
                 "props": {
-                  "scale": 1.04,
+                  "scale": 1.2,
                   "opacity": 1,
                   "visible": true,
                   "x": 350,
@@ -1948,8 +1948,8 @@
                 "id": "waiting-status-art-32",
                 "frame": 32,
                 "props": {
-                  "scale": 0.92,
-                  "opacity": 0,
+                  "scale": 0,
+                  "opacity": 1,
                   "visible": false,
                   "x": 350,
                   "y": 41,
@@ -1964,7 +1964,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-16T01:57:32.458Z"
+      "updatedAt": "2026-07-16T01:58:36.152Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
