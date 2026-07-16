@@ -211,13 +211,20 @@ export function removeFlowStatesCommand(stateIds: Iterable<string>): FlowCommand
   };
 }
 
-export function addFlowActionCommand(stateId: string, selectedPrimaryActionId = ""): FlowCommand {
+export function addFlowActionCommand(
+  stateId: string,
+  selectedPrimaryActionId = "",
+  newActionId = ""
+): FlowCommand {
   return {
     id: `add-flow-action:${stateId}`,
     label: "Add flow action",
     apply: (flow) => {
       const state = findFlowState(flow, stateId);
-      if (state) addDefaultFlowAction(state, selectedPrimaryActionId);
+      if (state) {
+        const result = addDefaultFlowAction(state, selectedPrimaryActionId);
+        if (newActionId) result.action.id = newActionId;
+      }
     }
   };
 }
@@ -225,7 +232,8 @@ export function addFlowActionCommand(stateId: string, selectedPrimaryActionId = 
 export function addFlowActionToSubroutineCommand(
   stateId: string,
   subroutinePath: Iterable<string> = [],
-  selectedPrimaryActionId = ""
+  selectedPrimaryActionId = "",
+  newActionId = ""
 ): FlowCommand {
   const path = [...subroutinePath].filter(Boolean);
   return {
@@ -233,7 +241,14 @@ export function addFlowActionToSubroutineCommand(
     label: "Add flow action",
     apply: (flow) => {
       const ref = findFlowSubroutine(flow, stateId, path);
-      if (ref) addDefaultFlowActionToSubroutine(ref.subroutine, selectedPrimaryActionId, stateId);
+      if (ref) {
+        const result = addDefaultFlowActionToSubroutine(
+          ref.subroutine,
+          selectedPrimaryActionId,
+          stateId
+        );
+        if (newActionId) result.action.id = newActionId;
+      }
     }
   };
 }
@@ -368,7 +383,8 @@ export function addConnectedFlowActionCommand(
   stateId: string,
   source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
   position: FlowNodePoint,
-  subroutinePath: Iterable<string> = []
+  subroutinePath: Iterable<string> = [],
+  newActionId = ""
 ): FlowCommand {
   const nodePosition = {
     x: Math.max(0, Math.round(position.x)),
@@ -385,6 +401,7 @@ export function addConnectedFlowActionCommand(
       const insertAfterActionId =
         source.kind === "field" || source.kind === "branch" ? source.nodeId : "";
       const result = addDefaultFlowActionToSubroutine(ref.subroutine, insertAfterActionId, stateId);
+      if (newActionId) result.action.id = newActionId;
       (result.action as Record<string, unknown>).nodePosition = nodePosition;
       connectSourceToAction(ref.subroutine, source, result.action.id);
     }
@@ -490,7 +507,20 @@ export function setFlowActionFieldCommand(
     apply: (flow) => {
       const action = findFlowAction(findFlowState(flow, stateId), actionId) as
         Record<string, unknown> | undefined;
-      if (action) action[key] = value;
+      if (action) {
+        action[key] = value;
+        if (
+          key === "trigger" &&
+          value === "onCountdownComplete" &&
+          action.type === "transitionState"
+        ) {
+          const timing = (action.timing as FlowAction["timing"]) || {
+            mode: "E+",
+            seconds: 0
+          };
+          action.timing = { ...timing, mode: "E+" };
+        }
+      }
     }
   };
 }
@@ -710,6 +740,10 @@ export function setFlowRouteActionFieldCommand(
 function applyFlowRouteActionField(node: FlowRouteNode, key: string, value: unknown): void {
   const record = node as Record<string, unknown>;
   record[key] = value;
+  if (key === "trigger" && value === "onCountdownComplete" && record.type === "transitionState") {
+    const timing = (record.timing as FlowAction["timing"]) || { mode: "E+", seconds: 0 };
+    record.timing = { ...timing, mode: "E+" };
+  }
   if (key === "jumpTargetActionId") {
     setRootRouteTarget(node, key, String(value || ""));
   } else if (ROOT_ROUTE_TARGET_FIELDS.has(key)) {

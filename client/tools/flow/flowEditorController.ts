@@ -242,6 +242,15 @@ function makeRootRouteActionId(): string {
   return `route-action-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function makeFlowActionId(flow: GameFlow, stateId: string): string {
+  const existingIds = new Set(allFlowActionIds(flow));
+  let actionId: string;
+  do {
+    actionId = `${stateId}-action-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  } while (existingIds.has(actionId));
+  return actionId;
+}
+
 export function createFlowEditorController(
   options: FlowEditorControllerOptions
 ): FlowEditorController {
@@ -370,18 +379,21 @@ export function createFlowEditorController(
 
     addAction: (stateId, selectedPrimaryActionId = "", subroutinePath = []) => {
       const path = [...subroutinePath].filter(Boolean);
-      commit(
-        store.execute(
-          path.length
-            ? addFlowActionToSubroutineCommand(stateId, path, selectedPrimaryActionId)
-            : addFlowActionCommand(stateId, selectedPrimaryActionId)
-        )
+      const actionId = makeFlowActionId(store.snapshot().flow, stateId);
+      const updated = store.execute(
+        path.length
+          ? addFlowActionToSubroutineCommand(stateId, path, selectedPrimaryActionId, actionId)
+          : addFlowActionCommand(stateId, selectedPrimaryActionId, actionId)
       );
+      commit(store.selectActions([actionId], allFlowActionIds(updated.flow)));
     },
-    addConnectedAction: (stateId, source, position, subroutinePath = []) =>
-      commit(
-        store.execute(addConnectedFlowActionCommand(stateId, source, position, subroutinePath))
-      ),
+    addConnectedAction: (stateId, source, position, subroutinePath = []) => {
+      const actionId = makeFlowActionId(store.snapshot().flow, stateId);
+      const updated = store.execute(
+        addConnectedFlowActionCommand(stateId, source, position, subroutinePath, actionId)
+      );
+      commit(store.selectActions([actionId], allFlowActionIds(updated.flow)));
+    },
     addRootAction: (position = null) => {
       const nodeId = makeRootRouteActionId();
       store.execute(addRootFlowActionCommand(position, nodeId));
@@ -538,11 +550,12 @@ export function createFlowEditorController(
         const payload = serializeGameFlowForSave(store.snapshot().flow);
         const response = await api.saveGameFlow(payload);
         const savedFlow = response.flow || payload;
-        savedSnapshot = savedSnapshotOf(savedFlow);
+        const savedStoreSnapshot = store.replaceFlow(savedFlow);
+        savedSnapshot = savedSnapshotOf(savedStoreSnapshot.flow);
         lastCommittedFlowSnapshot = savedSnapshot;
         sessionDraftPublisher.markSaved(savedSnapshot);
         patch({ saving: false, hasLocalDraft: false });
-        commit();
+        commit(savedStoreSnapshot);
         return savedFlow;
       } catch (error) {
         patch({ saving: false, error: error instanceof Error ? error.message : String(error) });

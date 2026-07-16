@@ -92,6 +92,33 @@ describe("ActionInspector", () => {
     expect(markup).toContain("Presentation Text");
   });
 
+  it("renders countdown wait controls and state targets for transition actions", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "wait-countdown",
+          name: "On Countdown Complete",
+          type: "transitionState",
+          trigger: "onCountdownComplete",
+          targetState: "intro",
+          nextTargetActionId: "after-countdown"
+        }}
+        edit={{
+          onSetActionField: () => undefined,
+          actionTargetOptions: [{ id: "after-countdown", label: "After Countdown" }],
+          stateTargetOptions: [{ id: "intro", label: "Game Intro" }]
+        }}
+        state={{ id: "lobby", name: "Lobby", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-flow-react-field="targetState"');
+    expect(markup).toContain("Game Intro");
+    expect(markup).toContain('data-flow-react-field="trigger"');
+    expect(markup).toContain("On Countdown Complete");
+    expect(markup).toContain("After Countdown");
+  });
+
   it("renders placed game-object target choices for layout animation actions", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector

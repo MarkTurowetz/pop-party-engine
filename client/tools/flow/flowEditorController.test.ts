@@ -202,7 +202,9 @@ describe("createFlowEditorController", () => {
     expect(
       controller.getState().snapshot.flow.states[1].actions[0].targetLayoutElementId
     ).toBeUndefined();
-    expect(controller.getState().snapshot.flow.states[1].actions[0].targetLayoutScope).toBeUndefined();
+    expect(
+      controller.getState().snapshot.flow.states[1].actions[0].targetLayoutScope
+    ).toBeUndefined();
   });
 
   it("adds, edits, and removes decision branches", () => {
@@ -339,12 +341,54 @@ describe("createFlowEditorController", () => {
     expect(actions.map((action) => action.id)).toEqual(["act-1", created.id]);
     expect(actions[0].nextTargetActionId).toBe(created.id);
     expect(created.nodePosition).toEqual({ x: 222, y: 334 });
+    expect(controller.getState().snapshot.selection.selectedFlowActionId).toBe(created.id);
 
     controller.undo();
     expect(controller.getState().snapshot.flow.states[1].actions).toHaveLength(1);
     expect(
       controller.getState().snapshot.flow.states[1].actions[0].nextTargetActionId
     ).toBeUndefined();
+  });
+
+  it("keeps the source action intact while configuring and saving a connected action", async () => {
+    const api = fakeApi();
+    const controller = createFlowEditorController({
+      initialFlow: flowFixture(),
+      api,
+      actionTypes: [
+        { id: "message", name: "Message", category: "standard" },
+        { id: "setGameObjectShown", name: "Set Game Object Shown", category: "standard" }
+      ]
+    });
+    controller.selectActions("act-1");
+
+    controller.addConnectedAction(
+      "round-one",
+      {
+        id: "act-1:nextTargetActionId",
+        nodeId: "act-1",
+        label: "Next",
+        kind: "field",
+        field: "nextTargetActionId",
+        currentTarget: ""
+      },
+      { x: 200, y: 300 }
+    );
+
+    const createdId = controller.getState().snapshot.selection.selectedFlowActionId;
+    expect(createdId).not.toBe("act-1");
+    controller.setActionType("round-one", createdId, "setGameObjectShown");
+    controller.setNodePositions("subroutine", "round-one", [
+      { nodeId: "act-1", x: 100, y: 100 },
+      { nodeId: createdId, x: 100, y: 300 }
+    ]);
+    await controller.save();
+
+    const savedFlow = vi.mocked(api.saveGameFlow).mock.calls[0][0];
+    const savedActions = savedFlow.states[1].actions;
+    expect(savedActions.find((action) => action.id === "act-1")?.type).toBe("message");
+    expect(savedActions.find((action) => action.id === createdId)?.type).toBe("setGameObjectShown");
+    expect(savedActions[0].nextTargetActionId).toBe(createdId);
   });
 
   it("undo returns to a clean snapshot", () => {
@@ -371,6 +415,33 @@ describe("createFlowEditorController", () => {
     expect(saved?.states[0].actions).toHaveLength(1);
     expect(controller.getState().dirty).toBe(false);
     expect(controller.getState().saving).toBe(false);
+  });
+
+  it("adopts the canonical normalized flow returned by save", async () => {
+    const api = fakeApi({
+      saveGameFlow: vi.fn(async (flow: GameFlow) => {
+        const canonical = structuredClone(flow);
+        delete (canonical.states[1].actions[0] as Record<string, unknown>).staleField;
+        return {
+          ok: true,
+          flow: canonical,
+          runtimeFlow: canonical,
+          storage: {}
+        } as unknown as GameFlowSaveResponse;
+      })
+    });
+    const initial = flowFixture();
+    (initial.states[1].actions[0] as Record<string, unknown>).staleField = "remove-me";
+    const controller = createFlowEditorController({ initialFlow: initial, api });
+    controller.renameAction("round-one", "act-1", "Edited");
+
+    await controller.save();
+
+    expect(controller.getState().dirty).toBe(false);
+    expect(
+      (controller.getState().snapshot.flow.states[1].actions[0] as Record<string, unknown>)
+        .staleField
+    ).toBeUndefined();
   });
 
   it("surfaces a save error without clearing dirty", async () => {
@@ -431,7 +502,9 @@ describe("createFlowEditorController", () => {
 
       expect(api.saveToolDraft).toHaveBeenCalledTimes(1);
       expect(api.saveToolDraft).toHaveBeenCalledWith({
-        flow: expect.objectContaining({ states: expect.arrayContaining([expect.objectContaining({ id: "state-3" })]) })
+        flow: expect.objectContaining({
+          states: expect.arrayContaining([expect.objectContaining({ id: "state-3" })])
+        })
       });
       expect(controller.getState().hasLocalDraft).toBe(true);
     } finally {

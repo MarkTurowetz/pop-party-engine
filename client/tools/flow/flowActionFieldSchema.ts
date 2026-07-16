@@ -3,6 +3,7 @@ import {
   hostAudioPlayModeOptions,
   playerFilterOptions,
   roundOptions,
+  transitionTriggerOptions,
   votingCardFilterOptions,
   type FlowOption
 } from "./flowActionOptions";
@@ -24,6 +25,7 @@ export type FlowFieldControl =
   | "boolean"
   | "componentTarget"
   | "gameObjectTarget"
+  | "stateTarget"
   | "select"
   | "textTarget"
   | "actionTarget";
@@ -69,7 +71,9 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
     { key: "locked", label: "Locked", control: "boolean" },
     ...INPUT_TARGET_FIELDS
   ],
-  getRandomMultipleChoiceContent: [{ key: "variableName", label: "Variable Name", control: "text" }],
+  getRandomMultipleChoiceContent: [
+    { key: "variableName", label: "Variable Name", control: "text" }
+  ],
   triviaInput: [
     { key: "contentVariable", label: "Content Variable", control: "text" },
     { key: "prompt", label: "Prompt", control: "textarea" },
@@ -93,15 +97,35 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
   requestMicrophoneAccessInput: [
     { key: "prompt", label: "Prompt", control: "textarea" },
     { key: "buttonLabel", label: "Button Label", control: "text" },
-    { key: "microphoneAccessGrantedTargetActionId", label: "On Access Granted", control: "actionTarget" }
+    {
+      key: "microphoneAccessGrantedTargetActionId",
+      label: "On Access Granted",
+      control: "actionTarget"
+    }
   ],
   setVotingCardsShown: [
     { key: "isShown", label: "Cards Visible", control: "boolean" },
     { key: "instant", label: "Instant", control: "boolean" },
-    { key: "cardFilter", label: "Card Filter", control: "select", options: votingCardFilterOptions() }
+    {
+      key: "cardFilter",
+      label: "Card Filter",
+      control: "select",
+      options: votingCardFilterOptions()
+    }
   ],
-  voteOnAnswersInput: [{ key: "prompt", label: "Prompt", control: "textarea" }, ...INPUT_TARGET_FIELDS],
-  revealVotes: [{ key: "voteRevealStaggerSeconds", label: "Vote Stagger Seconds", control: "number", min: 0, max: 60 }],
+  voteOnAnswersInput: [
+    { key: "prompt", label: "Prompt", control: "textarea" },
+    ...INPUT_TARGET_FIELDS
+  ],
+  revealVotes: [
+    {
+      key: "voteRevealStaggerSeconds",
+      label: "Vote Stagger Seconds",
+      control: "number",
+      min: 0,
+      max: 60
+    }
+  ],
   getPlayerAnswers: [
     { key: "inputId", label: "Input Id", control: "text" },
     { key: "round", label: "Round", control: "select", options: roundOptions() },
@@ -136,10 +160,20 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
   setPlayersShown: [{ key: "isShown", label: "Visible", control: "boolean" }],
   setPlayerAnswersShown: [
     { key: "isShown", label: "Visible", control: "boolean" },
-    { key: "playerFilter", label: "Player Filter", control: "select", options: playerFilterOptions() }
+    {
+      key: "playerFilter",
+      label: "Player Filter",
+      control: "select",
+      options: playerFilterOptions()
+    }
   ],
   showPoints: [
-    { key: "playerFilter", label: "Player Filter", control: "select", options: playerFilterOptions() },
+    {
+      key: "playerFilter",
+      label: "Player Filter",
+      control: "select",
+      options: playerFilterOptions()
+    },
     { key: "points", label: "Points", control: "integer", min: 0 }
   ],
   setTimerShown: [{ key: "isShown", label: "Visible", control: "boolean" }],
@@ -147,14 +181,20 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
     { key: "isShown", label: "Visible", control: "boolean" },
     { key: "instant", label: "Instant", control: "boolean" }
   ],
-  setControllerLayout: [{ key: "controllerLayoutId", label: "Controller Layout Id", control: "text" }],
+  setControllerLayout: [
+    { key: "controllerLayoutId", label: "Controller Layout Id", control: "text" }
+  ],
   jumpNode: [{ key: "jumpTargetActionId", label: "Jump Target", control: "actionTarget" }],
   decision: [
     { key: "variable", label: "Variable", control: "text" },
     { key: "valueType", label: "Value Type", control: "text" }
   ],
   transition: [{ key: "transition", label: "Transition", control: "text" }],
-  transitionState: [{ key: "targetState", label: "Target State", control: "text" }]
+  transitionState: [
+    { key: "targetState", label: "Target State", control: "stateTarget" },
+    { key: "trigger", label: "Wait For", control: "select", options: transitionTriggerOptions() },
+    { key: "nextTargetActionId", label: "On Countdown Complete", control: "actionTarget" }
+  ]
 };
 
 export function actionFieldsForType(type: string): FlowActionFieldDescriptor[] {

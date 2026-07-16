@@ -326,13 +326,15 @@ function createToolPersistenceRuntime({
   async function writeGameFlow(flow) {
     const existingFlow = await loadGameFlowSource({ refresh: true });
     const merged = mergeFlowWithExistingSubActions(flow, existingFlow);
-    normalizeGameFlow(merged);
+    assertUniqueGameFlowIds(merged);
+    const normalized = normalizeGameFlow(merged);
+    assertUniqueGameFlowIds(normalized);
     backupJsonFile(gameFlowFile, gameFlowBackupDir, "game-flow");
     if (gameFlowStore.storageKind === "github") {
       if (!githubToken) {
         throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
       }
-      const saved = await writeGithubGameFlowSource(merged, gameFlowStore.remoteSha);
+      const saved = await writeGithubGameFlowSource(normalized, gameFlowStore.remoteSha);
       gameFlowStore.source = saved.flow;
       gameFlowStore.remoteSha = saved.sha || "";
       gameFlowStore.loadedAt = Date.now();
@@ -340,10 +342,10 @@ function createToolPersistenceRuntime({
       mirrorJsonFile(gameFlowFile, saved.flow);
       return saved.flow;
     }
-    writeJsonFile(gameFlowFile, merged);
-    gameFlowStore.source = merged;
+    writeJsonFile(gameFlowFile, normalized);
+    gameFlowStore.source = normalized;
     gameFlowStore.loadedAt = Date.now();
-    return merged;
+    return normalized;
   }
 
   async function writeHostAudios(hostAudios) {
@@ -403,4 +405,35 @@ function createToolPersistenceRuntime({
   };
 }
 
-module.exports = { createToolPersistenceRuntime };
+function assertUniqueGameFlowIds(flow) {
+  const stateIds = new Map();
+  const actionIds = new Map();
+  const routeNodeIds = new Map();
+
+  function remember(map, id, path, kind) {
+    if (!id) return;
+    const previousPath = map.get(id);
+    if (previousPath) throw new Error(`Duplicate ${kind} id "${id}" at ${path}; first used at ${previousPath}.`);
+    map.set(id, path);
+  }
+
+  function visitActions(actions, path) {
+    for (const [index, action] of (Array.isArray(actions) ? actions : []).entries()) {
+      const actionPath = `${path}[${index}]`;
+      remember(actionIds, action?.id, `${actionPath}.id`, "flow action");
+      visitActions(action?.actions, `${actionPath}.actions`);
+      visitActions(action?.subActions, `${actionPath}.subActions`);
+    }
+  }
+
+  for (const [index, state] of (Array.isArray(flow?.states) ? flow.states : []).entries()) {
+    const statePath = `flow.states[${index}]`;
+    remember(stateIds, state?.id, `${statePath}.id`, "flow state");
+    visitActions(state?.actions, `${statePath}.actions`);
+  }
+  for (const [index, node] of (Array.isArray(flow?.routeNodes) ? flow.routeNodes : []).entries()) {
+    remember(routeNodeIds, node?.id, `flow.routeNodes[${index}].id`, "route node");
+  }
+}
+
+module.exports = { assertUniqueGameFlowIds, createToolPersistenceRuntime };

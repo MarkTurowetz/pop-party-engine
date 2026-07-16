@@ -37,7 +37,10 @@ import {
   rootFlowTargetOptions
 } from "./flowRootGraph";
 
-const GAME_OBJECT_TIMELINE_ACTION_TYPES = new Set(["playGameObjectAnimation", "stopGameObjectAnimation"]);
+const GAME_OBJECT_TIMELINE_ACTION_TYPES = new Set([
+  "playGameObjectAnimation",
+  "stopGameObjectAnimation"
+]);
 const LAYOUT_TARGET_ACTION_TYPES = new Set([
   "displayText",
   "presentText",
@@ -88,7 +91,8 @@ export function FlowEditor({
   const [nodeDepth, setNodeDepth] = useState<FlowNodeDepth>("subroutines");
   const [subroutinePath, setSubroutinePath] = useState<string[]>([]);
   const [layoutSnapshot, setLayoutSnapshot] = useState<StageLayoutCollection | null>(stageLayouts);
-  const [artCompositionSnapshot, setArtCompositionSnapshot] = useState<ArtComposition[]>(artCompositions);
+  const [artCompositionSnapshot, setArtCompositionSnapshot] =
+    useState<ArtComposition[]>(artCompositions);
 
   const hasState = Boolean(selectedStateId);
   const hasActionSelection = Boolean(selectedActionId) || selectedActionIds.size > 0;
@@ -142,7 +146,8 @@ export function FlowEditor({
   }, [loadStageLayouts, selectedActionId, selectedActionType, selectedRootRouteAction?.id]);
 
   useEffect(() => {
-    if (!loadArtCompositions || !GAME_OBJECT_TIMELINE_ACTION_TYPES.has(selectedActionType)) return undefined;
+    if (!loadArtCompositions || !GAME_OBJECT_TIMELINE_ACTION_TYPES.has(selectedActionType))
+      return undefined;
     let cancelled = false;
     void loadArtCompositions().then((compositions) => {
       if (!cancelled) setArtCompositionSnapshot(compositions);
@@ -154,17 +159,21 @@ export function FlowEditor({
 
   const textTargetOptionsForState = (stateId: string, selectedTextTarget = "") => {
     const state = states.find((candidate) => candidate.id === stateId) || null;
-    return flowTextTargetOptions(layoutSnapshot, state, stateId, selectedTextTarget).map((option) => ({
-      id: option.id,
-      label: option.name
-    }));
+    return flowTextTargetOptions(layoutSnapshot, state, stateId, selectedTextTarget).map(
+      (option) => ({
+        id: option.id,
+        label: option.name
+      })
+    );
   };
   const gameObjectTargetOptionsForState = (stateId: string, selectedTarget = "") => {
     const state = states.find((candidate) => candidate.id === stateId) || null;
-    return flowGameObjectTargetOptions(layoutSnapshot, state, stateId, selectedTarget).map((option) => ({
-      id: option.id,
-      label: option.name
-    }));
+    return flowGameObjectTargetOptions(layoutSnapshot, state, stateId, selectedTarget).map(
+      (option) => ({
+        id: option.id,
+        label: option.name
+      })
+    );
   };
   const animationLabelOptionsForState = (
     stateId: string,
@@ -321,6 +330,7 @@ export function FlowEditor({
     animationLabelOptions: inspectorAnimationLabelOptions,
     componentTargetOptions: inspectorComponentTargetOptions,
     gameObjectTargetOptions: inspectorGameObjectTargetOptions,
+    stateTargetOptions: states.map((state) => ({ id: state.id, label: state.name || state.id })),
     textTargetOptions: inspectorTextTargetOptions
   };
 
@@ -368,6 +378,10 @@ export function FlowEditor({
           String(selectedRootRouteAction.targetStateId || selectedStateId || ""),
           `${String(selectedRootRouteAction.targetLayoutScope || "moment")}:${String(selectedRootRouteAction.targetLayoutElementId || "")}`
         ),
+        stateTargetOptions: states.map((state) => ({
+          id: state.id,
+          label: state.name || state.id
+        })),
         animationLabelOptions: animationLabelOptionsForState(
           String(selectedRootRouteAction.targetStateId || selectedStateId || ""),
           `${String(selectedRootRouteAction.targetLayoutScope || "moment")}:${String(selectedRootRouteAction.targetLayoutElementId || "")}`,

@@ -29,6 +29,7 @@ export interface ActionInspectorEditHandlers {
   animationLabelOptions?: InspectorTargetOption[];
   componentTargetOptions?: InspectorTargetOption[];
   gameObjectTargetOptions?: InspectorTargetOption[];
+  stateTargetOptions?: InspectorTargetOption[];
   textTargetOptions?: InspectorTargetOption[];
   nextTargetOptions?: InspectorTargetOption[];
   entryTargetOptions?: InspectorTargetOption[];
@@ -70,7 +71,13 @@ function TargetSelect({
   );
 }
 
-const UNTIMED_ACTION_TYPES = new Set(["decision", "jumpNode", "labelNode", "codeNode", "subroutine"]);
+const UNTIMED_ACTION_TYPES = new Set([
+  "decision",
+  "jumpNode",
+  "labelNode",
+  "codeNode",
+  "subroutine"
+]);
 
 function inspectorShouldShowTiming(action: FlowAction): boolean {
   return !UNTIMED_ACTION_TYPES.has(action.type);
@@ -268,6 +275,7 @@ export function ActionInspector({
           animationLabelOptions={edit.animationLabelOptions || []}
           componentTargetOptions={edit.componentTargetOptions || []}
           gameObjectTargetOptions={edit.gameObjectTargetOptions || []}
+          stateTargetOptions={edit.stateTargetOptions || []}
           textTargetOptions={edit.textTargetOptions || []}
           onSetField={edit.onSetActionField}
           onSetFields={edit.onSetActionFields}

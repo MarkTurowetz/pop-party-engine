@@ -10,6 +10,7 @@ export interface ActionFieldControlsProps {
   animationLabelOptions?: InspectorTargetOption[];
   componentTargetOptions?: InspectorTargetOption[];
   gameObjectTargetOptions?: InspectorTargetOption[];
+  stateTargetOptions?: InspectorTargetOption[];
   textTargetOptions?: InspectorTargetOption[];
   onSetField: (key: string, value: unknown) => void;
   onSetFields?: (patch: Record<string, unknown>) => void;
@@ -29,7 +30,10 @@ function booleanValue(action: FlowAction, key: string): boolean {
 
 type SelectOption = { id: string; name: string };
 
-function withDefaultSelectOption(options: SelectOption[], defaultOption: SelectOption): SelectOption[] {
+function withDefaultSelectOption(
+  options: SelectOption[],
+  defaultOption: SelectOption
+): SelectOption[] {
   return options.some((option) => option.id === "") ? options : [defaultOption, ...options];
 }
 
@@ -40,6 +44,7 @@ function FieldControl({
   animationLabelOptions = [],
   componentTargetOptions = [],
   gameObjectTargetOptions = [],
+  stateTargetOptions = [],
   textTargetOptions = [],
   onSetField,
   onSetFields
@@ -50,6 +55,7 @@ function FieldControl({
   animationLabelOptions?: InspectorTargetOption[];
   componentTargetOptions?: InspectorTargetOption[];
   gameObjectTargetOptions?: InspectorTargetOption[];
+  stateTargetOptions?: InspectorTargetOption[];
   textTargetOptions?: InspectorTargetOption[];
   onSetField: (key: string, value: unknown) => void;
   onSetFields?: (patch: Record<string, unknown>) => void;
@@ -77,6 +83,7 @@ function FieldControl({
     field.control === "select" ||
     field.control === "actionTarget" ||
     field.control === "componentTarget" ||
+    field.control === "stateTarget" ||
     field.control === "textTarget" ||
     field.control === "gameObjectTarget"
   ) {
@@ -88,14 +95,16 @@ function FieldControl({
           )
         : field.control === "componentTarget"
           ? componentTargetOptions.map((option) => ({ id: option.id, name: option.label }))
-        : field.control === "gameObjectTarget"
-          ? gameObjectTargetOptions.map((option) => ({ id: option.id, name: option.label }))
-          : field.control === "textTarget"
-            ? withDefaultSelectOption(
-                textTargetOptions.map((option) => ({ id: option.id, name: option.label })),
-                { id: "", name: "No Text Field" }
-              )
-            : field.options || [];
+          : field.control === "stateTarget"
+            ? stateTargetOptions.map((option) => ({ id: option.id, name: option.label }))
+            : field.control === "gameObjectTarget"
+              ? gameObjectTargetOptions.map((option) => ({ id: option.id, name: option.label }))
+              : field.control === "textTarget"
+                ? withDefaultSelectOption(
+                    textTargetOptions.map((option) => ({ id: option.id, name: option.label })),
+                    { id: "", name: "No Text Field" }
+                  )
+                : field.options || [];
     const currentValue = String(rawValue(action, field.key) ?? "");
     const currentTargetScope = String(rawValue(action, "targetLayoutScope") || "moment");
     const selectedValue =
@@ -128,7 +137,11 @@ function FieldControl({
                 targetLayoutScope: parts.scope || "",
                 [field.key]: parts.id
               };
-              if (action.type === "playGameObjectAnimation" || action.type === "stopGameObjectAnimation") patch.targetComponentId = "";
+              if (
+                action.type === "playGameObjectAnimation" ||
+                action.type === "stopGameObjectAnimation"
+              )
+                patch.targetComponentId = "";
               onSetFields(patch);
               return;
             }
@@ -212,6 +225,7 @@ export function ActionFieldControls({
   animationLabelOptions = [],
   componentTargetOptions = [],
   gameObjectTargetOptions = [],
+  stateTargetOptions = [],
   textTargetOptions = [],
   onSetField,
   onSetFields
@@ -229,6 +243,7 @@ export function ActionFieldControls({
           animationLabelOptions={animationLabelOptions}
           componentTargetOptions={componentTargetOptions}
           gameObjectTargetOptions={gameObjectTargetOptions}
+          stateTargetOptions={stateTargetOptions}
           textTargetOptions={textTargetOptions}
           onSetField={onSetField}
           onSetFields={onSetFields}

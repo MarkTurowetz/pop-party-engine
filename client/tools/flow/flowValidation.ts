@@ -21,7 +21,13 @@ function pushIssue(issues: FlowValidationIssue[], path: string, message: string)
   issues.push({ path, message });
 }
 
-function validateFlowActionList(value: unknown, path: string, issues: FlowValidationIssue[]): void {
+function validateFlowActionList(
+  value: unknown,
+  path: string,
+  issues: FlowValidationIssue[],
+  actionIds: Map<string, string>,
+  trackIdentity = true
+): void {
   if (!Array.isArray(value)) {
     pushIssue(issues, path, "must be an array");
     return;
@@ -33,15 +39,30 @@ function validateFlowActionList(value: unknown, path: string, issues: FlowValida
       pushIssue(issues, actionPath, "must be an object");
       return;
     }
-    if (typeof action.id !== "string") pushIssue(issues, `${actionPath}.id`, "must be a string");
-    if (action.actions !== undefined) validateFlowActionList(action.actions, `${actionPath}.actions`, issues);
-    if (action.subActions !== undefined) validateFlowActionList(action.subActions, `${actionPath}.subActions`, issues);
-    if (action.branches !== undefined) validateFlowActionList(action.branches, `${actionPath}.branches`, issues);
+    if (typeof action.id !== "string") {
+      pushIssue(issues, `${actionPath}.id`, "must be a string");
+    } else if (trackIdentity) {
+      const previousPath = actionIds.get(action.id);
+      if (previousPath) {
+        pushIssue(issues, `${actionPath}.id`, `duplicates ${previousPath}`);
+      } else {
+        actionIds.set(action.id, `${actionPath}.id`);
+      }
+    }
+    if (action.actions !== undefined)
+      validateFlowActionList(action.actions, `${actionPath}.actions`, issues, actionIds);
+    if (action.subActions !== undefined)
+      validateFlowActionList(action.subActions, `${actionPath}.subActions`, issues, actionIds);
+    if (action.branches !== undefined)
+      validateFlowActionList(action.branches, `${actionPath}.branches`, issues, actionIds, false);
   });
 }
 
 export function collectFlowValidationIssues(value: unknown, label = "flow"): FlowValidationIssue[] {
   const issues: FlowValidationIssue[] = [];
+  const stateIds = new Map<string, string>();
+  const actionIds = new Map<string, string>();
+  const routeNodeIds = new Map<string, string>();
   if (!isRecord(value)) {
     pushIssue(issues, label, "must be an object");
     return issues;
@@ -56,13 +77,34 @@ export function collectFlowValidationIssues(value: unknown, label = "flow"): Flo
         pushIssue(issues, statePath, "must be an object");
         return;
       }
-      if (typeof state.id !== "string") pushIssue(issues, `${statePath}.id`, "must be a string");
-      validateFlowActionList(state.actions, `${statePath}.actions`, issues);
+      if (typeof state.id !== "string") {
+        pushIssue(issues, `${statePath}.id`, "must be a string");
+      } else {
+        const previousPath = stateIds.get(state.id);
+        if (previousPath) pushIssue(issues, `${statePath}.id`, `duplicates ${previousPath}`);
+        else stateIds.set(state.id, `${statePath}.id`);
+      }
+      validateFlowActionList(state.actions, `${statePath}.actions`, issues, actionIds);
     });
   }
 
   if (value.routeNodes !== undefined && !Array.isArray(value.routeNodes)) {
     pushIssue(issues, `${label}.routeNodes`, "must be an array when present");
+  } else if (Array.isArray(value.routeNodes)) {
+    value.routeNodes.forEach((node, nodeIndex) => {
+      const nodePath = `${label}.routeNodes[${nodeIndex}]`;
+      if (!isRecord(node)) {
+        pushIssue(issues, nodePath, "must be an object");
+        return;
+      }
+      if (typeof node.id !== "string") {
+        pushIssue(issues, `${nodePath}.id`, "must be a string");
+        return;
+      }
+      const previousPath = routeNodeIds.get(node.id);
+      if (previousPath) pushIssue(issues, `${nodePath}.id`, `duplicates ${previousPath}`);
+      else routeNodeIds.set(node.id, `${nodePath}.id`);
+    });
   }
 
   return issues;

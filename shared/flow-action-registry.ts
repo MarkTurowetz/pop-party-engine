@@ -925,7 +925,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
   },
   {
     id: "transitionState",
-    name: "Transition To State",
+    name: "Wait For Countdown / Transition To State",
     category: "standard",
     canCompleteFromStage: true,
     stageActionType: "transitionState",
