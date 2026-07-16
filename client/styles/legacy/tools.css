@@ -1834,6 +1834,49 @@ body.tool-dashboard-mode .layout-react-shell {
   align-items: center;
 }
 
+.art-timeline-multi-keyframe-editor {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 2.2fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  background: rgba(34, 211, 238, 0.2);
+}
+
+.art-timeline-multi-keyframe-summary {
+  display: grid;
+  gap: 3px;
+}
+
+.art-timeline-multi-keyframe-summary strong {
+  text-transform: uppercase;
+}
+
+.art-timeline-multi-keyframe-summary small,
+.art-timeline-multi-keyframe-empty {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.art-timeline-multi-keyframe-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 6px;
+}
+
+.art-timeline-multi-keyframe-fields .flow-react-field {
+  min-width: 0;
+}
+
+.art-timeline-multi-keyframe-fields input {
+  width: 100%;
+  min-width: 0;
+}
+
 .art-timeline-tween-slot {
   display: grid;
   grid-template-columns: minmax(170px, 240px) minmax(0, 1fr);
@@ -2114,6 +2157,7 @@ body.tool-dashboard-mode .layout-react-shell {
   color: var(--ink);
 }
 
+.art-timeline-ruler button[data-art-timeline-keyframe-selected="true"],
 .art-timeline-lane-frame[data-art-timeline-keyframe-selected="true"] {
   background: var(--cyan);
 }

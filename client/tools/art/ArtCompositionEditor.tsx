@@ -25,6 +25,15 @@ import {
 } from "./artPreviewCamera";
 import { artInspectorNumberExpressionValue } from "./artInspectorNumberExpression";
 import {
+  addTransformKeyframesForSelections,
+  selectedTimelineKeyframes,
+  sharedTimelineKeyframeProperties,
+  timelineKeyframeSelectionKey,
+  updateSelectedTimelineKeyframeProperty,
+  updateTimelineKeyframeCellSelection,
+  type TimelineKeyframeSelection
+} from "./artTimelineKeyframeSelection";
+import {
   applyArtCanvasTransformKeyframes,
   artCanvasDragSelection,
   captureArtCanvasTransformTargets,
@@ -55,7 +64,6 @@ import {
 import {
   addTimelineCommandFrame,
   addTimelineLabel,
-  addTransformKeyframe,
   copyTimelineCommandFrame,
   copyTimelineFrameRange,
   copyTimelineKeyframe,
@@ -150,6 +158,32 @@ const TIMELINE_PROPERTY_SUGGESTIONS = [
   "spriteRenderMode"
 ];
 const TIMELINE_INSPECTOR_FIELDS = new Set(TIMELINE_PROPERTY_SUGGESTIONS);
+const TIMELINE_MULTI_KEYFRAME_PROPERTY_ORDER = [
+  "x",
+  "y",
+  "width",
+  "height",
+  "scale",
+  "rotation",
+  "opacity",
+  "brightness",
+  "fontSize",
+  "borderWidth",
+  "borderRadius"
+];
+const TIMELINE_PROPERTY_LABELS: Record<string, string> = {
+  x: "X",
+  y: "Y",
+  width: "Width",
+  height: "Height",
+  scale: "Scale",
+  rotation: "Rotation",
+  opacity: "Opacity",
+  brightness: "Brightness",
+  fontSize: "Font Size",
+  borderWidth: "Border Width",
+  borderRadius: "Border Radius"
+};
 const TIMELINE_VISIBLE_FRAME_LIMIT = 60;
 const ART_TIMELINE_DOCK_STORAGE_KEY = "partyTemplate.artTimelineDockHeight";
 const DEFAULT_ART_TIMELINE_DOCK_HEIGHT = 320;
@@ -1951,6 +1985,69 @@ function ArtTimelineCommandOverlay({ overlay }: { overlay: TimelineCommandOverla
   );
 }
 
+function ArtMultiKeyframeInspector({
+  timeline,
+  selections,
+  onChange
+}: {
+  timeline: TimelineDocument;
+  selections: TimelineKeyframeSelection[];
+  onChange: (timeline: TimelineDocument) => void;
+}) {
+  const entries = selectedTimelineKeyframes(timeline, selections);
+  if (entries.length < 2) return null;
+  const properties = sharedTimelineKeyframeProperties(entries)
+    .filter((property) => property.numeric)
+    .sort((left, right) => {
+      const leftIndex = TIMELINE_MULTI_KEYFRAME_PROPERTY_ORDER.indexOf(left.key);
+      const rightIndex = TIMELINE_MULTI_KEYFRAME_PROPERTY_ORDER.indexOf(right.key);
+      return (leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex) - (rightIndex < 0 ? Number.MAX_SAFE_INTEGER : rightIndex)
+        || left.key.localeCompare(right.key);
+    });
+  const selectionKey = entries
+    .map(({ selection, keyframe }) => `${timelineKeyframeSelectionKey(selection)}:${JSON.stringify(keyframe.props)}`)
+    .join("|");
+
+  return (
+    <section className="art-timeline-multi-keyframe-editor" data-art-multi-keyframe-inspector>
+      <div className="art-timeline-multi-keyframe-summary">
+        <strong>{entries.length} Keyframes Selected</strong>
+        <small>Plain values set all. +10 or -10 adjusts each current value. Use =-10 to set an absolute negative value.</small>
+      </div>
+      {properties.length ? (
+        <div className="art-timeline-multi-keyframe-fields">
+          {properties.map((property) => (
+            <label className="flow-react-field" key={`${selectionKey}:${property.key}`}>
+              <span>{TIMELINE_PROPERTY_LABELS[property.key] || property.key}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                defaultValue={property.mixed ? "" : String(property.value)}
+                placeholder={property.mixed ? "Mixed" : ""}
+                data-art-multi-keyframe-field={property.key}
+                onBlur={(event) => {
+                  const nextTimeline = updateSelectedTimelineKeyframeProperty(
+                    timeline,
+                    selections,
+                    property.key,
+                    event.currentTarget.value
+                  );
+                  if (nextTimeline !== timeline) onChange(nextTimeline);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+              />
+            </label>
+          ))}
+        </div>
+      ) : (
+        <small className="art-timeline-multi-keyframe-empty">The selected keyframes do not share numeric properties.</small>
+      )}
+    </section>
+  );
+}
+
 function ArtTimelinePanel({
   title,
   timeline,
@@ -2001,6 +2098,7 @@ function ArtTimelinePanel({
   const [keyframeTargetId, setKeyframeTargetId] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedKeyframe, setSelectedKeyframe] = useState<{ targetId: string; frame: number } | null>(null);
+  const [selectedKeyframeCells, setSelectedKeyframeCells] = useState<TimelineKeyframeSelection[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<TimelineMarkerSelection | null>(null);
   const [selectedTimelineCell, setSelectedTimelineCell] = useState<TimelineCellSelection>({ kind: "frame", frame: 0 });
   const [timelineDragItem, setTimelineDragItem] = useState<TimelineDragItem | null>(null);
@@ -2032,6 +2130,14 @@ function ArtTimelinePanel({
   const cleanTimelineFrame = (value: number): number => Math.max(0, Math.min(Math.max(0, current.frameCount - 1), Math.round(Number(value) || 0)));
   const cleanPlayheadFrame = cleanTimelineFrame(playheadFrame);
   const selectedTimelineKeyframe = useMemo(() => findTimelineKeyframe(current, selectedKeyframe), [current, selectedKeyframe]);
+  const selectedActualKeyframes = useMemo(
+    () => selectedTimelineKeyframes(current, selectedKeyframeCells),
+    [current, selectedKeyframeCells]
+  );
+  const selectedKeyframeCellKeys = useMemo(
+    () => new Set(selectedKeyframeCells.map(timelineKeyframeSelectionKey)),
+    [selectedKeyframeCells]
+  );
   const selectedTimelineMarker = useMemo(() => {
     if (!selectedMarker) return null;
     if (selectedMarker.kind === "label") {
@@ -2107,6 +2213,8 @@ function ArtTimelinePanel({
     if (dismissSelectionSignalRef.current === dismissSelectionSignal) return;
     dismissSelectionSignalRef.current = dismissSelectionSignal;
     setSelectedMarker(null);
+    setSelectedKeyframe(null);
+    setSelectedKeyframeCells([]);
     setSelectedTimelineCell({ kind: "frame", frame: cleanFrame });
     setCommandScriptDraft("");
     setCommandScriptInitialDraft("");
@@ -2144,6 +2252,7 @@ function ArtTimelinePanel({
   }
 
   function selectTimelineCell(selection: TimelineCellSelection): void {
+    if (selection.kind !== "keyframe") setSelectedKeyframeCells([]);
     setSelectedTimelineCell({ ...selection, frame: cleanTimelineFrame(selection.frame) } as TimelineCellSelection);
   }
 
@@ -2348,6 +2457,7 @@ function ArtTimelinePanel({
     setKeyframeTargetId(targetId);
     setSelectedMarker(null);
     setSelectedKeyframe({ targetId, frame: span.startFrame });
+    setSelectedKeyframeCells([{ targetId, frame: span.startFrame }]);
     selectTimelineCell({ kind: "keyframe", targetId, frame: selectionFrame });
     previewFrame(selectionFrame);
     return true;
@@ -2363,6 +2473,7 @@ function ArtTimelinePanel({
     setKeyframeTargetId(selectedTweenSpan.targetId);
     setSelectedMarker(null);
     setSelectedKeyframe({ targetId: selectedTweenSpan.targetId, frame: selectedTweenSpan.startFrame });
+    setSelectedKeyframeCells([{ targetId: selectedTweenSpan.targetId, frame: selectedTweenSpan.startFrame }]);
     selectTimelineCell({ kind: "keyframe", targetId: selectedTweenSpan.targetId, frame: selectionFrame });
     previewFrame(selectionFrame);
   }
@@ -2555,11 +2666,11 @@ function ArtTimelinePanel({
     applyTimelineFrameEdit(removeTimelineFrames(current, cleanFrame, selectedFrameRangeCount), cleanFrame);
   }
 
-  function keyframeTargetForSelection(): { targetId: string; target?: ArtComponent } {
+  function keyframeTargetForSelection(requestedTargetId?: string): { targetId: string; target?: ArtComponent } {
     const targetId =
-      selectedTimelineCell.kind === "keyframe"
+      requestedTargetId || (selectedTimelineCell.kind === "keyframe"
         ? selectedTimelineCell.targetId
-        : selectedTimelineKeyframe?.trackTargetId || activeKeyframeTargetId;
+        : selectedTimelineKeyframe?.trackTargetId || activeKeyframeTargetId);
     const target =
       component && targetId
         ? findTimelineTargetComponent([component], targetId, { scopeRootPath, resolveReference })
@@ -2578,18 +2689,27 @@ function ArtTimelinePanel({
       previewFrame(normalizedFrame);
       return;
     }
-    const { targetId, target } = keyframeTargetForSelection();
-    if (!target || !targetId) return;
-    const normalizedFrame = selectedTimelineCellFrame;
-    const displayedProps = timelineSnapshotAt(current, normalizedFrame).targets[targetId] || {};
-    const displayedTarget = componentWithTimelineTargetId({ ...target, ...displayedProps } as ArtComponent, targetId);
-    const nextTimeline = addTransformKeyframe(current, displayedTarget, normalizedFrame);
-    onChange(nextTimeline);
-    setKeyframeTargetId(targetId);
+    const fallback = keyframeTargetForSelection();
+    const selections = selectedKeyframeCells.length
+      ? selectedKeyframeCells
+      : fallback.targetId
+        ? [{ targetId: fallback.targetId, frame: selectedTimelineCellFrame }]
+        : [];
+    if (!selections.length) return;
+    const nextTimeline = addTransformKeyframesForSelections(current, selections, (selection, displayedProps) => {
+      const { target } = keyframeTargetForSelection(selection.targetId);
+      return target
+        ? componentWithTimelineTargetId({ ...target, ...displayedProps } as ArtComponent, selection.targetId)
+        : null;
+    });
+    if (nextTimeline !== current) onChange(nextTimeline);
+    const primary = selections[selections.length - 1];
+    setSelectedKeyframeCells(selections);
+    setKeyframeTargetId(primary.targetId);
     setSelectedMarker(null);
-    setSelectedKeyframe({ targetId, frame: normalizedFrame });
-    selectTimelineCell({ kind: "keyframe", targetId, frame: normalizedFrame });
-    previewFrame(normalizedFrame);
+    setSelectedKeyframe(primary);
+    selectTimelineCell({ kind: "keyframe", ...primary });
+    previewFrame(primary.frame);
   }
 
   function clearKeyframeAtCurrentSelection(): void {
@@ -2607,20 +2727,40 @@ function ArtTimelinePanel({
       return;
     }
     const { targetId } = keyframeTargetForSelection();
-    if (!targetId) return;
-    const normalizedFrame = selectedTimelineCellFrame;
-    const nextTimeline = removeTimelineKeyframe(current, targetId, normalizedFrame);
+    const selections = selectedKeyframeCells.length
+      ? selectedKeyframeCells
+      : targetId
+        ? [{ targetId, frame: selectedTimelineCellFrame }]
+        : [];
+    if (!selections.length) return;
+    const nextTimeline = selections.reduce(
+      (next, selection) => removeTimelineKeyframe(next, selection.targetId, selection.frame),
+      current
+    );
     onChange(nextTimeline);
     setSelectedKeyframe(null);
+    setSelectedKeyframeCells([]);
     setSelectedMarker(null);
-    selectTimelineCell({ kind: "keyframe", targetId, frame: normalizedFrame });
-    previewFrame(normalizedFrame);
+    const primary = selections[selections.length - 1];
+    selectTimelineCell({ kind: "keyframe", ...primary });
+    previewFrame(primary.frame);
   }
 
   function removeSelectedTimelineItem(): boolean {
+    if (selectedActualKeyframes.length) {
+      const nextTimeline = selectedActualKeyframes.reduce(
+        (next, { selection }) => removeTimelineKeyframe(next, selection.targetId, selection.frame),
+        current
+      );
+      onChange(nextTimeline);
+      setSelectedKeyframe(null);
+      setSelectedKeyframeCells([]);
+      return true;
+    }
     if (selectedTimelineKeyframe) {
       onChange(removeTimelineKeyframe(current, selectedTimelineKeyframe.trackTargetId, selectedTimelineKeyframe.keyframe.frame));
       setSelectedKeyframe(null);
+      setSelectedKeyframeCells([]);
       return true;
     }
     if (!selectedTimelineMarker) {
@@ -2746,13 +2886,17 @@ function ArtTimelinePanel({
     }
   }
 
-  function selectKeyframe(targetId: string, keyframeFrame: number): void {
+  function selectKeyframeCell(targetId: string, keyframeFrame: number, additive = false): void {
     stopPlayback();
     setSelectedMarker(null);
     setKeyframeTargetId(targetId);
-    setSelectedKeyframe({ targetId, frame: keyframeFrame });
-    selectTimelineCell({ kind: "keyframe", targetId, frame: keyframeFrame });
-    previewFrame(keyframeFrame);
+    const selection = { targetId, frame: cleanTimelineFrame(keyframeFrame) };
+    const nextSelections = updateTimelineKeyframeCellSelection(selectedKeyframeCells, selection, additive);
+    const nextActualSelections = selectedTimelineKeyframes(current, nextSelections);
+    setSelectedKeyframeCells(nextSelections);
+    setSelectedKeyframe(nextActualSelections[nextActualSelections.length - 1]?.selection || null);
+    selectTimelineCell({ kind: "keyframe", ...selection });
+    previewFrame(selection.frame);
   }
 
   function selectTimelineMarker(selection: TimelineMarkerSelection, markerFrame: number): void {
@@ -2818,6 +2962,15 @@ function ArtTimelinePanel({
       onChange(nextTimeline);
       setSelectedMarker(null);
       setSelectedKeyframe({ targetId: timelineDragItem.targetId, frame: normalizedFrame });
+      setSelectedKeyframeCells((selections) => {
+        const moved = selections.map((selection) =>
+          selection.targetId === timelineDragItem.targetId && selection.frame === timelineDragItem.frame
+            ? { ...selection, frame: normalizedFrame }
+            : selection
+        );
+        return [...new Map(moved.map((selection) => [timelineKeyframeSelectionKey(selection), selection])).values()];
+      });
+      selectTimelineCell({ kind: "keyframe", targetId: timelineDragItem.targetId, frame: normalizedFrame });
       previewFrame(normalizedFrame);
     }
     setTimelineDragItem(null);
@@ -2887,6 +3040,8 @@ function ArtTimelinePanel({
     const nextTimeline = copyTimelineKeyframe(current, copiedKeyframe.targetId, copiedKeyframe.frame, activeKeyframeTargetId, normalizedFrame);
     onChange(nextTimeline);
     setSelectedKeyframe({ targetId: activeKeyframeTargetId, frame: normalizedFrame });
+    setSelectedKeyframeCells([{ targetId: activeKeyframeTargetId, frame: normalizedFrame }]);
+    selectTimelineCell({ kind: "keyframe", targetId: activeKeyframeTargetId, frame: normalizedFrame });
     previewFrame(normalizedFrame);
   }
 
@@ -2944,6 +3099,14 @@ function ArtTimelinePanel({
           </button>
         ) : null}
       </div>
+      <ArtMultiKeyframeInspector
+        timeline={current}
+        selections={selectedKeyframeCells}
+        onChange={(nextTimeline) => {
+          onChange(nextTimeline);
+          previewFrame(selectedTimelineCellFrame);
+        }}
+      />
       {selectedTweenSpan || copiedFrameRange ? (
         <div className="art-timeline-frame-editor">
           {selectedTweenSpan ? (
@@ -2982,11 +3145,16 @@ function ArtTimelinePanel({
             aria-current={cleanFrame === frameIndex ? "true" : undefined}
             data-art-timeline-playhead={timelineFrameIsPlayhead(frameIndex) ? "true" : "false"}
             data-art-timeline-range-selected={frameInSelectedRange(frameIndex) ? "true" : "false"}
+            data-art-timeline-keyframe-selected={
+              selectedKeyframeCells.some((selection) => selection.frame === frameIndex) ? "true" : "false"
+            }
             onPointerDown={(event) => beginTimelineFrameRangeDrag(frameIndex, event)}
             onClick={(event) => {
               if (consumeTimelineRangeDragClick()) return;
               stopPlayback();
-              if (event.shiftKey) selectFrameRangeByShiftClick(frameIndex);
+              if ((event.metaKey || event.ctrlKey) && activeKeyframeTargetId) {
+                selectKeyframeCell(activeKeyframeTargetId, frameIndex, true);
+              } else if (event.shiftKey) selectFrameRangeByShiftClick(frameIndex);
               else {
                 previewFrame(frameIndex);
                 selectTimelineCell({ kind: "frame", frame: frameIndex });
@@ -3185,7 +3353,7 @@ function ArtTimelinePanel({
                 <div className="art-timeline-lane-frames" style={{ gridTemplateColumns: `repeat(${visibleTimelineFrameCount}, minmax(10px, 1fr))` }}>
                   {visibleTimelineFrames.map((frameIndex) => {
                     const keyframe = track?.keyframes.find((item) => item.frame === frameIndex) || null;
-                    const isSelected = selectedKeyframe?.targetId === trackLabel.id && selectedKeyframe.frame === frameIndex;
+                    const isSelected = selectedKeyframeCellKeys.has(timelineKeyframeSelectionKey({ targetId: trackLabel.id, frame: frameIndex }));
                     const isTweened = timelineFrameIsTweened(current, trackLabel.id, frameIndex);
                     return (
                       <button
@@ -3210,14 +3378,7 @@ function ArtTimelinePanel({
                             return;
                           }
                           setKeyframeTargetId(trackLabel.id);
-                          if (keyframe) selectKeyframe(trackLabel.id, keyframe.frame);
-                          else {
-                            stopPlayback();
-                            setSelectedMarker(null);
-                            setSelectedKeyframe(null);
-                            previewFrame(frameIndex);
-                            selectTimelineCell({ kind: "keyframe", targetId: trackLabel.id, frame: frameIndex });
-                          }
+                          selectKeyframeCell(trackLabel.id, frameIndex, event.metaKey || event.ctrlKey);
                         }}
                         onDragStart={(event) => {
                           if (!keyframe) return;
