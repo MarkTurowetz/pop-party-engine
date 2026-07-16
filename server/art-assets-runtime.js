@@ -542,6 +542,7 @@ function createArtAssetsRuntime({
     }
     if (compositionId === "crafting-timer-widget") {
       const ring = byId.get("timer-ring");
+      if (ring && !ring.instanceLabel) ring.instanceLabel = "timerRing";
       if (ring && ring.shapeStyle === "circle" && ring.fillColor === "#ffe256") {
         ring.x = 90;
         ring.y = 90;
@@ -554,6 +555,7 @@ function createArtAssetsRuntime({
         ring.borderRadius = 36;
       }
       const value = byId.get("timer-value");
+      if (value && !value.instanceLabel) value.instanceLabel = "timerValue";
       if (value && value.x === 95 && value.y === 95 && value.fontSize === 72) {
         value.x = 90;
         value.y = 92;
@@ -828,6 +830,18 @@ function createArtAssetsRuntime({
     return replacements;
   }
 
+  function architectureIssueKey(issue) {
+    return [issue?.compositionId, issue?.code, issue?.message].map((value) => String(value || "")).join("\u0000");
+  }
+
+  function blockingArtArchitectureIssues(beforeCompositions, afterCompositions, touchedCompositionIds = []) {
+    const previousIssueKeys = new Set(collectArtArchitectureIssues(beforeCompositions).map(architectureIssueKey));
+    const touchedIds = new Set([...touchedCompositionIds].map(cleanId).filter(Boolean));
+    return collectArtArchitectureIssues(afterCompositions).filter((issue) =>
+      touchedIds.has(cleanId(issue?.compositionId)) || !previousIssueKeys.has(architectureIssueKey(issue))
+    );
+  }
+
   async function handleSaveArtComposition(req, res, compositionId) {
     const safeCompositionId = cleanId(compositionId);
     if (!safeCompositionId || safeCompositionId !== String(compositionId || "").toLowerCase()) {
@@ -848,6 +862,7 @@ function createArtAssetsRuntime({
       sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before saving", revision: manifestRevision(manifest) });
       return;
     }
+    const previousCompositions = allPublicArtCompositions(manifest);
     const incoming = payload.composition || payload;
     const savedDefinition = manifest.compositions?.[safeCompositionId] || null;
     const definition = artCompositions.find((item) => item.id === safeCompositionId) || {
@@ -868,7 +883,11 @@ function createArtAssetsRuntime({
       : [];
     manifest.compositions[definition.id] = artCompositionManifestRecord(normalized);
     manifest.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
-    const validationIssues = collectArtArchitectureIssues(allPublicArtCompositions(manifest));
+    const validationIssues = blockingArtArchitectureIssues(
+      previousCompositions,
+      allPublicArtCompositions(manifest),
+      [definition.id]
+    );
     if (validationIssues.length) {
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
       return;
@@ -905,6 +924,7 @@ function createArtAssetsRuntime({
       sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before saving", revision: manifestRevision(manifest) });
       return;
     }
+    const previousCompositions = allPublicArtCompositions(manifest);
     let normalized;
     try {
       normalized = normalizeArtCompositionsDraft(payload.compositions);
@@ -923,7 +943,11 @@ function createArtAssetsRuntime({
       candidate.compositions[composition.id] = artCompositionManifestRecord(composition, updatedAt);
     }
     candidate.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
-    const validationIssues = collectArtArchitectureIssues(allPublicArtCompositions(candidate));
+    const validationIssues = blockingArtArchitectureIssues(
+      previousCompositions,
+      allPublicArtCompositions(candidate),
+      normalized.map((composition) => composition.id)
+    );
     if (validationIssues.length) {
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
       return;
@@ -1054,7 +1078,7 @@ function createArtAssetsRuntime({
     candidate.organization = removeDeletedCompositionOrganizationKeys(candidate.organization, deleting);
     candidate.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
     const remainingCompositions = allPublicArtCompositions(candidate);
-    const validationIssues = collectArtArchitectureIssues(remainingCompositions);
+    const validationIssues = blockingArtArchitectureIssues(currentCompositions, remainingCompositions);
     if (validationIssues.length) {
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
       return;

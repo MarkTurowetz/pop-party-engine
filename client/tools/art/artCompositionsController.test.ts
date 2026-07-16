@@ -895,6 +895,30 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().error).toContain("changed elsewhere");
   });
 
+  it("shows the exact composition validation issues returned by the server", async () => {
+    const saveArtComposition = vi.fn(async () => {
+      throw new ApiError("Art composition validation failed", {
+        status: 409,
+        payload: {
+          issues: [
+            { compositionId: "crafting-timer-widget", code: "missing-instance-label", message: "Missing instance label: timer-value" },
+            { compositionId: "crafting-timer-widget", code: "missing-instance-label", message: "Missing instance label: timer-ring" }
+          ]
+        }
+      });
+    });
+    const controller = createArtCompositionsController({
+      initialCompositions: [composition("stage-code-panel")],
+      api: fakeApi({ saveArtComposition }),
+      workspaceStorage: null
+    });
+    controller.updateComposition("stage-code-panel", { description: "Changed" });
+
+    expect(await controller.save()).toBe(false);
+    expect(controller.getState().error).toContain("crafting-timer-widget: Missing instance label: timer-value");
+    expect(controller.getState().error).toContain("crafting-timer-widget: Missing instance label: timer-ring");
+  });
+
   it("reorders root and nested component siblings with undo support", () => {
     const initial = composition("a");
     initial.components = [

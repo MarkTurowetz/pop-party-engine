@@ -1112,6 +1112,7 @@ const defaultArtCompositions = [
             {
                 id: "timer-value",
                 name: "Timer Value",
+                instanceLabel: "timerValue",
                 kind: "text",
                 x: 90,
                 y: 92,
@@ -1128,6 +1129,7 @@ const defaultArtCompositions = [
             {
                 id: "timer-ring",
                 name: "Timer Ring",
+                instanceLabel: "timerRing",
                 kind: "shape",
                 x: 90,
                 y: 90,

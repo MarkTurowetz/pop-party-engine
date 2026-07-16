@@ -122,6 +122,99 @@ describe("art organization folders", () => {
 });
 
 describe("art composition child persistence", () => {
+  it("allows a valid composition save when an unrelated legacy composition already has validation issues", async () => {
+    const valid = {
+      id: "valid-widget",
+      name: "Valid Widget",
+      surface: "stage",
+      compositionKind: "prefab",
+      timelineArchitectureVersion: 2,
+      canvas: { width: 100, height: 100 },
+      components: [{ id: "valid-shape", instanceLabel: "validShape", name: "Valid Shape", kind: "shape" }]
+    };
+    const legacy = {
+      id: "legacy-widget",
+      name: "Legacy Widget",
+      surface: "stage",
+      compositionKind: "prefab",
+      timelineArchitectureVersion: 2,
+      canvas: { width: 100, height: 100 },
+      components: [{ id: "legacy-shape", name: "Legacy Shape", kind: "shape" }]
+    };
+    let manifest = {};
+    let requestPayload = {};
+    let responseStatus = 0;
+    let responseBody = null;
+    const runtime = createArtAssetsRuntime({
+      acceptedArtTypes: [],
+      artCompositions: [valid, legacy],
+      artAssets: [],
+      artGroups: [],
+      artRoot: "/tmp/party-game-art-validation-baseline-test",
+      contentTypeForFile: () => "application/octet-stream",
+      customDir: "/tmp/party-game-art-validation-baseline-test/custom",
+      defaultDir: "/tmp/party-game-art-validation-baseline-test/default",
+      manifestFile: "/tmp/party-game-art-validation-baseline-test/manifest.json",
+      loadArtManifestSource: async () => manifest,
+      readJson: async () => requestPayload,
+      sendJson: (_res, status, body) => {
+        responseStatus = status;
+        responseBody = body;
+      },
+      writeArtManifestSource: async (nextManifest) => {
+        manifest = nextManifest;
+        return manifest;
+      }
+    });
+
+    await runtime.sendArtAssetList({});
+    const edited = responseBody.compositions.find((composition) => composition.id === valid.id);
+    edited.description = "A valid saved change";
+    requestPayload = { compositions: [edited], revision: responseBody.revision };
+
+    await runtime.handleSaveArtCompositions({}, {});
+
+    expect(responseStatus).toBe(200);
+    expect(manifest.compositions[valid.id].description).toBe("A valid saved change");
+
+    requestPayload = { compositions: [legacy], revision: responseBody.revision };
+    await runtime.handleSaveArtCompositions({}, {});
+    expect(responseStatus).toBe(409);
+    expect(responseBody.issues).toContainEqual(expect.objectContaining({
+      compositionId: legacy.id,
+      code: "missing-instance-label"
+    }));
+  });
+
+  it("repairs missing Crafting Timer instance labels during normalization", () => {
+    const runtime = createRuntime({
+      artCompositions: [{
+        id: "crafting-timer-widget",
+        name: "Crafting Timer",
+        timelineArchitectureVersion: 2,
+        canvas: { width: 180, height: 180 },
+        components: [
+          { id: "timer-value", name: "Timer Value", kind: "text" },
+          { id: "timer-ring", name: "Timer Ring", kind: "shape" }
+        ]
+      }]
+    });
+
+    const [normalized] = runtime.normalizeArtCompositionsDraft([{
+      id: "crafting-timer-widget",
+      timelineArchitectureVersion: 2,
+      components: [
+        { id: "timer-value", name: "Timer Value", kind: "text", instanceLabel: "" },
+        { id: "timer-ring", name: "Timer Ring", kind: "shape", instanceLabel: "" }
+      ]
+    }]);
+
+    expect(normalized.components).toEqual([
+      expect.objectContaining({ id: "timer-value", instanceLabel: "timerValue" }),
+      expect.objectContaining({ id: "timer-ring", instanceLabel: "timerRing" })
+    ]);
+  });
+
   it("persists Waiting Status child art through batch save and reload", async () => {
     const definitions = installDefaultLobbyWidgetCompositions([{
       id: "waiting-status-widget",

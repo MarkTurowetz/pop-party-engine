@@ -1266,9 +1266,18 @@ export function createArtCompositionsController(
           const payload = caught.payload as {
             compositionRevisions?: Record<string, string>;
             dependencies?: ArtCompositionDependencyReport;
+            issues?: Array<{ compositionId?: string; code?: string; message?: string }>;
           };
           if (payload.dependencies) dependencyReport = { ...payload.dependencies };
           if (payload.compositionRevisions) compositionRevisions = { ...payload.compositionRevisions };
+          if (payload.issues?.length) {
+            const details = payload.issues.map((issue) =>
+              `${issue.compositionId || "unknown composition"}: ${issue.message || issue.code || "invalid art data"}`
+            );
+            error = `${caught.message}: ${details.join("; ")}`;
+            emit();
+            return false;
+          }
         }
         error = caught instanceof Error ? caught.message : String(caught);
         emit();
