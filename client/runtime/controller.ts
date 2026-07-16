@@ -18,6 +18,8 @@ import { createControllerSubmitApi } from "./controllerSubmitApi";
 import { createControllerSessionRuntime } from "./controllerSessionRuntime";
 import { createControllerActionBindings, type ControllerActionBindingsOptions } from "./controllerActionBindings";
 import { createControllerSetupBindings } from "./controllerSetupBindings";
+import { createControllerLocalButtonRuntime, type ControllerLocalButtonSlot } from "./controllerLocalButtonRuntime";
+import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
 type TextTarget = HTMLElement | string;
@@ -47,9 +49,9 @@ declare global {
     introPresentButton?: HTMLButtonElement;
     controllerPresentationButtonContainer?: HTMLElement;
     controllerPausedButtonContainer?: HTMLElement;
-    controllerMicAccessButton?: HTMLButtonElement;
-    controllerTextSubmitButton?: HTMLButtonElement;
-    controllerVoiceButton?: HTMLButtonElement;
+    controllerMicAccessButtonContainer?: HTMLElement;
+    controllerTextSubmitButtonContainer?: HTMLElement;
+    controllerVoiceButtonContainer?: HTMLElement;
     controllerChoiceState?: HTMLElement;
     controllerGlobalActionState?: HTMLElement;
     controllerIntroState?: HTMLElement;
@@ -124,13 +126,58 @@ function initializeControllerButtonText(): void {
   setControllerButtonText(w.joinButton, "Join", { width: 260, height: 64, fontSize: 24 });
   setControllerButtonText(w.startGameButton, "Start Game", { width: 260, height: 64, fontSize: 24 });
   setControllerButtonText(w.introPresentButton, "Present HI THERE", { width: 300, height: 64, fontSize: 24 });
-  setControllerButtonText(w.controllerMicAccessButton, "Yes", { width: 260, height: 64, fontSize: 24 });
-  setControllerButtonText(w.controllerTextSubmitButton, "Submit", { width: 260, height: 64, fontSize: 24 });
-  setControllerButtonText(w.controllerVoiceButton, "Hold To Record", { width: 300, height: 64, fontSize: 24 });
 }
 
 function el<T = HTMLElement>(value: unknown): T {
   return value as T;
+}
+
+function getControllerLocalButtonSlots(): Record<"microphoneAccess" | "textSubmit" | "voice", ControllerLocalButtonSlot> {
+  return controllerModules.get("localButtonSlots", () => ({
+    microphoneAccess: {
+      buttonId: "controllerMicAccessButton",
+      container: el(w.controllerMicAccessButtonContainer),
+      layoutPhase: controllerLayoutStateIds.microphoneAccess,
+      optionId: "microphoneAccess.grant"
+    },
+    textSubmit: {
+      buttonId: "controllerTextSubmitButton",
+      container: el(w.controllerTextSubmitButtonContainer),
+      layoutPhase: controllerLayoutStateIds.textInput,
+      optionId: "text.submit"
+    },
+    voice: {
+      buttonClassName: "controller-mic-button",
+      buttonId: "controllerVoiceButton",
+      container: el(w.controllerVoiceButtonContainer),
+      layoutPhase: controllerLayoutStateIds.voiceInput,
+      optionId: "voice.record"
+    }
+  }));
+}
+
+function getControllerLocalButtonRuntime() {
+  return controllerModules.get("localButtonRuntime", () =>
+    createControllerLocalButtonRuntime({
+      bindPress: w.bindButtonPress,
+      disposeButtonArt: (button) => w.PartyGameLayoutText?.disposeControllerButtonArt?.(button),
+      setButtonLifecycleState: (button, state) => w.PartyGameLayoutText?.setControllerButtonLifecycleState?.(button, state)
+    })
+  );
+}
+
+function activateControllerLocalButton(
+  slot: ControllerLocalButtonSlot,
+  label: string,
+  spec: Dict,
+  refreshExisting = false
+): HTMLButtonElement {
+  const activation = getControllerLocalButtonRuntime().activate(
+    slot,
+    (button) => setControllerButtonText(button, label, spec)
+  );
+  if (refreshExisting && !activation.isNew) setControllerButtonText(activation.button, label, spec);
+  return activation.button;
 }
 
 function getControllerViewState() {
@@ -183,7 +230,7 @@ function getControllerVoiceInput() {
   return controllerModules.get("voiceInput", () =>
     createControllerVoiceInput({
       applyLayoutForPhase: applyControllerLayoutForPhase,
-      button: el<HTMLButtonElement>(w.controllerVoiceButton),
+      getButton: () => getControllerLocalButtonRuntime().active(getControllerLocalButtonSlots().voice),
       getReleaseBufferSeconds: () =>
         Number(
           (w.controllerState?.lobby as Dict)?.speechToTextSendInputBuffer ??
@@ -208,11 +255,15 @@ function getControllerMicrophoneAccessView() {
     createControllerMicrophoneAccessView({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       elements: {
-        button: el(w.controllerMicAccessButton),
         prompt: el(w.controllerMicAccessPrompt),
         state: el(w.controllerMicAccessState),
         status: el(w.controllerMicAccessStatus)
       },
+      getButton: () => activateControllerLocalButton(
+        getControllerLocalButtonSlots().microphoneAccess,
+        "Yes",
+        { width: 260, height: 64, fontSize: 24 }
+      ),
       grantAccess: grantControllerMicrophoneAccess,
       hideViews: hideControllerViews,
       renderGlobalMessage: renderControllerGlobalMessage,
@@ -338,17 +389,27 @@ function getControllerTextInputView() {
     createControllerTextInputView({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       dismissedInvalidKey: () => w.dismissedTextInvalidKey || "",
+      disposeButton: () => getControllerLocalButtonRuntime().dispose(),
       elements: {
         done: el(w.controllerTextDone),
         input: el(w.controllerTextInput),
         invalidBanner: el(w.controllerInvalidBanner),
         prompt: el(w.controllerTextPrompt),
         state: el(w.controllerTextState),
-        submitButton: el(w.controllerTextSubmitButton),
-        voiceButton: el(w.controllerVoiceButton),
         voiceStatus: el(w.controllerVoiceStatus)
       },
+      getSubmitButton: () => activateControllerLocalButton(
+        getControllerLocalButtonSlots().textSubmit,
+        "Submit",
+        { width: 260, height: 64, fontSize: 24 },
+        true
+      ),
       getVoiceInput: getControllerVoiceInput,
+      getVoiceButton: () => activateControllerLocalButton(
+        getControllerLocalButtonSlots().voice,
+        "Hold To Record",
+        { width: 300, height: 64, fontSize: 24 }
+      ),
       hideViews: hideControllerViews,
       setText: setControllerText,
       setTextShown: setControllerTextShown,
@@ -386,6 +447,8 @@ function getControllerSessionRuntime() {
 
 function applyControllerLayoutForPhase(phase: string): void {
   getControllerGlobalActionView().prepareForLayout(phase);
+  if (phase !== controllerLayoutStateIds.voiceInput) getControllerVoiceInput().stopRecognition();
+  getControllerLocalButtonRuntime().prepareForLayout(phase);
   w.applyControllerLayoutForPhase?.(phase);
 }
 
@@ -440,8 +503,8 @@ async function submitControllerText(actionId: string, textOverride: string | nul
   const input = el<HTMLInputElement>(w.controllerTextInput);
   const text = textOverride == null ? input.value : textOverride;
   if (!text.trim()) return;
-  el<HTMLButtonElement>(w.controllerTextSubmitButton).disabled = true;
-  el<HTMLButtonElement>(w.controllerVoiceButton).disabled = true;
+  const activeButton = getControllerLocalButtonRuntime().active();
+  if (activeButton) activeButton.disabled = true;
   try {
     const result = (await getControllerSubmitApi().submitText(actionId, text)) as Dict;
     if (result.lobby) renderControllerState(result.lobby as Dict);
@@ -449,8 +512,8 @@ async function submitControllerText(actionId: string, textOverride: string | nul
     setControllerText(w.controllerInvalidBanner, (error as Error).message);
     setControllerTextShown(w.controllerInvalidBanner, true, { instant: true });
     input.value = "";
-    el<HTMLButtonElement>(w.controllerTextSubmitButton).disabled = true;
-    el<HTMLButtonElement>(w.controllerVoiceButton).disabled = false;
+    const currentButton = getControllerLocalButtonRuntime().active();
+    if (currentButton) currentButton.disabled = currentButton.id === "controllerTextSubmitButton";
     setControllerText(w.controllerVoiceStatus, (error as Error).message);
   }
 }
@@ -542,9 +605,9 @@ function setupController(): void {
       joinForm: el(w.joinForm),
       playerNameInput: el(w.playerNameInput),
       stageCodeInput: el(w.stageCodeInput),
-      textInput: el(w.controllerTextInput),
-      textSubmitButton: el(w.controllerTextSubmitButton)
+      textInput: el(w.controllerTextInput)
     } as never,
+    getTextSubmitButton: () => getControllerLocalButtonRuntime().active(getControllerLocalButtonSlots().textSubmit),
     getControllerState: () => w.controllerState,
     getSessionValue: w.getSessionValue!,
     joinController,

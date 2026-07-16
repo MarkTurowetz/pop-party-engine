@@ -9,6 +9,7 @@ const BUTTON_SPEC = { width: 260, height: 64, fontSize: 24 };
 
 export interface ControllerSetupBindingsOptions {
   elements: Record<string, HTMLInputElement & HTMLButtonElement & HTMLFormElement & HTMLElement> & Record<string, HTMLElement>;
+  getTextSubmitButton: () => HTMLButtonElement | null;
   getControllerState: () => Dict | null | undefined;
   getSessionValue: (key: string) => string;
   joinController: (stageCode: string, playerName: string) => Promise<unknown>;
@@ -25,6 +26,7 @@ export interface ControllerSetupBindingsOptions {
 export function createControllerSetupBindings(options: ControllerSetupBindingsOptions) {
   const {
     elements,
+    getTextSubmitButton,
     getControllerState,
     getSessionValue,
     joinController,
@@ -99,12 +101,14 @@ export function createControllerSetupBindings(options: ControllerSetupBindingsOp
       }
       if (setShown) setShown(elements.invalidBanner, false, { instant: true });
       else elements.invalidBanner.classList.add("hidden");
-      (elements.textSubmitButton as HTMLButtonElement).disabled = textInput.value.trim().length === 0;
+      const submitButton = getTextSubmitButton();
+      if (submitButton) submitButton.disabled = textInput.value.trim().length === 0;
     });
     textInput.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || event.shiftKey) return;
       event.preventDefault();
-      if (!(elements.textSubmitButton as HTMLButtonElement).disabled) elements.textSubmitButton.click();
+      const submitButton = getTextSubmitButton();
+      if (submitButton && !submitButton.disabled) submitButton.click();
     });
   }
 

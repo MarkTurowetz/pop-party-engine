@@ -99,6 +99,49 @@ describe("controller layout normalization", () => {
     expect(layouts.states[0].hiddenGlobals).toEqual(["banner"]);
   });
 
+  it("migrates persistent input buttons into state-local button containers", () => {
+    const layouts = runtime().normalizeControllerLayouts({
+      canvas: { width: 390, height: 844 },
+      global: { id: "global", name: "Global", elements: [] },
+      states: [
+        {
+          id: "controller-text-input",
+          name: "Text Input",
+          elements: [{ id: "controllertextsubmitbutton", artCompositionId: "controller-primary-button", defaultAnimationState: "Off" }]
+        },
+        {
+          id: "controller-voice-input",
+          name: "Voice Input",
+          elements: [{ id: "controllervoicebutton", artCompositionId: "controller-primary-button" }]
+        },
+        {
+          id: "controller-microphone-access",
+          name: "Microphone Access",
+          elements: [{ id: "controllermicaccessbutton", artCompositionId: "controller-primary-button" }]
+        }
+      ]
+    });
+
+    expect(layouts.states.map((state) => state.elements[0])).toMatchObject([
+      {
+        id: "controllertextsubmitbuttoncontainer",
+        selector: "#controllerTextSubmitButtonContainer",
+        artCompositionId: "",
+        defaultAnimationState: "On"
+      },
+      {
+        id: "controllervoicebuttoncontainer",
+        selector: "#controllerVoiceButtonContainer",
+        artCompositionId: ""
+      },
+      {
+        id: "controllermicaccessbuttoncontainer",
+        selector: "#controllerMicAccessButtonContainer",
+        artCompositionId: ""
+      }
+    ]);
+  });
+
   it("preserves per-view configuration tags supplied by layout normalization", () => {
     const customRuntime = createControllerLayoutNormalizationRuntime({
       cloneJson: (value) => JSON.parse(JSON.stringify(value)),

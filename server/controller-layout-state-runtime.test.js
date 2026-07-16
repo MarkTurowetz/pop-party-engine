@@ -47,4 +47,21 @@ describe("controller layout state runtime", () => {
     expect(presentation.elements[1].artCompositionId).toBeUndefined();
     expect(paused.elements[1].artCompositionId).toBeUndefined();
   });
+
+  it("gives text, voice, and microphone input their own local button containers", () => {
+    const states = runtime().createControllerInputLayoutStates();
+    const expectedContainers = new Map([
+      [controllerLayoutStateIds.textInput, "controllerTextSubmitButtonContainer"],
+      [controllerLayoutStateIds.voiceInput, "controllerVoiceButtonContainer"],
+      [controllerLayoutStateIds.microphoneAccess, "controllerMicAccessButtonContainer"]
+    ]);
+
+    for (const [stateId, containerId] of expectedContainers) {
+      const state = states.find((candidate) => candidate.id === stateId);
+      const container = state.elements.find((element) => element.id === containerId);
+      expect(container).toBeTruthy();
+      expect(container.artCompositionId).toBeUndefined();
+      expect(container.defaultAnimationState).toBe("On");
+    }
+  });
 });

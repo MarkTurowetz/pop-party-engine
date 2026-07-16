@@ -10,6 +10,7 @@ type Dict = Record<string, unknown>;
 export interface ControllerMicrophoneAccessViewOptions {
   applyLayoutForPhase: (phase: string) => void;
   elements: Record<string, HTMLButtonElement & HTMLElement> & Record<string, HTMLElement>;
+  getButton: () => HTMLButtonElement;
   grantAccess: (actionId: string) => Promise<unknown> | unknown;
   hideViews: () => void;
   renderGlobalMessage?: (lobby: Dict, message: string, options: { id: string }) => void;
@@ -22,7 +23,7 @@ export interface ControllerMicrophoneAccessViewOptions {
 export function createControllerMicrophoneAccessView(options: ControllerMicrophoneAccessViewOptions): {
   render(lobby: Dict, me: Dict): boolean;
 } {
-  const { applyLayoutForPhase, elements, grantAccess, hideViews, renderGlobalMessage, setButtonText, setText, showView, waiting } =
+  const { applyLayoutForPhase, elements, getButton, grantAccess, hideViews, renderGlobalMessage, setButtonText, setText, showView, waiting } =
     options;
 
   const writeText =
@@ -114,7 +115,7 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
       });
   }
 
-  function autoGrantIfReady(input: Dict, alreadyGranted: boolean): void {
+  function autoGrantIfReady(input: Dict, alreadyGranted: boolean, button: HTMLButtonElement): void {
     const actionId = input.actionId as string;
     if (pendingAutoGrantActionIds.has(actionId)) return;
     pendingAutoGrantActionIds.add(actionId);
@@ -124,8 +125,12 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
           pendingAutoGrantActionIds.delete(actionId);
           return;
         }
+        if (!button.isConnected) {
+          pendingAutoGrantActionIds.delete(actionId);
+          return;
+        }
         rememberAccessGranted();
-        elements.button.disabled = true;
+        button.disabled = true;
         writeText(elements.status, "Microphone ready");
         reportGranted(input);
       })
@@ -157,25 +162,26 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
     hideViews();
     applyLayoutForPhase(controllerLayoutStateIds.microphoneAccess);
     showView("microphoneAccess");
+    const button = getButton();
     writeText(elements.prompt, input.prompt || "Give microphone access to the game");
-    writeButtonText(elements.button, input.buttonLabel || "Yes", { width: 260, height: 64, fontSize: 24 });
-    elements.button.disabled = false;
+    writeButtonText(button, input.buttonLabel || "Yes", { width: 260, height: 64, fontSize: 24 });
+    button.disabled = false;
     writeText(elements.status, "Chrome will ask for microphone permission");
-    autoGrantIfReady(input, alreadyGranted);
-    elements.button.onclick = async () => {
+    autoGrantIfReady(input, alreadyGranted, button);
+    button.onclick = async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
         writeText(elements.status, "Microphone permission is not available in this browser");
-        elements.button.disabled = true;
+        button.disabled = true;
         return;
       }
-      elements.button.disabled = true;
+      button.disabled = true;
       writeText(elements.status, "Opening microphone permission");
       try {
         await requestMicrophoneAccess();
         writeText(elements.status, "Microphone ready");
         await grantAccess(input.actionId as string);
       } catch (error) {
-        elements.button.disabled = false;
+        button.disabled = false;
         writeText(
           elements.status,
           (error as DOMException)?.name === "NotAllowedError" ? "Microphone access was blocked" : "Could not open the microphone"

@@ -4,7 +4,7 @@ import { createControllerVoiceInput, type ControllerVoiceInputOptions } from "./
 function options(): ControllerVoiceInputOptions {
   return {
     applyLayoutForPhase: vi.fn(),
-    button: {} as HTMLButtonElement,
+    getButton: () => null,
     getReleaseBufferSeconds: () => 1,
     hideViews: vi.fn(),
     introMessage: {} as HTMLElement,

@@ -9,6 +9,37 @@ function createControllerLayoutNormalizationRuntime({
     "controllerglobalactionbutton"
   ]);
 
+  const localButtonContainerMigrations = {
+    controllertextsubmitbutton: {
+      id: "controllertextsubmitbuttoncontainer",
+      name: "Text Submit Button Container",
+      selector: "#controllerTextSubmitButtonContainer"
+    },
+    controllervoicebutton: {
+      id: "controllervoicebuttoncontainer",
+      name: "Voice Record Button Container",
+      selector: "#controllerVoiceButtonContainer"
+    },
+    controllermicaccessbutton: {
+      id: "controllermicaccessbuttoncontainer",
+      name: "Microphone Access Button Container",
+      selector: "#controllerMicAccessButtonContainer"
+    }
+  };
+
+  function migrateControllerLocalButtonElement(element) {
+    const migration = localButtonContainerMigrations[element?.id];
+    if (!migration) return element;
+    return {
+      ...element,
+      ...migration,
+      kind: "art",
+      artCompositionId: "",
+      defaultAnimationState: "On",
+      defaultText: ""
+    };
+  }
+
   function migrateControllerActionElement(element, stateId) {
     if (!element) return element;
     if (element.id === "controllerglobalactionmessage") {
@@ -48,10 +79,13 @@ function createControllerLayoutNormalizationRuntime({
   function normalizeControllerState(state, stateIndex) {
     const normalized = normalizeLayoutState(state, stateIndex);
     if (!normalized) return null;
-    normalized.elements = (normalized.elements || []).map((element) => ({
-      ...element,
-      defaultAnimationState: normalizeControllerInitialState(element.defaultAnimationState)
-    }));
+    normalized.elements = (normalized.elements || []).map((element) => {
+      const migratedElement = migrateControllerLocalButtonElement(element);
+      return {
+        ...migratedElement,
+        defaultAnimationState: normalizeControllerInitialState(migratedElement.defaultAnimationState)
+      };
+    });
     return normalized;
   }
 

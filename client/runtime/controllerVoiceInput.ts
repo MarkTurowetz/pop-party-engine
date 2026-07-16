@@ -11,7 +11,7 @@ const BUTTON_SPEC = { width: 300, height: 64, fontSize: 24 };
 
 export interface ControllerVoiceInputOptions {
   applyLayoutForPhase: (phase: string) => void;
-  button: HTMLButtonElement;
+  getButton: () => HTMLButtonElement | null;
   getReleaseBufferSeconds: () => number;
   hideViews: () => void;
   introMessage: HTMLElement;
@@ -37,7 +37,7 @@ export interface ControllerVoiceInput {
 export function createControllerVoiceInput(options: ControllerVoiceInputOptions): ControllerVoiceInput {
   const {
     applyLayoutForPhase,
-    button,
+    getButton,
     getReleaseBufferSeconds,
     hideViews,
     introMessage,
@@ -62,6 +62,8 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
 
   function setButtonState(isBusy: boolean): void {
+    const button = getButton();
+    if (!button) return;
     if (!isBusy) {
       writeButtonText(button, "Hold To Record", { ...BUTTON_SPEC });
       button.disabled = false;
@@ -77,7 +79,8 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
         getReleaseBufferSeconds,
         onBusyChange: setButtonState,
         onError: () => {
-          button.disabled = false;
+          const button = getButton();
+          if (button) button.disabled = false;
         },
         onStatus: (message) => {
           writeText(status, message);
@@ -102,6 +105,8 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   }
 
   function resetUi(): void {
+    const button = getButton();
+    if (!button) return;
     writeButtonText(button, "Hold To Record", { ...BUTTON_SPEC });
     button.disabled = false;
     writeText(status, "Hold to record");
@@ -141,6 +146,8 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   }
 
   async function beginRecording(actionId: string): Promise<void> {
+    const button = getButton();
+    if (!button) return;
     if (!(await canRecordWithMicrophone())) {
       writeText(status, "Give microphone access first");
       button.disabled = false;
@@ -153,6 +160,8 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   }
 
   function finishRecording(actionId: string): void {
+    const button = getButton();
+    if (!button) return;
     if (getLifecycle().release(actionId)) {
       button.disabled = true;
       writeButtonText(button, "Processing", { ...BUTTON_SPEC });
@@ -166,6 +175,8 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   }
 
   function bindButton(actionId: string): void {
+    const button = getButton();
+    if (!button) return;
     button.onclick = (event) => event.preventDefault();
     button.onpointerdown = (event) => {
       event.preventDefault();

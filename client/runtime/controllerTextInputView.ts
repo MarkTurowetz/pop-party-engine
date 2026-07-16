@@ -18,8 +18,11 @@ interface VoiceInput {
 export interface ControllerTextInputViewOptions {
   applyLayoutForPhase: (phase: string) => void;
   dismissedInvalidKey: () => string;
+  disposeButton: () => void;
   elements: Record<string, HTMLInputElement & HTMLElement & HTMLButtonElement> & Record<string, HTMLElement>;
+  getSubmitButton: () => HTMLButtonElement;
   getVoiceInput: () => VoiceInput;
+  getVoiceButton: () => HTMLButtonElement;
   hideViews: () => void;
   setText?: (target: HTMLElement, value: unknown) => void;
   setTextShown?: (target: HTMLElement, isShown: boolean, options?: Dict) => void;
@@ -32,8 +35,11 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
   const {
     applyLayoutForPhase,
     dismissedInvalidKey,
+    disposeButton,
     elements,
+    getSubmitButton,
     getVoiceInput,
+    getVoiceButton,
     hideViews,
     setText,
     setTextShown,
@@ -64,8 +70,6 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
   function setVisibility({ isDone, isVoiceInput, showInvalid }: { isDone: boolean; isVoiceInput: boolean; showInvalid: boolean }): void {
     showText(elements.done, isDone, { instant: true });
     showText(elements.input, !isDone && !isVoiceInput, { instant: true });
-    showText(elements.submitButton, !isDone && !isVoiceInput, { instant: true });
-    showText(elements.voiceButton, !isDone && isVoiceInput, { instant: true });
     showText(elements.voiceStatus, !isDone && isVoiceInput, { instant: true });
     showText(elements.invalidBanner, showInvalid && !isDone, { instant: true });
   }
@@ -97,6 +101,16 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
     const showInvalid = isInvalid && dismissedInvalidKey() !== invalidKey;
     setVisibility({ isDone, isVoiceInput: isVoiceInput as boolean, showInvalid });
 
+    let activeButton: HTMLButtonElement | null = null;
+    if (isDone) {
+      if (isVoiceInput) voiceInput.stopRecognition();
+      disposeButton();
+    } else if (isVoiceInput) {
+      activeButton = getVoiceButton();
+    } else {
+      activeButton = getSubmitButton();
+    }
+
     if (isDone) {
       writeText(elements.done, isVoiceInput ? `You said: ${answer?.text || ""}` : `You wrote: ${answer?.text || ""}`);
     } else if (showInvalid) {
@@ -105,9 +119,11 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
       voiceInput.resetUi();
     }
 
-    (elements.submitButton as HTMLButtonElement).disabled = (elements.input as HTMLInputElement).value.trim().length === 0;
-    (elements.submitButton as HTMLButtonElement).onclick = () => submitText(input.actionId as string);
-    voiceInput.bindButton(input.actionId as string);
+    if (activeButton && !isVoiceInput) {
+      activeButton.disabled = (elements.input as HTMLInputElement).value.trim().length === 0;
+      activeButton.onclick = () => submitText(input.actionId as string);
+    }
+    if (activeButton && isVoiceInput) voiceInput.bindButton(input.actionId as string);
     setVisibility({ isDone, isVoiceInput: isVoiceInput as boolean, showInvalid });
     return true;
   }

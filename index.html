@@ -115,14 +115,14 @@
       </div>
 
       <div class="controller-choice-state hidden" id="controllerMicAccessState" data-controller-view="microphone-access">
-        <button class="primary-button controller-submit-button" id="controllerMicAccessButton" type="button" data-controller-option data-option-id="microphoneAccess.grant">Yes</button>
+        <div class="controller-local-action-container" id="controllerMicAccessButtonContainer"></div>
       </div>
 
       <div class="controller-text-state hidden" id="controllerTextState" data-controller-view="text-input">
         <div class="controller-invalid-banner hidden" id="controllerInvalidBanner">Your submission was invalid</div>
         <textarea class="controller-text-input" id="controllerTextInput" autocomplete="off" placeholder="Answer here"></textarea>
-        <button class="primary-button controller-submit-button" id="controllerTextSubmitButton" type="button" disabled data-controller-option data-option-id="text.submit">Submit</button>
-        <button class="primary-button controller-submit-button controller-mic-button hidden" id="controllerVoiceButton" type="button" data-controller-option data-option-id="voice.record">Start Recording</button>
+        <div class="controller-local-action-container" id="controllerTextSubmitButtonContainer"></div>
+        <div class="controller-local-action-container" id="controllerVoiceButtonContainer"></div>
       </div>
     </div>
   </section>

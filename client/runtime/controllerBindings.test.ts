@@ -6,6 +6,7 @@ describe("createControllerSetupBindings (ported)", () => {
   it("exposes the bind functions", () => {
     const bindings = createControllerSetupBindings({
       elements: {} as never,
+      getTextSubmitButton: () => null,
       getControllerState: () => null,
       getSessionValue: () => "",
       joinController: vi.fn(async () => null),

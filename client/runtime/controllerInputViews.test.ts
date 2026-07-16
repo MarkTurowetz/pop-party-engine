@@ -113,8 +113,11 @@ describe("createControllerTextInputView (ported)", () => {
     const view = createControllerTextInputView({
       applyLayoutForPhase: vi.fn(),
       dismissedInvalidKey: () => "",
+      disposeButton: vi.fn(),
       elements: {} as never,
+      getSubmitButton: vi.fn(),
       getVoiceInput: vi.fn(),
+      getVoiceButton: vi.fn(),
       hideViews: vi.fn(),
       setPhaseActionId: vi.fn(),
       showView: vi.fn(),
@@ -130,6 +133,7 @@ describe("createControllerTextInputView (ported)", () => {
 
   it("selects the voice layout for a voice input", () => {
     const applyLayoutForPhase = vi.fn();
+    const getVoiceButton = vi.fn(() => ({} as HTMLButtonElement));
     const voiceInput = {
       bindButton: vi.fn(),
       isListening: () => false,
@@ -140,16 +144,17 @@ describe("createControllerTextInputView (ported)", () => {
     const view = createControllerTextInputView({
       applyLayoutForPhase,
       dismissedInvalidKey: () => "",
+      disposeButton: vi.fn(),
       elements: {
         done: {} as HTMLElement,
         input: { removeAttribute: vi.fn(), value: "" } as unknown as HTMLInputElement,
         invalidBanner: {} as HTMLElement,
         prompt: {} as HTMLElement,
-        submitButton: {} as HTMLButtonElement,
-        voiceButton: {} as HTMLButtonElement,
         voiceStatus: {} as HTMLElement
       } as never,
+      getSubmitButton: vi.fn(),
       getVoiceInput: () => voiceInput,
+      getVoiceButton,
       hideViews: vi.fn(),
       setPhaseActionId: vi.fn(),
       setText: vi.fn(),
@@ -160,5 +165,43 @@ describe("createControllerTextInputView (ported)", () => {
 
     expect(view.render({ textInput: { actionId: "voice", type: "voice" } }, { isVip: true })).toBe(true);
     expect(applyLayoutForPhase).toHaveBeenCalledWith(controllerLayoutStateIds.voiceInput);
+    expect(getVoiceButton).toHaveBeenCalledOnce();
+    expect(voiceInput.bindButton).toHaveBeenCalledWith("voice");
+  });
+
+  it("disposes the local input button after the answer is complete", () => {
+    const disposeButton = vi.fn();
+    const getSubmitButton = vi.fn();
+    const view = createControllerTextInputView({
+      applyLayoutForPhase: vi.fn(),
+      dismissedInvalidKey: () => "",
+      disposeButton,
+      elements: {
+        done: {} as HTMLElement,
+        input: { removeAttribute: vi.fn(), value: "finished" } as unknown as HTMLInputElement,
+        invalidBanner: {} as HTMLElement,
+        prompt: {} as HTMLElement,
+        voiceStatus: {} as HTMLElement
+      } as never,
+      getSubmitButton,
+      getVoiceInput: () => ({
+        bindButton: vi.fn(),
+        isListening: () => false,
+        renderWaiting: vi.fn(),
+        resetUi: vi.fn(),
+        stopRecognition: vi.fn()
+      }),
+      getVoiceButton: vi.fn(),
+      hideViews: vi.fn(),
+      setPhaseActionId: vi.fn(),
+      setText: vi.fn(),
+      setTextShown: vi.fn(),
+      showView: vi.fn(),
+      submitText: vi.fn()
+    });
+
+    expect(view.render({ textInput: { actionId: "text", type: "text" } }, { answer: { done: true, text: "finished" } })).toBe(true);
+    expect(disposeButton).toHaveBeenCalledOnce();
+    expect(getSubmitButton).not.toHaveBeenCalled();
   });
 });
