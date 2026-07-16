@@ -16,6 +16,7 @@ function layouts(defaultAnimationState?: string): StageLayoutCollection {
             name: "Warning",
             kind: "art",
             defaultAnimationState,
+            tags: [" Phase One ", "phase one", "Review"],
             x: 1,
             y: 2,
             width: 3,
@@ -38,5 +39,12 @@ describe("controller layout initial state", () => {
   it("serializes controller initial state as the On/Off contract", () => {
     expect(serializeLayoutsForSave(layouts(), "controller").states[0].elements[0].defaultAnimationState).toBe("On");
     expect(serializeLayoutsForSave(layouts("Disappear"), "controller").states[0].elements[0].defaultAnimationState).toBe("Off");
+  });
+
+  it("serializes normalized controller configuration tags", () => {
+    expect(serializeLayoutsForSave(layouts(), "controller").states[0].elements[0].tags).toEqual([
+      "Phase One",
+      "Review"
+    ]);
   });
 });

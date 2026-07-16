@@ -52,6 +52,7 @@ export interface LayoutElement extends JsonObject {
   selector?: string;
   artCompositionId?: string;
   defaultAnimationState?: string;
+  tags?: string[];
   hidden?: boolean;
   locked?: boolean;
   x?: number;

@@ -121,7 +121,7 @@ describe("LayoutEditor", () => {
     expect(markup).toContain('data-layout-art-default-height="80"');
   });
 
-  it("previews controller initial state while keeping Off elements editable", () => {
+  it("surfaces per-view configuration tags while keeping initial state independently editable", () => {
     const api = fakeApi();
     const controllerLayouts = layouts();
     controllerLayouts.global.elements = [
@@ -130,6 +130,7 @@ describe("LayoutEditor", () => {
         name: "Warning",
         kind: "art",
         defaultAnimationState: "Off",
+        tags: ["Phase One", "Warning"],
         x: 195,
         y: 200,
         width: 330,
@@ -148,11 +149,14 @@ describe("LayoutEditor", () => {
       />
     );
 
-    expect(markup).toContain('data-controller-preview-mode="initial"');
-    expect(markup).toContain('data-controller-preview-mode="all"');
+    expect(markup).toContain('data-controller-preview-tag="all"');
+    expect(markup).toContain('data-controller-preview-tag-input="true"');
     expect(markup).toContain('data-layout-object-initial-state="Off"');
-    expect(markup).not.toContain('data-layout-element="warning"');
+    expect(markup).toContain('data-layout-object-tags="Phase One|Warning"');
+    expect(markup).toContain('data-layout-element="warning"');
     expect(markup).toContain('data-layout-element-field="defaultAnimationState"');
+    expect(markup).toContain('data-layout-element-field="tags"');
+    expect(markup).toContain('data-layout-element-tag="Phase One"');
     expect(markup).toContain('<option value="Off" selected="">Off</option>');
   });
 });

@@ -106,6 +106,28 @@ describe("createLayoutController", () => {
     expect(controller.getState().dirty).toBe(false);
   });
 
+  it("saves controller configuration tags and clears dirty", async () => {
+    const saveControllerLayouts = vi.fn(
+      async (nextLayouts: StageLayoutCollection) =>
+        ({ ok: true, layouts: nextLayouts, storage: {} }) as unknown as LayoutSaveResponse<StageLayoutCollection>
+    );
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api: fakeApi({ saveControllerLayouts })
+    });
+    controller.selectGroup("intro");
+    controller.updateElement("e1", { tags: ["Phase One", "Review"] });
+
+    expect(await controller.save()).toBe(true);
+    expect(saveControllerLayouts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        states: [expect.objectContaining({ elements: [expect.objectContaining({ tags: ["Phase One", "Review"] })] })]
+      })
+    );
+    expect(controller.getState().dirty).toBe(false);
+  });
+
   it("publishes stage layout edits as session drafts", async () => {
     vi.useFakeTimers();
     try {

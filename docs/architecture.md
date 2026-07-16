@@ -100,6 +100,11 @@ concepts into focused modules.
   - Controller input views select semantic controller layouts rather than reusing their current
     stage phase. Layout placements start in their authored `On`/`Off` state; response-driven
     controls such as validation banners and completion messages may then be toggled fire-and-forget.
+  - Controller Layout Tool configuration tags are per-placement authoring metadata scoped to one
+    controller view. The editor derives each view's searchable configuration list from its local
+    elements and uses the selected tag only to filter the authoring preview. Tags do not change the
+    runtime `On`/`Off` initial-state contract or switch controller state until a future explicit
+    runtime action adopts that responsibility.
   - Controller button visuals use four authored prefab layers: the lifecycle wrapper owns
     `Off`/`On`/`Appear`/`Update`/`Disappear`; its interaction child owns
     `Default`/`Down`/`Up`/`HoverIn`/`HoverOut`; the next child owns the stopped `Default` and

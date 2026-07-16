@@ -2616,11 +2616,160 @@ body.tool-dashboard-mode .layout-react-shell {
   --art-preview-current-color: #22d3ee;
 }
 
+.layout-configuration-picker {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(190px, 260px);
+  gap: 6px 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.layout-configuration-picker > label {
+  color: #5e5475;
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.layout-tag-combobox {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  min-width: 0;
+}
+
+.layout-tag-combobox input,
+.layout-tag-entry input {
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 3px solid var(--ink);
+  border-radius: 9px 0 0 9px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  font-weight: 900;
+}
+
+.tool-workspace-toolbar .layout-tag-combobox-toggle,
+.layout-tag-combobox-toggle {
+  min-width: 38px;
+  width: 38px;
+  padding: 0;
+  border-left: 0;
+  border-radius: 0 9px 9px 0;
+  box-shadow: none;
+}
+
+.layout-tag-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  display: grid;
+  gap: 4px;
+  width: min(280px, 80vw);
+  max-height: 240px;
+  padding: 6px;
+  overflow: auto;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 5px 5px 0 rgba(23, 19, 31, 0.25);
+}
+
+.layout-tag-options button {
+  width: 100%;
+  min-height: 32px;
+  text-align: left;
+  box-shadow: none;
+}
+
+.layout-tag-options button[aria-selected="true"] {
+  background: var(--cyan);
+}
+
+.layout-tag-options p {
+  margin: 0;
+  padding: 8px;
+  color: #5e5475;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .layout-element-inspector {
   min-width: 0;
   overflow: auto;
   border-left: 4px solid var(--ink) !important;
   background: #fff;
+}
+
+.flow-react-field.layout-element-tag-editor {
+  align-items: start;
+}
+
+.layout-element-tag-editor-body {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.layout-tag-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.layout-tag-chip-list > small,
+.layout-element-tag-editor-body > small {
+  color: #6f6582;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.tool-workspace-main .layout-tag-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 29px;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--cyan);
+  box-shadow: none;
+}
+
+.layout-tag-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-tag-chip b {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.layout-tag-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.tool-workspace-main .layout-tag-entry > button {
+  border-left: 0;
+  border-radius: 0 9px 9px 0;
+  box-shadow: none;
+}
+
+.layout-tag-suggestions {
+  top: calc(100% + 4px);
+  left: 0;
+  right: auto;
+  width: 100%;
 }
 
 .layout-object-list-panel {

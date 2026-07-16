@@ -21,6 +21,21 @@ function createLayoutNormalizationRuntime({
   normalizeFlowId,
   normalizeLayoutNumber
 }) {
+  function normalizeLayoutTags(value) {
+    if (!Array.isArray(value)) return [];
+    const tags = [];
+    const seen = new Set();
+    for (const rawTag of value) {
+      const tag = String(rawTag ?? "").replace(/\s+/g, " ").trim().slice(0, 64);
+      const key = tag.toLowerCase();
+      if (!tag || seen.has(key)) continue;
+      seen.add(key);
+      tags.push(tag);
+      if (tags.length >= 32) break;
+    }
+    return tags;
+  }
+
   function normalizeLayoutState(state, stateIndex) {
     if (!state || typeof state !== "object") return null;
     const fallbackId = stateIndex === 0 ? "lobby" : `layout-state-${stateIndex + 1}`;
@@ -68,6 +83,7 @@ function createLayoutNormalizationRuntime({
       height,
       scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10),
       rotation: normalizeLayoutNumber(element.rotation, 0, -3600, 3600),
+      tags: normalizeLayoutTags(element.tags),
       defaultAnimationState,
       defaultText: textDefaultsEnabled ? cleanLayoutText(element.defaultText) : "",
       fontSize: textDefaultsEnabled ? normalizeLayoutNumber(element.fontSize, 58, 6, 260) : 58,

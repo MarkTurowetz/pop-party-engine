@@ -1,5 +1,6 @@
 import type { LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
 import { normalizeGameTextFontFamily } from "../../textFonts";
+import { normalizeLayoutTags } from "./layoutTags";
 
 /**
  * Typed port of the legacy serializeStageLayoutsForSave / serializeLayoutGroup so
@@ -41,6 +42,7 @@ function serializeElement(raw: LayoutElement, mode: LayoutMode): LayoutElement {
     height: num(element.height, 0),
     scale: num(element.scale, 1),
     rotation: num(element.rotation, 0),
+    tags: normalizeLayoutTags(element.tags),
     defaultAnimationState:
       mode === "controller"
         ? controllerInitialAnimationState(element.defaultAnimationState)

@@ -98,4 +98,31 @@ describe("controller layout normalization", () => {
 
     expect(layouts.states[0].hiddenGlobals).toEqual(["banner"]);
   });
+
+  it("preserves per-view configuration tags supplied by layout normalization", () => {
+    const customRuntime = createControllerLayoutNormalizationRuntime({
+      cloneJson: (value) => JSON.parse(JSON.stringify(value)),
+      defaultControllerLayouts: {
+        canvas: { width: 390, height: 844 },
+        global: { id: "global", name: "Global", elements: [] },
+        states: []
+      },
+      normalizeLayoutNumber: (value, fallback) => Number(value || fallback),
+      normalizeLayoutState: (state) => state ? {
+        ...JSON.parse(JSON.stringify(state)),
+        elements: (state.elements || []).map((element) => ({
+          ...element,
+          tags: ["Phase One", "Review"]
+        }))
+      } : null
+    });
+
+    const layouts = customRuntime.normalizeControllerLayouts({
+      canvas: { width: 390, height: 844 },
+      global: { id: "global", name: "Global", elements: [] },
+      states: [{ id: "voice", name: "Voice", elements: [{ id: "record" }] }]
+    });
+
+    expect(layouts.states[0].elements[0].tags).toEqual(["Phase One", "Review"]);
+  });
 });
