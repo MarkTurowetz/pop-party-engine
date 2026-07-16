@@ -41,6 +41,8 @@ declare global {
     lockControllerViewport?: () => void;
     bindButtonPress?: (button: HTMLElement) => void;
     bindControllerButtonPressStates?: () => void;
+    playControllerButtonInteraction?: (button: HTMLElement, animation: string) => number;
+    setControllerButtonDisabledState?: (button: HTMLElement, disabled: boolean) => number;
     getSessionValue?: (key: string) => string;
     getLocalValue?: (key: string) => string;
     setSessionValue?: (key: string, value: string) => void;
@@ -130,39 +132,57 @@ function lockControllerViewport(): void {
   });
 }
 
-type PressButton = HTMLButtonElement & { releaseTimerId?: number };
+type PressButton = HTMLButtonElement;
 
-function bindButtonPress(button: PressButton): void {
-  const pressButton = () => {
-    if (button.disabled) return;
-    window.clearTimeout(button.releaseTimerId);
-    button.classList.remove("is-releasing");
-    button.classList.add("is-pressed");
+function bindControllerButtonTimelineStates(button: PressButton): void {
+  if (button.dataset.controllerTimelineStatesBound === "true") return;
+  button.dataset.controllerTimelineStatesBound = "true";
+  const play = (animation: string) => w.playControllerButtonInteraction?.(button, animation);
+  const syncDisabled = () => w.setControllerButtonDisabledState?.(button, button.disabled);
+  let lastHapticAt = 0;
+  const pulseHaptic = () => {
+    if (!navigator.vibrate) return;
+    const now = Date.now();
+    if (now - lastHapticAt < 80) return;
+    lastHapticAt = now;
     try {
-      if (navigator.vibrate) navigator.vibrate(8);
+      navigator.vibrate(8);
     } catch {
-      /* optional */
+      // Haptics are optional and do not control visual state.
     }
   };
-  const releaseButton = () => {
-    if (!button.classList.contains("is-pressed")) return;
-    button.classList.add("is-releasing");
-    button.classList.remove("is-pressed");
-    window.clearTimeout(button.releaseTimerId);
-    button.releaseTimerId = window.setTimeout(() => button.classList.remove("is-releasing"), 140);
+  const press = () => {
+    if (button.disabled) return;
+    play("Down");
+    pulseHaptic();
   };
-  button.addEventListener("pointerdown", pressButton);
-  button.addEventListener("pointerup", releaseButton);
-  button.addEventListener("pointercancel", releaseButton);
-  button.addEventListener("pointerleave", releaseButton);
-  button.addEventListener("blur", releaseButton);
+  const release = () => {
+    if (button.disabled) return;
+    play("Up");
+  };
+  button.addEventListener("pointerenter", () => {
+    if (!button.disabled) play("HoverIn");
+  });
+  button.addEventListener("pointerleave", () => {
+    if (!button.disabled) play("HoverOut");
+  });
+  button.addEventListener("pointerdown", press);
+  button.addEventListener("pointerup", release);
+  button.addEventListener("pointercancel", () => play("HoverOut"));
+  button.addEventListener("blur", () => play("HoverOut"));
+  new MutationObserver(syncDisabled).observe(button, { attributes: true, attributeFilter: ["disabled"] });
+  syncDisabled();
+}
+
+function bindButtonPress(button: PressButton): void {
+  bindControllerButtonTimelineStates(button);
   let touchStarted = false;
   button.addEventListener(
     "touchstart",
     (e) => {
       e.preventDefault();
       touchStarted = true;
-      pressButton();
+      if (!("PointerEvent" in window) && !button.disabled) w.playControllerButtonInteraction?.(button, "Down");
     },
     { passive: false }
   );
@@ -172,7 +192,7 @@ function bindButtonPress(button: PressButton): void {
       e.preventDefault();
       const touch = e.changedTouches[0];
       const endedOn = touch ? document.elementFromPoint(touch.clientX, touch.clientY) : null;
-      releaseButton();
+      if (!("PointerEvent" in window) && !button.disabled) w.playControllerButtonInteraction?.(button, "Up");
       if (touchStarted && (endedOn === button || button.contains(endedOn)) && !button.disabled) button.click();
       touchStarted = false;
     },
@@ -183,7 +203,7 @@ function bindButtonPress(button: PressButton): void {
     (e) => {
       e.preventDefault();
       touchStarted = false;
-      releaseButton();
+      if (!("PointerEvent" in window)) w.playControllerButtonInteraction?.(button, "HoverOut");
     },
     { passive: false }
   );
@@ -192,51 +212,17 @@ function bindButtonPress(button: PressButton): void {
 
 function bindControllerButtonPressStates(): void {
   const pressableButtons = w.controllerScreen.querySelectorAll("button");
-  let lastHapticAt = 0;
-  const pulseHaptic = () => {
-    if (!navigator.vibrate) return;
-    const now = Date.now();
-    if (now - lastHapticAt < 80) return;
-    lastHapticAt = now;
-    try {
-      navigator.vibrate(8);
-    } catch {
-      // Haptics are optional and browser/device dependent.
-    }
-  };
-  const pressButton = (button: PressButton) => {
-    if (button.disabled) return;
-    window.clearTimeout(button.releaseTimerId);
-    button.classList.remove("is-releasing");
-    button.classList.add("is-pressed");
-    pulseHaptic();
-  };
-  const releaseButton = (button: PressButton) => {
-    if (!button.classList.contains("is-pressed")) return;
-    button.classList.add("is-releasing");
-    button.classList.remove("is-pressed");
-    window.clearTimeout(button.releaseTimerId);
-    button.releaseTimerId = window.setTimeout(() => {
-      button.classList.remove("is-releasing");
-    }, 140);
-  };
-  const releaseButtons = () => {
-    for (const button of pressableButtons) releaseButton(button as PressButton);
-  };
   for (const node of pressableButtons) {
     const button = node as PressButton;
+    bindControllerButtonTimelineStates(button);
     let touchStartedOnButton = false;
-    button.addEventListener("pointerdown", () => {
-      window.getSelection()?.removeAllRanges();
-      pressButton(button);
-    });
     button.addEventListener(
       "touchstart",
       (event) => {
         event.preventDefault();
         touchStartedOnButton = true;
         window.getSelection()?.removeAllRanges();
-        pressButton(button);
+        if (!("PointerEvent" in window) && !button.disabled) w.playControllerButtonInteraction?.(button, "Down");
       },
       { passive: false }
     );
@@ -247,7 +233,7 @@ function bindControllerButtonPressStates(): void {
         const touch = event.changedTouches[0];
         const endTarget = touch ? document.elementFromPoint(touch.clientX, touch.clientY) : null;
         const endedOnButton = endTarget === button || button.contains(endTarget);
-        releaseButton(button);
+        if (!("PointerEvent" in window) && !button.disabled) w.playControllerButtonInteraction?.(button, "Up");
         if (touchStartedOnButton && endedOnButton && !button.disabled) button.click();
         touchStartedOnButton = false;
       },
@@ -258,18 +244,12 @@ function bindControllerButtonPressStates(): void {
       (event) => {
         event.preventDefault();
         touchStartedOnButton = false;
-        releaseButton(button);
+        if (!("PointerEvent" in window)) w.playControllerButtonInteraction?.(button, "HoverOut");
       },
       { passive: false }
     );
     button.addEventListener("dblclick", (event) => event.preventDefault());
-    button.addEventListener("pointerup", () => releaseButton(button));
-    button.addEventListener("pointercancel", () => releaseButton(button));
-    button.addEventListener("pointerleave", () => releaseButton(button));
-    button.addEventListener("blur", () => releaseButton(button));
   }
-  window.addEventListener("pointerup", releaseButtons);
-  window.addEventListener("pointercancel", releaseButtons);
 }
 
 function getOrCreateStageCode(): string {

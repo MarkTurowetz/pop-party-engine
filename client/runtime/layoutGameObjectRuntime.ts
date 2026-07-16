@@ -25,6 +25,8 @@ interface TreeRenderer {
   clear: (o: Dict) => void;
   playAll?: (animation: string, options?: Dict) => number;
   stopAtAll?: (animation: string, options?: Dict) => number;
+  playComponent?: (componentId: string, animation: string, options?: Dict) => number;
+  stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
 }
 
 declare global {
@@ -39,6 +41,12 @@ const visualBridge = (): VisualBridgeApi | undefined => w().PartyGameVisualBridg
 const artComposition = (id: string): Dict | null => w().artComposition?.(id) || null;
 const layoutArtRendererByHost = new WeakMap<El, TreeRenderer>();
 const layoutArtRenderOptionsByRenderer = new WeakMap<TreeRenderer, Dict>();
+
+function artRendererForLayoutHost(host: El | null): TreeRenderer | null {
+  if (!host) return null;
+  const rendererHost = (host.closest?.(".controller-widget-art-host, .stage-widget-art-host, [data-layout-element-id]") as El | null) || host;
+  return layoutArtRendererByHost.get(rendererHost) || layoutArtRendererByHost.get(host) || null;
+}
 
 function getOrCreateLayoutArtInstance(element: Dict | null, root: El | null, selector: string, className: string): El | null {
   const id = String(element?.id || "");
@@ -641,6 +649,7 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
 
 export const PartyGameLayoutGameObjects = {
   activeDynamicLayoutArtInstanceIds,
+  artRendererForLayoutHost,
   activateLayoutEntity,
   deactivateLayoutEntity,
   applyLayoutElementBoxStyles,

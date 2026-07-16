@@ -40,6 +40,7 @@ const normalizeUiColor = (value: unknown): string => w().normalizeUiColor?.(valu
 const lgo = w().PartyGameLayoutGameObjects!;
 const {
   activeDynamicLayoutArtInstanceIds,
+  artRendererForLayoutHost,
   activateLayoutEntity,
   applyLayoutElementBoxStyles,
   attachRenderedLayoutArtEntity,
@@ -223,7 +224,7 @@ function stageLayoutGameObjectRegistry(): Dict | null {
 function controllerLayoutGameObjectRegistry(): Dict | null {
   if (!controllerLayoutGameObjects) {
     controllerLayoutGameObjects = createLayoutGameObjectRegistry(controllerLayoutVisibilityOverrides, {
-      hiddenClasses: ["controller-layout-visual-hidden", "hidden"], motionHiddenClasses: ["controller-layout-visual-hidden", "hidden"], exitingClass: "controller-layout-visual-exiting", updateClass: "controller-layout-visual-update", instantClass: "controller-layout-visual-instant", layoutHiddenClasses: ["controller-layout-hidden"]
+      hiddenClasses: ["controller-layout-visual-hidden", "hidden"], motionHiddenClasses: ["controller-layout-visual-hidden", "hidden"], exitingClass: "", updateClass: "", instantClass: "", layoutHiddenClasses: ["controller-layout-hidden"]
     });
   }
   return controllerLayoutGameObjects;
@@ -595,10 +596,30 @@ function setControllerLayoutButtonText(target: El | null, value: unknown, spec: 
     keepElements: controllerLayoutArtKeepElements(target)
   });
   if (renderer) {
+    setControllerButtonDisabledState(target, target.matches(":disabled"));
     return true;
   }
   target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
   return false;
+}
+
+const controllerButtonInteractionAnimations = new Set(["Default", "Down", "Up", "HoverIn", "HoverOut"]);
+
+function playControllerButtonInteraction(target: El | null, animation: unknown): number {
+  if (!target) return 0;
+  const compositionId = controllerWidgetArtCompositionIdForTarget(target);
+  const cleanAnimation = String(animation || "").trim();
+  if (!compositionId || !controllerButtonInteractionAnimations.has(cleanAnimation)) return 0;
+  const renderer = artRendererForLayoutHost(target);
+  return renderer?.playComponent?.(`${compositionId}-interaction-ref`, cleanAnimation, { instant: false }) || 0;
+}
+
+function setControllerButtonDisabledState(target: El | null, disabled: boolean): number {
+  if (!target) return 0;
+  const compositionId = controllerWidgetArtCompositionIdForTarget(target);
+  if (!compositionId) return 0;
+  const renderer = artRendererForLayoutHost(target);
+  return renderer?.stopAtComponent?.(`${compositionId}-state-ref`, disabled ? "Disabled" : "Default", { instant: true }) || 0;
 }
 
 function controllerLayoutElementForId(elementId: string): Dict | null {
@@ -1117,6 +1138,8 @@ function stageLayoutElementForId(elementId: string): Dict | null {
 const PartyGameLayoutText = {
   ...((w().PartyGameLayoutText as Dict) || {}),
   setControllerButtonText: setControllerLayoutButtonText,
+  playControllerButtonInteraction,
+  setControllerButtonDisabledState,
   setControllerText: setControllerLayoutText,
   setControllerTextShown: setControllerLayoutTextShown,
   setStageText: setStageLayoutText
@@ -1139,6 +1162,7 @@ Object.assign(w(), {
   registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances, resetStageMomentLayout,
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
+  playControllerButtonInteraction, setControllerButtonDisabledState,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
   stageLayoutGameObjectTargets, stageLayoutGameObjectVisibilityKey, stageLayoutGameObjectVisibilityOverrides, stageLayoutRegistryKeyForElement, stageLayoutState, stageLayoutStateForPhase,

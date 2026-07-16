@@ -102,12 +102,66 @@ function checkArtRuntimeCssAuthority() {
   assertAbsent(wipeController, ["classList.add(", ".style.", "setTimeout(", "requestAnimationFrame("], "Set Wipe Shown");
 }
 
+function checkControllerAnimationAuthority() {
+  for (const relativePath of ["client/styles/legacy/controller-runtime.css", "client/styles/legacy-shell.css"]) {
+    const source = read(relativePath);
+    const layoutRule = section(source, ".controller-layout-target {", "}");
+    for (const forbidden of ["transition:", "opacity:", "--controller-visual-scale", "--controller-press-transform", "transform:"]) {
+      assert(!layoutRule.includes(forbidden), `${relativePath} controller layout host must not define legacy ${forbidden}`);
+    }
+    assert(!source.includes("controllerLayoutVisualUpdate"), `${relativePath} must not define the legacy controller update keyframe`);
+    assert(!source.includes(".primary-button.is-pressed"), `${relativePath} must not define legacy primary-button press motion`);
+    assert(!source.includes(".choice-option-button.is-pressed"), `${relativePath} must not define legacy choice-button press motion`);
+    assert(!source.includes(".controller-avatar.is-pressed"), `${relativePath} must not define legacy avatar-button press motion`);
+    const artHostRule = section(source, ".controller-widget-art-host.has-controller-widget-art {", "}");
+    for (const reset of ["transform: none", "filter: none", "transition: none", "animation: none"]) {
+      assert(artHostRule.includes(reset), `${relativePath} controller art host must include ${reset}`);
+    }
+  }
+
+  const utils = section(read("client/runtime/utils.ts"), "function bindControllerButtonTimelineStates(", "function getOrCreateStageCode(");
+  assertAbsent(utils, ["is-pressed", "is-releasing", "setTimeout("], "controller button input states");
+  for (const animation of ["Default", "Down", "Up", "HoverIn", "HoverOut"]) {
+    assert(read("client/runtime/layoutRuntime.ts").includes(`\"${animation}\"`), `controller runtime must expose authored ${animation} interaction`);
+  }
+
+  const { defaultArtCompositions } = require("../shared/game-data");
+  const { controllerButtonOverride } = require("../shared/controller-button-art");
+  for (const parentId of ["controller-primary-button", "controller-choice-option", "controller-avatar-button"]) {
+    const parent = defaultArtCompositions.find((composition) => composition.id === parentId);
+    const interaction = defaultArtCompositions.find((composition) => composition.id === `${parentId}-interaction`);
+    const state = defaultArtCompositions.find((composition) => composition.id === `${parentId}-state`);
+    const art = defaultArtCompositions.find((composition) => composition.id === `${parentId}-art`);
+    assert(parent && interaction && state && art, `${parentId} must use lifecycle -> interaction -> state -> art compositions`);
+    assert(parent.components?.[0]?.artCompositionId === interaction.id, `${parentId} must directly reference its interaction MC`);
+    assert(interaction.components?.[0]?.artCompositionId === state.id, `${parentId} interaction MC must directly reference its state MC`);
+    assert(state.components?.[0]?.artCompositionId === art.id, `${parentId} state MC must directly reference its base art`);
+    const labels = (composition) => (composition.timeline?.labels || []).map((label) => label.name);
+    for (const name of ["Off", "On", "Appear", "Update", "Disappear"]) assert(labels(parent).includes(name), `${parentId} lifecycle is missing ${name}`);
+    for (const name of ["Default", "Down", "Up", "HoverIn", "HoverOut"]) assert(labels(interaction).includes(name), `${parentId} interaction is missing ${name}`);
+    for (const name of ["Default", "Disabled"]) assert(labels(state).includes(name), `${parentId} state is missing ${name}`);
+  }
+  const primary = defaultArtCompositions.find((composition) => composition.id === "controller-primary-button");
+  const primaryArt = defaultArtCompositions.find((composition) => composition.id === "controller-primary-button-art");
+  const legacyManifest = {
+    "controller-primary-button": {
+      canvas: { width: 301, height: 79 },
+      components: [{ id: "legacy-card", kind: "shape", x: 150, y: 39, width: 300, height: 78 }]
+    }
+  };
+  const migratedParent = controllerButtonOverride(primary, legacyManifest);
+  const migratedArt = controllerButtonOverride(primaryArt, legacyManifest);
+  assert(migratedParent.components?.[0]?.artCompositionId === "controller-primary-button-interaction", "legacy button parent must migrate to the nested interaction hierarchy");
+  assert(migratedArt.components?.[0]?.id === "legacy-card", "legacy button artwork must migrate into the deepest base-art prefab");
+}
+
 try {
   checkStageReconciliation();
   checkPlayerExceptions();
   checkWidgetReconciliation();
   checkLayoutAuthority();
   checkArtRuntimeCssAuthority();
+  checkControllerAnimationAuthority();
   console.log("Animation command authority checks passed.");
 } catch (error) {
   console.error("Animation command authority checks failed:");

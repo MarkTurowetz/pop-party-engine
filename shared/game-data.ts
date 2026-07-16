@@ -6,6 +6,7 @@ const { availableFlowActionTypes } = require("./flow-action-registry");
 const { defaultPlayerPointPopupTimeline } = require("./player-point-popup-timeline");
 const { defaultLayoutTextFieldCompositions } = require("./layout-text-art");
 const { installDefaultLobbyWidgetCompositions } = require("./lobby-widget-art");
+const { installDefaultControllerButtonCompositions } = require("./controller-button-art");
 
 const availableFlowTransitions = [
   { id: "horizontalWipe", name: "Horizontal Wipe" }
@@ -1275,6 +1276,7 @@ const defaultArtCompositions = [
 ];
 
 installDefaultLobbyWidgetCompositions(defaultArtCompositions);
+installDefaultControllerButtonCompositions(defaultArtCompositions);
 
 module.exports = {
   acceptedArtTypes,

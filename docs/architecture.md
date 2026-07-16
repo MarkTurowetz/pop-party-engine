@@ -100,6 +100,12 @@ concepts into focused modules.
   - Controller input views select semantic controller layouts rather than reusing their current
     stage phase. Layout placements start in their authored `On`/`Off` state; response-driven
     controls such as validation banners and completion messages may then be toggled fire-and-forget.
+  - Controller button visuals use four authored prefab layers: the lifecycle wrapper owns
+    `Off`/`On`/`Appear`/`Update`/`Disappear`; its interaction child owns
+    `Default`/`Down`/`Up`/`HoverIn`/`HoverOut`; the next child owns the stopped `Default` and
+    `Disabled` states; and the deepest prefab owns the actual button art. Pointer input may play
+    interaction labels fire-and-forget, but CSS classes, timers, and controller reconciliation do
+    not animate button transforms, opacity, filters, colors, or lifecycle state.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,

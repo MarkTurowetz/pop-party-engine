@@ -75,9 +75,6 @@ export function createControllerLobbyView(options: ControllerLobbyViewOptions): 
       const now = Date.now() + clockOffset;
       const cancelLocked = now >= ((lobby.countdownEndsAt as number) || now);
       elements.startButton.disabled = cancelLocked;
-      if (cancelLocked) {
-        elements.startButton.classList.remove("is-pressed", "is-releasing");
-      }
     };
     updateCancelButton();
     return window.setInterval(updateCancelButton, 50);

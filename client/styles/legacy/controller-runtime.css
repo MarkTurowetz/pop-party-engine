@@ -51,45 +51,16 @@
   width: var(--controller-layout-w) !important;
   height: var(--controller-layout-h) !important;
   margin: 0 !important;
-  --controller-visual-scale: 1;
-  opacity: 1;
   translate: -50% -50%;
   rotate: var(--controller-layout-rotation, 0deg);
-  scale: calc(var(--controller-layout-scale, 1) * var(--controller-visual-scale, 1));
-  transform: var(--controller-press-transform, translate3d(0, 0, 0) scale(1)) !important;
+  scale: var(--controller-layout-scale, 1);
   transform-origin: center !important;
-  transition: scale 500ms cubic-bezier(0.19, 1, 0.22, 1), opacity 500ms ease;
-}
-
-.controller-layout-target.primary-button:not(:disabled):hover {
-  --controller-press-transform: translate3d(-2px, -2px, 0) scale(1);
-}
-
-.controller-layout-target.primary-button.is-pressed:not(:disabled),
-.controller-layout-target.primary-button:not(:disabled):active,
-.controller-layout-target.controller-avatar.is-pressed {
-  --controller-press-transform: translate3d(2px, 2px, 0) scale(0.94);
 }
 
 .controller-layout-target.controller-layout-visual-hidden,
 .controller-layout-target.controller-layout-visual-exiting {
-  --controller-visual-scale: 0;
-  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-}
-
-.controller-layout-target.controller-layout-visual-update {
-  animation: controllerLayoutVisualUpdate 200ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.controller-layout-target.controller-layout-visual-instant {
-  transition-duration: 0ms !important;
-  animation: none !important;
-}
-
-.controller-layout-target.controller-layout-transition-suppressed {
-  transition-duration: 0ms !important;
-  animation: none !important;
 }
 
 .controller-widget-art-host {
@@ -106,6 +77,10 @@
   font-size: 0;
   line-height: 0;
   text-align: initial;
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 .controller-widget-art-host > .controller-widget-art-layer {
@@ -146,7 +121,6 @@ button.controller-widget-art-host.has-controller-widget-art {
 .choice-option-button.controller-widget-art-host.has-controller-widget-art {
   position: relative;
   min-height: 72px;
-  transform-origin: 58% 62%;
 }
 
 .controller-widget-art-host > .controller-avatar-art-overlay {
@@ -162,16 +136,6 @@ button.controller-widget-art-host.has-controller-widget-art {
   width: 72%;
   height: 72%;
 }
-
-@keyframes controllerLayoutVisualUpdate {
-  0% {
-    scale: calc(var(--controller-layout-scale, 1) * 1.2);
-  }
-  100% {
-    scale: calc(var(--controller-layout-scale, 1) * var(--controller-visual-scale, 1));
-  }
-}
-
 
 .join-form {
   display: grid;
@@ -238,10 +202,6 @@ button.controller-widget-art-host.has-controller-widget-art {
   font-size: clamp(16px, 4.6vmin, 18px);
   font-weight: 1000;
   text-transform: uppercase;
-  transform-origin: 58% 62%;
-  transform: translate3d(0, 0, 0);
-  transition: none;
-  will-change: transform;
 }
 
 .primary-button:disabled,
@@ -251,28 +211,8 @@ button.controller-widget-art-host.has-controller-widget-art {
   filter: grayscale(0.25);
 }
 
-.primary-button:not(:disabled):hover {
-  transform: translate3d(-2px, -2px, 0);
-}
-
-.primary-button.is-pressed:not(:disabled),
-.primary-button:not(:disabled):active {
-  background: #183fe8;
-  transform: translate3d(2px, 2px, 0) scale(0.94);
-  filter: saturate(1.18) brightness(0.95);
-}
-
-.primary-button.is-releasing:not(:disabled) {
-  transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), background-color 115ms ease-out, filter 115ms ease-out;
-}
-
 .danger-button {
   background: #ef3148;
-}
-
-.danger-button.is-pressed:not(:disabled),
-.danger-button:not(:disabled):active {
-  background: #c91d33;
 }
 
 .secondary-button {
@@ -284,21 +224,6 @@ button.controller-widget-art-host.has-controller-widget-art {
   box-shadow: 5px 5px 0 var(--ink);
   font-weight: 1000;
   text-transform: uppercase;
-  transform-origin: 58% 62%;
-  transform: translate3d(0, 0, 0);
-  transition: none;
-  will-change: transform;
-}
-
-.secondary-button.is-pressed:not(:disabled),
-.secondary-button:not(:disabled):active {
-  background: #efe1b8;
-  transform: translate3d(2px, 2px, 0) scale(0.95);
-  filter: saturate(1.14) brightness(0.97);
-}
-
-.secondary-button.is-releasing:not(:disabled) {
-  transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), background-color 115ms ease-out, filter 115ms ease-out;
 }
 
 .controller-lobby {
@@ -319,8 +244,6 @@ button.controller-widget-art-host.has-controller-widget-art {
   padding: 0;
   color: var(--avatar-color);
   background: transparent;
-  transform-origin: 58% 62%;
-  transition: none;
   touch-action: manipulation;
 }
 
@@ -328,15 +251,6 @@ button.controller-widget-art-host.has-controller-widget-art {
   width: 72%;
   height: 72%;
   filter: drop-shadow(4px 4px 0 rgba(23, 19, 31, 0.48));
-}
-
-.controller-avatar.is-pressed {
-  transform: translate3d(2px, 2px, 0) scale(0.94);
-  filter: saturate(1.12) brightness(0.96);
-}
-
-.controller-avatar.is-releasing {
-  transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), filter 115ms ease-out;
 }
 
 .avatar-picker {
@@ -465,17 +379,6 @@ button.controller-widget-art-host.has-controller-widget-art {
   background: var(--green);
   color: var(--ink);
   box-shadow: 0 0 0 5px rgba(255, 225, 86, 0.62), 8px 8px 0 var(--ink);
-}
-
-.choice-option-button.is-pressed:not(:disabled),
-.choice-option-button:not(:disabled):active {
-  transform: translate3d(3px, 3px, 0) scale(0.96);
-  box-shadow: 3px 3px 0 var(--ink);
-  filter: brightness(0.9);
-}
-
-.choice-option-button.is-releasing:not(:disabled) {
-  transition: transform 115ms cubic-bezier(0.17, 0.84, 0.44, 1), box-shadow 115ms ease-out, filter 115ms ease-out;
 }
 
 button.controller-widget-art-host.has-controller-widget-art,
