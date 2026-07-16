@@ -34,4 +34,61 @@ describe("createControllerGlobalActionView (ported)", () => {
     const host = globalThis as typeof globalThis & { createControllerGlobalActionView?: unknown };
     expect(host.createControllerGlobalActionView).toBeTypeOf("function");
   });
+
+  it("spawns a state-local button and disposes it before another controller state", () => {
+    const presentationContainer = { replaceChildren: vi.fn() } as unknown as HTMLElement;
+    const pausedContainer = { replaceChildren: vi.fn() } as unknown as HTMLElement;
+    const presentationMessage = "controllerPresentationMessage";
+    const lifecycle = vi.fn();
+    const disposeButtonArt = vi.fn();
+    const remove = vi.fn();
+    const button = {
+      dataset: {},
+      disabled: false,
+      isConnected: true,
+      parentElement: presentationContainer,
+      remove,
+      onclick: null
+    } as unknown as HTMLButtonElement;
+    const actionView = createControllerGlobalActionView({
+      advanceStageClick: vi.fn(),
+      applyLayoutForPhase: vi.fn(),
+      bindPress: vi.fn(),
+      createButton: vi.fn(() => button),
+      disposeButtonArt,
+      elements: {
+        presentation: {
+          buttonContainer: presentationContainer,
+          buttonId: "controllerPresentationButton",
+          message: presentationMessage
+        },
+        paused: {
+          buttonContainer: pausedContainer,
+          buttonId: "controllerPausedButton",
+          message: "controllerPausedMessage"
+        },
+        state: {} as HTMLElement
+      },
+      hideViews: vi.fn(),
+      setButtonLifecycleState: lifecycle,
+      setButtonText: vi.fn(),
+      setText: vi.fn(),
+      showView: vi.fn()
+    });
+
+    actionView.renderConfig({
+      id: "present",
+      enabled: true,
+      layoutPhase: controllerLayoutStateIds.presentation,
+      run: vi.fn(),
+      showButton: true
+    });
+    expect(button.dataset.optionId).toBe("global.action");
+    expect(lifecycle).toHaveBeenCalledWith(button, "On");
+
+    actionView.prepareForLayout(controllerLayoutStateIds.paused);
+    expect(lifecycle).toHaveBeenLastCalledWith(button, "Off");
+    expect(disposeButtonArt).toHaveBeenCalledWith(button);
+    expect(remove).toHaveBeenCalledOnce();
+  });
 });

@@ -77,7 +77,7 @@ function createControllerLayoutStateRuntime({
         name: "Presentation",
         elements: [
           layoutText(
-            "controllerGlobalActionMessage",
+            "controllerPresentationMessage",
             "Presentation Message",
             195,
             300,
@@ -87,11 +87,10 @@ function createControllerLayoutStateRuntime({
             38
           ),
           {
-            id: "controllerGlobalActionButton",
-            name: "Presentation Button",
-            selector: "#controllerGlobalActionButton",
+            id: "controllerPresentationButtonContainer",
+            name: "Presentation Button Container",
+            selector: "#controllerPresentationButtonContainer",
             kind: "art",
-            artCompositionId: "controller-primary-button",
             x: 195,
             y: 470,
             width: 280,
@@ -220,19 +219,18 @@ function createControllerLayoutStateRuntime({
         id: controllerLayoutStateIds.paused,
         name: "Paused",
         elements: [
-          layoutText("controllerGlobalActionMessage", "Paused Message", 195, 330, 330, 150, "Game Paused", 44),
+          layoutText("controllerPausedMessage", "Paused Message", 195, 330, 330, 150, "Game Paused", 44),
           {
-            id: "controllerGlobalActionButton",
-            name: "Paused Action Button",
-            selector: "#controllerGlobalActionButton",
+            id: "controllerPausedButtonContainer",
+            name: "Paused Button Container",
+            selector: "#controllerPausedButtonContainer",
             kind: "art",
-            artCompositionId: "controller-primary-button",
             x: 195,
             y: 470,
             width: 280,
             height: 82,
             scale: 1,
-            defaultAnimationState: off
+            defaultAnimationState: on
           }
         ]
       }

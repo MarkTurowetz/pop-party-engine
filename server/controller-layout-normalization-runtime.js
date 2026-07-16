@@ -4,6 +4,42 @@ function createControllerLayoutNormalizationRuntime({
   normalizeLayoutNumber,
   normalizeLayoutState
 }) {
+  const legacyGlobalActionIds = new Set([
+    "controllerglobalactionmessage",
+    "controllerglobalactionbutton"
+  ]);
+
+  function migrateControllerActionElement(element, stateId) {
+    if (!element) return element;
+    if (element.id === "controllerglobalactionmessage") {
+      return {
+        ...element,
+        id: stateId === "controller-paused" ? "controllerpausedmessage" : "controllerpresentationmessage",
+        name: stateId === "controller-paused" ? "Paused Message" : "Presentation Message"
+      };
+    }
+    if (element.id !== "controllerglobalactionbutton") return element;
+    const isPaused = stateId === "controller-paused";
+    return {
+      ...element,
+      id: isPaused ? "controllerpausedbuttoncontainer" : "controllerpresentationbuttoncontainer",
+      name: isPaused ? "Paused Button Container" : "Presentation Button Container",
+      selector: isPaused ? "#controllerPausedButtonContainer" : "#controllerPresentationButtonContainer",
+      kind: "art",
+      artCompositionId: "",
+      defaultAnimationState: "On",
+      defaultText: ""
+    };
+  }
+
+  function migrateControllerActionState(state) {
+    if (!state || !["controller-presentation", "controller-paused"].includes(state.id)) return state;
+    return {
+      ...state,
+      elements: (state.elements || []).map((element) => migrateControllerActionElement(element, state.id))
+    };
+  }
+
   function normalizeControllerInitialState(value) {
     const state = String(value || "").trim().toLowerCase();
     return ["off", "park", "disappear", "hidden", "hide"].includes(state) ? "Off" : "On";
@@ -29,7 +65,9 @@ function createControllerLayoutNormalizationRuntime({
     const normalizedDefaultGlobal = normalizeControllerState(defaultControllerLayouts.global, -1);
     const normalizedDefaultStates = defaultControllerLayouts.states.map((state, index) => normalizeControllerState(state, index)).filter(Boolean);
     const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
-    const normalizedStates = incomingStates.map((state, stateIndex) => normalizeControllerState(state, stateIndex)).filter(Boolean);
+    const normalizedStates = incomingStates
+      .map((state, stateIndex) => migrateControllerActionState(normalizeControllerState(state, stateIndex)))
+      .filter(Boolean);
     for (const defaultState of normalizedDefaultStates) {
       if (!normalizedStates.some((state) => state.id === defaultState.id)) {
         normalizedStates.push(cloneJson(defaultState));
@@ -37,7 +75,8 @@ function createControllerLayoutNormalizationRuntime({
     }
     const hasIncomingGlobal = layouts && Object.prototype.hasOwnProperty.call(layouts, "global");
     const incomingGlobal = normalizeControllerState(hasIncomingGlobal ? layouts.global : defaultControllerLayouts.global, -1);
-    const globalElements = [...(incomingGlobal?.elements || [])];
+    const globalElements = (incomingGlobal?.elements || []).filter((element) => !legacyGlobalActionIds.has(element.id));
+    const globalElementIds = new Set(globalElements.map((element) => element.id));
     return {
       canvas,
       global: {
@@ -49,11 +88,16 @@ function createControllerLayoutNormalizationRuntime({
       },
       states: normalizedStates.map((state) => {
         const defaultState = defaultStatesById.get(state.id);
-        if (!defaultState) return state;
-        const hiddenGlobals = Array.isArray(state.hiddenGlobals) ? state.hiddenGlobals : defaultState.hiddenGlobals || [];
+        const hiddenGlobals = new Set(
+          (Array.isArray(state.hiddenGlobals) ? state.hiddenGlobals : defaultState?.hiddenGlobals || [])
+            .filter((id) => !legacyGlobalActionIds.has(id))
+        );
+        for (const element of state.elements || []) {
+          if (globalElementIds.has(element.id)) hiddenGlobals.add(element.id);
+        }
         return {
           ...state,
-          hiddenGlobals
+          hiddenGlobals: [...hiddenGlobals]
         };
       })
     };

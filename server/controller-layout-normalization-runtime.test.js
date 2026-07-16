@@ -38,4 +38,64 @@ describe("controller layout normalization", () => {
 
     expect(layouts.states[0].elements.map((element) => element.defaultAnimationState)).toEqual(["On", "Off", "Off"]);
   });
+
+  it("migrates legacy global action art into uniquely owned state containers", () => {
+    const layouts = runtime().normalizeControllerLayouts({
+      canvas: { width: 390, height: 844 },
+      global: {
+        id: "global",
+        name: "Global",
+        elements: [
+          { id: "controllerplayerbanner" },
+          { id: "controllerglobalactionmessage" },
+          { id: "controllerglobalactionbutton" }
+        ]
+      },
+      states: [
+        {
+          id: "controller-presentation",
+          name: "Presentation",
+          hiddenGlobals: ["controllerglobalactionmessage"],
+          elements: [
+            { id: "controllerglobalactionmessage", name: "Message" },
+            { id: "controllerglobalactionbutton", selector: "#controllerGlobalActionButton", artCompositionId: "controller-primary-button" }
+          ]
+        },
+        {
+          id: "controller-paused",
+          name: "Paused",
+          elements: [
+            { id: "controllerglobalactionmessage", name: "Message" },
+            { id: "controllerglobalactionbutton", selector: "#controllerGlobalActionButton", artCompositionId: "controller-primary-button" }
+          ]
+        }
+      ]
+    });
+
+    expect(layouts.global.elements.map((element) => element.id)).toEqual(["controllerplayerbanner"]);
+    expect(layouts.states[0].elements.map((element) => element.id)).toEqual([
+      "controllerpresentationmessage",
+      "controllerpresentationbuttoncontainer"
+    ]);
+    expect(layouts.states[0].elements[1]).toMatchObject({
+      selector: "#controllerPresentationButtonContainer",
+      artCompositionId: "",
+      defaultAnimationState: "On"
+    });
+    expect(layouts.states[1].elements.map((element) => element.id)).toEqual([
+      "controllerpausedmessage",
+      "controllerpausedbuttoncontainer"
+    ]);
+    expect(layouts.states[0].hiddenGlobals).toEqual([]);
+  });
+
+  it("automatically suppresses a global placement when a state owns the same id", () => {
+    const layouts = runtime().normalizeControllerLayouts({
+      canvas: { width: 390, height: 844 },
+      global: { id: "global", name: "Global", elements: [{ id: "banner" }] },
+      states: [{ id: "custom", name: "Custom", elements: [{ id: "banner" }] }]
+    });
+
+    expect(layouts.states[0].hiddenGlobals).toEqual(["banner"]);
+  });
 });

@@ -106,6 +106,10 @@ concepts into focused modules.
     `Disabled` states; and the deepest prefab owns the actual button art. Pointer input may play
     interaction labels fire-and-forget, but CSS classes, timers, and controller reconciliation do
     not animate button transforms, opacity, filters, colors, or lifecycle state.
+  - Semantic controller states own selector-backed local action containers. Presentation and Paused
+    spawn distinct `Controller Primary Button` instances inside their own containers and dispose the
+    prior state's instance before another controller layout mounts. The Global Controller Layout must
+    not own action messages or action buttons; it is reserved for genuinely persistent controller art.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,

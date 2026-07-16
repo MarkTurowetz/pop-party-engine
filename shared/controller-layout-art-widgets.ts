@@ -10,7 +10,6 @@
 
   const controllerLayoutWidgetArtCompositionIds: Record<string, string> = Object.freeze({
     controlleravatar: "controller-avatar-button",
-    controllerglobalactionbutton: controllerPrimaryButtonArtCompositionId,
     controllerinvalidbanner: "controller-invalid-banner",
     controllermicaccessbutton: controllerPrimaryButtonArtCompositionId,
     controllerplayerbanner: "controller-player-banner",

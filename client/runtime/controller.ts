@@ -23,6 +23,8 @@ type Dict = Record<string, unknown>;
 type TextTarget = HTMLElement | string;
 
 interface LayoutTextApi {
+  disposeControllerButtonArt?: (target: HTMLElement) => void;
+  setControllerButtonLifecycleState?: (target: HTMLElement, state: "Off" | "On") => void;
   setControllerButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => boolean;
   setControllerText?: (target: TextTarget, value: unknown) => void;
   setControllerTextShown?: (target: string, isShown: boolean, options?: Dict) => void;
@@ -43,7 +45,8 @@ declare global {
     joinButton?: HTMLButtonElement;
     startGameButton?: HTMLButtonElement;
     introPresentButton?: HTMLButtonElement;
-    controllerGlobalActionButton?: HTMLButtonElement;
+    controllerPresentationButtonContainer?: HTMLElement;
+    controllerPausedButtonContainer?: HTMLElement;
     controllerMicAccessButton?: HTMLButtonElement;
     controllerTextSubmitButton?: HTMLButtonElement;
     controllerVoiceButton?: HTMLButtonElement;
@@ -73,7 +76,8 @@ declare global {
     controllerChoiceDone?: string;
     controllerMicAccessPrompt?: string;
     controllerMicAccessStatus?: string;
-    controllerGlobalActionMessage?: string;
+    controllerPresentationMessage?: string;
+    controllerPausedMessage?: string;
     controllerVoiceStatus?: string;
     controllerTextPrompt?: string;
     controllerTextDone?: string;
@@ -120,7 +124,6 @@ function initializeControllerButtonText(): void {
   setControllerButtonText(w.joinButton, "Join", { width: 260, height: 64, fontSize: 24 });
   setControllerButtonText(w.startGameButton, "Start Game", { width: 260, height: 64, fontSize: 24 });
   setControllerButtonText(w.introPresentButton, "Present HI THERE", { width: 300, height: 64, fontSize: 24 });
-  setControllerButtonText(w.controllerGlobalActionButton, "Next", { width: 260, height: 64, fontSize: 24 });
   setControllerButtonText(w.controllerMicAccessButton, "Yes", { width: 260, height: 64, fontSize: 24 });
   setControllerButtonText(w.controllerTextSubmitButton, "Submit", { width: 260, height: 64, fontSize: 24 });
   setControllerButtonText(w.controllerVoiceButton, "Hold To Record", { width: 300, height: 64, fontSize: 24 });
@@ -247,14 +250,24 @@ function getControllerGlobalActionView() {
     createControllerGlobalActionView({
       advanceStageClick: advanceControllerStageClick,
       applyLayoutForPhase: applyControllerLayoutForPhase,
+      bindPress: w.bindButtonPress!,
+      disposeButtonArt: (button) => w.PartyGameLayoutText?.disposeControllerButtonArt?.(button),
       elements: {
-        button: el(w.controllerGlobalActionButton),
-        message: el(w.controllerGlobalActionMessage),
+        presentation: {
+          buttonContainer: el(w.controllerPresentationButtonContainer),
+          buttonId: "controllerPresentationButton",
+          message: el(w.controllerPresentationMessage)
+        },
+        paused: {
+          buttonContainer: el(w.controllerPausedButtonContainer),
+          buttonId: "controllerPausedButton",
+          message: el(w.controllerPausedMessage)
+        },
         state: el(w.controllerGlobalActionState)
       },
       hideViews: hideControllerViews,
       setButtonText: setControllerButtonText,
-      setShown: setControllerTextShown,
+      setButtonLifecycleState: (button, state) => w.PartyGameLayoutText?.setControllerButtonLifecycleState?.(button, state),
       setText: setControllerText,
       showView: (viewId: string) => getControllerViewState().show(viewId)
     })
@@ -372,6 +385,7 @@ function getControllerSessionRuntime() {
 }
 
 function applyControllerLayoutForPhase(phase: string): void {
+  getControllerGlobalActionView().prepareForLayout(phase);
   w.applyControllerLayoutForPhase?.(phase);
 }
 
@@ -408,7 +422,6 @@ async function closeAvatarPicker({ commit = true }: { commit?: boolean } = {}): 
 
 function hideControllerViews(): void {
   getControllerViewState().hideAll();
-  setControllerTextShown(w.controllerGlobalActionButton, false, { instant: true });
   setControllerTextShown(w.introPresentButton, false, { instant: true });
 }
 

@@ -34,4 +34,21 @@ describe("controller layout state runtime", () => {
     expect(textState.elements.find((element) => element.id === "controllerTextDone").defaultAnimationState).toBe("Off");
     expect(textState.elements.find((element) => element.id === "controllerTextInput").defaultAnimationState).toBe("On");
   });
+
+  it("gives presentation and paused unique local action containers", () => {
+    const states = runtime().createControllerInputLayoutStates();
+    const presentation = states.find((state) => state.id === controllerLayoutStateIds.presentation);
+    const paused = states.find((state) => state.id === controllerLayoutStateIds.paused);
+
+    expect(presentation.elements.map((element) => element.id)).toEqual([
+      "controllerPresentationMessage",
+      "controllerPresentationButtonContainer"
+    ]);
+    expect(paused.elements.map((element) => element.id)).toEqual([
+      "controllerPausedMessage",
+      "controllerPausedButtonContainer"
+    ]);
+    expect(presentation.elements[1].artCompositionId).toBeUndefined();
+    expect(paused.elements[1].artCompositionId).toBeUndefined();
+  });
 });

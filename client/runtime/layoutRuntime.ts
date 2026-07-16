@@ -98,7 +98,6 @@ const controllerWidgetTextComponentIds: Record<string, string> = {
 };
 const controllerWidgetArtCompositionIds: Record<string, string> = {
   controlleravatar: "controller-avatar-button",
-  controllerglobalactionbutton: controllerPrimaryButtonArtCompositionId,
   controllerinvalidbanner: "controller-invalid-banner",
   controllermicaccessbutton: controllerPrimaryButtonArtCompositionId,
   controllerplayerbanner: "controller-player-banner",
@@ -115,6 +114,7 @@ let controllerRuntimeArtRendererCounter = 0;
 const legacyLayoutTextElementIds = new Set([
   "stagetitle", "stageintrotitle", "stagepresentationtext", "stageprompttext", "roundintrotext", "roundintroinfotext",
   "jointitle", "controllerplayername", "controllermeta", "controllerintromessage", "controllerglobalactionmessage",
+  "controllerpresentationmessage", "controllerpausedmessage",
   "controllerchoiceprompt", "controllerchoicedone", "controllermicaccessprompt", "controllermicaccessstatus",
   "controllertextprompt", "controllervoicestatus", "controllertextdone"
 ]);
@@ -299,13 +299,17 @@ function allControllerLayoutSelectors(): Set<string> {
 
 function activeLayoutElementTokens(state: Dict, globalLayout: Dict): Set<string> {
   const tokens = new Set<string>();
+  const momentIds = new Set<string>();
   for (const element of (state.elements as Dict[]) || []) {
-    if (element.id) tokens.add(`moment:${element.id}`);
+    if (element.id) {
+      momentIds.add(element.id as string);
+      tokens.add(`moment:${element.id}`);
+    }
   }
   if (globalLayout.hiddenInStates === true) return tokens;
   const hiddenGlobals = new Set((state.hiddenGlobals as string[]) || []);
   for (const element of (globalLayout.elements as Dict[]) || []) {
-    if (element.id && !hiddenGlobals.has(element.id as string)) tokens.add(`global:${element.id}`);
+    if (element.id && !hiddenGlobals.has(element.id as string) && !momentIds.has(element.id as string)) tokens.add(`global:${element.id}`);
   }
   return tokens;
 }
@@ -376,10 +380,11 @@ function applyControllerLayoutForPhase(phase: string): void {
     applyControllerElementLayout(element, false, !previousTokens.has(`moment:${element.id}`));
   }
   const hiddenGlobals = new Set((state.hiddenGlobals as string[]) || []);
+  const momentIds = new Set(((state.elements as Dict[]) || []).map((element) => element.id as string).filter(Boolean));
   const globalLayout = globalControllerLayout();
   if (globalLayout.hiddenInStates === true) return;
   for (const element of (globalLayout.elements as Dict[]) || []) {
-    if (hiddenGlobals.has(element.id as string)) continue;
+    if (hiddenGlobals.has(element.id as string) || momentIds.has(element.id as string)) continue;
     applyControllerElementLayout(element, true, !previousTokens.has(`global:${element.id}`));
   }
 }
@@ -589,7 +594,7 @@ function setControllerLayoutButtonText(target: El | null, value: unknown, spec: 
     width: Number(spec.width || target.clientWidth || target.offsetWidth || 300),
     height: Number(spec.height || target.clientHeight || target.offsetHeight || 78),
     scale: 1,
-    defaultAnimationState: "on"
+    defaultAnimationState: "On"
   };
   const renderer = renderControllerArtInstance(element, target, controllerRuntimeArtRendererKey(target, "controller-button"), {
     ...controllerWidgetTextRenderOptions(compositionId, text),
@@ -601,6 +606,20 @@ function setControllerLayoutButtonText(target: El | null, value: unknown, spec: 
   }
   target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
   return false;
+}
+
+function setControllerButtonLifecycleState(target: El | null, state: "Off" | "On"): void {
+  if (!target) return;
+  artRendererForLayoutHost(target)?.stopAtAll?.(state, { instant: true });
+}
+
+function disposeControllerButtonArt(target: El | null): void {
+  if (!target) return;
+  const rendererKey = target.dataset.layoutRendererKey || controllerRuntimeArtRendererKey(target, "controller-button");
+  controllerDynamicArtInstances.clear(rendererKey, target);
+  target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
+  delete target.dataset.controllerLayoutArtCompositionId;
+  delete target.dataset.controllerTextValue;
 }
 
 const controllerButtonInteractionAnimations = new Set(["Default", "Down", "Up", "HoverIn", "HoverOut"]);
@@ -1137,7 +1156,9 @@ function stageLayoutElementForId(elementId: string): Dict | null {
 // PRESERVED: PartyGameLayoutText install.
 const PartyGameLayoutText = {
   ...((w().PartyGameLayoutText as Dict) || {}),
+  disposeControllerButtonArt,
   setControllerButtonText: setControllerLayoutButtonText,
+  setControllerButtonLifecycleState,
   playControllerButtonInteraction,
   setControllerButtonDisabledState,
   setControllerText: setControllerLayoutText,
@@ -1162,6 +1183,7 @@ Object.assign(w(), {
   registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances, resetStageMomentLayout,
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
+  disposeControllerButtonArt, setControllerButtonLifecycleState,
   playControllerButtonInteraction, setControllerButtonDisabledState,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,

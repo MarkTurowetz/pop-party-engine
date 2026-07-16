@@ -20,6 +20,8 @@
         "controllermeta",
         "controllerintromessage",
         "controllerglobalactionmessage",
+        "controllerpresentationmessage",
+        "controllerpausedmessage",
         "controllerchoiceprompt",
         "controllerchoicedone",
         "controllermicaccessprompt",
