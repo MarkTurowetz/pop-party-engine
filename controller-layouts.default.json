@@ -133,37 +133,6 @@
           "scale": 1
         }
       ]
-    },
-    {
-      "id": "intro",
-      "name": "Game Intro Controller",
-      "elements": [
-        {
-          "id": "controllerIntroMessage",
-          "name": "Intro Message",
-          "kind": "art",
-          "x": 195,
-          "y": 250,
-          "width": 330,
-          "height": 120,
-          "scale": 1,
-          "defaultText": "Welcome to the Game",
-          "fontSize": 44,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "artCompositionId": "layout-text-field"
-        },
-        {
-          "id": "introPresentButton",
-          "name": "Present Button",
-          "selector": "#introPresentButton",
-          "x": 195,
-          "y": 450,
-          "width": 300,
-          "height": 78,
-          "scale": 1
-        }
-      ]
     }
   ]
 }

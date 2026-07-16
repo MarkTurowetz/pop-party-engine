@@ -6,11 +6,7 @@ const { controllerLayoutStateIds } = require("../shared/controller-layout-states
 const { createControllerLayoutStateRuntime } = require("./controller-layout-state-runtime");
 
 function runtime() {
-  return createControllerLayoutStateRuntime({
-    flowStateHasActionType: () => false,
-    isCraftingStateId: () => false,
-    normalizeFlowId: (value, fallback) => String(value || fallback)
-  });
+  return createControllerLayoutStateRuntime();
 }
 
 describe("controller layout state runtime", () => {

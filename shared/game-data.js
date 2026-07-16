@@ -231,14 +231,6 @@ const defaultControllerLayouts = {
                 { id: "controllerMeta", name: "Controller Status", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 382, width: 330, height: 48, scale: 1, defaultText: "Waiting in lobby", fontSize: 28, autoFitText: false, fontColor: "#6b5a80" },
                 { id: "startGameButton", name: "Start Game Button", selector: "#startGameButton", kind: "art", artCompositionId: "controller-primary-button", x: 195, y: 508, width: 260, height: 78, scale: 1, defaultAnimationState: "on" }
             ]
-        },
-        {
-            id: "intro",
-            name: "Game Intro Controller",
-            elements: [
-                { id: "controllerIntroMessage", name: "Intro Message", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 250, width: 330, height: 120, scale: 1, defaultText: "Welcome to the Game", fontSize: 44, autoFitText: false, fontColor: "#17131f" },
-                { id: "introPresentButton", name: "Present Button", selector: "#introPresentButton", kind: "art", artCompositionId: "controller-primary-button", x: 195, y: 450, width: 300, height: 78, scale: 1, defaultAnimationState: "on" }
-            ]
         }
     ]
 };

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.semanticControllerLayoutStateIds = exports.controllerLayoutStateIds = void 0;
 exports.isSemanticControllerLayoutStateId = isSemanticControllerLayoutStateId;
+exports.controllerLayoutCandidateIds = controllerLayoutCandidateIds;
 exports.controllerChoiceLayoutStateId = controllerChoiceLayoutStateId;
 exports.controllerTextLayoutStateId = controllerTextLayoutStateId;
 exports.controllerLayoutStateIds = Object.freeze({
@@ -27,6 +28,31 @@ exports.semanticControllerLayoutStateIds = Object.freeze([
 const semanticStateIdSet = new Set(exports.semanticControllerLayoutStateIds);
 function isSemanticControllerLayoutStateId(value) {
     return semanticStateIdSet.has(String(value || ""));
+}
+function controllerLayoutCandidateIds(phase, selectedLayoutId, hasControllerState = true) {
+    const candidates = [];
+    const add = (value) => {
+        const id = String(value || "").trim();
+        if (id && !candidates.includes(id))
+            candidates.push(id);
+    };
+    if (!hasControllerState) {
+        add(exports.controllerLayoutStateIds.join);
+        add(exports.controllerLayoutStateIds.lobby);
+        return candidates;
+    }
+    const phaseId = String(phase || "").trim();
+    if (isSemanticControllerLayoutStateId(phaseId)) {
+        add(phaseId);
+        add(exports.controllerLayoutStateIds.presentation);
+        add(exports.controllerLayoutStateIds.lobby);
+        return candidates;
+    }
+    const selectedId = String(selectedLayoutId || "").trim();
+    add(selectedId || (phaseId === "starting" ? exports.controllerLayoutStateIds.lobby : phaseId || exports.controllerLayoutStateIds.lobby));
+    add(phaseId === "lobby" || phaseId === "starting" ? exports.controllerLayoutStateIds.lobby : exports.controllerLayoutStateIds.presentation);
+    add(exports.controllerLayoutStateIds.lobby);
+    return candidates;
 }
 function controllerChoiceLayoutStateId(inputType) {
     return String(inputType || "").trim().toLowerCase() === "vote"

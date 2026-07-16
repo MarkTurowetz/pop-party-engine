@@ -28,6 +28,37 @@ export function isSemanticControllerLayoutStateId(value: unknown): value is Cont
   return semanticStateIdSet.has(String(value || ""));
 }
 
+export function controllerLayoutCandidateIds(
+  phase: unknown,
+  selectedLayoutId: unknown,
+  hasControllerState = true
+): string[] {
+  const candidates: string[] = [];
+  const add = (value: unknown) => {
+    const id = String(value || "").trim();
+    if (id && !candidates.includes(id)) candidates.push(id);
+  };
+  if (!hasControllerState) {
+    add(controllerLayoutStateIds.join);
+    add(controllerLayoutStateIds.lobby);
+    return candidates;
+  }
+
+  const phaseId = String(phase || "").trim();
+  if (isSemanticControllerLayoutStateId(phaseId)) {
+    add(phaseId);
+    add(controllerLayoutStateIds.presentation);
+    add(controllerLayoutStateIds.lobby);
+    return candidates;
+  }
+
+  const selectedId = String(selectedLayoutId || "").trim();
+  add(selectedId || (phaseId === "starting" ? controllerLayoutStateIds.lobby : phaseId || controllerLayoutStateIds.lobby));
+  add(phaseId === "lobby" || phaseId === "starting" ? controllerLayoutStateIds.lobby : controllerLayoutStateIds.presentation);
+  add(controllerLayoutStateIds.lobby);
+  return candidates;
+}
+
 export function controllerChoiceLayoutStateId(inputType: unknown): ControllerLayoutStateId {
   return String(inputType || "").trim().toLowerCase() === "vote"
     ? controllerLayoutStateIds.voting

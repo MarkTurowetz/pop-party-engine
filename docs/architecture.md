@@ -100,6 +100,10 @@ concepts into focused modules.
   - Controller input views select semantic controller layouts rather than reusing their current
     stage phase. Layout placements start in their authored `On`/`Off` state; response-driven
     controls such as validation banners and completion messages may then be toggled fire-and-forget.
+    Controller layout syncing retains only Join, Lobby, the semantic controller layouts, and any
+    custom layout explicitly referenced by a `Set Controller Layout` flow action. It does not mirror
+    ordinary stage moment ids into the Controller Layout Tool; an unassigned in-game phase uses the
+    Presentation layout as its fallback.
   - Controller Layout Tool configuration tags are per-placement authoring metadata scoped to one
     controller view. The editor derives each view's searchable configuration list from its local
     elements and uses the selected tag only to filter the authoring preview. Tags do not change the
