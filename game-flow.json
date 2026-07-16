@@ -13,7 +13,7 @@
       },
       "returnNodePosition": {
         "x": 806,
-        "y": 1654
+        "y": 1704
       },
       "entryTargetActionId": "lobby-action-mqojohry",
       "nextStateTargetId": "intro",
@@ -30,7 +30,7 @@
           "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
             "x": 771,
-            "y": 1042
+            "y": 1092
           },
           "subActions": [],
           "trigger": "onCountdownComplete",
@@ -70,7 +70,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 771,
-            "y": 1246
+            "y": 1296
           },
           "nextTargetActionId": "lobby-action-mrmi8fie"
         },
@@ -89,7 +89,7 @@
           "subActions": [],
           "nodePosition": {
             "x": 771,
-            "y": 1450
+            "y": 1500
           },
           "nextTargetActionId": "return"
         },
@@ -124,7 +124,25 @@
           "textTarget": "stagetitle",
           "instant": false,
           "isShown": true,
-          "subActions": [],
+          "subActions": [
+            {
+              "id": "lobby-sub-action-mrmyli4a",
+              "name": "Set Game Object Shown",
+              "type": "setGameObjectShown",
+              "timing": {
+                "mode": "S+",
+                "seconds": 0
+              },
+              "text": "Presented text",
+              "textTarget": "",
+              "instant": false,
+              "isShown": true,
+              "subActions": [],
+              "targetLayoutElementId": "stagecodepanel",
+              "targetLayoutSurface": "stage",
+              "targetLayoutScope": "moment"
+            }
+          ],
           "nodePosition": {
             "x": 771,
             "y": 838
