@@ -1,3 +1,5 @@
+import { StageCountdownPopupController } from "./stageCountdownPopupController";
+
 // Typed port of the legacy client/stage-runtime.js (top-level classic script) — the
 // stage orchestrator. Defines setupStage (app-shell dispatches setupStage()),
 // applyControllerRuntimeTestMessage
@@ -85,6 +87,7 @@ let stageDebugPanelInstance: Dict | null = null;
 let stageWipeControllerInstance: Dict | null = null;
 let stageRenderOrchestratorInstance: Dict | null = null;
 let stageWidgetArtRendererInstance: Dict | null = null;
+let stageCountdownPopupControllerInstance: StageCountdownPopupController | null = null;
 const initializedStageWidgetEntityRenderers = new WeakMap<El, unknown>();
 let renderedStageJoinQrUrl = "";
 
@@ -178,6 +181,21 @@ function stageRenderOrchestrator(): Dict | null {
     });
   }
   return stageRenderOrchestratorInstance;
+}
+
+function stageCountdownPopupController(): StageCountdownPopupController {
+  if (!stageCountdownPopupControllerInstance) {
+    stageCountdownPopupControllerInstance = new StageCountdownPopupController({
+      resolveEntity: () => {
+        const definition = stageWidgetArtDefinition("countdownPopup");
+        const elementId = String(definition?.layoutElementId || "");
+        const entityForElementId = w().stageLayoutEntityForElementId;
+        if (!elementId || typeof entityForElementId !== "function") return null;
+        return entityForElementId(elementId, w().startPopup);
+      }
+    });
+  }
+  return stageCountdownPopupControllerInstance;
 }
 
 function currentRenderedActionKey(): string {
@@ -683,6 +701,9 @@ function applyStageState(lobby: Dict): void {
   const players = (lobby.players as Dict[]) || [];
   const phase = (lobby.phase as string) || "lobby";
   const isLobbyPhase = phase === "lobby" || phase === "starting";
+  if (w().stageCountdownTimer !== null) clearInterval(w().stageCountdownTimer!);
+  w().stageCountdownTimer = null;
+  stageCountdownPopupController().beforePhase(phase);
   const liveGameTitle = lobby.gameTitle || (w().gameConstants as Dict).gameTitle || "Party Game Template";
   document.title = liveGameTitle as string;
   renderStageActionDebug(lobby);
@@ -692,7 +713,6 @@ function applyStageState(lobby: Dict): void {
   renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode as string) });
   renderStageWidgetBinding("stageCodeWidget", { stageCode: stageCodeValue(lobby.stageCode as string) });
   renderStageJoinQr(stageCodeValue(lobby.stageCode as string), isLobbyPhase);
-  if (w().stageCountdownTimer !== null) clearInterval(w().stageCountdownTimer!);
   w().stageMain.classList.remove("hidden");
   w().stageFooter.classList.remove("hidden");
   w().stageIntroContent.classList.remove("hidden");
@@ -728,9 +748,13 @@ function applyStageState(lobby: Dict): void {
       const remainingMs = Math.max(0, (Number(lobby.countdownEndsAt) || now) - now);
       const seconds = Math.ceil(remainingMs / 1000);
       renderStageWidgetBinding("countdownPopup", { seconds });
+      stageCountdownPopupController().afterPhase(phase);
+      stageCountdownPopupController().update(seconds);
     };
     updateCountdown();
     w().stageCountdownTimer = setInterval(updateCountdown, 100) as unknown as number;
+  } else {
+    stageCountdownPopupController().afterPhase(phase);
   }
 }
 
