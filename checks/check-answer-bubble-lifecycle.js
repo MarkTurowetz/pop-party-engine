@@ -267,15 +267,40 @@ async function main() {
         ?.createVisual?.()
         ?.timelinePlayer
         ?.currentFrame;
+      const wipeAppearSample = (elapsed) => {
+        const reference = element.querySelector("[data-art-component-id='wipe-art-reference']");
+        const layer = element.querySelector(".stage-widget-art-layer");
+        const strips = Array.from(element.querySelectorAll("[data-art-component-id^='wipe-strip-']"));
+        const referenceStyle = reference ? getComputedStyle(reference) : null;
+        return {
+          elapsed,
+          artFrame: wipeArtFrame(),
+          firstStripLeft: firstStripLeft(),
+          hostOpacity: getComputedStyle(element).opacity,
+          layerOpacity: layer ? getComputedStyle(layer).opacity : "missing",
+          referenceOpacity: referenceStyle?.opacity,
+          referenceScale: referenceStyle?.scale,
+          referenceTransitionDuration: referenceStyle?.transitionDuration,
+          stripOpacities: strips.map((strip) => getComputedStyle(strip).opacity),
+          stripScales: strips.map((strip) => getComputedStyle(strip).scale)
+        };
+      };
 
       const appearStartedAt = performance.now();
       const appearCompletion = new Promise((resolve) => controller.setShown(true, { complete: resolve }));
-      await sleep(250);
-      const appearMidLeft = firstStripLeft();
+      const appearSamples = [];
+      let previousSampleTime = 0;
+      for (const sampleTime of [0, 50, 100, 250, 500]) {
+        await sleep(sampleTime - previousSampleTime);
+        appearSamples.push(wipeAppearSample(sampleTime));
+        previousSampleTime = sampleTime;
+      }
+      const appearMidLeft = appearSamples.find((sample) => sample.elapsed === 250)?.firstStripLeft;
       await Promise.race([
         appearCompletion,
         sleep(1500).then(() => { throw new Error("Wipe Appear callback timed out"); })
       ]);
+      appearSamples.push(wipeAppearSample("callback"));
       const appearDuration = performance.now() - appearStartedAt;
       const appearFrame = wipeArtFrame();
       const appearWidgetFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
@@ -306,6 +331,7 @@ async function main() {
         appearFinalLeft,
         appearFrame,
         appearMidLeft,
+        appearSamples,
         appearWidgetFrame,
         disappearDuration: performance.now() - disappearStartedAt,
         disappearFrame: wipeArtFrame(),
@@ -334,6 +360,21 @@ async function main() {
       `Wipe rendered ${wipeResult.stripCount} authored strips (${wipeResult.componentIds.join(", ") || "no components"}; source ${wipeResult.compositionComponentCount}; renderer ${wipeResult.renderResultPresent})`
     );
     assert(wipeResult.legacyLineCount === 0, "legacy CSS wipe lines are still mounted");
+    for (const sample of wipeResult.appearSamples) {
+      const sampleLabel = `${sample.elapsed}ms/frame ${sample.artFrame}`;
+      assert(sample.hostOpacity === "1", `Wipe host opacity changed to ${sample.hostOpacity} at ${sampleLabel}`);
+      assert(sample.layerOpacity === "1", `Wipe art layer opacity changed to ${sample.layerOpacity} at ${sampleLabel}`);
+      assert(sample.referenceOpacity === "1", `Wipe Art MC opacity changed to ${sample.referenceOpacity} at ${sampleLabel}`);
+      assert(sample.referenceScale === "1", `Wipe Art MC scale changed to ${sample.referenceScale} at ${sampleLabel}`);
+      assert(
+        String(sample.referenceTransitionDuration || "")
+          .split(",")
+          .every((duration) => Number.parseFloat(duration) === 0),
+        `Wipe Art MC retained CSS transitions at ${sampleLabel}: ${sample.referenceTransitionDuration}`
+      );
+      assert(sample.stripOpacities.every((opacity) => opacity === "1"), `A wipe strip changed opacity at ${sampleLabel}: ${sample.stripOpacities.join(", ")}`);
+      assert(sample.stripScales.every((scale) => scale === "1"), `A wipe strip changed scale at ${sampleLabel}: ${sample.stripScales.join(", ")}`);
+    }
     assert(wipeResult.appearMidLeft > -60 && wipeResult.appearMidLeft < 50, "Wipe Appear did not advance through authored motion");
     assert(Math.abs(wipeResult.appearFinalLeft - 50) < 0.1, `Wipe Appear ended at ${wipeResult.appearFinalLeft}%`);
     assert(wipeResult.appearDuration >= 550, `Wipe Appear callback fired too early (${Math.round(wipeResult.appearDuration)}ms)`);

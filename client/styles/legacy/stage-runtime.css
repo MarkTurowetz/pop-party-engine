@@ -329,6 +329,7 @@
   font-size: 0;
   line-height: 0;
   text-align: initial;
+  transition: none;
   animation: none;
 }
 
@@ -832,7 +833,6 @@
   transform-origin: center;
   opacity: 1;
   filter: brightness(var(--component-brightness, 1));
-  transition: opacity 500ms ease, scale 500ms cubic-bezier(0.19, 1, 0.22, 1), filter 333ms linear;
   pointer-events: none;
   overflow: visible;
   will-change: transform, scale, opacity, filter;
@@ -983,19 +983,9 @@
   pointer-events: none;
 }
 
-.art-runtime-object-update {
-  animation: artRuntimeObjectUpdate 200ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
 .art-runtime-object-instant {
   transition-duration: 0ms !important;
   animation: none !important;
-}
-
-@keyframes artRuntimeObjectUpdate {
-  0% { scale: calc(var(--component-scale, 1) * 1); }
-  40% { scale: calc(var(--component-scale, 1) * 1.2); }
-  100% { scale: var(--component-scale, 1); }
 }
 
 .pause-menu {

@@ -45,8 +45,6 @@ const schema = (): ArtComponentSchema => w().PartyGameArtComponentSchema as unkn
 const RUNTIME_CLASS = "art-runtime-object";
 const ART_TEXT_PADDING = 4;
 const HIDDEN_CLASS = "art-runtime-object-hidden";
-const EXITING_CLASS = "art-runtime-object-exiting";
-const UPDATE_CLASS = "art-runtime-object-update";
 const INSTANT_CLASS = "art-runtime-object-instant";
 let artTreeInstanceCounter = 1;
 
@@ -422,10 +420,12 @@ class ArtObjectView {
         visualOptions: {
           hiddenClasses: [HIDDEN_CLASS],
           motionHiddenClasses: [HIDDEN_CLASS],
-          exitingClass: EXITING_CLASS,
-          updateClass: UPDATE_CLASS,
+          // Art Manager timelines own lifecycle motion. Empty values explicitly
+          // disable GameObject's legacy CSS exit/update class fallbacks.
+          exitingClass: "",
+          updateClass: "",
           instantClass: INSTANT_CLASS,
-          layoutHiddenClasses: [HIDDEN_CLASS, EXITING_CLASS],
+          layoutHiddenClasses: [HIDDEN_CLASS],
           timeline: this.componentTimeline(),
           timelineApplySelf,
           timelineCanvas: this.canvas || null,
@@ -437,8 +437,8 @@ class ArtObjectView {
       legacyVisualOptions: {
         hiddenClasses: [HIDDEN_CLASS],
         motionHiddenClasses: [HIDDEN_CLASS],
-        exitingClass: EXITING_CLASS,
-        updateClass: UPDATE_CLASS,
+        exitingClass: "",
+        updateClass: "",
         instantClass: INSTANT_CLASS,
         timeline: this.componentTimeline(),
         timelineApplySelf,

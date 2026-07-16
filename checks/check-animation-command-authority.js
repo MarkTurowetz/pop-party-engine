@@ -77,11 +77,37 @@ function checkLayoutAuthority() {
   assert(animation.includes('action?.commandSource !== "flow-action"'), "layout animation commands must require flow-action authority");
 }
 
+function checkArtRuntimeCssAuthority() {
+  for (const relativePath of ["client/styles/legacy/stage-runtime.css", "client/styles/legacy-shell.css"]) {
+    const source = read(relativePath);
+    const baseRule = section(source, ".art-runtime-object {", ".art-runtime-object.is-shape");
+    assert(!baseRule.includes("transition:"), `${relativePath} must not give Art Manager objects default CSS transitions`);
+    assert(!source.includes(".art-runtime-object-update"), `${relativePath} must not define the legacy Art Manager update animation`);
+    assert(!source.includes("@keyframes artRuntimeObjectUpdate"), `${relativePath} must not define legacy Art Manager motion keyframes`);
+    const widgetHostRule = section(source, ".stage-widget-art-host.has-stage-widget-art {", "}");
+    assert(widgetHostRule.includes("transition: none"), `${relativePath} must suppress outer transitions on Art Manager widget hosts`);
+  }
+  const stageCss = read("client/styles/legacy/stage-runtime.css");
+  const wipeRule = section(stageCss, ".stage-wipe {", "}");
+  for (const property of ["transition:", "animation:", "opacity:", "scale:", "transform:"]) {
+    assert(!wipeRule.includes(property), `stage wipe host must not define programmatic ${property.slice(0, -1)}`);
+  }
+  const runtime = read("client/runtime/stageArtObjectVisuals.ts");
+  assert(!runtime.includes('const EXITING_CLASS = "art-runtime-object-exiting"'), "Art Manager runtime must not register a legacy exiting class");
+  assert(!runtime.includes('const UPDATE_CLASS = "art-runtime-object-update"'), "Art Manager runtime must not register a legacy update class");
+  const gameObject = read("client/runtime/gameObject.ts");
+  assert(gameObject.includes('options.exitingClass === ""'), "GameObject must preserve an explicitly disabled legacy exit class");
+  assert(gameObject.includes('options.updateClass === ""'), "GameObject must preserve an explicitly disabled legacy update class");
+  const wipeController = section(read("client/runtime/stageWipeController.ts"), "  setShown(isShown:", "  setShownForAction(");
+  assertAbsent(wipeController, ["classList.add(", ".style.", "setTimeout(", "requestAnimationFrame("], "Set Wipe Shown");
+}
+
 try {
   checkStageReconciliation();
   checkPlayerExceptions();
   checkWidgetReconciliation();
   checkLayoutAuthority();
+  checkArtRuntimeCssAuthority();
   console.log("Animation command authority checks passed.");
 } catch (error) {
   console.error("Animation command authority checks failed:");
