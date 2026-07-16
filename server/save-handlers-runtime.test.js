@@ -1,0 +1,86 @@
+import { createRequire } from "node:module";
+import { describe, expect, it, vi } from "vitest";
+import { validateLayoutSaveResponse } from "../client/api/validators";
+
+const require = createRequire(import.meta.url);
+const { createSaveHandlersRuntime } = require("./save-handlers-runtime");
+
+function store(storageKind = "github") {
+  return { storageKind, error: "" };
+}
+
+function createHarness(payload) {
+  let response = null;
+  const writeControllerLayouts = vi.fn(async (layouts) => layouts);
+  const runtime = createSaveHandlersRuntime({
+    broadcastLobby: vi.fn(),
+    clearActionTimer: vi.fn(),
+    clearAppliedActionEffects: vi.fn(),
+    controllerLayoutsPath: "controller-layouts.json",
+    controllerLayoutsStore: store(),
+    gameConstantsPath: "game-constants.json",
+    gameConstantsStore: store(),
+    gameFlowPath: "game-flow.json",
+    gameFlowStore: store(),
+    githubBranch: "game-data",
+    githubRepo: "MarkTurowetz/pop-party",
+    hasGithubToken: () => true,
+    hostAudiosPath: "host-audios.json",
+    hostAudiosStore: store(),
+    localDraftStore: {},
+    normalizeGameFlow: (flow) => flow,
+    normalizeHostAudios: (hostAudios) => hostAudios,
+    readJson: async () => payload,
+    resetCraftingTimer: vi.fn(),
+    rooms: new Map(),
+    sendJson: (_res, status, body) => {
+      response = { status, body };
+    },
+    stageLayoutsPath: "stage-layouts.json",
+    stageLayoutsStore: store(),
+    writeControllerLayouts,
+    writeGameConstants: vi.fn(),
+    writeGameFlow: vi.fn(),
+    writeHostAudios: vi.fn(),
+    writeStageLayouts: vi.fn()
+  });
+  return { runtime, writeControllerLayouts, response: () => response };
+}
+
+describe("tool save response contract", () => {
+  it("saves controller Off states and returns complete durable-storage metadata", async () => {
+    const layouts = {
+      canvas: { width: 390, height: 844 },
+      global: { id: "global", name: "Global", elements: [] },
+      states: [{
+        id: "controller-multiple-choice",
+        name: "Multiple Choice",
+        elements: [
+          { id: "controllerChoicePrompt", defaultAnimationState: "Off" },
+          { id: "controllerChoiceGrid", defaultAnimationState: "Off" }
+        ]
+      }]
+    };
+    const harness = createHarness({ layouts });
+
+    await harness.runtime.handleSaveControllerLayouts({}, {});
+
+    expect(harness.writeControllerLayouts).toHaveBeenCalledWith(layouts);
+    expect(harness.response()).toEqual({
+      status: 200,
+      body: {
+        ok: true,
+        layouts,
+        storage: {
+          kind: "github",
+          durable: true,
+          error: "",
+          repo: "MarkTurowetz/pop-party",
+          branch: "game-data",
+          path: "controller-layouts.json"
+        }
+      }
+    });
+    expect(() => validateLayoutSaveResponse(harness.response().body, "/api/controller-layouts")).not.toThrow();
+  });
+});

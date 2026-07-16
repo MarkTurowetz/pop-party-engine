@@ -2,10 +2,16 @@ function createSaveHandlersRuntime({
   broadcastLobby,
   clearActionTimer,
   clearAppliedActionEffects,
+  controllerLayoutsPath,
   gameConstantsStore,
+  gameConstantsPath,
   gameFlowStore,
+  gameFlowPath,
+  githubBranch,
+  githubRepo,
   hasGithubToken,
   hostAudiosStore,
+  hostAudiosPath,
   localDraftStore,
   normalizeHostAudios,
   normalizeGameFlow,
@@ -14,6 +20,7 @@ function createSaveHandlersRuntime({
   rooms,
   sendJson,
   stageLayoutsStore,
+  stageLayoutsPath,
   controllerLayoutsStore,
   writeControllerLayouts,
   writeGameConstants,
@@ -21,11 +28,15 @@ function createSaveHandlersRuntime({
   writeHostAudios,
   writeStageLayouts
 }) {
-  function storagePayload(store) {
+  function storagePayload(store, path) {
+    const isGithub = store.storageKind === "github";
     return {
       kind: store.storageKind,
-      durable: store.storageKind === "github" && hasGithubToken(),
-      error: store.error || ""
+      durable: isGithub && hasGithubToken(),
+      error: store.error || "",
+      repo: isGithub ? githubRepo : "",
+      branch: isGithub ? githubBranch : "",
+      path: isGithub ? path : ""
     };
   }
 
@@ -82,7 +93,7 @@ function createSaveHandlersRuntime({
         ok: true,
         flow,
         runtimeFlow: normalizeGameFlow(flow),
-        storage: storagePayload(gameFlowStore)
+        storage: storagePayload(gameFlowStore, gameFlowPath)
       })
     });
   }
@@ -104,7 +115,7 @@ function createSaveHandlersRuntime({
       response: (constants) => ({
         ok: true,
         constants,
-        storage: storagePayload(gameConstantsStore)
+        storage: storagePayload(gameConstantsStore, gameConstantsPath)
       })
     });
   }
@@ -121,7 +132,7 @@ function createSaveHandlersRuntime({
       response: (layouts) => ({
         ok: true,
         layouts,
-        storage: storagePayload(stageLayoutsStore)
+        storage: storagePayload(stageLayoutsStore, stageLayoutsPath)
       })
     });
   }
@@ -138,7 +149,7 @@ function createSaveHandlersRuntime({
       response: (layouts) => ({
         ok: true,
         layouts,
-        storage: storagePayload(controllerLayoutsStore)
+        storage: storagePayload(controllerLayoutsStore, controllerLayoutsPath)
       })
     });
   }
@@ -160,7 +171,7 @@ function createSaveHandlersRuntime({
       response: (hostAudios) => ({
         ok: true,
         hostAudios: normalizeHostAudios(hostAudios),
-        storage: storagePayload(hostAudiosStore)
+        storage: storagePayload(hostAudiosStore, hostAudiosPath)
       })
     });
   }
