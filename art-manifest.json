@@ -548,7 +548,7 @@
       "name": "Stage Code Panel",
       "description": "Editable lobby card that displays the current stage code.",
       "surface": "stage",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -557,62 +557,24 @@
       },
       "components": [
         {
-          "id": "panel-code",
-          "name": "Panel Code",
-          "instanceLabel": "panelCode",
-          "kind": "text",
-          "x": 280,
-          "y": 100,
-          "width": 500,
-          "height": 105,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "NUZ7",
-          "fontSize": 112,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
-        },
-        {
-          "id": "panel-label",
-          "name": "Panel Label",
-          "instanceLabel": "panelLabel",
-          "kind": "text",
-          "x": 277.29,
-          "y": 33.988,
-          "width": 420,
-          "height": 34,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "STAGE CODE",
-          "fontSize": 22,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
-        },
-        {
-          "id": "panel-card",
-          "name": "Panel Card",
-          "instanceLabel": "panelCard",
-          "kind": "shape",
+          "id": "stage-code-panel-art",
+          "name": "Stage Code Panel Art",
+          "instanceLabel": "stageCodePanelArt",
+          "kind": "reference",
           "x": 280,
           "y": 95,
           "width": 560,
           "height": 190,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "rounded",
-          "fillColor": "#ffe256",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 5,
-          "borderRadius": 24
+          "defaultAnimationState": "",
+          "artCompositionId": "prefab-stage-code-panel-art"
         }
       ],
       "timeline": {
@@ -644,64 +606,6 @@
             "frame": 17
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
@@ -710,9 +614,232 @@
           13,
           16,
           32
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-stage-code-panel-art",
+            "targetId": "stage-code-panel-art",
+            "keyframes": [
+              {
+                "id": "stage-code-panel-art-0",
+                "frame": 0,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "stage-code-panel-art-1",
+                "frame": 1,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "stage-code-panel-art-2",
+                "frame": 2,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0,
+                  "visible": true,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "stage-code-panel-art-8",
+                "frame": 8,
+                "props": {
+                  "scale": 1.04,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "stage-code-panel-art-12",
+                "frame": 12,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "stage-code-panel-art-13",
+                "frame": 13,
+                "props": {
+                  "scale": 1.03,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "stage-code-panel-art-16",
+                "frame": 16,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "stage-code-panel-art-17",
+                "frame": 17,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "stage-code-panel-art-21",
+                "frame": 21,
+                "props": {
+                  "scale": 1.04,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "stage-code-panel-art-32",
+                "frame": 32,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0,
+                  "visible": false,
+                  "x": 280,
+                  "y": 95,
+                  "width": 560,
+                  "height": 190,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-16T00:49:12.978Z"
     },
     "stage-code-widget": {
       "name": "Small Room Code Widget",
@@ -1205,17 +1332,67 @@
           "kind": "reference",
           "x": 90,
           "y": 90,
-          "width": 180,
-          "height": 180,
+          "width": 146.376,
+          "height": 146.376,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
+          "brightness": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "Off",
           "artCompositionId": "prefab-crafting-timer-mc"
+        },
+        {
+          "id": "timer-value",
+          "name": "Timer Value",
+          "instanceLabel": "timerValue",
+          "kind": "text",
+          "x": 90,
+          "y": 92,
+          "width": 130,
+          "height": 82,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "defaultText": "30",
+          "fontSize": 74,
+          "autoFitText": true,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "timer-ring",
+          "name": "Timer Ring",
+          "instanceLabel": "timerRing",
+          "kind": "shape",
+          "x": 90,
+          "y": 90,
+          "width": 180,
+          "height": 180,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "radial-gradient(circle at center, #fffdf4 0 54%, transparent 55%), conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)",
+          "borderColor": "#17131f",
+          "borderWidth": 5,
+          "borderRadius": 36
         }
       ],
       "timeline": {
@@ -1259,99 +1436,98 @@
         ],
         "commands": [
           {
-            "id": "stop-0",
             "frame": 0,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-0"
           },
           {
-            "id": "setvisible-0-false",
+            "frame": 0,
+            "type": "stopComponent",
+            "id": "timer-mc-off",
+            "target": "crafting-timer-mc-reference",
+            "event": "Off"
+          },
+          {
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
-            "id": "timer-mc-off",
-            "frame": 0,
-            "type": "stopComponent",
-            "target": "crafting-timer-mc-reference",
-            "event": "Off"
-          },
-          {
-            "id": "stop-1",
             "frame": 1,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-1"
           },
           {
-            "id": "setvisible-1-true",
             "frame": 1,
             "type": "setVisible",
+            "id": "setvisible-1-true",
             "target": "true"
           },
           {
-            "id": "timer-mc-on",
             "frame": 1,
             "type": "stopComponent",
+            "id": "timer-mc-on",
             "target": "crafting-timer-mc-reference",
             "event": "On"
           },
           {
-            "id": "setvisible-2-true",
             "frame": 2,
             "type": "setVisible",
+            "id": "setvisible-2-true",
             "target": "true"
           },
           {
-            "id": "timer-mc-appear",
             "frame": 2,
             "type": "playComponent",
+            "id": "timer-mc-appear",
             "target": "crafting-timer-mc-reference",
             "event": "Appear"
           },
           {
-            "id": "stop-12",
             "frame": 12,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-12"
           },
           {
-            "id": "timer-mc-update",
             "frame": 13,
             "type": "playComponent",
+            "id": "timer-mc-update",
             "target": "crafting-timer-mc-reference",
             "event": "Update"
           },
           {
-            "id": "stop-16",
             "frame": 16,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-16"
           },
           {
-            "id": "timer-mc-disappear",
             "frame": 17,
             "type": "playComponent",
+            "id": "timer-mc-disappear",
             "target": "crafting-timer-mc-reference",
             "event": "Disappear"
           },
           {
-            "id": "stop-32",
             "frame": 32,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-32"
           },
           {
-            "id": "setvisible-32-false",
             "frame": 32,
             "type": "setVisible",
+            "id": "setvisible-32-false",
             "target": "false"
           }
         ],
         "tracks": []
       },
-      "updatedAt": "2026-07-15T07:40:41.314Z"
+      "updatedAt": "2026-07-16T00:49:12.978Z"
     },
     "waiting-status-widget": {
       "name": "Waiting Status",
       "description": "Editable lobby status pill.",
       "surface": "stage",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -1360,43 +1536,24 @@
       },
       "components": [
         {
-          "id": "status-text",
-          "name": "Status Text",
-          "instanceLabel": "statusText",
-          "kind": "text",
-          "x": 350,
-          "y": 41,
-          "width": 640,
-          "height": 48,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "Waiting for Ava to start the game",
-          "fontSize": 30,
-          "autoFitText": true,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
-        },
-        {
-          "id": "status-pill",
-          "name": "Status Pill",
-          "instanceLabel": "statusPill",
-          "kind": "shape",
+          "id": "waiting-status-art",
+          "name": "Waiting Status Art",
+          "instanceLabel": "waitingStatusArt",
+          "kind": "reference",
           "x": 350,
           "y": 41,
           "width": 700,
-          "height": 76,
+          "height": 82,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "pill",
-          "fillColor": "#fffdf4",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 999
+          "defaultAnimationState": "",
+          "artCompositionId": "prefab-waiting-status-art"
         }
       ],
       "timeline": {
@@ -1428,64 +1585,6 @@
             "frame": 17
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
@@ -1494,9 +1593,232 @@
           13,
           16,
           32
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-waiting-status-art",
+            "targetId": "waiting-status-art",
+            "keyframes": [
+              {
+                "id": "waiting-status-art-0",
+                "frame": 0,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 1,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "waiting-status-art-1",
+                "frame": 1,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "waiting-status-art-2",
+                "frame": 2,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0,
+                  "visible": true,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "waiting-status-art-8",
+                "frame": 8,
+                "props": {
+                  "scale": 1.04,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "waiting-status-art-12",
+                "frame": 12,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "waiting-status-art-13",
+                "frame": 13,
+                "props": {
+                  "scale": 1.03,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "waiting-status-art-16",
+                "frame": 16,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "waiting-status-art-17",
+                "frame": 17,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "waiting-status-art-21",
+                "frame": 21,
+                "props": {
+                  "scale": 1.04,
+                  "opacity": 1,
+                  "visible": true,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "waiting-status-art-32",
+                "frame": 32,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0,
+                  "visible": false,
+                  "x": 350,
+                  "y": 41,
+                  "width": 700,
+                  "height": 76,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-16T00:49:12.978Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
@@ -9784,11 +10106,12 @@
           "kind": "reference",
           "x": 960,
           "y": 540,
-          "width": 1920,
-          "height": 1080,
+          "width": 2112,
+          "height": 1081.714,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
+          "brightness": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
@@ -9838,81 +10161,80 @@
         ],
         "commands": [
           {
-            "id": "stop-0",
             "frame": 0,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-0"
           },
           {
-            "id": "setvisible-0-false",
+            "frame": 0,
+            "type": "stopComponent",
+            "id": "wipe-art-off",
+            "target": "wipe-art-reference",
+            "event": "Off"
+          },
+          {
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
-            "id": "wipe-art-off",
-            "frame": 0,
-            "type": "stopComponent",
-            "target": "wipe-art-reference",
-            "event": "Off"
-          },
-          {
-            "id": "stop-1",
             "frame": 1,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-1"
           },
           {
+            "frame": 1,
+            "type": "stopComponent",
             "id": "wipe-art-on",
-            "frame": 1,
-            "type": "stopComponent",
             "target": "wipe-art-reference",
             "event": "On"
           },
           {
-            "id": "wipe-art-appear",
             "frame": 2,
             "type": "playComponent",
+            "id": "wipe-art-appear",
             "target": "wipe-art-reference",
             "event": "Appear"
           },
           {
-            "id": "stop-22",
             "frame": 22,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-22"
           },
           {
-            "id": "wipe-art-update",
             "frame": 23,
             "type": "playComponent",
+            "id": "wipe-art-update",
             "target": "wipe-art-reference",
             "event": "Update"
           },
           {
-            "id": "stop-24",
             "frame": 24,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-24"
           },
           {
-            "id": "wipe-art-disappear",
             "frame": 25,
             "type": "playComponent",
+            "id": "wipe-art-disappear",
             "target": "wipe-art-reference",
             "event": "Disappear"
           },
           {
-            "id": "stop-45",
             "frame": 45,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-45"
           },
           {
-            "id": "setvisible-45-false",
             "frame": 45,
             "type": "setVisible",
+            "id": "setvisible-45-false",
             "target": "false"
           }
         ],
         "tracks": []
       },
-      "updatedAt": "2026-07-15T06:59:23.883Z"
+      "updatedAt": "2026-07-16T00:49:12.978Z"
     },
     "crafting-timer": {
       "name": "Crafting Timer",
@@ -10298,6 +10620,208 @@
         ]
       },
       "updatedAt": "2026-07-15T07:40:41.314Z"
+    },
+    "prefab-stage-code-panel-art": {
+      "name": "Stage Code Panel Art",
+      "description": "Migrated visual prefab used by Stage Code Panel.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 560,
+        "height": 190
+      },
+      "components": [
+        {
+          "id": "panel-code",
+          "name": "Panel Code",
+          "instanceLabel": "panelCode",
+          "kind": "text",
+          "x": 280,
+          "y": 100,
+          "width": 500,
+          "height": 105,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "defaultText": "NUZ7",
+          "fontSize": 112,
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "panel-label",
+          "name": "Panel Label",
+          "instanceLabel": "panelLabel",
+          "kind": "text",
+          "x": 277.29,
+          "y": 33.988,
+          "width": 420,
+          "height": 34,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "defaultText": "STAGE CODE",
+          "fontSize": 22,
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "panel-card",
+          "name": "Panel Card",
+          "instanceLabel": "panelCard",
+          "kind": "shape",
+          "x": 280,
+          "y": 95,
+          "width": 560,
+          "height": 190,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rounded",
+          "fillColor": "#ffe256",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 5,
+          "borderRadius": 24
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
+    },
+    "prefab-waiting-status-art": {
+      "name": "Waiting Status Art",
+      "description": "Migrated visual prefab used by Waiting Status.",
+      "surface": "stage",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 700,
+        "height": 82
+      },
+      "components": [
+        {
+          "id": "status-text",
+          "name": "Status Text",
+          "instanceLabel": "statusText",
+          "kind": "text",
+          "x": 350,
+          "y": 41,
+          "width": 640,
+          "height": 48,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "defaultText": "Waiting for Ava to start the game",
+          "fontSize": 30,
+          "autoFitText": true,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "status-pill",
+          "name": "Status Pill",
+          "instanceLabel": "statusPill",
+          "kind": "shape",
+          "x": 350,
+          "y": 41,
+          "width": 700,
+          "height": 76,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "pill",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 999
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Park",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-12T05:08:35.961Z"
     }
   },
   "deletedCompositionIds": [
