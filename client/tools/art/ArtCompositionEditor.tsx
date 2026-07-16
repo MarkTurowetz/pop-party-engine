@@ -205,6 +205,11 @@ type TimelineCellSelection =
   | { kind: "label"; frame: number }
   | { kind: "command"; frame: number }
   | { kind: "keyframe"; frame: number; targetId: string };
+
+export function timelineTargetIdForViewShortcut(selection: TimelineCellSelection): string {
+  return selection.kind === "keyframe" ? selection.targetId : "";
+}
+
 type TimelineCommandOverlay = {
   frame: number;
   draft: string;
@@ -2825,6 +2830,17 @@ function ArtTimelinePanel({
       overwriteFrameRangeAtCurrentFrame();
       return;
     }
+    if (!usesModifier && !event.altKey && !event.shiftKey && key === "v") {
+      const targetId = timelineTargetIdForViewShortcut(selectedTimelineCell);
+      const target = component && targetId
+        ? findTimelineTargetComponent([component], targetId, { scopeRootPath })
+        : null;
+      if (target && onSelectTarget) {
+        event.preventDefault();
+        onSelectTarget(target.id, false);
+      }
+      return;
+    }
     if (!usesModifier && !event.altKey && event.key === "F5") {
       event.preventDefault();
       if (event.shiftKey) removeFramesAtCurrentSelection();
@@ -3080,7 +3096,7 @@ function ArtTimelinePanel({
       className="art-timeline-panel"
       data-art-timeline-panel
       tabIndex={0}
-      aria-keyshortcuts=", . T F5 F6 Shift+F5 Shift+F6 ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+Alt+C Meta+Alt+V Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
+      aria-keyshortcuts=", . T V F5 F6 Shift+F5 Shift+F6 ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Space Enter Meta+Alt+C Meta+Alt+V Meta+C Meta+X Meta+V Control+C Control+X Control+V Delete Backspace"
       onKeyDown={handleTimelineKeyDown}
     >
       <div className="art-timeline-header">

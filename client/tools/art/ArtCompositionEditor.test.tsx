@@ -5,6 +5,7 @@ import {
   artTimelineDockHeightFromPointer,
   swappableGameObjectOptions,
   timelineFrameForStepShortcut,
+  timelineTargetIdForViewShortcut,
   timelineActionScriptForFrame,
   timelineActionScriptPlaceholderForFrame,
   timelineWithActionScriptAtFrame,
@@ -82,6 +83,15 @@ describe("ArtCompositionEditor timeline frame stepping", () => {
   it("ignores unrelated keys and timelines with nowhere to move", () => {
     expect(timelineFrameForStepShortcut("/", 2, 5)).toBeNull();
     expect(timelineFrameForStepShortcut(".", 0, 1)).toBeNull();
+  });
+});
+
+describe("ArtCompositionEditor timeline view shortcut", () => {
+  it("resolves only an art-layer frame to its inspector target", () => {
+    expect(timelineTargetIdForViewShortcut({ kind: "keyframe", frame: 8, targetId: "joinQrCodeArt" })).toBe("joinQrCodeArt");
+    expect(timelineTargetIdForViewShortcut({ kind: "frame", frame: 8 })).toBe("");
+    expect(timelineTargetIdForViewShortcut({ kind: "label", frame: 8 })).toBe("");
+    expect(timelineTargetIdForViewShortcut({ kind: "command", frame: 8 })).toBe("");
   });
 });
 
