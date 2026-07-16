@@ -2236,13 +2236,13 @@
           }
         ]
       },
-      "updatedAt": "2026-07-16T04:21:49.837Z"
+      "updatedAt": "2026-07-16T17:22:42.436Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
       "description": "Transparent single-text art asset used for stage and controller layout text.",
       "surface": "stage",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -2251,23 +2251,24 @@
       },
       "components": [
         {
-          "id": "text",
-          "name": "Text",
-          "instanceLabel": "text",
-          "kind": "text",
+          "id": "layout-text-field-text",
+          "name": "Layout Text Field Text",
+          "instanceLabel": "layoutTextFieldText",
+          "kind": "reference",
           "x": 500,
           "y": 120,
           "width": 1000,
           "height": 240,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "TEXT",
-          "fontSize": 58,
-          "autoFitText": false,
-          "fontColor": "#ffffff",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+          "defaultAnimationState": "",
+          "artCompositionId": "prefab-layout-text-field-text"
         }
       ],
       "timeline": {
@@ -2299,64 +2300,6 @@
             "frame": 17
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
@@ -2365,9 +2308,232 @@
           13,
           16,
           32
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-layout-text-field-text",
+            "targetId": "layout-text-field-text",
+            "keyframes": [
+              {
+                "id": "key-text-field-0",
+                "frame": 0,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-text-field-1",
+                "frame": 1,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-text-field-2",
+                "frame": 2,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-text-field-8",
+                "frame": 8,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-text-field-12",
+                "frame": 12,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-text-field-13",
+                "frame": 13,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-text-field-16",
+                "frame": 16,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-text-field-17",
+                "frame": 17,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-text-field-21",
+                "frame": 21,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-text-field-32",
+                "frame": 32,
+                "props": {
+                  "x": 500,
+                  "y": 120,
+                  "width": 1000,
+                  "height": 240,
+                  "scale": 0,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": false
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-16T17:22:42.436Z"
     },
     "controller-primary-button": {
       "name": "Controller Primary Button",
@@ -10523,8 +10689,8 @@
           "kind": "reference",
           "x": 960,
           "y": 540,
-          "width": 1920,
-          "height": 1080,
+          "width": 2112,
+          "height": 1081.714,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -10579,7 +10745,7 @@
         ],
         "tracks": []
       },
-      "updatedAt": "2026-07-16T06:30:24.209Z"
+      "updatedAt": "2026-07-16T17:22:42.436Z"
     },
     "crafting-timer": {
       "name": "Crafting Timer",
