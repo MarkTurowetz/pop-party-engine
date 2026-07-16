@@ -294,6 +294,13 @@ async function main() {
         disappearCompletion,
         sleep(1500).then(() => { throw new Error("Wipe Disappear callback timed out"); })
       ]);
+      const wipeArtFinalStyle = wipeArtReference ? getComputedStyle(wipeArtReference) : null;
+      const disappearFinalInstantClass = wipeArtReference?.classList.contains("art-runtime-object-instant") === true;
+      const disappearFinalOpacity = wipeArtFinalStyle?.opacity;
+      const disappearFinalScale = wipeArtFinalStyle?.scale;
+      const disappearFinalTransitionDuration = wipeArtFinalStyle?.transitionDuration;
+      await sleep(100);
+      const wipeArtPostCallbackStyle = wipeArtReference ? getComputedStyle(wipeArtReference) : null;
       return {
         appearDuration,
         appearFinalLeft,
@@ -307,6 +314,12 @@ async function main() {
         disappearMidOpacity,
         disappearMidScale,
         disappearUsedLegacyExitClass,
+        disappearFinalInstantClass,
+        disappearFinalOpacity,
+        disappearFinalScale,
+        disappearFinalTransitionDuration,
+        disappearPostCallbackOpacity: wipeArtPostCallbackStyle?.opacity,
+        disappearPostCallbackScale: wipeArtPostCallbackStyle?.scale,
         componentIds: Array.from(element.querySelectorAll("[data-art-component-id]"), (node) => node.dataset.artComponentId),
         compositionComponentCount: window.artComposition("wipe-widget-mc")?.components?.length || 0,
         renderResultPresent: Boolean(renderResult?.renderer),
@@ -333,6 +346,17 @@ async function main() {
     assert(wipeResult.disappearUsedLegacyExitClass === false, "Wipe Art MC received the legacy CSS exit class");
     assert(wipeResult.disappearMidOpacity === "1", `Wipe Art MC opacity was programmatically tweened to ${wipeResult.disappearMidOpacity}`);
     assert(wipeResult.disappearMidScale === "1", `Wipe Art MC scale was programmatically tweened to ${wipeResult.disappearMidScale}`);
+    assert(wipeResult.disappearFinalInstantClass === true, "Wipe Art MC final visibility command was not marked instant");
+    assert(wipeResult.disappearFinalOpacity === "0", `Wipe Art MC final opacity remained in transition at ${wipeResult.disappearFinalOpacity}`);
+    assert(wipeResult.disappearFinalScale === "0", `Wipe Art MC final scale remained in transition at ${wipeResult.disappearFinalScale}`);
+    assert(
+      String(wipeResult.disappearFinalTransitionDuration || "")
+        .split(",")
+        .every((duration) => Number.parseFloat(duration) === 0),
+      `Wipe Art MC retained CSS transition durations: ${wipeResult.disappearFinalTransitionDuration}`
+    );
+    assert(wipeResult.disappearPostCallbackOpacity === "0", `Wipe Art MC opacity animated after callback to ${wipeResult.disappearPostCallbackOpacity}`);
+    assert(wipeResult.disappearPostCallbackScale === "0", `Wipe Art MC scale animated after callback to ${wipeResult.disappearPostCallbackScale}`);
     assert(wipeResult.visibleAfterDisappear === false, "Wipe remained visible after Disappear callback");
 
     const timerResult = await page.evaluate(async () => {

@@ -152,6 +152,8 @@ concepts into focused modules.
   visibility, opacity, scale, or motion. The owning game object must explicitly play `Appear`,
   `On`, `Update`, `Disappear`, or `Off` after its content is ready; authored timeline commands are
   the sole authority for how those lifecycle states look and when their component trees become visible.
+  Timeline `setVisible` commands are instantaneous state boundaries: generic CSS opacity/scale
+  transitions must not continue before or after the authored timeline's callback.
 - Layout reconciliation is data/setup only. A new renderer may silently `stopAt` its authored
   default label, and a removed renderer may be removed immediately, but reconciliation never plays
   `Appear`, `Disappear`, `On`, `Off`, `Update`, or a semantic reveal. Heartbeats, server snapshots,

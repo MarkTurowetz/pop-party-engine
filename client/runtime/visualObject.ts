@@ -548,6 +548,10 @@ class CssVisualObject {
   applyCommandVisibility(isVisible: boolean): void {
     // This command belongs to the active authored timeline. Updating visibility
     // must not replace that timeline's token or discard its completion listeners.
+    // It is a state boundary, not a second animation: keep the instant class in
+    // place until the next explicit play clears it so generic CSS transitions
+    // cannot animate an authored setVisible command after the timeline callback.
+    this.addClasses([this.instantClass].filter(Boolean));
     if (isVisible) this.applyShownState();
     else this.applyParkedState();
   }

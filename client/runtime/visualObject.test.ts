@@ -187,6 +187,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
       element,
       hiddenClasses: ["hidden"],
       motionHiddenClasses: ["hidden"],
+      instantClass: "instant",
       durations: { off: 100 }
     });
 
@@ -194,11 +195,13 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     visual.applyCommandVisibility(true);
     vi.advanceTimersByTime(100);
     expect(element.classList.contains("hidden")).toBe(false);
+    expect(element.classList.contains("instant")).toBe(true);
     expect(element.dataset.visualState).toBe("shown");
     expect(element.dataset.visualVisible).toBe("true");
 
     visual.applyCommandVisibility(false);
     expect(element.classList.contains("hidden")).toBe(true);
+    expect(element.classList.contains("instant")).toBe(true);
     expect(element.dataset.visualState).toBe("hidden");
     expect(element.dataset.visualVisible).toBe("false");
   });
@@ -265,6 +268,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
       motionHiddenClasses: ["hidden"],
       exitingClass: "exiting",
       updateClass: "updating",
+      instantClass: "instant",
       timelineCommandHandler: (detail) => {
         if (detail.command.type === "setVisible") {
           visual.applyCommandVisibility(detail.command.target !== "false");
@@ -293,6 +297,7 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
 
     expect(element.dataset.visualState).toBe("hidden");
     expect(element.classList.contains("hidden")).toBe(true);
+    expect(element.classList.contains("instant")).toBe(true);
   });
 
   it("does not let an unauthored duplicate appear callback join CSS fallback motion", async () => {
