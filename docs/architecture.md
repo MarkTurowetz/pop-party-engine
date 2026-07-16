@@ -18,8 +18,11 @@ concepts into focused modules.
   - `controller-input-payload-runtime.js` owns controller choice/vote/text input payload setup.
   - `controller-submit-handlers-runtime.js` owns controller choice/vote/text answer submission endpoints.
   - `countdown-runtime.js` owns countdown timer clearing and starting-phase countdown scheduling.
-  - `controller-layout-normalization-runtime.js` owns controller layout collection normalization.
-  - `controller-layout-state-runtime.js` owns default controller layout state creation for flow states.
+  - `controller-layout-normalization-runtime.js` owns controller layout collection normalization,
+    including the per-placement `On`/`Off` initial-state contract.
+  - `controller-layout-state-runtime.js` owns default controller layout state creation for flow states
+    and reusable semantic input layouts (presentation, multiple choice, voting, text, voice,
+    microphone access, and paused).
   - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
     and art file responses.
   - `decision-action-normalization-runtime.js` owns decision branch/operator/value normalization.
@@ -70,6 +73,8 @@ concepts into focused modules.
     normalization for the Constants Tool and server runtime.
   - `game-data.js` owns default layouts, default constants, prompts, avatar metadata,
     and art manifest metadata.
+  - `controller-layout-states.js` owns the semantic controller layout ids and the choice/text
+    input-to-layout routing shared by the server, controller runtime, and Layout Tool.
 - `index.html`
   - Browser runtime for stage, controller, and tools.
   - This still needs a future split into stage/controller/tools modules.
@@ -92,6 +97,9 @@ concepts into focused modules.
     `Wipe Widget MC` is only an `On`/`Off` gate; the controller explicitly invokes
     `Appear` or `Disappear` on its labeled `Wipe Art MC` child and waits only for
     that child's authored callback. No CSS fallback motion runs alongside it.
+  - Controller input views select semantic controller layouts rather than reusing their current
+    stage phase. Layout placements start in their authored `On`/`Off` state; response-driven
+    controls such as validation banners and completion messages may then be toggled fire-and-forget.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,

@@ -7,6 +7,7 @@
 // window.PartyGameLayoutText + window.fittedLayoutTextSize installs.
 
 import "./layoutGameObjectRuntime"; // ensure PartyGameLayoutGameObjects is installed first
+import { isSemanticControllerLayoutStateId } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -273,6 +274,10 @@ function globalControllerLayout(): Dict {
 function controllerLayoutStateForPhase(phase: string): Dict | null {
   const controllerState = w().controllerState as Dict | null;
   if (!controllerState) return controllerLayoutState("join") || (w().controllerLayouts.states || [])[0] || null;
+  if (isSemanticControllerLayoutStateId(phase)) {
+    const semanticState = controllerLayoutState(phase);
+    if (semanticState) return semanticState;
+  }
   const selectedLayoutId = ((controllerState?.lobby as Dict)?.controllerLayoutId as string) || "";
   const preferred = selectedLayoutId || (phase === "starting" ? "lobby" : phase || "lobby");
   return controllerLayoutState(preferred) || controllerLayoutState("lobby") || (w().controllerLayouts.states || [])[0] || null;

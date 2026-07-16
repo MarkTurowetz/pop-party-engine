@@ -2,8 +2,9 @@
 // view state machine. Installs window.createControllerStateRuntime for the legacy
 // controller runtime.
 
-type Dict = Record<string, unknown>;
+import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
+type Dict = Record<string, unknown>;
 interface RenderContext {
   lobby: Dict;
   me: Dict;
@@ -68,7 +69,7 @@ export function createControllerStateRuntime(options: ControllerStateRuntimeOpti
     getVoiceInput().stopRecognition();
     return getGlobalActionView().renderMessage(context.lobby, "Game Paused", {
       id: "paused",
-      layoutPhase: context.phase,
+      layoutPhase: controllerLayoutStateIds.paused,
       showButton: false
     });
   }

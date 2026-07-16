@@ -5,6 +5,7 @@ import type { ToolDraftApi } from "../../api/toolDraftApi";
 import { installSessionDraftLifecycle, type SessionDraftLifecycle } from "../common/sessionDraftLifecycle";
 import { createLayoutController, type LayoutController } from "./layoutController";
 import { LayoutEditor } from "./LayoutEditor";
+import type { LayoutMode } from "./layoutModel";
 
 export interface MountLayoutEditorOptions {
   api: LayoutApi;
@@ -13,6 +14,7 @@ export interface MountLayoutEditorOptions {
   document?: Document;
   onOpenArtComposition?: (compositionId: string) => void;
   surface?: string;
+  initialMode?: LayoutMode;
   /** Reveal #layoutScreen (standalone /layout). False on /tools (router manages). */
   revealScreen?: boolean;
 }
@@ -21,6 +23,7 @@ export interface MountedLayoutEditor {
   stageController: LayoutController;
   controllerController: LayoutController;
   root: Root;
+  setMode: (mode: LayoutMode) => void;
   unmount: () => void;
 }
 
@@ -75,21 +78,33 @@ export async function mountLayoutEditor(options: MountLayoutEditorOptions): Prom
   (screen || doc.body).appendChild(host);
 
   const root = createRoot(host);
-  root.render(
-    <LayoutEditor
-      artAssets={art.assets}
-      artCompositions={art.compositions}
-      onOpenArtComposition={options.onOpenArtComposition}
-      stageController={stageController}
-      controllerController={controllerController}
-      surface={options.surface}
-    />
-  );
+  let requestedMode = options.initialMode || "stage";
+  let renderVersion = 0;
+  const render = () => {
+    root.render(
+      <LayoutEditor
+        key={`${requestedMode}-${renderVersion}`}
+        artAssets={art.assets}
+        artCompositions={art.compositions}
+        onOpenArtComposition={options.onOpenArtComposition}
+        stageController={stageController}
+        controllerController={controllerController}
+        initialMode={requestedMode}
+        surface={options.surface}
+      />
+    );
+  };
+  render();
 
   return {
     stageController,
     controllerController,
     root,
+    setMode: (mode) => {
+      requestedMode = mode;
+      renderVersion += 1;
+      render();
+    },
     unmount: () => {
       root.unmount();
       for (const draftLifecycle of draftLifecycles) draftLifecycle.dispose();

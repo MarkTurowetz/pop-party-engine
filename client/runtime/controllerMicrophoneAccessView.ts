@@ -3,6 +3,7 @@
 // window.createControllerMicrophoneAccessView for the legacy controller runtime.
 
 import { PartyGameControllerText } from "./controllerTextRenderer";
+import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
 
@@ -139,7 +140,7 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
       return;
     }
     hideViews();
-    applyLayoutForPhase((lobby.phase as string) || "lobby");
+    applyLayoutForPhase(controllerLayoutStateIds.presentation);
     showView("intro");
     writeText(waiting.message, message);
   }
@@ -154,7 +155,7 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
     }
 
     hideViews();
-    applyLayoutForPhase((lobby.phase as string) || "lobby");
+    applyLayoutForPhase(controllerLayoutStateIds.microphoneAccess);
     showView("microphoneAccess");
     writeText(elements.prompt, input.prompt || "Give microphone access to the game");
     writeButtonText(elements.button, input.buttonLabel || "Yes", { width: 260, height: 64, fontSize: 24 });

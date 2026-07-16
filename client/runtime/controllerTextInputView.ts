@@ -3,6 +3,7 @@
 // window.createControllerTextInputView for the legacy controller runtime.
 
 import { PartyGameControllerText } from "./controllerTextRenderer";
+import { controllerTextLayoutStateId } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
 
@@ -81,7 +82,7 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
     if (!isVoiceInput) voiceInput.stopRecognition();
     hideViews();
     setPhaseActionId(input.actionId as string);
-    applyLayoutForPhase((lobby.phase as string) || "lobby");
+    applyLayoutForPhase(controllerTextLayoutStateId(input.type, input.mode));
     showView("textInput");
     writeText(elements.prompt, input.prompt || (isVoiceInput ? "Say your answer" : "Write your answer"));
     showText(elements.prompt, true, { instant: true });

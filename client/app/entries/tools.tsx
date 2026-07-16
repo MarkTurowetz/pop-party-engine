@@ -170,16 +170,23 @@ void mountLayoutEditor({
   revealScreen: false
 }).then((mounted) => {
   layoutEditor = mounted;
+  mounted.setMode(window.activeToolId === "controller-layout" ? "controller" : "stage");
 });
 registerDashboardTool("layout", {
   isDirty: () => layoutEditor?.stageController.getState().dirty ?? false,
   save: () => layoutEditor?.stageController.save() ?? Promise.resolve(),
-  setup: revealScreen("layoutScreen")
+  setup: () => {
+    layoutEditor?.setMode("stage");
+    revealScreen("layoutScreen")();
+  }
 });
 registerDashboardTool("controller-layout", {
   isDirty: () => layoutEditor?.controllerController.getState().dirty ?? false,
   save: () => layoutEditor?.controllerController.save() ?? Promise.resolve(),
-  setup: revealScreen("layoutScreen")
+  setup: () => {
+    layoutEditor?.setMode("controller");
+    revealScreen("layoutScreen")();
+  }
 });
 
 // All five tools are React now — exclude every tool's legacy scripts.

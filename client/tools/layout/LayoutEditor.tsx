@@ -14,7 +14,7 @@ import { ArtPreviewRenderer, assetUrlMap, compositionMap, type ArtTextOverride }
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
-import { layoutGroups } from "./layoutModel";
+import { controllerInitialAnimationState, layoutGroups } from "./layoutModel";
 import { useLayoutEditor } from "./useLayoutEditor";
 
 export interface LayoutEditorProps {
@@ -23,6 +23,7 @@ export interface LayoutEditorProps {
   onOpenArtComposition?: (compositionId: string) => void;
   stageController: LayoutController;
   controllerController: LayoutController;
+  initialMode?: "stage" | "controller";
   surface?: string;
 }
 
@@ -110,9 +111,11 @@ export function LayoutEditor({
   onOpenArtComposition,
   stageController,
   controllerController,
+  initialMode = "stage",
   surface = "layout"
 }: LayoutEditorProps) {
-  const [mode, setMode] = useState<"stage" | "controller">("stage");
+  const [mode, setMode] = useState<"stage" | "controller">(initialMode);
+  const [controllerPreviewMode, setControllerPreviewMode] = useState<"initial" | "all">("initial");
   const controller = mode === "stage" ? stageController : controllerController;
   const state = useLayoutEditor(controller);
   const { layouts, selectedGroupId, selectedElementIds, dirty, saving, canUndo, canRedo } = state;
@@ -137,6 +140,10 @@ export function LayoutEditor({
     Math.min(maxPreviewScale, availablePreviewWidth / canvasWidth, availablePreviewHeight / canvasHeight)
   );
   const groupElements = group?.elements || [];
+  const previewElements =
+    mode === "controller" && controllerPreviewMode === "initial"
+      ? groupElements.filter((element) => controllerInitialAnimationState(get(element, "defaultAnimationState")) === "On")
+      : groupElements;
   const selectedElement =
     group && selectedElementIds.size === 1
       ? groupElements.find((element) => element.id === [...selectedElementIds][0])
@@ -352,6 +359,26 @@ export function LayoutEditor({
       <button type="button" disabled={!dirty || saving} onClick={() => void controller.save()}>
         {saving ? "Saving…" : "Save"}
       </button>
+      {mode === "controller" ? (
+        <div className="tool-sidebar-switcher layout-controller-preview-toggle" role="group" aria-label="Controller preview elements">
+          <button
+            type="button"
+            aria-pressed={controllerPreviewMode === "initial"}
+            data-controller-preview-mode="initial"
+            onClick={() => setControllerPreviewMode("initial")}
+          >
+            Initial State
+          </button>
+          <button
+            type="button"
+            aria-pressed={controllerPreviewMode === "all"}
+            data-controller-preview-mode="all"
+            onClick={() => setControllerPreviewMode("all")}
+          >
+            All Elements
+          </button>
+        </div>
+      ) : null}
       <span data-layout-status>{dirty ? "Unsaved changes" : "Saved"}</span>
     </>
   );
@@ -359,14 +386,16 @@ export function LayoutEditor({
   const sidebar = (
     <>
       <h3>Layouts</h3>
-      <div className="tool-sidebar-switcher" role="group" aria-label="Layout surface">
-        <button type="button" aria-pressed={mode === "stage"} onClick={() => setMode("stage")}>
-          Stage
-        </button>
-        <button type="button" aria-pressed={mode === "controller"} onClick={() => setMode("controller")}>
-          Controller
-        </button>
-      </div>
+      {surface !== "tools" ? (
+        <div className="tool-sidebar-switcher" role="group" aria-label="Layout surface">
+          <button type="button" aria-pressed={mode === "stage"} onClick={() => setMode("stage")}>
+            Stage
+          </button>
+          <button type="button" aria-pressed={mode === "controller"} onClick={() => setMode("controller")}>
+            Controller
+          </button>
+        </div>
+      ) : null}
       <ol className="tool-sidebar-list" data-layout-react-component="state-list">
         {groups.map((item) => (
           <li data-layout-group-id={item.id} key={item.id}>
@@ -394,10 +423,12 @@ export function LayoutEditor({
               const selected = selectedElementIds.has(element.id);
               const compositionId = layoutElementArtCompositionId(element);
               const linkedComposition = compositionId ? compositionById.get(compositionId) : null;
+              const initialState = mode === "controller" ? controllerInitialAnimationState(get(element, "defaultAnimationState")) : "";
               return (
                 <li
                   data-layout-object-id={element.id}
                   data-layout-object-art-composition={linkedComposition ? linkedComposition.id : undefined}
+                  data-layout-object-initial-state={initialState || undefined}
                   data-layout-layer-drop-placement={elementDropTarget?.id === element.id ? elementDropTarget.placement : undefined}
                   key={element.id}
                 >
@@ -427,7 +458,10 @@ export function LayoutEditor({
                       }
                     >
                       <strong>{element.name || element.id}</strong>
-                      <small>{compositionId || element.kind || "object"}</small>
+                      <small>
+                        {compositionId || element.kind || "object"}
+                        {initialState ? ` · ${initialState}` : ""}
+                      </small>
                     </button>
                     <button
                       type="button"
@@ -511,7 +545,7 @@ export function LayoutEditor({
             onClick={() => controller.clearElementSelection()}
           >
             <div style={{ position: "absolute", inset: 0, transform: `scale(${scaleToFit})`, transformOrigin: "0 0", width: canvasWidth, height: canvasHeight }}>
-              {groupElements.map((element, index) => renderElement(element, index, groupElements.length || 1))}
+              {previewElements.map((element, index) => renderElement(element, index, previewElements.length || 1))}
             </div>
           </div>
         </section>
@@ -520,6 +554,7 @@ export function LayoutEditor({
           artComposition={selectedArtComposition}
           controller={controller}
           element={selectedElement ?? null}
+          mode={mode}
         />
       </div>
     </ToolWorkspace>
@@ -529,11 +564,13 @@ export function LayoutEditor({
 function LayoutElementInspector({
   artComposition,
   controller,
-  element
+  element,
+  mode
 }: {
   artComposition: ArtComposition | null;
   controller: LayoutController;
   element: LayoutElement | null;
+  mode: "stage" | "controller";
 }) {
   if (!element) {
     return (
@@ -585,6 +622,19 @@ function LayoutElementInspector({
           onChange={(event) => commit({ locked: event.target.checked } as Partial<LayoutElement>)}
         />
       </label>
+      {mode === "controller" ? (
+        <label className="flow-react-field" data-layout-field="defaultAnimationState">
+          <span>Initial State</span>
+          <select
+            value={controllerInitialAnimationState(get(element, "defaultAnimationState"))}
+            data-layout-element-field="defaultAnimationState"
+            onChange={(event) => commit({ defaultAnimationState: event.target.value } as Partial<LayoutElement>)}
+          >
+            <option value="On">On</option>
+            <option value="Off">Off</option>
+          </select>
+        </label>
+      ) : null}
       {SCALAR_FIELDS.map((field) => (
         <label className="flow-react-field" data-layout-field={field.key} key={field.key}>
           <span>{field.label}</span>

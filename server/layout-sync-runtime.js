@@ -1,4 +1,5 @@
 function createLayoutSyncRuntime({
+  createControllerInputLayoutStates,
   createControllerLayoutStateForFlowState,
   createLayoutStateForFlowState,
   dedupeLayoutElements,
@@ -32,7 +33,8 @@ function createLayoutSyncRuntime({
   function syncControllerLayoutsWithFlow(layouts, flow) {
     const normalizedLayouts = normalizeControllerLayouts(layouts);
     const normalizedFlow = normalizeGameFlow(flow || readGameFlow());
-    const stateIds = new Set(["join", ...normalizedFlow.states.map((state) => state.id)]);
+    const inputLayoutStates = createControllerInputLayoutStates();
+    const stateIds = new Set(["join", ...normalizedFlow.states.map((state) => state.id), ...inputLayoutStates.map((state) => state.id)]);
     normalizedLayouts.global.elements = dedupeLayoutElements(normalizedLayouts.global.elements || []);
     normalizedLayouts.states = (normalizedLayouts.states || [])
       .filter((state) => stateIds.has(state.id))
@@ -45,6 +47,10 @@ function createLayoutSyncRuntime({
         continue;
       }
       normalizedLayouts.states.push(normalizeLayoutState(createControllerLayoutStateForFlowState(flowState), -1));
+    }
+    for (const inputLayoutState of inputLayoutStates) {
+      if (normalizedLayouts.states.some((state) => state.id === inputLayoutState.id)) continue;
+      normalizedLayouts.states.push(normalizeLayoutState(inputLayoutState, -1));
     }
     return normalizedLayouts;
   }

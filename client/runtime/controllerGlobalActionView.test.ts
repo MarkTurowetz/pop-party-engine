@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createControllerGlobalActionView } from "./controllerGlobalActionView";
+import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
 function view() {
   return createControllerGlobalActionView({
@@ -26,6 +27,7 @@ describe("createControllerGlobalActionView (ported)", () => {
     expect(vip?.message).toBe("Tap Next to continue");
     expect(guest?.enabled).toBe(false);
     expect(guest?.message).toBe("Waiting for the VIP to continue");
+    expect(vip?.layoutPhase).toBe(controllerLayoutStateIds.presentation);
   });
 
   it("installs the global bridge on import", () => {

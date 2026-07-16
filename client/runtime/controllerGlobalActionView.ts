@@ -3,6 +3,7 @@
 // window.createControllerGlobalActionView for the legacy controller runtime.
 
 import { PartyGameControllerText } from "./controllerTextRenderer";
+import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
 
@@ -118,7 +119,7 @@ export function createControllerGlobalActionView(options: ControllerGlobalAction
       buttonLabel: "Next",
       enabled: isVip,
       eventType: "stageClick",
-      layoutPhase: (lobby.phase as string) || "lobby",
+      layoutPhase: controllerLayoutStateIds.presentation,
       message: isVip ? "Tap Next to continue" : "Waiting for the VIP to continue",
       optionId: "global.next",
       pendingLabel: "Advancing",
@@ -139,7 +140,7 @@ export function createControllerGlobalActionView(options: ControllerGlobalAction
       buttonLabel: viewOptions.buttonLabel || "Next",
       enabled: viewOptions.enabled === true,
       eventType: viewOptions.eventType || "",
-      layoutPhase: viewOptions.layoutPhase || (lobby?.phase as string) || "lobby",
+      layoutPhase: viewOptions.layoutPhase || controllerLayoutStateIds.presentation,
       message,
       optionId: viewOptions.optionId || "global.message",
       pendingLabel: viewOptions.pendingLabel || "Working",

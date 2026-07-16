@@ -373,6 +373,7 @@ const {
 });
 
 const {
+  createControllerInputLayoutStates,
   createControllerLayoutStateForFlowState
 } = createControllerLayoutStateRuntime({
   flowStateHasActionType,
@@ -417,6 +418,7 @@ const {
   syncStageLayoutsWithFlow
 } = createLayoutSyncRuntime({
   createControllerLayoutStateForFlowState,
+  createControllerInputLayoutStates,
   createLayoutStateForFlowState,
   dedupeLayoutElements,
   normalizeControllerLayouts,

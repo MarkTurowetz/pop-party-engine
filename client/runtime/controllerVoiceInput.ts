@@ -4,6 +4,7 @@
 
 import { createControllerRecordingLifecycle, type ControllerRecordingLifecycle } from "./controllerRecordingLifecycle";
 import { PartyGameControllerText } from "./controllerTextRenderer";
+import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
 const BUTTON_SPEC = { width: 300, height: 64, fontSize: 24 };
@@ -95,7 +96,7 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
       return;
     }
     hideViews();
-    applyLayoutForPhase((lobby.phase as string) || "lobby");
+    applyLayoutForPhase(controllerLayoutStateIds.presentation);
     showView("intro");
     writeText(introMessage, "Waiting for the VIP to answer");
   }

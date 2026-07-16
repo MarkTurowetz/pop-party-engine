@@ -120,4 +120,39 @@ describe("LayoutEditor", () => {
     expect(markup).toContain('data-layout-art-default-width="120"');
     expect(markup).toContain('data-layout-art-default-height="80"');
   });
+
+  it("previews controller initial state while keeping Off elements editable", () => {
+    const api = fakeApi();
+    const controllerLayouts = layouts();
+    controllerLayouts.global.elements = [
+      {
+        id: "warning",
+        name: "Warning",
+        kind: "art",
+        defaultAnimationState: "Off",
+        x: 195,
+        y: 200,
+        width: 330,
+        height: 80
+      } as never
+    ];
+    const stageController = createLayoutController({ initialLayouts: layouts(), mode: "stage", api });
+    const controllerController = createLayoutController({ initialLayouts: controllerLayouts, mode: "controller", api });
+    controllerController.selectElement("warning");
+
+    const markup = renderToStaticMarkup(
+      <LayoutEditor
+        stageController={stageController}
+        controllerController={controllerController}
+        initialMode="controller"
+      />
+    );
+
+    expect(markup).toContain('data-controller-preview-mode="initial"');
+    expect(markup).toContain('data-controller-preview-mode="all"');
+    expect(markup).toContain('data-layout-object-initial-state="Off"');
+    expect(markup).not.toContain('data-layout-element="warning"');
+    expect(markup).toContain('data-layout-element-field="defaultAnimationState"');
+    expect(markup).toContain('<option value="Off" selected="">Off</option>');
+  });
 });

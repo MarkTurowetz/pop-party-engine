@@ -3,6 +3,7 @@
 // window.createControllerChoiceInputView for the legacy controller runtime.
 
 import { PartyGameControllerText } from "./controllerTextRenderer";
+import { controllerChoiceLayoutStateId } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
 type TextTarget = HTMLElement | string;
@@ -49,7 +50,7 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
     const input = (me.input || lobby.input || null) as Dict | null;
     if (!input) return false;
     hideViews();
-    applyLayoutForPhase((lobby.phase as string) || "lobby");
+    applyLayoutForPhase(controllerChoiceLayoutStateId(input.type));
     showView("choice");
     writeText(elements.prompt, input.prompt || "Answer this question by tapping an answer");
     showText(elements.prompt, true, { instant: true });

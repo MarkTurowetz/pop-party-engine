@@ -17,7 +17,12 @@ function normalizeColor(value: unknown): string {
   return String(value || "").trim().toLowerCase();
 }
 
-function serializeElement(raw: LayoutElement): LayoutElement {
+export function controllerInitialAnimationState(value: unknown): "On" | "Off" {
+  const state = String(value || "").trim().toLowerCase();
+  return ["off", "park", "disappear", "hidden", "hide"].includes(state) ? "Off" : "On";
+}
+
+function serializeElement(raw: LayoutElement, mode: LayoutMode): LayoutElement {
   const element = raw as Record<string, unknown>;
   const kind = String(element.kind || "art");
   const artCompositionId = String(element.artCompositionId || "");
@@ -36,7 +41,10 @@ function serializeElement(raw: LayoutElement): LayoutElement {
     height: num(element.height, 0),
     scale: num(element.scale, 1),
     rotation: num(element.rotation, 0),
-    defaultAnimationState: String(element.defaultAnimationState || ""),
+    defaultAnimationState:
+      mode === "controller"
+        ? controllerInitialAnimationState(element.defaultAnimationState)
+        : String(element.defaultAnimationState || ""),
     defaultText: isText ? String(element.defaultText ?? "") : "",
     fontSize: isText ? num(element.fontSize, 58) : 58,
     autoFitText: isText ? element.autoFitText === true : false,
@@ -45,7 +53,7 @@ function serializeElement(raw: LayoutElement): LayoutElement {
   } as LayoutElement;
 }
 
-function serializeGroup(raw: LayoutState): LayoutState {
+function serializeGroup(raw: LayoutState, mode: LayoutMode): LayoutState {
   const group = raw as Record<string, unknown>;
   return {
     id: String(group.id || ""),
@@ -53,7 +61,7 @@ function serializeGroup(raw: LayoutState): LayoutState {
     hiddenInStates: group.id === "global" ? group.hiddenInStates === true : false,
     hiddenGlobals: Array.isArray(group.hiddenGlobals) ? [...group.hiddenGlobals] : [],
     elements: (Array.isArray(group.elements) ? group.elements : []).map((element) =>
-      serializeElement(element as LayoutElement)
+      serializeElement(element as LayoutElement, mode)
     )
   } as LayoutState;
 }
@@ -69,8 +77,8 @@ export function serializeLayoutsForSave(
       width: Number(canvas.width || fallbackCanvas.width),
       height: Number(canvas.height || fallbackCanvas.height)
     },
-    global: serializeGroup((layouts?.global as LayoutState) || { id: "global", name: "Global Layout", elements: [] }),
-    states: (layouts?.states || []).map((state) => serializeGroup(state as LayoutState))
+    global: serializeGroup((layouts?.global as LayoutState) || { id: "global", name: "Global Layout", elements: [] }, mode),
+    states: (layouts?.states || []).map((state) => serializeGroup(state as LayoutState, mode))
   } as StageLayoutCollection;
 }
 
