@@ -57,7 +57,7 @@ import { mountConstantsEditor } from "../../tools/constants/mountConstantsEditor
 import type { ConstantsController } from "../../tools/constants/constantsController";
 import { mountHostAudioEditor } from "../../tools/host-audio/mountHostAudioEditor";
 import type { HostAudioController } from "../../tools/host-audio/hostAudioController";
-import { mountArtEditor } from "../../tools/art/mountArtEditor";
+import { mountArtEditor, saveMountedArtEditor } from "../../tools/art/mountArtEditor";
 import type { MountedArtEditor } from "../../tools/art/mountArtEditor";
 import { mountLayoutEditor } from "../../tools/layout/mountLayoutEditor";
 import type { MountedLayoutEditor } from "../../tools/layout/mountLayoutEditor";
@@ -154,10 +154,8 @@ registerDashboardTool("art", {
           artEditor.organizationController.getState().dirty)
     ),
   save: async () => {
-    if (!artEditor) return;
-    if (artEditor.assetsController.getState().dirty) await artEditor.assetsController.save();
-    if (artEditor.compositionsController.getState().dirty) await artEditor.compositionsController.save();
-    if (artEditor.organizationController.getState().dirty) await artEditor.organizationController.save();
+    if (!artEditor) return false;
+    return saveMountedArtEditor(artEditor);
   },
   setup: revealScreen("artScreen")
 });

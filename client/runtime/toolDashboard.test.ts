@@ -144,6 +144,38 @@ describe("toolDashboard Save All", () => {
     expect(harness.button.textContent).toBe("Save All");
   });
 
+  it("keeps a rejected save visible instead of reporting a false success", async () => {
+    const harness = await createDashboardHarness();
+    harness.registerDashboardTool("art", {
+      isDirty: () => true,
+      save: vi.fn(async () => false),
+      setup: vi.fn()
+    });
+
+    harness.setupToolDashboard();
+    await harness.clickSaveAll();
+
+    expect(harness.button.disabled).toBe(false);
+    expect(harness.button.dataset.saveError).toBe("true");
+    expect(harness.button.textContent).toBe("Save failed");
+    expect(harness.button.title).toContain("Art Manager did not save");
+  });
+
+  it("commits a focused inspector field before checking dirty tools", async () => {
+    const harness = await createDashboardHarness();
+    let dirty = false;
+    const save = vi.fn(async () => true);
+    (globalThis.document as unknown as { activeElement: { blur: () => void } }).activeElement = {
+      blur: () => { dirty = true; }
+    };
+    harness.registerDashboardTool("art", { isDirty: () => dirty, save, setup: vi.fn() });
+
+    harness.setupToolDashboard();
+    await harness.clickSaveAll();
+
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
   it("saves dirty tools from Command Shift S", async () => {
     const harness = await createDashboardHarness();
     const save = vi.fn();

@@ -180,6 +180,7 @@ async function main() {
       { parentId: "stage-code-panel", childId: "prefab-stage-code-panel-art", referenceId: "stage-code-panel-art" },
       { parentId: "join-widget", childId: "prefab-join-prompt-art", referenceId: "join-prompt-art" },
       { parentId: "join-qr-code", childId: "prefab-join-qr-code-art", referenceId: "join-qr-code-art" },
+      { parentId: "waiting-status-widget", childId: "prefab-waiting-status-art", referenceId: "waiting-status-art" },
     ]) {
       const parent = artAssets.json.compositions.find((composition) => composition.id === widget.parentId);
       const child = artAssets.json.compositions.find((composition) => composition.id === widget.childId);

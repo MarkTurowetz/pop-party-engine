@@ -1032,6 +1032,25 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().dirty).toBe(false);
   });
 
+  it("saves every dirty composition in one atomic manifest batch", async () => {
+    const saveArtCompositions = vi.fn(async (compositions: ArtComposition[]) => ({
+      ok: true as const,
+      compositions,
+      compositionRevisions: Object.fromEntries(compositions.map((item) => [item.id, `${item.id}-revision`]))
+    }));
+    const api = fakeApi({ saveArtCompositions });
+    const controller = createArtCompositionsController({ initialCompositions: [composition("a"), composition("b")], api });
+    controller.updateComposition("a", { description: "Changed A" });
+    controller.updateComposition("b", { description: "Changed B" });
+
+    expect(await controller.save()).toBe(true);
+
+    expect(saveArtCompositions).toHaveBeenCalledTimes(1);
+    expect(saveArtCompositions.mock.calls[0][0].map((item) => item.id)).toEqual(["a", "b"]);
+    expect(api.saveArtComposition).not.toHaveBeenCalled();
+    expect(controller.getState().dirty).toBe(false);
+  });
+
   it("saves created composition metadata", async () => {
     const api = fakeApi();
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api });

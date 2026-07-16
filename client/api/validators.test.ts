@@ -280,4 +280,22 @@ describe("Game data API", () => {
     await expect(api.art.deleteArtComposition("badge")).resolves.toMatchObject({ ok: true, compositions: [{ id: "badge" }] });
     await expect(api.art.replaceArtAsset("logo", { dataUrl: "data:image/png;base64,AAAA" })).resolves.toMatchObject({ ok: true, asset: { id: "logo" } });
   });
+
+  it("remembers a newer art revision after a rejected save so retry can persist", async () => {
+    let attempts = 0;
+    const requestBodies: unknown[] = [];
+    const fetchImpl = vi.fn(async (path: string, init?: RequestInit) => {
+      if (path !== "/api/art-compositions/badge") return jsonResponse({});
+      requestBodies.push(JSON.parse(String(init?.body || "{}")));
+      attempts += 1;
+      if (attempts === 1) return jsonResponse({ ok: false, error: "Art manifest changed", revision: "fresh-revision" }, 409);
+      return jsonResponse(artCompositionSaveResponse({ revision: "saved-revision" }));
+    });
+    const api = createGameDataApi({ fetchImpl: fetchImpl as unknown as typeof fetch });
+
+    await expect(api.art.saveArtComposition("badge", artComposition())).rejects.toThrow("Art manifest changed");
+    await expect(api.art.saveArtComposition("badge", artComposition())).resolves.toMatchObject({ ok: true });
+
+    expect(requestBodies[1]).toMatchObject({ revision: "fresh-revision" });
+  });
 });

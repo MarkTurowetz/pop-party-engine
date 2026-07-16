@@ -24,29 +24,37 @@ export function createArtApi(client: ApiClient): ArtApi {
     const nextRevision = String((error.payload as { revision?: unknown }).revision || "");
     if (nextRevision) revision = nextRevision;
   };
+  const mutate = async <T extends { revision?: string }>(request: () => Promise<T>): Promise<T> => {
+    try {
+      return rememberRevision(await request());
+    } catch (error) {
+      rememberErrorRevision(error);
+      throw error;
+    }
+  };
   return {
     loadArtAssets: async () => rememberRevision(validateArtAssetsResponse(await client.getJson<unknown>("/api/art-assets"))),
-    saveArtComposition: async (compositionId, composition) => (
-      rememberRevision(validateArtCompositionSaveResponse(
+    saveArtComposition: async (compositionId, composition) => mutate(async () => (
+      validateArtCompositionSaveResponse(
         await client.postJson<unknown>(`/api/art-compositions/${encodeURIComponent(compositionId)}`, { composition, revision }),
         `/api/art-compositions/${compositionId}`
-      ))
-    ),
-    saveArtCompositions: async (compositions) => rememberRevision(
+      )
+    )),
+    saveArtCompositions: async (compositions) => mutate(async () => (
       validateArtCompositionsSaveResponse(
         await client.postJson<unknown>("/api/art-compositions", { compositions, revision }),
         "/api/art-compositions"
       )
-    ),
-    saveArtOrganization: async (organization) => (
-      rememberRevision(validateArtOrganizationSaveResponse(await client.postJson<unknown>("/api/art-organization", { organization, revision })))
-    ),
-    deleteArtComposition: async (compositionId) => (
-      rememberRevision(validateArtCompositionDeleteResponse(
+    )),
+    saveArtOrganization: async (organization) => mutate(async () => (
+      validateArtOrganizationSaveResponse(await client.postJson<unknown>("/api/art-organization", { organization, revision }))
+    )),
+    deleteArtComposition: async (compositionId) => mutate(async () => (
+      validateArtCompositionDeleteResponse(
         await client.deleteJson<unknown>(`/api/art-compositions/${encodeURIComponent(compositionId)}${revision ? `?revision=${encodeURIComponent(revision)}` : ""}`),
         `/api/art-compositions/${compositionId}`
-      ))
-    ),
+      )
+    )),
     cleanupArtCompositions: async (request) => {
       try {
         return rememberRevision(validateArtCompositionCleanupResponse(
@@ -57,11 +65,11 @@ export function createArtApi(client: ApiClient): ArtApi {
         throw error;
       }
     },
-    replaceArtAsset: async (assetId, payload) => (
-      rememberRevision(validateArtAssetReplaceResponse(
+    replaceArtAsset: async (assetId, payload) => mutate(async () => (
+      validateArtAssetReplaceResponse(
         await client.postJson<unknown>(`/api/art-assets/${encodeURIComponent(assetId)}`, { ...payload, revision }),
         `/api/art-assets/${assetId}`
-      ))
-    )
+      )
+    ))
   };
 }

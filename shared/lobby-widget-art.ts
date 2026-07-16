@@ -50,6 +50,15 @@
       referenceId: "join-qr-code-art",
       instanceLabel: "joinQrCodeArt",
       componentLabels: { "qr-label": "qrLabel", "qr-placeholder": "qrPlaceholder", "qr-card": "qrCard" }
+    },
+    {
+      parentId: "waiting-status-widget",
+      parentName: "Waiting Status",
+      childId: "prefab-waiting-status-art",
+      childName: "Waiting Status Art",
+      referenceId: "waiting-status-art",
+      instanceLabel: "waitingStatusArt",
+      componentLabels: { "status-text": "statusText", "status-pill": "statusPill" }
     }
   ];
 

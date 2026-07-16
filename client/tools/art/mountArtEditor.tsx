@@ -26,6 +26,14 @@ export interface MountedArtEditor {
   unmount: () => void;
 }
 
+/** Save every dirty Art Manager store in manifest-safe sequence. */
+export async function saveMountedArtEditor(editor: MountedArtEditor): Promise<boolean> {
+  if (editor.assetsController.getState().dirty && !(await editor.assetsController.save())) return false;
+  if (editor.compositionsController.getState().dirty && !(await editor.compositionsController.save())) return false;
+  if (editor.organizationController.getState().dirty && !(await editor.organizationController.save())) return false;
+  return true;
+}
+
 export async function mountArtEditor(options: MountArtEditorOptions): Promise<MountedArtEditor> {
   const doc = options.document || document;
   const draftLifecycles: SessionDraftLifecycle[] = [];

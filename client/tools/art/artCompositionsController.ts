@@ -1214,19 +1214,25 @@ export function createArtCompositionsController(
       error = null;
       emit();
       try {
-        if (pendingMigrationSummary && api.saveArtCompositions) {
+        if (api.saveArtCompositions && dirty.size) {
           const payloads = [...dirty]
             .filter((id) => !permanentlyDeleted.has(id))
             .map((id) => compositions.find((item) => item.id === id))
             .filter((composition): composition is ArtComposition => Boolean(composition))
             .map(serializeArtCompositionForSave);
-          const response = await api.saveArtCompositions(payloads);
-          compositionRevisions = { ...compositionRevisions, ...(response.compositionRevisions || {}) };
-          for (const savedPayload of response.compositions) {
-            const saved = hydrateArtCompositionForEditing(savedPayload);
-            const index = compositions.findIndex((item) => item.id === saved.id);
-            if (index >= 0) compositions[index] = saved;
-            savedSnapshots.set(saved.id, artCompositionSnapshot(saved));
+          if (payloads.length) {
+            const response = await api.saveArtCompositions(payloads);
+            const expectedIds = new Set(payloads.map((composition) => composition.id));
+            const savedIds = new Set(response.compositions.map((composition) => composition.id));
+            const missingIds = [...expectedIds].filter((id) => !savedIds.has(id));
+            if (missingIds.length) throw new Error(`Art manifest did not confirm saved compositions: ${missingIds.join(", ")}`);
+            compositionRevisions = { ...compositionRevisions, ...(response.compositionRevisions || {}) };
+            for (const savedPayload of response.compositions) {
+              const saved = hydrateArtCompositionForEditing(savedPayload);
+              const index = compositions.findIndex((item) => item.id === saved.id);
+              if (index >= 0) compositions[index] = saved;
+              savedSnapshots.set(saved.id, artCompositionSnapshot(saved));
+            }
           }
           await permanentlyDeleteCompositions(permanentlyDeleted);
           sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));

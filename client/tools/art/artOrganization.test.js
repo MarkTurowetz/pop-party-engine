@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { createArtAssetsRuntime } = require("../../../server/art-assets-runtime");
+const { installDefaultLobbyWidgetCompositions } = require("../../../shared/lobby-widget-art");
 
 const pointPopupTimeline = {
   fps: 30,
@@ -121,6 +122,60 @@ describe("art organization folders", () => {
 });
 
 describe("art composition child persistence", () => {
+  it("persists Waiting Status child art through batch save and reload", async () => {
+    const definitions = installDefaultLobbyWidgetCompositions([{
+      id: "waiting-status-widget",
+      name: "Waiting Status",
+      surface: "stage",
+      canvas: { width: 700, height: 82 },
+      components: [
+        { id: "status-text", name: "Status Text", kind: "text", x: 350, y: 41, width: 640, height: 48, defaultText: "Waiting" },
+        { id: "status-pill", name: "Status Pill", kind: "shape", x: 350, y: 41, width: 700, height: 76 }
+      ]
+    }]);
+    let manifest = {};
+    let requestPayload = {};
+    let responseStatus = 0;
+    let responseBody = null;
+    const runtime = createArtAssetsRuntime({
+      acceptedArtTypes: [],
+      artCompositions: definitions,
+      artAssets: [],
+      artGroups: [],
+      artRoot: "/tmp/party-game-art-waiting-status-test",
+      contentTypeForFile: () => "application/octet-stream",
+      customDir: "/tmp/party-game-art-waiting-status-test/custom",
+      defaultDir: "/tmp/party-game-art-waiting-status-test/default",
+      manifestFile: "/tmp/party-game-art-waiting-status-test/manifest.json",
+      loadArtManifestSource: async () => manifest,
+      readJson: async () => requestPayload,
+      sendJson: (_res, status, body) => {
+        responseStatus = status;
+        responseBody = body;
+      },
+      writeArtManifestSource: async (nextManifest) => {
+        manifest = nextManifest;
+        return manifest;
+      }
+    });
+
+    await runtime.sendArtAssetList({});
+    const child = responseBody.compositions.find((composition) => composition.id === "prefab-waiting-status-art");
+    child.components.find((component) => component.id === "status-text").defaultText = "Saved waiting status";
+    requestPayload = { compositions: [child], revision: responseBody.revision };
+
+    await runtime.handleSaveArtCompositions({}, {});
+    expect(responseStatus).toBe(200);
+    expect(manifest.compositions["prefab-waiting-status-art"].components)
+      .toContainEqual(expect.objectContaining({ id: "status-text", defaultText: "Saved waiting status" }));
+
+    await runtime.sendArtAssetList({});
+    const reloadedChild = responseBody.compositions.find((composition) => composition.id === "prefab-waiting-status-art");
+    expect(reloadedChild.components).toContainEqual(
+      expect.objectContaining({ id: "status-text", defaultText: "Saved waiting status" })
+    );
+  });
+
   it("saves a migration batch in one manifest write and rejects stale revisions", async () => {
     let payload = {
       compositions: [{

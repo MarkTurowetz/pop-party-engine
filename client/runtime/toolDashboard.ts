@@ -75,6 +75,10 @@ async function saveAllTools(): Promise<void> {
   const globalSaveButton = w().globalSaveButton;
   if (!globalSaveButton) return;
   if (savingAllTools) return;
+  const activeElement = document.activeElement;
+  if (activeElement && activeElement !== globalSaveButton && "blur" in activeElement) {
+    (activeElement as HTMLElement).blur();
+  }
   const dirtyTools = TOOL_METADATA.filter((tool) => isToolDirty(tool.id));
   if (!dirtyTools.length) {
     updateGlobalSaveButton();
@@ -88,11 +92,22 @@ async function saveAllTools(): Promise<void> {
   savingAllTools = true;
   updateGlobalSaveButton();
   globalSaveButton.textContent = "Saving";
+  globalSaveButton.dataset.saveError = "false";
+  globalSaveButton.title = "";
+  let failed = false;
   try {
-    for (const tool of dirtyTools) await toolHooks.get(tool.id)?.save();
+    for (const tool of dirtyTools) {
+      const saved = await toolHooks.get(tool.id)?.save();
+      if (saved === false) throw new Error(`${tool.label} did not save. Review the tool error and try again.`);
+    }
+  } catch (error) {
+    failed = true;
+    globalSaveButton.dataset.saveError = "true";
+    globalSaveButton.textContent = "Save failed";
+    globalSaveButton.title = error instanceof Error ? error.message : String(error);
   } finally {
     savingAllTools = false;
-    globalSaveButton.textContent = "Save All";
+    if (!failed) globalSaveButton.textContent = "Save All";
     updateGlobalSaveButton();
   }
 }
