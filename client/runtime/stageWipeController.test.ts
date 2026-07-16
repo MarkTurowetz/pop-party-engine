@@ -24,57 +24,73 @@ describe("PartyGameStageWipe (ported wipe-controller)", () => {
     expect(complete).toHaveBeenCalledOnce();
   });
 
-  it("waits for the Wipe Widget MC parent callback", () => {
+  it("gates Wipe Widget MC On and waits only for Wipe Art MC Appear", () => {
     let timelineComplete: (() => void) | undefined;
     const complete = vi.fn();
-    const playAll = vi.fn((animation: string, options: { complete?: () => void }) => {
+    const stopAtAll = vi.fn();
+    const playComponent = vi.fn((_componentId: string, animation: string, options: { complete?: () => void }) => {
       timelineComplete = options.complete;
       return animation === "Appear" ? 667 : 0;
     });
-    const controller = PartyGameStageWipe.createController({ renderArt: () => ({ renderer: { playAll } }) });
+    const controller = PartyGameStageWipe.createController({ renderArt: () => ({ renderer: { playComponent, stopAtAll } }) });
 
     expect(controller.setShownForAction({ isShown: true }, { actionKey: "wipe-on", complete })).toBe(667);
-    expect(playAll).toHaveBeenCalledWith("Appear", expect.objectContaining({ instant: false }));
+    expect(stopAtAll).toHaveBeenCalledWith("On", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith(
+      "wipe-art-reference",
+      "Appear",
+      expect.objectContaining({ instant: false })
+    );
     expect(complete).not.toHaveBeenCalled();
 
     timelineComplete?.();
     expect(complete).toHaveBeenCalledOnce();
   });
 
-  it("plays Disappear and completes only from its authored parent timeline", () => {
+  it("waits for Wipe Art MC Disappear before gating Wipe Widget MC Off", () => {
     let timelineComplete: (() => void) | undefined;
     const complete = vi.fn();
-    const playAll = vi.fn((animation: string, options: { complete?: () => void }) => {
+    const stopAtAll = vi.fn();
+    const playComponent = vi.fn((_componentId: string, _animation: string, options: { complete?: () => void }) => {
       timelineComplete = options.complete;
       return 667;
     });
-    const controller = PartyGameStageWipe.createController({ renderArt: () => ({ renderer: { playAll } }) });
+    const controller = PartyGameStageWipe.createController({ renderArt: () => ({ renderer: { playComponent, stopAtAll } }) });
     controller.setShown(true, { instant: true });
+    stopAtAll.mockClear();
 
     expect(controller.setShownForAction({ isShown: false }, { actionKey: "wipe-off", complete })).toBe(667);
-    expect(playAll).toHaveBeenLastCalledWith("Disappear", expect.objectContaining({ instant: false }));
+    expect(stopAtAll).toHaveBeenCalledWith("On", { instant: true });
+    expect(playComponent).toHaveBeenLastCalledWith(
+      "wipe-art-reference",
+      "Disappear",
+      expect.objectContaining({ instant: false })
+    );
+    expect(stopAtAll).not.toHaveBeenCalledWith("Off", expect.anything());
     expect(complete).not.toHaveBeenCalled();
 
     timelineComplete?.();
+    expect(stopAtAll).toHaveBeenLastCalledWith("Off", { instant: true });
     expect(complete).toHaveBeenCalledOnce();
   });
 
   it("starts Disappear only after transition Appear calls back", () => {
     const callbacks: Array<() => void> = [];
     const onCovered = vi.fn();
-    const playAll = vi.fn((_animation: string, options: { complete?: () => void }) => {
+    const stopAtAll = vi.fn();
+    const playComponent = vi.fn((_componentId: string, _animation: string, options: { complete?: () => void }) => {
       if (options.complete) callbacks.push(options.complete);
       return 667;
     });
-    const controller = PartyGameStageWipe.createController({ renderArt: () => ({ renderer: { playAll } }) });
+    const controller = PartyGameStageWipe.createController({ renderArt: () => ({ renderer: { playComponent, stopAtAll } }) });
 
     controller.transition(onCovered);
-    expect(playAll.mock.calls.map(([animation]) => animation)).toEqual(["Appear"]);
+    expect(playComponent.mock.calls.map(([, animation]) => animation)).toEqual(["Appear"]);
     expect(onCovered).not.toHaveBeenCalled();
 
     callbacks[0]();
     expect(onCovered).toHaveBeenCalledOnce();
-    expect(playAll.mock.calls.map(([animation]) => animation)).toEqual(["Appear", "Disappear"]);
+    expect(playComponent.mock.calls.map(([, animation]) => animation)).toEqual(["Appear", "Disappear"]);
   });
 
   it("motionDuration honors the instant flag", () => {

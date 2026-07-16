@@ -262,6 +262,11 @@ async function main() {
         if (!hostBounds.width) return Number.NaN;
         return ((stripBounds.left + stripBounds.width / 2 - hostBounds.left) / hostBounds.width) * 100;
       };
+      const wipeArtFrame = () => controller.timelineRenderer
+        ?.viewForComponentId?.("wipe-art-reference")
+        ?.createVisual?.()
+        ?.timelinePlayer
+        ?.currentFrame;
 
       const appearStartedAt = performance.now();
       const appearCompletion = new Promise((resolve) => controller.setShown(true, { complete: resolve }));
@@ -272,13 +277,19 @@ async function main() {
         sleep(1500).then(() => { throw new Error("Wipe Appear callback timed out"); })
       ]);
       const appearDuration = performance.now() - appearStartedAt;
-      const appearFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const appearFrame = wipeArtFrame();
+      const appearWidgetFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
       const appearFinalLeft = firstStripLeft();
 
       const disappearStartedAt = performance.now();
       const disappearCompletion = new Promise((resolve) => controller.setShown(false, { complete: resolve }));
       await sleep(250);
       const disappearMidLeft = firstStripLeft();
+      const wipeArtReference = element.querySelector("[data-art-component-id='wipe-art-reference']");
+      const wipeArtMidStyle = wipeArtReference ? getComputedStyle(wipeArtReference) : null;
+      const disappearUsedLegacyExitClass = wipeArtReference?.classList.contains("art-runtime-object-exiting") === true;
+      const disappearMidOpacity = wipeArtMidStyle?.opacity;
+      const disappearMidScale = wipeArtMidStyle?.scale;
       await Promise.race([
         disappearCompletion,
         sleep(1500).then(() => { throw new Error("Wipe Disappear callback timed out"); })
@@ -288,9 +299,14 @@ async function main() {
         appearFinalLeft,
         appearFrame,
         appearMidLeft,
+        appearWidgetFrame,
         disappearDuration: performance.now() - disappearStartedAt,
-        disappearFrame: controller.timelineRenderer?.rootTimelinePlayer?.currentFrame,
+        disappearFrame: wipeArtFrame(),
+        disappearWidgetFrame: controller.timelineRenderer?.rootTimelinePlayer?.currentFrame,
         disappearMidLeft,
+        disappearMidOpacity,
+        disappearMidScale,
+        disappearUsedLegacyExitClass,
         componentIds: Array.from(element.querySelectorAll("[data-art-component-id]"), (node) => node.dataset.artComponentId),
         compositionComponentCount: window.artComposition("wipe-widget-mc")?.components?.length || 0,
         renderResultPresent: Boolean(renderResult?.renderer),
@@ -308,10 +324,15 @@ async function main() {
     assert(wipeResult.appearMidLeft > -60 && wipeResult.appearMidLeft < 50, "Wipe Appear did not advance through authored motion");
     assert(Math.abs(wipeResult.appearFinalLeft - 50) < 0.1, `Wipe Appear ended at ${wipeResult.appearFinalLeft}%`);
     assert(wipeResult.appearDuration >= 550, `Wipe Appear callback fired too early (${Math.round(wipeResult.appearDuration)}ms)`);
-    assert(wipeResult.appearFrame === 22, `Wipe Appear callback fired at parent frame ${wipeResult.appearFrame}`);
+    assert(wipeResult.appearFrame === 22, `Wipe Appear callback fired at art frame ${wipeResult.appearFrame}`);
+    assert(wipeResult.appearWidgetFrame === 1, `Wipe Widget MC left On frame ${wipeResult.appearWidgetFrame}`);
     assert(wipeResult.disappearMidLeft > 50, "Wipe Disappear did not advance through authored motion");
     assert(wipeResult.disappearDuration >= 550, `Wipe Disappear callback fired too early (${Math.round(wipeResult.disappearDuration)}ms)`);
-    assert(wipeResult.disappearFrame === 45, `Wipe Disappear callback fired at parent frame ${wipeResult.disappearFrame}`);
+    assert(wipeResult.disappearFrame === 45, `Wipe Disappear callback fired at art frame ${wipeResult.disappearFrame}`);
+    assert(wipeResult.disappearWidgetFrame === 0, `Wipe Widget MC did not finish Off (${wipeResult.disappearWidgetFrame})`);
+    assert(wipeResult.disappearUsedLegacyExitClass === false, "Wipe Art MC received the legacy CSS exit class");
+    assert(wipeResult.disappearMidOpacity === "1", `Wipe Art MC opacity was programmatically tweened to ${wipeResult.disappearMidOpacity}`);
+    assert(wipeResult.disappearMidScale === "1", `Wipe Art MC scale was programmatically tweened to ${wipeResult.disappearMidScale}`);
     assert(wipeResult.visibleAfterDisappear === false, "Wipe remained visible after Disappear callback");
 
     const timerResult = await page.evaluate(async () => {

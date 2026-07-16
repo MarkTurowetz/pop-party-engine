@@ -88,8 +88,10 @@ concepts into focused modules.
     each rendered component is backed by the shared game-object wrapper.
   - `client/stage/voting-card-visuals.js` owns voting card composition rendering and
     routes card groups, widgets, and voter badges through shared game objects.
-  - `client/stage/wipe-controller.js` owns the global wipe as a game object with
-    custom appear/disappear animation handlers.
+  - `client/runtime/stageWipeController.ts` owns the global wipe action routing.
+    `Wipe Widget MC` is only an `On`/`Off` gate; the controller explicitly invokes
+    `Appear` or `Disappear` on its labeled `Wipe Art MC` child and waits only for
+    that child's authored callback. No CSS fallback motion runs alongside it.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,
@@ -168,6 +170,9 @@ concepts into focused modules.
   ignore all animation callbacks, and advance only from their start-relative timer (including S+0).
 - Child component animations may be started by a parent timeline, but they cannot delay or satisfy
   that parent's completion callback. Returned animation durations never advance game flow.
+- When a flow action explicitly invokes a labeled child component, that exact child becomes the
+  action's callback target. The parent may be placed in an immediate `On` setup state, but it does
+  not duplicate the child's animation or contribute a second completion signal.
 - Two deliberately fire-and-forget runtime command sources are allowed. A newly spawned dynamic
   player may play `Appear` on its avatar MC, name MC, and VIP MC; input-state changes may play
   `ChoosingStart` or `ChoosingEnd` on avatar behavior. Neither path attaches a callback, contributes

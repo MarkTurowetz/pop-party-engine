@@ -757,13 +757,20 @@ class CssVisualObject {
 
     const token = this.markNewAnimation();
     this.beginActiveAnimation(effectiveAnimation, duration, options.complete);
+    this.clearTransientClasses();
     if (useTimelinePlayback) {
+      if (this.exitingClass) this.element.classList.remove(this.exitingClass);
       this.timelinePlayer?.gotoAndPlay(effectiveAnimation, {
         instant,
         complete: () => this.finishActiveAnimation(effectiveAnimation, token)
       });
+      if (this.activeAnimation === effectiveAnimation) {
+        if (effectiveAnimation === "appear") this.applyAppearingState();
+        else if (effectiveAnimation === "disappear") this.applyDisappearingState();
+      }
+      return duration;
     }
-    this.clearTransientClasses();
+
     if (instant || effectiveAnimation === "on" || effectiveAnimation === "off") {
       this.addClasses([this.instantClass].filter(Boolean));
     }
@@ -776,12 +783,10 @@ class CssVisualObject {
 
     const customDuration = this.playCustomAnimation(effectiveAnimation, token, duration, instant, wasVisible);
     if (customDuration !== null) {
-      this.updateActiveAnimationDuration(useTimelinePlayback ? Math.max(duration, customDuration) : customDuration);
-      if (!useTimelinePlayback) {
-        if (instant || customDuration <= 0) this.finishActiveAnimation(effectiveAnimation, token);
-        else this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
-      }
-      return useTimelinePlayback ? Math.max(duration, customDuration) : customDuration;
+      this.updateActiveAnimationDuration(customDuration);
+      if (instant || customDuration <= 0) this.finishActiveAnimation(effectiveAnimation, token);
+      else this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
+      return customDuration;
     }
 
     if (effectiveAnimation === "park" || effectiveAnimation === "off") {
@@ -813,10 +818,8 @@ class CssVisualObject {
       if (!instant) this.addClasses([this.updateClass].filter(Boolean));
     }
 
-    if (!useTimelinePlayback) {
-      if (instant || duration <= 0) this.finishActiveAnimation(effectiveAnimation, token);
-      else this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
-    }
+    if (instant || duration <= 0) this.finishActiveAnimation(effectiveAnimation, token);
+    else this.finishWhenOwnAnimationEnds(effectiveAnimation, token);
     return duration;
   }
 

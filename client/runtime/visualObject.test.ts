@@ -257,6 +257,44 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     expect(element.dataset.visualState).toBe("shown");
   });
 
+  it("does not layer legacy CSS exit motion over an authored Disappear timeline", () => {
+    const element = createFakeElement(["exiting"]);
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      exitingClass: "exiting",
+      updateClass: "updating",
+      timelineCommandHandler: (detail) => {
+        if (detail.command.type === "setVisible") {
+          visual.applyCommandVisibility(detail.command.target !== "false");
+        }
+      },
+      timeline: normalizeTimeline({
+        fps: 10,
+        frameCount: 3,
+        labels: [{ name: "Disappear", frame: 0 }],
+        commands: [
+          { frame: 0, type: "setVisible", target: "true" },
+          { frame: 2, type: "stop" },
+          { frame: 2, type: "setVisible", target: "false" }
+        ],
+        tracks: []
+      })
+    });
+
+    expect(visual.play("Disappear")).toBe(200);
+    expect(element.dataset.visualState).toBe("disappearing");
+    expect(element.classList.contains("exiting")).toBe(false);
+    expect(element.classList.contains("updating")).toBe(false);
+    expect(element.classList.contains("hidden")).toBe(false);
+
+    vi.advanceTimersByTime(200);
+
+    expect(element.dataset.visualState).toBe("hidden");
+    expect(element.classList.contains("hidden")).toBe(true);
+  });
+
   it("does not let an unauthored duplicate appear callback join CSS fallback motion", async () => {
     const element = createFakeElement(["hidden"]);
     const visual = PartyGameVisualObject.createCssVisualObject({

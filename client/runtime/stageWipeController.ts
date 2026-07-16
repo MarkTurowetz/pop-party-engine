@@ -1,12 +1,13 @@
-// Authored Art Manager widget controller for the full-screen stage wipe. The
-// Wipe Widget MC parent timeline is the only lifecycle callback target; its
-// command frames start the nested Wipe Art MC without letting child callbacks
-// advance the game flow.
+// Authored Art Manager widget controller for the full-screen stage wipe. Wipe
+// Widget MC is only an On/Off gate. Set Wipe Shown invokes Wipe Art MC's
+// lifecycle directly and completes only from that explicitly targeted child.
 
 type Dict = Record<string, unknown>;
 
 interface TimelineRenderer {
   playAll?: (animation: string, options?: Dict) => number;
+  playComponent?: (componentId: string, animation: string, options?: Dict) => number;
+  stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
   stopAtAll?: (animation: string, options?: Dict) => number;
 }
 
@@ -20,6 +21,7 @@ declare global {
 // the authored parent timeline callback, never from these values.
 const WipeMotionMs = 667;
 const WipeLineStaggerMs = 33;
+const WIPE_ART_COMPONENT_ID = "wipe-art-reference";
 
 function transitionToken(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -76,7 +78,7 @@ class StageWipeController {
     }
     const renderer = this.widgetRenderer();
 
-    if (!renderer?.playAll) {
+    if (!renderer?.playComponent || !renderer.stopAtAll) {
       this.activeAnimation = "";
       return 0;
     }
@@ -86,16 +88,18 @@ class StageWipeController {
     const token = transitionToken();
     this.activeAnimation = animation;
     this.activeAnimationToken = token;
-    if (nextShown) this.setVisibleState(true);
+    renderer.stopAtAll("On", { instant: true });
+    this.setVisibleState(true);
     let finished = false;
     const finish = () => {
       if (finished || this.activeAnimationToken !== token) return;
       finished = true;
       this.activeAnimation = "";
+      if (!nextShown) renderer.stopAtAll?.("Off", { instant: true });
       this.setVisibleState(nextShown);
       complete?.();
     };
-    const duration = Number(renderer.playAll(animation, { instant, complete: finish }) || 0);
+    const duration = Number(renderer.playComponent(WIPE_ART_COMPONENT_ID, animation, { instant, complete: finish }) || 0);
     return duration;
   }
 
@@ -130,6 +134,7 @@ class StageWipeController {
     this.activeAnimation = "";
     this.desiredShown = false;
     const renderer = this.widgetRenderer();
+    renderer?.stopAtComponent?.(WIPE_ART_COMPONENT_ID, "Off", { instant: true });
     if (renderer?.stopAtAll) renderer.stopAtAll("Off", { instant: true });
     else this.element?.classList.add("hidden");
     this.setVisibleState(false);

@@ -11,13 +11,17 @@ const IDS = Object.freeze({
 
 const CANVAS = Object.freeze({ width: 1920, height: 1080 });
 const COLORS = Object.freeze(["#22d3ee", "#ffe156", "#ff4fa3", "#60d394", "#ff9e2c", "#2458ff", "#7c3aed"]);
-const LABELS = Object.freeze([
+const ART_LABELS = Object.freeze([
   { name: "Off", frame: 0 },
   { name: "Park", frame: 0 },
   { name: "On", frame: 1 },
   { name: "Appear", frame: 2 },
   { name: "Update", frame: 23 },
   { name: "Disappear", frame: 25 }
+]);
+const WIDGET_LABELS = Object.freeze([
+  { name: "Off", frame: 0 },
+  { name: "On", frame: 1 }
 ]);
 
 function clone(value) {
@@ -97,8 +101,8 @@ function stripTrack(component, index) {
   return { id: `track-${component.id}`, targetId: component.id, keyframes };
 }
 
-function lifecycleCommands({ compound = false } = {}) {
-  const commands = [
+function lifecycleCommands() {
+  return [
     { id: "stop-0", frame: 0, type: "stop" },
     { id: "setvisible-0-false", frame: 0, type: "setVisible", target: "false" },
     { id: "stop-1", frame: 1, type: "stop" },
@@ -111,20 +115,14 @@ function lifecycleCommands({ compound = false } = {}) {
     { id: "stop-45", frame: 45, type: "stop" },
     { id: "setvisible-45-false", frame: 45, type: "setVisible", target: "false" }
   ];
-  if (!compound) return commands;
+}
+
+function widgetStateCommands() {
   return [
     { id: "stop-0", frame: 0, type: "stop" },
     { id: "setvisible-0-false", frame: 0, type: "setVisible", target: "false" },
-    { id: "wipe-art-off", frame: 0, type: "stopComponent", target: IDS.artReference, event: "Off" },
     { id: "stop-1", frame: 1, type: "stop" },
-    { id: "wipe-art-on", frame: 1, type: "stopComponent", target: IDS.artReference, event: "On" },
-    { id: "wipe-art-appear", frame: 2, type: "playComponent", target: IDS.artReference, event: "Appear" },
-    { id: "stop-22", frame: 22, type: "stop" },
-    { id: "wipe-art-update", frame: 23, type: "playComponent", target: IDS.artReference, event: "Update" },
-    { id: "stop-24", frame: 24, type: "stop" },
-    { id: "wipe-art-disappear", frame: 25, type: "playComponent", target: IDS.artReference, event: "Disappear" },
-    { id: "stop-45", frame: 45, type: "stop" },
-    { id: "setvisible-45-false", frame: 45, type: "setVisible", target: "false" }
+    { id: "setvisible-1-true", frame: 1, type: "setVisible", target: "true" }
   ];
 }
 
@@ -142,7 +140,7 @@ function wipeArtComposition(updatedAt) {
     timeline: {
       fps: 30,
       frameCount: 46,
-      labels: clone(LABELS),
+      labels: clone(ART_LABELS),
       commandFrames: [0, 1, 2, 22, 23, 24, 25, 45],
       commands: lifecycleCommands(),
       tracks: components.map(stripTrack)
@@ -154,7 +152,7 @@ function wipeArtComposition(updatedAt) {
 function wipeWidgetComposition(updatedAt) {
   return {
     name: "Wipe Widget MC",
-    description: "Compound stage wipe whose authored parent timeline owns Set Wipe Shown completion callbacks.",
+    description: "Two-state gate for Wipe Art MC; runtime calls the child lifecycle timeline directly.",
     surface: "stage",
     compositionKind: "gameObject",
     isCustom: true,
@@ -183,10 +181,10 @@ function wipeWidgetComposition(updatedAt) {
     ],
     timeline: {
       fps: 30,
-      frameCount: 46,
-      labels: clone(LABELS),
-      commandFrames: [0, 1, 2, 22, 23, 24, 25, 45],
-      commands: lifecycleCommands({ compound: true }),
+      frameCount: 2,
+      labels: clone(WIDGET_LABELS),
+      commandFrames: [0, 1],
+      commands: widgetStateCommands(),
       tracks: []
     },
     updatedAt
@@ -224,4 +222,14 @@ function run(argv = process.argv.slice(2)) {
 
 if (require.main === module) run();
 
-module.exports = { CANVAS, COLORS, IDS, LABELS, migrateWipeWidget, wipeArtComposition, wipeWidgetComposition };
+module.exports = {
+  ART_LABELS,
+  CANVAS,
+  COLORS,
+  IDS,
+  LABELS: ART_LABELS,
+  WIDGET_LABELS,
+  migrateWipeWidget,
+  wipeArtComposition,
+  wipeWidgetComposition
+};

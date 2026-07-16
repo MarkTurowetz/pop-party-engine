@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url);
 const { COLORS, IDS, migrateWipeWidget } = require("./migrate-wipe-widget");
 
 describe("Wipe widget manifest migration", () => {
-  it("builds a compound widget whose parent commands the animated wipe art", () => {
+  it("builds a two-state widget gate around independently animated wipe art", () => {
     const manifest = migrateWipeWidget({ compositions: {} }, "2026-07-15T00:00:00.000Z");
     const art = manifest.compositions[IDS.art];
     const widget = manifest.compositions[IDS.widget];
@@ -26,12 +26,18 @@ describe("Wipe widget manifest migration", () => {
     expect(widget.components).toContainEqual(
       expect.objectContaining({ instanceLabel: "wipeArtMC", artCompositionId: IDS.art, defaultAnimationState: "Off" })
     );
-    expect(widget.timeline.commands).toContainEqual(
-      expect.objectContaining({ frame: 2, type: "playComponent", target: IDS.artReference, event: "Appear" })
-    );
-    expect(widget.timeline.commands).toContainEqual(
-      expect.objectContaining({ frame: 25, type: "playComponent", target: IDS.artReference, event: "Disappear" })
-    );
+    expect(widget.timeline.frameCount).toBe(2);
+    expect(widget.timeline.labels).toEqual([
+      { name: "Off", frame: 0 },
+      { name: "On", frame: 1 }
+    ]);
+    expect(widget.timeline.commands).toEqual([
+      { id: "stop-0", frame: 0, type: "stop" },
+      { id: "setvisible-0-false", frame: 0, type: "setVisible", target: "false" },
+      { id: "stop-1", frame: 1, type: "stop" },
+      { id: "setvisible-1-true", frame: 1, type: "setVisible", target: "true" }
+    ]);
+    expect(widget.timeline.tracks).toEqual([]);
   });
 
   it("preserves unrelated manifest data and registers the widget with Global Assets", () => {
