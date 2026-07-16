@@ -359,7 +359,7 @@
           "kind": "art",
           "artCompositionId": "",
           "hidden": false,
-          "locked": true,
+          "locked": false,
           "x": 195,
           "y": 485,
           "width": 330,
