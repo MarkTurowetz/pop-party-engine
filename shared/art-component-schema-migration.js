@@ -5,10 +5,17 @@ exports.normalizeCurrentArtManifestGeometry = normalizeCurrentArtManifestGeometr
 exports.migrateLegacyArtCompositionCoordinates = migrateLegacyArtCompositionCoordinates;
 exports.migrateLegacyArtCompositionSchema = migrateLegacyArtCompositionSchema;
 exports.migrateLegacyArtManifestSchema = migrateLegacyArtManifestSchema;
-exports.ART_COMPONENT_SCHEMA_VERSION = 3;
+exports.ART_COMPONENT_SCHEMA_VERSION = 4;
 const SPRITE_SCHEMA_VERSION = 1;
 const CENTERED_COORDINATE_SCHEMA_VERSION = 2;
-const VOTING_CARD_ANSWER_GEOMETRY_VERSION = 3;
+const LAYERED_PREFAB_GEOMETRY_VERSION = 4;
+const LAYERED_PREFAB_GEOMETRY_CHAINS = [
+    { baseName: "Voting Card Answer Text", wrapperName: "Voting Card Answer" },
+    { baseName: "Voting Card Author Text", wrapperName: "Voting Card Author MC" },
+    { baseName: "Voting Card Voter", wrapperName: "Voting Card Voter MC" },
+    { baseName: "Player VIP Widget", wrapperName: "VIP MC" }
+];
+const INTRINSIC_REFERENCE_COMPOSITIONS = ["Voting Card Voters MC"];
 const IMAGE_FIELDS = ["imageDataUrl", "imageAssetId", "imageName", "imageMimeType", "imageObjectFit", "imageTint"];
 const SHAPE_FIELDS = ["shapeStyle", "fillColor", "fillCss", "borderColor", "borderWidth", "borderRadius"];
 function record(value) {
@@ -193,20 +200,30 @@ function syncReferenceSize(componentValue, composition, sourceId, width, height)
     }
     return changed;
 }
+function syncCompositionReferences(compositions, report, sourceId, width, height, changedIds) {
+    for (const [compositionId, compositionValue] of Object.entries(compositions)) {
+        const composition = record(compositionValue);
+        let changedReferences = 0;
+        for (const component of Array.isArray(composition.components) ? composition.components : []) {
+            changedReferences += syncReferenceSize(component, composition, sourceId, width, height);
+        }
+        if (changedReferences)
+            changedIds.add(compositionId);
+    }
+    if (changedIds.size)
+        report.changed = true;
+}
 /**
- * Build 1008 exposed a legacy Voting Card viewport mismatch that the old
- * content-bounds renderer had hidden. The semantic answer art is a 520x150
- * surface, but both its base composition and lifecycle wrapper still declared
- * 560x230 canvases. Once references began honoring authored canvases directly,
- * the 560x230 source was non-uniformly squeezed into the 520x150 widget slot.
- *
- * Normalize the source and wrapper canvases once while preserving the compound
- * widget's intentionally authored x/y placement.
+ * The old content-bounds renderer hid stale source canvases and parent width /
+ * height overrides. Once references began honoring authored canvases directly,
+ * those mismatches became non-uniform stretches. Normalize each known layered
+ * widget from its frame-zero base art, keep the lifecycle wrapper intrinsic,
+ * and preserve every compound widget's authored x/y placement.
  */
-function normalizeVotingCardAnswerGeometry(compositions, report) {
+function normalizeLayeredPrefabGeometry(compositions, report, baseName, wrapperName) {
     const changedIds = new Set();
-    const baseEntry = compositionEntryByName(compositions, "Voting Card Answer Text");
-    const wrapperEntry = compositionEntryByName(compositions, "Voting Card Answer");
+    const baseEntry = compositionEntryByName(compositions, baseName);
+    const wrapperEntry = compositionEntryByName(compositions, wrapperName);
     if (!baseEntry || !wrapperEntry)
         return [];
     const [baseId, base] = baseEntry;
@@ -257,17 +274,32 @@ function normalizeVotingCardAnswerGeometry(compositions, report) {
     }
     if (wrapperChanged)
         changedIds.add(wrapperId);
-    for (const [compositionId, compositionValue] of Object.entries(compositions)) {
-        const composition = record(compositionValue);
-        let changedReferences = 0;
-        for (const component of Array.isArray(composition.components) ? composition.components : []) {
-            changedReferences += syncReferenceSize(component, composition, wrapperId, targetWidth, targetHeight);
+    syncCompositionReferences(compositions, report, wrapperId, targetWidth, targetHeight, changedIds);
+    return [...changedIds];
+}
+function normalizeIntrinsicReferenceGeometry(compositions, report, compositionName) {
+    const entry = compositionEntryByName(compositions, compositionName);
+    if (!entry)
+        return [];
+    const [sourceId, source] = entry;
+    const canvas = record(source.canvas);
+    const width = Math.max(1, finiteNumber(canvas.width) || 1);
+    const height = Math.max(1, finiteNumber(canvas.height) || 1);
+    const changedIds = new Set();
+    syncCompositionReferences(compositions, report, sourceId, width, height, changedIds);
+    return [...changedIds];
+}
+function normalizeKnownLayeredPrefabGeometry(compositions, report) {
+    const changedIds = new Set();
+    for (const chain of LAYERED_PREFAB_GEOMETRY_CHAINS) {
+        for (const id of normalizeLayeredPrefabGeometry(compositions, report, chain.baseName, chain.wrapperName)) {
+            changedIds.add(id);
         }
-        if (changedReferences)
-            changedIds.add(compositionId);
     }
-    if (changedIds.size)
-        report.changed = true;
+    for (const name of INTRINSIC_REFERENCE_COMPOSITIONS) {
+        for (const id of normalizeIntrinsicReferenceGeometry(compositions, report, name))
+            changedIds.add(id);
+    }
     return [...changedIds];
 }
 function normalizeCurrentArtManifestGeometry(manifestValue) {
@@ -282,7 +314,7 @@ function normalizeCurrentArtManifestGeometry(manifestValue) {
         compositionIds: []
     };
     const compositions = record(root.compositions);
-    report.compositionIds = normalizeVotingCardAnswerGeometry(compositions, report);
+    report.compositionIds = normalizeKnownLayeredPrefabGeometry(compositions, report);
     root.artComponentSchemaVersion = exports.ART_COMPONENT_SCHEMA_VERSION;
     return { manifest, report };
 }
@@ -489,8 +521,8 @@ function migrateLegacyArtManifestSchema(manifestValue) {
             report.changed !== changedBefore)
             report.compositionIds.push(compositionId);
     }
-    if (sourceVersion < VOTING_CARD_ANSWER_GEOMETRY_VERSION) {
-        for (const compositionId of normalizeVotingCardAnswerGeometry(compositions, report)) {
+    if (sourceVersion < LAYERED_PREFAB_GEOMETRY_VERSION) {
+        for (const compositionId of normalizeKnownLayeredPrefabGeometry(compositions, report)) {
             if (!report.compositionIds.includes(compositionId))
                 report.compositionIds.push(compositionId);
         }

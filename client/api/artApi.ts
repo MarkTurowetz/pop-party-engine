@@ -15,14 +15,22 @@ export interface ArtApi {
 
 export function createArtApi(client: ApiClient): ArtApi {
   let revision = "";
-  const rememberRevision = <T extends { revision?: string }>(response: T): T => {
+  let compositionRevisions: Record<string, string> = {};
+  const rememberRevision = <T extends { revision?: string; compositionRevisions?: Record<string, string> }>(response: T): T => {
     if (response.revision) revision = response.revision;
+    if (response.compositionRevisions) {
+      compositionRevisions = { ...compositionRevisions, ...response.compositionRevisions };
+    }
     return response;
   };
   const rememberErrorRevision = (error: unknown): void => {
     if (!(error instanceof ApiError) || !error.payload || typeof error.payload !== "object") return;
     const nextRevision = String((error.payload as { revision?: unknown }).revision || "");
     if (nextRevision) revision = nextRevision;
+    const nextCompositionRevisions = (error.payload as { compositionRevisions?: unknown }).compositionRevisions;
+    if (nextCompositionRevisions && typeof nextCompositionRevisions === "object" && !Array.isArray(nextCompositionRevisions)) {
+      compositionRevisions = { ...compositionRevisions, ...(nextCompositionRevisions as Record<string, string>) };
+    }
   };
   const mutate = async <T extends { revision?: string }>(request: () => Promise<T>): Promise<T> => {
     try {
@@ -36,13 +44,23 @@ export function createArtApi(client: ApiClient): ArtApi {
     loadArtAssets: async () => rememberRevision(validateArtAssetsResponse(await client.getJson<unknown>("/api/art-assets"))),
     saveArtComposition: async (compositionId, composition) => mutate(async () => (
       validateArtCompositionSaveResponse(
-        await client.postJson<unknown>(`/api/art-compositions/${encodeURIComponent(compositionId)}`, { composition, revision }),
+        await client.postJson<unknown>(`/api/art-compositions/${encodeURIComponent(compositionId)}`, {
+          composition,
+          revision,
+          expectedCompositionRevisions: { [compositionId]: compositionRevisions[compositionId] || "" }
+        }),
         `/api/art-compositions/${compositionId}`
       )
     )),
     saveArtCompositions: async (compositions) => mutate(async () => (
       validateArtCompositionsSaveResponse(
-        await client.postJson<unknown>("/api/art-compositions", { compositions, revision }),
+        await client.postJson<unknown>("/api/art-compositions", {
+          compositions,
+          revision,
+          expectedCompositionRevisions: Object.fromEntries(
+            compositions.map((composition) => [composition.id, compositionRevisions[composition.id] || ""])
+          )
+        }),
         "/api/art-compositions"
       )
     )),

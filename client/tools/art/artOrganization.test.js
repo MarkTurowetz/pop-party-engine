@@ -186,6 +186,82 @@ describe("art composition child persistence", () => {
     }));
   });
 
+  it("saves Controller Invalid Banner across unrelated manifest writes but protects same-asset conflicts", async () => {
+    const invalidBanner = {
+      id: "controller-invalid-banner",
+      name: "Controller Invalid Banner",
+      surface: "controller",
+      compositionKind: "gameObject",
+      timelineArchitectureVersion: 2,
+      canvas: { width: 330, height: 64 },
+      components: [
+        { id: "invalid-text", instanceLabel: "invalidText", name: "Invalid Text", kind: "text", x: 165, y: 32, width: 290, height: 34 },
+        { id: "invalid-card", instanceLabel: "invalidCard", name: "Invalid Card", kind: "shape", x: 165, y: 32, width: 330, height: 64 }
+      ]
+    };
+    let manifest = {};
+    let requestPayload = {};
+    let responseStatus = 0;
+    let responseBody = null;
+    const runtime = createArtAssetsRuntime({
+      acceptedArtTypes: [],
+      artCompositions: [invalidBanner],
+      artAssets: [],
+      artGroups: [],
+      artRoot: "/tmp/party-game-art-invalid-banner-revision-test",
+      contentTypeForFile: () => "application/octet-stream",
+      customDir: "/tmp/party-game-art-invalid-banner-revision-test/custom",
+      defaultDir: "/tmp/party-game-art-invalid-banner-revision-test/default",
+      manifestFile: "/tmp/party-game-art-invalid-banner-revision-test/manifest.json",
+      loadArtManifestSource: async () => manifest,
+      readJson: async () => requestPayload,
+      sendJson: (_res, status, body) => {
+        responseStatus = status;
+        responseBody = body;
+      },
+      writeArtManifestSource: async (nextManifest) => {
+        manifest = nextManifest;
+        return manifest;
+      }
+    });
+
+    await runtime.sendArtAssetList({});
+    const loadedRevision = responseBody.revision;
+    const loadedCompositionRevision = responseBody.compositionRevisions[invalidBanner.id];
+    const edited = responseBody.compositions.find((composition) => composition.id === invalidBanner.id);
+    edited.components.find((component) => component.id === "invalid-text").x = 166;
+
+    manifest = { ...manifest, unrelatedWrite: "newer manifest data" };
+    requestPayload = {
+      compositions: [edited],
+      revision: loadedRevision,
+      expectedCompositionRevisions: { [invalidBanner.id]: loadedCompositionRevision }
+    };
+    await runtime.handleSaveArtCompositions({}, {});
+
+    expect(responseStatus).toBe(200);
+    expect(manifest.compositions[invalidBanner.id].components)
+      .toContainEqual(expect.objectContaining({ id: "invalid-text", x: 166 }));
+
+    const savedRevision = responseBody.revision;
+    const savedCompositionRevision = responseBody.compositionRevisions[invalidBanner.id];
+    manifest.compositions[invalidBanner.id] = {
+      ...manifest.compositions[invalidBanner.id],
+      description: "Changed in another editor",
+      updatedAt: "2026-07-17T08:00:00.000Z"
+    };
+    requestPayload = {
+      compositions: [edited],
+      revision: savedRevision,
+      expectedCompositionRevisions: { [invalidBanner.id]: savedCompositionRevision }
+    };
+    await runtime.handleSaveArtCompositions({}, {});
+
+    expect(responseStatus).toBe(409);
+    expect(responseBody.conflictCompositionIds).toEqual([invalidBanner.id]);
+    expect(responseBody.error).toContain("changed");
+  });
+
   it("repairs missing Crafting Timer instance labels during normalization", () => {
     const runtime = createRuntime({
       artCompositions: [{

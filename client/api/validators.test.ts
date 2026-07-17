@@ -288,7 +288,14 @@ describe("Game data API", () => {
       if (path !== "/api/art-compositions/badge") return jsonResponse({});
       requestBodies.push(JSON.parse(String(init?.body || "{}")));
       attempts += 1;
-      if (attempts === 1) return jsonResponse({ ok: false, error: "Art manifest changed", revision: "fresh-revision" }, 409);
+      if (attempts === 1) {
+        return jsonResponse({
+          ok: false,
+          error: "Art manifest changed",
+          revision: "fresh-revision",
+          compositionRevisions: { badge: "fresh-badge-revision" }
+        }, 409);
+      }
       return jsonResponse(artCompositionSaveResponse({ revision: "saved-revision" }));
     });
     const api = createGameDataApi({ fetchImpl: fetchImpl as unknown as typeof fetch });
@@ -296,6 +303,9 @@ describe("Game data API", () => {
     await expect(api.art.saveArtComposition("badge", artComposition())).rejects.toThrow("Art manifest changed");
     await expect(api.art.saveArtComposition("badge", artComposition())).resolves.toMatchObject({ ok: true });
 
-    expect(requestBodies[1]).toMatchObject({ revision: "fresh-revision" });
+    expect(requestBodies[1]).toMatchObject({
+      revision: "fresh-revision",
+      expectedCompositionRevisions: { badge: "fresh-badge-revision" }
+    });
   });
 });
