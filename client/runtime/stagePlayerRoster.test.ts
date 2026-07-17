@@ -488,6 +488,45 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(incorrectTile.dataset.answerBubbleCorrectness).toBe("wrong");
   });
 
+  it("preserves the semantic state selected by the reveal action across room reconciliation", () => {
+    const composition = {
+      id: PLAYER_WIDGET_COMPOSITION_ID,
+      canvas: { width: 300, height: 370 },
+      components: []
+    };
+    const objectHost = { style: { width: "", height: "", color: "" } } as unknown as HTMLElement;
+    const tile = {
+      dataset: {
+        playerId: "p1",
+        playerNeedsInput: "false",
+        answerBubbleNonce: "answer-1",
+        answerBubbleText: "NO",
+        answerBubbleCorrectness: "wrong"
+      },
+      style: { setProperty: vi.fn() },
+      querySelector: () => objectHost
+    } as unknown as HTMLElement;
+    const stopAtComponent = vi.fn(() => 0);
+    const roster = PartyGamePlayerRoster.createRenderer({
+      getComposition: (id: string) => (id === PLAYER_WIDGET_COMPOSITION_ID ? composition : null)
+    });
+    roster.tileRenderers.set(tile, {
+      render: vi.fn(),
+      playComponent: vi.fn(() => 0),
+      stopAtComponent
+    });
+
+    roster.syncPlayerObject(tile, {
+      id: "p1",
+      name: "Ava",
+      avatar: { shape: "rex", color: "#22d3ee" },
+      displayedAnswer: { text: "NO", nonce: "answer-1" }
+    });
+
+    expect(stopAtComponent).toHaveBeenCalledWith("playerAnswerBubble", "Incorrect", { instant: true });
+    expect(tile.dataset.answerBubbleCorrectness).toBe("wrong");
+  });
+
   it("completes correctness only after every directly targeted bubble reports its state selection", async () => {
     const correctTile = { dataset: { playerId: "correct" } } as unknown as HTMLElement;
     const incorrectTile = { dataset: { playerId: "incorrect" } } as unknown as HTMLElement;

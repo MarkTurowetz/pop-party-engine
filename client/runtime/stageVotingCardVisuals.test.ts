@@ -8,6 +8,7 @@ import {
   VOTING_CARD_VOTER_TEXT_ID,
   VOTING_CARD_VOTERS_MC_ID,
   runtimeVotingCardComposition,
+  votingCardLifecycleComponentIds,
   votingCardRuntimeBaseCompositionId,
   votingCardArtTimeline
 } from "./stageVotingCardVisuals";
@@ -41,6 +42,25 @@ describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
 
     expect(votingCardArtTimeline(timeline).labels).toEqual([expect.objectContaining({ name: "custom", frame: 1 })]);
     expect(votingCardArtTimeline(null).labels.map((label) => label.name)).toEqual(expect.arrayContaining(["Appear", "Disappear"]));
+  });
+
+  it("waits only for lifecycle children that the authored voting-card MC directly contains", () => {
+    const productionLikeCard = {
+      components: [
+        { id: "voting-card-answer-mc" },
+        { id: "voting-card-author-mc" },
+        { id: "voting-card-voters-mc" },
+        { id: "voting-card-vote-count-mc" }
+      ]
+    };
+
+    expect(votingCardLifecycleComponentIds(productionLikeCard, true)).toEqual(["voting-card-answer-mc"]);
+    expect(votingCardLifecycleComponentIds(productionLikeCard, false)).toEqual([
+      "voting-card-answer-mc",
+      "voting-card-author-mc",
+      "voting-card-voters-mc",
+      "voting-card-vote-count-mc"
+    ]);
   });
 
   it("injects runtime answer text without changing the authored child prefab", () => {

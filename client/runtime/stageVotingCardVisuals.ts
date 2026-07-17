@@ -98,6 +98,19 @@ function componentById(composition: Dict | null, id: string): Dict | null {
   return ((composition?.components as Dict[]) || []).find((component) => component.id === id) || null;
 }
 
+export function votingCardLifecycleComponentIds(composition: Dict | null, isShown: boolean): string[] {
+  const requestedIds = isShown
+    ? [VOTING_CARD_ART_COMPONENT_ID, VOTING_CARD_ANSWER_COMPONENT_ID]
+    : [
+        VOTING_CARD_ART_COMPONENT_ID,
+        VOTING_CARD_ANSWER_COMPONENT_ID,
+        VOTING_CARD_AUTHOR_COMPONENT_ID,
+        VOTING_CARD_VOTERS_COMPONENT_ID,
+        VOTING_CARD_VOTE_COUNT_COMPONENT_ID
+      ];
+  return requestedIds.filter((componentId) => componentById(composition, componentId) !== null);
+}
+
 function legacyVotingCardComponent(legacy: Dict | null, id: string, fallback: Dict): Dict {
   return cloneComponent(componentById(legacy, id) || fallback);
 }
@@ -453,19 +466,17 @@ class VotingCardView {
     this.desiredShown = nextShown;
     const instant = options.instant === true;
     const animation = nextShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
+    const parentState = nextShown ? "On" : "Off";
     if (nextShown) this.element.classList.remove("voting-card-group-hidden");
+    const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
     const completions = [
-      targetCompletion((complete) => this.groupVisual?.play?.(animation, { instant, complete }) || 0),
-      targetCompletion((complete) => this.playChild(VOTING_CARD_ART_COMPONENT_ID, animation, { instant, complete })),
-      targetCompletion((complete) => this.playChild(VOTING_CARD_ANSWER_COMPONENT_ID, animation, { instant, complete }))
+      // The compound Voting Card Widget MC owns only the parked On/Off gate.
+      // Its directly-authored children own the lifecycle motion.
+      targetCompletion((complete) => this.groupVisual?.play?.(parentState, { instant: true, complete }) || 0),
+      ...votingCardLifecycleComponentIds(parent, nextShown).map((componentId) => (
+        targetCompletion((complete) => this.playChild(componentId, animation, { instant, complete }))
+      ))
     ];
-    if (!nextShown) {
-      completions.push(
-        targetCompletion((complete) => this.playChild(VOTING_CARD_AUTHOR_COMPONENT_ID, animation, { instant, complete })),
-        targetCompletion((complete) => this.playChild(VOTING_CARD_VOTERS_COMPONENT_ID, animation, { instant, complete })),
-        targetCompletion((complete) => this.playChild(VOTING_CARD_VOTE_COUNT_COMPONENT_ID, animation, { instant, complete }))
-      );
-    }
     return Promise.all(completions).then(() => undefined);
   }
 

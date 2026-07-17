@@ -353,10 +353,27 @@ class PlayerRosterRenderer {
 
     const previousNeedsInput = tile.dataset.playerNeedsInput;
     const isInitialRender = previousNeedsInput === undefined;
+    const previousAnswerNonce = tile.dataset.answerBubbleNonce || "";
+    const previousAnswerText = tile.dataset.answerBubbleText || "";
+    const previousAnswerCorrectness = tile.dataset.answerBubbleCorrectness || "";
 
     renderer.render(runtimePlayerWidgetComponents(composition, player), canvas, {
       instant: true
     });
+
+    // Reconciliation may refresh authored component data while an action-selected
+    // semantic frame is parked. Preserve the state selected by Reveal Player
+    // Answer Correctness; do not derive or initiate a new state from room data.
+    // A different answer identity starts clean at Default.
+    if (previousAnswerCorrectness) {
+      const sameAnswer = previousAnswerNonce === answerState.nonce && previousAnswerText === answerState.text;
+      renderer.stopAtComponent?.(
+        PLAYER_ANSWER_BUBBLE_STATE_ID,
+        sameAnswer ? (previousAnswerCorrectness === "correct" ? "Correct" : "Incorrect") : "Default",
+        { instant: true }
+      );
+      if (!sameAnswer) tile.dataset.answerBubbleCorrectness = "";
+    }
 
     const avatarStateDuration = this.syncAvatarComponent(renderer, player);
     this.syncAvatarBehaviorComponent(renderer, player, {
@@ -625,8 +642,8 @@ class PlayerRosterRenderer {
       const tile = node as El;
       const player = this.tilePlayers.get(tile);
       const renderer = this.tileRenderers.get(tile);
-      const targetComplete = barrier?.addTarget();
       if (!player || !renderer) continue;
+      const targetComplete = barrier?.addTarget();
       const state = playerAnswerBubbleRuntimeState(player, true);
       const playerId = String(player.id || tile.dataset.playerId || "");
       const stateLabel = hasExplicitCorrectness
