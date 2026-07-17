@@ -142,6 +142,30 @@ describe("controller layout normalization", () => {
     ]);
   });
 
+  it("migrates Join and Lobby buttons into local containers and drops the obsolete Intro controller state", () => {
+    const layouts = runtime().normalizeControllerLayouts({
+      canvas: { width: 390, height: 844 },
+      global: { id: "global", name: "Global", elements: [] },
+      states: [
+        { id: "join", name: "Join", elements: [{ id: "joinbutton", selector: "#joinButton", artCompositionId: "controller-primary-button" }] },
+        { id: "lobby", name: "Lobby", elements: [{ id: "startgamebutton", selector: "#startGameButton", artCompositionId: "controller-primary-button" }] },
+        { id: "intro", name: "Present Controller State", elements: [{ id: "intropresentbutton" }] }
+      ]
+    });
+
+    expect(layouts.states.map((state) => state.id)).toEqual(["join", "lobby"]);
+    expect(layouts.states[0].elements[0]).toMatchObject({
+      id: "controllerjoinbuttoncontainer",
+      selector: "#controllerJoinButtonContainer",
+      artCompositionId: ""
+    });
+    expect(layouts.states[1].elements[0]).toMatchObject({
+      id: "controllerlobbybuttoncontainer",
+      selector: "#controllerLobbyButtonContainer",
+      artCompositionId: ""
+    });
+  });
+
   it("preserves per-view configuration tags supplied by layout normalization", () => {
     const customRuntime = createControllerLayoutNormalizationRuntime({
       cloneJson: (value) => JSON.parse(JSON.stringify(value)),

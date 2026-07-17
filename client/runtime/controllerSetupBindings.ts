@@ -9,6 +9,7 @@ const BUTTON_SPEC = { width: 260, height: 64, fontSize: 24 };
 
 export interface ControllerSetupBindingsOptions {
   elements: Record<string, HTMLInputElement & HTMLButtonElement & HTMLFormElement & HTMLElement> & Record<string, HTMLElement>;
+  getJoinButton: () => HTMLButtonElement;
   getTextSubmitButton: () => HTMLButtonElement | null;
   getControllerState: () => Dict | null | undefined;
   getSessionValue: (key: string) => string;
@@ -26,6 +27,7 @@ export interface ControllerSetupBindingsOptions {
 export function createControllerSetupBindings(options: ControllerSetupBindingsOptions) {
   const {
     elements,
+    getJoinButton,
     getTextSubmitButton,
     getControllerState,
     getSessionValue,
@@ -48,10 +50,10 @@ export function createControllerSetupBindings(options: ControllerSetupBindingsOp
         };
 
   function showJoinError(error: Error): void {
-    (elements.joinButton as HTMLButtonElement).disabled = false;
-    writeButtonText(elements.joinButton, error.message, { width: 260, height: 64, fontSize: 22 });
+    getJoinButton().disabled = false;
+    writeButtonText(getJoinButton(), error.message, { width: 260, height: 64, fontSize: 22 });
     window.setTimeout(() => {
-      writeButtonText(elements.joinButton, "Join", { ...BUTTON_SPEC });
+      writeButtonText(getJoinButton(), "Join", { ...BUTTON_SPEC });
       updateJoinButton();
     }, 1800);
   }
@@ -86,7 +88,7 @@ export function createControllerSetupBindings(options: ControllerSetupBindingsOp
     });
 
     if (shouldAutoJoin() && normalizeStageCode(stageInput.value) && nameInput.value.trim()) {
-      writeButtonText(elements.joinButton, "Joining", { ...BUTTON_SPEC });
+      writeButtonText(getJoinButton(), "Joining", { ...BUTTON_SPEC });
       joinController(normalizeStageCode(stageInput.value), nameInput.value.trim()).catch(showJoinError);
     }
   }

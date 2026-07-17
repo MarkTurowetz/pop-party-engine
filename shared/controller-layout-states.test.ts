@@ -48,4 +48,11 @@ describe("controller layout states", () => {
       controllerLayoutStateIds.lobby
     ]);
   });
+
+  it("uses Join even while a stale controller snapshot still selects another layout", () => {
+    expect(controllerLayoutCandidateIds("join", controllerLayoutStateIds.voiceInput, true)).toEqual([
+      controllerLayoutStateIds.join,
+      controllerLayoutStateIds.lobby
+    ]);
+  });
 });

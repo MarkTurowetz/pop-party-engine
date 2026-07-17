@@ -3,6 +3,7 @@ type LifecycleState = "Off" | "On";
 export interface ControllerLocalButtonSlot {
   buttonClassName?: string;
   buttonId: string;
+  buttonType?: "button" | "submit";
   container: HTMLElement;
   layoutPhase: string;
   optionId: string;
@@ -22,7 +23,7 @@ export function createControllerLocalButtonRuntime(options: ControllerLocalButto
 
   function defaultCreateButton(slot: ControllerLocalButtonSlot): HTMLButtonElement {
     const button = document.createElement("button");
-    button.type = "button";
+    button.type = slot.buttonType || "button";
     button.id = slot.buttonId;
     button.className = [
       "primary-button",
@@ -33,7 +34,8 @@ export function createControllerLocalButtonRuntime(options: ControllerLocalButto
     return button;
   }
 
-  function dispose(): void {
+  function dispose(slot?: ControllerLocalButtonSlot): void {
+    if (slot && activeSlot !== slot) return;
     if (!activeButton) return;
     setButtonLifecycleState?.(activeButton, "Off");
     disposeButtonArt?.(activeButton);

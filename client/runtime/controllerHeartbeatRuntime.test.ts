@@ -5,7 +5,8 @@ function options(): ControllerHeartbeatOptions {
   return {
     applyLayoutForPhase: vi.fn(),
     closeAvatarPicker: vi.fn(),
-    elements: { joinButton: {} as HTMLButtonElement, meta: {} as HTMLElement },
+    elements: { meta: {} as HTMLElement },
+    getJoinButton: () => ({} as HTMLButtonElement),
     getControllerState: vi.fn(),
     hideViews: vi.fn(),
     renderState: vi.fn(),

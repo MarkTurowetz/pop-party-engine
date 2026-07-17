@@ -119,12 +119,20 @@ concepts into focused modules.
     `Disabled` states; and the deepest prefab owns the actual button art. Pointer input may play
     interaction labels fire-and-forget, but CSS classes, timers, and controller reconciliation do
     not animate button transforms, opacity, filters, colors, or lifecycle state.
-  - Semantic controller states own selector-backed local action containers. Presentation, Paused,
-    Text Input, Voice Input, and Microphone Access spawn distinct `Controller Primary Button`
-    instances inside their own containers and dispose the prior state's instance before another
-    controller layout mounts. Voice recording is cancelled before its local button is disposed. The
+  - Controller states own selector-backed local action containers. Join, Lobby, Presentation, Paused,
+    Text Input, Voice Input, and Microphone Access spawn a single `Controller Primary Button`
+    instance inside the active container and dispose the prior state's instance before another
+    controller layout mounts. `starting` reuses the Lobby container and updates that one instance
+    from Start Game to Cancel; it never layers two button renderers on one host. A container positions
+    the button but does not resize or clip it: the button keeps its authored composition dimensions,
+    and lifecycle motion may extend beyond the container bounds. Voice recording is cancelled before
+    its local button is disposed. The
     Global Controller Layout must not own action messages or action buttons; it is reserved for
     genuinely persistent controller art.
+  - Selector-backed controller art fails closed. If its authored composition is unavailable, the
+    native host stays `controller-layout-hidden` instead of exposing legacy HTML styling. A missing
+    player always selects the authored Join layout, even while an older room snapshot still names a
+    different controller layout.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,

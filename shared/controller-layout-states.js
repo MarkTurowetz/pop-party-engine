@@ -42,6 +42,11 @@ function controllerLayoutCandidateIds(phase, selectedLayoutId, hasControllerStat
         return candidates;
     }
     const phaseId = String(phase || "").trim();
+    if (phaseId === exports.controllerLayoutStateIds.join) {
+        add(exports.controllerLayoutStateIds.join);
+        add(exports.controllerLayoutStateIds.lobby);
+        return candidates;
+    }
     if (isSemanticControllerLayoutStateId(phaseId)) {
         add(phaseId);
         add(exports.controllerLayoutStateIds.presentation);

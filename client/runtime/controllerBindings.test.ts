@@ -6,6 +6,7 @@ describe("createControllerSetupBindings (ported)", () => {
   it("exposes the bind functions", () => {
     const bindings = createControllerSetupBindings({
       elements: {} as never,
+      getJoinButton: () => ({} as HTMLButtonElement),
       getTextSubmitButton: () => null,
       getControllerState: () => null,
       getSessionValue: () => "",
@@ -32,6 +33,7 @@ describe("createControllerActionBindings (ported)", () => {
       applyLayoutForPhase: vi.fn(),
       closeAvatarPicker: vi.fn(),
       elements: {} as never,
+      getStartButton: () => null,
       getControllerState: () => null,
       getSessionRuntime: () => ({ sendLeaveBeacon: vi.fn() }),
       getSubmitApi: () => ({ startOrCancelGame: vi.fn() }) as never,

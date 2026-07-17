@@ -44,8 +44,8 @@ declare global {
     dismissedTextInvalidKey?: string;
     runtimeTestChannel?: { addEventListener: (type: string, cb: (event: MessageEvent) => void) => void } | null;
     // app-shell DOM refs (HTMLElement) + string id consts used by the controller.
-    joinButton?: HTMLButtonElement;
-    startGameButton?: HTMLButtonElement;
+    controllerJoinButtonContainer?: HTMLElement;
+    controllerLobbyButtonContainer?: HTMLElement;
     controllerPresentationButtonContainer?: HTMLElement;
     controllerPausedButtonContainer?: HTMLElement;
     controllerMicAccessButtonContainer?: HTMLElement;
@@ -119,17 +119,25 @@ function setControllerButtonText(target: HTMLElement | undefined, value: unknown
   w.PartyGameControllerText?.setButtonText(target, value, spec);
 }
 
-function initializeControllerButtonText(): void {
-  setControllerButtonText(w.joinButton, "Join", { width: 260, height: 64, fontSize: 24 });
-  setControllerButtonText(w.startGameButton, "Start Game", { width: 260, height: 64, fontSize: 24 });
-}
-
 function el<T = HTMLElement>(value: unknown): T {
   return value as T;
 }
 
-function getControllerLocalButtonSlots(): Record<"microphoneAccess" | "textSubmit" | "voice", ControllerLocalButtonSlot> {
+function getControllerLocalButtonSlots(): Record<"join" | "lobby" | "microphoneAccess" | "textSubmit" | "voice", ControllerLocalButtonSlot> {
   return controllerModules.get("localButtonSlots", () => ({
+    join: {
+      buttonId: "joinButton",
+      buttonType: "submit",
+      container: el(w.controllerJoinButtonContainer),
+      layoutPhase: controllerLayoutStateIds.join,
+      optionId: "join.submit"
+    },
+    lobby: {
+      buttonId: "startGameButton",
+      container: el(w.controllerLobbyButtonContainer),
+      layoutPhase: controllerLayoutStateIds.lobby,
+      optionId: "lobby.startGame"
+    },
     microphoneAccess: {
       buttonId: "controllerMicAccessButton",
       container: el(w.controllerMicAccessButtonContainer),
@@ -174,6 +182,22 @@ function activateControllerLocalButton(
   );
   if (refreshExisting && !activation.isNew) setControllerButtonText(activation.button, label, spec);
   return activation.button;
+}
+
+function getJoinButton(): HTMLButtonElement {
+  return activateControllerLocalButton(
+    getControllerLocalButtonSlots().join,
+    "Join",
+    { width: 260, height: 64, fontSize: 24 }
+  );
+}
+
+function getStartButton(): HTMLButtonElement {
+  return activateControllerLocalButton(
+    getControllerLocalButtonSlots().lobby,
+    "Start Game",
+    { width: 260, height: 64, fontSize: 24 }
+  );
 }
 
 function getControllerViewState() {
@@ -338,7 +362,8 @@ function getControllerHeartbeatRuntime() {
     createControllerHeartbeatRuntime({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       closeAvatarPicker,
-      elements: { joinButton: el<HTMLButtonElement>(w.joinButton), joinState: el(w.joinState), meta: el(w.controllerMeta) },
+      elements: { joinState: el(w.joinState), meta: el(w.controllerMeta) },
+      getJoinButton,
       getControllerState: () => w.controllerState,
       hideViews: hideControllerViews,
       renderState: renderControllerState,
@@ -359,12 +384,12 @@ function getControllerLobbyView() {
       elements: {
         lobbyState: el(w.controllerLobbyState),
         meta: el(w.controllerMeta),
-        playerName: el(w.controllerPlayerName),
-        startButton: el(w.startGameButton)
+        playerName: el(w.controllerPlayerName)
       },
+      disposeStartButton: () => getControllerLocalButtonRuntime().dispose(getControllerLocalButtonSlots().lobby),
+      getStartButton,
       hideViews: hideControllerViews,
       setButtonText: setControllerButtonText,
-      setShown: setControllerTextShown,
       setText: setControllerText,
       showView: (viewId: string) => getControllerViewState().show(viewId),
       setAvatar: setControllerAvatar
@@ -435,19 +460,19 @@ function getControllerSessionRuntime() {
 function applyControllerLayoutForPhase(phase: string): void {
   getControllerGlobalActionView().prepareForLayout(phase);
   if (phase !== controllerLayoutStateIds.voiceInput) getControllerVoiceInput().stopRecognition();
-  getControllerLocalButtonRuntime().prepareForLayout(phase);
+  getControllerLocalButtonRuntime().prepareForLayout(phase === "starting" ? controllerLayoutStateIds.lobby : phase);
   w.applyControllerLayoutForPhase?.(phase);
 }
 
 function updateJoinButton(): void {
   const hasStage = w.normalizeStageCode!(el<HTMLInputElement>(w.stageCodeInput).value).length > 0;
   const hasName = el<HTMLInputElement>(w.playerNameInput).value.trim().length > 0;
-  el<HTMLButtonElement>(w.joinButton).disabled = !(hasStage && hasName);
+  getJoinButton().disabled = !(hasStage && hasName);
 }
 
 async function joinController(stageCode: string, playerName: string): Promise<Dict> {
   const playerId = w.getControllerPlayerId!();
-  el<HTMLButtonElement>(w.joinButton).disabled = true;
+  getJoinButton().disabled = true;
   const result = (await getControllerSubmitApi().join(stageCode, playerName, playerId)) as Dict;
   const player = result.player as { id: string; name?: string };
   getControllerSessionRuntime().enterLobby(stageCode, player.id, result.lobby, player);
@@ -558,6 +583,12 @@ function reloadControllerArtAssets(): void {
       if (w.controllerState?.player) setControllerAvatar(w.controllerState.player as Dict);
       if (w.controllerState?.lobby) renderControllerState(w.controllerState.lobby as Dict);
       else applyControllerLayoutForPhase((w.controllerState?.phase as string) || "join");
+      const activeButton = getControllerLocalButtonRuntime().active();
+      if (activeButton) {
+        setControllerButtonText(activeButton, activeButton.dataset.controllerTextValue || activeButton.getAttribute("aria-label") || "Button", {
+          fontSize: 24
+        });
+      }
     })
     .catch(() => {});
 }
@@ -581,18 +612,18 @@ function setupController(): void {
   nameInput.value =
     w.getPlayerNameFromUrl!() || w.getSessionValue!("partyTemplatePlayerName") || w.getLocalValue!("partyTemplatePlayerName") || "";
   updateJoinButton();
-  initializeControllerButtonText();
   applyControllerLayoutForPhase("join");
+  getJoinButton();
 
   const setupBindings = createControllerSetupBindings({
     elements: {
       invalidBanner: el(w.controllerInvalidBanner),
-      joinButton: el(w.joinButton),
       joinForm: el(w.joinForm),
       playerNameInput: el(w.playerNameInput),
       stageCodeInput: el(w.stageCodeInput),
       textInput: el(w.controllerTextInput)
     } as never,
+    getJoinButton,
     getTextSubmitButton: () => getControllerLocalButtonRuntime().active(getControllerLocalButtonSlots().textSubmit),
     getControllerState: () => w.controllerState,
     getSessionValue: w.getSessionValue!,
@@ -620,8 +651,9 @@ function setupController(): void {
       avatarPickerDoneButton: el(w.avatarPickerDoneButton),
       avatarPickerPanel: el(w.avatarPicker?.querySelector(".avatar-picker-panel")),
       controllerScreen: el(w.controllerScreen),
-      startButton: el(w.startGameButton)
+      startButtonContainer: el(w.controllerLobbyButtonContainer)
     } as never,
+    getStartButton: () => getControllerLocalButtonRuntime().active(getControllerLocalButtonSlots().lobby),
     getControllerState: () => w.controllerState,
     getSessionRuntime: getControllerSessionRuntime,
     getSubmitApi: getControllerSubmitApi as unknown as ControllerActionBindingsOptions["getSubmitApi"],

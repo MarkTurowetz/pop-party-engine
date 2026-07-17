@@ -218,7 +218,7 @@ const defaultControllerLayouts = {
                 { id: "joinTitle", name: "Join Title", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 112, width: 330, height: 86, scale: 1, defaultText: "Join Lobby", fontSize: 54, autoFitText: false, fontColor: "#17131f" },
                 { id: "stageCodeField", name: "Stage Code Field", selector: "#stageCodeField", kind: "art", artCompositionId: "controller-stage-code-field", x: 195, y: 255, width: 320, height: 96, scale: 1, defaultAnimationState: "on" },
                 { id: "playerNameField", name: "Player Name Field", selector: "#playerNameField", kind: "art", artCompositionId: "controller-player-name-field", x: 195, y: 375, width: 320, height: 96, scale: 1, defaultAnimationState: "on" },
-                { id: "joinButton", name: "Join Button", selector: "#joinButton", kind: "art", artCompositionId: "controller-primary-button", x: 195, y: 505, width: 260, height: 78, scale: 1, defaultAnimationState: "on" }
+                { id: "controllerJoinButtonContainer", name: "Join Button Container", selector: "#controllerJoinButtonContainer", kind: "art", x: 195, y: 505, width: 300, height: 78, scale: 1, defaultAnimationState: "on" }
             ]
         },
         {
@@ -229,7 +229,7 @@ const defaultControllerLayouts = {
                 { id: "controllerAvatar", name: "Player Avatar", selector: "#controllerAvatar", kind: "art", artCompositionId: "controller-avatar-button", x: 195, y: 150, width: 104, height: 104, scale: 1, defaultAnimationState: "on" },
                 { id: "controllerPlayerName", name: "Player Name", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 290, width: 330, height: 80, scale: 1, defaultText: "Player", fontSize: 66, autoFitText: false, fontColor: "#17131f" },
                 { id: "controllerMeta", name: "Controller Status", kind: "art", artCompositionId: "layout-text-field", x: 195, y: 382, width: 330, height: 48, scale: 1, defaultText: "Waiting in lobby", fontSize: 28, autoFitText: false, fontColor: "#6b5a80" },
-                { id: "startGameButton", name: "Start Game Button", selector: "#startGameButton", kind: "art", artCompositionId: "controller-primary-button", x: 195, y: 508, width: 260, height: 78, scale: 1, defaultAnimationState: "on" }
+                { id: "controllerLobbyButtonContainer", name: "Lobby Button Container", selector: "#controllerLobbyButtonContainer", kind: "art", x: 195, y: 508, width: 300, height: 78, scale: 1, defaultAnimationState: "on" }
             ]
         }
     ]

@@ -5,7 +5,9 @@ describe("createControllerLobbyView (ported)", () => {
   it("exposes the lobby render surface", () => {
     const view = createControllerLobbyView({
       applyLayoutForPhase: vi.fn(),
+      disposeStartButton: vi.fn(),
       elements: {} as never,
+      getStartButton: () => ({} as HTMLButtonElement),
       hideViews: vi.fn(),
       setAvatar: vi.fn(),
       showView: vi.fn()
@@ -26,7 +28,9 @@ describe("createControllerLobbyView (ported)", () => {
     const showView = vi.fn();
     const view = createControllerLobbyView({
       applyLayoutForPhase,
+      disposeStartButton: vi.fn(),
       elements: {} as never,
+      getStartButton: () => ({} as HTMLButtonElement),
       hideViews,
       setAvatar: vi.fn(),
       showView
@@ -36,5 +40,29 @@ describe("createControllerLobbyView (ported)", () => {
     expect(hideViews).toHaveBeenCalledOnce();
     expect(applyLayoutForPhase).toHaveBeenCalledWith("intro");
     expect(showView).not.toHaveBeenCalled();
+  });
+
+  it("returns a missing player directly to the authored Join layout", () => {
+    const applyLayoutForPhase = vi.fn();
+    const disposeStartButton = vi.fn();
+    const hideViews = vi.fn();
+    const showView = vi.fn();
+    const view = createControllerLobbyView({
+      applyLayoutForPhase,
+      disposeStartButton,
+      elements: { meta: {} as HTMLElement } as never,
+      getStartButton: () => ({} as HTMLButtonElement),
+      hideViews,
+      setAvatar: vi.fn(),
+      setText: vi.fn(),
+      showView
+    });
+
+    view.renderMissingPlayer();
+
+    expect(disposeStartButton).toHaveBeenCalledOnce();
+    expect(applyLayoutForPhase).toHaveBeenCalledWith("join");
+    expect(showView).toHaveBeenCalledWith("join");
+    expect(showView).not.toHaveBeenCalledWith("lobby");
   });
 });

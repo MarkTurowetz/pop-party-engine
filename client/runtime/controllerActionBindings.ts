@@ -11,6 +11,7 @@ export interface ControllerActionBindingsOptions {
   applyLayoutForPhase: (phase: string) => void;
   closeAvatarPicker: (options: { commit: boolean }) => void;
   elements: Record<string, HTMLButtonElement & HTMLElement> & Record<string, HTMLElement>;
+  getStartButton: () => HTMLButtonElement | null;
   getControllerState: () => Dict | null | undefined;
   getSessionRuntime: () => { sendLeaveBeacon: (origin: string) => void };
   getSubmitApi: () => SubmitApi;
@@ -25,6 +26,7 @@ export function createControllerActionBindings(options: ControllerActionBindings
     applyLayoutForPhase,
     closeAvatarPicker,
     elements,
+    getStartButton,
     getControllerState,
     getSessionRuntime,
     getSubmitApi,
@@ -35,10 +37,12 @@ export function createControllerActionBindings(options: ControllerActionBindings
   } = options;
 
   function bindStartButton(): void {
-    elements.startButton.addEventListener("click", async () => {
+    elements.startButtonContainer.addEventListener("click", async (event) => {
+      const button = (event.target as HTMLElement | null)?.closest?.("button") as HTMLButtonElement | null;
+      if (!button || button !== getStartButton()) return;
       const state = getControllerState();
       if (!(state?.player as Dict)?.isVip) return;
-      const isCancel = (elements.startButton as HTMLButtonElement).dataset.optionId === "lobby.cancelStart";
+      const isCancel = button.dataset.optionId === "lobby.cancelStart";
       try {
         const result = await getSubmitApi().startOrCancelGame({ isCancel, startToken: state?.startToken as string });
         if (result.lobby) renderState(result.lobby);

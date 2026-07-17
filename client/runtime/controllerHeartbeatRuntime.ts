@@ -6,7 +6,8 @@ type Dict = Record<string, unknown>;
 export interface ControllerHeartbeatOptions {
   applyLayoutForPhase: (phase: string) => void;
   closeAvatarPicker: (options: { commit: boolean }) => void;
-  elements: { joinButton: HTMLButtonElement; meta: HTMLElement } & Record<string, HTMLElement>;
+  elements: { meta: HTMLElement } & Record<string, HTMLElement>;
+  getJoinButton: () => HTMLButtonElement;
   getControllerState: () => unknown;
   hideViews: () => void;
   renderState: (lobby: unknown) => void;
@@ -26,6 +27,7 @@ export function createControllerHeartbeatRuntime(options: ControllerHeartbeatOpt
     applyLayoutForPhase,
     closeAvatarPicker,
     elements,
+    getJoinButton,
     getControllerState,
     hideViews,
     renderState,
@@ -63,7 +65,7 @@ export function createControllerHeartbeatRuntime(options: ControllerHeartbeatOpt
         hideViews();
         showView("join");
         applyLayoutForPhase("join");
-        elements.joinButton.disabled = false;
+        getJoinButton().disabled = false;
         return;
       }
       writeText(elements.meta, "Reconnecting to lobby");

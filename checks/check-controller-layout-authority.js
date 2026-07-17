@@ -73,7 +73,8 @@ async function main() {
     const staticState = await staticPage.evaluate(() => ({
       stageCodeDisplay: getComputedStyle(document.querySelector("#stageCodeField")).display,
       playerNameDisplay: getComputedStyle(document.querySelector("#playerNameField")).display,
-      joinButtonDisplay: getComputedStyle(document.querySelector("#joinButton")).display,
+      joinContainerDisplay: getComputedStyle(document.querySelector("#controllerJoinButtonContainer")).display,
+      hasJoinButton: Boolean(document.querySelector("#joinButton")),
       hasIntroState: Boolean(document.querySelector("#controllerIntroState")),
       hasPresentHiText: document.body.textContent.includes("Present HI THERE")
     }));
@@ -81,7 +82,8 @@ async function main() {
 
     assert(staticState.stageCodeDisplay === "none", "native stage-code control can flash before layout mount");
     assert(staticState.playerNameDisplay === "none", "native player-name control can flash before layout mount");
-    assert(staticState.joinButtonDisplay === "none", "native Join button can flash before layout mount");
+    assert(staticState.joinContainerDisplay === "none", "Join button container can flash before layout mount");
+    assert(!staticState.hasJoinButton, "Join button must be spawned by the active controller layout");
     assert(!staticState.hasIntroState, "legacy controller intro state still exists");
     assert(!staticState.hasPresentHiText, "legacy Present HI THERE art still exists");
 
@@ -91,14 +93,96 @@ async function main() {
     const mountedState = await page.evaluate(async () => ({
       stageCodeHidden: document.querySelector("#stageCodeField").classList.contains("controller-layout-hidden"),
       stageCodeHasArt: Boolean(document.querySelector("#stageCodeField > .controller-widget-art-layer")),
+      joinContainerHidden: document.querySelector("#controllerJoinButtonContainer").classList.contains("controller-layout-hidden"),
+      joinContainerOverflow: getComputedStyle(document.querySelector("#controllerJoinButtonContainer")).overflow,
+      joinButtonCount: document.querySelectorAll("#controllerJoinButtonContainer > #joinButton").length,
       joinButtonHasArt: document.querySelector("#joinButton").classList.contains("has-controller-widget-art"),
+      joinButtonOverflow: getComputedStyle(document.querySelector("#joinButton")).overflow,
+      joinButtonArtRoots: document.querySelectorAll("#joinButton > .controller-widget-art-layer > .art-runtime-object").length,
       presentHiStatus: (await fetch("/api/present-hi", { method: "POST" })).status
     }));
 
     assert(!mountedState.stageCodeHidden, "authored Join layout did not activate the stage-code host");
     assert(mountedState.stageCodeHasArt, "authored Join layout did not mount stage-code art");
+    assert(!mountedState.joinContainerHidden, "authored Join layout did not activate its dynamic-button container");
+    assert(mountedState.joinContainerOverflow === "visible", "Join button container clips authored animation bounds");
+    assert(mountedState.joinButtonCount === 1, `Join layout spawned ${mountedState.joinButtonCount} Join buttons`);
     assert(mountedState.joinButtonHasArt, "authored Join layout did not mount Join-button art");
+    assert(mountedState.joinButtonOverflow === "visible", "dynamic Join button clips authored animation bounds");
+    assert(mountedState.joinButtonArtRoots === 1, `Join button has ${mountedState.joinButtonArtRoots} competing art renderers`);
     assert(mountedState.presentHiStatus === 405, `removed /api/present-hi endpoint returned ${mountedState.presentHiStatus}`);
+
+    const stagePage = await browser.newPage();
+    await stagePage.goto(`http://${host}:${port}/stage`, { waitUntil: "domcontentloaded" });
+    await stagePage.waitForFunction(() => Boolean(document.querySelector("#stageCodeText")?.dataset.stageCodeValue));
+    const stageCode = await stagePage.locator("#stageCodeText").getAttribute("data-stage-code-value");
+    assert(stageCode, "stage did not publish a room code");
+
+    await page.locator("#stageCodeInput").fill(stageCode);
+    await page.locator("#playerNameInput").fill("BEN");
+    await page.locator("#joinButton").click();
+    await page.waitForFunction(() => Boolean(document.querySelector("#controllerLobbyButtonContainer > #startGameButton")));
+
+    const startState = await page.evaluate(() => {
+      const container = document.querySelector("#controllerLobbyButtonContainer");
+      const button = container?.querySelector(":scope > #startGameButton");
+      return {
+        buttonCount: document.querySelectorAll("#startGameButton").length,
+        containerOverflow: container ? getComputedStyle(container).overflow : "missing",
+        buttonOverflow: button ? getComputedStyle(button).overflow : "missing",
+        artLayerCount: button?.querySelectorAll(":scope > .controller-widget-art-layer").length || 0,
+        artRootCount: button?.querySelectorAll(":scope > .controller-widget-art-layer > .art-runtime-object").length || 0,
+        text: button?.textContent.trim() || ""
+      };
+    });
+    assert(startState.buttonCount === 1, `Lobby rendered ${startState.buttonCount} Start buttons`);
+    assert(startState.containerOverflow === "visible", "Lobby button container clips authored animation bounds");
+    assert(startState.buttonOverflow === "visible", "dynamic Start button clips authored animation bounds");
+    assert(startState.artLayerCount === 1, `Start button has ${startState.artLayerCount} art layers`);
+    assert(startState.artRootCount === 1, `Start button has ${startState.artRootCount} competing art renderers`);
+    assert(startState.text === "START GAME", `unexpected Start button text: ${startState.text}`);
+
+    await page.locator("#startGameButton").click();
+    await page.waitForFunction(() => document.querySelector("#startGameButton")?.dataset.optionId === "lobby.cancelStart");
+    const cancelState = await page.evaluate(() => {
+      const button = document.querySelector("#startGameButton");
+      return {
+        buttonCount: document.querySelectorAll("#startGameButton").length,
+        artRootCount: button?.querySelectorAll(":scope > .controller-widget-art-layer > .art-runtime-object").length || 0,
+        text: button?.textContent.trim() || ""
+      };
+    });
+    assert(cancelState.buttonCount === 1, `Start-to-Cancel rendered ${cancelState.buttonCount} buttons`);
+    assert(cancelState.artRootCount === 1, `Cancel button has ${cancelState.artRootCount} competing art renderers`);
+    assert(cancelState.text === "CANCEL", `Start art remained under Cancel: ${cancelState.text}`);
+
+    await stagePage.evaluate(async (roomCode) => {
+      await fetch("/api/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stageCode: roomCode, isPaused: true })
+      });
+      await fetch("/api/quit-to-lobby", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stageCode: roomCode })
+      });
+    }, stageCode);
+    await page.waitForFunction(() => Boolean(document.querySelector("#controllerJoinButtonContainer > #joinButton")));
+    const returnedState = await page.evaluate(() => ({
+      joinButtonCount: document.querySelectorAll("#joinButton").length,
+      joinArtRootCount: document.querySelectorAll("#joinButton > .controller-widget-art-layer > .art-runtime-object").length,
+      staleStartButtonCount: document.querySelectorAll("#startGameButton").length,
+      lobbyContainerChildren: document.querySelector("#controllerLobbyButtonContainer")?.childElementCount || 0,
+      hasIntroState: Boolean(document.querySelector("#controllerIntroState")),
+      hasLegacyJoinCopy: /present hi there/i.test(document.body.textContent || "")
+    }));
+    assert(returnedState.joinButtonCount === 1, `return to Join rendered ${returnedState.joinButtonCount} Join buttons`);
+    assert(returnedState.joinArtRootCount === 1, `returned Join button has ${returnedState.joinArtRootCount} competing art renderers`);
+    assert(returnedState.staleStartButtonCount === 0, "Start/Cancel button survived Pause and Quit");
+    assert(returnedState.lobbyContainerChildren === 0, "Lobby button container retained stale children after Quit");
+    assert(!returnedState.hasIntroState, "legacy controller intro state returned after Quit");
+    assert(!returnedState.hasLegacyJoinCopy, "legacy join/presentation copy returned after Quit");
 
     console.log("Controller layout authority check passed.");
   } finally {

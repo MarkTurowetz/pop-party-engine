@@ -104,10 +104,8 @@ const controllerWidgetArtCompositionIds: Record<string, string> = {
   controllertextinput: "controller-text-input-field",
   controllertextsubmitbutton: controllerPrimaryButtonArtCompositionId,
   controllervoicebutton: controllerPrimaryButtonArtCompositionId,
-  joinbutton: controllerPrimaryButtonArtCompositionId,
   playernamefield: "controller-player-name-field",
   stagecodefield: "controller-stage-code-field",
-  startgamebutton: controllerPrimaryButtonArtCompositionId
 };
 let controllerRuntimeArtRendererCounter = 0;
 const legacyLayoutTextElementIds = new Set([
@@ -402,7 +400,7 @@ function applyControllerElementLayout(element: Dict, isGlobal = false, shouldAct
     applyControllerLayoutTextProperties(target, element);
   } else if (isControllerLayoutArtElement(element)) {
     target.classList.add("controller-widget-art-host", "has-controller-widget-art");
-    attachRenderedLayoutArtEntity(
+    const renderer = attachRenderedLayoutArtEntity(
       entity,
       () =>
         renderControllerArtInstance(element, target, entity.visibilityKey as string, {
@@ -411,6 +409,7 @@ function applyControllerElementLayout(element: Dict, isGlobal = false, shouldAct
         }),
       { initializeVisibility: false }
     );
+    if (!renderer) target.classList.add("controller-layout-hidden");
   }
   if (shouldActivate) activateLayoutEntity(entity, { visibilityOverrides: controllerLayoutVisibilityOverrides });
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "controller-layout-transition-suppressed");
@@ -583,19 +582,32 @@ function setControllerLayoutButtonText(target: El | null, value: unknown, spec: 
   target.dataset.controllerLayoutArtCompositionId = compositionId;
   target.setAttribute("aria-label", text);
   target.classList.add("controller-widget-art-host", "has-controller-widget-art");
+  const composition = ((w().artCompositions || []) as Dict[]).find((entry) => entry.id === compositionId) || null;
+  const isLocalButton = target.classList.contains("controller-local-action-button");
+  const intrinsicWidth = Math.max(1, Number((composition?.canvas as Dict | undefined)?.width || spec.width || 300));
+  const intrinsicHeight = Math.max(1, Number((composition?.canvas as Dict | undefined)?.height || spec.height || 78));
+  if (isLocalButton) {
+    target.style.setProperty("--controller-local-action-width", `${intrinsicWidth}px`);
+    target.style.setProperty("--controller-local-action-height", `${intrinsicHeight}px`);
+  }
   const element: Dict = {
-    id: target.dataset.optionId || target.id || controllerRuntimeArtRendererKey(target, "controller-button"),
+    id: target.id || controllerRuntimeArtRendererKey(target, "controller-button"),
     kind: "art",
     artCompositionId: compositionId,
-    width: Number(spec.width || target.clientWidth || target.offsetWidth || 300),
-    height: Number(spec.height || target.clientHeight || target.offsetHeight || 78),
+    width: isLocalButton ? intrinsicWidth : Number(spec.width || target.clientWidth || target.offsetWidth || intrinsicWidth),
+    height: isLocalButton ? intrinsicHeight : Number(spec.height || target.clientHeight || target.offsetHeight || intrinsicHeight),
     scale: 1,
     defaultAnimationState: "On"
   };
-  const renderer = renderControllerArtInstance(element, target, controllerRuntimeArtRendererKey(target, "controller-button"), {
-    ...controllerWidgetTextRenderOptions(compositionId, text),
-    keepElements: controllerLayoutArtKeepElements(target)
-  });
+  const renderer = renderControllerArtInstance(
+    element,
+    target,
+    target.dataset.layoutRendererKey || controllerRuntimeArtRendererKey(target, "controller-button"),
+    {
+      ...controllerWidgetTextRenderOptions(compositionId, text),
+      keepElements: controllerLayoutArtKeepElements(target)
+    }
+  );
   if (renderer) {
     setControllerButtonDisabledState(target, target.matches(":disabled"));
     return true;
@@ -616,6 +628,8 @@ function disposeControllerButtonArt(target: El | null): void {
   target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
   delete target.dataset.controllerLayoutArtCompositionId;
   delete target.dataset.controllerTextValue;
+  target.style.removeProperty("--controller-local-action-width");
+  target.style.removeProperty("--controller-local-action-height");
 }
 
 const controllerButtonInteractionAnimations = new Set(["Default", "Down", "Up", "HoverIn", "HoverOut"]);

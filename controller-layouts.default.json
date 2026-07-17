@@ -64,12 +64,12 @@
           "scale": 1
         },
         {
-          "id": "joinButton",
-          "name": "Join Button",
-          "selector": "#joinButton",
+          "id": "controllerJoinButtonContainer",
+          "name": "Join Button Container",
+          "selector": "#controllerJoinButtonContainer",
           "x": 195,
           "y": 505,
-          "width": 260,
+          "width": 300,
           "height": 78,
           "scale": 1
         }
@@ -123,12 +123,12 @@
           "artCompositionId": "layout-text-field"
         },
         {
-          "id": "startGameButton",
-          "name": "Start Game Button",
-          "selector": "#startGameButton",
+          "id": "controllerLobbyButtonContainer",
+          "name": "Lobby Button Container",
+          "selector": "#controllerLobbyButtonContainer",
           "x": 195,
           "y": 508,
-          "width": 260,
+          "width": 300,
           "height": 78,
           "scale": 1
         }

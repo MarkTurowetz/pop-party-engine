@@ -10,6 +10,16 @@ function createControllerLayoutNormalizationRuntime({
   ]);
 
   const localButtonContainerMigrations = {
+    joinbutton: {
+      id: "controllerjoinbuttoncontainer",
+      name: "Join Button Container",
+      selector: "#controllerJoinButtonContainer"
+    },
+    startgamebutton: {
+      id: "controllerlobbybuttoncontainer",
+      name: "Lobby Button Container",
+      selector: "#controllerLobbyButtonContainer"
+    },
     controllertextsubmitbutton: {
       id: "controllertextsubmitbuttoncontainer",
       name: "Text Submit Button Container",
@@ -26,6 +36,7 @@ function createControllerLayoutNormalizationRuntime({
       selector: "#controllerMicAccessButtonContainer"
     }
   };
+  const legacyControllerStateIds = new Set(["intro"]);
 
   function migrateControllerLocalButtonElement(element) {
     const migration = localButtonContainerMigrations[element?.id];
@@ -101,7 +112,7 @@ function createControllerLayoutNormalizationRuntime({
     const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
     const normalizedStates = incomingStates
       .map((state, stateIndex) => migrateControllerActionState(normalizeControllerState(state, stateIndex)))
-      .filter(Boolean);
+      .filter((state) => state && !legacyControllerStateIds.has(state.id));
     for (const defaultState of normalizedDefaultStates) {
       if (!normalizedStates.some((state) => state.id === defaultState.id)) {
         normalizedStates.push(cloneJson(defaultState));

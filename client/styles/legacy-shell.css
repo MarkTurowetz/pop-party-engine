@@ -1584,7 +1584,7 @@ body.tool-dashboard-mode .layout-shell {
 
 button.controller-widget-art-host.has-controller-widget-art {
   appearance: none;
-  overflow: visible;
+  overflow: visible !important;
 }
 
 .choice-option-button.controller-widget-art-host.has-controller-widget-art {
@@ -1681,14 +1681,23 @@ button.controller-widget-art-host.has-controller-widget-art {
 }
 
 .controller-local-action-container {
+  position: relative;
   display: grid;
   place-items: stretch;
+  overflow: visible !important;
 }
 
 .controller-local-action-button {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--controller-local-action-width, 300px);
+  height: var(--controller-local-action-height, 78px);
+  max-width: none;
+  max-height: none;
   min-height: 0;
+  translate: -50% -50%;
+  overflow: visible !important;
 }
 
 .danger-button {

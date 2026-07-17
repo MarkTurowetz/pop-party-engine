@@ -14,10 +14,8 @@
         controllertextinput: "controller-text-input-field",
         controllertextsubmitbutton: controllerPrimaryButtonArtCompositionId,
         controllervoicebutton: controllerPrimaryButtonArtCompositionId,
-        joinbutton: controllerPrimaryButtonArtCompositionId,
         playernamefield: "controller-player-name-field",
         stagecodefield: "controller-stage-code-field",
-        startgamebutton: controllerPrimaryButtonArtCompositionId
     });
     function normalizeControllerLayoutWidgetId(value) {
         return String(value || "")
