@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createControllerVoiceInput, type ControllerVoiceInputOptions } from "./controllerVoiceInput";
+import {
+  createControllerVoiceInput,
+  shouldDeferVoiceHeartbeat,
+  type ControllerVoiceInputOptions
+} from "./controllerVoiceInput";
 
 function options(): ControllerVoiceInputOptions {
   return {
@@ -31,6 +35,20 @@ describe("createControllerVoiceInput (ported)", () => {
     expect(view.start).toBeTypeOf("function");
   });
 
+  it("defers only unchanged voice-input heartbeats while capture is active", () => {
+    const currentLobby = {
+      phase: "voice-moment",
+      textInput: { actionId: "voice-action", type: "voice" }
+    };
+    expect(shouldDeferVoiceHeartbeat(currentLobby, { ...currentLobby }, true)).toBe(true);
+    expect(shouldDeferVoiceHeartbeat(currentLobby, { ...currentLobby }, false)).toBe(false);
+    expect(shouldDeferVoiceHeartbeat(currentLobby, { ...currentLobby, isPaused: true }, true)).toBe(false);
+    expect(shouldDeferVoiceHeartbeat(currentLobby, {
+      ...currentLobby,
+      textInput: { actionId: "next-action", type: "voice" }
+    }, true)).toBe(false);
+  });
+
   it("renders waiting through the semantic Presentation layout bridge", () => {
     const renderGlobalMessage = vi.fn();
     const view = createControllerVoiceInput({ ...options(), renderGlobalMessage });
@@ -46,6 +64,7 @@ describe("createControllerVoiceInput (ported)", () => {
     const recognition = {
       continuous: false,
       interimResults: false,
+      maxAlternatives: 0,
       lang: "",
       onresult: null,
       onerror: null,
@@ -100,6 +119,7 @@ describe("createControllerVoiceInput (ported)", () => {
     await Promise.resolve();
 
     expect(recognition.start).toHaveBeenCalledOnce();
+    expect(view.isCapturing()).toBe(true);
     expect(button.disabled).toBe(false);
     expect(button.dataset.controllerTextValue).toBe("Release To Send");
     expect(setPointerCapture).toHaveBeenCalledWith(7);
@@ -119,6 +139,7 @@ describe("createControllerVoiceInput (ported)", () => {
     const recognition = {
       continuous: false,
       interimResults: false,
+      maxAlternatives: 0,
       lang: "",
       onresult: null,
       onerror: null,

@@ -1,10 +1,24 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createControllerRecordingLifecycle, type ControllerRecordingLifecycleOptions } from "./controllerRecordingLifecycle";
 
-function fakeRecognition() {
+interface FakeRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  lang: string;
+  onresult: ((event: { resultIndex?: number; results: Record<number, unknown> & { length: number } }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+function fakeRecognition(): FakeRecognition {
   return {
     continuous: false,
     interimResults: false,
+    maxAlternatives: 0,
     lang: "",
     onresult: null,
     onerror: null,
@@ -33,6 +47,10 @@ function lifecycle(overrides: Partial<ControllerRecordingLifecycleOptions> = {})
 }
 
 describe("createControllerRecordingLifecycle (ported)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("begin starts recognition and goes busy", () => {
     const { api, recognition, onStatus } = lifecycle();
     expect(api.isBusy()).toBe(false);
@@ -40,13 +58,51 @@ describe("createControllerRecordingLifecycle (ported)", () => {
     expect(api.isBusy()).toBe(true);
     expect(api.state()).toBe("listening");
     expect(recognition.start).toHaveBeenCalled();
+    expect(recognition.continuous).toBe(true);
+    expect(recognition.interimResults).toBe(false);
+    expect(recognition.maxAlternatives).toBe(1);
     expect(onStatus).toHaveBeenCalledWith("Listening");
+  });
+
+  it("processes cumulative recognition results incrementally without repeated status renders", async () => {
+    vi.stubGlobal("window", { clearTimeout: vi.fn(), setTimeout: vi.fn(() => 1) });
+    const submitText = vi.fn(async () => null);
+    const { api, recognition, onStatus } = lifecycle({ submitText });
+    api.begin("act1");
+
+    const firstResults = {
+      length: 1,
+      0: { isFinal: true, 0: { transcript: "hello" } }
+    };
+    recognition.onresult?.({ resultIndex: 0, results: firstResults });
+
+    let staleResultReads = 0;
+    const secondResults = {
+      length: 2,
+      get 0() {
+        staleResultReads += 1;
+        return { isFinal: true, 0: { transcript: "hello" } };
+      },
+      1: { isFinal: true, 0: { transcript: "world" } }
+    };
+    recognition.onresult?.({ resultIndex: 1, results: secondResults });
+
+    expect(staleResultReads).toBe(0);
+    expect(onStatus).toHaveBeenCalledTimes(1);
+    expect(api.isCapturing()).toBe(true);
+
+    api.release("act1");
+    recognition.onend?.();
+    await vi.waitFor(() => {
+      expect(submitText).toHaveBeenCalledWith("act1", "hello world");
+    });
   });
 
   it("begin returns false and errors when no recognition is available", () => {
     const { api, onError } = lifecycle({ recognitionConstructor: () => null });
     expect(api.begin("act1")).toBe(false);
     expect(api.isBusy()).toBe(false);
+    expect(api.isCapturing()).toBe(false);
     expect(onError).toHaveBeenCalled();
   });
 

@@ -17,7 +17,8 @@ interface SpeechRecognitionLike {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
-  onresult: ((event: { results: RecognitionResults }) => void) | null;
+  maxAlternatives?: number;
+  onresult: ((event: { resultIndex?: number; results: RecognitionResults }) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
   start(): void;
@@ -56,9 +57,13 @@ export interface ControllerRecordingLifecycle {
   begin(actionId: string): boolean;
   cancel(options?: { abort?: boolean; message?: string }): void;
   isBusy(): boolean;
+  isCapturing(): boolean;
   release(actionId: string): boolean;
   state(): ControllerRecordingState;
 }
+
+const MAX_CAPTURED_TRANSCRIPT_CHARACTERS = 4096;
+const MAX_CAPTURED_RESULT_SEGMENTS = 256;
 
 export function createControllerRecordingLifecycle(options: ControllerRecordingLifecycleOptions): ControllerRecordingLifecycle {
   const {
@@ -75,7 +80,7 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
 
   let recognition: SpeechRecognitionLike | null = null;
   let state: ControllerRecordingState = "idle";
-  let transcript = "";
+  let finalTranscriptSegments: string[] = [];
   let interimTranscript = "";
   let activeActionId = "";
   let previewPromise: Promise<unknown> = Promise.resolve(null);
@@ -83,6 +88,10 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
 
   function isBusy(): boolean {
     return state !== "idle";
+  }
+
+  function isCapturing(): boolean {
+    return state === "listening" || state === "buffering" || state === "stopping";
   }
 
   function setState(nextState: ControllerRecordingState): void {
@@ -104,24 +113,27 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
   }
 
   function clearCaptureText(): void {
-    transcript = "";
+    finalTranscriptSegments = [];
     interimTranscript = "";
   }
 
   function capturedTranscript(): string {
-    return (transcript.trim() || interimTranscript.trim()).trim();
+    const finalTranscript = finalTranscriptSegments.filter(Boolean).join(" ").trim();
+    return (finalTranscript || interimTranscript.trim()).slice(0, MAX_CAPTURED_TRANSCRIPT_CHARACTERS).trim();
   }
 
-  function updateTranscriptFromResults(results: RecognitionResults): void {
-    const finalParts: string[] = [];
+  function updateTranscriptFromResults(results: RecognitionResults, resultIndex = 0): void {
     const interimParts: string[] = [];
-    for (let index = 0; index < results.length; index += 1) {
+    const startIndex = Math.max(0, Math.min(results.length, Number.isFinite(resultIndex) ? Math.floor(resultIndex) : 0));
+    for (let index = startIndex; index < results.length; index += 1) {
       const resultTranscript = results[index]?.[0]?.transcript || "";
       if (!resultTranscript.trim()) continue;
-      if (results[index]?.isFinal) finalParts.push(resultTranscript);
+      if (results[index]?.isFinal) finalTranscriptSegments[index] = resultTranscript.trim();
       else interimParts.push(resultTranscript);
     }
-    transcript = finalParts.join(" ").trim();
+    if (finalTranscriptSegments.length > MAX_CAPTURED_RESULT_SEGMENTS) {
+      finalTranscriptSegments.length = MAX_CAPTURED_RESULT_SEGMENTS;
+    }
     interimTranscript = interimParts.join(" ").trim();
   }
 
@@ -228,11 +240,17 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     previewPromise = Promise.resolve(null);
     recognition = new Recognition();
     recognition.continuous = true;
-    recognition.interimResults = true;
+    // The controller never renders interim words. Asking Chrome to continuously
+    // produce them creates a high-frequency native recognition + JS event stream
+    // for no visible benefit and can make the entire browser (and mouse) choppy.
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
     recognition.lang = "en-US";
     recognition.onresult = (event) => {
-      updateTranscriptFromResults(event.results);
-      onStatus(state === "listening" ? "Listening" : "Processing speech");
+      // SpeechRecognition results are cumulative. resultIndex is the first
+      // changed entry, so processing from zero on every result becomes
+      // quadratic over a longer recording.
+      updateTranscriptFromResults(event.results, event.resultIndex);
     };
     recognition.onerror = handleRecognitionError;
     recognition.onend = handleRecognitionEnd;
@@ -278,6 +296,7 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     begin,
     cancel,
     isBusy,
+    isCapturing,
     release,
     state: () => state
   };

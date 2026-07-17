@@ -6,7 +6,7 @@
 import { createControllerModuleCache } from "./controllerModuleCache";
 import { createControllerViewState } from "./controllerViewState";
 import { createControllerAvatarView } from "./controllerAvatarView";
-import { createControllerVoiceInput } from "./controllerVoiceInput";
+import { createControllerVoiceInput, shouldDeferVoiceHeartbeat } from "./controllerVoiceInput";
 import { createControllerMicrophoneAccessView } from "./controllerMicrophoneAccessView";
 import { createControllerChoiceInputView } from "./controllerChoiceInputView";
 import { createControllerGlobalActionView } from "./controllerGlobalActionView";
@@ -366,7 +366,19 @@ function getControllerHeartbeatRuntime() {
       getJoinButton,
       getControllerState: () => w.controllerState,
       hideViews: hideControllerViews,
-      renderState: renderControllerState,
+      renderState: (lobby) => {
+        const nextLobby = lobby as Dict;
+        const currentLobby = (w.controllerState?.lobby as Dict) || null;
+        if (shouldDeferVoiceHeartbeat(currentLobby, nextLobby, getControllerVoiceInput().isCapturing())) {
+          // Keep the network heartbeat alive, but do not rebuild the controller
+          // layout and nested art while Chrome is actively recognizing speech.
+          // The submit response performs the authoritative render immediately
+          // after capture completes.
+          if (w.controllerState) w.controllerState.lobby = nextLobby;
+          return;
+        }
+        renderControllerState(nextLobby);
+      },
       sendHeartbeat: () => getControllerSubmitApi().heartbeat() as Promise<{ lobby: unknown }>,
       setText: setControllerText,
       setControllerState: (value) => {

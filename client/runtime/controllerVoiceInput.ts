@@ -25,11 +25,29 @@ export interface ControllerVoiceInputOptions {
 
 export interface ControllerVoiceInput {
   bindButton(actionId: string): void;
+  isCapturing(): boolean;
   isListening(): boolean;
   renderWaiting(lobby: Dict): void;
   resetUi(): void;
   start(actionId: string): void;
   stopRecognition(): void;
+}
+
+export function shouldDeferVoiceHeartbeat(
+  currentLobby: Dict | null,
+  nextLobby: Dict,
+  isCapturing: boolean
+): boolean {
+  const currentVoiceInput = currentLobby?.textInput as Dict | undefined;
+  const nextVoiceInput = nextLobby?.textInput as Dict | undefined;
+  return Boolean(
+    isCapturing &&
+      !nextLobby?.isPaused &&
+      currentLobby?.phase === nextLobby?.phase &&
+      currentVoiceInput?.actionId &&
+      currentVoiceInput.actionId === nextVoiceInput?.actionId &&
+      (nextVoiceInput?.type === "voice" || nextVoiceInput?.mode === "voiceVip")
+  );
 }
 
 export function createControllerVoiceInput(options: ControllerVoiceInputOptions): ControllerVoiceInput {
@@ -234,6 +252,7 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
 
   return {
     bindButton,
+    isCapturing: () => getLifecycle().isCapturing(),
     isListening: () => getLifecycle().isBusy(),
     renderWaiting,
     resetUi,
