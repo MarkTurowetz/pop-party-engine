@@ -2236,7 +2236,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-17T04:53:03.381Z"
+      "updatedAt": "2026-07-17T04:56:39.980Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
@@ -11774,6 +11774,237 @@
         "tracks": []
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
+    },
+    "controller-primary-button-interaction": {
+      "name": "Controller Primary Button Interaction MC",
+      "description": "Default, Down, Up, HoverIn, and HoverOut interactions for Controller Primary Button.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 300,
+        "height": 78
+      },
+      "components": [
+        {
+          "id": "controller-primary-button-state-ref",
+          "name": "Controller Primary Button State MC",
+          "instanceLabel": "state",
+          "kind": "reference",
+          "x": 150,
+          "y": 39,
+          "width": 300,
+          "height": 78,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-primary-button-state"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 11,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Down",
+            "frame": 1
+          },
+          {
+            "name": "Up",
+            "frame": 2
+          },
+          {
+            "name": "HoverIn",
+            "frame": 5
+          },
+          {
+            "name": "HoverOut",
+            "frame": 8
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          4,
+          7,
+          10
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-default"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 4,
+            "type": "stop",
+            "id": "stop-up"
+          },
+          {
+            "frame": 7,
+            "type": "stop",
+            "id": "stop-hover-in"
+          },
+          {
+            "frame": 10,
+            "type": "stop",
+            "id": "stop-hover-out"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-primary-button-state-ref",
+            "targetId": "controller-primary-button-state-ref",
+            "keyframes": [
+              {
+                "id": "controller-primary-button-state-ref-default",
+                "frame": 0,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-state-ref-down-start",
+                "frame": 1,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 0.9,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-state-ref-up-start",
+                "frame": 2,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 0.9,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-state-ref-up-end",
+                "frame": 4,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-state-ref-hover-in-start",
+                "frame": 5,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-state-ref-hover-in-end",
+                "frame": 7,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1.05,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1.2,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-state-ref-hover-out-start",
+                "frame": 8,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1.05,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1.2,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-state-ref-hover-out-end",
+                "frame": 10,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-17T04:56:39.980Z"
     }
   },
   "deletedCompositionIds": [
