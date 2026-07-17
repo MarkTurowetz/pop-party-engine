@@ -2236,7 +2236,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-17T05:03:22.777Z"
+      "updatedAt": "2026-07-17T05:05:42.379Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
@@ -3481,7 +3481,7 @@
       "name": "Controller Avatar Button",
       "description": "Editable controller avatar button background art.",
       "surface": "controller",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -3490,36 +3490,32 @@
       },
       "components": [
         {
-          "id": "avatar-card",
-          "name": "Avatar Card",
-          "instanceLabel": "avatarCard",
-          "kind": "shape",
+          "id": "controller-avatar-button-interaction-ref",
+          "name": "Controller Avatar Button Interaction MC",
+          "instanceLabel": "interaction",
+          "kind": "reference",
           "x": 52,
           "y": 52,
           "width": 104,
           "height": 104,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "rounded",
-          "fillColor": "#fffdf4",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 18
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-avatar-button-interaction"
         }
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 33,
+        "frameCount": 27,
         "labels": [
           {
             "name": "Off",
-            "frame": 0
-          },
-          {
-            "name": "Park",
             "frame": 0
           },
           {
@@ -3536,78 +3532,250 @@
           },
           {
             "name": "Disappear",
-            "frame": 17
+            "frame": 16
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
           2,
           12,
-          13,
-          16,
-          32
+          15,
+          26
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-off"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "show-on",
+            "target": "true"
+          },
+          {
+            "frame": 1,
+            "type": "stopComponent",
+            "id": "default-on",
+            "target": "controller-avatar-button-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-on"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "show-appear",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "stopComponent",
+            "id": "default-appear",
+            "target": "controller-avatar-button-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-appear"
+          },
+          {
+            "frame": 15,
+            "type": "stop",
+            "id": "stop-update"
+          },
+          {
+            "frame": 26,
+            "type": "setVisible",
+            "id": "hide-disappear",
+            "target": "false"
+          },
+          {
+            "frame": 26,
+            "type": "stop",
+            "id": "stop-disappear"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-avatar-button-interaction-ref",
+            "targetId": "controller-avatar-button-interaction-ref",
+            "keyframes": [
+              {
+                "id": "controller-avatar-button-interaction-ref-off",
+                "frame": 0,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-on",
+                "frame": 1,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-appear-start",
+                "frame": 2,
+                "props": {
+                  "scale": 0,
+                  "opacity": 1,
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-controller-avatar-button-interaction-ref-8",
+                "frame": 8,
+                "props": {
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-appear-end",
+                "frame": 12,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-update-start",
+                "frame": 13,
+                "props": {
+                  "scale": 1.03,
+                  "opacity": 1,
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-update-end",
+                "frame": 15,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-disappear-start",
+                "frame": 16,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-controller-avatar-button-interaction-ref-20",
+                "frame": 20,
+                "props": {
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-disappear-end",
+                "frame": 26,
+                "props": {
+                  "scale": 0,
+                  "opacity": 1,
+                  "x": 52,
+                  "y": 52,
+                  "width": 104,
+                  "height": 104,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-17T05:05:42.379Z"
     },
     "controller-choice-option": {
       "name": "Controller Choice Option",
@@ -3783,6 +3951,11 @@
           "height": 34,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "defaultText": "Your submission was invalid",
@@ -3802,6 +3975,11 @@
           "height": 64,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "shapeStyle": "rounded",
@@ -3841,64 +4019,6 @@
             "frame": 17
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
@@ -3907,9 +4027,66 @@
           13,
           16,
           32
-        ]
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": []
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-17T05:05:42.379Z"
     },
     "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c": {
       "name": "Prompt Text Field",
