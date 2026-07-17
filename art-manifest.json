@@ -2236,7 +2236,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-17T04:56:39.980Z"
+      "updatedAt": "2026-07-17T05:00:44.683Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
@@ -12005,6 +12005,237 @@
         ]
       },
       "updatedAt": "2026-07-17T04:56:39.980Z"
+    },
+    "controller-choice-option-interaction": {
+      "name": "Controller Choice Option Interaction MC",
+      "description": "Default, Down, Up, HoverIn, and HoverOut interactions for Controller Choice Option.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 320,
+        "height": 72
+      },
+      "components": [
+        {
+          "id": "controller-choice-option-state-ref",
+          "name": "Controller Choice Option State MC",
+          "instanceLabel": "state",
+          "kind": "reference",
+          "x": 160,
+          "y": 36,
+          "width": 320,
+          "height": 72,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-choice-option-state"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 11,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Down",
+            "frame": 1
+          },
+          {
+            "name": "Up",
+            "frame": 2
+          },
+          {
+            "name": "HoverIn",
+            "frame": 5
+          },
+          {
+            "name": "HoverOut",
+            "frame": 8
+          }
+        ],
+        "commandFrames": [
+          0,
+          1,
+          4,
+          7,
+          10
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-default"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 4,
+            "type": "stop",
+            "id": "stop-up"
+          },
+          {
+            "frame": 7,
+            "type": "stop",
+            "id": "stop-hover-in"
+          },
+          {
+            "frame": 10,
+            "type": "stop",
+            "id": "stop-hover-out"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-choice-option-state-ref",
+            "targetId": "controller-choice-option-state-ref",
+            "keyframes": [
+              {
+                "id": "controller-choice-option-state-ref-default",
+                "frame": 0,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1,
+                  "width": 320,
+                  "height": 72,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-state-ref-down-start",
+                "frame": 1,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 0.9,
+                  "width": 320,
+                  "height": 72,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-state-ref-up-start",
+                "frame": 2,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 0.9,
+                  "width": 320,
+                  "height": 72,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-state-ref-up-end",
+                "frame": 4,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1,
+                  "width": 320,
+                  "height": 72,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-state-ref-hover-in-start",
+                "frame": 5,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1,
+                  "width": 320,
+                  "height": 72,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-state-ref-hover-in-end",
+                "frame": 7,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1.05,
+                  "width": 320,
+                  "height": 72,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1.2,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-state-ref-hover-out-start",
+                "frame": 8,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1.05,
+                  "width": 320,
+                  "height": 72,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1.2,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-state-ref-hover-out-end",
+                "frame": 10,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1,
+                  "width": 320,
+                  "height": 72,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2026-07-17T05:00:44.683Z"
     }
   },
   "deletedCompositionIds": [
