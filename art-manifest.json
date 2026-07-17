@@ -2236,7 +2236,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-16T17:41:29.237Z"
+      "updatedAt": "2026-07-17T04:53:03.381Z"
     },
     "layout-text-field": {
       "name": "Layout Text Field",
@@ -2539,7 +2539,7 @@
       "name": "Controller Primary Button",
       "description": "Editable controller button art used by join, start, present, next, submit, and microphone buttons.",
       "surface": "controller",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -2548,55 +2548,32 @@
       },
       "components": [
         {
-          "id": "button-text",
-          "name": "Button Text",
-          "instanceLabel": "buttonText",
-          "kind": "text",
-          "x": 150,
-          "y": 39,
-          "width": 250,
-          "height": 44,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "BUTTON",
-          "fontSize": 24,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
-        },
-        {
-          "id": "button-card",
-          "name": "Button Card",
-          "instanceLabel": "buttonCard",
-          "kind": "shape",
+          "id": "controller-primary-button-interaction-ref",
+          "name": "Controller Primary Button Interaction MC",
+          "instanceLabel": "interaction",
+          "kind": "reference",
           "x": 150,
           "y": 39,
           "width": 300,
           "height": 78,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "rounded",
-          "fillColor": "#22d3ee",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 18
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-primary-button-interaction"
         }
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 33,
+        "frameCount": 28,
         "labels": [
           {
             "name": "Off",
-            "frame": 0
-          },
-          {
-            "name": "Park",
             "frame": 0
           },
           {
@@ -2609,82 +2586,254 @@
           },
           {
             "name": "Update",
-            "frame": 13
+            "frame": 12
           },
           {
             "name": "Disappear",
-            "frame": 17
+            "frame": 16
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
           2,
-          12,
-          13,
-          16,
-          32
+          11,
+          15,
+          27
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-off"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "show-on",
+            "target": "true"
+          },
+          {
+            "frame": 1,
+            "type": "stopComponent",
+            "id": "default-on",
+            "target": "controller-primary-button-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-on"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "show-appear",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "stopComponent",
+            "id": "default-appear",
+            "target": "controller-primary-button-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "frame": 11,
+            "type": "stop",
+            "id": "stop-appear"
+          },
+          {
+            "frame": 15,
+            "type": "stop",
+            "id": "stop-update"
+          },
+          {
+            "frame": 27,
+            "type": "setVisible",
+            "id": "hide-disappear",
+            "target": "false"
+          },
+          {
+            "frame": 27,
+            "type": "stop",
+            "id": "stop-disappear"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-primary-button-interaction-ref",
+            "targetId": "controller-primary-button-interaction-ref",
+            "keyframes": [
+              {
+                "id": "controller-primary-button-interaction-ref-off",
+                "frame": 0,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-on",
+                "frame": 1,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-appear-start",
+                "frame": 2,
+                "props": {
+                  "scale": 0,
+                  "opacity": 1,
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "key-controller-primary-button-interaction-ref-7",
+                "frame": 8,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-appear-end",
+                "frame": 11,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-update-start",
+                "frame": 12,
+                "props": {
+                  "scale": 1.2,
+                  "opacity": 1,
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-update-end",
+                "frame": 15,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-disappear-start",
+                "frame": 16,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1,
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "key-controller-primary-button-interaction-ref-18",
+                "frame": 20,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "scale": 1.2,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-disappear-end",
+                "frame": 27,
+                "props": {
+                  "scale": 0,
+                  "opacity": 1,
+                  "x": 150,
+                  "y": 39,
+                  "width": 300,
+                  "height": 78,
+                  "rotation": 0,
+                  "brightness": 1,
+                  "visible": true
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-17T04:53:03.381Z"
     },
     "controller-text-input-field": {
       "name": "Controller Text Input Field",
