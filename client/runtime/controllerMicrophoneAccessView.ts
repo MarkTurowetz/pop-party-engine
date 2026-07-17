@@ -13,17 +13,16 @@ export interface ControllerMicrophoneAccessViewOptions {
   getButton: () => HTMLButtonElement;
   grantAccess: (actionId: string) => Promise<unknown> | unknown;
   hideViews: () => void;
-  renderGlobalMessage?: (lobby: Dict, message: string, options: { id: string }) => void;
+  renderGlobalMessage: (lobby: Dict, message: string, options: { id: string }) => void;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
   setText?: (target: HTMLElement, value: unknown) => void;
   showView: (viewId: string) => void;
-  waiting: { message: HTMLElement };
 }
 
 export function createControllerMicrophoneAccessView(options: ControllerMicrophoneAccessViewOptions): {
   render(lobby: Dict, me: Dict): boolean;
 } {
-  const { applyLayoutForPhase, elements, getButton, grantAccess, hideViews, renderGlobalMessage, setButtonText, setText, showView, waiting } =
+  const { applyLayoutForPhase, elements, getButton, grantAccess, hideViews, renderGlobalMessage, setButtonText, setText, showView } =
     options;
 
   const writeText =
@@ -140,14 +139,7 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
   }
 
   function renderWaiting(lobby: Dict, message = "Waiting for the player to grant microphone access"): void {
-    if (typeof renderGlobalMessage === "function") {
-      renderGlobalMessage(lobby, message, { id: "microphoneAccessWaiting" });
-      return;
-    }
-    hideViews();
-    applyLayoutForPhase(controllerLayoutStateIds.presentation);
-    showView("intro");
-    writeText(waiting.message, message);
+    renderGlobalMessage(lobby, message, { id: "microphoneAccessWaiting" });
   }
 
   function render(lobby: Dict, me: Dict): boolean {

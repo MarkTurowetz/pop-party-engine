@@ -41,23 +41,18 @@ export function createControllerLobbyView(options: ControllerLobbyViewOptions): 
   function renderMissingPlayer(): void {
     writeText(elements.meta, "Reconnecting to lobby");
     hideViews();
-    showButton(elements.introPresentButton, false);
     applyLayoutForPhase("lobby");
     showView("lobby");
     showButton(elements.startButton, false);
   }
 
-  function renderInGamePhase(me: Dict, phase: string): void {
+  function renderInGamePhase(_me: Dict, phase: string): void {
     hideViews();
     applyLayoutForPhase(phase);
-    if (phase === "intro") showView("intro");
-    showButton(elements.introPresentButton, me.isVip === true && phase === "intro");
-    elements.introPresentButton.disabled = !(me.isVip && phase === "intro");
   }
 
   function renderLobby(lobby: Dict, me: Dict, phase: string): number | null {
     hideViews();
-    showButton(elements.introPresentButton, false);
     applyLayoutForPhase(phase);
     showView("lobby");
     writeText(elements.playerName, me.name);

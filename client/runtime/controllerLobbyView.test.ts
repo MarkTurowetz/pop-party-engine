@@ -19,4 +19,22 @@ describe("createControllerLobbyView (ported)", () => {
     const host = globalThis as typeof globalThis & { createControllerLobbyView?: unknown };
     expect(host.createControllerLobbyView).toBeTypeOf("function");
   });
+
+  it("uses the selected layout without mounting a legacy intro controller view", () => {
+    const applyLayoutForPhase = vi.fn();
+    const hideViews = vi.fn();
+    const showView = vi.fn();
+    const view = createControllerLobbyView({
+      applyLayoutForPhase,
+      elements: {} as never,
+      hideViews,
+      setAvatar: vi.fn(),
+      showView
+    });
+
+    view.renderInGamePhase({ isVip: true }, "intro");
+    expect(hideViews).toHaveBeenCalledOnce();
+    expect(applyLayoutForPhase).toHaveBeenCalledWith("intro");
+    expect(showView).not.toHaveBeenCalled();
+  });
 });

@@ -16,7 +16,6 @@
     controllertextinput: "controller-text-input-field",
     controllertextsubmitbutton: controllerPrimaryButtonArtCompositionId,
     controllervoicebutton: controllerPrimaryButtonArtCompositionId,
-    intropresentbutton: controllerPrimaryButtonArtCompositionId,
     joinbutton: controllerPrimaryButtonArtCompositionId,
     playernamefield: "controller-player-name-field",
     stagecodefield: "controller-stage-code-field",

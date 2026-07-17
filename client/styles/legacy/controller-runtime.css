@@ -63,6 +63,10 @@
   pointer-events: none;
 }
 
+.controller-layout-hidden {
+  display: none !important;
+}
+
 .controller-widget-art-host {
   overflow: visible;
 }

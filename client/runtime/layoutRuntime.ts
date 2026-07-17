@@ -104,7 +104,6 @@ const controllerWidgetArtCompositionIds: Record<string, string> = {
   controllertextinput: "controller-text-input-field",
   controllertextsubmitbutton: controllerPrimaryButtonArtCompositionId,
   controllervoicebutton: controllerPrimaryButtonArtCompositionId,
-  intropresentbutton: controllerPrimaryButtonArtCompositionId,
   joinbutton: controllerPrimaryButtonArtCompositionId,
   playernamefield: "controller-player-name-field",
   stagecodefield: "controller-stage-code-field",
@@ -113,7 +112,7 @@ const controllerWidgetArtCompositionIds: Record<string, string> = {
 let controllerRuntimeArtRendererCounter = 0;
 const legacyLayoutTextElementIds = new Set([
   "stagetitle", "stageintrotitle", "stagepresentationtext", "stageprompttext", "roundintrotext", "roundintroinfotext",
-  "jointitle", "controllerplayername", "controllermeta", "controllerintromessage", "controllerglobalactionmessage",
+  "jointitle", "controllerplayername", "controllermeta", "controllerglobalactionmessage",
   "controllerpresentationmessage", "controllerpausedmessage",
   "controllerchoiceprompt", "controllerchoicedone", "controllermicaccessprompt", "controllermicaccessstatus",
   "controllertextprompt", "controllervoicestatus", "controllertextdone"
@@ -502,7 +501,6 @@ function layoutDefaultText(element: Dict | null): string {
   if (id === "jointitle") return "Join Lobby";
   if (id === "controllerplayername") return "Ava";
   if (id === "controllermeta") return "VIP Player";
-  if (id === "controllerintromessage") return "Welcome to the Game";
   return String(element?.name || "");
 }
 

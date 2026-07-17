@@ -17,7 +17,6 @@ function createRouterRuntime({
   handleLobby,
   handleLocalDraft,
   handlePause,
-  handlePresentHi,
   handleQuitToLobby,
   handleCleanupArtCompositions,
   handleDeleteArtComposition,
@@ -312,11 +311,6 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/quit-to-lobby") {
       handleQuitToLobby(req, res);
-      return;
-    }
-
-    if (req.method === "POST" && url.pathname === "/api/present-hi") {
-      handlePresentHi(req, res);
       return;
     }
 

@@ -18,7 +18,6 @@ export interface ControllerSubmitApi {
   grantMicrophoneAccess(actionId: string): Promise<Json>;
   inputEvent(actionId: string, eventType: string): Promise<Json>;
   join(stageCode: string, playerName: string, playerId: string): Promise<Json>;
-  presentIntro(options?: { startToken?: string }): Promise<Json>;
   previewText(actionId: string, text: string): Promise<Json>;
   submitChoice(actionId: string, optionIndex: number, cardId?: string): Promise<Json>;
   submitText(actionId: string, text: string): Promise<Json>;
@@ -81,12 +80,6 @@ export function createControllerSubmitApi(options: ControllerSubmitApiOptions): 
     return postJson(isCancel ? "/api/cancel-start" : "/api/start", { ...base, startToken });
   }
 
-  function presentIntro({ startToken = "" }: { startToken?: string } = {}): Promise<Json> {
-    const base = payloadBase();
-    if (!base) return Promise.resolve(null);
-    return postJson("/api/present-hi", { ...base, startToken });
-  }
-
   function updateAvatar(shape: string): Promise<Json> {
     const base = payloadBase();
     if (!base) return Promise.resolve(null);
@@ -98,7 +91,6 @@ export function createControllerSubmitApi(options: ControllerSubmitApiOptions): 
     grantMicrophoneAccess,
     inputEvent,
     join,
-    presentIntro,
     previewText,
     submitChoice,
     submitText,

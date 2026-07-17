@@ -3,15 +3,12 @@ import { createControllerVoiceInput, type ControllerVoiceInputOptions } from "./
 
 function options(): ControllerVoiceInputOptions {
   return {
-    applyLayoutForPhase: vi.fn(),
     getButton: () => null,
     getReleaseBufferSeconds: () => 1,
-    hideViews: vi.fn(),
-    introMessage: {} as HTMLElement,
     previewText: vi.fn(async () => null),
+    renderGlobalMessage: vi.fn(),
     setButtonText: vi.fn(),
     setText: vi.fn(),
-    showView: vi.fn(),
     status: {} as HTMLElement,
     submitText: vi.fn(async () => null)
   };
@@ -28,6 +25,17 @@ describe("createControllerVoiceInput (ported)", () => {
     expect(view.bindButton).toBeTypeOf("function");
     expect(view.renderWaiting).toBeTypeOf("function");
     expect(view.start).toBeTypeOf("function");
+  });
+
+  it("renders waiting through the semantic Presentation layout bridge", () => {
+    const renderGlobalMessage = vi.fn();
+    const view = createControllerVoiceInput({ ...options(), renderGlobalMessage });
+    view.renderWaiting({ phase: "voice-moment" });
+    expect(renderGlobalMessage).toHaveBeenCalledWith(
+      { phase: "voice-moment" },
+      "Waiting for the VIP to answer",
+      { id: "voiceInputWaiting" }
+    );
   });
 
   it("installs the global bridge on import", () => {

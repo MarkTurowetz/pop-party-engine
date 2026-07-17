@@ -17,7 +17,6 @@ export interface ControllerSessionRuntimeOptions {
   setControllerState: (state: ControllerState) => void;
   setLocalValue: (key: string, value: string) => void;
   setSessionValue: (key: string, value: string) => void;
-  showView: (viewId: string) => void;
 }
 
 export interface ControllerSessionRuntime {
@@ -33,8 +32,7 @@ export function createControllerSessionRuntime(options: ControllerSessionRuntime
     renderState,
     setControllerState,
     setLocalValue,
-    setSessionValue,
-    showView
+    setSessionValue
   } = options;
 
   function enterLobby(stageCode: string, playerId: string, lobby: unknown, player: { name?: string }): void {
@@ -44,7 +42,6 @@ export function createControllerSessionRuntime(options: ControllerSessionRuntime
     setSessionValue("partyTemplateStageCode", stageCode);
     setLocalValue("partyTemplateStageCode", stageCode);
     elements.joinState.classList.add("hidden");
-    showView("lobby");
     renderState(lobby);
     heartbeatRuntime.start();
   }

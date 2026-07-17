@@ -39,4 +39,9 @@ describe("createControllerSubmitApi (ported)", () => {
     const host = globalThis as typeof globalThis & { createControllerSubmitApi?: unknown };
     expect(host.createControllerSubmitApi).toBeTypeOf("function");
   });
+
+  it("does not expose the removed Present HI THERE endpoint", () => {
+    const { api } = setup();
+    expect("presentIntro" in api).toBe(false);
+  });
 });

@@ -39,7 +39,7 @@ concepts into focused modules.
   - `input-state-runtime.js` owns shared choice/text input reset state and submission-completion checks.
   - `layout-normalization-runtime.js` owns shared layout state/element normalization and element deduping.
   - `layout-sync-runtime.js` owns syncing saved stage/controller layout states to the active flow.
-  - `lobby-control-handlers-runtime.js` owns lobby fetch, quit-to-lobby, and present-hi endpoints.
+  - `lobby-control-handlers-runtime.js` owns lobby fetch and quit-to-lobby endpoints.
   - `lobby-payload-runtime.js` owns lobby/stage snapshot payloads and debug action summaries.
   - `local-json-store.js` owns local JSON file read/write, backups, and mirror writes.
   - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
@@ -104,6 +104,10 @@ concepts into focused modules.
     custom layout explicitly referenced by a `Set Controller Layout` flow action. It does not mirror
     ordinary stage moment ids into the Controller Layout Tool; an unassigned in-game phase uses the
     Presentation layout as its fallback.
+  - Selector-backed Join and Lobby controls begin `controller-layout-hidden`. The active controller
+    layout removes that gate only after it has positioned the host and attached authored art, so
+    native HTML labels, inputs, and buttons cannot flash during initial load or room entry. Joining
+    a room delegates directly to the controller state renderer without prematurely showing Lobby.
   - Controller Layout Tool configuration tags are per-placement authoring metadata scoped to one
     controller view. The editor derives each view's searchable configuration list from its local
     elements and uses the selected tag only to filter the authoring preview. Tags do not change the

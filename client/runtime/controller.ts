@@ -46,7 +46,6 @@ declare global {
     // app-shell DOM refs (HTMLElement) + string id consts used by the controller.
     joinButton?: HTMLButtonElement;
     startGameButton?: HTMLButtonElement;
-    introPresentButton?: HTMLButtonElement;
     controllerPresentationButtonContainer?: HTMLElement;
     controllerPausedButtonContainer?: HTMLElement;
     controllerMicAccessButtonContainer?: HTMLElement;
@@ -54,7 +53,6 @@ declare global {
     controllerVoiceButtonContainer?: HTMLElement;
     controllerChoiceState?: HTMLElement;
     controllerGlobalActionState?: HTMLElement;
-    controllerIntroState?: HTMLElement;
     joinState?: HTMLElement;
     controllerLobbyState?: HTMLElement;
     controllerMicAccessState?: HTMLElement;
@@ -72,7 +70,6 @@ declare global {
     joinForm?: HTMLFormElement;
     stageCodeInput?: HTMLInputElement;
     playerNameInput?: HTMLInputElement;
-    controllerIntroMessage?: string;
     controllerMeta?: string;
     controllerChoicePrompt?: string;
     controllerChoiceDone?: string;
@@ -125,7 +122,6 @@ function setControllerButtonText(target: HTMLElement | undefined, value: unknown
 function initializeControllerButtonText(): void {
   setControllerButtonText(w.joinButton, "Join", { width: 260, height: 64, fontSize: 24 });
   setControllerButtonText(w.startGameButton, "Start Game", { width: 260, height: 64, fontSize: 24 });
-  setControllerButtonText(w.introPresentButton, "Present HI THERE", { width: 300, height: 64, fontSize: 24 });
 }
 
 function el<T = HTMLElement>(value: unknown): T {
@@ -185,7 +181,6 @@ function getControllerViewState() {
     createControllerViewState({
       choice: w.controllerChoiceState,
       globalAction: w.controllerGlobalActionState,
-      intro: w.controllerIntroState,
       join: w.joinState,
       lobby: w.controllerLobbyState,
       microphoneAccess: w.controllerMicAccessState,
@@ -229,7 +224,6 @@ function getControllerAvatarView() {
 function getControllerVoiceInput() {
   return controllerModules.get("voiceInput", () =>
     createControllerVoiceInput({
-      applyLayoutForPhase: applyControllerLayoutForPhase,
       getButton: () => getControllerLocalButtonRuntime().active(getControllerLocalButtonSlots().voice),
       getReleaseBufferSeconds: () =>
         Number(
@@ -237,13 +231,10 @@ function getControllerVoiceInput() {
             (w.gameConstants as Dict)?.speechToTextSendInputBuffer ??
             1
         ),
-      hideViews: hideControllerViews,
-      introMessage: el(w.controllerIntroMessage),
       previewText: previewControllerText,
       renderGlobalMessage: renderControllerGlobalMessage,
       setButtonText: setControllerButtonText,
       setText: setControllerText,
-      showView: (viewId: string) => getControllerViewState().show(viewId),
       status: el(w.controllerVoiceStatus),
       submitText: submitControllerText
     })
@@ -270,7 +261,6 @@ function getControllerMicrophoneAccessView() {
       setText: setControllerText,
       setButtonText: setControllerButtonText,
       showView: (viewId: string) => getControllerViewState().show(viewId),
-      waiting: { message: el(w.controllerIntroMessage) }
     })
   );
 }
@@ -367,8 +357,6 @@ function getControllerLobbyView() {
     createControllerLobbyView({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       elements: {
-        introPresentButton: el(w.introPresentButton),
-        introState: el(w.controllerIntroState),
         lobbyState: el(w.controllerLobbyState),
         meta: el(w.controllerMeta),
         playerName: el(w.controllerPlayerName),
@@ -435,7 +423,6 @@ function getControllerSessionRuntime() {
       getControllerState: () => w.controllerState,
       heartbeatRuntime: getControllerHeartbeatRuntime(),
       renderState: renderControllerState,
-      showView: (viewId: string) => getControllerViewState().show(viewId),
       setControllerState: (value) => {
         w.controllerState = value as Dict | null;
       },
@@ -485,7 +472,6 @@ async function closeAvatarPicker({ commit = true }: { commit?: boolean } = {}): 
 
 function hideControllerViews(): void {
   getControllerViewState().hideAll();
-  setControllerTextShown(w.introPresentButton, false, { instant: true });
 }
 
 async function submitControllerChoice(actionId: string, optionIndex: number, cardId = ""): Promise<void> {
@@ -634,7 +620,6 @@ function setupController(): void {
       avatarPickerDoneButton: el(w.avatarPickerDoneButton),
       avatarPickerPanel: el(w.avatarPicker?.querySelector(".avatar-picker-panel")),
       controllerScreen: el(w.controllerScreen),
-      introPresentButton: el(w.introPresentButton),
       startButton: el(w.startGameButton)
     } as never,
     getControllerState: () => w.controllerState,
@@ -643,7 +628,6 @@ function setupController(): void {
     openAvatarPicker,
     origin: location.origin,
     renderState: renderControllerState,
-    setButtonText: setControllerButtonText,
     setMetaText: (value: string) => {
       setControllerText(w.controllerMeta, value);
     }

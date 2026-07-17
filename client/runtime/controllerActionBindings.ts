@@ -1,14 +1,10 @@
-// Typed port of the legacy client/controller-action-bindings.js IIFE. Imports the
-// ported PartyGameControllerText directly and installs
-// window.createControllerActionBindings for the legacy controller runtime.
-
-import { PartyGameControllerText } from "./controllerTextRenderer";
+// Typed port of the legacy client/controller-action-bindings.js IIFE. Installs
+// window.createControllerActionBindings for the controller runtime.
 
 type Dict = Record<string, unknown>;
 
 interface SubmitApi {
   startOrCancelGame(options: { isCancel: boolean; startToken?: string }): Promise<{ lobby?: unknown }>;
-  presentIntro(options: { startToken?: string }): Promise<{ lobby?: unknown }>;
 }
 
 export interface ControllerActionBindingsOptions {
@@ -21,7 +17,6 @@ export interface ControllerActionBindingsOptions {
   openAvatarPicker: () => void;
   origin: string;
   renderState: (lobby: unknown) => void;
-  setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
   setMetaText: (message: string) => void;
 }
 
@@ -36,16 +31,8 @@ export function createControllerActionBindings(options: ControllerActionBindings
     openAvatarPicker,
     origin,
     renderState,
-    setButtonText,
     setMetaText
   } = options;
-
-  const writeButtonText =
-    typeof setButtonText === "function"
-      ? setButtonText
-      : (target: HTMLElement, value: unknown, spec?: Dict) => {
-          PartyGameControllerText.setButtonText(target, value, spec);
-        };
 
   function bindStartButton(): void {
     elements.startButton.addEventListener("click", async () => {
@@ -72,25 +59,6 @@ export function createControllerActionBindings(options: ControllerActionBindings
     elements.avatarPickerDoneButton.addEventListener("click", () => closeAvatarPicker({ commit: true }));
   }
 
-  function bindIntroButton(): void {
-    elements.introPresentButton.addEventListener("click", async () => {
-      const state = getControllerState();
-      if (!(state?.player as Dict)?.isVip) return;
-      (elements.introPresentButton as HTMLButtonElement).disabled = true;
-      try {
-        const result = await getSubmitApi().presentIntro({ startToken: state?.startToken as string });
-        if (result.lobby) renderState(result.lobby);
-      } catch (error) {
-        writeButtonText(elements.introPresentButton, (error as Error).message, { width: 300, height: 64, fontSize: 22 });
-        window.setTimeout(() => {
-          writeButtonText(elements.introPresentButton, "Present HI THERE", { width: 300, height: 64, fontSize: 24 });
-        }, 1800);
-      } finally {
-        (elements.introPresentButton as HTMLButtonElement).disabled = false;
-      }
-    });
-  }
-
   function bindWindowLifecycle(): void {
     window.addEventListener("pagehide", () => {
       getSessionRuntime().sendLeaveBeacon(origin);
@@ -106,7 +74,6 @@ export function createControllerActionBindings(options: ControllerActionBindings
   function bindAll(): void {
     bindStartButton();
     bindAvatarPicker();
-    bindIntroButton();
     bindWindowLifecycle();
   }
 

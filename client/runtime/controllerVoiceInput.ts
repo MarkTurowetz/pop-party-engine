@@ -4,23 +4,17 @@
 
 import { createControllerRecordingLifecycle, type ControllerRecordingLifecycle } from "./controllerRecordingLifecycle";
 import { PartyGameControllerText } from "./controllerTextRenderer";
-import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
 const BUTTON_SPEC = { width: 300, height: 64, fontSize: 24 };
 
 export interface ControllerVoiceInputOptions {
-  applyLayoutForPhase: (phase: string) => void;
   getButton: () => HTMLButtonElement | null;
   getReleaseBufferSeconds: () => number;
-  hideViews: () => void;
-  introMessage: HTMLElement;
-  introState?: HTMLElement;
   previewText: (actionId: string, text: string) => Promise<unknown> | unknown;
-  renderGlobalMessage?: (lobby: Dict, message: string, options: { id: string }) => void;
+  renderGlobalMessage: (lobby: Dict, message: string, options: { id: string }) => void;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
   setText?: (target: HTMLElement, value: unknown) => void;
-  showView: (viewId: string) => void;
   status: HTMLElement;
   submitText: (actionId: string, text: string) => Promise<unknown> | unknown;
 }
@@ -36,16 +30,12 @@ export interface ControllerVoiceInput {
 
 export function createControllerVoiceInput(options: ControllerVoiceInputOptions): ControllerVoiceInput {
   const {
-    applyLayoutForPhase,
     getButton,
     getReleaseBufferSeconds,
-    hideViews,
-    introMessage,
     previewText,
     renderGlobalMessage,
     setButtonText,
     setText,
-    showView,
     status,
     submitText
   } = options;
@@ -94,14 +84,7 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
 
   function renderWaiting(lobby: Dict): void {
     getLifecycle().cancel();
-    if (typeof renderGlobalMessage === "function") {
-      renderGlobalMessage(lobby, "Waiting for the VIP to answer", { id: "voiceInputWaiting" });
-      return;
-    }
-    hideViews();
-    applyLayoutForPhase(controllerLayoutStateIds.presentation);
-    showView("intro");
-    writeText(introMessage, "Waiting for the VIP to answer");
+    renderGlobalMessage(lobby, "Waiting for the VIP to answer", { id: "voiceInputWaiting" });
   }
 
   function resetUi(): void {

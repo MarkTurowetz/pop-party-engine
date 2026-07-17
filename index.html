@@ -78,31 +78,25 @@
       </div>
       <div id="joinState">
         <form class="join-form" id="joinForm">
-          <label class="field-label" id="stageCodeField">
-            Stage Code
+          <label class="field-label controller-layout-hidden" id="stageCodeField">
             <input class="text-input stage-code-input" id="stageCodeInput" maxlength="6" autocomplete="off" placeholder="ABCD">
           </label>
-          <label class="field-label" id="playerNameField">
-            Player Name
+          <label class="field-label controller-layout-hidden" id="playerNameField">
             <input class="text-input" id="playerNameInput" maxlength="24" autocomplete="name" placeholder="Your name">
           </label>
-          <button class="primary-button" id="joinButton" type="submit" disabled>Join</button>
+          <button class="primary-button controller-layout-hidden" id="joinButton" type="submit" disabled>Join</button>
         </form>
       </div>
 
       <div class="controller-lobby hidden" id="controllerLobbyState" data-controller-view="lobby">
-        <button class="controller-avatar" id="controllerAvatar" type="button" aria-label="Choose avatar"></button>
-        <button class="primary-button hidden" id="startGameButton" type="button" data-controller-option data-option-id="lobby.startGame">Start Game</button>
+        <button class="controller-avatar controller-layout-hidden" id="controllerAvatar" type="button" aria-label="Choose avatar"></button>
+        <button class="primary-button controller-layout-hidden" id="startGameButton" type="button" data-controller-option data-option-id="lobby.startGame">Start Game</button>
         <div class="avatar-picker hidden" id="avatarPicker" aria-label="Choose dinosaur avatar">
           <div class="avatar-picker-panel">
             <div class="avatar-picker-grid" id="avatarPickerGrid"></div>
             <button class="secondary-button" id="avatarPickerDoneButton" type="button">Done</button>
           </div>
         </div>
-      </div>
-
-      <div class="controller-lobby hidden" id="controllerIntroState" data-controller-view="intro">
-        <button class="primary-button hidden" id="introPresentButton" type="button" data-controller-option data-option-id="intro.presentHi">Present HI THERE</button>
       </div>
 
       <div class="controller-lobby hidden" id="controllerGlobalActionState" data-controller-view="global-action">

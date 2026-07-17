@@ -20,7 +20,6 @@
     "jointitle",
     "controllerplayername",
     "controllermeta",
-    "controllerintromessage",
     "controllerglobalactionmessage",
     "controllerpresentationmessage",
     "controllerpausedmessage",

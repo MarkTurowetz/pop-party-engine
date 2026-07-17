@@ -34,7 +34,7 @@ describe("createControllerActionBindings (ported)", () => {
       elements: {} as never,
       getControllerState: () => null,
       getSessionRuntime: () => ({ sendLeaveBeacon: vi.fn() }),
-      getSubmitApi: () => ({ startOrCancelGame: vi.fn(), presentIntro: vi.fn() }) as never,
+      getSubmitApi: () => ({ startOrCancelGame: vi.fn() }) as never,
       openAvatarPicker: vi.fn(),
       origin: "http://x",
       renderState: vi.fn(),

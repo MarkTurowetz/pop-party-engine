@@ -1133,18 +1133,14 @@ const {
 
 const {
   handleLobby,
-  handlePresentHi,
   handleQuitToLobby
 } = createLobbyControlHandlersRuntime({
-  broadcastLobby,
   getExistingRoom,
   getRoom,
   lobbyPayload,
-  normalizePlayerId,
   normalizeStageCode,
   quitRoomToLobby,
   readJson,
-  selectVip,
   sendJson
 });
 
@@ -1167,7 +1163,6 @@ const {
   handleLobby,
   handleLocalDraft,
   handlePause,
-  handlePresentHi,
   handleQuitToLobby,
   handleCleanupArtCompositions,
   handleDeleteArtComposition,

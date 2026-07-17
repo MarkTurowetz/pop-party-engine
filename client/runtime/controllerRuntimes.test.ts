@@ -16,8 +16,7 @@ describe("createControllerSessionRuntime (ported)", () => {
       renderState: vi.fn(),
       setControllerState: vi.fn(),
       setLocalValue: vi.fn(),
-      setSessionValue: vi.fn(),
-      showView: vi.fn()
+      setSessionValue: vi.fn()
     });
     expect(runtime.enterLobby).toBeTypeOf("function");
     expect(runtime.sendLeaveBeacon).toBeTypeOf("function");
