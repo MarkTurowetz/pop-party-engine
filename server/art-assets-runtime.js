@@ -5,7 +5,8 @@ const artComponentSchema = require("../shared/art-component-schema");
 const {
   ART_COMPONENT_SCHEMA_VERSION,
   migrateLegacyArtCompositionSchema,
-  migrateLegacyArtManifestSchema
+  migrateLegacyArtManifestSchema,
+  normalizeCurrentArtManifestGeometry
 } = require("../shared/art-component-schema-migration");
 const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
@@ -884,16 +885,17 @@ function createArtAssetsRuntime({
       : [];
     manifest.compositions[definition.id] = artCompositionManifestRecord(normalized);
     manifest.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
+    const geometryManifest = normalizeCurrentArtManifestGeometry(manifest).manifest;
     const validationIssues = blockingArtArchitectureIssues(
       previousCompositions,
-      allPublicArtCompositions(manifest),
+      allPublicArtCompositions(geometryManifest),
       [definition.id]
     );
     if (validationIssues.length) {
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
       return;
     }
-    const savedManifest = await saveArtManifest(manifest);
+    const savedManifest = await saveArtManifest(geometryManifest);
     if (Array.isArray(localDraftStore?.artCompositions)) {
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => composition?.id !== definition.id);
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
@@ -944,16 +946,17 @@ function createArtAssetsRuntime({
       candidate.compositions[composition.id] = artCompositionManifestRecord(composition, updatedAt);
     }
     candidate.artComponentSchemaVersion = ART_COMPONENT_SCHEMA_VERSION;
+    const geometryCandidate = normalizeCurrentArtManifestGeometry(candidate).manifest;
     const validationIssues = blockingArtArchitectureIssues(
       previousCompositions,
-      allPublicArtCompositions(candidate),
+      allPublicArtCompositions(geometryCandidate),
       normalized.map((composition) => composition.id)
     );
     if (validationIssues.length) {
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
       return;
     }
-    const savedManifest = await saveArtManifest(candidate);
+    const savedManifest = await saveArtManifest(geometryCandidate);
     if (Array.isArray(localDraftStore?.artCompositions)) {
       const savedIds = new Set(normalized.map((composition) => composition.id));
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => !savedIds.has(composition?.id));

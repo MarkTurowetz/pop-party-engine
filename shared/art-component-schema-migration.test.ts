@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ART_COMPONENT_SCHEMA_VERSION, migrateLegacyArtManifestSchema } from "./art-component-schema-migration";
+import {
+  ART_COMPONENT_SCHEMA_VERSION,
+  migrateLegacyArtManifestSchema,
+  normalizeCurrentArtManifestGeometry
+} from "./art-component-schema-migration";
 
 describe("art component schema migration", () => {
   it("migrates image-backed shapes to sprites and avatar frames to native shapes", () => {
@@ -97,5 +101,98 @@ describe("art component schema migration", () => {
     expect(manifest.compositions.stage.components[0]).toMatchObject({ x: 150, y: 234 });
     expect(report).toMatchObject({ centeredComponentCount: 3, resizedCompositionCount: 1 });
     expect(report.compositionIds).toEqual(["wrapper", "player"]);
+  });
+
+  it("repairs the voting answer viewport chain without moving its compound-widget placement", () => {
+    const source = {
+      artComponentSchemaVersion: 2,
+      compositions: {
+        "answer-text": {
+          name: "Voting Card Answer Text",
+          compositionKind: "prefab",
+          canvas: { width: 560, height: 230 },
+          components: [
+            { id: "text", kind: "text", x: 260, y: 75, width: 420, height: 78 },
+            { id: "surface", kind: "shape", x: 260, y: 75, width: 520, height: 150 }
+          ]
+        },
+        "answer-wrapper": {
+          name: "Voting Card Answer",
+          compositionKind: "prefab",
+          canvas: { width: 560, height: 230 },
+          components: [
+            { id: "answer", kind: "reference", artCompositionId: "answer-text", x: 280, y: 115, width: 560, height: 230 }
+          ],
+          timeline: {
+            tracks: [{
+              targetId: "answer",
+              keyframes: [
+                { frame: 0, props: { x: 280, y: 115, width: 560, height: 230, scale: 1 } },
+                { frame: 5, props: { x: 290, y: 120, width: 560, height: 230, scale: 1.1 } }
+              ]
+            }]
+          }
+        },
+        widget: {
+          name: "Voting Card Widget MC",
+          compositionKind: "prefab",
+          canvas: { width: 560, height: 230 },
+          components: [
+            { id: "answer-slot", kind: "reference", artCompositionId: "answer-wrapper", x: 280, y: 115, width: 520, height: 150 }
+          ]
+        }
+      }
+    };
+
+    const { manifest, report } = migrateLegacyArtManifestSchema(source);
+
+    expect(manifest.compositions["answer-text"].canvas).toEqual({ width: 520, height: 150 });
+    expect(manifest.compositions["answer-text"].components).toEqual([
+      expect.objectContaining({ id: "text", x: 260, y: 75, width: 420, height: 78 }),
+      expect.objectContaining({ id: "surface", x: 260, y: 75, width: 520, height: 150 })
+    ]);
+    expect(manifest.compositions["answer-wrapper"].canvas).toEqual({ width: 520, height: 150 });
+    expect(manifest.compositions["answer-wrapper"].components[0]).toMatchObject({
+      x: 260,
+      y: 75,
+      width: 520,
+      height: 150
+    });
+    expect(manifest.compositions["answer-wrapper"].timeline.tracks[0].keyframes).toEqual([
+      { frame: 0, props: { x: 260, y: 75, width: 520, height: 150, scale: 1 } },
+      { frame: 5, props: { x: 270, y: 80, width: 520, height: 150, scale: 1.1 } }
+    ]);
+    expect(manifest.compositions.widget.components[0]).toMatchObject({
+      x: 280,
+      y: 115,
+      width: 520,
+      height: 150
+    });
+    expect(report.compositionIds).toEqual(["answer-text", "answer-wrapper"]);
+  });
+
+  it("reapplies voting answer geometry when a stale open editor saves into a current manifest", () => {
+    const current = {
+      artComponentSchemaVersion: ART_COMPONENT_SCHEMA_VERSION,
+      compositions: {
+        base: {
+          name: "Voting Card Answer Text",
+          canvas: { width: 560, height: 230 },
+          components: [{ id: "surface", kind: "shape", x: 260, y: 75, width: 520, height: 150 }]
+        },
+        wrapper: {
+          name: "Voting Card Answer",
+          canvas: { width: 560, height: 230 },
+          components: [{ id: "answer", kind: "reference", artCompositionId: "base", x: 280, y: 115, width: 560, height: 230 }]
+        }
+      }
+    };
+
+    const { manifest, report } = normalizeCurrentArtManifestGeometry(current);
+
+    expect(manifest.compositions.base.canvas).toEqual({ width: 520, height: 150 });
+    expect(manifest.compositions.wrapper.canvas).toEqual({ width: 520, height: 150 });
+    expect(manifest.compositions.wrapper.components[0]).toMatchObject({ x: 260, y: 75, width: 520, height: 150 });
+    expect(report.changed).toBe(true);
   });
 });

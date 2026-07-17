@@ -3,7 +3,10 @@
 
 const fs = require("fs");
 const path = require("path");
-const { migrateLegacyArtManifestSchema } = require("./shared/art-component-schema-migration");
+const {
+  migrateLegacyArtManifestSchema,
+  normalizeCurrentArtManifestGeometry
+} = require("./shared/art-component-schema-migration");
 
 const args = process.argv.slice(2);
 const write = args.includes("--write");
@@ -15,7 +18,17 @@ if (!manifestArg) {
 
 const manifestPath = path.resolve(manifestArg);
 const source = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-const { manifest, report } = migrateLegacyArtManifestSchema(source);
+const migrated = migrateLegacyArtManifestSchema(source);
+const normalized = normalizeCurrentArtManifestGeometry(migrated.manifest);
+const manifest = normalized.manifest;
+const report = {
+  changed: migrated.report.changed || normalized.report.changed,
+  spriteCount: migrated.report.spriteCount + normalized.report.spriteCount,
+  avatarFrameShapeCount: migrated.report.avatarFrameShapeCount + normalized.report.avatarFrameShapeCount,
+  centeredComponentCount: migrated.report.centeredComponentCount + normalized.report.centeredComponentCount,
+  resizedCompositionCount: migrated.report.resizedCompositionCount + normalized.report.resizedCompositionCount,
+  compositionIds: [...new Set([...migrated.report.compositionIds, ...normalized.report.compositionIds])]
+};
 const summary = {
   ...report,
   manifestPath,

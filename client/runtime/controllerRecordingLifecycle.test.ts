@@ -51,11 +51,17 @@ describe("createControllerRecordingLifecycle (ported)", () => {
   });
 
   it("cancel resets to idle", () => {
-    const { api } = lifecycle();
+    const onStateChange = vi.fn();
+    const { api, recognition } = lifecycle({ onStateChange });
     api.begin("act1");
     api.cancel({ abort: true });
     expect(api.isBusy()).toBe(false);
     expect(api.state()).toBe("idle");
+    expect(onStateChange.mock.calls.map(([state]) => state)).toEqual(["listening", "idle"]);
+    expect(recognition.onresult).toBeNull();
+    expect(recognition.onerror).toBeNull();
+    expect(recognition.onend).toBeNull();
+    expect(recognition.abort).toHaveBeenCalledOnce();
   });
 
   it("installs the global bridge on import", () => {

@@ -1,12 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ART_COMPONENT_SCHEMA_VERSION = void 0;
+exports.normalizeCurrentArtManifestGeometry = normalizeCurrentArtManifestGeometry;
 exports.migrateLegacyArtCompositionCoordinates = migrateLegacyArtCompositionCoordinates;
 exports.migrateLegacyArtCompositionSchema = migrateLegacyArtCompositionSchema;
 exports.migrateLegacyArtManifestSchema = migrateLegacyArtManifestSchema;
-exports.ART_COMPONENT_SCHEMA_VERSION = 2;
+exports.ART_COMPONENT_SCHEMA_VERSION = 3;
 const SPRITE_SCHEMA_VERSION = 1;
 const CENTERED_COORDINATE_SCHEMA_VERSION = 2;
+const VOTING_CARD_ANSWER_GEOMETRY_VERSION = 3;
 const IMAGE_FIELDS = ["imageDataUrl", "imageAssetId", "imageName", "imageMimeType", "imageObjectFit", "imageTint"];
 const SHAPE_FIELDS = ["shapeStyle", "fillColor", "fillCss", "borderColor", "borderWidth", "borderRadius"];
 function record(value) {
@@ -64,6 +66,225 @@ function resizeTimelineTarget(timelineValue, targetId, width, height) {
             keyframe.props = props;
         }
     }
+}
+function componentBounds(componentValue) {
+    const component = record(componentValue);
+    const width = Math.max(1, finiteNumber(component.width) || 1);
+    const height = Math.max(1, finiteNumber(component.height) || 1);
+    const scale = Math.max(0.001, finiteNumber(component.scale) || 1);
+    const rotation = ((finiteNumber(component.rotation) || 0) * Math.PI) / 180;
+    const halfWidth = (width * scale) / 2;
+    const halfHeight = (height * scale) / 2;
+    const radiusX = Math.abs(Math.cos(rotation)) * halfWidth + Math.abs(Math.sin(rotation)) * halfHeight;
+    const radiusY = Math.abs(Math.sin(rotation)) * halfWidth + Math.abs(Math.cos(rotation)) * halfHeight;
+    const x = finiteNumber(component.x) || 0;
+    const y = finiteNumber(component.y) || 0;
+    return { minX: x - radiusX, minY: y - radiusY, maxX: x + radiusX, maxY: y + radiusY };
+}
+function rootComponentBounds(componentsValue) {
+    const components = Array.isArray(componentsValue) ? componentsValue : [];
+    let output = null;
+    for (const component of components) {
+        const next = componentBounds(component);
+        output = output
+            ? {
+                minX: Math.min(output.minX, next.minX),
+                minY: Math.min(output.minY, next.minY),
+                maxX: Math.max(output.maxX, next.maxX),
+                maxY: Math.max(output.maxY, next.maxY)
+            }
+            : next;
+    }
+    return output;
+}
+function frameZeroPropsByTarget(timelineValue) {
+    const output = new Map();
+    const timeline = record(timelineValue);
+    for (const trackValue of Array.isArray(timeline.tracks) ? timeline.tracks : []) {
+        const track = record(trackValue);
+        const targetId = String(track.targetId || "");
+        if (!targetId)
+            continue;
+        const keyframe = (Array.isArray(track.keyframes) ? track.keyframes : [])
+            .map(record)
+            .find((value) => finiteNumber(value.frame) === 0);
+        if (keyframe)
+            output.set(targetId, record(keyframe.props));
+    }
+    return output;
+}
+function normalizeRootComponentsFromFrameZero(composition) {
+    const components = Array.isArray(composition.components) ? composition.components : [];
+    if (!components.length)
+        return null;
+    const frameZero = frameZeroPropsByTarget(composition.timeline);
+    const resolved = components.map((value) => {
+        const component = record(value);
+        return { ...component, ...(frameZero.get(String(component.id || "")) || {}) };
+    });
+    const bounds = rootComponentBounds(resolved);
+    if (!bounds)
+        return null;
+    const width = Number(Math.max(1, bounds.maxX - bounds.minX).toFixed(3));
+    const height = Number(Math.max(1, bounds.maxY - bounds.minY).toFixed(3));
+    const offset = { x: Number((-bounds.minX).toFixed(3)), y: Number((-bounds.minY).toFixed(3)) };
+    const offsets = new Map();
+    let changed = Boolean(offset.x || offset.y);
+    components.forEach((value, index) => {
+        const component = record(value);
+        const geometry = record(resolved[index]);
+        const id = String(component.id || "");
+        const x = Number(((finiteNumber(geometry.x) || 0) + offset.x).toFixed(3));
+        const y = Number(((finiteNumber(geometry.y) || 0) + offset.y).toFixed(3));
+        const componentWidth = Math.max(1, finiteNumber(geometry.width) || finiteNumber(component.width) || 1);
+        const componentHeight = Math.max(1, finiteNumber(geometry.height) || finiteNumber(component.height) || 1);
+        if (finiteNumber(component.x) !== x ||
+            finiteNumber(component.y) !== y ||
+            finiteNumber(component.width) !== componentWidth ||
+            finiteNumber(component.height) !== componentHeight)
+            changed = true;
+        component.x = x;
+        component.y = y;
+        component.width = componentWidth;
+        component.height = componentHeight;
+        if (id)
+            offsets.set(id, offset);
+    });
+    translateTimelinePosition(composition.timeline, offsets);
+    return { width, height, changed };
+}
+function translateRootComponents(composition, x, y) {
+    if (!x && !y)
+        return;
+    const offsets = new Map();
+    for (const componentValue of Array.isArray(composition.components) ? composition.components : []) {
+        const component = record(componentValue);
+        const id = String(component.id || "");
+        component.x = Number(((finiteNumber(component.x) || 0) + x).toFixed(3));
+        component.y = Number(((finiteNumber(component.y) || 0) + y).toFixed(3));
+        if (id)
+            offsets.set(id, { x, y });
+        translateTimelinePosition(component.timeline, new Map(), { x, y });
+    }
+    translateTimelinePosition(composition.timeline, offsets);
+}
+function compositionEntryByName(compositions, name) {
+    for (const [id, value] of Object.entries(compositions)) {
+        const composition = record(value);
+        if (String(composition.name || "") === name)
+            return [id, composition];
+    }
+    return null;
+}
+function syncReferenceSize(componentValue, composition, sourceId, width, height) {
+    const component = record(componentValue);
+    let changed = 0;
+    if (String(component.kind || "") === "reference" && String(component.artCompositionId || "") === sourceId) {
+        if (finiteNumber(component.width) !== width || finiteNumber(component.height) !== height) {
+            component.width = width;
+            component.height = height;
+            resizeTimelineTarget(composition.timeline, String(component.id || ""), width, height);
+            resizeTimelineTarget(component.timeline, "self", width, height);
+            changed += 1;
+        }
+    }
+    for (const child of Array.isArray(component.children) ? component.children : []) {
+        changed += syncReferenceSize(child, composition, sourceId, width, height);
+    }
+    return changed;
+}
+/**
+ * Build 1008 exposed a legacy Voting Card viewport mismatch that the old
+ * content-bounds renderer had hidden. The semantic answer art is a 520x150
+ * surface, but both its base composition and lifecycle wrapper still declared
+ * 560x230 canvases. Once references began honoring authored canvases directly,
+ * the 560x230 source was non-uniformly squeezed into the 520x150 widget slot.
+ *
+ * Normalize the source and wrapper canvases once while preserving the compound
+ * widget's intentionally authored x/y placement.
+ */
+function normalizeVotingCardAnswerGeometry(compositions, report) {
+    const changedIds = new Set();
+    const baseEntry = compositionEntryByName(compositions, "Voting Card Answer Text");
+    const wrapperEntry = compositionEntryByName(compositions, "Voting Card Answer");
+    if (!baseEntry || !wrapperEntry)
+        return [];
+    const [baseId, base] = baseEntry;
+    const baseCanvas = record(base.canvas);
+    const normalizedBaseSize = normalizeRootComponentsFromFrameZero(base);
+    if (!normalizedBaseSize)
+        return [];
+    const targetWidth = normalizedBaseSize.width;
+    const targetHeight = normalizedBaseSize.height;
+    const targetX = targetWidth / 2;
+    const targetY = targetHeight / 2;
+    let baseChanged = normalizedBaseSize.changed;
+    if (finiteNumber(baseCanvas.width) !== targetWidth || finiteNumber(baseCanvas.height) !== targetHeight) {
+        baseCanvas.width = targetWidth;
+        baseCanvas.height = targetHeight;
+        base.canvas = baseCanvas;
+        report.resizedCompositionCount += 1;
+        baseChanged = true;
+    }
+    if (baseChanged)
+        changedIds.add(baseId);
+    const [wrapperId, wrapper] = wrapperEntry;
+    const wrapperCanvas = record(wrapper.canvas);
+    const wrapperComponents = Array.isArray(wrapper.components) ? wrapper.components : [];
+    const root = record(wrapperComponents.find((value) => String(record(value).artCompositionId || "") === baseId) || wrapperComponents[0]);
+    let wrapperChanged = false;
+    if (Object.keys(root).length) {
+        const offsetX = Number((targetX - (finiteNumber(root.x) || 0)).toFixed(3));
+        const offsetY = Number((targetY - (finiteNumber(root.y) || 0)).toFixed(3));
+        if (offsetX || offsetY) {
+            translateRootComponents(wrapper, offsetX, offsetY);
+            wrapperChanged = true;
+        }
+        if (finiteNumber(root.width) !== targetWidth || finiteNumber(root.height) !== targetHeight) {
+            root.width = targetWidth;
+            root.height = targetHeight;
+            resizeTimelineTarget(wrapper.timeline, String(root.id || ""), targetWidth, targetHeight);
+            resizeTimelineTarget(root.timeline, "self", targetWidth, targetHeight);
+            wrapperChanged = true;
+        }
+    }
+    if (finiteNumber(wrapperCanvas.width) !== targetWidth || finiteNumber(wrapperCanvas.height) !== targetHeight) {
+        wrapperCanvas.width = targetWidth;
+        wrapperCanvas.height = targetHeight;
+        wrapper.canvas = wrapperCanvas;
+        report.resizedCompositionCount += 1;
+        wrapperChanged = true;
+    }
+    if (wrapperChanged)
+        changedIds.add(wrapperId);
+    for (const [compositionId, compositionValue] of Object.entries(compositions)) {
+        const composition = record(compositionValue);
+        let changedReferences = 0;
+        for (const component of Array.isArray(composition.components) ? composition.components : []) {
+            changedReferences += syncReferenceSize(component, composition, wrapperId, targetWidth, targetHeight);
+        }
+        if (changedReferences)
+            changedIds.add(compositionId);
+    }
+    if (changedIds.size)
+        report.changed = true;
+    return [...changedIds];
+}
+function normalizeCurrentArtManifestGeometry(manifestValue) {
+    const manifest = clone(manifestValue || {});
+    const root = manifest;
+    const report = {
+        changed: false,
+        spriteCount: 0,
+        avatarFrameShapeCount: 0,
+        centeredComponentCount: 0,
+        resizedCompositionCount: 0,
+        compositionIds: []
+    };
+    const compositions = record(root.compositions);
+    report.compositionIds = normalizeVotingCardAnswerGeometry(compositions, report);
+    root.artComponentSchemaVersion = exports.ART_COMPONENT_SCHEMA_VERSION;
+    return { manifest, report };
 }
 function centerLegacyComponents(componentsValue, parentWidth, parentHeight, path, offsets, report) {
     const components = Array.isArray(componentsValue) ? componentsValue : [];
@@ -267,6 +488,12 @@ function migrateLegacyArtManifestSchema(manifestValue) {
             report.resizedCompositionCount !== beforeResized ||
             report.changed !== changedBefore)
             report.compositionIds.push(compositionId);
+    }
+    if (sourceVersion < VOTING_CARD_ANSWER_GEOMETRY_VERSION) {
+        for (const compositionId of normalizeVotingCardAnswerGeometry(compositions, report)) {
+            if (!report.compositionIds.includes(compositionId))
+                report.compositionIds.push(compositionId);
+        }
     }
     root.artComponentSchemaVersion = exports.ART_COMPONENT_SCHEMA_VERSION;
     report.changed = true;

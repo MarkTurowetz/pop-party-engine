@@ -2,7 +2,11 @@
 // ported recording lifecycle + controller text directly and installs
 // window.createControllerVoiceInput for the legacy controller runtime.
 
-import { createControllerRecordingLifecycle, type ControllerRecordingLifecycle } from "./controllerRecordingLifecycle";
+import {
+  createControllerRecordingLifecycle,
+  type ControllerRecordingLifecycle,
+  type ControllerRecordingState
+} from "./controllerRecordingLifecycle";
 import { PartyGameControllerText } from "./controllerTextRenderer";
 
 type Dict = Record<string, unknown>;
@@ -49,31 +53,55 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   const writeButtonText = typeof setButtonText === "function" ? setButtonText : (writeText as (t: HTMLElement, v: unknown, s?: Dict) => void);
 
   let lifecycle: ControllerRecordingLifecycle | null = null;
+  let activePressActionId = "";
+  let activePressToken = 0;
+  let renderedButton: HTMLButtonElement | null = null;
+  let renderedButtonText = "";
+  let renderedStatusText = "";
   const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
 
-  function setButtonState(isBusy: boolean): void {
+  function setStatusText(value: string): void {
+    if (renderedStatusText === value && status.dataset?.textFitSource === value) return;
+    renderedStatusText = value;
+    writeText(status, value);
+  }
+
+  function setButtonPresentation(text: string, disabled: boolean): void {
     const button = getButton();
     if (!button) return;
-    if (!isBusy) {
-      writeButtonText(button, "Hold To Record", { ...BUTTON_SPEC });
-      button.disabled = false;
+    const currentText = button.dataset?.controllerTextValue || "";
+    if (renderedButton !== button || renderedButtonText !== text || currentText !== text) {
+      writeButtonText(button, text, { ...BUTTON_SPEC });
+      renderedButton = button;
+      renderedButtonText = text;
+    }
+    if (button.disabled !== disabled) button.disabled = disabled;
+  }
+
+  function renderRecordingState(state: ControllerRecordingState): void {
+    if (state === "listening") {
+      // Keeping the button enabled preserves pointer capture until release.
+      setButtonPresentation("Release To Send", false);
       return;
     }
-    button.disabled = true;
-    writeButtonText(button, "Processing", { ...BUTTON_SPEC });
+    if (state === "buffering" || state === "stopping" || state === "submitting") {
+      setButtonPresentation("Processing", true);
+      return;
+    }
+    setButtonPresentation("Hold To Record", false);
   }
 
   function getLifecycle(): ControllerRecordingLifecycle {
     if (!lifecycle) {
       lifecycle = createControllerRecordingLifecycle({
         getReleaseBufferSeconds,
-        onBusyChange: setButtonState,
+        onStateChange: renderRecordingState,
         onError: () => {
           const button = getButton();
           if (button) button.disabled = false;
         },
         onStatus: (message) => {
-          writeText(status, message);
+          setStatusText(message);
         },
         previewText,
         submitText
@@ -88,11 +116,8 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   }
 
   function resetUi(): void {
-    const button = getButton();
-    if (!button) return;
-    writeButtonText(button, "Hold To Record", { ...BUTTON_SPEC });
-    button.disabled = false;
-    writeText(status, "Hold to record");
+    renderRecordingState("idle");
+    setStatusText("Hold to record");
   }
 
   function hasRememberedMicrophoneAccess(): boolean {
@@ -128,27 +153,38 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
     return false;
   }
 
-  async function beginRecording(actionId: string): Promise<void> {
+  async function beginRecording(actionId: string, expectedPressToken: number | null = null): Promise<void> {
     const button = getButton();
     if (!button) return;
     if (!(await canRecordWithMicrophone())) {
-      writeText(status, "Give microphone access first");
+      if (expectedPressToken !== null && expectedPressToken !== activePressToken) return;
+      setStatusText("Give microphone access first");
       button.disabled = false;
       return;
     }
-    if (getLifecycle().begin(actionId)) {
-      writeButtonText(button, "Release To Send", { ...BUTTON_SPEC });
-      button.disabled = false;
-    }
+    if (
+      expectedPressToken !== null &&
+      (expectedPressToken !== activePressToken || activePressActionId !== actionId)
+    ) return;
+    getLifecycle().begin(actionId);
   }
 
   function finishRecording(actionId: string): void {
     const button = getButton();
     if (!button) return;
-    if (getLifecycle().release(actionId)) {
-      button.disabled = true;
-      writeButtonText(button, "Processing", { ...BUTTON_SPEC });
-    }
+    getLifecycle().release(actionId);
+  }
+
+  function beginPress(actionId: string): void {
+    activePressActionId = actionId;
+    activePressToken += 1;
+    void beginRecording(actionId, activePressToken);
+  }
+
+  function finishPress(actionId: string): void {
+    if (activePressActionId === actionId) activePressActionId = "";
+    activePressToken += 1;
+    finishRecording(actionId);
   }
 
   function start(actionId: string): void {
@@ -168,7 +204,7 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
       } catch {
         // Pointer capture is best-effort across mobile browsers.
       }
-      void beginRecording(actionId);
+      beginPress(actionId);
     };
     button.onpointerup = (event) => {
       event.preventDefault();
@@ -177,22 +213,23 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
       } catch {
         // Pointer capture is best-effort across mobile browsers.
       }
-      finishRecording(actionId);
+      finishPress(actionId);
     };
     button.onpointercancel = (event) => {
       event.preventDefault();
-      finishRecording(actionId);
+      finishPress(actionId);
     };
     button.onkeydown = (event) => {
       if ((event.key !== " " && event.key !== "Enter") || event.repeat) return;
       event.preventDefault();
-      void beginRecording(actionId);
+      beginPress(actionId);
     };
     button.onkeyup = (event) => {
       if (event.key !== " " && event.key !== "Enter") return;
       event.preventDefault();
-      finishRecording(actionId);
+      finishPress(actionId);
     };
+    renderRecordingState(getLifecycle().state());
   }
 
   return {
@@ -201,7 +238,11 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
     renderWaiting,
     resetUi,
     start,
-    stopRecognition: () => getLifecycle().cancel()
+    stopRecognition: () => {
+      activePressActionId = "";
+      activePressToken += 1;
+      getLifecycle().cancel();
+    }
   };
 }
 

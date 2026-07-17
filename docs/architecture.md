@@ -239,10 +239,11 @@ concepts into focused modules.
   center on the parent's top-left corner. Runtime and preview renderers use the authored
   canvas directly and must not crop, translate, or resize references from child content bounds.
 - A newly created prefab reference starts at the source composition's canvas width and height.
-  Its placed `x`, `y`, `width`, and `height` are then authored instance data and are never silently
-  resynchronized when the source changes. F8 conversion may rebase selected artwork into a new
-  tightly sized canvas at authoring time, but changes to a child's frame-zero position or bounds
-  do not silently change an existing composition canvas or any placed parent instance.
+  Its placed `x` and `y` are authored instance data and must never be silently recentered. The
+  source canvas is the reference's intrinsic aspect ratio: lifecycle wrappers and their base
+  visual prefabs must declare the same intended viewport, and authored resizing should use the
+  reference's uniform `scale` instead of conflicting width/height ratios. F8 conversion may
+  rebase selected artwork into a new tightly sized canvas at authoring time.
 - The Art Manager's `Stage` and `Controller Stage` are persistent local assembly
   workspaces, not compositions and never runtime assets. Converting contiguous sibling
   layers with F8 creates one library composition and atomically replaces those layers

@@ -42,6 +42,7 @@ export interface ControllerRecordingLifecycleOptions {
   getReleaseBufferSeconds?: () => number;
   onBusyChange?: (busy: boolean) => void;
   onError?: (message: string) => void;
+  onStateChange?: (state: ControllerRecordingState) => void;
   onStatus?: (message: string) => void;
   placeholderText?: string;
   previewText: (actionId: string, text: string) => Promise<unknown> | unknown;
@@ -49,12 +50,14 @@ export interface ControllerRecordingLifecycleOptions {
   submitText: (actionId: string, text: string) => Promise<unknown> | unknown;
 }
 
+export type ControllerRecordingState = "idle" | "listening" | "buffering" | "stopping" | "submitting";
+
 export interface ControllerRecordingLifecycle {
   begin(actionId: string): boolean;
   cancel(options?: { abort?: boolean; message?: string }): void;
   isBusy(): boolean;
   release(actionId: string): boolean;
-  state(): string;
+  state(): ControllerRecordingState;
 }
 
 export function createControllerRecordingLifecycle(options: ControllerRecordingLifecycleOptions): ControllerRecordingLifecycle {
@@ -62,6 +65,7 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     getReleaseBufferSeconds = () => 1,
     onBusyChange = () => {},
     onError = () => {},
+    onStateChange = () => {},
     onStatus = () => {},
     placeholderText = "T",
     previewText,
@@ -70,7 +74,7 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
   } = options;
 
   let recognition: SpeechRecognitionLike | null = null;
-  let state = "idle";
+  let state: ControllerRecordingState = "idle";
   let transcript = "";
   let interimTranscript = "";
   let activeActionId = "";
@@ -81,9 +85,11 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     return state !== "idle";
   }
 
-  function setState(nextState: string): void {
+  function setState(nextState: ControllerRecordingState): void {
+    if (state === nextState) return;
     state = nextState;
     onBusyChange(isBusy());
+    onStateChange(state);
   }
 
   function releaseBufferMs(): number {
@@ -128,8 +134,16 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     }
   }
 
+  function detachRecognition(activeRecognition: SpeechRecognitionLike | null): void {
+    if (!activeRecognition) return;
+    activeRecognition.onresult = null;
+    activeRecognition.onerror = null;
+    activeRecognition.onend = null;
+  }
+
   function finishWithoutSubmit(message = "No speech detected"): void {
     clearReleaseBufferTimer();
+    detachRecognition(recognition);
     recognition = null;
     activeActionId = "";
     clearCaptureText();
@@ -154,6 +168,7 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     const finalTranscript = capturedTranscript();
     const actionIdToSubmit = activeActionId;
     const shouldSubmit = (state === "buffering" || state === "stopping") && Boolean(actionIdToSubmit);
+    detachRecognition(recognition);
     recognition = null;
     activeActionId = "";
     clearCaptureText();
@@ -174,7 +189,7 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
       return;
     }
     const message = event.error === "not-allowed" ? "Microphone access was blocked" : "Voice capture failed";
-    cancel({ abort: false, message });
+    cancel({ abort: true, message });
     onError(message);
   }
 
@@ -186,6 +201,7 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     clearCaptureText();
     previewPromise = Promise.resolve(null);
     setState("idle");
+    detachRecognition(activeRecognition);
     if (activeRecognition && abort) {
       try {
         if (activeRecognition.abort) activeRecognition.abort();
@@ -227,6 +243,7 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
       recognition.start();
       return true;
     } catch {
+      detachRecognition(recognition);
       recognition = null;
       activeActionId = "";
       clearCaptureText();
