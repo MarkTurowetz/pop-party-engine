@@ -83,30 +83,12 @@ interface Bounds {
 }
 
 function compositionBounds(composition: PlayerAvatarArtComposition): Bounds {
-  const components = composition.components || [];
-  if (!components.length) {
-    const width = Math.max(1, number(composition.canvas?.width, 1));
-    const height = Math.max(1, number(composition.canvas?.height, 1));
-    return {
-      minX: number(composition.canvas?.minX, -width / 2),
-      minY: number(composition.canvas?.minY, -height / 2),
-      width,
-      height
-    };
-  }
-  const boxes = components.map((component) => {
-    const scale = Math.abs(number(component.scale, 1));
-    const width = Math.max(1, number(component.width, 1) * scale);
-    const height = Math.max(1, number(component.height, 1) * scale);
-    const x = number(component.x, 0);
-    const y = number(component.y, 0);
-    return { minX: x - width / 2, maxX: x + width / 2, minY: y - height / 2, maxY: y + height / 2 };
-  });
-  const minX = Math.min(...boxes.map((box) => box.minX));
-  const maxX = Math.max(...boxes.map((box) => box.maxX));
-  const minY = Math.min(...boxes.map((box) => box.minY));
-  const maxY = Math.max(...boxes.map((box) => box.maxY));
-  return { minX, minY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+  return {
+    minX: 0,
+    minY: 0,
+    width: Math.max(1, number(composition.canvas?.width, 1)),
+    height: Math.max(1, number(composition.canvas?.height, 1))
+  };
 }
 
 function componentStyle(component: Dict, bounds: Bounds, layerIndex: number, siblingCount: number): string {

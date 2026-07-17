@@ -8,7 +8,6 @@ import {
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { gameTextHtml } from "../../runtime/gameTextMarkup";
 import type { ArtCanvasLivePositions } from "./artCanvasTransformTransaction";
-import { artCompositionContentBounds } from "./artCompositionBounds";
 import { artReferenceFrameZeroOverrides } from "./artReferenceFrameOverrides";
 import { PartyGameTextFit } from "../../runtime/textFit";
 import {
@@ -191,14 +190,8 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const spriteTint = imageTint === "currentColor" ? "var(--art-preview-current-color)" : imageTint || "currentColor";
     const referencedComposition = referencedCompositionFor(component, referencePath);
     const referenceCanvas = referencedComposition?.canvas || { width, height };
-    const referenceBounds = referencedComposition
-      ? artCompositionContentBounds(referencedComposition, props.compositionById, {
-          targetPath,
-          timelineFrameOverrides: referenceFrameOverrides
-        })
-      : { minX: 0, minY: 0, width, height };
-    const referenceScaleX = width / Math.max(1, referenceBounds.width);
-    const referenceScaleY = height / Math.max(1, referenceBounds.height);
+    const referenceScaleX = width / Math.max(1, Number(referenceCanvas.width || width));
+    const referenceScaleY = height / Math.max(1, Number(referenceCanvas.height || height));
     const maskSize = objectFit === "fill" ? "100% 100%" : objectFit;
     const transparentBase = kind === "container" || kind === "reference";
     const clipsOwnContent = Boolean(imageUrl || isTextual);
@@ -341,7 +334,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
                 top: 0,
                 width: Number(referenceCanvas.width || width),
                 height: Number(referenceCanvas.height || height),
-                transform: `scale(${referenceScaleX}, ${referenceScaleY}) translate(${-referenceBounds.minX}px, ${-referenceBounds.minY}px)`,
+                transform: `scale(${referenceScaleX}, ${referenceScaleY})`,
                 transformOrigin: "top left",
                 pointerEvents: "none"
               }}

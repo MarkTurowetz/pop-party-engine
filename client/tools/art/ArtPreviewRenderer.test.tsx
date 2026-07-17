@@ -154,12 +154,12 @@ describe("ArtPreviewRenderer transform origins", () => {
     expect(nonInteractiveMarkup).not.toContain("data-art-container-bounds");
   });
 
-  it("normalizes referenced artwork to its tight visual bounds", () => {
+  it("renders referenced artwork from its authored canvas coordinates", () => {
     const vip = {
       id: "player-vip-widget",
       name: "Player VIP Widget",
       surface: "stage",
-      canvas: { width: 52, height: 28 },
+      canvas: { width: 44, height: 22 },
       components: [{ id: "card", name: "VIP Card", kind: "shape", x: 22, y: 11, width: 44, height: 22 }]
     } as ArtComposition;
     const reference = {
@@ -177,7 +177,8 @@ describe("ArtPreviewRenderer transform origins", () => {
       <ArtPreviewRenderer components={[reference]} compositionById={new Map([[vip.id, vip]])} />
     );
 
-    expect(markup).toContain("scale(1, 1) translate(0px, 0px)");
+    expect(markup).toContain("scale(1, 1)");
+    expect(markup).not.toContain("translate(");
   });
 
   it("renders live positions for every component in a group drag", () => {
@@ -232,7 +233,7 @@ describe("ArtPreviewRenderer transform origins", () => {
     expect(markup).not.toContain(">Text<");
   });
 
-  it("normalizes frame-zero artwork into the placed reference bounds", () => {
+  it("does not recenter frame-zero artwork that leaves its authored canvas", () => {
     const answer = {
       id: "answer",
       name: "Answer",
@@ -253,7 +254,8 @@ describe("ArtPreviewRenderer transform origins", () => {
       <ArtPreviewRenderer components={[reference]} compositionById={new Map([[answer.id, answer]])} />
     );
 
-    expect(markup).toContain("scale(0.5, 0.5) translate(300px, 90px)");
+    expect(markup).toContain("scale(1, 1)");
+    expect(markup).not.toContain("translate(300px, 90px)");
     expect(markup).toContain("left:-300px;top:-90px;width:400px;height:80px");
   });
 

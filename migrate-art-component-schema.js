@@ -24,7 +24,7 @@ const summary = {
 
 if (write && report.changed) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const backupPath = `${manifestPath}.pre-sprite-${timestamp}.bak`;
+  const backupPath = `${manifestPath}.pre-schema-${timestamp}.bak`;
   const tempPath = `${manifestPath}.${process.pid}.tmp`;
   fs.copyFileSync(manifestPath, backupPath);
   fs.writeFileSync(tempPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });

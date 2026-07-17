@@ -18,8 +18,8 @@ function authoredAvatarCompositions(): PlayerAvatarArtComposition[] {
           kind: "reference",
           artCompositionId: AVATARS_COMPOSITION_ID,
           defaultAnimationState: "Rex",
-          x: 0,
-          y: 0,
+          x: 50,
+          y: 50,
           width: 70,
           height: 70,
           scale: 1
@@ -28,8 +28,8 @@ function authoredAvatarCompositions(): PlayerAvatarArtComposition[] {
           id: "avatar-background",
           kind: "shape",
           shapeStyle: "circle",
-          x: 0,
-          y: 0,
+          x: 50,
+          y: 50,
           width: 100,
           height: 100,
           scale: 1,
@@ -45,8 +45,8 @@ function authoredAvatarCompositions(): PlayerAvatarArtComposition[] {
       components: [{
         id: "avatar",
         kind: "sprite",
-        x: 0,
-        y: 0,
+        x: 35,
+        y: 35,
         width: 70,
         height: 70,
         scale: 1,
@@ -104,5 +104,19 @@ describe("playerAvatarCompositionArt", () => {
       getComposition: () => null,
       assetUrl: () => ""
     })).toBeNull();
+  });
+
+  it("does not compensate for a zero-origin child in a top-left canvas", () => {
+    const compositions = authoredAvatarCompositions();
+    compositions[0].components![0].x = 0;
+    compositions[0].components![0].y = 0;
+    const markup = playerAvatarCompositionArt({
+      shape: "rex",
+      getComposition: (id) => compositions.find((composition) => composition.id === id) || null,
+      assetUrl: (assetId) => `/art/${assetId}.svg`
+    });
+
+    expect(markup).toContain("left:0%");
+    expect(markup).toContain("top:0%");
   });
 });

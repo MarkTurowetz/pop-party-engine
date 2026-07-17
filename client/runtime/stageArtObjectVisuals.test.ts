@@ -75,7 +75,7 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     }
   });
 
-  it("lays out referenced children against a tight content view box", () => {
+  it("lays out referenced children against their authored canvas", () => {
     const globals = globalThis as typeof globalThis & { PartyGameArtComponentSchema?: Record<string, unknown> };
     const previousSchema = globals.PartyGameArtComponentSchema;
     const style = { setProperty: vi.fn() } as unknown as CSSStyleDeclaration;

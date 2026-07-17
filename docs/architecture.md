@@ -233,6 +233,16 @@ concepts into focused modules.
   instances of those prefabs. Runtime visibility actions should target the layout
   instance identity (`targetLayoutScope` plus `targetLayoutElementId`), not the
   source art composition id.
+- Art composition coordinates use a top-left canvas origin while every component's `x`/`y`
+  stores its center point. A base child centered in a `W` by `H` parent is authored at
+  `W / 2`, `H / 2` with `transformOrigin: Center`; `0,0` intentionally puts the child's
+  center on the parent's top-left corner. Runtime and preview renderers use the authored
+  canvas directly and must not crop, translate, or resize references from child content bounds.
+- A newly created prefab reference starts at the source composition's canvas width and height.
+  Its placed `x`, `y`, `width`, and `height` are then authored instance data and are never silently
+  resynchronized when the source changes. F8 conversion may rebase selected artwork into a new
+  tightly sized canvas at authoring time, but changes to a child's frame-zero position or bounds
+  do not silently change an existing composition canvas or any placed parent instance.
 - The Art Manager's `Stage` and `Controller Stage` are persistent local assembly
   workspaces, not compositions and never runtime assets. Converting contiguous sibling
   layers with F8 creates one library composition and atomically replaces those layers

@@ -5,8 +5,6 @@
 // module's import-time install).
 
 import { normalizeGameTextFontFamily } from "../textFonts";
-import type { ArtComposition } from "../types/game-data";
-import { artCompositionContentBoundsWithResolver } from "../tools/art/artCompositionBounds";
 import { distributedContainerItemPositions } from "./distributedContainerLayout";
 import { effectiveArtComponentVisibilityTimeline, effectiveVisibilityTimeline } from "./effectiveTimeline";
 import type { TimelineCommandEventDetail } from "./visualObject";
@@ -563,14 +561,9 @@ class ArtObjectView {
     const referencedId =
       schema().normalizeComponentKind(this.component?.kind) === "reference" ? String(this.component?.artCompositionId || "") : "";
     const referencedComposition = referencedCompositionFor(this.component, this.getComposition, this.referencePath);
-    const referencedBounds = referencedComposition
-      ? artCompositionContentBoundsWithResolver(
-          referencedComposition as unknown as ArtComposition,
-          (id) => this.getComposition(id) as unknown as ArtComposition | null
-        )
-      : null;
-    const childCanvas = referencedBounds
-      ? { width: referencedBounds.width, height: referencedBounds.height, minX: referencedBounds.minX, minY: referencedBounds.minY }
+    const referencedCanvas = referencedComposition?.canvas as CanvasSize;
+    const childCanvas = referencedCanvas
+      ? { width: num(referencedCanvas.width, 1), height: num(referencedCanvas.height, 1), minX: 0, minY: 0 }
       : { width: num(this.component?.width, 1), height: num(this.component?.height, 1) };
     const renderList =
       (referencedComposition?.components as Component[]) || distributedContainerChildren(this.component || {}, children || []);

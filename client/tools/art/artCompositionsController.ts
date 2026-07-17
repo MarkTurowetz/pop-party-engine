@@ -14,7 +14,6 @@ import {
 } from "./artCompositionModel";
 import { componentKindLabel, defaultTextFontFamily, normalizeCreatableComponentKind } from "./artComponentSchema";
 import { artCompositionContentBounds } from "./artCompositionBounds";
-import { artCompositionFrameZeroOverrides } from "./artReferenceFrameOverrides";
 import { mergeDefaultArtVisibilityTimeline } from "./artTimelineModel";
 import {
   artWorkspaceId,
@@ -177,109 +176,22 @@ function createComposition(kind: ArtCompositionKind, surface: string, name: stri
   };
 }
 
-function referenceComponentPatch(composition: ArtComposition, compositions: ArtComposition[] = []): Partial<ArtComponent> {
-  const compositionById = new Map(compositions.map((item) => [String(item.id || ""), item]));
-  compositionById.set(String(composition.id || ""), composition);
-  const contentBounds = artCompositionContentBounds(composition, compositionById, {
-    timelineFrameOverrides: artCompositionFrameZeroOverrides(composition, compositionById)
-  });
+function referenceComponentPatch(composition: ArtComposition): Partial<ArtComponent> {
   return {
     name: composition.name,
-    width: Number(contentBounds.width || composition.canvas?.width || DEFAULT_COMPOSITION_CANVAS.width),
-    height: Number(contentBounds.height || composition.canvas?.height || DEFAULT_COMPOSITION_CANVAS.height),
+    width: Number(composition.canvas?.width || DEFAULT_COMPOSITION_CANVAS.width),
+    height: Number(composition.canvas?.height || DEFAULT_COMPOSITION_CANVAS.height),
     artCompositionId: composition.id
   };
-}
-
-interface ArtCompositionIntrinsicSize {
-  width: number;
-  height: number;
-}
-
-function compositionIntrinsicSizes(compositions: ArtComposition[]): Map<string, ArtCompositionIntrinsicSize> {
-  return new Map(compositions.map((composition) => {
-    const patch = referenceComponentPatch(composition, compositions);
-    return [composition.id, { width: Number(patch.width || 1), height: Number(patch.height || 1) }];
-  }));
-}
-
-function synchronizeTimelineReferenceDimensions(
-  composition: ArtComposition,
-  referenceId: string,
-  nextSize: ArtCompositionIntrinsicSize
-): boolean {
-  if (!composition.timeline) return false;
-  let changed = false;
-  const tracks = (composition.timeline.tracks || []).map((track) => {
-    if (track.targetId !== referenceId) return track;
-    const keyframes = (track.keyframes || []).map((keyframe) => {
-      const props = { ...(keyframe.props || {}) };
-      let keyframeChanged = false;
-      if (Object.prototype.hasOwnProperty.call(props, "width") && Number(props.width) !== nextSize.width) {
-        props.width = nextSize.width;
-        keyframeChanged = true;
-      }
-      if (Object.prototype.hasOwnProperty.call(props, "height") && Number(props.height) !== nextSize.height) {
-        props.height = nextSize.height;
-        keyframeChanged = true;
-      }
-      if (!keyframeChanged) return keyframe;
-      changed = true;
-      return { ...keyframe, props };
-    });
-    return changed ? { ...track, keyframes } : track;
-  });
-  if (changed) composition.timeline = { ...composition.timeline, tracks };
-  return changed;
-}
-
-/**
- * Reference width and height are intrinsic source geometry. Placed instances
- * animate their apparent size through scale, so stale base values and stamped
- * keyframe dimensions are always synchronized to the referenced composition.
- * Repeating the pass carries a source change through parents and grandparents.
- */
-function synchronizeReferenceDimensions(compositions: ArtComposition[]): void {
-  const measurableCompositionIds = new Set(
-    compositions.filter((composition) => (composition.components || []).length > 0).map((composition) => composition.id)
-  );
-  for (let pass = 0; pass < Math.max(1, compositions.length); pass += 1) {
-    const nextSizes = compositionIntrinsicSizes(compositions);
-    let changed = false;
-    for (const owner of compositions) {
-      const visit = (components: ArtComponent[]): void => {
-        for (const component of components || []) {
-          if (component.kind === "reference" && component.artCompositionId) {
-            const nextSize = nextSizes.get(component.artCompositionId);
-            if (nextSize && measurableCompositionIds.has(component.artCompositionId)) {
-              if (Number(component.width) !== nextSize.width) {
-                component.width = nextSize.width;
-                changed = true;
-              }
-              if (Number(component.height) !== nextSize.height) {
-                component.height = nextSize.height;
-                changed = true;
-              }
-              if (synchronizeTimelineReferenceDimensions(owner, component.id, nextSize)) changed = true;
-            }
-          }
-          visit(component.children || []);
-        }
-      };
-      visit(owner.components || []);
-    }
-    if (!changed) return;
-  }
 }
 
 function createComponent(
   kind: string,
   bounds: { width: number; height: number },
-  referencedComposition: ArtComposition | null = null,
-  compositions: ArtComposition[] = []
+  referencedComposition: ArtComposition | null = null
 ): ArtComponent {
   const cleanKind = normalizeCreatableComponentKind(kind);
-  const referencePatch = cleanKind === "reference" && referencedComposition ? referenceComponentPatch(referencedComposition, compositions) : null;
+  const referencePatch = cleanKind === "reference" && referencedComposition ? referenceComponentPatch(referencedComposition) : null;
   const width =
     Number(referencePatch?.width || 0) || (cleanKind === "text" ? 220 : cleanKind === "container" ? 320 : cleanKind === "reference" ? 220 : 180);
   const height =
@@ -616,7 +528,6 @@ export function createArtCompositionsController(
     );
   }
   const savedCompositionsDraftSnapshot = compositionsDraftSnapshot(compositions);
-  synchronizeReferenceDimensions([...compositions, ...Object.values(workspaces)]);
   const sessionDraftPublisher = options.postDraft
     ? createSessionDraftPublisher({
         postDraft: options.postDraft,
@@ -755,7 +666,6 @@ export function createArtCompositionsController(
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
     redoStack.length = 0;
     apply();
-    synchronizeReferenceDimensions([...compositions, ...Object.values(workspaces)]);
     compositions = compositions.slice();
     workspaces = { ...workspaces };
     ensureSelectedComposition();
@@ -1025,7 +935,7 @@ export function createArtCompositionsController(
           normalizeCreatableComponentKind(kind) === "reference"
             ? referencedCompositionFor(composition, options.referencedCompositionId)
             : null;
-        const child = createComponent(kind, bounds, reference, compositions);
+        const child = createComponent(kind, bounds, reference);
         if (Number.isFinite(options.x)) child.x = Number(Number(options.x).toFixed(3));
         if (Number.isFinite(options.y)) child.y = Number(Number(options.y).toFixed(3));
         if (parent) {
@@ -1106,7 +1016,7 @@ export function createArtCompositionsController(
             return;
           }
           const referenced = referencedCompositionFor(composition, String(patch.artCompositionId || ""));
-          Object.assign(component, referenced ? referenceComponentPatch(referenced, compositions) : patch);
+          Object.assign(component, referenced ? referenceComponentPatch(referenced) : patch);
           error = null;
           return;
         }

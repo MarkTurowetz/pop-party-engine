@@ -423,10 +423,11 @@ describe("createArtCompositionsController", () => {
     expect(reference.timeline).toBeUndefined();
   });
 
-  it("sizes a dropped prefab reference from its visible frame-zero values", () => {
+  it("sizes a dropped prefab reference from its authored canvas instead of frame-zero content", () => {
     const prefab = composition("voting-card-answer");
     prefab.name = "Voting Card Answer";
     prefab.compositionKind = "prefab";
+    prefab.canvas = { width: 220, height: 60 };
     prefab.components = [
       { id: "answer", name: "Answer", kind: "text", x: 110, y: 30, width: 220, height: 60 }
     ] as never;
@@ -444,16 +445,18 @@ describe("createArtCompositionsController", () => {
 
     const reference = controller.getState().compositions[0].components[0];
     expect(reference.artCompositionId).toBe(prefab.id);
-    expect(reference.width).toBe(420);
-    expect(reference.height).toBe(78);
+    expect(reference.width).toBe(220);
+    expect(reference.height).toBe(60);
   });
 
-  it("refreshes inherited reference bounds and matching keyframes when the source changes", () => {
+  it("does not rewrite placed reference geometry when the source canvas changes", () => {
     const source = composition("voting-card-answer-text");
+    source.canvas = { width: 220, height: 60 };
     source.components = [{ id: "text", name: "Text", kind: "text", x: 110, y: 30, width: 220, height: 60 }] as never;
     const parent = composition("voting-card-answer");
+    parent.canvas = { width: 220, height: 60 };
     parent.components = [
-      { id: "answer-text", name: "Answer Text", kind: "reference", artCompositionId: source.id, x: 0, y: 0, width: 220, height: 60 }
+      { id: "answer-text", name: "Answer Text", kind: "reference", artCompositionId: source.id, x: 110, y: 30, width: 220, height: 60 }
     ] as never;
     parent.timeline = {
       fps: 30,
@@ -464,35 +467,29 @@ describe("createArtCompositionsController", () => {
     };
     const grandparent = composition("voting-card");
     grandparent.components = [
-      { id: "answer", name: "Answer", kind: "reference", artCompositionId: parent.id, x: 0, y: 0, width: 220, height: 60 }
+      { id: "answer", name: "Answer", kind: "reference", artCompositionId: parent.id, x: 280, y: 115, width: 220, height: 60 }
     ] as never;
     const controller = createArtCompositionsController({ initialCompositions: [parent, source, grandparent], api: fakeApi() });
 
     controller.selectComposition(source.id);
     controller.updateComposition(source.id, {
-      timeline: {
-        fps: 30,
-        frameCount: 2,
-        labels: [],
-        commands: [],
-        tracks: [{ targetId: "text", keyframes: [{ frame: 0, props: { x: 210, y: 39, width: 420, height: 78 } }] }]
-      }
+      canvas: { width: 420, height: 78 }
     });
 
     const state = controller.getState();
     const refreshedParent = state.compositions.find((item) => item.id === parent.id);
     const refreshedGrandparent = state.compositions.find((item) => item.id === grandparent.id);
-    expect(refreshedParent?.components[0]).toMatchObject({ width: 420, height: 78 });
-    expect(refreshedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ width: 420, height: 78, scale: 1 });
-    expect(refreshedGrandparent?.components[0]).toMatchObject({ width: 420, height: 78 });
-    expect(state.dirtyCompositionIds).toEqual(new Set([parent.id, source.id, grandparent.id]));
+    expect(refreshedParent?.components[0]).toMatchObject({ x: 110, y: 30, width: 220, height: 60 });
+    expect(refreshedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ width: 220, height: 60, scale: 1 });
+    expect(refreshedGrandparent?.components[0]).toMatchObject({ x: 280, y: 115, width: 220, height: 60 });
+    expect(state.dirtyCompositionIds).toEqual(new Set([source.id]));
   });
 
-  it("repairs stale loaded reference and keyframe dimensions from the current source", () => {
+  it("preserves authored loaded reference and keyframe dimensions", () => {
     const source = composition("voting-card-answer-text");
     source.components = [
-      { id: "shape", name: "Shape", kind: "shape", x: 0, y: 0, width: 180, height: 96 },
-      { id: "text", name: "Text", kind: "text", x: 0, y: 0, width: 220, height: 60 }
+      { id: "shape", name: "Shape", kind: "shape", x: 280, y: 115, width: 180, height: 96 },
+      { id: "text", name: "Text", kind: "text", x: 280, y: 115, width: 220, height: 60 }
     ] as never;
     source.timeline = {
       fps: 30,
@@ -506,7 +503,7 @@ describe("createArtCompositionsController", () => {
     };
     const parent = composition("voting-card-answer");
     parent.components = [
-      { id: "answer-text", name: "Answer Text", kind: "reference", artCompositionId: source.id, x: 0, y: 0, width: 220, height: 60 }
+      { id: "answer-text", name: "Answer Text", kind: "reference", artCompositionId: source.id, x: 280, y: 115, width: 220, height: 60 }
     ] as never;
     parent.timeline = {
       fps: 30,
@@ -519,12 +516,12 @@ describe("createArtCompositionsController", () => {
 
     const state = controller.getState();
     const repairedParent = state.compositions.find((item) => item.id === parent.id);
-    expect(repairedParent?.components[0]).toMatchObject({ width: 520, height: 150 });
-    expect(repairedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ width: 520, height: 150, scale: 1 });
-    expect(state.dirtyCompositionIds).toEqual(new Set([parent.id]));
+    expect(repairedParent?.components[0]).toMatchObject({ x: 280, y: 115, width: 220, height: 60 });
+    expect(repairedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ width: 420, height: 78, scale: 1 });
+    expect(state.dirtyCompositionIds).toEqual(new Set());
   });
 
-  it("sizes nested references from tight visual content instead of the editor canvas", () => {
+  it("sizes nested references from the authored canvas instead of tight visual content", () => {
     const vip = composition("player-vip-widget");
     vip.name = "Player VIP Widget";
     vip.compositionKind = "gameObject";
@@ -542,8 +539,8 @@ describe("createArtCompositionsController", () => {
         name: "Player VIP Widget",
         kind: "reference",
         artCompositionId: vip.id,
-        x: 0,
-        y: 0,
+        x: 280,
+        y: 115,
         width: 44,
         height: 22
       }
@@ -554,7 +551,7 @@ describe("createArtCompositionsController", () => {
     controller.addComponent("reference", { referencedCompositionId: vipMc.id });
 
     expect(controller.getState().compositions[0].components[0]).toEqual(
-      expect.objectContaining({ artCompositionId: vipMc.id, width: 44, height: 22 })
+      expect.objectContaining({ artCompositionId: vipMc.id, width: 560, height: 230 })
     );
   });
 
