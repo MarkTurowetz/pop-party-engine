@@ -341,12 +341,12 @@
         "y": 790
       },
       "startNodePosition": {
-        "x": 715,
+        "x": 742,
         "y": 70
       },
       "returnNodePosition": {
-        "x": 705,
-        "y": 3658
+        "x": 732,
+        "y": 3232
       },
       "entryTargetActionId": "crafting-game-state-action-mqprk697",
       "nextStateTargetId": "presentation-game-state",
@@ -362,8 +362,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqn4qzpm",
           "nodePosition": {
-            "x": 670,
-            "y": 514
+            "x": 697,
+            "y": 430
           },
           "subActions": [],
           "text": "We are in the Crafting State",
@@ -381,13 +381,34 @@
             "mode": "E+",
             "seconds": 0
           },
-          "nextTargetActionId": "crafting-game-state-action-mqlrgs0y",
+          "nextTargetActionId": "crafting-game-state-action-mrqrvzg1-kjrmtu",
           "nodePosition": {
-            "x": 670,
-            "y": 768
+            "x": 697,
+            "y": 634
           },
           "subActions": [],
           "variableName": "multipleChoicePrompt"
+        },
+        {
+          "id": "crafting-game-state-action-mrqrvzg1-kjrmtu",
+          "name": "Set Game Object Shown",
+          "type": "setGameObjectShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlrgs0y",
+          "nodePosition": {
+            "x": 697,
+            "y": 838
+          },
+          "subActions": [],
+          "targetLayoutElementId": "craftingtriviaprompttext",
+          "targetLayoutScope": "moment",
+          "targetLayoutSurface": "stage",
+          "isShown": true,
+          "instant": false
         },
         {
           "id": "crafting-game-state-action-mqlrgs0y",
@@ -400,8 +421,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqlronl5",
           "nodePosition": {
-            "x": 670,
-            "y": 1022
+            "x": 697,
+            "y": 1042
           },
           "subActions": [],
           "isShown": true,
@@ -418,8 +439,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqlrlkp0",
           "nodePosition": {
-            "x": 670,
-            "y": 1276
+            "x": 697,
+            "y": 1246
           },
           "subActions": []
         },
@@ -434,8 +455,8 @@
           },
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 670,
-            "y": 1530
+            "x": 697,
+            "y": 1450
           },
           "subActions": [
             {
@@ -474,8 +495,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqn4u54c",
           "nodePosition": {
-            "x": 670,
-            "y": 1832
+            "x": 697,
+            "y": 1704
           },
           "subActions": [
             {
@@ -510,8 +531,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqn9u17o",
           "nodePosition": {
-            "x": 670,
-            "y": 2134
+            "x": 697,
+            "y": 1958
           },
           "subActions": [],
           "isShown": true,
@@ -529,8 +550,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqn4uouf",
           "nodePosition": {
-            "x": 670,
-            "y": 2388
+            "x": 697,
+            "y": 2162
           },
           "subActions": []
         },
@@ -545,8 +566,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqn4v75w",
           "nodePosition": {
-            "x": 670,
-            "y": 2642
+            "x": 697,
+            "y": 2366
           },
           "subActions": [],
           "isShown": false,
@@ -564,8 +585,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqn4xkyp",
           "nodePosition": {
-            "x": 670,
-            "y": 2896
+            "x": 697,
+            "y": 2570
           },
           "subActions": [],
           "playerFilter": "correct",
@@ -573,8 +594,8 @@
         },
         {
           "id": "crafting-game-state-action-mqn4xkyp",
-          "name": "Set Player Answers Shown 2",
-          "type": "setPlayerAnswersShown",
+          "name": "Set Game Object Shown",
+          "type": "setGameObjectShown",
           "category": "standard",
           "timing": {
             "mode": "E+",
@@ -582,13 +603,31 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqprkq1k",
           "nodePosition": {
-            "x": 670,
-            "y": 3150
+            "x": 697,
+            "y": 2774
           },
-          "subActions": [],
+          "subActions": [
+            {
+              "id": "crafting-game-state-sub-action-mrqrww3o",
+              "name": "Set Players Shown",
+              "type": "setPlayersShown",
+              "category": "standard",
+              "timing": {
+                "mode": "S+",
+                "seconds": 0
+              },
+              "nextTargetActionId": "",
+              "nodePosition": null,
+              "subActions": [],
+              "isShown": true,
+              "instant": false
+            }
+          ],
+          "targetLayoutElementId": "craftingtriviaprompttext",
+          "targetLayoutScope": "moment",
+          "targetLayoutSurface": "stage",
           "isShown": false,
-          "instant": false,
-          "playerFilter": "all"
+          "instant": false
         },
         {
           "id": "crafting-game-state-action-mqprk697",
@@ -601,8 +640,8 @@
           },
           "nextTargetActionId": "crafting-game-state-action-mqlafl8m",
           "nodePosition": {
-            "x": 670,
-            "y": 260
+            "x": 697,
+            "y": 226
           },
           "subActions": [],
           "isShown": false,
@@ -619,8 +658,8 @@
           },
           "nextTargetActionId": "return",
           "nodePosition": {
-            "x": 670,
-            "y": 3404
+            "x": 697,
+            "y": 3028
           },
           "subActions": [],
           "isShown": true,
