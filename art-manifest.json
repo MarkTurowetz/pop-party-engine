@@ -4086,7 +4086,7 @@
         ],
         "tracks": []
       },
-      "updatedAt": "2026-07-17T08:03:49.796Z"
+      "updatedAt": "2026-07-18T18:59:49.840Z"
     },
     "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c": {
       "name": "Prompt Text Field",
@@ -4879,8 +4879,8 @@
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
-        "width": 52,
-        "height": 28
+        "width": 44,
+        "height": 22
       },
       "components": [
         {
@@ -5301,8 +5301,8 @@
       "isCustom": true,
       "timelineArchitectureVersion": 2,
       "canvas": {
-        "width": 52,
-        "height": 28
+        "width": 44,
+        "height": 22
       },
       "components": [
         {
@@ -5310,10 +5310,10 @@
           "name": "Player VIP Widget",
           "instanceLabel": "playerVIPWidget",
           "kind": "reference",
-          "x": 26,
-          "y": 14,
-          "width": 52,
-          "height": 28,
+          "x": 22,
+          "y": 11,
+          "width": 44,
+          "height": 22,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -5429,10 +5429,10 @@
                 "frame": 0,
                 "props": {
                   "opacity": 1,
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1,
                   "rotation": 0
                 },
@@ -5442,10 +5442,10 @@
                 "id": "key-reference-player-vip-widget-2",
                 "frame": 2,
                 "props": {
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 0,
                   "rotation": 0,
                   "opacity": 1,
@@ -5457,10 +5457,10 @@
                 "id": "key-reference-player-vip-widget-9",
                 "frame": 9,
                 "props": {
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -5472,10 +5472,10 @@
                 "id": "key-reference-player-vip-widget-12",
                 "frame": 12,
                 "props": {
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -5487,10 +5487,10 @@
                 "id": "key-reference-player-vip-widget-13",
                 "frame": 13,
                 "props": {
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -5502,10 +5502,10 @@
                 "id": "key-reference-player-vip-widget-16",
                 "frame": 16,
                 "props": {
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -5517,10 +5517,10 @@
                 "id": "key-reference-player-vip-widget-17",
                 "frame": 17,
                 "props": {
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1,
                   "rotation": 0,
                   "opacity": 1,
@@ -5532,10 +5532,10 @@
                 "id": "key-reference-player-vip-widget-22",
                 "frame": 22,
                 "props": {
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 1.2,
                   "rotation": 0,
                   "opacity": 1,
@@ -5547,10 +5547,10 @@
                 "id": "key-reference-player-vip-widget-32",
                 "frame": 32,
                 "props": {
-                  "x": 26,
-                  "y": 14,
-                  "width": 52,
-                  "height": 28,
+                  "x": 22,
+                  "y": 11,
+                  "width": 44,
+                  "height": 22,
                   "scale": 0,
                   "rotation": 0,
                   "opacity": 1,
@@ -7568,7 +7568,7 @@
       "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 340,
-        "height": 28
+        "height": 32
       },
       "components": [
         {
@@ -7577,7 +7577,7 @@
           "instanceLabel": "votingCardAuthorText",
           "kind": "reference",
           "x": 170,
-          "y": 14,
+          "y": 16,
           "width": 340,
           "height": 32,
           "scale": 1,
@@ -7696,7 +7696,7 @@
                 "props": {
                   "opacity": 1,
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 1,
@@ -7709,7 +7709,7 @@
                 "frame": 2,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 0,
@@ -7724,7 +7724,7 @@
                 "frame": 9,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 1.2,
@@ -7739,7 +7739,7 @@
                 "frame": 12,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 1,
@@ -7754,7 +7754,7 @@
                 "frame": 13,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 1.2,
@@ -7769,7 +7769,7 @@
                 "frame": 16,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 1,
@@ -7784,7 +7784,7 @@
                 "frame": 17,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 1,
@@ -7799,7 +7799,7 @@
                 "frame": 22,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 1.2,
@@ -7814,7 +7814,7 @@
                 "frame": 32,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 32,
                   "scale": 0,
@@ -8291,8 +8291,8 @@
           "kind": "reference",
           "x": 278,
           "y": 188,
-          "width": 112,
-          "height": 32,
+          "width": 500,
+          "height": 48,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -8929,7 +8929,7 @@
       "timelineArchitectureVersion": 2,
       "canvas": {
         "width": 340,
-        "height": 28
+        "height": 32
       },
       "components": [
         {
@@ -8938,7 +8938,7 @@
           "instanceLabel": "authorText",
           "kind": "text",
           "x": 170,
-          "y": 14,
+          "y": 16,
           "width": 340,
           "height": 28,
           "scale": 1,
@@ -8961,7 +8961,7 @@
           "instanceLabel": "shape",
           "kind": "shape",
           "x": 170,
-          "y": 14,
+          "y": 16,
           "width": 340,
           "height": 32,
           "scale": 1,
@@ -9013,7 +9013,7 @@
                 "frame": 0,
                 "props": {
                   "x": 170,
-                  "y": 14,
+                  "y": 16,
                   "width": 340,
                   "height": 28,
                   "scale": 1,
@@ -12769,5 +12769,5 @@
       "folderItems": {}
     }
   },
-  "artComponentSchemaVersion": 3
+  "artComponentSchemaVersion": 4
 }
