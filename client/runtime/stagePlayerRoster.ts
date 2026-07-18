@@ -633,7 +633,6 @@ class PlayerRosterRenderer {
   revealAnswerCorrectness(options: Dict = {}): number {
     if (!this.host) return 0;
     const answerCorrectness = (options.answerCorrectness as Dict) || null;
-    const hasExplicitCorrectness = Boolean(answerCorrectness);
     const correctPlayerIds = new Set(((answerCorrectness?.correctPlayerIds as unknown[]) || []).map(String));
     const incorrectPlayerIds = new Set(((answerCorrectness?.incorrectPlayerIds as unknown[]) || []).map(String));
     let duration = 0;
@@ -643,16 +642,20 @@ class PlayerRosterRenderer {
       const player = this.tilePlayers.get(tile);
       const renderer = this.tileRenderers.get(tile);
       if (!player || !renderer) continue;
-      const targetComplete = barrier?.addTarget();
       const state = playerAnswerBubbleRuntimeState(player, true);
       const playerId = String(player.id || tile.dataset.playerId || "");
-      const stateLabel = hasExplicitCorrectness
-        ? correctPlayerIds.has(playerId)
-          ? "Correct"
-          : incorrectPlayerIds.has(playerId)
-            ? "Incorrect"
-            : "Default"
-        : playerAnswerBubbleStateLabel(state);
+      const actionStateLabel = correctPlayerIds.has(playerId)
+        ? "Correct"
+        : incorrectPlayerIds.has(playerId)
+          ? "Incorrect"
+          : "";
+      const snapshotStateLabel = playerAnswerBubbleStateLabel(state);
+      const stateLabel = actionStateLabel || (snapshotStateLabel === "Default" ? "" : snapshotStateLabel);
+      // Reveal Player Answer Correctness owns only the two correctness states.
+      // Missing classification data must never issue a competing Default command;
+      // resetAnswerBubbles is the sole owner of returning the semantic child to Default.
+      if (!stateLabel) continue;
+      const targetComplete = barrier?.addTarget();
       const stopOptions: Dict = { instant: true };
       if (targetComplete) stopOptions.complete = targetComplete;
       const stateDuration = renderer.stopAtComponent?.(

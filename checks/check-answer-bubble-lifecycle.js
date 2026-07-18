@@ -155,7 +155,7 @@ async function main() {
       const correctnessStartedAt = performance.now();
       await Promise.race([
         new Promise((resolve) => roster.revealAnswerCorrectness({
-          answerCorrectness: { correctPlayerIds: ["p1"], incorrectPlayerIds: [] },
+          answerCorrectness: { correctPlayerIds: [], incorrectPlayerIds: [] },
           complete: resolve
         })),
         sleep(500).then(() => { throw new Error("Correctness target callback timed out"); })

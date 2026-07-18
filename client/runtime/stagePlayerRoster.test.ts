@@ -488,6 +488,28 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(incorrectTile.dataset.answerBubbleCorrectness).toBe("wrong");
   });
 
+  it("never sends Default during correctness reveal when the action classification is incomplete", () => {
+    const correctTile = { dataset: { playerId: "correct" } } as unknown as HTMLElement;
+    const incorrectTile = { dataset: { playerId: "incorrect" } } as unknown as HTMLElement;
+    const host = { querySelectorAll: () => [correctTile, incorrectTile] } as unknown as HTMLElement;
+    const correctStop = vi.fn(() => 0);
+    const incorrectStop = vi.fn(() => 0);
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    roster.tilePlayers.set(correctTile, { id: "correct", displayedAnswer: { text: "YES", correct: true } });
+    roster.tilePlayers.set(incorrectTile, { id: "incorrect", displayedAnswer: { text: "NO", correct: false } });
+    roster.tileRenderers.set(correctTile, { render: vi.fn(), stopAtComponent: correctStop });
+    roster.tileRenderers.set(incorrectTile, { render: vi.fn(), stopAtComponent: incorrectStop });
+
+    roster.revealAnswerCorrectness({
+      answerCorrectness: { correctPlayerIds: [], incorrectPlayerIds: [] }
+    });
+
+    expect(correctStop).toHaveBeenCalledWith("playerAnswerBubble", "Correct", { instant: true });
+    expect(incorrectStop).toHaveBeenCalledWith("playerAnswerBubble", "Incorrect", { instant: true });
+    expect(correctStop).not.toHaveBeenCalledWith("playerAnswerBubble", "Default", expect.anything());
+    expect(incorrectStop).not.toHaveBeenCalledWith("playerAnswerBubble", "Default", expect.anything());
+  });
+
   it("preserves the semantic state selected by the reveal action across room reconciliation", () => {
     const composition = {
       id: PLAYER_WIDGET_COMPOSITION_ID,
