@@ -609,8 +609,8 @@
           "subActions": [
             {
               "id": "crafting-game-state-sub-action-mrqrww3o",
-              "name": "Set Players Shown",
-              "type": "setPlayersShown",
+              "name": "Set Player Answers Shown",
+              "type": "setPlayerAnswersShown",
               "category": "standard",
               "timing": {
                 "mode": "S+",
@@ -620,7 +620,8 @@
               "nodePosition": null,
               "subActions": [],
               "isShown": false,
-              "instant": false
+              "instant": false,
+              "playerFilter": "all"
             }
           ],
           "targetLayoutElementId": "craftingtriviaprompttext",
