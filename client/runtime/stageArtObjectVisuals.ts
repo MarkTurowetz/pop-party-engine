@@ -462,6 +462,7 @@ class ArtObjectView {
   setVisibleTree(isVisible: boolean): void {
     const visual = this.createVisual() as {
       applyCommandVisibility?: (nextVisible: boolean) => void;
+      reapplyTimelineFrame?: () => void;
       setVisibleState?: (nextVisible: boolean) => void;
     } | null;
     if (visual?.applyCommandVisibility) visual.applyCommandVisibility(isVisible === true);
@@ -471,6 +472,12 @@ class ArtObjectView {
       this.element.classList.toggle(HIDDEN_CLASS, isVisible !== true);
     }
     for (const child of this.children.values()) child.setVisibleTree(isVisible);
+    // Text may have been fitted while an ancestor was Off, when its rendered
+    // dimensions were zero and only authored canvas dimensions were available.
+    // Reveal descendants first, then reapply this parked frame. A reference's
+    // composition timeline owns its descendant text tracks, so applying it
+    // before those descendants have layout would merely repeat the stale fit.
+    if (isVisible === true) visual?.reapplyTimelineFrame?.();
   }
 
   viewForComponentId(componentId: string): ArtObjectView | null {

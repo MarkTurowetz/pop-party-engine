@@ -78,6 +78,11 @@ async function main() {
 
     const result = await page.evaluate(async () => {
       const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+      // Match the saved Player Answer Bubble contract: its static text component
+      // remains manual-size while each semantic state opts into auto-fit.
+      const authoredBubble = window.artComposition("player-answer-bubble");
+      const authoredAnswerTrack = authoredBubble?.timeline?.tracks?.find((track) => track.targetId === "answer-text");
+      for (const keyframe of authoredAnswerTrack?.keyframes || []) keyframe.props.autoFitText = true;
       const hostElement = document.createElement("section");
       hostElement.style.width = "900px";
       hostElement.style.height = "400px";
@@ -94,7 +99,7 @@ async function main() {
         active: true,
         isVip: true,
         avatar: { shape: "rex", color: "#22d3ee" },
-        displayedAnswer: { text: "TUESDAY", nonce: "answer-1", hidden, correct }
+        displayedAnswer: { text: "SUPERLONGANSWER", nonce: "answer-1", hidden, correct }
       });
       let player = makePlayer(true);
       roster.render([player], { instant: true });
@@ -115,6 +120,23 @@ async function main() {
       const componentState = (componentId) => hostElement
         .querySelector(`[data-art-component-id='${componentId}']`)
         ?.dataset.visualState;
+      const answerTextMetrics = () => {
+        const component = hostElement.querySelector("[data-art-component-id='answer-text']");
+        const label = component?.querySelector(".art-runtime-object-label");
+        const style = label ? getComputedStyle(label) : null;
+        const semanticView = tree.viewForComponentId("playerAnswerBubble");
+        const semanticVisual = semanticView?.createVisual?.();
+        const answerTrack = semanticVisual?.timelinePlayer?.timeline?.tracks?.find((track) => track.targetId === "answer-text");
+        return {
+          autoFitText: answerTrack?.keyframes?.[0]?.props?.autoFitText,
+          clientHeight: label?.clientHeight || 0,
+          clientWidth: label?.clientWidth || 0,
+          fontSize: Number.parseFloat(style?.fontSize || "0"),
+          scrollHeight: label?.scrollHeight || 0,
+          scrollWidth: label?.scrollWidth || 0,
+          text: label?.textContent || ""
+        };
+      };
       const avatarBaseVisibleAtSpawn = hostElement
         .querySelector("[data-art-component-id='player-avatar']")
         ?.dataset.visualVisible;
@@ -153,6 +175,7 @@ async function main() {
       ]);
       const appearDuration = performance.now() - appearStartedAt;
       const appearFinalState = lifecycle();
+      const fittedAnswerText = answerTextMetrics();
 
       player = makePlayer(false, true);
       roster.render([player], { instant: false });
@@ -203,6 +226,7 @@ async function main() {
 
       return {
         appearFinalState,
+        fittedAnswerText,
         appearDuration,
         appearMidFrame,
         appearMidToken,
@@ -248,6 +272,14 @@ async function main() {
     assert(result.appearMidFrame > result.appearStartFrame, "Appear did not advance through authored frames");
     assert(result.appearDuration >= 300, `Appear completed too early (${Math.round(result.appearDuration)}ms)`);
     assert(result.appearFinalState === "shown", `Appear ended in ${result.appearFinalState}`);
+    assert(result.fittedAnswerText.autoFitText === true, "answer bubble semantic frame did not enable auto-fit");
+    assert(result.fittedAnswerText.text === "SUPERLONGANSWER", `answer bubble rendered ${result.fittedAnswerText.text || "no text"}`);
+    assert(
+      result.fittedAnswerText.fontSize > 0 && result.fittedAnswerText.fontSize < 28,
+      `long answer did not shrink from 28px (${JSON.stringify(result.fittedAnswerText)})`
+    );
+    assert(result.fittedAnswerText.scrollWidth <= result.fittedAnswerText.clientWidth + 1, `answer text overflowed horizontally (${result.fittedAnswerText.scrollWidth}px > ${result.fittedAnswerText.clientWidth}px)`);
+    assert(result.fittedAnswerText.scrollHeight <= result.fittedAnswerText.clientHeight + 1, `answer text overflowed vertically (${result.fittedAnswerText.scrollHeight}px > ${result.fittedAnswerText.clientHeight}px)`);
     assert(result.correctFill === "#8dff5f", `Correct state used ${result.correctFill || "no fill"}`);
     assert(result.correctBackground === "rgb(141, 255, 95)", `Correct state rendered ${result.correctBackground || "no background"}`);
     assert(result.correctnessDuration < 250, `Correctness used a legacy delay (${Math.round(result.correctnessDuration)}ms)`);

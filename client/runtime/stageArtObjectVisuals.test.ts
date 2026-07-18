@@ -48,6 +48,32 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(visibility).toEqual([true]);
   });
 
+  it("reapplies a parent composition frame after descendants become measurable", () => {
+    const events: string[] = [];
+    const parent = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      children: Map<string, { setVisibleTree: (visible: boolean) => void }>;
+      createVisual: () => {
+        applyCommandVisibility: (visible: boolean) => void;
+        reapplyTimelineFrame: () => void;
+      };
+      element: HTMLElement;
+      setVisibleTree: (visible: boolean) => void;
+    };
+    parent.element = { classList: { toggle: vi.fn() }, dataset: {} } as unknown as HTMLElement;
+    parent.createVisual = () => ({
+      applyCommandVisibility: () => events.push("parent-visible"),
+      reapplyTimelineFrame: () => events.push("parent-frame")
+    });
+    parent.children = new Map([[
+      "answer-text",
+      { setVisibleTree: () => events.push("answer-text-visible") }
+    ]]);
+
+    parent.setVisibleTree(true);
+
+    expect(events).toEqual(["parent-visible", "answer-text-visible", "parent-frame"]);
+  });
+
   it("applies persisted transform origins to runtime art objects", () => {
     const globals = globalThis as typeof globalThis & { PartyGameArtComponentSchema?: Record<string, unknown> };
     const previousSchema = globals.PartyGameArtComponentSchema;

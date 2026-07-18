@@ -152,9 +152,16 @@ function positiveStyleNumber(value: unknown): number | null {
 }
 
 function timelineTextBoxSize(element: HTMLElement, key: "width" | "height", timelineValue: number | null): number {
-  if (timelineValue !== null) return timelineValue;
   const direct = key === "width" ? element.clientWidth || element.offsetWidth : element.clientHeight || element.offsetHeight;
   if (Number.isFinite(direct) && direct > 0) return direct;
+  const bounds = element.getBoundingClientRect?.();
+  const rendered = Number(bounds?.[key] || 0);
+  if (Number.isFinite(rendered) && rendered > 0) return rendered;
+  // Authored timeline dimensions are expressed in the nested composition's
+  // canvas. A prefab reference may render that canvas at a different size, so
+  // they are only a fallback while the element has no measurable layout (for
+  // example, while an ancestor is parked Off).
+  if (timelineValue !== null) return timelineValue;
   return positiveStyleNumber(element.style[key]) || 1;
 }
 

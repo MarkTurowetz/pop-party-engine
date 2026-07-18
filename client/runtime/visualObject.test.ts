@@ -697,6 +697,50 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     }
   });
 
+  it("fits nested timeline text to its rendered box instead of its authored canvas size", () => {
+    const label = createFakeLabel();
+    const element = createFakeElement(["hidden"]);
+    const textFit = (globalThis as unknown as { PartyGameTextFit?: { renderLayoutTextField?: unknown } }).PartyGameTextFit;
+    const originalRender = textFit?.renderLayoutTextField;
+    const renderLayoutTextField = vi.fn(() => ({ fontSize: 14 }));
+    if (textFit) textFit.renderLayoutTextField = renderLayoutTextField;
+    element.dataset.artComponentId = "answer-text";
+    Object.defineProperties(element, {
+      clientWidth: { configurable: true, value: 150 },
+      clientHeight: { configurable: true, value: 58 }
+    });
+    element.querySelector = (selector: string) => (selector === ".art-runtime-object-label" ? label : null);
+
+    try {
+      const visual = PartyGameVisualObject.createCssVisualObject({
+        element,
+        hiddenClasses: ["hidden"],
+        motionHiddenClasses: ["hidden"],
+        timelineCanvas: { width: 300, height: 180 },
+        timeline: normalizeTimeline({
+          fps: 10,
+          frameCount: 1,
+          labels: [{ name: "Default", frame: 0 }],
+          commands: [{ frame: 0, type: "stop" }],
+          tracks: [{
+            targetId: "answer-text",
+            keyframes: [{ frame: 0, props: { width: 200, height: 78, defaultText: "SUPERLONGANSWER", fontSize: 28, autoFitText: true } }]
+          }]
+        })
+      });
+
+      visual.stopAt("Default");
+
+      expect(renderLayoutTextField).toHaveBeenCalledWith(
+        label,
+        expect.objectContaining({ autoFitText: true, fontSize: 28, height: 58, width: 150 }),
+        expect.objectContaining({ text: "SUPERLONGANSWER" })
+      );
+    } finally {
+      if (textFit) textFit.renderLayoutTextField = originalRender;
+    }
+  });
+
   it("applies authored timeline shape style classes while playing", () => {
     const element = createFakeElement(["hidden", "is-style-rounded"]);
     element.dataset.artComponentId = "component-a";
