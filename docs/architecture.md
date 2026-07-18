@@ -97,6 +97,11 @@ concepts into focused modules.
     `Wipe Widget MC` is only an `On`/`Off` gate; the controller explicitly invokes
     `Appear` or `Disappear` on its labeled `Wipe Art MC` child and waits only for
     that child's authored callback. No CSS fallback motion runs alongside it.
+  - `Set Timer Shown` targets the placed `craftingtimer` layout GameObject, so its
+    `Crafting Timer Widget MC` owns `Appear`/`Disappear` and the action callback.
+    `CraftingTimerController` only updates the nested authored `timerValue` content
+    and inherited `--timer-progress` value; it never plays lifecycle animations or
+    writes to a legacy timer label DOM element.
   - Controller input views select semantic controller layouts rather than reusing their current
     stage phase. Layout placements start in their authored `On`/`Off` state; response-driven
     controls such as validation banners and completion messages may then be toggled fire-and-forget.

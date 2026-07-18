@@ -18,34 +18,29 @@ describe("PartyGameStageVisualControllers (ported)", () => {
     expect(controller.reset()).toBe(0);
   });
 
-  it("completes Hide immediately while the timer is already Off without rendering art", () => {
-    const complete = vi.fn();
+  it("resets countdown data without issuing a lifecycle command", () => {
+    const playAll = vi.fn();
     const renderArt = vi.fn();
-    const controller = PartyGameStageVisualControllers.createCraftingTimerController({ renderArt });
+    const controller = PartyGameStageVisualControllers.createCraftingTimerController({
+      renderArt: () => {
+        renderArt();
+        return { renderer: { playAll } };
+      }
+    });
 
-    expect(controller.setVisible(false, { complete })).toBe(0);
+    expect(controller.reset()).toBe(0);
     expect(renderArt).not.toHaveBeenCalled();
-    expect(complete).toHaveBeenCalledOnce();
+    expect(playAll).not.toHaveBeenCalled();
   });
 
-  it("completes Set Timer Shown only from the authored parent timeline callback", () => {
-    let timelineComplete: (() => void) | undefined;
-    const complete = vi.fn();
-    const playAll = vi.fn((animation: string, options: { complete?: () => void }) => {
-      timelineComplete = options.complete;
-      return animation === "Appear" ? 333 : 500;
-    });
+  it("prepares Set Timer Shown data without commanding the widget lifecycle", () => {
+    const playAll = vi.fn();
     const element = {
-      classList: { remove: vi.fn(), toggle: vi.fn() },
-      dataset: {},
-      style: { setProperty: vi.fn() },
-      setAttribute: vi.fn()
+      style: { setProperty: vi.fn() }
     } as unknown as HTMLElement;
-    const label = { dataset: {}, textContent: "" } as unknown as HTMLElement;
     const renderArt = vi.fn(() => ({ renderer: { playAll } }));
     const controller = PartyGameStageVisualControllers.createCraftingTimerController({
       element,
-      label,
       renderArt,
       getRenderedActionKey: () => "crafting:timer-on",
       getCurrentStageState: () => ({
@@ -53,50 +48,31 @@ describe("PartyGameStageVisualControllers (ported)", () => {
       })
     });
 
-    expect(controller.setShownForAction({ isShown: true }, { actionKey: "crafting:timer-on", complete })).toBe(333);
-    expect(playAll).toHaveBeenCalledWith("Appear", expect.objectContaining({ instant: false }));
-    expect(complete).not.toHaveBeenCalled();
-
-    controller.render({ shown: true, running: false, durationMs: 30000, remainingMs: 30000 });
-    expect(playAll).toHaveBeenCalledTimes(1);
-    expect(complete).not.toHaveBeenCalled();
-
-    timelineComplete?.();
-    expect(complete).toHaveBeenCalledOnce();
+    expect(controller.prepareShownForAction({ isShown: true }, { actionKey: "crafting:timer-on" })).toBe(0);
+    expect(renderArt).toHaveBeenCalledWith(expect.objectContaining({
+      label: "30",
+      timer: expect.objectContaining({ shown: true, running: false })
+    }));
+    expect(element.style.setProperty).toHaveBeenCalledWith("--timer-progress", "1.0000");
+    expect(playAll).not.toHaveBeenCalled();
   });
 
-  it("uses the authored Disappear callback instead of the legacy host animation", () => {
-    const callbacks: Array<() => void> = [];
-    const complete = vi.fn();
-    const playAll = vi.fn((_animation: string, options: { complete?: () => void }) => {
-      if (options.complete) callbacks.push(options.complete);
-      return 500;
-    });
+  it("updates only countdown content while the timer is running", () => {
+    const playAll = vi.fn();
     const element = {
-      classList: { remove: vi.fn(), toggle: vi.fn() },
-      dataset: {},
-      style: { setProperty: vi.fn() },
-      setAttribute: vi.fn()
+      style: { setProperty: vi.fn() }
     } as unknown as HTMLElement;
-    const label = { dataset: {}, textContent: "" } as unknown as HTMLElement;
+    const renderArt = vi.fn(() => ({ renderer: { playAll } }));
     const controller = PartyGameStageVisualControllers.createCraftingTimerController({
       element,
-      label,
-      renderArt: () => ({ renderer: { playAll } }),
-      getRenderedActionKey: () => "crafting:timer",
-      getCurrentStageState: () => ({
-        craftingTimer: { shown: true, running: false, durationMs: 30000, remainingMs: 30000 }
-      })
+      renderArt,
+      getCurrentStageState: () => ({ serverNow: 1000 })
     });
 
-    controller.setVisible(true, { instant: true });
-    callbacks.shift()?.();
-    expect(controller.setShownForAction({ isShown: false }, { actionKey: "crafting:timer", complete })).toBe(500);
-    expect(playAll).toHaveBeenLastCalledWith("Disappear", expect.objectContaining({ instant: false }));
-    expect(complete).not.toHaveBeenCalled();
-
-    callbacks.shift()?.();
-    expect(complete).toHaveBeenCalledOnce();
+    controller.render({ shown: true, running: false, durationMs: 30000, remainingMs: 12000, serverNow: 1000 });
+    expect(renderArt).toHaveBeenCalledWith(expect.objectContaining({ label: "12", progress: 0.4 }));
+    expect(element.style.setProperty).toHaveBeenCalledWith("--timer-progress", "0.4000");
+    expect(playAll).not.toHaveBeenCalled();
   });
 
   it("installs the global bridge on import", () => {

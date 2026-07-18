@@ -61,8 +61,16 @@ function checkPlayerExceptions() {
 
 function checkWidgetReconciliation() {
   const timerSource = read("client/runtime/stageVisualControllers.ts");
-  const timerRender = section(timerSource, "  render(timer:", "  renderLabel(");
+  const timerPrepare = section(timerSource, "  prepareShownForAction(", "  render(timer:");
+  const timerRender = section(timerSource, "  render(timer:", "\n}\n\nexport const PartyGameStageVisualControllers");
+  assertAbsent(timerPrepare, ["playAll(", "setVisible("], "Set Timer Shown data preparation");
   assertAbsent(timerRender, ["playAll(", "setVisible("], "crafting timer reconciliation");
+
+  const stageSource = read("client/runtime/stageRuntime.ts");
+  const timerAction = section(stageSource, "async function setCraftingTimerShownForAction(", "function setStageWipeShownForAction(");
+  assert(timerAction.includes("setStageLayoutGameObjectShownForStageAction("), "Set Timer Shown must use the placed layout GameObject lifecycle");
+  assert(timerAction.includes('targetLayoutElementId'), "Set Timer Shown must target the placed crafting timer instance");
+  assertAbsent(timerAction, ["playAll(", "stopAtAll(", "setVisible("], "Set Timer Shown lifecycle routing");
 
   const votingSource = read("client/runtime/stageVotingCardVisuals.ts");
   const votingRender = section(votingSource, "  render(cards", "  runAction(");

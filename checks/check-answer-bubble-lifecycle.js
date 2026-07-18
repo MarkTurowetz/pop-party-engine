@@ -403,11 +403,10 @@ async function main() {
     const timerResult = await page.evaluate(async () => {
       const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
       const element = document.createElement("div");
-      element.className = "crafting-timer hidden";
+      element.className = "crafting-timer stage-layout-target stage-layout-visual-hidden";
+      element.dataset.visualVisible = "false";
       element.style.width = "180px";
       element.style.height = "180px";
-      const label = document.createElement("span");
-      element.appendChild(label);
       document.body.appendChild(element);
       const widgetArt = window.PartyGameStageWidgetArt.createRenderer({
         document,
@@ -415,61 +414,76 @@ async function main() {
         getComposition: (id) => window.artComposition(id)
       });
       const timer = { shown: false, running: false, durationMs: 30000, remainingMs: 30000 };
+      let renderResult = null;
       const controller = window.PartyGameStageVisualControllers.createCraftingTimerController({
         element,
-        label,
         getRenderedActionKey: () => "timer-action",
         getCurrentStageState: () => ({ craftingTimer: timer }),
-        renderArt: (context) => widgetArt.renderBound(element, {
-          compositionId: "crafting-timer-widget",
-          textOverrides: () => ({ "timer-value": context.label })
-        }, context)
+        renderArt: (context) => {
+          renderResult = widgetArt.renderBound(element, {
+            compositionId: "crafting-timer-widget",
+            textOverrides: () => ({ "timer-value": context.label })
+          }, context);
+          return renderResult;
+        }
       });
 
+      controller.prepareShownForAction({ isShown: true }, { actionKey: "timer-action" });
+      const renderer = renderResult?.renderer;
+      const gameObject = window.PartyGameGameObject.create({
+        id: "crafting-timer-contract-probe",
+        target: element,
+        isArt: true,
+        defaultAnimationState: "Off",
+        artRenderer: renderer,
+        syncArtRendererOnShow: true,
+        visualOptions: {
+          hiddenClasses: ["stage-layout-visual-hidden"],
+          motionHiddenClasses: ["stage-layout-visual-hidden"],
+          exitingClass: "",
+          updateClass: "",
+          instantClass: "stage-layout-visual-instant",
+          layoutHiddenClasses: ["stage-layout-visual-hidden"]
+        }
+      });
       const appearStartedAt = performance.now();
-      const appearCompletion = new Promise((resolve) => controller.setShownForAction(
-        { isShown: true },
-        { actionKey: "timer-action", complete: resolve }
-      ));
+      const appearCompletion = new Promise((resolve) => gameObject.playVisibility(true, { complete: resolve }));
       await sleep(120);
-      const appearMidFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const appearMidFrame = renderer?.rootTimelinePlayer?.currentFrame;
       controller.render({ shown: true, running: false, durationMs: 30000, remainingMs: 30000 });
-      const appearFrameAfterReconcile = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const appearFrameAfterReconcile = renderer?.rootTimelinePlayer?.currentFrame;
       await Promise.race([
         appearCompletion,
         sleep(1000).then(() => { throw new Error("Timer Appear callback timed out"); })
       ]);
       const appearDuration = performance.now() - appearStartedAt;
-      const appearFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const appearFrame = renderer?.rootTimelinePlayer?.currentFrame;
       const renderedValue = element.querySelector("[data-art-component-id='timer-value']")?.textContent?.trim();
 
+      controller.prepareShownForAction({ isShown: false }, { actionKey: "timer-action" });
       const disappearStartedAt = performance.now();
-      const disappearCompletion = new Promise((resolve) => controller.setShownForAction(
-        { isShown: false },
-        { actionKey: "timer-action", complete: resolve }
-      ));
+      const disappearCompletion = new Promise((resolve) => gameObject.playVisibility(false, { complete: resolve }));
       await sleep(120);
-      const disappearMidFrame = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const disappearMidFrame = renderer?.rootTimelinePlayer?.currentFrame;
       controller.render({ shown: false, running: false, durationMs: 30000, remainingMs: 30000 });
-      const disappearFrameAfterReconcile = controller.timelineRenderer?.rootTimelinePlayer?.currentFrame;
+      const disappearFrameAfterReconcile = renderer?.rootTimelinePlayer?.currentFrame;
       const disappearCompleted = await Promise.race([
         disappearCompletion.then(() => true),
         sleep(1200).then(() => false)
       ]);
 
       return {
-        activeAnimation: controller.activeAnimation,
         appearDuration,
         appearFrame,
         appearFrameAfterReconcile,
         appearMidFrame,
         disappearDuration: performance.now() - disappearStartedAt,
         disappearCompleted,
-        disappearFrame: controller.timelineRenderer?.rootTimelinePlayer?.currentFrame,
+        disappearFrame: renderer?.rootTimelinePlayer?.currentFrame,
         disappearFrameAfterReconcile,
         disappearMidFrame,
-        rootIsPlaying: controller.timelineRenderer?.rootTimelinePlayer?.isPlaying,
-        rootToken: controller.timelineRenderer?.rootTimelinePlayer?.token,
+        hostHiddenAfterDisappear: element.classList.contains("stage-layout-visual-hidden"),
+        usedLegacyHiddenClass: element.classList.contains("hidden"),
         renderedValue
       };
     });
@@ -484,6 +498,8 @@ async function main() {
     assert(timerResult.disappearCompleted, `Timer Disappear callback timed out (${JSON.stringify(timerResult)})`);
     assert(timerResult.disappearDuration >= 400, `Timer Disappear callback fired too early (${Math.round(timerResult.disappearDuration)}ms)`);
     assert(timerResult.disappearFrame === 32, `Timer Disappear callback fired at parent frame ${timerResult.disappearFrame}`);
+    assert(timerResult.hostHiddenAfterDisappear, "Timer placed layout host did not finish hidden after authored Disappear");
+    assert(timerResult.usedLegacyHiddenClass === false, "Timer lifecycle fell back to the legacy hidden class");
     console.log("Player, answer bubble, crafting timer, and Wipe Widget MC authored lifecycle browser check passed.");
   } finally {
     await browser?.close();

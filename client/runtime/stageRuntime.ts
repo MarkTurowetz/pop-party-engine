@@ -54,7 +54,6 @@ declare global {
     gameConstants: Dict;
     // app-shell DOM refs (used by the stage orchestrator).
     craftingTimer: El;
-    craftingTimerLabel: El;
     playerLobby: El;
     stageDebugAction: El;
     stageDebugAlert: El;
@@ -127,10 +126,7 @@ function stageTextController() {
 function craftingTimerController(): Dict | null {
   if (!craftingTimerControllerInstance && stageVisualControllers()) {
     craftingTimerControllerInstance = stageVisualControllers()!.createCraftingTimerController({
-      visualAnimation: visualAnimation(),
       element: w().craftingTimer,
-      label: w().craftingTimerLabel,
-      timerSink: (timerId: number) => w().textObjectTimers.push(timerId),
       getRenderedActionKey: () => currentRenderedActionKey(),
       getCurrentStageState: () => w().currentStageState,
       fallbackDurationMs: () => Math.max(1, Number((w().gameConstants as Dict).craftingTimerDuration || 30)) * 1000,
@@ -401,14 +397,18 @@ function clearStageWipeVisibilityRequest(actionKey = ""): void {
   (stageWipeController() as { clearRequest?: (k: string) => void } | null)?.clearRequest?.(actionKey);
 }
 
-function setCraftingTimerShownForAction(action: Dict, options: Dict = {}): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const controller = craftingTimerController() as { setShownForAction?: (a: Dict, o: Dict) => number } | null;
-    if (!controller?.setShownForAction) {
-      reject(new Error("Crafting timer widget unavailable"));
-      return;
-    }
-    controller.setShownForAction(action, { ...options, complete: resolve });
+async function setCraftingTimerShownForAction(action: Dict, options: Dict = {}): Promise<void> {
+  const controller = craftingTimerController() as { prepareShownForAction?: (a: Dict, o: Dict) => number } | null;
+  if (!controller?.prepareShownForAction) throw new Error("Crafting timer data runtime unavailable");
+  const definition = stageWidgetArtDefinition("craftingTimer");
+  const targetLayoutElementId = String(definition?.layoutElementId || "");
+  if (!targetLayoutElementId) throw new Error("Crafting timer layout target unavailable");
+  controller.prepareShownForAction(action, options);
+  await setStageLayoutGameObjectShownForStageAction({
+    ...action,
+    targetLayoutElementId,
+    targetLayoutScope: "moment",
+    targetLayoutSurface: "stage"
   });
 }
 
@@ -502,11 +502,7 @@ function setStageTextObjectForAction(target: unknown, options: Dict = {}): Promi
 }
 
 function renderCraftingTimer(timer: Dict, options: Dict = {}): number {
-  const duration = ((craftingTimerController() as { render?: (t: Dict, o: Dict) => number } | null)?.render?.(timer, options) as number) || 0;
-  if (timer?.shown) {
-    renderStageWidgetBinding("craftingTimer", { timer, instant: options.instant === true });
-  }
-  return duration;
+  return ((craftingTimerController() as { render?: (t: Dict, o: Dict) => number } | null)?.render?.(timer, options) as number) || 0;
 }
 
 const stageWidgetHosts: Record<string, () => El | null> = {
