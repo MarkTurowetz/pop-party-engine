@@ -195,7 +195,17 @@ describe("art composition child persistence", () => {
       timelineArchitectureVersion: 2,
       canvas: { width: 330, height: 64 },
       components: [
-        { id: "invalid-text", instanceLabel: "invalidText", name: "Invalid Text", kind: "text", x: 165, y: 32, width: 290, height: 34 },
+        {
+          id: "invalid-text",
+          instanceLabel: "invalidText",
+          name: "Invalid Text",
+          kind: "text",
+          x: 165,
+          y: 32,
+          width: 290,
+          height: 34,
+          autoFitText: false
+        },
         { id: "invalid-card", instanceLabel: "invalidCard", name: "Invalid Card", kind: "shape", x: 165, y: 32, width: 330, height: 64 }
       ]
     };
@@ -229,7 +239,9 @@ describe("art composition child persistence", () => {
     const loadedRevision = responseBody.revision;
     const loadedCompositionRevision = responseBody.compositionRevisions[invalidBanner.id];
     const edited = responseBody.compositions.find((composition) => composition.id === invalidBanner.id);
-    edited.components.find((component) => component.id === "invalid-text").x = 166;
+    const editedInvalidText = edited.components.find((component) => component.id === "invalid-text");
+    editedInvalidText.x = 166;
+    editedInvalidText.autoFitText = true;
 
     manifest = { ...manifest, unrelatedWrite: "newer manifest data" };
     requestPayload = {
@@ -241,7 +253,7 @@ describe("art composition child persistence", () => {
 
     expect(responseStatus).toBe(200);
     expect(manifest.compositions[invalidBanner.id].components)
-      .toContainEqual(expect.objectContaining({ id: "invalid-text", x: 166 }));
+      .toContainEqual(expect.objectContaining({ id: "invalid-text", x: 166, autoFitText: true }));
 
     const savedRevision = responseBody.revision;
     const savedCompositionRevision = responseBody.compositionRevisions[invalidBanner.id];

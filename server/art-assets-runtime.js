@@ -292,7 +292,9 @@ function createArtAssetsRuntime({
     if (kind === "text" || kind === "badge") {
       normalized.defaultText = cleanText(source.defaultText, base.defaultText || "", 500);
       normalized.fontSize = cleanNumber(source.fontSize, Number(base.fontSize || 16), 6, 240);
-      normalized.autoFitText = source.autoFitText !== false && base.autoFitText !== false;
+      normalized.autoFitText = typeof source.autoFitText === "boolean"
+        ? source.autoFitText
+        : base.autoFitText !== false;
       normalized.fontColor = cleanColor(source.fontColor, base.fontColor || "#17131f");
       normalized.fontFamily = artComponentSchema.normalizeTextFontFamily(source.fontFamily, base.fontFamily);
     }
