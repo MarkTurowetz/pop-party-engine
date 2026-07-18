@@ -744,14 +744,17 @@ function componentTimelinePropsFor(component: ArtComponent): TimelineProperties 
   const props: TimelineProperties = {
     x: Number(component.x || 0),
     y: Number(component.y || 0),
-    width: Number(component.width || 1),
-    height: Number(component.height || 1),
     scale: Number(component.scale || 1),
     rotation: Number(component.rotation || 0),
     opacity: numberProp(component, "opacity", 1),
     brightness: numberProp(component, "brightness", 1),
     visible: booleanProp(component, "visible", true)
   };
+
+  if (component.kind !== "reference") {
+    props.width = Number(component.width || 1);
+    props.height = Number(component.height || 1);
+  }
 
   if (component.kind === "text" || component.kind === "badge") {
     addOptionalString(props, component, "defaultText");
@@ -789,18 +792,21 @@ function componentAnimationTimelinePropsFor(component: ArtComponent): TimelinePr
   return animationProps;
 }
 
-function fallbackAnimationTimelineProps(): TimelineProperties {
-  return {
+function fallbackAnimationTimelineProps(component?: ArtComponent): TimelineProperties {
+  const props: TimelineProperties = {
     x: 0,
     y: 0,
-    width: 1,
-    height: 1,
     scale: 1,
     rotation: 0,
     opacity: 1,
     brightness: 1,
     visible: true
   };
+  if (component?.kind !== "reference") {
+    props.width = 1;
+    props.height = 1;
+  }
+  return props;
 }
 
 function timelineTargetForAnimationProps(rootComponent: ArtComponent, targetId: string): ArtComponent | undefined {
@@ -816,15 +822,20 @@ function timelineTargetForAnimationProps(rootComponent: ArtComponent, targetId: 
 function normalizeTrackAnimationProps(track: TimelineTrack, rootComponent: ArtComponent): { track: TimelineTrack; changed: boolean } {
   const target = timelineTargetForAnimationProps(rootComponent, track.targetId);
   const carriedProps: TimelineProperties = {
-    ...fallbackAnimationTimelineProps(),
+    ...fallbackAnimationTimelineProps(target),
     ...(target ? componentAnimationTimelinePropsFor(target) : {})
   };
+  const animationKeys = target?.kind === "reference"
+    ? ANIMATION_KEYFRAME_PROPERTY_KEYS.filter((key) => key !== "width" && key !== "height")
+    : ANIMATION_KEYFRAME_PROPERTY_KEYS;
   let changed = false;
   const keyframes = track.keyframes.map((keyframe) => {
     const sourceProps = cleanTimelineProps(keyframe.props);
-    const nextProps: TimelineProperties = { ...sourceProps };
+    const nextProps: TimelineProperties = target?.kind === "reference"
+      ? Object.fromEntries(Object.entries(sourceProps).filter(([key]) => key !== "width" && key !== "height"))
+      : { ...sourceProps };
     let keyframeChanged = false;
-    for (const key of ANIMATION_KEYFRAME_PROPERTY_KEYS) {
+    for (const key of animationKeys) {
       const nextValue = Object.prototype.hasOwnProperty.call(sourceProps, key) ? sourceProps[key] : carriedProps[key];
       if (nextValue !== undefined) nextProps[key] = nextValue;
       carriedProps[key] = nextProps[key];

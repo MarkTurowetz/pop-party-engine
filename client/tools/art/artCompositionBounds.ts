@@ -103,8 +103,6 @@ function componentsBounds(
 function transformedReferenceBounds(source: ArtBounds, component: ArtComponent, canvas: { width?: number; height?: number } | null | undefined): ArtBounds {
   const canvasWidth = Math.max(1, num(canvas?.width, 1));
   const canvasHeight = Math.max(1, num(canvas?.height, 1));
-  const width = Math.max(1, num(component.width, 1));
-  const height = Math.max(1, num(component.height, 1));
   const scale = Math.max(0.001, num(component.scale, 1));
   const rotation = (num(component.rotation, 0) * Math.PI) / 180;
   const cos = Math.cos(rotation);
@@ -117,8 +115,8 @@ function transformedReferenceBounds(source: ArtBounds, component: ArtComponent, 
     [source.maxX, source.maxY],
     [source.minX, source.maxY]
   ].map(([sourceX, sourceY]) => {
-    const localX = ((sourceX / canvasWidth) - 0.5) * width * scale;
-    const localY = ((sourceY / canvasHeight) - 0.5) * height * scale;
+    const localX = (sourceX - canvasWidth / 2) * scale;
+    const localY = (sourceY - canvasHeight / 2) * scale;
     return { x: x + localX * cos - localY * sin, y: y + localX * sin + localY * cos };
   });
   return bounds(
@@ -140,17 +138,24 @@ function componentBounds(
   const scopedId = componentPath.join("/");
   const unscopedOverride = componentPath.length === 1 ? options.timelineFrameOverrides?.[component.id] : undefined;
   const override = options.timelineFrameOverrides?.[scopedId] || unscopedOverride || {};
-  const resolved = { ...component, ...override } as ArtComponent;
+  const timelineResolved = { ...component, ...override } as ArtComponent;
+  const referenced = referencedCompositionFor(timelineResolved, resolveComposition, referencePath);
+  const resolved = referenced
+    ? {
+        ...timelineResolved,
+        width: Math.max(1, num(referenced.canvas?.width, 1)),
+        height: Math.max(1, num(referenced.canvas?.height, 1))
+      } as ArtComponent
+    : timelineResolved;
   const own = componentBox(resolved);
   const width = Math.max(1, num(resolved.width, 1));
   const height = Math.max(1, num(resolved.height, 1));
   const left = num(resolved.x, 0) - width / 2;
   const top = num(resolved.y, 0) - height / 2;
-  const isTransparentGroup = resolved.kind === "container";
+  const isTransparentGroup = resolved.kind === "container" || resolved.kind === "reference";
   let output: ArtBounds | null = contentOnly && isTransparentGroup ? null : own;
 
-  const referenced = referencedCompositionFor(resolved, resolveComposition, referencePath);
-  if (referenced && !contentOnly) {
+  if (referenced) {
     const referencedBounds = componentsBounds(
       referenced.components || [],
       resolveComposition,

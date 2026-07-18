@@ -243,12 +243,14 @@ concepts into focused modules.
   `W / 2`, `H / 2` with `transformOrigin: Center`; `0,0` intentionally puts the child's
   center on the parent's top-left corner. Runtime and preview renderers use the authored
   canvas directly and must not crop, translate, or resize references from child content bounds.
-- A newly created prefab reference starts at the source composition's canvas width and height.
-  Its placed `x` and `y` are authored instance data and must never be silently recentered. The
-  source canvas is the reference's intrinsic aspect ratio: lifecycle wrappers and their base
-  visual prefabs must declare the same intended viewport, and authored resizing should use the
-  reference's uniform `scale` instead of conflicting width/height ratios. F8 conversion may
-  rebase selected artwork into a new tightly sized canvas at authoring time.
+- A prefab or Game Object owns its canvas and all values authored inside it. A parent reference
+  does not copy, synchronize, or keyframe that child canvas width or height. The child canvas is
+  resolved as the reference's intrinsic geometry at render time; the parent owns only its placed
+  `x`/`y` plus uniform `scale`, rotation, opacity, brightness, and visibility. These transforms
+  accumulate with the child's internal transforms instead of rewriting them. Existing legacy
+  reference boxes migrate once into uniform parent scale, after which reference width/height
+  fields and keyframes are removed. F8 conversion may still rebase selected artwork into a new
+  tightly sized child canvas at authoring time.
 - The Art Manager's `Stage` and `Controller Stage` are persistent local assembly
   workspaces, not compositions and never runtime assets. Converting contiguous sibling
   layers with F8 creates one library composition and atomically replaces those layers

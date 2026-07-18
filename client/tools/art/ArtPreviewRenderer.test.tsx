@@ -177,7 +177,8 @@ describe("ArtPreviewRenderer transform origins", () => {
       <ArtPreviewRenderer components={[reference]} compositionById={new Map([[vip.id, vip]])} />
     );
 
-    expect(markup).toContain("scale(1, 1)");
+    expect(markup).toContain("width:44px;height:22px");
+    expect(markup).not.toContain("scale(1, 1)");
     expect(markup).not.toContain("translate(");
   });
 
@@ -254,7 +255,8 @@ describe("ArtPreviewRenderer transform origins", () => {
       <ArtPreviewRenderer components={[reference]} compositionById={new Map([[answer.id, answer]])} />
     );
 
-    expect(markup).toContain("scale(1, 1)");
+    expect(markup).toContain("width:200px;height:40px");
+    expect(markup).not.toContain("scale(1, 1)");
     expect(markup).not.toContain("translate(300px, 90px)");
     expect(markup).toContain("left:-300px;top:-90px;width:400px;height:80px");
   });

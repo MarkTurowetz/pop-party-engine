@@ -108,7 +108,9 @@ describe("createArtCompositionsController", () => {
     const state = controller.getState();
     expect(state.selectedCompositionId).toBe("art-workspace-stage");
     expect(state.workspaces.stage.components.map((item) => item.id)).toEqual([result?.reference.id, "other"]);
-    expect(result?.reference).toMatchObject({ artCompositionId: result?.composition.id, x: 65, y: 50, width: 50, height: 20 });
+    expect(result?.reference).toMatchObject({ artCompositionId: result?.composition.id, x: 65, y: 50, referenceSizeMode: "intrinsic" });
+    expect(result?.reference.width).toBeUndefined();
+    expect(result?.reference.height).toBeUndefined();
     expect(result?.composition.components.map((item) => item.x)).toEqual([10, 40]);
     expect(state.workspaces.stage.timeline?.tracks.map((track) => track.targetId)).toEqual(["other"]);
     expect(state.workspaces.stage.timeline?.labels).toEqual([{ name: "Build", frame: 0 }]);
@@ -200,8 +202,11 @@ describe("createArtCompositionsController", () => {
       frameOverrides: { "nested-instance": { x: 90, y: 70, scale: 2 } }
     });
 
-    expect(result?.reference).toMatchObject({ x: 90, y: 70, width: 40, height: 20 });
-    expect(result?.composition.components[0]).toMatchObject({ artCompositionId: nested.id, x: 20, y: 10, scale: 2 });
+    expect(result?.reference).toMatchObject({ x: 90, y: 70, referenceSizeMode: "intrinsic" });
+    expect(result?.reference.width).toBeUndefined();
+    expect(result?.reference.height).toBeUndefined();
+    expect(result?.composition.canvas).toEqual({ width: 1120, height: 460 });
+    expect(result?.composition.components[0]).toMatchObject({ artCompositionId: nested.id, x: 560, y: 230, scale: 2 });
     expect(controller.getState().compositions.find((item) => item.id === nested.id)?.timeline).toMatchObject({
       labels: nested.timeline.labels,
       commands: nested.timeline.commands,
@@ -404,7 +409,7 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().compositions[0].timeline?.tracks).toEqual([]);
   });
 
-  it("adds a prefab reference component with the referenced composition dimensions", () => {
+  it("adds a prefab reference component with intrinsic child dimensions", () => {
     const prefab = composition("answer-bubble");
     prefab.name = "Answer Bubble";
     prefab.compositionKind = "prefab";
@@ -418,12 +423,13 @@ describe("createArtCompositionsController", () => {
     expect(reference.kind).toBe("reference");
     expect(reference.artCompositionId).toBe("answer-bubble");
     expect(reference.name).toBe("Answer Bubble");
-    expect(reference.width).toBe(300);
-    expect(reference.height).toBe(180);
+    expect(reference.referenceSizeMode).toBe("intrinsic");
+    expect(reference.width).toBeUndefined();
+    expect(reference.height).toBeUndefined();
     expect(reference.timeline).toBeUndefined();
   });
 
-  it("sizes a dropped prefab reference from its authored canvas instead of frame-zero content", () => {
+  it("leaves a dropped prefab reference intrinsically sized by its authored canvas", () => {
     const prefab = composition("voting-card-answer");
     prefab.name = "Voting Card Answer";
     prefab.compositionKind = "prefab";
@@ -445,8 +451,9 @@ describe("createArtCompositionsController", () => {
 
     const reference = controller.getState().compositions[0].components[0];
     expect(reference.artCompositionId).toBe(prefab.id);
-    expect(reference.width).toBe(220);
-    expect(reference.height).toBe(60);
+    expect(reference.referenceSizeMode).toBe("intrinsic");
+    expect(reference.width).toBeUndefined();
+    expect(reference.height).toBeUndefined();
   });
 
   it("does not rewrite placed reference geometry when the source canvas changes", () => {
@@ -480,12 +487,14 @@ describe("createArtCompositionsController", () => {
     const refreshedParent = state.compositions.find((item) => item.id === parent.id);
     const refreshedGrandparent = state.compositions.find((item) => item.id === grandparent.id);
     expect(refreshedParent?.components[0]).toMatchObject({ x: 110, y: 30, width: 220, height: 60 });
-    expect(refreshedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ width: 220, height: 60, scale: 1 });
+    expect(refreshedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ scale: 1 });
+    expect(refreshedParent?.timeline?.tracks[0].keyframes[0].props.width).toBeUndefined();
+    expect(refreshedParent?.timeline?.tracks[0].keyframes[0].props.height).toBeUndefined();
     expect(refreshedGrandparent?.components[0]).toMatchObject({ x: 280, y: 115, width: 220, height: 60 });
     expect(state.dirtyCompositionIds).toEqual(new Set([source.id]));
   });
 
-  it("preserves authored loaded reference and keyframe dimensions", () => {
+  it("strips inherited dimensions from loaded reference keyframes", () => {
     const source = composition("voting-card-answer-text");
     source.components = [
       { id: "shape", name: "Shape", kind: "shape", x: 280, y: 115, width: 180, height: 96 },
@@ -517,7 +526,9 @@ describe("createArtCompositionsController", () => {
     const state = controller.getState();
     const repairedParent = state.compositions.find((item) => item.id === parent.id);
     expect(repairedParent?.components[0]).toMatchObject({ x: 280, y: 115, width: 220, height: 60 });
-    expect(repairedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ width: 420, height: 78, scale: 1 });
+    expect(repairedParent?.timeline?.tracks[0].keyframes[0].props).toMatchObject({ scale: 1 });
+    expect(repairedParent?.timeline?.tracks[0].keyframes[0].props.width).toBeUndefined();
+    expect(repairedParent?.timeline?.tracks[0].keyframes[0].props.height).toBeUndefined();
     expect(state.dirtyCompositionIds).toEqual(new Set());
   });
 
@@ -551,7 +562,7 @@ describe("createArtCompositionsController", () => {
     controller.addComponent("reference", { referencedCompositionId: vipMc.id });
 
     expect(controller.getState().compositions[0].components[0]).toEqual(
-      expect.objectContaining({ artCompositionId: vipMc.id, width: 560, height: 230 })
+      expect.objectContaining({ artCompositionId: vipMc.id, referenceSizeMode: "intrinsic" })
     );
   });
 
@@ -578,8 +589,7 @@ describe("createArtCompositionsController", () => {
         name: "Answer Bubble",
         x: 42,
         y: 21,
-        width: 300,
-        height: 180
+        referenceSizeMode: "intrinsic"
       })
     );
   });
@@ -631,8 +641,9 @@ describe("createArtCompositionsController", () => {
     const reference = controller.getState().compositions[0].components[0];
     expect(reference.artCompositionId).toBe("second");
     expect(reference.name).toBe("Second Prefab");
-    expect(reference.width).toBe(420);
-    expect(reference.height).toBe(210);
+    expect(reference.referenceSizeMode).toBe("intrinsic");
+    expect(reference.width).toBeUndefined();
+    expect(reference.height).toBeUndefined();
   });
 
   it("swaps a referenced game object while preserving every authored instance property and timeline target", () => {

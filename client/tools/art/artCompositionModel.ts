@@ -49,6 +49,7 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
   const supportsImage = componentSupportsSpriteSource(raw);
   const supportsShape = componentSupportsShapeStyle(raw);
   const isTextual = kind === "text" || kind === "badge";
+  const isReference = kind === "reference";
   const serialized = {
     id: String(component.id || ""),
     name: String(component.name || componentKindLabel(kind)),
@@ -56,8 +57,7 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
     kind,
     x: num(component.x, 0),
     y: num(component.y, 0),
-    width: num(component.width, 1),
-    height: num(component.height, 1),
+    ...(isReference ? {} : { width: num(component.width, 1), height: num(component.height, 1) }),
     scale: num(component.scale, 1),
     rotation: num(component.rotation, 0),
     opacity: num(component.opacity, 1),
@@ -73,12 +73,14 @@ export function serializeArtComponentForSave(raw: ArtComponent): ArtComponent {
     autoFitText: isTextual ? component.autoFitText !== false : false,
     fontColor: String(component.fontColor || "#17131f"),
     fontFamily: isTextual ? normalizeGameTextFontFamily(component.fontFamily) : "",
-    artCompositionId: kind === "reference" ? String(component.artCompositionId || "") : "",
+    artCompositionId: isReference ? String(component.artCompositionId || "") : "",
+    referenceSizeMode: isReference ? "intrinsic" : "",
     children: (Array.isArray(component.children) ? component.children : []).map((child) =>
       serializeArtComponentForSave(child as ArtComponent)
     )
   } as ArtComponent;
   const output = serialized as Record<string, unknown>;
+  if (!isReference) delete output.referenceSizeMode;
   if (supportsShape) {
     output.shapeStyle = normalizeShapeStyle(component.shapeStyle, kind);
     output.fillColor = String(component.fillColor || "transparent");
@@ -132,6 +134,10 @@ export function hydrateArtComponentForEditing(raw: ArtComponent): ArtComponent {
       hydrateArtComponentForEditing(child as ArtComponent)
     )
   };
+  if (hydrated.kind === "reference" && hydrated.referenceSizeMode === "intrinsic") {
+    delete hydrated.width;
+    delete hydrated.height;
+  }
   delete (hydrated as Record<string, unknown>).timeline;
   return hydrated;
 }

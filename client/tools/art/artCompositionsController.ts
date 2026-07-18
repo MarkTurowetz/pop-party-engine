@@ -179,9 +179,8 @@ function createComposition(kind: ArtCompositionKind, surface: string, name: stri
 function referenceComponentPatch(composition: ArtComposition): Partial<ArtComponent> {
   return {
     name: composition.name,
-    width: Number(composition.canvas?.width || DEFAULT_COMPOSITION_CANVAS.width),
-    height: Number(composition.canvas?.height || DEFAULT_COMPOSITION_CANVAS.height),
-    artCompositionId: composition.id
+    artCompositionId: composition.id,
+    referenceSizeMode: "intrinsic"
   };
 }
 
@@ -215,6 +214,9 @@ function createComponent(
   };
   if (cleanKind === "reference") {
     component.artCompositionId = String(referencePatch?.artCompositionId || "");
+    component.referenceSizeMode = "intrinsic";
+    delete component.width;
+    delete component.height;
   }
   if (cleanKind === "text") {
     component.defaultText = "TEXT";
@@ -275,9 +277,13 @@ function applyClonedTimelineIds(component: ArtComponent, idMap: Map<string, stri
   return hydrateArtComponentForEditing(component);
 }
 
-function componentBounds(component: ArtComponent): { minX: number; minY: number; maxX: number; maxY: number } {
-  const width = Math.max(1, Number(component.width || 1));
-  const height = Math.max(1, Number(component.height || 1));
+function componentBounds(
+  component: ArtComponent,
+  resolveComposition: (id: string) => ArtComposition | null
+): { minX: number; minY: number; maxX: number; maxY: number } {
+  const referenced = component.kind === "reference" ? resolveComposition(String(component.artCompositionId || "")) : null;
+  const width = Math.max(1, Number(referenced?.canvas?.width || component.width || 1));
+  const height = Math.max(1, Number(referenced?.canvas?.height || component.height || 1));
   const scale = Math.max(0.001, Math.abs(Number(component.scale || 1)));
   const x = Number(component.x || 0);
   const y = Number(component.y || 0);
@@ -302,13 +308,16 @@ function selectedRootComponents(sourceComponents: ArtComponent[], ids: Set<strin
   return output;
 }
 
-function canvasForComponents(components: ArtComponent[]): { canvas: { width: number; height: number }; offsetX: number; offsetY: number } {
+function canvasForComponents(
+  components: ArtComponent[],
+  resolveComposition: (id: string) => ArtComposition | null
+): { canvas: { width: number; height: number }; offsetX: number; offsetY: number } {
   const padding = 40;
   if (!components.length) return { canvas: { ...DEFAULT_COMPOSITION_CANVAS }, offsetX: 0, offsetY: 0 };
-  const first = componentBounds(components[0]);
+  const first = componentBounds(components[0], resolveComposition);
   const total = components.slice(1).reduce(
     (bounds, component) => {
-      const next = componentBounds(component);
+      const next = componentBounds(component, resolveComposition);
       return {
         minX: Math.min(bounds.minX, next.minX),
         minY: Math.min(bounds.minY, next.minY),
@@ -746,7 +755,10 @@ export function createArtCompositionsController(
       const source = compositions.find((composition) => composition.id === sourceCompositionId);
       const selected = selectedRootComponents(source?.components || [], new Set(componentIds));
       if (!source || selected.length === 0) return null;
-      const { canvas, offsetX, offsetY } = canvasForComponents(selected);
+      const { canvas, offsetX, offsetY } = canvasForComponents(
+        selected,
+        (id) => compositions.find((composition) => composition.id === id) || null
+      );
       const idMap = new Map<string, string>();
       const cloned = selected.map((component) => cloneComponentForPrefab(component, idMap));
       const shifted = cloned.map((component) => {
@@ -831,10 +843,9 @@ export function createArtCompositionsController(
         instanceLabel: uniqueInstanceLabelForComposition(source, next.name),
         kind: "reference",
         artCompositionId: next.id,
+        referenceSizeMode: "intrinsic",
         x: Number((selectionBounds.minX + selectionBounds.width / 2).toFixed(3)),
         y: Number((selectionBounds.minY + selectionBounds.height / 2).toFixed(3)),
-        width: Number(selectionBounds.width.toFixed(3)),
-        height: Number(selectionBounds.height.toFixed(3)),
         scale: 1,
         rotation: 0,
         transformOrigin: "center",

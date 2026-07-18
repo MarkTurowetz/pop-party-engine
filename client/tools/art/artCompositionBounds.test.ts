@@ -39,7 +39,7 @@ describe("artCompositionVisualBounds", () => {
     expect(result.width).toBe(170);
   });
 
-  it("includes referenced composition overflow scaled into the reference slot", () => {
+  it("uses the referenced canvas intrinsically and ignores a stale reference box", () => {
     const bubble = composition("bubble", {
       canvas: { width: 100, height: 100 },
       components: [
@@ -78,8 +78,8 @@ describe("artCompositionVisualBounds", () => {
 
     const result = artCompositionVisualBounds(player, new Map([["player", player], ["bubble", bubble]]));
 
-    expect(result.minX).toBe(-50);
-    expect(result.maxX).toBe(270);
+    expect(result.minX).toBe(0);
+    expect(result.maxX).toBe(160);
   });
 });
 

@@ -5,10 +5,11 @@ exports.normalizeCurrentArtManifestGeometry = normalizeCurrentArtManifestGeometr
 exports.migrateLegacyArtCompositionCoordinates = migrateLegacyArtCompositionCoordinates;
 exports.migrateLegacyArtCompositionSchema = migrateLegacyArtCompositionSchema;
 exports.migrateLegacyArtManifestSchema = migrateLegacyArtManifestSchema;
-exports.ART_COMPONENT_SCHEMA_VERSION = 4;
+exports.ART_COMPONENT_SCHEMA_VERSION = 5;
 const SPRITE_SCHEMA_VERSION = 1;
 const CENTERED_COORDINATE_SCHEMA_VERSION = 2;
 const LAYERED_PREFAB_GEOMETRY_VERSION = 4;
+const INTRINSIC_REFERENCE_GEOMETRY_VERSION = 5;
 const LAYERED_PREFAB_GEOMETRY_CHAINS = [
     { baseName: "Voting Card Answer Text", wrapperName: "Voting Card Answer" },
     { baseName: "Voting Card Author Text", wrapperName: "Voting Card Author MC" },
@@ -18,6 +19,104 @@ const LAYERED_PREFAB_GEOMETRY_CHAINS = [
 const INTRINSIC_REFERENCE_COMPOSITIONS = ["Voting Card Voters MC"];
 const IMAGE_FIELDS = ["imageDataUrl", "imageAssetId", "imageName", "imageMimeType", "imageObjectFit", "imageTint"];
 const SHAPE_FIELDS = ["shapeStyle", "fillColor", "fillCss", "borderColor", "borderWidth", "borderRadius"];
+function referenceUniformScale(width, height, sourceWidth, sourceHeight) {
+    const widthScale = width !== null ? width / sourceWidth : null;
+    const heightScale = height !== null ? height / sourceHeight : null;
+    if (widthScale !== null && widthScale > 0)
+        return widthScale;
+    if (heightScale !== null && heightScale > 0)
+        return heightScale;
+    return 1;
+}
+function stripReferenceTimelineDimensions(timelineValue, targetIds, sourceWidth, sourceHeight, fallbackScale, fallbackWidth, fallbackHeight, foldLegacySize) {
+    const timeline = record(timelineValue);
+    let changed = 0;
+    for (const trackValue of Array.isArray(timeline.tracks) ? timeline.tracks : []) {
+        const track = record(trackValue);
+        if (!targetIds.has(String(track.targetId || "")) || !Array.isArray(track.keyframes))
+            continue;
+        let carriedScale = fallbackScale;
+        let carriedWidth = fallbackWidth;
+        let carriedHeight = fallbackHeight;
+        for (const keyframeValue of track.keyframes.map(record).sort((left, right) => (finiteNumber(left.frame) || 0) - (finiteNumber(right.frame) || 0))) {
+            const props = record(keyframeValue.props);
+            const authoredScale = finiteNumber(props.scale);
+            if (authoredScale !== null)
+                carriedScale = authoredScale;
+            const width = finiteNumber(props.width);
+            const height = finiteNumber(props.height);
+            if (width !== null)
+                carriedWidth = width;
+            if (height !== null)
+                carriedHeight = height;
+            if (foldLegacySize) {
+                props.scale = Number((carriedScale * referenceUniformScale(carriedWidth, carriedHeight, sourceWidth, sourceHeight)).toFixed(6));
+            }
+            if (Object.prototype.hasOwnProperty.call(props, "width") || Object.prototype.hasOwnProperty.call(props, "height")) {
+                delete props.width;
+                delete props.height;
+                changed += 1;
+            }
+            keyframeValue.props = props;
+        }
+    }
+    return changed;
+}
+function normalizeIntrinsicReferenceComponent(componentValue, ownerComposition, compositions, path, report, foldLegacySize) {
+    const component = record(componentValue);
+    const id = String(component.id || "");
+    const componentPath = [...path, id].filter(Boolean);
+    let changed = 0;
+    if (String(component.kind || "") === "reference") {
+        const referenced = record(compositions[String(component.artCompositionId || "")]);
+        const canvas = record(referenced.canvas);
+        // A saved manifest may reference a bundled composition that is merged in
+        // later by the server. Its authored reference box is the safest migration
+        // fallback and produces a neutral scale until that intrinsic canvas resolves.
+        const sourceWidth = Math.max(1, finiteNumber(canvas.width) || finiteNumber(component.width) || 1);
+        const sourceHeight = Math.max(1, finiteNumber(canvas.height) || finiteNumber(component.height) || 1);
+        const oldScale = finiteNumber(component.scale) || 1;
+        const oldWidth = finiteNumber(component.width);
+        const oldHeight = finiteNumber(component.height);
+        const foldReferenceSize = foldLegacySize && component.referenceSizeMode !== "intrinsic";
+        if (foldReferenceSize) {
+            const sizeScale = referenceUniformScale(oldWidth, oldHeight, sourceWidth, sourceHeight);
+            component.scale = Number((oldScale * sizeScale).toFixed(6));
+        }
+        if (component.referenceSizeMode !== "intrinsic") {
+            component.referenceSizeMode = "intrinsic";
+            changed += 1;
+            report.intrinsicReferenceCount += 1;
+        }
+        if (Object.prototype.hasOwnProperty.call(component, "width") || Object.prototype.hasOwnProperty.call(component, "height")) {
+            delete component.width;
+            delete component.height;
+            changed += 1;
+        }
+        const targetIds = new Set([id, componentPath.join("/")].filter(Boolean));
+        changed += stripReferenceTimelineDimensions(ownerComposition.timeline, targetIds, sourceWidth, sourceHeight, oldScale, oldWidth, oldHeight, foldReferenceSize);
+        changed += stripReferenceTimelineDimensions(component.timeline, new Set(["self", id].filter(Boolean)), sourceWidth, sourceHeight, oldScale, oldWidth, oldHeight, foldReferenceSize);
+    }
+    for (const child of Array.isArray(component.children) ? component.children : []) {
+        changed += normalizeIntrinsicReferenceComponent(child, ownerComposition, compositions, componentPath, report, foldLegacySize);
+    }
+    return changed;
+}
+function normalizeIntrinsicReferenceGeometryForManifest(compositions, report, foldLegacySize) {
+    const changedIds = [];
+    for (const [compositionId, compositionValue] of Object.entries(compositions)) {
+        const composition = record(compositionValue);
+        let changed = 0;
+        for (const component of Array.isArray(composition.components) ? composition.components : []) {
+            changed += normalizeIntrinsicReferenceComponent(component, composition, compositions, [], report, foldLegacySize);
+        }
+        if (changed) {
+            changedIds.push(compositionId);
+            report.changed = true;
+        }
+    }
+    return changedIds;
+}
 function record(value) {
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -311,10 +410,11 @@ function normalizeCurrentArtManifestGeometry(manifestValue) {
         avatarFrameShapeCount: 0,
         centeredComponentCount: 0,
         resizedCompositionCount: 0,
+        intrinsicReferenceCount: 0,
         compositionIds: []
     };
     const compositions = record(root.compositions);
-    report.compositionIds = normalizeKnownLayeredPrefabGeometry(compositions, report);
+    report.compositionIds = normalizeIntrinsicReferenceGeometryForManifest(compositions, report, true);
     root.artComponentSchemaVersion = exports.ART_COMPONENT_SCHEMA_VERSION;
     return { manifest, report };
 }
@@ -351,6 +451,7 @@ function migrateLegacyArtCompositionCoordinates(compositionValue, reportValue, r
         avatarFrameShapeCount: 0,
         centeredComponentCount: 0,
         resizedCompositionCount: 0,
+        intrinsicReferenceCount: 0,
         compositionIds: []
     };
     const components = Array.isArray(composition.components) ? composition.components : [];
@@ -476,6 +577,7 @@ function migrateLegacyArtCompositionSchema(compositionValue, reportValue) {
         avatarFrameShapeCount: 0,
         centeredComponentCount: 0,
         resizedCompositionCount: 0,
+        intrinsicReferenceCount: 0,
         compositionIds: []
     };
     const targets = new Map();
@@ -494,6 +596,7 @@ function migrateLegacyArtManifestSchema(manifestValue) {
         avatarFrameShapeCount: 0,
         centeredComponentCount: 0,
         resizedCompositionCount: 0,
+        intrinsicReferenceCount: 0,
         compositionIds: []
     };
     const sourceVersion = Number(root.artComponentSchemaVersion || 0);
@@ -523,6 +626,12 @@ function migrateLegacyArtManifestSchema(manifestValue) {
     }
     if (sourceVersion < LAYERED_PREFAB_GEOMETRY_VERSION) {
         for (const compositionId of normalizeKnownLayeredPrefabGeometry(compositions, report)) {
+            if (!report.compositionIds.includes(compositionId))
+                report.compositionIds.push(compositionId);
+        }
+    }
+    if (sourceVersion < INTRINSIC_REFERENCE_GEOMETRY_VERSION) {
+        for (const compositionId of normalizeIntrinsicReferenceGeometryForManifest(compositions, report, true)) {
             if (!report.compositionIds.includes(compositionId))
                 report.compositionIds.push(compositionId);
         }

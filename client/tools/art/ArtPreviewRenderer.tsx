@@ -164,9 +164,15 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
       Object.prototype.hasOwnProperty.call(timelineOverride, key) ? timelineOverride[key] : fallback;
     const x = livePos ? livePos.x : Number(timelineValue("x", get(component, "x") || 0));
     const y = livePos ? livePos.y : Number(timelineValue("y", get(component, "y") || 0));
-    const width = liveTx?.width ?? Number(timelineValue("width", get(component, "width") || 1));
-    const height = liveTx?.height ?? Number(timelineValue("height", get(component, "height") || 1));
     const kind = component.kind;
+    const referencedComposition = referencedCompositionFor(component, referencePath);
+    const referenceCanvas = referencedComposition?.canvas;
+    const width = referencedComposition
+      ? Math.max(1, Number(referenceCanvas?.width || 1))
+      : liveTx?.width ?? Number(timelineValue("width", get(component, "width") || 1));
+    const height = referencedComposition
+      ? Math.max(1, Number(referenceCanvas?.height || 1))
+      : liveTx?.height ?? Number(timelineValue("height", get(component, "height") || 1));
     const isTextual = kind === "text" || kind === "badge";
     const fillCss = String(timelineValue("fillCss", get(component, "fillCss") || ""));
     const fillColor = String(timelineValue("fillColor", get(component, "fillColor") || "transparent"));
@@ -188,10 +194,6 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     const spriteRenderMode = normalizeSpriteRenderMode(timelineValue("spriteRenderMode", get(component, "spriteRenderMode")));
     const tintedSprite = Boolean(imageUrl && kind === "sprite" && spriteRenderMode === "tinted");
     const spriteTint = imageTint === "currentColor" ? "var(--art-preview-current-color)" : imageTint || "currentColor";
-    const referencedComposition = referencedCompositionFor(component, referencePath);
-    const referenceCanvas = referencedComposition?.canvas || { width, height };
-    const referenceScaleX = width / Math.max(1, Number(referenceCanvas.width || width));
-    const referenceScaleY = height / Math.max(1, Number(referenceCanvas.height || height));
     const maskSize = objectFit === "fill" ? "100% 100%" : objectFit;
     const transparentBase = kind === "container" || kind === "reference";
     const clipsOwnContent = Boolean(imageUrl || isTextual);
@@ -332,10 +334,8 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
                 position: "absolute",
                 left: 0,
                 top: 0,
-                width: Number(referenceCanvas.width || width),
-                height: Number(referenceCanvas.height || height),
-                transform: `scale(${referenceScaleX}, ${referenceScaleY})`,
-                transformOrigin: "top left",
+                width,
+                height,
                 pointerEvents: "none"
               }}
             >

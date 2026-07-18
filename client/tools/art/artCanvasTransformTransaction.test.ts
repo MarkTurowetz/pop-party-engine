@@ -98,8 +98,10 @@ describe("art canvas transform transactions", () => {
     expect(timeline.tracks.map((track) => track.targetId).sort()).toEqual(["bubble", "vip"]);
     expect(timeline.tracks.every((track) => track.keyframes.length === 1 && track.keyframes[0].frame === 0)).toBe(true);
     expect(timeline.tracks.find((track) => track.targetId === "vip")?.keyframes[0].props).toEqual(
-      expect.objectContaining({ x: -35, y: 10, width: 20, height: 10, scale: 1, rotation: 0 })
+      expect.objectContaining({ x: -35, y: 10, scale: 1, rotation: 0 })
     );
+    expect(timeline.tracks.find((track) => track.targetId === "vip")?.keyframes[0].props.width).toBeUndefined();
+    expect(timeline.tracks.find((track) => track.targetId === "vip")?.keyframes[0].props.height).toBeUndefined();
     expect(timeline.tracks.find((track) => track.targetId === "bubble")?.keyframes[0].props).toEqual(
       expect.objectContaining({ x: 15, y: 10 })
     );

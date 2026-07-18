@@ -932,8 +932,15 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       const frameValues = componentTimelineValuesForCanvasEdit(component);
       const x = finiteNumber(frameValues.x ?? get(component, "x"), 0);
       const y = finiteNumber(frameValues.y ?? get(component, "y"), 0);
-      const width = Math.max(1, finiteNumber(frameValues.width ?? get(component, "width"), 1));
-      const height = Math.max(1, finiteNumber(frameValues.height ?? get(component, "height"), 1));
+      const referenced = component.kind === "reference"
+        ? compositions.find((candidate) => candidate.id === component.artCompositionId)
+        : null;
+      const width = referenced
+        ? Math.max(1, finiteNumber(referenced.canvas?.width, 1))
+        : Math.max(1, finiteNumber(frameValues.width ?? get(component, "width"), 1));
+      const height = referenced
+        ? Math.max(1, finiteNumber(referenced.canvas?.height, 1))
+        : Math.max(1, finiteNumber(frameValues.height ?? get(component, "height"), 1));
       const scale = finiteNumber(frameValues.scale ?? get(component, "scale"), 1);
       const visualScale = parent.scale * Math.max(1, Math.abs(scale));
       const left = parent.left + (x - width / 2) * parent.scale;
@@ -1716,6 +1723,10 @@ function ArtComponentInspector({
     );
   }
   const componentFrameValue = (target: ArtComponent, key: string): unknown => {
+    if (target.kind === "reference" && (key === "width" || key === "height")) {
+      const source = compositions.find((candidate) => candidate.id === target.artCompositionId);
+      return Number(source?.canvas?.[key] || 1);
+    }
     const values = timelineContext?.valuesById.get(target.id) || {};
     const value = timelineContext && TIMELINE_INSPECTOR_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)
       ? values[key]

@@ -129,6 +129,15 @@ function collectArtArchitectureIssues(compositions) {
                 if (!componentIds.has(track.targetId) || trackTargets.has(track.targetId)) {
                     issues.push({ compositionId: composition.id, code: "invalid-track-target", message: `Track target must be one unique local component id: ${track.targetId}` });
                 }
+                const target = components.find((component) => component.id === track.targetId);
+                if (target?.kind === "reference" &&
+                    track.keyframes.some((keyframe) => Object.prototype.hasOwnProperty.call(keyframe.props, "width") || Object.prototype.hasOwnProperty.call(keyframe.props, "height"))) {
+                    issues.push({
+                        compositionId: composition.id,
+                        code: "reference-dimension-keyframe",
+                        message: `Referenced game objects inherit their child canvas; animate the parent scale instead: ${track.targetId}`
+                    });
+                }
                 trackTargets.add(track.targetId);
             }
         }

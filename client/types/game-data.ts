@@ -132,6 +132,7 @@ export interface ArtComponent extends JsonObject {
   editorHidden?: boolean;
   transformOrigin?: string;
   artCompositionId?: string;
+  referenceSizeMode?: "intrinsic" | string;
   childDistribution?: "none" | "horizontal" | "vertical" | string;
   locked?: boolean;
   defaultText?: string;

@@ -155,6 +155,7 @@ function syncComponentElement(options: Dict = {}): void {
   element.classList.toggle("has-tinted-image-mask", tintedSprite);
   element.dataset.artComponentId = (component.id as string) || "";
   element.dataset.componentId = (component.id as string) || "";
+  element.dataset.artIntrinsicDimensions = kind === "reference" ? "true" : "false";
   element.dataset.spriteSource = imageSource;
   element.style.zIndex = String(componentLayerIndex(options.layerIndex, options.layerTotal));
   if (imageSource) element.style.setProperty("--component-mask-url", `url('${String(imageSource).replaceAll("'", "%27")}')`);
@@ -544,13 +545,22 @@ class ArtObjectView {
   update(component: Component, canvas: CanvasSize, layer: Dict = {}): void {
     this.component = component || {};
     this.canvas = canvas || null;
+    const referencedComposition = referencedCompositionFor(this.component, this.getComposition, this.referencePath);
+    const referencedCanvas = referencedComposition?.canvas as CanvasSize | undefined;
+    const layoutComponent = referencedCanvas
+      ? {
+          ...this.component,
+          width: Math.max(1, num(referencedCanvas.width, 1)),
+          height: Math.max(1, num(referencedCanvas.height, 1))
+        }
+      : this.component;
     const wasVisible = this.visual ? this.isVisible() : true;
     if (!wasVisible) this.element.classList.add(HIDDEN_CLASS);
     syncComponentElement({
       element: this.element,
       imageElement: this.image,
       labelElement: this.label,
-      component: this.component,
+      component: layoutComponent,
       canvas,
       layerIndex: layer.index,
       layerTotal: layer.total,

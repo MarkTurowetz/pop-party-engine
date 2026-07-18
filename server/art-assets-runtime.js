@@ -285,6 +285,13 @@ function createArtAssetsRuntime({
     };
     if (kind === "reference") {
       normalized.artCompositionId = cleanId(source.artCompositionId, base.artCompositionId || "");
+      normalized.referenceSizeMode = source.referenceSizeMode === "intrinsic" || base.referenceSizeMode === "intrinsic"
+        ? "intrinsic"
+        : "legacy";
+      if (normalized.referenceSizeMode === "intrinsic") {
+        delete normalized.width;
+        delete normalized.height;
+      }
     }
     if (kind === "container") {
       normalized.childDistribution = artComponentSchema.normalizeContainerDistribution(source.childDistribution || base.childDistribution);

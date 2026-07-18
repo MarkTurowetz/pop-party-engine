@@ -782,6 +782,34 @@ describe("artTimelineModel", () => {
     expect(keyframes[1].props.defaultText).toBeUndefined();
   });
 
+  it("keeps reference keyframes complete without copying inherited dimensions", () => {
+    const normalized = normalizeAnimationKeyframePropsForEditing(
+      {
+        fps: 30,
+        frameCount: 20,
+        labels: [],
+        commands: [],
+        tracks: [{
+          targetId: "child",
+          keyframes: [
+            { frame: 0, props: { x: 100, y: 80, width: 300, height: 90, scale: 0.5 } },
+            { frame: 10, props: { opacity: 0 } }
+          ]
+        }]
+      },
+      {
+        id: "root",
+        kind: "container",
+        children: [{ id: "child", kind: "reference", artCompositionId: "child-art", x: 100, y: 80, scale: 0.5 }]
+      } as ArtComponent
+    );
+
+    expect(normalized.tracks[0].keyframes[0].props).toMatchObject({ x: 100, y: 80, scale: 0.5 });
+    expect(normalized.tracks[0].keyframes[0].props.width).toBeUndefined();
+    expect(normalized.tracks[0].keyframes[0].props.height).toBeUndefined();
+    expect(normalized.tracks[0].keyframes[1].props).toMatchObject({ x: 100, y: 80, scale: 0.5, opacity: 0 });
+  });
+
   it("keeps edited child keyframes complete after sparse inspector updates", () => {
     const root = {
       id: "prompt-field",

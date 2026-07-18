@@ -100,4 +100,24 @@ describe("Art timeline architecture", () => {
     ]);
     expect(issues.map((issue) => issue.code)).toContain("noncanonical-command-target");
   });
+
+  it("rejects width and height keyframes on intrinsic references", () => {
+    const issues = collectArtArchitectureIssues([
+      {
+        id: "host",
+        timelineArchitectureVersion: ART_TIMELINE_ARCHITECTURE_VERSION,
+        timeline: {
+          fps: 30,
+          frameCount: 2,
+          labels: [],
+          commands: [],
+          tracks: [{ targetId: "child", keyframes: [{ frame: 0, props: { width: 200, height: 100, scale: 1 } }] }]
+        },
+        components: [{ id: "child", instanceLabel: "child", kind: "reference", artCompositionId: "definition" }]
+      },
+      { id: "definition", timelineArchitectureVersion: ART_TIMELINE_ARCHITECTURE_VERSION, components: [] }
+    ]);
+
+    expect(issues.map((issue) => issue.code)).toContain("reference-dimension-keyframe");
+  });
 });

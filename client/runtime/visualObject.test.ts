@@ -868,4 +868,31 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
     vi.advanceTimersByTime(200);
     expect(frames).toEqual([0, 1, 2]);
   });
+
+  it("does not let parent timeline dimensions resize an intrinsic child reference", () => {
+    const element = createFakeElement(["hidden"]);
+    element.dataset.artComponentId = "child-ref";
+    element.dataset.artIntrinsicDimensions = "true";
+    element.style.width = "75%";
+    element.style.height = "60%";
+    const visual = PartyGameVisualObject.createCssVisualObject({
+      element,
+      hiddenClasses: ["hidden"],
+      motionHiddenClasses: ["hidden"],
+      timelineCanvas: { width: 400, height: 200 },
+      timeline: normalizeTimeline({
+        fps: 30,
+        frameCount: 1,
+        labels: [{ name: "on", frame: 0 }],
+        commands: [{ frame: 0, type: "stop" }],
+        tracks: [{ targetId: "child-ref", keyframes: [{ frame: 0, props: { width: 50, height: 25, scale: 0.5 } }] }]
+      })
+    });
+
+    visual.play("on");
+
+    expect(element.style.width).toBe("75%");
+    expect(element.style.height).toBe("60%");
+    expect(element.style.getPropertyValue("--component-scale")).toBe("0.5");
+  });
 });

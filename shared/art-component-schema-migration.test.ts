@@ -39,6 +39,58 @@ describe("art component schema migration", () => {
     expect(second.report.changed).toBe(false);
   });
 
+  it("folds a legacy reference viewport into uniform parent scale and removes dimension keyframes", () => {
+    const source = {
+      artComponentSchemaVersion: 4,
+      compositions: {
+        child: {
+          canvas: { width: 300, height: 180 },
+          components: [{ id: "art", kind: "shape", x: 150, y: 90, width: 300, height: 180 }]
+        },
+        parent: {
+          canvas: { width: 600, height: 400 },
+          components: [{
+            id: "child-ref",
+            kind: "reference",
+            artCompositionId: "child",
+            x: 300,
+            y: 200,
+            width: 220,
+            height: 130.664,
+            scale: 1
+          }],
+          timeline: {
+            tracks: [{
+              targetId: "child-ref",
+              keyframes: [
+                { frame: 0, props: { x: 300, y: 200, width: 220, height: 130.664, scale: 1 } },
+                { frame: 10, props: { x: 310, y: 205, width: 150, height: 90, scale: 1.2 } }
+              ]
+            }]
+          }
+        }
+      }
+    };
+
+    const { manifest, report } = migrateLegacyArtManifestSchema(source);
+    const reference = manifest.compositions.parent.components[0];
+
+    expect(reference).toMatchObject({
+      x: 300,
+      y: 200,
+      scale: 0.733333,
+      referenceSizeMode: "intrinsic"
+    });
+    expect(reference.width).toBeUndefined();
+    expect(reference.height).toBeUndefined();
+    expect(manifest.compositions.parent.timeline.tracks[0].keyframes).toEqual([
+      { frame: 0, props: { x: 300, y: 200, scale: 0.733333 } },
+      { frame: 10, props: { x: 310, y: 205, scale: 0.6 } }
+    ]);
+    expect(manifest.compositions.child).toEqual(source.compositions.child);
+    expect(report).toMatchObject({ intrinsicReferenceCount: 1 });
+  });
+
   it("recenters legacy zero-origin prefab children without moving their placed parent references", () => {
     const source = {
       artComponentSchemaVersion: 1,
@@ -89,10 +141,12 @@ describe("art component schema migration", () => {
     const { manifest, report } = migrateLegacyArtManifestSchema(source);
 
     expect(manifest.compositions.wrapper.canvas).toEqual({ width: 52, height: 28 });
-    expect(manifest.compositions.wrapper.components[0]).toMatchObject({ x: 26, y: 14, width: 52, height: 28 });
+    expect(manifest.compositions.wrapper.components[0]).toMatchObject({ x: 26, y: 14, scale: 1, referenceSizeMode: "intrinsic" });
+    expect(manifest.compositions.wrapper.components[0].width).toBeUndefined();
+    expect(manifest.compositions.wrapper.components[0].height).toBeUndefined();
     expect(manifest.compositions.wrapper.timeline.tracks[0].keyframes).toEqual([
-      { frame: 0, props: { x: 26, y: 14, width: 52, height: 28, scale: 1 } },
-      { frame: 5, props: { x: 31, y: 12, width: 52, height: 28, scale: 1.2 } }
+      { frame: 0, props: { x: 26, y: 14, scale: 1 } },
+      { frame: 5, props: { x: 31, y: 12, scale: 1.2 } }
     ]);
     expect(manifest.compositions.player.components).toEqual([
       expect.objectContaining({ id: "background", x: 50, y: 50 }),
@@ -100,7 +154,7 @@ describe("art component schema migration", () => {
     ]);
     expect(manifest.compositions.stage.components[0]).toMatchObject({ x: 150, y: 234 });
     expect(report).toMatchObject({ centeredComponentCount: 3, resizedCompositionCount: 1 });
-    expect(report.compositionIds).toEqual(["wrapper", "player"]);
+    expect(report.compositionIds).toEqual(expect.arrayContaining(["wrapper", "player", "stage"]));
   });
 
   it("repairs the voting answer viewport chain without moving its compound-widget placement", () => {
@@ -155,23 +209,23 @@ describe("art component schema migration", () => {
     expect(manifest.compositions["answer-wrapper"].components[0]).toMatchObject({
       x: 260,
       y: 75,
-      width: 520,
-      height: 150
+      scale: 1,
+      referenceSizeMode: "intrinsic"
     });
     expect(manifest.compositions["answer-wrapper"].timeline.tracks[0].keyframes).toEqual([
-      { frame: 0, props: { x: 260, y: 75, width: 520, height: 150, scale: 1 } },
-      { frame: 5, props: { x: 270, y: 80, width: 520, height: 150, scale: 1.1 } }
+      { frame: 0, props: { x: 260, y: 75, scale: 1 } },
+      { frame: 5, props: { x: 270, y: 80, scale: 1.1 } }
     ]);
     expect(manifest.compositions.widget.components[0]).toMatchObject({
       x: 280,
       y: 115,
-      width: 520,
-      height: 150
+      scale: 1,
+      referenceSizeMode: "intrinsic"
     });
-    expect(report.compositionIds).toEqual(["answer-text", "answer-wrapper"]);
+    expect(report.compositionIds).toEqual(expect.arrayContaining(["answer-text", "answer-wrapper", "widget"]));
   });
 
-  it("reapplies voting answer geometry when a stale open editor saves into a current manifest", () => {
+  it("converts a stale reference resize into parent scale without rewriting either canvas", () => {
     const current = {
       artComponentSchemaVersion: ART_COMPONENT_SCHEMA_VERSION,
       compositions: {
@@ -190,9 +244,16 @@ describe("art component schema migration", () => {
 
     const { manifest, report } = normalizeCurrentArtManifestGeometry(current);
 
-    expect(manifest.compositions.base.canvas).toEqual({ width: 520, height: 150 });
-    expect(manifest.compositions.wrapper.canvas).toEqual({ width: 520, height: 150 });
-    expect(manifest.compositions.wrapper.components[0]).toMatchObject({ x: 260, y: 75, width: 520, height: 150 });
+    expect(manifest.compositions.base.canvas).toEqual({ width: 560, height: 230 });
+    expect(manifest.compositions.wrapper.canvas).toEqual({ width: 560, height: 230 });
+    expect(manifest.compositions.wrapper.components[0]).toMatchObject({
+      x: 280,
+      y: 115,
+      scale: 1,
+      referenceSizeMode: "intrinsic"
+    });
+    expect(manifest.compositions.wrapper.components[0].width).toBeUndefined();
+    expect(manifest.compositions.wrapper.components[0].height).toBeUndefined();
     expect(report.changed).toBe(true);
   });
 
@@ -277,19 +338,19 @@ describe("art component schema migration", () => {
       expect.objectContaining({ id: "author-card", x: 170, y: 16, width: 340, height: 32 })
     ]);
     expect(manifest.compositions.authorWrapper.canvas).toEqual({ width: 340, height: 32 });
-    expect(manifest.compositions.authorWrapper.components[0]).toMatchObject({ x: 170, y: 16, width: 340, height: 32 });
+    expect(manifest.compositions.authorWrapper.components[0]).toMatchObject({ x: 170, y: 16, scale: 1, referenceSizeMode: "intrinsic" });
     expect(manifest.compositions.authorWrapper.timeline.tracks[0].keyframes).toEqual([
-      { frame: 0, props: { x: 170, y: 16, width: 340, height: 32 } },
-      { frame: 8, props: { x: 175, y: 14, width: 340, height: 32 } }
+      { frame: 0, props: { x: 170, y: 16, scale: 1 } },
+      { frame: 8, props: { x: 175, y: 14, scale: 1 } }
     ]);
     expect(manifest.compositions.compound.components).toEqual([
-      expect.objectContaining({ id: "author-slot", x: 280, y: 43, width: 340, height: 32 }),
-      expect.objectContaining({ id: "voters-slot", x: 278, y: 188, width: 500, height: 48 })
+      expect.objectContaining({ id: "author-slot", x: 280, y: 43, scale: 1, referenceSizeMode: "intrinsic" }),
+      expect.objectContaining({ id: "voters-slot", x: 278, y: 188, scale: 1, referenceSizeMode: "intrinsic" })
     ]);
     expect(manifest.compositions.vipBase.canvas).toEqual({ width: 44, height: 22 });
     expect(manifest.compositions.vipWrapper.canvas).toEqual({ width: 44, height: 22 });
-    expect(manifest.compositions.vipWrapper.components[0]).toMatchObject({ x: 22, y: 11, width: 44, height: 22 });
-    expect(manifest.compositions.player.components[0]).toMatchObject({ x: 150, y: 345, width: 44, height: 22 });
+    expect(manifest.compositions.vipWrapper.components[0]).toMatchObject({ x: 22, y: 11, scale: 1, referenceSizeMode: "intrinsic" });
+    expect(manifest.compositions.player.components[0]).toMatchObject({ x: 150, y: 345, scale: 1, referenceSizeMode: "intrinsic" });
     expect(report.compositionIds).toEqual(expect.arrayContaining([
       "authorBase",
       "authorWrapper",

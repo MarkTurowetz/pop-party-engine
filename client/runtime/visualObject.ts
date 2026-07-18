@@ -368,8 +368,9 @@ class CssVisualObject {
 
   applyTimelineProperties(props: TimelineProperties): void {
     if (!this.element) return;
-    const width = numericTimelineValue(props.width);
-    const height = numericTimelineValue(props.height);
+    const ownsIntrinsicDimensions = this.element.dataset.artIntrinsicDimensions === "true";
+    const width = ownsIntrinsicDimensions ? null : numericTimelineValue(props.width);
+    const height = ownsIntrinsicDimensions ? null : numericTimelineValue(props.height);
     const x = numericTimelineValue(props.x);
     const y = numericTimelineValue(props.y);
     const scale = numericTimelineValue(props.scale);

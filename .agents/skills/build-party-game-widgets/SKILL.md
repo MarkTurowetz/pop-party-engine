@@ -28,7 +28,9 @@ Own content, styling, geometry, and semantic variants here.
 - Use `stop()` on state frames so the timeline cannot fall through.
 - Omit lifecycle visibility commands such as `visible = false`; the animated parent owns visibility.
 - Make universal visual changes here so every parent instance receives them.
-- Treat width and height as intrinsic source geometry. Resize parent instances with `scale`, not copied width or height overrides.
+- Treat the child composition canvas as intrinsic source geometry. Parent references do not store,
+  synchronize, or keyframe child width/height; resize the placed instance with uniform `scale`.
+  Parent transforms accumulate around the child without rewriting any child-authored value.
 
 ### Animated component MC
 
@@ -123,7 +125,8 @@ Remove runtime code that assigns lifecycle visibility, opacity, scale, rotation,
 ## Validation checklist
 
 - Confirm child source edits appear immediately in every parent preview.
-- Confirm referenced width and height follow the child frame-zero bounds.
+- Confirm every reference resolves its width and height from the child canvas at render time and
+  that parent timelines contain no reference width/height keyframes.
 - Confirm semantic state frames stop and contain no lifecycle hide commands.
 - Confirm `Off` hides and stops the animated wrapper.
 - Confirm `On` persists without falling into another animation.
