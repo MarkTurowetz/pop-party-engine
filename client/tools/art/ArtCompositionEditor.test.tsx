@@ -3,6 +3,7 @@ import type { TimelineDocument } from "../../../shared/timeline-model";
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
 import {
   artTimelineDockHeightFromPointer,
+  isArtCenterSelectionShortcut,
   swappableGameObjectOptions,
   timelineFrameForStepShortcut,
   timelineTargetIdForViewShortcut,
@@ -83,6 +84,25 @@ describe("ArtCompositionEditor timeline frame stepping", () => {
   it("ignores unrelated keys and timelines with nowhere to move", () => {
     expect(timelineFrameForStepShortcut("/", 2, 5)).toBeNull();
     expect(timelineFrameForStepShortcut(".", 0, 1)).toBeNull();
+  });
+});
+
+describe("ArtCompositionEditor center shortcut", () => {
+  it("uses plain C without overriding copy or typing modifiers", () => {
+    const event = (overrides: Partial<KeyboardEvent> = {}) => ({
+      altKey: false,
+      ctrlKey: false,
+      key: "c",
+      metaKey: false,
+      repeat: false,
+      shiftKey: false,
+      ...overrides
+    } as KeyboardEvent);
+
+    expect(isArtCenterSelectionShortcut(event())).toBe(true);
+    expect(isArtCenterSelectionShortcut(event({ metaKey: true }))).toBe(false);
+    expect(isArtCenterSelectionShortcut(event({ shiftKey: true }))).toBe(false);
+    expect(isArtCenterSelectionShortcut(event({ repeat: true }))).toBe(false);
   });
 });
 

@@ -92,6 +92,24 @@ export function translatedArtCanvasPositions(
   );
 }
 
+export function centeredArtCanvasPositions(targets: ArtCanvasTransformTarget[]): ArtCanvasLivePositions {
+  if (targets.length < 2) return {};
+  const largest = targets.reduce((current, candidate) => {
+    const renderedArea = (target: ArtCanvasTransformTarget): number => {
+      const width = Math.max(0, resolvedNumber(target.component, target.resolvedProps, "width", 0));
+      const height = Math.max(0, resolvedNumber(target.component, target.resolvedProps, "height", 0));
+      const scale = Math.abs(resolvedNumber(target.component, target.resolvedProps, "scale", 1));
+      return width * height * scale * scale;
+    };
+    return renderedArea(candidate) > renderedArea(current) ? candidate : current;
+  });
+  const center = {
+    x: Number((Math.max(0, resolvedNumber(largest.component, largest.resolvedProps, "width", 0)) / 2).toFixed(3)),
+    y: Number((Math.max(0, resolvedNumber(largest.component, largest.resolvedProps, "height", 0)) / 2).toFixed(3))
+  };
+  return Object.fromEntries(targets.map((target) => [target.id, { ...center }]));
+}
+
 export function applyArtCanvasTransformKeyframes(
   timeline: TimelineDocument | null | undefined,
   patches: ArtCanvasTransformPatch[],

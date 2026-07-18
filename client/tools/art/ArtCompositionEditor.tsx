@@ -39,6 +39,7 @@ import {
   applyArtCanvasTransformKeyframes,
   artCanvasDragSelection,
   captureArtCanvasTransformTargets,
+  centeredArtCanvasPositions,
   translatedArtCanvasPositions,
   type ArtCanvasLivePositions,
   type ArtCanvasTransformPatch,
@@ -346,6 +347,12 @@ function isTimelineFrameShortcutTarget(target: EventTarget | null): boolean {
   const element = target instanceof HTMLElement ? target : null;
   if (!element) return false;
   return Boolean(element.closest(".art-timeline-ruler button, .art-timeline-lane-frame"));
+}
+
+export function isArtCenterSelectionShortcut(
+  event: Pick<KeyboardEvent, "altKey" | "ctrlKey" | "key" | "metaKey" | "repeat" | "shiftKey">
+): boolean {
+  return !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.repeat && event.key.toLowerCase() === "c";
 }
 
 export function timelineFrameForStepShortcut(key: string, currentFrame: number, frameCount: number): number | null {
@@ -727,6 +734,28 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     if (!target) return;
     commitCanvasTransformPatches([{ target, patch }]);
   };
+  const centerSelectedCanvasComponents = useCallback((): boolean => {
+    if (!composition || selectedComponentIds.size < 2) return false;
+    const targets = captureArtCanvasTransformTargets(
+      composition.components || [],
+      selectedComponentIds,
+      (component) => {
+        const match = findArtComponentTargetPath(composition.components || [], component.id);
+        const scopedId = match?.path ? artComponentTargetPathId(match.path) : component.id;
+        return (timelineFrameOverrides?.[scopedId] || timelineFrameOverrides?.[component.id] || {}) as TimelineProperties;
+      }
+    );
+    const positions = centeredArtCanvasPositions(targets);
+    if (Object.keys(positions).length < 2) return false;
+    const nextTimeline = applyArtCanvasTransformKeyframes(
+      activeTimeline,
+      targets.map((target) => ({ target, patch: positions[target.id] })),
+      timelinePreviewFrame
+    );
+    controller.updateComposition(composition.id, { timeline: nextTimeline });
+    setTimelinePreview({ compositionId: composition.id, frame: timelinePreviewFrame, overrides: null });
+    return true;
+  }, [activeTimeline, composition, controller, selectedComponentIds, timelineFrameOverrides, timelinePreviewFrame]);
   const previewTimelineFrame = (frame: number, overrides?: TimelinePreviewOverrides | null) => {
     if (!composition) return;
     setTimelinePreview({ compositionId: composition.id, frame, overrides: overrides || null });
@@ -881,6 +910,16 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [controller, selectedComponentIds.size]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isArtCenterSelectionShortcut(event) || event.defaultPrevented) return;
+      if (isEditableTimelineShortcutTarget(event.target) || isButtonTimelineShortcutTarget(event.target)) return;
+      if (centerSelectedCanvasComponents()) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [centerSelectedCanvasComponents]);
 
   const collectSelectableComponentBoxes = (
     components: ArtComponent[],

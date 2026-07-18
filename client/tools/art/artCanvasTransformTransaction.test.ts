@@ -5,6 +5,7 @@ import {
   applyArtCanvasTransformKeyframes,
   artCanvasDragSelection,
   captureArtCanvasTransformTargets,
+  centeredArtCanvasPositions,
   translatedArtCanvasPositions
 } from "./artCanvasTransformTransaction";
 
@@ -50,6 +51,37 @@ describe("art canvas transform transactions", () => {
     expect(positions.sibling).toEqual({ x: 20, y: 20 });
     expect(positions.child.x).toBeCloseTo(4);
     expect(positions.child.y).toBeCloseTo(1);
+  });
+
+  it("centers every selected object on the largest rendered object", () => {
+    const targets = captureArtCanvasTransformTargets(
+      [
+        component("background", { x: 900, y: 700, width: 500, height: 200 }),
+        component("label", { x: 25, y: 30, width: 180, height: 40 }),
+        component("icon", { x: 50, y: 60, width: 60, height: 60 })
+      ],
+      new Set(["background", "label", "icon"]),
+      () => ({})
+    );
+
+    expect(centeredArtCanvasPositions(targets)).toEqual({
+      background: { x: 250, y: 100 },
+      label: { x: 250, y: 100 },
+      icon: { x: 250, y: 100 }
+    });
+  });
+
+  it("uses current-frame size and scale when choosing the largest object", () => {
+    const targets = captureArtCanvasTransformTargets(
+      [component("wide", { width: 500, height: 200 }), component("scaled", { width: 200, height: 100 })],
+      new Set(["wide", "scaled"]),
+      (target): TimelineProperties => target.id === "scaled" ? { width: 300, height: 120, scale: 2 } : {}
+    );
+
+    expect(centeredArtCanvasPositions(targets)).toEqual({
+      wide: { x: 150, y: 60 },
+      scaled: { x: 150, y: 60 }
+    });
   });
 
   it("creates one complete current-frame keyframe for every transformed component", () => {
