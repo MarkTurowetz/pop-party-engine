@@ -540,6 +540,7 @@
                 }
                 room.currentRound = 0;
                 room.flowVariables = {};
+                room.triviaPromptText = "";
                 room.G = {};
                 room.pendingPointPopups = [];
                 room.pendingPointPopupNonce = 0;

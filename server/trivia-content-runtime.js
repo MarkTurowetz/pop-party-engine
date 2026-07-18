@@ -38,16 +38,19 @@ function createTriviaContentRuntime({
     const prompt = randomTriviaPrompt();
     room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
     room.flowVariables[normalizeFlowVariableName(variableName)] = clonePrompt(prompt);
+    room.triviaPromptText = String(prompt?.prompt || "");
   }
 
   function triviaContentForAction(room, action) {
     const variableName = normalizeFlowVariableName(action?.contentVariable);
     const stored = room.flowVariables?.[variableName];
     const prompt = stored?.id ? triviaPromptById(stored.id) || stored : multipleChoicePrompts[0];
-    return action?.randomizeOptions ? shuffledTriviaPrompt(prompt) : {
+    const content = action?.randomizeOptions ? shuffledTriviaPrompt(prompt) : {
       ...clonePrompt(prompt),
       optionOriginalIndexes: prompt.options.map((_, index) => index)
     };
+    room.triviaPromptText = String(content?.prompt || "");
+    return content;
   }
 
   return {

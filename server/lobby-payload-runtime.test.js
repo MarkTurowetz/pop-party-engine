@@ -44,4 +44,19 @@ describe("lobby payload flow action exposure", () => {
     expect(payload.subroutinePath).toEqual(["nested"]);
     expect(payload.debugAction.actionId).toBe("header");
   });
+
+  it("exposes prepared trivia prompt text as setup data without a visibility command", () => {
+    const runtime = runtimeFor({ id: "timer", type: "startCraftingTimer" });
+    const payload = runtime.lobbyPayload({
+      stageCode: "TEST",
+      revision: 2,
+      phase: "crafting-game-state",
+      flowStateId: "crafting-game-state",
+      triviaPromptText: "Which dinosaur had three horns?",
+      players: new Map(),
+      pendingFlowEvents: new Set()
+    });
+
+    expect(payload.triviaPromptText).toBe("Which dinosaur had three horns?");
+  });
 });

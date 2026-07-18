@@ -12,6 +12,8 @@ type Dict = Record<string, unknown>;
 type El = HTMLElement;
 type AudioEl = HTMLAudioElement & { stageInterrupted?: boolean };
 
+const CRAFTING_TRIVIA_PROMPT_TEXT_ID = "craftingTriviaPromptText";
+
 interface StageVisualControllersApi {
   createStageTextController: (o: Dict) => { init: () => void; set: (t: unknown, o: Dict) => number };
   createCraftingTimerController: (o: Dict) => Dict;
@@ -709,6 +711,10 @@ function applyStageState(lobby: Dict): void {
   renderStageActionDebug(lobby);
   setStageCodeDisplays(lobby.stageCode || stageCodeValue());
   w().applyStageLayoutForPhase!(phase);
+  if (phase === "crafting-game-state") {
+    const layoutText = w().PartyGameLayoutText as { setStageText?: (target: string, value: unknown) => void } | undefined;
+    layoutText?.setStageText?.(CRAFTING_TRIVIA_PROMPT_TEXT_ID, lobby.triviaPromptText || "");
+  }
   setStageManagedText("stageTitle", liveGameTitle);
   renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode as string) });
   renderStageWidgetBinding("stageCodeWidget", { stageCode: stageCodeValue(lobby.stageCode as string) });

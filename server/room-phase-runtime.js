@@ -137,6 +137,7 @@ function createRoomPhaseRuntime({
     room.playerAnswersShown = false;
     room.playerAnswersVisibleFilter = "all";
     room.flowVariables = {};
+    room.triviaPromptText = "";
     room.G = {};
     clearPlayerAnswerData(room);
     room.pendingPointPopups = [];
@@ -168,6 +169,7 @@ function createRoomPhaseRuntime({
   }
 
   function endGameMoment(room) {
+    room.triviaPromptText = "";
     room.playersShown = false;
     room.playerAnswersShown = false;
     room.playerAnswersVisibleFilter = "all";

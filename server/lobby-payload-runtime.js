@@ -46,6 +46,7 @@ function createLobbyPayloadRuntime({
       craftingTimer: craftingTimerPayload(room),
       lastDecisionTrace: room.lastDecisionTrace,
       currentRound: room.currentRound || 1,
+      triviaPromptText: String(room.triviaPromptText || ""),
       gameTitle: constants.gameTitle,
       speechToTextSendInputBuffer: constants.speechToTextSendInputBuffer,
       numSequentialGames: room.numSequentialGames || 0,

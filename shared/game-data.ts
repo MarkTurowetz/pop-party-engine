@@ -201,6 +201,13 @@ const defaultStageLayouts = {
         { id: "stagePresentationText", name: "Presentation Text", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 460, width: 980, height: 240, scale: 1, defaultText: "", fontSize: 58, autoFitText: false, fontColor: "#ffffff" },
         { id: "stagePromptText", name: "Prompt Text", kind: "art", artCompositionId: "layout-text-field", x: 960, y: 760, width: 860, height: 120, scale: 1, defaultText: "Prompt Text", fontSize: 58, autoFitText: false, fontColor: "#ffffff" }
       ]
+    },
+    {
+      id: "crafting-game-state",
+      name: "Crafting Game State",
+      elements: [
+        { id: "craftingTriviaPromptText", name: "Trivia Prompt Text", kind: "art", artCompositionId: "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c", x: 960, y: 220, width: 1000, height: 80, scale: 1, defaultAnimationState: "Off", defaultText: "", fontSize: 58, autoFitText: false, fontColor: "#ffffff" }
+      ]
     }
   ]
 };
