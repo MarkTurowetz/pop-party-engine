@@ -1574,14 +1574,16 @@
           "type": "code",
           "value": "3",
           "code": "x <= 3",
-          "targetNodeId": "voice-moment"
+          "targetNodeId": "writing-moment",
+          "targetActionId": "writing-moment"
         },
         {
           "id": "no-match",
           "type": "noMatch",
           "value": "",
           "code": "x < 3",
-          "targetNodeId": "writing-moment"
+          "targetNodeId": "writing-moment",
+          "targetActionId": "writing-moment"
         }
       ],
       "routeNodeType": "action",
