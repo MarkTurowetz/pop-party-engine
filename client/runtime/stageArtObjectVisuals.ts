@@ -849,6 +849,10 @@ class ArtObjectTreeRenderer {
     return this.viewForComponentId(componentId)?.isVisible() === true;
   }
 
+  hasComponent(componentId: string): boolean {
+    return this.viewForComponentId(componentId) !== null;
+  }
+
   componentLifecycleState(componentId: string): string {
     return this.viewForComponentId(componentId)?.lifecycleState() || "hidden";
   }

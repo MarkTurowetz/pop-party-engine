@@ -15,6 +15,7 @@ interface VisualBridgeApi {
 interface TreeRenderer {
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
   clear: (options: Dict) => void;
+  hasComponent?: (componentId: string) => boolean;
   isComponentVisible?: (componentId: string) => boolean;
   playComponent?: (componentId: string, animation: string, options?: Dict) => number;
   stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
@@ -61,6 +62,7 @@ export const VOTING_CARD_AUTHOR_COMPONENT_ID = "voting-card-author-mc";
 export const VOTING_CARD_VOTE_COUNT_COMPONENT_ID = "voting-card-vote-count-mc";
 export const VOTING_CARD_VOTERS_COMPONENT_ID = "voting-card-voters-mc";
 export const VOTING_CARD_CORRECTNESS_COMPONENT_ID = "voting-card-correctness-state";
+export const VOTING_CARD_ANSWER_STATE_COMPONENT_LABEL = "votingCardAnswerText";
 export const VOTING_CARD_VOTER_CONTAINER_ID = "voting-card-voter-container";
 export const VOTING_CARD_VOTER_COMPONENT_ID = "voting-card-voter-mc";
 export const VOTING_CARD_VOTER_TEXT_ID = "voting-card-voter-text";
@@ -96,6 +98,54 @@ function safeComponentId(value: unknown, fallback: string): string {
 
 function componentById(composition: Dict | null, id: string): Dict | null {
   return ((composition?.components as Dict[]) || []).find((component) => component.id === id) || null;
+}
+
+function allComponents(components: Dict[] = []): Dict[] {
+  return components.flatMap((component) => [
+    component,
+    ...allComponents(Array.isArray(component.children) ? component.children as Dict[] : [])
+  ]);
+}
+
+function runtimeTextTarget(
+  composition: Dict,
+  preferredIds: string[],
+  preferredLabels: string[]
+): Dict | null {
+  const components = allComponents((composition.components as Dict[]) || []);
+  for (const id of preferredIds) {
+    const target = components.find((component) => String(component.id || "") === id);
+    if (target) return target;
+  }
+  for (const label of preferredLabels) {
+    const target = components.find((component) => String(component.instanceLabel || "") === label);
+    if (target) return target;
+  }
+  const textComponents = components.filter((component) => ["text", "badge"].includes(String(component.kind || "")));
+  return textComponents.length === 1 ? textComponents[0] : null;
+}
+
+function applyRuntimeText(
+  composition: Dict,
+  value: string,
+  preferredIds: string[],
+  preferredLabels: string[]
+): void {
+  const target = runtimeTextTarget(composition, preferredIds, preferredLabels);
+  if (!target) return;
+  target.defaultText = value;
+  const targetId = String(target.id || "");
+  const timeline = composition.timeline as Dict | undefined;
+  for (const track of (timeline?.tracks as Dict[]) || []) {
+    if (String(track.targetId || "") !== targetId) continue;
+    for (const keyframe of (track.keyframes as Dict[]) || []) {
+      keyframe.props = { ...((keyframe.props as Dict) || {}), defaultText: value };
+    }
+  }
+}
+
+function compositionName(composition: Dict): string {
+  return String(composition.name || "").trim().toLowerCase();
 }
 
 export function votingCardLifecycleComponentIds(composition: Dict | null, isShown: boolean): string[] {
@@ -308,24 +358,7 @@ export function runtimeVotingCardComposition(composition: Dict, compositionId: s
   } else if (variant?.baseId === VOTING_CARD_VOTER_ID) {
     const voter = runtimeVoter(state, variant.voterId);
     const voterName = String(voter?.name || "Player");
-    const text = components.find((component) => component.id === VOTING_CARD_VOTER_TEXT_ID);
-    if (text) text.defaultText = voterName;
-    const timeline = runtime.timeline as Dict | undefined;
-    for (const track of (timeline?.tracks as Dict[]) || []) {
-      if (track.targetId !== VOTING_CARD_VOTER_TEXT_ID) continue;
-      for (const keyframe of (track.keyframes as Dict[]) || []) {
-        keyframe.props = { ...((keyframe.props as Dict) || {}), defaultText: voterName };
-      }
-    }
-  } else if (compositionId === VOTING_CARD_ANSWER_MC_ID) {
-    const text = components.find((component) => component.id === "voting-card-answer-text");
-    if (text) text.defaultText = state.answerText;
-  } else if (compositionId === VOTING_CARD_AUTHOR_MC_ID) {
-    const text = components.find((component) => component.id === "voting-card-author-text");
-    if (text) text.defaultText = state.authorText;
-  } else if (compositionId === VOTING_CARD_VOTE_COUNT_MC_ID) {
-    const text = components.find((component) => component.id === "voting-card-vote-count");
-    if (text) text.defaultText = state.voteCount > 0 ? String(state.voteCount) : "";
+    applyRuntimeText(runtime, voterName, [VOTING_CARD_VOTER_TEXT_ID], ["playerName"]);
   } else if (compositionId === VOTING_CARD_VOTERS_MC_ID) {
     const container = components.find((component) => component.id === VOTING_CARD_VOTER_CONTAINER_ID);
     const template = ((container?.children as Dict[]) || []).find((component) =>
@@ -342,6 +375,22 @@ export function runtimeVotingCardComposition(composition: Dict, compositionId: s
         defaultAnimationState: "Off"
       }));
     }
+  }
+
+  const name = compositionName(runtime);
+  if (compositionId === VOTING_CARD_ANSWER_MC_ID || name === "voting card answer text") {
+    applyRuntimeText(runtime, state.answerText, ["voting-card-answer-text"], ["answerText", "text"]);
+  }
+  if (compositionId === VOTING_CARD_AUTHOR_MC_ID || name === "voting card author text") {
+    applyRuntimeText(runtime, state.authorText, ["voting-card-author-text", "voting-card-author-text-content"], ["authorText"]);
+  }
+  if (compositionId === VOTING_CARD_VOTE_COUNT_MC_ID || name === "voting card vote") {
+    applyRuntimeText(
+      runtime,
+      state.voteCount > 0 ? String(state.voteCount) : "",
+      ["voting-card-vote-count", "voting-card-vote-count-text"],
+      ["voteCountText"]
+    );
   }
   return runtime;
 }
@@ -412,10 +461,11 @@ class VotingCardView {
   }
 
   runtimeState(): VotingCardRuntimeState {
+    const reportedVoteCount = Number(this.cardData.voteCount);
     return {
       answerText: String(this.cardData.text || ""),
       authorText: String(this.cardData.authorName || ""),
-      voteCount: this.currentVisibleVoters.length,
+      voteCount: Number.isFinite(reportedVoteCount) ? Math.max(0, reportedVoteCount) : this.currentVisibleVoters.length,
       voters: this.currentVisibleVoters
     };
   }
@@ -448,7 +498,10 @@ class VotingCardView {
   }
 
   playChild(componentId: string, animation: string, options: Dict = {}): number {
-    return this.rootRenderer?.playComponent?.(componentId, animation, options) || 0;
+    if (!this.rootRenderer?.hasComponent?.(componentId)) {
+      throw new Error(`Voting card ${this.cardId} is missing required target ${componentId}`);
+    }
+    return this.rootRenderer.playComponent?.(componentId, animation, options) || 0;
   }
 
   renderData(cardData: Dict): void {
@@ -490,11 +543,15 @@ class VotingCardView {
   }
 
   revealCorrectness(): Promise<void> {
-    return targetCompletion((complete) => this.rootRenderer?.stopAtComponent?.(
-      VOTING_CARD_CORRECTNESS_COMPONENT_ID,
-      this.cardData.isWinner === true ? "Correct" : "Neutral",
-      { instant: true, complete }
-    ) || 0);
+    const hasAnswerState = this.rootRenderer?.hasComponent?.(VOTING_CARD_ANSWER_STATE_COMPONENT_LABEL) === true;
+    const targetId = hasAnswerState ? VOTING_CARD_ANSWER_STATE_COMPONENT_LABEL : VOTING_CARD_CORRECTNESS_COMPONENT_ID;
+    if (!this.rootRenderer?.hasComponent?.(targetId)) {
+      return Promise.reject(new Error(`Voting card ${this.cardId} is missing its correctness-state target`));
+    }
+    const state = hasAnswerState
+      ? (this.cardData.isWinner === true ? "Correct" : "Incorrect")
+      : (this.cardData.isWinner === true ? "Correct" : "Neutral");
+    return targetCompletion((complete) => this.rootRenderer!.stopAtComponent!(targetId, state, { instant: true, complete }));
   }
 
   voterComponentId(voter: Dict, index: number): string {

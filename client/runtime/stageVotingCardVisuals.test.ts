@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   PartyGameVotingCardVisuals,
   VOTING_CARD_ANSWER_MC_ID,
+  VOTING_CARD_AUTHOR_MC_ID,
+  VOTING_CARD_VOTE_COUNT_MC_ID,
   VOTING_CARD_VOTER_COMPONENT_ID,
   VOTING_CARD_VOTER_ID,
   VOTING_CARD_VOTER_MC_ID,
@@ -77,6 +79,37 @@ describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
 
     expect(authored.components[0].defaultText).toBe("ANSWER");
     expect((runtime.components as Record<string, unknown>[])[0].defaultText).toBe("DINOSAUR PARK");
+  });
+
+  it("injects data into current nested voting-card leaves and their parked timeline frames", () => {
+    const state = {
+      answerText: "HEY",
+      authorText: "Ava",
+      voteCount: 2,
+      voters: []
+    };
+    const answer = runtimeVotingCardComposition({
+      name: "Voting Card Answer Text",
+      components: [{ id: "generated-answer", instanceLabel: "text", kind: "text", defaultText: "ANSWER TEXT" }],
+      timeline: { tracks: [{ targetId: "generated-answer", keyframes: [{ frame: 0, props: { defaultText: "ANSWER TEXT" } }] }] }
+    }, "prefab-generated-answer", state);
+    const author = runtimeVotingCardComposition({
+      name: "Voting Card Author Text",
+      components: [{ id: "generated-author", instanceLabel: "authorText", kind: "text", defaultText: "AUTHOR NAME" }],
+      timeline: { tracks: [{ targetId: "generated-author", keyframes: [{ frame: 0, props: { defaultText: "AUTHOR NAME" } }] }] }
+    }, VOTING_CARD_AUTHOR_MC_ID, state);
+    const votes = runtimeVotingCardComposition({
+      name: "Voting Card Vote",
+      components: [{ id: "generated-votes", instanceLabel: "voteCountText", kind: "text", defaultText: "1" }],
+      timeline: { tracks: [{ targetId: "generated-votes", keyframes: [{ frame: 0, props: { defaultText: "1" } }] }] }
+    }, VOTING_CARD_VOTE_COUNT_MC_ID, state);
+
+    expect((answer.components as Record<string, unknown>[])[0].defaultText).toBe("HEY");
+    expect((author.components as Record<string, unknown>[])[0].defaultText).toBe("Ava");
+    expect((votes.components as Record<string, unknown>[])[0].defaultText).toBe("2");
+    expect(((((answer.timeline as Record<string, unknown>).tracks as Record<string, unknown>[])[0].keyframes as Record<string, unknown>[])[0].props as Record<string, unknown>).defaultText).toBe("HEY");
+    expect(((((author.timeline as Record<string, unknown>).tracks as Record<string, unknown>[])[0].keyframes as Record<string, unknown>[])[0].props as Record<string, unknown>).defaultText).toBe("Ava");
+    expect(((((votes.timeline as Record<string, unknown>).tracks as Record<string, unknown>[])[0].keyframes as Record<string, unknown>[])[0].props as Record<string, unknown>).defaultText).toBe("2");
   });
 
   it("expands the voter template into independently animated prefab references", () => {
