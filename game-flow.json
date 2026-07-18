@@ -619,7 +619,7 @@
               "nextTargetActionId": "",
               "nodePosition": null,
               "subActions": [],
-              "isShown": true,
+              "isShown": false,
               "instant": false
             }
           ],
