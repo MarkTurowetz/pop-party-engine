@@ -112,6 +112,45 @@ async function main() {
     assert(mountedState.joinButtonArtRoots === 1, `Join button has ${mountedState.joinButtonArtRoots} competing art renderers`);
     assert(mountedState.presentHiStatus === 405, `removed /api/present-hi endpoint returned ${mountedState.presentHiStatus}`);
 
+    const textInputPage = await browser.newPage();
+    await textInputPage.goto(`http://${host}:${port}/controller`, { waitUntil: "domcontentloaded" });
+    await textInputPage.waitForFunction(() => document.querySelector("#stageCodeField")?.classList.contains("controller-widget-art-host"));
+    await textInputPage.evaluate(() => {
+      document.querySelectorAll("[data-controller-view]").forEach((view) => view.classList.add("hidden"));
+      document.querySelector("#controllerTextState")?.classList.remove("hidden");
+      window.controllerState = {
+        phase: "controller-text-input",
+        lobby: { controllerLayoutId: "controller-text-input" }
+      };
+      window.applyControllerLayoutForPhase("controller-text-input");
+    });
+    await textInputPage.waitForFunction(() => Boolean(document.querySelector("#controllerTextInput")?.closest("[data-controller-art-selector-host-for]")));
+    const textInputState = await textInputPage.evaluate(() => {
+      const input = document.querySelector("#controllerTextInput");
+      const rect = input?.getBoundingClientRect();
+      const centerX = rect ? rect.left + rect.width / 2 : 0;
+      const centerY = rect ? rect.top + rect.height / 2 : 0;
+      return {
+        isWrapped: Boolean(input?.closest("[data-controller-art-selector-host-for]")),
+        isLayoutHidden: input?.classList.contains("controller-layout-hidden") === true,
+        display: input ? getComputedStyle(input).display : "missing",
+        width: rect?.width || 0,
+        height: rect?.height || 0,
+        hitTargetId: document.elementFromPoint(centerX, centerY)?.id || ""
+      };
+    });
+    assert(textInputState.isWrapped, "Writing Moment textarea was not mounted in its authored widget host");
+    assert(!textInputState.isLayoutHidden, "Writing Moment textarea retained stale layout-hidden state inside its visible widget host");
+    assert(textInputState.display !== "none", "Writing Moment textarea is not displayed");
+    assert(textInputState.width > 0 && textInputState.height > 0, "Writing Moment textarea has no interactive hit box");
+    assert(textInputState.hitTargetId === "controllerTextInput", `Writing Moment textarea is covered by ${textInputState.hitTargetId || "an unknown element"}`);
+    await textInputPage.locator("#controllerTextInput").fill("Interactive writing answer");
+    assert(
+      (await textInputPage.locator("#controllerTextInput").evaluate((input) => input.value)) === "Interactive writing answer",
+      "Writing Moment textarea rejected typed input"
+    );
+    await textInputPage.close();
+
     const stagePage = await browser.newPage();
     await stagePage.goto(`http://${host}:${port}/stage`, { waitUntil: "domcontentloaded" });
     await stagePage.waitForFunction(() => Boolean(document.querySelector("#stageCodeText")?.dataset.stageCodeValue));

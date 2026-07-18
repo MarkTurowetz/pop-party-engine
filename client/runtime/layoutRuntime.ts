@@ -689,6 +689,19 @@ function controllerLayoutArtHost(element: Dict, target: El | null): El | null {
   host.dataset.controllerArtSelectorHostFor = hostId;
   target.parentElement?.insertBefore(host, target);
   host.appendChild(target);
+  // Selector-backed native controls are overlays inside a lifecycle-owned art
+  // host. Layout cleanup may have hidden the control before its host existed;
+  // once wrapped, those visibility classes belong only on the host. Leaving a
+  // stale controller-layout-hidden class on the native control makes the art
+  // look present while the actual input has no hit box.
+  target.classList.remove(
+    "controller-layout-hidden",
+    "controller-layout-visual-hidden",
+    "controller-layout-visual-exiting",
+    "controller-layout-visual-update",
+    "controller-layout-visual-instant",
+    "controller-layout-transition-suppressed"
+  );
   target.classList.add("controller-widget-art-overlay");
   target.dataset.controllerArtOverlayFor = hostId;
   return controllerPanel.contains(host) ? host : target;
