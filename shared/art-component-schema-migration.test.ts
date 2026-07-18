@@ -359,4 +359,125 @@ describe("art component schema migration", () => {
       "vipWrapper"
     ]));
   });
+
+  it("tightens the Player Answer Bubble canvas while preserving its Player Widget placement", () => {
+    const source = {
+      artComponentSchemaVersion: 5,
+      compositions: {
+        bubble: {
+          name: "Player Answer Bubble",
+          compositionKind: "gameObject",
+          canvas: { width: 300, height: 180 },
+          components: [
+            { id: "answer-text", kind: "text", x: 150, y: 92, width: 200, height: 78, scale: 1, rotation: 0 },
+            { id: "answer-bubble-card", kind: "shape", x: 150, y: 92, width: 220, height: 105, scale: 1, rotation: 0 },
+            { id: "answer-bubble-tail", kind: "shape", x: 150, y: 153.193, width: 24, height: 24, scale: 1, rotation: 45 }
+          ],
+          timeline: {
+            tracks: [
+              { targetId: "answer-text", keyframes: [{ frame: 0, props: { x: 150, y: 92, width: 200, height: 78 } }] },
+              { targetId: "answer-bubble-card", keyframes: [{ frame: 0, props: { x: 150, y: 92, width: 220, height: 105 } }] },
+              { targetId: "answer-bubble-tail", keyframes: [{ frame: 0, props: { x: 150, y: 153.193, width: 24, height: 24, rotation: 45 } }] }
+            ]
+          }
+        },
+        bubbleWrapper: {
+          name: "Player Answer Bubble MC",
+          compositionKind: "prefab",
+          canvas: { width: 300, height: 180 },
+          components: [{
+            id: "bubble-ref",
+            kind: "reference",
+            artCompositionId: "bubble",
+            x: 150,
+            y: 90,
+            scale: 1,
+            referenceSizeMode: "intrinsic",
+            transformOrigin: "bottom"
+          }],
+          timeline: {
+            tracks: [{
+              targetId: "bubble-ref",
+              keyframes: [
+                { frame: 0, props: { x: 150, y: 90, scale: 1 } },
+                { frame: 9, props: { x: 150, y: 90, scale: 1.2 } }
+              ]
+            }]
+          }
+        },
+        playerWidget: {
+          name: "Player Widget MC",
+          compositionKind: "prefab",
+          canvas: { width: 300, height: 370 },
+          components: [{
+            id: "player-answer-bubble-mc",
+            kind: "reference",
+            artCompositionId: "bubbleWrapper",
+            x: 150,
+            y: 96,
+            scale: 0.733333,
+            referenceSizeMode: "intrinsic",
+            transformOrigin: "bottom"
+          }]
+        }
+      }
+    };
+
+    const { manifest, report } = migrateLegacyArtManifestSchema(source);
+    const bubble = manifest.compositions.bubble;
+    const wrapper = manifest.compositions.bubbleWrapper;
+    const placed = manifest.compositions.playerWidget.components[0];
+
+    expect(bubble.canvas).toEqual({ width: 220, height: 130.664 });
+    expect(bubble.components).toEqual([
+      expect.objectContaining({ id: "answer-text", x: 110, y: 52.5 }),
+      expect.objectContaining({ id: "answer-bubble-card", x: 110, y: 52.5 }),
+      expect.objectContaining({ id: "answer-bubble-tail", x: 110, y: 113.693 })
+    ]);
+    expect(bubble.timeline.tracks.map((track) => track.keyframes[0].props)).toEqual([
+      expect.objectContaining({ x: 110, y: 52.5 }),
+      expect.objectContaining({ x: 110, y: 52.5 }),
+      expect.objectContaining({ x: 110, y: 113.693 })
+    ]);
+    expect(wrapper.canvas).toEqual({ width: 220, height: 130.664 });
+    expect(wrapper.components[0]).toMatchObject({
+      x: 110,
+      y: 65.332,
+      scale: 1,
+      referenceSizeMode: "intrinsic",
+      transformOrigin: "bottom"
+    });
+    expect(wrapper.timeline.tracks[0].keyframes).toEqual([
+      { frame: 0, props: { x: 110, y: 65.332, scale: 1 } },
+      { frame: 9, props: { x: 110, y: 65.332, scale: 1.2 } }
+    ]);
+    expect(placed).toMatchObject({
+      x: 150,
+      y: 96,
+      scale: 1,
+      referenceSizeMode: "intrinsic",
+      transformOrigin: "bottom"
+    });
+    expect(placed.width).toBeUndefined();
+    expect(placed.height).toBeUndefined();
+    expect(report.compositionIds).toEqual(expect.arrayContaining(["bubble", "bubbleWrapper", "playerWidget"]));
+
+    const legacySource = JSON.parse(JSON.stringify(source));
+    legacySource.artComponentSchemaVersion = 4;
+    const legacyPlaced = legacySource.compositions.playerWidget.components[0];
+    legacyPlaced.width = 220;
+    legacyPlaced.height = 130.664;
+    legacyPlaced.scale = 1;
+    delete legacyPlaced.referenceSizeMode;
+    const legacyResult = migrateLegacyArtManifestSchema(legacySource).manifest;
+    expect(legacyResult.compositions.bubble.canvas).toEqual({ width: 220, height: 130.664 });
+    expect(legacyResult.compositions.bubbleWrapper.canvas).toEqual({ width: 220, height: 130.664 });
+    expect(legacyResult.compositions.playerWidget.components[0]).toMatchObject({
+      x: 150,
+      y: 96,
+      scale: 1,
+      referenceSizeMode: "intrinsic",
+      transformOrigin: "bottom"
+    });
+  });
 });

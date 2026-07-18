@@ -1,8 +1,9 @@
-export const ART_COMPONENT_SCHEMA_VERSION = 5;
+export const ART_COMPONENT_SCHEMA_VERSION = 6;
 const SPRITE_SCHEMA_VERSION = 1;
 const CENTERED_COORDINATE_SCHEMA_VERSION = 2;
 const LAYERED_PREFAB_GEOMETRY_VERSION = 4;
 const INTRINSIC_REFERENCE_GEOMETRY_VERSION = 5;
+const PLAYER_ANSWER_BUBBLE_GEOMETRY_VERSION = 6;
 
 const LAYERED_PREFAB_GEOMETRY_CHAINS = [
   { baseName: "Voting Card Answer Text", wrapperName: "Voting Card Answer" },
@@ -12,6 +13,10 @@ const LAYERED_PREFAB_GEOMETRY_CHAINS = [
 ] as const;
 
 const INTRINSIC_REFERENCE_COMPOSITIONS = ["Voting Card Voters MC"] as const;
+const PLAYER_ANSWER_BUBBLE_GEOMETRY_CHAIN = {
+  baseName: "Player Answer Bubble",
+  wrapperName: "Player Answer Bubble MC"
+} as const;
 
 type Dict = Record<string, unknown>;
 type MigrationKind = "sprite" | "avatarFrameShape";
@@ -363,6 +368,64 @@ function syncCompositionReferences(
   if (changedIds.size) report.changed = true;
 }
 
+function compensateIntrinsicReferenceScale(
+  componentValue: unknown,
+  ownerComposition: Dict,
+  sourceId: string,
+  scaleFactor: number
+): number {
+  const component = record(componentValue);
+  let changed = 0;
+  if (
+    String(component.kind || "") === "reference" &&
+    String(component.artCompositionId || "") === sourceId &&
+    component.referenceSizeMode === "intrinsic"
+  ) {
+    component.scale = Number(((finiteNumber(component.scale) || 1) * scaleFactor).toFixed(6));
+    const targetIds = new Set([String(component.id || "")].filter(Boolean));
+    for (const timelineValue of [ownerComposition.timeline, component.timeline]) {
+      const timeline = record(timelineValue);
+      for (const trackValue of Array.isArray(timeline.tracks) ? timeline.tracks : []) {
+        const track = record(trackValue);
+        const targetId = String(track.targetId || "");
+        if (!(targetIds.has(targetId) || (timelineValue === component.timeline && targetId === "self"))) continue;
+        for (const keyframeValue of Array.isArray(track.keyframes) ? track.keyframes : []) {
+          const keyframe = record(keyframeValue);
+          const props = record(keyframe.props);
+          const scale = finiteNumber(props.scale);
+          if (scale !== null) props.scale = Number((scale * scaleFactor).toFixed(6));
+          keyframe.props = props;
+        }
+      }
+    }
+    changed += 1;
+  }
+  for (const child of Array.isArray(component.children) ? component.children : []) {
+    changed += compensateIntrinsicReferenceScale(child, ownerComposition, sourceId, scaleFactor);
+  }
+  return changed;
+}
+
+function compensateIntrinsicCompositionReferences(
+  compositions: Dict,
+  report: ArtComponentSchemaMigrationReport,
+  sourceId: string,
+  scaleFactor: number
+): string[] {
+  if (!Number.isFinite(scaleFactor) || scaleFactor <= 0 || Math.abs(scaleFactor - 1) < 0.000001) return [];
+  const changedIds: string[] = [];
+  for (const [compositionId, compositionValue] of Object.entries(compositions)) {
+    const composition = record(compositionValue);
+    let changed = 0;
+    for (const component of Array.isArray(composition.components) ? composition.components : []) {
+      changed += compensateIntrinsicReferenceScale(component, composition, sourceId, scaleFactor);
+    }
+    if (changed) changedIds.push(compositionId);
+  }
+  if (changedIds.length) report.changed = true;
+  return changedIds;
+}
+
 /**
  * The old content-bounds renderer hid stale source canvases and parent width /
  * height overrides. Once references began honoring authored canvases directly,
@@ -429,6 +492,38 @@ function normalizeLayeredPrefabGeometry(
   if (wrapperChanged) changedIds.add(wrapperId);
 
   syncCompositionReferences(compositions, report, wrapperId, targetWidth, targetHeight, changedIds);
+  return [...changedIds];
+}
+
+function normalizePlayerAnswerBubbleGeometry(
+  compositions: Dict,
+  report: ArtComponentSchemaMigrationReport,
+  sourceVersion: number
+): string[] {
+  const wrapperEntry = compositionEntryByName(compositions, PLAYER_ANSWER_BUBBLE_GEOMETRY_CHAIN.wrapperName);
+  const oldWrapperWidth = wrapperEntry ? finiteNumber(record(wrapperEntry[1].canvas).width) : null;
+  const changedIds = new Set(normalizeLayeredPrefabGeometry(
+    compositions,
+    report,
+    PLAYER_ANSWER_BUBBLE_GEOMETRY_CHAIN.baseName,
+    PLAYER_ANSWER_BUBBLE_GEOMETRY_CHAIN.wrapperName
+  ));
+  if (!wrapperEntry || oldWrapperWidth === null) return [...changedIds];
+
+  const [wrapperId, wrapper] = wrapperEntry;
+  const targetWidth = Math.max(1, finiteNumber(record(wrapper.canvas).width) || 1);
+  if (sourceVersion >= INTRINSIC_REFERENCE_GEOMETRY_VERSION) {
+    const scaleFactor = oldWrapperWidth / targetWidth;
+    for (const compositionId of compensateIntrinsicCompositionReferences(
+      compositions,
+      report,
+      wrapperId,
+      scaleFactor
+    )) changedIds.add(compositionId);
+    for (const compositionId of normalizeIntrinsicReferenceGeometryForManifest(compositions, report, false)) {
+      changedIds.add(compositionId);
+    }
+  }
   return [...changedIds];
 }
 
@@ -714,6 +809,11 @@ export function migrateLegacyArtManifestSchema<T>(manifestValue: T): { manifest:
   }
   if (sourceVersion < LAYERED_PREFAB_GEOMETRY_VERSION) {
     for (const compositionId of normalizeKnownLayeredPrefabGeometry(compositions, report)) {
+      if (!report.compositionIds.includes(compositionId)) report.compositionIds.push(compositionId);
+    }
+  }
+  if (sourceVersion < PLAYER_ANSWER_BUBBLE_GEOMETRY_VERSION) {
+    for (const compositionId of normalizePlayerAnswerBubbleGeometry(compositions, report, sourceVersion)) {
       if (!report.compositionIds.includes(compositionId)) report.compositionIds.push(compositionId);
     }
   }
