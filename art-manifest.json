@@ -4265,6 +4265,11 @@
           "height": 78,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "Default",
           "defaultText": "ANSWER",
@@ -4284,6 +4289,11 @@
           "height": 105,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "Default",
           "shapeStyle": "rounded",
@@ -4304,6 +4314,11 @@
           "height": 24,
           "scale": 1,
           "rotation": 45,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "Default",
           "shapeStyle": "rectangle",
@@ -4338,88 +4353,22 @@
         ],
         "commands": [
           {
-            "id": "stop-0",
             "frame": 0,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-0"
           },
           {
-            "id": "stop-1",
             "frame": 1,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-1"
           },
           {
-            "id": "stop-2",
             "frame": 2,
-            "type": "stop"
+            "type": "stop",
+            "id": "stop-2"
           }
         ],
         "tracks": [
-          {
-            "id": "track-answer-text",
-            "targetId": "answer-text",
-            "keyframes": [
-              {
-                "id": "key-answer-text-0",
-                "frame": 0,
-                "props": {
-                  "x": 150,
-                  "y": 92,
-                  "width": 200,
-                  "height": 78,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true,
-                  "defaultText": "ANSWER",
-                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
-                  "fontSize": 28,
-                  "fontColor": "#17131f",
-                  "autoFitText": false
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "key-answer-text-1",
-                "frame": 1,
-                "props": {
-                  "x": 150,
-                  "y": 92,
-                  "width": 200,
-                  "height": 78,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true,
-                  "defaultText": "ANSWER",
-                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
-                  "fontSize": 28,
-                  "fontColor": "#181f13",
-                  "autoFitText": false
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "key-answer-text-2",
-                "frame": 2,
-                "props": {
-                  "x": 150,
-                  "y": 92,
-                  "width": 200,
-                  "height": 78,
-                  "scale": 1,
-                  "rotation": 0,
-                  "opacity": 1,
-                  "visible": true,
-                  "defaultText": "ANSWER",
-                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
-                  "fontSize": 28,
-                  "fontColor": "#17131f",
-                  "autoFitText": false
-                },
-                "easing": "hold"
-              }
-            ]
-          },
           {
             "id": "track-answer-bubble-card",
             "targetId": "answer-bubble-card",
@@ -4439,7 +4388,8 @@
                   "fillColor": "#fff8d6",
                   "borderColor": "#17131f",
                   "borderWidth": 3,
-                  "borderRadius": 18
+                  "borderRadius": 18,
+                  "brightness": 1
                 },
                 "easing": "hold"
               },
@@ -4458,7 +4408,8 @@
                   "fillColor": "#8dff5f",
                   "borderColor": "#17131f",
                   "borderWidth": 3,
-                  "borderRadius": 18
+                  "borderRadius": 18,
+                  "brightness": 1
                 },
                 "easing": "hold"
               },
@@ -4477,7 +4428,8 @@
                   "fillColor": "#ff5c45",
                   "borderColor": "#17131f",
                   "borderWidth": 3,
-                  "borderRadius": 18
+                  "borderRadius": 18,
+                  "brightness": 1
                 },
                 "easing": "hold"
               }
@@ -4502,7 +4454,8 @@
                   "fillColor": "#fff8d6",
                   "borderColor": "#17131f",
                   "borderWidth": 3,
-                  "borderRadius": 3
+                  "borderRadius": 3,
+                  "brightness": 1
                 },
                 "easing": "hold"
               },
@@ -4521,7 +4474,8 @@
                   "fillColor": "#8dff5f",
                   "borderColor": "#17131f",
                   "borderWidth": 3,
-                  "borderRadius": 3
+                  "borderRadius": 3,
+                  "brightness": 1
                 },
                 "easing": "hold"
               },
@@ -4540,7 +4494,77 @@
                   "fillColor": "#ff5c45",
                   "borderColor": "#17131f",
                   "borderWidth": 3,
-                  "borderRadius": 3
+                  "borderRadius": 3,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          },
+          {
+            "id": "track-answer-text",
+            "targetId": "answer-text",
+            "keyframes": [
+              {
+                "id": "key-answer-text-0",
+                "frame": 0,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 200,
+                  "height": 78,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "defaultText": "ANSWER",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 28,
+                  "fontColor": "#17131f",
+                  "autoFitText": true,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-answer-text-1",
+                "frame": 1,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 200,
+                  "height": 78,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "defaultText": "ANSWER",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 28,
+                  "fontColor": "#181f13",
+                  "autoFitText": true,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "key-answer-text-2",
+                "frame": 2,
+                "props": {
+                  "x": 150,
+                  "y": 92,
+                  "width": 200,
+                  "height": 78,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "visible": true,
+                  "defaultText": "ANSWER",
+                  "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
+                  "fontSize": 28,
+                  "fontColor": "#17131f",
+                  "autoFitText": true,
+                  "brightness": 1
                 },
                 "easing": "hold"
               }
@@ -4548,7 +4572,7 @@
           }
         ]
       },
-      "updatedAt": "2026-07-15T00:23:32.598Z"
+      "updatedAt": "2026-07-18T19:09:21.369Z"
     },
     "player-point-popup": {
       "name": "Player Point Popup",
