@@ -391,7 +391,14 @@ class CssVisualObject {
     const shapeStyle = timelineShapeStyle(props.shapeStyle);
     if (fontFamily !== null) setStyleProperty(this.element, "--component-font-family", fontFamily);
     if (fontColor !== null) setStyleProperty(this.element, "--component-text-color", fontColor);
-    if (fillColor !== null) setStyleProperty(this.element, "--component-fill-color", fillColor);
+    if (fillColor !== null) {
+      setStyleProperty(this.element, "--component-fill-color", fillColor);
+      // Solid shapes render through --component-fill-css, whose static value is
+      // initialized from the component's default fill. A semantic timeline frame
+      // that changes only fillColor must update that rendered value too; otherwise
+      // the timeline state changes internally while the shape remains its default color.
+      if (fillCss === null) setStyleProperty(this.element, "--component-fill-css", fillColor || "transparent");
+    }
     if (fillCss !== null) setStyleProperty(this.element, "--component-fill-css", fillCss || fillColor || "transparent");
     if (borderColor !== null) setStyleProperty(this.element, "--component-border-color", borderColor);
     if (imageFit !== null) setStyleProperty(this.element, "--component-image-fit", imageFit);

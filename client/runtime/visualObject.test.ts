@@ -637,14 +637,17 @@ describe("PartyGameVisualObject (ported visual-object)", () => {
 
     visual.stopAt("Correct");
     expect((element.style as unknown as Record<string, string>)["--component-fill-color"]).toBe("#63d69a");
+    expect((element.style as unknown as Record<string, string>)["--component-fill-css"]).toBe("#63d69a");
     expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1.1");
 
     // Server/SSE reconciliation reapplies the authored component defaults.
     (element.style as unknown as Record<string, string>)["--component-fill-color"] = "#fff7d6";
+    (element.style as unknown as Record<string, string>)["--component-fill-css"] = "#fff7d6";
     (element.style as unknown as Record<string, string>)["--component-scale"] = "1";
     visual.reapplyTimelineFrame();
 
     expect((element.style as unknown as Record<string, string>)["--component-fill-color"]).toBe("#63d69a");
+    expect((element.style as unknown as Record<string, string>)["--component-fill-css"]).toBe("#63d69a");
     expect((element.style as unknown as Record<string, string>)["--component-scale"]).toBe("1.1");
   });
 

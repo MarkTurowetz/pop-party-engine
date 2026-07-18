@@ -108,6 +108,10 @@ async function main() {
       const correctnessFill = () => hostElement
         .querySelector("[data-art-component-id='answer-bubble-card']")
         ?.style.getPropertyValue("--component-fill-color");
+      const correctnessBackground = () => {
+        const card = hostElement.querySelector("[data-art-component-id='answer-bubble-card']");
+        return card ? getComputedStyle(card).backgroundColor : "";
+      };
       const componentState = (componentId) => hostElement
         .querySelector(`[data-art-component-id='${componentId}']`)
         ?.dataset.visualState;
@@ -162,10 +166,26 @@ async function main() {
       ]);
       const correctnessDuration = performance.now() - correctnessStartedAt;
       const correctFill = correctnessFill();
+      const correctBackground = correctnessBackground();
       roster.render([player], { instant: false });
       const reconciledCorrectFill = correctnessFill();
+      const reconciledCorrectBackground = correctnessBackground();
 
-      player = makePlayer(true, true);
+      player = makePlayer(false, false);
+      roster.render([player], { instant: false });
+      await Promise.race([
+        new Promise((resolve) => roster.revealAnswerCorrectness({
+          answerCorrectness: { correctPlayerIds: [], incorrectPlayerIds: [] },
+          complete: resolve
+        })),
+        sleep(500).then(() => { throw new Error("Incorrectness target callback timed out"); })
+      ]);
+      const incorrectFill = correctnessFill();
+      const incorrectBackground = correctnessBackground();
+      roster.render([player], { instant: false });
+      const reconciledIncorrectBackground = correctnessBackground();
+
+      player = makePlayer(true, false);
       roster.render([player], { instant: false });
       const disappearStartedAt = performance.now();
       const disappearCompletion = new Promise((resolve) => {
@@ -194,6 +214,7 @@ async function main() {
         avatarBaseVisibleAtSpawn,
         avatarSpawnFinalState,
         avatarSpawnStartState,
+        correctBackground,
         correctFill,
         correctnessDuration,
         disappearDuration: performance.now() - disappearStartedAt,
@@ -203,7 +224,11 @@ async function main() {
         disappearToken,
         nameSpawnFinalState,
         nameSpawnStartState,
+        incorrectBackground,
+        incorrectFill,
+        reconciledCorrectBackground,
         reconciledCorrectFill,
+        reconciledIncorrectBackground,
         vipSpawnFinalState,
         vipSpawnStartState
       };
@@ -224,8 +249,13 @@ async function main() {
     assert(result.appearDuration >= 300, `Appear completed too early (${Math.round(result.appearDuration)}ms)`);
     assert(result.appearFinalState === "shown", `Appear ended in ${result.appearFinalState}`);
     assert(result.correctFill === "#8dff5f", `Correct state used ${result.correctFill || "no fill"}`);
+    assert(result.correctBackground === "rgb(141, 255, 95)", `Correct state rendered ${result.correctBackground || "no background"}`);
     assert(result.correctnessDuration < 250, `Correctness used a legacy delay (${Math.round(result.correctnessDuration)}ms)`);
     assert(result.reconciledCorrectFill === "#8dff5f", `reconciliation reset Correct to ${result.reconciledCorrectFill || "no fill"}`);
+    assert(result.reconciledCorrectBackground === "rgb(141, 255, 95)", `reconciliation rendered Correct as ${result.reconciledCorrectBackground || "no background"}`);
+    assert(result.incorrectFill === "#ff5c45", `Incorrect state used ${result.incorrectFill || "no fill"}`);
+    assert(result.incorrectBackground === "rgb(255, 92, 69)", `Incorrect state rendered ${result.incorrectBackground || "no background"}`);
+    assert(result.reconciledIncorrectBackground === "rgb(255, 92, 69)", `reconciliation rendered Incorrect as ${result.reconciledIncorrectBackground || "no background"}`);
     assert(
       result.disappearToken && result.disappearToken === result.disappearMidToken,
       `reconciliation restarted Disappear (${result.disappearToken || "none"} -> ${result.disappearMidToken || "none"})`
