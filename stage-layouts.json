@@ -400,6 +400,27 @@
           "autoFitText": false,
           "fontFamily": "",
           "fontColor": "#ffffff"
+        },
+        {
+          "id": "craftingTriviaPromptText",
+          "name": "Trivia Prompt Text",
+          "selector": "",
+          "kind": "art",
+          "artCompositionId": "art-55b784c5-ad1d-451f-a4d2-6b4fbd6a187c",
+          "hidden": false,
+          "locked": false,
+          "x": 960,
+          "y": 220,
+          "width": 1000,
+          "height": 80,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "Off",
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontFamily": "",
+          "fontColor": "#ffffff"
         }
       ]
     },

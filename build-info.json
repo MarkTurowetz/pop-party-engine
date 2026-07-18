@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.752",
+  "version": "1.0.17.850",
   "baseVersion": "1.0.17",
-  "buildNumber": 752,
-  "commit": "3b31e333",
+  "buildNumber": 850,
+  "commit": "8c025c9e",
   "branch": "codex/voting-card-data",
-  "generatedAt": "2026-07-13T03:11:39.763Z"
+  "generatedAt": "2026-07-18T00:34:36.160Z"
 }
