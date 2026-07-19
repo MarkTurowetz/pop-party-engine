@@ -678,12 +678,38 @@ function controllerLayoutHostForExistingTarget(target: El): El {
   return (target.closest("[data-controller-art-selector-host-for]") as El | null) || target;
 }
 
+function prepareControllerArtHostNativeOverlays(host: El, hostId: string): void {
+  const nativeControls = Array.from(host.querySelectorAll(":scope > input, :scope > textarea, :scope > select")) as El[];
+  nativeControls.forEach((target) => {
+    // Layout visibility belongs to the lifecycle-owned host. A nested native
+    // control must stay interactive and paint its value/caret above the
+    // pointer-transparent authored art layer.
+    target.classList.remove(
+      "controller-layout-hidden",
+      "controller-layout-visual-hidden",
+      "controller-layout-visual-exiting",
+      "controller-layout-visual-update",
+      "controller-layout-visual-instant",
+      "controller-layout-transition-suppressed"
+    );
+    target.classList.add("controller-widget-art-overlay");
+    target.dataset.controllerArtOverlayFor = hostId;
+  });
+}
+
 function controllerLayoutArtHost(element: Dict, target: El | null): El | null {
-  if (!target || controllerCanHostArtChildren(target)) return target;
-  const controllerPanel = w().controllerPanel;
+  if (!target) return target;
   const hostId = String(element.id || "");
+  if (controllerCanHostArtChildren(target)) {
+    prepareControllerArtHostNativeOverlays(target, hostId);
+    return target;
+  }
+  const controllerPanel = w().controllerPanel;
   const existingHost = target.closest("[data-controller-art-selector-host-for]") as El | null;
-  if (existingHost) return existingHost;
+  if (existingHost) {
+    prepareControllerArtHostNativeOverlays(existingHost, hostId);
+    return existingHost;
+  }
   const host = document.createElement("div");
   host.className = "controller-widget-art-selector-host controller-widget-art-host";
   host.dataset.controllerArtSelectorHostFor = hostId;
@@ -694,16 +720,7 @@ function controllerLayoutArtHost(element: Dict, target: El | null): El | null {
   // once wrapped, those visibility classes belong only on the host. Leaving a
   // stale controller-layout-hidden class on the native control makes the art
   // look present while the actual input has no hit box.
-  target.classList.remove(
-    "controller-layout-hidden",
-    "controller-layout-visual-hidden",
-    "controller-layout-visual-exiting",
-    "controller-layout-visual-update",
-    "controller-layout-visual-instant",
-    "controller-layout-transition-suppressed"
-  );
-  target.classList.add("controller-widget-art-overlay");
-  target.dataset.controllerArtOverlayFor = hostId;
+  prepareControllerArtHostNativeOverlays(host, hostId);
   return controllerPanel.contains(host) ? host : target;
 }
 

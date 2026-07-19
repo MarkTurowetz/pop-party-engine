@@ -117,6 +117,47 @@
   box-shadow: none;
 }
 
+/* Native controls are the editable value layer of authored controller fields.
+   Keep them above decorative art whether the layout targets the control itself
+   or a label/container that already owns it. */
+.controller-widget-art-host > input.controller-widget-art-overlay,
+.controller-widget-art-host > textarea.controller-widget-art-overlay,
+.controller-widget-art-host > select.controller-widget-art-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  border-color: transparent;
+  color: var(--ink);
+  caret-color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
+  -webkit-text-fill-color: currentColor;
+}
+
+#stageCodeField > input.controller-widget-art-overlay,
+#playerNameField > input.controller-widget-art-overlay {
+  padding: 20px 18px 0;
+  font-size: 30px;
+  line-height: 1;
+  text-align: center;
+}
+
+.controller-widget-art-host > input.controller-widget-art-overlay::placeholder,
+.controller-widget-art-host > textarea.controller-widget-art-overlay::placeholder {
+  color: var(--muted);
+  opacity: 1;
+  -webkit-text-fill-color: currentColor;
+}
+
+.controller-widget-art-host > input.controller-widget-art-overlay:focus,
+.controller-widget-art-host > textarea.controller-widget-art-overlay:focus,
+.controller-widget-art-host > select.controller-widget-art-overlay:focus {
+  box-shadow: inset 0 0 0 4px rgba(36, 88, 255, 0.22);
+}
+
 button.controller-widget-art-host.has-controller-widget-art {
   appearance: none;
   overflow: visible !important;

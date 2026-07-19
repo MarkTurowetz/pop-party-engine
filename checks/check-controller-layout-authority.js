@@ -93,6 +93,10 @@ async function main() {
     const mountedState = await page.evaluate(async () => ({
       stageCodeHidden: document.querySelector("#stageCodeField").classList.contains("controller-layout-hidden"),
       stageCodeHasArt: Boolean(document.querySelector("#stageCodeField > .controller-widget-art-layer")),
+      stageCodeInputOverlay: document.querySelector("#stageCodeInput").classList.contains("controller-widget-art-overlay"),
+      playerNameInputOverlay: document.querySelector("#playerNameInput").classList.contains("controller-widget-art-overlay"),
+      stageCodeInputPosition: getComputedStyle(document.querySelector("#stageCodeInput")).position,
+      playerNameInputPosition: getComputedStyle(document.querySelector("#playerNameInput")).position,
       joinContainerHidden: document.querySelector("#controllerJoinButtonContainer").classList.contains("controller-layout-hidden"),
       joinContainerOverflow: getComputedStyle(document.querySelector("#controllerJoinButtonContainer")).overflow,
       joinButtonCount: document.querySelectorAll("#controllerJoinButtonContainer > #joinButton").length,
@@ -104,6 +108,10 @@ async function main() {
 
     assert(!mountedState.stageCodeHidden, "authored Join layout did not activate the stage-code host");
     assert(mountedState.stageCodeHasArt, "authored Join layout did not mount stage-code art");
+    assert(mountedState.stageCodeInputOverlay, "Join stage-code input is not painted above its authored field art");
+    assert(mountedState.playerNameInputOverlay, "Join player-name input is not painted above its authored field art");
+    assert(mountedState.stageCodeInputPosition === "absolute", "Join stage-code input does not fill its authored field host");
+    assert(mountedState.playerNameInputPosition === "absolute", "Join player-name input does not fill its authored field host");
     assert(!mountedState.joinContainerHidden, "authored Join layout did not activate its dynamic-button container");
     assert(mountedState.joinContainerOverflow === "visible", "Join button container clips authored animation bounds");
     assert(mountedState.joinButtonCount === 1, `Join layout spawned ${mountedState.joinButtonCount} Join buttons`);
@@ -111,6 +119,29 @@ async function main() {
     assert(mountedState.joinButtonOverflow === "visible", "dynamic Join button clips authored animation bounds");
     assert(mountedState.joinButtonArtRoots === 1, `Join button has ${mountedState.joinButtonArtRoots} competing art renderers`);
     assert(mountedState.presentHiStatus === 405, `removed /api/present-hi endpoint returned ${mountedState.presentHiStatus}`);
+
+    await page.locator("#stageCodeInput").fill("ABCD");
+    await page.locator("#playerNameInput").fill("BEN");
+    const joinInputState = await page.evaluate(() => {
+      const stageInput = document.querySelector("#stageCodeInput");
+      const nameInput = document.querySelector("#playerNameInput");
+      const stageRect = stageInput.getBoundingClientRect();
+      const nameRect = nameInput.getBoundingClientRect();
+      return {
+        stageValue: stageInput.value,
+        nameValue: nameInput.value,
+        stageHitTarget: document.elementFromPoint(stageRect.left + stageRect.width / 2, stageRect.top + stageRect.height / 2)?.id || "",
+        nameHitTarget: document.elementFromPoint(nameRect.left + nameRect.width / 2, nameRect.top + nameRect.height / 2)?.id || "",
+        stageTextColor: getComputedStyle(stageInput).color,
+        nameTextColor: getComputedStyle(nameInput).color
+      };
+    });
+    assert(joinInputState.stageValue === "ABCD", "Join stage-code input rejected typed text");
+    assert(joinInputState.nameValue === "BEN", "Join player-name input rejected typed text");
+    assert(joinInputState.stageHitTarget === "stageCodeInput", `Join stage-code input is covered by ${joinInputState.stageHitTarget || "an unknown element"}`);
+    assert(joinInputState.nameHitTarget === "playerNameInput", `Join player-name input is covered by ${joinInputState.nameHitTarget || "an unknown element"}`);
+    assert(joinInputState.stageTextColor !== "rgba(0, 0, 0, 0)", "Join stage-code value text is transparent");
+    assert(joinInputState.nameTextColor !== "rgba(0, 0, 0, 0)", "Join player-name value text is transparent");
 
     const textInputPage = await browser.newPage();
     await textInputPage.goto(`http://${host}:${port}/controller`, { waitUntil: "domcontentloaded" });

@@ -113,6 +113,10 @@ concepts into focused modules.
     layout removes that gate only after it has positioned the host and attached authored art, so
     native HTML labels, inputs, and buttons cannot flash during initial load or room entry. Joining
     a room delegates directly to the controller state renderer without prematurely showing Lobby.
+    Native `input`, `textarea`, and `select` children are always transparent interactive overlays
+    above their host's pointer-transparent authored art. The native control exclusively owns its
+    editable value, caret, focus, and hit testing; decorative field art must not duplicate or cover
+    that runtime state.
   - Controller Layout Tool configuration tags are per-placement authoring metadata scoped to one
     controller view. The editor derives each view's searchable configuration list from its local
     elements and uses the selected tag only to filter the authoring preview. Tags do not change the
