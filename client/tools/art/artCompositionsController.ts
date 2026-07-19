@@ -1047,10 +1047,6 @@ export function createArtCompositionsController(
           error = "Choose a game object or prefab from the library.";
           return;
         }
-        if (normalizeArtCompositionSurface(referenced.surface) !== normalizeArtCompositionSurface(composition.surface)) {
-          error = "The replacement game object must use the same surface.";
-          return;
-        }
         if (referenceWouldCreateCycle(composition.id, referenced.id)) {
           error = `Game object swap would create a cycle: ${composition.id} -> ${referenced.id}`;
           return;

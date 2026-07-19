@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  allArtCompositionItems,
   browserCompositionSelectionAfterClick,
   browserDragKeys
 } from "./ArtCompositionBrowser";
+
+describe("ArtCompositionBrowser surface views", () => {
+  it("lists stage and controller compositions together in the All view", () => {
+    expect(allArtCompositionItems([
+      { id: "player-avatar", name: "Player Avatar", compositionKind: "prefab" },
+      { id: "controller-avatar-button", name: "Controller Avatar Button", compositionKind: "prefab" }
+    ])).toEqual([
+      expect.objectContaining({ key: "composition:player-avatar", name: "Player Avatar" }),
+      expect.objectContaining({ key: "composition:controller-avatar-button", name: "Controller Avatar Button" })
+    ]);
+  });
+});
 
 describe("ArtCompositionBrowser multi-selection", () => {
   it("uses ordinary clicks for a single primary composition", () => {

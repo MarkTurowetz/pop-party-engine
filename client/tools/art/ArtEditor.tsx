@@ -4,7 +4,7 @@ import type { ArtCompositionsController } from "./artCompositionsController";
 import type { ArtOrganizationController } from "./artOrganizationController";
 import { itemKey, type OrgSurface } from "./organizationModel";
 import { ToolWorkspace } from "../common/ToolWorkspace";
-import { ArtCompositionBrowser } from "./ArtCompositionBrowser";
+import { ArtCompositionBrowser, type ArtBrowserSurface } from "./ArtCompositionBrowser";
 import { ArtCompositionEditor } from "./ArtCompositionEditor";
 import { useArtAssets } from "./useArtAssets";
 import { useArtCompositions } from "./useArtCompositions";
@@ -44,7 +44,7 @@ export function ArtEditor({
   surface = "art"
 }: ArtEditorProps) {
   void assetsController;
-  const [surfaceFilter, setSurfaceFilter] = useState<OrgSurface>(() => {
+  const [surfaceFilter, setSurfaceFilter] = useState<ArtBrowserSurface>(() => {
     const initialState = compositionsController.getState();
     const selectedComposition = initialState.compositions.find(
       (composition) => composition.id === initialState.selectedCompositionId
@@ -58,7 +58,7 @@ export function ArtEditor({
   useEffect(() => {
     if (openedWorkspace.current) return;
     openedWorkspace.current = true;
-    compositionsController.selectWorkspace(surfaceFilter);
+    if (surfaceFilter !== "all") compositionsController.selectWorkspace(surfaceFilter);
   }, [compositionsController, surfaceFilter]);
   useEffect(() => {
     organizationController.setSourceItems(compositionsState.compositions, assets);

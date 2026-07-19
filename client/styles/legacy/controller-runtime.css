@@ -188,6 +188,17 @@ button.controller-widget-art-host.has-controller-widget-art > .art-runtime-objec
   height: 72%;
 }
 
+.controller-avatar.controller-widget-art-host.has-controller-widget-art {
+  color: var(--avatar-color) !important;
+}
+
+.controller-widget-art-host > .controller-avatar-art-overlay > .player-avatar-art-composition {
+  position: relative;
+  inset: auto;
+  width: 72%;
+  height: 72%;
+}
+
 .join-form {
   display: grid;
   gap: 14px;

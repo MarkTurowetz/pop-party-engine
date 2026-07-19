@@ -106,6 +106,23 @@ describe("playerAvatarCompositionArt", () => {
     })).toBeNull();
   });
 
+  it("uses referenced canvas dimensions when serialized references omit stale width and height", () => {
+    const compositions = authoredAvatarCompositions();
+    delete compositions[0].components![0].width;
+    delete compositions[0].components![0].height;
+
+    const markup = playerAvatarCompositionArt({
+      shape: "rex",
+      getComposition: (id) => compositions.find((composition) => composition.id === id) || null,
+      assetUrl: (assetId) => `/art/${assetId}.svg`
+    });
+
+    expect(markup).toContain("width:70%");
+    expect(markup).toContain("height:70%");
+    expect(markup).not.toContain("width:1%");
+    expect(markup).not.toContain("height:1%");
+  });
+
   it("does not compensate for a zero-origin child in a top-left canvas", () => {
     const compositions = authoredAvatarCompositions();
     compositions[0].components![0].x = 0;

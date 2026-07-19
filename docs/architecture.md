@@ -266,6 +266,10 @@ concepts into focused modules.
   workspaces, not compositions and never runtime assets. Converting contiguous sibling
   layers with F8 creates one library composition and atomically replaces those layers
   in the active workspace or parent composition with a single reference instance.
+- Art composition `surface` is organizational metadata, not a rendering or reference boundary.
+  Stage and Controller tabs retain their surface-specific folders and workspaces; the All tab is
+  a read-through view of the complete shared composition library. Any game object or prefab may
+  reference or swap to a composition from either surface, subject only to cycle prevention.
 - Workspace conversion preserves the active editing context and unrelated parent
   timeline data. It removes only selected parent tracks, refuses conversions that
   would orphan a targeted child command, and keeps source timelines of nested prefab
@@ -286,8 +290,7 @@ concepts into focused modules.
 - Layout art entities expose their renderer to the placed GameObject so an authorized flow action
   can address the exact placed instance and receive that instance's callback.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`
-  reserved for controller-specific art) so future editor tabs can share the same
-  composition schema rather than maintaining separate art systems.
+  for controller-oriented sorting) while sharing one composition schema and reference graph.
 - New flow action metadata and shared action shaping behavior belongs in
   `shared/flow-action-registry.js`.
 - New server behavior should avoid growing `server.js` when it can live in a focused module.

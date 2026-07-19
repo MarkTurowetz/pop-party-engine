@@ -196,13 +196,20 @@ async function main() {
     const startState = await page.evaluate(() => {
       const container = document.querySelector("#controllerLobbyButtonContainer");
       const button = container?.querySelector(":scope > #startGameButton");
+      const avatarComposition = document.querySelector("#controllerAvatar .player-avatar-art-composition");
+      const avatarMask = document.querySelector("#controllerAvatar .avatar-art-mask-image");
+      const avatarMaskRect = avatarMask?.getBoundingClientRect();
       return {
         buttonCount: document.querySelectorAll("#startGameButton").length,
         containerOverflow: container ? getComputedStyle(container).overflow : "missing",
         buttonOverflow: button ? getComputedStyle(button).overflow : "missing",
         artLayerCount: button?.querySelectorAll(":scope > .controller-widget-art-layer").length || 0,
         artRootCount: button?.querySelectorAll(":scope > .controller-widget-art-layer > .art-runtime-object").length || 0,
-        text: button?.textContent.trim() || ""
+        text: button?.textContent.trim() || "",
+        avatarSource: avatarComposition?.getAttribute("data-player-avatar-source") || "",
+        avatarMaskWidth: avatarMaskRect?.width || 0,
+        avatarMaskHeight: avatarMaskRect?.height || 0,
+        avatarMaskColor: avatarMask ? getComputedStyle(avatarMask).backgroundColor : ""
       };
     });
     assert(startState.buttonCount === 1, `Lobby rendered ${startState.buttonCount} Start buttons`);
@@ -211,6 +218,9 @@ async function main() {
     assert(startState.artLayerCount === 1, `Start button has ${startState.artLayerCount} art layers`);
     assert(startState.artRootCount === 1, `Start button has ${startState.artRootCount} competing art renderers`);
     assert(startState.text === "START GAME", `unexpected Start button text: ${startState.text}`);
+    assert(startState.avatarSource === "prefab-player-avatar-mc", `controller avatar used ${startState.avatarSource || "no shared Player Avatar MC"}`);
+    assert(startState.avatarMaskWidth > 40 && startState.avatarMaskHeight > 40, `controller avatar collapsed to ${startState.avatarMaskWidth}x${startState.avatarMaskHeight}`);
+    assert(startState.avatarMaskColor && startState.avatarMaskColor !== "rgba(0, 0, 0, 0)", "controller avatar sprite has no visible player color");
 
     await page.locator("#startGameButton").click();
     await page.waitForFunction(() => document.querySelector("#startGameButton")?.dataset.optionId === "lobby.cancelStart");

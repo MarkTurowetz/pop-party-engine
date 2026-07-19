@@ -53,7 +53,7 @@ describe("ArtCompositionEditor command scripts", () => {
     expect(result.timeline.commands).toEqual([expect.objectContaining({ frame: 12, type: "stop" })]);
   });
 
-  it("offers replacement game objects and prefabs on the selected reference surface", () => {
+  it("offers replacement game objects and prefabs across organizational surfaces", () => {
     const owner = { id: "owner", name: "Owner", surface: "stage", compositionKind: "prefab", canvas: { width: 560, height: 230 }, components: [] } as ArtComposition;
     const component = { id: "slot", kind: "reference", artCompositionId: "current" } as ArtComponent;
     const options = swappableGameObjectOptions(
@@ -69,7 +69,7 @@ describe("ArtCompositionEditor command scripts", () => {
       component
     );
 
-    expect(options.map((option) => option.id)).toEqual(["a", "prefab", "z"]);
+    expect(options.map((option) => option.id)).toEqual(["a", "controller", "prefab", "z"]);
   });
 });
 

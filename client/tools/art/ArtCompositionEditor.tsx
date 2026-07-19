@@ -45,7 +45,7 @@ import {
   type ArtCanvasTransformPatch,
   type ArtCanvasTransformTarget
 } from "./artCanvasTransformTransaction";
-import { artCompositionKindOptions, normalizeArtCompositionKind, normalizeArtCompositionSurface } from "./artCompositionModel";
+import { artCompositionKindOptions, normalizeArtCompositionKind } from "./artCompositionModel";
 import { ART_COMPOSITION_BROWSER_DND_TYPE, compositionIdFromBrowserKey } from "./ArtCompositionBrowser";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import { artWorkspaceSurface, isArtWorkspaceId } from "./artWorkspaceModel";
@@ -460,8 +460,7 @@ export function swappableGameObjectOptions(
     .filter(
       (item) =>
         item.id !== owner?.id &&
-        item.id !== component.artCompositionId &&
-        normalizeArtCompositionSurface(item.surface) === normalizeArtCompositionSurface(owner?.surface)
+        item.id !== component.artCompositionId
     )
     .sort((left, right) => left.name.localeCompare(right.name));
 }

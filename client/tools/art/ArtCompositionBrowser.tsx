@@ -8,11 +8,24 @@ import { useArtOrganization } from "./useArtOrganization";
 import { artWorkspaceId } from "./artWorkspaceModel";
 import { artCompositionCleanupSummary, artCompositionDependencyLabel } from "./artCompositionUsage";
 
+export type ArtBrowserSurface = OrgSurface | "all";
+
+export function allArtCompositionItems(
+  compositions: Array<{ id: string; name: string; compositionKind?: string }>
+): OrgItem[] {
+  return compositions.map((composition) => ({
+    key: `composition:${composition.id}`,
+    type: "composition",
+    name: composition.name,
+    compositionKind: String(composition.compositionKind || "gameObject")
+  }));
+}
+
 export interface ArtCompositionBrowserProps {
   compositionsController: ArtCompositionsController;
   organizationController: ArtOrganizationController;
-  surface: OrgSurface;
-  onSurfaceChange(surface: OrgSurface): void;
+  surface: ArtBrowserSurface;
+  onSurfaceChange(surface: ArtBrowserSurface): void;
 }
 
 export const ART_COMPOSITION_BROWSER_DND_TYPE = "application/x-art-composition-browser-key";
@@ -76,7 +89,7 @@ export function browserDragKeys(value: string): string[] {
   return value ? [value] : [];
 }
 
-function collapsedKey(surface: OrgSurface, folderId: string): string {
+function collapsedKey(surface: ArtBrowserSurface, folderId: string): string {
   return `${surface}:${folderId}`;
 }
 
@@ -114,7 +127,7 @@ export function ArtCompositionBrowser({
   const [compositionName, setCompositionName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [compositionSelectionState, setCompositionSelectionState] = useState<{
-    surface: OrgSurface;
+    surface: ArtBrowserSurface;
     primaryId: string;
     ids: Set<string>;
   }>({ surface, primaryId: "", ids: new Set() });
@@ -124,8 +137,17 @@ export function ArtCompositionBrowser({
   const [collapsedFolders, setCollapsedFolders] = useState(readCollapsedFolders);
   const browserListRef = useRef<HTMLOListElement | null>(null);
   const pendingSelectionScrollTopRef = useRef<number | null>(null);
-  const state = organization[surface];
-  const compositionItems = surfaceItems[surface].filter((item: OrgItem) => item.type === "composition");
+  const organizationSurface = surface === "all" ? null : surface;
+  const state = useMemo(
+    () => organizationSurface
+      ? organization[organizationSurface]
+      : { folders: [], order: [], folderItems: {} },
+    [organization, organizationSurface]
+  );
+  const compositionItems = (organizationSurface
+    ? surfaceItems[organizationSurface]
+    : allArtCompositionItems(compositions))
+    .filter((item: OrgItem) => item.type === "composition");
   const activeCompositionItems = compositionItems.filter((item) => !trashedCompositionIds.has(compositionIdFromBrowserKey(item.key)));
   const validCompositionKeys = new Set(activeCompositionItems.map((item) => item.key));
   const nameByKey = new Map(compositionItems.map((item) => [item.key, item.name]));
@@ -158,7 +180,7 @@ export function ArtCompositionBrowser({
   const unfiled = activeCompositionItems.filter((item) => !placed.has(item.key));
   const compositionSelection = compositionSelectionState.surface === surface && compositionSelectionState.primaryId === selectedCompositionId
     ? compositionSelectionState.ids
-    : selectedCompositionId === artWorkspaceId(surface)
+    : surface !== "all" && selectedCompositionId === artWorkspaceId(surface)
       ? new Set<string>()
       : new Set([selectedCompositionId]);
 
@@ -273,19 +295,22 @@ export function ArtCompositionBrowser({
   const onDropBeside = (event: DragEvent, targetKey: string) => {
     event.preventDefault();
     event.stopPropagation();
+    if (!organizationSurface) return;
     const dragged = dragKeys(event);
-    if (dragged.length) organizationController.moveManyBeside(surface, dragged, targetKey, false);
+    if (dragged.length) organizationController.moveManyBeside(organizationSurface, dragged, targetKey, false);
   };
   const onDropIntoFolder = (event: DragEvent, folderId: string) => {
     event.preventDefault();
     event.stopPropagation();
+    if (!organizationSurface) return;
     const dragged = dragKeys(event);
-    if (dragged.length) organizationController.moveManyIntoFolder(surface, dragged, folderId);
+    if (dragged.length) organizationController.moveManyIntoFolder(organizationSurface, dragged, folderId);
   };
   const onDropRoot = (event: DragEvent) => {
     event.preventDefault();
+    if (!organizationSurface) return;
     const dragged = dragKeys(event);
-    if (dragged.length) organizationController.moveManyIntoFolder(surface, dragged, "");
+    if (dragged.length) organizationController.moveManyIntoFolder(organizationSurface, dragged, "");
   };
   const updateCollapsedFolders = (apply: (draft: Set<string>) => void) => {
     setCollapsedFolders((current) => {
@@ -315,7 +340,8 @@ export function ArtCompositionBrowser({
     });
   };
   const createComposition = (kind: "gameObject" | "prefab") => {
-    compositionsController.createComposition(kind, surface, compositionName);
+    if (!organizationSurface) return;
+    compositionsController.createComposition(kind, organizationSurface, compositionName);
     setCompositionName("");
   };
   const toggleCleanupSelection = (compositionId: string): void => {
@@ -360,7 +386,7 @@ export function ArtCompositionBrowser({
         data-art-browser-composition={compositionId}
         data-art-browser-selected={selected ? "true" : "false"}
         key={key}
-        draggable
+        draggable={Boolean(organizationSurface)}
         onDragStart={(event) => onDragStart(event, key)}
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => onDropBeside(event, key)}
@@ -438,9 +464,9 @@ export function ArtCompositionBrowser({
           key={`${folderId}-name`}
           defaultValue={folderNameFor(folderId)}
           aria-label="Folder name"
-          onBlur={(event) => organizationController.renameFolder(surface, folderId, event.target.value)}
+          onBlur={(event) => organizationSurface && organizationController.renameFolder(organizationSurface, folderId, event.target.value)}
         />
-        <button type="button" onClick={() => organizationController.deleteFolder(surface, folderId)}>
+        <button type="button" onClick={() => organizationSurface && organizationController.deleteFolder(organizationSurface, folderId)}>
           Delete
         </button>
       </header>
@@ -456,18 +482,25 @@ export function ArtCompositionBrowser({
   return (
     <>
       <h3>Compositions</h3>
-      <button
-        type="button"
-        className="art-browser-stage-button"
-        aria-current={selectedCompositionId === artWorkspaceId(surface) ? "true" : undefined}
-        onClick={() => {
-          setCompositionSelectionState({ surface, primaryId: artWorkspaceId(surface), ids: new Set() });
-          compositionsController.selectWorkspace(surface);
-        }}
-      >
-        <span>{surface === "controller" ? "Controller Stage" : "Stage"}</span>
-        <small>Workspace</small>
-      </button>
+      {surface === "all" ? (
+        <div className="art-browser-stage-button" data-art-all-assets>
+          <span>All Assets</span>
+          <small>Shared Library</small>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="art-browser-stage-button"
+          aria-current={selectedCompositionId === artWorkspaceId(surface) ? "true" : undefined}
+          onClick={() => {
+            setCompositionSelectionState({ surface, primaryId: artWorkspaceId(surface), ids: new Set() });
+            compositionsController.selectWorkspace(surface);
+          }}
+        >
+          <span>{surface === "controller" ? "Controller Stage" : "Stage"}</span>
+          <small>Workspace</small>
+        </button>
+      )}
       <div className="tool-sidebar-switcher" role="group" aria-label="Composition surface">
         <button type="button" aria-pressed={surface === "stage"} onClick={() => {
           setCompositionSelectionState({ surface: "stage", primaryId: artWorkspaceId("stage"), ids: new Set() });
@@ -482,6 +515,17 @@ export function ArtCompositionBrowser({
           compositionsController.selectWorkspace("controller");
         }}>
           Controller
+        </button>
+        <button type="button" aria-pressed={surface === "all"} onClick={() => {
+          const selectedIsComposition = compositions.some((composition) => composition.id === selectedCompositionId);
+          setCompositionSelectionState({
+            surface: "all",
+            primaryId: selectedIsComposition ? selectedCompositionId : "",
+            ids: new Set(selectedIsComposition ? [selectedCompositionId] : [])
+          });
+          onSurfaceChange("all");
+        }}>
+          All
         </button>
       </div>
       <div className="art-browser-cleanup-tools">
@@ -537,7 +581,7 @@ export function ArtCompositionBrowser({
           </button>
         ) : null}
       </div>
-      <div className="art-browser-create-tools">
+      {organizationSurface ? <div className="art-browser-create-tools">
         <input
           type="text"
           placeholder="New asset name"
@@ -551,8 +595,8 @@ export function ArtCompositionBrowser({
         <button type="button" onClick={() => createComposition("prefab")}>
           Add Prefab
         </button>
-      </div>
-      <div className="art-browser-folder-tools">
+      </div> : null}
+      {organizationSurface ? <div className="art-browser-folder-tools">
         <input
           type="text"
           placeholder="Folder name"
@@ -562,14 +606,14 @@ export function ArtCompositionBrowser({
         <button
           type="button"
           onClick={() => {
-            organizationController.createFolder(surface, folderName || "New Folder");
+            organizationController.createFolder(organizationSurface, folderName || "New Folder");
             setFolderName("");
           }}
         >
           Add Folder
         </button>
-      </div>
-      <div className="art-browser-save-row">
+      </div> : null}
+      {organizationSurface ? <div className="art-browser-save-row">
         <button type="button" disabled={!canUndo} onClick={() => organizationController.undo()}>
           Undo
         </button>
@@ -580,7 +624,7 @@ export function ArtCompositionBrowser({
           {saving ? "Saving..." : "Save Folders"}
         </button>
         <span>{dirty ? "Unsaved" : "Saved"}</span>
-      </div>
+      </div> : null}
       <ol
         ref={browserListRef}
         className="art-browser-list art-browser-root"
@@ -592,7 +636,7 @@ export function ArtCompositionBrowser({
         {state.order.map((key) => (key.startsWith("folder:") ? renderFolder(folderIdFromKey(key)) : renderCompositionItem(key)))}
         {unfiled.filter((item) => !search.active || search.visibleKeys.has(item.key)).length ? (
           <li className="art-browser-unfiled">
-            <small>Unfiled</small>
+            <small>{surface === "all" ? "All Assets" : "Unfiled"}</small>
             <ol className="art-browser-list">
               {unfiled
                 .filter((item) => !search.active || search.visibleKeys.has(item.key))

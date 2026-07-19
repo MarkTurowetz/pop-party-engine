@@ -134,12 +134,18 @@ function renderCompositionComponents(
   const components = composition.components || [];
   const bounds = compositionBounds(composition);
   return components.map((component, index) => {
-    const style = componentStyle(component, bounds, index, components.length);
     const kind = options.normalizeComponentKind?.(component.kind as string) || String(component.kind || "shape");
     const referencedId = kind === "reference" ? String(component.artCompositionId || "") : "";
-    if (!referencedId || visited.has(referencedId)) return renderLeaf(component, style, options);
-    const referenced = options.getComposition(referencedId);
-    if (!referenced) return renderLeaf(component, style, options);
+    const referenced = referencedId && !visited.has(referencedId) ? options.getComposition(referencedId) : null;
+    const intrinsicComponent = referenced
+      ? {
+          ...component,
+          width: component.width ?? referenced.canvas?.width ?? 1,
+          height: component.height ?? referenced.canvas?.height ?? 1
+        }
+      : component;
+    const style = componentStyle(intrinsicComponent, bounds, index, components.length);
+    if (!referencedId || visited.has(referencedId) || !referenced) return renderLeaf(component, style, options);
     const label = referencedId === AVATARS_COMPOSITION_ID
       ? avatarTimelineLabelForSpecies(options.shape)
       : String(component.defaultAnimationState || "");

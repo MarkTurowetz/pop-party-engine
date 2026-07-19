@@ -716,6 +716,23 @@ describe("createArtCompositionsController", () => {
     expect(controller.getState().error).toBeNull();
   });
 
+  it("allows a reference to reuse a composition from the other organizational surface", () => {
+    const host = composition("host");
+    host.surface = "controller";
+    host.components = [{ id: "slot", name: "Avatar Slot", kind: "reference", artCompositionId: "controller-art" }] as never;
+    const current = composition("controller-art");
+    current.surface = "controller";
+    const sharedAvatar = composition("prefab-player-avatar-mc");
+    sharedAvatar.surface = "stage";
+    sharedAvatar.compositionKind = "prefab";
+    const controller = createArtCompositionsController({ initialCompositions: [host, current, sharedAvatar], api: fakeApi() });
+
+    controller.swapReferenceGameObject("slot", "prefab-player-avatar-mc");
+
+    expect(controller.getState().compositions[0].components[0].artCompositionId).toBe("prefab-player-avatar-mc");
+    expect(controller.getState().error).toBeNull();
+  });
+
   it("publishes a new compositions array for every mutation so dependent library views refresh", () => {
     const controller = createArtCompositionsController({ initialCompositions: [composition("a")], api: fakeApi() });
     const before = controller.getState().compositions;
