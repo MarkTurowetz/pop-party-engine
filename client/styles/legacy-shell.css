@@ -1587,6 +1587,12 @@ button.controller-widget-art-host.has-controller-widget-art {
   overflow: visible !important;
 }
 
+/* The native button is the stable mouse/touch hit target. Authored interaction
+   art may scale or move without changing pointer hit testing mid-press. */
+button.controller-widget-art-host.has-controller-widget-art > .art-runtime-object {
+  pointer-events: none;
+}
+
 .choice-option-button.controller-widget-art-host.has-controller-widget-art {
   position: relative;
   min-height: 72px;

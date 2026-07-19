@@ -46,6 +46,69 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
           if (typeof target !== "string") target?.classList?.toggle("hidden", !isShown);
         };
 
+  function buttonKey(actionId: unknown, option: Dict): string {
+    return [String(actionId || ""), String(option.index ?? ""), String(option.cardId || "")].join(":");
+  }
+
+  function createChoiceButton(key: string): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "choice-option-button";
+    button.dataset.controllerOption = "";
+    button.dataset.controllerChoiceKey = key;
+    button.addEventListener("click", () => {
+      const optionIndex = Number(button.dataset.controllerChoiceOptionIndex);
+      if (button.disabled || !Number.isFinite(optionIndex)) return;
+      submitChoice(
+        button.dataset.controllerChoiceActionId || "",
+        optionIndex,
+        button.dataset.controllerChoiceCardId || ""
+      );
+    });
+    bindPress(button);
+    return button;
+  }
+
+  function reconcileChoiceButtons(input: Dict, visibleOptions: Dict[], selectedIndex: number, isDone: boolean): void {
+    const existing = new Map<string, HTMLButtonElement>();
+    const currentButtons = typeof elements.grid.querySelectorAll === "function"
+      ? Array.from(elements.grid.querySelectorAll<HTMLButtonElement>("button.choice-option-button"))
+      : [];
+    for (const node of currentButtons) {
+      const key = node.dataset.controllerChoiceKey || "";
+      if (key && !existing.has(key)) existing.set(key, node);
+      else node.remove();
+    }
+
+    const desired: HTMLButtonElement[] = [];
+    for (const option of visibleOptions) {
+      const key = buttonKey(input.actionId, option);
+      const button = existing.get(key) || createChoiceButton(key);
+      existing.delete(key);
+      const label = String(option.label || option.text || `Option ${Number(option.index) + 1}`);
+      button.dataset.controllerChoiceActionId = String(input.actionId || "");
+      button.dataset.controllerChoiceOptionIndex = String(option.index ?? "");
+      button.dataset.controllerChoiceCardId = String(option.cardId || "");
+      button.dataset.optionId = `choice.${option.index}`;
+      button.classList.toggle("is-selected", Number(option.index) === selectedIndex);
+      if (button.dataset.controllerChoiceLabel !== label) {
+        button.dataset.controllerChoiceLabel = label;
+        writeButtonText(button, label, { width: 320, height: 72, fontSize: 24 });
+      }
+      if (button.disabled !== isDone) button.disabled = isDone;
+      desired.push(button);
+    }
+    for (const stale of existing.values()) stale.remove();
+
+    // Do not re-append buttons that are already in the correct position. Moving
+    // an active button between pointerdown and pointerup cancels native click.
+    for (let index = 0; index < desired.length; index += 1) {
+      const button = desired[index];
+      const current = elements.grid.children[index] || null;
+      if (current !== button) elements.grid.insertBefore(button, current);
+    }
+  }
+
   function render(lobby: Dict, me: Dict): boolean {
     const input = (me.input || lobby.input || null) as Dict | null;
     if (!input) return false;
@@ -54,7 +117,6 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
     showView("choice");
     writeText(elements.prompt, input.prompt || "Answer this question by tapping an answer");
     showText(elements.prompt, true, { instant: true });
-    elements.grid.replaceChildren();
 
     const answer = me.answer as Dict | undefined;
     const selectedIndex = Number.isFinite(Number(answer?.optionIndex)) ? Number(answer?.optionIndex) : -1;
@@ -68,23 +130,7 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
     const visibleOptions = ((input.options as Dict[]) || []).filter(
       (option) => input.type !== "vote" || option.authorPlayerId !== me.id
     );
-    for (const option of visibleOptions) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "choice-option-button";
-      button.dataset.controllerOption = "";
-      button.dataset.optionId = `choice.${option.index}`;
-      button.classList.toggle("is-selected", Number(option.index) === selectedIndex);
-      writeButtonText(button, option.label || option.text || `Option ${Number(option.index) + 1}`, {
-        width: 320,
-        height: 72,
-        fontSize: 24
-      });
-      button.disabled = isDone as boolean;
-      button.addEventListener("click", () => submitChoice(input.actionId as string, Number(option.index), (option.cardId as string) || ""));
-      bindPress(button);
-      elements.grid.appendChild(button);
-    }
+    reconcileChoiceButtons(input, visibleOptions, selectedIndex, Boolean(isDone));
 
     return true;
   }

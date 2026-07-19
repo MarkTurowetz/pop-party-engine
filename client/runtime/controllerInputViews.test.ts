@@ -74,6 +74,94 @@ describe("createControllerChoiceInputView (ported)", () => {
     expect(applyLayoutForPhase).toHaveBeenCalledWith(controllerLayoutStateIds.voting);
   });
 
+  it("keeps choice button hit targets mounted across heartbeat renders", () => {
+    type Listener = () => void;
+    class FakeButton {
+      className = "";
+      dataset: Record<string, string> = {};
+      disabled = false;
+      type = "button";
+      parent: FakeGrid | null = null;
+      listeners = new Map<string, Listener[]>();
+      classList = {
+        toggle: vi.fn()
+      };
+      addEventListener(type: string, listener: Listener) {
+        this.listeners.set(type, [...(this.listeners.get(type) || []), listener]);
+      }
+      remove() {
+        this.parent?.remove(this);
+      }
+      click() {
+        for (const listener of this.listeners.get("click") || []) listener();
+      }
+    }
+    class FakeGrid {
+      nodes: FakeButton[] = [];
+      get children() {
+        return this.nodes;
+      }
+      querySelectorAll() {
+        return this.nodes;
+      }
+      insertBefore(button: FakeButton, current: FakeButton | null) {
+        this.remove(button);
+        const index = current ? this.nodes.indexOf(current) : -1;
+        if (index >= 0) this.nodes.splice(index, 0, button);
+        else this.nodes.push(button);
+        button.parent = this;
+      }
+      remove(button: FakeButton) {
+        const index = this.nodes.indexOf(button);
+        if (index >= 0) this.nodes.splice(index, 1);
+        if (button.parent === this) button.parent = null;
+      }
+    }
+
+    const grid = new FakeGrid();
+    vi.stubGlobal("document", { createElement: () => new FakeButton() });
+    const bindPress = vi.fn();
+    const setButtonText = vi.fn();
+    const submitChoice = vi.fn();
+    const view = createControllerChoiceInputView({
+      applyLayoutForPhase: vi.fn(),
+      bindPress,
+      elements: {
+        done: {} as HTMLElement,
+        grid: grid as unknown as HTMLElement,
+        prompt: {} as HTMLElement,
+        state: {} as HTMLElement
+      },
+      hideViews: vi.fn(),
+      setButtonText,
+      setText: vi.fn(),
+      setTextShown: vi.fn(),
+      showView: vi.fn(),
+      submitChoice
+    });
+    const lobby = {
+      input: {
+        actionId: "vote-action",
+        type: "vote",
+        options: [
+          { index: 0, cardId: "card-a", label: "Alpha" },
+          { index: 1, cardId: "card-b", label: "Beta" }
+        ]
+      }
+    };
+
+    view.render(lobby, { id: "player" });
+    const firstButton = grid.nodes[0];
+    view.render(lobby, { id: "player" });
+
+    expect(grid.nodes[0]).toBe(firstButton);
+    expect(bindPress).toHaveBeenCalledTimes(2);
+    expect(setButtonText).toHaveBeenCalledTimes(2);
+    firstButton.click();
+    expect(submitChoice).toHaveBeenCalledWith("vote-action", 0, "card-a");
+    vi.unstubAllGlobals();
+  });
+
   it("resolves dynamic prompt fields by layout id after the Crafting layout is applied", () => {
     const calls: string[] = [];
     const view = createControllerChoiceInputView({

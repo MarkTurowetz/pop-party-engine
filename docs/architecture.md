@@ -123,7 +123,10 @@ concepts into focused modules.
     `Default`/`Down`/`Up`/`HoverIn`/`HoverOut`; the next child owns the stopped `Default` and
     `Disabled` states; and the deepest prefab owns the actual button art. Pointer input may play
     interaction labels fire-and-forget, but CSS classes, timers, and controller reconciliation do
-    not animate button transforms, opacity, filters, colors, or lifecycle state.
+    not animate button transforms, opacity, filters, colors, or lifecycle state. Choice and vote
+    grids reconcile native buttons by action/option identity across heartbeat renders instead of
+    replacing their DOM nodes. The native button remains the pointer hit target while its authored
+    art ignores pointer events, so `Down`/`Up` geometry cannot cancel a click in progress.
   - Controller states own selector-backed local action containers. Join, Lobby, Presentation, Paused,
     Text Input, Voice Input, and Microphone Access spawn a single `Controller Primary Button`
     instance inside the active container and dispose the prior state's instance before another
