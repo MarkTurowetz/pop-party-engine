@@ -12315,6 +12315,91 @@
         "tracks": []
       },
       "updatedAt": "2026-07-19T01:44:27.098Z"
+    },
+    "controller-choice-option-art": {
+      "name": "Controller Choice Option Art",
+      "description": "Migrated base art used by Controller Choice Option.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 320,
+        "height": 72
+      },
+      "components": [
+        {
+          "id": "option-text",
+          "name": "Option Text",
+          "instanceLabel": "optionText",
+          "kind": "text",
+          "x": 160,
+          "y": 36,
+          "width": 280,
+          "height": 40,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "defaultText": "Option",
+          "fontSize": 24,
+          "autoFitText": true,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "option-card",
+          "name": "Option Card",
+          "instanceLabel": "optionCard",
+          "kind": "shape",
+          "x": 160,
+          "y": 36,
+          "width": 320,
+          "height": 72,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 18
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          }
+        ],
+        "tracks": []
+      },
+      "updatedAt": "2026-07-19T01:44:38.197Z"
     }
   },
   "deletedCompositionIds": [
