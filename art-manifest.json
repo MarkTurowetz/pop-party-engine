@@ -2710,11 +2710,16 @@
           "height": 58,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "defaultText": "Answer here",
           "fontSize": 24,
-          "autoFitText": false,
+          "autoFitText": true,
           "fontColor": "#6b5a80",
           "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
         },
@@ -2729,6 +2734,11 @@
           "height": 128,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "shapeStyle": "rounded",
@@ -2768,64 +2778,6 @@
             "frame": 17
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
@@ -2834,9 +2786,66 @@
           13,
           16,
           32
-        ]
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": []
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-19T01:44:53.394Z"
     },
     "controller-stage-code-field": {
       "name": "Controller Stage Code Field",
