@@ -498,7 +498,8 @@ function createArtAssetsRuntime({
       canvas.width = 170;
       canvas.height = 82;
     }
-    if (compositionId === "crafting-timer-widget" && canvas.width === 190 && canvas.height === 190) {
+    if ((compositionId === "crafting-timer-widget" || compositionId === "crafting-timer")
+      && canvas.width === 190 && canvas.height === 190) {
       canvas.width = 180;
       canvas.height = 180;
     }
@@ -551,20 +552,11 @@ function createArtAssetsRuntime({
         card.fillColor = "#60d394";
       }
     }
-    if (compositionId === "crafting-timer-widget") {
-      const ring = byId.get("timer-ring");
-      if (ring && !ring.instanceLabel) ring.instanceLabel = "timerRing";
-      if (ring && ring.shapeStyle === "circle" && ring.fillColor === "#ffe256") {
-        ring.x = 90;
-        ring.y = 90;
-        ring.width = 180;
-        ring.height = 180;
-        ring.shapeStyle = "rounded";
-        ring.fillColor = "#fffdf4";
-        ring.fillCss = "radial-gradient(circle at center, #fffdf4 0 54%, transparent 55%), conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)";
-        ring.borderWidth = 5;
-        ring.borderRadius = 36;
-      }
+    if (compositionId === "crafting-timer") {
+      const fill = byId.get("timer-fill");
+      if (fill && !fill.instanceLabel) fill.instanceLabel = "timerFill";
+      const background = byId.get("timer-background");
+      if (background && !background.instanceLabel) background.instanceLabel = "timerBackground";
       const value = byId.get("timer-value");
       if (value && !value.instanceLabel) value.instanceLabel = "timerValue";
       if (value && value.x === 95 && value.y === 95 && value.fontSize === 72) {
@@ -617,7 +609,7 @@ function createArtAssetsRuntime({
       "join-widget": ["join-text", "join-pill"],
       "waiting-status-widget": ["status-text", "status-pill"],
       "countdown-popup": ["popup-text", "popup-card"],
-      "crafting-timer-widget": ["timer-value", "timer-ring"],
+      "crafting-timer": ["timer-value", "timer-background", "timer-fill"],
       "join-qr-code": ["qr-label", "qr-placeholder", "qr-card"]
     };
     const preferredOrder = preferredOrders[compositionId];

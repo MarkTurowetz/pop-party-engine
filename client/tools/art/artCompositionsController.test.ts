@@ -909,8 +909,8 @@ describe("createArtCompositionsController", () => {
         status: 409,
         payload: {
           issues: [
-            { compositionId: "crafting-timer-widget", code: "missing-instance-label", message: "Missing instance label: timer-value" },
-            { compositionId: "crafting-timer-widget", code: "missing-instance-label", message: "Missing instance label: timer-ring" }
+            { compositionId: "crafting-timer", code: "missing-instance-label", message: "Missing instance label: timer-value" },
+            { compositionId: "crafting-timer", code: "missing-instance-label", message: "Missing instance label: timer-fill" }
           ]
         }
       });
@@ -923,8 +923,8 @@ describe("createArtCompositionsController", () => {
     controller.updateComposition("stage-code-panel", { description: "Changed" });
 
     expect(await controller.save()).toBe(false);
-    expect(controller.getState().error).toContain("crafting-timer-widget: Missing instance label: timer-value");
-    expect(controller.getState().error).toContain("crafting-timer-widget: Missing instance label: timer-ring");
+    expect(controller.getState().error).toContain("crafting-timer: Missing instance label: timer-value");
+    expect(controller.getState().error).toContain("crafting-timer: Missing instance label: timer-fill");
   });
 
   it("reorders root and nested component siblings with undo support", () => {

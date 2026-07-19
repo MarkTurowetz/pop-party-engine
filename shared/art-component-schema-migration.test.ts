@@ -39,6 +39,69 @@ describe("art component schema migration", () => {
     expect(second.report.changed).toBe(false);
   });
 
+  it("flattens Crafting Timer to one lifecycle owner and one three-element visual child", () => {
+    const source = {
+      artComponentSchemaVersion: 6,
+      compositions: {
+        "crafting-timer": {
+          name: "Crafting Timer",
+          canvas: { width: 180, height: 180 },
+          components: [
+            { id: "timer-value", kind: "text", defaultText: "45" },
+            { id: "timer-ring", kind: "shape", fillColor: "#abcdef" }
+          ]
+        },
+        "prefab-crafting-timer-mc": {
+          name: "Crafting Timer MC",
+          timeline: {
+            labels: [{ name: "Off", frame: 0 }, { name: "Appear", frame: 2 }],
+            commands: [{ id: "stop-0", frame: 0, type: "stop" }],
+            tracks: [{
+              targetId: "old-base-reference",
+              keyframes: [{ frame: 2, props: { scale: 0.7, width: 180, height: 180 } }]
+            }]
+          }
+        },
+        "crafting-timer-widget": {
+          name: "Crafting Timer Widget MC",
+          components: [{
+            id: "crafting-timer-mc-reference",
+            kind: "reference",
+            artCompositionId: "prefab-crafting-timer-mc"
+          }],
+          timeline: {
+            commands: [{ type: "playComponent", target: "crafting-timer-mc-reference", event: "Appear" }],
+            tracks: []
+          }
+        }
+      },
+      organization: {
+        stage: { folderItems: { global: ["composition:prefab-crafting-timer-mc"] } }
+      }
+    };
+
+    const { manifest, report } = migrateLegacyArtManifestSchema(source);
+    expect(manifest.compositions["crafting-timer"].components.map((component) => component.id)).toEqual([
+      "timer-value", "timer-background", "timer-fill"
+    ]);
+    expect(manifest.compositions["crafting-timer"].components[2]).toMatchObject({ fillColor: "#abcdef" });
+    expect(manifest.compositions["crafting-timer-widget"].components).toEqual([expect.objectContaining({
+      id: "crafting-timer-reference",
+      artCompositionId: "crafting-timer",
+      referenceSizeMode: "intrinsic"
+    })]);
+    expect(manifest.compositions["crafting-timer-widget"].timeline.tracks[0]).toMatchObject({
+      targetId: "crafting-timer-reference",
+      keyframes: [{ frame: 2, props: { scale: 0.7 } }]
+    });
+    expect(manifest.compositions["prefab-crafting-timer-mc"]).toBeUndefined();
+    expect(manifest.organization.stage.folderItems.global).toEqual([]);
+    expect(manifest.deletedCompositionIds).toContain("prefab-crafting-timer-mc");
+    expect(report.compositionIds).toEqual(expect.arrayContaining([
+      "crafting-timer", "crafting-timer-widget", "prefab-crafting-timer-mc"
+    ]));
+  });
+
   it("folds a legacy reference viewport into uniform parent scale and removes dimension keyframes", () => {
     const source = {
       artComponentSchemaVersion: 4,

@@ -277,29 +277,32 @@ describe("art composition child persistence", () => {
   it("repairs missing Crafting Timer instance labels during normalization", () => {
     const runtime = createRuntime({
       artCompositions: [{
-        id: "crafting-timer-widget",
+        id: "crafting-timer",
         name: "Crafting Timer",
         timelineArchitectureVersion: 2,
         canvas: { width: 180, height: 180 },
         components: [
           { id: "timer-value", name: "Timer Value", kind: "text" },
-          { id: "timer-ring", name: "Timer Ring", kind: "shape" }
+          { id: "timer-background", name: "Timer Background", kind: "shape" },
+          { id: "timer-fill", name: "Timer Fill", kind: "shape" }
         ]
       }]
     });
 
     const [normalized] = runtime.normalizeArtCompositionsDraft([{
-      id: "crafting-timer-widget",
+      id: "crafting-timer",
       timelineArchitectureVersion: 2,
       components: [
         { id: "timer-value", name: "Timer Value", kind: "text", instanceLabel: "" },
-        { id: "timer-ring", name: "Timer Ring", kind: "shape", instanceLabel: "" }
+        { id: "timer-background", name: "Timer Background", kind: "shape", instanceLabel: "" },
+        { id: "timer-fill", name: "Timer Fill", kind: "shape", instanceLabel: "" }
       ]
     }]);
 
     expect(normalized.components).toEqual([
       expect.objectContaining({ id: "timer-value", instanceLabel: "timerValue" }),
-      expect.objectContaining({ id: "timer-ring", instanceLabel: "timerRing" })
+      expect.objectContaining({ id: "timer-background", instanceLabel: "timerBackground" }),
+      expect.objectContaining({ id: "timer-fill", instanceLabel: "timerFill" })
     ]);
   });
 

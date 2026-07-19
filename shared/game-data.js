@@ -1104,48 +1104,90 @@ const defaultArtCompositions = [
         ]
     },
     {
-        id: "crafting-timer-widget",
+        id: "crafting-timer",
         name: "Crafting Timer",
-        description: "Editable timer art used during timed input moments.",
+        description: "Bespoke timer visual containing only its value, circular fill, and background.",
+        surface: "stage",
+        compositionKind: "prefab",
         canvas: { width: 180, height: 180 },
         components: [
             {
-                id: "timer-value",
-                name: "Timer Value",
-                instanceLabel: "timerValue",
-                kind: "text",
-                x: 90,
-                y: 92,
-                width: 130,
-                height: 82,
-                scale: 1,
-                rotation: 0,
-                defaultAnimationState: "on",
-                defaultText: "30",
-                fontSize: 74,
-                autoFitText: true,
-                fontColor: "#17131f"
+                id: "timer-value", name: "Timer Value", instanceLabel: "timerValue", kind: "text",
+                x: 90, y: 92, width: 130, height: 82, scale: 1, rotation: 0,
+                defaultAnimationState: "Default", defaultText: "30", fontSize: 60,
+                autoFitText: true, fontColor: "#17131f"
             },
             {
-                id: "timer-ring",
-                name: "Timer Ring",
-                instanceLabel: "timerRing",
-                kind: "shape",
-                x: 90,
-                y: 90,
-                width: 180,
-                height: 180,
-                scale: 1,
-                rotation: 0,
-                defaultAnimationState: "on",
-                shapeStyle: "rounded",
-                fillColor: "#fffdf4",
-                fillCss: "radial-gradient(circle at center, #fffdf4 0 54%, transparent 55%), conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)",
-                borderColor: "#17131f",
-                borderWidth: 5,
-                borderRadius: 36
+                id: "timer-background", name: "Timer Background", instanceLabel: "timerBackground", kind: "shape",
+                x: 90, y: 90, width: 100, height: 100, scale: 1, rotation: 0,
+                defaultAnimationState: "Default", shapeStyle: "rounded", fillColor: "#fffdf4",
+                borderColor: "transparent", borderWidth: 0, borderRadius: 50
+            },
+            {
+                id: "timer-fill", name: "Timer Fill", instanceLabel: "timerFill", kind: "shape",
+                x: 90, y: 90, width: 180, height: 180, scale: 1, rotation: 0,
+                defaultAnimationState: "Default", shapeStyle: "rounded", fillColor: "#2458ff",
+                fillCss: "conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)",
+                borderColor: "#17131f", borderWidth: 5, borderRadius: 90
             }
-        ]
+        ],
+        timeline: {
+            fps: 30, frameCount: 1, labels: [{ name: "Default", frame: 0 }],
+            commandFrames: [0], commands: [{ id: "stop-0", frame: 0, type: "stop" }], tracks: []
+        }
+    },
+    {
+        id: "crafting-timer-widget",
+        name: "Crafting Timer Widget MC",
+        description: "Lifecycle owner for the complete Crafting Timer widget and its action callback.",
+        surface: "stage",
+        compositionKind: "gameObject",
+        canvas: { width: 180, height: 180 },
+        components: [{
+                id: "crafting-timer-reference", name: "Crafting Timer", instanceLabel: "craftingTimer",
+                kind: "reference", x: 90, y: 90, scale: 1, rotation: 0, opacity: 1, visible: true,
+                transformOrigin: "center", referenceSizeMode: "intrinsic", locked: false,
+                defaultAnimationState: "Default", artCompositionId: "crafting-timer"
+            }],
+        timeline: {
+            fps: 30,
+            frameCount: 33,
+            labels: [
+                { name: "Off", frame: 0 }, { name: "Park", frame: 0 }, { name: "On", frame: 1 },
+                { name: "Appear", frame: 2 }, { name: "Update", frame: 13 }, { name: "Disappear", frame: 17 }
+            ],
+            commandFrames: [0, 1, 2, 12, 13, 16, 17, 32],
+            commands: [
+                { id: "stop-0", frame: 0, type: "stop" },
+                { id: "setvisible-0-false", frame: 0, type: "setVisible", target: "false" },
+                { id: "stop-1", frame: 1, type: "stop" },
+                { id: "setvisible-1-true", frame: 1, type: "setVisible", target: "true" },
+                { id: "setvisible-2-true", frame: 2, type: "setVisible", target: "true" },
+                { id: "stop-12", frame: 12, type: "stop" },
+                { id: "setvisible-13-true", frame: 13, type: "setVisible", target: "true" },
+                { id: "stop-16", frame: 16, type: "stop" },
+                { id: "setvisible-17-true", frame: 17, type: "setVisible", target: "true" },
+                { id: "stop-32", frame: 32, type: "stop" },
+                { id: "setvisible-32-false", frame: 32, type: "setVisible", target: "false" }
+            ],
+            tracks: [{
+                    id: "track-crafting-timer-reference",
+                    targetId: "crafting-timer-reference",
+                    keyframes: [
+                        { id: "timer-0", frame: 0, props: { x: 90, y: 90, scale: 0.72, rotation: -8, opacity: 0, visible: true }, easing: "hold" },
+                        { id: "timer-1", frame: 1, props: { x: 90, y: 90, scale: 1, rotation: 0, opacity: 1, visible: true }, easing: "hold" },
+                        { id: "timer-2", frame: 2, props: { x: 90, y: 90, scale: 0.72, rotation: -8, opacity: 0, visible: true }, easing: "easeOut" },
+                        { id: "timer-8", frame: 8, props: { x: 90, y: 90, scale: 1.08, rotation: 2, opacity: 1, visible: true }, easing: "easeOut" },
+                        { id: "timer-12", frame: 12, props: { x: 90, y: 90, scale: 1, rotation: 0, opacity: 1, visible: true }, easing: "hold" },
+                        { id: "timer-13", frame: 13, props: { x: 90, y: 90, scale: 1, rotation: 0, opacity: 1, visible: true }, easing: "easeOut" },
+                        { id: "timer-14", frame: 14, props: { x: 90, y: 90, scale: 1.08, rotation: 0, opacity: 1, visible: true }, easing: "easeOut" },
+                        { id: "timer-16", frame: 16, props: { x: 90, y: 90, scale: 1, rotation: 0, opacity: 1, visible: true }, easing: "hold" },
+                        { id: "timer-17", frame: 17, props: { x: 90, y: 90, scale: 1, rotation: 0, opacity: 1, visible: true }, easing: "easeIn" },
+                        { id: "timer-23", frame: 23, props: { x: 90, y: 90, scale: 1.08, rotation: 2, opacity: 1, visible: true }, easing: "easeIn" },
+                        { id: "timer-32", frame: 32, props: { x: 90, y: 90, scale: 0.72, rotation: 8, opacity: 0, visible: true }, easing: "hold" }
+                    ]
+                }]
+        }
     },
     {
         id: "join-qr-code",

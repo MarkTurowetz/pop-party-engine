@@ -1,9 +1,10 @@
-export const ART_COMPONENT_SCHEMA_VERSION = 6;
+export const ART_COMPONENT_SCHEMA_VERSION = 7;
 const SPRITE_SCHEMA_VERSION = 1;
 const CENTERED_COORDINATE_SCHEMA_VERSION = 2;
 const LAYERED_PREFAB_GEOMETRY_VERSION = 4;
 const INTRINSIC_REFERENCE_GEOMETRY_VERSION = 5;
 const PLAYER_ANSWER_BUBBLE_GEOMETRY_VERSION = 6;
+const CRAFTING_TIMER_FLATTEN_VERSION = 7;
 
 const LAYERED_PREFAB_GEOMETRY_CHAINS = [
   { baseName: "Voting Card Answer Text", wrapperName: "Voting Card Answer" },
@@ -16,6 +17,13 @@ const INTRINSIC_REFERENCE_COMPOSITIONS = ["Voting Card Voters MC"] as const;
 const PLAYER_ANSWER_BUBBLE_GEOMETRY_CHAIN = {
   baseName: "Player Answer Bubble",
   wrapperName: "Player Answer Bubble MC"
+} as const;
+
+const CRAFTING_TIMER_IDS = {
+  base: "crafting-timer",
+  widget: "crafting-timer-widget",
+  baseReference: "crafting-timer-reference",
+  legacyAnimated: "prefab-crafting-timer-mc"
 } as const;
 
 type Dict = Record<string, unknown>;
@@ -577,6 +585,173 @@ export function normalizeCurrentArtManifestGeometry<T>(manifestValue: T): { mani
   return { manifest, report };
 }
 
+function craftingTimerVisualComponents(compositions: Dict): Dict[] {
+  const candidates = [
+    record(compositions[CRAFTING_TIMER_IDS.base]),
+    record(compositions[CRAFTING_TIMER_IDS.widget]),
+    record(compositions[CRAFTING_TIMER_IDS.legacyAnimated])
+  ];
+  const source = candidates.find((composition) => Array.isArray(composition.components)
+    && composition.components.some((value) => String(record(value).id || "") === "timer-value"));
+  const byId = new Map((Array.isArray(source?.components) ? source.components : []).map((value) => {
+    const component = record(value);
+    return [String(component.id || ""), component];
+  }));
+  const value = {
+    id: "timer-value", name: "Timer Value", instanceLabel: "timerValue", kind: "text",
+    x: 90, y: 92, width: 130, height: 82, scale: 1, rotation: 0,
+    defaultAnimationState: "Default", defaultText: "30", fontSize: 60,
+    autoFitText: true, fontColor: "#17131f",
+    ...clone(byId.get("timer-value") || {})
+  };
+  const legacyFill = clone(byId.get("timer-fill") || byId.get("timer-ring") || {});
+  const background = {
+    id: "timer-background", name: "Timer Background", instanceLabel: "timerBackground", kind: "shape",
+    x: 90, y: 90, width: 100, height: 100, scale: 1, rotation: 0,
+    defaultAnimationState: "Default", shapeStyle: "rounded", fillColor: "#fffdf4",
+    borderColor: "transparent", borderWidth: 0, borderRadius: 50,
+    ...clone(byId.get("timer-background") || {})
+  };
+  const fill: Dict = {
+    id: "timer-fill", name: "Timer Fill", instanceLabel: "timerFill", kind: "shape",
+    x: 90, y: 90, width: 180, height: 180, scale: 1, rotation: 0,
+    defaultAnimationState: "Default", shapeStyle: "rounded", fillColor: "#2458ff",
+    borderColor: "#17131f", borderWidth: 5, borderRadius: 90,
+    ...legacyFill
+  };
+  fill.id = "timer-fill";
+  fill.name = "Timer Fill";
+  fill.instanceLabel = "timerFill";
+  fill.fillCss = "conic-gradient(#2458ff calc(var(--timer-progress, 1) * 1turn), rgba(23, 19, 31, 0.16) 0)";
+  return [value, background, fill].map((component) => ({ ...component, defaultAnimationState: "Default" }));
+}
+
+function defaultCraftingTimerLifecycleTimeline(): Dict {
+  const pose = (frame: number, scale: number, opacity: number, rotation: number, easing: string): Dict => ({
+    id: `key-crafting-timer-${frame}`, frame,
+    props: { x: 90, y: 90, scale, rotation, opacity, visible: true }, easing
+  });
+  return {
+    fps: 30,
+    frameCount: 33,
+    labels: [
+      { name: "Off", frame: 0 }, { name: "Park", frame: 0 }, { name: "On", frame: 1 },
+      { name: "Appear", frame: 2 }, { name: "Update", frame: 13 }, { name: "Disappear", frame: 17 }
+    ],
+    commandFrames: [0, 1, 2, 12, 13, 16, 17, 32],
+    commands: [
+      { id: "stop-0", frame: 0, type: "stop" },
+      { id: "setvisible-0-false", frame: 0, type: "setVisible", target: "false" },
+      { id: "stop-1", frame: 1, type: "stop" },
+      { id: "setvisible-1-true", frame: 1, type: "setVisible", target: "true" },
+      { id: "setvisible-2-true", frame: 2, type: "setVisible", target: "true" },
+      { id: "stop-12", frame: 12, type: "stop" },
+      { id: "setvisible-13-true", frame: 13, type: "setVisible", target: "true" },
+      { id: "stop-16", frame: 16, type: "stop" },
+      { id: "setvisible-17-true", frame: 17, type: "setVisible", target: "true" },
+      { id: "stop-32", frame: 32, type: "stop" },
+      { id: "setvisible-32-false", frame: 32, type: "setVisible", target: "false" }
+    ],
+    tracks: [{
+      id: "track-crafting-timer-reference",
+      targetId: CRAFTING_TIMER_IDS.baseReference,
+      keyframes: [
+        pose(0, 0.72, 0, -8, "hold"), pose(1, 1, 1, 0, "hold"),
+        pose(2, 0.72, 0, -8, "easeOut"), pose(8, 1.08, 1, 2, "easeOut"),
+        pose(12, 1, 1, 0, "hold"), pose(13, 1, 1, 0, "easeOut"),
+        pose(14, 1.08, 1, 0, "easeOut"), pose(16, 1, 1, 0, "hold"),
+        pose(17, 1, 1, 0, "easeIn"), pose(23, 1.08, 1, 2, "easeIn"),
+        pose(32, 0.72, 0, 8, "hold")
+      ]
+    }]
+  };
+}
+
+function flattenCraftingTimerWidget(root: Dict, compositions: Dict, report: ArtComponentSchemaMigrationReport): string[] {
+  const legacy = record(compositions[CRAFTING_TIMER_IDS.legacyAnimated]);
+  const existingWidget = record(compositions[CRAFTING_TIMER_IDS.widget]);
+  const existingBase = record(compositions[CRAFTING_TIMER_IDS.base]);
+  if (!Object.keys(existingWidget).length && !Object.keys(existingBase).length && !Object.keys(legacy).length) return [];
+  const updatedAt = String(existingWidget.updatedAt || legacy.updatedAt || existingBase.updatedAt || new Date().toISOString());
+  const base: Dict = {
+    ...existingBase,
+    name: "Crafting Timer",
+    description: "Bespoke timer visual containing only its value, circular fill, and background.",
+    surface: "stage",
+    compositionKind: "prefab",
+    isCustom: true,
+    timelineArchitectureVersion: 2,
+    canvas: { width: 180, height: 180 },
+    components: craftingTimerVisualComponents(compositions),
+    timeline: {
+      fps: 30, frameCount: 1, labels: [{ name: "Default", frame: 0 }], commandFrames: [0],
+      commands: [{ id: "stop-0", frame: 0, type: "stop" }], tracks: []
+    },
+    updatedAt
+  };
+  const legacyTimeline = record(legacy.timeline);
+  const widgetTimeline = record(existingWidget.timeline);
+  const sourceTimeline = Array.isArray(legacyTimeline.tracks) && legacyTimeline.tracks.length
+    ? legacyTimeline
+    : Array.isArray(widgetTimeline.tracks) && widgetTimeline.tracks.length
+      ? widgetTimeline
+      : defaultCraftingTimerLifecycleTimeline();
+  const timeline = clone(sourceTimeline);
+  timeline.commands = (Array.isArray(timeline.commands) ? timeline.commands : [])
+    .filter((value) => !["playComponent", "stopComponent"].includes(String(record(value).type || "")));
+  timeline.tracks = (Array.isArray(timeline.tracks) ? timeline.tracks : []).map((value) => {
+    const track = record(value);
+    return {
+      ...track,
+      targetId: CRAFTING_TIMER_IDS.baseReference,
+      keyframes: (Array.isArray(track.keyframes) ? track.keyframes : []).map((keyframeValue) => {
+        const keyframe = clone(record(keyframeValue));
+        const props = record(keyframe.props);
+        delete props.width;
+        delete props.height;
+        keyframe.props = props;
+        return keyframe;
+      })
+    };
+  });
+  const widget: Dict = {
+    ...existingWidget,
+    name: "Crafting Timer Widget MC",
+    description: "Lifecycle owner for the complete Crafting Timer widget and its action callback.",
+    surface: "stage",
+    compositionKind: "gameObject",
+    isCustom: false,
+    timelineArchitectureVersion: 2,
+    canvas: { width: 180, height: 180 },
+    components: [{
+      id: CRAFTING_TIMER_IDS.baseReference,
+      name: "Crafting Timer",
+      instanceLabel: "craftingTimer",
+      kind: "reference",
+      x: 90, y: 90, scale: 1, rotation: 0, opacity: 1, visible: true,
+      transformOrigin: "center", referenceSizeMode: "intrinsic", locked: false,
+      defaultAnimationState: "Default", artCompositionId: CRAFTING_TIMER_IDS.base
+    }],
+    timeline,
+    updatedAt
+  };
+  compositions[CRAFTING_TIMER_IDS.base] = base;
+  compositions[CRAFTING_TIMER_IDS.widget] = widget;
+  delete compositions[CRAFTING_TIMER_IDS.legacyAnimated];
+  const deleted = new Set(Array.isArray(root.deletedCompositionIds) ? root.deletedCompositionIds.map(String) : []);
+  deleted.add(CRAFTING_TIMER_IDS.legacyAnimated);
+  root.deletedCompositionIds = [...deleted];
+  for (const surfaceValue of Object.values(record(root.organization))) {
+    const folderItems = record(record(surfaceValue).folderItems);
+    for (const [folderId, items] of Object.entries(folderItems)) {
+      folderItems[folderId] = (Array.isArray(items) ? items : [])
+        .filter((item) => String(item) !== `composition:${CRAFTING_TIMER_IDS.legacyAnimated}`);
+    }
+  }
+  report.changed = true;
+  return [CRAFTING_TIMER_IDS.base, CRAFTING_TIMER_IDS.widget, CRAFTING_TIMER_IDS.legacyAnimated];
+}
+
 function centerLegacyComponents(
   componentsValue: unknown,
   parentWidth: number,
@@ -814,6 +989,11 @@ export function migrateLegacyArtManifestSchema<T>(manifestValue: T): { manifest:
   }
   if (sourceVersion < PLAYER_ANSWER_BUBBLE_GEOMETRY_VERSION) {
     for (const compositionId of normalizePlayerAnswerBubbleGeometry(compositions, report, sourceVersion)) {
+      if (!report.compositionIds.includes(compositionId)) report.compositionIds.push(compositionId);
+    }
+  }
+  if (sourceVersion < CRAFTING_TIMER_FLATTEN_VERSION) {
+    for (const compositionId of flattenCraftingTimerWidget(root, compositions, report)) {
       if (!report.compositionIds.includes(compositionId)) report.compositionIds.push(compositionId);
     }
   }
