@@ -148,17 +148,37 @@ function compositionName(composition: Dict): string {
   return String(composition.name || "").trim().toLowerCase();
 }
 
-export function votingCardLifecycleComponentIds(composition: Dict | null, isShown: boolean): string[] {
-  const requestedIds = isShown
-    ? [VOTING_CARD_ART_COMPONENT_ID, VOTING_CARD_ANSWER_COMPONENT_ID]
-    : [
-        VOTING_CARD_ART_COMPONENT_ID,
-        VOTING_CARD_ANSWER_COMPONENT_ID,
-        VOTING_CARD_AUTHOR_COMPONENT_ID,
-        VOTING_CARD_VOTERS_COMPONENT_ID,
-        VOTING_CARD_VOTE_COUNT_COMPONENT_ID
-      ];
-  return requestedIds.filter((componentId) => componentById(composition, componentId) !== null);
+export function votingCardLifecycleComponentIds(composition: Dict | null): string[] {
+  return [VOTING_CARD_ANSWER_COMPONENT_ID].filter((componentId) => componentById(composition, componentId) !== null);
+}
+
+export function votingCardCompanionComponentIds(composition: Dict | null): string[] {
+  return [
+    VOTING_CARD_ART_COMPONENT_ID,
+    VOTING_CARD_AUTHOR_COMPONENT_ID,
+    VOTING_CARD_VOTERS_COMPONENT_ID,
+    VOTING_CARD_VOTE_COUNT_COMPONENT_ID
+  ].filter((componentId) => componentById(composition, componentId) !== null);
+}
+
+interface VotingCardVisibilityTransitionOptions {
+  isShown: boolean;
+  instant: boolean;
+  playGate: (animation: "On" | "Off") => void;
+  playPrimary: (animation: "On" | "Appear" | "Off" | "Disappear", complete: () => void) => number;
+  playCompanions: () => void;
+}
+
+export function runVotingCardVisibilityTransition(options: VotingCardVisibilityTransitionOptions): Promise<void> {
+  const nextShown = options.isShown !== false;
+  const primaryAnimation = nextShown
+    ? (options.instant ? "On" : "Appear")
+    : (options.instant ? "Off" : "Disappear");
+  if (nextShown) options.playGate("On");
+  options.playCompanions();
+  return targetCompletion((complete) => options.playPrimary(primaryAnimation, complete)).then(() => {
+    if (!nextShown) options.playGate("Off");
+  });
 }
 
 function legacyVotingCardComponent(legacy: Dict | null, id: string, fallback: Dict): Dict {
@@ -518,19 +538,40 @@ class VotingCardView {
     if (this.desiredShown === nextShown) return Promise.resolve();
     this.desiredShown = nextShown;
     const instant = options.instant === true;
-    const animation = nextShown ? (instant ? "On" : "Appear") : instant ? "Off" : "Disappear";
-    const parentState = nextShown ? "On" : "Off";
     if (nextShown) this.element.classList.remove("voting-card-group-hidden");
     const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
-    const completions = [
-      // The compound Voting Card Widget MC owns only the parked On/Off gate.
-      // Its directly-authored children own the lifecycle motion.
-      targetCompletion((complete) => this.groupVisual?.play?.(parentState, { instant: true, complete }) || 0),
-      ...votingCardLifecycleComponentIds(parent, nextShown).map((componentId) => (
-        targetCompletion((complete) => this.playChild(componentId, animation, { instant, complete }))
-      ))
-    ];
-    return Promise.all(completions).then(() => undefined);
+    const primaryTargetId = votingCardLifecycleComponentIds(parent)[0];
+    if (!primaryTargetId) {
+      return Promise.reject(new Error(`Voting card ${this.cardId} is missing its primary lifecycle target`));
+    }
+    return runVotingCardVisibilityTransition({
+      isShown: nextShown,
+      instant,
+      // The compound Voting Card Widget MC is an immediate availability gate.
+      // It must remain On until the one directly-awaited card visual finishes
+      // Disappear, otherwise the authored exit is hidden before it can play.
+      playGate: (animation) => {
+        this.groupVisual?.play?.(animation, { instant: true });
+      },
+      // Set Voting Cards Shown owns one callback target per card. Nested author,
+      // voter, and count animations cannot satisfy or delay that action barrier.
+      playPrimary: (animation, complete) => this.playChild(primaryTargetId, animation, { instant, complete }),
+      playCompanions: () => {
+        for (const componentId of votingCardCompanionComponentIds(parent)) {
+          if (nextShown && componentId !== VOTING_CARD_ART_COMPONENT_ID) continue;
+          if (!nextShown && this.rootRenderer?.isComponentVisible?.(componentId) !== true) continue;
+          const hasAuthoredExit = componentId !== VOTING_CARD_VOTERS_COMPONENT_ID;
+          const companionAnimation = nextShown
+            ? (instant ? "On" : "Appear")
+            : (instant || !hasAuthoredExit ? "Off" : "Disappear");
+          this.playChild(
+            componentId,
+            companionAnimation,
+            { instant: instant || (!nextShown && !hasAuthoredExit) }
+          );
+        }
+      }
+    });
   }
 
   revealAuthor(options: Dict = {}): Promise<void> {

@@ -10,6 +10,8 @@ import {
   VOTING_CARD_VOTER_TEXT_ID,
   VOTING_CARD_VOTERS_MC_ID,
   runtimeVotingCardComposition,
+  runVotingCardVisibilityTransition,
+  votingCardCompanionComponentIds,
   votingCardLifecycleComponentIds,
   votingCardRuntimeBaseCompositionId,
   votingCardArtTimeline
@@ -56,13 +58,81 @@ describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
       ]
     };
 
-    expect(votingCardLifecycleComponentIds(productionLikeCard, true)).toEqual(["voting-card-answer-mc"]);
-    expect(votingCardLifecycleComponentIds(productionLikeCard, false)).toEqual([
-      "voting-card-answer-mc",
+    expect(votingCardLifecycleComponentIds(productionLikeCard)).toEqual(["voting-card-answer-mc"]);
+    expect(votingCardCompanionComponentIds(productionLikeCard)).toEqual([
       "voting-card-author-mc",
       "voting-card-voters-mc",
       "voting-card-vote-count-mc"
     ]);
+  });
+
+  it("waits for exactly one primary callback per voting card and gates Off afterward", async () => {
+    let completePrimary: () => void = () => {
+      throw new Error("Primary callback was not registered");
+    };
+    const events: string[] = [];
+    const completion = runVotingCardVisibilityTransition({
+      isShown: false,
+      instant: false,
+      playGate: (animation) => events.push(`gate:${animation}`),
+      playPrimary: (animation, complete) => {
+        events.push(`primary:${animation}`);
+        completePrimary = complete;
+        return 500;
+      },
+      playCompanions: () => events.push("companions:fire-and-forget")
+    });
+
+    expect(events).toEqual(["companions:fire-and-forget", "primary:Disappear"]);
+    await Promise.resolve();
+    expect(events).not.toContain("gate:Off");
+    completePrimary();
+    await completion;
+    expect(events).toEqual(["companions:fire-and-forget", "primary:Disappear", "gate:Off"]);
+  });
+
+  it("opens the card gate before waiting for its Appear callback", async () => {
+    const events: string[] = [];
+    const completion = runVotingCardVisibilityTransition({
+      isShown: true,
+      instant: false,
+      playGate: (animation) => events.push(`gate:${animation}`),
+      playPrimary: (animation, complete) => {
+        events.push(`primary:${animation}`);
+        complete();
+        return 333;
+      },
+      playCompanions: () => events.push("companions")
+    });
+
+    await completion;
+    expect(events).toEqual(["gate:On", "companions", "primary:Appear"]);
+  });
+
+  it("does not finish a multi-card action until every card's primary callback fires", async () => {
+    const callbacks: Array<() => void> = [];
+    const cards = ["one", "two", "three"].map(() => runVotingCardVisibilityTransition({
+      isShown: false,
+      instant: false,
+      playGate: () => {},
+      playPrimary: (_animation, complete) => {
+        callbacks.push(complete);
+        return 500;
+      },
+      playCompanions: () => {}
+    }));
+    let finished = false;
+    const actionBarrier = Promise.all(cards).then(() => {
+      finished = true;
+    });
+
+    callbacks[0]();
+    callbacks[1]();
+    await Promise.resolve();
+    expect(finished).toBe(false);
+    callbacks[2]();
+    await actionBarrier;
+    expect(finished).toBe(true);
   });
 
   it("injects runtime answer text without changing the authored child prefab", () => {

@@ -232,6 +232,10 @@ concepts into focused modules.
   owns labeled `cardArt`, `answer`, `author`, `voters`, and `voteCount` child prefabs; runtime code
   reveals those children through their timelines. `cardArt` owns the deeper stopped
   `correctnessState` (`Neutral`/`Correct`) instead of runtime code assigning presentation colors.
+  `Set Voting Cards Shown` owns exactly one completion target per card: the background-bearing
+  `answer` child that receives `Appear` or `Disappear`. Author, voter, and vote-count companions
+  may animate fire-and-forget, and the compound card gate switches `Off` only after that primary
+  child completes; nested companions never satisfy or delay the flow action.
 - `Park` remains a compatibility label for older authored timelines, but runtime defaults and
   immediate hides use `Off`. A newly rendered object stays hidden until an explicit reveal call.
 - Art Manager compositions are prefab/source assets. Stage layout entries are placed
