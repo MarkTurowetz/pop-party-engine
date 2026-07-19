@@ -3,6 +3,7 @@
 // controller runtime.
 
 import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
+import { resolveControllerSubmissionConfirmation } from "./controllerSubmissionConfirmation";
 
 type Dict = Record<string, unknown>;
 interface RenderContext {
@@ -74,6 +75,18 @@ export function createControllerStateRuntime(options: ControllerStateRuntimeOpti
     });
   }
 
+  function renderSubmissionConfirmation(context: RenderContext): boolean | number | null {
+    const confirmation = resolveControllerSubmissionConfirmation(context.lobby, context.me);
+    if (!confirmation) return false;
+    getVoiceInput().stopRecognition();
+    return getGlobalActionView().renderMessage(context.lobby, confirmation.message, {
+      id: `submissionConfirmation:${confirmation.actionId}`,
+      actionId: confirmation.actionId,
+      layoutPhase: controllerLayoutStateIds.presentation,
+      showButton: false
+    });
+  }
+
   function renderInGame(context: RenderContext): boolean {
     if (getGlobalActionView().render(context.lobby, context.me)) return true;
     getLobbyView().renderInGamePhase(context.me, context.phase);
@@ -90,6 +103,11 @@ export function createControllerStateRuntime(options: ControllerStateRuntimeOpti
       id: "microphoneAccess",
       matches: (context) => Boolean((context.lobby?.microphoneAccess as Dict)?.actionId),
       render: (context) => getMicrophoneAccessView().render(context.lobby, context.me)
+    },
+    {
+      id: "submissionConfirmation",
+      matches: (context) => Boolean(resolveControllerSubmissionConfirmation(context.lobby, context.me)),
+      render: renderSubmissionConfirmation
     },
     {
       id: "choiceInput",

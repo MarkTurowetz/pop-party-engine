@@ -105,6 +105,12 @@ concepts into focused modules.
   - Controller input views select semantic controller layouts rather than reusing their current
     stage phase. Layout placements start in their authored `On`/`Off` state; response-driven
     controls such as validation banners and completion messages may then be toggled fire-and-forget.
+    A server-accepted, completed `submitOnce` choice or written-text answer routes through the
+    Presentation layout as a buttonless submission confirmation (`You answered: …` or
+    `You wrote: …`). Voting, voice capture, microphone permission, continuous selection, and
+    unfinished inputs do not enter that confirmation state. The active input payload and the
+    player's serialized `done` answer are the sole authority for this routing; it is not a game-flow
+    action and cannot advance the flow.
     Controller layout syncing retains only Join, Lobby, the semantic controller layouts, and any
     custom layout explicitly referenced by a `Set Controller Layout` flow action. It does not mirror
     ordinary stage moment ids into the Controller Layout Tool; an unassigned in-game phase uses the
