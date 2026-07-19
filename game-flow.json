@@ -13,7 +13,7 @@
       },
       "returnNodePosition": {
         "x": 839,
-        "y": 1756
+        "y": 1808
       },
       "entryTargetActionId": "lobby-action-mqojohry",
       "nextStateTargetId": "intro",
@@ -30,7 +30,7 @@
           "nextTargetActionId": "lobby-action-mqprlx3p",
           "nodePosition": {
             "x": 804,
-            "y": 1144
+            "y": 1196
           },
           "subActions": [],
           "trigger": "onCountdownComplete",
@@ -64,7 +64,7 @@
           "nextTargetActionId": "lobby-action-mrmi8fie",
           "nodePosition": {
             "x": 804,
-            "y": 1348
+            "y": 1400
           },
           "subActions": [],
           "isShown": true,
@@ -82,7 +82,7 @@
           "nextTargetActionId": "return",
           "nodePosition": {
             "x": 804,
-            "y": 1552
+            "y": 1604
           },
           "subActions": []
         },
@@ -150,6 +150,24 @@
               "nodePosition": null,
               "subActions": [],
               "targetLayoutElementId": "joinprompt",
+              "targetLayoutScope": "moment",
+              "targetLayoutSurface": "stage",
+              "isShown": true,
+              "instant": false
+            },
+            {
+              "id": "lobby-sub-action-mrr4oa0e",
+              "name": "Set Game Object Shown",
+              "type": "setGameObjectShown",
+              "category": "standard",
+              "timing": {
+                "mode": "S+",
+                "seconds": 0
+              },
+              "nextTargetActionId": "",
+              "nodePosition": null,
+              "subActions": [],
+              "targetLayoutElementId": "stagejoinqr",
               "targetLayoutScope": "moment",
               "targetLayoutSurface": "stage",
               "isShown": true,
