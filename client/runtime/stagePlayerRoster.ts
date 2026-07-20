@@ -26,6 +26,7 @@ interface TreeRenderer {
   playAll?: (animation: string, options?: Dict) => number;
   playComponent?: (componentId: string, animation: string, options?: Dict) => number;
   stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
+  dispose?: () => void;
 }
 
 declare global {
@@ -52,16 +53,15 @@ type RectLike = { left: number; top: number; width: number; height: number };
 export function pointPopupOverlayPosition(
   anchorRect: RectLike,
   hostRect: RectLike,
-  hostSize: { width: number; height: number },
-  popupSize: { width: number; height: number }
+  hostSize: { width: number; height: number }
 ): { left: number; top: number } {
   const scaleX = hostRect.width > 0 && hostSize.width > 0 ? hostRect.width / hostSize.width : 1;
   const scaleY = hostRect.height > 0 && hostSize.height > 0 ? hostRect.height / hostSize.height : 1;
   const anchorCenterX = anchorRect.left + anchorRect.width / 2;
   const anchorCenterY = anchorRect.top + anchorRect.height / 2;
   return {
-    left: (anchorCenterX - hostRect.left) / scaleX - popupSize.width / 2,
-    top: (anchorCenterY - hostRect.top) / scaleY - popupSize.height / 2
+    left: (anchorCenterX - hostRect.left) / scaleX,
+    top: (anchorCenterY - hostRect.top) / scaleY
   };
 }
 
@@ -103,7 +103,8 @@ function cloneArtComposition(composition: Dict, apply?: (component: Dict) => voi
 
 function pointPopupTimeline(composition: Dict): TimelineDocument {
   const authored = composition.timeline as TimelineDocument | null | undefined;
-  return authored && ((authored.labels || []).length > 0 || (authored.commands || []).length > 0 || (authored.tracks || []).length > 0)
+  const hasPopup = authored?.labels?.some((label) => String(label?.name || "").trim().toLowerCase() === "popup") === true;
+  return authored && hasPopup
     ? effectiveVisibilityTimeline(authored)
     : defaultPlayerPointPopupTimeline();
 }
@@ -779,16 +780,13 @@ class PlayerRosterRenderer {
     if (!node || !anchor || !this.host) return false;
     const hostRect = this.host.getBoundingClientRect();
     const anchorRect = anchor.getBoundingClientRect();
-    const popupWidth = Math.max(1, Number.parseFloat(node.style.width) || node.offsetWidth || 1);
-    const popupHeight = Math.max(1, Number.parseFloat(node.style.height) || node.offsetHeight || 1);
     const position = pointPopupOverlayPosition(
       anchorRect,
       hostRect,
       {
         width: elementDimension(this.host, "width", hostRect.width || 1),
         height: elementDimension(this.host, "height", hostRect.height || 1)
-      },
-      { width: popupWidth, height: popupHeight }
+      }
     );
     node.style.left = `${position.left}px`;
     node.style.top = `${position.top}px`;
@@ -875,21 +873,23 @@ class PlayerRosterRenderer {
     if (!renderer?.playAll) return 0;
     node.classList.remove("point-popup-hidden");
     const finish = () => {
-      node.remove();
+      this.disposePointPopup(node);
       if (typeof options.complete === "function") (options.complete as () => void)();
     };
-    return renderer.playAll("Appear", { instant: false, complete: finish });
+    return renderer.playAll("Popup", { instant: false, complete: finish });
   }
 
-  showPointPopupsForAction(): Promise<void> {
-    const barrier = createActionCompletionBarrier();
+  showPointPopupsForAction(): void {
     for (const node of Array.from(this.host?.querySelectorAll(".point-popup[data-point-popup-pending='true']") || [])) {
       const popupNode = node as El;
-      const targetComplete = barrier.addTarget();
-      this.playPointPopup(popupNode, { id: popupNode.dataset.pointPopupId }, { complete: targetComplete });
+      this.playPointPopup(popupNode, { id: popupNode.dataset.pointPopupId });
     }
-    barrier.seal();
-    return barrier.promise;
+  }
+
+  disposePointPopup(node: El): void {
+    this.pointPopupRenderers.get(node)?.dispose?.();
+    this.pointPopupRenderers.delete(node);
+    node.remove();
   }
 
   clearPointPopupIds(): void {
@@ -898,7 +898,7 @@ class PlayerRosterRenderer {
 
   clearPointPopups(): void {
     this.clearPointPopupIds();
-    this.host?.querySelectorAll(".point-popup").forEach((node) => node.remove());
+    this.host?.querySelectorAll(".point-popup").forEach((node) => this.disposePointPopup(node as El));
   }
 }
 

@@ -20,6 +20,27 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(PartyGameArtObject.syncComponentElement).toBeTypeOf("function");
   });
 
+  it("cancels root and child animations when a dynamic art tree is disposed", () => {
+    const stop = vi.fn();
+    const removeImmediately = vi.fn();
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      rootTimelinePlayer: { stop: () => void } | null;
+      rootTimelineSignature: string;
+      views: Map<string, { removeImmediately: () => void }>;
+      dispose: () => void;
+    };
+    renderer.rootTimelinePlayer = { stop };
+    renderer.rootTimelineSignature = "active-popup";
+    renderer.views = new Map([["point-text", { removeImmediately }]]);
+
+    renderer.dispose();
+
+    expect(stop).toHaveBeenCalledOnce();
+    expect(removeImmediately).toHaveBeenCalledOnce();
+    expect(renderer.rootTimelinePlayer).toBeNull();
+    expect(renderer.views.size).toBe(0);
+  });
+
   it("initializes lifecycle MCs at Off and semantic prefabs at their authored default", () => {
     expect(artRuntimeInitialAnimation(effectiveVisibilityTimeline(null), "Default")).toBe("Off");
     expect(artRuntimeInitialAnimation(normalizeTimeline({

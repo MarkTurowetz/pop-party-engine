@@ -236,16 +236,17 @@ concepts into focused modules.
 - When a flow action explicitly invokes a labeled child component, that exact child becomes the
   action's callback target. The parent may be placed in an immediate `On` setup state, but it does
   not duplicate the child's animation or contribute a second completion signal.
-- Two deliberately fire-and-forget runtime command sources are allowed. A newly spawned dynamic
+- Three deliberately fire-and-forget runtime command sources are allowed. A newly spawned dynamic
   player may play `Appear` on its avatar MC, name MC, and VIP MC; input-state changes may play
-  `ChoosingStart` or `ChoosingEnd` on avatar behavior. Neither path attaches a callback, contributes
-  to an action barrier, or advances game flow. Consequently E+ and S+ have identical behavior for
-  the non-waiting spawn operation.
+  `ChoosingStart` or `ChoosingEnd` on avatar behavior; Show Points may start its popup animation.
+  None of these animations contributes to an action barrier or advances game flow.
 - `Show Points` uses the direct `pointPopupContainer` child of Player Widget MC as an authored
   position anchor. The popup itself is spawned into an overflow-visible roster overlay at the
   anchor's rendered center, so the Player MC supplies its `x`/`y` without becoming a clipping
-  parent. Each popup plays only the Player Point Popup `Appear` timeline, and its terminal callback
-  removes that popup and completes its exact action-barrier target; CSS supplies no popup motion.
+  parent. Each popup plays only the top-level 1.5-second Player Point Popup `Popup` timeline. Its
+  terminal callback removes only that popup; it never joins or completes the Show Points action.
+  Pause, quit, and moment teardown cancel the timeline and remove the popup immediately without
+  waiting for cleanup. CSS supplies centering only and owns no popup motion.
 - Composite reveal widgets follow the same ownership model as Player Widget MC. Voting Card MC
   owns labeled `cardArt`, `answer`, `author`, `voters`, and `voteCount` child prefabs; runtime code
   reveals those children through their timelines. `cardArt` owns the deeper stopped

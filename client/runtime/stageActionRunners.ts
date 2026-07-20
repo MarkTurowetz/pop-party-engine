@@ -147,10 +147,11 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
         runtime.applyEffect(action);
         return;
       }
-      const result = c.showPointPopupsForAction
-        ? (c.showPointPopupsForAction as (a: Action) => Promise<void>)(action)
-        : Promise.reject(new Error("Point popup runtime unavailable"));
-      completeWhenActionTargetsFinish(action, runtime, result);
+      if (!c.showPointPopupsForAction) return;
+      (c.showPointPopupsForAction as (a: Action) => void)(action);
+      // Popup owns only its eventual cleanup callback. Show Points is deliberately
+      // fire-and-forget and never joins the flow action's completion barrier.
+      completeWhenActionTargetsFinish(action, runtime, undefined);
     },
     revealPlayerAnswerCorrectness(action, runtime) {
       if (!runtime.isPrimary) {

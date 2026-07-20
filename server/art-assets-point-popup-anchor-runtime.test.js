@@ -52,4 +52,29 @@ describe("Art Manager Player Widget MC normalization", () => {
       height: 64
     }));
   });
+
+  it("upgrades Player Point Popup with the authored top-level Popup animation", () => {
+    const [composition] = createRuntime().normalizeArtCompositionsDraft([{
+      id: "player-point-popup",
+      name: "Player Point Popup",
+      surface: "stage",
+      compositionKind: "gameObject",
+      canvas: { width: 154, height: 64 },
+      components: [
+        { id: "point-text", name: "Point Text", kind: "text", x: 75, y: 30, width: 150, height: 60 },
+        { id: "point-shadow", name: "Point Shadow", kind: "text", x: 79, y: 34, width: 150, height: 60 }
+      ],
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [{ name: "Appear", frame: 1 }],
+        commands: [{ frame: 1, type: "stop" }],
+        tracks: []
+      }
+    }]);
+
+    expect(composition.timeline.labels).toContainEqual({ name: "Popup", frame: 33 });
+    expect(composition.timeline.commands).toContainEqual({ frame: 78, type: "setVisible", target: "false" });
+    expect(composition.timeline.commands).toContainEqual({ frame: 78, type: "stop" });
+  });
 });

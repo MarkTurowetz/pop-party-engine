@@ -10,6 +10,7 @@ const {
 } = require("../shared/art-component-schema-migration");
 const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
+const { migratePlayerPointPopupTimeline } = require("../shared/player-point-popup-timeline");
 const { ART_TIMELINE_ARCHITECTURE_VERSION, collectArtArchitectureIssues } = require("../shared/art-timeline-architecture");
 const { canonicalLifecycleLabel } = require("../shared/lifecycle-labels");
 const {
@@ -405,6 +406,7 @@ function createArtAssetsRuntime({
     migrateLobbyWidgetReferenceBounds(composition.id, components, canvas);
     let timelineOverride = migrateLayoutTextFieldWidgetTimeline(composition.id, override?.timeline, composition.timeline);
     timelineOverride = migrateLobbyWidgetTimeline(composition.id, timelineOverride, composition.timeline);
+    timelineOverride = migratePlayerPointPopupTimeline(composition.id, timelineOverride || composition.timeline);
     const timeline = normalizeTimeline(timelineOverride, composition.timeline);
     const normalized = {
       id: composition.id,

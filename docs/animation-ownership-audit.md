@@ -113,8 +113,8 @@ Completed migration:
 
 1. E+ visual actions now return Promise-based target barriers; action runners contain no duration-to-`setTimeout` advancement path.
 2. S+0.0 and S+N fire the action but suppress its callback; the start-relative action timer owns advancement.
-3. Display Text, players, answer bubbles, correctness, layout game objects, arbitrary game-object animations, timer, wipe, voting cards/reveals, and point popups use exact callbacks.
-4. Voting-card and point-popup removal follows the directly targeted timeline callback instead of a returned duration.
+3. Display Text, players, answer bubbles, correctness, layout game objects, arbitrary game-object animations, timer, wipe, and voting cards/reveals use exact action callbacks.
+4. Voting-card removal follows its directly targeted timeline callback. Point-popup cleanup follows its `Popup` callback but remains deliberately outside the Show Points action barrier.
 5. Parent Art Manager timelines no longer include child component durations in their completion calculation.
 
 ## Regression coverage

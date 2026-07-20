@@ -10,6 +10,7 @@ const pointPopupTimeline = {
   frameCount: 12,
   labels: [
     { name: "appear", frame: 1 },
+    { name: "Popup", frame: 1 },
     { name: "on", frame: 11 }
   ],
   commands: [{ frame: 11, type: "stop" }],

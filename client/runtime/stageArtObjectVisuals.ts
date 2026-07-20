@@ -681,6 +681,7 @@ class ArtObjectView {
   }
 
   removeImmediately(): void {
+    (this.visual as { cancel?: () => void } | null)?.cancel?.();
     for (const child of this.children.values()) child.removeImmediately();
     this.children.clear();
     this.element.remove();
@@ -785,6 +786,14 @@ class ArtObjectTreeRenderer {
       view.removeImmediately();
     }
     this.syncRootTimelineFrame();
+  }
+
+  dispose(): void {
+    this.rootTimelinePlayer?.stop();
+    this.rootTimelinePlayer = null;
+    this.rootTimelineSignature = "";
+    for (const view of this.views.values()) view.removeImmediately();
+    this.views.clear();
   }
 
   playAll(animation: string, options: Dict = {}): number {

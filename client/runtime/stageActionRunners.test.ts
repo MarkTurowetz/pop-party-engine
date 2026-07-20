@@ -23,7 +23,7 @@ function context() {
     revealPlayerAnswerCorrectnessForAction: vi.fn(() => Promise.resolve()),
     setPlayerAnswerBubblesShownForAction: vi.fn(() => Promise.resolve()),
     runVotingCardActionForAction: vi.fn(() => Promise.resolve()),
-    showPointPopupsForAction: vi.fn(() => Promise.resolve())
+    showPointPopupsForAction: vi.fn()
   };
 }
 
@@ -163,6 +163,17 @@ describe("PartyGameStageActionRunners (ported)", () => {
     correctness.resolve();
     await flushPromises();
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "reveal-correctness");
+  });
+
+  it("starts Show Points as fire-and-forget without joining the popup cleanup callback", () => {
+    const c = context();
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    const action = { id: "show-points", type: "showPoints", timing: { mode: "E+", seconds: 0 } };
+
+    runner.run(action, { isPrimary: true, actionKey: "k" });
+
+    expect(c.showPointPopupsForAction).toHaveBeenCalledWith(action);
+    expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "show-points");
   });
 
   it("fails closed when a target completion rejects", async () => {

@@ -270,9 +270,8 @@ function renderPointPopups(popups: Dict[] = [], options: Dict = {}): void {
   (playerRosterRenderer() as { renderPointPopups?: (p: Dict[], o?: Dict) => void } | null)?.renderPointPopups?.(popups, options);
 }
 
-function showPointPopupsForAction(_action: Dict): Promise<void> {
-  return (playerRosterRenderer() as { showPointPopupsForAction?: () => Promise<void> } | null)?.showPointPopupsForAction?.()
-    || Promise.reject(new Error("Point popup renderer unavailable"));
+function showPointPopupsForAction(_action: Dict): void {
+  (playerRosterRenderer() as { showPointPopupsForAction?: () => void } | null)?.showPointPopupsForAction?.();
 }
 
 function votingCardRenderOptions(lobby: Dict): Dict {

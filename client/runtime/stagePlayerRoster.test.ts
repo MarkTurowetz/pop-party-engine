@@ -20,9 +20,8 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(pointPopupOverlayPosition(
       { left: 225, top: 75, width: 50, height: 20 },
       { left: 100, top: 50, width: 500, height: 100 },
-      { width: 1000, height: 200 },
-      { width: 150, height: 60 }
-    )).toEqual({ left: 225, top: 40 });
+      { width: 1000, height: 200 }
+    )).toEqual({ left: 300, top: 70 });
   });
 
   it("createRenderer returns the roster surface", () => {
@@ -756,7 +755,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
-  it("renders point popup prefabs with a timeline fallback when no authored timeline exists", () => {
+  it("renders point popup prefabs with a Popup timeline fallback when no authored timeline exists", () => {
     const rendered: Record<string, unknown>[] = [];
     class FakeTreeRenderer {
       render(components: Record<string, unknown>[], canvas: Record<string, unknown>, options: Record<string, unknown>) {
@@ -790,7 +789,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       expect.objectContaining({ id: "point-shadow", defaultText: "+50" })
     ]);
     expect((rendered[0].options as { timeline: { labels: { name: string }[]; tracks: { targetId: string }[] } }).timeline.labels.map((label) => label.name)).toContain(
-      "Appear"
+      "Popup"
     );
     expect((rendered[0].options as { timeline: { tracks: { targetId: string }[] } }).timeline.tracks.map((track) => track.targetId)).toEqual([
       "point-text",
@@ -815,15 +814,32 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       finishTimeline = (options?.complete as (() => void) | undefined) || (() => {});
       return 250;
     });
+    const dispose = vi.fn();
     const roster = PartyGamePlayerRoster.createRenderer({});
-    roster.pointPopupRenderers.set(node as unknown as HTMLElement, { render: vi.fn(), playAll });
+    roster.pointPopupRenderers.set(node as unknown as HTMLElement, { render: vi.fn(), playAll, dispose });
 
     expect(roster.playPointPopup(node as unknown as HTMLElement, { id: "popup-1" })).toBe(250);
 
     expect((node as { removedClass?: string }).removedClass).toBe("point-popup-hidden");
-    expect(playAll).toHaveBeenCalledWith("Appear", { instant: false, complete: expect.any(Function) });
+    expect(playAll).toHaveBeenCalledWith("Popup", { instant: false, complete: expect.any(Function) });
     expect((node as { removed?: boolean }).removed).not.toBe(true);
     finishTimeline();
+    expect(dispose).toHaveBeenCalledOnce();
     expect((node as { removed?: boolean }).removed).toBe(true);
+  });
+
+  it("cancels and destroys active point popups immediately during teardown", () => {
+    const dispose = vi.fn();
+    const node = {
+      remove: vi.fn()
+    } as unknown as HTMLElement;
+    const roster = PartyGamePlayerRoster.createRenderer({});
+    roster.pointPopupRenderers.set(node, { render: vi.fn(), dispose });
+
+    roster.disposePointPopup(node);
+
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(node.remove).toHaveBeenCalledOnce();
+    expect(roster.pointPopupRenderers.has(node)).toBe(false);
   });
 });

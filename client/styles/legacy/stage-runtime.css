@@ -1086,6 +1086,7 @@
 
 .point-popup {
   position: absolute;
+  translate: -50% -50%;
   z-index: 1;
   color: var(--yellow);
   font-size: 34px;
