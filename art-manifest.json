@@ -6491,6 +6491,32 @@
       },
       "components": [
         {
+          "id": "point-popup-container",
+          "name": "Point Popup Container",
+          "instanceLabel": "pointPopupContainer",
+          "kind": "container",
+          "x": 150,
+          "y": 180,
+          "width": 154,
+          "height": 64,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "childDistribution": "none",
+          "shapeStyle": "rectangle",
+          "fillColor": "transparent",
+          "fillCss": "",
+          "borderColor": "transparent",
+          "borderWidth": 0,
+          "borderRadius": 0
+        },
+        {
           "id": "player-answer-bubble-mc",
           "name": "Player Answer Bubble MC",
           "instanceLabel": "playerAnswerBubbleMC",
@@ -6500,6 +6526,7 @@
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
+          "brightness": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "bottom",
@@ -6518,6 +6545,7 @@
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
+          "brightness": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
@@ -6533,9 +6561,10 @@
           "kind": "reference",
           "x": 150,
           "y": 309,
-          "scale": 0.968254,
+          "scale": 0.968,
           "rotation": 0,
           "opacity": 1,
+          "brightness": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
@@ -6554,6 +6583,7 @@
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
+          "brightness": 1,
           "visible": true,
           "editorHidden": false,
           "transformOrigin": "center",
@@ -6607,9 +6637,37 @@
             "target": "true"
           }
         ],
-        "tracks": []
+        "tracks": [
+          {
+            "id": "track-point-popup-container",
+            "targetId": "point-popup-container",
+            "keyframes": [
+              {
+                "id": "key-point-popup-container-0",
+                "frame": 0,
+                "props": {
+                  "x": 150,
+                  "y": 81,
+                  "scale": 1,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "brightness": 1,
+                  "width": 154,
+                  "height": 64,
+                  "shapeStyle": "rectangle",
+                  "fillColor": "transparent",
+                  "fillCss": "",
+                  "borderColor": "transparent",
+                  "borderWidth": 0,
+                  "borderRadius": 0
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
       },
-      "updatedAt": "2026-07-14T23:12:00.000Z"
+      "updatedAt": "2026-07-20T18:30:13.858Z"
     },
     "prefab-voting-card-correctness-state": {
       "name": "Voting Card Correctness State",
