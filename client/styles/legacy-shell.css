@@ -1264,28 +1264,28 @@ body.tool-dashboard-mode .layout-shell {
   text-shadow: none;
 }
 
+.player-point-popup-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: visible;
+  pointer-events: none;
+}
+
 .point-popup {
   position: absolute;
-  left: 50%;
-  bottom: calc(100% + 86px);
-  z-index: 4;
+  z-index: 1;
   color: var(--yellow);
   font-size: 34px;
   line-height: 1;
   font-weight: 1000;
   text-shadow: 4px 4px 0 var(--ink);
-  transform: translate(-50%, 16px) scale(0);
-  opacity: 0;
+  overflow: visible;
   pointer-events: none;
 }
 
-.point-popup.is-floating {
-  animation: pointPopupFloat 1500ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
-}
-
 .point-popup.point-popup-hidden {
-  opacity: 0;
-  transform: translate(-50%, 16px) scale(0);
+  visibility: hidden;
 }
 
 .point-popup.has-prefab-art {
@@ -1295,13 +1295,6 @@ body.tool-dashboard-mode .layout-shell {
 
 .point-popup.has-prefab-art > .art-runtime-object {
   text-shadow: none;
-}
-
-@keyframes pointPopupFloat {
-  0% { transform: translate(-50%, 16px) scale(0); opacity: 0; }
-  18% { transform: translate(-50%, 0) scale(1.2); opacity: 1; }
-  72% { transform: translate(-50%, -8px) scale(1); opacity: 1; }
-  100% { transform: translate(-50%, -26px) scale(0); opacity: 0; }
 }
 
 .player-lobby.players-hidden .player-tile {

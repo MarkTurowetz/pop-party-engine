@@ -241,6 +241,11 @@ concepts into focused modules.
   `ChoosingStart` or `ChoosingEnd` on avatar behavior. Neither path attaches a callback, contributes
   to an action barrier, or advances game flow. Consequently E+ and S+ have identical behavior for
   the non-waiting spawn operation.
+- `Show Points` uses the direct `pointPopupContainer` child of Player Widget MC as an authored
+  position anchor. The popup itself is spawned into an overflow-visible roster overlay at the
+  anchor's rendered center, so the Player MC supplies its `x`/`y` without becoming a clipping
+  parent. Each popup plays only the Player Point Popup `Appear` timeline, and its terminal callback
+  removes that popup and completes its exact action-barrier target; CSS supplies no popup motion.
 - Composite reveal widgets follow the same ownership model as Player Widget MC. Voting Card MC
   owns labeled `cardArt`, `answer`, `author`, `voters`, and `voteCount` child prefabs; runtime code
   reveals those children through their timelines. `cardArt` owns the deeper stopped

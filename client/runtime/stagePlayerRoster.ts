@@ -44,6 +44,26 @@ const PLAYER_AVATAR_BEHAVIORS_ID = "player-avatar-behaviors";
 const PLAYER_NAME_MC_ID = "player-name-mc";
 const PLAYER_VIP_MC_ID = "vip-mc";
 const AVATAR_FRAME_ID = "avatar";
+const POINT_POPUP_CONTAINER_ID = "point-popup-container";
+const POINT_POPUP_COMPOSITION_ID = "player-point-popup";
+
+type RectLike = { left: number; top: number; width: number; height: number };
+
+export function pointPopupOverlayPosition(
+  anchorRect: RectLike,
+  hostRect: RectLike,
+  hostSize: { width: number; height: number },
+  popupSize: { width: number; height: number }
+): { left: number; top: number } {
+  const scaleX = hostRect.width > 0 && hostSize.width > 0 ? hostRect.width / hostSize.width : 1;
+  const scaleY = hostRect.height > 0 && hostSize.height > 0 ? hostRect.height / hostSize.height : 1;
+  const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+  const anchorCenterY = anchorRect.top + anchorRect.height / 2;
+  return {
+    left: (anchorCenterX - hostRect.left) / scaleX - popupSize.width / 2,
+    top: (anchorCenterY - hostRect.top) / scaleY - popupSize.height / 2
+  };
+}
 
 const avatarTimelineLabels: Record<string, string> = {
   rex: "Rex",
@@ -57,10 +77,6 @@ const avatarTimelineLabels: Record<string, string> = {
 
 function createGameObject(gameObjectApi: GameObjectApi | undefined, options: Dict = {}): GameObjectLike | null {
   return typeof gameObjectApi?.create === "function" ? gameObjectApi.create(options) : null;
-}
-
-function renderStageTextBox(target: El | null, text: unknown, spec: Dict = {}): Dict | null {
-  return (w().PartyGameStageTextRenderer?.renderStageTextBox?.(target, text, spec, (spec.options as Dict) || {}) as Dict) || null;
 }
 
 function fn(value: unknown): boolean {
@@ -539,6 +555,7 @@ class PlayerRosterRenderer {
       tile.style.left = `${position.x}px`;
       tile.style.top = `${position.y}px`;
     });
+    this.positionPointPopups();
   }
 
   playerWidgetTiles(): El[] {
@@ -737,20 +754,73 @@ class PlayerRosterRenderer {
 
   tileForPlayerId(playerId: unknown): El | null {
     if (!this.host || !playerId) return null;
-    return this.host.querySelector(`.player-tile[data-player-id="${CSS.escape(String(playerId))}"]`);
+    const expectedId = String(playerId);
+    return (Array.from(this.host.querySelectorAll(".player-tile[data-player-id]")) as El[])
+      .find((tile) => tile.dataset.playerId === expectedId) || null;
+  }
+
+  pointPopupLayer(): El | null {
+    if (!this.host) return null;
+    let layer = this.host.querySelector(":scope > .player-point-popup-layer") as El | null;
+    if (layer) return layer;
+    layer = this.document.createElement("div");
+    layer.className = "player-point-popup-layer";
+    this.host.appendChild(layer);
+    return layer;
+  }
+
+  pointPopupAnchor(tile: El | null): El | null {
+    return tile?.querySelector(
+      `.player-object-art-host [data-art-component-id="${POINT_POPUP_CONTAINER_ID}"]`
+    ) as El | null;
+  }
+
+  positionPointPopup(node: El | null, anchor: El | null): boolean {
+    if (!node || !anchor || !this.host) return false;
+    const hostRect = this.host.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const popupWidth = Math.max(1, Number.parseFloat(node.style.width) || node.offsetWidth || 1);
+    const popupHeight = Math.max(1, Number.parseFloat(node.style.height) || node.offsetHeight || 1);
+    const position = pointPopupOverlayPosition(
+      anchorRect,
+      hostRect,
+      {
+        width: elementDimension(this.host, "width", hostRect.width || 1),
+        height: elementDimension(this.host, "height", hostRect.height || 1)
+      },
+      { width: popupWidth, height: popupHeight }
+    );
+    node.style.left = `${position.left}px`;
+    node.style.top = `${position.top}px`;
+    return true;
+  }
+
+  positionPointPopups(): void {
+    if (!this.host || typeof this.host.querySelector !== "function") return;
+    const layer = this.host.querySelector(":scope > .player-point-popup-layer");
+    if (!layer) return;
+    const popupNodes = Array.from(layer.querySelectorAll(".point-popup[data-player-id]"));
+    for (const node of popupNodes) {
+      const popupNode = node as El;
+      this.positionPointPopup(popupNode, this.pointPopupAnchor(this.tileForPlayerId(popupNode.dataset.playerId)));
+    }
   }
 
   renderPointPopups(popups: Dict[] = [], options: Dict = {}): void {
     for (const popup of popups || []) {
       if (!popup?.id || this.pointPopupIds.has(popup.id as string)) continue;
       const tile = this.tileForPlayerId(popup.playerId);
-      if (!tile) continue;
-      this.pointPopupIds.add(popup.id as string);
+      const anchor = this.pointPopupAnchor(tile);
+      const layer = this.pointPopupLayer();
+      if (!tile || !anchor || !layer) continue;
       const node = this.document.createElement("div");
       node.className = "point-popup point-popup-hidden";
       node.dataset.pointPopupId = popup.id as string;
-      this.renderPointPopupPrefab(node, popup);
-      tile.appendChild(node);
+      node.dataset.playerId = String(popup.playerId || "");
+      if (!this.renderPointPopupPrefab(node, popup)) continue;
+      this.pointPopupIds.add(popup.id as string);
+      layer.appendChild(node);
+      this.positionPointPopup(node, anchor);
       node.dataset.pointPopupPending = "true";
     }
     void options;
@@ -769,12 +839,9 @@ class PlayerRosterRenderer {
 
   renderPointPopupPrefab(node: El, popup: Dict): boolean {
     const text = `+${Math.max(0, Math.floor(Number(popup?.points || 0)))}`;
-    const composition = this.getComposition?.("player-point-popup");
+    const composition = this.getComposition?.(POINT_POPUP_COMPOSITION_ID);
     const artRuntime = w().PartyGameArtObject as { ArtObjectTreeRenderer?: new (o: Dict) => TreeRenderer } | undefined;
-    if (!node || !composition || !artRuntime?.ArtObjectTreeRenderer) {
-      renderStageTextBox(node, text, { width: 120, height: 46, fontSize: 34, fontColor: "var(--yellow)" });
-      return false;
-    }
+    if (!node || !composition || !artRuntime?.ArtObjectTreeRenderer) return false;
     node.classList.add("has-prefab-art");
     const canvas = (composition.canvas as Dict) || { width: 150, height: 60 };
     node.style.width = `${Math.max(1, Number(canvas.width || 1))}px`;

@@ -3,6 +3,7 @@ import {
   PLAYER_WIDGET_COMPOSITION_ID,
   PartyGamePlayerRoster,
   avatarTimelineLabelForShape,
+  pointPopupOverlayPosition,
   playerAnswerBubbleRuntimeState,
   playerAnswerBubbleStateLabel,
   playerNameRuntimeText,
@@ -15,6 +16,15 @@ import {
 } from "./stagePlayerRoster";
 
 describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
+  it("converts the authored player anchor center into unclipped roster overlay coordinates", () => {
+    expect(pointPopupOverlayPosition(
+      { left: 225, top: 75, width: 50, height: 20 },
+      { left: 100, top: 50, width: 500, height: 100 },
+      { width: 1000, height: 200 },
+      { width: 150, height: 60 }
+    )).toEqual({ left: 225, top: 40 });
+  });
+
   it("createRenderer returns the roster surface", () => {
     const roster = PartyGamePlayerRoster.createRenderer({});
     expect(roster.render).toBeTypeOf("function");

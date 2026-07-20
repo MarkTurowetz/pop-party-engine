@@ -101,7 +101,7 @@ These paths no longer advance the action from estimated animation duration, but 
 - Player roster host/tile classes are not flow completion sources. Player widget parts use authored MC timelines.
 - The global Wipe is a `Wipe Widget MC` compound prefab. Its parent `Appear` and `Disappear` timelines command the nested colored-strip `Wipe Art MC`, and only the parent terminal callback may complete `Set Wipe Shown`.
 - `stageVotingCardVisuals.ts` can construct voting prefabs from the legacy `voting-card` composition.
-- A point popup without its authored prefab is shown statically; it does not create a timer-based animation completion substitute.
+- A point popup without its authored prefab fails closed; it does not create a timer-based animation completion substitute.
 
 ## Completion-event migration
 
