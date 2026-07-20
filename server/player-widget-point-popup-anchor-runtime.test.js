@@ -4,10 +4,21 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const {
   hasPointPopupContainer,
+  migratePlayerWidgetPointPopupAnchorComponents,
   playerWidgetPointPopupAnchorOverride
 } = require("./player-widget-point-popup-anchor-runtime");
 
 describe("player widget point popup anchor migration", () => {
+  it("injects the anchor during ordinary composition normalization", () => {
+    const components = [{ id: "player-avatar-mc", x: 150, y: 234 }];
+
+    expect(migratePlayerWidgetPointPopupAnchorComponents("prefab-player-widget-mc", components)).toBe(components);
+    expect(components.map((component) => component.id)).toEqual([
+      "player-avatar-mc",
+      "point-popup-container"
+    ]);
+  });
+
   it("adds the authored popup anchor without changing existing player widget children", () => {
     const saved = {
       id: "prefab-player-widget-mc",

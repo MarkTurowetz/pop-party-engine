@@ -40,6 +40,14 @@ function hasPointPopupContainer(composition) {
     && composition.components.some((component) => component?.id === POINT_POPUP_CONTAINER_ID);
 }
 
+function migratePlayerWidgetPointPopupAnchorComponents(compositionId, components = []) {
+  if (compositionId !== PLAYER_WIDGET_COMPOSITION_ID || !Array.isArray(components)) return components;
+  if (!components.some((component) => component?.id === POINT_POPUP_CONTAINER_ID)) {
+    components.push(pointPopupContainerComponent());
+  }
+  return components;
+}
+
 function playerWidgetPointPopupAnchorOverride(defaultComposition, manifestCompositions = {}) {
   if (defaultComposition?.id !== PLAYER_WIDGET_COMPOSITION_ID) return null;
   const saved = manifestCompositions?.[PLAYER_WIDGET_COMPOSITION_ID];
@@ -57,6 +65,7 @@ function playerWidgetPointPopupAnchorOverride(defaultComposition, manifestCompos
 module.exports = {
   POINT_POPUP_CONTAINER_ID,
   hasPointPopupContainer,
+  migratePlayerWidgetPointPopupAnchorComponents,
   playerWidgetPointPopupAnchorOverride,
   pointPopupContainerComponent
 };

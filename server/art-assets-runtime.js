@@ -28,7 +28,7 @@ const {
 } = require("../shared/lobby-widget-art");
 const { controllerButtonOverride } = require("../shared/controller-button-art");
 const { controllerPlayerBannerOverride } = require("./controller-player-banner-art-runtime");
-const { playerWidgetPointPopupAnchorOverride } = require("./player-widget-point-popup-anchor-runtime");
+const { migratePlayerWidgetPointPopupAnchorComponents } = require("./player-widget-point-popup-anchor-runtime");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 
 function createArtAssetsRuntime({
@@ -391,6 +391,7 @@ function createArtAssetsRuntime({
     migrateGeneratedWidgetDefaults(composition.id, components);
     migrateRemovedWidgetComponents(composition.id, components);
     migrateGeneratedWidgetLayerOrder(composition.id, components);
+    migratePlayerWidgetPointPopupAnchorComponents(composition.id, components);
     migrateVotingCardVoterContainerDefaults(composition.id, components);
     migratePlayerAnswerBubbleLayerOrder(composition.id, components);
     migrateLayoutTextFieldWidgetComponents(composition.id, components);
@@ -627,8 +628,7 @@ function createArtAssetsRuntime({
 
   function publicArtComposition(composition, manifest) {
     const explicitOverride = controllerButtonOverride(composition, manifest.compositions || {})
-      || controllerPlayerBannerOverride(composition, manifest.compositions || {})
-      || playerWidgetPointPopupAnchorOverride(composition, manifest.compositions || {});
+      || controllerPlayerBannerOverride(composition, manifest.compositions || {});
     const migratedChildOverride = explicitOverride
       ? null
       : legacyLobbyWidgetChildOverride(composition.id, manifest.compositions || {});
