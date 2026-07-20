@@ -51,6 +51,21 @@ function createControllerLayoutNormalizationRuntime({
     };
   }
 
+  function migrateControllerPlayerBannerElement(element) {
+    const compactId = String(element?.id || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (compactId !== "controllerplayerbanner") return element;
+    const isCurrentWidget = Number(element.playerBannerWidgetVersion || 0) >= 1;
+    return {
+      ...element,
+      kind: "art",
+      artCompositionId: "controller-player-banner",
+      defaultAnimationState: isCurrentWidget
+        ? normalizeControllerInitialState(element.defaultAnimationState)
+        : "On",
+      playerBannerWidgetVersion: 1
+    };
+  }
+
   function migrateControllerActionElement(element, stateId) {
     if (!element) return element;
     if (element.id === "controllerglobalactionmessage") {
@@ -91,7 +106,7 @@ function createControllerLayoutNormalizationRuntime({
     const normalized = normalizeLayoutState(state, stateIndex);
     if (!normalized) return null;
     normalized.elements = (normalized.elements || []).map((element) => {
-      const migratedElement = migrateControllerLocalButtonElement(element);
+      const migratedElement = migrateControllerPlayerBannerElement(migrateControllerLocalButtonElement(element));
       return {
         ...migratedElement,
         defaultAnimationState: normalizeControllerInitialState(migratedElement.defaultAnimationState)

@@ -28,6 +28,7 @@ interface LayoutTextApi {
   disposeControllerButtonArt?: (target: HTMLElement) => void;
   setControllerButtonLifecycleState?: (target: HTMLElement, state: "Off" | "On") => void;
   setControllerButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => boolean;
+  setControllerPlayerBannerArt?: (target: HTMLElement, player: Dict) => void;
   setControllerText?: (target: TextTarget, value: unknown) => void;
   setControllerTextShown?: (target: string, isShown: boolean, options?: Dict) => void;
 }
@@ -59,8 +60,6 @@ declare global {
     controllerTextState?: HTMLElement;
     controllerAvatar?: HTMLElement;
     controllerPlayerBanner?: HTMLElement;
-    controllerPlayerBannerAvatar?: HTMLElement;
-    controllerPlayerBannerName?: HTMLElement;
     avatarPicker?: HTMLElement;
     avatarPickerGrid?: HTMLElement;
     avatarPickerDoneButton?: HTMLElement;
@@ -224,18 +223,16 @@ function getControllerAvatarView() {
       elements: {
         avatar: el(w.controllerAvatar),
         banner: el(w.controllerPlayerBanner),
-        bannerAvatar: el(w.controllerPlayerBannerAvatar),
-        bannerName: el(w.controllerPlayerBannerName),
         picker: el(w.avatarPicker),
         pickerGrid: el(w.avatarPickerGrid)
       },
       getControllerState: () => w.controllerState,
       playerAvatarArt: w.playerAvatarArt,
       renderState: renderControllerState,
+      setBannerArt: (target, player) => w.PartyGameLayoutText?.setControllerPlayerBannerArt?.(target, player as Dict),
       setControllerPlayer: (player) => {
         if (w.controllerState) w.controllerState.player = player;
       },
-      setText: setControllerText,
       setMetaText: (value) => {
         setControllerText(w.controllerMeta, value);
       },

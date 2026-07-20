@@ -8,6 +8,7 @@
 
 import "./layoutGameObjectRuntime"; // ensure PartyGameLayoutGameObjects is installed first
 import { controllerLayoutCandidateIds } from "../../shared/controller-layout-states";
+import { avatarTimelineLabelForShape } from "./stagePlayerRoster";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -87,10 +88,14 @@ const layoutTextArtNestedComponentPath = `${layoutTextArtNestedCompositionId}/${
 const layoutTextArtLegacyComponentPath = `${layoutTextArtCompositionId}/${layoutTextArtComponentId}`;
 const controllerPrimaryButtonArtCompositionId = "controller-primary-button";
 const controllerChoiceOptionArtCompositionId = "controller-choice-option";
+const controllerPlayerBannerArtCompositionId = "controller-player-banner";
+const controllerPlayerBannerAvatarComponentId = "player-avatar-mc";
+const controllerPlayerBannerNameComponentId = "player-name-mc";
+const controllerPlayerBannerNameTextPath = "player-name-widget/name-text";
 const controllerWidgetTextComponentIds: Record<string, string> = {
   "controller-choice-option": "option-text",
   "controller-invalid-banner": "invalid-text",
-  "controller-player-banner": "banner-name",
+  "controller-player-banner": controllerPlayerBannerNameTextPath,
   "controller-player-name-field": "field-value",
   "controller-primary-button": "button-text",
   "controller-stage-code-field": "field-value",
@@ -184,7 +189,7 @@ function controllerLayoutArtDefaultText(element: Dict | null, host: El | null): 
   if (compositionId === "controller-stage-code-field" || compositionId === "controller-player-name-field" || compositionId === "controller-text-input-field") return "";
   if (host?.dataset.textFitSource !== undefined) return host.dataset.textFitSource || "";
   if (compositionId === "controller-invalid-banner") return String(host?.textContent || "Your submission was invalid").trim();
-  if (compositionId === "controller-player-banner") return String(host?.querySelector(".controller-player-banner-name")?.textContent || "").trim();
+  if (compositionId === controllerPlayerBannerArtCompositionId) return host?.dataset.controllerPlayerName || "Player";
   if (compositionId === controllerPrimaryButtonArtCompositionId) return host?.dataset.controllerTextValue || String(host?.textContent || "").trim();
   return "";
 }
@@ -412,6 +417,7 @@ function applyControllerElementLayout(element: Dict, isGlobal = false, shouldAct
     if (!renderer) target.classList.add("controller-layout-hidden");
   }
   if (shouldActivate) activateLayoutEntity(entity, { visibilityOverrides: controllerLayoutVisibilityOverrides });
+  syncControllerPlayerBannerChildren(target);
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "controller-layout-transition-suppressed");
 }
 
@@ -727,11 +733,35 @@ function controllerLayoutArtHost(element: Dict, target: El | null): El | null {
 function controllerLayoutArtKeepElements(host: El | null): El[] {
   if (!host) return [];
   const kept = Array.from(
-    host.querySelectorAll(
-      ":scope > input, :scope > textarea, :scope > select, :scope > .controller-widget-art-overlay, :scope > .player-avatar, :scope > .controller-player-banner-name"
-    )
+    host.querySelectorAll(":scope > input, :scope > textarea, :scope > select, :scope > .controller-widget-art-overlay")
   ) as El[];
   return kept.filter((element) => element.parentElement === host);
+}
+
+function syncControllerPlayerBannerChildren(target: El | null): void {
+  if (!target || target.dataset.controllerLayoutArtCompositionId !== controllerPlayerBannerArtCompositionId) return;
+  const renderer = artRendererForLayoutHost(target);
+  if (!renderer) return;
+  renderer.stopAtComponent?.(controllerPlayerBannerAvatarComponentId, "On", { instant: true });
+  renderer.stopAtComponent?.(controllerPlayerBannerNameComponentId, "On", { instant: true });
+  renderer.stopAtComponent?.("avatar", avatarTimelineLabelForShape(target.dataset.controllerPlayerAvatarShape), { instant: true });
+}
+
+function setControllerPlayerBannerArt(target: El | null, player: Dict = {}): void {
+  if (!target) return;
+  const avatar = (player.avatar as Dict) || {};
+  target.dataset.controllerPlayerName = String(player.name || "Player");
+  target.dataset.controllerPlayerAvatarShape = String(avatar.shape || "rex");
+  target.dataset.controllerPlayerAvatarColor = String(avatar.color || "#22d3ee");
+  target.style.setProperty("color", target.dataset.controllerPlayerAvatarColor);
+  const element = controllerLayoutElementForTarget(target);
+  if (element?.artCompositionId === controllerPlayerBannerArtCompositionId && target.dataset.controllerLayoutVisibilityKey) {
+    renderControllerArtInstance(element, target, target.dataset.controllerLayoutVisibilityKey, {
+      ...controllerLayoutArtRenderOptions(element, target),
+      keepElements: controllerLayoutArtKeepElements(target)
+    });
+  }
+  syncControllerPlayerBannerChildren(target);
 }
 
 function controllerLayoutTargetElement(element: Dict): El | null {
@@ -1201,6 +1231,7 @@ const PartyGameLayoutText = {
   setControllerButtonLifecycleState,
   playControllerButtonInteraction,
   setControllerButtonDisabledState,
+  setControllerPlayerBannerArt,
   setControllerText: setControllerLayoutText,
   setControllerTextShown: setControllerLayoutTextShown,
   setStageText: setStageLayoutText
@@ -1224,7 +1255,7 @@ Object.assign(w(), {
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,
-  playControllerButtonInteraction, setControllerButtonDisabledState,
+  playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPlayerBannerArt,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
   stageLayoutGameObjectTargets, stageLayoutGameObjectVisibilityKey, stageLayoutGameObjectVisibilityOverrides, stageLayoutRegistryKeyForElement, stageLayoutState, stageLayoutStateForPhase,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   allArtCompositionItems,
+  browserCompositionDragKeys,
   browserCompositionSelectionAfterClick,
   browserDragKeys
 } from "./ArtCompositionBrowser";
@@ -66,5 +67,16 @@ describe("ArtCompositionBrowser multi-selection", () => {
       "composition:b"
     ]);
     expect(browserDragKeys("composition:a")).toEqual(["composition:a"]);
+  });
+
+  it("drags a source without replacing the active composition being edited", () => {
+    expect(browserCompositionDragKeys(["active"], ["composition:active"], "composition:controller-art")).toEqual([
+      "composition:controller-art"
+    ]);
+    expect(browserCompositionDragKeys(
+      ["avatar", "name"],
+      ["composition:avatar", "composition:name", "composition:other"],
+      "composition:name"
+    )).toEqual(["composition:avatar", "composition:name"]);
   });
 });

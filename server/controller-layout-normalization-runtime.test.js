@@ -39,6 +39,39 @@ describe("controller layout normalization", () => {
     expect(layouts.states[0].elements.map((element) => element.defaultAnimationState)).toEqual(["On", "Off", "Off"]);
   });
 
+  it("migrates the legacy Player Banner to the compound widget and turns it On once", () => {
+    const layouts = runtime().normalizeControllerLayouts({
+      canvas: { width: 390, height: 844 },
+      global: {
+        id: "global",
+        name: "Global",
+        elements: [{ id: "controllerPlayerBanner", defaultAnimationState: "Off" }]
+      },
+      states: []
+    });
+
+    expect(layouts.global.elements[0]).toMatchObject({
+      kind: "art",
+      artCompositionId: "controller-player-banner",
+      defaultAnimationState: "On",
+      playerBannerWidgetVersion: 1
+    });
+  });
+
+  it("preserves an explicitly authored Player Banner state after widget migration", () => {
+    const layouts = runtime().normalizeControllerLayouts({
+      canvas: { width: 390, height: 844 },
+      global: {
+        id: "global",
+        name: "Global",
+        elements: [{ id: "controllerPlayerBanner", defaultAnimationState: "Off", playerBannerWidgetVersion: 1 }]
+      },
+      states: []
+    });
+
+    expect(layouts.global.elements[0].defaultAnimationState).toBe("Off");
+  });
+
   it("migrates legacy global action art into uniquely owned state containers", () => {
     const layouts = runtime().normalizeControllerLayouts({
       canvas: { width: 390, height: 844 },

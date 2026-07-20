@@ -39,6 +39,20 @@ describe("createControllerAvatarView (ported)", () => {
     expect(updateAvatar).not.toHaveBeenCalled();
   });
 
+  it("delegates Player Banner content to the authored compound widget", () => {
+    const banner = {} as HTMLElement;
+    const setBannerArt = vi.fn();
+    const player = { name: "Ava", avatar: { shape: "stego", color: "#22d3ee" } };
+    const view = createControllerAvatarView(options({
+      elements: { banner } as Record<string, HTMLElement>,
+      setBannerArt
+    }));
+
+    view.setBanner(player);
+
+    expect(setBannerArt).toHaveBeenCalledWith(banner, player);
+  });
+
   it("installs the global bridge on import", () => {
     const host = globalThis as typeof globalThis & { createControllerAvatarView?: unknown };
     expect(host.createControllerAvatarView).toBeTypeOf("function");

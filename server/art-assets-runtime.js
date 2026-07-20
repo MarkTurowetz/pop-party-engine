@@ -27,6 +27,7 @@ const {
   migrateLobbyWidgetTimeline
 } = require("../shared/lobby-widget-art");
 const { controllerButtonOverride } = require("../shared/controller-button-art");
+const { controllerPlayerBannerOverride } = require("./controller-player-banner-art-runtime");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 
 function createArtAssetsRuntime({
@@ -624,7 +625,8 @@ function createArtAssetsRuntime({
   }
 
   function publicArtComposition(composition, manifest) {
-    const explicitOverride = controllerButtonOverride(composition, manifest.compositions || {});
+    const explicitOverride = controllerButtonOverride(composition, manifest.compositions || {})
+      || controllerPlayerBannerOverride(composition, manifest.compositions || {});
     const migratedChildOverride = explicitOverride
       ? null
       : legacyLobbyWidgetChildOverride(composition.id, manifest.compositions || {});

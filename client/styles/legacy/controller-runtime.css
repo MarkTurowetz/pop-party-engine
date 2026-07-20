@@ -94,9 +94,7 @@
   pointer-events: none;
 }
 
-.controller-widget-art-host > .controller-widget-art-overlay,
-.controller-widget-art-host > .player-avatar,
-.controller-widget-art-host > .controller-player-banner-name {
+.controller-widget-art-host > .controller-widget-art-overlay {
   position: relative;
   z-index: 2;
 }

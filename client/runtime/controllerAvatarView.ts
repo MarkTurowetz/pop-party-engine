@@ -3,7 +3,6 @@
 // window.createControllerAvatarView for the legacy controller runtime.
 
 import { PartyGameTextFit } from "./textFit";
-import { PartyGameControllerText } from "./controllerTextRenderer";
 
 type Dict = Record<string, unknown>;
 type Player = { name?: string; avatar?: { shape?: string; color?: string } };
@@ -18,8 +17,8 @@ export interface ControllerAvatarViewOptions {
   getControllerState: () => { player?: Player } | null | undefined;
   playerAvatarArt?: (shape?: string) => string;
   renderState: (lobby: unknown) => void;
+  setBannerArt?: (target: HTMLElement, player: Player) => void;
   setControllerPlayer: (player: Player) => void;
-  setText?: (target: HTMLElement, value: unknown) => void;
   setMetaText: (message: string) => void;
   updateAvatar: (shape: string) => Promise<{ player?: Player; lobby?: unknown }>;
 }
@@ -44,21 +43,14 @@ export function createControllerAvatarView(options: ControllerAvatarViewOptions)
     getControllerState,
     playerAvatarArt,
     renderState,
+    setBannerArt,
     setControllerPlayer,
-    setText,
     setMetaText,
     updateAvatar
   } = options;
 
   const avatarArt =
     typeof playerAvatarArt === "function" ? playerAvatarArt : (shape?: string) => `${avatarFrameImage()}${dinoIcon(shape)}`;
-  const writeText =
-    typeof setText === "function"
-      ? setText
-      : (target: HTMLElement, value: unknown) => {
-          PartyGameControllerText.setText(target, value);
-        };
-
   function writeTextBox(target: HTMLElement | null, value: unknown, spec: Dict = {}): void {
     if (!target) return;
     PartyGameTextFit.renderGameText(target, {
@@ -97,10 +89,7 @@ export function createControllerAvatarView(options: ControllerAvatarViewOptions)
 
   function setBanner(player: Player): void {
     if (!player || !elements.banner) return;
-    writeText(elements.bannerName, player.name || "Player");
-    elements.bannerAvatar.className = `player-avatar ${avatarClass(player.avatar?.shape)}`;
-    elements.bannerAvatar.style.setProperty("--avatar-color", player.avatar?.color || "#22d3ee");
-    elements.bannerAvatar.innerHTML = avatarArt(player.avatar?.shape);
+    if (typeof setBannerArt === "function") setBannerArt(elements.banner, player);
   }
 
   function setAvatar(player: Player): void {

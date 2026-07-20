@@ -219,7 +219,7 @@ const defaultControllerLayouts = {
     name: "Global Layout",
     hiddenInStates: false,
     elements: [
-      { id: "controllerPlayerBanner", name: "Player Banner", selector: "#controllerPlayerBanner", kind: "art", artCompositionId: "controller-player-banner", x: 195, y: 58, width: 338, height: 78, scale: 1, defaultAnimationState: "on" }
+      { id: "controllerPlayerBanner", name: "Player Banner", selector: "#controllerPlayerBanner", kind: "art", artCompositionId: "controller-player-banner", x: 195, y: 58, width: 338, height: 78, scale: 1, defaultAnimationState: "On", playerBannerWidgetVersion: 1 }
     ]
   },
   states: [
@@ -643,14 +643,53 @@ function controllerTextComponent(id, name, text, x, y, width, height, fontSize =
   };
 }
 
-function defaultControllerComposition(id, name, description, canvas, components) {
+function controllerReferenceComponent(id, name, artCompositionId, x, y, width, height, scale = 1) {
+  return {
+    id,
+    name,
+    instanceLabel: id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()),
+    kind: "reference",
+    x,
+    y,
+    width,
+    height,
+    scale,
+    rotation: 0,
+    opacity: 1,
+    visible: true,
+    editorHidden: false,
+    transformOrigin: "center",
+    locked: false,
+    defaultAnimationState: "Off",
+    artCompositionId
+  };
+}
+
+function defaultControllerComposition(id, name, description, canvas, components, timeline: Record<string, any> | null = null) {
   return {
     id,
     name,
     surface: "controller",
     description,
     canvas,
-    components
+    components,
+    ...(timeline ? { timeline } : {})
+  };
+}
+
+function controllerOnOffTimeline() {
+  return {
+    fps: 30,
+    frameCount: 2,
+    labels: [{ name: "Off", frame: 0 }, { name: "On", frame: 1 }],
+    commands: [
+      { id: "stop-0", frame: 0, type: "stop" },
+      { id: "setvisible-0-false", frame: 0, type: "setVisible", target: "false" },
+      { id: "stop-1", frame: 1, type: "stop" },
+      { id: "setvisible-1-true", frame: 1, type: "setVisible", target: "true" }
+    ],
+    tracks: [],
+    commandFrames: [0, 1]
   };
 }
 
@@ -717,16 +756,13 @@ const defaultArtCompositions = [
   defaultControllerComposition(
     "controller-player-banner",
     "Controller Player Banner",
-    "Editable controller top player banner art.",
+    "Compound controller player banner with independent avatar and player-name children.",
     { width: 338, height: 78 },
     [
-      controllerTextComponent("banner-name", "Banner Name", "PLAYER", 190, 39, 220, 42, 30),
-      controllerShapeComponent("banner-card", "Banner Card", 338, 78, {
-        fillColor: "#fffdf4",
-        borderWidth: 4,
-        borderRadius: 18
-      })
-    ]
+      controllerReferenceComponent("player-avatar-mc", "Player Avatar MC", "prefab-player-avatar-mc", 43, 39, 100, 100, 0.64),
+      controllerReferenceComponent("player-name-mc", "Player Name MC", "prefab-player-name-mc", 202, 39, 126, 42, 1.68)
+    ],
+    controllerOnOffTimeline()
   ),
   defaultControllerComposition(
     "controller-avatar-button",

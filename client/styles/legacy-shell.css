@@ -1424,31 +1424,7 @@ body.tool-dashboard-mode .layout-shell {
 }
 
 .controller-player-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  border: 4px solid var(--ink);
-  border-radius: 999px;
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: 7px 7px 0 rgba(23, 19, 31, 0.42);
-  font-size: 24px;
-  font-weight: 1000;
-  line-height: 1;
-  overflow: hidden;
-}
-
-.controller-player-banner .player-avatar {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 auto;
-}
-
-.controller-player-banner-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
 }
 
 .vip-badge {
@@ -1559,9 +1535,7 @@ body.tool-dashboard-mode .layout-shell {
   pointer-events: none;
 }
 
-.controller-widget-art-host > .controller-widget-art-overlay,
-.controller-widget-art-host > .player-avatar,
-.controller-widget-art-host > .controller-player-banner-name {
+.controller-widget-art-host > .controller-widget-art-overlay {
   position: relative;
   z-index: 2;
 }
@@ -4398,17 +4372,6 @@ body.is-resizing-flow {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   text-transform: uppercase;
-}
-
-.layout-preview-content > .controller-player-banner {
-  width: 100%;
-  height: 100%;
-  font-size: calc(24px * var(--layout-fit-scale, 1));
-}
-
-.layout-preview-content > .controller-player-banner .player-avatar {
-  width: calc(52px * var(--layout-fit-scale, 1));
-  height: calc(52px * var(--layout-fit-scale, 1));
 }
 
 .layout-preview-title {

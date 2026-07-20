@@ -89,6 +89,17 @@ export function browserDragKeys(value: string): string[] {
   return value ? [value] : [];
 }
 
+export function browserCompositionDragKeys(
+  currentIds: Iterable<string>,
+  visualKeys: Iterable<string>,
+  draggedKey: string
+): string[] {
+  const selectedIds = new Set([...currentIds].map(String).filter(Boolean));
+  const draggedId = compositionIdFromBrowserKey(draggedKey);
+  if (!draggedId || !selectedIds.has(draggedId)) return draggedKey ? [draggedKey] : [];
+  return [...visualKeys].filter((key) => selectedIds.has(compositionIdFromBrowserKey(key)));
+}
+
 function collapsedKey(surface: ArtBrowserSurface, folderId: string): string {
   return `${surface}:${folderId}`;
 }
@@ -247,7 +258,6 @@ export function ArtCompositionBrowser({
     };
   }, [compositionSelectionState, selectedCompositionId]);
 
-  const selectedCompositionKeys = () => visualCompositionKeys.filter((key) => compositionSelection.has(compositionIdFromBrowserKey(key)));
   const selectCompositionFromClick = (event: MouseEvent<HTMLButtonElement>, compositionId: string): void => {
     pendingSelectionScrollTopRef.current = browserListRef.current?.scrollTop ?? null;
     const next = browserCompositionSelectionAfterClick(
@@ -280,15 +290,7 @@ export function ArtCompositionBrowser({
 
   const onDragStart = (event: DragEvent, key: string) => {
     event.stopPropagation();
-    const compositionId = compositionIdFromBrowserKey(key);
-    let draggedKeys = [key];
-    if (compositionId) {
-      if (compositionSelection.has(compositionId)) draggedKeys = selectedCompositionKeys();
-      else {
-        setCompositionSelectionState({ surface, primaryId: compositionId, ids: new Set([compositionId]) });
-        compositionsController.selectComposition(compositionId);
-      }
-    }
+    const draggedKeys = browserCompositionDragKeys(compositionSelection, visualCompositionKeys, key);
     event.dataTransfer.setData(ART_COMPOSITION_BROWSER_DND_TYPE, JSON.stringify(draggedKeys));
   };
   const dragKeys = (event: DragEvent) => browserDragKeys(event.dataTransfer.getData(ART_COMPOSITION_BROWSER_DND_TYPE));
@@ -386,7 +388,7 @@ export function ArtCompositionBrowser({
         data-art-browser-composition={compositionId}
         data-art-browser-selected={selected ? "true" : "false"}
         key={key}
-        draggable={Boolean(organizationSurface)}
+        draggable={!cleanupMode}
         onDragStart={(event) => onDragStart(event, key)}
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => onDropBeside(event, key)}

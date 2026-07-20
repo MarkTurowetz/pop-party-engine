@@ -46,7 +46,7 @@ import {
   type ArtCanvasTransformTarget
 } from "./artCanvasTransformTransaction";
 import { artCompositionKindOptions, normalizeArtCompositionKind } from "./artCompositionModel";
-import { ART_COMPOSITION_BROWSER_DND_TYPE, compositionIdFromBrowserKey } from "./ArtCompositionBrowser";
+import { ART_COMPOSITION_BROWSER_DND_TYPE, browserDragKeys, compositionIdFromBrowserKey } from "./ArtCompositionBrowser";
 import type { ArtCompositionsController } from "./artCompositionsController";
 import { artWorkspaceSurface, isArtWorkspaceId } from "./artWorkspaceModel";
 import { ArtPreviewRenderer, assetUrlMap, compositionMap } from "./ArtPreviewRenderer";
@@ -856,17 +856,22 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
 
   const addDroppedCompositionReference = (event: ReactDragEvent<HTMLDivElement>): void => {
     if (!composition) return;
-    const browserKey = event.dataTransfer.getData(ART_COMPOSITION_BROWSER_DND_TYPE);
-    const referencedCompositionId = compositionIdFromBrowserKey(browserKey);
-    if (!referencedCompositionId || referencedCompositionId === composition.id) return;
+    const referencedCompositionIds = [...new Set(
+      browserDragKeys(event.dataTransfer.getData(ART_COMPOSITION_BROWSER_DND_TYPE))
+        .map(compositionIdFromBrowserKey)
+        .filter((compositionId) => compositionId && compositionId !== composition.id)
+    )];
+    if (!referencedCompositionIds.length) return;
     event.preventDefault();
     event.stopPropagation();
     const point = pointForDroppedChild(artCanvasPointFromClient(event.clientX, event.clientY));
-    controller.addComponent("reference", {
-      parentComponentId: activeDropParentId || undefined,
-      referencedCompositionId,
-      x: point.x,
-      y: point.y
+    referencedCompositionIds.forEach((referencedCompositionId, index) => {
+      controller.addComponent("reference", {
+        parentComponentId: activeDropParentId || undefined,
+        referencedCompositionId,
+        x: point.x + index * 18,
+        y: point.y + index * 18
+      });
     });
     dismissTimelineContext();
   };
