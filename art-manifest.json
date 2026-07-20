@@ -3274,6 +3274,25 @@
       },
       "components": [
         {
+          "id": "player-avatar-mc",
+          "name": "Player Avatar MC",
+          "instanceLabel": "playerAvatarMc",
+          "kind": "reference",
+          "x": 43,
+          "y": 39,
+          "scale": 0.64,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Off",
+          "artCompositionId": "prefab-player-avatar-mc",
+          "referenceSizeMode": "intrinsic"
+        },
+        {
           "id": "banner-name",
           "name": "Banner Name",
           "instanceLabel": "bannerName",
@@ -3284,6 +3303,11 @@
           "height": 42,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "defaultText": "PLAYER",
@@ -3303,6 +3327,11 @@
           "height": 78,
           "scale": 1,
           "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
           "locked": false,
           "defaultAnimationState": "On",
           "shapeStyle": "rounded",
@@ -3311,6 +3340,25 @@
           "borderColor": "#17131f",
           "borderWidth": 4,
           "borderRadius": 18
+        },
+        {
+          "id": "player-name-mc",
+          "name": "Player Name MC",
+          "instanceLabel": "playerNameMc",
+          "kind": "reference",
+          "x": 202,
+          "y": 39,
+          "scale": 1.68,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "Off",
+          "artCompositionId": "prefab-player-name-mc",
+          "referenceSizeMode": "intrinsic"
         }
       ],
       "timeline": {
@@ -3342,64 +3390,6 @@
             "frame": 17
           }
         ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
-            "frame": 0,
-            "type": "setVisible",
-            "target": "false"
-          },
-          {
-            "id": "stop-1",
-            "frame": 1,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-1-true",
-            "frame": 1,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "setvisible-2-true",
-            "frame": 2,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-12",
-            "frame": 12,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
-            "type": "stop"
-          },
-          {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
-            "type": "setVisible",
-            "target": "false"
-          }
-        ],
-        "tracks": [],
         "commandFrames": [
           0,
           1,
@@ -3408,9 +3398,66 @@
           13,
           16,
           32
-        ]
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          },
+          {
+            "frame": 0,
+            "type": "setVisible",
+            "target": "false"
+          },
+          {
+            "frame": 1,
+            "type": "stop",
+            "id": "stop-1"
+          },
+          {
+            "frame": 1,
+            "type": "setVisible",
+            "id": "setvisible-1-true",
+            "target": "true"
+          },
+          {
+            "frame": 2,
+            "type": "setVisible",
+            "id": "setvisible-2-true",
+            "target": "true"
+          },
+          {
+            "frame": 12,
+            "type": "stop",
+            "id": "stop-12"
+          },
+          {
+            "frame": 13,
+            "type": "setVisible",
+            "id": "setvisible-13-true",
+            "target": "true"
+          },
+          {
+            "frame": 16,
+            "type": "stop",
+            "id": "stop-16"
+          },
+          {
+            "frame": 32,
+            "type": "stop",
+            "id": "stop-32"
+          },
+          {
+            "frame": 32,
+            "type": "setVisible",
+            "id": "setvisible-32-false",
+            "target": "false"
+          }
+        ],
+        "tracks": []
       },
-      "updatedAt": "2026-07-12T05:08:35.961Z"
+      "updatedAt": "2026-07-20T05:50:56.717Z"
     },
     "controller-avatar-button": {
       "name": "Controller Avatar Button",
