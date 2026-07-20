@@ -50,6 +50,23 @@ const POINT_POPUP_COMPOSITION_ID = "player-point-popup";
 
 type RectLike = { left: number; top: number; width: number; height: number };
 
+type PointLike = { x: number; y: number };
+
+export function authoredCanvasPointViewportPosition(
+  point: PointLike,
+  canvas: { width: number; height: number; minX?: number; minY?: number },
+  canvasRect: RectLike
+): PointLike {
+  const canvasWidth = Math.max(1, Number(canvas.width || 1));
+  const canvasHeight = Math.max(1, Number(canvas.height || 1));
+  const canvasMinX = Number(canvas.minX || 0);
+  const canvasMinY = Number(canvas.minY || 0);
+  return {
+    x: canvasRect.left + ((Number(point.x || 0) - canvasMinX) / canvasWidth) * canvasRect.width,
+    y: canvasRect.top + ((Number(point.y || 0) - canvasMinY) / canvasHeight) * canvasRect.height
+  };
+}
+
 export function pointPopupOverlayPosition(
   anchorRect: RectLike,
   hostRect: RectLike,
@@ -770,18 +787,34 @@ class PlayerRosterRenderer {
     return layer;
   }
 
-  pointPopupAnchor(tile: El | null): El | null {
-    return tile?.querySelector(
-      `.player-object-art-host [data-art-component-id="${POINT_POPUP_CONTAINER_ID}"]`
-    ) as El | null;
+  pointPopupAnchor(tile: El | null): Dict | null {
+    if (!tile) return null;
+    const composition = this.playerObjectCompositionFor(this.tilePlayers.get(tile) || {});
+    return ((composition?.components as Dict[]) || [])
+      .find((component) => component?.id === POINT_POPUP_CONTAINER_ID) || null;
   }
 
-  positionPointPopup(node: El | null, anchor: El | null): boolean {
-    if (!node || !anchor || !this.host) return false;
+  positionPointPopup(node: El | null, tile: El | null): boolean {
+    if (!node || !tile || !this.host) return false;
+    const playerObject = tile.querySelector(":scope > .player-object-art-host") as El | null;
+    const composition = this.playerObjectCompositionFor(this.tilePlayers.get(tile) || {});
+    const anchor = this.pointPopupAnchor(tile);
+    if (!playerObject || !composition || !anchor) return false;
     const hostRect = this.host.getBoundingClientRect();
-    const anchorRect = anchor.getBoundingClientRect();
+    const playerObjectRect = playerObject.getBoundingClientRect();
+    const canvas = (composition.canvas as Dict) || { width: 300, height: 370 };
+    const anchorViewportPosition = authoredCanvasPointViewportPosition(
+      { x: Number(anchor.x || 0), y: Number(anchor.y || 0) },
+      {
+        width: Math.max(1, Number(canvas.width || 1)),
+        height: Math.max(1, Number(canvas.height || 1)),
+        minX: Number(canvas.minX || 0),
+        minY: Number(canvas.minY || 0)
+      },
+      playerObjectRect
+    );
     const position = pointPopupOverlayPosition(
-      anchorRect,
+      { left: anchorViewportPosition.x, top: anchorViewportPosition.y, width: 0, height: 0 },
       hostRect,
       {
         width: elementDimension(this.host, "width", hostRect.width || 1),
@@ -800,7 +833,7 @@ class PlayerRosterRenderer {
     const popupNodes = Array.from(layer.querySelectorAll(".point-popup[data-player-id]"));
     for (const node of popupNodes) {
       const popupNode = node as El;
-      this.positionPointPopup(popupNode, this.pointPopupAnchor(this.tileForPlayerId(popupNode.dataset.playerId)));
+      this.positionPointPopup(popupNode, this.tileForPlayerId(popupNode.dataset.playerId));
     }
   }
 
@@ -818,7 +851,7 @@ class PlayerRosterRenderer {
       if (!this.renderPointPopupPrefab(node, popup)) continue;
       this.pointPopupIds.add(popup.id as string);
       layer.appendChild(node);
-      this.positionPointPopup(node, anchor);
+      this.positionPointPopup(node, tile);
       node.dataset.pointPopupPending = "true";
     }
     void options;

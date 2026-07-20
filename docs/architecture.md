@@ -242,8 +242,9 @@ concepts into focused modules.
   None of these animations contributes to an action barrier or advances game flow.
 - `Show Points` uses the direct `pointPopupContainer` child of Player Widget MC as an authored
   position anchor. The popup itself is spawned into an overflow-visible roster overlay at the
-  anchor's rendered center, so the Player MC supplies its `x`/`y` without becoming a clipping
-  parent. Each popup plays only the top-level 1.5-second Player Point Popup `Popup` timeline. Its
+  container's authored `x`/`y`, projected through the rendered Player Widget MC canvas. Runtime
+  must not infer this point from the avatar or from a transparent container's intermediate DOM
+  bounds. Each popup plays only the top-level 1.5-second Player Point Popup `Popup` timeline. Its
   terminal callback removes only that popup; it never joins or completes the Show Points action.
   Pause, quit, and moment teardown cancel the timeline and remove the popup immediately without
   waiting for cleanup. CSS supplies centering only and owns no popup motion.

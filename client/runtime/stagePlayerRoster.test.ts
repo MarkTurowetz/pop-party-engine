@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   PLAYER_WIDGET_COMPOSITION_ID,
   PartyGamePlayerRoster,
+  authoredCanvasPointViewportPosition,
   avatarTimelineLabelForShape,
   pointPopupOverlayPosition,
   playerAnswerBubbleRuntimeState,
@@ -16,6 +17,14 @@ import {
 } from "./stagePlayerRoster";
 
 describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
+  it("projects the authored container center through the Player Widget MC canvas", () => {
+    expect(authoredCanvasPointViewportPosition(
+      { x: 30, y: 40 },
+      { width: 300, height: 370 },
+      { left: 200, top: 80, width: 150, height: 185 }
+    )).toEqual({ x: 215, y: 100 });
+  });
+
   it("converts the authored player anchor center into unclipped roster overlay coordinates", () => {
     expect(pointPopupOverlayPosition(
       { left: 225, top: 75, width: 50, height: 20 },
@@ -29,6 +38,39 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(roster.render).toBeTypeOf("function");
     expect(roster.setShown).toBeTypeOf("function");
     expect(roster.renderPointPopups).toBeTypeOf("function");
+  });
+
+  it("positions a popup from pointPopupContainer authored x/y rather than avatar geometry", () => {
+    const playerObject = {
+      getBoundingClientRect: () => ({ left: 200, top: 80, width: 150, height: 185 })
+    };
+    const tile = {
+      querySelector: () => playerObject
+    } as unknown as HTMLElement;
+    const host = {
+      clientWidth: 1000,
+      clientHeight: 400,
+      getBoundingClientRect: () => ({ left: 100, top: 50, width: 500, height: 200 })
+    } as unknown as HTMLElement;
+    const node = { style: {} } as unknown as HTMLElement;
+    const roster = PartyGamePlayerRoster.createRenderer({
+      host,
+      getComposition: () => ({
+        id: PLAYER_WIDGET_COMPOSITION_ID,
+        canvas: { width: 300, height: 370 },
+        components: [
+          { id: "player-avatar-mc", x: 150, y: 234 },
+          { id: "point-popup-container", x: 30, y: 40, width: 154, height: 64 }
+        ]
+      })
+    });
+    roster.tilePlayers.set(tile, { id: "player-1" });
+
+    expect(roster.positionPointPopup(node, tile)).toBe(true);
+    expect(node.style.left).toBe("230px");
+    expect(node.style.top).toBe("100px");
+    expect(node.style.left).not.toBe("350px");
+    expect(node.style.top).not.toBe("294px");
   });
 
   it("setShown returns 0 without a host", () => {
