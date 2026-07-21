@@ -27,6 +27,7 @@ interface TreeRenderer {
   playAll?: (animation: string, options?: Dict) => number;
   playComponent?: (componentId: string, animation: string, options?: Dict) => number;
   stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
+  viewForComponentId?: (componentId: string) => { element?: El } | null;
   dispose?: () => void;
 }
 
@@ -856,11 +857,27 @@ class PlayerRosterRenderer {
 
   positionPointPopup(node: El | null, tile: El | null): boolean {
     if (!node || !tile || !this.host) return false;
+    const hostRect = this.host.getBoundingClientRect();
+    const hostSize = {
+      width: elementDimension(this.host, "width", hostRect.width || 1),
+      height: elementDimension(this.host, "height", hostRect.height || 1)
+    };
+    const renderer = this.tileRenderers.get(tile);
+    const liveAnchor = renderer?.viewForComponentId?.(POINT_POPUP_CONTAINER_INSTANCE_LABEL)?.element
+      || renderer?.viewForComponentId?.(POINT_POPUP_CONTAINER_LEGACY_ID)?.element;
+    if (liveAnchor) {
+      const position = pointPopupOverlayPosition(liveAnchor.getBoundingClientRect(), hostRect, hostSize);
+      node.style.left = `${position.left}px`;
+      node.style.top = `${position.top}px`;
+      return true;
+    }
+
+    // Keep composition projection as a startup/test fallback for the brief
+    // interval before the player's authored object tree has exposed its view.
     const playerObject = tile.querySelector(":scope > .player-object-art-host") as El | null;
     const composition = this.playerObjectCompositionFor(this.tilePlayers.get(tile) || {});
     const anchor = this.pointPopupAnchor(tile);
     if (!playerObject || !composition || !anchor) return false;
-    const hostRect = this.host.getBoundingClientRect();
     const playerObjectRect = playerObject.getBoundingClientRect();
     const canvas = (composition.canvas as Dict) || { width: 300, height: 370 };
     const anchorViewportPosition = authoredCanvasPointViewportPosition(
@@ -876,10 +893,7 @@ class PlayerRosterRenderer {
     const position = pointPopupOverlayPosition(
       { left: anchorViewportPosition.x, top: anchorViewportPosition.y, width: 0, height: 0 },
       hostRect,
-      {
-        width: elementDimension(this.host, "width", hostRect.width || 1),
-        height: elementDimension(this.host, "height", hostRect.height || 1)
-      }
+      hostSize
     );
     node.style.left = `${position.left}px`;
     node.style.top = `${position.top}px`;
@@ -973,6 +987,10 @@ class PlayerRosterRenderer {
   }
 
   showPointPopupsForAction(): void {
+    // A flow action can release a pending popup after player distribution or
+    // visibility motion has settled. Resolve every awarded player's live
+    // authored container again at the moment playback begins.
+    this.positionPointPopups();
     for (const node of Array.from(this.host?.querySelectorAll(".point-popup[data-point-popup-pending='true']") || [])) {
       const popupNode = node as El;
       this.playPointPopup(popupNode, { id: popupNode.dataset.pointPopupId });

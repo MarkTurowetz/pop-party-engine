@@ -118,6 +118,37 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(node.style.top).not.toBe("294px");
   });
 
+  it("prefers the awarded player's live pointPopupContainer over stale composition coordinates", () => {
+    const liveAnchor = {
+      getBoundingClientRect: () => ({ left: 250, top: 150, width: 50, height: 20 })
+    };
+    const tile = {} as HTMLElement;
+    const host = {
+      clientWidth: 1000,
+      clientHeight: 400,
+      getBoundingClientRect: () => ({ left: 100, top: 50, width: 500, height: 200 })
+    } as unknown as HTMLElement;
+    const node = { style: {} } as unknown as HTMLElement;
+    const viewForComponentId = vi.fn((target: string) => target === "pointPopupContainer" ? { element: liveAnchor } : null);
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    roster.tileRenderers.set(tile, { render: vi.fn(), viewForComponentId } as never);
+
+    expect(roster.positionPointPopup(node, tile)).toBe(true);
+    expect(viewForComponentId).toHaveBeenCalledWith("pointPopupContainer");
+    expect(node.style.left).toBe("350px");
+    expect(node.style.top).toBe("220px");
+  });
+
+  it("repositions pending point popups when their show action begins", () => {
+    const host = { querySelectorAll: () => [] } as unknown as HTMLElement;
+    const roster = PartyGamePlayerRoster.createRenderer({ host });
+    const positionPointPopups = vi.spyOn(roster, "positionPointPopups");
+
+    roster.showPointPopupsForAction();
+
+    expect(positionPointPopups).toHaveBeenCalledOnce();
+  });
+
   it("setShown returns 0 without a host", () => {
     expect(PartyGamePlayerRoster.createRenderer({}).setShown(true)).toBe(0);
   });

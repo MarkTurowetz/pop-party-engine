@@ -156,13 +156,28 @@ function isLayoutTextArtElement(element: Dict | null): boolean {
   return element?.artCompositionId === layoutTextArtCompositionId || legacyLayoutTextElementIds.has(id) || id.endsWith("momenttext") || id.endsWith("controllertext");
 }
 
+function layoutTextArtUsesNestedPrefab(): boolean {
+  const composition = w().artComposition?.(layoutTextArtCompositionId) as Dict | null | undefined;
+  const components = [...(((composition?.components as Dict[]) || []))];
+  while (components.length) {
+    const component = components.shift();
+    if (!component) continue;
+    if (String(component.artCompositionId || "") === layoutTextArtNestedCompositionId) return true;
+    components.push(...((component.children as Dict[]) || []));
+  }
+  return false;
+}
+
 function layoutTextArtRenderOptions(element: Dict | null, textOverride: unknown = undefined): Dict {
   const text = textOverride === undefined ? layoutTextDefault(element) : String(textOverride ?? "");
-  const usesNestedTextPrefab = Boolean(w().artComposition?.(layoutTextArtNestedCompositionId));
+  // The child prefab can coexist with a flat saved Layout Text Field while art
+  // data is being migrated. Target the structure the active parent actually
+  // renders instead of inferring it from the mere existence of that child.
+  const usesNestedTextPrefab = layoutTextArtUsesNestedPrefab();
   const componentId = usesNestedTextPrefab ? layoutTextArtNestedComponentPath : layoutTextArtComponentId;
   const textOverrides = usesNestedTextPrefab
     ? { [layoutTextArtNestedComponentPath]: text, [layoutTextArtLegacyComponentPath]: "" }
-    : { [layoutTextArtComponentId]: text };
+    : { [layoutTextArtLegacyComponentPath]: text, [layoutTextArtComponentId]: text };
   return {
     textOverrides,
     textStyle: { componentId, fontSize: Number(element?.fontSize || 58), fontColor: normalizeUiColor(element?.fontColor) || "#ffffff" }
@@ -1265,4 +1280,4 @@ Object.assign(w(), {
   stageLayoutTargetByElementId, stageLayoutTargetElement, stageLayoutTextDefault, stageMomentLayoutReadiness, textFieldPadding
 });
 
-export {};
+export { layoutTextArtRenderOptions, layoutTextArtUsesNestedPrefab };
